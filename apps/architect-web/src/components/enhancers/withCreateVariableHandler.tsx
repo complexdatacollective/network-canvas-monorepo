@@ -78,10 +78,20 @@ const createVariableHandler = {
           configuration,
         }).unwrap());
       } catch (e) {
+        // unwrap() can reject with a serialized error object (a plain object
+        // carrying a string `message`) rather than an Error instance, which
+        // ensureError would stringify instead of surface. Prefer that message.
+        const message =
+          typeof e === 'object' &&
+          e !== null &&
+          'message' in e &&
+          typeof e.message === 'string'
+            ? e.message
+            : ensureError(e).message;
         void showDialog({
           type: 'Notice',
           title: 'Could not create variable',
-          message: ensureError(e).message,
+          message,
         });
         return undefined;
       }

@@ -80,7 +80,9 @@ export const importAssetAsync = createAsyncThunk(
       // storage is unavailable (e.g. Safari private browsing) so assets can still
       // be added this session. Flag the protocol so the UI warns it won't persist.
       const { persisted } = await saveAssetWithFallback(asset);
-      if (!persisted) {
+      if (persisted) {
+        dispatch(setStorageUnavailable(false));
+      } else {
         dispatch(setStorageUnavailable(true));
       }
 

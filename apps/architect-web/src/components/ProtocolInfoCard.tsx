@@ -1,6 +1,6 @@
 import { Globe } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
@@ -40,8 +40,15 @@ const ProtocolInfoCard = () => {
 
   const [localDescription, setLocalDescription] = useState(description);
 
+  // Only adopt the prop when it actually changes, so an unrelated store update
+  // (e.g. an autosave/validation round-trip) can't clobber in-progress typing
+  // by re-running this sync with an unchanged description.
+  const lastSyncedDescription = useRef(description);
   useEffect(() => {
-    setLocalDescription(description);
+    if (description !== lastSyncedDescription.current) {
+      lastSyncedDescription.current = description;
+      setLocalDescription(description);
+    }
   }, [description]);
 
   return (

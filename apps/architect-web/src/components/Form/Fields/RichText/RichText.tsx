@@ -178,7 +178,7 @@ const RichText = ({
 
   // Serialize a concrete node tree. Empty content serializes to '' so a blank
   // field round-trips to an empty string rather than a stray paragraph.
-  const serializeNodes = useCallback(
+  const serializeValue = useCallback(
     (nodes: Descendant[]): string => {
       if (childrenAreEmpty(nodes)) {
         return '';
@@ -189,8 +189,8 @@ const RichText = ({
   );
 
   const getSerializedValue = useCallback(
-    () => serializeNodes(value),
-    [serializeNodes, value],
+    () => serializeValue(value),
+    [serializeValue, value],
   );
 
   const setInitialValue = useCallback(
@@ -213,7 +213,7 @@ const RichText = ({
       // isn't a serialize(parse()) fixed point — that would dirty the form,
       // insert a phantom undo step, and silently rewrite the stored value on
       // open. A real edit produces a different value and emits normally.
-      setLastChange(serializeNodes(parsedValue));
+      setLastChange(serializeValue(parsedValue));
       setIsInitialized(true);
     });
   }, []);
@@ -225,7 +225,13 @@ const RichText = ({
     if (initialValue === lastChange) {
       return;
     }
-    setInitialValue();
+    setInitialValue().then((parsedValue) => {
+      // Reseed lastChange for the same reason as the mount effect: an external
+      // prop update must not be treated as a local edit, or the "update
+      // upstream" effect would emit a spurious onChange that dirties the form
+      // and rewrites the incoming markdown.
+      setLastChange(serializeValue(parsedValue));
+    });
   }, [initialValue, setInitialValue]);
 
   // Update upstream on change

@@ -34,6 +34,7 @@ import {
 } from '~/utils/criticalOperation';
 import { ensureError } from '~/utils/ensureError';
 import {
+  assertCompressedSizeWithinLimit,
   loadGuardedNetcanvas,
   NetcanvasTooLargeError,
 } from '~/utils/netcanvasSizeGuard';
@@ -169,15 +170,20 @@ export const openLocalNetcanvas = createAsyncThunk(
         return false;
       }
 
-      const arrayBuffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-
       // Reject oversized files and deflate bombs before inflating any asset, so
       // a shared .netcanvas can't OOM-crash the tab. This is an expected input
       // problem (like an unsupported file type), so surface it without reaching
       // the exception-reporting catch below.
       let guardedZip: Awaited<ReturnType<typeof loadGuardedNetcanvas>>;
       try {
+        // Reject by declared file size before buffering the whole file into
+        // memory, so an oversized file can't OOM the tab during arrayBuffer().
+        assertCompressedSizeWithinLimit(file.size);
+
+        const arrayBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+
+        // Re-check the buffered bytes (defence in depth) and reject deflate bombs.
         guardedZip = await loadGuardedNetcanvas(bytes);
       } catch (error) {
         if (error instanceof NetcanvasTooLargeError) {

@@ -1,4 +1,3 @@
-import { get } from 'es-toolkit/compat';
 import type { ComponentType } from 'react';
 
 import { Section, Subsection } from '~/components/EditorLayout';
@@ -6,6 +5,7 @@ import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import Text from '~/components/Form/Fields/Text';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Options from '~/components/Options';
+import { getLockedOptions } from '~/components/Options/getLockedOptions';
 import LockedOptions from '~/components/Options/LockedOptions';
 import Parameters from '~/components/Parameters';
 import {
@@ -51,19 +51,7 @@ const ComposerAttributeFields = ({
     type: type ?? '',
   });
 
-  // A read-only variable's options are owned by an interface and cannot be
-  // edited here; render them read-only rather than editable.
-  const selectedVariable = get(
-    existingVariables,
-    typeof variable === 'string' ? variable : '',
-    undefined,
-  );
-  const lockedOptions =
-    selectedVariable?.readOnly &&
-    (selectedVariable.type === 'categorical' ||
-      selectedVariable.type === 'ordinal')
-      ? selectedVariable.options
-      : undefined;
+  const lockedOptions = getLockedOptions(existingVariables, variable);
 
   return (
     <Section layout="vertical">

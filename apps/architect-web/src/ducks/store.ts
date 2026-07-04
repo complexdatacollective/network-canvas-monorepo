@@ -19,7 +19,11 @@ import { protocolLibraryListenerMiddleware } from './middleware/protocolLibraryL
 import { protocolValidationListenerMiddleware } from './middleware/protocolValidationListener';
 import { scrollPositionsListenerMiddleware } from './middleware/scrollPositionsListener';
 import { stageEditorDraftListenerMiddleware } from './middleware/stageEditorDraftListener';
-import { getActiveProtocolId, setStorageUnavailable } from './modules/app';
+import {
+  getActiveProtocolId,
+  getStorageUnavailable,
+  setStorageUnavailable,
+} from './modules/app';
 import type { RootState } from './modules/root';
 import { rootReducer } from './modules/root';
 
@@ -74,7 +78,12 @@ const serialize = (data: unknown, key: string): string => {
 // the user sees the "download a copy" banner instead of losing work unknowingly.
 const persistErrorHandler = (error: unknown): void => {
   if (error instanceof PersistError) {
-    storeRef?.dispatch(setStorageUnavailable(true));
+    // Dispatching setStorageUnavailable mutates the persisted `app` slice, which
+    // itself triggers persistence — re-entering this handler if it fails again.
+    // Skip the dispatch once the flag is already set to break that loop.
+    if (storeRef && !getStorageUnavailable(storeRef.getState())) {
+      storeRef.dispatch(setStorageUnavailable(true));
+    }
     return;
   }
   reportError(error);

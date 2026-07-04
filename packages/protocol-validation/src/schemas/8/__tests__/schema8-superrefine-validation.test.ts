@@ -2590,6 +2590,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       const result = ProtocolSchemaV8.safeParse(
         protocolWithLockedVariables({}),
       );
+      expect(result.success).toBe(true);
       const lockedIssue =
         !result.success &&
         result.error.issues.find((i) =>

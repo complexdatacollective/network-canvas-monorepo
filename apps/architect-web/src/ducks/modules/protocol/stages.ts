@@ -126,10 +126,10 @@ const deleteStageAsync = createAsyncThunk(
           dispatch(
             updateVariableByUUID(
               variable.id,
-              omit(variable, 'encrypted'),
+              omit(variable, ['encrypted', 'id']),
               false,
             ),
-          ),
+          ).unwrap(),
         ),
       );
     }

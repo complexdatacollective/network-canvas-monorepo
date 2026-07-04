@@ -27,6 +27,9 @@ const mapSortProperty = (
   value: unknown,
   path: string,
 ): [unknown, string] | undefined => {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
   const { property } = value as { property?: unknown };
   if (typeof property !== 'string') {
     return undefined;

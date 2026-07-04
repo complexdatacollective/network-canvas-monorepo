@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   declaredUncompressedTotal,
@@ -20,6 +20,10 @@ const buildZip = async (
 };
 
 describe('loadGuardedNetcanvas', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('loads a normally sized archive and returns the zip', async () => {
     const data = await buildZip({ 'protocol.json': '{"schemaVersion":8}' });
     const zip = await loadGuardedNetcanvas(data);
@@ -72,5 +76,28 @@ describe('loadGuardedNetcanvas', () => {
     );
     // Sanity: the real small zip is well under the cap.
     expect(declaredUncompressedTotal(zip)).toBeLessThan(MAX_UNCOMPRESSED_BYTES);
+  });
+
+  it('loadGuardedNetcanvas rejects when the declared uncompressed total exceeds the cap', async () => {
+    // Load a real tiny zip, then override its central-directory report so the
+    // declared uncompressed size crosses the cap. This exercises the full
+    // loadGuardedNetcanvas path (loadAsync + declaredUncompressedTotal + cap
+    // check) rather than declaredUncompressedTotal in isolation.
+    const realZip = await JSZip.loadAsync(
+      await buildZip({ 'protocol.json': '{"schemaVersion":8}' }),
+    );
+    vi.spyOn(realZip, 'forEach').mockImplementation((cb) => {
+      cb('assets/bomb.bin', {
+        dir: false,
+        _data: { uncompressedSize: MAX_UNCOMPRESSED_BYTES + 1 },
+      } as unknown as JSZip.JSZipObject);
+    });
+    vi.spyOn(JSZip, 'loadAsync').mockResolvedValue(realZip);
+
+    await expect(
+      loadGuardedNetcanvas(
+        await buildZip({ 'protocol.json': '{"schemaVersion":8}' }),
+      ),
+    ).rejects.toBeInstanceOf(NetcanvasTooLargeError);
   });
 });

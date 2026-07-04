@@ -119,11 +119,11 @@ describe('protocol.stages', () => {
     it.todo('createStageAsync');
 
     const createThunkStore = (present: Record<string, unknown>) => {
-      const dispatched: { type: string }[] = [];
+      const dispatched: { type: string; payload?: unknown }[] = [];
       const recordDispatched = () => (next: (action: unknown) => unknown) => {
         return (action: unknown) => {
           if (action && typeof action === 'object' && 'type' in action) {
-            dispatched.push(action as { type: string });
+            dispatched.push(action as { type: string; payload?: unknown });
           }
           return next(action);
         };
@@ -208,12 +208,25 @@ describe('protocol.stages', () => {
 
         // The real codebook updateVariable action is dispatched (not the dead
         // legacy PROTOCOL/UPDATE_VARIABLE type).
-        expect(
-          dispatched.some((a) => a.type === 'codebook/updateVariable'),
-        ).toBe(true);
+        const updateVariableAction = dispatched.find(
+          (a) => a.type === 'codebook/updateVariable',
+        );
+        expect(updateVariableAction).toBeDefined();
         expect(
           dispatched.some((a) => a.type === 'PROTOCOL/UPDATE_VARIABLE'),
         ).toBe(false);
+
+        // The cleanup config must drop both the synthetic `id` and the
+        // `encrypted` flag rather than writing them back into the codebook.
+        const configuration = (
+          updateVariableAction?.payload as
+            | { configuration: Record<string, unknown> }
+            | undefined
+        )?.configuration;
+        expect(configuration).not.toHaveProperty('id');
+        expect(configuration).not.toHaveProperty('encrypted');
+        expect(configuration).toMatchObject({ name: 'ssn', type: 'text' });
+
         expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
           true,
         );

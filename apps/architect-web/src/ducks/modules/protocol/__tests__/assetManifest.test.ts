@@ -2,7 +2,10 @@ import { configureStore } from '@reduxjs/toolkit';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import appReducer, { getStorageUnavailable } from '~/ducks/modules/app';
+import appReducer, {
+  getStorageUnavailable,
+  setStorageUnavailable,
+} from '~/ducks/modules/app';
 import dialogsReducer from '~/ducks/modules/dialogs';
 
 import reducer, { importAssetAsync, test } from '../assetManifest';
@@ -100,9 +103,13 @@ describe('protocol/assetManifest', () => {
       expect(Object.values(store.getState().assetManifest)).toHaveLength(1);
     });
 
-    it('does not flag storage-unavailable when the durable write succeeds', async () => {
+    it('clears a stuck storage-unavailable flag when the durable write succeeds', async () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
       mockedSaveAssetWithFallback.mockResolvedValue({ persisted: true });
+
+      // Simulate a prior transient failure that left the flag set for the session.
+      store.dispatch(setStorageUnavailable(true));
+      expect(getStorageUnavailable(store.getState())).toBe(true);
 
       const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
       await store.dispatch(importAssetAsync(file));

@@ -154,7 +154,11 @@ export default function NewVariableWindow({
             componentProps={{
               placeholder: 'Select variable type',
               options: filteredVariableOptions,
-              isDisabled: !!initialValues?.type,
+              // Locked options only make sense for a categorical/ordinal type, so
+              // lock the type selector too — otherwise a caller passing
+              // lockedOptions without initialValues.type could switch away from
+              // that type while the options and readOnly flag stay locked.
+              isDisabled: !!initialValues?.type || !!lockedOptions,
             }}
           />
         </Subsection>

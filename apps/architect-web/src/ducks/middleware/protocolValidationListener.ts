@@ -73,13 +73,18 @@ startAppListening({
         return;
       }
 
+      // Capture the locus of the state being validated before awaiting, so an
+      // edit that lands during validation can't make us record the newer,
+      // unvalidated position as known-valid.
+      const validatedLocusId = getTimelineLocus(state);
+
       const result = await listenerApi
         .dispatch(validateProtocolAsync(protocol))
         .unwrap();
 
       if (result.result.success) {
         // Record this known-valid position as the auto-revert target.
-        lastValidLocusId = getTimelineLocus(listenerApi.getState());
+        lastValidLocusId = validatedLocusId;
 
         // Update lastModified timestamp when validation succeeds
         listenerApi.dispatch({

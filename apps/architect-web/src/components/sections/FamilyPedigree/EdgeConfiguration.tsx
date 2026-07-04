@@ -96,11 +96,19 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
       formSelector(state, 'edgeConfig.type') as string | undefined,
   );
 
-  const handleResetDependentVariables = useCallback(() => {
-    for (const field of EDGE_DEPENDENT_VARIABLE_FIELDS) {
-      dispatch(change(form, field, null) as UnknownAction);
-    }
-  }, [dispatch, form]);
+  // redux-form invokes a field's onChange prop as (event, newValue, previousValue).
+  // A reselect of the current edge type must not clear the dependent variables.
+  const handleResetDependentVariables = useCallback(
+    (_event: unknown, newValue?: string, previousValue?: string) => {
+      if (newValue === previousValue) {
+        return;
+      }
+      for (const field of EDGE_DEPENDENT_VARIABLE_FIELDS) {
+        dispatch(change(form, field, null) as UnknownAction);
+      }
+    },
+    [dispatch, form],
+  );
 
   const edgeVariableOptions = useSelector((state: RootState) =>
     edgeType

@@ -67,8 +67,10 @@ const getAllProtocolAssets = async (
 
     // Only apikey assets carry string data, and those are handled above; any
     // other string-data entry is anomalous — leave it out of the zip (and so out
-    // of the exported manifest) rather than writing an unreadable file.
+    // of the exported manifest) rather than writing an unreadable file, but
+    // record it as skipped so the author is warned rather than losing it silently.
     if (typeof assetData.data === 'string') {
+      skipped.push({ id: assetId, name: assetDefinition.name });
       continue;
     }
 

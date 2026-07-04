@@ -10,7 +10,7 @@ import {
   Shell,
 } from '@codaco/interview';
 import { generateNetwork } from '@codaco/protocol-utilities';
-import { StageMetadataSchema } from '@codaco/shared-consts';
+import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import Button from '~/lib/legacy-ui/components/Button';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
@@ -50,12 +50,20 @@ function buildSession(payload: PreviewPayload): SessionPayload {
 
   // Stages that record a finalized state (e.g. a FamilyPedigree's committed
   // network) do so via stageMetadata; without it they preview as never
-  // finalized. Narrow through the schema so a malformed entry is dropped rather
-  // than crashing the interview store. Interaction-driven stages emit no
-  // metadata, so their "unplaced nodes" intent is preserved.
-  const stageMetadata = generated.stageMetadata
-    ? StageMetadataSchema.safeParse(generated.stageMetadata).data
-    : undefined;
+  // finalized. Parse each entry independently so a single malformed entry is
+  // dropped rather than discarding every stage's metadata. Interaction-driven
+  // stages emit no metadata, so their "unplaced nodes" intent is preserved.
+  let stageMetadata: StageMetadata | undefined;
+  if (generated.stageMetadata) {
+    const validEntries: StageMetadata = {};
+    for (const [stageId, entry] of Object.entries(generated.stageMetadata)) {
+      const parsed = StageMetadataSchema.safeParse({ [stageId]: entry });
+      if (parsed.success) {
+        Object.assign(validEntries, parsed.data);
+      }
+    }
+    stageMetadata = validEntries;
+  }
 
   return {
     ...base,
@@ -105,7 +113,8 @@ export function PreviewHost() {
           protocol: currentProtocolToPayload(previewPayload.protocol),
           session: buildSession(previewPayload),
         };
-      } catch {
+      } catch (error) {
+        console.error('Failed to build preview payload', error);
         received = true;
         setProcessingFailed(true);
         return;

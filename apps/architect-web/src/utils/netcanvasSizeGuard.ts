@@ -27,6 +27,19 @@ export class NetcanvasTooLargeError extends Error {
 
 const formatMb = (bytes: number): string => `${Math.round(bytes / MB)} MB`;
 
+// Throw the compressed-size error if the given byte length exceeds the cap.
+// Exported so callers can reject a File by its `size` before buffering it into
+// memory, surfacing the same message without duplicating the cap or the copy.
+export const assertCompressedSizeWithinLimit = (byteLength: number): void => {
+  if (byteLength > MAX_COMPRESSED_BYTES) {
+    throw new NetcanvasTooLargeError(
+      `This protocol file is too large to open (${formatMb(
+        byteLength,
+      )}). The maximum supported size is ${formatMb(MAX_COMPRESSED_BYTES)}.`,
+    );
+  }
+};
+
 // JSZip parses each entry's declared uncompressed size from the central
 // directory into an internal CompressedObject that isn't part of its public
 // types. Read it defensively without inflating the entry; a missing/odd shape
@@ -58,13 +71,7 @@ export const declaredUncompressedTotal = (zip: JSZip): number => {
 export const loadGuardedNetcanvas = async (
   data: Uint8Array,
 ): Promise<JSZip> => {
-  if (data.byteLength > MAX_COMPRESSED_BYTES) {
-    throw new NetcanvasTooLargeError(
-      `This protocol file is too large to open (${formatMb(
-        data.byteLength,
-      )}). The maximum supported size is ${formatMb(MAX_COMPRESSED_BYTES)}.`,
-    );
-  }
+  assertCompressedSizeWithinLimit(data.byteLength);
 
   const zip = await JSZip.loadAsync(data);
 

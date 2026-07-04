@@ -1,5 +1,5 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
-import { get, omit } from 'es-toolkit/compat';
+import { omit } from 'es-toolkit/compat';
 import type { ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
@@ -10,6 +10,7 @@ import { Field as RichText } from '~/components/Form/Fields/RichText';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Switch from '~/components/NewComponents/Switch';
 import Options from '~/components/Options';
+import { getLockedOptions } from '~/components/Options/getLockedOptions';
 import LockedOptions from '~/components/Options/LockedOptions';
 import Parameters from '~/components/Parameters';
 import {
@@ -67,19 +68,7 @@ const PromptFields = ({
         | undefined,
   );
 
-  // A read-only variable's options are owned by an interface and cannot be
-  // edited here; render them read-only rather than editable.
-  const selectedVariable = get(
-    existingVariables,
-    typeof variable === 'string' ? variable : '',
-    undefined,
-  );
-  const lockedOptions =
-    selectedVariable?.readOnly &&
-    (selectedVariable.type === 'categorical' ||
-      selectedVariable.type === 'ordinal')
-      ? selectedVariable.options
-      : undefined;
+  const lockedOptions = getLockedOptions(existingVariables, variable);
 
   return (
     <Section layout="vertical">

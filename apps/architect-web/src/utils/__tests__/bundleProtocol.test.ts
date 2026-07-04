@@ -98,6 +98,26 @@ describe('bundleProtocol', () => {
     expect(exported.assetManifest?.['id-missing']).toBeUndefined();
   });
 
+  it('reports a non-apikey asset whose data is a string as skipped', async () => {
+    const protocol = makeProtocol({
+      'id-str': asset('image', 'weird.jpg', 'Stringy asset'),
+    });
+
+    getAssetById.mockImplementation(() =>
+      Promise.resolve({ data: 'not-a-blob' }),
+    );
+
+    const { blob, skippedAssets } = await bundleProtocol(protocol);
+
+    expect(skippedAssets).toEqual([{ id: 'id-str', name: 'Stringy asset' }]);
+
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const exported = JSON.parse(
+      (await zip.file('protocol.json')?.async('string')) ?? '{}',
+    ) as CurrentProtocol;
+    expect(exported.assetManifest?.['id-str']).toBeUndefined();
+  });
+
   it('keeps apikey manifest entries without bundling a file', async () => {
     const protocol = makeProtocol({
       'id-key': { type: 'apikey', value: 'secret', name: 'Mapbox' },
