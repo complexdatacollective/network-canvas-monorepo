@@ -1,26 +1,45 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockGetDeferredPrompt,
   mockSubscribe,
   mockPromptInstall,
-  mockInstalled,
-} = vi.hoisted(() => ({
-  mockGetDeferredPrompt: vi.fn(),
-  mockSubscribe: vi.fn(() => () => {}),
-  mockPromptInstall: vi.fn(),
-  mockInstalled: vi.fn(() => false),
-}));
+  mockGetInstalled,
+  mockSubscribeInstalled,
+  setInstalled,
+  resetInstalled,
+} = vi.hoisted(() => {
+  const installedListeners = new Set<() => void>();
+  let installed = false;
+  return {
+    mockGetDeferredPrompt: vi.fn(),
+    mockSubscribe: vi.fn(() => () => {}),
+    mockPromptInstall: vi.fn(),
+    mockGetInstalled: vi.fn(() => installed),
+    mockSubscribeInstalled: vi.fn((listener: () => void) => {
+      installedListeners.add(listener);
+      return () => installedListeners.delete(listener);
+    }),
+    // Test helper: flip the store and notify subscribers, mirroring the real
+    // `appinstalled` path so the banner re-renders without a refresh.
+    setInstalled: (next: boolean) => {
+      installed = next;
+      for (const listener of installedListeners) listener();
+    },
+    resetInstalled: () => {
+      installed = false;
+      installedListeners.clear();
+    },
+  };
+});
 
 vi.mock('~/utils/installPrompt', () => ({
   getDeferredPrompt: mockGetDeferredPrompt,
   subscribeInstallPrompt: mockSubscribe,
   promptInstall: mockPromptInstall,
-}));
-
-vi.mock('~/utils/pwa', () => ({
-  isRunningAsInstalledPwa: mockInstalled,
+  getInstalled: mockGetInstalled,
+  subscribeInstalled: mockSubscribeInstalled,
 }));
 
 import InstallBanner from '../InstallBanner';
@@ -53,7 +72,7 @@ const stubBrowser = ({
 
 afterEach(() => {
   vi.clearAllMocks();
-  mockInstalled.mockReturnValue(false);
+  resetInstalled();
   vi.unstubAllGlobals();
   sessionStorage.clear();
 });
@@ -109,10 +128,24 @@ describe('InstallBanner', () => {
 
   it('renders nothing when running as an installed app', () => {
     stubBrowser({ chromium: true });
-    mockInstalled.mockReturnValue(true);
+    setInstalled(true);
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     const { container } = render(<InstallBanner />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('hides reactively when the app becomes installed mid-session', () => {
+    stubBrowser({ chromium: true });
+    mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
+    render(<InstallBanner />);
+
+    expect(screen.getByText(/deleted by the browser/i)).toBeInTheDocument();
+
+    act(() => setInstalled(true));
+
+    expect(
+      screen.queryByText(/deleted by the browser/i),
+    ).not.toBeInTheDocument();
   });
 
   it('dismissal hides it and persists for the session only', () => {

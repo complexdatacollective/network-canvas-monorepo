@@ -4,10 +4,11 @@ import { useState, useSyncExternalStore } from 'react';
 import Button from '~/lib/legacy-ui/components/Button';
 import {
   getDeferredPrompt,
+  getInstalled,
   promptInstall,
+  subscribeInstalled,
   subscribeInstallPrompt,
 } from '~/utils/installPrompt';
-import { isRunningAsInstalledPwa } from '~/utils/pwa';
 
 const SESSION_DISMISS_KEY = 'architect:install-banner-dismissed';
 
@@ -53,10 +54,8 @@ const InstallBanner = () => {
     subscribeInstallPrompt,
     getDeferredPrompt,
   );
+  const installed = useSyncExternalStore(subscribeInstalled, getInstalled);
   const [dismissed, setDismissed] = useState(readSessionDismissed);
-  // Static per page load: installing mid-session still requires launching the
-  // installed app, so the strip staying up in the old tab is accurate.
-  const [installed] = useState(isRunningAsInstalledPwa);
 
   if (installed || dismissed) return null;
 
