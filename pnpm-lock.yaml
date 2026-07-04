@@ -1669,9 +1669,6 @@ importers:
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../fresco-ui
-      '@codaco/interface-images':
-        specifier: workspace:*
-        version: link:../interface-images
       '@codaco/network-query':
         specifier: workspace:^
         version: link:../network-query
@@ -1754,6 +1751,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.2.1(storybook@10.4.1(@testing-library/dom@10.4.1)(@types/react@19.2.15)(prettier@2.8.8)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
+      '@codaco/interface-images':
+        specifier: workspace:*
+        version: link:../interface-images
       '@codaco/protocol-utilities':
         specifier: workspace:^
         version: link:../protocol-utilities
