@@ -1,3 +1,4 @@
+import { getSettings, reencryptAllRecords, updateSettings } from '../db/api';
 import { db } from '../db/db';
 import { getSessionDek, setSessionDek } from '../db/sessionKey';
 import * as vault from '../vault/vault';
@@ -18,6 +19,65 @@ async function applyUnlock(result: vault.UnlockResult): Promise<AuthResult> {
   if (!result.ok) return { ok: false, message: result.message };
   setSessionDek(result.dek);
   return { ok: true };
+}
+
+// Run the re-encryption sweep and persist whether it finished. Never throws: the
+// vault + DEK are already valid, so a sweep problem must not break enrol/unlock —
+// un-swept rows remain readable (decrypt is per-row self-describing). Failures
+// are recorded in `reencryptionPending` so `resumePendingReencryption` retries on
+// a later unlock; the sweep is idempotent, so retrying is safe. The security
+// invariant ("secured ⇒ existing data encrypted") is only met once the flag is
+// cleared (a run with zero failed rows).
+async function runReencryptionSweep(): Promise<void> {
+  try {
+    const { failed } = await reencryptAllRecords();
+    await updateSettings({ reencryptionPending: failed > 0 });
+  } catch (error) {
+    console.error(
+      'Re-encryption sweep failed; existing data may remain plaintext until a later unlock retries it',
+      error,
+    );
+    await updateSettings({ reencryptionPending: true }).catch(() => {});
+  }
+}
+
+// Initial enrolment mints a brand-new DEK. Any data collected before the device
+// was secured was written as plaintext (unconfigured / mode `none`), so unless we
+// sweep it now it stays unencrypted at rest — a researcher who just "secured" the
+// device would wrongly believe all data is encrypted. Run the sweep after the DEK
+// is set and BEFORE reporting success, so "enrolment complete" means "existing
+// data is now encrypted" (or, if the sweep couldn't finish, flagged for retry on
+// the next unlock).
+async function applyInitialEnrol(
+  result: vault.UnlockResult,
+): Promise<AuthResult> {
+  const unlocked = await applyUnlock(result);
+  if (!unlocked.ok) return unlocked;
+  await runReencryptionSweep();
+  return { ok: true };
+}
+
+// After a normal unlock, finish an initial-enrol sweep that a prior attempt left
+// incomplete (e.g. a mid-sweep quota error), so rows left plaintext eventually
+// get encrypted. Gated on the persisted flag so a device that was never in that
+// state does no work beyond one settings read.
+async function resumePendingReencryption(): Promise<void> {
+  try {
+    const settings = await getSettings();
+    if (!settings.reencryptionPending) return;
+    await runReencryptionSweep();
+  } catch (error) {
+    console.error('Resuming re-encryption after unlock failed', error);
+  }
+}
+
+async function applyUnlockAndResume(
+  result: vault.UnlockResult,
+): Promise<AuthResult> {
+  const unlocked = await applyUnlock(result);
+  if (!unlocked.ok) return unlocked;
+  await resumePendingReencryption();
+  return unlocked;
 }
 
 // PRF availability gates biometric enrolment in the setup wizard.
@@ -50,40 +110,41 @@ export async function enrolWithoutLock(): Promise<AuthResult> {
 export async function enrolWithPin(pin: string): Promise<AuthResult> {
   const enrolled = await vault.enrolPin(pin);
   if (!enrolled.ok) return toAuthResult(enrolled);
-  return applyUnlock(await vault.unlockPin(pin));
+  return applyInitialEnrol(await vault.unlockPin(pin));
 }
 
 export async function enrolWithPassphrase(phrase: string): Promise<AuthResult> {
   const enrolled = await vault.enrolPassphrase(phrase);
   if (!enrolled.ok) return toAuthResult(enrolled);
-  return applyUnlock(await vault.unlockPassphrase(phrase));
+  return applyInitialEnrol(await vault.unlockPassphrase(phrase));
 }
 
 export async function enrolWithBiometric(
   recoveryPhrase: string,
 ): Promise<AuthResult> {
   // enrolBiometric already holds the freshly-unwrapped DEK, so route it straight
-  // through applyUnlock rather than calling unlockBiometric (which would prompt
-  // for biometrics a third time). applyUnlock stays the single DEK choke point.
-  return applyUnlock(await vault.enrolBiometric(recoveryPhrase));
+  // through applyInitialEnrol rather than calling unlockBiometric (which would
+  // prompt for biometrics a third time). applyUnlock stays the single DEK choke
+  // point; applyInitialEnrol then sweeps any pre-secured plaintext rows.
+  return applyInitialEnrol(await vault.enrolBiometric(recoveryPhrase));
 }
 
 export async function unlockWithPin(pin: string): Promise<AuthResult> {
-  return applyUnlock(await vault.unlockPin(pin));
+  return applyUnlockAndResume(await vault.unlockPin(pin));
 }
 
 export async function unlockWithPassphrase(
   phrase: string,
 ): Promise<AuthResult> {
-  return applyUnlock(await vault.unlockPassphrase(phrase));
+  return applyUnlockAndResume(await vault.unlockPassphrase(phrase));
 }
 
 export async function unlockWithBiometric(): Promise<AuthResult> {
-  return applyUnlock(await vault.unlockBiometric());
+  return applyUnlockAndResume(await vault.unlockBiometric());
 }
 
 export async function unlockWithRecovery(phrase: string): Promise<AuthResult> {
-  return applyUnlock(await vault.unlockRecovery(phrase));
+  return applyUnlockAndResume(await vault.unlockRecovery(phrase));
 }
 
 // Non-destructive PIN/passphrase change. The vault rewraps the SAME DEK under a

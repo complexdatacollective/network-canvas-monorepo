@@ -358,6 +358,29 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
   );
 }
 
+// Re-encrypt every session row under the currently-held DEK, preserving every
+// field value exactly (this is a re-encryption, not an update — no timestamp is
+// stamped). Plaintext rows written while unconfigured gain `_enc`; rows already
+// encrypted under this DEK round-trip unchanged. Each row is processed inside
+// the per-id serializer so a concurrent writer can't clobber (or be clobbered
+// by) the sweep, and a failure on one row rejects only that row's promise —
+// callers can decide whether to continue. Precondition: a DEK must be held
+// (encryptSession throws for a locked secured vault); under mode `none` this is
+// a plaintext-preserving no-op and callers should not invoke it.
+export async function reencryptSession(id: string): Promise<void> {
+  await enqueueSessionMutation(id, async () => {
+    const existingRow = await db.sessions.get(id);
+    if (!existingRow) return;
+    const existing = await decryptSession(existingRow);
+    const row = await encryptSession(existing);
+    await db.sessions.put(row);
+  });
+}
+
+export async function listSessionIds(): Promise<string[]> {
+  return db.sessions.orderBy('id').primaryKeys();
+}
+
 export async function deleteSessions(ids: readonly string[]): Promise<void> {
   if (ids.length === 0) return;
   await db.sessions.bulkDelete([...ids]);
