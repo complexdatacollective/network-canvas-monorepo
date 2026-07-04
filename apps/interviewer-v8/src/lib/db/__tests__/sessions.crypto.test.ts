@@ -210,6 +210,28 @@ describe('sessions repo — date range filtering (#753)', () => {
     });
     expect(result.totalCount).toBe(0);
   });
+
+  it('drops an out-of-range (overflow) calendar bound rather than rolling over', async () => {
+    const created = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+    // Pin the session to a real date; the filter bounds are impossible dates
+    // (2026-02-31 rolls over to March 3 if not rejected), so nothing should
+    // match — a shape-valid-but-overflow bound must not become a real filter.
+    await db.sessions.update(created.id, {
+      startedAt: '2026-02-15T12:00:00.000Z',
+    });
+    const result = await querySessions({
+      startedRange: { from: '2026-02-31', to: '2026-13-01' },
+      sort: { column: 'startedAt', direction: 'desc' },
+      page: 0,
+      pageSize: 20,
+    });
+    expect(result.totalCount).toBe(0);
+  });
 });
 
 describe('sessions repo — status reflects completion, not export (#764)', () => {

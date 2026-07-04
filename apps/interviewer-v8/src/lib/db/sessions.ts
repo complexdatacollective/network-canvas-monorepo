@@ -78,7 +78,18 @@ function parseLocalDayBound(day: string, edge: 'start' | 'end'): Date | null {
     edge === 'start'
       ? new Date(year, month - 1, date, 0, 0, 0, 0)
       : new Date(year, month - 1, date, 23, 59, 59, 999);
-  return Number.isNaN(bound.getTime()) ? null : bound;
+  // Reject calendar overflow: `new Date(2026, 1, 31)` silently rolls over to
+  // March, so a shape-valid but out-of-range date (e.g. 2026-02-31, 2026-13-01)
+  // must not become a real filter bound. The constructed date has to still
+  // represent the requested Y-M-D.
+  if (
+    bound.getFullYear() !== year ||
+    bound.getMonth() !== month - 1 ||
+    bound.getDate() !== date
+  ) {
+    return null;
+  }
+  return bound;
 }
 
 function inDateRange(

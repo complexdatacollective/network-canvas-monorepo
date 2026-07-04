@@ -260,12 +260,20 @@ export function ProtocolDeck({
       // A pending import (keyed `slot:<label>`) that just completed is replaced
       // by its installed protocol, keyed `hash:<hash>` — a different key. Match
       // that protocol by name so the freshly-installed card stays centred
-      // instead of the deck jumping to a neighbour.
+      // instead of the deck jumping to a neighbour. Same-name/different-hash
+      // protocols are supported, so prefer the most recently imported match —
+      // the one the just-completed import produced.
       if (located < 0 && key?.startsWith('slot:')) {
         const name = key.slice('slot:'.length);
-        located = slides.findIndex(
-          (s) => s.entry.kind === 'protocol' && s.entry.protocol.name === name,
-        );
+        let newestImportedAt = '';
+        slides.forEach((s, index) => {
+          if (s.entry.kind === 'protocol' && s.entry.protocol.name === name) {
+            if (located < 0 || s.entry.protocol.importedAt > newestImportedAt) {
+              located = index;
+              newestImportedAt = s.entry.protocol.importedAt;
+            }
+          }
+        });
       }
       const next =
         located >= 0
