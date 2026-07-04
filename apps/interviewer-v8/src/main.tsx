@@ -23,6 +23,12 @@ initFileLaunchCapture();
 
 void requestPersistentStorage();
 
+// Installing the PWA newly qualifies the origin for persistent storage, but the
+// box is only made non-evictable on an actual persist() call — request it again
+// when the install completes rather than leaving storage evictable until the
+// next reload re-runs the startup request above.
+window.addEventListener('appinstalled', () => void requestPersistentStorage());
+
 const container = document.getElementById('root');
 if (!container) {
   throw new Error('Root container #root not found');

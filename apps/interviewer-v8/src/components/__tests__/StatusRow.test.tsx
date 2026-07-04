@@ -96,6 +96,50 @@ describe('StatusRow', () => {
     expect(screen.queryByText(/protected/i)).not.toBeInTheDocument();
   });
 
+  it('re-reads persistence when the security mode changes (encryption enabled)', async () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(false);
+    useAuthMock.mockReturnValue({ kind: 'unlocked', mode: 'none' });
+
+    const { rerender } = render(
+      <StatusRow protocolCount={0} interviewCount={0} />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/storage not persistent/i)).toBeInTheDocument(),
+    );
+
+    // Enrolling a secured vault requests persistence in the enrol path; that
+    // grant lands with no focus/visibility change, so the mode change is what
+    // must trigger the durability re-read (no reload needed).
+    mockIsPersisted.mockResolvedValue(true);
+    useAuthMock.mockReturnValue({ kind: 'unlocked', mode: 'pin' });
+    rerender(<StatusRow protocolCount={0} interviewCount={0} />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/storage persistent/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('re-checks persistence when the app is installed', async () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(false);
+    useAuthMock.mockReturnValue({ kind: 'unlocked', mode: 'none' });
+
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    await waitFor(() =>
+      expect(screen.getByText(/storage not persistent/i)).toBeInTheDocument(),
+    );
+
+    // main.tsx requests persistence on appinstalled; StatusRow reflects the new
+    // grant when the event fires, without waiting for a reload.
+    mockIsPersisted.mockResolvedValue(true);
+    window.dispatchEvent(new Event('appinstalled'));
+
+    await waitFor(() =>
+      expect(screen.getByText(/storage persistent/i)).toBeInTheDocument(),
+    );
+  });
+
   it('re-checks persistence when the tab regains focus', async () => {
     mockEstimateStorage.mockResolvedValue({
       usage: 0,

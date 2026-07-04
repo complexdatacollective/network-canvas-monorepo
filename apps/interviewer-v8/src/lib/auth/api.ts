@@ -1,6 +1,7 @@
 import { getSettings, reencryptAllRecords, updateSettings } from '../db/api';
 import { db } from '../db/db';
 import { getSessionDek, setSessionDek } from '../db/sessionKey';
+import { requestPersistentStorage } from '../storage';
 import * as vault from '../vault/vault';
 import { isPrfSupported } from '../vault/webauthn';
 
@@ -53,6 +54,15 @@ async function applyInitialEnrol(
 ): Promise<AuthResult> {
   const unlocked = await applyUnlock(result);
   if (!unlocked.ok) return unlocked;
+  // Enabling encryption commits sensitive data to this device, so ask the
+  // browser to make storage non-evictable now (an installed PWA is granted this
+  // without a prompt). Persistence is otherwise only requested at startup
+  // (main.tsx); without this a user who installs and then secures the device
+  // stays on evictable storage until the next reload re-runs that request.
+  // Fire-and-forget: the grant resolves during the awaited sweep below, and a
+  // failure must not fail enrolment (the durability label just stays a reload
+  // behind). StatusRow re-reads the result on mode change / next mount.
+  void requestPersistentStorage();
   await runReencryptionSweep();
   return { ok: true };
 }
