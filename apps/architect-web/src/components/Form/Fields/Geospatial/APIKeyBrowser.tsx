@@ -65,6 +65,12 @@ const APIKeyBrowser = ({
       <BasicForm form={formName} onSubmit={handleSubmit}>
         <Layout>
           <Section title="Create New API Key" layout="vertical">
+            <p className="text-sm text-current/70">
+              This key is saved inside your protocol and is included, in plain
+              text, in any exported <code>.netcanvas</code> file. Anyone you
+              share the exported protocol with can read it, so only use a key
+              you are comfortable distributing.
+            </p>
             <div data-name="API Key Name" />
             <ValidatedField
               component={Text}

@@ -8,8 +8,19 @@ import { getVariablesForSubject } from '~/selectors/codebook';
 // `component`/`parameters` are intentionally NOT here — they live on the field.
 const COMPOSER_CODEBOOK_PROPERTIES = ['options', 'validation'] as const;
 
-export const composerNormalizeField = (field: Record<string, unknown>) =>
-  omit(field, ['id', '_createNewVariable', ...COMPOSER_CODEBOOK_PROPERTIES]);
+export const composerNormalizeField = (field: Record<string, unknown>) => {
+  // Keep `id` so the list item retains a stable, unique React key.
+  const normalized = omit(field, [
+    '_createNewVariable',
+    ...COMPOSER_CODEBOOK_PROPERTIES,
+  ]);
+  // An empty label saves as '' and defeats the variable-name caption fallback,
+  // so treat a blank label as absent.
+  if (typeof normalized.label === 'string' && normalized.label.trim() === '') {
+    return omit(normalized, ['label']);
+  }
+  return normalized;
+};
 
 export const composerItemSelector =
   (entity: string | null, type: string | null) =>

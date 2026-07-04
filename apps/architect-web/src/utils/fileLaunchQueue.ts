@@ -14,6 +14,27 @@ const emit = () => {
   for (const listener of listeners) listener();
 };
 
+// Surface a user-facing error when the OS hands us handles we can't read. The
+// store and dialog action are imported lazily so this pre-React capture module
+// stays decoupled from the app graph until a failure actually occurs.
+const reportLaunchReadFailure = async (failedCount: number): Promise<void> => {
+  try {
+    const [{ store }, { generalErrorDialog }] = await Promise.all([
+      import('~/ducks/store'),
+      import('~/ducks/modules/userActions/dialogs'),
+    ]);
+    const noun = failedCount === 1 ? 'file' : 'files';
+    void store.dispatch(
+      generalErrorDialog(
+        'Could not open file',
+        `${failedCount} launched ${noun} could not be read. The ${noun} may have been moved, deleted, or become unavailable since ${failedCount === 1 ? 'it was' : 'they were'} opened.`,
+      ),
+    );
+  } catch (error) {
+    console.error('Failed to report launched-file read failure', error);
+  }
+};
+
 export const initFileLaunchCapture = (): void => {
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
@@ -21,9 +42,28 @@ export const initFileLaunchCapture = (): void => {
   if (!queue) return;
   queue.setConsumer((params) => {
     void (async () => {
-      const files = await Promise.all(
+      // allSettled so one unreadable handle (file moved/deleted, volume
+      // unmounted between the OS launch and consumption) doesn't drop the whole
+      // batch — read what we can and report the rest.
+      const results = await Promise.allSettled(
         params.files.map((handle) => handle.getFile()),
       );
+
+      const files = results
+        .filter(
+          (result): result is PromiseFulfilledResult<File> =>
+            result.status === 'fulfilled',
+        )
+        .map((result) => result.value);
+      const failures = results.filter((result) => result.status === 'rejected');
+
+      if (failures.length > 0) {
+        for (const failure of failures) {
+          console.error('Failed to read launched file', failure.reason);
+        }
+        void reportLaunchReadFailure(failures.length);
+      }
+
       const netcanvas = files.filter((file) =>
         file.name.toLowerCase().endsWith('.netcanvas'),
       );
@@ -31,10 +71,7 @@ export const initFileLaunchCapture = (): void => {
       pendingFiles = [...pendingFiles, ...netcanvas];
       emit();
     })().catch((error: unknown) => {
-      // A handle.getFile() can reject (file moved/deleted, volume unmounted
-      // between the OS launch and consumption). Nothing user-facing exists
-      // this early, but don't let it vanish as an unhandled rejection.
-      console.error('Failed to read launched file', error);
+      console.error('Failed to handle launched files', error);
     });
   });
 };

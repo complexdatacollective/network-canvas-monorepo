@@ -250,14 +250,15 @@ const createTimelineReducer = <T>(
 
           const { past, present, timeline } = state;
 
-          // Clone present BEFORE calling reducer, because reducer mutates in place
+          // Snapshot present before running the reducer; `current()` detaches it
+          // from the draft so it survives the reducer call. The deep clone that
+          // becomes the past entry is deferred until we know a timeline point is
+          // actually committed (see below), so excluded/no-op actions don't pay
+          // for a full-protocol structuredClone.
           const presentSnapshot = present
-            ? structuredClone(current<T>(present as Draft<T>))
+            ? current<T>(present as Draft<T>)
             : null;
-          const newPresent = reducer(
-            (present ? current<T>(present as Draft<T>) : present) as T,
-            action,
-          );
+          const newPresent = reducer(presentSnapshot as T, action);
 
           // This is the first run
           if (timeline.length === 0) {
@@ -308,7 +309,7 @@ const createTimelineReducer = <T>(
           const newTimeline = [...timeline, locus].slice(-options.limit - 1);
 
           const validPast = presentSnapshot
-            ? [...past, presentSnapshot]
+            ? [...past, structuredClone(presentSnapshot)]
             : [...past];
 
           Object.assign(state, {

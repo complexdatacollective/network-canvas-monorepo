@@ -31,12 +31,17 @@ const withAssetUrl = <P extends WithAssetUrlProps>(
         try {
           const blobUrl = await getAssetBlobUrl(id);
 
-          if (!isMounted) return;
+          if (!blobUrl) return;
 
-          if (blobUrl) {
-            currentUrl = blobUrl;
-            setUrl(blobUrl);
+          // The effect was cleaned up (unmount or id change) while the read was
+          // in flight, so no one will render or revoke this URL — revoke it now.
+          if (!isMounted) {
+            revokeBlobUrl(blobUrl);
+            return;
           }
+
+          currentUrl = blobUrl;
+          setUrl(blobUrl);
         } catch (error) {
           // The asset can't be shown; report it rather than leaving a blank
           // image with no trace of why.

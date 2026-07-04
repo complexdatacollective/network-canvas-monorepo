@@ -32,6 +32,11 @@ const mockStore = configureStore({
     protocolValidation: () => ({
       validationResult: null,
     }),
+    stageEditorDraft: () => ({
+      ui: { initialValues: null, restoring: false },
+      history: { past: [], present: null, future: [] },
+    }),
+    dialogs: () => ({ dialogs: [] }),
   },
 });
 

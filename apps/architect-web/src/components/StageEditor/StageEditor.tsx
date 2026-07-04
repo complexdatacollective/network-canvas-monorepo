@@ -65,6 +65,32 @@ const StageEditor = (props: StageEditorProps) => {
     getStageIndex(state, id || ''),
   );
   const protocol = useSelector(getProtocol);
+
+  // A non-'new' stage URL (id set) whose stage no longer exists in the loaded
+  // protocol. `id` is null for the create-new flow, so this only catches stale
+  // links to deleted/removed stages, not new-stage creation. Guarded on the
+  // protocol being loaded so an in-flight load isn't mistaken for a missing
+  // stage.
+  const stageMissing = Boolean(protocol) && id !== null && stageIndex === -1;
+
+  // Redirect stale stage URLs back to the stage list rather than rendering a
+  // fake 'Information' editor whose Save would silently discard the user's edits
+  // against a stage that no longer exists.
+  useEffect(() => {
+    if (!stageMissing) {
+      return;
+    }
+    dispatch(
+      dialogActions.openDialog({
+        type: 'Notice',
+        title: 'Stage not found',
+        message:
+          'That stage no longer exists. It may have been deleted. Returning you to the protocol overview.',
+      }),
+    );
+    setLocation('/protocol');
+  }, [stageMissing, dispatch, setLocation]);
+
   const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
   const interfaceType = (stage?.type || type || 'Information') as StageType;
   const template = getInterface(interfaceType).template || {};
@@ -240,10 +266,17 @@ const StageEditor = (props: StageEditorProps) => {
       return;
     }
 
-    const startStage =
+    // Clamp to a valid index into the preview protocol (which includes the wip
+    // stage for the create-new flow) so a missing/out-of-range position can't
+    // launch preview one past the end.
+    const desiredStartStage =
       stageIndex !== -1
         ? stageIndex
-        : (insertAtIndex ?? protocol.stages.length);
+        : (insertAtIndex ?? previewProtocol.stages.length - 1);
+    const startStage = Math.min(
+      Math.max(desiredStartStage, 0),
+      previewProtocol.stages.length - 1,
+    );
     setIsOpeningPreview(true);
     try {
       const result = await launchPreview({
@@ -355,6 +388,12 @@ const StageEditor = (props: StageEditorProps) => {
       </PopoverContent>
     </Popover>
   );
+
+  // While the stale-URL redirect effect runs, render nothing rather than the
+  // fake 'Information' editor.
+  if (stageMissing) {
+    return null;
+  }
 
   return (
     <Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>

@@ -1,3 +1,19 @@
+# Security headers applied to every response. frame-ancestors / X-Frame-Options
+# and Referrer-Policy can only be set as real HTTP headers (a <meta> CSP cannot
+# express frame-ancestors), so they live here at the deploy layer.
+#
+# connect-src lists the only origins the app talks to at runtime: mapbox-gl
+# (Geospatial stages) fetches styles/tiles/glyphs from api.mapbox.com and posts
+# telemetry to events.mapbox.com; analytics posts to the PostHog relay; Google
+# Fonts serves the stylesheet + webfonts. worker-src/blob: is required by
+# mapbox-gl's web workers. frame-src/frame-ancestors 'self' keeps the same-origin
+# preview iframe working while blocking framing by any other origin.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://fonts.googleapis.com https://fonts.gstatic.com; worker-src 'self' blob:; frame-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; frame-ancestors 'self'
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
 /sw.js
   Cache-Control: public, max-age=0, must-revalidate
 /index.html

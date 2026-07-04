@@ -1,8 +1,11 @@
 import { X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
+import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import Button from '~/lib/legacy-ui/components/Button';
+import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { cx } from '~/utils/cva';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
@@ -13,11 +16,23 @@ const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
 const FRESH_LOAD_WINDOW_MS = 20 * 1000;
 
 const PwaUpdateBanner = () => {
+  const dispatch = useAppDispatch();
   const [registration, setRegistration] = useState<
     ServiceWorkerRegistration | undefined
   >();
   const [promptVisible, setPromptVisible] = useState(false);
   const loadedAt = useRef(Date.now());
+  const confirming = useRef(false);
+
+  // Proxies for work that a reload would discard: an unsaved stage-editor draft
+  // and any open dialog (which also covers the mid-import migration/validation/
+  // error dialogs a cold file-handler launch can raise). Applying an update
+  // reloads the tab, so gate the reload on these being clear.
+  const draftDirty = useAppSelector(getStageDraftDirty);
+  const hasOpenDialog = useAppSelector(
+    (state) => state.dialogs.dialogs.length > 0,
+  );
+  const reloadWouldLoseWork = draftDirty || hasOpenDialog;
 
   const {
     needRefresh: [needRefresh],
@@ -40,15 +55,49 @@ const PwaUpdateBanner = () => {
 
   // Fresh loads always end up on the latest version: a pending update is applied
   // silently (which reloads the page). An update that appears later, in an
-  // already-open tab, gets the prompt instead.
+  // already-open tab, gets the prompt instead. The auto-apply is suppressed
+  // while a reload would lose work — e.g. a cold file-handler import still
+  // running (its migration/validation dialogs keep this true); the effect
+  // re-runs when that clears, and falls through to the prompt if the window has
+  // meanwhile elapsed.
   useEffect(() => {
-    if (!needRefresh) return;
-    if (Date.now() - loadedAt.current < FRESH_LOAD_WINDOW_MS) {
-      void updateServiceWorker(true);
-    } else {
+    if (!needRefresh) return undefined;
+    const remaining = FRESH_LOAD_WINDOW_MS - (Date.now() - loadedAt.current);
+    if (remaining <= 0) {
       setPromptVisible(true);
+      return undefined;
     }
-  }, [needRefresh, updateServiceWorker]);
+    if (!reloadWouldLoseWork) {
+      void updateServiceWorker(true);
+      return undefined;
+    }
+    // Within the window but a reload would lose work: hold off. The effect
+    // re-runs and applies silently if the work clears in time; otherwise show
+    // the prompt once the window elapses so the update is never lost.
+    const timerId = window.setTimeout(() => setPromptVisible(true), remaining);
+    return () => window.clearTimeout(timerId);
+  }, [needRefresh, reloadWouldLoseWork, updateServiceWorker]);
+
+  const handleReload = useCallback(() => {
+    if (!reloadWouldLoseWork) {
+      void updateServiceWorker(true);
+      return;
+    }
+    if (confirming.current) return;
+    confirming.current = true;
+    void dispatch(
+      dialogActions.openDialog({
+        type: 'Confirm',
+        title: 'Reload to update?',
+        message:
+          'You have changes in progress that have not been saved yet. Reloading now to update will discard them. Save your work first, or reload anyway?',
+        confirmLabel: 'Reload anyway',
+        onConfirm: () => void updateServiceWorker(true),
+      }),
+    ).finally(() => {
+      confirming.current = false;
+    });
+  }, [dispatch, reloadWouldLoseWork, updateServiceWorker]);
 
   if (!promptVisible) return null;
 
@@ -63,13 +112,14 @@ const PwaUpdateBanner = () => {
       )}
     >
       <p className="m-0">
-        A new version of Architect is available. Your work is saved.
+        A new version of Architect is available. Reloading updates this tab and
+        any other open Architect tabs; unsaved changes in progress will be lost.
       </p>
       <Button
         color="sea-green"
         size="small"
         className="text-sm"
-        onClick={() => void updateServiceWorker(true)}
+        onClick={handleReload}
       >
         Reload
       </Button>

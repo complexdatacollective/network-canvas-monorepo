@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react';
 import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
@@ -52,9 +52,20 @@ const Timeline = () => {
   const stages = useSelector(getStageList);
   const dispatch = useAppDispatch();
   const pointerStart = useRef({ x: 0, y: 0 });
+  const didDrag = useRef(false);
   const shouldReduceMotion = useReducedMotion();
   const isFirstMount = useRunOnce('timeline-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
+
+  // Local order the Reorder list renders from. motion's onReorder fires per
+  // row-crossing during a drag; we track the visual order here and only commit a
+  // single moveStage on drag end, so one drag == one undo entry. Kept in sync
+  // with redux (the source of truth) whenever the committed stage list changes.
+  const [orderedStages, setOrderedStages] = useState(stages);
+
+  useEffect(() => {
+    setOrderedStages(stages);
+  }, [stages]);
 
   const deleteStage = useCallback(
     (stageId: string) => {
@@ -102,26 +113,24 @@ const Timeline = () => {
     [setLocation],
   );
 
-  const handleReorder = useCallback(
-    (newOrder: typeof stages) => {
-      // Find which stage moved
-      for (let i = 0; i < newOrder.length; i++) {
-        if (newOrder[i]?.id !== stages[i]?.id) {
-          // Move to new index
-          const stageId = newOrder[i]?.id;
-          if (!stageId) continue;
+  // Visual-only during the drag: no dispatch, so the timeline isn't fragmented
+  // into one undo entry per crossing.
+  const handleReorder = useCallback((newOrder: typeof stages) => {
+    setOrderedStages(newOrder);
+  }, []);
 
-          const oldIndex = stages.findIndex((s) => s.id === stageId);
-          const newIndex = i;
+  // Commit the whole reorder as a single moveStage once the drag ends, using the
+  // dragged stage's final position relative to the committed list.
+  const handleReorderCommit = useCallback(
+    (stageId: string) => {
+      const oldIndex = stages.findIndex((s) => s.id === stageId);
+      const newIndex = orderedStages.findIndex((s) => s.id === stageId);
 
-          if (oldIndex !== -1 && oldIndex !== newIndex) {
-            dispatch(stageActions.moveStage(oldIndex, newIndex));
-          }
-          break;
-        }
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        dispatch(stageActions.moveStage(oldIndex, newIndex));
       }
     },
-    [stages, dispatch],
+    [stages, orderedStages, dispatch],
   );
 
   const itemClasses = cx(
@@ -150,12 +159,12 @@ const Timeline = () => {
           axis="y"
           onReorder={handleReorder}
           className="relative grid grid-cols-1 justify-items-center gap-1"
-          values={stages}
+          values={orderedStages}
           initial={animate ? 'hidden' : false}
           animate="visible"
           variants={timelineContainerVariants}
         >
-          {stages.flatMap((stage, index) => {
+          {orderedStages.flatMap((stage, index) => {
             return [
               <InsertButton
                 key={`insert_${stage.id}`}
@@ -171,8 +180,21 @@ const Timeline = () => {
                 variants={timelineStageVariants}
                 onPointerDown={(e) => {
                   pointerStart.current = { x: e.clientX, y: e.clientY };
+                  didDrag.current = false;
+                }}
+                onDragStart={() => {
+                  didDrag.current = true;
+                }}
+                onDragEnd={() => {
+                  handleReorderCommit(stage.id);
                 }}
                 onClick={(e) => {
+                  // A drag that returns to its origin ends near the pointer's
+                  // start, so the distance check alone can't tell it from a
+                  // click — the drag flag suppresses opening the editor.
+                  if (didDrag.current) {
+                    return;
+                  }
                   const dx = e.clientX - pointerStart.current.x;
                   const dy = e.clientY - pointerStart.current.y;
                   if (dx * dx + dy * dy < 25) {

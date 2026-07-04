@@ -117,7 +117,108 @@ describe('protocol.stages', () => {
 
   describe('async action creators', () => {
     it.todo('createStageAsync');
-    it.todo('deleteStageAsync');
+
+    const createThunkStore = (present: Record<string, unknown>) => {
+      const dispatched: { type: string }[] = [];
+      const recordDispatched = () => (next: (action: unknown) => unknown) => {
+        return (action: unknown) => {
+          if (action && typeof action === 'object' && 'type' in action) {
+            dispatched.push(action as { type: string });
+          }
+          return next(action);
+        };
+      };
+
+      const store = configureStore({
+        reducer: {
+          activeProtocol: () => ({ present }),
+          stages: reducer,
+          codebook: (state = present.codebook ?? {}) => state,
+        },
+        middleware: (getDefaultMiddleware) =>
+          getDefaultMiddleware({ serializableCheck: false }).concat(
+            recordDispatched,
+          ),
+      });
+
+      return { store, dispatched };
+    };
+
+    describe('deleteStageAsync', () => {
+      it('blocks deleting a FamilyPedigree referenced by a NarrativePedigree', async () => {
+        const present = {
+          stages: [
+            {
+              id: 'fp',
+              type: 'FamilyPedigree',
+              label: 'Pedigree',
+            },
+            {
+              id: 'np',
+              type: 'NarrativePedigree',
+              label: 'Narrative',
+              sourceStageId: 'fp',
+            },
+          ],
+          codebook: { node: {} },
+        };
+        const { store, dispatched } = createThunkStore(present);
+
+        await store.dispatch(actionCreators.deleteStage('fp'));
+
+        expect(
+          dispatched.some((a) => a.type.startsWith('dialogs/openDialog')),
+        ).toBe(true);
+        expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
+          false,
+        );
+      });
+
+      it('deletes a FamilyPedigree with no dependents', async () => {
+        const present = {
+          stages: [{ id: 'fp', type: 'FamilyPedigree', label: 'Pedigree' }],
+          codebook: { node: {} },
+        };
+        const { store, dispatched } = createThunkStore(present);
+
+        await store.dispatch(actionCreators.deleteStage('fp'));
+
+        expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
+          true,
+        );
+      });
+
+      it('strips encrypted from variables when deleting an Anonymisation stage', async () => {
+        const present = {
+          stages: [{ id: 'anon', type: 'Anonymisation', label: 'Anon' }],
+          codebook: {
+            node: {
+              person: {
+                name: 'Person',
+                variables: {
+                  ssn: { name: 'ssn', type: 'text', encrypted: true },
+                },
+              },
+            },
+          },
+        };
+        const { store, dispatched } = createThunkStore(present);
+
+        await store.dispatch(actionCreators.deleteStage('anon'));
+
+        // The real codebook updateVariable action is dispatched (not the dead
+        // legacy PROTOCOL/UPDATE_VARIABLE type).
+        expect(
+          dispatched.some((a) => a.type === 'codebook/updateVariable'),
+        ).toBe(true);
+        expect(
+          dispatched.some((a) => a.type === 'PROTOCOL/UPDATE_VARIABLE'),
+        ).toBe(false);
+        expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
+          true,
+        );
+      });
+    });
   });
 
   describe('sync action creators', () => {

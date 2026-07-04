@@ -8,10 +8,13 @@ import { compact, omit } from 'es-toolkit/compat';
 import { v1 as uuid } from 'uuid';
 
 import type { Stage } from '@codaco/protocol-validation';
+import { openDialog } from '~/ducks/modules/dialogs';
 import type { RootState } from '~/ducks/modules/root';
 import { getNodeTypes } from '~/selectors/codebook';
-import { getStage } from '~/selectors/protocol';
+import { getProtocol, getStage } from '~/selectors/protocol';
 import prune from '~/utils/prune';
+
+import { updateVariableByUUID } from './codebook';
 
 type StagesState = Stage[];
 
@@ -65,6 +68,32 @@ const deleteStageAsync = createAsyncThunk(
     const state = getState() as RootState;
     const stage = getStage(state, stageId);
 
+    // A NarrativePedigree renders a FamilyPedigree's finalised network via
+    // sourceStageId; deleting that source leaves the dependent stage invalid.
+    if (stage?.type === 'FamilyPedigree') {
+      const allStages = getProtocol(state)?.stages ?? [];
+      const dependents = allStages.filter(
+        (candidate): candidate is Stage & { sourceStageId: string } =>
+          candidate.type === 'NarrativePedigree' &&
+          'sourceStageId' in candidate &&
+          candidate.sourceStageId === stageId,
+      );
+
+      if (dependents.length > 0) {
+        const names = dependents
+          .map((dependent) => `"${dependent.label || 'Untitled'}"`)
+          .join(', ');
+        void dispatch(
+          openDialog({
+            type: 'Notice',
+            title: 'Cannot delete stage',
+            message: `This Family Pedigree stage is used by the following Narrative Pedigree stage(s): ${names}. Remove or repoint those stage(s) before deleting it.`,
+          }),
+        );
+        return stageId;
+      }
+    }
+
     if (stage?.type === 'Anonymisation') {
       // Remove encrypted from all variables
       const nodeTypes = getNodeTypes(state);
@@ -92,19 +121,17 @@ const deleteStageAsync = createAsyncThunk(
         [],
       );
 
-      // Note: This dispatches a codebook action - will need to be updated when codebook is modernized
-      encryptedVariables.forEach((variable) => {
-        const properties = omit(variable, 'encrypted');
-
-        dispatch({
-          type: 'PROTOCOL/UPDATE_VARIABLE',
-          meta: {
-            variable: variable.id,
-          },
-          configuration: properties,
-          merge: false,
-        });
-      });
+      await Promise.all(
+        encryptedVariables.map((variable) =>
+          dispatch(
+            updateVariableByUUID(
+              variable.id,
+              omit(variable, 'encrypted'),
+              false,
+            ),
+          ),
+        ),
+      );
     }
 
     dispatch(stagesSlice.actions.deleteStage(stageId));

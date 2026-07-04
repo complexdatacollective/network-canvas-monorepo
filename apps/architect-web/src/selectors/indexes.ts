@@ -23,12 +23,25 @@ const mapAssetItems = (
   return [content, `${path}.content`];
 };
 
+const mapSortProperty = (
+  value: unknown,
+  path: string,
+): [unknown, string] | undefined => {
+  const { property } = value as { property?: unknown };
+  if (typeof property !== 'string') {
+    return undefined;
+  }
+  return [property, `${path}.property`];
+};
+
 // Node/edge TYPE usage and variable usage are both derived from the schema
 // (collectEntityTypeReferences / collectEntityAttributeReferences), so new
-// stage types are covered automatically. Only assets still need hand-kept
-// paths — the schema does not tag asset references.
+// stage types are covered automatically. Assets and sort keys still need
+// hand-kept paths — the schema tags neither (sort `property` is a plain string
+// that may be a codebook variable, a roster column, or a magic key).
 const paths: {
   assets: CollectPathsEntry[];
+  sortVariables: CollectPathsEntry[];
 } = {
   assets: [
     'stages[].panels[].dataSource',
@@ -37,6 +50,15 @@ const paths: {
     'stages[].mapOptions.tokenAssetId',
     'stages[].mapOptions.dataSourceAssetId',
     ['stages[].items[]', mapAssetItems],
+    ['stages[].introScreen.items[]', mapAssetItems],
+  ],
+  // Prompt-level sort keys reference the stage's codebook variables. Roster
+  // sortOptions keys are data-source columns, not codebook variables, so they
+  // are deliberately excluded.
+  sortVariables: [
+    ['stages[].prompts[].sortOrder[]', mapSortProperty],
+    ['stages[].prompts[].bucketSortOrder[]', mapSortProperty],
+    ['stages[].prompts[].binSortOrder[]', mapSortProperty],
   ],
 };
 
@@ -82,6 +104,9 @@ const getVariableIndex = createSelector(getProtocol, (protocol) => {
   for (const hit of collectEntityAttributeReferences(protocol)) {
     index[hit.path.join('.')] = hit.variableId;
   }
+  // Sort keys are untagged plain strings in the schema, so a variable used only
+  // as a sort key would otherwise read "not in use" and be safely deletable.
+  Object.assign(index, collectPaths(paths.sortVariables, protocol));
   return index;
 });
 

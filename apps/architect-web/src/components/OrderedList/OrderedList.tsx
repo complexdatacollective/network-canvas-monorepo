@@ -1,6 +1,5 @@
 import { isArray, noop } from 'es-toolkit/compat';
 import { AnimatePresence, Reorder } from 'motion/react';
-import { hash } from 'ohash';
 import type React from 'react';
 import { useCallback } from 'react';
 import { arrayRemove, type WrappedFieldProps } from 'redux-form';
@@ -62,7 +61,17 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
     >
       <AnimatePresence>
         {values.map((item, index) => {
-          const key = item.id || hash(item);
+          // Every list item must carry a stable, unique id (EditableList
+          // assigns one on creation). A missing id breaks the motion
+          // Reorder/AnimatePresence keying, so surface it loudly instead of
+          // silently deriving a content-hash key that collides on duplicate rows.
+          if (!item.id) {
+            console.error(
+              `OrderedList item at ${name}[${index}] is missing an id`,
+              item,
+            );
+          }
+          const key = item.id ?? `${name}-missing-id-${index}`;
           return (
             <ListItem
               key={key}

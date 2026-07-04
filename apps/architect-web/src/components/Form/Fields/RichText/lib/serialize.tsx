@@ -46,7 +46,19 @@ const escapeNode = (node: SlateNode): SlateNode => {
   return node;
 };
 
-const serializeNodes = (nodes: Descendant[]): string =>
-  nodes.map((n) => serialize(escapeNode(n as SlateNode) as never)).join('\n');
+const serializeNodes = (nodes: Descendant[], inline = false): string => {
+  const serialized = nodes
+    .map((n) => serialize(escapeNode(n as SlateNode) as never))
+    .join('\n');
+
+  // remark-slate terminates every block with a newline. For an inline label
+  // (single line by construction) that trailing '\n' is spurious and corrupts
+  // the stored value, so strip one. Multi-line contexts keep their newlines.
+  if (inline) {
+    return serialized.replace(/\n$/, '');
+  }
+
+  return serialized;
+};
 
 export default serializeNodes;

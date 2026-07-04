@@ -3,18 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAssetResolver } from '../useAssetResolver';
 
-const getMock = vi.fn();
+const getAssetByIdMock = vi.fn();
 
 const SCOPE = 'p1';
 
-vi.mock('~/utils/assetDB', () => ({
-  assetKey: (protocolId: string, assetId: string) =>
-    `${protocolId}::${assetId}`,
-  assetDb: {
-    assets: {
-      get: (key: string) => getMock(key),
-    },
-  },
+// getAssetById already reads IndexedDB with an in-memory fallback; mocking it
+// (rather than the raw Dexie table) verifies the resolver goes through the same
+// path the editor uses, so Safari-private in-memory assets resolve in preview.
+vi.mock('~/utils/assetUtils', () => ({
+  getAssetById: (assetId: string, protocolId?: string) =>
+    getAssetByIdMock(assetId, protocolId),
 }));
 
 let createUrlSpy: ReturnType<typeof vi.spyOn>;
@@ -22,7 +20,7 @@ let revokeUrlSpy: ReturnType<typeof vi.spyOn>;
 let urlCounter = 0;
 
 beforeEach(() => {
-  getMock.mockReset();
+  getAssetByIdMock.mockReset();
   urlCounter = 0;
   globalThis.URL.createObjectURL = vi.fn(() => `blob:test/${++urlCounter}`);
   globalThis.URL.revokeObjectURL = vi.fn();
@@ -36,21 +34,42 @@ afterEach(() => {
 });
 
 describe('useAssetResolver', () => {
-  it('returns an object URL for a blob fetched from assetDb', async () => {
+  it('returns an object URL for a blob resolved via getAssetById', async () => {
     const blob = new Blob(['x'], { type: 'image/png' });
-    getMock.mockResolvedValueOnce({ id: `${SCOPE}::a1`, data: blob });
+    getAssetByIdMock.mockResolvedValueOnce({
+      id: 'a1',
+      name: 'a1',
+      data: blob,
+    });
 
     const { result } = renderHook(() => useAssetResolver(SCOPE));
     const url = await result.current('a1');
 
     expect(url).toBe('blob:test/1');
     expect(createUrlSpy).toHaveBeenCalledWith(blob);
-    expect(getMock).toHaveBeenCalledWith(`${SCOPE}::a1`);
+    expect(getAssetByIdMock).toHaveBeenCalledWith('a1', SCOPE);
+  });
+
+  it('resolves in-memory assets that getAssetById returns via its fallback', async () => {
+    // getAssetById transparently returns the in-memory row when IndexedDB is
+    // unavailable, so the resolver never sees a distinct code path.
+    const blob = new Blob(['mem']);
+    getAssetByIdMock.mockResolvedValueOnce({
+      id: 'mem1',
+      name: 'mem1',
+      data: blob,
+    });
+
+    const { result } = renderHook(() => useAssetResolver(SCOPE));
+    const url = await result.current('mem1');
+
+    expect(url).toBe('blob:test/1');
+    expect(createUrlSpy).toHaveBeenCalledWith(blob);
   });
 
   it('caches subsequent requests for the same asset', async () => {
     const blob = new Blob(['x']);
-    getMock.mockResolvedValue({ id: `${SCOPE}::a1`, data: blob });
+    getAssetByIdMock.mockResolvedValue({ id: 'a1', name: 'a1', data: blob });
 
     const { result } = renderHook(() => useAssetResolver(SCOPE));
     const first = await result.current('a1');
@@ -58,12 +77,16 @@ describe('useAssetResolver', () => {
 
     expect(second).toBe(first);
     expect(createUrlSpy).toHaveBeenCalledTimes(1);
-    expect(getMock).toHaveBeenCalledTimes(1);
+    expect(getAssetByIdMock).toHaveBeenCalledTimes(1);
   });
 
   it('revokes all issued URLs on unmount', async () => {
-    getMock.mockImplementation((key: string) =>
-      Promise.resolve({ id: key, data: new Blob([key]) }),
+    getAssetByIdMock.mockImplementation((assetId: string) =>
+      Promise.resolve({
+        id: assetId,
+        name: assetId,
+        data: new Blob([assetId]),
+      }),
     );
 
     const { result, unmount } = renderHook(() => useAssetResolver(SCOPE));
@@ -77,8 +100,8 @@ describe('useAssetResolver', () => {
     expect(revokeUrlSpy).toHaveBeenCalledWith(u2);
   });
 
-  it('rejects when assetDb returns no entry', async () => {
-    getMock.mockResolvedValueOnce(undefined);
+  it('rejects when getAssetById returns no entry', async () => {
+    getAssetByIdMock.mockResolvedValueOnce(undefined);
     const { result } = renderHook(() => useAssetResolver(SCOPE));
     await expect(result.current('missing')).rejects.toThrow(/missing/);
   });
@@ -86,11 +109,15 @@ describe('useAssetResolver', () => {
   it('rejects when there is no active protocol scope', async () => {
     const { result } = renderHook(() => useAssetResolver(null));
     await expect(result.current('a1')).rejects.toThrow(/a1/);
-    expect(getMock).not.toHaveBeenCalled();
+    expect(getAssetByIdMock).not.toHaveBeenCalled();
   });
 
-  it('rejects when assetDb returns a string-typed data field', async () => {
-    getMock.mockResolvedValueOnce({ id: `${SCOPE}::a1`, data: 'not-a-blob' });
+  it('rejects when getAssetById returns a string-typed data field', async () => {
+    getAssetByIdMock.mockResolvedValueOnce({
+      id: 'a1',
+      name: 'a1',
+      data: 'not-a-blob',
+    });
     const { result } = renderHook(() => useAssetResolver(SCOPE));
     await expect(result.current('a1')).rejects.toThrow();
   });

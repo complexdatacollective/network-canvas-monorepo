@@ -23,14 +23,23 @@ import {
   saveProtocolAssets,
   saveProtocolAssetsToMemory,
 } from '~/utils/assetUtils';
+import {
+  armInMemoryUnloadGuard,
+  disarmInMemoryUnloadGuard,
+} from '~/utils/beforeUnloadGuard';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
 import { ensureError } from '~/utils/ensureError';
+import {
+  loadGuardedNetcanvas,
+  NetcanvasTooLargeError,
+} from '~/utils/netcanvasSizeGuard';
 import {
   deleteStoredProtocol,
   getStoredProtocol,
   putStoredProtocol,
 } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
+import { isStorageUnavailableError } from '~/utils/storageErrors';
 
 import { clearActiveProtocol, setActiveProtocol } from '../activeProtocol';
 import {
@@ -40,29 +49,6 @@ import {
 } from '../app';
 
 type ImportSource = 'local' | 'bundled';
-
-// Error names thrown when IndexedDB is unavailable or over quota — the common
-// case being Safari private browsing, whose per-origin quota is too small for
-// the bundled sample media. Used to decide when to fall back to an in-memory
-// copy rather than failing the open outright.
-const STORAGE_ERROR_NAMES = new Set([
-  'QuotaExceededError',
-  'InvalidStateError',
-  'UnknownError',
-  'SecurityError',
-  'AbortError',
-  'DatabaseClosedError',
-  'OpenFailedError',
-  'VersionError',
-]);
-
-const isStorageUnavailableError = (error: unknown): boolean => {
-  if (error instanceof Error && STORAGE_ERROR_NAMES.has(error.name)) {
-    return true;
-  }
-  const message = error instanceof Error ? error.message : String(error);
-  return /quota|indexeddb|idbdatabase|object ?store|storage/i.test(message);
-};
 
 // A protocol failed schema validation during import. This is an expected
 // outcome for an old or malformed file, so we record an analytics event
@@ -140,14 +126,18 @@ const instantiateProtocol = async (
     dispatch(setStorageUnavailable(true));
     dispatch(setActiveProtocolId(protocolId));
     dispatch(setActiveProtocol(protocol));
+    // Nothing is persisted in this mode, so warn before the tab closes to avoid
+    // silently losing the in-memory protocol.
+    armInMemoryUnloadGuard();
     navigate('/protocol');
     return;
   }
 
   // The protocol persisted successfully, so clear any earlier storage-unavailable
   // flag (it is persisted to localStorage) to re-enable autosave for this and
-  // subsequent opens.
+  // subsequent opens, and drop the in-memory unload warning.
   dispatch(setStorageUnavailable(false));
+  disarmInMemoryUnloadGuard();
   dispatch(setActiveProtocolId(protocolId));
   dispatch(setActiveProtocol(protocol));
 
@@ -173,9 +163,25 @@ export const openLocalNetcanvas = createAsyncThunk(
       }
 
       const arrayBuffer = await file.arrayBuffer();
-      const { protocol, assets } = await extractProtocol(
-        new Uint8Array(arrayBuffer),
-      );
+      const bytes = new Uint8Array(arrayBuffer);
+
+      // Reject oversized files and deflate bombs before inflating any asset, so
+      // a shared .netcanvas can't OOM-crash the tab. This is an expected input
+      // problem (like an unsupported file type), so surface it without reaching
+      // the exception-reporting catch below.
+      try {
+        await loadGuardedNetcanvas(bytes);
+      } catch (error) {
+        if (error instanceof NetcanvasTooLargeError) {
+          dispatch(
+            generalErrorDialog('Failed to Open Protocol', error.message),
+          );
+          return false;
+        }
+        throw error;
+      }
+
+      const { protocol, assets } = await extractProtocol(bytes);
       const protocolName = file.name.replace(/\.netcanvas$/, '');
 
       // Handle migration if needed
@@ -371,18 +377,32 @@ export const openBundledTemplate = createAsyncThunk(
 // Export protocol as .netcanvas file
 export const exportNetcanvas = createAsyncThunk(
   'webUserActions/exportNetcanvas',
-  async (_, { getState }) => {
+  async (_, { dispatch, getState }) => {
     const state = getState() as RootState;
     const protocol = state.activeProtocol?.present;
 
     if (!protocol) {
       throw new Error('No active protocol to export');
     }
-    await downloadProtocolAsNetcanvas(
+    const skippedAssets = await downloadProtocolAsNetcanvas(
       protocol as CurrentProtocol,
       protocol.name,
       getActiveProtocolId(state) ?? undefined,
     );
+
+    // Export is best-effort: unresolvable assets are omitted rather than
+    // aborting the whole export, but the author must be told which ones so a
+    // silently incomplete file isn't shared.
+    if (skippedAssets.length > 0) {
+      const assetList = skippedAssets.map((asset) => asset.name).join(', ');
+      dispatch(
+        generalErrorDialog(
+          'Some assets could not be exported',
+          `Your protocol was downloaded, but these assets could not be ` +
+            `included and are missing from the file: ${assetList}.`,
+        ),
+      );
+    }
 
     return true;
   },
@@ -404,6 +424,9 @@ export const openLibraryProtocol = createAsyncThunk(
       return;
     }
 
+    // This protocol is loaded from durable storage, so any earlier in-memory
+    // unload warning no longer applies.
+    disarmInMemoryUnloadGuard();
     dispatch(setActiveProtocolId(id));
     dispatch(setActiveProtocol(row.protocol));
     navigate('/protocol');
@@ -419,6 +442,7 @@ export const deleteLibraryProtocol = createAsyncThunk(
 
     const state = getState() as RootState;
     if (getActiveProtocolId(state) === id) {
+      disarmInMemoryUnloadGuard();
       dispatch(setActiveProtocolId(null));
       dispatch(clearActiveProtocol());
     }

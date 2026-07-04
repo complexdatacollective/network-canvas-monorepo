@@ -60,11 +60,16 @@ const formHandlers = withHandlers({
           component?: string;
           type?: string;
           name?: string;
+          encrypted?: boolean;
         };
+        // `encrypted` is a data-protection flag set by the Anonymisation stage,
+        // not an editable form field. Because merge is false below, it must be
+        // carried over explicitly or saving a field edit would strip it.
         const baseProps = {
           component: currentVar.component,
           type: currentVar.type,
           name: currentVar.name,
+          encrypted: currentVar.encrypted,
         };
 
         // Merge is set to false below so that properties that were removed, such

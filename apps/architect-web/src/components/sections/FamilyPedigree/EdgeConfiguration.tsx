@@ -1,3 +1,5 @@
+import type { UnknownAction } from '@reduxjs/toolkit';
+import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
@@ -22,6 +24,16 @@ import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { optionsMatch } from '~/utils/variables';
 
 const edgeEntity: Entity = 'edge';
+
+// Variable pickers that reference the selected edge type's variables; they must
+// be cleared when the edge type changes so a saved stage never points at
+// variables belonging to the previous edge type.
+const EDGE_DEPENDENT_VARIABLE_FIELDS = [
+  'edgeConfig.relationshipTypeVariable',
+  'edgeConfig.isActiveVariable',
+  'edgeConfig.isGestationalCarrierVariable',
+  'edgeConfig.gameteRoleVariable',
+];
 
 type VariableWindowInitialProps = {
   entity: Entity;
@@ -83,6 +95,12 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
     (state: RootState) =>
       formSelector(state, 'edgeConfig.type') as string | undefined,
   );
+
+  const handleResetDependentVariables = useCallback(() => {
+    for (const field of EDGE_DEPENDENT_VARIABLE_FIELDS) {
+      dispatch(change(form, field, null) as UnknownAction);
+    }
+  }, [dispatch, form]);
 
   const edgeVariableOptions = useSelector((state: RootState) =>
     edgeType
@@ -184,7 +202,9 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
           <ValidatedField
             name="edgeConfig.type"
             entityType="edge"
+            promptBeforeChange="You attempted to change the edge type of a stage that you have already configured. Before you can proceed the variables selected for this edge type must be cleared. Do you want to change the edge type now?"
             component={EntitySelectField}
+            onChange={handleResetDependentVariables}
             validation={{ required: true }}
           />
         </Row>

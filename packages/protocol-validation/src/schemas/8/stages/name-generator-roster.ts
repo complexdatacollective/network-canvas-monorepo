@@ -5,6 +5,7 @@ import { findDuplicateId } from '~/utils/validation-helpers';
 import { NodeStageSubjectSchema, nameGeneratorPromptSchema } from '../common';
 import { SortOrderSchema } from '../filters';
 import { baseStageSchema } from './base';
+import { nameGeneratorBehavioursSchema } from './name-generator';
 
 export const nameGeneratorRosterStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorRoster'),
@@ -58,10 +59,5 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
         });
       }
     }),
-  behaviours: z
-    .strictObject({
-      minNodes: z.number().int().optional(),
-      maxNodes: z.number().int().optional(),
-    })
-    .optional(),
+  behaviours: nameGeneratorBehavioursSchema,
 });

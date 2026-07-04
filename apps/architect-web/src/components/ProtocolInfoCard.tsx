@@ -38,6 +38,12 @@ const ProtocolInfoCard = () => {
     setLocalName(name ?? '');
   }, [name]);
 
+  const [localDescription, setLocalDescription] = useState(description);
+
+  useEffect(() => {
+    setLocalDescription(description);
+  }, [description]);
+
   return (
     <motion.div
       initial={animate ? { scale: 0, opacity: 0 } : false}
@@ -100,13 +106,17 @@ const ProtocolInfoCard = () => {
             className="[&>textarea]:field-sizing-content [&>textarea]:max-h-52 [&>textarea]:min-h-24 [&>textarea]:rounded-none [&>textarea]:border-0 [&>textarea]:bg-transparent [&>textarea]:focus:border-0 [&>textarea]:focus:ring-0"
             placeholder="Enter a description for your protocol..."
             input={{
-              value: description,
-              onChange: (event) =>
-                dispatch(
-                  updateProtocolDescription({
-                    description: event.target.value,
-                  }),
-                ),
+              value: localDescription,
+              onChange: (event) => setLocalDescription(event.target.value),
+              onBlur: () => {
+                if (localDescription !== description) {
+                  dispatch(
+                    updateProtocolDescription({
+                      description: localDescription,
+                    }),
+                  );
+                }
+              },
             }}
           />
         </div>

@@ -118,6 +118,20 @@ describe('launchPreview', () => {
     });
   });
 
+  it('resolves with popup-closed when the tab closes before the handshake', async () => {
+    const promise = launchPreview({
+      protocol: makeProtocol(),
+      startStage: 0,
+      useSyntheticData: true,
+      skipLogicBypassed: false,
+    });
+
+    (popup as unknown as { closed: boolean }).closed = true;
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    await expect(promise).resolves.toEqual({ kind: 'popup-closed' });
+  });
+
   it('rejects without opening a popup when there is no active protocol scope', async () => {
     scopeMock.mockReturnValue(null);
     await expect(

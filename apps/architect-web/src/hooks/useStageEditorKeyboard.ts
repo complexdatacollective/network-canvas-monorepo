@@ -14,6 +14,12 @@ import { draftRedo, draftUndo } from '~/ducks/modules/stageEditorDraft';
  * Intended to be mounted inside the StageEditor component, so it is only
  * active while the stage editor is on screen.
  */
+// A base-ui Dialog popup (item-edit dialog, confirm/warning) renders with
+// role="dialog"/"alertdialog". The stage editor page is not itself a dialog, so
+// any such element in the DOM means a modal is layered over the hidden form.
+const isDialogOpen = (): boolean =>
+  document.querySelector('[role="dialog"],[role="alertdialog"]') !== null;
+
 export const useStageEditorKeyboard = (): void => {
   const dispatch = useAppDispatch();
 
@@ -26,6 +32,11 @@ export const useStageEditorKeyboard = (): void => {
       const target = e.target as HTMLElement | null;
       if (target?.isContentEditable) return;
       if (e.isComposing) return; // don't swallow IME composition commits
+
+      // While an item-edit dialog (or any modal) is open, undo/redo must not
+      // rewind the hidden stage form behind it — that corrupts array indices the
+      // dialog is editing. Let the dialog's own history handle it instead.
+      if (isDialogOpen()) return;
 
       const modifier = e.metaKey || e.ctrlKey;
       if (!modifier) return;

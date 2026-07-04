@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import appReducer, { getStorageUnavailable } from '~/ducks/modules/app';
 import dialogsReducer from '~/ducks/modules/dialogs';
 
 import reducer, { importAssetAsync, test } from '../assetManifest';
@@ -15,15 +16,18 @@ vi.mock('~/utils/protocols/importAsset', () => ({
 }));
 
 vi.mock('~/utils/assetUtils', () => ({
-  saveAssetToDb: vi.fn(() => Promise.resolve()),
+  saveAssetWithFallback: vi.fn(() => Promise.resolve({ persisted: true })),
 }));
 
 const { validateAsset } = await import('~/utils/protocols/assetTools');
 const mockedValidateAsset = vi.mocked(validateAsset);
+const { saveAssetWithFallback } = await import('~/utils/assetUtils');
+const mockedSaveAssetWithFallback = vi.mocked(saveAssetWithFallback);
 
 const createTestStore = () =>
   configureStore({
     reducer: {
+      app: appReducer,
       assetManifest: reducer,
       dialogs: dialogsReducer,
     },
@@ -81,6 +85,29 @@ describe('protocol/assetManifest', () => {
     beforeEach(() => {
       store = createTestStore();
       vi.clearAllMocks();
+      mockedSaveAssetWithFallback.mockResolvedValue({ persisted: true });
+    });
+
+    it('flags storage-unavailable when the asset only persisted to memory', async () => {
+      mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+      mockedSaveAssetWithFallback.mockResolvedValue({ persisted: false });
+
+      const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
+      await store.dispatch(importAssetAsync(file));
+
+      expect(getStorageUnavailable(store.getState())).toBe(true);
+      // The asset still landed in the manifest despite storage being unavailable.
+      expect(Object.values(store.getState().assetManifest)).toHaveLength(1);
+    });
+
+    it('does not flag storage-unavailable when the durable write succeeds', async () => {
+      mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+      mockedSaveAssetWithFallback.mockResolvedValue({ persisted: true });
+
+      const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
+      await store.dispatch(importAssetAsync(file));
+
+      expect(getStorageUnavailable(store.getState())).toBe(false);
     });
 
     it('dispatches duplicate rows warning dialog when duplicateCount > 0', async () => {

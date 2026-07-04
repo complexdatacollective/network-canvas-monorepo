@@ -4,7 +4,10 @@ import { useLocation } from 'wouter';
 import { useAppDispatch } from '~/ducks/hooks';
 import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
+import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import type { AppDispatch } from '~/ducks/store';
+import { store } from '~/ducks/store';
+import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
 
 // Shared mutable state read by this hook and the Router's aroundNav.
 // - bypass: flipped on while we're performing the confirmed navigation so the
@@ -30,6 +33,10 @@ export const guardState = {
 // path may include a search/hash suffix; pathname always comes first, so a
 // prefix check still correctly identifies protocol routes.
 export const isProtocolPath = (path: string) => path.startsWith('/protocol');
+
+// The stage editor lives under /protocol/stage/, so leaving it can be intra-
+// /protocol nav (e.g. Back to the overview) that isProtocolPath() alone misses.
+const isStageEditorPath = (path: string) => path.startsWith('/protocol/stage/');
 
 // Opens the leave-editor confirmation. On confirm, clears the active protocol
 // and runs `performLeave` with the guard's bypass flag set so the navigation
@@ -62,6 +69,37 @@ export const promptLeaveEditor = async (
   }
 };
 
+// Opens the discard-draft confirmation when Back leaves the stage editor with an
+// uncommitted draft. On confirm, clears the draft and runs `performLeave` with
+// the bypass flag set so the navigation isn't re-guarded. Skips if a prompt is
+// already in flight.
+const promptDiscardDraft = async (
+  dispatch: AppDispatch,
+  performLeave: () => void,
+) => {
+  if (guardState.prompting) return;
+  guardState.prompting = true;
+  try {
+    await dispatch(
+      dialogActions.openDialog({
+        type: 'Warning',
+        title: 'Unsaved Changes',
+        message:
+          'You have unsaved changes. Are you sure you want to leave without saving?',
+        confirmLabel: 'Leave Without Saving',
+        onConfirm: () => {
+          guardState.bypass = true;
+          dispatch(resetDraft(null));
+          performLeave();
+          guardState.bypass = false;
+        },
+      }),
+    );
+  } finally {
+    guardState.prompting = false;
+  }
+};
+
 export const useProtocolNavGuard = () => {
   const dispatch = useAppDispatch();
   const [, setLocation] = useLocation();
@@ -78,9 +116,28 @@ export const useProtocolNavGuard = () => {
     const onPop = () => {
       const newPath = getFullPath();
       const oldPath = guardState.prevPath;
-      const leaving = isProtocolPath(oldPath) && !isProtocolPath(newPath);
 
-      if (!leaving || guardState.bypass) {
+      if (guardState.bypass) {
+        guardState.prevPath = newPath;
+        return;
+      }
+
+      // Leaving the protocol entirely (Back to the start screen): confirm and,
+      // on confirm, clear the active protocol and navigate home.
+      const leavingProtocol =
+        isProtocolPath(oldPath) && !isProtocolPath(newPath);
+
+      // Leaving the stage editor for elsewhere in the protocol (e.g. Back to the
+      // overview) with uncommitted edits: intra-/protocol nav that the
+      // leavingProtocol check misses. Only prompt when the draft is actually
+      // dirty, so ordinary Back from a pristine editor navigates freely.
+      const leavingDirtyStageEditor =
+        !leavingProtocol &&
+        isStageEditorPath(oldPath) &&
+        !isStageEditorPath(newPath) &&
+        getStageDraftDirty(store.getState());
+
+      if (!leavingProtocol && !leavingDirtyStageEditor) {
         guardState.prevPath = newPath;
         return;
       }
@@ -90,7 +147,12 @@ export const useProtocolNavGuard = () => {
       // prevPath to oldPath, which is correct.)
       history.pushState(null, '', oldPath);
 
-      void promptLeaveEditor(dispatch, () => setLocation('/'));
+      if (leavingProtocol) {
+        void promptLeaveEditor(dispatch, () => setLocation('/'));
+        return;
+      }
+
+      void promptDiscardDraft(dispatch, () => setLocation(newPath));
     };
 
     window.addEventListener('popstate', onPop);

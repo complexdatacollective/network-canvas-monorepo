@@ -22,6 +22,10 @@ vi.mock('~/selectors/protocol', () => ({
   getStageList: () => mockStageList,
 }));
 
+vi.mock('~/ducks/hooks', () => ({
+  useAppDispatch: () => vi.fn(),
+}));
+
 vi.mock('redux-form', () => ({
   Field: ({
     name,
