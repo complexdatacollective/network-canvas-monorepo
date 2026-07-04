@@ -61,22 +61,12 @@ export function useHistoryBackGuard(
       goHome();
       return;
     }
-    // history.back() is async (it schedules a popstate). Run goHome once the pop
-    // lands, with a short timer as a safety net so the exit can never hang if
-    // the popstate doesn't fire (e.g. no entry below ours).
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      window.removeEventListener('popstate', afterPop);
-      clearTimeout(timer);
-      goHome();
-    };
-    function afterPop() {
-      finish();
-    }
-    window.addEventListener('popstate', afterPop);
-    const timer = setTimeout(finish, 50);
+    // history.back() is async (it schedules a popstate). Run goHome only once
+    // the pop lands, so `navigate('/', { replace: true })` replaces the interview
+    // entry beneath the sentinel — not the sentinel while the traversal is still
+    // in flight. There is always an entry below the sentinel (the guard pushed it
+    // on top of the interview entry), so the popstate is guaranteed to fire.
+    window.addEventListener('popstate', () => goHome(), { once: true });
     window.history.back();
   }, []);
 }

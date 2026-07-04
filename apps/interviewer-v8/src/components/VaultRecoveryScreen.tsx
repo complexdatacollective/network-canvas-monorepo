@@ -17,12 +17,21 @@ export function VaultRecoveryScreen() {
   const { revoke } = useAuth();
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   const handleReset = async () => {
     setResetting(true);
-    // revoke() wipes the encrypted database and clears the vault record, then
-    // refreshes auth state — the app falls through to first-run setup.
-    await revoke();
+    setResetError(null);
+    try {
+      // revoke() wipes the encrypted database and clears the vault record, then
+      // refreshes auth state — the app falls through to first-run setup.
+      await revoke();
+    } catch {
+      // On the one screen meant to rescue the user, a failed reset must not
+      // leave both buttons permanently disabled — re-enable and surface it.
+      setResetError('Something went wrong. Please try again.');
+      setResetting(false);
+    }
   };
 
   return (
@@ -65,7 +74,13 @@ export function VaultRecoveryScreen() {
               </Button>
             </div>
           }
-        />
+        >
+          {resetError && (
+            <Paragraph margin="none" className="text-destructive text-sm">
+              {resetError}
+            </Paragraph>
+          )}
+        </Dialog>
       ) : (
         <Dialog
           open

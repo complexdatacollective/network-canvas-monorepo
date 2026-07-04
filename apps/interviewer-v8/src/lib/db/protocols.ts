@@ -53,17 +53,24 @@ export async function saveProtocol(
 ): Promise<StoredProtocol> {
   const existing = await getProtocolByHash(hash);
   const id = existing?.id ?? hash;
+  // Refresh on every save, including a same-hash re-import. The protocol hash
+  // excludes `assetManifest`, so re-importing with updated asset bytes keeps the
+  // same hash; a fresh timestamp is what changes the asset resolver's cache key
+  // (see assetResolver.ts) so stale blob URLs get evicted. Advance it
+  // monotonically so two same-hash saves in the same millisecond still produce
+  // a strictly newer key.
+  const nowIso = new Date().toISOString();
+  const importedAt =
+    existing && nowIso <= existing.importedAt
+      ? new Date(Date.parse(existing.importedAt) + 1).toISOString()
+      : nowIso;
   const stored: StoredProtocol = {
     id,
     hash,
     name: protocol.name,
     schemaVersion: protocol.schemaVersion,
     lastModified: protocol.lastModified,
-    // Refresh on every save, including a same-hash re-import. The protocol hash
-    // excludes `assetManifest`, so re-importing with updated asset bytes keeps
-    // the same hash; a fresh timestamp is what changes the asset resolver's
-    // cache key (see assetResolver.ts) so stale blob URLs get evicted.
-    importedAt: new Date().toISOString(),
+    importedAt,
     description: protocol.description,
     codebook: protocol.codebook,
     protocol,

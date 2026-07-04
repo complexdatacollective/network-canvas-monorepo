@@ -254,13 +254,27 @@ describe('DialogProvider', () => {
       expect(second).toBeNull();
     });
 
-    it('is a no-op with no open dialogs', async () => {
+    it('is a no-op with no open dialogs and does not disturb a later dialog', async () => {
       const { result } = renderHook(() => useDialog(), { wrapper });
+
+      let resolved: unknown = 'unset';
       await act(async () => {
+        // closeAllDialogs with nothing open must not throw, and must not leave
+        // the provider in a state that pre-resolves the next dialog: the dialog
+        // opened right after still resolves with its OWN value, not null.
         result.current.closeAllDialogs();
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        const later = result.current.openDialog({
+          id: 'later',
+          type: 'acknowledge',
+          title: 'Later',
+          description: 'Later',
+          actions: { primary: { label: 'OK', value: true } },
+        });
+        setTimeout(() => void result.current.closeDialog('later', true), 10);
+        resolved = await later;
       });
-      expect(result.current.closeAllDialogs).toBeInstanceOf(Function);
+
+      expect(resolved).toBe(true);
     });
   });
 });

@@ -339,12 +339,15 @@ export function markSessionFinished(id: string): Promise<void> {
 }
 
 export async function markSessionsExported(ids: string[]): Promise<void> {
-  const now = new Date().toISOString();
   await Promise.all(
     ids.map((id) =>
       enqueueSessionMutation(id, async () => {
         const existing = await db.sessions.get(id);
         if (!existing) return;
+        // Stamp inside the queued mutation, not before: if this is queued behind
+        // an in-flight updateSession, a timestamp captured earlier could write an
+        // older lastUpdatedAt than the mutation that actually ran first.
+        const now = new Date().toISOString();
         await db.sessions.put({
           ...existing,
           exportedAt: now,

@@ -123,6 +123,16 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     // rejection (telemetry must never break the app).
     const revision = (preferenceRevisionRef.current += 1);
     setEnabledState(next);
+    // Apply an opt-OUT immediately, before persistence: if the settings write
+    // rejects, the client must still stop capturing (privacy). Opt-IN stays
+    // gated behind a successful persist (and lazy client construction) below.
+    if (!next && clientRef.current) {
+      try {
+        applyPreference(clientRef.current, false);
+      } catch {
+        // Telemetry never breaks preference updates.
+      }
+    }
     try {
       await updateSettings({ analyticsEnabled: next });
       // Opting in lazily constructs the client on first use, so a user who
@@ -137,7 +147,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
           setClient(resolved);
         }
       }
-      if (clientRef.current) applyPreference(clientRef.current, next);
+      if (next && clientRef.current) applyPreference(clientRef.current, true);
     } catch {
       // Swallow — the in-memory preference still took effect above.
     }

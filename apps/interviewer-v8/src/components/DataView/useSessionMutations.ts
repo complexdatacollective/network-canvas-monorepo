@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
@@ -130,8 +130,12 @@ export function useSessionMutations({
   // Runs in the "Save export" button's own click — a gesture the long-running
   // archive build in handleExport would otherwise have consumed — so
   // navigator.share stays gesture-fresh on iOS Safari.
+  const shareInFlightRef = useRef(false);
   const handleShareReady = useCallback(async () => {
-    if (!pendingShare) return;
+    // A double-tap on Save export would otherwise start two save flows and
+    // double the export marking + analytics event; guard against re-entry.
+    if (!pendingShare || shareInFlightRef.current) return;
+    shareInFlightRef.current = true;
     const {
       blob,
       fileName,
@@ -178,6 +182,8 @@ export function useSessionMutations({
         description: cause instanceof Error ? cause.message : String(cause),
         variant: 'destructive',
       });
+    } finally {
+      shareInFlightRef.current = false;
     }
   }, [analytics, onReload, pendingShare, reloadData, toast]);
 
