@@ -40,6 +40,47 @@ createRoot(root).render(
   </AppErrorBoundary>,
 );
 
+// Matches the boot loader's opacity transition in index.html (400ms), plus a
+// buffer for the removal fallback below.
+const BOOT_LOADER_FADE_MS = 400;
+
+// Fade out and remove the inline boot loader (defined in index.html) once React
+// has committed its first frame. Two nested rAFs wait for the paint that follows
+// the initial commit so the fade begins over real app content, not a blank root.
+const dismissBootLoader = () => {
+  const loader = document.getElementById('boot-loader');
+  // Idempotent: it's scheduled from both a rAF (paint-aligned) and a timer
+  // backstop below, so bail if it's already gone or already fading.
+  if (!loader || loader.classList.contains('boot-loader--hidden')) return;
+
+  const prefersReducedMotion = window.matchMedia(
+    '(prefers-reduced-motion: reduce)',
+  ).matches;
+
+  if (prefersReducedMotion) {
+    loader.remove();
+    return;
+  }
+
+  // Remove on transitionend for a tight hand-off, but also on a timeout so the
+  // loader can never linger if the transition is interrupted or never fires
+  // (e.g. the tab is backgrounded during the fade, which suspends transitions).
+  const remove = () => loader.remove();
+  loader.addEventListener('transitionend', remove, { once: true });
+  setTimeout(remove, BOOT_LOADER_FADE_MS + 100);
+  loader.classList.add('boot-loader--hidden');
+};
+
+requestAnimationFrame(() => {
+  requestAnimationFrame(dismissBootLoader);
+});
+
+// rAF is suspended while a tab is backgrounded, so a tab opened in the background
+// would keep the loader until it's focused. React has already committed by this
+// point, so also dismiss on a timer backstop (idempotent) that still fires when
+// the tab is hidden.
+setTimeout(dismissBootLoader, BOOT_LOADER_FADE_MS + 100);
+
 // During idle time, fetch stage thumbnails so they are already cached when the
 // timeline or stage editor first renders. When running as an installed PWA, also
 // warm the service-worker cache with the bundled template/Sample assets so those
