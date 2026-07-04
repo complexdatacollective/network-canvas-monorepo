@@ -10,7 +10,11 @@ filename (no path separators or `..`), so a malformed protocol can no longer
 carry a path-traversal entry name into an exported archive. `NameGeneratorRoster`
 now reuses the shared name-generator node-count bounds (`minNodes`/`maxNodes`
 lower bounds and the `maxNodes >= minNodes` check) instead of accepting
-unbounded values.
+unbounded values. Codebook variables gain an optional `readOnly` flag for
+system-managed variables, and a protocol-level check validates that Family
+Pedigree's locked value sets keep their canonical options. A new
+`extractProtocolFromZip` export lets a caller that has already parsed a
+`.netcanvas` archive extract from it without re-parsing.
 
 `@codaco/protocol-utilities`: `generateNetwork` clamps the requested node range
 so an inflated `minNodes` with no `maxNodes` can no longer produce an inverted

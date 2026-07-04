@@ -1,3 +1,4 @@
+import { get } from 'es-toolkit/compat';
 import type { ComponentType } from 'react';
 
 import { Section, Subsection } from '~/components/EditorLayout';
@@ -5,6 +6,7 @@ import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import Text from '~/components/Form/Fields/Text';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Options from '~/components/Options';
+import LockedOptions from '~/components/Options/LockedOptions';
 import Parameters from '~/components/Parameters';
 import {
   isBooleanWithOptions,
@@ -39,6 +41,7 @@ const ComposerAttributeFields = ({
     component,
     componentOptions,
     metaForType,
+    existingVariables,
     handleNewVariable,
     handleChangeVariable,
     handleChangeComponent,
@@ -47,6 +50,20 @@ const ComposerAttributeFields = ({
     entity: entity ?? '',
     type: type ?? '',
   });
+
+  // A read-only variable's options are owned by an interface and cannot be
+  // edited here; render them read-only rather than editable.
+  const selectedVariable = get(
+    existingVariables,
+    typeof variable === 'string' ? variable : '',
+    undefined,
+  );
+  const lockedOptions =
+    selectedVariable?.readOnly &&
+    (selectedVariable.type === 'categorical' ||
+      selectedVariable.type === 'ordinal')
+      ? selectedVariable.options
+      : undefined;
 
   return (
     <Section layout="vertical">
@@ -164,14 +181,25 @@ const ComposerAttributeFields = ({
           id={getFieldId('options')}
           title="Categorical/Ordinal options"
           summary={
-            <p>
-              The input type you selected indicates that this is a categorical
-              or ordinal variable. Next, please create a minimum of two possible
-              values for the participant to choose between.
-            </p>
+            lockedOptions ? (
+              <p>
+                These options are automatically configured by the interface and
+                cannot be modified.
+              </p>
+            ) : (
+              <p>
+                The input type you selected indicates that this is a categorical
+                or ordinal variable. Next, please create a minimum of two
+                possible values for the participant to choose between.
+              </p>
+            )
           }
         >
-          <Options name="options" label="Options" />
+          {lockedOptions ? (
+            <LockedOptions options={lockedOptions} />
+          ) : (
+            <Options name="options" label="Options" />
+          )}
         </Subsection>
       )}
       {isBooleanWithOptions(component) && (

@@ -1,5 +1,4 @@
 import { values } from 'es-toolkit/compat';
-import { Lock } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { Field, formValueSelector } from 'redux-form';
 
@@ -10,6 +9,7 @@ import Select from '~/components/Form/Fields/Select';
 import ValidatedField from '~/components/Form/ValidatedField';
 import InlineEditScreen from '~/components/InlineEditScreen';
 import Options from '~/components/Options';
+import LockedOptions from '~/components/Options/LockedOptions';
 import {
   isOrdinalOrCategoricalType,
   VARIABLE_OPTIONS,
@@ -95,16 +95,21 @@ export default function NewVariableWindow({
 
   const handleCreateNewVariable = useCallback(
     async (configuration: Record<string, unknown>) => {
+      // Locked options belong to an interface-owned value set the researcher may
+      // not edit; persist readOnly so the shared options editors enforce it.
+      const withReadOnly = lockedOptions
+        ? { ...configuration, readOnly: true }
+        : configuration;
       const result = await dispatch(
         createVariableAsync({
           entity,
           type,
-          configuration: configuration as Partial<Variable>,
+          configuration: withReadOnly as Partial<Variable>,
         }),
       ).unwrap();
       onComplete(result.variable);
     },
-    [dispatch, entity, type, onComplete],
+    [dispatch, entity, type, onComplete, lockedOptions],
   );
 
   return (
@@ -169,27 +174,7 @@ export default function NewVariableWindow({
             }
           >
             {lockedOptions ? (
-              <div className="bg-platinum relative rounded p-4 opacity-50">
-                <Lock className="text-charcoal absolute top-4 right-4 h-4 w-4" />
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left">
-                      <th className="pb-2 font-bold">Label</th>
-                      <th className="pb-2 font-bold">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lockedOptions.map((option) => (
-                      <tr key={String(option.value)}>
-                        <td className="py-1">{option.label}</td>
-                        <td className="py-1 font-mono">
-                          {String(option.value)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <LockedOptions options={lockedOptions} />
             ) : (
               <Options name="options" label="Options" />
             )}

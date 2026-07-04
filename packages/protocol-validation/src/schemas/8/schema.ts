@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+import {
+  BIOLOGICAL_SEX_OPTIONS,
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/shared-consts';
 import { collectEntityAttributeReferencesFromSchema } from '~/utils/collectEntityAttributeReferences';
 import { validateReferences } from '~/utils/validateEntityAttributeReferences';
 import {
@@ -174,6 +179,26 @@ const validateFilterRules = (
       }
     }
   });
+};
+
+type CanonicalOption = { value: string; label: string };
+
+// True when a variable's options are exactly the canonical set (same members
+// and labels, order-independent). Used to enforce the FamilyPedigree
+// locked-value-set variables against their interface-owned option sets.
+const optionsMatchCanonical = (
+  variableOptions: { value: unknown; label?: unknown }[] | undefined,
+  canonical: readonly CanonicalOption[],
+): boolean => {
+  if (!variableOptions || variableOptions.length !== canonical.length) {
+    return false;
+  }
+  return canonical.every((expected) =>
+    variableOptions.some(
+      (option) =>
+        option.value === expected.value && option.label === expected.label,
+    ),
+  );
 };
 
 const ProtocolSchema = z
@@ -557,6 +582,66 @@ const ProtocolSchema = z
             });
           }
         });
+      }
+
+      // 3e.iii.b-3. FamilyPedigree: the biological-sex, relationship-type, and
+      // gamete-role variables carry interface-owned value sets the interview and
+      // genetics engine depend on. Architect locks these options at creation, but
+      // nothing re-checks them afterwards; guard against a variable whose options
+      // were edited away from its canonical set. Only fires when the referenced
+      // variable exists and is categorical with a mismatched option set — so a
+      // legitimately-authored protocol (whose options already match) always passes.
+      if (stage.type === 'FamilyPedigree') {
+        const nodeVariables = getVariablesForSubject(protocol.codebook, {
+          entity: 'node',
+          type: stage.nodeConfig.type,
+        });
+        const edgeVariables = getVariablesForSubject(protocol.codebook, {
+          entity: 'edge',
+          type: stage.edgeConfig.type,
+        });
+
+        const checkLockedOptions = (
+          variableId: string,
+          variable: (typeof nodeVariables)[string] | undefined,
+          canonical: readonly CanonicalOption[],
+          label: string,
+          path: (string | number)[],
+        ) => {
+          if (
+            variable &&
+            variable.type === 'categorical' &&
+            !optionsMatchCanonical(variable.options, canonical)
+          ) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `FamilyPedigree ${label} variable "${variableId}" must use its fixed set of options and cannot be modified.`,
+              path,
+            });
+          }
+        };
+
+        checkLockedOptions(
+          stage.nodeConfig.biologicalSexVariable,
+          nodeVariables[stage.nodeConfig.biologicalSexVariable],
+          BIOLOGICAL_SEX_OPTIONS,
+          'biological sex',
+          ['stages', stageIndex, 'nodeConfig', 'biologicalSexVariable'],
+        );
+        checkLockedOptions(
+          stage.edgeConfig.relationshipTypeVariable,
+          edgeVariables[stage.edgeConfig.relationshipTypeVariable],
+          RELATIONSHIP_TYPE_OPTIONS,
+          'relationship type',
+          ['stages', stageIndex, 'edgeConfig', 'relationshipTypeVariable'],
+        );
+        checkLockedOptions(
+          stage.edgeConfig.gameteRoleVariable,
+          edgeVariables[stage.edgeConfig.gameteRoleVariable],
+          GAMETE_ROLE_OPTIONS,
+          'gamete role',
+          ['stages', stageIndex, 'edgeConfig', 'gameteRoleVariable'],
+        );
       }
 
       // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree

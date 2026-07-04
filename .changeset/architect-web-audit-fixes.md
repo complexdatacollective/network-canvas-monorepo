@@ -11,8 +11,9 @@ editing entries in the codebook is safer — encrypted variables stay encrypted,
 in-use resources can no longer be removed by mistake, and clearer prompts appear
 when a change would affect another part of your protocol. The Family Pedigree,
 Narrative Pedigree, and Network Composer editors handle diseases, edge types,
-labels, and source-stage changes correctly, and previewing is more robust
-(clearer errors instead of a preview that never loads). Option labels no longer
+labels, and source-stage changes correctly; Family Pedigree's fixed value sets
+(such as biological sex) stay read-only after they're created; and previewing is
+more robust (clearer errors instead of a preview that never loads). Option labels no longer
 pick up stray blank lines. Privacy is tightened: analytics no longer transmits
 your protocol's text, and a Content-Security-Policy is applied to the deployed
 app.

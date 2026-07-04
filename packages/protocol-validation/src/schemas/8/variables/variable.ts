@@ -17,6 +17,11 @@ export type VariableOptionValue = VariableOption['value'];
 const baseVariableSchema = z.strictObject({
   name: VariableNameSchema,
   encrypted: z.boolean().optional(),
+  // Marks a variable whose options an interface owns and the researcher may not
+  // edit (e.g. a FamilyPedigree biological-sex/relationship-type/gamete-role
+  // value set). Set at creation; read by the shared options editors to render
+  // the options read-only.
+  readOnly: z.boolean().optional(),
 });
 
 const numberVariableSchema = baseVariableSchema.extend({

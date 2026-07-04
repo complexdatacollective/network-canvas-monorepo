@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  BIOLOGICAL_SEX_OPTIONS,
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/shared-consts';
 import { createBaseProtocol } from '~/utils/test-utils';
 
 import ProtocolSchemaV8 from '../schema';
@@ -2495,6 +2500,183 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         !result.success &&
         result.error.issues.find((i) => i.message.includes('introScreen item'));
       expect(introAssetIssue).toBeFalsy();
+    });
+  });
+
+  describe('FamilyPedigree locked value-set validation', () => {
+    // Builds a protocol whose codebook carries the FamilyPedigree node/edge
+    // types with the biological-sex, relationship-type and gamete-role variables
+    // present as categorical variables with the supplied option sets.
+    const protocolWithLockedVariables = ({
+      biologicalSexOptions = BIOLOGICAL_SEX_OPTIONS,
+      relationshipTypeOptions = RELATIONSHIP_TYPE_OPTIONS,
+      gameteRoleOptions = GAMETE_ROLE_OPTIONS,
+    }: {
+      biologicalSexOptions?: { value: string; label: string }[];
+      relationshipTypeOptions?: { value: string; label: string }[];
+      gameteRoleOptions?: { value: string; label: string }[];
+    }) => ({
+      name: 'Test Protocol',
+      schemaVersion: 8 as const,
+      codebook: {
+        ego: { variables: { isEgo: { name: 'IsEgo', type: 'boolean' } } },
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              label: { name: 'Label', type: 'text' },
+              rel: { name: 'Rel', type: 'text' },
+              bioSex: {
+                name: 'BioSex',
+                type: 'categorical',
+                options: biologicalSexOptions,
+              },
+            },
+          },
+        },
+        edge: {
+          family: {
+            name: 'Family',
+            color: 'edge-color-seq-1',
+            variables: {
+              isActive: { name: 'IsActive', type: 'boolean' },
+              isGc: { name: 'IsGc', type: 'boolean' },
+              relType: {
+                name: 'RelType',
+                type: 'categorical',
+                options: relationshipTypeOptions,
+              },
+              gameteRole: {
+                name: 'GameteRole',
+                type: 'categorical',
+                options: gameteRoleOptions,
+              },
+            },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 'fp1',
+          type: 'FamilyPedigree' as const,
+          label: 'Family Pedigree',
+          nodeConfig: {
+            type: 'person',
+            nodeLabelVariable: 'label',
+            egoVariable: 'isEgo',
+            relationshipVariable: 'rel',
+            biologicalSexVariable: 'bioSex',
+          },
+          edgeConfig: {
+            type: 'family',
+            relationshipTypeVariable: 'relType',
+            isActiveVariable: 'isActive',
+            isGestationalCarrierVariable: 'isGc',
+            gameteRoleVariable: 'gameteRole',
+          },
+          framing: { mode: 'fixed' as const, value: 'gamete' as const },
+          boundaries: {
+            requireGrandparents: 'off' as const,
+            requireChildrenContributors: 'off' as const,
+          },
+          censusPrompt: 'Build your family',
+        },
+      ],
+    });
+
+    it('accepts locked variables carrying their canonical option sets', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({}),
+      );
+      const lockedIssue =
+        !result.success &&
+        result.error.issues.find((i) =>
+          i.message.includes('must use its fixed set of options'),
+        );
+      expect(lockedIssue).toBeFalsy();
+    });
+
+    it('rejects a biological-sex variable whose options were edited', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({
+          biologicalSexOptions: [
+            { value: 'female', label: 'Female' },
+            { value: 'male', label: 'Male' },
+          ],
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((i) =>
+          i.message.includes(
+            'FamilyPedigree biological sex variable "bioSex" must use its fixed set of options',
+          ),
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'nodeConfig',
+          'biologicalSexVariable',
+        ]);
+      }
+    });
+
+    it('rejects a relationship-type variable whose options were edited', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({
+          relationshipTypeOptions: [
+            { value: 'biological', label: 'Biological' },
+            { value: 'made-up', label: 'Made Up' },
+          ],
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find(
+          (i) =>
+            i.message.includes(
+              'FamilyPedigree relationship type variable "relType"',
+            ) && i.message.includes('must use its fixed set of options'),
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'edgeConfig',
+          'relationshipTypeVariable',
+        ]);
+      }
+    });
+
+    it('rejects a gamete-role variable whose options were edited', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({
+          gameteRoleOptions: [
+            { value: 'egg', label: 'Egg' },
+            { value: 'sperm', label: 'Sperm' },
+            { value: 'extra', label: 'Extra' },
+          ],
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find(
+          (i) =>
+            i.message.includes(
+              'FamilyPedigree gamete role variable "gameteRole"',
+            ) && i.message.includes('must use its fixed set of options'),
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'edgeConfig',
+          'gameteRoleVariable',
+        ]);
+      }
     });
   });
 });
