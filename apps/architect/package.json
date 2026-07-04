@@ -103,6 +103,5 @@
   "engines": {
     "node": ">=24.0.0"
   },
-  "packageManager": "pnpm@9.15.4",
   "productName": "Network Canvas Architect"
 }
