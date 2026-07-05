@@ -38,7 +38,32 @@ async function runReencryptionSweep(): Promise<void> {
       'Re-encryption sweep failed; existing data may remain plaintext until a later unlock retries it',
       error,
     );
-    await updateSettings({ reencryptionPending: true }).catch(() => {});
+    // Retry the flag write with exponential backoff so resumePendingReencryption
+    // can pick it up on a later unlock. If all retries fail, the pending state
+    // is lost and the sweep won't be retried automatically.
+    let attempt = 0;
+    const maxAttempts = 3;
+    while (attempt < maxAttempts) {
+      try {
+        await updateSettings({ reencryptionPending: true });
+        return; // Success, flag persisted
+      } catch (flagError) {
+        attempt++;
+        if (attempt >= maxAttempts) {
+          console.error(
+            'Failed to persist reencryptionPending flag after',
+            maxAttempts,
+            'attempts; the sweep will NOT be retried automatically on future unlocks',
+            flagError,
+          );
+          return;
+        }
+        // Exponential backoff: 100ms, 200ms, 400ms
+        await new Promise((resolve) =>
+          setTimeout(resolve, 100 * Math.pow(2, attempt - 1)),
+        );
+      }
+    }
   }
 }
 

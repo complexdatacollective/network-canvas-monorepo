@@ -133,10 +133,21 @@
         <span class="app-loading__arc app-loading__arc--3"></span>
         <span class="app-loading__arc app-loading__arc--4"></span>
       </div>
-      <span class="app-loading__sr-only"
-        >Loading Network Canvas Interviewer…</span
-      >
+      <span class="app-loading__sr-only" id="app-loading__message"></span>
     </div>
+    <script>
+      // Trigger the live region by setting the text after the DOM is ready,
+      // so screen readers announce the loading state (static pre-rendered text
+      // isn't announced by aria-live regions).
+      (function () {
+        var msg = document.getElementById('app-loading__message');
+        if (msg) {
+          setTimeout(function () {
+            msg.textContent = 'Loading Network Canvas Interviewer…';
+          }, 0);
+        }
+      })();
+    </script>
     <div id="root" class="root h-full"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
