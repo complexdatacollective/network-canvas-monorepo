@@ -5,11 +5,16 @@
 # connect-src lists the only origins the app talks to at runtime: mapbox-gl
 # (Geospatial stages) fetches styles/tiles/glyphs from api.mapbox.com and posts
 # telemetry to events.mapbox.com; analytics posts to the PostHog relay; Google
-# Fonts serves the stylesheet + webfonts. worker-src/blob: is required by
-# mapbox-gl's web workers. frame-src/frame-ancestors 'self' keeps the same-origin
-# preview iframe working while blocking framing by any other origin.
+# Fonts serves the stylesheet + webfonts. connect-src also allows data: and blob:
+# because the app fetch()es its own asset content back: a bundled template asset
+# small enough for Vite to inline arrives as a data: URI (e.g. a name generator's
+# external CSV), and object-URL (blob:) assets are read the same way in the
+# preview and when loading external data. Both are self-contained (not external
+# origins), so they don't weaken the exfiltration protection. worker-src/blob: is
+# required by mapbox-gl's web workers. frame-src/frame-ancestors 'self' keeps the
+# same-origin preview iframe working while blocking framing by any other origin.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://fonts.googleapis.com https://fonts.gstatic.com; worker-src 'self' blob:; frame-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; frame-ancestors 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' data: blob: https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://fonts.googleapis.com https://fonts.gstatic.com; worker-src 'self' blob:; frame-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; frame-ancestors 'self'
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
