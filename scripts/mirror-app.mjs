@@ -112,9 +112,9 @@ function stageSource(appDir, staging) {
 
 // Architect renders the Interviewer app in its preview window from a bundle that
 // electron-builder copies via extraResources. In the monorepo that bundle lives at
-// ../interviewer/out; vendor it into the mirror and repoint the config.
+// ../interviewer-classic/out; vendor it into the mirror and repoint the config.
 function vendorInterviewerPreview(appDir, staging) {
-  const interviewerOut = join(appDir, '..', 'interviewer', 'out');
+  const interviewerOut = join(appDir, '..', 'interviewer-classic', 'out');
   const vendorDir = join(staging, 'interviewer-preview');
   for (const part of ['renderer', 'preload']) {
     const from = join(interviewerOut, part);
@@ -127,13 +127,13 @@ function vendorInterviewerPreview(appDir, staging) {
   }
   const configPath = join(staging, 'electron-builder.config.js');
   const original = readFileSync(configPath, 'utf8');
-  const rendererPattern = /['"]\.\.\/interviewer\/out\/renderer['"]/g;
-  const preloadPattern = /['"]\.\.\/interviewer\/out\/preload['"]/g;
+  const rendererPattern = /['"]\.\.\/interviewer-classic\/out\/renderer['"]/g;
+  const preloadPattern = /['"]\.\.\/interviewer-classic\/out\/preload['"]/g;
   // Fail loudly rather than silently leaving broken extraResources paths in the
   // mirror if the source config's path text ever drifts.
   if (!rendererPattern.test(original) || !preloadPattern.test(original)) {
     throw new Error(
-      `Expected ../interviewer/out renderer+preload paths in ${configPath}; ` +
+      `Expected ../interviewer-classic/out renderer+preload paths in ${configPath}; ` +
         'the Architect preview vendoring rewrite would be a no-op.',
     );
   }

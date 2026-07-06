@@ -38,11 +38,11 @@ module.exports = {
     // resources/interviewer; createPreviewWindow.js loads them from
     // process.resourcesPath in packaged builds.
     {
-      from: '../interviewer/out/renderer',
+      from: '../interviewer-classic/out/renderer',
       to: 'interviewer/renderer',
     },
     {
-      from: '../interviewer/out/preload',
+      from: '../interviewer-classic/out/preload',
       to: 'interviewer/preload',
     },
   ],

@@ -17,7 +17,7 @@ const path = require("node:path");
 const log = require("./log");
 const getPreviewMenu = require("./previewMenu");
 
-// The Interviewer's renderer dev server (apps/interviewer electron.vite.config).
+// The Interviewer's renderer dev server (apps/interviewer-classic electron.vite.config).
 const INTERVIEWER_DEV_URL = "http://localhost:3000";
 
 // Resolve the Interviewer's preload script and renderer URL for the current
