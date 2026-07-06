@@ -21,8 +21,10 @@ function stubReducedMotion(reduce: boolean) {
 afterEach(() => {
   document.body.replaceChildren();
   vi.restoreAllMocks();
-  vi.useRealTimers();
+  // restoreAllMocks does not undo vi.stubGlobal — unstub matchMedia explicitly so
+  // the reduced-motion stub can't leak into other suites in the same worker.
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe('removeLoadingScreen', () => {

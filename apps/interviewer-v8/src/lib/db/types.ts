@@ -129,10 +129,6 @@ export type StoredSettings = {
   // identifier — only the per-device installation id (see installationId.ts).
   analyticsEnabled: boolean;
   allowStageNavigation: boolean;
-  // Set true when an initial-enrol re-encryption sweep did not finish (some rows
-  // remain plaintext); a later unlock re-runs the sweep and clears it once every
-  // row is encrypted. Absent/false on devices that were never in that state.
-  reencryptionPending?: boolean;
 };
 
 export type ProtocolWithCounts = StoredProtocol & {

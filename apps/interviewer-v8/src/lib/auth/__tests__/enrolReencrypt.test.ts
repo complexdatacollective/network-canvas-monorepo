@@ -22,13 +22,16 @@ vi.mock('../../vault/webauthn', () => ({
   signalCredentialUnknown: () => Promise.resolve(),
 }));
 
-import { getSettings, updateSettings } from '../../db/api';
 import { db } from '../../db/db';
 import { encryptSession } from '../../db/recordCrypto';
 import { getSessionDek, setSessionDek } from '../../db/sessionKey';
 import type { StoredSession } from '../../db/types';
 import { clearVault } from '../../vault/vaultStore';
 import * as authApi from '../api';
+import {
+  isReencryptionPending,
+  setReencryptionPending,
+} from '../reencryptionPending';
 
 const STRONG = 'Tr0ub4dor&3-clever';
 const RECOVERY = 'Recovery-Phrase-7!';
@@ -78,11 +81,13 @@ async function seedPlaintextSession(): Promise<void> {
 beforeEach(async () => {
   clearVault();
   setSessionDek(null);
+  setReencryptionPending(false);
   await db.sessions.clear();
 });
 afterEach(async () => {
   clearVault();
   setSessionDek(null);
+  setReencryptionPending(false);
   await db.sessions.clear();
 });
 
@@ -173,7 +178,7 @@ describe('resume-on-unlock finishes an interrupted sweep', () => {
   it('unlockWithPin re-encrypts a leftover plaintext row and clears the flag', async () => {
     // Enrol on an empty DB: the sweep is a no-op and the flag ends false.
     expect((await authApi.enrolWithPin('12345678')).ok).toBe(true);
-    expect((await getSettings()).reencryptionPending).toBe(false);
+    expect(isReencryptionPending()).toBe(false);
 
     // Simulate an initial-enrol sweep that failed partway: a plaintext row
     // remains and the pending flag is set; then the device locks (DEK dropped).
@@ -181,13 +186,13 @@ describe('resume-on-unlock finishes an interrupted sweep', () => {
     // vault exists, which is exactly the protection this all rests on).
     setSessionDek(null);
     await db.sessions.put(makeSession());
-    await updateSettings({ reencryptionPending: true });
+    setReencryptionPending(true);
     expect((await db.sessions.get('s1'))?._enc).toBeUndefined();
 
     // Unlocking finishes the sweep and clears the flag.
     expect((await authApi.unlockWithPin('12345678')).ok).toBe(true);
     expect((await db.sessions.get('s1'))?._enc?.network).toBeDefined();
     expect((await db.sessions.get('s1'))?.network).toBeUndefined();
-    expect((await getSettings()).reencryptionPending).toBe(false);
+    expect(isReencryptionPending()).toBe(false);
   });
 });

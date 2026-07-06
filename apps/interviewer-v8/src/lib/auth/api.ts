@@ -1,9 +1,13 @@
-import { getSettings, reencryptAllRecords, updateSettings } from '../db/api';
+import { reencryptAllRecords } from '../db/api';
 import { db } from '../db/db';
 import { getSessionDek, setSessionDek } from '../db/sessionKey';
 import { requestPersistentStorage } from '../storage';
 import * as vault from '../vault/vault';
 import { isPrfSupported } from '../vault/webauthn';
+import {
+  isReencryptionPending,
+  setReencryptionPending,
+} from './reencryptionPending';
 
 export type AuthMode = 'pin' | 'passphrase' | 'biometric' | 'none';
 export type AuthResult = { ok: boolean; message?: string };
@@ -25,45 +29,23 @@ async function applyUnlock(result: vault.UnlockResult): Promise<AuthResult> {
 // Run the re-encryption sweep and persist whether it finished. Never throws: the
 // vault + DEK are already valid, so a sweep problem must not break enrol/unlock —
 // un-swept rows remain readable (decrypt is per-row self-describing). Failures
-// are recorded in `reencryptionPending` so `resumePendingReencryption` retries on
-// a later unlock; the sweep is idempotent, so retrying is safe. The security
-// invariant ("secured ⇒ existing data encrypted") is only met once the flag is
-// cleared (a run with zero failed rows).
+// set the `reencryptionPending` flag so `resumePendingReencryption` retries on a
+// later unlock; the sweep is idempotent, so retrying is safe. The flag lives in
+// localStorage, NOT in the Dexie settings row the sweep writes to: were it there,
+// the very IndexedDB failure that aborts the sweep could also swallow the flag
+// write, silently and permanently defeating the retry. The security invariant
+// ("secured ⇒ existing data encrypted") is only met once the flag is cleared (a
+// run with zero failed rows).
 async function runReencryptionSweep(): Promise<void> {
   try {
     const { failed } = await reencryptAllRecords();
-    await updateSettings({ reencryptionPending: failed > 0 });
+    setReencryptionPending(failed > 0);
   } catch (error) {
     console.error(
       'Re-encryption sweep failed; existing data may remain plaintext until a later unlock retries it',
       error,
     );
-    // Retry the flag write with exponential backoff so resumePendingReencryption
-    // can pick it up on a later unlock. If all retries fail, the pending state
-    // is lost and the sweep won't be retried automatically.
-    let attempt = 0;
-    const maxAttempts = 3;
-    while (attempt < maxAttempts) {
-      try {
-        await updateSettings({ reencryptionPending: true });
-        return; // Success, flag persisted
-      } catch (flagError) {
-        attempt++;
-        if (attempt >= maxAttempts) {
-          console.error(
-            'Failed to persist reencryptionPending flag after',
-            maxAttempts,
-            'attempts; the sweep will NOT be retried automatically on future unlocks',
-            flagError,
-          );
-          return;
-        }
-        // Exponential backoff: 100ms, 200ms, 400ms
-        await new Promise((resolve) =>
-          setTimeout(resolve, 100 * Math.pow(2, attempt - 1)),
-        );
-      }
-    }
+    setReencryptionPending(true);
   }
 }
 
@@ -95,15 +77,11 @@ async function applyInitialEnrol(
 // After a normal unlock, finish an initial-enrol sweep that a prior attempt left
 // incomplete (e.g. a mid-sweep quota error), so rows left plaintext eventually
 // get encrypted. Gated on the persisted flag so a device that was never in that
-// state does no work beyond one settings read.
+// state does no work beyond one localStorage read. runReencryptionSweep never
+// throws, so this never breaks the unlock it follows.
 async function resumePendingReencryption(): Promise<void> {
-  try {
-    const settings = await getSettings();
-    if (!settings.reencryptionPending) return;
-    await runReencryptionSweep();
-  } catch (error) {
-    console.error('Resuming re-encryption after unlock failed', error);
-  }
+  if (!isReencryptionPending()) return;
+  await runReencryptionSweep();
 }
 
 async function applyUnlockAndResume(
