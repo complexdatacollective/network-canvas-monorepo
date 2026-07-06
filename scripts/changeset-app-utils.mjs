@@ -4,11 +4,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export const APP_PACKAGES = ['@codaco/architect-web', '@codaco/interviewer-v8'];
+export const APP_PACKAGES = ['@codaco/architect', '@codaco/interviewer'];
 
 export const APP_DIRS = {
-  '@codaco/architect-web': 'apps/architect-web',
-  '@codaco/interviewer-v8': 'apps/interviewer-v8',
+  '@codaco/architect': 'apps/architect',
+  '@codaco/interviewer': 'apps/interviewer',
 };
 
 export function parseChangeset(contents) {

@@ -184,7 +184,7 @@ function main() {
 
   writeFileSync(join(staging, '.gitignore'), GITIGNORE);
 
-  if (appName === 'network-canvas-architect') {
+  if (appName === '@codaco/architect-classic') {
     vendorInterviewerPreview(appDir, staging);
   }
 
