@@ -3,12 +3,58 @@ import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react-swc';
+import type { Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
 import { version } from './package.json';
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
+
+// The Content-Security-Policy directives a <meta http-equiv> can express — i.e.
+// everything except frame-ancestors, which is header-only and stays in
+// public/_headers. It is injected into the built HTML (see injectCspMeta) rather
+// than served purely as an HTTP header so that a change to it rides the service
+// worker's content-revisioning: because the app precaches its HTML shell, a
+// header-only CSP change is frozen in the cached response and never reaches
+// already-installed clients, whereas a change to this in-content policy alters
+// the HTML, bumps its precache revision, and propagates on the next update.
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob:",
+  "media-src 'self' blob:",
+  "connect-src 'self' data: blob: https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://fonts.googleapis.com https://fonts.gstatic.com",
+  "worker-src 'self' blob:",
+  "frame-src 'self'",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "form-action 'self'",
+].join('; ');
+
+// Inject the CSP as the first <head> tag of every built HTML entry so it governs
+// every resource parsed after it. Build-only: in dev a <meta> CSP would block
+// Vite's HMR / react-refresh (inline + eval) scripts and the HMR websocket, and
+// the dev server serves no _headers anyway.
+const injectCspMeta = (): Plugin => ({
+  name: 'architect-inject-csp-meta',
+  apply: 'build',
+  transformIndexHtml: {
+    order: 'pre',
+    handler: () => [
+      {
+        tag: 'meta',
+        attrs: {
+          'http-equiv': 'Content-Security-Policy',
+          'content': CONTENT_SECURITY_POLICY,
+        },
+        injectTo: 'head-prepend',
+      },
+    ],
+  },
+});
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -19,6 +65,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   plugins: [
+    injectCspMeta(),
     react({}),
     tailwindcss(),
     VitePWA({
