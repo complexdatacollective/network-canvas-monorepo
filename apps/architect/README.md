@@ -1,97 +1,132 @@
-# Architect [![Build Status](https://travis-ci.org/complexdatacollective/Architect.svg?branch=master)](https://travis-ci.org/complexdatacollective/Architect)
+# Architect
 
-Network Canvas Architect is a survey design tool for the [Network Canvas](https://networkcanvas.com) suite of applications. It is built on [Electron](https://electronjs.org/) and [React](https://reactjs.org/).
+Architect is the protocol designer application for Network Canvas. It provides a visual interface for researchers to create and edit interview protocols used in Network Canvas data collection applications.
 
-**This tool is in maintainance mode.** We are not actively developing new features, but will continue to fix bugs and accept pull requests. Community contributions are very welcome!
+## Overview
 
-See the [Network Canvas](https://networkcanvas.com) website for more information.
+Architect allows researchers to design structured network research interviews by:
 
-For questions and support, please visit the [Network Canvas User Community](https://community.networkcanvas.com/).
+- Defining **node types** (people, places, organizations, etc.) and **edge types** (relationships between nodes)
+- Creating **variables** with validation rules for data collection
+- Building **interview stages** including name generators, sociograms, forms, and more
+- Managing **assets** like images, audio, video, and external data sources
+- Validating protocols against the Network Canvas schema
 
-## Setting up a development environment
+## Getting Started
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/en/) (v22.x LTS) - Use [fnm](https://github.com/Schniz/fnm) or [nvm](https://github.com/nvm-sh/nvm) for version management
-- [pnpm](https://pnpm.io/) (v9.x) - Install via `corepack enable` or `npm install -g pnpm`
-- [Git](https://git-scm.com/)
-- [Python](https://www.python.org/) (v3.10+) - For native module compilation
+- Node.js >= 20.0.0
+- pnpm >= 10.0.0
 
-### Installation
+### Development
 
-1. Clone the repository
+From the monorepo root:
 
-```sh
-git clone https://github.com/complexdatacollective/Architect.git
-```
-
-2. Fetch submodules
-
-```sh
-git submodule update --init --recursive -f
-```
-
-3. Install packages with pnpm
-
-```sh
+```bash
+# Install dependencies
 pnpm install
+
+# Start the development server
+pnpm --filter @codaco/architect-web dev
 ```
 
-Note: The `.npmrc` file configures x64 architecture for Electron (required until Electron upgrade is complete).
+The app will be available at `http://localhost:5173`.
 
-# Operation
+### Environment Variables
 
-| `pnpm run <script>`        | Description                                                                                                                                  |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `start:architect:electron` | Serves your app for consumption by electron.                                                                                                 |
-| `preelectron:dev`          | Copies the electron source to `./electron-dev` (must be run only when setting up the repo for the first time, or bumping the version number) |
-| `dev:electron`             | Runs electron window with contents of `start:architect:electron` (must be run concurrently)                                                  |
-| `build`                    | Compiles assets and prepares app for production in the /build directory.                                                                     |
-| `lint`                     | Lints js/scss                                                                                                                                |
-| `test`                     | Runs testing suite                                                                                                                           |
-| `preflight`                | Runs linting & testing. Useful as a prepush/build hook                                                                                       |
-| `dist:mac`                 | Build and publish macOS version                                                                                                              |
-| `dist:linux`               | Build and publish Linux version                                                                                                              |
-| `dist:win`                 | Build and publish Windows version                                                                                                            |
-| `dist:all`                 | Build and publish all platforms                                                                                                              |
-| `update-submodules`        | Update git submodules                                                                                                                        |
+Copy `.env.example` to `.env` and configure:
 
-> **Note:** Preview functionality is temporarily disabled pending security modernization of the network-canvas submodule.
+- `VITE_PUBLIC_POSTHOG_KEY` - PostHog analytics key (optional for development)
 
-### Bump version
+Protocols are previewed in a local browser tab using the bundled `@codaco/interview` runtime; no remote service is required.
 
-Supply a version mask with x for unchanged values:
+### Building
 
-`npm run [x.x.1] [codename]`
+```bash
+# Build for production
+pnpm --filter @codaco/architect-web build
 
-e.g.
+# Preview production build
+pnpm --filter @codaco/architect-web preview
+```
 
-`npm run x.1.0 NameOfVersion`
+### Testing
 
-### Development workflow in Electron
+```bash
+# Run tests
+pnpm --filter @codaco/architect-web test
 
-To run the app in development mode:
+# Type check
+pnpm --filter @codaco/architect-web typecheck
+```
 
-1. `pnpm run start:architect:electron` - Start the webpack dev server (runs on port 3003)
+## Tech Stack
 
-2. `pnpm run preelectron:dev` - Copy electron source to `./electron-dev` (only needed on first setup or after version bump)
+- **Vite** - Build tool and dev server
+- **React** - UI framework
+- **Redux** + **Redux Form** - State management
+- **Tailwind CSS** + **SCSS** - Styling
+- **Wouter** - Client-side routing
+- **Zod** - Schema validation (via `@codaco/protocol-validation`)
+- **PostHog** - Analytics
+- **Vitest** - Testing framework
 
-3. `pnpm run dev:electron` - Run the Electron app (in another terminal)
-
-## Application Structure
+## Project Structure
 
 ```
-.
-├── build                    # Prod assets
-├── config                   # Project and build configurations (webpack, env config)
-├── public                   # Static public assets
-│   └── index.html           # Static entry point
-├── src                      # Application source code
-│   ├── index.js             # Application bootstrap and rendering
-│   ├── routes.js            # App Route Definitions
-│   ├── components           # Contains directories for components
-│   ├── containers           # Contains directories for containers for native and base classes
-│   ├── reducers             # Reducers for data stores
-│   ├── ducks                # Middleware, modules (ducks-style with actions, reducers, and action creators), and store
-│   └── utils                # Helpers and utils
+src/
+├── components/       # React components
+│   ├── AssetBrowser/ # Asset management UI
+│   ├── Codebook/     # Variable and entity type editors
+│   ├── Form/         # Form fields and input components
+│   ├── StageEditor/  # Interview stage configuration
+│   ├── Timeline/     # Protocol stage timeline
+│   └── ViewManager/  # Main app views and routing
+├── ducks/            # Redux slices (reducers, actions, selectors)
+├── hooks/            # Custom React hooks
+├── lib/              # Legacy UI components and utilities
+├── selectors/        # Redux selectors
+├── styles/           # Global SCSS styles
+├── types/            # TypeScript type definitions
+└── utils/            # Utility functions
 ```
+
+## Key Concepts
+
+### Protocols
+
+A protocol defines the complete structure of a Network Canvas interview, including:
+
+- **Codebook** - Definitions for node types, edge types, ego, and their variables
+- **Stages** - Ordered list of interview steps
+- **Assets** - Media files and external data referenced by the protocol
+
+### Stage Types
+
+Architect supports configuring various interview stage types:
+
+- **Name Generators** - Create nodes through panels, forms, or quick add
+- **Sociogram** - Visual network mapping interface
+- **Ordinal/Categorical Bin** - Sort nodes into categories
+- **Narrative** - Freeform data collection with positioned nodes
+- **Dyad Census / Tie Strength Census** - Systematic edge elicitation
+- **Ego Form** - Collect data about the participant
+- **Information** - Display informational content
+
+### Validation
+
+Protocols are validated using `@codaco/protocol-validation` which provides:
+
+- Schema validation with Zod
+- Cross-reference validation (e.g., variables referenced in stages exist in codebook)
+- Migration support between protocol versions
+
+## Workspace Dependencies
+
+This app depends on other packages in the monorepo:
+
+- `@codaco/protocol-validation` - Protocol schema validation and migration
+- `@codaco/shared-consts` - Shared constants and type definitions
+- `@codaco/sample-protocol` - Sample protocol bundled as the "Sample Protocol" template
+- `@codaco/development-protocol` - Development protocol bundled as the dev-only "Development Protocol" template
