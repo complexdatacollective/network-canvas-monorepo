@@ -751,9 +751,17 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  # Publishes the Playwright report to GitHub Pages and comments the E2E result
+  # on the PR. Purely informational: whether the report PUBLISHED says nothing
+  # about whether the code is sound — the actual verdict is the interview-e2e job
+  # (and the comment below). continue-on-error keeps a reporting/Pages-deploy
+  # hiccup from failing the workflow run and gating a release; it is also
+  # excluded from the carry-forward job so its verdict is never republished onto
+  # an unrelated push (see carry-forward-statuses).
   interview-e2e-report:
     needs: interview-e2e
     if: ${{ !cancelled() && needs.interview-e2e.result != 'skipped' }}
+    continue-on-error: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -795,7 +803,10 @@ jobs:
           path: merged/
       - uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
       - name: Comment on PR
-        if: github.event_name == 'pull_request'
+        # always(): still post the E2E result even if the Pages publish above
+        # failed — the report link may be stale but the pass/fail signal is the
+        # point.
+        if: ${{ always() && github.event_name == 'pull_request' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           SLUG: ${{ needs.interview-e2e.outputs.slug }}
@@ -1363,7 +1374,6 @@ jobs:
       - chromatic-fresco-ui
       - chromatic-interview
       - interview-e2e
-      - interview-e2e-report
       - docs-preview-checks
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -1374,8 +1384,14 @@ jobs:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           # Map detect flag → list of conditional jobs gated on it.
-          # interview-e2e-report transitively depends on interview-e2e, and
-          # docs-preview-checks on deploy-docs-preview, so they share flags.
+          # docs-preview-checks depends on deploy-docs-preview, so they share a
+          # flag. interview-e2e-report is deliberately NOT here: it is a
+          # dependent, reporting-only job (publishes the Playwright report to
+          # Pages + comments) whose own `if:` already skips it whenever
+          # interview-e2e is skipped. Its verdict describes whether the report
+          # PUBLISHED, not whether the code is sound, so carrying a stale
+          # (possibly failed) report verdict onto an unrelated push would wrongly
+          # gate it — let its natural skip stand instead.
           FLAG_DOCS: ${{ needs.detect.outputs.docs }}
           FLAG_ARCHITECT: ${{ needs.detect.outputs.architect }}
           FLAG_INTERVIEWER_V8: ${{ needs.detect.outputs.interviewer_v8 }}
@@ -1394,7 +1410,7 @@ jobs:
               FLAG_WEBSITE: ["deploy-website-preview"],
               FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
               FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
-              FLAG_INTERVIEW_E2E: ["interview-e2e", "interview-e2e-report"],
+              FLAG_INTERVIEW_E2E: ["interview-e2e"],
             };
 
             // Only consider jobs the current run didn't execute (flag false).
