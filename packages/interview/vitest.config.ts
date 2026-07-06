@@ -6,8 +6,6 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
-import pkg from './package.json' with { type: 'json' };
-
 const dirname =
   typeof __dirname !== 'undefined'
     ? __dirname
@@ -32,7 +30,9 @@ export default defineConfig({
   },
   plugins: [react()],
   define: {
-    __PACKAGE_VERSION__: JSON.stringify(pkg.version),
+    // Tests must not depend on the real package version, or a `changeset version`
+    // bump would invalidate this package's `test` cache on every release.
+    __PACKAGE_VERSION__: JSON.stringify('0.0.0-test'),
   },
   test: {
     globals: true,
