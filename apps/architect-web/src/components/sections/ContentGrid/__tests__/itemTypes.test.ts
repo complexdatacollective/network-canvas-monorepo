@@ -52,4 +52,27 @@ describe('normalizeType', () => {
     expect(result).not.toHaveProperty('size');
     expect(result).toEqual({ id: '1', content: 'asset-1', type: 'asset' });
   });
+
+  it.each(['small', 'HUGE', 'medium '])(
+    'drops a size (%j) outside the schema enum',
+    (size: string) => {
+      const result = normalizeType({
+        id: '1',
+        content: 'asset-1',
+        type: 'image',
+        size,
+      });
+      expect(result).not.toHaveProperty('size');
+    },
+  );
+
+  it('drops a non-string size value', () => {
+    const result = normalizeType({
+      id: '1',
+      content: 'asset-1',
+      type: 'image',
+      size: 2,
+    });
+    expect(result).not.toHaveProperty('size');
+  });
 });

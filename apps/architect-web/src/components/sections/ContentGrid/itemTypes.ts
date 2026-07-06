@@ -4,11 +4,20 @@ import { formValueSelector } from 'redux-form';
 import type { RootState } from '~/ducks/modules/root';
 import { getAssetManifest } from '~/selectors/protocol';
 
+import { sizeOptions } from './options';
+
 type Item = {
   type: string;
   content?: string;
   [key: string]: unknown;
 };
+
+// Schema-valid display sizes: the size control's options minus the empty
+// "Full size" sentinel. Used as a whitelist so normalizeType never persists a
+// size outside the schema enum, even from legacy or hand-edited data.
+const VALID_SIZES = new Set(
+  sizeOptions.map(({ value }) => value).filter(Boolean),
+);
 
 /**
  * Content-item type mapping shared by the Information stage editor
@@ -17,14 +26,15 @@ type Item = {
  * saved item collapses back to the schema's text/asset discriminant.
  *
  * `size` is an image/video-only treatment: text items have no size field in the
- * schema, and an unset ("Full size") size means no constraint. In both cases we
- * drop the key so the saved item stays valid against the strict item schema.
+ * schema, and an unset ("Full size") size means no constraint. We keep `size`
+ * only on asset items and only when it is a schema-valid enum value, dropping
+ * the key otherwise so the saved item stays valid against the strict schema.
  */
 export const normalizeType = (item: Item): Item => {
   const { size, ...rest } = item as Item & { size?: unknown };
   const type = item.type === 'text' ? 'text' : 'asset';
 
-  if (type === 'text' || !size) {
+  if (type === 'text' || typeof size !== 'string' || !VALID_SIZES.has(size)) {
     return { ...rest, type };
   }
 
