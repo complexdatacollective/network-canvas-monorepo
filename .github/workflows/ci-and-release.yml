@@ -186,15 +186,59 @@ jobs:
   # writes the SHA-specific slot; subsequent jobs read it via `restore-keys`
   # fallback. Per-package env values (NEXT_PUBLIC_*, VITE_*) are part of each
   # build task's `env:` list in turbo.json so they participate in the cache key.
-  quality:
-    needs: detect
+  #
+  # `quality` used to be a single job running everything serially; it is now a
+  # fan-out of independent sub-jobs behind the `quality` aggregator below, so
+  # they run in parallel runners instead of one after another. Sub-jobs
+  # deliberately do NOT `needs: detect` so they still run under `merge_group`
+  # (where `detect` is skipped) — only `typecheck`/`test` need `build`'s output.
+  lint:
     runs-on: ubuntu-latest
-    # No NEXT_PUBLIC_* / VITE_* env vars here. Quality builds only the shared
-    # packages (apps build in their own deploy/release jobs) and verifies the
-    # whole workspace — types, unit tests, lint, dead-code. Keeping these vars
-    # unset matches chromatic/e2e, so the shared package builds (fresco-ui,
-    # shared-consts, interview, …) compute the same task hash across all those
-    # jobs and the cache that quality writes is reusable by the app deploy jobs.
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm exec turbo run //#lint
+
+  knip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm exec turbo run //#knip
+
+  check-changesets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm check:changesets
+
+  test-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm test:scripts
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Build shared packages (apps build in their own deploy/release jobs)
+        run: pnpm exec turbo run build --filter='./packages/*'
+
+  typecheck:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm exec turbo run typecheck
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
       - uses: ./.github/actions/turbo-ci-setup
@@ -209,14 +253,26 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
-      - name: Build shared packages (apps build in their own deploy/release jobs)
-        run: pnpm exec turbo run build --filter='./packages/*'
-      - name: Quality gates — lint, dead-code, types, unit tests (whole workspace)
-        run: pnpm exec turbo run //#lint //#knip typecheck test
-      - name: Changeset app-isolation guard
-        run: pnpm check:changesets
-      - name: Release-script unit tests
-        run: pnpm test:scripts
+      - run: pnpm exec turbo run test
+
+  quality:
+    needs: [lint, knip, check-changesets, test-scripts, build, typecheck, test]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all quality checks passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+        run: |
+          echo "sub-job results: $RESULTS"
+          IFS=',' read -ra arr <<< "$RESULTS"
+          for r in "${arr[@]}"; do
+            if [ "$r" != "success" ]; then
+              echo "::error::quality gate failed — a sub-job concluded '$r'"
+              exit 1
+            fi
+          done
+          echo "quality gate passed"
 
   # Deploy jobs are split per-app and per-environment so:
   #   * one app's build failure never blocks the other app's deploy
