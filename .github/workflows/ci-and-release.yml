@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
   workflow_dispatch:
     inputs:
       force_run:
@@ -33,6 +34,7 @@ concurrency:
 
 jobs:
   detect:
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-latest
     outputs:
       any_app: ${{ steps.flags.outputs.any_app }}
