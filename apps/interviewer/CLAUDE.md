@@ -6,7 +6,7 @@ See [`SPEC.md`](./SPEC.md) for the product specification and [`README.md`](./REA
 
 ## Project Overview
 
-Network Canvas Interviewer v8 is a single-user, offline-first research-data-collection app that hosts the `@codaco/interview` engine. It ships as one thing: an installable **web PWA** (Vite + `vite-plugin-pwa`), deployed to Netlify. There is no Electron desktop build and no Capacitor tablet build — both were retired; see `RELEASING.md`'s "What used to be here" if you're looking for the old release process.
+Network Canvas Interviewer is a single-user, offline-first research-data-collection app that hosts the `@codaco/interview` engine. It ships as one thing: an installable **web PWA** (Vite + `vite-plugin-pwa`), deployed to Netlify. There is no Electron desktop build and no Capacitor tablet build — both were retired; see `RELEASING.md`'s "What used to be here" if you're looking for the old release process.
 
 Storage is Dexie 4 / IndexedDB, encrypted at rest by an in-app Web Crypto vault (see Vault & Auth below) — there is no native SQLCipher layer and no main/renderer process split.
 

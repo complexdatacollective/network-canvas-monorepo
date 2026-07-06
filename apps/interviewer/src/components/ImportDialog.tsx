@@ -67,7 +67,7 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
         </code>{' '}
         . Author a protocol file using{' '}
         <ExternalLink href="https://architect.networkcanvas.com">
-          Architect Web
+          Architect
         </ExternalLink>
         , or the desktop version of Architect.
       </Paragraph>

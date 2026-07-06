@@ -1,8 +1,8 @@
-# Network Canvas Interviewer v8 — Specification
+# Network Canvas Interviewer — Specification
 
 ## Overview
 
-Network Canvas Interviewer v8 is the next-generation release of the existing Network Canvas Interviewer app. It is a research-data-collection application for administering Network Canvas protocols and collecting personal network data from participants. It hosts the Network Canvas interview engine and pairs it with a dashboard for managing protocols, managing collected sessions, and exporting data for analysis. Its goal is to be a self-contained, offline-first tool a single researcher can install, configure, and operate without external infrastructure.
+Network Canvas Interviewer is the next-generation release, superseding Network Canvas Interviewer Classic. It is a research-data-collection application for administering Network Canvas protocols and collecting personal network data from participants. It hosts the Network Canvas interview engine and pairs it with a dashboard for managing protocols, managing collected sessions, and exporting data for analysis. Its goal is to be a self-contained, offline-first tool a single researcher can install, configure, and operate without external infrastructure.
 
 The app is **single-user on all platforms** — one researcher per installation, with no account system, no shared workspaces, and no multi-user data partitioning.
 

@@ -1,6 +1,6 @@
 # Analytics
 
-Interviewer v8 sends **anonymous, opt-out** usage and error telemetry to the
+Network Canvas Interviewer sends **anonymous, opt-out** usage and error telemetry to the
 Codaco-managed PostHog project, mirroring the approach used by Fresco and the
 `@codaco/interview` engine. This document describes what is collected, how the
 user controls it, and how the preference reaches the native mobile SDKs.
