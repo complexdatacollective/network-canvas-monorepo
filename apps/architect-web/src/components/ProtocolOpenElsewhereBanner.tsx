@@ -1,0 +1,38 @@
+import { Copy } from 'lucide-react';
+import { useLocation } from 'wouter';
+
+import { useAppSelector } from '~/ducks/hooks';
+import { getProtocolOpenElsewhere } from '~/ducks/modules/app';
+import { Button } from '~/lib/legacy-ui/components';
+
+// Shown across the protocol editor when the same protocol is already open in
+// another tab. Both tabs share one library row, so only the first tab edits it;
+// this tab is a read-only view (autosave is disabled). Non-blocking so the user
+// can still read the protocol, with a clear way back to the start screen.
+const ProtocolOpenElsewhereBanner = () => {
+  const [, setLocation] = useLocation();
+  const openElsewhere = useAppSelector(getProtocolOpenElsewhere);
+
+  if (!openElsewhere) {
+    return null;
+  }
+
+  return (
+    <div
+      role="status"
+      className="bg-warning/20 text-foreground flex items-center justify-between gap-(--space-md) px-(--space-lg) py-(--space-sm) text-sm"
+    >
+      <span className="flex items-center gap-(--space-sm)">
+        <Copy className="size-4 shrink-0" aria-hidden />
+        This protocol is already open in another tab. To avoid conflicting
+        edits, changes here won&apos;t be saved. Continue editing in the other
+        tab, or return to the start screen.
+      </span>
+      <Button size="small" color="sea-green" onClick={() => setLocation('/')}>
+        Return to start screen
+      </Button>
+    </div>
+  );
+};
+
+export default ProtocolOpenElsewhereBanner;

@@ -21,10 +21,17 @@ if (import.meta.env.VITE_DISABLE_ANALYTICS !== 'true') {
     capture_pageview: true,
     capture_pageleave: true,
     capture_exceptions: true,
-    autocapture: true,
-    disable_session_recording: false,
+    // Architect edits IRB-sensitive study text (stage/prompt/variable/option
+    // labels) and can render a plaintext Mapbox API key on screen. Autocapture
+    // would send element text as $el_text, and session recording would capture
+    // that text/keystrokes to the relay — both are disabled, and recording is
+    // additionally forced to mask all text/inputs as a defence in depth.
+    autocapture: false,
+    disable_session_recording: true,
     session_recording: {
       recordCrossOriginIframes: false,
+      maskAllInputs: true,
+      maskTextSelector: '*',
     },
     cross_subdomain_cookie: false,
     persistence: 'localStorage+cookie',

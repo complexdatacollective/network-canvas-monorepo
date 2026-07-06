@@ -205,6 +205,58 @@ describe('PreviewHost', () => {
     expect(placed.length).toBeGreaterThan(0);
   });
 
+  it('seeds finalized stageMetadata for a synthetic FamilyPedigree', () => {
+    render(<PreviewHost />);
+    const protocol = {
+      name: 'T',
+      description: '',
+      schemaVersion: 8,
+      stages: [
+        {
+          id: 'fp',
+          type: 'FamilyPedigree',
+          label: 'Family',
+          nodeConfig: { type: 'node-1' },
+          edgeConfig: { type: 'edge-1' },
+        },
+      ],
+      codebook: {
+        node: { 'node-1': { variables: {} } },
+        edge: { 'edge-1': { variables: {} } },
+        ego: {},
+      },
+      assetManifest: {},
+    };
+    postPayload(
+      openerStub,
+      makePayload({ protocol, startStage: 0, useSyntheticData: true }),
+    );
+
+    const call = shellMock.mock.calls.at(-1)?.[0] as {
+      payload: InterviewPayload;
+    };
+    expect(call.payload.session.stageMetadata).toEqual({
+      '0': { isNetworkCommitted: true },
+    });
+  });
+
+  it('shows an error fallback when payload processing throws', () => {
+    render(<PreviewHost />);
+    const protocol = {
+      name: 'T',
+      description: '',
+      schemaVersion: 8,
+      // An unsupported stage type makes generateNetwork throw during buildSession.
+      stages: [{ id: 'x', type: 'NotAStageType', label: 'X' }],
+      codebook: { node: {}, edge: {}, ego: {} },
+      assetManifest: {},
+    };
+    postPayload(openerStub, makePayload({ protocol, useSyntheticData: true }));
+
+    expect(screen.getByText(/couldn't build the preview/i)).toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
+  });
+
   it('ignores payload messages from a non-opener source', () => {
     render(<PreviewHost />);
     postPayload({}, makePayload());

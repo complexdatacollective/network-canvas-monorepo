@@ -10,6 +10,7 @@ import {
   Shell,
 } from '@codaco/interview';
 import { generateNetwork } from '@codaco/protocol-utilities';
+import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import Button from '~/lib/legacy-ui/components/Button';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
@@ -23,21 +24,51 @@ const noopFinish = async () => {};
 
 function buildSession(payload: PreviewPayload): SessionPayload {
   const now = new Date().toISOString();
-  const network = payload.useSyntheticData
-    ? generateNetwork(payload.protocol.codebook, payload.protocol.stages, {
-        // Leave the previewed stage partially complete so interaction-driven
-        // interfaces (ordinal/categorical bins, sociogram) still have
-        // unplaced nodes to work with.
-        inProgressStageIndex: payload.startStage,
-      }).network
-    : createInitialNetwork();
-  return {
+  const base: SessionPayload = {
     id: uuid(),
     startTime: now,
     finishTime: null,
     exportTime: null,
     lastUpdated: now,
-    network,
+    network: createInitialNetwork(),
+  };
+
+  if (!payload.useSyntheticData) {
+    return base;
+  }
+
+  const generated = generateNetwork(
+    payload.protocol.codebook,
+    payload.protocol.stages,
+    {
+      // Leave the previewed stage partially complete so interaction-driven
+      // interfaces (ordinal/categorical bins, sociogram) still have
+      // unplaced nodes to work with.
+      inProgressStageIndex: payload.startStage,
+    },
+  );
+
+  // Stages that record a finalized state (e.g. a FamilyPedigree's committed
+  // network) do so via stageMetadata; without it they preview as never
+  // finalized. Parse each entry independently so a single malformed entry is
+  // dropped rather than discarding every stage's metadata. Interaction-driven
+  // stages emit no metadata, so their "unplaced nodes" intent is preserved.
+  let stageMetadata: StageMetadata | undefined;
+  if (generated.stageMetadata) {
+    const validEntries: StageMetadata = {};
+    for (const [stageId, entry] of Object.entries(generated.stageMetadata)) {
+      const parsed = StageMetadataSchema.safeParse({ [stageId]: entry });
+      if (parsed.success) {
+        Object.assign(validEntries, parsed.data);
+      }
+    }
+    stageMetadata = validEntries;
+  }
+
+  return {
+    ...base,
+    network: generated.network,
+    stageMetadata,
   };
 }
 
@@ -47,6 +78,7 @@ export function PreviewHost() {
   const [protocolId, setProtocolId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
+  const [processingFailed, setProcessingFailed] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   // Index of the stage whose skip logic was bypassed for preview, or null.
   // The notice only shows while that stage is the one being viewed.
@@ -71,11 +103,26 @@ export function PreviewHost() {
       if (!isPreviewMessage(event.data)) return;
       if (event.data.type !== 'preview:payload') return;
       const previewPayload: PreviewPayload = event.data;
+
+      let nextPayload: InterviewPayload;
+      try {
+        // Build the payload before marking the handshake received: a throw here
+        // (invalid protocol shape, synthetic-network generation) must surface an
+        // error rather than leave the loader stuck forever.
+        nextPayload = {
+          protocol: currentProtocolToPayload(previewPayload.protocol),
+          session: buildSession(previewPayload),
+        };
+      } catch (error) {
+        console.error('Failed to build preview payload', error);
+        received = true;
+        setProcessingFailed(true);
+        return;
+      }
+
       received = true;
-      setInterviewPayload({
-        protocol: currentProtocolToPayload(previewPayload.protocol),
-        session: buildSession(previewPayload),
-      });
+      setProcessingFailed(false);
+      setInterviewPayload(nextPayload);
       setProtocolId(previewPayload.protocolId);
       setCurrentStep(previewPayload.startStage);
       setBypassedStageIndex(
@@ -125,6 +172,32 @@ export function PreviewHost() {
             color="sea-green"
             onClick={() => {
               setTimedOut(false);
+              setRetryNonce((n) => n + 1);
+            }}
+          >
+            Try again
+          </Button>
+          <Button color="platinum" onClick={() => window.close()}>
+            Close tab
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!interviewPayload && processingFailed) {
+    return (
+      <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
+        <h1 className="text-2xl font-semibold">Couldn't build the preview</h1>
+        <p>
+          Something went wrong preparing this protocol for preview. Return to
+          Architect, check the protocol, and try again.
+        </p>
+        <div className="flex gap-3">
+          <Button
+            color="sea-green"
+            onClick={() => {
+              setProcessingFailed(false);
               setRetryNonce((n) => n + 1);
             }}
           >

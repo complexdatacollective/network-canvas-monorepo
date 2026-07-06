@@ -2,7 +2,6 @@ import {
   createListenerMiddleware,
   type TypedStartListening,
 } from '@reduxjs/toolkit';
-import { z } from 'zod';
 
 import { posthog } from '~/analytics';
 
@@ -24,7 +23,6 @@ startAppListening({
   effect: (action) => {
     const protocol = action.payload;
     posthog.capture('protocol_opened', {
-      protocol_name: protocol?.name,
       schema_version: protocol?.schemaVersion ?? 8,
       stage_count: protocol?.stages?.length ?? 0,
     });
@@ -46,12 +44,14 @@ startAppListening({
   effect: (action) => {
     const { result } = action.payload;
     if (!result.success) {
-      const flattenedErrors = z.flattenError(result.error);
+      // Report only the structural shape of each failure — the issue code and
+      // its schema path — never the prettified message or flattened error maps,
+      // which embed protocol-derived names and values (codebook record keys,
+      // variable names, entered values).
       posthog.capture('protocol_validation_failed', {
         error_count: result.error.issues.length,
-        error_message: z.prettifyError(result.error),
-        form_errors: flattenedErrors.formErrors,
-        field_errors: flattenedErrors.fieldErrors,
+        error_codes: result.error.issues.map((issue) => issue.code),
+        error_paths: result.error.issues.map((issue) => issue.path.join('.')),
       });
     }
   },
@@ -63,7 +63,6 @@ startAppListening({
     const state = listenerApi.getState();
     const protocol = state.activeProtocol?.present;
     posthog.capture('protocol_downloaded', {
-      protocol_name: protocol?.name,
       stage_count: protocol?.stages?.length ?? 0,
     });
   },

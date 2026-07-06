@@ -7,12 +7,13 @@ import { omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
 import type { ExtractedAsset } from '@codaco/protocol-validation';
+import { setStorageUnavailable } from '~/ducks/modules/app';
 import {
   duplicateRowsWarningDialog,
   importAssetErrorDialog,
   invalidAssetErrorDialog,
 } from '~/ducks/modules/protocol/utils/dialogs';
-import { saveAssetToDb } from '~/utils/assetUtils';
+import { saveAssetWithFallback } from '~/utils/assetUtils';
 import { validateAsset } from '~/utils/protocols/assetTools';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
 
@@ -75,8 +76,15 @@ export const importAssetAsync = createAsyncThunk(
         data: blob,
       };
 
-      // Store in IndexedDB
-      await saveAssetToDb(asset);
+      // Store in IndexedDB, falling back to the in-memory store when persistent
+      // storage is unavailable (e.g. Safari private browsing) so assets can still
+      // be added this session. Flag the protocol so the UI warns it won't persist.
+      const { persisted } = await saveAssetWithFallback(asset);
+      if (persisted) {
+        dispatch(setStorageUnavailable(false));
+      } else {
+        dispatch(setStorageUnavailable(true));
+      }
 
       // Get asset type for manifest
       const assetType = getSupportedAssetType(file.name) as AssetType | false;
@@ -137,8 +145,8 @@ const assetManifestSlice = createSlice({
     ) => {},
     deleteAsset: (state, action: PayloadAction<string>) => {
       const assetId = action.payload;
-      // Don't delete from disk, this allows us to rollback the protocol.
-      // Disk changes should be committed on save.
+      // Keep the blob on disk so an undo can restore this manifest entry. The
+      // durable save path GCs blobs no longer referenced by the manifest.
       return omit(state, assetId);
     },
     addApiKeyAsset: (state, action: PayloadAction<AddApiKeyAssetPayload>) => {

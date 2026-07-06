@@ -124,6 +124,11 @@ export class ValueGenerator {
   }
 
   randomInt(min: number, max: number): number {
+    // faker.number.int throws on an inverted range; a caller passing min > max
+    // (e.g. a name generator with minNodes above maxNodes) collapses to min.
+    if (min > max) {
+      return min;
+    }
     return this.faker.number.int({ min, max });
   }
 

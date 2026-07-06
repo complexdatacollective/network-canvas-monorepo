@@ -292,7 +292,13 @@ const getDeleteAction = ({
       }
       return stageActions.deletePrompt(owner.stageId, owner.promptId, true);
     default:
-      // noop
+      // Residual gap: the usage scanner (selectors/usage.ts) only surfaces
+      // stage/prompt/sociogram subject owners and a legacy 'form' owner that has
+      // no delete action in the schema-8 duck. References that live in filters,
+      // skip logic, or other stage config are deliberately not cascade-deleted
+      // here — removing a whole stage for an incidental reference would be
+      // destructive — and the validation listener surfaces any dangling
+      // reference the cascade leaves behind.
       return { type: 'NO_OP' };
   }
 };
@@ -312,16 +318,19 @@ export const deleteTypeAsync = createAsyncThunk(
     { dispatch, getState },
   ) => {
     const payload: DeleteTypePayload = { entity, type };
-    dispatch(codebookSlice.actions.deleteType(payload));
 
     if (!deleteRelatedObjects) {
+      dispatch(codebookSlice.actions.deleteType(payload));
       return;
     }
 
-    // Check usage elsewhere, and delete related stages/forms
+    // Scan usage BEFORE removing the type, so the cascade sees the stages and
+    // prompts that reference it.
     const state = getState() as RootState;
     const getUsageForType = makeGetUsageForType(state);
     const usageForType = getUsageForType(entity, type);
+
+    dispatch(codebookSlice.actions.deleteType(payload));
 
     await Promise.all(
       usageForType.map(

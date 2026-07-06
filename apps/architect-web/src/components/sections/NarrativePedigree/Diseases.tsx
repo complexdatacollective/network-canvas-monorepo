@@ -12,15 +12,14 @@ import DiseaseFields from './DiseaseFields';
 import DiseasePreview from './DiseasePreview';
 
 type DiseaseRow = {
-  id: string;
   label: string;
   color: string;
   variable: string;
   inheritancePattern: string;
 };
 
+// EditableList assigns a unique `id` to each new item.
 const diseaseTemplate = (): DiseaseRow => ({
-  id: '',
   label: '',
   color: '',
   variable: '',

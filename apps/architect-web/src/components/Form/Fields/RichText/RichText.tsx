@@ -176,12 +176,22 @@ const RichText = ({
     return checkEmpty(children);
   }, []);
 
-  const getSerializedValue = useCallback(() => {
-    if (childrenAreEmpty(editor.children)) {
-      return '';
-    }
-    return serialize(value);
-  }, [childrenAreEmpty, editor.children, value]);
+  // Serialize a concrete node tree. Empty content serializes to '' so a blank
+  // field round-trips to an empty string rather than a stray paragraph.
+  const serializeValue = useCallback(
+    (nodes: Descendant[]): string => {
+      if (childrenAreEmpty(nodes)) {
+        return '';
+      }
+      return serialize(nodes, inline);
+    },
+    [childrenAreEmpty, inline],
+  );
+
+  const getSerializedValue = useCallback(
+    () => serializeValue(value),
+    [serializeValue, value],
+  );
 
   const setInitialValue = useCallback(
     () =>
@@ -189,6 +199,7 @@ const RichText = ({
         // we need to reset the cursor state because the value length may have changed
         SlateTransforms.deselect(editor);
         setValue(parsedValue);
+        return parsedValue;
       }),
     [editor, initialValue],
   );
@@ -196,7 +207,15 @@ const RichText = ({
   // Set starting state from prop value on start up
   // biome-ignore lint/correctness/useExhaustiveDependencies: infinite runtime error
   useEffect(() => {
-    setInitialValue().then(() => setIsInitialized(true));
+    setInitialValue().then((parsedValue) => {
+      // Seed lastChange with the round-tripped value so the "update upstream"
+      // effect below doesn't emit an onChange when the stored markdown merely
+      // isn't a serialize(parse()) fixed point — that would dirty the form,
+      // insert a phantom undo step, and silently rewrite the stored value on
+      // open. A real edit produces a different value and emits normally.
+      setLastChange(serializeValue(parsedValue));
+      setIsInitialized(true);
+    });
   }, []);
 
   // Set value again when initial value changes
@@ -206,7 +225,13 @@ const RichText = ({
     if (initialValue === lastChange) {
       return;
     }
-    setInitialValue();
+    setInitialValue().then((parsedValue) => {
+      // Reseed lastChange for the same reason as the mount effect: an external
+      // prop update must not be treated as a local edit, or the "update
+      // upstream" effect would emit a spurious onChange that dirties the form
+      // and rewrites the incoming markdown.
+      setLastChange(serializeValue(parsedValue));
+    });
   }, [initialValue, setInitialValue]);
 
   // Update upstream on change

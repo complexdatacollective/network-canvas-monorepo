@@ -14,7 +14,10 @@ type LaunchOptions = {
   skipLogicBypassed: boolean;
 };
 
-type LaunchPreviewResult = { kind: 'delivered' } | { kind: 'popup-blocked' };
+type LaunchPreviewResult =
+  | { kind: 'delivered' }
+  | { kind: 'popup-blocked' }
+  | { kind: 'popup-closed' };
 
 export function launchPreview({
   protocol,
@@ -91,7 +94,13 @@ export function launchPreview({
     }, HANDSHAKE_TIMEOUT_MS);
 
     const closedPollId = setInterval(() => {
-      if (popup.closed) cleanup();
+      if (!popup.closed) return;
+      cleanup();
+      // Closing the tab before the handshake would otherwise leave the promise
+      // pending forever, stranding the Preview button in its disabled state.
+      if (!initialDelivered) {
+        resolve({ kind: 'popup-closed' });
+      }
     }, POPUP_CLOSED_POLL_MS);
 
     window.addEventListener('message', onMessage);

@@ -162,7 +162,9 @@ function createNodesForStage(
 
   const behaviours = getStageBehaviours(stage);
   const minNodes = behaviours?.minNodes ?? 1;
-  const maxNodes = behaviours?.maxNodes ?? 8;
+  // A configured minNodes above the default max (or above an explicit maxNodes)
+  // must not invert the range, or randomInt(min,max) throws and the preview hangs.
+  const maxNodes = Math.max(behaviours?.maxNodes ?? 8, minNodes);
   const remaining = maxNodes - stageNodeCount;
   if (remaining <= 0) return [];
 

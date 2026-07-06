@@ -207,6 +207,31 @@ describe('generateNetwork', () => {
     });
   });
 
+  describe('name generator node bounds', () => {
+    it('does not throw when minNodes exceeds the default maxNodes and maxNodes is omitted', () => {
+      const codebook = makeCodebook();
+      const stages = [makeNameGeneratorStage({ behaviours: { minNodes: 9 } })];
+
+      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+
+      expect(network.nodes.length).toBeGreaterThanOrEqual(9);
+      for (const node of network.nodes) {
+        expect(node.type).toBe('node-type-1');
+      }
+    });
+
+    it('does not throw when minNodes exceeds an explicit smaller maxNodes', () => {
+      const codebook = makeCodebook();
+      const stages = [
+        makeNameGeneratorStage({ behaviours: { minNodes: 6, maxNodes: 3 } }),
+      ];
+
+      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+
+      expect(network.nodes.length).toBeGreaterThanOrEqual(6);
+    });
+  });
+
   describe('stageMetadata schema compliance', () => {
     it('FamilyPedigree writes isNetworkCommitted keyed by stage step', () => {
       const codebook = makeCodebook();

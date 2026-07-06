@@ -1,13 +1,18 @@
+import type { UnknownAction } from '@reduxjs/toolkit';
+import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
-import { Field } from 'redux-form';
+import { change, Field } from 'redux-form';
 
 import { Row, Section } from '~/components/EditorLayout';
 import Select from '~/components/Form/Fields/Select';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getStageList } from '~/selectors/protocol';
 
-const SourceStage = (_props: StageEditorSectionProps) => {
+const SourceStage = ({ form }: StageEditorSectionProps) => {
+  const dispatch = useAppDispatch();
+
   const familyPedigreeStages = useSelector((state: RootState) =>
     getStageList(state).filter((stage) => stage.type === 'FamilyPedigree'),
   );
@@ -16,6 +21,22 @@ const SourceStage = (_props: StageEditorSectionProps) => {
     value: stage.id,
     label: stage.label,
   }));
+
+  // Diseases map to boolean variables of the source stage's node type, so a
+  // different source stage invalidates the existing selections. Clear them so
+  // the researcher reconfigures against the new source rather than saving an
+  // invalid stage that references the old node type's variables.
+  const handleSourceStageChange = useCallback(
+    (
+      _event: unknown,
+      newValue: string | undefined,
+      previousValue: string | undefined,
+    ) => {
+      if (!previousValue || newValue === previousValue) return;
+      dispatch(change(form, 'diseases', []) as UnknownAction);
+    },
+    [dispatch, form],
+  );
 
   return (
     <Section
@@ -31,6 +52,7 @@ const SourceStage = (_props: StageEditorSectionProps) => {
         <Field
           name="sourceStageId"
           component={Select}
+          onChange={handleSourceStageChange}
           label="Family Pedigree stage"
           placeholder="Select a Family Pedigree stage..."
           options={options}

@@ -108,6 +108,42 @@ describe('indexes selectors', () => {
       },
     );
 
+    it('counts a variable used only as a prompt sort key as used', () => {
+      const sortVariableId = 'sort-only-variable-id';
+      const protocol = {
+        schemaVersion: 8,
+        name: 'test',
+        codebook: {
+          node: {
+            'person-type-id': {
+              name: 'Person',
+              variables: { [sortVariableId]: { name: 'age', type: 'number' } },
+            },
+          },
+        },
+        stages: [
+          {
+            id: 's1',
+            type: 'OrdinalBin',
+            label: 'Bin',
+            subject: { entity: 'node', type: 'person-type-id' },
+            prompts: [
+              {
+                id: 'p1',
+                variable: sortVariableId,
+                binSortOrder: [{ property: sortVariableId, direction: 'asc' }],
+              },
+            ],
+          },
+        ],
+      };
+      const state = getMockState({
+        activeProtocol: { present: protocol },
+      }) as unknown as RootState;
+
+      expect(Object.values(getVariableIndex(state))).toContain(sortVariableId);
+    });
+
     it('includes stage prompt variable references from a real v8 protocol', () => {
       const thisDir = dirname(fileURLToPath(import.meta.url));
       const protocolPath = join(
@@ -136,6 +172,30 @@ describe('indexes selectors', () => {
       const subject = getAssetIndex(testState);
 
       expect(subject).toMatchSnapshot();
+    });
+
+    it('counts a FamilyPedigree intro-screen asset item as used', () => {
+      const assetId = 'intro-asset-id';
+      const protocol = {
+        schemaVersion: 8,
+        name: 'test',
+        codebook: { node: {} },
+        stages: [
+          {
+            id: 's1',
+            type: 'FamilyPedigree',
+            label: 'Pedigree',
+            introScreen: {
+              items: [{ id: 'i1', type: 'asset', content: assetId }],
+            },
+          },
+        ],
+      };
+      const state = getMockState({
+        activeProtocol: { present: protocol },
+      }) as unknown as RootState;
+
+      expect(Object.values(getAssetIndex(state))).toContain(assetId);
     });
   });
 

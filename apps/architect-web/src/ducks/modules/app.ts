@@ -67,6 +67,23 @@ export function getStorageUnavailable(state: Pick<RootState, 'app'>): boolean {
   return Boolean(get(state, ['app', STORAGE_UNAVAILABLE_KEY]));
 }
 
+const PROTOCOL_OPEN_ELSEWHERE_KEY = 'protocolOpenElsewhere';
+
+// Set when the active protocol is already open in another tab of this browser.
+// Only one tab may edit a given library row (they share it), so the second tab
+// becomes a read-only view: autosave is disabled and a banner is shown. Derived
+// per session from the tab-lock BroadcastChannel, and reset on every claim so a
+// reloaded tab never restores a stale read-only state.
+export function setProtocolOpenElsewhere(value: boolean) {
+  return setProperty({ key: PROTOCOL_OPEN_ELSEWHERE_KEY, value });
+}
+
+export function getProtocolOpenElsewhere(
+  state: Pick<RootState, 'app'>,
+): boolean {
+  return Boolean(get(state, ['app', PROTOCOL_OPEN_ELSEWHERE_KEY]));
+}
+
 const PREVIEW_IGNORE_SKIP_LOGIC_KEY = 'previewIgnoreSkipLogic';
 
 export function setPreviewIgnoreSkipLogic(value: boolean) {

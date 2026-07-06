@@ -3,6 +3,7 @@ import type React from 'react';
 import { useLocation } from 'wouter';
 
 import ProjectNav from '~/components/ProjectNav/ProjectNav';
+import ProtocolOpenElsewhereBanner from '~/components/ProtocolOpenElsewhereBanner';
 import StorageUnavailableBanner from '~/components/StorageUnavailableBanner';
 import { cx } from '~/utils/cva';
 import { getScrollPosition, setScrollPosition } from '~/utils/scrollPositions';
@@ -39,12 +40,13 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       ref={ref}
       onScroll={handleScroll}
       className={cx(
-        'relative h-dvh overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0',
+        'relative h-full overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0',
         className,
       )}
     >
       <ProjectNav />
       <StorageUnavailableBanner />
+      <ProtocolOpenElsewhereBanner />
       {children}
       <ProjectActions
         readOnly={isSummary}

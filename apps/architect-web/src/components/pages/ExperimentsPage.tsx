@@ -45,7 +45,7 @@ const ExperimentsPage = () => {
   const isEncryptedEnabled = experiments.encryptedVariables ?? false;
 
   return (
-    <div className="relative h-dvh overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0">
+    <div className="relative h-full overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0">
       <Layout>
         <div className="mx-auto my-(--space-xl) flex max-w-7xl flex-col gap-6 px-(--space-md) sm:px-(--space-lg) lg:px-(--space-5xl)">
           <div className="flex flex-col">

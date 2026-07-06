@@ -2,6 +2,7 @@ import { TriangleAlert } from 'lucide-react';
 
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getStorageUnavailable } from '~/ducks/modules/app';
+import { generalErrorDialog } from '~/ducks/modules/userActions/dialogs';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 import { Button } from '~/lib/legacy-ui/components';
 
@@ -31,7 +32,20 @@ const StorageUnavailableBanner = () => {
       <Button
         size="small"
         color="sea-green"
-        onClick={() => void dispatch(exportNetcanvas())}
+        onClick={() => {
+          // This is the one escape hatch for work that isn't being persisted,
+          // so a failed download must surface rather than fail silently.
+          void dispatch(exportNetcanvas())
+            .unwrap()
+            .catch(() => {
+              dispatch(
+                generalErrorDialog(
+                  'Download failed',
+                  "Your protocol couldn't be downloaded. Please try again.",
+                ),
+              );
+            });
+        }}
       >
         Download .netcanvas
       </Button>

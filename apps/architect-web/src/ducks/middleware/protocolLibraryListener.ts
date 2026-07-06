@@ -4,13 +4,18 @@ import {
 } from '@reduxjs/toolkit';
 
 import { getProtocol } from '~/selectors/protocol';
+import { assetDb } from '~/utils/assetDB';
 import { getStoredProtocol, putStoredProtocol } from '~/utils/protocolLibrary';
 
 import {
   setActiveProtocol,
   updateLastModified,
 } from '../modules/activeProtocol';
-import { getActiveProtocolId, getStorageUnavailable } from '../modules/app';
+import {
+  getActiveProtocolId,
+  getProtocolOpenElsewhere,
+  getStorageUnavailable,
+} from '../modules/app';
 import type { RootState } from '../modules/root';
 import { generalErrorDialog } from '../modules/userActions/dialogs';
 import type { AppDispatch } from '../store';
@@ -55,17 +60,20 @@ const flush = (snapshot: ProtocolSnapshot, dispatch: AppDispatch): void => {
   const run = (async () => {
     await previous;
     try {
-      // A pending timer can fire after the protocol was deleted during the
-      // debounce window; bail if the row is gone so we don't resurrect it.
-      const existing = await getStoredProtocol(snapshot.id);
-      if (!existing) {
-        return;
-      }
-      await putStoredProtocol({
-        id: snapshot.id,
-        protocol,
-        name: snapshot.name,
-        description: snapshot.description,
+      // A pending timer can fire after the protocol was deleted. The existence
+      // check and the put run in one transaction on `protocols` so a delete
+      // (which locks `protocols`) can't land between them and resurrect the row.
+      await assetDb.transaction('rw', assetDb.protocols, async () => {
+        const existing = await getStoredProtocol(snapshot.id);
+        if (!existing) {
+          return;
+        }
+        await putStoredProtocol({
+          id: snapshot.id,
+          protocol,
+          name: snapshot.name,
+          description: snapshot.description,
+        });
       });
       autosaveErrorNotified = false;
     } catch (error: unknown) {
@@ -107,6 +115,13 @@ startAppListening({
     // Nothing was persisted for an in-memory (storage-unavailable) protocol, so
     // skip autosave entirely rather than failing on every edit.
     if (getStorageUnavailable(currentState)) {
+      return false;
+    }
+
+    // The same protocol is open in another tab, which owns the single library
+    // row. This tab is a read-only view; skip autosave so the two tabs can't
+    // clobber each other's writes.
+    if (getProtocolOpenElsewhere(currentState)) {
       return false;
     }
 

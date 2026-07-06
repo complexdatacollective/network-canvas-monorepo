@@ -3,6 +3,7 @@ import type { ExtractedAsset } from '@codaco/protocol-validation';
 import { getActiveProtocolScope } from './activeProtocolScope';
 import { assetDb, assetKey, type StoredAsset } from './assetDB';
 import { getMemoryAsset, putMemoryAsset } from './inMemoryAssetStore';
+import { isStorageUnavailableError } from './storageErrors';
 
 // Resolve the protocol to operate on: an explicit id wins, otherwise fall back
 // to the active editing scope. Reads tolerate a missing scope (return empty);
@@ -16,7 +17,7 @@ const toExtractedAsset = (row: StoredAsset): ExtractedAsset => ({
   data: row.data,
 });
 
-export const saveAssetToDb = async (
+const saveAssetToDb = async (
   asset: ExtractedAsset,
   protocolId?: string,
 ): Promise<void> => {
@@ -31,6 +32,30 @@ export const saveAssetToDb = async (
     name: asset.name,
     data: asset.data,
   });
+};
+
+// Persist a single asset, falling back to the in-memory store when IndexedDB is
+// unavailable (e.g. Safari private browsing). Returns whether the durable write
+// succeeded, so callers can flag the protocol as storage-unavailable. Non-storage
+// errors are real bugs and are rethrown.
+export const saveAssetWithFallback = async (
+  asset: ExtractedAsset,
+  protocolId?: string,
+): Promise<{ persisted: boolean }> => {
+  const scope = resolveScope(protocolId);
+  if (!scope) {
+    throw new Error('Cannot save asset: no active protocol scope');
+  }
+  try {
+    await saveAssetToDb(asset, scope);
+    return { persisted: true };
+  } catch (error) {
+    if (!isStorageUnavailableError(error)) {
+      throw error;
+    }
+    putMemoryAsset(asset, scope);
+    return { persisted: false };
+  }
 };
 
 export const saveProtocolAssets = async (
@@ -93,6 +118,25 @@ export const deleteProtocolAssets = async (
   protocolId: string,
 ): Promise<void> => {
   await assetDb.assets.where('protocolId').equals(protocolId).delete();
+};
+
+// Remove stored blobs for a protocol that are no longer referenced by its
+// manifest. Manifest deletes are timeline-tracked (undoable), so the blob can't
+// be dropped at delete time or undo/redo would lose it; instead the durable save
+// path calls this to GC blobs that survived a committed delete.
+export const deleteOrphanedAssets = async (
+  protocolId: string,
+  referencedAssetIds: Iterable<string>,
+): Promise<void> => {
+  const keep = new Set(referencedAssetIds);
+  const orphanKeys = await assetDb.assets
+    .where('protocolId')
+    .equals(protocolId)
+    .filter((row) => !keep.has(row.assetId))
+    .primaryKeys();
+  if (orphanKeys.length > 0) {
+    await assetDb.assets.bulkDelete(orphanKeys);
+  }
 };
 
 export const getProtocolAssetCount = async (

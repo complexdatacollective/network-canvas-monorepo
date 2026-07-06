@@ -39,7 +39,6 @@
     "luxon": "^3.7.2",
     "mapbox-gl": "^3.25.0",
     "motion": "catalog:",
-    "ohash": "^2.0.11",
     "posthog-js": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

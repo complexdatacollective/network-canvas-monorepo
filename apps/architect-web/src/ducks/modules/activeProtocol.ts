@@ -133,10 +133,9 @@ export const actionCreators = {
 // Export the reducer as default
 export default activeProtocolSlice.reducer;
 
-// Raw timeline operations. These apply silently and are used by the protocol
-// validation listener's auto-revert; do not navigate from here. `undo` is
-// exported for the listener; `redo` is only used internally below.
-export const undo = () => (dispatch: AppDispatch) => {
+// Raw timeline operations. These apply silently; do not navigate from here.
+// Only used internally below by undoWithNavigation/redoWithNavigation.
+const undo = () => (dispatch: AppDispatch) => {
   dispatch(timelineActions.undo());
 };
 

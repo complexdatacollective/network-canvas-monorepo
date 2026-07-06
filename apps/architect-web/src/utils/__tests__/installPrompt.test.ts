@@ -56,6 +56,19 @@ describe('installPrompt', () => {
     expect(mod.getDeferredPrompt()).toBeNull();
   });
 
+  it('flips installed and notifies subscribers on appinstalled', async () => {
+    const mod = await loadModule();
+    const listener = vi.fn();
+    mod.subscribeInstalled(listener);
+
+    expect(mod.getInstalled()).toBe(false);
+
+    window.dispatchEvent(new Event('appinstalled'));
+
+    expect(mod.getInstalled()).toBe(true);
+    expect(listener).toHaveBeenCalled();
+  });
+
   it('stops subscribers receiving updates after unsubscribe', async () => {
     const mod = await loadModule();
     const listener = vi.fn();

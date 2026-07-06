@@ -1,6 +1,6 @@
 import { Globe } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
@@ -37,6 +37,19 @@ const ProtocolInfoCard = () => {
   useEffect(() => {
     setLocalName(name ?? '');
   }, [name]);
+
+  const [localDescription, setLocalDescription] = useState(description);
+
+  // Only adopt the prop when it actually changes, so an unrelated store update
+  // (e.g. an autosave/validation round-trip) can't clobber in-progress typing
+  // by re-running this sync with an unchanged description.
+  const lastSyncedDescription = useRef(description);
+  useEffect(() => {
+    if (description !== lastSyncedDescription.current) {
+      lastSyncedDescription.current = description;
+      setLocalDescription(description);
+    }
+  }, [description]);
 
   return (
     <motion.div
@@ -100,13 +113,17 @@ const ProtocolInfoCard = () => {
             className="[&>textarea]:field-sizing-content [&>textarea]:max-h-52 [&>textarea]:min-h-24 [&>textarea]:rounded-none [&>textarea]:border-0 [&>textarea]:bg-transparent [&>textarea]:focus:border-0 [&>textarea]:focus:ring-0"
             placeholder="Enter a description for your protocol..."
             input={{
-              value: description,
-              onChange: (event) =>
-                dispatch(
-                  updateProtocolDescription({
-                    description: event.target.value,
-                  }),
-                ),
+              value: localDescription,
+              onChange: (event) => setLocalDescription(event.target.value),
+              onBlur: () => {
+                if (localDescription !== description) {
+                  dispatch(
+                    updateProtocolDescription({
+                      description: localDescription,
+                    }),
+                  );
+                }
+              },
             }}
           />
         </div>

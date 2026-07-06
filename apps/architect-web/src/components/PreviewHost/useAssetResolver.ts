@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import type { AssetRequestHandler } from '@codaco/interview';
-import { assetDb, assetKey } from '~/utils/assetDB';
+import { assetKey } from '~/utils/assetDB';
+import { getAssetById } from '~/utils/assetUtils';
 
 export function useAssetResolver(
   protocolId: string | null,
@@ -28,7 +29,9 @@ export function useAssetResolver(
       const cached = cache.current.get(key);
       if (cached) return cached;
 
-      const entry = await assetDb.assets.get(key);
+      // Mirror the editor's resolver: IndexedDB first, then the in-memory store
+      // used when durable storage is unavailable (e.g. Safari private browsing).
+      const entry = await getAssetById(assetId, protocolId);
       if (!entry || typeof entry.data === 'string') {
         throw new Error(`Asset ${assetId} not found in local store`);
       }

@@ -1,3 +1,20 @@
+# Security headers applied to every response.
+#
+# The bulk of the Content-Security-Policy (default-src, script-src, connect-src,
+# etc.) is injected into the HTML as a <meta http-equiv> at build time — see
+# CONTENT_SECURITY_POLICY / injectCspMeta in vite.config.ts. It lives in the
+# content, not here, so that a change to it rides the service worker's precache
+# revision and reaches already-installed clients; a header-only CSP would be
+# frozen in the precached HTML response and never update. Only `frame-ancestors`
+# is set here, because a <meta> CSP cannot express it — and it, plus the
+# X-Frame-Options / Referrer-Policy / X-Content-Type-Options response headers
+# below, are stable and don't need to propagate the way connect-src does.
+/*
+  Content-Security-Policy: frame-ancestors 'self'
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
 /sw.js
   Cache-Control: public, max-age=0, must-revalidate
 /index.html
