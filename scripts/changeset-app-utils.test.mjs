@@ -101,3 +101,18 @@ test('renderChangelogSection groups entries by bump type', () => {
     '## 8.0.0-beta.1\n\n### Minor Changes\n\n- Add X\n- Add Z\n\n### Patch Changes\n\n- Fix Y\n',
   );
 });
+
+test('renderChangelogSection keeps blank continuation lines free of trailing whitespace', () => {
+  const out = renderChangelogSection('8.0.0-beta.1', [
+    { type: 'patch', summary: 'Fix a batch of bugs:\n\n- One\n- Two' },
+  ]);
+  assert.equal(
+    out,
+    '## 8.0.0-beta.1\n\n### Patch Changes\n\n- Fix a batch of bugs:\n\n  - One\n  - Two\n',
+  );
+  // Guard the specific failure mode: no line may end in whitespace (an indented
+  // blank continuation line would fail `oxfmt --check`).
+  for (const line of out.split('\n')) {
+    assert.equal(line, line.trimEnd(), `trailing whitespace on line: ${line}`);
+  }
+});

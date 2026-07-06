@@ -76,7 +76,9 @@ export function renderChangelogSection(version, entries) {
     for (const e of forType) {
       const [first, ...rest] = e.summary.trim().split('\n');
       lines.push(`- ${first}`);
-      for (const r of rest) lines.push(`  ${r}`);
+      // Blank continuation lines must stay truly empty; indenting them would
+      // emit trailing whitespace that fails `oxfmt --check`.
+      for (const r of rest) lines.push(r.trim() === '' ? '' : `  ${r}`);
     }
     lines.push('');
   }
