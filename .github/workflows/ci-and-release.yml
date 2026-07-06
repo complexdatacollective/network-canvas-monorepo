@@ -189,12 +189,12 @@ jobs:
   quality:
     needs: detect
     runs-on: ubuntu-latest
-    # No NEXT_PUBLIC_* / VITE_* env vars here. Quality just verifies the build
-    # compiles — env.js has skipValidation:true so missing public env values
-    # don't fail the build. Keeping these vars unset in quality matches what
-    # chromatic/e2e have, so shared package builds (fresco-ui, shared-consts,
-    # interview, …) compute the same task hash across all those jobs and the
-    # cache that quality writes is actually reusable downstream.
+    # No NEXT_PUBLIC_* / VITE_* env vars here. Quality builds only the shared
+    # packages (apps build in their own deploy/release jobs) and verifies the
+    # whole workspace — types, unit tests, lint, dead-code. Keeping these vars
+    # unset matches chromatic/e2e, so the shared package builds (fresco-ui,
+    # shared-consts, interview, …) compute the same task hash across all those
+    # jobs and the cache that quality writes is reusable by the app deploy jobs.
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
@@ -219,9 +219,10 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
-      - name: Run all gates
-        run: |
-          pnpm exec turbo run //#lint //#knip typecheck build test
+      - name: Build shared packages (apps build in their own deploy/release jobs)
+        run: pnpm exec turbo run build --filter='./packages/*'
+      - name: Quality gates — lint, dead-code, types, unit tests (whole workspace)
+        run: pnpm exec turbo run //#lint //#knip typecheck test
       - name: Changeset app-isolation guard
         run: pnpm check:changesets
       - name: Release-script unit tests
@@ -336,14 +337,13 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
   deploy-architect-preview:
-    # Same shape as deploy-docs-preview: wait for quality (cache + write-slot)
-    # but don't gate on its success.
-    needs: [detect, quality]
+    # Runs independently of quality (quality no longer builds apps). Restores the
+    # shared `.turbo` cache so a prior run's package builds are reused when
+    # present, then builds the app itself and pushes a preview to Netlify.
+    needs: detect
     if: |
-      always() &&
       github.event_name == 'pull_request' &&
-      needs.detect.outputs.architect == 'true' &&
-      needs.quality.result != 'cancelled'
+      needs.detect.outputs.architect == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -395,14 +395,13 @@ jobs:
   # with its site ID stored in the NETLIFY_SITE_ID_INTERVIEWER secret —
   # see apps/interviewer/RELEASING.md.
   deploy-interviewer-preview:
-    # Same shape as deploy-architect-preview: wait for quality (cache +
-    # write-slot) but don't gate on its success.
-    needs: [detect, quality]
+    # Runs independently of quality (same shape as deploy-architect-preview):
+    # restores the shared `.turbo` cache to reuse prior package builds when
+    # present, then builds the app itself and pushes a preview to Netlify.
+    needs: detect
     if: |
-      always() &&
       github.event_name == 'pull_request' &&
-      needs.detect.outputs.interviewer == 'true' &&
-      needs.quality.result != 'cancelled'
+      needs.detect.outputs.interviewer == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
