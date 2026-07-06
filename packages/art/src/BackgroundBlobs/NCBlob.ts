@@ -2,6 +2,8 @@
 
 import * as blobs2Animate from 'blobs/v2/animate';
 
+import { clampFrameDelta } from '../frameDelta';
+
 const random = (a = 1, b = 0) => {
   const lower = Math.min(a, b);
   const upper = Math.max(a, b);
@@ -71,7 +73,7 @@ export class NCBlob {
     if (!this.lastUpdate) {
       this.lastUpdate = timeInSeconds;
     }
-    const timeDelta = timeInSeconds - this.lastUpdate || 1;
+    const timeDelta = clampFrameDelta(timeInSeconds - this.lastUpdate || 1);
 
     this.lastUpdate = timeInSeconds;
 

@@ -83,6 +83,29 @@ describe('NCBlob', () => {
       expect(blob.positionY).toBeGreaterThan(100);
     });
 
+    it('clamps a huge frame gap so a backgrounded tab does not teleport the blob off-screen', () => {
+      const blob = new NCBlob(1, 1, palette);
+      blob.canvasWidth = 1000;
+      blob.canvasHeight = 800;
+      blob.size = 100;
+      blob.velocityX = 45;
+      blob.velocityY = 45;
+      blob.positionX = 500;
+      blob.positionY = 400;
+
+      blob.updatePosition(1000); // establish lastUpdate at t=1s
+      // 10 minutes later: rAF was suspended while the tab was backgrounded, so
+      // this is the first resumed frame. Unclamped, positionX would advance by
+      // 45 * 600 = 27000px and wrap to an off-screen edge (-size); clamped, a
+      // single frame moves at most 45 * (1/30) = 1.5px and the blob stays put.
+      blob.updatePosition(1000 + 600_000);
+
+      expect(blob.positionX).toBeGreaterThanOrEqual(500);
+      expect(blob.positionX).toBeLessThan(510);
+      expect(blob.positionY).toBeGreaterThanOrEqual(400);
+      expect(blob.positionY).toBeLessThan(410);
+    });
+
     it('seeds lastUpdate on first call', () => {
       const blob = new NCBlob(1, 1, palette);
       expect(blob.lastUpdate).toBeNull();
