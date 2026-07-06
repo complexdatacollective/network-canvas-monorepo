@@ -18,6 +18,12 @@ import { ManageAuthenticator } from '../ManageAuthenticator';
 
 const NEW_PHRASE = 'Brand-New-Phrase-2!';
 
+// delay: null types synchronously instead of scheduling a real timer between
+// keystrokes. Under a contended CI runner (whole-workspace tests in parallel)
+// those per-keystroke timers get starved and the ~50 keystrokes across three
+// fields balloon from ~300ms to >5s, tripping the default testTimeout.
+const setup = () => userEvent.setup({ delay: null });
+
 afterEach(() => {
   useAuthMock.mockReset();
   toastAdd.mockReset();
@@ -27,21 +33,22 @@ describe('ManageAuthenticator — change passphrase', () => {
   it('changes the passphrase and surfaces a success toast', async () => {
     const reEnrolWithPassphrase = vi.fn(async () => ({ ok: true }));
     useAuthMock.mockReturnValue({ mode: 'passphrase', reEnrolWithPassphrase });
+    const user = setup();
     render(<ManageAuthenticator />);
 
-    await userEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /change passphrase/i }),
     );
-    await userEvent.type(
+    await user.type(
       screen.getByLabelText('Current passphrase'),
       'Correct-Horse-9!',
     );
-    await userEvent.type(screen.getByLabelText('New passphrase'), NEW_PHRASE);
-    await userEvent.type(
+    await user.type(screen.getByLabelText('New passphrase'), NEW_PHRASE);
+    await user.type(
       screen.getByLabelText('Confirm new passphrase'),
       NEW_PHRASE,
     );
-    await userEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /save new passphrase/i }),
     );
 
@@ -59,21 +66,22 @@ describe('ManageAuthenticator — change passphrase', () => {
   it('blocks submission when the two new passphrases differ', async () => {
     const reEnrolWithPassphrase = vi.fn(async () => ({ ok: true }));
     useAuthMock.mockReturnValue({ mode: 'passphrase', reEnrolWithPassphrase });
+    const user = setup();
     render(<ManageAuthenticator />);
 
-    await userEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /change passphrase/i }),
     );
-    await userEvent.type(
+    await user.type(
       screen.getByLabelText('Current passphrase'),
       'Correct-Horse-9!',
     );
-    await userEvent.type(screen.getByLabelText('New passphrase'), NEW_PHRASE);
-    await userEvent.type(
+    await user.type(screen.getByLabelText('New passphrase'), NEW_PHRASE);
+    await user.type(
       screen.getByLabelText('Confirm new passphrase'),
       'Different-Phrase-3!',
     );
-    await userEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /save new passphrase/i }),
     );
 
@@ -87,21 +95,22 @@ describe('ManageAuthenticator — change passphrase', () => {
       message: 'Current passphrase is incorrect',
     }));
     useAuthMock.mockReturnValue({ mode: 'passphrase', reEnrolWithPassphrase });
+    const user = setup();
     render(<ManageAuthenticator />);
 
-    await userEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /change passphrase/i }),
     );
-    await userEvent.type(
+    await user.type(
       screen.getByLabelText('Current passphrase'),
       'Wrong-Current-1!',
     );
-    await userEvent.type(screen.getByLabelText('New passphrase'), NEW_PHRASE);
-    await userEvent.type(
+    await user.type(screen.getByLabelText('New passphrase'), NEW_PHRASE);
+    await user.type(
       screen.getByLabelText('Confirm new passphrase'),
       NEW_PHRASE,
     );
-    await userEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /save new passphrase/i }),
     );
 
@@ -127,19 +136,18 @@ describe('ManageAuthenticator — change PIN', () => {
   it('changes the PIN and surfaces a success toast', async () => {
     const reEnrolWithPin = vi.fn(async () => ({ ok: true }));
     useAuthMock.mockReturnValue({ mode: 'pin', reEnrolWithPin });
+    const user = setup();
     render(<ManageAuthenticator />);
 
-    await userEvent.click(screen.getByRole('button', { name: /change pin/i }));
-    await userEvent.type(screen.getByLabelText('Current PIN'), '12345678');
+    await user.click(screen.getByRole('button', { name: /change pin/i }));
+    await user.type(screen.getByLabelText('Current PIN'), '12345678');
     // SegmentedCodeField renders one input per digit; typing into the first
     // digit advances focus through the rest. Two groups exist (New PIN and
     // Confirm new PIN), so target each group's first digit by index.
     const firstDigitInputs = screen.getAllByLabelText(/digit 1 of 8/i);
-    await userEvent.type(firstDigitInputs[0]!, '87654321');
-    await userEvent.type(firstDigitInputs[1]!, '87654321');
-    await userEvent.click(
-      screen.getByRole('button', { name: /save new pin/i }),
-    );
+    await user.type(firstDigitInputs[0]!, '87654321');
+    await user.type(firstDigitInputs[1]!, '87654321');
+    await user.click(screen.getByRole('button', { name: /save new pin/i }));
 
     await waitFor(() =>
       expect(reEnrolWithPin).toHaveBeenCalledWith('12345678', '87654321'),
