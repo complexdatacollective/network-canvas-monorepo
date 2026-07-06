@@ -325,7 +325,7 @@ export function SettingsDialog({
             <>
               <SettingsRow
                 title="App version"
-                desc="Network Canvas Interviewer 8"
+                desc="Network Canvas Interviewer"
                 control={
                   <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
                     {APP_VERSION}

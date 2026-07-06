@@ -17,7 +17,7 @@ vi.mock('~/lib/pwa/installPrompt', () => ({
 
 import { InstallBanner } from '../InstallBanner';
 
-const SESSION_DISMISS_KEY = 'interviewer-v8:install-banner-dismissed';
+const SESSION_DISMISS_KEY = 'interviewer:install-banner-dismissed';
 // A stable object so useSyncExternalStore's snapshot doesn't change identity.
 const FAKE_PROMPT = {};
 

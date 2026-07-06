@@ -1,15 +1,15 @@
-# Releasing Interviewer v8
+# Releasing Network Canvas Interviewer
 
-> **Web-only, offline-first PWA.** interviewer-v8 ships as a `vite-plugin-pwa`
+> **Web-only, offline-first PWA.** Network Canvas Interviewer ships as a `vite-plugin-pwa`
 > progressive web app — the Electron desktop build and Capacitor tablet build
 > have been retired. There is no installer, no code signing, and no
 > auto-updater feed; the app updates by the browser fetching a new service
-> worker, same mechanism as architect-web (another `vite-plugin-pwa` app in
+> worker, same mechanism as Architect (another `vite-plugin-pwa` app in
 > this monorepo).
 
 ## Versioned beta releases (changeset-driven)
 
-interviewer-v8 is on a `8.0.0-beta.N` line. It is `private` and in the changeset
+Network Canvas Interviewer is on a `8.0.0-beta.N` line. It is `private` and in the changeset
 `ignore` list, so the library `changeset version` never touches it — a dedicated
 lane handles it instead. The base `8.0.0` is fixed (change it with a manual
 `package.json` edit, e.g. to graduate out of beta); a changeset's `major`/
@@ -17,7 +17,7 @@ lane handles it instead. The base `8.0.0` is fixed (change it with a manual
 base while in beta.
 
 1. **Author a changeset.** Run `pnpm changeset` and select
-   `@codaco/interviewer-v8` (see the `creating-a-changeset` skill). Never mix an
+   `@codaco/interviewer` (see the `creating-a-changeset` skill). Never mix an
    app and a library in one changeset — CI (`pnpm check:changesets`) rejects it.
 2. **The "Release apps (beta)" PR.** On every push to `main`, the
    `apps-release-pr` job increments `-beta.N`, updates `CHANGELOG.md`, deletes the
@@ -26,17 +26,17 @@ base while in beta.
 3. **Merge to release.** Merging the PR bumps `package.json` on `main`; the
    `apps-release-detect` job sees the version change and `apps-release-interviewer`
    builds, deploys to Netlify **production**, and creates the prerelease GitHub release
-   `@codaco/interviewer-v8@<version>` with the CHANGELOG notes.
+   `@codaco/interviewer@<version>` with the CHANGELOG notes.
 
-Pull requests still get a preview deploy (`deploy-interviewer-v8-preview`),
+Pull requests still get a preview deploy (`deploy-interviewer-preview`),
 aliased `pr-<number>` and posted as a comment. Production is no longer deployed
 on every push to `main` — only on a Release apps PR merge.
 
 ### How CI builds
 
 ```bash
-pnpm exec turbo run build --filter=@codaco/interviewer-v8^...   # workspace deps
-pnpm --filter=@codaco/interviewer-v8 build:web                   # vite build + PWA assertion
+pnpm exec turbo run build --filter=@codaco/interviewer^...   # workspace deps
+pnpm --filter=@codaco/interviewer build:web                   # vite build + PWA assertion
 ```
 
 `build:web` (not the plain `build` script) is what CI runs — it chains
@@ -52,17 +52,17 @@ blocker, not a warning to route around.
 CI deploys to a Netlify **site that must already exist** — netlify-cli can't
 create one. Before the preview and production deploys will work:
 
-1. Create a new Netlify site for interviewer-v8 (Netlify dashboard or
+1. Create a new Netlify site for Network Canvas Interviewer (Netlify dashboard or
    `netlify sites:create`). Don't point it at a repo for auto-build; CI
    supplies the build.
 2. Note its Site ID (Site settings → General → Site details).
 3. Add it as the repo secret `NETLIFY_SITE_ID_INTERVIEWER`. The
    `NETLIFY_AUTH_TOKEN` secret is already shared across all Netlify deploys in
    this repo (docs, architect-web, networkcanvas.com) — no new token needed.
-4. If interviewer-v8 needs its own custom domain, configure it in the
+4. If Network Canvas Interviewer needs its own custom domain, configure it in the
    Netlify site's domain settings; nothing in CI needs to change for that.
 
-Until the secret is set, `deploy-interviewer-v8-preview` and the
+Until the secret is set, `deploy-interviewer-preview` and the
 `apps-release-interviewer` production deploy will fail at the `netlify-cli deploy`
 step with a `site not found` style error — the rest of CI (quality gate,
 typecheck, tests) is unaffected.

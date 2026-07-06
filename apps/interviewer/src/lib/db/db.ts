@@ -14,7 +14,7 @@ class InterviewerV8DB extends Dexie {
   settings!: Table<StoredSettings, 'device'>;
 
   constructor() {
-    super('interviewer-v8');
+    super('interviewer');
     this.version(1).stores({
       protocols: 'id, hash, name, importedAt',
       sessions:

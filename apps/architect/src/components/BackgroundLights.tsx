@@ -11,7 +11,7 @@ const LAYER_OPACITY: Record<Intensity, number> = {
 };
 
 // Tints expressed uniformly as color-mix(in oklab, …) — matching the oklab
-// color-mix used elsewhere in architect-web (e.g. the shadow scale). Mixing a
+// color-mix used elsewhere in Architect (e.g. the shadow scale). Mixing a
 // colour with `transparent N%` is equivalent to alpha (100 − N)%.
 const LIGHTS = [
   {

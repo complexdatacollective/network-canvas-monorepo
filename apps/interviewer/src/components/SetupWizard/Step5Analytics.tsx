@@ -28,10 +28,10 @@ export default function Step5Analytics() {
   return (
     <>
       <Paragraph>
-        You can help us improve Network Canvas Interviewer 8 by sending
-        anonymous usage and error data. This tells us which features are used
-        and details of any errors or crashes, so we can fix bugs and decide what
-        to build next.
+        You can help us improve Network Canvas Interviewer by sending anonymous
+        usage and error data. This tells us which features are used and details
+        of any errors or crashes, so we can fix bugs and decide what to build
+        next.
       </Paragraph>
       <UnconnectedField
         name="analyticsEnabled"

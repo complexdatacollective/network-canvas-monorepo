@@ -5,7 +5,7 @@ import {
   setReencryptionPending,
 } from '../reencryptionPending';
 
-const KEY = 'interviewer-v8:reencryption-pending';
+const KEY = 'interviewer:reencryption-pending';
 
 afterEach(() => {
   vi.restoreAllMocks();

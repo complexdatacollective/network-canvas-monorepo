@@ -66,7 +66,7 @@ export function OnboardingScreenView({ onBegin }: { onBegin: () => void }) {
       />
       <motion.div variants={textVariants}>
         <Heading level="h1" margin="none" className="font-black tracking-tight">
-          Welcome to Network Canvas Interviewer 8
+          Welcome to Network Canvas Interviewer
         </Heading>
       </motion.div>
       <motion.div variants={textVariants}>

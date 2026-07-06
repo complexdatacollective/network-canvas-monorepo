@@ -161,7 +161,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     () => ({
       installationId: getInstallationId(),
       // No Electron/Capacitor host remains; this app is the only host.
-      hostApp: 'interviewer-v8',
+      hostApp: 'interviewer',
       hostVersion: APP_VERSION,
     }),
     [],

@@ -28,7 +28,7 @@ From the monorepo root:
 pnpm install
 
 # Start the development server
-pnpm --filter @codaco/architect-web dev
+pnpm --filter @codaco/architect dev
 ```
 
 The app will be available at `http://localhost:5173`.
@@ -45,20 +45,20 @@ Protocols are previewed in a local browser tab using the bundled `@codaco/interv
 
 ```bash
 # Build for production
-pnpm --filter @codaco/architect-web build
+pnpm --filter @codaco/architect build
 
 # Preview production build
-pnpm --filter @codaco/architect-web preview
+pnpm --filter @codaco/architect preview
 ```
 
 ### Testing
 
 ```bash
 # Run tests
-pnpm --filter @codaco/architect-web test
+pnpm --filter @codaco/architect test
 
 # Type check
-pnpm --filter @codaco/architect-web typecheck
+pnpm --filter @codaco/architect typecheck
 ```
 
 ## Tech Stack

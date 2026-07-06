@@ -51,7 +51,7 @@ const AnalyticsContext = createContext<AnalyticsContextValue>(NOOP_CONTEXT);
 function registerSuperProperties(client: PostHog) {
   client.register({
     // No Electron/Capacitor host remains; this app is the only host.
-    app: 'interviewer-v8',
+    app: 'interviewer',
     installation_id: getInstallationId(),
     host_version: APP_VERSION,
   });

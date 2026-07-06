@@ -71,14 +71,14 @@ describe('vaultStore', () => {
 
   it('returns null for a wrong-version record', () => {
     window.localStorage.setItem(
-      'interviewer-v8:vault',
+      'interviewer:vault',
       JSON.stringify({ version: 3, mode: 'none' }),
     );
     expect(readVault()).toBeNull();
   });
 
   it('returns null for a corrupt record', () => {
-    window.localStorage.setItem('interviewer-v8:vault', 'not-json');
+    window.localStorage.setItem('interviewer:vault', 'not-json');
     expect(readVault()).toBeNull();
   });
 });
@@ -95,13 +95,13 @@ describe('readVaultState', () => {
   });
 
   it('reports corrupt for unparseable JSON', () => {
-    window.localStorage.setItem('interviewer-v8:vault', 'not-json');
+    window.localStorage.setItem('interviewer:vault', 'not-json');
     expect(readVaultState()).toEqual({ status: 'corrupt' });
   });
 
   it('reports corrupt for a newer/unknown version (distinct from absent)', () => {
     window.localStorage.setItem(
-      'interviewer-v8:vault',
+      'interviewer:vault',
       JSON.stringify({ version: 5, mode: 'none' }),
     );
     expect(readVaultState()).toEqual({ status: 'corrupt' });
@@ -109,7 +109,7 @@ describe('readVaultState', () => {
 
   it('reports corrupt for a foreign-shaped record', () => {
     window.localStorage.setItem(
-      'interviewer-v8:vault',
+      'interviewer:vault',
       JSON.stringify({ version: 4, mode: 'pin' }),
     );
     expect(readVaultState()).toEqual({ status: 'corrupt' });

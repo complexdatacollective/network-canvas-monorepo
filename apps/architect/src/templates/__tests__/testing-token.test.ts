@@ -47,7 +47,7 @@ const cases = [
       resolve(
         repoRoot,
         'apps',
-        'architect-web',
+        'architect',
         'src',
         'templates',
         'transnational-networks.json',

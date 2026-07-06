@@ -2,7 +2,7 @@ import { posthog } from '~/analytics';
 import { ensureError } from '~/utils/ensureError';
 
 /**
- * Central error-reporting entry point for architect-web.
+ * Central error-reporting entry point for Architect.
  *
  * Call sites depend on this rather than the PostHog SDK directly, giving us one
  * place to normalize thrown values, attach context, swap the backend, or

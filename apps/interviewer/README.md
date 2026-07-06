@@ -1,6 +1,6 @@
-# Network Canvas Interviewer v8
+# Network Canvas Interviewer
 
-Network Canvas Interviewer v8 is a single-user, offline-first research-data-collection app. It hosts the `@codaco/interview` engine and pairs it with a dashboard for managing protocols, managing collected sessions, and exporting data for analysis. It ships as one thing: an installable, offline-capable web app (a PWA), deployed continuously to Netlify. See [`SPEC.md`](./SPEC.md) for the full product specification and [`CLAUDE.md`](./CLAUDE.md) for the source-surface index.
+Network Canvas Interviewer is a single-user, offline-first research-data-collection app. It hosts the `@codaco/interview` engine and pairs it with a dashboard for managing protocols, managing collected sessions, and exporting data for analysis. It ships as one thing: an installable, offline-capable web app (a PWA), deployed continuously to Netlify. See [`SPEC.md`](./SPEC.md) for the full product specification and [`CLAUDE.md`](./CLAUDE.md) for the source-surface index.
 
 ## Stack
 
@@ -16,7 +16,7 @@ Network Canvas Interviewer v8 is a single-user, offline-first research-data-coll
 
 ```bash
 pnpm install          # from the repo root
-pnpm --filter @codaco/interviewer-v8 dev
+pnpm --filter @codaco/interviewer dev
 ```
 
 The dev server runs at `http://localhost:5180`.
@@ -60,7 +60,7 @@ Lint and format with the monorepo root `pnpm lint` / `pnpm lint:fix` (oxlint + o
 +--------------------------------------------------------------+
         |
         v
-  IndexedDB (Dexie, DB name "interviewer-v8")
+  IndexedDB (Dexie, DB name "interviewer")
   Sensitive fields (session network/stageMetadata, protocol
   protocol/codebook, asset data) stored as AES-GCM ciphertext
   when a secured vault mode is enrolled; index fields (caseId,

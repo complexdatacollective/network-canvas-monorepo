@@ -16,7 +16,7 @@ import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import './preview.css';
 import Providers from './Providers';
 
-// Interviewer v8 renders its entire UI inside a single
+// Network Canvas Interviewer renders its entire UI inside a single
 // `<ThemedRegion theme="interview">` (see `src/App.tsx`), so the storybook is
 // hardcoded to the interview theme too. Apply `data-theme-interview` to <body>
 // once at module load so anything that shows the body backdrop — story padding

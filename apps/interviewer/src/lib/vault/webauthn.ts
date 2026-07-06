@@ -122,7 +122,7 @@ export async function enrollBiometric(
       rp: { name: RP_NAME },
       user: {
         id: userHandle,
-        name: 'interviewer-v8',
+        name: 'interviewer',
         displayName: 'Network Canvas Interviewer',
       },
       pubKeyCredParams: [

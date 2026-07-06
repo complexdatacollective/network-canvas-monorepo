@@ -70,7 +70,7 @@ describe('vaultStatus', () => {
 
   it('reports corrupt for a present-but-unreadable record', () => {
     window.localStorage.setItem(
-      'interviewer-v8:vault',
+      'interviewer:vault',
       JSON.stringify({ version: 5, mode: 'none' }),
     );
     expect(vaultStatus()).toEqual({ configured: false, corrupt: true });

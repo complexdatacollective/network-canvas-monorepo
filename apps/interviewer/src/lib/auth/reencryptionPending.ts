@@ -6,7 +6,7 @@
 // and permanently defeating the retry — leaving plaintext rows on a device the
 // user believes is secured. localStorage has its own quota and already holds the
 // vault record, so a tiny boolean here survives an IndexedDB failure.
-const KEY = 'interviewer-v8:reencryption-pending';
+const KEY = 'interviewer:reencryption-pending';
 
 export function setReencryptionPending(pending: boolean): void {
   try {

@@ -22,7 +22,7 @@ export function toBase64(bytes: Uint8Array): string {
 export const PBKDF2_ITERATIONS = 600_000;
 export const PBKDF2_SALT_BYTES = 32;
 
-const HKDF_INFO = 'interviewer-v8-dek-wrap';
+const HKDF_INFO = 'interviewer-dek-wrap';
 const IV_BYTES = 12;
 
 // DEK is generated extractable only long enough to be wrapped at enrolment;

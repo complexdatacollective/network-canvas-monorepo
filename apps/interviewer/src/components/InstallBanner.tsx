@@ -9,7 +9,7 @@ import {
   subscribeInstallPrompt,
 } from '~/lib/pwa/installPrompt';
 
-const SESSION_DISMISS_KEY = 'interviewer-v8:install-banner-dismissed';
+const SESSION_DISMISS_KEY = 'interviewer:install-banner-dismissed';
 
 // Installed detection: the display-mode media query covers Chromium and
 // Safari dock apps; the legacy navigator.standalone flag covers iOS/iPadOS

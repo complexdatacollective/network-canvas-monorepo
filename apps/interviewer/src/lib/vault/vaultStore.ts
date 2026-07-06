@@ -24,7 +24,7 @@ export type VaultRecord =
 // The localStorage key holding the vault record. Exported so cross-tab
 // `storage`-event listeners can key off the same literal this module reads and
 // writes, rather than a divergent hardcoded copy.
-export const VAULT_STORAGE_KEY = 'interviewer-v8:vault';
+export const VAULT_STORAGE_KEY = 'interviewer:vault';
 const CURRENT_VERSION = 4;
 
 function isRecord(value: unknown): value is Record<string, unknown> {

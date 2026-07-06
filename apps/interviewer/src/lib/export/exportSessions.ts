@@ -157,6 +157,6 @@ export function buildExportOptions(args: {
       screenLayoutWidth: args.screenLayoutWidth,
     },
     appVersion: APP_VERSION,
-    commitHash: 'interviewer-v8',
+    commitHash: 'interviewer',
   };
 }

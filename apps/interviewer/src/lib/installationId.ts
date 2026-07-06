@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
-const STORAGE_KEY = 'interviewer-v8:installation-id';
+const STORAGE_KEY = 'interviewer:installation-id';
 
 export function getInstallationId(): string {
   try {
