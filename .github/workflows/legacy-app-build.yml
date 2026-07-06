@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [architect, interviewer]
+        app: [architect-classic, interviewer-classic]
         target:
           - os: macos-latest
             platform: mac
@@ -47,12 +47,12 @@ jobs:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
-      # Architect's build graph depends on network-canvas-interviewer (its preview
+      # Architect's build graph depends on @codaco/interviewer-classic (its preview
       # window renders the Interviewer bundle), so this also produces
-      # apps/interviewer/out, which the architect electron-builder config vendors
-      # via extraResources.
+      # apps/interviewer-classic/out, which the architect electron-builder config
+      # vendors via extraResources.
       - name: Build app + workspace deps
-        run: pnpm exec turbo run build --filter=network-canvas-${{ matrix.app }}
+        run: pnpm exec turbo run build --filter=@codaco/${{ matrix.app }}
       # Build only — no publishing. macOS notarization runs automatically when
       # APPLE_ID is set (the config gates `notarize` on it).
       - name: Package
@@ -65,7 +65,7 @@ jobs:
           APPLE_TEAM_ID: ${{ matrix.target.os == 'macos-latest' && secrets.APPLE_TEAM_ID || '' }}
         run: >-
           pnpm exec electron-builder --${{ matrix.target.platform }}
-          --config ${{ matrix.app == 'architect' && 'electron-builder.config.js' || 'electron-builder.config.cjs' }}
+          --config ${{ matrix.app == 'architect-classic' && 'electron-builder.config.js' || 'electron-builder.config.cjs' }}
           --publish never
       # Upload only the distributable installers + autoupdate metadata, NOT
       # electron-builder's unpacked app directories (mac/, mac-arm64/,

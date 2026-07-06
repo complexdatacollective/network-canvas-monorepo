@@ -38,7 +38,7 @@ jobs:
       any_app: ${{ steps.flags.outputs.any_app }}
       docs: ${{ steps.flags.outputs.docs }}
       architect: ${{ steps.flags.outputs.architect }}
-      interviewer_v8: ${{ steps.flags.outputs.interviewer_v8 }}
+      interviewer: ${{ steps.flags.outputs.interviewer }}
       website: ${{ steps.flags.outputs.website }}
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
@@ -123,13 +123,13 @@ jobs:
             fi
           }
           docs=$(flag @codaco/documentation)
-          arch=$(flag @codaco/architect-web)
-          intv8=$(flag @codaco/interviewer-v8)
+          arch=$(flag @codaco/architect)
+          intvr=$(flag @codaco/interviewer)
           web=$(flag networkcanvas.com)
           fui=$(flag @codaco/fresco-ui)
           intv=$(flag @codaco/interview)
 
-          # Interface screenshots regenerate, and their consumers (architect-web,
+          # Interface screenshots regenerate, and their consumers (architect,
           # documentation) redeploy, only when the @codaco/interview RELEASE
           # VERSION moves — its package.json version, or the pending version a
           # changeset implies — not on arbitrary interview/fresco-ui edits. The
@@ -149,7 +149,7 @@ jobs:
               [[ "$new_v" != "$old_v" ]] && ifimg=true
             fi
             # Match the @codaco/interview changeset frontmatter key exactly:
-            # '@codaco/interview' is a substring of '@codaco/interviewer-v8', so a
+            # '@codaco/interview' is a substring of '@codaco/interviewer', so a
             # bare grep would false-trigger on unrelated interviewer changesets.
             key_re="^[[:space:]]*['\"]?@codaco/interview['\"]?[[:space:]]*:"
             for f in $(git diff --name-only "$PREV" "$CURR" -- '.changeset/*.md'); do
@@ -161,18 +161,18 @@ jobs:
           fi
 
           # An interview version bump regenerates the interface images, which both
-          # architect-web and documentation embed — treat it as a change to each so
+          # architect and documentation embed — treat it as a change to each so
           # their deploys (and the carry-forward / any_app gating) fire.
           if [[ "$ifimg" == "true" ]]; then docs=true; arch=true; fi
 
           any_app=false
-          if [[ "$docs" == "true" || "$arch" == "true" || "$intv8" == "true" || "$web" == "true" ]]; then any_app=true; fi
+          if [[ "$docs" == "true" || "$arch" == "true" || "$intvr" == "true" || "$web" == "true" ]]; then any_app=true; fi
 
           {
             echo "any_app=$any_app"
             echo "docs=$docs"
             echo "architect=$arch"
-            echo "interviewer_v8=$intv8"
+            echo "interviewer=$intvr"
             echo "website=$web"
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
@@ -371,20 +371,20 @@ jobs:
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
       - id: deploy
-        name: Build and deploy architect-web preview
+        name: Build and deploy architect preview
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect-web^...
-          pnpm --filter=@codaco/architect-web build:web
+          pnpm exec turbo run build --filter=@codaco/architect^...
+          pnpm --filter=@codaco/architect build:web
           json=$(npx --yes netlify-cli@22 deploy --no-build \
-                   --filter=@codaco/architect-web \
-                   --dir=apps/architect-web/dist \
+                   --filter=@codaco/architect \
+                   --dir=apps/architect/dist \
                    --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}" \
                    --alias="pr-${{ github.event.number }}" --json)
           echo "$json" | jq .
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
-  # interviewer-v8 is a vite-plugin-pwa PWA, same shape as architect-web, but
+  # interviewer is a vite-plugin-pwa PWA, same shape as architect, but
   # its own `build` script is a plain `vite build` (no turbo task override) so
   # `turbo run build --filter=...` skips the post-build PWA assertion. Build
   # workspace deps via turbo (fresco-ui, interview, etc.) then run the app's
@@ -393,15 +393,15 @@ jobs:
   #
   # NOTE(human-setup-required): needs its own Netlify site, created manually,
   # with its site ID stored in the NETLIFY_SITE_ID_INTERVIEWER secret —
-  # see apps/interviewer-v8/RELEASING.md.
-  deploy-interviewer-v8-preview:
+  # see apps/interviewer/RELEASING.md.
+  deploy-interviewer-preview:
     # Same shape as deploy-architect-preview: wait for quality (cache +
     # write-slot) but don't gate on its success.
     needs: [detect, quality]
     if: |
       always() &&
       github.event_name == 'pull_request' &&
-      needs.detect.outputs.interviewer_v8 == 'true' &&
+      needs.detect.outputs.interviewer == 'true' &&
       needs.quality.result != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
@@ -425,13 +425,13 @@ jobs:
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
       - id: deploy
-        name: Build and deploy interviewer-v8 preview
+        name: Build and deploy interviewer preview
         run: |
-          pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
-          pnpm --filter=@codaco/interviewer-v8 build:web
+          pnpm exec turbo run build --filter=@codaco/interviewer^...
+          pnpm --filter=@codaco/interviewer build:web
           json=$(npx --yes netlify-cli@22 deploy --no-build \
-                   --filter=@codaco/interviewer-v8 \
-                   --dir=apps/interviewer-v8/dist \
+                   --filter=@codaco/interviewer \
+                   --dir=apps/interviewer/dist \
                    --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}" \
                    --alias="pr-${{ github.event.number }}" --json)
           echo "$json" | jq .
@@ -489,13 +489,13 @@ jobs:
       [
         deploy-docs-preview,
         deploy-architect-preview,
-        deploy-interviewer-v8-preview,
+        deploy-interviewer-preview,
         deploy-website-preview,
       ]
     if: |
       always() &&
       github.event_name == 'pull_request' &&
-      (needs.deploy-docs-preview.result == 'success' || needs.deploy-architect-preview.result == 'success' || needs.deploy-interviewer-v8-preview.result == 'success' || needs.deploy-website-preview.result == 'success')
+      (needs.deploy-docs-preview.result == 'success' || needs.deploy-architect-preview.result == 'success' || needs.deploy-interviewer-preview.result == 'success' || needs.deploy-website-preview.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -505,16 +505,16 @@ jobs:
         env:
           DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
           ARCHITECT_URL: ${{ needs.deploy-architect-preview.outputs.url }}
-          INTERVIEWER_V8_URL: ${{ needs.deploy-interviewer-v8-preview.outputs.url }}
+          INTERVIEWER_URL: ${{ needs.deploy-interviewer-preview.outputs.url }}
           WEBSITE_URL: ${{ needs.deploy-website-preview.outputs.url }}
         with:
           script: |
             const marker = '<!-- ci:deploy-previews -->';
             const lines = [marker, '🚀 **Deploy previews**'];
-            const { DOCS_URL, ARCHITECT_URL, INTERVIEWER_V8_URL, WEBSITE_URL } = process.env;
+            const { DOCS_URL, ARCHITECT_URL, INTERVIEWER_URL, WEBSITE_URL } = process.env;
             if (DOCS_URL) lines.push(`- documentation → ${DOCS_URL}`);
-            if (ARCHITECT_URL) lines.push(`- architect-web → ${ARCHITECT_URL}`);
-            if (INTERVIEWER_V8_URL) lines.push(`- interviewer-v8 → ${INTERVIEWER_V8_URL}`);
+            if (ARCHITECT_URL) lines.push(`- architect → ${ARCHITECT_URL}`);
+            if (INTERVIEWER_URL) lines.push(`- interviewer → ${INTERVIEWER_URL}`);
             if (WEBSITE_URL) lines.push(`- networkcanvas.com → ${WEBSITE_URL}`);
             const body = lines.join('\n');
             const { data: comments } = await github.rest.issues.listComments({
@@ -926,16 +926,16 @@ jobs:
           node-version-file: '.nvmrc'
       - id: architect
         env:
-          PKG_JSON: apps/architect-web/package.json
-          PKG_NAME: '@codaco/architect-web'
+          PKG_JSON: apps/architect/package.json
+          PKG_NAME: '@codaco/architect'
         run: bash .github/scripts/detect-app-release.sh
       - id: interviewer
         env:
-          PKG_JSON: apps/interviewer-v8/package.json
-          PKG_NAME: '@codaco/interviewer-v8'
+          PKG_JSON: apps/interviewer/package.json
+          PKG_NAME: '@codaco/interviewer'
         run: bash .github/scripts/detect-app-release.sh
 
-  # Build, deploy to Netlify production, and cut a GitHub release for architect-web
+  # Build, deploy to Netlify production, and cut a GitHub release for architect
   # when its version changed. Separate from the interviewer job (below) so one
   # app's build/deploy failure never blocks the other's release — the same
   # per-app isolation the deleted deploy-*-prod jobs had.
@@ -960,36 +960,36 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Build & deploy architect-web to production
+      - name: Build & deploy architect to production
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect-web^...
-          pnpm --filter=@codaco/architect-web build:web
+          pnpm exec turbo run build --filter=@codaco/architect^...
+          pnpm --filter=@codaco/architect build:web
           npx --yes netlify-cli@22 deploy --no-build --prod \
-            --filter=@codaco/architect-web \
-            --dir=apps/architect-web/dist \
+            --filter=@codaco/architect \
+            --dir=apps/architect/dist \
             --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}"
-      - name: architect-web release notes
+      - name: architect release notes
         env:
           VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
         run: >-
           node scripts/release-notes.mjs
-          --app apps/architect-web
-          --pkg @codaco/architect-web
+          --app apps/architect
+          --pkg @codaco/architect
           --version "$VERSION"
           --out "${RUNNER_TEMP}/architect-notes.md"
       - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
-          tag_name: '@codaco/architect-web@${{ needs.apps-release-detect.outputs.architect_version }}'
+          tag_name: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
           name: Architect ${{ needs.apps-release-detect.outputs.architect_version }}
           body_path: ${{ runner.temp }}/architect-notes.md
           prerelease: true
           make_latest: 'false'
 
-  # Build, deploy to Netlify production, and cut a GitHub release for interviewer-v8
+  # Build, deploy to Netlify production, and cut a GitHub release for interviewer
   # when its version changed. Separate job (see apps-release-architect) so a
   # failure in one app's build never blocks the other's release.
   # NOTE(human-setup-required): needs NETLIFY_SITE_ID_INTERVIEWER set —
-  # see apps/interviewer-v8/RELEASING.md.
+  # see apps/interviewer/RELEASING.md.
   apps-release-interviewer:
     needs: apps-release-detect
     if: needs.apps-release-detect.outputs.interviewer_released == 'true'
@@ -1009,26 +1009,26 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Build & deploy interviewer-v8 to production
+      - name: Build & deploy interviewer to production
         run: |
-          pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
-          pnpm --filter=@codaco/interviewer-v8 build:web
+          pnpm exec turbo run build --filter=@codaco/interviewer^...
+          pnpm --filter=@codaco/interviewer build:web
           npx --yes netlify-cli@22 deploy --no-build --prod \
-            --filter=@codaco/interviewer-v8 \
-            --dir=apps/interviewer-v8/dist \
+            --filter=@codaco/interviewer \
+            --dir=apps/interviewer/dist \
             --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}"
-      - name: interviewer-v8 release notes
+      - name: interviewer release notes
         env:
           VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
         run: >-
           node scripts/release-notes.mjs
-          --app apps/interviewer-v8
-          --pkg @codaco/interviewer-v8
+          --app apps/interviewer
+          --pkg @codaco/interviewer
           --version "$VERSION"
           --out "${RUNNER_TEMP}/interviewer-notes.md"
       - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
-          tag_name: '@codaco/interviewer-v8@${{ needs.apps-release-detect.outputs.interviewer_version }}'
+          tag_name: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
           name: Interviewer ${{ needs.apps-release-detect.outputs.interviewer_version }}
           body_path: ${{ runner.temp }}/interviewer-notes.md
           prerelease: true
@@ -1068,7 +1068,7 @@ jobs:
       - name: Detect architect release
         id: architect
         env:
-          PKG_JSON: apps/architect/package.json
+          PKG_JSON: apps/architect-classic/package.json
           EXTERNAL_REPO: complexdatacollective/architect
           FORCED: ${{ (github.event_name == 'workflow_dispatch' && (inputs.release_app == 'architect' || inputs.release_app == 'both')) }}
           GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -1076,7 +1076,7 @@ jobs:
       - name: Detect interviewer release
         id: interviewer
         env:
-          PKG_JSON: apps/interviewer/package.json
+          PKG_JSON: apps/interviewer-classic/package.json
           EXTERNAL_REPO: complexdatacollective/interviewer
           FORCED: ${{ (github.event_name == 'workflow_dispatch' && (inputs.release_app == 'interviewer' || inputs.release_app == 'both')) }}
           GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -1112,7 +1112,7 @@ jobs:
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
       - name: Build app + workspace deps
-        run: pnpm exec turbo run build --filter=network-canvas-interviewer
+        run: pnpm exec turbo run build --filter=@codaco/interviewer-classic
       - name: Decode App Store Connect API key
         if: matrix.os == 'macos-latest'
         env:
@@ -1126,7 +1126,7 @@ jobs:
       # macOS notarization runs automatically when APPLE_API_KEY is set (the
       # config gates `notarize` on it); Windows ships unsigned (no CSC_LINK).
       - name: Package
-        working-directory: apps/interviewer
+        working-directory: apps/interviewer-classic
         env:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -1136,9 +1136,9 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           # Distinct prefix so the publish job's glob doesn't also collect the
-          # `interviewer-v8-*` artifacts built in the same run.
+          # `interviewer-*` artifacts built in the same run.
           name: interviewer-release-${{ matrix.platform }}
-          path: apps/interviewer/release-builds/*
+          path: apps/interviewer-classic/release-builds/*
           if-no-files-found: error
           retention-days: 30
 
@@ -1172,7 +1172,7 @@ jobs:
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: ${{ runner.os }}-turbo-
       - name: Build app + workspace deps
-        run: pnpm exec turbo run build --filter=network-canvas-architect
+        run: pnpm exec turbo run build --filter=@codaco/architect-classic
       - name: Decode App Store Connect API key
         if: matrix.os == 'macos-latest'
         env:
@@ -1187,7 +1187,7 @@ jobs:
       # config gates `notarize` on it); Windows ships unsigned (no CSC_LINK,
       # no certificateSubjectName).
       - name: Package
-        working-directory: apps/architect
+        working-directory: apps/architect-classic
         env:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -1197,7 +1197,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: architect-${{ matrix.platform }}
-          path: apps/architect/release-builds/*
+          path: apps/architect-classic/release-builds/*
           if-no-files-found: error
           retention-days: 30
 
@@ -1223,14 +1223,14 @@ jobs:
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
           node scripts/mirror-app.mjs
-          --app apps/interviewer
+          --app apps/interviewer-classic
           --repo complexdatacollective/interviewer
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
       - name: Extract release notes
         run: >-
           node scripts/release-notes.mjs
-          --app apps/interviewer
-          --pkg network-canvas-interviewer
+          --app apps/interviewer-classic
+          --pkg @codaco/interviewer-classic
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
           --out "${RUNNER_TEMP}/notes.md"
       - name: Create draft release
@@ -1273,7 +1273,7 @@ jobs:
   # Mirror Architect source into complexdatacollective/architect master and create
   # a DRAFT release. Builds the Interviewer preview bundle first so it can be
   # vendored into the mirror (the standalone repo has no monorepo sibling to copy
-  # ../interviewer/out from).
+  # ../interviewer-classic/out from).
   architect-mirror:
     needs: legacy-release-detect
     if: needs.legacy-release-detect.outputs.architect_released == 'true'
@@ -1290,7 +1290,7 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - name: Build Interviewer preview bundle (vendored into the mirror)
-        run: pnpm exec turbo run build --filter=network-canvas-interviewer
+        run: pnpm exec turbo run build --filter=@codaco/interviewer-classic
       - name: Mirror source to external master
         id: mirror
         env:
@@ -1298,14 +1298,14 @@ jobs:
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
           node scripts/mirror-app.mjs
-          --app apps/architect
+          --app apps/architect-classic
           --repo complexdatacollective/architect
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}
       - name: Extract release notes
         run: >-
           node scripts/release-notes.mjs
-          --app apps/architect
-          --pkg network-canvas-architect
+          --app apps/architect-classic
+          --pkg @codaco/architect-classic
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}
           --out "${RUNNER_TEMP}/notes.md"
       - name: Create draft release
@@ -1369,7 +1369,7 @@ jobs:
       - detect
       - deploy-docs-preview
       - deploy-architect-preview
-      - deploy-interviewer-v8-preview
+      - deploy-interviewer-preview
       - deploy-website-preview
       - chromatic-fresco-ui
       - chromatic-interview
@@ -1394,7 +1394,7 @@ jobs:
           # gate it — let its natural skip stand instead.
           FLAG_DOCS: ${{ needs.detect.outputs.docs }}
           FLAG_ARCHITECT: ${{ needs.detect.outputs.architect }}
-          FLAG_INTERVIEWER_V8: ${{ needs.detect.outputs.interviewer_v8 }}
+          FLAG_INTERVIEWER: ${{ needs.detect.outputs.interviewer }}
           FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
           FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
           FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
@@ -1406,7 +1406,7 @@ jobs:
             const flagToJobs = {
               FLAG_DOCS: ["deploy-docs-preview", "docs-preview-checks"],
               FLAG_ARCHITECT: ["deploy-architect-preview"],
-              FLAG_INTERVIEWER_V8: ["deploy-interviewer-v8-preview"],
+              FLAG_INTERVIEWER: ["deploy-interviewer-preview"],
               FLAG_WEBSITE: ["deploy-website-preview"],
               FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
               FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
