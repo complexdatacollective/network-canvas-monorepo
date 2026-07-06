@@ -12,7 +12,9 @@ runs:
       with:
         node-version-file: .nvmrc
         cache: pnpm
-    - run: pnpm install --frozen-lockfile ${{ inputs.ignore-scripts == 'true' && '--ignore-scripts' || '' }}
+    # Bracket notation: a hyphenated input name is not a valid dot-notation
+    # identifier in Actions expressions.
+    - run: pnpm install --frozen-lockfile ${{ inputs['ignore-scripts'] == 'true' && '--ignore-scripts' || '' }}
       shell: bash
     # Runner-local server implementing turbo's remote-cache protocol, backed by
     # the GitHub Actions Cache. Per-task, hash-addressed entries so fan-out jobs
