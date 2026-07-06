@@ -103,5 +103,5 @@
   "engines": {
     "node": ">=24.0.0"
   },
-  "productName": "Network Canvas Architect Classic"
+  "productName": "Network Canvas Architect"
 }
