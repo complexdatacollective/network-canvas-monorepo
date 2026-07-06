@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Committing and opening PRs
+
+When a change is complete and verified — types, lint, `knip`, and the relevant
+tests pass — you may commit it and open a pull request **without asking first**.
+Always work on a feature branch; never commit directly to `main`. Still confirm
+before other outward-facing or hard-to-reverse actions (merging, force-pushing,
+deleting branches, publishing releases).
+
 ## Essential Commands
 
 ### Development
