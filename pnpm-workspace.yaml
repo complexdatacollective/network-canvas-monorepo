@@ -90,7 +90,7 @@ catalog:
   typescript: ^6.0.3
   uuid: ^14.0.1
   vite: ^8.1.2
-  vite-plugin-dts: ^5.0.1
+  vite-plugin-dts: ^5.0.3
   vitest: ^4.1.7
   wrangler: ^4.95.0
   zod: ^4.4.3
