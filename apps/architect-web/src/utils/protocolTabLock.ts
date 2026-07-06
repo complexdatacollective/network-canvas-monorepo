@@ -9,7 +9,16 @@
 // This is a leaf module (no app imports) so it can't create import cycles. A
 // redux listener middleware bridges it to the store.
 
-type ClaimMessage = { type: 'claim'; id: string; from: string };
+type ClaimMessage = {
+  type: 'claim';
+  id: string;
+  from: string;
+  // True when this claim is a re-claim of a just-released protocol. Two ex-
+  // duplicates can re-claim the same freed id at the same moment; the flag lets
+  // the receiver tie-break by `from` instead of both answering "held" (which
+  // would demote both into read-only with no editor).
+  reclaim?: boolean;
+};
 type HeldMessage = { type: 'held'; id: string; from: string };
 type ReleaseMessage = { type: 'release'; id: string; from: string };
 type LockMessage = ClaimMessage | HeldMessage | ReleaseMessage;
@@ -73,6 +82,10 @@ export const createProtocolTabLock = (
   // which does not remount React or re-run the hook — can re-claim it.
   let desiredId: string | null = null;
   let exclusive = true;
+  // Whether our current claim is a re-claim of a just-freed protocol. Only used
+  // to tie-break the simultaneous-re-claim race; a fresh (user/bfcache) claim
+  // leaves it false so an established holder always wins over a newcomer.
+  let claimedViaReclaim = false;
 
   const setExclusive = (next: boolean) => {
     if (next === exclusive) return;
@@ -90,10 +103,19 @@ export const createProtocolTabLock = (
 
     switch (data.type) {
       case 'claim': {
-        // Another tab wants `data.id`. If we already hold it, tell them so —
-        // they yield to us (we were here first).
+        // Another tab wants `data.id`. If we hold it, normally answer "held" so
+        // they yield to us. But if we BOTH just re-claimed the same freed
+        // protocol at the same moment, mutual "held" would demote both of us to
+        // read-only with no editor and no recovery. In that one case break the
+        // tie by `from`: the higher tab id yields instead of answering.
         if (data.id === claimedId && exclusive) {
-          post({ type: 'held', id: claimedId, from: tabId });
+          const mutualReclaim = claimedViaReclaim && data.reclaim === true;
+          if (mutualReclaim && tabId > data.from) {
+            setExclusive(false);
+            claimedViaReclaim = false;
+          } else {
+            post({ type: 'held', id: claimedId, from: tabId });
+          }
         }
         break;
       }
@@ -102,15 +124,19 @@ export const createProtocolTabLock = (
         // we are the newcomer and must not edit it.
         if (data.id === claimedId) {
           setExclusive(false);
+          claimedViaReclaim = false;
         }
         break;
       }
       case 'release': {
-        // The holder of a protocol we're waiting on has let it go. Re-claim:
-        // if no one else answers "held", we become the exclusive editor.
+        // The holder of a protocol we're waiting on has let it go. Re-claim it;
+        // if no one else answers "held", we become the exclusive editor. Mark it
+        // as a re-claim so a simultaneous re-claim by another ex-waiter is
+        // tie-broken by `from` rather than demoting us both.
         if (data.id === claimedId && !exclusive) {
+          claimedViaReclaim = true;
           setExclusive(true);
-          post({ type: 'claim', id: claimedId, from: tabId });
+          post({ type: 'claim', id: claimedId, from: tabId, reclaim: true });
         }
         break;
       }
@@ -135,6 +161,9 @@ export const createProtocolTabLock = (
     if (id === claimedId) return;
     releaseCurrent();
     claimedId = id;
+    // A fresh (user-initiated or bfcache-restore) claim, not a race re-claim: an
+    // established holder always wins over it.
+    claimedViaReclaim = false;
     // Optimistically assume exclusivity; a "held" reply demotes us.
     setExclusive(true);
     post({ type: 'claim', id, from: tabId });
@@ -170,6 +199,7 @@ export const createProtocolTabLock = (
     },
     releaseProtocol: () => {
       desiredId = null;
+      claimedViaReclaim = false;
       releaseCurrent();
       setExclusive(true);
     },

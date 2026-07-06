@@ -56,10 +56,80 @@ class FakeBroadcastChannel {
   }
 }
 
+// A deferred variant that QUEUES posted messages and only delivers a round when
+// `flush()` is called (messages posted during a flush wait for the next one).
+// This models the async nature of a real BroadcastChannel, letting two tabs both
+// become optimistically exclusive before their claims cross — the interleaving
+// the synchronous FakeBroadcastChannel above cannot reproduce.
+class DeferredBroadcastChannel {
+  static buses = new Map<string, Set<DeferredBroadcastChannel>>();
+  static queue: { sender: DeferredBroadcastChannel; data: unknown }[] = [];
+  name: string;
+  listeners = new Set<(event: { data: unknown }) => void>();
+  closed = false;
+
+  constructor(name: string) {
+    this.name = name;
+    const bus = DeferredBroadcastChannel.buses.get(name) ?? new Set();
+    bus.add(this);
+    DeferredBroadcastChannel.buses.set(name, bus);
+  }
+
+  addEventListener(
+    _type: 'message',
+    listener: (event: { data: unknown }) => void,
+  ): void {
+    this.listeners.add(listener);
+  }
+
+  removeEventListener(
+    _type: 'message',
+    listener: (event: { data: unknown }) => void,
+  ): void {
+    this.listeners.delete(listener);
+  }
+
+  postMessage(data: unknown): void {
+    DeferredBroadcastChannel.queue.push({ sender: this, data });
+  }
+
+  close(): void {
+    this.closed = true;
+    DeferredBroadcastChannel.buses.get(this.name)?.delete(this);
+  }
+
+  static flush(): void {
+    const batch = DeferredBroadcastChannel.queue.splice(0);
+    for (const { sender, data } of batch) {
+      const bus = DeferredBroadcastChannel.buses.get(sender.name);
+      if (!bus) continue;
+      for (const channel of bus) {
+        if (channel === sender || channel.closed) continue;
+        for (const listener of channel.listeners) {
+          listener({ data: structuredClone(data) });
+        }
+      }
+    }
+  }
+
+  static reset(): void {
+    DeferredBroadcastChannel.buses.clear();
+    DeferredBroadcastChannel.queue = [];
+  }
+}
+
 const CHANNEL = 'architect-protocol-lock';
 
 const channelFactory = (name: string) =>
   new FakeBroadcastChannel(name) as unknown as BroadcastChannel;
+
+const deferredChannelFactory = (name: string) =>
+  new DeferredBroadcastChannel(name) as unknown as BroadcastChannel;
+
+// Drain all queued rounds so a race settles (bounded so a bug can't hang).
+const flushDeferred = () => {
+  for (let i = 0; i < 20; i += 1) DeferredBroadcastChannel.flush();
+};
 
 // Locks register window 'pagehide'/'pageshow' listeners; track and close them
 // between tests so a leaked listener from one test can't fire during another.
@@ -106,6 +176,7 @@ const firePageShow = (persisted: boolean) => {
 
 beforeEach(() => {
   FakeBroadcastChannel.reset();
+  DeferredBroadcastChannel.reset();
 });
 
 afterEach(() => {
@@ -249,6 +320,41 @@ describe('protocolTabLock', () => {
     expect(peer.received.some((m) => m.type === 'held' && m.id === 'p1')).toBe(
       false,
     );
+  });
+
+  it('two ex-duplicates re-claiming a released protocol end with exactly one editor', () => {
+    const onB = vi.fn();
+    const onC = vi.fn();
+    const tabA = makeLock({ channelFactory: deferredChannelFactory });
+    const tabB = makeLock({
+      channelFactory: deferredChannelFactory,
+      onExclusivityChange: onB,
+    });
+    const tabC = makeLock({
+      channelFactory: deferredChannelFactory,
+      onExclusivityChange: onC,
+    });
+
+    // A holds p1; B and C open it and settle into read-only waiters (flush
+    // between each so they resolve sequentially, not as a race).
+    tabA.claimProtocol('p1');
+    flushDeferred();
+    tabB.claimProtocol('p1');
+    flushDeferred();
+    tabC.claimProtocol('p1');
+    flushDeferred();
+    expect(tabA.isExclusive()).toBe(true);
+    expect(tabB.isExclusive()).toBe(false);
+    expect(tabC.isExclusive()).toBe(false);
+
+    // A leaves. B and C both re-claim p1 in the same round — both optimistically
+    // exclusive — before their claims cross.
+    tabA.releaseProtocol();
+    flushDeferred();
+
+    // The tie-break yields exactly one editor: never both read-only (the livelock
+    // this guards against) nor both editing (a data clobber).
+    expect(tabB.isExclusive()).not.toBe(tabC.isExclusive());
   });
 
   it('degrades to always-exclusive when BroadcastChannel is unavailable', () => {
