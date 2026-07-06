@@ -127,16 +127,16 @@ by construction, not merely narrowed.
 
 ## Components changed
 
-| Unit                                               | Responsibility                                                                                                                                                                                                                                                                                                                                                                                      | Depends on                    |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `ducks/store.ts`                                   | Swap the remember driver to a per-tab `sessionStorage` driver (with in-memory fallback); leave the scope subscription intact.                                                                                                                                                                                                                                                                       | `sessionStorageDriver`        |
-| `utils/sessionStorageDriver.ts` (new)              | A `redux-remember` `Driver` backed by `window.sessionStorage`, degrading to an in-memory `Map` when sessionStorage is unavailable (Safari private mode / disabled). Leaf module.                                                                                                                                                                                                                    | none                          |
-| `utils/protocolTabLock.ts` (new)                   | Owns the `BroadcastChannel` + this tab's id; `claimProtocol(id)`, `releaseProtocol()`, `subscribe(onLostExclusivity/onRegained)`. Leaf module, guarded for environments without `BroadcastChannel`.                                                                                                                                                                                                 | none                          |
-| `ducks/modules/app.ts`                             | Add `protocolOpenElsewhere` flag + `setProtocolOpenElsewhere` / `getProtocolOpenElsewhere`, mirroring the existing `storageUnavailable` pattern.                                                                                                                                                                                                                                                    | —                             |
-| `ducks/protocolTabLockSync.ts` (new)               | Bridges the non-redux lock to redux via a `store.subscribe`: when the active protocol id changes, claim/release via the lock and set `protocolOpenElsewhere`; on channel events, flip the flag. Uses `store.subscribe` (not listener middleware) so it also fires for redux-remember's startup rehydrate — which does not pass through middleware — and thus re-claims the protocol after a reload. | `protocolTabLock`, `app`      |
-| `ducks/middleware/protocolLibraryListener.ts`      | Add `getProtocolOpenElsewhere` to the autosave skip predicate.                                                                                                                                                                                                                                                                                                                                      | `app`                         |
-| `components/ProtocolOpenElsewhereBanner.tsx` (new) | Non-blocking `role="status"` banner mirroring `StorageUnavailableBanner`; offers "Return to start screen". Mounted next to it in `ProjectLayout`.                                                                                                                                                                                                                                                   | `app`, fresco/legacy `Button` |
-| `components/ProjectNav/ProjectLayout.tsx`          | Mount the new banner beside `StorageUnavailableBanner`.                                                                                                                                                                                                                                                                                                                                             | —                             |
+| Unit                                               | Responsibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Depends on                       |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| `ducks/store.ts`                                   | Swap the remember driver to a per-tab `sessionStorage` driver (with in-memory fallback); leave the scope subscription intact.                                                                                                                                                                                                                                                                                                                                                                                        | `sessionStorageDriver`           |
+| `utils/sessionStorageDriver.ts` (new)              | A `redux-remember` `Driver` backed by `window.sessionStorage`, degrading to an in-memory `Map` when sessionStorage is unavailable (Safari private mode / disabled). Leaf module.                                                                                                                                                                                                                                                                                                                                     | none                             |
+| `utils/protocolTabLock.ts` (new)                   | Owns the `BroadcastChannel` + this tab's id; `claimProtocol(id)`, `releaseProtocol()`, `subscribe(onLostExclusivity/onRegained)`. Leaf module, guarded for environments without `BroadcastChannel`.                                                                                                                                                                                                                                                                                                                  | none                             |
+| `ducks/modules/app.ts`                             | Add `protocolOpenElsewhere` flag + `setProtocolOpenElsewhere` / `getProtocolOpenElsewhere`, mirroring the existing `storageUnavailable` pattern.                                                                                                                                                                                                                                                                                                                                                                     | —                                |
+| `hooks/useProtocolTabLock.ts` (new)                | Bridges the non-redux lock to redux from the always-mounted app shell (`AppContents`). Holds the lock **iff `isProtocolPath(location) && activeProtocolId != null`** — so it claims on the `/protocol` editor route and releases on the start screen — and flips `protocolOpenElsewhere` on the lock's exclusivity callback. Route-coupled (not merely id-coupled) so a tab idle on Home doesn't hold the lock; reactive to `activeProtocolId` so a reload directly onto `/protocol` re-claims once rehydrate lands. | `protocolTabLock`, `app`, wouter |
+| `ducks/middleware/protocolLibraryListener.ts`      | Add `getProtocolOpenElsewhere` to the autosave skip predicate.                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `app`                            |
+| `components/ProtocolOpenElsewhereBanner.tsx` (new) | Non-blocking `role="status"` banner mirroring `StorageUnavailableBanner`; offers "Return to start screen". Mounted next to it in `ProjectLayout`.                                                                                                                                                                                                                                                                                                                                                                    | `app`, fresco/legacy `Button`    |
+| `components/ProjectNav/ProjectLayout.tsx`          | Mount the new banner beside `StorageUnavailableBanner`.                                                                                                                                                                                                                                                                                                                                                                                                                                                              | —                                |
 
 No change is needed to `fileLaunchQueue`/`main.tsx`: an OS `.netcanvas` launch
 dispatches `openLocalNetcanvas` in the tab that received the launch event, which
@@ -146,22 +146,27 @@ tab and can't be "already open elsewhere" (new id). Requirement 6 holds for free
 
 ## Data flow
 
-1. **Open (any path)** → `setActiveProtocolId(id)` → persisted to this tab's
-   `sessionStorage`; the tab-lock sync (a `store.subscribe`) claims `id` on the
-   channel. If held elsewhere → `protocolOpenElsewhere = true` (autosave off,
+1. **Open (any path)** → navigates onto a `/protocol` route with
+   `setActiveProtocolId(id)` (persisted to this tab's `sessionStorage`); the
+   `useProtocolTabLock` hook claims `id` on the channel while on the editor
+   route. If held elsewhere → `protocolOpenElsewhere = true` (autosave off,
    banner shown). Else this tab is the sole editor.
 2. **Edit** → timeline `present` changes → autosave predicate fires only if the
    tab is the editor (not `storageUnavailable`, not `protocolOpenElsewhere`) →
    debounced write to the library row.
 3. **Reload** → `sessionStorage` still holds `app` + the `activeProtocol`
    `present` → the tab rehydrates the same protocol into a fresh empty-history
-   timeline (undo history is not restored — see "Approach chosen"); the lock is
-   re-claimed on the rehydrated id, which also clears any stale
-   `protocolOpenElsewhere` flag before a `held` reply can re-set it.
+   timeline (undo history is not restored — see "Approach chosen"). If the reload
+   lands on a `/protocol` route, the hook re-claims once the id rehydrates (and
+   optimistically clears any stale `protocolOpenElsewhere` before a `held` reply
+   can re-set it); a reload landing on Home does not claim.
 4. **New tab** → empty `sessionStorage` → `activeProtocol` is `null`,
    `activeProtocolId` is `null` → start screen (requirement 3).
-5. **Close / return Home / delete** → `release` on the channel → a duplicate tab
-   waiting on that id regains exclusivity (banner clears, autosave re-enabled).
+5. **Return Home / close / delete** → the hook releases the claim when the route
+   leaves `/protocol` (and the lock also releases on `pagehide` for tab close);
+   the `release` on the channel lets a duplicate tab regain exclusivity (banner
+   clears, autosave re-enabled). Note the active protocol id itself persists for
+   reload-restore — it is the _route_, not the id, that gates the lock.
 
 ## Requirements coverage
 
@@ -211,11 +216,9 @@ tab and can't be "already open elsewhere" (new id). Requirement 6 holds for free
 - If `BroadcastChannel` is entirely unavailable (very old engines), we degrade to
   today's behaviour for the same-protocol case (both editable) but the
   sessionStorage isolation still prevents session cross-wiring. No regression.
-- The lock is keyed on `activeProtocolId`, which is **not cleared when a tab
-  merely navigates back to the Home route** (only on delete). So a tab left idle
-  on Home after editing a protocol still holds that protocol's lock, and opening
-  the same protocol in another tab would show "open elsewhere" until the Home tab
-  is closed or opens something else. This is a conservative false-positive (it
-  blocks editing, never loses data) and pre-dates the reload fix — the lock
-  behaved this way within a live session too. Coupling the lock to "is on the
-  editor route" rather than "has an active protocol id" is a possible follow-up.
+- The read-only "open elsewhere" banner renders only inside `ProjectLayout`,
+  which wraps `/protocol`, `/protocol/assets`, `/protocol/codebook` and
+  `/protocol/summary` but **not** the stage editor (`/protocol/stage/:stageId`)
+  or `/protocol/experiments`. On those two routes a duplicate tab still has
+  autosave disabled (data stays safe) but shows no banner explaining why. Minor
+  UX gap; mounting the banner in a shared editor shell would close it.

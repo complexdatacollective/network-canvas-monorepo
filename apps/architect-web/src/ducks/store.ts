@@ -17,7 +17,6 @@ import { stageEditorDraftListenerMiddleware } from './middleware/stageEditorDraf
 import { getActiveProtocolId } from './modules/app';
 import type { RootState } from './modules/root';
 import { rootReducer } from './modules/root';
-import { createProtocolTabLockSync } from './protocolTabLockSync';
 
 // The session slices (which protocol is open + its undo timeline) persist to the
 // tab's own sessionStorage rather than the origin-wide localStorage, so two tabs
@@ -76,13 +75,6 @@ store.subscribe(() => {
     setActiveProtocolScope(id);
   }
 });
-
-// Claim the active protocol on the cross-tab lock channel, and keep it in sync as
-// the active protocol changes. Driven by store.subscribe (not listener
-// middleware) so it also fires for redux-remember's startup rehydrate, which
-// bypasses middleware — otherwise a reloaded editor would stop blocking a
-// duplicate tab from autosaving into the same library row.
-createProtocolTabLockSync(store);
 
 export { store };
 

@@ -9,10 +9,15 @@ import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
 import PwaUpdateBanner from '~/components/PwaUpdateBanner';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
+import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
 import { resetRunOnce } from '~/hooks/useRunOnce';
 
 const AppContents = () => {
   const [location] = useLocation();
+
+  // Hold the cross-tab single-editor lock while this tab is in the protocol
+  // editor, releasing it on the start screen.
+  useProtocolTabLock();
 
   // Returning to the start screen ends the current protocol session, so the
   // next /protocol visit gets a fresh entrance animation.
