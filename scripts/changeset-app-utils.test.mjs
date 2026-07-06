@@ -14,11 +14,11 @@ import {
 } from './changeset-app-utils.mjs';
 
 test('parseChangeset extracts releases and summary', () => {
-  const md = `---\n"@codaco/architect-web": minor\n'@codaco/interviewer-v8': patch\n---\n\nDid a thing`;
+  const md = `---\n"@codaco/architect": minor\n'@codaco/interviewer': patch\n---\n\nDid a thing`;
   assert.deepEqual(parseChangeset(md), {
     releases: [
-      { name: '@codaco/architect-web', type: 'minor' },
-      { name: '@codaco/interviewer-v8', type: 'patch' },
+      { name: '@codaco/architect', type: 'minor' },
+      { name: '@codaco/interviewer', type: 'patch' },
     ],
     summary: 'Did a thing',
   });
@@ -35,14 +35,14 @@ test('readChangesets reads and ids each .md, skipping README/config', () => {
   const dir = mkdtempSync(join(tmpdir(), 'cs-'));
   writeFileSync(
     join(dir, 'happy-cat.md'),
-    `---\n"@codaco/architect-web": minor\n---\n\nA`,
+    `---\n"@codaco/architect": minor\n---\n\nA`,
   );
   writeFileSync(join(dir, 'README.md'), 'not a changeset');
   const got = readChangesets(dir);
   assert.equal(got.length, 1);
   assert.equal(got[0].id, 'happy-cat');
   assert.deepEqual(got[0].releases, [
-    { name: '@codaco/architect-web', type: 'minor' },
+    { name: '@codaco/architect', type: 'minor' },
   ]);
 });
 
@@ -51,25 +51,23 @@ test('classifyChangeset splits app vs library releases', () => {
     id: 'x',
     summary: '',
     releases: [
-      { name: '@codaco/architect-web', type: 'minor' },
+      { name: '@codaco/architect', type: 'minor' },
       { name: '@codaco/interview', type: 'patch' },
     ],
   };
   const { appReleases, libReleases } = classifyChangeset(cs);
-  assert.deepEqual(appReleases, [
-    { name: '@codaco/architect-web', type: 'minor' },
-  ]);
+  assert.deepEqual(appReleases, [{ name: '@codaco/architect', type: 'minor' }]);
   assert.deepEqual(libReleases, [{ name: '@codaco/interview', type: 'patch' }]);
 });
 
 test('isMixedChangeset: true only when an app and a library share one changeset', () => {
-  const app = { releases: [{ name: '@codaco/architect-web', type: 'minor' }] };
+  const app = { releases: [{ name: '@codaco/architect', type: 'minor' }] };
   const lib = { releases: [{ name: '@codaco/interview', type: 'minor' }] };
   const both = { releases: [...app.releases, ...lib.releases] };
   const twoApps = {
     releases: [
-      { name: '@codaco/architect-web', type: 'minor' },
-      { name: '@codaco/interviewer-v8', type: 'minor' },
+      { name: '@codaco/architect', type: 'minor' },
+      { name: '@codaco/interviewer', type: 'minor' },
     ],
   };
   assert.equal(isMixedChangeset(app), false);

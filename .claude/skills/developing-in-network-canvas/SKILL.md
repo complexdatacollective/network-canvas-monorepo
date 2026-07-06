@@ -41,7 +41,7 @@ Weigh these in any feature, even non-UI — an exporter emitting user-facing tex
 
 ## Building UI
 
-Everything below applies when the work renders an interface. Participant-facing = the `@codaco/interview` runtime (`packages/interview`) in `apps/interviewer`, `apps/interviewer-v8`, Fresco. Researcher-facing = Architect (`apps/architect`, `apps/architect-web`). Tone is participant-facing only; the rest applies to all UI.
+Everything below applies when the work renders an interface. Participant-facing = the `@codaco/interview` runtime (`packages/interview`) in `apps/interviewer-classic`, `apps/interviewer`, Fresco. Researcher-facing = Architect (`apps/architect-classic`, `apps/architect`). Tone is participant-facing only; the rest applies to all UI.
 
 ### Reuse fresco-ui first
 

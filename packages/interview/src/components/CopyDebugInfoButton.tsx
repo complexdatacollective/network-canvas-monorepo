@@ -10,7 +10,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 // keep working even when the app around it is broken. Historically this
 // component confirmed the copy via useToast(), but that hook throws if
 // there's no ancestor Toast.Provider — and not every host (e.g. the e2e
-// test host, architect-web's PreviewHost) wires one up at the top level.
+// test host, architect's PreviewHost) wires one up at the top level.
 // A confirmation local to this component has no such dependency, so the
 // button is self-sufficient in any host.
 const CONFIRMATION_DURATION_MS = 2000;

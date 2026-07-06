@@ -24,7 +24,7 @@ function run(cwd) {
 
 test('passes when app-only and library-only changesets coexist', () => {
   const cwd = fixture({
-    'a.md': `---\n"@codaco/architect-web": minor\n---\n\napp change`,
+    'a.md': `---\n"@codaco/architect": minor\n---\n\napp change`,
     'b.md': `---\n"@codaco/interview": minor\n---\n\nlib change`,
   });
   assert.equal(run(cwd).status, 0);
@@ -32,7 +32,7 @@ test('passes when app-only and library-only changesets coexist', () => {
 
 test('fails and names the file when a changeset mixes an app and a library', () => {
   const cwd = fixture({
-    'bad.md': `---\n"@codaco/architect-web": minor\n"@codaco/interview": patch\n---\n\nmixed`,
+    'bad.md': `---\n"@codaco/architect": minor\n"@codaco/interview": patch\n---\n\nmixed`,
   });
   const res = run(cwd);
   assert.equal(res.status, 1);

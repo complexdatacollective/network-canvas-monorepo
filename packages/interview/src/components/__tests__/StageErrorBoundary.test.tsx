@@ -58,7 +58,7 @@ describe('StageErrorBoundary', () => {
 
   // The fallback's debug-copy button must be self-sufficient: it must not
   // depend on a host-supplied Toast.Provider ancestor, since some hosts
-  // (the e2e test host, architect-web's PreviewHost) don't provide one at
+  // (the e2e test host, architect's PreviewHost) don't provide one at
   // the top level. Deliberately omit any Toast.Provider here to prove that.
   it('renders a working copy-debug-info button with no Toast.Provider ancestor', async () => {
     online = true;

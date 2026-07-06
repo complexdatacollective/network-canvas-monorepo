@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Decides whether a PWA app (architect-web / interviewer-v8) should be released.
+# Decides whether a PWA app (architect / interviewer) should be released.
 # Writes `version` and `released` to $GITHUB_OUTPUT.
 #
 # A release fires ONLY on a Release-apps-PR bot increment: the same X.Y.Z base

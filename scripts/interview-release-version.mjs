@@ -3,7 +3,7 @@
 // pending changeset that bumps @codaco/interview. Versioning the package — or
 // adding such a changeset — changes this value, which is the deliberate signal
 // that the interface screenshots should be regenerated and their consumers
-// (architect-web, documentation) redeployed. Arbitrary interview/fresco-ui
+// (architect, documentation) redeployed. Arbitrary interview/fresco-ui
 // edits do NOT change it. Passed to turbo as INTERVIEW_RELEASE_VERSION.
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -17,7 +17,7 @@ const version = JSON.parse(
 ).version;
 
 // Match the @codaco/interview changeset frontmatter key exactly: it is a
-// substring of @codaco/interviewer-v8, so a plain includes() would false-match.
+// substring of @codaco/interviewer, so a plain includes() would false-match.
 const INTERVIEW_KEY = /^\s*['"]?@codaco\/interview['"]?\s*:/m;
 
 let fingerprint = '';

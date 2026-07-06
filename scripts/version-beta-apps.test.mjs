@@ -19,21 +19,21 @@ import {
 function workspace() {
   const cwd = mkdtempSync(join(tmpdir(), 'vba-'));
   mkdirSync(join(cwd, '.changeset'));
-  mkdirSync(join(cwd, 'apps/architect-web'), { recursive: true });
-  mkdirSync(join(cwd, 'apps/interviewer-v8'), { recursive: true });
+  mkdirSync(join(cwd, 'apps/architect'), { recursive: true });
+  mkdirSync(join(cwd, 'apps/interviewer'), { recursive: true });
   writeFileSync(
-    join(cwd, 'apps/architect-web/package.json'),
+    join(cwd, 'apps/architect/package.json'),
     JSON.stringify(
-      { name: '@codaco/architect-web', version: '8.0.0-beta.0', private: true },
+      { name: '@codaco/architect', version: '8.0.0-beta.0', private: true },
       null,
       2,
     ),
   );
   writeFileSync(
-    join(cwd, 'apps/interviewer-v8/package.json'),
+    join(cwd, 'apps/interviewer/package.json'),
     JSON.stringify(
       {
-        name: '@codaco/interviewer-v8',
+        name: '@codaco/interviewer',
         version: '8.0.0-beta.0',
         private: true,
       },
@@ -48,7 +48,7 @@ test('bumps only apps with pending changesets, leaving base + other app untouche
   const cwd = workspace();
   writeFileSync(
     join(cwd, '.changeset/one.md'),
-    `---\n"@codaco/architect-web": minor\n---\n\nAdd search`,
+    `---\n"@codaco/architect": minor\n---\n\nAdd search`,
   );
   writeFileSync(
     join(cwd, '.changeset/keep.md'),
@@ -59,15 +59,15 @@ test('bumps only apps with pending changesets, leaving base + other app untouche
   applyAppReleases(cwd, plans, consumed);
 
   const arch = JSON.parse(
-    readFileSync(join(cwd, 'apps/architect-web/package.json'), 'utf8'),
+    readFileSync(join(cwd, 'apps/architect/package.json'), 'utf8'),
   );
   const intv = JSON.parse(
-    readFileSync(join(cwd, 'apps/interviewer-v8/package.json'), 'utf8'),
+    readFileSync(join(cwd, 'apps/interviewer/package.json'), 'utf8'),
   );
   assert.equal(arch.version, '8.0.0-beta.1'); // beta incremented
   assert.equal(intv.version, '8.0.0-beta.0'); // untouched — no changeset
   assert.match(
-    readFileSync(join(cwd, 'apps/architect-web/CHANGELOG.md'), 'utf8'),
+    readFileSync(join(cwd, 'apps/architect/CHANGELOG.md'), 'utf8'),
     /## 8\.0\.0-beta\.1[\s\S]*Add search/,
   );
   assert.equal(existsSync(join(cwd, '.changeset/one.md')), false); // consumed
@@ -77,8 +77,8 @@ test('bumps only apps with pending changesets, leaving base + other app untouche
 test('renderPrBody summarises the plans', () => {
   const body = renderPrBody([
     {
-      pkg: '@codaco/architect-web',
-      dir: 'apps/architect-web',
+      pkg: '@codaco/architect',
+      dir: 'apps/architect',
       from: '8.0.0-beta.0',
       to: '8.0.0-beta.1',
       entries: [{ type: 'minor', summary: 'Add search' }],
@@ -86,7 +86,7 @@ test('renderPrBody summarises the plans', () => {
   ]);
   assert.match(
     body,
-    /\| `@codaco\/architect-web` \| 8\.0\.0-beta\.0 \| 8\.0\.0-beta\.1 \|/,
+    /\| `@codaco\/architect` \| 8\.0\.0-beta\.0 \| 8\.0\.0-beta\.1 \|/,
   );
   assert.match(body, /Add search/);
 });

@@ -48,6 +48,11 @@ export default defineConfig({
         test: {
           name: 'units',
           environment: 'jsdom',
+          // This heavy jsdom suite is parallelised alongside the rest of the
+          // workspace's tests in the CI quality job; under peak runner load a
+          // borderline test (e.g. a WebGL-backed interface interaction) can be
+          // starved past the 5s default, so give generous headroom.
+          testTimeout: 20_000,
           setupFiles: [path.join(dirname, 'vitest.setup.ts')],
           include: [
             'src/**/*.{test,spec}.{ts,tsx}',

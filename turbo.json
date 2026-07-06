@@ -61,7 +61,7 @@
       ],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
-    "@codaco/architect-web#build": {
+    "@codaco/architect#build": {
       "dependsOn": ["^build"],
       "inputs": [
         "src/**",
@@ -109,7 +109,7 @@
       ],
       "outputs": []
     },
-    "network-canvas-interviewer#build:web": {
+    "@codaco/interviewer-classic#build:web": {
       "dependsOn": ["^build"],
       "inputs": [
         "src/**",
@@ -120,7 +120,7 @@
       ],
       "outputs": ["dist-web/**"]
     },
-    "network-canvas-architect#build": {
+    "@codaco/architect-classic#build": {
       "dependsOn": ["^build"],
       "inputs": [
         "src/**",
@@ -192,7 +192,7 @@
       "cache": false,
       "persistent": true
     },
-    "@codaco/architect-web#dev": {
+    "@codaco/architect#dev": {
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true

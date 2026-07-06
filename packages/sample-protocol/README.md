@@ -10,4 +10,4 @@ repository is self-contained, mirroring `@codaco/development-protocol`.
   `assetManifest` (keyed by the `source` filename of each manifest entry).
 
 The package entry (`.`) resolves to `protocol.json`; individual asset files are exposed under
-`./assets/*` so consumers (e.g. `@codaco/architect-web`) can bundle them.
+`./assets/*` so consumers (e.g. `@codaco/architect`) can bundle them.

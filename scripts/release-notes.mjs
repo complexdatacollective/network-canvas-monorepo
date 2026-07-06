@@ -40,7 +40,7 @@ export function notesFromDedicatedChangeset(pkgName, version, changesetDir) {
     const { frontmatter, body } = splitChangeset(
       readFileSync(join(changesetDir, file), 'utf8'),
     );
-    // Frontmatter lines look like:  'network-canvas-architect': patch
+    // Frontmatter lines look like:  '@codaco/architect-classic': patch
     const targetsPkg = frontmatter
       .split('\n')
       .some((line) =>
