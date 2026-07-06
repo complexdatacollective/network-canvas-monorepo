@@ -142,8 +142,8 @@ catalogs:
       specifier: ^3.21.2
       version: 3.21.2
     electron:
-      specifier: ^42.3.0
-      version: 42.3.0
+      specifier: ^43.0.0
+      version: 43.0.0
     electron-builder:
       specifier: ^26.15.2
       version: 26.15.2
@@ -573,7 +573,7 @@ importers:
         version: 2.0.14
       electron:
         specifier: 'catalog:'
-        version: 42.3.0
+        version: 43.0.0
       electron-builder:
         specifier: 'catalog:'
         version: 26.15.2(electron-builder-squirrel-windows@26.15.2)
@@ -1176,7 +1176,7 @@ importers:
         version: 2.0.14
       electron:
         specifier: 'catalog:'
-        version: 42.3.0
+        version: 43.0.0
       electron-builder:
         specifier: 'catalog:'
         version: 26.15.2(electron-builder-squirrel-windows@26.15.2)
@@ -3299,6 +3299,10 @@ packages:
         optional: true
       search-insights:
         optional: true
+
+  '@electron-internal/extract-zip@1.0.4':
+    resolution: {integrity: sha512-Zr1Vs7E9tpCNhZHDAbFVXc2gEVCG9RqPDjrno5+bdgB6LRAuvgyMHJut4NCVyYwtAieapMzc3fiQ3CSTi75ARg==}
+    engines: {node: '>=22.12.0'}
 
   '@electron/asar@3.4.1':
     resolution: {integrity: sha512-i4/rNPRS84t0vSRa2HorerGRXWyF4vThfHesw0dmcWHp+cspK743UanA0suA5Q5y8kzY2y6YKrvbIUn69BCAiA==}
@@ -7251,9 +7255,6 @@ packages:
   '@types/use-sync-external-store@0.0.6':
     resolution: {integrity: sha512-zFDAD+tlpf2r4asuHEj0XH6pY6i0g5NeAHPn+15wk3BV6JA69eERFXC1gyGThDkVa1zCyKr5jox1+2LbV/AMLg==}
 
-  '@types/yauzl@2.10.3':
-    resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
-
   '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260527.2':
     resolution: {integrity: sha512-3LqSu4DlxkEfeC/Z/29QMCJn5jjkDtXI7LYuxfmjdmAatS6umDKqm8J17fnP/7fyrZUMBTIYRwSDpChGV3G1ew==}
     engines: {node: '>=16.20.0'}
@@ -9023,8 +9024,8 @@ packages:
     resolution: {integrity: sha512-bO3y10YikuUwUuDUQRM4KfwNkKhnpVO7IPdbsrejwN9/AABJzzTQ4GeHwyzNSrVO+tEH3/Np255a3sVZpZDjvg==}
     engines: {node: '>=8.0.0'}
 
-  electron@42.3.0:
-    resolution: {integrity: sha512-9ZiLdRXk+WDxW1OgIUz8J2rIQ5TYU9o629gCOjU48Q3dQiOmym7osWsH5Ubs/Jh4uuFLn6m6SBD2rmRXLAPz9g==}
+  electron@43.0.0:
+    resolution: {integrity: sha512-PV60GsWU6qufhuOhw3n+Yix3WPDcqDtBqE8orbEQGQGHEkgp9o/JCPgb7L4vIL0r1HnfPdqSRtboOTqbDkcFDQ==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -9416,11 +9417,6 @@ packages:
 
   extract-zip@1.7.0:
     resolution: {integrity: sha512-xoh5G1W/PB0/27lXgMQyIhP5DSY/LhoCsOyZgb+6iMmRtCwVBo55uKaMoEYrDCKQhWvqEip5ZPKAc6eFNyf/MA==}
-    hasBin: true
-
-  extract-zip@2.0.1:
-    resolution: {integrity: sha512-GDhU9ntwuKyGXdZBUgTIe+vXnWj0fppUEtMDL0+idd5Sta8TGpHssn/eusA9mrPr9qNDym6SxAYZjNvCn/9RBg==}
-    engines: {node: '>= 10.17.0'}
     hasBin: true
 
   extsprintf@1.3.0:
@@ -16303,6 +16299,8 @@ snapshots:
       - '@algolia/client-search'
       - algoliasearch
 
+  '@electron-internal/extract-zip@1.0.4': {}
+
   '@electron/asar@3.4.1':
     dependencies:
       commander: 5.1.0
@@ -19607,11 +19605,6 @@ snapshots:
 
   '@types/use-sync-external-store@0.0.6': {}
 
-  '@types/yauzl@2.10.3':
-    dependencies:
-      '@types/node': 24.13.2
-    optional: true
-
   '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260527.2':
     optional: true
 
@@ -21685,11 +21678,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron@42.3.0:
+  electron@43.0.0:
     dependencies:
+      '@electron-internal/extract-zip': 1.0.4
       '@electron/get': 5.0.0
       '@types/node': 24.13.2
-      extract-zip: 2.0.1
     transitivePeerDependencies:
       - supports-color
 
@@ -22307,16 +22300,6 @@ snapshots:
       debug: 2.6.9
       mkdirp: 0.5.6
       yauzl: 2.10.0
-    transitivePeerDependencies:
-      - supports-color
-
-  extract-zip@2.0.1:
-    dependencies:
-      debug: 4.4.3
-      get-stream: 5.2.0
-      yauzl: 2.10.0
-    optionalDependencies:
-      '@types/yauzl': 2.10.3
     transitivePeerDependencies:
       - supports-color
 
