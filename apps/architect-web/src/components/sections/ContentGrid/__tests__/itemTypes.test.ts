@@ -27,18 +27,47 @@ describe('normalizeType', () => {
     },
   );
 
-  it('keeps a real display size on an asset item', () => {
+  it.each(['image', 'video'])(
+    'keeps a real display size on a %s item',
+    (type: string) => {
+      const result = normalizeType({
+        id: '1',
+        content: 'asset-1',
+        type,
+        size: 'MEDIUM',
+      });
+      expect(result).toEqual({
+        id: '1',
+        content: 'asset-1',
+        type: 'asset',
+        size: 'MEDIUM',
+      });
+    },
+  );
+
+  it('strips a stray size from an audio item since audio is not sizeable', () => {
     const result = normalizeType({
       id: '1',
       content: 'asset-1',
-      type: 'image',
-      size: 'MEDIUM',
+      type: 'audio',
+      size: 'SMALL',
+    });
+    expect(result).not.toHaveProperty('size');
+    expect(result.type).toBe('asset');
+  });
+
+  it('keeps a valid size on the ambiguous "asset" fallback (unresolved ref)', () => {
+    const result = normalizeType({
+      id: '1',
+      content: 'asset-1',
+      type: 'asset',
+      size: 'LARGE',
     });
     expect(result).toEqual({
       id: '1',
       content: 'asset-1',
       type: 'asset',
-      size: 'MEDIUM',
+      size: 'LARGE',
     });
   });
 

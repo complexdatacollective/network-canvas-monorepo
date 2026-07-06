@@ -19,22 +19,32 @@ const VALID_SIZES = new Set(
   sizeOptions.map(({ value }) => value).filter(Boolean),
 );
 
+// Concrete types that never carry a display size. Text has no size field in the
+// schema; audio has no visual height to constrain. image/video keep a valid
+// size, as does the ambiguous 'asset' fallback denormalizeType returns when an
+// asset reference can't be resolved (so an image's size survives a broken ref).
+const NON_SIZEABLE_TYPES = new Set(['text', 'audio']);
+
 /**
  * Content-item type mapping shared by the Information stage editor
  * (ContentGrid) and the FamilyPedigree intro screen editor. Editing works with
  * the concrete asset type (image/video/audio) so the right input is shown; the
  * saved item collapses back to the schema's text/asset discriminant.
  *
- * `size` is an image/video-only treatment: text items have no size field in the
- * schema, and an unset ("Full size") size means no constraint. We keep `size`
- * only on asset items and only when it is a schema-valid enum value, dropping
- * the key otherwise so the saved item stays valid against the strict schema.
+ * `size` is an image/video-only treatment. We keep `size` only for sizeable
+ * types and only when it is a schema-valid enum value, dropping the key
+ * otherwise (text/audio, an unset "Full size", or any invalid value) so the
+ * saved item stays valid against the strict schema.
  */
 export const normalizeType = (item: Item): Item => {
   const { size, ...rest } = item as Item & { size?: unknown };
   const type = item.type === 'text' ? 'text' : 'asset';
 
-  if (type === 'text' || typeof size !== 'string' || !VALID_SIZES.has(size)) {
+  if (
+    NON_SIZEABLE_TYPES.has(item.type) ||
+    typeof size !== 'string' ||
+    !VALID_SIZES.has(size)
+  ) {
     return { ...rest, type };
   }
 
