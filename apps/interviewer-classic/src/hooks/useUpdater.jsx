@@ -165,8 +165,8 @@ const useUpdater = (updateEndpoint, timeout = 0) => {
         content: (
           <>
             <p>
-              A new version of Network Canvas Interviewer is available. To
-              upgrade, see the link in the release notes.
+              A new version of Network Canvas Interviewer Classic is available.
+              To upgrade, see the link in the release notes.
             </p>
             <div className="toast-button-group">
               <Button
