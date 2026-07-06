@@ -30,8 +30,8 @@ export default defineConfig({
   },
   plugins: [react()],
   define: {
-    // Tests must not depend on the real package version, or a `changeset version`
-    // bump would invalidate this package's `test` cache on every release.
+    // Pin to a constant so test behaviour never depends on the real release
+    // version (kept deterministic across `changeset version` bumps).
     __PACKAGE_VERSION__: JSON.stringify('0.0.0-test'),
   },
   test: {
