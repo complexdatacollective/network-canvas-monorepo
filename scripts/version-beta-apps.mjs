@@ -3,6 +3,7 @@
 // increments each app's -beta.N (base untouched), writes CHANGELOG sections,
 // deletes the consumed changesets, and emits a PR-body summary. Consumed by the
 // `apps-release-pr` workflow job. Apps with no pending changesets are skipped.
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -89,6 +90,28 @@ export function renderPrBody(plans) {
   return `${lines.join('\n').trimEnd()}\n`;
 }
 
+// The generated files are committed by the create-pull-request bot, which never
+// fires the local pre-commit hooks. So the version step formats its own output,
+// mirroring the library lane's `version-packages` (`changeset version && … &&
+// pnpm lint:fix`) — otherwise an unformatted CHANGELOG lands on main and fails
+// the quality gate's `oxfmt --check .` for every subsequent PR.
+function formatGeneratedFiles(cwd, plans) {
+  const files = plans.flatMap((p) => [
+    join(cwd, p.dir, 'CHANGELOG.md'),
+    join(cwd, p.dir, 'package.json'),
+  ]);
+  if (files.length === 0) return;
+  const result = spawnSync('pnpm', ['exec', 'oxfmt', ...files], {
+    cwd,
+    stdio: 'inherit',
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `oxfmt failed to format generated release files (exit ${result.status ?? result.signal ?? 'unknown'})`,
+    );
+  }
+}
+
 function main() {
   const cwd = process.cwd();
   const outIdx = process.argv.indexOf('--out');
@@ -99,6 +122,7 @@ function main() {
   const outPath = outIdx !== -1 ? process.argv[outIdx + 1] : null;
   const { plans, consumed } = planAppReleases(cwd);
   applyAppReleases(cwd, plans, consumed);
+  formatGeneratedFiles(cwd, plans);
   const body = renderPrBody(plans);
   if (outPath) writeFileSync(outPath, body);
   process.stdout.write(body);
