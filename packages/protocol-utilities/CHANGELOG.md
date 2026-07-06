@@ -1,5 +1,30 @@
 # @codaco/protocol-utilities
 
+## 2.1.1
+
+### Patch Changes
+
+- 272c1b2: Harden protocol validation and synthetic-network generation.
+
+  `@codaco/protocol-validation`: asset `source` is now constrained to a safe
+  filename (no path separators or `..`), so a malformed protocol can no longer
+  carry a path-traversal entry name into an exported archive. `NameGeneratorRoster`
+  now reuses the shared name-generator node-count bounds (`minNodes`/`maxNodes`
+  lower bounds and the `maxNodes >= minNodes` check) instead of accepting
+  unbounded values. Codebook variables gain an optional `readOnly` flag for
+  system-managed variables, and a protocol-level check validates that Family
+  Pedigree's locked value sets keep their canonical options. A new
+  `extractProtocolFromZip` export lets a caller that has already parsed a
+  `.netcanvas` archive extract from it without re-parsing.
+
+  `@codaco/protocol-utilities`: `generateNetwork` clamps the requested node range
+  so an inflated `minNodes` with no `maxNodes` can no longer produce an inverted
+  range (previously this threw and left synthetic preview loading forever).
+
+- Updated dependencies [272c1b2]
+  - @codaco/protocol-validation@11.8.1
+  - @codaco/network-query@1.1.2
+
 ## 2.1.0
 
 ### Minor Changes

@@ -1,5 +1,12 @@
 # @codaco/network-query
 
+## 1.1.2
+
+### Patch Changes
+
+- Updated dependencies [272c1b2]
+  - @codaco/protocol-validation@11.8.1
+
 ## 1.1.1
 
 ### Patch Changes
