@@ -24,12 +24,6 @@ const NEW_PHRASE = 'Brand-New-Phrase-2!';
 // fields balloon from ~300ms to >5s, tripping the default testTimeout.
 const setup = () => userEvent.setup({ delay: null });
 
-// Even with delay:null, this heavy interviewer suite (58 files, crypto + the
-// interview engine) runs many workers in parallel on a small CI runner; under
-// peak load a ~300ms test can still be starved past the 5000ms default. Give
-// generous headroom so scheduler contention doesn't flake the run.
-vi.setConfig({ testTimeout: 20000 });
-
 afterEach(() => {
   useAuthMock.mockReset();
   toastAdd.mockReset();

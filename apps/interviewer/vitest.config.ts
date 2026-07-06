@@ -40,6 +40,11 @@ export default defineConfig({
         test: {
           name: 'unit',
           environment: 'jsdom',
+          // This jsdom suite is parallelised alongside the rest of the
+          // workspace's tests in the CI quality job; under peak runner load a
+          // borderline test can be starved past the 5s default, so give
+          // generous headroom.
+          testTimeout: 20_000,
           setupFiles: ['./src/test-setup.ts'],
           include: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**/*.{ts,tsx}'],
           exclude: [
