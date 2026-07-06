@@ -4,7 +4,7 @@
  */
 module.exports = {
   appId: 'org.complexdatacollective.networkcanvas.architect',
-  productName: 'Network Canvas Architect',
+  productName: 'Network Canvas Architect Classic',
   copyright: 'Copyright © 2024 Complex Data Collective',
 
   // Directories
