@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the pre-merge check authoritative via a GitHub merge queue so the redundant post-merge `quality` run can be dropped, and parallelise + better-cache `quality` so it runs faster with far fewer spurious version-bump cache misses.
+**Goal:** Make the pre-merge check authoritative via a GitHub merge queue so the redundant post-merge `quality` run can be dropped, and parallelise + better-cache `quality` so it runs faster.
 
-**Architecture:** Two composing workstreams delivered over four PRs plus one repo-settings change. (1) Cache/perf: tune `turbo.json` `inputs` to kill version-churn misses, introduce a GitHub-Actions-Cache-backed Turborepo remote cache, and fan `quality` out into parallel jobs behind a single aggregator whose check name stays `quality`. (2) Authority: add a merge queue that requires the `quality` aggregator on `merge_group`, then stop running/gating on `quality` at push time — the release/deploy jobs trust the queue.
+**Architecture:** Two composing workstreams delivered over four PRs plus one repo-settings change. (1) Cache/perf: introduce a GitHub-Actions-Cache-backed Turborepo remote cache and fan `quality` out into parallel jobs behind a single aggregator whose check name stays `quality`. (2) Authority: add a merge queue that requires the `quality` aggregator on `merge_group`, then stop running/gating on `quality` at push time — the release/deploy jobs trust the queue. (A third workstream — tuning `turbo.json` `inputs` to kill version-bump cache misses — was cut as impossible; see Global Constraints.)
 
 **Tech Stack:** GitHub Actions, Turborepo `^2.9.16`, pnpm workspaces, `rharkor/caching-for-turbo` (remote cache), `actionlint` (workflow lint), Vitest, GitHub repository rulesets.
 
@@ -13,9 +13,9 @@
 ## Global Constraints
 
 - **The aggregator job MUST be named `quality`.** Every downstream `needs: quality` / `needs.quality.result` reference and the ruleset's required-check _context_ depend on that exact name. Never rename it.
-- **Rollout order is a hard dependency chain:** PR 1 (input tuning) → PR 2 (remote cache) → PR 3 (fan-out + inert `merge_group` trigger) → **enable ruleset** → PR 4 (drop push-time `quality`). **Never land PR 4 before the merge queue is live** — doing so publishes from an unverified `main`.
+- **Rollout order is a hard dependency chain:** PR 1 (interview vitest stub — test hygiene) → PR 2 (remote cache) → PR 3 (fan-out + inert `merge_group` trigger) → **enable ruleset** → PR 4 (drop push-time `quality`). **Never land PR 4 before the merge queue is live** — doing so publishes from an unverified `main`.
 - **Pin every third-party action by commit SHA** with a trailing `# vX.Y.Z` comment. Remote cache action: `rharkor/caching-for-turbo@75f8ebf4a43d2c60b23bc2a27082cfea94ffdad9 # v2.5.0`. Reuse the existing pinned SHAs for `actions/checkout`, `pnpm/action-setup`, `actions/setup-node` already in the workflow.
-- **Three builds embed their own version and MUST keep `package.json` in their `build` `inputs`:** `@codaco/architect` (override already present), `@codaco/interview` (add override), `@codaco/interviewer` (add override). Every other workspace must NOT hash `package.json` for `build`/`test`/`typecheck`.
+- **Do NOT tune `turbo.json` `inputs` to fight version-bump cache misses.** Turbo always hashes each package's `package.json`/`turbo.json`/lockfile regardless of `inputs` (verified: docs + a hash test), so it is a no-op. This workstream was cut; version-PR rebuilds are inherent. The merge queue still removes the _duplicate_ version-PR build.
 - **Do not re-plumb `detect` / `carry-forward-statuses` for `merge_group`.** Only `quality` runs in the queue; all conditional jobs (chromatic, e2e, deploys) stay `pull_request`-scoped and non-required.
 - **Node** from `.nvmrc`; **pnpm** via `pnpm/action-setup`. Never `any`, never barrel files.
 - **Branching:** never commit to `main`; one feature branch per PR. Until the app-rename branch `claude/elated-williamson-c76d6e` merges, **base each PR on it** (this plan's paths/names are post-rename); retarget to `main` once it lands. `oxfmt` runs in the pre-commit hook and will reformat JSON/MD/YAML — expect it.
@@ -24,17 +24,16 @@
 
 ## File Structure
 
-- `turbo.json` — task `inputs` tuning; two new `#build` overrides. (PR 1)
-- `packages/interview/vitest.config.ts` — stub `__PACKAGE_VERSION__` under test. (PR 1)
+- `packages/interview/vitest.config.ts` — stub `__PACKAGE_VERSION__` under test (test-hygiene: deterministic across version bumps). (PR 1)
 - `.github/actions/turbo-ci-setup/action.yml` — **new** composite action: pnpm + Node + install + remote cache. Single source of truth for turbo-job setup. (PR 2)
 - `.github/workflows/ci-and-release.yml` — convert all turbo jobs to the composite (PR 2); fan `quality` out + add `merge_group` trigger + guard `detect` (PR 3); drop push-time `quality` + de-gate the six release/deploy jobs (PR 4).
 - Repo ruleset on `main` (via Settings UI or `gh api`) — merge queue + required `quality` + disallow bypass. (between PR 3 and PR 4)
 
 ---
 
-# PR 1 — Kill version-churn cache misses (turbo inputs)
+# PR 1 — Interview test-hygiene stub ✅ COMPLETE
 
-Small, isolated, immediately valuable with the _existing_ cache. No workflow structure change.
+> **Note (2026-07-07):** the original PR 1 also tuned `turbo.json` `inputs` to kill version-bump cache misses. That was cut — turbo always hashes `package.json` regardless of `inputs` (docs + hash test), so it is a no-op. Only the interview vitest stub below remains, kept as a standalone test-hygiene change. The `turbo.json` edit was reverted on-branch.
 
 ## Task 1.1: Stub `__PACKAGE_VERSION__` under Vitest in `@codaco/interview`
 
@@ -45,7 +44,7 @@ Small, isolated, immediately valuable with the _existing_ cache. No workflow str
 
 **Interfaces:**
 
-- Produces: interview tests no longer depend on the real `pkg.version`, making it safe for Task 1.2 to drop `package.json` from the root `test` `inputs`.
+- Produces: interview tests no longer depend on the real `pkg.version` (deterministic test behaviour across `changeset version` bumps).
 
 - [ ] **Step 1: Confirm no test asserts the real version**
 
@@ -107,136 +106,6 @@ Expected: PASS (the stub compiles and no assertion depends on the real version).
 git add packages/interview/vitest.config.ts
 git commit -m "test(interview): stub __PACKAGE_VERSION__ under vitest to decouple tests from release version"
 ```
-
-## Task 1.2: Tune `turbo.json` `inputs` so version bumps stop invalidating caches
-
-**Files:**
-
-- Modify: `turbo.json`
-
-**Interfaces:**
-
-- Consumes: Task 1.1 (interview tests are version-insensitive).
-- Produces: `build`/`test`/`typecheck` no longer hash `package.json` except for the three version-embedding builds.
-
-- [ ] **Step 1: Duplicate the current root `build` task as the two version-embedding overrides**
-
-The root `build` task currently is:
-
-```json
-    "build": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "src/**",
-        "tsconfig*.json",
-        "vite.config.*",
-        "electron.vite.config.*",
-        "next.config.*",
-        "package.json"
-      ],
-      "env": ["NODE_ENV"],
-      "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
-    },
-```
-
-Add two overrides that are **verbatim copies of the current root build (still including `package.json`)**, keyed for the two apps that use the root build task and embed their version:
-
-```json
-    "@codaco/interview#build": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "src/**",
-        "tsconfig*.json",
-        "vite.config.*",
-        "electron.vite.config.*",
-        "next.config.*",
-        "package.json"
-      ],
-      "env": ["NODE_ENV"],
-      "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
-    },
-    "@codaco/interviewer#build": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "src/**",
-        "tsconfig*.json",
-        "vite.config.*",
-        "electron.vite.config.*",
-        "next.config.*",
-        "package.json"
-      ],
-      "env": ["NODE_ENV"],
-      "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
-    },
-```
-
-(`@codaco/architect#build` already has its own override that keeps `package.json` — leave it as-is.)
-
-- [ ] **Step 2: Remove `package.json` from the root `build` inputs**
-
-Edit the root `build` task's `inputs` to drop the `"package.json"` line:
-
-```json
-    "build": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "src/**",
-        "tsconfig*.json",
-        "vite.config.*",
-        "electron.vite.config.*",
-        "next.config.*"
-      ],
-      "env": ["NODE_ENV"],
-      "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
-    },
-```
-
-- [ ] **Step 3: Remove `package.json` from `test` and `typecheck` inputs**
-
-Drop the `"package.json"` line from the root `test` task `inputs` and the root `typecheck` task `inputs`. Also drop it from the two per-app typecheck overrides `@codaco/documentation#typecheck` and `networkcanvas.com#typecheck`. (Do NOT touch `.env` in `test` inputs.)
-
-- [ ] **Step 4: Validate JSON + confirm the hash behaviour with a dry run**
-
-Run:
-
-```bash
-python3 -c "import json; json.load(open('turbo.json'))" && echo "turbo.json valid"
-# A shared package's build must NOT list package.json:
-pnpm exec turbo run build --filter=@codaco/shared-consts --dry=json \
-  | jq -r '.tasks[] | select(.task=="build") | .inputs | keys[]' | grep -c 'package.json'
-```
-
-Expected: prints `turbo.json valid`, then `0` (shared-consts build no longer hashes `package.json`).
-
-- [ ] **Step 5: Confirm the version-embedding builds still hash package.json**
-
-Run:
-
-```bash
-pnpm exec turbo run build --filter=@codaco/interview --dry=json \
-  | jq -r '.tasks[] | select(.task=="build" and (.package|test("interview$"))) | .inputs | keys[]' | grep -c 'package.json'
-```
-
-Expected: `1` (interview build still hashes `package.json`). Repeat with `--filter=@codaco/interviewer` and `--filter=@codaco/architect`; each must print `1`.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add turbo.json
-git commit -m "build(turbo): stop hashing package.json for build/test/typecheck except version-embedding apps"
-```
-
-- [ ] **Step 7: Open PR 1**
-
-```bash
-git push -u origin HEAD
-gh pr create --base claude/elated-williamson-c76d6e --title "ci: stop version bumps from invalidating turbo caches" \
-  --body "Stubs interview's test-time version define and drops package.json from build/test/typecheck inputs (keeping it only for the three version-embedding builds). Cuts spurious cache misses on release/version-bump runs. See spec + plan under docs/superpowers."
-```
-
-Wait for CI to pass before merging.
-
----
 
 # PR 2 — GitHub-native Turborepo remote cache
 
@@ -669,7 +538,7 @@ After PR 4 lands via the queue, confirm on the resulting push to `main`: **no** 
 - Skip quality on push; de-gate the six jobs → Task 4.1. ✅
 - Fan-out into aggregator → Task 3.1. ✅
 - GitHub-native remote cache → Tasks 2.1–2.3. ✅
-- Version-churn inputs (typecheck+test+build with 3 overrides) + interview stub → Tasks 1.1–1.2. ✅
+- Version-churn inputs tuning → CUT (turbo always hashes package.json; impossible). Interview vitest stub kept as test hygiene → Task 1.1. ✅
 - Rollout ordering / no unguarded window → PR sequencing + Global Constraints. ✅
 - Escape hatch → covered by "disable the ruleset" (Settings step is reversible); noted in spec.
 

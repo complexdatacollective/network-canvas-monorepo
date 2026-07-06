@@ -7,6 +7,22 @@
 `*-classic`); all paths, package names, and turbo task keys below reflect the
 post-rename tree.
 
+## Correction (2026-07-07, during implementation)
+
+**Workstream B3 (tune `turbo.json` `inputs` to eliminate version-bump cache
+misses) was cut — it is impossible.** Turbo _always_ hashes each package's own
+`package.json`, the root `turbo.json`, and the lockfile, regardless of a task's
+`inputs` array (Turborepo docs: they are "always considered inputs, even if you
+try to explicitly ignore them"; confirmed here by a hash test — removing
+`package.json` from `@codaco/shared-consts`'s `build` inputs and bumping only its
+version still changed the build hash). `changeset version` rewrites
+`package.json`, so version-PR builds cache-miss inescapably. The "Verified facts"
+row claiming per-task `inputs` tuning is effective was wrong (the lockfile-stability
+check was correct but insufficient). What still helps: the **merge queue removes
+the _duplicate_ version-PR build** (validated once in the queue, not again on
+push), and fan-out + remote cache speed every run. The interview `__PACKAGE_VERSION__`
+vitest stub (below) was kept as a standalone **test-hygiene** change only.
+
 ## Problem
 
 The `quality` gate in `.github/workflows/ci-and-release.yml` runs more often than
@@ -68,8 +84,8 @@ problems remain:
 2. Never let a broken commit reach `main`.
 3. Parallelise `quality` so independent checks (lint, knip, typecheck, test) run
    concurrently once packages are built.
-4. Eliminate spurious version-bump cache misses and improve cross-run/cross-job
-   cache reuse.
+4. Improve cross-run/cross-job cache reuse. (Note: eliminating version-_bump_
+   misses is impossible — turbo always hashes `package.json`; see Correction.)
 
 ## Non-goals
 
@@ -89,7 +105,7 @@ Reproduced against the current repo, not assumed:
 | Fact                                                        | How verified                                                                                                                                                        | Consequence                                                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `main` has **no** required status checks / up-to-date rule  | `gh api …/branches/main/protection` → 404; `…/rulesets/11687301` → only deletion, non-fast-forward, copilot review                                                  | Post-merge `quality` is currently the real publish gate; a merge queue is required to make the pre-merge check authoritative.                                                                                                                                                                                                                                                               |
-| `changeset version` does **not** touch `pnpm-lock.yaml`     | `git show --name-only` on two release commits (`fa5517770` Version Packages, `413631228` version beta apps) → only `package.json` + `CHANGELOG.md` + `.changeset/*` | `globalDependencies` (`pnpm-lock.yaml`, `pnpm-workspace.yaml`) stays stable across version bumps, so per-task `inputs` tuning is effective (not defeated by lockfile churn).                                                                                                                                                                                                                |
+| `changeset version` does **not** touch `pnpm-lock.yaml`     | `git show --name-only` on two release commits (`fa5517770` Version Packages, `413631228` version beta apps) → only `package.json` + `CHANGELOG.md` + `.changeset/*` | The lockfile stays stable across version bumps — but this does **not** make `inputs` tuning effective (turbo always hashes `package.json` itself; see Correction). Row retained for the record.                                                                                                                                                                                             |
 | **Build-time** version embedding is limited to 3 workspaces | grep of vite/next configs                                                                                                                                           | `architect` (`__APP_VERSION__`, [vite.config.ts:62](../../../apps/architect/vite.config.ts)), `interviewer` renderer (`__APP_VERSION__`, [vite.renderer.config.ts:109](../../../apps/interviewer/vite.renderer.config.ts)), `@codaco/interview` (`__PACKAGE_VERSION__`, [vite.config.ts:113](../../../packages/interview/vite.config.ts)) must keep `package.json` in their `build` inputs. |
 | **Test-time** version embedding is limited to 1 workspace   | grep of vitest configs                                                                                                                                              | Only `@codaco/interview` reads the real `pkg.version` under test ([vitest.config.ts:35](../../../packages/interview/vitest.config.ts)). `interviewer` already stubs `__APP_VERSION__` → `'0.0.0-test'` ([vitest.config.ts:33](../../../apps/interviewer/vitest.config.ts)). `typecheck` never evaluates `define`s.                                                                          |
 | A GitHub-native turbo remote cache exists                   | web research                                                                                                                                                        | `rharkor/caching-for-turbo` runs a runner-local server implementing turbo's remote-cache protocol, backed by the GitHub Actions Cache. Successor to the unmaintained `dtinth/setup-github-actions-caching-for-turbo`.                                                                                                                                                                       |
@@ -191,26 +207,12 @@ no developer-laptop cache sharing (server is runner-local). Laptop sharing, if
 ever wanted, needs a true external cache (e.g. `zwave-js/turborepo-cache` on
 Cloudflare Workers+KV) — explicitly out of scope here.
 
-**B3. Eliminate version-churn cache misses (build-level).** Since the lockfile is
-stable across version bumps (verified), tune turbo `inputs`:
-
-- **`typecheck`** — remove `package.json` from `inputs` on the root `typecheck`
-  task and the `@codaco/documentation#typecheck` / `networkcanvas.com#typecheck`
-  overrides. Nothing evaluates version at typecheck. Zero risk.
-- **`test`** — stub `@codaco/interview`'s `__PACKAGE_VERSION__` → `'0.0.0-test'`
-  in its `vitest.config.ts` (mirroring interviewer's existing pattern), then
-  remove `package.json` from the root `test` task `inputs`.
-- **`build`** — remove `package.json` from the **root** `build` task `inputs`;
-  add `@codaco/interview#build` and `@codaco/interviewer#build` overrides that
-  **keep** `package.json` in `inputs` (the `@codaco/architect#build` override
-  already keeps it). Those three embed version at build time; every other
-  workspace stops churning on version bumps.
-
-Caveat (accepted): with `package.json` out of a task's `inputs`, a change to that
-package's _build/test script command_ no longer invalidates its cache. In
-practice build/test behaviour is defined by `vite.config.*` / `vitest.config.*` /
-`tsconfig*.json` (all still hashed), so this is low-risk; a rare script edit can
-be covered by bumping a cache epoch or a one-off `--force`.
+**B3. ~~Eliminate version-churn cache misses (build-level)~~ — CUT.** See the
+Correction at the top: turbo always hashes `package.json`, so `inputs` tuning
+cannot prevent version-bump misses. The only surviving fragment is a test-hygiene
+change: stub `@codaco/interview`'s `__PACKAGE_VERSION__` → `'0.0.0-test'` in its
+`vitest.config.ts` (mirroring interviewer's existing pattern) so test behaviour is
+deterministic across version bumps. No `turbo.json` changes.
 
 ## Isolation / boundaries
 
