@@ -2,7 +2,7 @@
 
 Generated screenshots of every Network Canvas interview interface, shipped
 with a React component for responsive display. Internal and unversioned —
-not published. Consumed by `architect-web` (stage thumbnails) and the
+not published. Consumed by `architect` (stage thumbnails) and the
 `documentation` site (the hero image on each interface-documentation page).
 
 ## Consuming
@@ -40,7 +40,7 @@ then derives WebP width variants with sharp into `src/generated/assets/`.
 
 Both `src/generated/assets/` (the WebP variants) and `src/generated/manifest.ts`
 (a small file mapping each interface and ratio to its variant URLs and
-dimensions) are **committed**. Consumers (`@codaco/architect-web`,
+dimensions) are **committed**. Consumers (`@codaco/architect`,
 `@codaco/documentation`) build directly against the committed assets — nothing
 regenerates them in CI. `manifest.ts` only changes when interfaces are
 added/removed or the ratio config changes.

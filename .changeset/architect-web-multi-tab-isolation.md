@@ -1,5 +1,5 @@
 ---
-'@codaco/architect-web': minor
+'@codaco/architect': minor
 ---
 
 You can now work on more than one protocol at a time in separate browser tabs.

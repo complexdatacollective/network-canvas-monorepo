@@ -44,7 +44,7 @@ for (const id of TEMPLATE_IDS) {
 if (drifted.length > 0) {
   process.stderr.write(
     `Bundled templates out of sync with canonical sources: ${drifted.join(', ')}\n` +
-      'Run: node apps/architect-web/scripts/sync-templates.mjs\n',
+      'Run: node apps/architect/scripts/sync-templates.mjs\n',
   );
   process.exit(1);
 }

@@ -58,7 +58,7 @@ create one. Before the preview and production deploys will work:
 2. Note its Site ID (Site settings → General → Site details).
 3. Add it as the repo secret `NETLIFY_SITE_ID_INTERVIEWER`. The
    `NETLIFY_AUTH_TOKEN` secret is already shared across all Netlify deploys in
-   this repo (docs, architect-web, networkcanvas.com) — no new token needed.
+   this repo (docs, architect, networkcanvas.com) — no new token needed.
 4. If Network Canvas Interviewer needs its own custom domain, configure it in the
    Netlify site's domain settings; nothing in CI needs to change for that.
 
@@ -92,7 +92,7 @@ interview-active guard above.
 
 Earlier alpha builds shipped an Electron desktop app (macOS/Windows/Linux,
 SQLCipher-encrypted storage, `electron-updater` auto-update) and a Capacitor
-tablet build (iPadOS/Android). Both were retired when interviewer-v8 moved to
+tablet build (iPadOS/Android). Both were retired when interviewer moved to
 the web-only offline-first PWA architecture (see
 `docs/superpowers/specs/2026-07-01-interviewer-v8-pwa-design.md`). If you're
 looking for the old signed-installer / GitHub-Releases / auto-updater-feed

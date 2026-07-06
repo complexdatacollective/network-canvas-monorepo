@@ -7,7 +7,7 @@ find the full documentation for it [in our repository](https://github.com/change
 We have a quick list of common questions to get you started engaging with this project in
 [our documentation](https://github.com/changesets/changesets/blob/main/docs/common-questions.md)
 
-## App changesets (architect-web / interviewer-v8)
+## App changesets (architect / interviewer)
 
 These two apps are `private` and in the `ignore` list, so `changeset version`
 preserves their changesets. They release on a `-beta.N` line via the separate

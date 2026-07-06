@@ -4,7 +4,7 @@
 // `maximumFileSizeToCacheInBytes` limit silently drops from the SW precache
 // manifest and 404s offline, breaking the offline boot. Architect precaches all
 // JS (no `globIgnores`), so any excluded chunk is a real regression. (Sibling of
-// apps/interviewer-v8/scripts/assert-pwa-build.mjs, which instead checks named
+// apps/interviewer/scripts/assert-pwa-build.mjs, which instead checks named
 // critical chunks because it intentionally excludes its dev-protocol chunk.)
 import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';

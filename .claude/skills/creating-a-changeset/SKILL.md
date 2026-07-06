@@ -12,7 +12,7 @@ released package or app:
 
 - A published library under `packages/*` (e.g. `@codaco/interview`,
   `@codaco/protocol-validation`) — any behaviour/API/type change consumers see.
-- An app: `@codaco/architect-web` or `@codaco/interviewer-v8`.
+- An app: `@codaco/architect` or `@codaco/interviewer`.
 
 Skip it for docs-only, test-only, CI/tooling-only, or internal refactors with no
 consumer-visible effect. Don't add an empty changeset just to have one.
@@ -24,7 +24,7 @@ consumer-visible effect. Don't add an empty changeset just to have one.
 hard-errors on it and would break the library release. If one PR changes both,
 run `pnpm changeset` twice and write two files.
 
-|           | Library packages (`packages/*`)        | Apps (`architect-web`, `interviewer-v8`)                                  |
+|           | Library packages (`packages/*`)        | Apps (`architect`, `interviewer`)                                         |
 | --------- | -------------------------------------- | ------------------------------------------------------------------------- |
 | Bump type | Real semver impact (major/minor/patch) | Only **categorises** the notes — base is fixed, `-beta.N` auto-increments |
 | Ships via | The "Version Packages" PR → npm        | The "Release apps (beta)" PR → Netlify prod + GitHub release              |

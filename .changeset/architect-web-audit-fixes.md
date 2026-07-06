@@ -1,5 +1,5 @@
 ---
-'@codaco/architect-web': patch
+'@codaco/architect': patch
 ---
 
 Pre-release audit fixes across the protocol designer. Your work is protected in
