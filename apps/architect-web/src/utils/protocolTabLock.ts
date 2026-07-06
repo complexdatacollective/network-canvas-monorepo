@@ -67,6 +67,11 @@ export const createProtocolTabLock = (
   const channel = channelFactory(CHANNEL_NAME);
 
   let claimedId: string | null = null;
+  // The protocol this tab intends to hold, tracked separately from the transient
+  // channel claim: it survives a `pagehide` (which releases the channel claim so
+  // a peer can take over while we're frozen) so a `pageshow` bfcache restore —
+  // which does not remount React or re-run the hook — can re-claim it.
+  let desiredId: string | null = null;
   let exclusive = true;
 
   const setExclusive = (next: boolean) => {
@@ -126,34 +131,55 @@ export const createProtocolTabLock = (
     }
   };
 
+  const claim = (id: string) => {
+    if (id === claimedId) return;
+    releaseCurrent();
+    claimedId = id;
+    // Optimistically assume exclusivity; a "held" reply demotes us.
+    setExclusive(true);
+    post({ type: 'claim', id, from: tabId });
+  };
+
   // Release our claim when the tab is unloaded (closed or navigated away) so a
   // duplicate tab waiting on the same protocol can reclaim it. pagehide is more
   // reliable than beforeunload/unload for this (fires on mobile bfcache too).
+  // `desiredId` is kept so a bfcache restore (onPageShow) can re-claim.
   const onPageHide = () => {
     releaseCurrent();
   };
+  // A bfcache restore brings the page back WITHOUT remounting React, so the hook
+  // never re-runs to re-claim — but pagehide already released our channel claim
+  // and a peer may have taken over. Re-assert the intended claim: if a peer now
+  // holds it, its "held" reply demotes us (disabling autosave); otherwise we
+  // regain exclusivity. Without this, a restored tab would keep autosave enabled
+  // while no longer answering "held", letting two tabs autosave one protocol.
+  const onPageShow = (event: PageTransitionEvent) => {
+    if (event.persisted && desiredId !== null) {
+      claim(desiredId);
+    }
+  };
   if (typeof window !== 'undefined') {
     window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', onPageShow);
   }
 
   return {
     claimProtocol: (id: string) => {
-      if (id === claimedId) return;
-      releaseCurrent();
-      claimedId = id;
-      // Optimistically assume exclusivity; a "held" reply demotes us.
-      setExclusive(true);
-      post({ type: 'claim', id, from: tabId });
+      desiredId = id;
+      claim(id);
     },
     releaseProtocol: () => {
+      desiredId = null;
       releaseCurrent();
       setExclusive(true);
     },
     isExclusive: () => exclusive,
     close: () => {
+      desiredId = null;
       releaseCurrent();
       if (typeof window !== 'undefined') {
         window.removeEventListener('pagehide', onPageHide);
+        window.removeEventListener('pageshow', onPageShow);
       }
       channel?.removeEventListener('message', onChannelMessage);
       channel?.close();

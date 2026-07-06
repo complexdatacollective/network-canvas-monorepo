@@ -116,6 +116,15 @@ and prevent that with a lightweight coordination channel.
 - Releasing: when a tab clears its active protocol (returns Home, deletes it, or
   unloads via `pagehide`), it broadcasts `release`, so a waiting duplicate tab
   can be told the coast is clear and re-enable editing.
+- Re-claiming after bfcache: `pagehide` also fires when a mobile tab is frozen
+  into the back/forward cache, and a bfcache restore brings the page back
+  _without_ remounting React (so the hook never re-runs). The lock remembers the
+  protocol it intends to hold (`desiredId`, kept across `pagehide`) and re-claims
+  it on `pageshow` when `event.persisted`. If a peer took over meanwhile, the
+  re-claim earns a `held` reply and this tab is correctly demoted to read-only
+  (autosave disabled); otherwise it regains exclusivity. Without this a restored
+  tab would keep autosave on while no longer answering `held`, letting two tabs
+  autosave one protocol.
 
 Autosave already reads `getStorageUnavailable` to skip writes; we add a parallel
 `getProtocolOpenElsewhere` guard in the same predicate, reusing the existing
@@ -209,10 +218,14 @@ tab and can't be "already open elsewhere" (new id). Requirement 6 holds for free
   in-session only and is not restored across reload or restart. Documented
   trade-off, strictly better than today.
 - The tab lock is **advisory and best-effort**: `BroadcastChannel` is same-origin
-  and reliable in all target browsers, but a tab killed without firing `pagehide`
-  (hard crash) leaves a stale claim until that dead tab's channel is gone. We
-  mitigate by having the surviving/duplicate tab re-probe on focus; worst case
-  the duplicate stays read-only until reloaded — it never corrupts data.
+  and reliable in all target browsers. A frozen (bfcache) tab is handled — it
+  releases on `pagehide` and re-claims on `pageshow` (see §2 Re-claiming) — but a
+  tab killed without firing `pagehide` (hard crash) leaves a stale claim until
+  that dead tab's channel is gone; worst case a duplicate stays read-only until
+  reloaded. It never corrupts data. There is also a sub-round-trip optimistic
+  window on every claim (this tab assumes exclusivity until a `held` reply lands)
+  during which two tabs could both autosave — inherent to any async coordination
+  and the same window the normal claim path already has.
 - If `BroadcastChannel` is entirely unavailable (very old engines), we degrade to
   today's behaviour for the same-protocol case (both editable) but the
   sessionStorage isolation still prevents session cross-wiring. No regression.

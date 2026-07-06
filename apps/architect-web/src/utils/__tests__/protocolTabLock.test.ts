@@ -56,16 +56,52 @@ class FakeBroadcastChannel {
   }
 }
 
+const CHANNEL = 'architect-protocol-lock';
+
 const channelFactory = (name: string) =>
   new FakeBroadcastChannel(name) as unknown as BroadcastChannel;
 
-// Locks register a window 'pagehide' listener; track and close them between
-// tests so a leaked listener from one test can't fire during another.
+// Locks register window 'pagehide'/'pageshow' listeners; track and close them
+// between tests so a leaked listener from one test can't fire during another.
 const locks: ProtocolTabLock[] = [];
 const makeLock = (options: Parameters<typeof createProtocolTabLock>[0]) => {
   const lock = createProtocolTabLock(options);
   locks.push(lock);
   return lock;
+};
+
+type LockMsg = { type: string; id?: string; from?: string };
+
+// A raw channel standing in for another tab, WITHOUT window listeners, so it
+// doesn't react to the pagehide/pageshow events a test fires at the lock under
+// test. It can be told to "hold" a protocol (auto-answering "held" to claims).
+const peers: FakeBroadcastChannel[] = [];
+const makePeer = () => {
+  const ch = new FakeBroadcastChannel(CHANNEL);
+  peers.push(ch);
+  const received: LockMsg[] = [];
+  let holdId: string | null = null;
+  ch.addEventListener('message', (event) => {
+    const msg = event.data as LockMsg;
+    received.push(msg);
+    if (holdId !== null && msg.type === 'claim' && msg.id === holdId) {
+      ch.postMessage({ type: 'held', id: holdId, from: 'peer' });
+    }
+  });
+  return {
+    received,
+    hold: (id: string) => {
+      holdId = id;
+      ch.postMessage({ type: 'claim', id, from: 'peer' });
+    },
+    claim: (id: string) => ch.postMessage({ type: 'claim', id, from: 'peer' }),
+  };
+};
+
+const firePageShow = (persisted: boolean) => {
+  const event = new Event('pageshow');
+  Object.defineProperty(event, 'persisted', { value: persisted });
+  window.dispatchEvent(event);
 };
 
 beforeEach(() => {
@@ -74,6 +110,7 @@ beforeEach(() => {
 
 afterEach(() => {
   for (const lock of locks.splice(0)) lock.close();
+  for (const peer of peers.splice(0)) peer.close();
   vi.restoreAllMocks();
 });
 
@@ -159,6 +196,59 @@ describe('protocolTabLock', () => {
     window.dispatchEvent(new Event('pagehide'));
 
     expect(tabB.isExclusive()).toBe(true);
+  });
+
+  it('on a bfcache restore, re-claims and is demoted if a peer took over', () => {
+    const onA = vi.fn();
+    const tabA = makeLock({ channelFactory, onExclusivityChange: onA });
+    const peer = makePeer();
+
+    tabA.claimProtocol('p1');
+    expect(tabA.isExclusive()).toBe(true);
+
+    // tabA is frozen into the back/forward cache: pagehide releases its claim.
+    window.dispatchEvent(new Event('pagehide'));
+    // A peer takes over p1 while tabA is frozen.
+    peer.hold('p1');
+    // tabA is restored from bfcache WITHOUT a React remount.
+    firePageShow(true);
+
+    // tabA re-asserts its claim, the peer answers "held", so tabA is correctly
+    // demoted (its autosave will be disabled) rather than silently double-editing.
+    expect(tabA.isExclusive()).toBe(false);
+    expect(onA).toHaveBeenLastCalledWith(false);
+  });
+
+  it('on a bfcache restore with no peer, re-claims so it still blocks a duplicate', () => {
+    const tabA = makeLock({ channelFactory });
+
+    tabA.claimProtocol('p1');
+    window.dispatchEvent(new Event('pagehide')); // released on freeze
+    firePageShow(true); // restored → re-claims p1
+
+    // tabA holds p1 again: a fresh duplicate's claim is answered "held".
+    const peer = makePeer();
+    peer.claim('p1');
+
+    expect(peer.received.some((m) => m.type === 'held' && m.id === 'p1')).toBe(
+      true,
+    );
+  });
+
+  it('does not re-claim on a bfcache restore after an explicit release', () => {
+    const tabA = makeLock({ channelFactory });
+
+    tabA.claimProtocol('p1');
+    tabA.releaseProtocol(); // leaving the editor clears the intended claim
+    firePageShow(true);
+
+    // p1 was intentionally given up, so tabA must not silently re-grab it.
+    const peer = makePeer();
+    peer.claim('p1');
+
+    expect(peer.received.some((m) => m.type === 'held' && m.id === 'p1')).toBe(
+      false,
+    );
   });
 
   it('degrades to always-exclusive when BroadcastChannel is unavailable', () => {
