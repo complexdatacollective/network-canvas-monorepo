@@ -18,7 +18,7 @@
 - **Do NOT tune `turbo.json` `inputs` to fight version-bump cache misses.** Turbo always hashes each package's `package.json`/`turbo.json`/lockfile regardless of `inputs` (verified: docs + a hash test), so it is a no-op. This workstream was cut; version-PR rebuilds are inherent. The merge queue still removes the _duplicate_ version-PR build.
 - **Do not re-plumb `detect` / `carry-forward-statuses` for `merge_group`.** Only `quality` runs in the queue; all conditional jobs (chromatic, e2e, deploys) stay `pull_request`-scoped and non-required.
 - **Node** from `.nvmrc`; **pnpm** via `pnpm/action-setup`. Never `any`, never barrel files.
-- **Branching:** never commit to `main`; one feature branch per PR. Until the app-rename branch `claude/elated-williamson-c76d6e` merges, **base each PR on it** (this plan's paths/names are post-rename); retarget to `main` once it lands. `oxfmt` runs in the pre-commit hook and will reformat JSON/MD/YAML — expect it.
+- **Branching:** never commit to `main`; one feature branch per PR, based on `main` (the app-rename PR #821 has merged, so this plan's post-rename paths/names match `main`). `oxfmt` runs in the pre-commit hook and will reformat JSON/MD/YAML — expect it.
 
 ---
 
@@ -255,7 +255,7 @@ Expected: `0`, then `actionlint clean`.
 git add .github/workflows/ci-and-release.yml
 git commit -m "ci: route all turbo jobs through the remote-cache composite action"
 git push -u origin HEAD
-gh pr create --base claude/elated-williamson-c76d6e --title "ci: adopt GitHub-Actions-Cache-backed Turborepo remote cache" \
+gh pr create --base main --title "ci: adopt GitHub-Actions-Cache-backed Turborepo remote cache" \
   --body "Replaces per-job .turbo actions/cache with a runner-local turbo remote cache (rharkor/caching-for-turbo) via a shared composite action. Per-task hash-addressed cache entries; no structural change to quality yet."
 ```
 
@@ -432,7 +432,7 @@ actionlint .github/workflows/ci-and-release.yml && echo clean
 git add .github/workflows/ci-and-release.yml
 git commit -m "ci: run quality on merge_group; keep detect + conditional jobs off the queue"
 git push -u origin HEAD
-gh pr create --base claude/elated-williamson-c76d6e --title "ci: parallelise quality + add inert merge_group trigger" \
+gh pr create --base main --title "ci: parallelise quality + add inert merge_group trigger" \
   --body "Fans quality into parallel sub-jobs behind a 'quality' aggregator and adds a merge_group trigger (inert until the queue is enabled). Push-time quality and all needs: quality gates are UNCHANGED here — this is a pure refactor + speedup. The redundant post-merge run is removed in the follow-up PR after the queue is live."
 ```
 

@@ -2,10 +2,9 @@
 
 **Date:** 2026-07-07
 **Status:** Designed (not yet implemented)
-**Base:** rebased on the app-rename branch (`claude/elated-williamson-c76d6e`:
-`architect-web`→`architect`, `interviewer-v8`→`interviewer`, legacy →
-`*-classic`); all paths, package names, and turbo task keys below reflect the
-post-rename tree.
+**Base:** `main` (after the app-rename PR #821: `architect-web`→`architect`,
+`interviewer-v8`→`interviewer`, legacy → `*-classic`); all paths, package names,
+and turbo task keys below reflect the post-rename tree now on `main`.
 
 ## Correction (2026-07-07, during implementation)
 
