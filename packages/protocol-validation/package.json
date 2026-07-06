@@ -1,6 +1,6 @@
 {
   "name": "@codaco/protocol-validation",
-  "version": "11.8.0",
+  "version": "11.8.1",
   "description": "Utilities for validating and migrating Network Canvas protocol files.",
   "license": "GPL-3.0-or-later",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
