@@ -51,9 +51,9 @@ function getMediaMimeType(
   return MEDIA_MIME_TYPES[ext] ?? fallback;
 }
 
-// Size applies to image items, which carry a `size` prop. Maps the size
-// magic-strings to max-height bands. Other item types are rendered at their
-// natural size (no max-height treatment).
+// Size applies to image and video items, which carry an optional `size` prop.
+// Maps the size magic-strings to max-height bands. Text items are rendered at
+// their natural height (no max-height treatment) so all their content shows.
 function getSizeClass(size: string | undefined): string {
   return cx(
     size === 'SMALL' && 'max-h-48',
@@ -82,11 +82,13 @@ function VideoPlayer({
   name,
   source,
   isE2E,
+  sizeClass,
 }: {
   src: string;
   name: string;
   source: string | undefined;
   isE2E: boolean;
+  sizeClass: string;
 }) {
   const [state, setState] = useState<MediaLoadState>('loading');
   const captureException = useCaptureException();
@@ -96,7 +98,9 @@ function VideoPlayer({
   const mimeType = getMediaMimeType(source ?? name, 'video/mp4');
 
   return (
-    <div className={cx('relative', state === 'loading' && 'min-h-48')}>
+    <div
+      className={cx('relative', sizeClass, state === 'loading' && 'min-h-48')}
+    >
       {state === 'loading' && !isE2E && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
           <Spinner size="lg" />
@@ -117,6 +121,8 @@ function VideoPlayer({
         playsInline
         preload={isE2E ? 'none' : 'auto'}
         className={cx(
+          'w-full object-contain',
+          sizeClass,
           (state === 'loading' && !isE2E) || state === 'error'
             ? 'invisible h-0'
             : '',
@@ -202,6 +208,7 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
           name={assetMeta.name}
           source={assetMeta.source}
           isE2E={isE2E}
+          sizeClass={getSizeClass(itemSize)}
         />
       );
     case 'network':

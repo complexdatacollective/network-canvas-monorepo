@@ -10,7 +10,7 @@ import Audio from '../../Form/Fields/Audio';
 import Image from '../../Form/Fields/Image';
 import Video from '../../Form/Fields/Video';
 import ValidatedField from '../../Form/ValidatedField';
-import { typeOptions } from './options';
+import { sizeOptions, typeOptions } from './options';
 import withItemHandlers from './withItemHandlers';
 
 const contentInputs = {
@@ -22,12 +22,19 @@ const contentInputs = {
 
 const getInputComponent = (type: string) => get(contentInputs, type, RichText);
 
+// Size is a display treatment for image and video items only; text has no size
+// and audio is not visually sized.
+const supportsSize = (type: string | undefined) =>
+  type === 'image' || type === 'video';
+
 type ItemEditorProps = {
   type?: string;
+  /** Whether to expose the image/video display-size control (Information only). */
+  allowSize?: boolean;
   handleChangeType: (value: string) => void;
 };
 
-const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
+const ItemEditor = ({ type, allowSize, handleChangeType }: ItemEditorProps) => (
   <>
     <Section title="Type" layout="vertical">
       <Row>
@@ -55,6 +62,27 @@ const ItemEditor = ({ type, handleChangeType }: ItemEditorProps) => (
             name="content"
             component={getInputComponent(type)}
             validation={{ required: true }}
+          />
+        </Row>
+      </Section>
+    )}
+    {allowSize && supportsSize(type) && (
+      <Section
+        title="Display size"
+        summary="Optionally constrain the height of this item. Full size lets it display at its natural height."
+        layout="vertical"
+        required={false}
+      >
+        <Row>
+          <ValidatedField
+            name="size"
+            component={RadioGroup}
+            validation={{}}
+            format={(value: unknown) => value ?? ''}
+            componentProps={{
+              options: sizeOptions,
+              orientation: 'horizontal',
+            }}
           />
         </Row>
       </Section>
