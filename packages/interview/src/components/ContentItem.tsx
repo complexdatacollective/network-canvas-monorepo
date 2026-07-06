@@ -62,6 +62,20 @@ function getSizeClass(size: string | undefined): string {
   );
 }
 
+// In E2E the video never loads (preload="none"), so its element box would
+// collapse to the browser-default ~150px and every size would mask identically.
+// Pin the empty element to the height its size band implies (the same bands
+// getSizeClass caps to) so the masked screenshot reflects the real video
+// footprint. Sizeless videos fall back to a 16:9 box.
+function getE2EVideoBoxClass(size: string | undefined): string {
+  return cx(
+    size === 'SMALL' && 'h-48',
+    size === 'MEDIUM' && 'h-96',
+    size === 'LARGE' && 'h-[60vh]',
+    !size && 'aspect-video',
+  );
+}
+
 function ItemFallback({ message }: { message: string }) {
   return (
     <div
@@ -82,13 +96,13 @@ function VideoPlayer({
   name,
   source,
   isE2E,
-  sizeClass,
+  size,
 }: {
   src: string;
   name: string;
   source: string | undefined;
   isE2E: boolean;
-  sizeClass: string;
+  size: string | undefined;
 }) {
   const [state, setState] = useState<MediaLoadState>('loading');
   const captureException = useCaptureException();
@@ -96,6 +110,7 @@ function VideoPlayer({
   // Disable autoPlay and preload to prevent browser crashes in headless E2E tests.
   // MIME type derives from the source filename, falling back to the display name.
   const mimeType = getMediaMimeType(source ?? name, 'video/mp4');
+  const sizeClass = getSizeClass(size);
 
   return (
     <div
@@ -123,6 +138,7 @@ function VideoPlayer({
         className={cx(
           'w-full object-contain',
           sizeClass,
+          isE2E && getE2EVideoBoxClass(size),
           (state === 'loading' && !isE2E) || state === 'error'
             ? 'invisible h-0'
             : '',
@@ -208,7 +224,7 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
           name={assetMeta.name}
           source={assetMeta.source}
           isE2E={isE2E}
-          sizeClass={getSizeClass(itemSize)}
+          size={itemSize}
         />
       );
     case 'network':
