@@ -69,7 +69,7 @@ export function ImportDialog({ open, onClose, onSubmit }: ImportDialogProps) {
         <ExternalLink href="https://architect.networkcanvas.com">
           Architect
         </ExternalLink>
-        , or the desktop version of Architect.
+        .
       </Paragraph>
 
       <button

@@ -1,8 +1,6 @@
 import architectIcon from '~/images/architect-icon.png';
 import { cx } from '~/utils/cva';
 
-import Badge from './Badge';
-
 type BrandProps = {
   onClick?: () => void;
   className?: string;
@@ -50,7 +48,6 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
     <>
       {iconImg}
       <p className="h3 m-0">Architect</p>
-      <Badge color="sea-green">WEB</Badge>
     </>
   );
 
