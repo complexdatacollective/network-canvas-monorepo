@@ -3,6 +3,8 @@ import type { NcNetwork } from '@codaco/shared-consts';
 
 import * as dexieSettings from './db';
 import * as dexieProtocols from './protocols';
+import { reencryptAllRecords as dexieReencryptAllRecords } from './reencrypt';
+import type { ReencryptProgress, ReencryptResult } from './reencrypt';
 import * as dexieSessions from './sessions';
 import type {
   ProtocolWithCounts,
@@ -117,6 +119,12 @@ export async function countSyntheticSessions(): Promise<number> {
 
 export async function deleteSyntheticSessions(): Promise<number> {
   return dexieSessions.deleteSyntheticSessions();
+}
+
+export async function reencryptAllRecords(
+  onProgress?: ReencryptProgress,
+): Promise<ReencryptResult> {
+  return dexieReencryptAllRecords(onProgress);
 }
 
 export async function getSettings(): Promise<StoredSettings> {

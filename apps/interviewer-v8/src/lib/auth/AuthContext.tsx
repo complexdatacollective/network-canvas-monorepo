@@ -15,7 +15,12 @@ import * as authApi from './api';
 import type { AuthMode } from './api';
 import { useIdleTimer } from './idle';
 
-export type AuthStateKind = 'loading' | 'unconfigured' | 'locked' | 'unlocked';
+export type AuthStateKind =
+  | 'loading'
+  | 'unconfigured'
+  | 'corrupt'
+  | 'locked'
+  | 'unlocked';
 export type IdleTimeoutMinutes = 1 | 5 | 15 | 30 | 60;
 
 export type AuthState = {
@@ -47,9 +52,9 @@ type AuthActions = {
   setIdleTimeoutMinutes: (minutes: IdleTimeoutMinutes) => Promise<void>;
 };
 
-type AuthContextValue = AuthState & AuthActions;
+export type AuthContextValue = AuthState & AuthActions;
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 // Lock 30s after window blur / tab hide, separate from the idle timeout — a
 // brief grace period to alt-tab without losing the session. Disabled in dev
@@ -64,11 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     const s = await authApi.status();
-    const kind: AuthStateKind = !s.configured
-      ? 'unconfigured'
-      : s.locked
-        ? 'locked'
-        : 'unlocked';
+    const kind: AuthStateKind = s.corrupt
+      ? 'corrupt'
+      : !s.configured
+        ? 'unconfigured'
+        : s.locked
+          ? 'locked'
+          : 'unlocked';
 
     let idleTimeoutMinutes: IdleTimeoutMinutes =
       DEFAULT_SETTINGS.idleTimeoutMinutes;

@@ -6,6 +6,15 @@ vi.mock('../../vault/webauthn', () => ({
   isPrfSupported: () => isPrfSupportedMock(),
 }));
 
+const { requestPersistentStorageMock } = vi.hoisted(() => ({
+  requestPersistentStorageMock: vi.fn<() => Promise<boolean>>(),
+}));
+vi.mock('../../storage', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../storage')>('../../storage');
+  return { ...actual, requestPersistentStorage: requestPersistentStorageMock };
+});
+
 import { db } from '../../db/db';
 import { getSessionDek, setSessionDek } from '../../db/sessionKey';
 import type { StoredSession } from '../../db/types';
@@ -32,6 +41,8 @@ beforeEach(() => {
   setSessionDek(null);
   isPrfSupportedMock.mockReset();
   isPrfSupportedMock.mockResolvedValue(false);
+  requestPersistentStorageMock.mockReset();
+  requestPersistentStorageMock.mockResolvedValue(true);
 });
 afterEach(() => {
   clearVault();
@@ -58,6 +69,18 @@ describe('auth/api — pin mode delegates to the vault + sets the session DEK', 
     const r = await authApi.enrolWithPin('123');
     expect(r.ok).toBe(false);
     expect(r.message).toMatch(/8 digits/i);
+  });
+
+  it('requests persistent storage on a successful enrol, not a rejected one', async () => {
+    // A rejected enrol never reaches the persistence request.
+    expect((await authApi.enrolWithPin('123')).ok).toBe(false);
+    expect(requestPersistentStorageMock).not.toHaveBeenCalled();
+
+    // Enabling encryption commits data to the device, so enrol asks the browser
+    // to make storage non-evictable — the fix for the durability label going
+    // stale until a reload after install + enrol.
+    expect((await authApi.enrolWithPin('12345678')).ok).toBe(true);
+    expect(requestPersistentStorageMock).toHaveBeenCalledTimes(1);
   });
 
   it('enrol holds the DEK; a simulated reload (fresh sessionKey) re-locks; unlock re-derives it', async () => {

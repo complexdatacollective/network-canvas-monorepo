@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
+import { MockAuthProvider } from '~/lib/auth/MockAuthProvider';
+
 import { LockScreenView } from './LockScreen';
 
 // The locked-vault screen. It renders the unlock dialog for the enrolled mode.
@@ -23,25 +25,27 @@ const meta: Meta<StoryArgs> = {
     outcome: { control: 'inline-radio', options: ['success', 'failure'] },
   },
   render: ({ mode, outcome }) => (
-    <LockScreenView
-      mode={mode}
-      unlockWithPin={async () => {
-        await wait(120);
-        return result(outcome, 'Incorrect PIN.');
-      }}
-      unlockWithPassphrase={async () => {
-        await wait(120);
-        return result(outcome, 'Incorrect passphrase.');
-      }}
-      unlockWithBiometric={async () => {
-        await wait(120);
-        return result(outcome, 'Biometric attempt failed.');
-      }}
-      unlockWithRecovery={async () => {
-        await wait(120);
-        return result(outcome, 'Incorrect passphrase.');
-      }}
-    />
+    <MockAuthProvider>
+      <LockScreenView
+        mode={mode}
+        unlockWithPin={async () => {
+          await wait(120);
+          return result(outcome, 'Incorrect PIN.');
+        }}
+        unlockWithPassphrase={async () => {
+          await wait(120);
+          return result(outcome, 'Incorrect passphrase.');
+        }}
+        unlockWithBiometric={async () => {
+          await wait(120);
+          return result(outcome, 'Biometric attempt failed.');
+        }}
+        unlockWithRecovery={async () => {
+          await wait(120);
+          return result(outcome, 'Incorrect passphrase.');
+        }}
+      />
+    </MockAuthProvider>
   ),
 };
 

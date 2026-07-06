@@ -60,8 +60,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // A history-back (browser button or a swipe gesture the CSS/wheel guards
   // can't intercept, e.g. iPadOS edge swipe) would leave the interview WITHOUT
   // the requireUnlockOnExit gate. Pin the history for the life of the route;
-  // handleExit still navigates forward normally.
-  useHistoryBackGuard(true);
+  // gated forward exits go through `exitToHome` so the pinned entry is consumed
+  // rather than left buried (which would let Back from Home re-enter).
+  const exitToHome = useHistoryBackGuard(true);
+  const goHome = useCallback(
+    () => exitToHome(() => navigate('/', { replace: true })),
+    [exitToHome, navigate],
+  );
 
   // Gated exit shared by the Shell exit button and the completion screen.
   const handleExit = useCallback(async () => {
@@ -71,8 +76,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       if (!result.ok) return;
     }
     setAuthorizedInterviewId(null);
-    navigate('/');
-  }, [requireFreshUnlock, navigate, setAuthorizedInterviewId]);
+    goHome();
+  }, [requireFreshUnlock, goHome, setAuthorizedInterviewId]);
 
   useEffect(() => {
     let active = true;
@@ -86,7 +91,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       if (settings.requireUnlockOnEnter && !alreadyAuthorized) {
         const result = await requireFreshUnlock();
         if (!result.ok) {
-          if (active) navigate('/');
+          if (active) goHome();
           return;
         }
       }
@@ -144,7 +149,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     };
   }, [
     sessionId,
-    navigate,
+    goHome,
     requireFreshUnlock,
     getAuthorizedInterviewId,
     setAuthorizedInterviewId,
@@ -162,6 +167,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     [],
   );
 
+  // `finishedAt` is written solely by markSessionFinished (via handleFinish).
+  // The engine never sets session.finishTime for an in-progress session, so a
+  // trailing debounced sync landing after finish would otherwise rewrite it
+  // back to null and un-finish the interview.
   const handleSync = useCallback(
     async (id: string, session: SessionPayload) => {
       await updateSession(id, {
@@ -170,7 +179,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         stageMetadata: session.stageMetadata as
           | Record<string, unknown>
           | undefined,
-        finishedAt: session.finishTime,
       });
     },
     [],
@@ -228,7 +236,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
               // the entry authorization so a transient load failure can't leave
               // a stale id that would later skip the enter gate.
               setAuthorizedInterviewId(null);
-              navigate('/');
+              goHome();
             }}
           >
             Return home

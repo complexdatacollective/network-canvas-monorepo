@@ -92,7 +92,7 @@ describe('serializeDataViewState', () => {
         { id: 'protocolName', value: ['Study A', 'Study B'] },
         { id: 'startedAt', value: { from: '2026-01-01', to: '2026-01-31' } },
         { id: 'updatedAt', value: { from: '2026-02-01', to: '2026-02-28' } },
-        { id: 'progress', value: ['in-progress', 'exported'] },
+        { id: 'progress', value: ['in-progress', 'complete'] },
         { id: 'exportedAt', value: true },
       ],
       sorting: [{ id: 'caseId', desc: false }],

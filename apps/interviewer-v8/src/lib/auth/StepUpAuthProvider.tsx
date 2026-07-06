@@ -3,9 +3,12 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from 'react';
+
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 
 import { useAuth } from './AuthContext';
 import StepUpAuthDialog, { type StepUpResult } from './StepUpAuthDialog';
@@ -25,6 +28,7 @@ const StepUpAuthContext = createContext<StepUpAuthContextValue | null>(null);
 
 export function StepUpAuthProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
+  const { closeAllDialogs } = useDialog();
   const [open, setOpen] = useState(false);
   const pendingResolve = useRef<((r: StepUpResult) => void) | null>(null);
 
@@ -34,6 +38,21 @@ export function StepUpAuthProvider({ children }: { children: ReactNode }) {
     pendingResolve.current = null;
     resolve?.(result);
   }, []);
+
+  // The dialog providers sit above AuthGate so their state survives the
+  // locked/unlocked child swap. When the app locks, dismiss any open confirm
+  // dialogs (a destructive confirm mustn't stay armed to fire on unlock) and
+  // cancel a pending step-up so its awaiting caller doesn't hang.
+  useEffect(() => {
+    if (auth.kind !== 'locked') return;
+    const resolve = pendingResolve.current;
+    if (resolve) {
+      pendingResolve.current = null;
+      setOpen(false);
+      resolve({ ok: false, reason: 'cancelled' });
+    }
+    closeAllDialogs();
+  }, [auth.kind, closeAllDialogs]);
 
   const requireFreshUnlock = useCallback(async (): Promise<StepUpResult> => {
     if (auth.kind !== 'unlocked' || !auth.mode || auth.mode === 'none') {

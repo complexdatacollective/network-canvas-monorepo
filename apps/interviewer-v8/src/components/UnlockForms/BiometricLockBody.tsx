@@ -1,5 +1,5 @@
 import { Fingerprint, RectangleEllipsis } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -12,7 +12,9 @@ import { hasPasskeyWindowLimitation } from '~/lib/pwa/passkeyWindowLimitation';
 
 import BiometricUnlockForm from './BiometricUnlockForm';
 import PasswordUnlockField from './PasswordUnlockField';
+import { ResetAppDataButton } from './ResetAppDataButton';
 import { UnlockEmblem } from './UnlockEmblem';
+import { UnlockLayout } from './UnlockLayout';
 
 const LOCK_TITLE = 'Welcome back';
 
@@ -35,6 +37,25 @@ export function BiometricLockBody({
   const [useRecovery, setUseRecovery] = useState(limited);
   const formId = useId();
 
+  // Best-effort auto-unlock: try biometrics once on mount so the common case
+  // (a gesture is available, e.g. after a reload or refocus) needs zero clicks.
+  // WebAuthn `navigator.credentials.get()` generally requires a user gesture;
+  // after an idle/blur lock there is none, and Safari/WebKit rejects the
+  // auto-call — so this is best-effort and the "Unlock with biometrics" button
+  // stays as the fallback. Skip when `limited` (macOS-Chromium installed PWA
+  // can't reach the passkey) or in recovery. The ref guards against React
+  // re-renders / StrictMode double-mount and recovery↔biometric toggling
+  // re-firing the prompt. A failed/cancelled attempt resolves to { ok:false }
+  // and is intentionally silent — only the explicit button surfaces errors.
+  const autoAttempted = useRef(false);
+  useEffect(() => {
+    if (limited || useRecovery || autoAttempted.current) {
+      return;
+    }
+    autoAttempted.current = true;
+    void unlockWithBiometric().catch(() => {});
+  }, [limited, useRecovery, unlockWithBiometric]);
+
   if (useRecovery) {
     return (
       <FormStoreProvider>
@@ -43,68 +64,86 @@ export function BiometricLockBody({
           dismissible={false}
           title={LOCK_TITLE}
           footer={
-            <SubmitButton form={formId} submittingText="Unlocking…">
-              Unlock
-            </SubmitButton>
+            <>
+              <ResetAppDataButton />
+              <SubmitButton
+                form={formId}
+                submittingText="Unlocking…"
+                className="phone-landscape:self-center"
+              >
+                Unlock
+              </SubmitButton>
+            </>
           }
         >
-          <div className="mb-6 flex flex-col items-center gap-4 text-center">
-            <UnlockEmblem icon={RectangleEllipsis} seed="recovery-unlock" />
-            <Paragraph margin="none" emphasis="muted">
+          <UnlockLayout
+            emblem={
+              <UnlockEmblem icon={RectangleEllipsis} seed="recovery-unlock" />
+            }
+          >
+            <Paragraph emphasis="muted">
               {limited
                 ? "Biometric unlock isn't available in the installed app on macOS. Enter your recovery passphrase to unlock."
                 : 'Enter your recovery passphrase to unlock.'}
             </Paragraph>
-          </div>
-          <FormWithoutProvider
-            id={formId}
-            onSubmit={async (values): Promise<FormSubmissionResult> => {
-              const phrase =
-                typeof values.passphrase === 'string' ? values.passphrase : '';
-              const result = await unlockWithRecovery(phrase);
-              return result.ok
-                ? { success: true }
-                : {
-                    success: false,
-                    formErrors: [result.message ?? 'Incorrect passphrase.'],
-                  };
-            }}
-          >
-            <PasswordUnlockField autoFocus />
-          </FormWithoutProvider>
-          <Button
-            type="button"
-            color="secondary"
-            className="mt-4"
-            onClick={() => setUseRecovery(false)}
-          >
-            {limited ? 'Try biometrics anyway' : 'Back to biometrics'}
-          </Button>
+            <FormWithoutProvider
+              id={formId}
+              onSubmit={async (values): Promise<FormSubmissionResult> => {
+                const phrase =
+                  typeof values.passphrase === 'string'
+                    ? values.passphrase
+                    : '';
+                const result = await unlockWithRecovery(phrase);
+                return result.ok
+                  ? { success: true }
+                  : {
+                      success: false,
+                      formErrors: [result.message ?? 'Incorrect passphrase.'],
+                    };
+              }}
+            >
+              <PasswordUnlockField autoFocus />
+            </FormWithoutProvider>
+            <Button
+              type="button"
+              color="secondary"
+              className="mt-4"
+              onClick={() => setUseRecovery(false)}
+            >
+              {limited ? 'Try biometrics anyway' : 'Back to biometrics'}
+            </Button>
+          </UnlockLayout>
         </Dialog>
       </FormStoreProvider>
     );
   }
 
   return (
-    <Dialog open dismissible={false} title={LOCK_TITLE}>
-      <div className="mb-6 flex flex-col items-center gap-4 text-center">
-        <UnlockEmblem icon={Fingerprint} seed="biometric-unlock" />
-        <Paragraph margin="none" emphasis="muted">
+    <Dialog
+      open
+      dismissible={false}
+      title={LOCK_TITLE}
+      footer={<ResetAppDataButton />}
+    >
+      <UnlockLayout
+        emblem={<UnlockEmblem icon={Fingerprint} seed="biometric-unlock" />}
+      >
+        <Paragraph emphasis="muted">
           Authenticate to unlock and pick up where you left off.
         </Paragraph>
-      </div>
-      <BiometricUnlockForm
-        submitLabel="Unlock with biometrics"
-        onSubmit={() => unlockWithBiometric()}
-      />
-      <Button
-        type="button"
-        color="secondary"
-        className="mt-4"
-        onClick={() => setUseRecovery(true)}
-      >
-        Use recovery passphrase
-      </Button>
+        <BiometricUnlockForm
+          submitLabel="Unlock with biometrics"
+          onSubmit={() => unlockWithBiometric()}
+        />
+        <Button
+          type="button"
+          color="secondary"
+          className="mt-4"
+          onClick={() => setUseRecovery(true)}
+        >
+          Use recovery passphrase
+        </Button>
+      </UnlockLayout>
     </Dialog>
   );
 }

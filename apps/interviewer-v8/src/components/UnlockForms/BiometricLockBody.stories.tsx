@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
+import { MockAuthProvider } from '~/lib/auth/MockAuthProvider';
+
 import { BiometricLockBody } from './BiometricLockBody';
 
 // The biometric lock dialog. Normally shows a "Unlock with biometrics" button
@@ -23,21 +25,23 @@ const meta: Meta<StoryArgs> = {
     outcome: { control: 'inline-radio', options: ['success', 'failure'] },
   },
   render: ({ limited, outcome }) => (
-    <BiometricLockBody
-      limited={limited}
-      unlockWithBiometric={async () => {
-        await wait(150);
-        return outcome === 'success'
-          ? { ok: true }
-          : { ok: false, message: 'Biometric attempt failed.' };
-      }}
-      unlockWithRecovery={async () => {
-        await wait(150);
-        return outcome === 'success'
-          ? { ok: true }
-          : { ok: false, message: 'Incorrect passphrase.' };
-      }}
-    />
+    <MockAuthProvider>
+      <BiometricLockBody
+        limited={limited}
+        unlockWithBiometric={async () => {
+          await wait(150);
+          return outcome === 'success'
+            ? { ok: true }
+            : { ok: false, message: 'Biometric attempt failed.' };
+        }}
+        unlockWithRecovery={async () => {
+          await wait(150);
+          return outcome === 'success'
+            ? { ok: true }
+            : { ok: false, message: 'Incorrect passphrase.' };
+        }}
+      />
+    </MockAuthProvider>
   ),
 };
 

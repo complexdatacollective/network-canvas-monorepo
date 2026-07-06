@@ -13,7 +13,9 @@ import {
 import {
   clearVault,
   readVault,
+  readVaultState,
   type VaultMode,
+  type VaultRecord,
   writeVault,
 } from './vaultStore';
 import { enrollBiometric, readPrf, signalCredentialUnknown } from './webauthn';
@@ -101,6 +103,34 @@ async function unlockWithPassword(
   } catch {
     return { ok: false, message: wrongMessage };
   }
+}
+
+// Identity of the exact vault a DEK was derived from. `wrappedDekB64` is unique
+// per enrolment (random DEK + random salt), so a change means the vault was
+// revoked/re-enrolled — the derived DEK now belongs to a retired vault.
+function vaultFingerprint(record: VaultRecord): string {
+  return record.mode === 'none'
+    ? 'none'
+    : `${record.mode}:${record.wrappedDekB64}`;
+}
+
+// Cross-tab safety net: an unlock may block for a human-scale interval (the
+// biometric OS sheet), during which another tab can revoke + re-enrol. Installing
+// the DEK we just derived would then write rows the new vault can never decrypt.
+// Re-read the vault after deriving the DEK and refuse it if the vault changed.
+function guardVaultUnchanged(
+  fingerprintBefore: string,
+  result: UnlockResult,
+): UnlockResult {
+  if (!result.ok) return result;
+  const current = readVault();
+  if (!current || vaultFingerprint(current) !== fingerprintBefore) {
+    return {
+      ok: false,
+      message: 'The device lock changed while unlocking. Please try again.',
+    };
+  }
+  return result;
 }
 
 // Non-destructive PIN/passphrase change: rewrap the SAME DEK under a KEK
@@ -275,7 +305,9 @@ export async function unlockPin(pin: string): Promise<UnlockResult> {
   if (!record || record.mode !== 'pin') {
     return { ok: false, message: 'PIN is not configured on this device' };
   }
-  return unlockWithPassword(pin, record, 'Incorrect PIN');
+  const fingerprint = vaultFingerprint(record);
+  const result = await unlockWithPassword(pin, record, 'Incorrect PIN');
+  return guardVaultUnchanged(fingerprint, result);
 }
 
 export async function unlockPassphrase(phrase: string): Promise<UnlockResult> {
@@ -288,7 +320,13 @@ export async function unlockPassphrase(phrase: string): Promise<UnlockResult> {
       message: 'Passphrase is not configured on this device',
     };
   }
-  return unlockWithPassword(phrase, record, 'Incorrect passphrase');
+  const fingerprint = vaultFingerprint(record);
+  const result = await unlockWithPassword(
+    phrase,
+    record,
+    'Incorrect passphrase',
+  );
+  return guardVaultUnchanged(fingerprint, result);
 }
 
 export async function unlockBiometric(): Promise<UnlockResult> {
@@ -299,6 +337,7 @@ export async function unlockBiometric(): Promise<UnlockResult> {
       message: 'Biometric authentication is not configured on this device',
     };
   }
+  const fingerprint = vaultFingerprint(record);
   try {
     const prfOutput = await readPrf(
       record.webauthn.credentialId,
@@ -306,7 +345,7 @@ export async function unlockBiometric(): Promise<UnlockResult> {
     );
     const kek = await deriveKekFromPrf(prfOutput, record.webauthn.prfSaltB64);
     const dek = await unwrapDek(record.wrappedDekB64, kek);
-    return { ok: true, dek };
+    return guardVaultUnchanged(fingerprint, { ok: true, dek });
   } catch (error) {
     const message =
       error instanceof Error
@@ -326,7 +365,13 @@ export async function unlockRecovery(phrase: string): Promise<UnlockResult> {
       message: 'Recovery is not available for this vault',
     };
   }
-  return unlockWithPassword(phrase, record.recovery, 'Incorrect passphrase');
+  const fingerprint = vaultFingerprint(record);
+  const result = await unlockWithPassword(
+    phrase,
+    record.recovery,
+    'Incorrect passphrase',
+  );
+  return guardVaultUnchanged(fingerprint, result);
 }
 
 export async function verifyPin(pin: string): Promise<EnrolResult> {
@@ -349,10 +394,15 @@ export async function verifyRecovery(phrase: string): Promise<EnrolResult> {
   return result.ok ? { ok: true } : { ok: false, message: result.message };
 }
 
-export function vaultStatus(): { configured: boolean; mode?: VaultMode } {
-  const record = readVault();
-  if (!record) return { configured: false };
-  return { configured: true, mode: record.mode };
+export function vaultStatus(): {
+  configured: boolean;
+  mode?: VaultMode;
+  corrupt?: boolean;
+} {
+  const state = readVaultState();
+  if (state.status === 'corrupt') return { configured: false, corrupt: true };
+  if (state.status === 'absent') return { configured: false };
+  return { configured: true, mode: state.record.mode };
 }
 
 export async function revoke(): Promise<void> {

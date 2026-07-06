@@ -53,13 +53,24 @@ export async function saveProtocol(
 ): Promise<StoredProtocol> {
   const existing = await getProtocolByHash(hash);
   const id = existing?.id ?? hash;
+  // Refresh on every save, including a same-hash re-import. The protocol hash
+  // excludes `assetManifest`, so re-importing with updated asset bytes keeps the
+  // same hash; a fresh timestamp is what changes the asset resolver's cache key
+  // (see assetResolver.ts) so stale blob URLs get evicted. Advance it
+  // monotonically so two same-hash saves in the same millisecond still produce
+  // a strictly newer key.
+  const nowIso = new Date().toISOString();
+  const importedAt =
+    existing && nowIso <= existing.importedAt
+      ? new Date(Date.parse(existing.importedAt) + 1).toISOString()
+      : nowIso;
   const stored: StoredProtocol = {
     id,
     hash,
     name: protocol.name,
     schemaVersion: protocol.schemaVersion,
     lastModified: protocol.lastModified,
-    importedAt: existing?.importedAt ?? new Date().toISOString(),
+    importedAt,
     description: protocol.description,
     codebook: protocol.codebook,
     protocol,
@@ -115,4 +126,34 @@ export async function getProtocolAsset(
 ): Promise<StoredAsset | undefined> {
   const row = await db.assets.get(`${hash}::${assetId}`);
   return row ? decryptAsset(row) : undefined;
+}
+
+export async function listProtocolIds(): Promise<string[]> {
+  return db.protocols.orderBy('id').primaryKeys();
+}
+
+export async function listAssetIds(): Promise<string[]> {
+  return db.assets.orderBy('id').primaryKeys();
+}
+
+// Re-encrypt a single protocol row under the currently-held DEK, preserving
+// every field value exactly (decrypt → encrypt round-trip; no timestamp is
+// stamped). A plaintext row written while unconfigured gains `_enc`; a row
+// already encrypted under this DEK round-trips unchanged. Unlike sessions,
+// protocol/asset rows are only written by user-initiated import, so no per-id
+// serializer is needed.
+export async function reencryptProtocol(id: string): Promise<void> {
+  const existingRow = await db.protocols.get(id);
+  if (!existingRow) return;
+  const existing = await decryptProtocol(existingRow);
+  const row = await encryptProtocol(existing);
+  await db.protocols.put(row);
+}
+
+export async function reencryptAsset(id: string): Promise<void> {
+  const existingRow = await db.assets.get(id);
+  if (!existingRow) return;
+  const existing = await decryptAsset(existingRow);
+  const row = await encryptAsset(existing);
+  await db.assets.put(row);
 }

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
@@ -40,10 +40,16 @@ export function useSessionMutations({
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   // Archive built by handleExport, awaiting a fresh user gesture to
-  // share/download it — see handleShareReady.
+  // share/download it — see handleShareReady. sessionIds are the sessions
+  // whose export generation succeeded; they are marked exportedAt only once
+  // the file is confirmed saved, never on the in-memory build.
   const [pendingShare, setPendingShare] = useState<{
     blob: Blob;
     fileName: string;
+    sessionIds: string[];
+    exportGraphML: boolean;
+    exportCSV: boolean;
+    failedCount: number;
   } | null>(null);
 
   const handleExport = useCallback(async () => {
@@ -78,16 +84,6 @@ export function useSessionMutations({
       if (!blob || !fileName) {
         throw new Error('Export produced no file');
       }
-      await markSessionsExported(
-        result.successfulExports.map((s) => s.sessionId),
-      );
-      // Counts only — never session contents, case IDs, or file names.
-      analytics.track('data_exported', {
-        interview_count: result.successfulExports.length,
-        failed_count: result.failedExports.length,
-        export_graphml: settings.exportGraphML,
-        export_csv: settings.exportCSV,
-      });
       if (result.failedExports.length > 0) {
         toast.add({
           title: 'Export completed with errors',
@@ -95,7 +91,14 @@ export function useSessionMutations({
           variant: 'destructive',
         });
       }
-      setPendingShare({ blob, fileName });
+      setPendingShare({
+        blob,
+        fileName,
+        sessionIds: result.successfulExports.map((s) => s.sessionId),
+        exportGraphML: settings.exportGraphML,
+        exportCSV: settings.exportCSV,
+        failedCount: result.failedExports.length,
+      });
       toast.add({
         title: 'Archive ready',
         description: 'Tap Save export to share or download the archive.',
@@ -127,19 +130,44 @@ export function useSessionMutations({
   // Runs in the "Save export" button's own click — a gesture the long-running
   // archive build in handleExport would otherwise have consumed — so
   // navigator.share stays gesture-fresh on iOS Safari.
+  const shareInFlightRef = useRef(false);
   const handleShareReady = useCallback(async () => {
-    if (!pendingShare) return;
-    const { blob, fileName } = pendingShare;
+    // A double-tap on Save export would otherwise start two save flows and
+    // double the export marking + analytics event; guard against re-entry.
+    if (!pendingShare || shareInFlightRef.current) return;
+    shareInFlightRef.current = true;
+    const {
+      blob,
+      fileName,
+      sessionIds,
+      exportGraphML,
+      exportCSV,
+      failedCount,
+    } = pendingShare;
     try {
       const outcome = await shareOrDownloadBlob(blob, fileName);
-      setPendingShare(null);
       if (!outcome.saved) {
+        // pendingShare is retained so the Save export button stays available
+        // for a retry; sessions are NOT marked exported until a genuine save.
         toast.add({
           title: 'Export canceled',
           description: 'The archive was not saved.',
         });
         return;
       }
+      await markSessionsExported(sessionIds);
+      // Counts only — never session contents, case IDs, or file names.
+      analytics.track('data_exported', {
+        interview_count: sessionIds.length,
+        failed_count: failedCount,
+        export_graphml: exportGraphML,
+        export_csv: exportCSV,
+      });
+      setPendingShare(null);
+      // Refresh so the just-set exportedAt shows in the Export status column
+      // and the status filter/counts; the mark now happens here rather than in
+      // handleExport, so its reload no longer covers it.
+      await Promise.all([onReload(), reloadData()]);
       toast.add({
         title: 'Export complete',
         description: fileName,
@@ -154,8 +182,10 @@ export function useSessionMutations({
         description: cause instanceof Error ? cause.message : String(cause),
         variant: 'destructive',
       });
+    } finally {
+      shareInFlightRef.current = false;
     }
-  }, [analytics, pendingShare, toast]);
+  }, [analytics, onReload, pendingShare, reloadData, toast]);
 
   const handleDelete = useCallback(async () => {
     if (selectedCount === 0 || deleting) return;

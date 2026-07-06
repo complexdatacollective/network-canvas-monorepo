@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { initFileLaunchCapture } from './lib/pwa/fileLaunchQueue';
 import { initInstallPromptCapture } from './lib/pwa/installPrompt';
+import { removeLoadingScreen } from './lib/pwa/loadingScreen';
 import { initSwipeNavigationGuard } from './lib/pwa/swipeNavigationGuard';
 import { requestPersistentStorage } from './lib/storage';
 
@@ -22,13 +23,28 @@ initFileLaunchCapture();
 
 void requestPersistentStorage();
 
+// Installing the PWA newly qualifies the origin for persistent storage, but the
+// box is only made non-evictable on an actual persist() call — request it again
+// when the install completes rather than leaving storage evictable until the
+// next reload re-runs the startup request above.
+window.addEventListener('appinstalled', () => void requestPersistentStorage());
+
 const container = document.getElementById('root');
 if (!container) {
   throw new Error('Root container #root not found');
 }
 
-createRoot(container).render(
+const root = createRoot(container);
+root.render(
   <StrictMode>
     <App />
   </StrictMode>,
 );
+
+// Hand off from the static first-paint loader (index.html's #app-loading) to
+// React. Deferred to after the first commit paints so there's no flash of blank
+// between the loader disappearing and React's own content (AuthGate's Spinner,
+// then App's fade-in) painting — the loader cross-fades into the app.
+requestAnimationFrame(() => {
+  requestAnimationFrame(removeLoadingScreen);
+});

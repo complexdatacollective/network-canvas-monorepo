@@ -14,6 +14,17 @@ import {
 
 type Durability = { persisted: boolean; usage: number | null };
 
+// Read the current durability. Persistence is *requested* elsewhere (main.tsx at
+// startup and on install; the auth enrol path when encryption is enabled) — this
+// only reflects the resulting grant, re-reading on the events that follow one.
+async function readDurability(): Promise<Durability> {
+  const [persisted, estimate] = await Promise.all([
+    isStoragePersisted(),
+    estimateStorage(),
+  ]);
+  return { persisted, usage: estimate.usage };
+}
+
 const variants = {
   hidden: { opacity: 0, y: '100%' },
   visible: {
@@ -124,28 +135,46 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
 
   useEffect(() => {
     let active = true;
-    const refresh = () => {
-      void Promise.all([isStoragePersisted(), estimateStorage()]).then(
-        ([persisted, estimate]) => {
-          if (active) setDurability({ persisted, usage: estimate.usage });
-        },
-      );
+    const read = () => {
+      void (async () => {
+        const d = await readDurability();
+        if (active) setDurability(d);
+      })();
     };
 
-    refresh();
+    read();
 
-    // requestPersistentStorage() in main.tsx is fire-and-forget and can
-    // resolve after this component has already mounted and read a stale
-    // (unpersisted) result. Re-check whenever the tab regains focus/visibility
-    // so a grant that lands late clears the "Storage not persistent" warning.
-    window.addEventListener('focus', refresh);
-    document.addEventListener('visibilitychange', refresh);
+    // A persist() grant can land after this component mounts: main.tsx requests
+    // it at startup and on install, and the auth enrol path requests it when
+    // encryption is enabled. Re-read on the events that follow such a grant so
+    // the durability label updates without a reload — focus/visibility for a
+    // late startup grant, appinstalled for the install grant.
+    window.addEventListener('focus', read);
+    document.addEventListener('visibilitychange', read);
+    window.addEventListener('appinstalled', read);
     return () => {
       active = false;
-      window.removeEventListener('focus', refresh);
-      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', read);
+      document.removeEventListener('visibilitychange', read);
+      window.removeEventListener('appinstalled', read);
     };
   }, []);
+
+  // Enabling encryption requests persistent storage in the enrol path, and that
+  // grant lands with no focus/visibility change on the dashboard. Re-read when
+  // the security mode changes so enrolling a secured vault (e.g. from Settings,
+  // without leaving Home) clears the "Storage not persistent" warning without a
+  // reload.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const d = await readDurability();
+      if (active) setDurability(d);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [mode]);
 
   return (
     <StatusRowView

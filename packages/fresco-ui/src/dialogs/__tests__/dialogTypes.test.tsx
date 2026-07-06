@@ -213,6 +213,70 @@ describe('DialogProvider', () => {
       });
     });
   });
+
+  describe('closeAllDialogs', () => {
+    // Regression: closeAllDialogs is invoked from a useEffect (auth lock) so it
+    // must defer its flushSync to a microtask like openDialog. If it hangs, the
+    // awaiting callers never resolve and these awaits time out.
+    it('dismisses every open dialog, resolving each with null', async () => {
+      const { result } = renderHook(() => useDialog(), { wrapper });
+
+      let first: unknown = 'unset';
+      let second: unknown = 'unset';
+
+      await act(async () => {
+        const p1 = result.current.openDialog({
+          id: 'dlg-1',
+          type: 'acknowledge',
+          title: 'One',
+          description: 'One',
+          actions: { primary: { label: 'OK', value: true } },
+        });
+        const p2 = result.current.openDialog({
+          id: 'dlg-2',
+          type: 'choice',
+          title: 'Two',
+          description: 'Two',
+          intent: 'destructive',
+          actions: {
+            primary: { label: 'Yes', value: true },
+            cancel: { label: 'No', value: false },
+          },
+        });
+
+        // Let both dialogs register (openDialog defers to a microtask), then
+        // dismiss all at once.
+        setTimeout(() => result.current.closeAllDialogs(), 10);
+        [first, second] = await Promise.all([p1, p2]);
+      });
+
+      expect(first).toBeNull();
+      expect(second).toBeNull();
+    });
+
+    it('is a no-op with no open dialogs and does not disturb a later dialog', async () => {
+      const { result } = renderHook(() => useDialog(), { wrapper });
+
+      let resolved: unknown = 'unset';
+      await act(async () => {
+        // closeAllDialogs with nothing open must not throw, and must not leave
+        // the provider in a state that pre-resolves the next dialog: the dialog
+        // opened right after still resolves with its OWN value, not null.
+        result.current.closeAllDialogs();
+        const later = result.current.openDialog({
+          id: 'later',
+          type: 'acknowledge',
+          title: 'Later',
+          description: 'Later',
+          actions: { primary: { label: 'OK', value: true } },
+        });
+        setTimeout(() => void result.current.closeDialog('later', true), 10);
+        resolved = await later;
+      });
+
+      expect(resolved).toBe(true);
+    });
+  });
 });
 
 describe('Dialog type constraints', () => {

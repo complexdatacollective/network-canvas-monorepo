@@ -16,8 +16,11 @@ import type {
   StoredSessionLite,
 } from './types';
 
+// Status reflects interview *completion*, not export. `finishedAt` is the
+// authoritative completion signal; export is tracked separately (exportedAt,
+// surfaced by the dedicated Export status column) so an exported but unfinished
+// session still reads in-progress and keeps its Resume affordance.
 function deriveStatusKind(session: StoredSessionRow): SessionStatusKind {
-  if (session.exportedAt) return 'exported';
   if (session.finishedAt) return 'complete';
   return 'in-progress';
 }
@@ -59,6 +62,36 @@ export async function listSessions(): Promise<StoredSessionLite[]> {
   return rows.map((session) => toLite(session));
 }
 
+// The filter bounds arrive as local 'YYYY-MM-DD' calendar dates, but row
+// timestamps are true instants. `new Date('YYYY-MM-DD')` parses as UTC
+// midnight, so we must build the bounds in the local frame explicitly:
+// otherwise a same-day session west of UTC (or a late-evening one east of it)
+// falls outside the range. Returns the local start (00:00:00.000) or end
+// (23:59:59.999) instant for a calendar date, or null if malformed.
+function parseLocalDayBound(day: string, edge: 'start' | 'end'): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const date = Number(match[3]);
+  const bound =
+    edge === 'start'
+      ? new Date(year, month - 1, date, 0, 0, 0, 0)
+      : new Date(year, month - 1, date, 23, 59, 59, 999);
+  // Reject calendar overflow: `new Date(2026, 1, 31)` silently rolls over to
+  // March, so a shape-valid but out-of-range date (e.g. 2026-02-31, 2026-13-01)
+  // must not become a real filter bound. The constructed date has to still
+  // represent the requested Y-M-D.
+  if (
+    bound.getFullYear() !== year ||
+    bound.getMonth() !== month - 1 ||
+    bound.getDate() !== date
+  ) {
+    return null;
+  }
+  return bound;
+}
+
 function inDateRange(
   isoDate: string | null,
   range: { from: string; to: string },
@@ -66,9 +99,9 @@ function inDateRange(
   if (!isoDate) return false;
   const rowDate = new Date(isoDate);
   if (Number.isNaN(rowDate.getTime())) return false;
-  const fromDate = new Date(range.from);
-  const toDate = new Date(range.to);
-  toDate.setHours(23, 59, 59, 999);
+  const fromDate = parseLocalDayBound(range.from, 'start');
+  const toDate = parseLocalDayBound(range.to, 'end');
+  if (!fromDate || !toDate) return false;
   return rowDate >= fromDate && rowDate <= toDate;
 }
 
@@ -240,47 +273,112 @@ export async function createSession(args: {
   return session;
 }
 
-export async function updateSession(
+// Row mutations that read-modify-write a session (get → [decrypt] → merge →
+// [encrypt] → put) span async work, so overlapping calls for the same id would
+// otherwise each read the pre-update row and the last writer would clobber the
+// others — silently dropping network data, or reverting `finishedAt`/
+// `exportedAt` set by a mark that landed in the gap. A Dexie 'rw' transaction
+// can't safely hold across the crypto awaits (it auto-commits once the
+// microtask queue drains with no live IndexedDB request), so instead every
+// per-id mutation goes through one promise chain keyed by id: each waits for
+// the previous one on the same id to settle before it reads. This serialises
+// updateSession against markSessionFinished/markSessionsExported too, so a
+// trailing sync can't clobber a completion/export marker.
+const updateChains = new Map<string, Promise<unknown>>();
+
+function enqueueSessionMutation<T>(
+  id: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  const previous = updateChains.get(id) ?? Promise.resolve();
+  const next = previous.then(run, run);
+  updateChains.set(id, next);
+  // Once this is the tail of the chain, drop the entry so the map doesn't grow
+  // without bound; a newer mutation replaces the entry before this runs. The
+  // trailing `.catch` keeps a rejected `run` from surfacing as an unhandled
+  // rejection here — the caller still receives (and handles) it via `next`.
+  void next
+    .finally(() => {
+      if (updateChains.get(id) === next) updateChains.delete(id);
+    })
+    .catch(() => {});
+  return next;
+}
+
+export function updateSession(
   id: string,
   patch: Partial<StoredSession>,
 ): Promise<StoredSession | undefined> {
-  const existingRow = await db.sessions.get(id);
-  if (!existingRow) return undefined;
-  const existing = await decryptSession(existingRow);
-  const updated: StoredSession = {
-    ...existing,
-    ...patch,
-    lastUpdatedAt: new Date().toISOString(),
-  };
-  const row = await encryptSession(updated);
-  await db.sessions.put(row);
-  return updated;
+  return enqueueSessionMutation(id, async () => {
+    const existingRow = await db.sessions.get(id);
+    if (!existingRow) return undefined;
+    const existing = await decryptSession(existingRow);
+    const updated: StoredSession = {
+      ...existing,
+      ...patch,
+      lastUpdatedAt: new Date().toISOString(),
+    };
+    const row = await encryptSession(updated);
+    await db.sessions.put(row);
+    return updated;
+  });
 }
 
-export async function markSessionFinished(id: string): Promise<void> {
-  const existing = await db.sessions.get(id);
-  if (!existing) return;
-  // Only plaintext index fields change; spread preserves `_enc` — no key needed.
-  await db.sessions.put({
-    ...existing,
-    finishedAt: new Date().toISOString(),
-    lastUpdatedAt: new Date().toISOString(),
+export function markSessionFinished(id: string): Promise<void> {
+  return enqueueSessionMutation(id, async () => {
+    const existing = await db.sessions.get(id);
+    if (!existing) return;
+    // Only plaintext index fields change; spread preserves `_enc` — no key
+    // needed.
+    await db.sessions.put({
+      ...existing,
+      finishedAt: new Date().toISOString(),
+      lastUpdatedAt: new Date().toISOString(),
+    });
   });
 }
 
 export async function markSessionsExported(ids: string[]): Promise<void> {
-  const now = new Date().toISOString();
-  await db.transaction('rw', db.sessions, async () => {
-    for (const id of ids) {
-      const existing = await db.sessions.get(id);
-      if (!existing) continue;
-      await db.sessions.put({
-        ...existing,
-        exportedAt: now,
-        lastUpdatedAt: now,
-      });
-    }
+  await Promise.all(
+    ids.map((id) =>
+      enqueueSessionMutation(id, async () => {
+        const existing = await db.sessions.get(id);
+        if (!existing) return;
+        // Stamp inside the queued mutation, not before: if this is queued behind
+        // an in-flight updateSession, a timestamp captured earlier could write an
+        // older lastUpdatedAt than the mutation that actually ran first.
+        const now = new Date().toISOString();
+        await db.sessions.put({
+          ...existing,
+          exportedAt: now,
+          lastUpdatedAt: now,
+        });
+      }),
+    ),
+  );
+}
+
+// Re-encrypt every session row under the currently-held DEK, preserving every
+// field value exactly (this is a re-encryption, not an update — no timestamp is
+// stamped). Plaintext rows written while unconfigured gain `_enc`; rows already
+// encrypted under this DEK round-trip unchanged. Each row is processed inside
+// the per-id serializer so a concurrent writer can't clobber (or be clobbered
+// by) the sweep, and a failure on one row rejects only that row's promise —
+// callers can decide whether to continue. Precondition: a DEK must be held
+// (encryptSession throws for a locked secured vault); under mode `none` this is
+// a plaintext-preserving no-op and callers should not invoke it.
+export async function reencryptSession(id: string): Promise<void> {
+  await enqueueSessionMutation(id, async () => {
+    const existingRow = await db.sessions.get(id);
+    if (!existingRow) return;
+    const existing = await decryptSession(existingRow);
+    const row = await encryptSession(existing);
+    await db.sessions.put(row);
   });
+}
+
+export async function listSessionIds(): Promise<string[]> {
+  return db.sessions.orderBy('id').primaryKeys();
 }
 
 export async function deleteSessions(ids: readonly string[]): Promise<void> {

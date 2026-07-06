@@ -52,8 +52,7 @@ export function readStringArray(value: unknown): string[] {
 export function readStatusArray(value: unknown): SessionStatusKind[] {
   if (!Array.isArray(value)) return [];
   return value.filter(
-    (v): v is SessionStatusKind =>
-      v === 'in-progress' || v === 'complete' || v === 'exported',
+    (v): v is SessionStatusKind => v === 'in-progress' || v === 'complete',
   );
 }
 

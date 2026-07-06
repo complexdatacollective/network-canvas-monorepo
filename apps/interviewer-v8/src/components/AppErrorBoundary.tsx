@@ -8,7 +8,7 @@ import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 
 type Props = {
   children: ReactNode;
-  onError: (error: Error, info: ErrorInfo) => void;
+  onError?: (error: Error, info: ErrorInfo) => void;
 };
 
 type State = { hasError: boolean };
@@ -16,7 +16,10 @@ type State = { hasError: boolean };
 // posthog-js `capture_exceptions` catches uncaught errors and unhandled
 // rejections, but React swallows render errors at the nearest boundary, so we
 // add one here to both report those to PostHog and show a recoverable fallback.
-class ErrorBoundary extends Component<Props, State> {
+// `onError` is optional so a dependency-free outer instance (mounted above the
+// providers in App.tsx) can still show the fallback when provider construction
+// itself crashes — before AnalyticsProvider exists to report to.
+export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };
 
   static getDerivedStateFromError(): State {
@@ -24,7 +27,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    this.props.onError(error, info);
+    this.props.onError?.(error, info);
   }
 
   render() {

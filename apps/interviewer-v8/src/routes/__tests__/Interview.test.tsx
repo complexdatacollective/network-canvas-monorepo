@@ -1,6 +1,8 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { SessionPayload } from '@codaco/interview';
+
 const navigateMock = vi.fn();
 vi.mock('wouter', () => ({
   useLocation: () => ['/interview/s1', navigateMock],
@@ -21,11 +23,12 @@ const getSettingsMock = vi.fn();
 const getSessionMock = vi.fn();
 const getProtocolByHashMock = vi.fn();
 const markSessionFinishedMock = vi.fn();
+const updateSessionMock = vi.fn();
 vi.mock('~/lib/db/api', () => ({
   getSettings: (...a: unknown[]) => getSettingsMock(...a),
   getSession: (...a: unknown[]) => getSessionMock(...a),
   getProtocolByHash: (...a: unknown[]) => getProtocolByHashMock(...a),
-  updateSession: vi.fn(),
+  updateSession: (...a: unknown[]) => updateSessionMock(...a),
   updateSettings: vi.fn(),
   markSessionFinished: (...a: unknown[]) => markSessionFinishedMock(...a),
 }));
@@ -34,6 +37,14 @@ vi.mock('~/lib/assets/assetResolver', () => ({
   buildResolvedAssets: vi.fn(async () => ({})),
   makeAssetResolver: vi.fn(() => async () => ''),
 }));
+// The history mechanics are covered in useHistoryBackGuard's own test; here the
+// gated exit just runs its navigation callback. The returned exit function must
+// be a stable reference (the real hook uses useCallback), or consumers that put
+// it in effect deps re-run every render.
+vi.mock('~/lib/pwa/useHistoryBackGuard', () => {
+  const exit = (goHome: () => void) => goHome();
+  return { useHistoryBackGuard: () => exit };
+});
 vi.mock('~/lib/installationId', () => ({
   getInstallationId: () => 'test-install',
 }));
@@ -41,6 +52,7 @@ vi.mock('~/lib/installationId', () => ({
 type CapturedShellProps = {
   onExit: () => void;
   onFinish: (id: string) => Promise<void>;
+  onSync: (id: string, session: SessionPayload) => Promise<void>;
 };
 
 const { shellMock } = vi.hoisted(() => ({
@@ -86,6 +98,20 @@ function lastShellProps(): CapturedShellProps {
   return props;
 }
 
+function makeSyncPayload(
+  overrides: Partial<SessionPayload> = {},
+): SessionPayload {
+  return {
+    id: 's1',
+    startTime: '2026-01-01T00:00:00.000Z',
+    finishTime: null,
+    exportTime: null,
+    lastUpdated: '2026-01-01T00:00:00.000Z',
+    network: { nodes: [], edges: [], ego: { _uid: 'ego-1', attributes: {} } },
+    ...overrides,
+  };
+}
+
 async function invoke(fn: () => unknown) {
   await act(async () => {
     void fn();
@@ -115,7 +141,9 @@ describe('InterviewRoute enter gate', () => {
 
     render(<InterviewRoute sessionId="s1" />);
 
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/'));
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
     expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
   });
 
@@ -194,7 +222,7 @@ describe('InterviewRoute exit gate', () => {
 
     await invoke(lastShellProps().onExit);
 
-    expect(navigateMock).not.toHaveBeenCalledWith('/');
+    expect(navigateMock).not.toHaveBeenCalledWith('/', { replace: true });
   });
 
   it('navigates home and clears authorization when the exit gate passes', async () => {
@@ -203,7 +231,9 @@ describe('InterviewRoute exit gate', () => {
 
     await invoke(lastShellProps().onExit);
 
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/'));
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
   });
 });
@@ -230,6 +260,41 @@ describe('InterviewRoute finish flow', () => {
     expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
   });
 
+  it('never writes finishedAt from a sync', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    updateSessionMock.mockClear();
+
+    await act(async () => {
+      await lastShellProps().onSync('s1', makeSyncPayload());
+    });
+
+    const patch = updateSessionMock.mock.calls.at(-1)?.[1];
+    expect(patch).not.toHaveProperty('finishedAt');
+  });
+
+  it('does not un-finish when a trailing sync lands after finish', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const { onFinish, onSync } = lastShellProps();
+
+    await act(async () => {
+      await onFinish('s1');
+    });
+    await screen.findByText('Interview complete');
+
+    updateSessionMock.mockClear();
+    // A debounced sync fired after finish still carries finishTime: null
+    // (the engine never sets it for an in-progress session).
+    await act(async () => {
+      await onSync('s1', makeSyncPayload({ finishTime: null }));
+    });
+
+    for (const call of updateSessionMock.mock.calls) {
+      expect(call[1]).not.toHaveProperty('finishedAt');
+    }
+  });
+
   it('renders the completion screen for an already-finished session', async () => {
     getSessionMock.mockResolvedValue(
       makeSession({ finishedAt: '2026-01-02T00:00:00.000Z' }),
@@ -251,7 +316,7 @@ describe('InterviewRoute finish flow', () => {
     await invoke(() => button.click());
 
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
-    expect(navigateMock).toHaveBeenCalledWith('/');
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
   });
 
   it('applies the exit gate from the completion screen', async () => {
@@ -274,6 +339,6 @@ describe('InterviewRoute finish flow', () => {
     });
     await invoke(() => screen.getByRole('button', { name: /exit/i }).click());
 
-    expect(navigateMock).not.toHaveBeenCalledWith('/');
+    expect(navigateMock).not.toHaveBeenCalledWith('/', { replace: true });
   });
 });

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   clearVault,
   readVault,
+  readVaultState,
   type VaultRecord,
   writeVault,
 } from '../vaultStore';
@@ -79,5 +80,38 @@ describe('vaultStore', () => {
   it('returns null for a corrupt record', () => {
     window.localStorage.setItem('interviewer-v8:vault', 'not-json');
     expect(readVault()).toBeNull();
+  });
+});
+
+describe('readVaultState', () => {
+  it('reports absent when nothing is stored', () => {
+    expect(readVaultState()).toEqual({ status: 'absent' });
+  });
+
+  it('reports valid with the record for a well-formed entry', () => {
+    const record: VaultRecord = { version: 4, mode: 'none' };
+    writeVault(record);
+    expect(readVaultState()).toEqual({ status: 'valid', record });
+  });
+
+  it('reports corrupt for unparseable JSON', () => {
+    window.localStorage.setItem('interviewer-v8:vault', 'not-json');
+    expect(readVaultState()).toEqual({ status: 'corrupt' });
+  });
+
+  it('reports corrupt for a newer/unknown version (distinct from absent)', () => {
+    window.localStorage.setItem(
+      'interviewer-v8:vault',
+      JSON.stringify({ version: 5, mode: 'none' }),
+    );
+    expect(readVaultState()).toEqual({ status: 'corrupt' });
+  });
+
+  it('reports corrupt for a foreign-shaped record', () => {
+    window.localStorage.setItem(
+      'interviewer-v8:vault',
+      JSON.stringify({ version: 4, mode: 'pin' }),
+    );
+    expect(readVaultState()).toEqual({ status: 'corrupt' });
   });
 });

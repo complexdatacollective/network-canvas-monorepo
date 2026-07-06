@@ -6,7 +6,7 @@ import type { PendingImport } from '~/lib/protocol/useProtocolImport';
 
 import { buildDeck, entryKey } from '../deckEntries';
 
-function makeProtocol(name: string): ProtocolWithCounts {
+function makeProtocol(name: string, hash = `hash-${name}`): ProtocolWithCounts {
   const protocol: CurrentProtocol = {
     name,
     description: '',
@@ -15,8 +15,8 @@ function makeProtocol(name: string): ProtocolWithCounts {
     stages: [],
   };
   return {
-    id: `test-${name}`,
-    hash: `hash-${name}`,
+    id: `test-${hash}`,
+    hash,
     name,
     schemaVersion: 8,
     importedAt: '2026-05-20T10:00:00.000Z',
@@ -32,20 +32,26 @@ function makePending(label: string): PendingImport {
 }
 
 describe('entryKey', () => {
-  it('namespaces slot keys so the import entry can never collide with a protocol name', () => {
+  it('namespaces the import key so it can never collide with a protocol key', () => {
     expect(entryKey({ kind: 'import' })).toBe('import');
     expect(
       entryKey({ kind: 'protocol', protocol: makeProtocol('import') }),
-    ).toBe('slot:import');
+    ).toBe('hash:hash-import');
   });
 
-  it('gives sample, pending, and protocol entries name-based keys so they share slots', () => {
+  it('keys installed protocols by hash so same-name/different-hash never collapse', () => {
+    expect(
+      entryKey({ kind: 'protocol', protocol: makeProtocol('Study', 'abc') }),
+    ).toBe('hash:abc');
+    expect(
+      entryKey({ kind: 'protocol', protocol: makeProtocol('Study', 'def') }),
+    ).toBe('hash:def');
+  });
+
+  it('keys the sample teaser and pending imports by name so their card can morph in place', () => {
     expect(entryKey({ kind: 'sample' })).toBe('slot:Sample Protocol');
     expect(
       entryKey({ kind: 'pending', pending: makePending('Sample Protocol') }),
-    ).toBe('slot:Sample Protocol');
-    expect(
-      entryKey({ kind: 'protocol', protocol: makeProtocol('Sample Protocol') }),
     ).toBe('slot:Sample Protocol');
   });
 });
@@ -71,10 +77,26 @@ describe('buildDeck', () => {
       pendingImports: [],
     });
     expect(deck.map((e) => entryKey(e))).toEqual([
-      'slot:Alpha',
-      'slot:beta',
+      'hash:hash-Alpha',
+      'hash:hash-beta',
       'slot:Sample Protocol',
-      'slot:zeta',
+      'hash:hash-zeta',
+      'import',
+    ]);
+  });
+
+  it('keeps both cards when two installed protocols share a name but differ in hash', () => {
+    const deck = buildDeck({
+      protocols: [
+        makeProtocol('MyStudy', 'hash-old'),
+        makeProtocol('MyStudy', 'hash-new'),
+      ],
+      showSampleCard: false,
+      pendingImports: [],
+    });
+    expect(deck.map((e) => entryKey(e))).toEqual([
+      'hash:hash-old',
+      'hash:hash-new',
       'import',
     ]);
   });

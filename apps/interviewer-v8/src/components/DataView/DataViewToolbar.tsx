@@ -114,11 +114,7 @@ export function DataViewToolbar({
     ) {
       return 'in-progress';
     }
-    if (
-      statusFilterValue.length === 2 &&
-      statusFilterValue.includes('complete') &&
-      statusFilterValue.includes('exported')
-    ) {
+    if (statusFilterValue.length === 1 && statusFilterValue[0] === 'complete') {
       return 'complete';
     }
     return null;
@@ -130,7 +126,7 @@ export function DataViewToolbar({
     if (next === 'all') progressColumn.setFilterValue(undefined);
     else if (next === 'in-progress')
       progressColumn.setFilterValue(['in-progress']);
-    else progressColumn.setFilterValue(['complete', 'exported']);
+    else progressColumn.setFilterValue(['complete']);
   };
 
   const chipOptions: { id: ChipFilter; label: string; count: number }[] = [
