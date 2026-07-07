@@ -35,7 +35,12 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
       }
 
       const filename = protocolFilenames[i];
-      const protocolVersion = protocol.schemaVersion ?? 0;
+      // schemaVersion is typed as a number but legacy protocols carry it as a
+      // numeric string ("1"); coerce those so they aren't wrongly skipped, while
+      // still rejecting semver strings like "1.0.0" via the integer/range check.
+      const rawVersion: unknown = protocol.schemaVersion ?? 0;
+      const protocolVersion =
+        typeof rawVersion === 'number' ? rawVersion : Number(rawVersion);
 
       // Skip protocols with non-numeric schema versions (e.g. semver strings like "1.0.0")
       if (

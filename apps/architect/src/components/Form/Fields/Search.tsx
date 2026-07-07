@@ -44,7 +44,6 @@ const Search = ({
         color,
         cursor: 'pointer',
       }}
-      className="text-input-foreground"
       onClick={handleClear}
     />
   );
