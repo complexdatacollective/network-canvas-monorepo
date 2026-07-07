@@ -70,14 +70,16 @@ typecheck, tests) is unaffected.
 ## Service worker update propagation
 
 The service worker (`registerType: 'prompt'`, see `vite.config.ts`) does not
-self-apply on every visit. `PwaUpdateBanner` (`src/components/PwaUpdateBanner.tsx`)
-polls for a new version hourly and on load:
+self-apply on every visit. `AppUpdateProvider` (`src/components/AppUpdate/AppUpdateProvider.tsx`)
+polls for a new version hourly and on load, driving the shared `@codaco/fresco-ui`
+update indicator (`AppUpdatePill`, rendered in `StatusRow`):
 
 - If the pending update was already available when the tab was opened (within
   a ~20s window of load), it's applied silently — the researcher never sees a
   prompt for a version they never ran.
-- If it arrives later, during an open session, a "new version available"
-  banner offers a **Reload**.
+- If it arrives later, during an open session, the version indicator becomes
+  an "update available" control that opens a dialog with the release
+  changelog and an **Install and reload** action.
 - While an interview is in progress (`/interview/*`), neither path fires — the
   update is held until the researcher returns to the dashboard, so a reload
   never interrupts data collection.
