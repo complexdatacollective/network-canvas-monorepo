@@ -1,12 +1,12 @@
 import * as React from 'react';
 
-import { cva, cx, type VariantProps } from './utils/cva';
+import { cva, type VariantProps } from './utils/cva';
 
 export const pillVariants = cva({
   // border is ALWAYS present (transparent by default) so the border-box is
   // identical across variants — toggling background/border never reflows the
   // pill or its neighbours.
-  base: 'inline-flex items-center rounded-full border border-transparent font-monospace whitespace-nowrap',
+  base: 'font-monospace inline-flex items-center rounded-full border border-transparent whitespace-nowrap',
   variants: {
     size: {
       sm: 'gap-1 px-2 py-0.5 text-xs',
@@ -32,7 +32,17 @@ export type PillProps = PillOwnProps &
   Pick<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'disabled'>;
 
 const Pill = React.forwardRef<HTMLElement, PillProps>(function Pill(
-  { as = 'span', size, variant, icon, className, children, type, disabled, ...props },
+  {
+    as = 'span',
+    size,
+    variant,
+    icon,
+    className,
+    children,
+    type,
+    disabled,
+    ...props
+  },
   ref,
 ) {
   // A single callback ref forwards to either concrete element without a cast:
