@@ -15,8 +15,12 @@ import { buildComprehensivePedigree } from './comprehensivePedigreeFixture';
  * populated multi-disease pedigree and the capture lands on the NarrativePedigree
  * stage itself (step index 1; the FamilyPedigree source is stage 0). The
  * multi-disease network renders the sticker view, picturing the genetics overlay.
+ *
+ * showAtRisk is passed explicitly so the captured image is pinned to the
+ * at-risk overlay (the richest symbol coverage) regardless of the builder's
+ * default, keeping the generated interface image stable.
  */
-const build = () => buildComprehensivePedigree(1);
+const build = () => buildComprehensivePedigree(1, true);
 
 const meta: Meta = {
   title: 'Capture/NarrativePedigree',
