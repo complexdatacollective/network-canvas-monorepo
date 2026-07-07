@@ -18,6 +18,7 @@ import type { StoredSession } from '~/lib/db/types';
 import { pickProtocolFile } from '~/lib/files/pickFile';
 import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
+import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
 
 import { buildDeleteProtocolMessage } from './deleteProtocolMessage';
 import {
@@ -41,6 +42,8 @@ export function HomeRoute() {
   // OS-launched .netcanvas files (installed-PWA file handler) import through
   // the same pipeline as the import dialog.
   useLaunchedProtocolImport(startImport);
+  // Surfaces a toast if any OS-launched handle couldn't be read.
+  useLaunchFailureToast();
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
   const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
     null,
