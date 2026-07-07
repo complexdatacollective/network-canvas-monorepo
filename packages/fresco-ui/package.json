@@ -112,6 +112,10 @@
       "types": "./dist/Popover.d.ts",
       "default": "./dist/Popover.js"
     },
+    "./Pill": {
+      "types": "./dist/Pill.d.ts",
+      "default": "./dist/Pill.js"
+    },
     "./Tooltip": {
       "types": "./dist/Tooltip.d.ts",
       "default": "./dist/Tooltip.js"
