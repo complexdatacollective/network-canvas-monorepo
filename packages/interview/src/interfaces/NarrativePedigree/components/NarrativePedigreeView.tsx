@@ -605,8 +605,8 @@ export default function NarrativePedigreeView({
           nodeWidth={nodeWidth}
           nodeHeight={nodeHeight}
           renderNode={renderNode}
-          highlightedNodeIds={highlight.nodes}
-          highlightedEdgeKeys={highlight.edges}
+          highlightedNodeIds={focalId !== null ? highlight.nodes : undefined}
+          highlightedEdgeKeys={focalId !== null ? highlight.edges : undefined}
           glyphColour={snapshotGlyphColour}
           keyShape="circle"
           showAtRiskStatuses={showAtRiskStatuses}
@@ -683,8 +683,12 @@ export default function NarrativePedigreeView({
               nodeWidth={nodeWidth}
               nodeHeight={nodeHeight}
               renderNode={renderNode}
-              highlightedNodeIds={highlight.nodes}
-              highlightedEdgeKeys={highlight.edges}
+              highlightedNodeIds={
+                focalId !== null ? highlight.nodes : undefined
+              }
+              highlightedEdgeKeys={
+                focalId !== null ? highlight.edges : undefined
+              }
             />
           </div>
           {focalId !== null && (

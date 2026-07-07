@@ -287,34 +287,91 @@ function getParentsOf(node: number, graph: PedigreeGraph): number[] {
 function buildConstraintBlocks(
   nodesOnLayer: number[],
   graph: PedigreeGraph,
-  layer: number,
 ): ConstraintBlock[] {
   const nodeSet = new Set(nodesOnLayer);
   const assigned = new Set<number>();
   const blocks: ConstraintBlock[] = [];
 
-  // Multi-partner merging: find anchor nodes shared across partner groups
-  const nodeToPartnerGroups = new Map<number, number[]>();
-  for (let gi = 0; gi < graph.partnerGroups.length; gi++) {
-    const pg = graph.partnerGroups[gi]!;
+  // Sibships with ≥2 members present on this layer. Their members are kept
+  // together as one block EVEN WHEN they are partnered — otherwise each married
+  // sibling drifts toward its own spouse's barycenter and the sibship is torn
+  // apart (e.g. two married siblings ending up at opposite ends of the row).
+  const realSibships = graph.siblingGroups
+    .map((sg) => sg.members.filter((m) => nodeSet.has(m)))
+    .filter((members) => members.length > 1);
+  const inRealSibship = new Set<number>();
+  for (const members of realSibships) {
+    for (const m of members) inRealSibship.add(m);
+  }
+
+  // Spouses present on this layer, per node (from partner groups fully on-layer).
+  const spousesOf = new Map<number, number[]>();
+  for (const pg of graph.partnerGroups) {
     if (!pg.members.every((m) => nodeSet.has(m))) continue;
     for (const m of pg.members) {
+      const existing = spousesOf.get(m) ?? [];
+      existing.push(...pg.members.filter((x) => x !== m));
+      spousesOf.set(m, existing);
+    }
+  }
+
+  // A spouse can be attached to a sibling's sibship block only when the spouse
+  // is not itself holding another sibship together (i.e. is not in a real
+  // sibship on this layer). When both spouses have siblings shown (two sibships
+  // intermarry) the couple becomes an inter-block link — the only arrangement
+  // that keeps BOTH sibships contiguous.
+  const attachableSpouses = (sibling: number): number[] =>
+    (spousesOf.get(sibling) ?? []).filter(
+      (sp) => !inRealSibship.has(sp) && !assigned.has(sp),
+    );
+
+  // 1. One block per real sibship: siblings in index order, with each married
+  //    sibling's attachable spouse beside it — the leftmost sibling's spouse to
+  //    its left, later siblings' spouses to their right — so couples stay
+  //    adjacent while the sibship stays contiguous.
+  for (const members of realSibships) {
+    const siblings = members.toSorted((a, b) => a - b);
+    const ordered: number[] = [];
+    siblings.forEach((sib, idx) => {
+      const spouses = attachableSpouses(sib).toSorted((a, b) => a - b);
+      if (idx === 0) {
+        ordered.push(...spouses, sib);
+      } else {
+        ordered.push(sib, ...spouses);
+      }
+      assigned.add(sib);
+      for (const sp of spouses) assigned.add(sp);
+    });
+    blocks.push({ nodes: ordered, barycenter: 0 });
+  }
+
+  // 2. Partner blocks for the remaining couples — those where neither partner is
+  //    in a real sibship (e.g. a consanguineous cousin union, both only-children)
+  //    — reusing the anchor-merge so a person with multiple partners sits between
+  //    them. Only partner groups whose members are all still unassigned qualify.
+  const eligible = new Set<number>();
+  for (let gi = 0; gi < graph.partnerGroups.length; gi++) {
+    const pg = graph.partnerGroups[gi]!;
+    if (!pg.members.every((m) => nodeSet.has(m) && !assigned.has(m))) continue;
+    eligible.add(gi);
+  }
+
+  const nodeToPartnerGroups = new Map<number, number[]>();
+  for (const gi of eligible) {
+    for (const m of graph.partnerGroups[gi]!.members) {
       const existing = nodeToPartnerGroups.get(m) ?? [];
       existing.push(gi);
       nodeToPartnerGroups.set(m, existing);
     }
   }
 
-  // Find partner groups that share an anchor and merge them
   const groupUnion = new Map<number, Set<number>>(); // groupIdx -> merged members
   const mergedInto = new Map<number, number>(); // groupIdx -> canonical groupIdx
 
-  for (let gi = 0; gi < graph.partnerGroups.length; gi++) {
-    const pg = graph.partnerGroups[gi]!;
-    if (!pg.members.every((m) => nodeSet.has(m))) continue;
+  for (const gi of eligible) {
     if (mergedInto.has(gi)) continue;
 
-    const merged = new Set(pg.members);
+    const merged = new Set(graph.partnerGroups[gi]!.members);
     const toProcess = [gi];
     const visited = new Set<number>([gi]);
 
@@ -327,7 +384,6 @@ function buildConstraintBlocks(
           if (visited.has(otherGi)) continue;
           visited.add(otherGi);
           const otherPg = graph.partnerGroups[otherGi]!;
-          if (!otherPg.members.every((om) => nodeSet.has(om))) continue;
           for (const om of otherPg.members) merged.add(om);
           mergedInto.set(otherGi, gi);
           toProcess.push(otherGi);
@@ -338,7 +394,6 @@ function buildConstraintBlocks(
     groupUnion.set(gi, merged);
   }
 
-  // Build partner blocks from merged groups
   for (const [, members] of groupUnion) {
     const blockNodes = [...members].toSorted((a, b) => a - b);
     // Order anchor (shared node) between its partners
@@ -348,7 +403,6 @@ function buildConstraintBlocks(
     if (anchors.length === 1) {
       const anchor = anchors[0]!;
       const others = blockNodes.filter((n) => n !== anchor);
-      // Place anchor in the middle
       const half = Math.floor(others.length / 2);
       const ordered = [...others.slice(0, half), anchor, ...others.slice(half)];
       for (const n of ordered) assigned.add(n);
@@ -359,19 +413,7 @@ function buildConstraintBlocks(
     }
   }
 
-  // Sibling group blocks (only for nodes not already in a partner block on this layer)
-  for (const sg of graph.siblingGroups) {
-    const membersOnLayer = sg.members.filter(
-      (m) => graph.layers[m] === layer && !assigned.has(m),
-    );
-    if (membersOnLayer.length > 1) {
-      const sorted = membersOnLayer.toSorted((a, b) => a - b);
-      for (const n of sorted) assigned.add(n);
-      blocks.push({ nodes: sorted, barycenter: 0 });
-    }
-  }
-
-  // Singleton blocks for remaining nodes
+  // 3. Singleton blocks for remaining nodes.
   for (const node of nodesOnLayer) {
     if (!assigned.has(node)) {
       blocks.push({ nodes: [node], barycenter: 0 });
@@ -496,9 +538,7 @@ function barycentricSweep(
       }
 
       const currentLayer = result[k]!;
-      const layerIdx =
-        currentLayer.length > 0 ? graph.layers[currentLayer[0]!]! : k;
-      const blocks = buildConstraintBlocks(currentLayer, graph, layerIdx);
+      const blocks = buildConstraintBlocks(currentLayer, graph);
 
       // Compute barycenters
       for (const block of blocks) {
@@ -539,9 +579,7 @@ function barycentricSweep(
       }
 
       const currentLayer = result[k]!;
-      const layerIdx =
-        currentLayer.length > 0 ? graph.layers[currentLayer[0]!]! : k;
-      const blocks = buildConstraintBlocks(currentLayer, graph, layerIdx);
+      const blocks = buildConstraintBlocks(currentLayer, graph);
 
       for (const block of blocks) {
         let totalBarycenter = 0;
@@ -582,7 +620,7 @@ function minimizeCrossings(graph: PedigreeGraph): number[][] {
   const ordering: number[][] = [];
   for (let layer = 0; layer <= maxLayer; layer++) {
     const nodesOnLayer = getNodesAtLayer(graph, layer);
-    const blocks = buildConstraintBlocks(nodesOnLayer, graph, layer);
+    const blocks = buildConstraintBlocks(nodesOnLayer, graph);
     ordering.push(blocks.flatMap((b) => b.nodes));
   }
 
@@ -752,6 +790,27 @@ function encodePedigreeLayout(
         }
         break;
       }
+    }
+
+    // Pull each two-person couple whose members already sit at consecutive
+    // columns to be adjacent around their shared midpoint. Centering each
+    // partner under its own parents (above) otherwise leaves a couple where BOTH
+    // partners have parents — e.g. a consanguineous cousin union — spread apart
+    // when those parents are far from each other. The midpoint is preserved so
+    // the couple still sits over the descent to their children.
+    for (const pg of graph.partnerGroups) {
+      if (pg.members.length !== 2) continue;
+      const cols = pg.members
+        .map((m) => {
+          const loc = nodeLocation.get(m);
+          return loc?.layer === layer ? loc.col : -1;
+        })
+        .filter((c) => c >= 0)
+        .toSorted((a, b) => a - b);
+      if (cols.length !== 2 || cols[1]! - cols[0]! !== 1) continue;
+      const mid = (ideal[cols[0]!]! + ideal[cols[1]!]!) / 2;
+      ideal[cols[0]!] = mid - 0.5;
+      ideal[cols[1]!] = mid + 0.5;
     }
 
     // Resolve overlaps: left-to-right sweep enforcing min gap of 1
