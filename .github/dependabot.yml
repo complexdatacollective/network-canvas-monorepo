@@ -32,6 +32,17 @@ updates:
     exclude-paths:
       - 'apps/architect-classic/**'
       - 'apps/interviewer-classic/**'
+    # @playwright/test and playwright are published by the Playwright team in
+    # lock-step at identical versions and MUST resolve to the same version, or
+    # the interview-e2e run crashes with "two different versions of
+    # @playwright/test". They are separate catalog entries, so group them into a
+    # single PR that bumps both together. (The e2e Docker image tag is derived
+    # from the resolved version — see packages/interview/e2e/scripts/run.sh.)
+    groups:
+      playwright:
+        patterns:
+          - '@playwright/test'
+          - 'playwright'
 
   - package-ecosystem: 'github-actions'
     directory: '/'

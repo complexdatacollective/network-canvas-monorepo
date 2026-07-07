@@ -31,7 +31,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MONOREPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 cd "$MONOREPO_ROOT"
 
-IMAGE="mcr.microsoft.com/playwright:v1.61.1-noble"
+# Pin the Playwright Docker image to the exact @playwright/test version the
+# lockfile resolves to: the image's bundled browser binaries must match the JS
+# runner's version. @playwright/test, playwright, and this image are three
+# separate version pins that must stay in lock-step or the run crashes ("two
+# different versions of @playwright/test", or missing browser binaries). The two
+# npm pins are grouped in .github/dependabot.yml so they bump together; deriving
+# the tag here keeps the image in step automatically instead of being a third,
+# dependabot-invisible pin. (cd to MONOREPO_ROOT above put pnpm-lock.yaml in cwd.)
+PW_VERSION="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
+if [ -z "$PW_VERSION" ]; then
+  echo "Error: could not determine @playwright/test version from pnpm-lock.yaml" >&2
+  exit 1
+fi
+IMAGE="mcr.microsoft.com/playwright:v${PW_VERSION}-noble"
 
 if ! docker info >/dev/null 2>&1; then
   echo "Error: Docker is not running." >&2
