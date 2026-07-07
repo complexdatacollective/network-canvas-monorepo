@@ -28,8 +28,14 @@ permissions:
   checks: write
   pull-requests: write
 
+# PR runs are grouped per ref so a new push cancels the previous run for that
+# branch. Push-to-main runs get a per-commit group instead: main pushes must
+# never cancel each other, or a release-carrying run (the merge of the Release
+# apps PR) can be evicted while queued during a burst of merges and the release
+# is silently lost. See .github/scripts/detect-app-release.sh for the self-healing
+# safety net if a release run is dropped anyway.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
