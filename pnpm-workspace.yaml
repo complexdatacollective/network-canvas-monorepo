@@ -38,7 +38,7 @@ catalog:
   '@fontsource-variable/nunito': ^5.2.7
   '@next/bundle-analyzer': ^16.2.9
   '@next/third-parties': ^16.2.6
-  '@playwright/test': ^1.60.0
+  '@playwright/test': ^1.61.1
   '@posthog/react': ^1.9.1
   '@radix-ui/react-dialog': ^1.1.15
   '@radix-ui/react-slot': ^1.2.4
