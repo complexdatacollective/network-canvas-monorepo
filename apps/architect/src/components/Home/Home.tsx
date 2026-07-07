@@ -13,7 +13,7 @@ import type {
   CurrentProtocol,
   ExtractedAsset,
 } from '@codaco/protocol-validation';
-import Badge from '~/components/Badge';
+import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavShell from '~/components/ProjectNav/NavShell';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -27,7 +27,6 @@ import {
 import Button from '~/lib/legacy-ui/components/Button';
 import { BUNDLED_TEMPLATES, type BundledTemplate } from '~/templates';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
-import { appVersion } from '~/utils/appVersion';
 import { documentationLinks } from '~/utils/documentationLinks';
 import { reportError } from '~/utils/reportError';
 
@@ -226,9 +225,7 @@ const Home = () => {
                   </span>
                 </a>
               ))}
-              <Badge color="platinum">
-                <span className="bg-active h-2 w-2 rounded-full" />v{appVersion}
-              </Badge>
+              <AppUpdatePill />
             </>
           }
         />

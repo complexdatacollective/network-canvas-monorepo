@@ -25,6 +25,15 @@ vi.mock('~/lib/auth/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+// The version slot renders AppUpdatePill, which reads the app-wide
+// AppUpdateProvider context (service-worker registration + update state) that
+// isn't mounted in these unit tests. Stub it out — the update indicator has its
+// own coverage in @codaco/fresco-ui; these tests exercise StatusRow's
+// storage/encryption display.
+vi.mock('../AppUpdate/AppUpdatePill', () => ({
+  default: () => <span>Interviewer test</span>,
+}));
+
 import { StatusRow } from '../StatusRow';
 
 afterEach(() => {

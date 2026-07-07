@@ -67,7 +67,7 @@ Lint and format with the monorepo root `pnpm lint` / `pnpm lint:fix` (oxlint + o
   protocolName, timestamps, status) stay plaintext for querying.
 ```
 
-There's no server and no native shell: everything above runs in the tab, and all data lives in IndexedDB in the browser profile. A service worker (`vite-plugin-pwa`, `generateSW`) precaches the app shell so it boots offline once installed, and `PwaUpdateBanner` prompts before a new deployed version is applied (never automatically, and never mid-interview).
+There's no server and no native shell: everything above runs in the tab, and all data lives in IndexedDB in the browser profile. A service worker (`vite-plugin-pwa`, `generateSW`) precaches the app shell so it boots offline once installed; a pending update applies automatically on a fresh load when no interview is in progress, and is otherwise surfaced as an "update available" control on the version indicator with the release changelog (never mid-interview).
 
 ## Vault & auth model
 

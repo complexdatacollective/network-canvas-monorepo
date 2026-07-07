@@ -7,7 +7,6 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView/DataView';
-import { ImportDialog } from '~/components/ImportDialog';
 import { InstallBanner } from '~/components/InstallBanner';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
@@ -16,10 +15,8 @@ import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
-import {
-  type ImportRequest,
-  useProtocolImport,
-} from '~/lib/protocol/useProtocolImport';
+import { pickProtocolFile } from '~/lib/files/pickFile';
+import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 
 import { buildDeleteProtocolMessage } from './deleteProtocolMessage';
@@ -29,7 +26,7 @@ import {
 } from './homeAnimations';
 import { useHomeData } from './useHomeData';
 
-type OpenDialog = 'import' | 'settings' | null;
+type OpenDialog = 'settings' | null;
 type View = 'protocols' | 'data';
 
 function viewFromLocation(location: string): View {
@@ -77,12 +74,17 @@ export function HomeRoute() {
     )[0]?.hash;
   }, [settings?.lastActiveProtocolHash, protocols]);
 
-  const handleImportSubmit = useCallback(
-    (request: ImportRequest) => {
-      void startImport(request);
+  const handleImportFile = useCallback(
+    (file: File) => {
+      void startImport({ source: 'file', file, label: file.name });
     },
     [startImport],
   );
+
+  const handleChooseFile = useCallback(async () => {
+    const picked = await pickProtocolFile();
+    if (picked) handleImportFile(picked.file);
+  }, [handleImportFile]);
 
   const handleInstallSample = useCallback(() => {
     void startImport({ source: 'sample' });
@@ -217,7 +219,8 @@ export function HomeRoute() {
                   : false
               }
               pendingImports={pendingImports}
-              onImport={() => setOpenDialog('import')}
+              onImport={() => void handleChooseFile()}
+              onImportFile={handleImportFile}
               onStartInterview={setPendingProtocolHash}
               onDeleteProtocol={handleDeleteProtocol}
               onInstallSample={handleInstallSample}
@@ -259,11 +262,6 @@ export function HomeRoute() {
         )}
       </AnimatePresence>
 
-      <ImportDialog
-        open={openDialog === 'import'}
-        onClose={() => setOpenDialog(null)}
-        onSubmit={handleImportSubmit}
-      />
       <SettingsDialog
         open={openDialog === 'settings'}
         onClose={() => {
