@@ -1,5 +1,11 @@
 # @codaco/architect
 
+## 8.0.0-beta.3
+
+### Minor Changes
+
+- Renamed the app from "Architect Web" to "Architect". The browser tab now reads **Architect** and the package is `@codaco/architect`. Your protocols, saved work, and workflow are unchanged.
+
 ## 8.0.0-beta.2
 
 ### Minor Changes
