@@ -1200,34 +1200,38 @@ test.describe('SILOS Protocol', () => {
       await interview.captureFinal();
     });
 
-    test('Stage 29: Alter ART (CategoricalBin)', async ({
-      interview,
-      stage,
-    }) => {
-      await interview.captureInitial();
-      await expect(interview.page).toHaveURL(/step=29/);
-      // Only shows partners whose HIV status IS HIV Positive
-      await expect(stage.getPrompt()).toBeVisible();
+    // @flaky: on firefox, captureInitial races the CategoricalBin's initial
+    // render and intermittently snapshots a pre-placed node (issue #844). CI
+    // retries (playwright.config.ts) recover it; the tag keeps it on the radar.
+    test(
+      'Stage 29: Alter ART (CategoricalBin)',
+      { tag: '@flaky' },
+      async ({ interview, stage }) => {
+        await interview.captureInitial();
+        await expect(interview.page).toHaveURL(/step=29/);
+        // Only shows partners whose HIV status IS HIV Positive
+        await expect(stage.getPrompt()).toBeVisible();
 
-      await expect(stage.categoricalBin.getBin('Yes')).toBeVisible();
-      await expect(stage.categoricalBin.getBin('No')).toBeVisible();
+        await expect(stage.categoricalBin.getBin('Yes')).toBeVisible();
+        await expect(stage.categoricalBin.getBin('No')).toBeVisible();
 
-      const unplaced = await stage.categoricalBin.getUnplacedCount();
-      expect(unplaced).toBeGreaterThanOrEqual(1);
+        const unplaced = await stage.categoricalBin.getUnplacedCount();
+        expect(unplaced).toBeGreaterThanOrEqual(1);
 
-      // Drag the HIV Positive partner to "Yes"
-      const firstNode = stage.page
-        .getByRole('button', { name: /Bob|Evan/ })
-        .first();
-      const nodeName = await firstNode.textContent();
-      if (nodeName) {
-        await stage.categoricalBin.dragNodeToBin(nodeName.trim(), 'Yes');
-      }
+        // Drag the HIV Positive partner to "Yes"
+        const firstNode = stage.page
+          .getByRole('button', { name: /Bob|Evan/ })
+          .first();
+        const nodeName = await firstNode.textContent();
+        if (nodeName) {
+          await stage.categoricalBin.dragNodeToBin(nodeName.trim(), 'Yes');
+        }
 
-      await expect(interview.nextButton).toBeEnabled();
+        await expect(interview.nextButton).toBeEnabled();
 
-      await interview.captureFinal();
-    });
+        await interview.captureFinal();
+      },
+    );
 
     test('Stage 30: Alter Substances (AlterForm)', async ({
       interview,
