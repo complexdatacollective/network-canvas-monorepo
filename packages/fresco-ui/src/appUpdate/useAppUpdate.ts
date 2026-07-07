@@ -87,7 +87,14 @@ export default function useAppUpdate({
     let active = true;
     setReleaseNotes((prev) => (prev && prev !== 'loading' ? prev : 'loading'));
     void fetchLatestReleaseNotes(app).then((notes) => {
-      if (!active || !notes) return;
+      if (!active) return;
+      if (!notes) {
+        // Fetch failed (offline / rate-limited / release not yet published):
+        // fall back to "unavailable" rather than a stuck loading state, but keep
+        // any good cached value we already had.
+        setReleaseNotes((prev) => (prev === 'loading' ? null : prev));
+        return;
+      }
       writeCachedNotes(app, notes);
       setReleaseNotes(notes);
       setAvailableVersion(notes.version);
@@ -107,8 +114,13 @@ export default function useAppUpdate({
       return undefined;
     }
     let active = true;
+    setReleaseNotes('loading');
     void fetchReleaseNotesForVersion(app, currentVersion).then((notes) => {
-      if (!active || !notes) return;
+      if (!active) return;
+      if (!notes) {
+        setReleaseNotes((prev) => (prev === 'loading' ? null : prev));
+        return;
+      }
       writeCachedNotes(app, notes);
       setReleaseNotes(notes);
     });

@@ -74,21 +74,22 @@ self-apply on every visit. `AppUpdateProvider` (`src/components/AppUpdate/AppUpd
 polls for a new version hourly and on load, driving the shared `@codaco/fresco-ui`
 update indicator (`AppUpdatePill`, rendered in `StatusRow`):
 
-- If the pending update was already available when the tab was opened (within
-  a ~20s window of load), it's applied silently — the researcher never sees a
-  prompt for a version they never ran.
-- If it arrives later, during an open session, the version indicator becomes
-  an "update available" control that opens a dialog with the release
-  changelog and an **Install and reload** action.
-- While an interview is in progress (`/interview/*`), neither path fires — the
-  update is held until the researcher returns to the dashboard, so a reload
+- A pending update detected while no interview is in progress is applied
+  automatically — a reload lands the researcher on the newest version, and the
+  version indicator then shows a "was updated" state with the changelog.
+- An update that arrives while an interview is in progress, or after one has
+  already been applied this session, surfaces on the version indicator as an
+  "update available" control that opens a dialog with the release changelog
+  and an **Install and reload** action.
+- While an interview is in progress (`/interview/*`), auto-apply is withheld —
+  the update is held until the researcher returns to the dashboard, so a reload
   never interrupts data collection.
 
 Because of this, a production deploy is not instantaneous for already-open
 tabs: a researcher mid-session on the previous build keeps running it until
-they leave the interview and either the silent-apply or banner path catches
-up. There is no forced-update mechanism and none should be added — see the
-interview-active guard above.
+they leave the interview and either the auto-apply or the "update available"
+control catches up. There is no forced-update mechanism and none should be
+added — see the interview-active guard above.
 
 ## What used to be here
 

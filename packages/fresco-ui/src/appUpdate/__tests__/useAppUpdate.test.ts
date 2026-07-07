@@ -98,3 +98,36 @@ describe('auto-apply', () => {
     expect(installUpdate).not.toHaveBeenCalled();
   });
 });
+
+describe('release-notes state', () => {
+  it('falls back to null (not a stuck loading state) when the fetch yields nothing', async () => {
+    let resolveFetch: (value: {
+      ok: boolean;
+      json: () => Promise<unknown>;
+    }) => void = () => {};
+    const pending = new Promise<{ ok: boolean; json: () => Promise<unknown> }>(
+      (resolve) => {
+        resolveFetch = resolve;
+      },
+    );
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(pending));
+
+    const { result } = renderHook(() =>
+      useAppUpdate({
+        app: 'architect',
+        currentVersion: '2.0.0',
+        needRefresh: true,
+        hasUnsavedWork: true, // suppress auto-apply so the test doesn't reload
+        installUpdate: vi.fn(),
+      }),
+    );
+
+    // While the fetch is in flight, the dialog shows a loading state.
+    await waitFor(() => expect(result.current.releaseNotes).toBe('loading'));
+
+    // A non-ok response makes fetchLatestReleaseNotes resolve to null; the hook
+    // must settle to null so the dialog can show its "unavailable" copy.
+    resolveFetch({ ok: false, json: async () => [] });
+    await waitFor(() => expect(result.current.releaseNotes).toBeNull());
+  });
+});
