@@ -202,7 +202,7 @@ export const test = baseTest.extend<
                 })
                 .map(
                   (el) =>
-                    `${el.tagName}.${el.className.toString().slice(0, 60)} testid=${el.getAttribute('data-testid')}`,
+                    `${el.tagName}.${el.className.slice(0, 60)} testid=${el.getAttribute('data-testid')}`,
                 ),
             MIN_PENDING_AREA,
           );

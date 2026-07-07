@@ -130,9 +130,9 @@ const ComposerAttributeFields = ({
           <Tip>
             <p>
               The selected input control will cause this variable to be defined
-              as type <strong>{String(variableType)}</strong>. Once set, this
-              cannot be changed (although you may change the input control
-              within this type).
+              as type <strong>{variableType}</strong>. Once set, this cannot be
+              changed (although you may change the input control within this
+              type).
             </p>
           </Tip>
         )}
@@ -142,10 +142,9 @@ const ComposerAttributeFields = ({
               <p>
                 A pre-existing variable is currently selected. You cannot change
                 a variable type after it has been created, so only{' '}
-                <strong>{String(variableType)}</strong> compatible input
-                controls can be selected above. If you would like to use a
-                different input control type, you will need to create a new
-                variable.
+                <strong>{variableType}</strong> compatible input controls can be
+                selected above. If you would like to use a different input
+                control type, you will need to create a new variable.
               </p>
             </div>
           </Tip>
@@ -201,7 +200,7 @@ const ComposerAttributeFields = ({
       {isVariableTypeWithParameters(variableType) && (
         <Subsection id={getFieldId('parameters')} title="Input Options">
           <Parameters
-            type={String(variableType)}
+            type={variableType}
             component={component ?? ''}
             name="parameters"
             form={form}

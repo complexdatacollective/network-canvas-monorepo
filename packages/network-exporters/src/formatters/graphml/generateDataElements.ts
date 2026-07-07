@@ -101,8 +101,8 @@ async function generateDataElementsForEntity(
     domElement.appendChild(
       createDataElement({ key: ncTypeProperty }, entityTypeName),
     );
-    domElement.setAttribute('source', edge[edgeSourceProperty].toString());
-    domElement.setAttribute('target', edge[edgeTargetProperty].toString());
+    domElement.setAttribute('source', edge[edgeSourceProperty]);
+    domElement.setAttribute('target', edge[edgeTargetProperty]);
     domElement.appendChild(
       createDataElement({ key: ncSourceUUID }, edge[ncSourceUUID]),
     );

@@ -88,7 +88,7 @@ const NetworkFilter = ({
       summary={
         <p>You can optionally filter which nodes are shown on in this panel.</p>
       }
-      startExpanded={!!hasFilter}
+      startExpanded={hasFilter}
       handleToggleChange={handleToggleChange}
       {...contrastProps}
     >

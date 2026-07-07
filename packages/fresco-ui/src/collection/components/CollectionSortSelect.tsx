@@ -144,7 +144,7 @@ export function CollectionSortSelect({
                 key={
                   Array.isArray(option.property)
                     ? option.property.join('.')
-                    : String(option.property)
+                    : option.property
                 }
                 onClick={() => handleSelect(option)}
                 className={cx(isActive && 'bg-accent')}

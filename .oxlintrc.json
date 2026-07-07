@@ -47,6 +47,7 @@
     "typescript/switch-exhaustiveness-check": "warn",
     "typescript/no-misused-promises": ["error", { "checksVoidReturn": false }],
     "typescript/no-inferrable-types": "error",
+    "typescript/no-unnecessary-type-conversion": "error",
     "typescript/no-floating-promises": "warn",
     "typescript/no-redundant-type-constituents": "warn",
     "typescript/await-thenable": "warn",

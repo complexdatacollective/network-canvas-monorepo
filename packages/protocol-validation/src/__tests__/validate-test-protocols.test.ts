@@ -35,7 +35,7 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
       }
 
       const filename = protocolFilenames[i];
-      const protocolVersion = Number(protocol.schemaVersion ?? 0);
+      const protocolVersion = protocol.schemaVersion ?? 0;
 
       // Skip protocols with non-numeric schema versions (e.g. semver strings like "1.0.0")
       if (

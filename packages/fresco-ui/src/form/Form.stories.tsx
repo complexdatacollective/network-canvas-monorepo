@@ -82,7 +82,7 @@ function ValidatedInputField(props: React.ComponentProps<typeof InputField>) {
     name ? state.getFieldErrors(name) : null,
   );
 
-  const hasValue = Boolean(value && String(value).length > 0);
+  const hasValue = Boolean(value && value.length > 0);
   const isValidating = fieldState?.meta.isValidating ?? false;
   const isValid = fieldState?.meta.isValid ?? false;
 

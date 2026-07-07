@@ -140,7 +140,7 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
             </div>
             <RadioGroup
               value={rowValue(current, row.id, defaultOption)}
-              onValueChange={(next) => handleRowChange(row.id, String(next))}
+              onValueChange={(next) => handleRowChange(row.id, next)}
               disabled={disabled}
               readOnly={readOnly}
               name={name ? `${name}.${row.id}` : undefined}
