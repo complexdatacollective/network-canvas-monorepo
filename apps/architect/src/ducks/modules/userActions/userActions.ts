@@ -8,6 +8,7 @@ import {
   extractProtocolFromZip,
   getMigrationInfo,
   migrateProtocol,
+  NetcanvasInflationLimitError,
   validateProtocol,
 } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
@@ -63,14 +64,17 @@ const trackImportValidationFailure = (
   source: ImportSource,
   error: z.ZodError,
 ) => {
-  const flattenedErrors = z.flattenError(error);
+  // Report only the structural shape of each failure — the issue code and its
+  // schema path — never the prettified message or flattened error maps, which
+  // embed protocol-derived names and values (codebook record keys, variable
+  // names, entered values). Mirrors the editor-time `protocol_validation_failed`
+  // event in analyticsListener.
   posthog.capture('protocol_import_failed', {
     source,
     reason: 'validation',
     error_count: error.issues.length,
-    error_message: z.prettifyError(error),
-    form_errors: flattenedErrors.formErrors,
-    field_errors: flattenedErrors.fieldErrors,
+    error_codes: error.issues.map((issue) => issue.code),
+    error_paths: error.issues.map((issue) => issue.path.join('.')),
   });
 };
 
@@ -195,8 +199,26 @@ export const openLocalNetcanvas = createAsyncThunk(
         throw error;
       }
 
-      // Reuse the zip the guard already parsed rather than re-loading the archive.
-      const { protocol, assets } = await extractProtocolFromZip(guardedZip);
+      // Reuse the zip the guard already parsed rather than re-loading the
+      // archive. extractProtocolFromZip caps the *actual* inflated output as it
+      // streams, so a deflate bomb that under-declares its size in the central
+      // directory (and so slips past loadGuardedNetcanvas) still aborts here
+      // instead of OOM-crashing the tab.
+      let protocol: Awaited<
+        ReturnType<typeof extractProtocolFromZip>
+      >['protocol'];
+      let assets: Awaited<ReturnType<typeof extractProtocolFromZip>>['assets'];
+      try {
+        ({ protocol, assets } = await extractProtocolFromZip(guardedZip));
+      } catch (error) {
+        if (error instanceof NetcanvasInflationLimitError) {
+          dispatch(
+            generalErrorDialog('Failed to Open Protocol', error.message),
+          );
+          return false;
+        }
+        throw error;
+      }
       const protocolName = file.name.replace(/\.netcanvas$/, '');
 
       // Handle migration if needed
@@ -361,6 +383,10 @@ export const openBundledTemplate = createAsyncThunk(
     }: { protocol: CurrentProtocol; name?: string; assets?: ExtractedAsset[] },
     { dispatch },
   ) => {
+    // Signal an import is in flight so a fresh-load service-worker update won't
+    // silently reload mid-import (which could leave a library row whose bundled
+    // assets were never written). Mirrors openLocalNetcanvas.
+    setImportInProgress(true);
     try {
       const validationResult = await validateProtocol(protocol);
 
@@ -387,6 +413,8 @@ export const openBundledTemplate = createAsyncThunk(
       const errorMessage = ensureError(error).message;
       dispatch(generalErrorDialog('Protocol Import Error', errorMessage));
       return false;
+    } finally {
+      setImportInProgress(false);
     }
   },
 );

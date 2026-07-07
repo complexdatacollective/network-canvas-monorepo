@@ -32,6 +32,10 @@ const ComposerComponentSchema = z.enum([
 // field in the drawer; it is optional — the drawer falls back to the codebook
 // variable's name.
 export const ComposerFormFieldSchema = z.strictObject({
+  // Architect assigns a stable id (uuid) on creation so the editor's
+  // OrderedList / motion Reorder keying survives reorder + delete; it is
+  // persisted, so the schema must tolerate it.
+  id: z.string().optional(),
   variable: entityAttributeReference({ subject: 'stageSubject' }),
   component: ComposerComponentSchema,
   parameters: z.record(z.string(), z.unknown()).optional(),

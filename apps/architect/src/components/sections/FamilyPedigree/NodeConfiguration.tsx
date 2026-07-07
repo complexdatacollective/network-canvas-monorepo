@@ -2,7 +2,7 @@ import type { UnknownAction } from '@reduxjs/toolkit';
 import { difference, keys } from 'es-toolkit/compat';
 import { useCallback } from 'react';
 import { compose, withHandlers } from 'react-recompose';
-import { connect, useSelector } from 'react-redux';
+import { connect, type ConnectedProps, useSelector } from 'react-redux';
 import {
   change,
   type FormAction,
@@ -41,6 +41,7 @@ import {
   getVariableOptionsForSubject,
   makeGetVariable,
 } from '~/selectors/codebook';
+import { ensureError } from '~/utils/ensureError';
 import { optionsMatch } from '~/utils/variables';
 
 import NodeFormFieldPreview from './NodeFormFieldPreview';
@@ -321,19 +322,32 @@ const NodeConfigurationInner = ({
   );
 };
 
+const mapStateToProps = (state: RootState, { form }: { form: string }) => ({
+  getVariable: (uuid: string) => makeGetVariable(uuid)(state),
+  getNodeType: () =>
+    formValueSelector(form)(state, 'nodeConfig.type') as string | undefined,
+});
+
+const mapDispatchToProps = {
+  changeForm: change as (
+    form: string,
+    field: string,
+    value: unknown,
+  ) => FormAction,
+  updateVariable: updateVariableAsync,
+  createVariable: createVariableAsync,
+};
+
+const connector = connect(mapStateToProps, mapDispatchToProps);
+
+// ConnectedProps resolves the object-form thunk creators to their dispatched
+// form — functions returning the thunk promise (with `.unwrap()`) — matching
+// react-redux's runtime binding.
+type FormHandlerProps = ConnectedProps<typeof connector> & { form: string };
+
 const formHandlers = withHandlers({
   handleChangeFields:
-    (props: {
-      updateVariable: typeof updateVariableAsync;
-      createVariable: typeof createVariableAsync;
-      changeForm: (form: string, field: string, value: unknown) => FormAction;
-      form: string;
-      getVariable: (
-        uuid: string,
-      ) => ReturnType<ReturnType<typeof makeGetVariable>>;
-      getNodeType: () => string | undefined;
-    }) =>
-    async (values: Record<string, unknown>) => {
+    (props: FormHandlerProps) => async (values: Record<string, unknown>) => {
       const { variable, component, _createNewVariable, ...rest } = values as {
         variable?: string;
         component?: string;
@@ -362,11 +376,16 @@ const formHandlers = withHandlers({
           component?: string;
           type?: string;
           name?: string;
+          encrypted?: boolean;
         };
         const baseProps = {
           component: currentVar.component,
           type: currentVar.type,
           name: currentVar.name,
+          // `encrypted` is a data-protection flag set by the Anonymisation
+          // stage, not an editable form field. Because merge is false, it must
+          // be carried over explicitly or saving a field edit would strip it.
+          encrypted: currentVar.encrypted,
         };
 
         await props.updateVariable({
@@ -384,43 +403,31 @@ const formHandlers = withHandlers({
       }
 
       try {
-        const result = await props.createVariable({
-          entity: 'node',
-          type: nodeType ?? '',
-          configuration: {
-            ...configuration,
-            name: _createNewVariable,
-          } as Record<string, unknown>,
-        });
-        const payload = result as unknown as { payload: { variable: string } };
-        return { variable: payload.payload.variable, ...rest };
+        // unwrap() re-throws the thunk's error instead of resolving to a
+        // rejected action whose payload is undefined (which would make
+        // payload.payload.variable a TypeError).
+        const { variable: createdVariable } = await props
+          .createVariable({
+            entity: 'node',
+            type: nodeType ?? '',
+            configuration: {
+              ...configuration,
+              name: _createNewVariable,
+            } as Record<string, unknown>,
+          })
+          .unwrap();
+        return { variable: createdVariable, ...rest };
       } catch (e) {
-        throw new SubmissionError({ variable: String(e) });
+        throw new SubmissionError({ variable: ensureError(e).message });
       }
     },
 });
-
-const mapStateToProps = (state: RootState, { form }: { form: string }) => ({
-  getVariable: (uuid: string) => makeGetVariable(uuid)(state),
-  getNodeType: () =>
-    formValueSelector(form)(state, 'nodeConfig.type') as string | undefined,
-});
-
-const mapDispatchToProps = {
-  changeForm: change as (
-    form: string,
-    field: string,
-    value: unknown,
-  ) => FormAction,
-  updateVariable: updateVariableAsync,
-  createVariable: createVariableAsync,
-};
 
 const NodeConfiguration = compose<
   NodeConfigurationInnerProps,
   StageEditorSectionProps
 >(
-  connect(mapStateToProps, mapDispatchToProps),
+  connector,
   formHandlers,
 )(NodeConfigurationInner);
 

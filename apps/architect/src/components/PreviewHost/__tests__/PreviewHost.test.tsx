@@ -51,6 +51,7 @@ function makePayload(
     startStage: 0,
     useSyntheticData: false,
     skipLogicBypassed: false,
+    memoryAssets: [],
     ...overrides,
   };
 }

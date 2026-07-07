@@ -12,7 +12,9 @@ type DistributiveOmit<T, K extends keyof T> = T extends unknown
   ? Omit<T, K>
   : never;
 
-export type DialogConfig = DistributiveOmit<Dialog, 'id'>;
+// Callers may optionally supply a stable `id` so they can later dismiss the
+// dialog programmatically (via closeDialog); otherwise one is generated.
+export type DialogConfig = DistributiveOmit<Dialog, 'id'> & { id?: string };
 
 type DialogsState = {
   dialogs: Dialog[];
@@ -41,7 +43,7 @@ export const openDialog = createAsyncThunk<boolean, DialogConfig>(
         resolve(false);
       };
 
-      const id = uuid();
+      const id = dialogConfig.id ?? uuid();
       const dialog: Dialog = {
         ...dialogConfig,
         id,

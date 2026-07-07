@@ -12,6 +12,8 @@ import {
 import { generateNetwork } from '@codaco/protocol-utilities';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import Button from '~/lib/legacy-ui/components/Button';
+import { assetKey } from '~/utils/assetDB';
+import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
@@ -103,6 +105,19 @@ export function PreviewHost() {
       if (!isPreviewMessage(event.data)) return;
       if (event.data.type !== 'preview:payload') return;
       const previewPayload: PreviewPayload = event.data;
+
+      // Hydrate this realm's in-memory store with any Safari-private fallback
+      // assets ferried from the editor. getAssetById reads IndexedDB first, then
+      // this map, so once hydrated the resolver finds them like any other asset.
+      for (const asset of previewPayload.memoryAssets ?? []) {
+        hydrateMemoryAsset({
+          id: assetKey(previewPayload.protocolId, asset.assetId),
+          assetId: asset.assetId,
+          protocolId: previewPayload.protocolId,
+          name: asset.name,
+          data: asset.data,
+        });
+      }
 
       let nextPayload: InterviewPayload;
       try {

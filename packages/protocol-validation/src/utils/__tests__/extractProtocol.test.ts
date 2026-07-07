@@ -1,240 +1,188 @@
 import JSZip from 'jszip';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { extractProtocol } from '../extractProtocol';
+import {
+  extractProtocol,
+  extractProtocolFromZip,
+  MAX_INFLATED_BYTES,
+  NetcanvasInflationLimitError,
+} from '../extractProtocol';
 
-// Mock JSZip
-vi.mock('jszip');
+const buildZip = async (entries: Record<string, string>): Promise<Buffer> => {
+  const zip = new JSZip();
+  for (const [name, content] of Object.entries(entries)) {
+    zip.file(name, content);
+  }
+  return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+};
 
 describe('extractProtocol', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should successfully extract protocol from valid zip buffer', async () => {
-    const mockProtocol = {
+  it('extracts a protocol from a valid zip buffer', async () => {
+    const protocol = {
       schemaVersion: 8,
       name: 'Test Protocol',
       stages: [],
       codebook: { node: {}, edge: {}, ego: {} },
     };
+    const buffer = await buildZip({
+      'protocol.json': JSON.stringify(protocol),
+    });
 
-    const mockZipFile = {
-      async: vi.fn().mockResolvedValue(JSON.stringify(mockProtocol)),
-    };
-
-    const mockZip = {
-      file: vi.fn().mockReturnValue(mockZipFile),
-    };
-
-    vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as never);
-
-    const buffer = Buffer.from('mock zip content');
     const result = await extractProtocol(buffer);
-
-    expect(JSZip.loadAsync).toHaveBeenCalledWith(buffer);
-    expect(mockZip.file).toHaveBeenCalledWith('protocol.json');
-    expect(mockZipFile.async).toHaveBeenCalledWith('string');
-    expect(result).toEqual({ protocol: mockProtocol, assets: [] });
+    expect(result).toEqual({ protocol, assets: [] });
   });
 
-  it('should throw error when protocol.json is not found in zip', async () => {
-    const mockZip = {
-      file: vi.fn().mockReturnValue(null),
-    };
-
-    vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as never);
-
-    const buffer = Buffer.from('mock zip content');
-
-    await expect(extractProtocol(buffer)).rejects.toThrow(
-      'protocol.json not found in zip',
-    );
-    expect(mockZip.file).toHaveBeenCalledWith('protocol.json');
-  });
-
-  it('should throw error when protocol.json is undefined', async () => {
-    const mockZip = {
-      file: vi.fn().mockReturnValue(undefined),
-    };
-
-    vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as never);
-
-    const buffer = Buffer.from('mock zip content');
+  it('throws when protocol.json is not present', async () => {
+    const buffer = await buildZip({ 'assets/other.txt': 'hello' });
 
     await expect(extractProtocol(buffer)).rejects.toThrow(
       'protocol.json not found in zip',
     );
   });
 
-  it('should throw error when protocol.json contains invalid JSON', async () => {
-    const mockZipFile = {
-      async: vi.fn().mockResolvedValue('invalid json {'),
-    };
-
-    const mockZip = {
-      file: vi.fn().mockReturnValue(mockZipFile),
-    };
-
-    vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as never);
-
-    const buffer = Buffer.from('mock zip content');
+  it('throws when protocol.json contains invalid JSON', async () => {
+    const buffer = await buildZip({ 'protocol.json': 'invalid json {' });
 
     await expect(extractProtocol(buffer)).rejects.toThrow();
   });
 
-  it('should handle empty protocol.json', async () => {
-    const mockZipFile = {
-      async: vi.fn().mockResolvedValue(''),
-    };
-
-    const mockZip = {
-      file: vi.fn().mockReturnValue(mockZipFile),
-    };
-
-    vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as never);
-
-    const buffer = Buffer.from('mock zip content');
-
-    await expect(extractProtocol(buffer)).rejects.toThrow();
-  });
-
-  it('should throw error when zip loading fails', async () => {
-    vi.mocked(JSZip.loadAsync).mockRejectedValue(new Error('Invalid zip file'));
-
-    const buffer = Buffer.from('invalid zip content');
-
-    await expect(extractProtocol(buffer)).rejects.toThrow('Invalid zip file');
-  });
-
-  it('should handle protocol with complex structure', async () => {
-    const mockProtocol = {
+  it('inflates asset files declared in the manifest', async () => {
+    const protocol = {
       schemaVersion: 8,
-      name: 'Complex Protocol',
-      description: 'A complex protocol with many fields',
-      stages: [
-        {
-          id: 'stage1',
-          type: 'NameGenerator',
-          label: 'Name Generator Stage',
-        },
-      ],
-      codebook: {
-        node: {
-          person: {
-            name: 'Person',
-            variables: {
-              name: {
-                type: 'text',
-                label: 'Name',
-              },
-            },
-          },
-        },
-        edge: {},
-        ego: {},
+      assetManifest: {
+        img1: { type: 'image', name: 'photo.png', source: 'photo.png' },
       },
     };
+    const buffer = await buildZip({
+      'protocol.json': JSON.stringify(protocol),
+      'assets/photo.png': 'PNGDATA',
+    });
 
-    const mockZipFile = {
-      async: vi.fn().mockResolvedValue(JSON.stringify(mockProtocol)),
-    };
-
-    const mockZip = {
-      file: vi.fn().mockReturnValue(mockZipFile),
-    };
-
-    vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as never);
-
-    const buffer = Buffer.from('mock zip content');
     const result = await extractProtocol(buffer);
-
-    expect(result).toEqual({ protocol: mockProtocol, assets: [] });
+    expect(result.assets).toHaveLength(1);
+    expect(result.assets[0]!.id).toBe('img1');
+    expect(result.assets[0]!.name).toBe('photo.png');
+    expect(result.assets[0]!.data).toBeInstanceOf(Blob);
+    expect(await (result.assets[0]!.data as Blob).text()).toBe('PNGDATA');
   });
 
-  it('should handle protocol with special characters', async () => {
-    const mockProtocol = {
+  it('passes through apikey assets without inflating a file', async () => {
+    const protocol = {
       schemaVersion: 8,
-      name: 'Protocol with 特殊字符 and émojis 🎉',
-      description: 'Testing unicode support: café, naïve, 日本語',
+      assetManifest: {
+        key1: { type: 'apikey', name: 'My Key', value: 'secret-value' },
+      },
     };
+    const buffer = await buildZip({
+      'protocol.json': JSON.stringify(protocol),
+    });
 
-    const mockZipFile = {
-      async: vi.fn().mockResolvedValue(JSON.stringify(mockProtocol)),
-    };
-
-    const mockZip = {
-      file: vi.fn().mockReturnValue(mockZipFile),
-    };
-
-    vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as never);
-
-    const buffer = Buffer.from('mock zip content');
     const result = await extractProtocol(buffer);
-
-    expect(result).toEqual({ protocol: mockProtocol, assets: [] });
+    expect(result.assets).toEqual([
+      { id: 'key1', name: 'My Key', data: 'secret-value' },
+    ]);
   });
 
-  it('should handle minimal protocol structure', async () => {
-    const mockProtocol = {
-      schemaVersion: 8,
-    };
+  describe('inflation cap (deflate-bomb defence)', () => {
+    it('aborts inflation when the actual decompressed output exceeds the cap', async () => {
+      // A tiny compressed archive whose entry inflates to 2MB. With a 1MB cap the
+      // stream must abort part-way through inflation rather than buffering it all.
+      const bomb = '0'.repeat(2 * 1024 * 1024);
+      const buffer = await buildZip({
+        'protocol.json': '{"schemaVersion":8}',
+        'assets/bomb.bin': bomb,
+      });
+      expect(buffer.byteLength).toBeLessThan(bomb.length);
 
-    const mockZipFile = {
-      async: vi.fn().mockResolvedValue(JSON.stringify(mockProtocol)),
-    };
+      const protocol = {
+        schemaVersion: 8,
+        assetManifest: {
+          b: { type: 'file', name: 'bomb.bin', source: 'bomb.bin' },
+        },
+      };
+      const bombBuffer = await buildZip({
+        'protocol.json': JSON.stringify(protocol),
+        'assets/bomb.bin': bomb,
+      });
 
-    const mockZip = {
-      file: vi.fn().mockReturnValue(mockZipFile),
-    };
+      await expect(
+        extractProtocol(bombBuffer, 1024 * 1024),
+      ).rejects.toBeInstanceOf(NetcanvasInflationLimitError);
+    });
 
-    vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as never);
+    it('does not trust the declared central-directory size — the cap is driven by streamed bytes', async () => {
+      // Under-declare the entry's uncompressed size in the central directory so
+      // any header-only check would wave the bomb through. The incremental cap
+      // must still fire because it counts bytes as they are actually inflated.
+      const bomb = '0'.repeat(2 * 1024 * 1024);
+      const protocol = {
+        schemaVersion: 8,
+        assetManifest: {
+          b: { type: 'file', name: 'bomb.bin', source: 'bomb.bin' },
+        },
+      };
+      const buffer = await buildZip({
+        'protocol.json': JSON.stringify(protocol),
+        'assets/bomb.bin': bomb,
+      });
+      const zip = await JSZip.loadAsync(buffer);
 
-    const buffer = Buffer.from('mock zip content');
-    const result = await extractProtocol(buffer);
+      const bombEntry = zip.file('assets/bomb.bin')!;
+      // Lie about the size the way an attacker would; the header now claims 1 byte.
+      (
+        bombEntry as unknown as { _data: { uncompressedSize: number } }
+      )._data.uncompressedSize = 1;
 
-    expect(result).toEqual({ protocol: mockProtocol, assets: [] });
-  });
+      await expect(
+        extractProtocolFromZip(zip, 1024 * 1024),
+      ).rejects.toBeInstanceOf(NetcanvasInflationLimitError);
+    });
 
-  it('should handle protocol with null values', async () => {
-    const mockProtocol = {
-      schemaVersion: 8,
-      name: 'Test',
-      description: null,
-      stages: null,
-    };
+    it('counts bytes across every entry so a bomb split over multiple files is caught', async () => {
+      const half = '0'.repeat(700 * 1024);
+      const protocol = {
+        schemaVersion: 8,
+        assetManifest: {
+          a: { type: 'file', name: 'a.bin', source: 'a.bin' },
+          b: { type: 'file', name: 'b.bin', source: 'b.bin' },
+        },
+      };
+      const buffer = await buildZip({
+        'protocol.json': JSON.stringify(protocol),
+        'assets/a.bin': half,
+        'assets/b.bin': half,
+      });
 
-    const mockZipFile = {
-      async: vi.fn().mockResolvedValue(JSON.stringify(mockProtocol)),
-    };
+      // Each entry (700KB) is under a 1MB cap, but together they exceed it.
+      await expect(extractProtocol(buffer, 1024 * 1024)).rejects.toBeInstanceOf(
+        NetcanvasInflationLimitError,
+      );
+    });
 
-    const mockZip = {
-      file: vi.fn().mockReturnValue(mockZipFile),
-    };
+    it('allows an archive whose total inflated size stays within the cap', async () => {
+      const payload = '0'.repeat(200 * 1024);
+      const protocol = {
+        schemaVersion: 8,
+        assetManifest: {
+          a: { type: 'file', name: 'a.bin', source: 'a.bin' },
+        },
+      };
+      const buffer = await buildZip({
+        'protocol.json': JSON.stringify(protocol),
+        'assets/a.bin': payload,
+      });
 
-    vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as never);
+      const result = await extractProtocol(buffer, 1024 * 1024);
+      expect(result.assets).toHaveLength(1);
+    });
 
-    const buffer = Buffer.from('mock zip content');
-    const result = await extractProtocol(buffer);
-
-    expect(result).toEqual({ protocol: mockProtocol, assets: [] });
-  });
-
-  it('should throw error when async method fails', async () => {
-    const mockZipFile = {
-      async: vi.fn().mockRejectedValue(new Error('Failed to read file')),
-    };
-
-    const mockZip = {
-      file: vi.fn().mockReturnValue(mockZipFile),
-    };
-
-    vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as never);
-
-    const buffer = Buffer.from('mock zip content');
-
-    await expect(extractProtocol(buffer)).rejects.toThrow(
-      'Failed to read file',
-    );
+    it('defaults to MAX_INFLATED_BYTES when no cap is provided', async () => {
+      expect(MAX_INFLATED_BYTES).toBe(1024 * 1024 * 1024);
+      const buffer = await buildZip({
+        'protocol.json': '{"schemaVersion":8}',
+      });
+      const result = await extractProtocol(buffer);
+      expect(result.protocol).toEqual({ schemaVersion: 8 });
+    });
   });
 });

@@ -259,6 +259,30 @@ describe('syncMiddleware', () => {
     expect(onSyncMock).toHaveBeenCalledTimes(2);
   });
 
+  it('retries the same snapshot after a failed sync with no further changes', async () => {
+    // First sync attempt rejects; the second (retry) resolves.
+    onSyncMock
+      .mockRejectedValueOnce(new Error('Vault locked'))
+      .mockResolvedValueOnce(undefined);
+
+    const store = createTestStore(middleware);
+
+    // A change triggers the leading-edge sync, which fails.
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
+
+    // No further user changes are made. The failed snapshot must not be
+    // silently dropped — the middleware must retry it on the debounce window.
+    await vi.advanceTimersByTimeAsync(3000);
+
+    expect(onSyncMock).toHaveBeenCalledTimes(2);
+    expect(onSyncMock).toHaveBeenLastCalledWith(
+      'interview-1',
+      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:01.000Z' }),
+    );
+  });
+
   it('does not sync when state is identical to last synced state', async () => {
     const store = createTestStore(middleware);
 

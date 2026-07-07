@@ -31,6 +31,7 @@ export function StepUpAuthProvider({ children }: { children: ReactNode }) {
   const { closeAllDialogs } = useDialog();
   const [open, setOpen] = useState(false);
   const pendingResolve = useRef<((r: StepUpResult) => void) | null>(null);
+  const prevKind = useRef(auth.kind);
 
   const handleResolve = useCallback((result: StepUpResult) => {
     setOpen(false);
@@ -40,18 +41,31 @@ export function StepUpAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // The dialog providers sit above AuthGate so their state survives the
-  // locked/unlocked child swap. When the app locks, dismiss any open confirm
-  // dialogs (a destructive confirm mustn't stay armed to fire on unlock) and
-  // cancel a pending step-up so its awaiting caller doesn't hang.
+  // locked/unlocked child swap. A destructive confirm (delete-protocol,
+  // revoke/reset-device) must not survive a lock boundary in either direction:
+  // one opened before a lock mustn't resurface armed on unlock, and one the lock
+  // screen itself opens (its Reset escape hatch) mustn't float over Home once
+  // biometric auto-unlock resolves. So dismiss all provider-hosted dialogs on
+  // both the →locked and locked→unlocked transitions, and cancel a pending
+  // step-up on lock so its awaiting caller doesn't hang.
   useEffect(() => {
-    if (auth.kind !== 'locked') return;
-    const resolve = pendingResolve.current;
-    if (resolve) {
-      pendingResolve.current = null;
-      setOpen(false);
-      resolve({ ok: false, reason: 'cancelled' });
+    const previous = prevKind.current;
+    prevKind.current = auth.kind;
+
+    if (auth.kind === 'locked') {
+      const resolve = pendingResolve.current;
+      if (resolve) {
+        pendingResolve.current = null;
+        setOpen(false);
+        resolve({ ok: false, reason: 'cancelled' });
+      }
+      closeAllDialogs();
+      return;
     }
-    closeAllDialogs();
+
+    if (auth.kind === 'unlocked' && previous === 'locked') {
+      closeAllDialogs();
+    }
   }, [auth.kind, closeAllDialogs]);
 
   const requireFreshUnlock = useCallback(async (): Promise<StepUpResult> => {

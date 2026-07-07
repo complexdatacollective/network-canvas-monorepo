@@ -23,7 +23,16 @@ type ResolvedAsset = {
 // the zip entry on `source` lets one asset's bytes overwrite another's. Derive a
 // unique entry name from the asset id, preserving any extension for downstream
 // type sniffing.
-const entryNameFor = (assetId: string, source: string): string => {
+//
+// Sanitising is many-to-one (`photo 1` and `photo/1` both reduce to `photo_1`),
+// so two distinct ids can still produce the same entry name. `usedEntryNames`
+// tracks already-assigned names so a collision is disambiguated with a numeric
+// suffix (`photo_1.jpg`, `photo_1-1.jpg`) rather than silently overwriting.
+const entryNameFor = (
+  assetId: string,
+  source: string,
+  usedEntryNames: Set<string>,
+): string => {
   const dot = source.lastIndexOf('.');
   const extension = dot > 0 ? source.slice(dot) : '';
   // `assetId` is a manifest record key, which the schema doesn't constrain to a
@@ -32,7 +41,15 @@ const entryNameFor = (assetId: string, source: string): string => {
   const safeStem = assetId
     .replace(/[^A-Za-z0-9._-]/g, '_')
     .replace(/\.{2,}/g, '_');
-  return `${safeStem}${extension}`;
+
+  let entryName = `${safeStem}${extension}`;
+  let suffix = 0;
+  while (usedEntryNames.has(entryName)) {
+    suffix += 1;
+    entryName = `${safeStem}-${suffix}${extension}`;
+  }
+  usedEntryNames.add(entryName);
+  return entryName;
 };
 
 const getAllProtocolAssets = async (
@@ -41,6 +58,8 @@ const getAllProtocolAssets = async (
 ): Promise<{ resolved: ResolvedAsset[]; skipped: SkippedAsset[] }> => {
   const resolved: ResolvedAsset[] = [];
   const skipped: SkippedAsset[] = [];
+  // Guards against two distinct ids sanitising to the same zip entry name.
+  const usedEntryNames = new Set<string>();
 
   if (!protocol.assetManifest) {
     return { resolved, skipped };
@@ -76,7 +95,7 @@ const getAllProtocolAssets = async (
 
     resolved.push({
       id: assetId,
-      entryName: entryNameFor(assetId, assetDefinition.source),
+      entryName: entryNameFor(assetId, assetDefinition.source, usedEntryNames),
       data: assetData.data,
     });
   }

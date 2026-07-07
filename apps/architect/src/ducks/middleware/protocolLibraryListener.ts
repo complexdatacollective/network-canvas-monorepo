@@ -2,12 +2,15 @@ import {
   createListenerMiddleware,
   type TypedStartListening,
 } from '@reduxjs/toolkit';
+import { REMEMBER_REHYDRATED } from 'redux-remember';
 
 import { getProtocol } from '~/selectors/protocol';
 import { assetDb } from '~/utils/assetDB';
 import { getStoredProtocol, putStoredProtocol } from '~/utils/protocolLibrary';
 
+import { reconcileRehydratedActiveProtocol } from '../activeProtocolPersistence';
 import {
+  clearActiveProtocol,
   setActiveProtocol,
   updateLastModified,
 } from '../modules/activeProtocol';
@@ -15,6 +18,7 @@ import {
   getActiveProtocolId,
   getProtocolOpenElsewhere,
   getStorageUnavailable,
+  setActiveProtocolId,
 } from '../modules/app';
 import type { RootState } from '../modules/root';
 import { generalErrorDialog } from '../modules/userActions/dialogs';
@@ -63,18 +67,26 @@ const flush = (snapshot: ProtocolSnapshot, dispatch: AppDispatch): void => {
       // A pending timer can fire after the protocol was deleted. The existence
       // check and the put run in one transaction on `protocols` so a delete
       // (which locks `protocols`) can't land between them and resurrect the row.
-      await assetDb.transaction('rw', assetDb.protocols, async () => {
-        const existing = await getStoredProtocol(snapshot.id);
-        if (!existing) {
-          return;
-        }
-        await putStoredProtocol({
-          id: snapshot.id,
-          protocol,
-          name: snapshot.name,
-          description: snapshot.description,
-        });
-      });
+      // `assets` is in scope too because putStoredProtocol GCs orphaned blobs
+      // from that table; omitting it makes Dexie throw NotFoundError, which the
+      // best-effort GC swallows and leaves the orphan undeleted.
+      await assetDb.transaction(
+        'rw',
+        assetDb.protocols,
+        assetDb.assets,
+        async () => {
+          const existing = await getStoredProtocol(snapshot.id);
+          if (!existing) {
+            return;
+          }
+          await putStoredProtocol({
+            id: snapshot.id,
+            protocol,
+            name: snapshot.name,
+            description: snapshot.description,
+          });
+        },
+      );
       autosaveErrorNotified = false;
     } catch (error: unknown) {
       console.error('Autosave to protocol library failed', error);
@@ -100,9 +112,38 @@ const flush = (snapshot: ProtocolSnapshot, dispatch: AppDispatch): void => {
   });
 };
 
+// Reconcile a rehydrated protocol on reload. redux-remember persists the `app`
+// (which holds `activeProtocolId`) and `activeProtocol` keys non-atomically, so a
+// reload catching a partial intra-tab write can rehydrate a NEW id paired with
+// the PREVIOUS protocol's present. Autosaving that pair would flush the old
+// content into the new library row, so validate the stamped owner id against the
+// rehydrated `app.activeProtocolId` and discard the suspect present (and the
+// stale id) before any autosave runs. This listener is registered before the
+// autosave listener so it corrects the state first for the same rehydrate action.
+startAppListening({
+  predicate: (action) => action.type === REMEMBER_REHYDRATED,
+  effect: (_action, listenerApi) => {
+    const state = listenerApi.getState();
+    const { clearActiveProtocolId } = reconcileRehydratedActiveProtocol(
+      state.activeProtocol,
+      getActiveProtocolId(state),
+    );
+
+    if (clearActiveProtocolId) {
+      listenerApi.dispatch(clearActiveProtocol());
+      listenerApi.dispatch(setActiveProtocolId(null));
+    }
+  },
+});
+
 // Autosave: debounce a write of the active protocol into its library row.
 startAppListening({
   predicate: (action, currentState, previousState) => {
+    // Rehydration on reload is not a user edit; the id/present reconcile above
+    // owns it, and autosaving here could flush a suspect rehydrated present.
+    if (action.type === REMEMBER_REHYDRATED) {
+      return false;
+    }
     // lastModified bumps produce a new `present` but aren't user edits.
     if (updateLastModified.match(action)) {
       return false;

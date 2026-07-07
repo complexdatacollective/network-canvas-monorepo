@@ -589,8 +589,9 @@ const ProtocolSchema = z
       // genetics engine depend on. Architect locks these options at creation, but
       // nothing re-checks them afterwards; guard against a variable whose options
       // were edited away from its canonical set. Only fires when the referenced
-      // variable exists and is categorical with a mismatched option set — so a
-      // legitimately-authored protocol (whose options already match) always passes.
+      // variable exists and is a categorical or ordinal (both carry a locked
+      // options set) with a mismatched option set — so a legitimately-authored
+      // protocol (whose options already match) always passes.
       if (stage.type === 'FamilyPedigree') {
         const nodeVariables = getVariablesForSubject(protocol.codebook, {
           entity: 'node',
@@ -610,7 +611,7 @@ const ProtocolSchema = z
         ) => {
           if (
             variable &&
-            variable.type === 'categorical' &&
+            (variable.type === 'categorical' || variable.type === 'ordinal') &&
             !optionsMatchCanonical(variable.options, canonical)
           ) {
             ctx.addIssue({
