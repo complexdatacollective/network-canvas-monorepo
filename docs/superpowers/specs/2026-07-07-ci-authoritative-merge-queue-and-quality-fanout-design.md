@@ -172,11 +172,17 @@ way.
 **B1. Fan-out into a job DAG with an aggregator.** Replace the single `quality`
 job with:
 
-- `lint` (`//#lint`), `knip` (`//#knip`), `check-changesets` (`pnpm
-check:changesets`), `test-scripts` (`pnpm test:scripts`) — **no build
-  dependency**, start at t=0 in parallel.
-- `build` (`turbo run build`) → `test` and `typecheck`, each `needs: build` so
-  they reuse its cache.
+- `knip` (`//#knip`), `check-changesets` (`pnpm check:changesets`),
+  `test-scripts` (`pnpm test:scripts`) — **no build dependency**, start at t=0
+  in parallel.
+- `build` (`turbo run build`) → `test`, `typecheck`, **and `lint`**, each
+  `needs: build` so they reuse its cache. (`test`/`typecheck` self-restore via
+  their `^build` dependency; `lint` `needs: build` and restores the shared-package
+  builds first because oxlint's type-aware rules — `oxlint-tsgolint` — resolve
+  workspace imports through built `.d.ts` files. `//#lint` has no `^build`
+  dependency of its own, so without this it emits false-positive type errors.
+  Discovered on PR #833's first CI run; the original design wrongly assumed
+  `lint` needed no build.)
 - **`quality` aggregator** — `needs: [lint, knip, check-changesets,
 test-scripts, build, test, typecheck]`, succeeds iff all succeed (using
   `if: always()` + an explicit result check so a skipped/failed dependency fails
@@ -184,10 +190,12 @@ test-scripts, build, test, typecheck]`, succeeds iff all succeed (using
   queue check**, and the single thing every push-time deploy/release job used to
   gate on.
 
-Rationale: `lint`/`knip` leave the critical path entirely; `test` and `typecheck`
-run on separate runners in parallel after `build` instead of sharing four cores
-with it. Wall-clock ≈ `build + max(test, typecheck)` rather than
-`build + (test + typecheck + lint + knip)/cores`.
+Rationale: `knip`/`check-changesets`/`test-scripts` leave the critical path
+entirely; `test`, `typecheck`, and `lint` run on separate runners in parallel
+after `build` instead of sharing four cores with it. Wall-clock ≈
+`build + max(test, typecheck, lint)` rather than
+`build + (test + typecheck + lint + knip)/cores`. (Verified on PR #833: warm-cache
+fan-out ~3 min vs the 11 min single job.)
 
 **B2. GitHub-native turbo remote cache.** Replace the `actions/cache` of the
 `.turbo` directory with **`rharkor/caching-for-turbo`** (pinned by commit SHA and

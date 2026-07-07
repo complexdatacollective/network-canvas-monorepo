@@ -269,6 +269,12 @@ In the PR's Actions logs for the `quality` job, confirm `rharkor/caching-for-tur
 
 ## Task 3.1: Split `quality` into parallel sub-jobs behind a `quality` aggregator
 
+> **Correction (from PR #833 CI):** the `lint` job below is shown with no build
+> dependency, but that is WRONG — `//#lint`'s type-aware rules (`oxlint-tsgolint`)
+> need the shared packages' built `.d.ts`, so the shipped `lint` job is
+> `needs: build` and runs `turbo run build --filter='./packages/*'` before
+> `//#lint`. Only `knip`/`check-changesets`/`test-scripts` truly need no build.
+
 **Files:**
 
 - Modify: `.github/workflows/ci-and-release.yml` (replace the single `quality` job)
