@@ -1,15 +1,11 @@
-import {
-  createAsyncThunk,
-  createSlice,
-  type PayloadAction,
-} from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 import { compact, omit } from 'es-toolkit/compat';
 import { v1 as uuid } from 'uuid';
 
 import type { Stage } from '@codaco/protocol-validation';
+import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { openDialog } from '~/ducks/modules/dialogs';
-import type { RootState } from '~/ducks/modules/root';
 import { getNodeTypes } from '~/selectors/codebook';
 import { getProtocol, getStage } from '~/selectors/protocol';
 import prune from '~/utils/prune';
@@ -48,7 +44,7 @@ const initialStage = {
 };
 
 // Async thunks
-const createStageAsync = createAsyncThunk(
+const createStageAsync = createAppAsyncThunk(
   'stages/createStageAsync',
   async (
     { options, index }: { options: Partial<Stage>; index?: number },
@@ -62,10 +58,10 @@ const createStageAsync = createAsyncThunk(
   },
 );
 
-const deleteStageAsync = createAsyncThunk(
+const deleteStageAsync = createAppAsyncThunk(
   'stages/deleteStageAsync',
   async (stageId: string, { dispatch, getState }) => {
-    const state = getState() as RootState;
+    const state = getState();
     const stage = getStage(state, stageId);
 
     // A NarrativePedigree renders a FamilyPedigree's finalised network via
