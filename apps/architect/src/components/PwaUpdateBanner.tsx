@@ -51,6 +51,20 @@ const PwaUpdateBanner = () => {
   const reloadWouldLoseWork =
     draftDirty || hasOpenDialog || criticalOperationInProgress;
 
+  // vite-plugin-pwa's default reload fires window.location.reload() on the SW
+  // `controlling` event. With clientsClaim, the SW the accepting tab activates
+  // claims *every* open tab, so that event — and thus the reload — reaches tabs
+  // that never accepted, discarding their unsaved work. We override onNeedReload
+  // with our own guard so a claimed tab only reloads when it has no work to lose;
+  // otherwise it surfaces the prompt so the user can save first. A ref keeps the
+  // latest guard value readable from the stable (state-initialised) callback.
+  const reloadWouldLoseWorkRef = useRef(reloadWouldLoseWork);
+  reloadWouldLoseWorkRef.current = reloadWouldLoseWork;
+  // Set when *this* tab deliberately accepts the update (clean, or via the
+  // "Reload anyway" confirm) so its own controlling-event reload is not
+  // second-guessed by the guard below.
+  const reloadIntended = useRef(false);
+
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
@@ -58,7 +72,25 @@ const PwaUpdateBanner = () => {
     onRegisteredSW: (_swScriptUrl, swRegistration) => {
       setRegistration(swRegistration);
     },
+    onNeedReload: () => {
+      if (reloadIntended.current || !reloadWouldLoseWorkRef.current) {
+        window.location.reload();
+        return;
+      }
+      // A reload here would silently discard this tab's in-progress work — most
+      // often because another tab accepted the update and clientsClaim claimed
+      // this one. Hold the reload and surface the prompt so the user can save
+      // and reload deliberately.
+      setPromptVisible(true);
+    },
   });
+
+  // Accept the update from this tab, recording the intent so onNeedReload
+  // reloads unconditionally once the new SW takes control.
+  const acceptUpdate = useCallback(() => {
+    reloadIntended.current = true;
+    void updateServiceWorker(true);
+  }, [updateServiceWorker]);
 
   // Poll for a new version during long editing sessions; clear the timer on
   // unmount so it does not leak or keep firing against a stale registration.
@@ -85,7 +117,7 @@ const PwaUpdateBanner = () => {
       return undefined;
     }
     if (!reloadWouldLoseWork) {
-      void updateServiceWorker(true);
+      acceptUpdate();
       return undefined;
     }
     // Within the window but a reload would lose work: hold off. The effect
@@ -93,11 +125,11 @@ const PwaUpdateBanner = () => {
     // the prompt once the window elapses so the update is never lost.
     const timerId = window.setTimeout(() => setPromptVisible(true), remaining);
     return () => window.clearTimeout(timerId);
-  }, [needRefresh, reloadWouldLoseWork, updateServiceWorker]);
+  }, [needRefresh, reloadWouldLoseWork, acceptUpdate]);
 
   const handleReload = useCallback(() => {
     if (!reloadWouldLoseWork) {
-      void updateServiceWorker(true);
+      acceptUpdate();
       return;
     }
     if (confirming.current) return;
@@ -109,12 +141,12 @@ const PwaUpdateBanner = () => {
         message:
           'You have changes in progress that have not been saved yet. Reloading now to update will discard them. Save your work first, or reload anyway?',
         confirmLabel: 'Reload anyway',
-        onConfirm: () => void updateServiceWorker(true),
+        onConfirm: () => acceptUpdate(),
       }),
     ).finally(() => {
       confirming.current = false;
     });
-  }, [dispatch, reloadWouldLoseWork, updateServiceWorker]);
+  }, [dispatch, reloadWouldLoseWork, acceptUpdate]);
 
   if (!promptVisible) return null;
 

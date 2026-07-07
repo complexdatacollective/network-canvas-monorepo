@@ -42,22 +42,42 @@ const isStageEditorPath = (path: string) => path.startsWith('/protocol/stage/');
 // and runs `performLeave` with the guard's bypass flag set so the navigation
 // passes through aroundNav without re-prompting. Skips if a prompt is already
 // in flight.
+//
+// `draftDirty` reflects whether the stage editor holds uncommitted edits. The
+// stage draft is not persisted (see rememberedKeys in store.ts), so leaving with
+// a dirty draft loses those edits: warn accordingly and reset the draft on
+// confirm. A pristine editor keeps the reassuring "saved automatically" copy.
 export const promptLeaveEditor = async (
   dispatch: AppDispatch,
   performLeave: () => void,
+  draftDirty = false,
 ) => {
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
+    const dialogConfig = draftDirty
+      ? {
+          type: 'Warning' as const,
+          title: 'Return to start screen?',
+          message:
+            'You have unsaved changes in the stage editor that will be lost if you leave now. Are you sure you want to return to the start screen?',
+          confirmLabel: 'Discard Changes and Leave',
+        }
+      : {
+          type: 'Confirm' as const,
+          title: 'Return to start screen?',
+          message:
+            "Your work is saved automatically in your browser, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
+          confirmLabel: 'Return to Start Screen',
+        };
     await dispatch(
       dialogActions.openDialog({
-        type: 'Confirm',
-        title: 'Return to start screen?',
-        message:
-          "Your work is saved automatically in your browser, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
-        confirmLabel: 'Return to Start Screen',
+        ...dialogConfig,
         onConfirm: () => {
           guardState.bypass = true;
+          if (draftDirty) {
+            dispatch(resetDraft(null));
+          }
           dispatch(clearActiveProtocol());
           performLeave();
           guardState.bypass = false;
@@ -148,7 +168,12 @@ export const useProtocolNavGuard = () => {
       history.pushState(null, '', oldPath);
 
       if (leavingProtocol) {
-        void promptLeaveEditor(dispatch, () => setLocation('/'));
+        // A multi-step Back can jump straight from the stage editor to '/'. That
+        // takes this branch, but the uncommitted (unpersisted) draft would still
+        // be lost — so surface it and reset the draft on confirm.
+        const draftDirty =
+          isStageEditorPath(oldPath) && getStageDraftDirty(store.getState());
+        void promptLeaveEditor(dispatch, () => setLocation('/'), draftDirty);
         return;
       }
 

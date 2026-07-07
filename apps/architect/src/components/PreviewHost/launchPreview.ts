@@ -1,8 +1,13 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
 import { getActiveProtocolScope } from '~/utils/activeProtocolScope';
+import { getMemoryAssetsForScope } from '~/utils/inMemoryAssetStore';
 
-import { isPreviewMessage, type PreviewPayload } from './messages';
+import {
+  isPreviewMessage,
+  type PreviewMemoryAsset,
+  type PreviewPayload,
+} from './messages';
 
 const HANDSHAKE_TIMEOUT_MS = 10_000;
 const POPUP_CLOSED_POLL_MS = 1_000;
@@ -50,6 +55,13 @@ export function launchPreview({
   });
 
   const expectedOrigin = window.location.origin;
+  // Ferry any Safari-private in-memory fallback assets to the preview tab: the
+  // durable IndexedDB store is shared across tabs, but the in-memory map is
+  // per-realm, so the preview context would otherwise resolve nothing. Blobs
+  // survive structured clone over postMessage.
+  const memoryAssets: PreviewMemoryAsset[] = getMemoryAssetsForScope(protocolId)
+    .filter((row): row is typeof row & { data: Blob } => row.data instanceof Blob)
+    .map((row) => ({ assetId: row.assetId, name: row.name, data: row.data }));
   const payload: PreviewPayload = {
     type: 'preview:payload',
     protocol,
@@ -57,6 +69,7 @@ export function launchPreview({
     startStage,
     useSyntheticData,
     skipLogicBypassed,
+    memoryAssets,
   };
 
   return new Promise<LaunchPreviewResult>((resolve, reject) => {

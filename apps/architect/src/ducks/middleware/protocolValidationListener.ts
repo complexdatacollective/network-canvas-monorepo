@@ -2,12 +2,14 @@ import {
   createListenerMiddleware,
   type TypedStartListening,
 } from '@reduxjs/toolkit';
+import { v4 as uuid } from 'uuid';
 import { navigate } from 'wouter/use-browser-location';
 
 import { getProtocol, getTimelineLocus } from '~/selectors/protocol';
 import { ensureError } from '~/utils/ensureError';
 
 import { updateLastModified } from '../modules/activeProtocol';
+import { closeDialog } from '../modules/dialogs';
 import { validateProtocolAsync } from '../modules/protocolValidation';
 import type { RootState } from '../modules/root';
 import { invalidProtocolDialog } from '../modules/userActions/dialogs';
@@ -33,8 +35,9 @@ let lastValidLocusId: string | null = null;
 let revalidatePending = false;
 
 // The invalid-protocol dialog reverts on confirm; while one is open, suppress
-// opening another so repeated failed validations don't stack dialogs.
-let invalidDialogOpen = false;
+// opening another so repeated failed validations don't stack dialogs. The id
+// lets a later successful validation dismiss the now-stale dialog.
+let invalidDialogId: string | null = null;
 
 // Listen for any protocol changes and trigger validation
 startAppListening({
@@ -62,8 +65,13 @@ startAppListening({
   },
   effect: async (_action, listenerApi) => {
     // Re-validate the latest state until no edit arrived during a run, so edits
-    // made while a validation was in flight are never left unvalidated.
+    // made while a validation was in flight are never left unvalidated. The
+    // try/finally guarantees that a thrown/rejected validation still clears
+    // isValidating (via the thunk) and re-checks revalidatePending, so an edit
+    // that landed mid-run is never silently dropped.
     do {
+      // Reset before awaiting so an edit that arrives during this run flips it
+      // back to true and drives another iteration.
       revalidatePending = false;
 
       const state = listenerApi.getState();
@@ -78,36 +86,71 @@ startAppListening({
       // unvalidated position as known-valid.
       const validatedLocusId = getTimelineLocus(state);
 
-      const result = await listenerApi
-        .dispatch(validateProtocolAsync(protocol))
-        .unwrap();
+      try {
+        const result = await listenerApi
+          .dispatch(validateProtocolAsync(protocol))
+          .unwrap();
 
-      if (result.result.success) {
-        // Record this known-valid position as the auto-revert target.
-        lastValidLocusId = validatedLocusId;
+        if (result.result.success) {
+          // Record this known-valid position as the auto-revert target.
+          lastValidLocusId = validatedLocusId;
 
-        // Update lastModified timestamp when validation succeeds
-        listenerApi.dispatch({
-          ...updateLastModified(new Date().toISOString()),
-          meta: { skipTimeline: true },
-        });
-      } else if (!invalidDialogOpen) {
-        const errorMessage = ensureError(result.result.error).message;
-        // Capture the revert target now so a later edit can't move it.
-        const revertLocusId = lastValidLocusId;
-        invalidDialogOpen = true;
-        void listenerApi
-          .dispatch(
-            invalidProtocolDialog(errorMessage, () => {
-              if (revertLocusId) {
-                listenerApi.dispatch(timelineActions.jump(revertLocusId));
-              }
-              navigate('/protocol');
-            }),
-          )
-          .finally(() => {
-            invalidDialogOpen = false;
+          // A previously-opened revert dialog is now stale: the latest state
+          // validated cleanly, so dismiss it rather than let the user revert a
+          // valid protocol back to an older point.
+          if (invalidDialogId) {
+            listenerApi.dispatch(closeDialog(invalidDialogId));
+            invalidDialogId = null;
+          }
+
+          // Update lastModified timestamp when validation succeeds
+          listenerApi.dispatch({
+            ...updateLastModified(new Date().toISOString()),
+            meta: { skipTimeline: true },
           });
+        } else if (!invalidDialogId) {
+          const errorMessage = ensureError(result.result.error).message;
+          // Capture the revert target and the locus that failed now, so a later
+          // edit can't move them.
+          const revertLocusId = lastValidLocusId;
+          const invalidLocusId = validatedLocusId;
+          const dialogId = uuid();
+          invalidDialogId = dialogId;
+          void listenerApi
+            .dispatch(
+              invalidProtocolDialog(
+                errorMessage,
+                () => {
+                  // Staleness check: only revert if the invalid state is still
+                  // the current state. If a valid newer edit superseded it, the
+                  // success branch will already have dismissed this dialog, but
+                  // guard here too so a confirm can never discard valid work.
+                  const currentLocusId = getTimelineLocus(
+                    listenerApi.getState(),
+                  );
+                  if (currentLocusId !== invalidLocusId) {
+                    return;
+                  }
+                  if (revertLocusId) {
+                    listenerApi.dispatch(timelineActions.jump(revertLocusId));
+                  }
+                  navigate('/protocol');
+                },
+                dialogId,
+              ),
+            )
+            .finally(() => {
+              // Clear only if this dialog is still the tracked one; a later
+              // success may have already dismissed it and opened nothing new.
+              if (invalidDialogId === dialogId) {
+                invalidDialogId = null;
+              }
+            });
+        }
+      } catch {
+        // Validation threw (thunk rejected). isValidating is already cleared by
+        // the rejected reducer; fall through to the while-check so a pending
+        // edit is still re-validated instead of being dropped.
       }
     } while (revalidatePending);
   },

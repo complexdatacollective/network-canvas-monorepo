@@ -1,9 +1,10 @@
-import { createSelector } from '@reduxjs/toolkit';
+import { createSelector, type Selector } from '@reduxjs/toolkit';
 import { get } from 'es-toolkit/compat';
 
 import type { Variable } from '@codaco/protocol-validation';
 
 import { getAssetManifest, getCodebook } from '../store/modules/protocol';
+import type { RootState } from '../store/store';
 import { getStageSubject } from './session';
 
 // Get all variables for all subjects in the codebook, adding the entity and type
@@ -97,11 +98,15 @@ export const getCodebookVariablesForSubjectType = createSelector(
  * Version of getCodebookVariablesForSubjectType that accepts a variable ID and
  * returns the single variable definition
  */
-export const makeGetCodebookVariableById = createSelector(
+// Explicit output annotation: the enlarged stage union makes the inferred
+// selector type too long for TS to serialize (TS7056), so the exported const
+// is typed as a plain Selector to keep the serialized type bounded.
+export const makeGetCodebookVariableById: Selector<
+  RootState,
+  (variableId: string) => Variable | undefined
+> = createSelector(
   getCodebookVariablesForSubjectType,
   (variables) =>
-    // Explicit return type: the enlarged stage union makes the inferred type
-    // too long for TS to serialize (TS7056).
     (variableId: string): Variable | undefined =>
       variables[variableId],
 );

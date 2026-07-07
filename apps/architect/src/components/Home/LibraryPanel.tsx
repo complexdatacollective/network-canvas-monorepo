@@ -291,11 +291,25 @@ const LibraryPanel = ({
     async (protocol: StoredProtocolRow) => {
       setDownloadingIds((prev) => new Set(prev).add(protocol.id));
       try {
-        await downloadProtocolAsNetcanvas(
+        const skippedAssets = await downloadProtocolAsNetcanvas(
           protocol.protocol,
           protocol.name,
           protocol.id,
         );
+
+        // Export is best-effort: unresolvable assets are omitted rather than
+        // aborting the whole download, but the author must be told which ones
+        // so a silently incomplete .netcanvas isn't shipped.
+        if (skippedAssets.length > 0) {
+          const assetList = skippedAssets.map((asset) => asset.name).join(', ');
+          void dispatch(
+            openDialog({
+              type: 'Warning',
+              title: 'Some assets could not be included',
+              message: `"${protocol.name}" was downloaded, but these assets could not be included and are missing from the file: ${assetList}.`,
+            }),
+          );
+        }
       } catch (error) {
         // Surface bundling/download failures instead of letting the promise
         // reject unhandled with no feedback. Not awaited so the spinner clears

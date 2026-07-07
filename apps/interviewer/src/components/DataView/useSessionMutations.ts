@@ -155,6 +155,32 @@ export function useSessionMutations({
         });
         return;
       }
+      // The object-URL <a download> path can't observe whether the Save-As
+      // dialog was completed or cancelled/blocked, so it reports an
+      // unconfirmed save. Marking exportedAt on that unverifiable claim is a
+      // data-loss primitive (a falsely-"exported" session can be filtered and
+      // bulk-deleted). Require the researcher to confirm the file downloaded
+      // before we stamp it as exported; keep pendingShare for a retry if not.
+      if (!outcome.confirmed) {
+        const downloaded = await dialog.openDialog({
+          type: 'choice',
+          title: 'Did the archive download?',
+          description:
+            'Confirm the export file saved to this device before it is marked as exported. If it did not download, choose Not yet and try Save export again.',
+          intent: 'warning',
+          actions: {
+            primary: { label: 'Yes, it downloaded', value: true },
+            cancel: { label: 'Not yet', value: false },
+          },
+        });
+        if (downloaded !== true) {
+          toast.add({
+            title: 'Not marked as exported',
+            description: 'Try Save export again to download the archive.',
+          });
+          return;
+        }
+      }
       await markSessionsExported(sessionIds);
       // Counts only — never session contents, case IDs, or file names.
       analytics.track('data_exported', {
@@ -185,7 +211,7 @@ export function useSessionMutations({
     } finally {
       shareInFlightRef.current = false;
     }
-  }, [analytics, onReload, pendingShare, reloadData, toast]);
+  }, [analytics, dialog, onReload, pendingShare, reloadData, toast]);
 
   const handleDelete = useCallback(async () => {
     if (selectedCount === 0 || deleting) return;

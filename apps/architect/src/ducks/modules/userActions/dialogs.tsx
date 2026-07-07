@@ -60,6 +60,7 @@ export const validationErrorDialog = (errorMessage: string) => {
 export const invalidProtocolDialog = (
   errorMessage: string,
   onConfirm?: () => void,
+  id?: string,
 ) => {
   const message: ReactNode = (
     <>
@@ -78,12 +79,13 @@ export const invalidProtocolDialog = (
     </>
   );
 
-  const dialog: Omit<UserErrorDialog, 'id'> = {
+  const dialog: Omit<UserErrorDialog, 'id'> & { id?: string } = {
     type: 'UserError',
     title: 'Misconfigured Protocol',
     message,
     confirmLabel: 'Revert to Last Valid State',
     onConfirm,
+    id,
   };
 
   return openDialog(dialog);

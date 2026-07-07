@@ -34,6 +34,7 @@ import { useStageEditorKeyboard } from '~/hooks/useStageEditorKeyboard';
 import { IconButton } from '~/lib/legacy-ui/components/Button';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
+import { markAutosavePending } from '~/utils/criticalOperation';
 import { ensureError } from '~/utils/ensureError';
 import { reportError } from '~/utils/reportError';
 
@@ -200,6 +201,10 @@ const StageEditor = (props: StageEditorProps) => {
         );
       }
 
+      // resetDraft clears the draft-dirty guard immediately, but the committed
+      // edit is only persisted after the autosave debounce + write. Flag that
+      // window so an update reload defers until the write lands.
+      markAutosavePending();
       dispatch(resetDraft(null));
       setLocation('/protocol');
     },

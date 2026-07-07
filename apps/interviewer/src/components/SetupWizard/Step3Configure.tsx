@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Button from '@codaco/fresco-ui/Button';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import * as authApi from '~/lib/auth/api';
 import type { WizardSelectedMethod } from '~/components/SetupWizardDialog';
 
 import Step3BiometricConfigure from './Step3BiometricConfigure';
@@ -46,6 +47,14 @@ export default function Step3Configure() {
   }
 }
 
+// `enrolmentCommitted` is wizard state that can drift from the vault: a
+// same-method "Change" that revokes the old vault and then fails to re-enrol
+// (e.g. the user cancels the OS biometric sheet) leaves the flag true while the
+// vault holds no matching mode. Reconcile against the real `authApi.status()`
+// before presenting a read-only "configured" summary — otherwise Finish would
+// complete claiming a mode the vault lacks, with the previous data already
+// destroyed by the revoke. If they disagree, clear the stale flag and drop back
+// into the configure form so Next actually re-enrols.
 function ReadOnlySummary({
   method,
   onChange,
@@ -54,11 +63,37 @@ function ReadOnlySummary({
   onChange: () => void;
 }) {
   const wizard = useWizard();
+  const [reconciled, setReconciled] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    void authApi.status().then((status) => {
+      if (cancelled) return;
+      if (status.configured && status.mode === method) {
+        setReconciled(true);
+        return;
+      }
+      // The vault does not hold the selected mode — the committed enrolment is
+      // stale. Force re-enrolment rather than finishing on a phantom mode.
+      wizard.setStepData({ enrolmentCommitted: false });
+      onChange();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [method, wizard, onChange]);
+
+  useEffect(() => {
+    if (!reconciled) {
+      wizard.setNextEnabled(false);
+      wizard.setBeforeNext(null);
+      return;
+    }
     wizard.setNextEnabled(true);
     wizard.setBeforeNext(null);
-  }, [wizard]);
+  }, [wizard, reconciled]);
+
+  if (!reconciled) return null;
 
   const label =
     method === 'biometric'
