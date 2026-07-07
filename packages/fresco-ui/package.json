@@ -540,6 +540,10 @@
     "./form/hooks/useForm": {
       "types": "./dist/form/hooks/useForm.d.ts",
       "default": "./dist/form/hooks/useForm.js"
+    },
+    "./appUpdate/useAppUpdate": {
+      "types": "./dist/appUpdate/useAppUpdate.d.ts",
+      "default": "./dist/appUpdate/useAppUpdate.js"
     }
   },
   "publishConfig": {
