@@ -17,6 +17,11 @@
 # It deliberately does NOT fire on the initial X.Y.Z-beta.0 seed (N == 0) or a
 # non-beta version — those are setup states, not releases.
 #
+# This tag check is only a preflight — parallel main-push runs could each see the
+# same untagged version. The authoritative guard against a duplicate release is
+# on the apps-release-<app> jobs (per-<PKG_NAME>@<version> concurrency group +
+# a re-check of the tag before deploy) in .github/workflows/ci-and-release.yml.
+#
 # Inputs (env):
 #   PKG_JSON   path to the app's package.json
 #   PKG_NAME   the app's package name (used for the git tag <PKG_NAME>@<version>)
