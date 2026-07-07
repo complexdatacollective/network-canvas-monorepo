@@ -37,15 +37,19 @@ function detect({ version, previousVersion, tags = [] }) {
       `${JSON.stringify({ name: PKG_NAME, version: v, private: true }, null, 2)}\n`,
     );
 
-  // First commit establishes HEAD^ so the script can read the previous version.
+  // Two commits give the repo real history. The script is tag-driven and never
+  // reads the previous commit, so `previousVersion` is deliberately ignored by
+  // it — the point is to prove detection does NOT depend on a HEAD^ diff (which
+  // is what used to lose releases). Setting previousVersion === version below
+  // reproduces a later push where the bump commit has already scrolled past.
   writePkg(previousVersion ?? version);
   git(cwd, 'add', '.');
   git(cwd, 'commit', '-qm', 'first');
 
   writePkg(version);
   git(cwd, 'add', '.');
-  // --allow-empty so the no-delta cases (previousVersion === version) still get
-  // a HEAD^, reproducing a bump whose commit has already scrolled into history.
+  // --allow-empty so the no-delta cases (previousVersion === version) still
+  // produce a second commit whose tree is unchanged from the first.
   git(cwd, 'commit', '-q', '--allow-empty', '-m', 'second');
 
   for (const tag of tags) git(cwd, 'tag', tag);
