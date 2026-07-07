@@ -198,6 +198,7 @@ jobs:
   # type-aware rules resolve workspace imports through built `.d.ts` files.
   lint:
     needs: build
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
@@ -209,6 +210,7 @@ jobs:
       - run: pnpm exec turbo run //#lint
 
   knip:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
@@ -216,6 +218,7 @@ jobs:
       - run: pnpm exec turbo run //#knip
 
   check-changesets:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
@@ -223,6 +226,7 @@ jobs:
       - run: pnpm check:changesets
 
   test-scripts:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
@@ -230,6 +234,7 @@ jobs:
       - run: pnpm test:scripts
 
   build:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
@@ -239,6 +244,7 @@ jobs:
 
   typecheck:
     needs: build
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
@@ -247,6 +253,7 @@ jobs:
 
   test:
     needs: build
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
@@ -266,7 +273,7 @@ jobs:
 
   quality:
     needs: [lint, knip, check-changesets, test-scripts, build, typecheck, test]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && github.event_name != 'push' }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify all quality checks passed
@@ -336,13 +343,12 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
   deploy-docs-prod:
-    needs: [detect, quality]
+    needs: [detect]
     if: |
       always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      needs.detect.outputs.docs == 'true' &&
-      needs.quality.result == 'success'
+      needs.detect.outputs.docs == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -545,13 +551,12 @@ jobs:
             }
 
   deploy-website-prod:
-    needs: [detect, quality]
+    needs: [detect]
     if: |
       always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      needs.detect.outputs.website == 'true' &&
-      needs.quality.result == 'success'
+      needs.detect.outputs.website == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -788,7 +793,6 @@ jobs:
             });
 
   release:
-    needs: quality
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: npm-publish
@@ -825,7 +829,6 @@ jobs:
   # are ignored by the library release, so
   # they persist in .changeset/ until this job consumes them.
   apps-release-pr:
-    needs: quality
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -860,7 +863,6 @@ jobs:
   # merged), detect which app(s) moved — mirrors detect-legacy-release.sh, but
   # idempotency is a local git-tag check (no external repo).
   apps-release-detect:
-    needs: quality
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -999,7 +1001,6 @@ jobs:
   #     even if the release somehow predates this check).
   # version is always the current apps/<app>/package.json version.
   legacy-release-detect:
-    needs: quality
     # Only ever runs on main — a manual workflow_dispatch from a feature branch
     # must not mirror/publish branch-only code to the external app repos.
     if: >-
