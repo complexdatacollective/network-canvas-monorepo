@@ -176,5 +176,11 @@ export default defineConfig({
     testTimeout: 20_000,
     setupFiles: ['./src/test-setup.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
+    // Honour the app's own analytics gate (analytics.ts) so PostHog doesn't
+    // init a real client (in debug mode) against the production host during
+    // unit tests, spamming stderr with config dumps and $pageview payloads.
+    env: {
+      VITE_DISABLE_ANALYTICS: 'true',
+    },
   },
 });

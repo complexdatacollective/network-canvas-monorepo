@@ -1,3 +1,5 @@
+import type * as NodeOs from 'node:os';
+
 import { Effect, Queue, Ref } from 'effect';
 import { invariant } from 'es-toolkit';
 
@@ -11,14 +13,20 @@ import { getFilePrefix } from '../utils/general';
 import exportFile, { type GenerationResult } from './exportFile';
 import { partitionByType } from './partitionByType';
 
-// Lazy node:os import keeps the module browser-bundleable; the dynamic import
-// is tree-shaken/skipped when navigator.hardwareConcurrency is available.
+// node:os sits behind a runtime-assembled specifier so browser bundlers
+// (interviewer / interviewer-classic re-bundling dist/pipeline.js) don't try to
+// resolve it and emit an "externalized for browser compatibility" warning. This
+// Node-only branch is unreachable in the browser, which always takes the
+// navigator.hardwareConcurrency path above.
+const loadNodeOs = (): Promise<typeof NodeOs> =>
+  import(['node', 'os'].join(':'));
+
 const getDefaultConcurrency = async (): Promise<number> => {
   if (typeof navigator !== 'undefined' && 'hardwareConcurrency' in navigator) {
     return navigator.hardwareConcurrency;
   }
   if (typeof globalThis.process !== 'undefined') {
-    const os = await import('node:os');
+    const os = await loadNodeOs();
     return os.cpus().length;
   }
   return 4;
