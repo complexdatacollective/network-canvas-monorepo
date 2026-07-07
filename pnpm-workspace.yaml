@@ -61,9 +61,9 @@ catalog:
   '@types/react': ^19.2.15
   '@types/react-dom': ^19.2.3
   '@vitejs/plugin-react': ^6.0.2
-  '@vitest/browser': ^4.1.8
-  '@vitest/browser-playwright': ^4.1.7
-  '@vitest/coverage-v8': ^4.1.7
+  '@vitest/browser': ^4.1.10
+  '@vitest/browser-playwright': ^4.1.10
+  '@vitest/coverage-v8': ^4.1.10
   chromatic: ^17.3.0
   class-variance-authority: 0.7.1
   csvtojson: ^2.0.14
@@ -96,7 +96,7 @@ catalog:
   uuid: ^14.0.1
   vite: ^8.1.2
   vite-plugin-dts: ^5.0.3
-  vitest: ^4.1.7
+  vitest: ^4.1.10
   wrangler: ^4.95.0
   zod: ^4.4.3
   zustand: ^5.0.14
