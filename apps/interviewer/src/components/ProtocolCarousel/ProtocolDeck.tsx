@@ -46,6 +46,7 @@ type ProtocolDeckProps = {
   showSampleCard?: boolean;
   pendingImports?: PendingImport[];
   onImport: () => void;
+  onImportFile: (file: File) => void;
   onStartInterview: (protocolHash: string) => void;
   onDeleteProtocol: (hash: string) => void;
   onInstallSample?: () => void;
@@ -99,6 +100,7 @@ export function ProtocolDeck({
   showSampleCard = false,
   pendingImports = [],
   onImport,
+  onImportFile,
   onStartInterview,
   onDeleteProtocol,
   onInstallSample = () => {},
@@ -139,7 +141,10 @@ export function ProtocolDeck({
             backdropBlur: true,
             onActivate: onImport,
             render: (_isActive: boolean, activate: () => void) => (
-              <ImportTriggerCard onActivate={activate} />
+              <ImportTriggerCard
+                onActivate={activate}
+                onImportFile={onImportFile}
+              />
             ),
           };
         }
@@ -183,6 +188,7 @@ export function ProtocolDeck({
       sessionCounts,
       newSessionProtocolHash,
       onImport,
+      onImportFile,
       onStartInterview,
       onInstallSample,
       onDismissSample,

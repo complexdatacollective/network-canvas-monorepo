@@ -28,8 +28,14 @@ permissions:
   checks: write
   pull-requests: write
 
+# PR runs are grouped per ref so a new push cancels the previous run for that
+# branch. Push-to-main runs get a per-commit group instead: main pushes must
+# never cancel each other, or a release-carrying run (the merge of the Release
+# apps PR) can be evicted while queued during a burst of merges and the release
+# is silently lost. See .github/scripts/detect-app-release.sh for the self-healing
+# safety net if a release run is dropped anyway.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
   # Cancel superseded PR runs — EXCEPT the changesets bot's release PRs
   # (`changeset-release/*`), which get force-updated on every merge to main.
   # Cancelling those leaves the `quality` aggregate `skipped` (it is
@@ -733,6 +739,12 @@ jobs:
           sudo chown -R "$(id -u):$(id -g)" \
             packages/interview/e2e/playwright-report \
             packages/interview/e2e/test-results 2>/dev/null || true
+      - name: Flag flaky tests
+        # Reporting only — never gate the job on it (belt-and-suspenders with the
+        # script's own guards).
+        if: always()
+        continue-on-error: true
+        run: node packages/interview/e2e/scripts/flaky-summary.mjs
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -922,6 +934,14 @@ jobs:
     if: needs.apps-release-detect.outputs.architect_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # One release per version. With per-commit push concurrency (see top of file)
+    # main pushes run in parallel, so two runs can both detect the same untagged
+    # version and race into a duplicate build/deploy/release. Serialise them on
+    # the tag so only one runs at a time; the guard step below turns the run that
+    # starts after the tag exists into a clean no-op (no redundant prod deploy).
+    concurrency:
+      group: apps-release-@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}
+      cancel-in-progress: false
     permissions:
       contents: write
     env:
@@ -931,14 +951,30 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
+          fetch-tags: true
           persist-credentials: false
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - name: Skip if this version was already released
+        id: guard
+        env:
+          TAG: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG already released — nothing to do"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - if: steps.guard.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build & deploy architect to production
+        if: steps.guard.outputs.skip != 'true'
         run: |
           pnpm exec turbo run build --filter=@codaco/architect^...
           pnpm --filter=@codaco/architect build:web
@@ -947,6 +983,7 @@ jobs:
             --dir=apps/architect/dist \
             --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}"
       - name: architect release notes
+        if: steps.guard.outputs.skip != 'true'
         env:
           VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
         run: >-
@@ -955,7 +992,8 @@ jobs:
           --pkg @codaco/architect
           --version "$VERSION"
           --out "${RUNNER_TEMP}/architect-notes.md"
-      - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+      - if: steps.guard.outputs.skip != 'true'
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           tag_name: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
           name: Architect ${{ needs.apps-release-detect.outputs.architect_version }}
@@ -973,6 +1011,10 @@ jobs:
     if: needs.apps-release-detect.outputs.interviewer_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # One release per version — see apps-release-architect for the rationale.
+    concurrency:
+      group: apps-release-@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}
+      cancel-in-progress: false
     permissions:
       contents: write
     env:
@@ -980,14 +1022,30 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
+          fetch-tags: true
           persist-credentials: false
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - name: Skip if this version was already released
+        id: guard
+        env:
+          TAG: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG already released — nothing to do"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - if: steps.guard.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build & deploy interviewer to production
+        if: steps.guard.outputs.skip != 'true'
         run: |
           pnpm exec turbo run build --filter=@codaco/interviewer^...
           pnpm --filter=@codaco/interviewer build:web
@@ -996,6 +1054,7 @@ jobs:
             --dir=apps/interviewer/dist \
             --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}"
       - name: interviewer release notes
+        if: steps.guard.outputs.skip != 'true'
         env:
           VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
         run: >-
@@ -1004,7 +1063,8 @@ jobs:
           --pkg @codaco/interviewer
           --version "$VERSION"
           --out "${RUNNER_TEMP}/interviewer-notes.md"
-      - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+      - if: steps.guard.outputs.skip != 'true'
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           tag_name: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
           name: Interviewer ${{ needs.apps-release-detect.outputs.interviewer_version }}
