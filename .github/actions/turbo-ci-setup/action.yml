@@ -1,0 +1,22 @@
+name: Turbo CI setup
+description: pnpm + Node + install + Turborepo remote cache (GitHub Actions Cache backend).
+inputs:
+  ignore-scripts:
+    description: Pass --ignore-scripts to pnpm install. Set 'false' for jobs that need native-module postinstall (Electron builds).
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+    - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    # Bracket notation: a hyphenated input name is not a valid dot-notation
+    # identifier in Actions expressions.
+    - run: pnpm install --frozen-lockfile ${{ inputs['ignore-scripts'] == 'true' && '--ignore-scripts' || '' }}
+      shell: bash
+    # Runner-local server implementing turbo's remote-cache protocol, backed by
+    # the GitHub Actions Cache. Per-task, hash-addressed entries so fan-out jobs
+    # share build outputs without the whole-.turbo-tarball race.
+    - uses: rharkor/caching-for-turbo@75f8ebf4a43d2c60b23bc2a27082cfea94ffdad9 # v2.5.0
