@@ -193,12 +193,19 @@ jobs:
   # fan-out of independent sub-jobs behind the `quality` aggregator below, so
   # they run in parallel runners instead of one after another. Sub-jobs
   # deliberately do NOT `needs: detect` so they still run under `merge_group`
-  # (where `detect` is skipped) — only `typecheck`/`test` need `build`'s output.
+  # (where `detect` is skipped). `typecheck`/`test` restore `build`'s output via
+  # their own `^build` dependency; `lint` needs it too (below) because oxlint's
+  # type-aware rules resolve workspace imports through built `.d.ts` files.
   lint:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
       - uses: ./.github/actions/turbo-ci-setup
+      # Restore the shared-package builds (cache hit from the `build` job) so
+      # oxlint-tsgolint has the workspace types; otherwise it emits false-positive
+      # type errors (`//#lint` has no `^build` dependency of its own).
+      - run: pnpm exec turbo run build --filter='./packages/*'
       - run: pnpm exec turbo run //#lint
 
   knip:
