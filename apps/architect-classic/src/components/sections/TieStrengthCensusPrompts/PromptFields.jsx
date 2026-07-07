@@ -203,6 +203,7 @@ const selectOptionProps = PropTypes.shape({
   label: PropTypes.string.isRequired,
   value: PropTypes.oneOfType([
     PropTypes.string,
+    PropTypes.number,
     PropTypes.array,
     PropTypes.bool,
   ]),

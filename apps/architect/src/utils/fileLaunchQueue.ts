@@ -6,6 +6,9 @@
 // Safari and Firefox never define window.launchQueue; everything here is a
 // silent no-op there.
 
+import { generalErrorDialog } from '~/ducks/modules/userActions/dialogs';
+import { store } from '~/ducks/store';
+
 let pendingFiles: File[] = [];
 const listeners = new Set<() => void>();
 let initialized = false;
@@ -14,25 +17,15 @@ const emit = () => {
   for (const listener of listeners) listener();
 };
 
-// Surface a user-facing error when the OS hands us handles we can't read. The
-// store and dialog action are imported lazily so this pre-React capture module
-// stays decoupled from the app graph until a failure actually occurs.
-const reportLaunchReadFailure = async (failedCount: number): Promise<void> => {
-  try {
-    const [{ store }, { generalErrorDialog }] = await Promise.all([
-      import('~/ducks/store'),
-      import('~/ducks/modules/userActions/dialogs'),
-    ]);
-    const noun = failedCount === 1 ? 'file' : 'files';
-    void store.dispatch(
-      generalErrorDialog(
-        'Could not open file',
-        `${failedCount} launched ${noun} could not be read. The ${noun} may have been moved, deleted, or become unavailable since ${failedCount === 1 ? 'it was' : 'they were'} opened.`,
-      ),
-    );
-  } catch (error) {
-    console.error('Failed to report launched-file read failure', error);
-  }
+// Surface a user-facing error when the OS hands us handles we can't read.
+const reportLaunchReadFailure = (failedCount: number): void => {
+  const noun = failedCount === 1 ? 'file' : 'files';
+  void store.dispatch(
+    generalErrorDialog(
+      'Could not open file',
+      `${failedCount} launched ${noun} could not be read. The ${noun} may have been moved, deleted, or become unavailable since ${failedCount === 1 ? 'it was' : 'they were'} opened.`,
+    ),
+  );
 };
 
 export const initFileLaunchCapture = (): void => {
@@ -61,7 +54,7 @@ export const initFileLaunchCapture = (): void => {
         for (const failure of failures) {
           console.error('Failed to read launched file', failure.reason);
         }
-        void reportLaunchReadFailure(failures.length);
+        reportLaunchReadFailure(failures.length);
       }
 
       const netcanvas = files.filter((file) =>
