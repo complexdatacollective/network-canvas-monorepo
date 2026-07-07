@@ -72,7 +72,8 @@ function makeEdge(uid: string, from: string, to: string): NcEdge {
  * from displayLabels, and the old labelFor fell back to 'You' for any node
  * with egoVariable===true whose id was missing from displayLabels.
  *
- * UIDs and names mirror buildPedigreeInterview() in NarrativePedigree.stories.tsx.
+ * UIDs and names are a representative pedigree slice for the label logic; they
+ * need not match any story fixture.
  */
 function buildTestNetwork(): {
   nodesMap: Map<string, NcNode>;
