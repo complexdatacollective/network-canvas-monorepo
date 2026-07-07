@@ -42,5 +42,10 @@ const md = [
 
 console.log(md);
 if (process.env.GITHUB_STEP_SUMMARY) {
-  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${md}\n`);
+  try {
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${md}\n`);
+  } catch {
+    // Best-effort write; a failed summary append must never gate CI. The
+    // console.log above already carries the same content into the step log.
+  }
 }

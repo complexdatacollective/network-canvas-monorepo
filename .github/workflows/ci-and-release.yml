@@ -740,7 +740,10 @@ jobs:
             packages/interview/e2e/playwright-report \
             packages/interview/e2e/test-results 2>/dev/null || true
       - name: Flag flaky tests
+        # Reporting only — never gate the job on it (belt-and-suspenders with the
+        # script's own guards).
         if: always()
+        continue-on-error: true
         run: node packages/interview/e2e/scripts/flaky-summary.mjs
       - name: Upload report
         if: always()
