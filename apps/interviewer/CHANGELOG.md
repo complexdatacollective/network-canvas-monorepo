@@ -1,4 +1,16 @@
-# @codaco/interviewer-v8
+# @codaco/interviewer
+
+## 8.0.0-beta.2
+
+### Major Changes
+
+- Renamed the app from "Network Canvas Interviewer 8" to **Network Canvas Interviewer** (package `@codaco/interviewer`).
+
+  **This update resets the app's local data.** The internal storage identity changed, so an existing installation starts fresh after updating: previously imported protocols and collected sessions are not carried over, the encrypted vault must be set up again, and any biometric unlock must be re-enrolled. **Export any sessions you need before you update.**
+
+### Patch Changes
+
+- Stopped animating the decorative background during an interview. The interview screen already covers it completely, so the animation was running unseen — pausing it while a session is open reduces battery use on long interviews.
 
 ## 8.0.0-beta.1
 

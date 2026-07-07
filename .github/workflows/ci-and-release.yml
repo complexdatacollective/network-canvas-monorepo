@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
   workflow_dispatch:
     inputs:
       force_run:
@@ -33,6 +34,7 @@ concurrency:
 
 jobs:
   detect:
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-latest
     outputs:
       any_app: ${{ steps.flags.outputs.any_app }}
@@ -186,28 +188,69 @@ jobs:
   # writes the SHA-specific slot; subsequent jobs read it via `restore-keys`
   # fallback. Per-package env values (NEXT_PUBLIC_*, VITE_*) are part of each
   # build task's `env:` list in turbo.json so they participate in the cache key.
-  quality:
-    needs: detect
+  #
+  # `quality` used to be a single job running everything serially; it is now a
+  # fan-out of independent sub-jobs behind the `quality` aggregator below, so
+  # they run in parallel runners instead of one after another. Sub-jobs
+  # deliberately do NOT `needs: detect` so they still run under `merge_group`
+  # (where `detect` is skipped). `typecheck`/`test` restore `build`'s output via
+  # their own `^build` dependency; `lint` needs it too (below) because oxlint's
+  # type-aware rules resolve workspace imports through built `.d.ts` files.
+  lint:
+    needs: build
     runs-on: ubuntu-latest
-    # No NEXT_PUBLIC_* / VITE_* env vars here. Quality builds only the shared
-    # packages (apps build in their own deploy/release jobs) and verifies the
-    # whole workspace — types, unit tests, lint, dead-code. Keeping these vars
-    # unset matches chromatic/e2e, so the shared package builds (fresco-ui,
-    # shared-consts, interview, …) compute the same task hash across all those
-    # jobs and the cache that quality writes is reusable by the app deploy jobs.
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
+      # Restore the shared-package builds (cache hit from the `build` job) so
+      # oxlint-tsgolint has the workspace types; otherwise it emits false-positive
+      # type errors (`//#lint` has no `^build` dependency of its own).
+      - run: pnpm exec turbo run build --filter='./packages/*'
+      - run: pnpm exec turbo run //#lint
+
+  knip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm exec turbo run //#knip
+
+  check-changesets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm check:changesets
+
+  test-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm test:scripts
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Build shared packages (apps build in their own deploy/release jobs)
+        run: pnpm exec turbo run build --filter='./packages/*'
+
+  typecheck:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm exec turbo run typecheck
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
@@ -219,14 +262,26 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
-      - name: Build shared packages (apps build in their own deploy/release jobs)
-        run: pnpm exec turbo run build --filter='./packages/*'
-      - name: Quality gates — lint, dead-code, types, unit tests (whole workspace)
-        run: pnpm exec turbo run //#lint //#knip typecheck test
-      - name: Changeset app-isolation guard
-        run: pnpm check:changesets
-      - name: Release-script unit tests
-        run: pnpm test:scripts
+      - run: pnpm exec turbo run test
+
+  quality:
+    needs: [lint, knip, check-changesets, test-scripts, build, typecheck, test]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all quality checks passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+        run: |
+          echo "sub-job results: $RESULTS"
+          IFS=',' read -ra arr <<< "$RESULTS"
+          for r in "${arr[@]}"; do
+            if [ "$r" != "success" ]; then
+              echo "::error::quality gate failed — a sub-job concluded '$r'"
+              exit 1
+            fi
+          done
+          echo "quality gate passed"
 
   # Deploy jobs are split per-app and per-environment so:
   #   * one app's build failure never blocks the other app's deploy
@@ -265,17 +320,7 @@ jobs:
       NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
         name: Build and deploy docs preview
         run: |
@@ -312,17 +357,7 @@ jobs:
       NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
         name: Build and deploy docs production
         run: |
@@ -359,17 +394,7 @@ jobs:
       VITE_DISABLE_ANALYTICS: 'true'
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
         name: Build and deploy architect preview
         run: |
@@ -412,17 +437,7 @@ jobs:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
         name: Build and deploy interviewer preview
         run: |
@@ -456,17 +471,7 @@ jobs:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
         name: Build and deploy networkcanvas.com preview
         run: |
@@ -556,17 +561,7 @@ jobs:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
         name: Build and deploy networkcanvas.com production
         run: |
@@ -640,17 +635,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm exec turbo run build-storybook --filter=@codaco/fresco-ui
       - working-directory: packages/fresco-ui
         env:
@@ -677,17 +662,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm exec turbo run build-storybook --filter=@codaco/interview
       - working-directory: packages/interview
         env:
@@ -713,17 +688,7 @@ jobs:
       slug: ${{ steps.meta.outputs.slug }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - id: meta
         env:
           REF: ${{ github.head_ref || github.ref_name }}
@@ -838,17 +803,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 2
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - name: Build all publishable packages
         # Only build the workspaces under packages/ — those are what changesets
         # publishes to npm. Apps (./apps/*) are private:true and don't need to
@@ -1098,18 +1053,9 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: ./.github/actions/turbo-ci-setup
         with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - if: matrix.os == 'ubuntu-latest'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+          ignore-scripts: 'false'
       - name: Build app + workspace deps
         run: pnpm exec turbo run build --filter=@codaco/interviewer-classic
       - name: Decode App Store Connect API key
@@ -1158,18 +1104,9 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: ./.github/actions/turbo-ci-setup
         with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - if: matrix.os == 'ubuntu-latest'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+          ignore-scripts: 'false'
       - name: Build app + workspace deps
         run: pnpm exec turbo run build --filter=@codaco/architect-classic
       - name: Decode App Store Connect API key

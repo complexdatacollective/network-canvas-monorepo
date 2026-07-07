@@ -3,6 +3,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef } from 'react';
 
 import { defaultGradients } from '../BackgroundBlobs/BackgroundBlobs';
+import { clampFrameDelta } from '../frameDelta';
 
 // Default to the BackgroundBlobs palette. Each entry there is a two-stop linear
 // gradient; here every colour seeds one radial light, so the pairs flatten into
@@ -155,7 +156,7 @@ const BackgroundLights = ({
     const tick = (time: number) => {
       ensurePlaced();
       if (placed) {
-        const dt = last === null ? 0 : (time - last) / 1000;
+        const dt = last === null ? 0 : clampFrameDelta((time - last) / 1000);
         runtime.forEach((entry) => {
           entry.x += entry.light.velocityX * dt;
           entry.y += entry.light.velocityY * dt;
