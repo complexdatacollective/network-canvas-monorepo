@@ -43,6 +43,7 @@
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:*",
+    "@microsoft/api-extractor": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

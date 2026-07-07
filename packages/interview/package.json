@@ -73,6 +73,7 @@
     "@codaco/interface-images": "workspace:*",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/tsconfig": "workspace:*",
+    "@microsoft/api-extractor": "catalog:",
     "@playwright/test": "catalog:",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",

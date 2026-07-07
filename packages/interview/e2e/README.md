@@ -146,7 +146,10 @@ bootstrap because `sessionStorage` is per-tab.
 
 ## Running tests in CI vs locally
 
-`pnpm test:e2e` always runs inside `mcr.microsoft.com/playwright:v1.60.0-noble`.
+`pnpm test:e2e` always runs inside the official Playwright Docker image
+(`mcr.microsoft.com/playwright:v<version>-noble`), where `<version>` is the exact
+`@playwright/test` version the lockfile resolves to — `scripts/run.sh` derives the
+tag so the container's browser binaries always match the JS runner.
 This is non-negotiable for snapshot tests: the same browser version against
 the same fonts at the same DPI, regardless of whether you're on macOS arm64,
 Linux x86, or a CI runner. The wrapper script (`scripts/run.sh`) mounts the
