@@ -69,8 +69,14 @@ describe('SettingsDialog storage durability', () => {
 
     render(<SettingsDialog open onClose={vi.fn()} />);
 
-    await waitFor(() =>
-      expect(screen.getAllByText(/offline storage/i).length).toBeGreaterThan(0),
+    // The About section only renders once `reload()`'s Promise.all resolves;
+    // under CI runner load that can outrun testing-library's 1s default.
+    await waitFor(
+      () =>
+        expect(screen.getAllByText(/offline storage/i).length).toBeGreaterThan(
+          0,
+        ),
+      { timeout: 5000 },
     );
     expect(screen.getByText(/protected from eviction/i)).toBeInTheDocument();
   });
@@ -85,8 +91,10 @@ describe('SettingsDialog storage durability', () => {
 
     render(<SettingsDialog open onClose={vi.fn()} />);
 
-    await waitFor(() =>
-      expect(screen.getAllByText(/best-effort/i).length).toBeGreaterThan(0),
+    await waitFor(
+      () =>
+        expect(screen.getAllByText(/best-effort/i).length).toBeGreaterThan(0),
+      { timeout: 5000 },
     );
   });
 });

@@ -16,11 +16,9 @@ import {
   getVariablesForSubject,
 } from '~/selectors/codebook';
 import { getIsUsed } from '~/selectors/codebook/isUsed';
-import { makeGetUsageForType } from '~/selectors/usage';
 import prune from '~/utils/prune';
 import safeName from '~/utils/safeName';
 
-import { actionCreators as stageActions } from './stages';
 import { getNextCategoryColor } from './utils/helpers';
 
 type Entity = 'node' | 'edge' | 'ego';
@@ -264,83 +262,11 @@ export const deleteVariableAsync = createAppAsyncThunk(
   },
 );
 
-const getDeleteAction = ({
-  type,
-  ...owner
-}: {
-  type: string;
-  id?: string;
-  stageId?: string;
-  promptId?: string;
-}) => {
-  switch (type) {
-    case 'stage':
-      if (owner.id === undefined) {
-        throw new Error('Stage ID is required for deleting a stage');
-      }
-      return stageActions.deleteStage(owner.id);
-    case 'prompt':
-      if (owner.stageId === undefined || owner.promptId === undefined) {
-        throw new Error(
-          'Stage ID and Prompt ID are required for deleting a prompt',
-        );
-      }
-      return stageActions.deletePrompt(owner.stageId, owner.promptId, true);
-    default:
-      // Residual gap: the usage scanner (selectors/usage.ts) only surfaces
-      // stage/prompt/sociogram subject owners and a legacy 'form' owner that has
-      // no delete action in the schema-8 duck. References that live in filters,
-      // skip logic, or other stage config are deliberately not cascade-deleted
-      // here — removing a whole stage for an incidental reference would be
-      // destructive — and the validation listener surfaces any dangling
-      // reference the cascade leaves behind.
-      return { type: 'NO_OP' };
-  }
-};
-
 export const deleteTypeAsync = createAppAsyncThunk(
   'codebook/deleteTypeAsync',
-  async (
-    {
-      entity,
-      type,
-      deleteRelatedObjects = false,
-    }: {
-      entity: Entity;
-      type: string;
-      deleteRelatedObjects?: boolean;
-    },
-    { dispatch, getState },
-  ) => {
+  async ({ entity, type }: { entity: Entity; type: string }, { dispatch }) => {
     const payload: DeleteTypePayload = { entity, type };
-
-    if (!deleteRelatedObjects) {
-      dispatch(codebookSlice.actions.deleteType(payload));
-      return;
-    }
-
-    // Scan usage BEFORE removing the type, so the cascade sees the stages and
-    // prompts that reference it.
-    const state = getState();
-    const getUsageForType = makeGetUsageForType(state);
-    const usageForType = getUsageForType(entity, type);
-
     dispatch(codebookSlice.actions.deleteType(payload));
-
-    await Promise.all(
-      usageForType.map(
-        ({
-          owner,
-        }: {
-          owner: {
-            type: string;
-            id?: string;
-            stageId?: string;
-            promptId?: string;
-          };
-        }) => dispatch(getDeleteAction(owner)),
-      ),
-    );
   },
 );
 
