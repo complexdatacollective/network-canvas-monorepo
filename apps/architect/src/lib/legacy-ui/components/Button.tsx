@@ -59,7 +59,7 @@ const computeButtonClasses = ({
   cx(
     'inline-flex w-auto shrink-0 grow-0 items-center justify-center gap-2',
     // focus state
-    'transition-color duration-200 ease-in-out',
+    'transition-colors duration-200 ease-in-out',
     'cursor-pointer',
     'rounded-full',
     'h-10 px-6 py-2',

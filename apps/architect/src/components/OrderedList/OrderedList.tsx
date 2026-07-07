@@ -92,7 +92,7 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
         })}
       </AnimatePresence>
       {(dirty || submitFailed) && error && !isArray(error) && (
-        <p className="text-destructive">{error}</p>
+        <p className="text-error">{error}</p>
       )}
     </Reorder.Group>
   );
