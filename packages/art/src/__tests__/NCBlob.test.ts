@@ -113,6 +113,23 @@ describe('NCBlob', () => {
       expect(blob.lastUpdate).toBe(1);
     });
 
+    it('does not advance on a zero time delta (same timestamp twice)', () => {
+      const blob = new NCBlob(1, 1, palette);
+      blob.canvasWidth = 1000;
+      blob.canvasHeight = 800;
+      blob.size = 50;
+      blob.velocityX = 50;
+      blob.velocityY = 50;
+      blob.positionX = 100;
+      blob.positionY = 100;
+
+      blob.updatePosition(1000); // seeds lastUpdate; first frame delta is 0
+      blob.updatePosition(1000); // same timestamp → 0 delta → no movement
+
+      expect(blob.positionX).toBe(100);
+      expect(blob.positionY).toBe(100);
+    });
+
     it('wraps past right edge to left', () => {
       const blob = new NCBlob(1, 1, palette);
       blob.canvasWidth = 1000;

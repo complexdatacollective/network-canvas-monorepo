@@ -70,10 +70,13 @@ export class NCBlob {
   updatePosition(time: number) {
     const timeInSeconds = time / 1000;
 
-    if (!this.lastUpdate) {
+    // Explicit null check (not `!this.lastUpdate`) so a legitimate 0 timestamp
+    // isn't treated as uninitialised; a first/zero-length frame yields a 0 delta
+    // and no movement, mirroring BackgroundLights' `last === null ? 0 : …`.
+    if (this.lastUpdate === null) {
       this.lastUpdate = timeInSeconds;
     }
-    const timeDelta = clampFrameDelta(timeInSeconds - this.lastUpdate || 1);
+    const timeDelta = clampFrameDelta(timeInSeconds - this.lastUpdate);
 
     this.lastUpdate = timeInSeconds;
 
