@@ -36,7 +36,15 @@ permissions:
 # safety net if a release run is dropped anyway.
 concurrency:
   group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Cancel superseded PR runs — EXCEPT the changesets bot's release PRs
+  # (`changeset-release/*`), which get force-updated on every merge to main.
+  # Cancelling those leaves the `quality` aggregate `skipped` (it is
+  # `if: !cancelled()`), and a skipped required check blocks the PR, so the
+  # release PRs could never satisfy the merge queue. Not cancelling lets their
+  # `quality` run complete (success/failure) so they stay mergeable.
+  cancel-in-progress: >-
+    ${{ github.event_name == 'pull_request'
+    && !startsWith(github.head_ref, 'changeset-release/') }}
 
 jobs:
   detect:
@@ -208,6 +216,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       # Restore the shared-package builds (cache hit from the `build` job) so
       # oxlint-tsgolint has the workspace types; otherwise it emits false-positive
@@ -220,6 +230,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm exec turbo run //#knip
 
@@ -228,6 +240,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm check:changesets
 
@@ -236,6 +250,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm test:scripts
 
@@ -244,6 +260,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - name: Build shared packages (apps build in their own deploy/release jobs)
         run: pnpm exec turbo run build --filter='./packages/*'
@@ -254,6 +272,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm exec turbo run typecheck
 
@@ -263,6 +283,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         env:

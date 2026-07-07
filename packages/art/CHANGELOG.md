@@ -1,5 +1,11 @@
 # @codaco/art
 
+## 0.1.2
+
+### Patch Changes
+
+- 8555eb4: Fixed the animated background (`BackgroundLights` and `BackgroundBlobs`) vanishing after a tab was left in the background for a while. The animation clock kept advancing while `requestAnimationFrame` was paused, so the first frame after returning teleported every blob far off-screen in a single step. Frame deltas are now capped so motion stays continuous across background/foreground cycles.
+
 ## 0.1.1
 
 ### Patch Changes
