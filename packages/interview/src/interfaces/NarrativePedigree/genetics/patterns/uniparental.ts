@@ -109,24 +109,22 @@ export function computeMitochondrial(
     assign(result, id, 'affected');
   }
 
-  // (1) Walk UP the maternal line from every affected person. Only the FEMALE
-  // (maternal) parent carries the mtDNA upward; a male ancestor is not the mt
-  // source and terminates the walk. These maternal ancestors are themselves at
-  // risk AND become transmitting-female seeds for the downward pass.
+  // (1) Walk UP the maternal (mtDNA) line from every affected person via the
+  // egg-cytoplasm source. That is normally the mother, but under mitochondrial
+  // donation (MRT) it is the DONOR egg rather than the intended mother — so an
+  // MRT child never reaches the intended mother's affected line. A male ancestor
+  // is never an mtDNA source and terminates the walk. These ancestors are
+  // themselves at risk AND become transmitting seeds for the downward pass.
   const maternalAncestorVisited = new Set<string>(affected);
   const maternalAncestors = graph.propagate(
     [...affected],
-    (id) =>
-      graph
-        .parentsOf(id)
-        .filter((parent) => parent.sex === 'female')
-        .map((parent) => parent.id),
+    (id) => graph.mitochondrialParentsOf(id),
     maternalAncestorVisited,
   );
 
-  // (2) Transmitting-female seeds: every affected female plus every maternal-line
-  // ancestor reached above. From each, mtDNA flows DOWN to all children, but only
-  // DAUGHTERS carry it further (stop at every male).
+  // (2) Transmitting seeds: every affected female plus every mtDNA-line ancestor
+  // reached above (an mtDNA ancestor is an egg-cytoplasm source, i.e. female).
+  // From each, mtDNA flows DOWN to the children it is the mtDNA source for.
   const transmittingFemaleSeeds = new Set<string>();
   for (const id of affected) {
     if (resolveSex(id) === 'female') {
@@ -139,25 +137,23 @@ export function computeMitochondrial(
     }
   }
 
-  // Downward pass: a transmitting female confers atRiskAffected on every child;
-  // daughters (regardless of clinical status) continue the line, males stop it.
-  // The visited-set is seeded with the transmitting females themselves so an
-  // affected mother is not overwritten and cycles terminate.
+  // Downward pass: a transmitting female confers atRiskAffected on every child
+  // she is the mtDNA source for; those children continue the walk. A male — and
+  // the nuclear-only intended mother of an MRT birth — is the mtDNA source for no
+  // one, so the line stops there without a sex check. The visited-set is seeded
+  // with the transmitting females so an affected mother is not overwritten and
+  // cycles terminate.
   const downwardVisited = new Set<string>(transmittingFemaleSeeds);
   graph.propagate(
     [...transmittingFemaleSeeds],
-    (femaleId) => {
-      const daughters: string[] = [];
-      for (const childId of graph.childrenOf(femaleId)) {
+    (motherId) => {
+      const mtChildren = graph.mitochondrialChildrenOf(motherId);
+      for (const childId of mtChildren) {
         if (!affected.has(childId)) {
           assign(result, childId, 'atRiskAffected');
         }
-        // Only daughters transmit mtDNA onward; recursion stops at every male.
-        if (resolveSex(childId) === 'female') {
-          daughters.push(childId);
-        }
       }
-      return daughters;
+      return mtChildren;
     },
     downwardVisited,
   );

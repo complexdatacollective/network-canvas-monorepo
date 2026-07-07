@@ -25,3 +25,21 @@ export function readRelationshipType(
   }
   return typeof raw === 'string' ? raw : undefined;
 }
+
+/**
+ * Reads the gamete role (`egg`/`sperm`) from an edge attribute, in the same
+ * single-element-array categorical form as the relationship type. Returns
+ * `undefined` when the variable is unset — the caller then falls back to the
+ * sex-derived mtDNA rule.
+ */
+export function readGameteRole(
+  edge: NcEdge,
+  gameteRoleVariable: string,
+): string | undefined {
+  const raw = edge[entityAttributesProperty][gameteRoleVariable];
+  if (Array.isArray(raw)) {
+    const first = raw[0];
+    return typeof first === 'string' ? first : undefined;
+  }
+  return typeof raw === 'string' ? raw : undefined;
+}

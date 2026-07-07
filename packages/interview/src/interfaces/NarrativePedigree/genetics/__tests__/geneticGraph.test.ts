@@ -237,6 +237,114 @@ describe('buildGeneticGraph — donor edges', () => {
   });
 });
 
+describe('buildGeneticGraph — mitochondrial donation (MRT) inference', () => {
+  const GAMETE_ROLE_VAR = 'gameteRole';
+  const mrtConfig = {
+    relationshipTypeVariable: RELATIONSHIP_TYPE_VAR,
+    gameteRoleVariable: GAMETE_ROLE_VAR,
+  };
+
+  function makeGameteEdge(
+    from: string,
+    to: string,
+    relType: 'biological' | 'donor',
+    gameteRole: 'egg' | 'sperm',
+  ): NcEdge {
+    return {
+      [entityPrimaryKeyProperty]: `${from}->${to}`,
+      type: 'family',
+      from,
+      to,
+      [entityAttributesProperty]: {
+        [RELATIONSHIP_TYPE_VAR]: [relType],
+        [GAMETE_ROLE_VAR]: [gameteRole],
+      },
+    };
+  }
+
+  // MRT birth: nucleus from the intended mother's egg, mtDNA from the enucleated
+  // donor egg, sperm from the father.
+  const mrtNodes = [
+    makeNode('mother'),
+    makeNode('donor'),
+    makeNode('father'),
+    makeNode('child'),
+  ];
+  const mrtEdges = [
+    makeGameteEdge('mother', 'child', 'biological', 'egg'),
+    makeGameteEdge('donor', 'child', 'donor', 'egg'),
+    makeGameteEdge('father', 'child', 'biological', 'sperm'),
+  ];
+  const mrtSex = stubResolveSex({
+    mother: 'female',
+    donor: 'female',
+    father: 'male',
+    child: 'female',
+  });
+
+  it('nuclear parents are the intended mother and father, not the mtDNA donor', () => {
+    const g = buildGeneticGraph(mrtNodes, mrtEdges, mrtConfig, mrtSex);
+    expect(
+      g
+        .parentsOf('child')
+        .map((p) => p.id)
+        .toSorted(),
+    ).toEqual(['father', 'mother']);
+    expect(g.childrenOf('donor')).toHaveLength(0);
+    expect(g.childrenOf('mother')).toEqual(['child']);
+  });
+
+  it('mtDNA comes from the donor egg, not the intended mother', () => {
+    const g = buildGeneticGraph(mrtNodes, mrtEdges, mrtConfig, mrtSex);
+    expect(g.mitochondrialParentsOf('child')).toEqual(['donor']);
+    expect(g.mitochondrialChildrenOf('donor')).toEqual(['child']);
+    expect(g.mitochondrialChildrenOf('mother')).toHaveLength(0);
+  });
+
+  it('standard egg donation (a single donor egg) keeps the donor as a full genetic mother', () => {
+    const nodes = [makeNode('donor'), makeNode('father'), makeNode('child')];
+    const edges = [
+      makeGameteEdge('donor', 'child', 'donor', 'egg'),
+      makeGameteEdge('father', 'child', 'biological', 'sperm'),
+    ];
+    const g = buildGeneticGraph(
+      nodes,
+      edges,
+      mrtConfig,
+      stubResolveSex({ donor: 'female', father: 'male' }),
+    );
+    // The lone donor egg is BOTH the nuclear mother and the mtDNA source.
+    expect(
+      g
+        .parentsOf('child')
+        .map((p) => p.id)
+        .toSorted(),
+    ).toEqual(['donor', 'father']);
+    expect(g.mitochondrialParentsOf('child')).toEqual(['donor']);
+  });
+
+  it('without gamete roles, the mtDNA source falls back to the female parent', () => {
+    const nodes = [makeNode('mum'), makeNode('dad'), makeNode('kid')];
+    const edges = [
+      makeGeneticEdge('mum', 'kid'),
+      makeGeneticEdge('dad', 'kid'),
+    ];
+    const g = buildGeneticGraph(
+      nodes,
+      edges,
+      config,
+      stubResolveSex({ mum: 'female', dad: 'male' }),
+    );
+    expect(g.mitochondrialParentsOf('kid')).toEqual(['mum']);
+    expect(
+      g
+        .parentsOf('kid')
+        .map((p) => p.id)
+        .toSorted(),
+    ).toEqual(['dad', 'mum']);
+  });
+});
+
 describe('buildGeneticGraph — duplicate edge de-duplication', () => {
   const parentId = 'parent-A';
   const childId = 'child-X';

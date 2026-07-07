@@ -1,6 +1,10 @@
 import { type NcEdge, type NcNode } from '@codaco/shared-consts';
 
-import { isGeneticRelationshipType, readRelationshipType } from './geneticEdge';
+import {
+  isGeneticRelationshipType,
+  readGameteRole,
+  readRelationshipType,
+} from './geneticEdge';
 
 /**
  * Minimal config needed by the genetics engine.
@@ -8,7 +12,69 @@ import { isGeneticRelationshipType, readRelationshipType } from './geneticEdge';
  */
 export type GeneticGraphConfig = {
   relationshipTypeVariable: string;
+  /**
+   * When provided, the mtDNA source is inferred from the egg gamete edge — so
+   * mitochondrial donation routes mtDNA down the donor's line. When absent, the
+   * engine falls back to the female-resolved parent as the mtDNA source
+   * (byte-identical to the pre-inference behaviour).
+   */
+  gameteRoleVariable?: string;
 };
+
+type Sex = 'female' | 'male' | 'unknown';
+
+type ParentEdge = {
+  parentId: string;
+  relType: string;
+  gameteRole: string | undefined;
+};
+
+function pushInto(
+  map: Map<string, string[]>,
+  key: string,
+  value: string,
+): void {
+  const list = map.get(key) ?? [];
+  list.push(value);
+  map.set(key, list);
+}
+
+/**
+ * Splits a child's genetic parent edges into the NUCLEAR parents (autosomal /
+ * X / Y) and the single mitochondrial (mtDNA) source, applying the
+ * egg-cytoplasm rule:
+ *
+ * - No egg roles recorded → fall back to the sex rule: every genetic parent is
+ *   nuclear, and the mtDNA source is the female-resolved parent(s).
+ * - One egg → that egg is both the nucleus and the mtDNA source (normal birth
+ *   and standard egg donation are unchanged).
+ * - Two or more eggs (mitochondrial donation) → the mtDNA egg is the `donor`
+ *   egg (the enucleated donor egg retains its cytoplasm), else the first egg;
+ *   the nuclear parents are everyone EXCEPT that donor egg.
+ */
+function splitParents(
+  parentEdges: ParentEdge[],
+  resolveSex: (id: string) => Sex,
+): { nuclear: string[]; mito: string[] } {
+  const allIds = parentEdges.map((p) => p.parentId);
+  const eggEdges = parentEdges.filter((p) => p.gameteRole === 'egg');
+
+  const [firstEgg] = eggEdges;
+  if (firstEgg === undefined) {
+    return {
+      nuclear: allIds,
+      mito: allIds.filter((id) => resolveSex(id) === 'female'),
+    };
+  }
+
+  const mitoEgg = eggEdges.find((p) => p.relType === 'donor') ?? firstEgg;
+  const nuclear =
+    eggEdges.length >= 2
+      ? allIds.filter((id) => id !== mitoEgg.parentId)
+      : allIds;
+
+  return { nuclear, mito: [mitoEgg.parentId] };
+}
 
 /**
  * A parent node annotated with the resolved biological sex of that parent.
@@ -22,7 +88,10 @@ export type AnnotatedParent = {
  * The annotated genetic graph produced by `buildGeneticGraph`.
  *
  * Adjacency is built from `biological`|`donor` edges only, directed
- * parent(`from`) → child(`to`).
+ * parent(`from`) → child(`to`). The primary (`parentsOf`/`childrenOf`) relation
+ * is the NUCLEAR adjacency (autosomal / X / Y); a parallel mitochondrial (mtDNA)
+ * relation is exposed via `mitochondrialParentsOf`/`mitochondrialChildrenOf` so
+ * mitochondrial donation can route mtDNA independently of the nuclear genome.
  */
 export type GeneticGraph = {
   /**
@@ -34,6 +103,21 @@ export type GeneticGraph = {
    * Direct genetic children of `id`.
    */
   childrenOf: (id: string) => string[];
+
+  /**
+   * The mitochondrial (mtDNA) parent(s) of `id`: the egg-cytoplasm source.
+   * Normally the single female parent; under mitochondrial donation (MRT) it is
+   * the donor egg rather than the nuclear/intended mother. Without recorded
+   * gamete roles it falls back to the female-resolved parents.
+   */
+  mitochondrialParentsOf: (id: string) => string[];
+
+  /**
+   * The children for whom `id` is the mitochondrial (mtDNA) source — the inverse
+   * of `mitochondrialParentsOf`. A male, or the nuclear-only intended mother in
+   * an MRT birth, has none.
+   */
+  mitochondrialChildrenOf: (id: string) => string[];
 
   /**
    * Individuals who share BOTH of `id`'s genetic parents (same two-parent
@@ -103,18 +187,27 @@ export function buildGeneticGraph(
   config: GeneticGraphConfig,
   resolveSex: (nodeId: string) => 'female' | 'male' | 'unknown',
 ): GeneticGraph {
-  // parentMap[childId] = [parentId, ...]
+  // Nuclear adjacency (autosomal / X / Y): all genetic parents except a donor
+  // egg displaced to mtDNA-only under mitochondrial donation.
   const parentMap = new Map<string, string[]>();
-  // childMap[parentId] = [childId, ...]
   const childMap = new Map<string, string[]>();
+  // Mitochondrial adjacency (egg-cytoplasm): the single mtDNA source per child,
+  // or the female-resolved parents when no gamete roles are recorded.
+  const mitoParentMap = new Map<string, string[]>();
+  const mitoChildMap = new Map<string, string[]>();
 
   // Initialise every known node with empty arrays to allow lookups on nodes
   // that have no parents/children.
   for (const node of nodes) {
     parentMap.set(node._uid, []);
     childMap.set(node._uid, []);
+    mitoParentMap.set(node._uid, []);
+    mitoChildMap.set(node._uid, []);
   }
 
+  // First pass: collect each child's genetic parent edges (deduped on
+  // parent>child) with their relationship type and gamete role.
+  const parentEdgesByChild = new Map<string, ParentEdge[]>();
   const seenGeneticEdges = new Set<string>();
 
   for (const edge of edges) {
@@ -132,13 +225,28 @@ export function buildGeneticGraph(
     }
     seenGeneticEdges.add(edgeKey);
 
-    const parentList = parentMap.get(childId) ?? [];
-    parentList.push(parentId);
-    parentMap.set(childId, parentList);
+    const gameteRole =
+      config.gameteRoleVariable === undefined
+        ? undefined
+        : readGameteRole(edge, config.gameteRoleVariable);
 
-    const childList = childMap.get(parentId) ?? [];
-    childList.push(childId);
-    childMap.set(parentId, childList);
+    const list = parentEdgesByChild.get(childId) ?? [];
+    list.push({ parentId, relType, gameteRole });
+    parentEdgesByChild.set(childId, list);
+  }
+
+  // Second pass: split each child's parents into the nuclear set and the single
+  // mtDNA source, then populate both adjacencies in each direction.
+  for (const [childId, parentEdges] of parentEdgesByChild) {
+    const { nuclear, mito } = splitParents(parentEdges, resolveSex);
+    for (const parentId of nuclear) {
+      pushInto(parentMap, childId, parentId);
+      pushInto(childMap, parentId, childId);
+    }
+    for (const parentId of mito) {
+      pushInto(mitoParentMap, childId, parentId);
+      pushInto(mitoChildMap, parentId, childId);
+    }
   }
 
   function parentsOf(id: string): AnnotatedParent[] {
@@ -151,6 +259,14 @@ export function buildGeneticGraph(
 
   function childrenOf(id: string): string[] {
     return childMap.get(id) ?? [];
+  }
+
+  function mitochondrialParentsOf(id: string): string[] {
+    return mitoParentMap.get(id) ?? [];
+  }
+
+  function mitochondrialChildrenOf(id: string): string[] {
+    return mitoChildMap.get(id) ?? [];
   }
 
   function propagate(
@@ -287,6 +403,8 @@ export function buildGeneticGraph(
   return {
     parentsOf,
     childrenOf,
+    mitochondrialParentsOf,
+    mitochondrialChildrenOf,
     fullSiblingsOf,
     halfSiblingsOf,
     maternalHalfSiblingsOf,

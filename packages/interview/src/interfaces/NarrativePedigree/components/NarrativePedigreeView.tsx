@@ -195,6 +195,7 @@ export default function NarrativePedigreeView({
       pedigreeEdges,
       {
         relationshipTypeVariable: sourceConfig.config.relationshipTypeVariable,
+        gameteRoleVariable: sourceConfig.config.gameteRoleVariable,
       },
       resolveSexFn,
     );

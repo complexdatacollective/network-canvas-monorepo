@@ -36,18 +36,19 @@ describe('comprehensive pedigree — deterministic synthetic data', () => {
     });
 
     it(`seed ${seed}: each condition is nominated only on its seeded individuals`, () => {
-      // Huntington's (autosomal dominant): Arthur and Rose on the maternal line.
+      // Huntington's (autosomal dominant): George and Rose on the maternal line.
       expect(idsWith(HD_VAR)).toEqual(['mgf', 'mother']);
-      // Cystic fibrosis (autosomal recessive): the consanguineous cousins' child.
-      expect(idsWith(CF_VAR)).toEqual(['cfchild']);
-      // Haemophilia (X-linked recessive): the two affected Marsh brothers.
-      expect(idsWith(HAEM_VAR)).toEqual(['unc1', 'unc2']);
-      // X-linked hypophosphataemia (X-linked dominant): the partner's father.
-      expect(idsWith(XLH_VAR)).toEqual(['pf']);
-      // Y-linked hearing loss: the older Sullivan males (Owen is inferred).
-      expect(idsWith(YHL_VAR)).toEqual(['brother', 'father', 'pgf']);
-      // Mitochondrial: the maternal grandmother.
-      expect(idsWith(MITO_VAR)).toEqual(['mgm']);
+      // Cystic fibrosis (autosomal recessive): ego's affected sibling (autozygous
+      // via the consanguineous parents).
+      expect(idsWith(CF_VAR)).toEqual(['sib']);
+      // Haemophilia (X-linked recessive): the two affected maternal uncles.
+      expect(idsWith(HAEM_VAR)).toEqual(['muncle', 'muncle2']);
+      // X-linked hypophosphataemia (X-linked dominant): ego's father.
+      expect(idsWith(XLH_VAR)).toEqual(['father']);
+      // Y-linked hearing loss: the partner's Adler male line (Noah is inferred).
+      expect(idsWith(YHL_VAR)).toEqual(['partner', 'pf']);
+      // Mitochondrial: the maternal great-grandmother.
+      expect(idsWith(MITO_VAR)).toEqual(['ggm']);
     });
   }
 });
