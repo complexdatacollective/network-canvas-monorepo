@@ -285,16 +285,36 @@ async function clickContinue() {
 }
 
 /**
+ * Answer the "About you" (EgoSexStep) biological-sex question and continue. This
+ * step always appears after any Introduction/FramingSelection steps and before
+ * the egg-parent step. The radios are labelled by their option label (from
+ * BIOLOGICAL_SEX_OPTIONS; the default here is "Female").
+ */
+async function selectEgoSex(label = 'Female') {
+  const dialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
+  const field = dialog.querySelector('[data-field-name="biologicalSex"]');
+  if (!field) throw new Error('No biologicalSex field found (EgoSexStep)');
+  const radio = within(field as HTMLElement).getByRole('radio', {
+    name: label,
+  });
+  await userEvent.click(radio);
+  await clickContinue();
+}
+
+/**
  * Complete the minimal quick-start wizard: fill in egg and sperm parents
  * (minimal required fields), skip other parents, skip partnerships (no
  * partner), and finish.
  *
  * buildBoundaryInterview uses fixed gamete framing with no introScreen, so the
- * wizard opens directly on EggParentStep (no leading IntroStep,
- * FramingSelectionStep, or BioParentsIntroStep).
+ * wizard opens directly on the "About you" (EgoSexStep) step (no leading
+ * IntroStep or FramingSelectionStep), then EggParentStep.
  */
 async function completeMinimalQuickStart() {
   await clickGetStarted();
+
+  // About you (EgoSexStep) — biological sex required
+  await selectEgoSex();
 
   // EggParentStep — is-donor required (BooleanField: first radio = true, second = false)
   const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
@@ -348,13 +368,18 @@ export const ParticipantChoiceSelectsGendered: Story = {
   play: async () => {
     await clickGetStarted();
 
-    // Framing selection step: choose "Gendered"
+    // Framing selection step: choose the gendered option ("Mother & father").
+    // FramingSelectionStep uses a RichSelectGroupField, so each choice is a
+    // button[role="option"] whose accessible name is the label + description.
     const dialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-    const genderedOption = within(dialog).getByRole('radio', {
-      name: /gendered/i,
+    const genderedOption = within(dialog).getByRole('option', {
+      name: /mother & father/i,
     });
     await userEvent.click(genderedOption);
     await clickContinue();
+
+    // About you (EgoSexStep) — answer before the parent steps.
+    await selectEgoSex();
 
     // EggParentStep is now open and titled "Mother"; multiple elements may
     // match the text so assert there is at least one.
@@ -376,18 +401,22 @@ export const WithIntroScreenThenFramingSelection: Story = {
   play: async () => {
     await clickGetStarted();
 
-    // IntroStep: custom title and text are shown
-    await screen.findByText('Before we begin', {}, STEP_TIMEOUT);
+    // IntroStep: the custom intro-screen text is shown.
     await screen.findByText(/family health history/i, {}, STEP_TIMEOUT);
     await clickContinue();
 
-    // Framing selection step: choose "Gamete-based"
+    // Framing selection step: choose the gamete option ("Egg parent & sperm
+    // parent"). RichSelectGroupField renders each choice as a
+    // button[role="option"] named by its label + description.
     const dialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-    const gameteOption = within(dialog).getByRole('radio', {
-      name: /gamete.based/i,
+    const gameteOption = within(dialog).getByRole('option', {
+      name: /egg parent & sperm parent/i,
     });
     await userEvent.click(gameteOption);
     await clickContinue();
+
+    // About you (EgoSexStep) — answer before the parent steps.
+    await selectEgoSex();
 
     // EggParentStep is now open; "egg parent" appears in its body copy.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
@@ -409,11 +438,15 @@ export const FixedGameteQuickStart: Story = {
   play: async () => {
     await clickGetStarted();
 
-    // Assert "Gendered" radio does NOT exist — the framing-selection step is skipped
-    expect(screen.queryByRole('radio', { name: /gendered/i })).toBeNull();
+    // The framing-selection step is skipped for fixed framing, so its options
+    // never appear — the wizard opens on the "About you" (EgoSexStep) step.
+    expect(
+      screen.queryByRole('option', { name: /mother & father/i }),
+    ).toBeNull();
+    await selectEgoSex();
 
-    // EggParentStep is the first step; multiple elements may contain "Egg
-    // Parent" (title + labels) — assert at least one is present.
+    // EggParentStep is now open; multiple elements may contain "Egg Parent"
+    // (title + labels) — assert at least one is present.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
     expect(
       within(eggDialog).getAllByText(/egg parent/i).length,
@@ -435,11 +468,15 @@ export const FixedGenderedQuickStart: Story = {
   play: async () => {
     await clickGetStarted();
 
-    // Assert "Gamete-based" radio does NOT exist — selection step is skipped
-    expect(screen.queryByRole('radio', { name: /gamete.based/i })).toBeNull();
+    // The framing-selection step is skipped for fixed framing, so its options
+    // never appear — the wizard opens on the "About you" (EgoSexStep) step.
+    expect(
+      screen.queryByRole('option', { name: /egg parent & sperm parent/i }),
+    ).toBeNull();
+    await selectEgoSex();
 
-    // EggParentStep is the first step and titled "Mother"; multiple elements
-    // may contain that text (dialog title + labels) — assert at least one.
+    // EggParentStep is now open and titled "Mother"; multiple elements may
+    // contain that text (dialog title + labels) — assert at least one.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
     expect(within(eggDialog).getAllByText(/mother/i).length).toBeGreaterThan(0);
   },

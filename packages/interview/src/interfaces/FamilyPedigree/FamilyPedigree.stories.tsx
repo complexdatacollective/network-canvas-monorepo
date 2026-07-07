@@ -365,6 +365,22 @@ async function getDialog() {
   return screen.findByRole('dialog', {}, STEP_TIMEOUT);
 }
 
+/**
+ * Answer the "About you" (EgoSexStep) biological-sex question and continue. For
+ * these fixed-gamete scenarios (no introScreen), it is the wizard's first step;
+ * the radios are labelled by their option label (default here is "Female").
+ */
+async function selectEgoSex(label = 'Female') {
+  const dialog = await getDialog();
+  const field = dialog.querySelector('[data-field-name="biologicalSex"]');
+  if (!field) throw new Error('No biologicalSex field found (EgoSexStep)');
+  const radio = within(field as HTMLElement).getByRole('radio', {
+    name: label,
+  });
+  await userEvent.click(radio);
+  await clickContinue();
+}
+
 async function setFieldInput(
   fieldName: string,
   value: boolean | string | number,
@@ -499,8 +515,8 @@ export const NuclearFamily: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you (EgoSexStep)
+    await selectEgoSex();
 
     // Egg parent step
     await setFieldInput('egg-parent.is-donor', false);
@@ -524,14 +540,17 @@ export const NuclearFamily: ScenarioStory = {
     // Partner and children
     await setFieldInput('hasPartner', true);
     await setFieldInput('partner.name', 'Sophia');
+    await setFieldInput('partner.biologicalSex', 'Female');
     await setFieldInput('partner.gender_identity', 'Woman/girl');
     await setFieldInput('childrenWithPartnerCount', 2);
     await clickContinue();
 
     // Children details — name and gender, then confirm parentage defaults
     await setFieldInput('childWithPartner[0].name', 'Olivia');
+    await setFieldInput('childWithPartner[0].biologicalSex', 'Female');
     await setFieldInput('childWithPartner[0].gender_identity', 'Woman/girl');
     await setFieldInput('childWithPartner[1].name', 'Liam');
+    await setFieldInput('childWithPartner[1].biologicalSex', 'Male');
     await setFieldInput('childWithPartner[1].gender_identity', 'Man/boy');
 
     // Both children should show the egg/sperm parent selectors; nuclear-family
@@ -550,8 +569,8 @@ export const SingleParent: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you (EgoSexStep)
+    await selectEgoSex();
 
     // Egg parent step: Linda is bio mum
     await setFieldInput('egg-parent.is-donor', false);
@@ -584,8 +603,8 @@ export const SameSexMothers: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you (EgoSexStep)
+    await selectEgoSex();
 
     // Egg parent step: Linda is egg parent + carried
     await setFieldInput('egg-parent.is-donor', false);
@@ -626,8 +645,8 @@ export const SpermDonor: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you (EgoSexStep)
+    await selectEgoSex();
 
     // Egg parent step
     await setFieldInput('egg-parent.is-donor', false);
@@ -667,8 +686,8 @@ export const BlendedFamily: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you (EgoSexStep)
+    await selectEgoSex();
 
     // Egg parent step: Susan is egg parent + carried
     await setFieldInput('egg-parent.is-donor', false);
@@ -711,8 +730,8 @@ export const TransParent: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you (EgoSexStep)
+    await selectEgoSex();
 
     // Egg parent step: Alex (trans man, assigned female) is egg parent + carried
     await setFieldInput('egg-parent.is-donor', false);
@@ -754,8 +773,8 @@ export const NonBinaryEgo: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you (EgoSexStep)
+    await selectEgoSex();
 
     // Egg parent step
     await setFieldInput('egg-parent.is-donor', false);
@@ -779,12 +798,14 @@ export const NonBinaryEgo: ScenarioStory = {
     // Partner and children
     await setFieldInput('hasPartner', true);
     await setFieldInput('partner.name', 'Sam');
+    await setFieldInput('partner.biologicalSex', 'Female');
     await setFieldInput('partner.gender_identity', 'Non-binary');
     await setFieldInput('childrenWithPartnerCount', 1);
     await clickContinue();
 
     // Children details — name and gender, then confirm parentage defaults
     await setFieldInput('childWithPartner[0].name', 'Kai');
+    await setFieldInput('childWithPartner[0].biologicalSex', 'Male');
     await setFieldInput('childWithPartner[0].gender_identity', 'Non-binary');
 
     // Confirm the egg/sperm parent selectors are present; defaults are valid.
@@ -802,8 +823,8 @@ export const AdoptedIn: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you (EgoSexStep)
+    await selectEgoSex();
 
     // Egg parent step: unknown bio parent (not a donor, just absent)
     await setFieldInput('egg-parent.is-donor', false);
@@ -871,8 +892,8 @@ export const SingleParentTwoDonors: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you (EgoSexStep)
+    await selectEgoSex();
 
     // Egg parent step: anonymous egg donor who did NOT carry — Mum
     // (gestational carrier) carried, so the conditional carrier step shows next
@@ -921,7 +942,7 @@ export const DiseaseNomination: ScenarioStory = {
   play: async () => {
     // Build a small pedigree: ego with two named parents.
     await clickGetStarted();
-    await clickContinue(); // intro
+    await selectEgoSex(); // About you (EgoSexStep)
 
     await setFieldInput('egg-parent.is-donor', false);
     await setFieldInput('egg-parent.name', 'Linda');
@@ -982,8 +1003,8 @@ export const WithPartnerAndChildren: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you (EgoSexStep)
+    await selectEgoSex();
 
     // Egg parent step
     await setFieldInput('egg-parent.is-donor', false);
@@ -1007,14 +1028,17 @@ export const WithPartnerAndChildren: ScenarioStory = {
     // Partner and children
     await setFieldInput('hasPartner', true);
     await setFieldInput('partner.name', 'Jennifer');
+    await setFieldInput('partner.biologicalSex', 'Female');
     await setFieldInput('partner.gender_identity', 'Woman/girl');
     await setFieldInput('childrenWithPartnerCount', 2);
     await clickContinue();
 
     // Children details — name and gender, then confirm parentage defaults
     await setFieldInput('childWithPartner[0].name', 'Daniel');
+    await setFieldInput('childWithPartner[0].biologicalSex', 'Male');
     await setFieldInput('childWithPartner[0].gender_identity', 'Man/boy');
     await setFieldInput('childWithPartner[1].name', 'Emma');
+    await setFieldInput('childWithPartner[1].biologicalSex', 'Female');
     await setFieldInput('childWithPartner[1].gender_identity', 'Woman/girl');
 
     // Both children should show the egg/sperm parent selectors; nuclear-family
