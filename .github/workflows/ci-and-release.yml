@@ -739,6 +739,12 @@ jobs:
           sudo chown -R "$(id -u):$(id -g)" \
             packages/interview/e2e/playwright-report \
             packages/interview/e2e/test-results 2>/dev/null || true
+      - name: Flag flaky tests
+        # Reporting only — never gate the job on it (belt-and-suspenders with the
+        # script's own guards).
+        if: always()
+        continue-on-error: true
+        run: node packages/interview/e2e/scripts/flaky-summary.mjs
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
