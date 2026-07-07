@@ -202,6 +202,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       # Restore the shared-package builds (cache hit from the `build` job) so
       # oxlint-tsgolint has the workspace types; otherwise it emits false-positive
@@ -214,6 +216,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm exec turbo run //#knip
 
@@ -222,6 +226,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm check:changesets
 
@@ -230,6 +236,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm test:scripts
 
@@ -238,6 +246,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - name: Build shared packages (apps build in their own deploy/release jobs)
         run: pnpm exec turbo run build --filter='./packages/*'
@@ -248,6 +258,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm exec turbo run typecheck
 
@@ -257,6 +269,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         env:
@@ -1054,6 +1068,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
         with:
           ignore-scripts: 'false'
@@ -1105,6 +1121,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
         with:
           ignore-scripts: 'false'
