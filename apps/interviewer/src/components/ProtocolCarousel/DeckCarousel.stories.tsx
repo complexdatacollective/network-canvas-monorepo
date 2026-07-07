@@ -88,7 +88,7 @@ function CarouselHarness({
       backdropBlur: true,
       onActivate: () => {},
       render: (_isActive: boolean, activate: () => void) => (
-        <ImportTriggerCard onActivate={activate} />
+        <ImportTriggerCard onActivate={activate} onImportFile={() => {}} />
       ),
     },
   ];
