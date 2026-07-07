@@ -7,6 +7,7 @@ import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
+import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 import PedigreeKey from '../components/PedigreeKey';
 import PedigreeLayout from '../components/PedigreeLayout';
 import { AdoptionBrackets, EgoIcon } from '../components/PedigreeNode';
@@ -133,7 +134,7 @@ function buildNetwork(
     const e = edgeDefs[i]!;
     const eid = `e${i}`;
     const attrs: NcEdge['attributes'] = {
-      [STORY_REL_TYPE_VAR]: e.relationshipType,
+      [STORY_REL_TYPE_VAR]: [e.relationshipType],
       [STORY_IS_ACTIVE_VAR]: e.isActive,
     };
     if (e.isGestationalCarrier !== undefined) {
@@ -1896,7 +1897,9 @@ type NodeRenderer = (
 
 function isNodeAdopted(nodeId: string, edges: Map<string, NcEdge>): boolean {
   return [...edges.values()].some(
-    (e) => e.to === nodeId && e.attributes[STORY_REL_TYPE_VAR] === 'adoptive',
+    (e) =>
+      e.to === nodeId &&
+      getEdgeRelationshipType(e, STORY_REL_TYPE_VAR) === 'adoptive',
   );
 }
 

@@ -4,6 +4,7 @@ import { expect, screen, userEvent, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
 import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
 
 function createFamilyPedigreeInterview(seed: number) {
@@ -457,6 +458,20 @@ async function setFieldInput(
 }
 
 /**
+ * Answer the required "About you" (EgoSexStep) question that opens the
+ * quick-start wizard, then advance to the first parent step. The biological-sex
+ * field is required and has no default, so it must be filled before Continue
+ * will move past it. Defaults to "Female"; pass a different option label to vary
+ * ego's recorded sex.
+ */
+async function selectEgoSex(
+  label: string = BIOLOGICAL_SEX_OPTIONS[0]?.label ?? 'Female',
+) {
+  await setFieldInput('biologicalSex', label);
+  await clickContinue();
+}
+
+/**
  * Set one cell of a partnership matrix. The matrix for `focalId` lists every
  * parent below it; `partnerLabel` is the displayed label of the row (a name,
  * or a role fallback like "your sperm parent"). `optionLabel` is one of
@@ -499,8 +514,8 @@ export const NuclearFamily: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you step (EgoSexStep): record ego's biological sex
+    await selectEgoSex();
 
     // Egg parent step
     await setFieldInput('egg-parent.is-donor', false);
@@ -550,8 +565,8 @@ export const SingleParent: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you step (EgoSexStep): record ego's biological sex
+    await selectEgoSex();
 
     // Egg parent step: Linda is bio mum
     await setFieldInput('egg-parent.is-donor', false);
@@ -584,8 +599,8 @@ export const SameSexMothers: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you step (EgoSexStep): record ego's biological sex
+    await selectEgoSex();
 
     // Egg parent step: Linda is egg parent + carried
     await setFieldInput('egg-parent.is-donor', false);
@@ -626,8 +641,8 @@ export const SpermDonor: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you step (EgoSexStep): record ego's biological sex
+    await selectEgoSex();
 
     // Egg parent step
     await setFieldInput('egg-parent.is-donor', false);
@@ -667,8 +682,8 @@ export const BlendedFamily: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you step (EgoSexStep): record ego's biological sex
+    await selectEgoSex();
 
     // Egg parent step: Susan is egg parent + carried
     await setFieldInput('egg-parent.is-donor', false);
@@ -711,8 +726,8 @@ export const TransParent: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you step (EgoSexStep): record ego's biological sex
+    await selectEgoSex();
 
     // Egg parent step: Alex (trans man, assigned female) is egg parent + carried
     await setFieldInput('egg-parent.is-donor', false);
@@ -754,8 +769,8 @@ export const NonBinaryEgo: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you step (EgoSexStep): record ego's biological sex
+    await selectEgoSex();
 
     // Egg parent step
     await setFieldInput('egg-parent.is-donor', false);
@@ -802,8 +817,8 @@ export const AdoptedIn: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you step (EgoSexStep): record ego's biological sex
+    await selectEgoSex();
 
     // Egg parent step: unknown bio parent (not a donor, just absent)
     await setFieldInput('egg-parent.is-donor', false);
@@ -871,8 +886,8 @@ export const SingleParentTwoDonors: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you step (EgoSexStep): record ego's biological sex
+    await selectEgoSex();
 
     // Egg parent step: anonymous egg donor who did NOT carry — Mum
     // (gestational carrier) carried, so the conditional carrier step shows next
@@ -921,7 +936,7 @@ export const DiseaseNomination: ScenarioStory = {
   play: async () => {
     // Build a small pedigree: ego with two named parents.
     await clickGetStarted();
-    await clickContinue(); // intro
+    await selectEgoSex(); // About you (EgoSexStep)
 
     await setFieldInput('egg-parent.is-donor', false);
     await setFieldInput('egg-parent.name', 'Linda');
@@ -982,8 +997,8 @@ export const WithPartnerAndChildren: ScenarioStory = {
   play: async () => {
     await clickGetStarted();
 
-    // Intro step
-    await clickContinue();
+    // About you step (EgoSexStep): record ego's biological sex
+    await selectEgoSex();
 
     // Egg parent step
     await setFieldInput('egg-parent.is-donor', false);
