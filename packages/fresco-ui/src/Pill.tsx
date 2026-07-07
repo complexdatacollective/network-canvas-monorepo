@@ -31,7 +31,7 @@ export type PillProps = PillOwnProps &
   React.HTMLAttributes<HTMLElement> &
   Pick<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'disabled'>;
 
-const Pill = React.forwardRef<HTMLElement, PillProps>(
+const Pill = React.forwardRef<HTMLSpanElement | HTMLButtonElement, PillProps>(
   (
     {
       as = 'span',
@@ -46,20 +46,19 @@ const Pill = React.forwardRef<HTMLElement, PillProps>(
     },
     ref,
   ) => {
-    const Comp = as;
+    const Comp: React.ElementType = as;
     const buttonProps =
       as === 'button' ? { type: type ?? 'button', disabled } : {};
-    return (
-      <Comp
-        ref={ref}
-        className={pillVariants({ size, variant, className })}
-        {...buttonProps}
-        {...props}
-      >
-        {icon}
-        {children}
-      </Comp>
-    );
+
+    const element = React.createElement(Comp, {
+      ref,
+      className: pillVariants({ size, variant, className }),
+      ...buttonProps,
+      ...props,
+      children: [icon, children],
+    });
+
+    return element;
   },
 );
 Pill.displayName = 'Pill';
