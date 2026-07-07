@@ -155,6 +155,50 @@ own focused plan when reached, rather than being over-planned now.
   separately).
 - Any renaming of NC data-model keys (explicitly forbidden).
 
+## Implementation progress & notes
+
+Landed on this branch (3442 → 1816 warnings, 0 errors):
+
+- **PR1 — config correction** (−1232). Explicit `no-unsafe-type-assertion: warn`
+  - test/story/e2e scope override; disabled `no-underscore-dangle`,
+    `require-post-message-target-origin`, `import/no-unassigned-import`,
+    `import/default`; `no-autofocus: off`; scoped `consistent-function-scoping`,
+    `no-console`, `no-named-as-default-member`, `no-floating-promises`.
+- **PR2 — Tailwind** (−353). Per-app `entryPoint` fix (architect →
+  `src/styles/tailwind.css`, documentation → `styles/globals.css`) + 7 real
+  invalid-class fixes. `no-unknown-classes` 420 → 65.
+- **PR3 — no-unnecessary-type-conversion** (−41), escalated to `error`.
+
+Notes for the remaining work:
+
+- **`no-unknown-classes` residual (65).** ~48 are broken shadcn animations in
+  `apps/documentation/components/ui/*` (`animate-in`, `fade-in-0`,
+  `slide-in-from-*`, …) — **no `tailwindcss-animate`/`tw-animate-css` is installed**,
+  so these animations silently no-op. This is a real (cosmetic) issue needing a
+  decision: add the animate library (fixes the animations) or remove the dead
+  classes. The rest are legacy global/BEM classes (allowlist candidates — but the
+  plugin's `allowlist` rule-option works with the Fresco entrypoint yet **not** with
+  the app-specific entrypoints, a plugin quirk to investigate) and a few ambiguous
+  design-token references (`text-muted`, `text-navy-taupe-foreground`) that need a
+  visual/design decision.
+- **PR4 — RTK typed-thunk seam (deferred to its own PR).** A `createAppAsyncThunk`
+  seam removes the ~16 `getState() as RootState` casts in `codebook.ts`, `stages.ts`,
+  `userActions.ts` (architect) and `session.ts` (interview). Two gotchas found: (1)
+  the seam must pin **only `state`** — pinning `dispatch: AppDispatch` too makes the
+  produced action undispatchable (thunk requires `extra: unknown`, `AppDispatch` has
+  `extra: undefined`). (2) The seam surfaces that the store-test helpers
+  (`createThunkStore` in `stages.test.ts`, `createTestStore` in `session.test.ts`)
+  build mock stores with **partial/simplified state**, so their dispatch no longer
+  matches the `RootState`-typed thunks — those helpers need retyping. Because that is
+  test-infrastructure work with its own judgment calls, PR4 is its own PR, not part
+  of this batch.
+- **oxlint fixer scoping.** `oxlint --fix`/`--fix-suggestions -A all -D <rule>`
+  scopes built-in rules, but the `oxlint-tailwindcss` **jsPlugin ignores CLI
+  allow/deny flags** and still applies its fixes. To avoid Tailwind canonical-class
+  rewrites leaking into an unrelated fix, pass the explicit target-file list.
+- **Baseline must be built.** `no-redundant-type-constituents` is 205 unbuilt vs 18
+  built — always `pnpm build` before measuring type-aware rules.
+
 ## Resolved decisions
 
 - **`import/no-named-as-default` (34):** keep + fix (rename shadowing imports) +
