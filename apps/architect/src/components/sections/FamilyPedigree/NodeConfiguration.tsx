@@ -347,8 +347,7 @@ type FormHandlerProps = ConnectedProps<typeof connector> & { form: string };
 
 const formHandlers = withHandlers({
   handleChangeFields:
-    (props: FormHandlerProps) =>
-    async (values: Record<string, unknown>) => {
+    (props: FormHandlerProps) => async (values: Record<string, unknown>) => {
       const { variable, component, _createNewVariable, ...rest } = values as {
         variable?: string;
         component?: string;

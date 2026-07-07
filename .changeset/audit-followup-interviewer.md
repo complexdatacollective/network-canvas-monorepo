@@ -1,5 +1,5 @@
 ---
-"@codaco/interviewer": patch
+'@codaco/interviewer': patch
 ---
 
 Close data-loss and setup gaps surfaced by the pre-release audit follow-up:

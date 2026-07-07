@@ -8,9 +8,7 @@ import {
   NetcanvasInflationLimitError,
 } from '../extractProtocol';
 
-const buildZip = async (
-  entries: Record<string, string>,
-): Promise<Buffer> => {
+const buildZip = async (entries: Record<string, string>): Promise<Buffer> => {
   const zip = new JSZip();
   for (const [name, content] of Object.entries(entries)) {
     zip.file(name, content);
@@ -131,7 +129,9 @@ describe('extractProtocol', () => {
 
       const bombEntry = zip.file('assets/bomb.bin')!;
       // Lie about the size the way an attacker would; the header now claims 1 byte.
-      (bombEntry as unknown as { _data: { uncompressedSize: number } })._data.uncompressedSize = 1;
+      (
+        bombEntry as unknown as { _data: { uncompressedSize: number } }
+      )._data.uncompressedSize = 1;
 
       await expect(
         extractProtocolFromZip(zip, 1024 * 1024),
@@ -154,9 +154,9 @@ describe('extractProtocol', () => {
       });
 
       // Each entry (700KB) is under a 1MB cap, but together they exceed it.
-      await expect(
-        extractProtocol(buffer, 1024 * 1024),
-      ).rejects.toBeInstanceOf(NetcanvasInflationLimitError);
+      await expect(extractProtocol(buffer, 1024 * 1024)).rejects.toBeInstanceOf(
+        NetcanvasInflationLimitError,
+      );
     });
 
     it('allows an archive whose total inflated size stays within the cap', async () => {

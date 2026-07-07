@@ -4,8 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Capture the props InlineEditScreen receives so the test can invoke the
 // backdrop/Esc dismiss path (onCancel) the same way the base-ui Dialog does.
-const inlineEditScreenSpy =
-  vi.fn<(props: { onCancel: () => void }) => void>();
+const inlineEditScreenSpy = vi.fn<(props: { onCancel: () => void }) => void>();
 vi.mock('~/components/InlineEditScreen', () => ({
   default: (props: { onCancel: () => void; children?: ReactNode }) => {
     inlineEditScreenSpy(props);

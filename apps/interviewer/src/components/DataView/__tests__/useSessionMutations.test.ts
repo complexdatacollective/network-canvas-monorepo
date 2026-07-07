@@ -61,7 +61,9 @@ function makeHook() {
   );
 }
 
-async function buildPendingShare(result: ReturnType<typeof makeHook>['result']) {
+async function buildPendingShare(
+  result: ReturnType<typeof makeHook>['result'],
+) {
   runExport.mockResolvedValue({
     result: {
       successfulExports: [{ sessionId: 's1' }],

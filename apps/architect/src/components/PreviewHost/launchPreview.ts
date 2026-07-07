@@ -60,7 +60,9 @@ export function launchPreview({
   // per-realm, so the preview context would otherwise resolve nothing. Blobs
   // survive structured clone over postMessage.
   const memoryAssets: PreviewMemoryAsset[] = getMemoryAssetsForScope(protocolId)
-    .filter((row): row is typeof row & { data: Blob } => row.data instanceof Blob)
+    .filter(
+      (row): row is typeof row & { data: Blob } => row.data instanceof Blob,
+    )
     .map((row) => ({ assetId: row.assetId, name: row.name, data: row.data }));
   const payload: PreviewPayload = {
     type: 'preview:payload',

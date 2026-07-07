@@ -1,6 +1,6 @@
 ---
-"@codaco/protocol-validation": patch
-"@codaco/interview": patch
+'@codaco/protocol-validation': patch
+'@codaco/interview': patch
 ---
 
 Harden protocol import/validation and make interview autosave failures recoverable:

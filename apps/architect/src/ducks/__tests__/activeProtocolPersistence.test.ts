@@ -66,7 +66,10 @@ describe('deserializeActiveProtocol', () => {
   });
 
   it('carries the stamped owner id through so rehydrate can reconcile it', () => {
-    const raw = serializeActiveProtocol(timeline(makeProtocol('current')), 'lib-1');
+    const raw = serializeActiveProtocol(
+      timeline(makeProtocol('current')),
+      'lib-1',
+    );
 
     const result = deserializeActiveProtocol(raw);
 
@@ -113,9 +116,7 @@ describe('reconcileRehydratedActiveProtocol', () => {
 
   it('keeps the present when no owner id was stamped (legacy payload)', () => {
     const present = makeProtocol('current');
-    const legacy = deserializeActiveProtocol(
-      JSON.stringify({ present }),
-    );
+    const legacy = deserializeActiveProtocol(JSON.stringify({ present }));
 
     const result = reconcileRehydratedActiveProtocol(legacy, 'any-id');
 
