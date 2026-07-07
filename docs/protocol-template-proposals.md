@@ -276,8 +276,8 @@ sharing (`boolean`), partnership **start** & **end** dates (`datetime`).
 ## 3. Build & shipping notes
 
 Templates are **URL-referenced `.netcanvas` files** (not bundled): URLs live in
-`apps/architect-web/src/config/index.ts`; the library UI is in
-`apps/architect-web/src/components/Home/{Home,LibraryPanel}.tsx`. A `.netcanvas` is a ZIP of
+`apps/architect/src/config/index.ts`; the library UI is in
+`apps/architect/src/components/Home/{Home,LibraryPanel}.tsx`. A `.netcanvas` is a ZIP of
 `protocol.json` (schema v8) + `assets/`; the richest worked reference is
 `packages/development-protocol/protocol.json` (all stage/variable types exercised).
 

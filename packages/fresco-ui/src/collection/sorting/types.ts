@@ -20,13 +20,29 @@ export type SortProperty = string | string[];
 export type SortDirection = 'asc' | 'desc';
 
 /**
+ * A single option value that can appear in a ranked option list (hierarchy).
+ * Mirrors the codebook option `value` shape (string | number | boolean).
+ */
+export type SortOptionValue = string | number | boolean;
+
+/**
  * Type of value being sorted, determines comparison logic.
  * - 'string': Locale-aware string comparison
  * - 'number': Numeric comparison
  * - 'date': Date parsing and comparison
  * - 'boolean': Boolean comparison (false < true)
+ * - 'hierarchy': Ordinal comparison by codebook option index (rank). Requires
+ *   `hierarchy` to be supplied (the ordered option value list).
+ * - 'categorical': Comparison of an array-valued attribute by the best (lowest)
+ *   codebook option index across the selection. Requires `hierarchy`.
  */
-export type SortType = 'string' | 'number' | 'date' | 'boolean';
+export type SortType =
+  | 'string'
+  | 'number'
+  | 'date'
+  | 'boolean'
+  | 'hierarchy'
+  | 'categorical';
 
 /**
  * A single sort rule defining how to sort items.
@@ -38,6 +54,11 @@ export type SortRule = {
   direction?: SortDirection;
   /** Type of comparison to use */
   type: SortType;
+  /**
+   * Ordered option value list (rank) for 'hierarchy'/'categorical' sorts.
+   * Items are ordered by the index of their value in this list.
+   */
+  hierarchy?: SortOptionValue[];
 };
 
 /**
@@ -64,6 +85,11 @@ export type SortableProperty = {
   label: string;
   /** Type of comparison to use */
   type: SortType;
+  /**
+   * Ordered option value list (rank) for 'hierarchy'/'categorical' sortable
+   * properties, so consumers can build a ranked sort rule.
+   */
+  hierarchy?: SortOptionValue[];
 };
 
 /**

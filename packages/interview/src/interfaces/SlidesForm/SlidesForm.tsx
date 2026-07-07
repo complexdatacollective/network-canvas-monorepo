@@ -158,7 +158,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
         ) as Record<string, FieldValue>)
       : undefined;
 
-    const { fieldComponents } = useProtocolForm({
+    const { fieldComponents, coerceValues } = useProtocolForm({
       fields: form.fields,
       autoFocus: false,
       initialValues,
@@ -167,7 +167,9 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
     });
 
     const handleSubmit: FormSubmitHandler = (values) => {
-      onUpdate(id, values as NcNode[EntityAttributesProperty]);
+      // Coerce values to their declared codebook type (e.g. number fields,
+      // which emit raw strings) before persisting.
+      onUpdate(id, coerceValues(values) as NcNode[EntityAttributesProperty]);
       track('form_submitted', {
         form_kind,
         ...(form_kind === 'alter' || form_kind === 'alter_edge'

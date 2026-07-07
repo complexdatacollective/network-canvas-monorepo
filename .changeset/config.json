@@ -8,12 +8,12 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
-    "@codaco/architect-web",
-    "@codaco/interviewer-v8",
+    "@codaco/architect-classic",
+    "@codaco/interviewer-classic",
     "@codaco/documentation",
     "networkcanvas.com",
-    "network-canvas-architect",
-    "network-canvas-interviewer"
+    "@codaco/architect",
+    "@codaco/interviewer"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true

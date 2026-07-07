@@ -71,9 +71,9 @@ const redirectTests: RedirectTest[] = [
   {
     from: '/interface-documentation/family-pedigree',
     expectedDestination:
-      '/en/design-protocols/interface-documentation/family-tree-census',
+      '/en/design-protocols/interface-documentation/family-pedigree',
     description:
-      'family-pedigree is renamed (exact rule must beat the splat above it)',
+      'family-pedigree resolves to its own page via the splat (no rename rule)',
   },
   {
     from: '/key-concepts/data-export',

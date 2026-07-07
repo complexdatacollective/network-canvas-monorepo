@@ -37,7 +37,9 @@ const INTERFACE_INTRODUCED_IN: Record<string, number> = {
   'geospatial': 8,
   'anonymisation': 8,
   'one-to-many-dyad-census': 8,
-  'family-tree-census': 8,
+  'family-pedigree': 8,
+  'narrative-pedigree': 8,
+  'network-composer': 8,
   // Schema 6 — NameGeneratorRoster family (schemas/6/migration.ts)
   'name-generator-roster': 6,
   'large-roster-name-generator': 6,

@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { action } from 'storybook/actions';
+import { expect, userEvent, within } from 'storybook/test';
 
+import Button from '../../Button';
 import InputField from '../fields/InputField';
 import ToggleField from '../fields/ToggleField';
 import Form from '../Form';
@@ -408,5 +410,137 @@ export const UsingMarkdown: Story = {
           'Field labels and hints are rendered with ReactMarkdown, supporting `*italic*` and `**bold**`. This story demonstrates markdown rendering in both.',
       },
     },
+  },
+};
+
+/**
+ * A control rendered in a field's prefix/suffix slot is part of the field: the
+ * **field container** is the unit of focus for validation, not the `<input>`.
+ *
+ * A function slot receives a `FieldSlotController` so it can set the value
+ * without importing the form store. Because `setValue` routes through the
+ * field's change handler, a generated value clears any pre-existing error.
+ *
+ * The play function reproduces the original bug (a "Generate" button leaving a
+ * stale "cannot be empty" error) and proves it no longer happens — for the
+ * keyboard path: tabbing input → button does not validate, and there is no
+ * error flash.
+ */
+export const SlotControllerNoStaleError: Story = {
+  name: 'Slot controller — no stale validation error',
+  render: () => (
+    <div className="max-w-lg">
+      <Form
+        onSubmit={(data) => {
+          action('form-submitted')(data);
+          return { success: true };
+        }}
+      >
+        <Field
+          name="identifier"
+          label="Identifier"
+          hint="Generate an identifier, or type your own."
+          component={InputField}
+          required="Identifier cannot be empty"
+          suffixComponent={(field) => (
+            <Button
+              size="sm"
+              variant="text"
+              onClick={() => field.setValue('p-generated')}
+            >
+              Generate
+            </Button>
+          )}
+        />
+        <SubmitButton>Submit</SubmitButton>
+      </Form>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole('textbox');
+    const generate = canvas.getByRole('button', { name: 'Generate' });
+
+    // Touch the required field, then leave it empty.
+    await userEvent.click(input);
+    await userEvent.type(input, 'x');
+    await userEvent.clear(input);
+
+    // Tab from the input to the in-field Generate button. Focus is still
+    // inside the field, so no validation fires — no error flash.
+    await userEvent.tab();
+    await expect(generate).toHaveFocus();
+    await expect(
+      canvas.queryByText('Identifier cannot be empty'),
+    ).not.toBeInTheDocument();
+
+    // Activate Generate from the keyboard → the value is set.
+    await userEvent.keyboard('{Enter}');
+    await expect(input).toHaveValue('p-generated');
+
+    // Tab out of the field → validates the now-valid value, still no error.
+    await userEvent.tab();
+    await expect(
+      canvas.queryByText('Identifier cannot be empty'),
+    ).not.toBeInTheDocument();
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Slot controls (Generate buttons, clear, the number steppers) are real tab stops with native button semantics — no `tabindex=-1`, no `mousedown` preventDefault. With container-scoped validation, tabbing from the input to a slot control no longer mis-fires validation, and a function slot can set + validate the value via the injected `FieldSlotController`.',
+      },
+    },
+  },
+};
+
+/**
+ * `<input type="number">` already supports ArrowUp/ArrowDown stepping while
+ * focused, so the keyboard story is covered natively. The +/- buttons are
+ * redundant pointer affordances (`tabIndex=-1`), and because they are in-field
+ * controls, clicking them does not fire premature validation.
+ */
+export const NumberStepperKeyboard: Story = {
+  name: 'Number steppers — keyboard + no premature validation',
+  render: () => (
+    <div className="max-w-lg">
+      <Form
+        onSubmit={(data) => {
+          action('form-submitted')(data);
+          return { success: true };
+        }}
+      >
+        <Field
+          name="count"
+          label="Count"
+          component={InputField}
+          type="number"
+          required
+          min={0}
+          max={10}
+          initialValue="5"
+        />
+        <SubmitButton>Submit</SubmitButton>
+      </Form>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole('spinbutton');
+
+    // ArrowUp/ArrowDown step the value while the input is focused.
+    await userEvent.click(input);
+    await userEvent.keyboard('{ArrowUp}');
+    await expect(input).toHaveValue(6);
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}');
+    await expect(input).toHaveValue(4);
+
+    // The +/- buttons step the value too; being in-field controls, the focus
+    // move does not trigger premature validation.
+    await userEvent.click(canvas.getByLabelText('Increase value'));
+    await expect(input).toHaveValue(5);
+    await expect(
+      canvas.queryByText('You must answer this question before continuing.'),
+    ).not.toBeInTheDocument();
   },
 };

@@ -8,6 +8,7 @@ import type {
   Codebook,
   NodeDefinition,
   StageSubject,
+  VariableOption,
   VariableOptions,
 } from '@codaco/protocol-validation';
 import {
@@ -34,7 +35,7 @@ type NavigationInfo = {
   canMoveBackward: boolean;
 };
 
-const getActiveSession = (state: RootState) => {
+export const getActiveSession = (state: RootState) => {
   return state.session;
 };
 
@@ -52,7 +53,9 @@ export const getStageMetadata = createSelector(
   getActiveSession,
   getStageIndex,
   (session, stageIndex) => {
-    if (!stageIndex) return undefined;
+    // Guard against an undefined index (not a falsy one): stage index 0 is a
+    // valid step and its metadata must be readable.
+    if (stageIndex === undefined) return undefined;
     return session?.stageMetadata?.[stageIndex] ?? undefined;
   },
 );
@@ -86,7 +89,11 @@ export const getStageSubject = createSelector(getCurrentStage, (stage) => {
   if (
     stage.type === 'Information' ||
     stage.type === 'Anonymisation' ||
-    stage.type === 'FamilyPedigree'
+    stage.type === 'FamilyPedigree' ||
+    // NarrativePedigree has no stage subject: it reads the captured pedigree
+    // from the shared network filtered to its source FamilyPedigree stage's
+    // node/edge types, so it owns no subject of its own.
+    stage.type === 'NarrativePedigree'
   ) {
     return null;
   }
@@ -354,8 +361,12 @@ export function resolveNodeShape(
   const variableValue = attributes[shapeDef.dynamic.variable];
 
   if (shapeDef.dynamic.type === 'discrete') {
-    const match = shapeDef.dynamic.map.find(
-      (entry) => entry.value === variableValue,
+    // Categorical (multi-select) variables store their value as an array, so
+    // match against the array members; scalar variables compare directly.
+    const match = shapeDef.dynamic.map.find((entry) =>
+      Array.isArray(variableValue)
+        ? variableValue.some((v) => v === entry.value)
+        : entry.value === variableValue,
     );
     return match?.shape ?? shapeDef.default;
   }
@@ -424,7 +435,14 @@ export const getCategoricalOptions: (
     const variable = (codebook as Codebook).node?.[subjectType]?.variables?.[
       variableId
     ];
-    return variable && 'options' in variable ? (variable.options ?? []) : [];
+    if (!variable || !('options' in variable) || !variable.options) {
+      return [];
+    }
+    // A generic codebook lookup widens `options` to include boolean-variable
+    // options; categorical/ordinal options are string/number-valued.
+    return variable.options.filter(
+      (option): option is VariableOption => typeof option.value !== 'boolean',
+    );
   },
 );
 

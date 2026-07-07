@@ -1,0 +1,144 @@
+import { PureComponent } from 'react';
+import { compose } from 'react-recompose';
+import { Field } from 'redux-form';
+
+import type { StageType } from '@codaco/protocol-validation';
+import { Row, Section } from '~/components/EditorLayout';
+import {
+  BooleanField,
+  Number as NumberField,
+  Toggle,
+} from '~/components/Form/Fields';
+import IssueAnchor from '~/components/IssueAnchor';
+import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+
+import DetachedField from '../../DetachedField';
+import Image from '../../Form/Fields/Image';
+import ValidatedField from '../../Form/ValidatedField';
+import withBackgroundChangeHandler from './withBackgroundChangeHandler';
+
+/**
+ * The Narrative stage schema forbids a background image (its background is a
+ * strict object of only concentricCircles/skewedTowardCenter). The shared
+ * Background section must not offer the image option for Narrative stages.
+ */
+export const allowsBackgroundImage = (interfaceType: StageType): boolean =>
+  interfaceType !== 'Narrative';
+
+type BackgroundProps = StageEditorSectionProps & {
+  handleChooseBackgroundType: (value: boolean) => void;
+  useImage: boolean;
+};
+
+class Background extends PureComponent<BackgroundProps> {
+  render() {
+    const { handleChooseBackgroundType, useImage, interfaceType } = this.props;
+    const imageAllowed = allowsBackgroundImage(interfaceType);
+    const showImage = imageAllowed && useImage;
+
+    return (
+      <Section
+        title="Background"
+        summary={
+          <p>
+            This section determines the graphical background for this prompt.
+            {imageAllowed
+              ? ' You can choose between a conventional series of concentric circles, or provide your own background image.'
+              : ' This stage uses the conventional series of concentric circles.'}
+          </p>
+        }
+      >
+        {imageAllowed && (
+          <Row>
+            <h4>Choose a background type</h4>
+            <DetachedField
+              component={
+                BooleanField as React.ComponentType<Record<string, unknown>>
+              }
+              value={useImage}
+              options={[
+                {
+                  value: false,
+                  label: () => (
+                    <div>
+                      <h4>Concentric Circles</h4>
+                      <p>
+                        Use the conventional concentric circles sociogram
+                        background.
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  value: true,
+                  label: () => (
+                    <div>
+                      <h4>Image</h4>
+                      <p>
+                        Use a custom image of your choosing as the background.
+                      </p>
+                    </div>
+                  ),
+                },
+              ]}
+              onChange={(
+                _event: unknown,
+                nextValue: unknown,
+                _currentValue: unknown,
+                _name: string | null,
+              ) => handleChooseBackgroundType(nextValue as boolean)}
+              noReset
+            />
+          </Row>
+        )}
+        {!showImage && (
+          <>
+            <Row>
+              <IssueAnchor
+                fieldName="background.concentricCircles"
+                description="Background > Concentric Circles"
+              />
+              <ValidatedField
+                name="background.concentricCircles"
+                component={NumberField}
+                normalize={(value) => Number.parseInt(value, 10) || value}
+                validation={{ required: true, positiveNumber: true }}
+                componentProps={{
+                  label: 'Number of concentric circles to use:',
+                  type: 'number',
+                }}
+              />
+            </Row>
+            <Row>
+              <Field
+                name="background.skewedTowardCenter"
+                component={Toggle}
+                label="Skew the size of the circles so that the middle is proportionally larger."
+              />
+            </Row>
+          </>
+        )}
+        {showImage && (
+          <Row>
+            <IssueAnchor
+              fieldName="background.image"
+              description="Background > Image"
+            />
+            <ValidatedField
+              name="background.image"
+              component={Image as React.ComponentType<Record<string, unknown>>}
+              validation={{ required: true }}
+              componentProps={{
+                label: 'Background image',
+              }}
+            />
+          </Row>
+        )}
+      </Section>
+    );
+  }
+}
+
+export default compose<BackgroundProps, StageEditorSectionProps>(
+  withBackgroundChangeHandler,
+)(Background);

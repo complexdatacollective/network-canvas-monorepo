@@ -16,7 +16,62 @@ type StoryArgs = {
   panelCount: number;
   minNodes: number;
   maxNodes: number;
+  /**
+   * Panel 1 content. `0` keeps it an existing-network panel; any value `> 0`
+   * makes it an external-data panel pre-loaded with that many nodes. Set this
+   * unequal to {@link panel2NodeCount} to reproduce the lopsided split where one
+   * open panel takes nearly all the space and its sibling collapses to a sliver.
+   */
+  panel1NodeCount: number;
+  /** Panel 2 content; see {@link panel1NodeCount}. */
+  panel2NodeCount: number;
+  /** Per-panel title overrides (index-aligned); falls back to `Panel N`. */
+  panelTitles?: string[];
 };
+
+type PanelHost = {
+  addPanel: (config: { title: string; dataSource?: string }) => void;
+};
+
+/**
+ * Add `args.panelCount` side panels to a stage. A panel whose per-index node
+ * count (`panel1NodeCount` / `panel2NodeCount`) is `> 0` becomes an
+ * external-data panel loaded with exactly that many nodes, giving each panel an
+ * independently controllable content height; a count of `0` leaves it as a
+ * plain existing-network panel.
+ */
+function addConfiguredPanels(
+  interview: SyntheticInterview,
+  stage: PanelHost,
+  args: StoryArgs,
+) {
+  const nodeCounts = [args.panel1NodeCount, args.panel2NodeCount];
+
+  for (let i = 0; i < args.panelCount; i++) {
+    const title = args.panelTitles?.[i] ?? `Panel ${i + 1}`;
+    const nodeCount = nodeCounts[i] ?? 0;
+
+    if (nodeCount <= 0) {
+      stage.addPanel({ title });
+      continue;
+    }
+
+    const assetId = `panel-${i}-data`;
+    const names = Array.from(
+      { length: nodeCount },
+      (_, n) => `${title} ${n + 1}`,
+    );
+    interview.addAsset({
+      key: assetId,
+      assetId,
+      name: `${assetId}.json`,
+      type: 'network',
+      url: buildExternalDataUrl(names),
+      size: 0,
+    });
+    stage.addPanel({ title, dataSource: assetId });
+  }
+}
 
 /**
  * When `initialNodeCount > 0`, prepend a one-prompt "Setup" NameGenerator stage
@@ -78,9 +133,7 @@ function buildInterview(args: StoryArgs): {
       });
     }
 
-    for (let i = 0; i < args.panelCount; i++) {
-      stage.addPanel({ title: `Panel ${i + 1}` });
-    }
+    addConfiguredPanels(interview, stage, args);
   } else {
     const stage = interview.addStage('NameGeneratorQuickAdd', {
       label: 'Name Generator',
@@ -95,9 +148,7 @@ function buildInterview(args: StoryArgs): {
       });
     }
 
-    for (let i = 0; i < args.panelCount; i++) {
-      stage.addPanel({ title: `Panel ${i + 1}` });
-    }
+    addConfiguredPanels(interview, stage, args);
   }
 
   interview.addInformationStage({
@@ -153,7 +204,18 @@ const meta: Meta<StoryArgs> = {
     },
     panelCount: {
       control: { type: 'range', min: 0, max: 2 },
-      description: 'Side panels (dataSource: existing)',
+      description:
+        'Number of side panels (per-panel data source set by panel1/2NodeCount)',
+    },
+    panel1NodeCount: {
+      control: { type: 'range', min: 0, max: 20 },
+      description:
+        'Panel 1 nodes: 0 = existing-network panel; >0 = external-data panel with N nodes. Set unequal to panel 2 to reproduce the lopsided split.',
+    },
+    panel2NodeCount: {
+      control: { type: 'range', min: 0, max: 20 },
+      description:
+        'Panel 2 nodes: 0 = existing-network panel; >0 = external-data panel with N nodes.',
     },
     minNodes: {
       control: 'number',
@@ -169,6 +231,8 @@ const meta: Meta<StoryArgs> = {
     initialNodeCount: 3,
     promptCount: 2,
     panelCount: 1,
+    panel1NodeCount: 0,
+    panel2NodeCount: 0,
     minNodes: 0,
     maxNodes: 0,
   },
@@ -179,6 +243,88 @@ type Story = StoryObj<StoryArgs>;
 
 export const Default: Story = {
   render: (args) => <NameGeneratorStoryWrapper {...args} />,
+};
+
+/**
+ * Two stacked side panels with *unequal* content (12 nodes vs 2). When both
+ * panels are open they should each take ~50% of the column regardless of how
+ * much content each holds. This is the regression guard for the lopsided-split
+ * bug: because `Panel` grows from a content-derived `flex-basis: auto` (rather
+ * than `basis-0`) the fuller panel keeps nearly all the space and its sibling
+ * collapses to a sliver — the `play` below fails until `components/Panel.tsx`
+ * gives panels a zero basis.
+ *
+ * Use the `panel1NodeCount` / `panel2NodeCount` controls to vary the imbalance,
+ * or set both to the same value. Setting a count to `0` reverts that panel to an
+ * existing-network panel.
+ */
+export const TwoPanels: Story = {
+  args: {
+    stageType: 'NameGenerator',
+    initialNodeCount: 0,
+    promptCount: 1,
+    panelCount: 2,
+    panel1NodeCount: 12,
+    panel2NodeCount: 2,
+    minNodes: 0,
+    maxNodes: 0,
+    panelTitles: ['in progress interview', 'previous interview'],
+  },
+  render: (args) => <NameGeneratorStoryWrapper {...args} />,
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [title0 = '', title1 = ''] = args.panelTitles ?? [];
+
+    // Wait until both panels have rendered and their external data has loaded,
+    // so measured heights reflect real content. Match each panel by its title
+    // (via its header button) rather than DOM order, so the test is independent
+    // of render order; assert the configured per-panel node counts.
+    const panels = await waitFor(
+      async () => {
+        const found = canvas.getAllByTestId('node-panel');
+        await expect(found.length).toBe(2);
+        const byTitle = (title: string) =>
+          found.find((p) => within(p).queryByRole('button', { name: title }));
+        const fuller = byTitle(title0);
+        const sparser = byTitle(title1);
+        await expect(fuller).toBeDefined();
+        await expect(sparser).toBeDefined();
+        await expect(within(fuller!).getAllByRole('option').length).toBe(
+          args.panel1NodeCount,
+        );
+        await expect(within(sparser!).getAllByRole('option').length).toBe(
+          args.panel2NodeCount,
+        );
+        return [fuller!, sparser!];
+      },
+      { timeout: 10000 },
+    );
+
+    // Surface (the panel root) mounts with its own entrance animation that
+    // drives the node-panel element's opacity 0 → 1; measuring before it settles
+    // reports transient zero heights, so wait for it to finish. (The ratio below
+    // is scale-invariant, but the height read itself is not reliable mid-anim.)
+    await waitFor(
+      async () => {
+        for (const p of panels) {
+          await expect(getComputedStyle(p).opacity).toBe('1');
+        }
+      },
+      { timeout: 5000 },
+    );
+
+    const [tall, short] = panels.map((p) => p.getBoundingClientRect().height);
+    const ratio = Math.min(tall!, short!) / Math.max(tall!, short!);
+
+    // Two open panels should split the rail evenly irrespective of content.
+    // Pre-fix (`grow` + content-derived `basis-auto`) the fuller panel keeps
+    // almost all the height and this ratio collapses toward 0; post-fix
+    // (`basis-0`) both grow from a zero baseline and it sits near 1.
+    await expect(
+      ratio,
+      `Open panels should be within 15% of each other in height, got ${tall!.toFixed(0)}px vs ${short!.toFixed(0)}px`,
+    ).toBeGreaterThan(0.85);
+  },
 };
 
 export const MinNodesValidation: Story = {

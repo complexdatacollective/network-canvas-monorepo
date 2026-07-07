@@ -1,6 +1,6 @@
 {
   "name": "@codaco/development-protocol",
-  "version": "2.0.1",
+  "version": "2.0.3",
   "description": "Development protocol for testing Network Canvas applications",
   "keywords": [
     "development",
@@ -21,7 +21,8 @@
   "type": "module",
   "main": "./protocol.json",
   "exports": {
-    ".": "./protocol.json"
+    ".": "./protocol.json",
+    "./assets/*": "./assets/*"
   },
   "engines": {
     "node": ">=20.0.0"

@@ -31,8 +31,10 @@ function AnonymisationInner(props: AnonymisationProps) {
   const alertRef = useRef<HTMLDivElement>(null);
   const { updateReady } = useReadyForNextStage();
   const {
-    stage: { explanationText },
+    stage: { explanationText, validation },
   } = props;
+  const minLength = validation?.minLength;
+  const maxLength = validation?.maxLength;
   const { passphrase, setPassphrase } = usePassphrase();
   const celebrate = useCelebrate(alertRef);
 
@@ -121,7 +123,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <Surface level={1} className="mt-6" spacing="sm" shadow="sm">
+                  <Surface className="mt-6" spacing="sm" shadow="sm">
                     <FormWithoutProvider
                       onSubmit={handleSetPassphrase}
                       ref={formRef}
@@ -133,6 +135,8 @@ function AnonymisationInner(props: AnonymisationProps) {
                         label="Passphrase"
                         required
                         autoFocus
+                        {...(minLength !== undefined && { minLength })}
+                        {...(maxLength !== undefined && { maxLength })}
                       />
                       <Field
                         component={PasswordField}
@@ -141,6 +145,8 @@ function AnonymisationInner(props: AnonymisationProps) {
                         label="Confirm Passphrase"
                         required
                         sameAs="passphrase"
+                        {...(minLength !== undefined && { minLength })}
+                        {...(maxLength !== undefined && { maxLength })}
                       />
                       <SubmitButton
                         key="submit"

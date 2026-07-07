@@ -23,7 +23,7 @@ export function BaseUISharedPopoverContainer({
 }) {
   return (
     <MotionSurface
-      level="popover"
+      floating
       spacing="xs"
       shadow="md"
       noContainer
@@ -153,6 +153,7 @@ type PopoverContentProps = Omit<
 > & {
   className?: string;
   children: ReactNode;
+  side?: 'top' | 'right' | 'bottom' | 'left';
   sideOffset?: number;
   showArrow?: boolean;
   keepMounted?: boolean;
@@ -162,6 +163,7 @@ type PopoverContentProps = Omit<
 
 function PopoverContent({
   children,
+  side,
   sideOffset = 10,
   showArrow = true,
   keepMounted = true,
@@ -184,6 +186,7 @@ function PopoverContent({
           <BasePopover.Positioner
             sideOffset={sideOffset}
             align={align}
+            {...(side ? { side } : {})}
             {...(anchor ? { anchor } : {})}
           >
             <BasePopover.Popup

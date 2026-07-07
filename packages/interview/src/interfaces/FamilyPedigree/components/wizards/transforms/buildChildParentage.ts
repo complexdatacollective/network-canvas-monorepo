@@ -1,14 +1,17 @@
-import type { VariableValue } from '@codaco/shared-consts';
+import type { RelationshipType, VariableValue } from '@codaco/shared-consts';
 import type {
   CommitBatch,
   GameteRole,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
-import { extractCustomAttributes } from './personAttributes';
+import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 
 type RoleKey = 'egg-source' | 'sperm-source' | 'carrier-source';
-type ChildRelationshipType = 'biological' | 'donor' | 'surrogate';
+type ChildRelationshipType = Extract<
+  RelationshipType,
+  'biological' | 'donor' | 'surrogate'
+>;
 
 const NEW_PERSON_NAMESPACE: Record<RoleKey, string> = {
   'egg-source': 'new-egg-source',
@@ -88,14 +91,23 @@ export function buildChildParentage(
       if (!personValues) continue;
       const name = (personValues.name as string | undefined) ?? '';
       const extraAttrs = extractCustomAttributes(personValues);
+      const isGameteParen =
+        roleKey === 'egg-source' || roleKey === 'sperm-source';
+      const nodeAttrs: Record<string, VariableValue> = {
+        [variableConfig.nodeLabelVariable]: name,
+        [variableConfig.egoVariable]: false,
+        ...extraAttrs,
+      };
+      if (!isGameteParen) {
+        const sex = readBiologicalSex(personValues.biologicalSex);
+        if (sex !== undefined) {
+          nodeAttrs[variableConfig.biologicalSexVariable] = [sex];
+        }
+      }
       parentEntries.push({
         tempId: namespace,
         roleKey,
-        attributes: {
-          [variableConfig.nodeLabelVariable]: name,
-          [variableConfig.egoVariable]: false,
-          ...extraAttrs,
-        },
+        attributes: nodeAttrs,
         relationshipType,
         isGestationalCarrier: roleKey === 'carrier-source',
       });
@@ -134,34 +146,38 @@ export function buildChildParentage(
       data: { attributes: entry.attributes },
     });
     const edgeAttributes: Record<string, VariableValue> = {
-      [variableConfig.relationshipTypeVariable]: entry.relationshipType,
+      [variableConfig.relationshipTypeVariable]: [entry.relationshipType],
       [variableConfig.isActiveVariable]: true,
     };
     if (entry.isGestationalCarrier) {
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
+    if (gameteRole) {
+      edgeAttributes[variableConfig.gameteRoleVariable] = [gameteRole];
+    }
     edges.push({
       source: entry.tempId,
       target: childTempId,
-      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }
 
   for (const entry of existingParentEdges) {
     const edgeAttributes: Record<string, VariableValue> = {
-      [variableConfig.relationshipTypeVariable]: entry.relationshipType,
+      [variableConfig.relationshipTypeVariable]: [entry.relationshipType],
       [variableConfig.isActiveVariable]: true,
     };
     if (entry.isGestationalCarrier) {
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
+    if (gameteRole) {
+      edgeAttributes[variableConfig.gameteRoleVariable] = [gameteRole];
+    }
     edges.push({
       source: entry.sourceId,
       target: childTempId,
-      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }

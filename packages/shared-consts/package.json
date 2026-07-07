@@ -1,6 +1,6 @@
 {
   "name": "@codaco/shared-consts",
-  "version": "5.2.0",
+  "version": "5.4.0",
   "description": "Shared constants and typescript definitions for the Network Canvas project.",
   "keywords": [
     "library",
@@ -34,6 +34,8 @@
     "build": "node ../../scripts/with-turbo.mjs vite build",
     "dev": "node ../../scripts/with-turbo.mjs --with-deps vite build --watch",
     "clean": "rm -rf .turbo node_modules dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --build --noEmit"
   },
   "dependencies": {
@@ -41,10 +43,12 @@
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:*",
+    "@microsoft/api-extractor": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-dts": "catalog:"
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
   },
   "engines": {
     "node": ">=20.0.0"

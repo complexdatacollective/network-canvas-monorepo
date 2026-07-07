@@ -7,7 +7,12 @@ export default defineConfig({
 
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // Retry on CI only. The suite is serial (mode: 'serial'), so a retry re-runs
+  // the whole group from beforeAll and rebuilds state — recovering known
+  // transient visual flakes (e.g. SILOS stage-29, issue #844) so the gate stays
+  // green while Playwright still reports them as flaky. Local stays 0 so flakes
+  // surface deterministically while developing.
+  retries: process.env.CI ? 2 : 0,
   timeout: 30_000,
 
   reporter: [

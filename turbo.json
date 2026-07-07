@@ -27,39 +27,6 @@
       "env": ["NODE_ENV"],
       "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
     },
-    "@codaco/biometric-keystore#build": {
-      "inputs": [
-        "src/**",
-        "build.rs",
-        "Cargo.toml",
-        "Cargo.lock",
-        "scripts/**",
-        "package.json"
-      ],
-      "outputs": ["biometric-keystore.darwin-*.node"]
-    },
-    "@codaco/interviewer-v8#electron:build": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "electron/**",
-        "src/**",
-        "index.html",
-        "electron.vite.config.*",
-        "vite.renderer.config.*",
-        "tsconfig*.json",
-        "package.json"
-      ],
-      "env": ["NODE_ENV"],
-      "outputs": ["dist-electron/**"]
-    },
-    "@codaco/interviewer-v8#electron:rebuild-deps": {
-      "cache": false
-    },
-    "@codaco/interviewer-v8#electron:dev": {
-      "dependsOn": ["^build", "electron:rebuild-deps"],
-      "cache": false,
-      "persistent": true
-    },
     "@codaco/documentation#build": {
       "dependsOn": ["^build"],
       "inputs": [
@@ -94,7 +61,7 @@
       ],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
-    "@codaco/architect-web#build": {
+    "@codaco/architect#build": {
       "dependsOn": ["^build"],
       "inputs": [
         "src/**",
@@ -142,7 +109,7 @@
       ],
       "outputs": []
     },
-    "network-canvas-interviewer#build:web": {
+    "@codaco/interviewer-classic#build:web": {
       "dependsOn": ["^build"],
       "inputs": [
         "src/**",
@@ -153,7 +120,7 @@
       ],
       "outputs": ["dist-web/**"]
     },
-    "network-canvas-architect#build": {
+    "@codaco/architect-classic#build": {
       "dependsOn": ["^build"],
       "inputs": [
         "src/**",
@@ -225,7 +192,7 @@
       "cache": false,
       "persistent": true
     },
-    "@codaco/architect-web#dev": {
+    "@codaco/architect#dev": {
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true

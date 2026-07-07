@@ -1,7 +1,6 @@
-import { faker } from '@faker-js/faker';
+import { z } from 'zod';
 
 import { findDuplicateId } from '~/utils/validation-helpers';
-import { z } from '~/utils/zod-mock-extension';
 
 import {
   FormSchema,
@@ -11,53 +10,62 @@ import {
 } from '../common';
 import { baseStageSchema } from './base';
 
-export const nameGeneratorStage = baseStageSchema
-  .extend({
-    type: z.literal('NameGenerator'),
-    form: FormSchema,
-    subject: NodeStageSubjectSchema,
-    panels: z
-      .array(panelSchema)
-      .optional()
-      .superRefine((panels, ctx) => {
-        if (panels) {
-          // Check for duplicate panel IDs
-          const duplicatePanelId = findDuplicateId(panels);
-          if (duplicatePanelId) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `Panels contain duplicate ID "${duplicatePanelId}"`,
-              path: [],
-            });
-          }
-        }
-      }),
-    prompts: z
-      .array(nameGeneratorPromptSchema)
-      .min(1)
-      .superRefine((prompts, ctx) => {
-        // Check for duplicate prompt IDs
-        const duplicatePromptId = findDuplicateId(prompts);
-        if (duplicatePromptId) {
+// Shared by NameGenerator and NameGeneratorQuickAdd: a node-count window must be
+// satisfiable (maxNodes >= minNodes), allow at least one node (maxNodes >= 1),
+// and never demand a negative minimum.
+export const nameGeneratorBehavioursSchema = z
+  .strictObject({
+    minNodes: z.number().int().min(0).optional(),
+    maxNodes: z.number().int().min(1).optional(),
+  })
+  .superRefine((behaviours, ctx) => {
+    if (
+      behaviours.minNodes !== undefined &&
+      behaviours.maxNodes !== undefined &&
+      behaviours.maxNodes < behaviours.minNodes
+    ) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'maxNodes must be greater than or equal to minNodes.',
+        path: ['maxNodes'],
+      });
+    }
+  })
+  .optional();
+
+export const nameGeneratorStage = baseStageSchema.extend({
+  type: z.literal('NameGenerator'),
+  form: FormSchema,
+  subject: NodeStageSubjectSchema,
+  panels: z
+    .array(panelSchema)
+    .optional()
+    .superRefine((panels, ctx) => {
+      if (panels) {
+        // Check for duplicate panel IDs
+        const duplicatePanelId = findDuplicateId(panels);
+        if (duplicatePanelId) {
           ctx.addIssue({
             code: 'custom' as const,
-            message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+            message: `Panels contain duplicate ID "${duplicatePanelId}"`,
             path: [],
           });
         }
-      }),
-    behaviours: z
-      .strictObject({
-        minNodes: z.number().int().optional(),
-        maxNodes: z.number().int().optional(),
-      })
-      .optional(),
-  })
-  .generateMock((base) => ({
-    ...base,
-    type: 'NameGenerator',
-    behaviours: {
-      minNodes: 1,
-      maxNodes: faker.number.int({ min: 2, max: 25 }),
-    },
-  }));
+      }
+    }),
+  prompts: z
+    .array(nameGeneratorPromptSchema)
+    .min(1)
+    .superRefine((prompts, ctx) => {
+      // Check for duplicate prompt IDs
+      const duplicatePromptId = findDuplicateId(prompts);
+      if (duplicatePromptId) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+          path: [],
+        });
+      }
+    }),
+  behaviours: nameGeneratorBehavioursSchema,
+});

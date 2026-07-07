@@ -1,12 +1,161 @@
-# network-canvas-architect
+# @codaco/architect
 
-## 6.6.0
+## 8.0.0-beta.3
 
-- **Updated core dependencies.** The technology the app is built on has been brought up to
-  date, which improves stability and performance and lays the groundwork for future
-  improvements.
-- **Compatibility with upcoming macOS versions.** This release ensures the app continues to
-  run smoothly on the latest and upcoming versions of macOS.
-- **Improved security.** We've adopted current security best practices for building and
-  distributing the app — including properly signed and notarized macOS builds — so you can be
-  confident the software you download is genuine and safe to run.
+### Minor Changes
+
+- Renamed the app from "Architect Web" to "Architect". The browser tab now reads **Architect** and the package is `@codaco/architect`. Your protocols, saved work, and workflow are unchanged.
+
+## 8.0.0-beta.2
+
+### Minor Changes
+
+- You can now work on more than one protocol at a time in separate browser tabs.
+  Each tab keeps its own open protocol and edits, so opening a second protocol in a
+  new tab no longer disturbs the first, and reloading a tab keeps the protocol you
+  were editing. Opening a fresh tab starts at the start screen. If you open the
+  same protocol in two tabs, the second becomes a read-only view that tells you the
+  protocol is already open elsewhere, so the two tabs can't overwrite each other's
+  changes.
+
+### Patch Changes
+
+- Pre-release audit fixes across the protocol designer. Your work is protected in
+  more places: the undo history no longer quietly fills up browser storage, an
+  interrupted export now tells you which resources were skipped instead of failing
+  silently, exported protocols keep same-named resources distinct, and reloading
+  for an update warns you before discarding an in-progress edit. Deleting and
+  editing entries in the codebook is safer — encrypted variables stay encrypted,
+  in-use resources can no longer be removed by mistake, and clearer prompts appear
+  when a change would affect another part of your protocol. The Family Pedigree,
+  Narrative Pedigree, and Network Composer editors handle diseases, edge types,
+  labels, and source-stage changes correctly; Family Pedigree's fixed value sets
+  (such as biological sex) stay read-only after they're created; and previewing is
+  more robust (clearer errors instead of a preview that never loads). Option labels no longer
+  pick up stray blank lines. Privacy is tightened: analytics no longer transmits
+  your protocol's text, and a Content-Security-Policy is applied to the deployed
+  app.
+
+  Starting up is nicer too: a loading animation now appears while the app opens
+  instead of a blank screen, and the "install Architect" banner disappears on its
+  own as soon as you install the app, without needing to refresh.
+
+## 8.0.0-beta.1
+
+### Patch Changes
+
+- Fix the Information stage editor producing invalid protocols. Text blocks could previously be resized, which set a display size that is no longer valid for text. Content blocks are now managed as a reorderable list with no limit on how many you can add, and a display size (Small, Medium, Large, or full size) can be set on image and video blocks only.
+
+## 8.0.0-beta.0
+
+- Start of the changeset-driven beta release line.
+
+## 7.0.0-beta.1
+
+### Patch Changes
+
+- Updated dependencies [02c4314]
+  - @codaco/fresco-ui@2.12.2
+  - @codaco/art@0.1.0
+
+## 7.6.0
+
+### Minor Changes
+
+- 7775d5f: Replace FamilyTreeCensus stage editor with FamilyPedigree, matching restructured protocol schema. The new editor organizes configuration into Node Configuration and Edge Configuration sections, simplifies the census prompt, and generalizes disease nomination prompts into generic nomination prompts.
+
+### Patch Changes
+
+- Updated dependencies [f1dbd8d]
+  - @codaco/protocol-validation@11.4.0
+
+## 7.5.2
+
+### Patch Changes
+
+- Updated dependencies [b8b9fb0]
+  - @codaco/protocol-validation@11.2.0
+
+## 7.5.1
+
+### Patch Changes
+
+- Updated dependencies [4f2d778]
+  - @codaco/protocol-validation@11.1.1
+
+## 7.5.0
+
+### Minor Changes
+
+- 273bcbe: Add optional showTransit and allowSearch configuration options to geospatial interface mapOptions:
+  - showTransit: When enabled, Fresco displays transit layers on the map
+  - allowSearch: When enabled, participants can search the map for locations
+
+  Both options default to false (disabled).
+
+- Updated dependencies [273bcbe]
+  - @codaco/protocol-validation@11.1.0
+
+## 7.4.0
+
+### Minor Changes
+
+- 8f91391: Remove `introductionPanel` from Geospatial interface schema.
+
+  This is a breaking change for existing protocols that include an `introductionPanel` on Geospatial stages. Protocols with Geospatial interfaces no longer support or require an introduction panel.
+
+### Patch Changes
+
+- Updated dependencies [8f91391]
+  - @codaco/protocol-validation@11.0.0
+
+## 7.3.0
+
+### Minor Changes
+
+- b713317: Add greaterThanOrEqualToVariable and lessThanOrEqualToVariable validations for number, datetime, and scalar variable types
+
+### Patch Changes
+
+- Updated dependencies [b713317]
+  - @codaco/protocol-validation@10.1.0
+
+## 7.2.0
+
+### Minor Changes
+
+- 23b675c: Migrate from direct PostHog usage to @codaco/analytics package for consistent analytics across all Network Canvas apps
+
+## 7.1.0
+
+### Minor Changes
+
+- 01448c8: Split Family Tree sexVariable into egoSexVariable and nodeSexVariable.
+
+  This is a breaking change for existing protocols that reference the old sexVariable field. Protocols with Farmily Tree interfaces require that the egoSexVariable and nodeSexVariable be defined separately.
+
+### Patch Changes
+
+- Updated dependencies [01448c8]
+  - @codaco/protocol-validation@10.0.0
+
+## 7.0.3
+
+### Patch Changes
+
+- Updated dependencies [cc2adc3]
+  - @codaco/protocol-validation@9.0.0
+
+## 7.0.2
+
+### Patch Changes
+
+- Updated dependencies [9958b67]
+  - @codaco/protocol-validation@8.0.2
+
+## 7.0.1
+
+### Patch Changes
+
+- Updated dependencies [84d09e3]
+  - @codaco/protocol-validation@8.0.1

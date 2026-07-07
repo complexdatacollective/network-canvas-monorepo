@@ -1,6 +1,6 @@
 import { copyFile, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { dirname, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { globSync } from 'tinyglobby';
@@ -8,6 +8,7 @@ import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
 const here = dirname(fileURLToPath(import.meta.url));
+const srcRoot = resolve(here, 'src');
 
 // Build a regex array of every dep + peerDep so rolldown leaves them external.
 // Inline (vs. vite-plugin-externalize-deps) because the plugin returns a
@@ -54,31 +55,35 @@ export default defineConfig({
       formats: ['es'],
     },
     rolldownOptions: {
-      input: globSync(
-        [
-          'src/**/*.{ts,tsx}',
-          '!src/**/*.{stories,test,spec}.{ts,tsx}',
-          '!src/**/__tests__/**',
-        ],
-        {
-          cwd: here,
-          absolute: true,
-        },
+      // Map each source file to an explicit output name (its path under src/,
+      // posix-normalized, sans extension) instead of relying on
+      // `preserveModules` + `preserveModulesRoot`. rolldown@1.0.3's
+      // preserveModulesRoot stripping is separator-sensitive and silently fails
+      // on Windows — it emits every file under `dist/packages/fresco-ui/src/…`
+      // instead of `dist/…`, so every subpath export
+      // (`@codaco/fresco-ui/ThemedRegion`, …) 404s for Windows consumers. With
+      // an explicit input MAP, each entry's output path is the key we compute
+      // here, so output is byte-for-byte identical on every OS. Each src file is
+      // still its own entry, so the 1:1 `dist/<path>.js` layout the package
+      // exports map points at is preserved.
+      input: Object.fromEntries(
+        globSync(
+          [
+            'src/**/*.{ts,tsx}',
+            '!src/**/*.{stories,test,spec}.{ts,tsx}',
+            '!src/**/__tests__/**',
+          ],
+          { cwd: here, absolute: true },
+        ).map((abs) => [
+          relative(srcRoot, abs)
+            .replace(/\\/g, '/')
+            .replace(/\.[jt]sx?$/, ''),
+          abs,
+        ]),
       ),
       external: [externalRegex, /^node:/],
       output: {
         format: 'esm',
-        preserveModules: true,
-        // Absolute, posix-normalized root. rolldown matches module paths
-        // (which it normalizes to forward slashes, even on Windows) against
-        // this root to strip it. A bare relative `'src'` resolves with the
-        // host separator, so on Windows the back-slashed root never matches the
-        // forward-slash module paths — the strip silently fails and every file
-        // is emitted under `dist/packages/fresco-ui/src/…` instead of `dist/…`,
-        // breaking every subpath export (`@codaco/fresco-ui/ThemedRegion`, …)
-        // for consumers on Windows. An absolute forward-slash root matches on
-        // both platforms.
-        preserveModulesRoot: resolve(here, 'src').replace(/\\/g, '/'),
         entryFileNames: '[name].js',
       },
     },

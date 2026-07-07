@@ -1,0 +1,124 @@
+import { useCallback } from 'react';
+
+import Assets from '~/components/AssetBrowser/Assets';
+import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
+import { Layout, Section } from '~/components/EditorLayout';
+import { Text } from '~/components/Form/Fields';
+import ValidatedField from '~/components/Form/ValidatedField';
+import Dialog from '~/components/NewComponents/Dialog';
+import { useAppDispatch } from '~/ducks/hooks';
+import Button from '~/lib/legacy-ui/components/Button';
+
+import { addApiKeyAsset } from '../../../../ducks/modules/protocol/assetManifest';
+import BasicForm from '../../../BasicForm';
+
+type APIKeyBrowserProps = {
+  show?: boolean;
+  type?: string | null;
+  selected?: string | null;
+  onSelect?: (assetId: string) => void;
+  onCancel?: () => void;
+  close: () => void;
+};
+
+const APIKeyBrowser = ({
+  show = true,
+  close,
+  onSelect = () => {},
+  selected = null,
+}: APIKeyBrowserProps) => {
+  const formName = 'create-api-key';
+  const dispatch = useAppDispatch();
+  const [preview, handleShowPreview] = useExternalDataPreview();
+
+  const handleSelectAsset = useCallback(
+    (assetId: string) => {
+      onSelect(assetId);
+      close();
+    },
+    [onSelect, close],
+  );
+
+  const handleSubmit = useCallback(
+    (formValues: Record<string, unknown>) => {
+      const { keyName, keyValue } = formValues as {
+        keyName: string;
+        keyValue: string;
+      };
+      dispatch(addApiKeyAsset(keyName, keyValue));
+    },
+    [dispatch],
+  );
+
+  return (
+    <Dialog
+      open={show}
+      onOpenChange={(open) => !open && close()}
+      title="API Key Browser"
+      footer={
+        <Dialog.Close
+          nativeButton={false}
+          render={<Button color="platinum">Cancel</Button>}
+        />
+      }
+    >
+      <BasicForm form={formName} onSubmit={handleSubmit}>
+        <Layout>
+          <Section title="Create New API Key" layout="vertical">
+            <p className="text-sm text-current/70">
+              This key is saved inside your protocol and is included, in plain
+              text, in any exported <code>.netcanvas</code> file. Anyone you
+              share the exported protocol with can read it, so only use a key
+              you are comfortable distributing.
+            </p>
+            <div data-name="API Key Name" />
+            <ValidatedField
+              component={Text}
+              name="keyName"
+              validation={{ required: true }}
+              componentProps={{
+                label: 'API Key Name',
+                type: 'text',
+                placeholder: 'Name this key',
+              }}
+            />
+            <div data-name="API Key Value" />
+            <ValidatedField
+              component={Text}
+              name="keyValue"
+              validation={{ required: true }}
+              componentProps={{
+                label: 'API Key',
+                type: 'text',
+                placeholder: 'Enter an API Key...',
+              }}
+            />
+            <div className="pt-4">
+              <Button
+                key="save"
+                type="submit"
+                iconPosition="right"
+                icon="arrow-right"
+                color="sea-green"
+              >
+                Create Key
+              </Button>
+            </div>
+          </Section>
+          <Section title="Resource Library" layout="vertical">
+            <Assets
+              onSelect={handleSelectAsset}
+              selected={selected}
+              type="apikey"
+              disableDelete
+              onPreview={handleShowPreview}
+            />
+          </Section>
+          {preview}
+        </Layout>
+      </BasicForm>
+    </Dialog>
+  );
+};
+
+export default APIKeyBrowser;

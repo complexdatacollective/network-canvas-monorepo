@@ -1,4 +1,4 @@
-import type { VariableValue } from '@codaco/shared-consts';
+import type { RelationshipType, VariableValue } from '@codaco/shared-consts';
 import type {
   CommitBatch,
   GameteRole,
@@ -6,14 +6,16 @@ import type {
 } from '~/interfaces/FamilyPedigree/store';
 
 import { buildChildParentage } from './buildChildParentage';
+import { readBiologicalSex } from './personAttributes';
 
 const KNOWN_BIO_PARENT_KEYS = new Set([
   'is-donor',
   'name',
   'gestationalCarrier',
+  'biologicalSex',
 ]);
 
-const KNOWN_ADDITIONAL_PARENT_KEYS = new Set(['role', 'name']);
+const KNOWN_ADDITIONAL_PARENT_KEYS = new Set(['role', 'name', 'biologicalSex']);
 
 function extractUnknownAttributes(
   obj: Record<string, unknown>,
@@ -33,12 +35,10 @@ function extractUnknownAttributes(
 type ParentEntry = {
   tempId: string;
   attributes: Record<string, VariableValue>;
-  relationshipType:
-    | 'biological'
-    | 'donor'
-    | 'surrogate'
-    | 'social'
-    | 'adoptive';
+  relationshipType: Extract<
+    RelationshipType,
+    'biological' | 'donor' | 'surrogate' | 'social' | 'adoptive'
+  >;
   isGestationalCarrier: boolean;
   gameteRole?: GameteRole;
 };
@@ -48,18 +48,28 @@ function buildBioParent(
   parent: Record<string, unknown>,
   donorType: 'donor' | 'surrogate',
   variableConfig: VariableConfig,
+  includeBiologicalSex: boolean,
 ): ParentEntry {
   const isDonor = parent['is-donor'] === true;
   const name = (parent.name as string | undefined) ?? '';
   const extraAttrs = extractUnknownAttributes(parent, KNOWN_BIO_PARENT_KEYS);
 
+  const attributes: Record<string, VariableValue> = {
+    [variableConfig.nodeLabelVariable]: name,
+    [variableConfig.egoVariable]: false,
+    ...extraAttrs,
+  };
+
+  if (includeBiologicalSex) {
+    const sex = readBiologicalSex(parent.biologicalSex);
+    if (sex !== undefined) {
+      attributes[variableConfig.biologicalSexVariable] = [sex];
+    }
+  }
+
   return {
     tempId: key,
-    attributes: {
-      [variableConfig.nodeLabelVariable]: name,
-      [variableConfig.egoVariable]: false,
-      ...extraAttrs,
-    },
+    attributes,
     relationshipType: isDonor ? donorType : 'biological',
     isGestationalCarrier: false,
   };
@@ -75,14 +85,21 @@ function buildAdditionalParent(
     KNOWN_ADDITIONAL_PARENT_KEYS,
   );
 
+  const attributes: Record<string, VariableValue> = {
+    [variableConfig.nodeLabelVariable]:
+      (parent.name as string | undefined) ?? '',
+    [variableConfig.egoVariable]: false,
+    ...extraAttrs,
+  };
+
+  const sex = readBiologicalSex(parent.biologicalSex);
+  if (sex !== undefined) {
+    attributes[variableConfig.biologicalSexVariable] = [sex];
+  }
+
   return {
     tempId: `additional-parent-${String(index)}`,
-    attributes: {
-      [variableConfig.nodeLabelVariable]:
-        (parent.name as string | undefined) ?? '',
-      [variableConfig.egoVariable]: false,
-      ...extraAttrs,
-    },
+    attributes,
     relationshipType: parent.role === 'adoptive-parent' ? 'adoptive' : 'social',
     isGestationalCarrier: false,
   };
@@ -114,6 +131,7 @@ export function egoCellTransform(
       eggParent,
       'donor',
       variableConfig,
+      false,
     );
     entry.gameteRole = 'egg';
     if (eggParent.gestationalCarrier === true) {
@@ -128,6 +146,7 @@ export function egoCellTransform(
       spermParent,
       'donor',
       variableConfig,
+      false,
     );
     entry.gameteRole = 'sperm';
     parents.push(entry);
@@ -140,6 +159,7 @@ export function egoCellTransform(
       gestCarrier,
       'surrogate',
       variableConfig,
+      true,
     );
     // A gestational carrier never contributes the egg, so they are never a
     // genetic parent — always record them as a (non-genetic) surrogate.
@@ -164,6 +184,7 @@ export function egoCellTransform(
   const batch: CommitBatch = { nodes: [], edges: [] };
 
   const egoKnownKeys = new Set([
+    'biologicalSex',
     'egg-parent',
     'sperm-parent',
     'gestational-carrier',
@@ -188,6 +209,13 @@ export function egoCellTransform(
     [variableConfig.egoVariable]: true,
     ...egoCustomAttrs,
   };
+  // Ego is a leaf/proband with no parent edges, so its sex cannot be inferred
+  // from a gameteRole — it must be captured and stored, or ego drops out of its
+  // own sex-linked risk calculation.
+  const egoSex = readBiologicalSex(values.biologicalSex);
+  if (egoSex !== undefined) {
+    egoAttributes[variableConfig.biologicalSexVariable] = [egoSex];
+  }
 
   if (!existingEgoId) {
     batch.nodes.push({
@@ -205,17 +233,19 @@ export function egoCellTransform(
     });
 
     const edgeAttributes: Record<string, VariableValue> = {
-      [variableConfig.relationshipTypeVariable]: parent.relationshipType,
+      [variableConfig.relationshipTypeVariable]: [parent.relationshipType],
       [variableConfig.isActiveVariable]: true,
     };
     if (parent.isGestationalCarrier) {
       edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
     }
+    if (parent.gameteRole) {
+      edgeAttributes[variableConfig.gameteRoleVariable] = [parent.gameteRole];
+    }
 
     batch.edges.push({
       source: parent.tempId,
       target: egoRef,
-      ...(parent.gameteRole ? { gameteRole: parent.gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }
@@ -244,7 +274,7 @@ export function egoCellTransform(
             target: entry.id,
             data: {
               attributes: {
-                [variableConfig.relationshipTypeVariable]: 'partner',
+                [variableConfig.relationshipTypeVariable]: ['partner'],
                 [variableConfig.isActiveVariable]: entry.value === 'current',
               },
             },
@@ -265,15 +295,19 @@ export function egoCellTransform(
       KNOWN_BIO_PARENT_KEYS,
     );
 
+    const partnerAttrs: Record<string, VariableValue> = {
+      [variableConfig.nodeLabelVariable]: partnerName,
+      [variableConfig.egoVariable]: false,
+      ...partnerExtraAttrs,
+    };
+    const partnerSex = readBiologicalSex(partnerObj.biologicalSex);
+    if (partnerSex !== undefined) {
+      partnerAttrs[variableConfig.biologicalSexVariable] = [partnerSex];
+    }
+
     batch.nodes.push({
       tempId: 'partner',
-      data: {
-        attributes: {
-          [variableConfig.nodeLabelVariable]: partnerName,
-          [variableConfig.egoVariable]: false,
-          ...partnerExtraAttrs,
-        },
-      },
+      data: { attributes: partnerAttrs },
     });
 
     batch.edges.push({
@@ -281,7 +315,7 @@ export function egoCellTransform(
       target: 'partner',
       data: {
         attributes: {
-          [variableConfig.relationshipTypeVariable]: 'partner',
+          [variableConfig.relationshipTypeVariable]: ['partner'],
           [variableConfig.isActiveVariable]: true,
         },
       },
@@ -306,19 +340,23 @@ export function egoCellTransform(
     const childName = (child.name as string | undefined) ?? '';
     const childExtraAttrs = extractUnknownAttributes(
       child,
-      new Set(['name', 'parentage']),
+      new Set(['name', 'parentage', 'biologicalSex']),
     );
     const tempId = `child-${String(i)}`;
 
+    const childAttrs: Record<string, VariableValue> = {
+      [variableConfig.nodeLabelVariable]: childName,
+      [variableConfig.egoVariable]: false,
+      ...childExtraAttrs,
+    };
+    const childSex = readBiologicalSex(child.biologicalSex);
+    if (childSex !== undefined) {
+      childAttrs[variableConfig.biologicalSexVariable] = [childSex];
+    }
+
     batch.nodes.push({
       tempId,
-      data: {
-        attributes: {
-          [variableConfig.nodeLabelVariable]: childName,
-          [variableConfig.egoVariable]: false,
-          ...childExtraAttrs,
-        },
-      },
+      data: { attributes: childAttrs },
     });
 
     const triadValues = {

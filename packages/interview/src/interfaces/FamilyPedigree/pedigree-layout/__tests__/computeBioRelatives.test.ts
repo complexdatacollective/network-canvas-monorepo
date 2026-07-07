@@ -10,9 +10,12 @@ const variableConfig: VariableConfig = {
   edgeType: 'relationship',
   nodeLabelVariable: 'name',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'relationshipType',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGestationalCarrier',
+  gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 function makeEdge(
@@ -28,7 +31,7 @@ function makeEdge(
     from,
     to,
     attributes: {
-      relationshipType,
+      relationshipType: [relationshipType],
       isActive,
     },
   };

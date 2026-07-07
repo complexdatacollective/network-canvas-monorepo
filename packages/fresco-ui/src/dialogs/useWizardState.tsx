@@ -23,8 +23,8 @@ type UseWizardStateArgs = {
 };
 
 type WizardDialogProps = {
-  title: string;
-  description: string | undefined;
+  title: ReactNode;
+  description: ReactNode;
   children: ReactNode;
   footer: ReactNode;
 };

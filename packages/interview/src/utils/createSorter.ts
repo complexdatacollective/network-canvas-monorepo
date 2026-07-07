@@ -2,6 +2,7 @@ import { get } from 'es-toolkit/compat';
 
 import type {
   EntityDefinition,
+  Variable,
   VariableType,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
@@ -10,9 +11,11 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 // protocol `SortRule` so that rules carrying their own `type`/`hierarchy` pass
 // through the compatibility layer. Such rules are not legacy: `type` and
 // `hierarchy` are designed to drive the sorter in scenarios outside the
-// interview, such as dashboard UI.
+// interview, such as dashboard UI. `property` is widened to `string | string[]`
+// so an already-processed rule (whose property is a resolved path) is a valid
+// input, letting `processProtocolSortRule` be idempotent.
 export type LegacyOrProtocolSortRule = {
-  property: string;
+  property: string | string[];
   direction?: 'asc' | 'desc';
   type?: SortType;
   hierarchy?: (string | number | boolean)[];
@@ -100,52 +103,48 @@ const stringFunction =
     return collator.compare(secondValue, firstValue);
   };
 
+/* The selected option values of a stored categorical attribute, or an empty
+ * array when nothing is selected. Categorical attributes are stored as arrays
+ * of selected option values. */
+const toCategoricalValues = (value: unknown): (string | number | boolean)[] =>
+  Array.isArray(value) ? (value as (string | number | boolean)[]) : [];
+
+/* The best (lowest) hierarchy index across a node's full selection set. A value
+ * not in the hierarchy contributes Infinity so it sinks below ranked values
+ * without making the whole set unranked. Returns Infinity for an empty set. */
+const bestHierarchyIndex = (
+  values: (string | number | boolean)[],
+  hierarchy: (string | number | boolean)[],
+) =>
+  values.reduce<number>((best, value) => {
+    const index = hierarchy.indexOf(value);
+    if (index === -1) {
+      return best;
+    }
+    return index < best ? index : best;
+  }, Number.POSITIVE_INFINITY);
+
 const categoricalFunction =
   ({ property, direction, hierarchy = [] }: ProcessedSortRule) =>
   (a: Item, b: Item): number => {
-    // hierarchy is whatever order the variables were specified in the variable definition
-    const firstValues =
-      (get(a, property) as (string | number | boolean)[] | undefined) ??
-      ([] as (string | number | boolean)[]);
-    const secondValues =
-      (get(b, property) as (string | number | boolean)[] | undefined) ??
-      ([] as (string | number | boolean)[]);
+    // hierarchy is whatever order the options were specified in the variable
+    // definition. Compare the full selection set rather than only the first
+    // option, so distinct sets that share a first option are ordered correctly.
+    const firstValues = toCategoricalValues(get(a, property));
+    const secondValues = toCategoricalValues(get(b, property));
 
-    // Note: every branch in the body returns, so only the first pair is ever
-    // compared. This matches the original lifted logic (a pre-existing quirk
-    // that biome flagged once we pulled the file under stricter rules).
-    const maxLength = Math.max(firstValues.length, secondValues.length);
-    if (maxLength === 0) return 0;
-
-    const firstValue = firstValues.length > 0 ? firstValues[0] : null;
-    const secondValue = secondValues.length > 0 ? secondValues[0] : null;
-
-    if (firstValue === secondValue) {
+    if (firstValues.length === 0 && secondValues.length === 0) {
       return 0;
     }
-
-    if (!firstValue && !secondValue) {
-      return 0;
-    }
-
-    if (!firstValue) {
+    if (firstValues.length === 0) {
       return 1;
     }
-
-    if (!secondValue) {
+    if (secondValues.length === 0) {
       return -1;
     }
 
-    // If one of the values is not in the hierarchy, it is sorted to the end of the list
-    const firstIndex = hierarchy.indexOf(firstValue);
-    const secondIndex = hierarchy.indexOf(secondValue);
-
-    if (firstIndex === -1) {
-      return 1;
-    }
-    if (secondIndex === -1) {
-      return -1;
-    }
+    const firstIndex = bestHierarchyIndex(firstValues, hierarchy);
+    const secondIndex = bestHierarchyIndex(secondValues, hierarchy);
 
     if (direction === 'asc') {
       return firstIndex - secondIndex;
@@ -170,10 +169,13 @@ const hierarchyFunction =
       | number
       | boolean
       | null;
-    if (!firstValue) {
+    // Explicit null/undefined check (not a falsy guard) so option values of 0
+    // or false sort by their hierarchy index rather than being treated as
+    // missing and forced to the end.
+    if (firstValue === null || firstValue === undefined) {
       return 1;
     }
-    if (!secondValue) {
+    if (secondValue === null || secondValue === undefined) {
       return -1;
     }
 
@@ -375,8 +377,13 @@ export const mapNCType = (type?: VariableType) => {
  * Add the entity attributes property to the property path of a sort rule.
  */
 const propertyWithAttributePath = (rule: {
-  property: string;
+  property: string | string[];
 }): string[] | string => {
+  // An array property is already a resolved path; leave it untouched.
+  if (Array.isArray(rule.property)) {
+    return rule.property;
+  }
+
   // 'type' rules are a special case - they exist in the protocol, but do not
   // refer to an entity attribute (they refer to a model property)
   if (rule.property === 'type') {
@@ -402,7 +409,20 @@ const propertyWithAttributePath = (rule: {
 export const processProtocolSortRule =
   (codebookVariables: EntityDefinition['variables']) =>
   (sortRule: LegacyOrProtocolSortRule): ProcessedSortRule => {
-    const variableDefinition = get(codebookVariables, sortRule.property, null);
+    // Idempotency guard: a rule that already carries a `type` has either been
+    // processed by this function or was hand-authored with sorter-ready fields
+    // (e.g. dashboard rules). Re-running the codebook lookup would resolve
+    // nothing (the property is already a path) and clobber `type` to 'string',
+    // so return it unchanged.
+    if (sortRule.type !== undefined) {
+      return { ...sortRule, type: sortRule.type };
+    }
+
+    const variableDefinition: Variable | null = get(
+      codebookVariables,
+      sortRule.property,
+      null,
+    );
 
     // Don't modify the rule if there is no variable definition matching the
     // property. Assume string

@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -21,7 +21,12 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import VisualAnalogScaleField from '@codaco/fresco-ui/form/fields/VisualAnalogScale';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
-import type { ComponentType, FormField } from '@codaco/protocol-validation';
+import type {
+  ComposerFormField,
+  ComponentType,
+  FormField,
+  StageSubject,
+} from '@codaco/protocol-validation';
 
 import { useStageSelector } from '../hooks/useStageSelector';
 import {
@@ -31,6 +36,7 @@ import {
   selectFieldMetadataWithSubject,
 } from '../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
+import { coerceFormValues } from './coerceFormValues';
 
 const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
   Text: InputField,
@@ -46,6 +52,18 @@ const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
   DatePicker: DatePickerField,
   RelativeDatePicker: RelativeDatePickerField,
 };
+
+/**
+ * Narrow a loosely-typed form Subject into a valid StageSubject for the
+ * validation context. Returns null when the subject is absent or a node/edge
+ * subject lacks a type (which can't identify a codebook entity).
+ */
+function subjectToStageSubject(subject?: Subject): StageSubject | null {
+  if (!subject) return null;
+  if (subject.entity === 'ego') return { entity: 'ego' };
+  if (subject.type === undefined) return null;
+  return { entity: subject.entity, type: subject.type };
+}
 
 /**
  * Hook to automatically convert protocol form definitions into the new form
@@ -68,7 +86,7 @@ export default function useProtocolForm({
   namespace,
   currentEntityId,
 }: {
-  fields: FormField[];
+  fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
   initialValues?: Record<string, FieldValue>;
   subject?: Subject;
@@ -79,16 +97,47 @@ export default function useProtocolForm({
     getValidationContext,
   ) as ValidationContext | null;
 
+  // Callers routinely pass `subject` as an inline literal, so key on its
+  // VALUES rather than its identity. A per-render subject identity would give
+  // validationContext a new identity every render, which re-registers every
+  // field (see useField's register effect) — and when an ancestor is
+  // subscribed to the form store (e.g. the FamilyPedigree wizard steps), each
+  // re-registration re-renders that ancestor, looping infinitely.
+  const subjectEntity = subject?.entity;
+  const subjectType = subject?.type;
+  const stableSubject = useMemo<Subject | undefined>(
+    () =>
+      subjectEntity !== undefined
+        ? {
+            entity: subjectEntity,
+            ...(subjectType !== undefined ? { type: subjectType } : {}),
+          }
+        : undefined,
+    [subjectEntity, subjectType],
+  );
+
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
-    if (currentEntityId === undefined) return baseValidationContext;
-    return { ...baseValidationContext, currentEntityId };
-  }, [baseValidationContext, currentEntityId]);
+
+    // Stages without a top-level subject (e.g. FamilyPedigree) leave
+    // stageSubject null, which the context-dependent validators
+    // (unique/sameAs/differentFrom/greaterThanVariable) dereference. When the
+    // caller supplies a concrete subject for the rendered fields, use it as the
+    // stageSubject so those validators resolve against the right entity type.
+    const resolvedSubject = subjectToStageSubject(stableSubject);
+    const stageSubject = resolvedSubject ?? baseValidationContext.stageSubject;
+
+    return {
+      ...baseValidationContext,
+      stageSubject,
+      ...(currentEntityId !== undefined ? { currentEntityId } : {}),
+    };
+  }, [baseValidationContext, currentEntityId, stableSubject]);
 
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const subjectFieldsMetadata = useSelector((state) =>
-    subject !== undefined
-      ? selectFieldMetadataWithSubject(state, subject, fields)
+    stableSubject !== undefined
+      ? selectFieldMetadataWithSubject(state, stableSubject, fields)
       : null,
   );
   const fieldsMetadata = useMemo(
@@ -96,6 +145,24 @@ export default function useProtocolForm({
       subjectFieldsMetadata ??
       selectFieldMetadataFromVariables(stageVariables, fields),
     [subjectFieldsMetadata, stageVariables, fields],
+  );
+
+  // Names of fields whose codebook variable is a number, so the submit
+  // boundary can coerce their raw string values back to real numbers.
+  const numberFieldNames = useMemo(
+    () =>
+      new Set(
+        fieldsMetadata
+          .filter((field) => field.type === 'number')
+          .map((field) => field.variable),
+      ),
+    [fieldsMetadata],
+  );
+
+  const coerceValues = useCallback(
+    (values: Record<string, FieldValue>): Record<string, FieldValue> =>
+      coerceFormValues(values, numberFieldNames),
+    [numberFieldNames],
   );
 
   const fieldsWithMetadata = fieldsMetadata.map((field, index) => {
@@ -112,8 +179,8 @@ export default function useProtocolForm({
       type?: string;
       minLabel?: string;
       maxLabel?: string;
-      min?: string;
-      max?: string;
+      min?: string | number;
+      max?: string | number;
       anchor?: string;
       before?: number;
       after?: number;
@@ -195,15 +262,17 @@ export default function useProtocolForm({
     }
 
     // Process ordinal and categorical options
-    if ('options' in field) props.options = field.options;
+    if ('options' in field) {
+      props.options = field.options;
 
-    // Turn on columns if there are more than 6 options. Maybe a bad idea?
-    if (
-      (field.component === 'CheckboxGroup' ||
-        field.component === 'RadioGroup') &&
-      field.options.length > 6
-    ) {
-      props.useColumns ??= true;
+      // Turn on columns if there are more than 6 options. Maybe a bad idea?
+      if (
+        (field.component === 'CheckboxGroup' ||
+          field.component === 'RadioGroup') &&
+        (field.options?.length ?? 0) > 6
+      ) {
+        props.useColumns ??= true;
+      }
     }
 
     // Handle number inputs
@@ -216,18 +285,33 @@ export default function useProtocolForm({
     }
 
     // Handle VisualAnalogScale parameters
-    if (field.component === 'VisualAnalogScale' && field.parameters) {
-      const params = field.parameters;
-      if (params.minLabel) props.minLabel = params.minLabel;
-      if (params.maxLabel) props.maxLabel = params.maxLabel;
+    if (field.component === 'VisualAnalogScale') {
+      if (field.parameters) {
+        const params = field.parameters;
+        if (typeof params.minLabel === 'string')
+          props.minLabel = params.minLabel;
+        if (typeof params.maxLabel === 'string')
+          props.maxLabel = params.maxLabel;
+      }
+
+      // Forward scalar validation.minValue/maxValue onto the slider's display
+      // min/max (dual-use keys survive prop filtering) so the track physically
+      // constrains selection, in addition to the submit-time validators.
+      if ('validation' in field && field.validation) {
+        const validation = field.validation as Record<string, unknown>;
+        if (typeof validation.minValue === 'number')
+          props.min = validation.minValue;
+        if (typeof validation.maxValue === 'number')
+          props.max = validation.maxValue;
+      }
     }
 
     // Handle DatePicker parameters
     if (field.component === 'DatePicker' && field.parameters) {
       const params = field.parameters;
-      if (params.min) props.min = params.min;
-      if (params.max) props.max = params.max;
-      if (params.type) props.type = params.type;
+      if (typeof params.min === 'string') props.min = params.min;
+      if (typeof params.max === 'string') props.max = params.max;
+      if (typeof params.type === 'string') props.type = params.type;
     }
 
     // Handle RelativeDatePicker parameters. We forward anchor/before/after
@@ -238,13 +322,20 @@ export default function useProtocolForm({
     // out-of-range values would pass through validation.
     if (field.component === 'RelativeDatePicker' && field.parameters) {
       const params = field.parameters;
-      if (params.anchor !== undefined) props.anchor = params.anchor;
-      if (params.before !== undefined) props.before = params.before;
-      if (params.after !== undefined) props.after = params.after;
+      const paramAnchor =
+        typeof params.anchor === 'string' ? params.anchor : undefined;
+      const paramBefore =
+        typeof params.before === 'number' ? params.before : undefined;
+      const paramAfter =
+        typeof params.after === 'number' ? params.after : undefined;
 
-      const anchor = params.anchor ?? todayYmd();
-      const before = params.before ?? 180;
-      const after = params.after ?? 0;
+      if (paramAnchor !== undefined) props.anchor = paramAnchor;
+      if (paramBefore !== undefined) props.before = paramBefore;
+      if (paramAfter !== undefined) props.after = paramAfter;
+
+      const anchor = paramAnchor ?? todayYmd();
+      const before = paramBefore ?? 180;
+      const after = paramAfter ?? 0;
       props.min = addDays(anchor, -before);
       props.max = addDays(anchor, after);
     }
@@ -266,5 +357,5 @@ export default function useProtocolForm({
     renderedFields
   );
 
-  return { fieldComponents };
+  return { fieldComponents, coerceValues };
 }

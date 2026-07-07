@@ -2,6 +2,7 @@
 
 import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
+import { useState } from 'react';
 
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
@@ -14,6 +15,8 @@ import {
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import ScaleValuePopover from './scale/ScaleValuePopover';
+import { useSliderActive } from './scale/useSliderActive';
 
 type VisualAnalogScaleFieldProps = CreateFormFieldProps<
   number,
@@ -27,6 +30,16 @@ type VisualAnalogScaleFieldProps = CreateFormFieldProps<
   }
 >;
 
+// Formats the transient drag value. The default normalised 0–1 scale is shown as
+// a percentage; custom ranges show the value in their own units. The bubble is
+// only visible mid-drag, so no persistent number anchors the participant.
+function formatVasValue(value: number, min: number, max: number) {
+  if (min === 0 && max === 1) return `${Math.round(value * 100)}%`;
+  const range = max - min;
+  const decimals = range >= 10 ? 0 : range >= 1 ? 1 : 2;
+  return value.toFixed(decimals);
+}
+
 export default function VisualAnalogScaleField(
   props: VisualAnalogScaleFieldProps,
 ) {
@@ -34,9 +47,12 @@ export default function VisualAnalogScaleField(
     className,
     value,
     onChange,
+    // Scalar responses are recorded on a normalised 0-1 scale (the documented
+    // datum and what the architect producer emits). The fine step matches the
+    // producer's 0.001 resolution.
     min = 0,
-    max = 100,
-    step = 0.1,
+    max = 1,
+    step = 0.001,
     minLabel,
     maxLabel,
     disabled,
@@ -49,6 +65,9 @@ export default function VisualAnalogScaleField(
   const midpoint = (min + max) / 2;
   const sliderValue = hasValue ? value : midpoint;
   const thumbState = !hasValue && state === 'normal' ? 'pristine' : state;
+
+  const [thumbEl, setThumbEl] = useState<HTMLElement | null>(null);
+  const active = useSliderActive();
 
   const handleValueChange = (newValue: number | number[]) => {
     if (readOnly) return;
@@ -76,8 +95,20 @@ export default function VisualAnalogScaleField(
         <Slider.Root
           value={sliderValue}
           onValueChange={handleValueChange}
-          onPointerDown={commitPristineValue}
-          onKeyDown={handleKeyDown}
+          onPointerDown={
+            readOnly
+              ? undefined
+              : () => {
+                  commitPristineValue();
+                  active.onPointerDown();
+                }
+          }
+          onKeyDown={(event) => {
+            if (readOnly) return;
+            handleKeyDown(event);
+            active.onKeyDown(event);
+          }}
+          onBlur={active.onBlur}
           disabled={disabled}
           min={min}
           max={max}
@@ -88,6 +119,7 @@ export default function VisualAnalogScaleField(
           <Slider.Control className={sliderControlVariants()}>
             <Slider.Track className={sliderTrackVariants({ state })}>
               <Slider.Thumb
+                ref={setThumbEl}
                 render={
                   <motion.div
                     // base-ui's nested <input type="range"> is the focusable
@@ -109,6 +141,10 @@ export default function VisualAnalogScaleField(
             </Slider.Track>
           </Slider.Control>
         </Slider.Root>
+
+        <ScaleValuePopover visible={active.active && hasValue} anchor={thumbEl}>
+          {formatVasValue(sliderValue, min, max)}
+        </ScaleValuePopover>
 
         {(minLabel ?? maxLabel) && (
           <div className="relative mt-2 flex justify-between px-3">

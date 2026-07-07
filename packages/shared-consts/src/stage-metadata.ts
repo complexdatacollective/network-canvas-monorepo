@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
+import { FRAMING_IDS } from './family-pedigree-framing';
+
 const FamilyPedigreeStageMetadataSchema = z.object({
   isNetworkCommitted: z.boolean(),
+  selectedFraming: z.optional(z.enum([...FRAMING_IDS])),
+  noChildrenAffirmed: z.optional(z.boolean()),
   nodes: z.optional(
     z.array(
       z.object({
@@ -17,9 +21,6 @@ const FamilyPedigreeStageMetadataSchema = z.object({
         id: z.string(),
         from: z.string(),
         to: z.string(),
-        // Internal-only: which gamete a biological/donor parent contributed.
-        // Persisted in stage metadata for labelling; never part of the network.
-        gameteRole: z.optional(z.enum(['egg', 'sperm'])),
         attributes: z.record(
           z.string(),
           z.union([
@@ -53,9 +54,37 @@ export type DyadCensusMetadataItem = z.infer<
 
 const DyadCensusStageMetadataSchema = z.array(DyadCensusMetadataItemSchema);
 
+// NetworkComposer persists the participant's live automatic-layout choice here
+// (the schema's behaviours.automaticLayout boolean only sets the initial value).
+// Storing it in metadata keeps the toggle sticky across navigation.
+const NetworkComposerStageMetadataSchema = z.object({
+  automaticLayout: z.boolean(),
+});
+
 export const StageMetadataSchema = z.record(
   z.string(), // stage ID
-  z.union([FamilyPedigreeStageMetadataSchema, DyadCensusStageMetadataSchema]),
+  z.union([
+    FamilyPedigreeStageMetadataSchema,
+    DyadCensusStageMetadataSchema,
+    NetworkComposerStageMetadataSchema,
+  ]),
 );
 
 export type StageMetadata = z.infer<typeof StageMetadataSchema>;
+
+// Validate-and-narrow a persisted metadata entry to the NetworkComposer shape.
+// Using the schema (rather than a hand-rolled `'automaticLayout' in value` check)
+// guards against malformed/primitive entries — which would otherwise throw on the
+// `in` operator — and rejects a non-boolean value instead of treating it as set.
+export const isNetworkComposerStageMetadata = (
+  value: unknown,
+): value is z.infer<typeof NetworkComposerStageMetadataSchema> =>
+  NetworkComposerStageMetadataSchema.safeParse(value).success;
+
+// Validate-and-narrow a persisted metadata entry to the FamilyPedigree shape.
+// The metadata union now also includes the DyadCensus tuple-array and the
+// NetworkComposer object, so callers must narrow before reading pedigree fields.
+export const isFamilyPedigreeStageMetadata = (
+  value: unknown,
+): value is z.infer<typeof FamilyPedigreeStageMetadataSchema> =>
+  FamilyPedigreeStageMetadataSchema.safeParse(value).success;

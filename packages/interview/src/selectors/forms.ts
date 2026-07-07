@@ -1,7 +1,13 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 
-import type { FormField, Variable } from '@codaco/protocol-validation';
+import type {
+  Codebook,
+  ComponentType,
+  ComposerFormField,
+  FormField,
+  Variable,
+} from '@codaco/protocol-validation';
 
 import { getCodebook } from '../store/modules/protocol';
 import { getNetwork, getStageSubject } from './session';
@@ -37,13 +43,40 @@ const getCodebookVariablesForProvidedSubject = createSelector(
 );
 
 /**
+ * Field metadata distributes over the `Variable` union so each variant keeps
+ * its own discriminant (`type`) and variant-specific keys (`options`, the
+ * variable's strict `parameters`), letting `useProtocolForm` narrow on
+ * `'options' in field` / `field.type`. `component` and `parameters` are widened
+ * because, for NetworkComposer, they come from the stage field instead of the
+ * codebook variable — `parameters` there is a loose record, so reads are guarded
+ * with `typeof` checks downstream rather than narrowed by component.
+ */
+type FieldMetadata = Variable extends infer V
+  ? V extends Variable
+    ? Omit<V, 'component' | 'parameters'> & {
+        component: ComponentType;
+        parameters?: Record<string, unknown>;
+        variable: string;
+        label: string;
+        hint?: string;
+        showValidationHints?: boolean;
+      }
+    : never
+  : never;
+
+/**
  * Creates field metadata from form fields and codebook variables.
  * Used by useProtocolForm to convert protocol form definitions to Field components.
+ *
+ * For NetworkComposer stages the input control (`component`) and its parameters
+ * live on the stage field rather than the codebook variable, so `field.component`
+ * takes precedence. For every other stage type the codebook variable provides the
+ * control, preserving existing behaviour.
  */
 const createFieldMetadata = (
   variables: Record<string, Variable>,
-  fields: FormField[],
-) => {
+  fields: Array<FormField | ComposerFormField>,
+): FieldMetadata[] => {
   // Return empty array if no variables (allows graceful handling during mount)
   if (!variables || Object.keys(variables).length === 0) {
     return [];
@@ -54,22 +87,40 @@ const createFieldMetadata = (
     return [];
   }
 
-  return fields.map(({ variable, prompt, hint, showValidationHints }) => {
+  return fields.map((field) => {
+    const { variable, hint, showValidationHints } = field;
     if (!variables[variable]) {
       throw new Error(`Missing codebook entry for variable: ${variable}`);
     }
 
     const codebookEntry = variables[variable];
 
-    invariant(
-      'component' in codebookEntry && codebookEntry.component !== undefined,
-      'Missing component for codebook entry',
-    );
+    // Shared form fields caption with a required `prompt`; NetworkComposer
+    // fields carry an optional `label` instead, falling back to the codebook
+    // variable's name so an unlabelled attribute still reads naturally.
+    const fieldLabel = 'label' in field ? field.label : undefined;
+    const fieldPrompt = 'prompt' in field ? field.prompt : undefined;
+
+    // The control (component) and its parameters may live on the stage field
+    // (NetworkComposer) or, for every other stage, on the codebook variable.
+    const fieldComponent = 'component' in field ? field.component : undefined;
+    const codebookComponent =
+      'component' in codebookEntry ? codebookEntry.component : undefined;
+    const component = fieldComponent ?? codebookComponent;
+    invariant(component !== undefined, 'Missing component for form field');
+
+    const fieldParameters =
+      'parameters' in field ? field.parameters : undefined;
+    const codebookParameters =
+      'parameters' in codebookEntry ? codebookEntry.parameters : undefined;
+    const parameters = fieldParameters ?? codebookParameters;
 
     return {
       ...codebookEntry,
+      ...(parameters !== undefined ? { parameters } : {}),
+      component,
       variable,
-      label: prompt,
+      label: fieldLabel ?? fieldPrompt ?? codebookEntry.name ?? variable,
       hint,
       showValidationHints,
     };
@@ -82,7 +133,7 @@ const createFieldMetadata = (
  */
 export const selectFieldMetadataFromVariables = (
   variables: Record<string, Variable>,
-  fields: FormField[],
+  fields: Array<FormField | ComposerFormField>,
 ) => createFieldMetadata(variables, fields);
 
 /**
@@ -92,14 +143,28 @@ export const selectFieldMetadataFromVariables = (
 export const selectFieldMetadataWithSubject = createSelector(
   [
     getCodebookVariablesForProvidedSubject,
-    (_state, _subject: Subject | null, fields: FormField[]) => fields,
+    (
+      _state,
+      _subject: Subject | null,
+      fields: Array<FormField | ComposerFormField>,
+    ) => fields,
   ],
   createFieldMetadata,
 );
 
 export const getValidationContext = createSelector(
   [getCodebook, getNetwork, getStageSubject],
-  (codebook, network, stageSubject) => ({
+  // Explicit return type: naming `Codebook` keeps the inferred type short enough
+  // for TS to serialize (the enlarged stage union otherwise trips TS7056).
+  (
+    codebook,
+    network,
+    stageSubject,
+  ): {
+    codebook: Codebook;
+    network: ReturnType<typeof getNetwork>;
+    stageSubject: ReturnType<typeof getStageSubject>;
+  } => ({
     codebook,
     network,
     stageSubject,

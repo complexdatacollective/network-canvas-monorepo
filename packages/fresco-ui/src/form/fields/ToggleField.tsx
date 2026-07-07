@@ -121,7 +121,6 @@ export default function ToggleField(props: ToggleFieldProps) {
     onChange,
     disabled,
     readOnly,
-    onBlur,
     'aria-required': ariaRequired,
     'aria-invalid': ariaInvalid,
     'aria-describedby': ariaDescribedBy,
@@ -146,7 +145,6 @@ export default function ToggleField(props: ToggleFieldProps) {
       aria-describedby={ariaDescribedBy}
       aria-disabled={ariaDisabled}
       aria-readonly={ariaReadonly}
-      onBlur={onBlur}
       id={id}
       name={name}
       nativeButton

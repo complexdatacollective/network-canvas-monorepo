@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interview",
-  "version": "1.0.1",
+  "version": "2.0.1",
   "description": "Network Canvas interview engine — Shell component, session contract.",
   "license": "MIT",
   "repository": {
@@ -20,6 +20,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./contract": {
+      "types": "./dist/contract.d.ts",
+      "default": "./dist/contract.js"
     },
     "./styles.css": "./dist/styles.css"
   },
@@ -52,9 +56,10 @@
     "csvtojson": "catalog:",
     "d3-force": "^3.0.0",
     "es-toolkit": "catalog:",
+    "html-to-image": "^1.11.13",
     "immer": "^11.1.8",
     "lucide-react": "catalog:",
-    "mapbox-gl": "^3.24.0",
+    "mapbox-gl": "^3.25.0",
     "ohash": "^2.0.11",
     "posthog-js": "catalog:",
     "react-redux": "catalog:",
@@ -65,15 +70,19 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:",
+    "@codaco/interface-images": "workspace:*",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/tsconfig": "workspace:*",
+    "@microsoft/api-extractor": "catalog:",
     "@playwright/test": "catalog:",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",
     "@storybook/addon-vitest": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "^14.6.1",
     "@types/concaveman": "^1.1.6",
     "@types/d3-force": "^3.0.10",
     "@types/node": "catalog:",

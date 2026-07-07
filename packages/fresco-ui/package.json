@@ -1,6 +1,6 @@
 {
   "name": "@codaco/fresco-ui",
-  "version": "2.13.0",
+  "version": "3.0.1",
   "description": "Fresco UI components, styles, and utilities",
   "license": "MIT",
   "repository": {
@@ -55,6 +55,14 @@
     "./ScrollArea": {
       "types": "./dist/ScrollArea.d.ts",
       "default": "./dist/ScrollArea.js"
+    },
+    "./SegmentedSwitcher": {
+      "types": "./dist/SegmentedSwitcher/SegmentedSwitcher.d.ts",
+      "default": "./dist/SegmentedSwitcher/SegmentedSwitcher.js"
+    },
+    "./SegmentedToolbar": {
+      "types": "./dist/SegmentedToolbar/SegmentedToolbar.d.ts",
+      "default": "./dist/SegmentedToolbar/SegmentedToolbar.js"
     },
     "./Skeleton": {
       "types": "./dist/Skeleton.d.ts",
@@ -263,6 +271,10 @@
     "./form/Field/Field": {
       "types": "./dist/form/Field/Field.d.ts",
       "default": "./dist/form/Field/Field.js"
+    },
+    "./form/Field/FieldController": {
+      "types": "./dist/form/Field/FieldController.d.ts",
+      "default": "./dist/form/Field/FieldController.js"
     },
     "./form/Field/types": {
       "types": "./dist/form/Field/types.d.ts",
@@ -565,6 +577,7 @@
     "rehype-raw": "^7.0.0",
     "rehype-sanitize": "^6.0.0",
     "remark-gemoji": "^8.0.0",
+    "remark-gfm": "^4.0.0",
     "tailwind-merge": "catalog:",
     "usehooks-ts": "^3.1.1"
   },

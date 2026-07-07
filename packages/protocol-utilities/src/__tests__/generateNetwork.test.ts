@@ -110,7 +110,7 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
     },
     censusPrompt: 'Tell us about your family',
     ...overrides,
-  } as Stage;
+  } as unknown as Stage;
 }
 
 describe('generateNetwork', () => {
@@ -204,6 +204,31 @@ describe('generateNetwork', () => {
         expect(node.type).not.toBe('Unknown');
         expect(node.type).toBe('node-type-1');
       }
+    });
+  });
+
+  describe('name generator node bounds', () => {
+    it('does not throw when minNodes exceeds the default maxNodes and maxNodes is omitted', () => {
+      const codebook = makeCodebook();
+      const stages = [makeNameGeneratorStage({ behaviours: { minNodes: 9 } })];
+
+      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+
+      expect(network.nodes.length).toBeGreaterThanOrEqual(9);
+      for (const node of network.nodes) {
+        expect(node.type).toBe('node-type-1');
+      }
+    });
+
+    it('does not throw when minNodes exceeds an explicit smaller maxNodes', () => {
+      const codebook = makeCodebook();
+      const stages = [
+        makeNameGeneratorStage({ behaviours: { minNodes: 6, maxNodes: 3 } }),
+      ];
+
+      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+
+      expect(network.nodes.length).toBeGreaterThanOrEqual(6);
     });
   });
 
@@ -512,7 +537,7 @@ describe('generateNetwork', () => {
             isGestationalCarrierVariable: 'var-gestational',
           },
           censusPrompt: 'Test',
-        } as Stage;
+        } as unknown as Stage;
 
         expect(
           () => generateNetwork(codebook, [stage], { seed: 42 }),

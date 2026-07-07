@@ -13,11 +13,19 @@ import type { SelectOption } from './Select/shared';
 // no value, so `placeholder:` utilities never reach it. We conditionally apply
 // muted-italic styling when the value is empty: `color`/`italic` on the input
 // itself handles Firefox; the webkit-datetime-edit pseudo-element handles
-// Chromium/Safari where the color property doesn't cascade through.
+// Chromium/Safari where the color property doesn't cascade through. Safari
+// additionally repaints the empty day/month/year sub-fields with its own
+// contrast-adjusted color (a greenish tint on dark backgrounds) and only
+// -webkit-text-fill-color pins them; Blink honours `color`, so the extra
+// declaration is a no-op there.
 const emptyDateInputClass = cx(
   'text-input-contrast/50 italic',
   '[&::-webkit-datetime-edit]:text-input-contrast/50',
   '[&::-webkit-datetime-edit]:italic',
+  // NOTE: must reference --input-contrast (the runtime theme variable), not
+  // --color-input-contrast — the Tailwind theme is `inline`, so --color-*
+  // tokens are compiled away and never exist at runtime.
+  '[&::-webkit-datetime-edit]:[-webkit-text-fill-color:color-mix(in_oklab,var(--input-contrast)_50%,transparent)]',
 );
 
 type DatePickerFieldProps = CreateFormFieldProps<
@@ -34,16 +42,22 @@ type DatePickerFieldProps = CreateFormFieldProps<
 
 type Ymd = { year: number; month: number; day: number };
 
-const ymdPattern = /^(\d{4})-(\d{2})-(\d{2})/;
+// Accept full (YYYY-MM-DD) as well as the partial month (YYYY-MM) and year
+// (YYYY) resolutions the architect emits for month/year DatePickers. Missing
+// month/day components default to 1 so the year/month dropdown bounds still
+// resolve from a truncated min/max.
+const ymdPattern = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
 
 function parseYmd(value: string): Ymd | null {
   const match = ymdPattern.exec(value);
   if (!match) return null;
-  return {
-    year: Number(match[1]),
-    month: Number(match[2]),
-    day: Number(match[3]),
-  };
+  const year = Number(match[1]);
+  const month = match[2] ? Number(match[2]) : 1;
+  const day = match[3] ? Number(match[3]) : 1;
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+  return { year, month, day };
 }
 
 function todayYmd(): Ymd {
@@ -143,8 +157,6 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     }
   };
 
-  const onBlur = rest.onBlur;
-
   if (resolutionType === 'month') {
     return (
       <div className="flex gap-2">
@@ -157,7 +169,6 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           onChange={(selectValue) =>
             handleChange(String(selectValue), undefined)
           }
-          onBlur={onBlur}
           disabled={disabled ?? readOnly}
           aria-invalid={rest['aria-invalid']}
           className="w-fit"
@@ -171,7 +182,6 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           onChange={(selectValue) =>
             handleChange(undefined, String(selectValue))
           }
-          onBlur={onBlur}
           disabled={disabled ?? readOnly ?? !selectedYear}
           aria-invalid={rest['aria-invalid']}
           className="w-fit"
@@ -188,7 +198,6 @@ export default function DatePickerField(props: DatePickerFieldProps) {
         placeholder="Year"
         value={value}
         onChange={(v) => onChange?.(String(v))}
-        onBlur={onBlur}
         name={name ?? 'year'}
         disabled={disabled ?? readOnly}
         aria-invalid={rest['aria-invalid']}
@@ -205,7 +214,6 @@ export default function DatePickerField(props: DatePickerFieldProps) {
       max={max}
       value={value}
       onChange={(v) => onChange?.(String(v))}
-      onBlur={onBlur}
       name={name ?? ''}
       placeholder={placeholder}
       className={cx(

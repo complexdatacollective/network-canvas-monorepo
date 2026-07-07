@@ -1,5 +1,13 @@
 import type {
   ComponentType,
+  FamilyPedigreeBoundaries,
+  FamilyPedigreeEdgeConfigInput,
+  FamilyPedigreeFraming,
+  FamilyPedigreeIntroItem,
+  FamilyPedigreeNodeConfigInput,
+  FamilyPedigreeNominationPromptInput,
+  Item,
+  StageType,
   VariableOption,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -40,25 +48,6 @@ export type EdgeTypeEntry = {
   color: string;
   variables: Map<string, VariableEntry>;
 };
-
-export type StageType =
-  | 'NameGenerator'
-  | 'NameGeneratorQuickAdd'
-  | 'NameGeneratorRoster'
-  | 'Sociogram'
-  | 'Narrative'
-  | 'DyadCensus'
-  | 'OneToManyDyadCensus'
-  | 'OrdinalBin'
-  | 'CategoricalBin'
-  | 'EgoForm'
-  | 'Information'
-  | 'TieStrengthCensus'
-  | 'AlterForm'
-  | 'AlterEdgeForm'
-  | 'Anonymisation'
-  | 'FamilyPedigree'
-  | 'Geospatial';
 
 export type NameGeneratorPromptEntry = {
   id: string;
@@ -181,6 +170,26 @@ type FormFieldEntry = {
   prompt?: string;
 };
 
+// Unlike the shared form fields' `prompt`, composer attribute fields caption
+// with an optional `label` (the runtime falls back to the variable's name).
+// Mirrors the schema's ComposerFormFieldSchema: `component` is required.
+export type NetworkComposerFormFieldEntry = {
+  variable: string;
+  component: ComponentType;
+  parameters?: Record<string, unknown>;
+  label?: string;
+  hint?: string;
+  showValidationHints?: boolean;
+};
+
+// A drawable edge type within a NetworkComposer stage. Mirrors the schema's
+// `edges[]` entries: an id, an edge subject, and an optional attribute form.
+export type NetworkComposerEdgeEntry = {
+  id: string;
+  subject: { entity: 'edge'; type: string };
+  form?: { fields: NetworkComposerFormFieldEntry[] };
+};
+
 type FormEntry = {
   title: string;
   fields: FormFieldEntry[];
@@ -190,12 +199,6 @@ type PanelEntry = {
   id: string;
   title: string;
   dataSource: string;
-};
-
-type InformationItem = {
-  id: string;
-  type: 'text';
-  content: string;
 };
 
 export type StageEntry = {
@@ -213,7 +216,7 @@ export type StageEntry = {
     image?: string;
   };
   behaviours?: {
-    automaticLayout?: { enabled: boolean };
+    automaticLayout?: boolean;
     freeDraw?: boolean;
     allowRepositioning?: boolean;
     removeAfterConsideration?: boolean;
@@ -225,7 +228,7 @@ export type StageEntry = {
     text: string;
   };
   title?: string;
-  items?: InformationItem[];
+  items?: Item[];
   initialEdges: [number, number][];
   // NameGeneratorQuickAdd
   quickAdd?: string;
@@ -249,24 +252,28 @@ export type StageEntry = {
   };
   // TieStrengthCensus (edge type reference on stage)
   edgeType?: { entity: 'edge'; type: string };
-  // FamilyPedigree-specific fields
-  nodeConfig?: {
-    type: string;
-    nodeLabelVariable: string;
-    egoVariable: string;
-    relationshipVariable: string;
-    form: { variable: string; prompt: string }[];
-  };
-  edgeConfig?: {
-    type: string;
-    relationshipTypeVariable: string;
-    isActiveVariable: string;
-    isGestationalCarrierVariable: string;
+  // FamilyPedigree-specific fields, derived from the protocol-validation schema
+  // so they cannot drift from it.
+  nodeConfig?: FamilyPedigreeNodeConfigInput;
+  edgeConfig?: FamilyPedigreeEdgeConfigInput;
+  framing?: FamilyPedigreeFraming;
+  // NarrativePedigree-specific fields
+  narrativePedigreeSourceStageId?: string;
+  narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
+  narrativePedigreeShowAtRiskStatuses?: boolean;
+  boundaries?: FamilyPedigreeBoundaries;
+  introScreen?: {
+    items: FamilyPedigreeIntroItem[];
   };
   censusPrompt?: string;
-  nominationPrompts?: { id: string; text: string; variable: string }[];
+  nominationPrompts?: FamilyPedigreeNominationPromptInput[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
+  // NetworkComposer
+  layoutVariable?: string;
+  nodeForm?: { fields: NetworkComposerFormFieldEntry[] };
+  networkComposerEdges?: NetworkComposerEdgeEntry[];
+  convexHullVariable?: string;
 };
 
 export type NodeEntry = {
@@ -278,6 +285,9 @@ export type NodeEntry = {
   // getNetwork() time, since prompts are added after the stage is created.
   promptIndices?: number[];
   explicitAttributes: Record<string, unknown>;
+  // Manually seeded nodes (addManualNode) take full control of their
+  // attributes: unset attributes are left neutral rather than randomised.
+  manual?: boolean;
 };
 
 export type EdgeEntry = {
@@ -323,6 +333,18 @@ export type FormFieldInput = {
   variable?: string;
   prompt?: string;
   component: ComponentType;
+  parameters?: Record<string, unknown>;
+  validation?: Record<string, unknown>;
+};
+
+// Input for NetworkComposer attribute fields, which caption with `label`
+// (optional; the runtime falls back to the variable's name) instead of the
+// shared fields' `prompt`.
+export type NetworkComposerFormFieldInput = {
+  variable?: string;
+  label?: string;
+  component: ComponentType;
+  parameters?: Record<string, unknown>;
   validation?: Record<string, unknown>;
 };
 
@@ -337,7 +359,7 @@ export type AddStageInput = {
     image?: string;
   };
   behaviours?: {
-    automaticLayout?: { enabled: boolean };
+    automaticLayout?: boolean;
     freeDraw?: boolean;
     allowRepositioning?: boolean;
     removeAfterConsideration?: boolean;
@@ -373,23 +395,39 @@ export type AddStageInput = {
     body?: string;
   };
   // FamilyPedigree
-  nodeConfig?: {
-    type: string;
-    nodeLabelVariable: string;
-    egoVariable: string;
-    relationshipVariable: string;
-    form?: { variable: string; prompt: string }[];
-  };
-  edgeConfig?: {
-    type: string;
-    relationshipTypeVariable: string;
-    isActiveVariable?: string;
-    isGestationalCarrierVariable?: string;
+  nodeConfig?: FamilyPedigreeNodeConfigInput;
+  // Derived from the schema's edge config, but the builder fills the non-core
+  // variables when omitted, so they are optional here.
+  edgeConfig?: Pick<
+    FamilyPedigreeEdgeConfigInput,
+    'type' | 'relationshipTypeVariable'
+  > &
+    Partial<
+      Omit<FamilyPedigreeEdgeConfigInput, 'type' | 'relationshipTypeVariable'>
+    >;
+  framing?: FamilyPedigreeFraming;
+  boundaries?: FamilyPedigreeBoundaries;
+  introScreen?: {
+    items: FamilyPedigreeIntroItem[];
   };
   censusPrompt?: string;
-  nominationPrompts?: { id: string; text: string; variable: string }[];
+  nominationPrompts?: FamilyPedigreeNominationPromptInput[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
+  // NarrativePedigree
+  sourceStageId?: string;
+  diseases?: NarrativeDiseaseEntry[];
+  showAtRiskStatuses?: boolean;
+  // NetworkComposer (quickAdd above is shared with NameGeneratorQuickAdd)
+  layoutVariable?: string;
+  nodeForm?: { fields: NetworkComposerFormFieldInput[] };
+  convexHullVariable?: string;
+};
+
+export type AddNetworkComposerEdgeInput = {
+  // Accept an existing edge type id, or omit to auto-create one.
+  type?: string;
+  form?: { fields: NetworkComposerFormFieldInput[] };
 };
 
 export type AddPromptInput = {
@@ -461,6 +499,14 @@ export type AddPresetInput = {
   };
   groupVariable?: string | boolean;
   highlight?: string[] | boolean;
+};
+
+export type NarrativeDiseaseEntry = {
+  id: string;
+  label: string;
+  color: string;
+  variable: string;
+  inheritancePattern: string;
 };
 
 export type GetSessionInput = {

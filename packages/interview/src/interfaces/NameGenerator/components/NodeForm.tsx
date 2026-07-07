@@ -110,7 +110,7 @@ const NodeForm = (props: NodeFormProps) => {
       )
     : undefined;
 
-  const { fieldComponents } = useProtocolForm({
+  const { fieldComponents, coerceValues } = useProtocolForm({
     fields: form.fields,
     autoFocus: true,
     initialValues,
@@ -120,7 +120,12 @@ const NodeForm = (props: NodeFormProps) => {
   // Handle form submission
   const handleSubmit: FormSubmitHandler = useCallback(
     (values) => {
-      const variableValues = values as Record<string, VariableValue>;
+      // Coerce values to their declared codebook type (e.g. number fields,
+      // which emit raw strings) before persisting.
+      const variableValues = coerceValues(values) as Record<
+        string,
+        VariableValue
+      >;
       const isNewNode = !selectedNode;
 
       if (isNewNode) {
@@ -142,7 +147,15 @@ const NodeForm = (props: NodeFormProps) => {
 
       return { success: true as const };
     },
-    [selectedNode, addNode, newNodeAttributes, updateNode, onClose, celebrate],
+    [
+      coerceValues,
+      selectedNode,
+      addNode,
+      newNodeAttributes,
+      updateNode,
+      onClose,
+      celebrate,
+    ],
   );
 
   return (

@@ -7,7 +7,7 @@ import { getNetwork, getStageIndex } from './session';
 
 // Hacked together version of isStageSkipped that returns a map of all stages.
 // This is more convenient to use with useSelector.
-const getSkipMap = createSelector(
+export const getSkipMap = createSelector(
   getStages,
   getNetwork,
   (stages, network): Record<number, boolean> =>
@@ -66,3 +66,24 @@ export const getNavigableStages = createSelector(
     };
   },
 );
+
+/**
+ * Resolves the step to navigate to when the current step is invalid (skipped).
+ *
+ * Prefers the nearest earlier valid stage. When none exists — e.g. the
+ * first/lowest stage is skipped on interview entry — `previousValidStageIndex`
+ * falls back to `currentStep` (see `getNavigableStages`), so we instead advance
+ * to the next valid stage. This guarantees a skipped stage is never rendered.
+ */
+export const resolveRecoveryStep = ({
+  currentStep,
+  previousValidStageIndex,
+  nextValidStageIndex,
+}: {
+  currentStep: number;
+  previousValidStageIndex: number;
+  nextValidStageIndex: number;
+}): number =>
+  previousValidStageIndex === currentStep
+    ? nextValidStageIndex
+    : previousValidStageIndex;

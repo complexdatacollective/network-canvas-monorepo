@@ -81,11 +81,6 @@
       "permanent": true
     },
     {
-      "source": "/interface-documentation/family-pedigree",
-      "destination": "/en/design-protocols/interface-documentation/family-tree-census",
-      "permanent": true
-    },
-    {
       "source": "/interface-documentation/:path*",
       "destination": "/en/design-protocols/interface-documentation/:path*",
       "permanent": true

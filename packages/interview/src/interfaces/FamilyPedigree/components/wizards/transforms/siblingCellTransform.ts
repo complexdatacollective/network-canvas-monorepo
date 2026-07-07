@@ -1,24 +1,39 @@
-import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
+import type {
+  NcEdge,
+  NcNode,
+  RelationshipType,
+  VariableValue,
+} from '@codaco/shared-consts';
 import type {
   CommitBatch,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
 
 import { gameteRoleForRole } from './buildChildParentage';
-import { extractCustomAttributes } from './personAttributes';
+import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 
 function buildPersonAttributes(
   person: Record<string, unknown>,
   variableConfig: VariableConfig,
+  includeBiologicalSex: boolean,
 ): Record<string, VariableValue> {
   const name = (person.name as string | undefined) ?? '';
   const extraAttrs = extractCustomAttributes(person);
 
-  return {
+  const attrs: Record<string, VariableValue> = {
     [variableConfig.nodeLabelVariable]: name,
     [variableConfig.egoVariable]: false,
     ...extraAttrs,
   };
+
+  if (includeBiologicalSex) {
+    const sex = readBiologicalSex(person.biologicalSex);
+    if (sex !== undefined) {
+      attrs[variableConfig.biologicalSexVariable] = [sex];
+    }
+  }
+
+  return attrs;
 }
 
 type RoleKey = 'egg-source' | 'sperm-source' | 'carrier-source';
@@ -44,7 +59,7 @@ export function siblingCellTransform(
   batch.nodes.push({
     tempId: 'sibling',
     data: {
-      attributes: buildPersonAttributes(siblingData, variableConfig),
+      attributes: buildPersonAttributes(siblingData, variableConfig, true),
     },
   });
 
@@ -66,10 +81,18 @@ export function siblingCellTransform(
     } else if (selection === 'new') {
       const newPersonData = values[`new-${roleKey}`] as Record<string, unknown>;
       const tempId = `new-${roleKey}`;
+      // Egg and sperm gamete parents derive sex from gameteRole; carrier-source
+      // (and the separate new-carrier namespace below) is not a gamete parent.
+      const isGameteParen =
+        roleKey === 'egg-source' || roleKey === 'sperm-source';
       batch.nodes.push({
         tempId,
         data: {
-          attributes: buildPersonAttributes(newPersonData, variableConfig),
+          attributes: buildPersonAttributes(
+            newPersonData,
+            variableConfig,
+            !isGameteParen,
+          ),
         },
       });
       resolvedParents.push({ roleKey, tempId, isExisting: false });
@@ -98,7 +121,10 @@ export function siblingCellTransform(
     if (seenEdges.has(edgeKey)) continue;
     seenEdges.add(edgeKey);
 
-    let relationshipType: 'biological' | 'donor' | 'surrogate';
+    let relationshipType: Extract<
+      RelationshipType,
+      'biological' | 'donor' | 'surrogate'
+    >;
     const isCarrier = parent.roleKey === 'carrier-source';
 
     if (isCarrier) {
@@ -116,7 +142,7 @@ export function siblingCellTransform(
     const shouldMarkGC = isCarrier || parent.tempId === carrierTempId;
 
     const edgeAttributes: Record<string, VariableValue> = {
-      [variableConfig.relationshipTypeVariable]: relationshipType,
+      [variableConfig.relationshipTypeVariable]: [relationshipType],
       [variableConfig.isActiveVariable]: true,
     };
     if (shouldMarkGC) {
@@ -124,10 +150,12 @@ export function siblingCellTransform(
     }
 
     const gameteRole = gameteRoleForRole(parent.roleKey);
+    if (gameteRole) {
+      edgeAttributes[variableConfig.gameteRoleVariable] = [gameteRole];
+    }
     batch.edges.push({
       source: parent.tempId,
       target: 'sibling',
-      ...(gameteRole ? { gameteRole } : {}),
       data: { attributes: edgeAttributes },
     });
   }
@@ -155,7 +183,7 @@ export function siblingCellTransform(
       target: targetId,
       data: {
         attributes: {
-          [variableConfig.relationshipTypeVariable]: 'partner',
+          [variableConfig.relationshipTypeVariable]: ['partner'],
           [variableConfig.isActiveVariable]: val === 'current',
         },
       },
@@ -169,18 +197,12 @@ export function siblingCellTransform(
     for (let i = 0; i < additionalParents.length; i++) {
       const ap = additionalParents[i];
       if (!ap) continue;
-      const apName = (ap.name as string | undefined) ?? '';
-      const apExtraAttrs = extractCustomAttributes(ap);
       const tempId = `additional-parent-${String(i)}`;
 
       batch.nodes.push({
         tempId,
         data: {
-          attributes: {
-            [variableConfig.nodeLabelVariable]: apName,
-            [variableConfig.egoVariable]: false,
-            ...apExtraAttrs,
-          },
+          attributes: buildPersonAttributes(ap, variableConfig, true),
         },
       });
 
@@ -189,7 +211,7 @@ export function siblingCellTransform(
         target: 'sibling',
         data: {
           attributes: {
-            [variableConfig.relationshipTypeVariable]: 'social',
+            [variableConfig.relationshipTypeVariable]: ['social'],
             [variableConfig.isActiveVariable]: true,
           },
         },

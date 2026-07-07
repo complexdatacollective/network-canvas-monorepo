@@ -72,14 +72,18 @@ export default function NodeContextMenu({
         >
           Add partner
         </DropdownMenuItem>
-        {canAddSibling && (
-          <DropdownMenuItem
-            className={menuItemClass}
-            onClick={() => onAction('sibling')}
-          >
-            Add sibling
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem
+          className={menuItemClass}
+          disabled={!canAddSibling}
+          onClick={() => onAction('sibling')}
+        >
+          <span className="flex flex-col items-start">
+            <span>Add sibling</span>
+            {!canAddSibling && (
+              <span className="text-xs opacity-70">Add a parent first</span>
+            )}
+          </span>
+        </DropdownMenuItem>
         {!isEgo && (
           <>
             <DropdownMenuSeparator className="my-1 h-px bg-current/20" />

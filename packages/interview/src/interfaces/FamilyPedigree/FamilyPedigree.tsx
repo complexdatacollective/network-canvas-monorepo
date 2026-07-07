@@ -5,6 +5,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
+import { isFamilyPedigreeStageMetadata } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import Prompts from '~/components/Prompts/Prompts';
 import { useContractFlags } from '~/contract/context';
@@ -23,25 +24,57 @@ import type { StageProps } from '~/types';
 import { buildPedigreeDialog } from './buildPedigreeDialog';
 import PedigreeChecklist from './components/PedigreeChecklist';
 import EgoCellWizard from './components/wizards/EgoCellWizard';
-import {
-  FamilyPedigreeProvider,
-  useFamilyPedigreeStore,
-} from './FamilyPedigreeProvider';
+import { useFamilyPedigreeStore } from './FamilyPedigreeContext';
+import { FamilyPedigreeProvider } from './FamilyPedigreeProvider';
 import FamilyPedigreePlaceholder from './pedigree-layout/components/FamilyPedigreePlaceholder';
 import PedigreeView from './pedigree-layout/components/PedigreeView';
 import type { VariableConfig } from './store';
 import {
   getEdgeTypeKey,
+  getGameteRoleVariable,
   getIsActiveVariable,
   getIsGestationalCarrierVariable,
   getRelationshipTypeVariable,
 } from './utils/edgeUtils';
 import {
+  getBiologicalSexVariable,
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
+  getRelationshipVariable,
 } from './utils/nodeUtils';
+import { pedigreeMemberIds } from './utils/pedigreeMembership';
+import { getBoundaries } from './utils/stageConfig';
 import { validatePedigreeCompleteness } from './utils/validatePedigree';
+
+// The interview network is a single shared graph, so getNetworkNodes/Edges
+// return entities of every type. Restrict the nomination-phase override maps to
+// the pedigree's own node/edge types, mirroring the provider seed
+// (FamilyPedigreeProvider.tsx), so foreign-typed entities are never laid out as
+// orphan pedigree members or coerced into pedigree relationships. When the
+// pedigree recorded its private membership (memberIds), also drop same-typed
+// alters nominated in later stages, which are not part of this pedigree.
+export const buildOverrideNodesMap = (
+  nodes: NcNode[],
+  nodeType: string,
+  memberIds: Set<string> | null = null,
+) =>
+  new Map<string, NcNode>(
+    nodes
+      .filter(
+        (node) =>
+          node.type === nodeType &&
+          (memberIds === null || memberIds.has(node._uid)),
+      )
+      .map((node) => [node._uid, node]),
+  );
+
+export const buildOverrideEdgesMap = (edges: NcEdge[], edgeType: string) =>
+  new Map<string, NcEdge>(
+    edges
+      .filter((edge) => edge.type === edgeType)
+      .map((edge) => [edge._uid, edge]),
+  );
 
 const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const {
@@ -71,6 +104,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const edgeType = useStageSelector(getEdgeTypeKey);
   const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
   const egoVariable = useStageSelector(getEgoVariable);
+  const relationshipVariable = useStageSelector(getRelationshipVariable);
   const relationshipTypeVariable = useStageSelector(
     getRelationshipTypeVariable,
   );
@@ -78,33 +112,45 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const isGestationalCarrierVariable = useStageSelector(
     getIsGestationalCarrierVariable,
   );
+  const gameteRoleVariable = useStageSelector(getGameteRoleVariable);
+  const biologicalSexVariable = useStageSelector(getBiologicalSexVariable);
 
   const allNodes = useStageSelector(getNetworkNodes);
   const allEdges = useStageSelector(getNetworkEdges);
 
-  const stageMetadata = useStageSelector(getStageMetadata) as
-    | { isNetworkCommitted?: boolean }
-    | undefined;
+  const stageMetadata = useStageSelector(getStageMetadata);
+  const boundaries = useStageSelector(getBoundaries);
 
-  const isNetworkCommitted = stageMetadata?.isNetworkCommitted === true;
+  const isNetworkCommitted =
+    isFamilyPedigreeStageMetadata(stageMetadata) &&
+    stageMetadata.isNetworkCommitted;
+  // The alters this pedigree committed to its private network, or null while it
+  // is still being built. Used to drop same-typed alters added by later stages.
+  const memberIds = useMemo(
+    () => pedigreeMemberIds(stageMetadata),
+    [stageMetadata],
+  );
 
   const variableConfig: VariableConfig = {
     nodeType,
     edgeType,
     nodeLabelVariable,
     egoVariable,
+    relationshipVariable,
     relationshipTypeVariable,
     isActiveVariable,
     isGestationalCarrierVariable,
+    gameteRoleVariable,
+    biologicalSexVariable,
   };
 
   const reduxNodesMap = useMemo(
-    () => new Map<string, NcNode>(allNodes.map((n) => [n._uid, n])),
-    [allNodes],
+    () => buildOverrideNodesMap(allNodes, nodeType, memberIds),
+    [allNodes, nodeType, memberIds],
   );
   const reduxEdgesMap = useMemo(
-    () => new Map<string, NcEdge>(allEdges.map((e) => [e._uid, e])),
-    [allEdges],
+    () => buildOverrideEdgesMap(allEdges, edgeType),
+    [allEdges, edgeType],
   );
   const handleToggleAttribute = (nodeId: string, variable: string) => {
     const node = allNodes.find((n) => n._uid === nodeId);
@@ -152,6 +198,39 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   useEffect(() => {
     updateReady(buildingPhase && checklistComplete);
   }, [updateReady, buildingPhase, checklistComplete]);
+
+  // Screen-reader announcements for the build phase. The pedigree is built via
+  // context-menu wizards that mutate the diagram without a page change, so
+  // without a live region a screen-reader participant gets no feedback that a
+  // relative was added or removed, or that the pedigree can now be finalized.
+  // The count is included so consecutive additions re-announce (identical text
+  // is not re-read by assistive technology).
+  const [buildAnnouncement, setBuildAnnouncement] = useState('');
+  const prevNonEgoCountRef = useRef(nonEgoNodeCount);
+  const prevChecklistCompleteRef = useRef(checklistComplete);
+  useEffect(() => {
+    if (!buildingPhase) {
+      prevNonEgoCountRef.current = nonEgoNodeCount;
+      prevChecklistCompleteRef.current = checklistComplete;
+      return;
+    }
+    const memberWord = nonEgoNodeCount === 1 ? 'member' : 'members';
+    if (checklistComplete && !prevChecklistCompleteRef.current) {
+      setBuildAnnouncement(
+        'All tasks are complete. You can now finalize your family pedigree.',
+      );
+    } else if (nonEgoNodeCount > prevNonEgoCountRef.current) {
+      setBuildAnnouncement(
+        `Family member added. Your family pedigree now has ${String(nonEgoNodeCount)} ${memberWord}.`,
+      );
+    } else if (nonEgoNodeCount < prevNonEgoCountRef.current) {
+      setBuildAnnouncement(
+        `Family member removed. Your family pedigree now has ${String(nonEgoNodeCount)} ${memberWord}.`,
+      );
+    }
+    prevNonEgoCountRef.current = nonEgoNodeCount;
+    prevChecklistCompleteRef.current = checklistComplete;
+  }, [buildingPhase, nonEgoNodeCount, checklistComplete]);
 
   const updateNominationVariable = (stepIndex: number) => {
     const prompt = allPrompts[stepIndex];
@@ -228,6 +307,9 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       nodesMap,
       edgesMap,
       variableConfig,
+      boundaries,
+      isFamilyPedigreeStageMetadata(stageMetadata) &&
+        stageMetadata.noChildrenAffirmed === true,
     );
 
     if (issues.length > 0) {
@@ -324,6 +406,12 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   return (
     <>
       <div className="interface p-0">
+        {/* Visually-hidden live region announcing build-phase changes (adding or
+            removing a relative, and when the pedigree can be finalized) to
+            screen readers, which get no feedback from the context-menu wizards. */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {buildAnnouncement}
+        </div>
         <Prompts
           prompts={allPrompts}
           currentPromptId={allPrompts[currentStepIndex]?.id}
@@ -431,6 +519,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                   dragConstraints={containerRef}
                   onFinalize={() => void handleConfirmAndAdvance()}
                   onAllDoneChange={setChecklistComplete}
+                  variableConfig={variableConfig}
+                  boundaries={boundaries}
                 />
               )}
               {showResetOption && (

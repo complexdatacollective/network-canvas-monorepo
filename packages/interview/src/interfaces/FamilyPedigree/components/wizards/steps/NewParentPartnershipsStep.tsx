@@ -6,6 +6,8 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { FRAMING_TERMS } from '@codaco/shared-consts';
+import { useFramedTerms } from '~/interfaces/FamilyPedigree/hooks/useFramedTerms';
 
 import { BioTriadConfigContext } from './BioTriadStep';
 
@@ -41,6 +43,8 @@ type ParentEntry = {
 function getNewParentLabel(
   key: ParentKey,
   values: Record<string, unknown>,
+  newEggParentLabel: string,
+  newSpermParentLabel: string,
 ): string {
   const nameMap: Record<ParentKey, string> = {
     'egg-source': 'new-egg-source.name',
@@ -49,8 +53,8 @@ function getNewParentLabel(
   };
 
   const fallbackMap: Record<ParentKey, string> = {
-    'egg-source': 'New egg parent',
-    'sperm-source': 'New sperm parent',
+    'egg-source': newEggParentLabel,
+    'sperm-source': newSpermParentLabel,
     'carrier-source': 'New gestational carrier',
   };
 
@@ -70,7 +74,7 @@ export function shouldSkipNewParentPartnerships({
   ).length;
   const totalParents = ALL_PARENT_KEYS.filter((key) => {
     const val = getFieldValue(key);
-    return val !== undefined && val !== 'egg-source';
+    return val !== undefined;
   }).length;
   return newCount === 0 || totalParents < 2;
 }
@@ -78,6 +82,7 @@ export function shouldSkipNewParentPartnerships({
 export default function NewParentPartnershipsStep() {
   const formValues = useFormValue(WATCHED_FIELDS);
   const { existingNodes } = useContext(BioTriadConfigContext);
+  const terms = useFramedTerms() ?? FRAMING_TERMS.gamete;
   const nodeMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const node of existingNodes ?? []) {
@@ -91,18 +96,23 @@ export default function NewParentPartnershipsStep() {
 
     for (const key of ALL_PARENT_KEYS) {
       const selection = formValues[key] as string | undefined;
-      if (!selection || selection === 'egg-source') continue;
+      if (!selection) continue;
 
       if (selection === 'new') {
         list.push({
           key,
-          label: getNewParentLabel(key, formValues),
+          label: getNewParentLabel(
+            key,
+            formValues,
+            terms.newEggParent,
+            terms.newSpermParent,
+          ),
           isNew: true,
         });
       } else if (selection === 'unknown') {
         const fallbackMap: Record<ParentKey, string> = {
-          'egg-source': 'Unknown egg parent',
-          'sperm-source': 'Unknown sperm parent',
+          'egg-source': terms.unknownEggParent,
+          'sperm-source': terms.unknownSpermParent,
           'carrier-source': 'Unknown gestational carrier',
         };
         list.push({ key, label: fallbackMap[key], isNew: false });
@@ -113,7 +123,7 @@ export default function NewParentPartnershipsStep() {
     }
 
     return list;
-  }, [formValues, nodeMap]);
+  }, [formValues, nodeMap, terms]);
 
   const pairs = useMemo(() => {
     const result: [ParentEntry, ParentEntry][] = [];

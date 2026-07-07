@@ -13,6 +13,7 @@
     },
     "packages/interview": {
       "entry": [
+        "src/contract/index.ts",
         "src/**/*.stories.tsx",
         "e2e/specs/**/*.ts",
         "e2e/host/src/main.tsx",
@@ -50,7 +51,7 @@
         "@fontsource-variable/nunito"
       ]
     },
-    "apps/interviewer": {
+    "apps/interviewer-classic": {
       "entry": [
         "src/main/index.js!",
         "src/preload/index.js!",
@@ -70,7 +71,7 @@
         "@capacitor/ios"
       ]
     },
-    "apps/architect": {
+    "apps/architect-classic": {
       "entry": [
         "public/electron-starter.js!",
         "public/preload/appPreload.js!",
@@ -83,9 +84,9 @@
         "react-resizable", // CSS only — @import in main.scss, invisible to knip
         "tippy.js", // CSS only — @import in main.scss, peer dep of @tippyjs/react
         // The preview window renders this app: createPreviewWindow.js resolves it
-        // via require.resolve('network-canvas-interviewer/package.json') and
+        // via require.resolve('@codaco/interviewer-classic/package.json') and
         // electron-builder.config.js bundles its out/ — neither a static import.
-        "network-canvas-interviewer",
+        "@codaco/interviewer-classic",
         // Used only by the CJS public/ Electron main process, which is excluded
         // from `project` above: knip's CJS export --fix corrupts module.exports
         // in the main-process modules, so that tree is left out of analysis.
@@ -103,23 +104,16 @@
         "@utils/*": ["./src/utils/*"]
       }
     },
-    "apps/interviewer-v8": {
-      "entry": [
-        "index.html!",
-        "electron.vite.config.ts",
-        "vite.renderer.config.ts",
-        "electron-builder.config.cjs",
-        "electron/main.ts",
-        "electron/preload.ts"
-      ],
+    "apps/interviewer": {
+      "entry": ["index.html!", "vite.renderer.config.ts"],
       "vite": true,
-      "project": ["src/**/*.{ts,tsx}", "electron/**/*.ts"],
+      "project": ["src/**/*.{ts,tsx}"],
       "paths": {
         "~/*": ["./src/*"]
       },
       "ignore": ["src/**/*.d.ts"]
     },
-    "apps/architect-web": {
+    "apps/architect": {
       "entry": ["index.html!", "preview/index.html!", "src/preview-main.tsx!"],
       "vite": true,
       "project": ["src/**/*.{ts,tsx}"],

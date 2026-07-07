@@ -12,12 +12,13 @@ This monorepo is organized into four main categories:
 
 ### Apps
 
-| App                                     | Description                                                                                          |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| [`architect-web`](./apps/architect-web) | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
-| [`architect`](./apps/architect)         | Legacy Electron build of Architect, the Network Canvas protocol designer (maintenance mode)          |
-| [`interviewer`](./apps/interviewer)     | Network Canvas Interviewer — the desktop/mobile app (Electron + Cordova) used to conduct interviews  |
-| [`documentation`](./apps/documentation) | Next.js documentation website with MDX support and search functionality                              |
+| App                                                 | Description                                                                                          |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| [`architect`](./apps/architect)                     | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
+| [`architect-classic`](./apps/architect-classic)     | Legacy Electron build of Architect, the Network Canvas protocol designer (maintenance mode)          |
+| [`interviewer`](./apps/interviewer)                 | Network Canvas Interviewer — offline-first PWA used to conduct interviews                            |
+| [`interviewer-classic`](./apps/interviewer-classic) | Legacy Network Canvas Interviewer (Electron + Cordova), maintenance mode                             |
+| [`documentation`](./apps/documentation)             | Next.js documentation website with MDX support and search functionality                              |
 
 ### Packages
 
@@ -81,7 +82,7 @@ pnpm test
 ```bash
 # Work with a specific package
 pnpm --filter @codaco/protocol-validation build
-pnpm --filter @codaco/architect-web dev
+pnpm --filter @codaco/architect dev
 pnpm --filter @codaco/documentation dev
 
 # Run commands across multiple packages
@@ -160,7 +161,7 @@ After merging a PR with changesets, a release PR will be created that bumps pack
 
 ## Interface Screenshots
 
-[`@codaco/interface-images`](./packages/interface-images) ships generated screenshots of every interview interface (Sociogram, Name Generator, …), rendered from dedicated Storybook "capture" stories in `@codaco/interview` with Playwright + sharp. They are consumed by **architect-web** (stage thumbnails) and the **documentation** site (the hero image on each interface-documentation page).
+[`@codaco/interface-images`](./packages/interface-images) ships generated screenshots of every interview interface (Sociogram, Name Generator, …), rendered from dedicated Storybook "capture" stories in `@codaco/interview` with Playwright + sharp. They are consumed by **architect** (stage thumbnails) and the **documentation** site (the hero image on each interface-documentation page).
 
 **Cached, not committed.** The screenshot assets (`packages/interface-images/src/generated/assets/`) are produced by the turbo `generate` task and **cached, not committed** — they are gitignored. Only the generated `manifest.ts` beside them (a small text file mapping each interface and ratio to its variant URLs and dimensions) is tracked, so typechecking and tooling work without running a capture.
 
@@ -168,11 +169,11 @@ After merging a PR with changesets, a release PR will be created that bumps pack
 
 The trade-off is that, between versions, the cached images can lag the code. The safety net: `@codaco/interview`'s Chromatic build snapshots the capture stories, so a rendering change shows up there as a visual diff — that is your cue to add an `@codaco/interview` changeset (which moves the version and triggers regeneration). Treat Chromatic on the capture stories as the signal that a regen is due.
 
-**Versioning interview redeploys both consumers.** `architect-web` and `documentation` builds depend on `generate`, and CI's `detect` job treats a moved interview release version as a change to both apps. So the full chain holds:
+**Versioning interview redeploys both consumers.** `architect` and `documentation` builds depend on `generate`, and CI's `detect` job treats a moved interview release version as a change to both apps. So the full chain holds:
 
-> version `@codaco/interview` (or add a changeset bumping it) → the `generate` cache key moves → images regenerate during the `quality` build → `architect-web` and `documentation` rebuild and redeploy with the fresh images.
+> version `@codaco/interview` (or add a changeset bumping it) → the `generate` cache key moves → images regenerate during the `quality` build → `architect` and `documentation` rebuild and redeploy with the fresh images.
 
-To regenerate locally — needed once for local development of architect-web or the documentation site, since the assets are not committed:
+To regenerate locally — needed once for local development of architect or the documentation site, since the assets are not committed:
 
 ```bash
 pnpm generate:interface-images   # builds the interview storybook, then captures

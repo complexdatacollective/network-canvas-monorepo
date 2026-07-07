@@ -1,8 +1,6 @@
-import { faker } from '@faker-js/faker';
+import { z } from 'zod';
 
-import { getAssetId, getNodeVariableId } from '~/utils/mock-seeds';
 import { findDuplicateId } from '~/utils/validation-helpers';
-import { z } from '~/utils/zod-mock-extension';
 
 import { geospatialPromptSchema, NodeStageSubjectSchema } from '../common';
 import { FilterSchema } from '../filters';
@@ -38,76 +36,41 @@ const styleOptions = z.enum(
 );
 
 const mapOptions = z.strictObject({
-  tokenAssetId: z.string().generateMock(() => getAssetId(0)),
-  style: styleOptions.generateMock(
-    () => faker.helpers.arrayElement(mapboxStyleOptions).value,
-  ),
-  center: z
-    .tuple([z.number(), z.number()])
-    .generateMock(() => [
-      faker.location.longitude({ min: -180, max: 180, precision: 0.0001 }),
-      faker.location.latitude({ min: -90, max: 90, precision: 0.0001 }),
-    ]),
+  tokenAssetId: z.string(),
+  style: styleOptions,
+  center: z.tuple([z.number(), z.number()]),
   initialZoom: z
     .number()
     .min(0, { message: 'Zoom must be at least 0' })
-    .max(22, { message: 'Zoom must be less than or equal to 22' })
-    .generateMock(() => faker.number.int({ min: 0, max: 22 })),
-  dataSourceAssetId: z.string().generateMock(() => getAssetId(1)),
-  color: z
-    .string()
-    .generateMock(() =>
-      faker.helpers.arrayElement([
-        'node-color-seq-1',
-        'node-color-seq-2',
-        'node-color-seq-3',
-        'node-color-seq-4',
-        'node-color-seq-5',
-      ]),
-    ),
+    .max(22, { message: 'Zoom must be less than or equal to 22' }),
+  dataSourceAssetId: z.string(),
+  color: z.string(),
   targetFeatureProperty: z
     .string()
-    .generateMock(() =>
-      faker.helpers.arrayElement(['name', 'location_type', 'category']),
-    ), // property of geojson to select
+    .min(1, { message: 'Target feature property must not be empty' }), // property of geojson to select
   showTransit: z.boolean().optional(),
   allowSearch: z.boolean().optional(),
 });
 
 export type MapOptions = z.infer<typeof mapOptions>;
 
-export const geospatialStage = baseStageSchema
-  .extend({
-    type: z.literal('Geospatial'),
-    subject: NodeStageSubjectSchema,
-    filter: FilterSchema.optional(),
-    mapOptions: mapOptions,
-    prompts: z
-      .array(geospatialPromptSchema)
-      .min(1)
-      .superRefine((prompts, ctx) => {
-        // Check for duplicate prompt IDs
-        const duplicatePromptId = findDuplicateId(prompts);
-        if (duplicatePromptId) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-            path: [],
-          });
-        }
-      }),
-  })
-  .generateMock((base) => ({
-    ...base,
-    prompts: [
-      {
-        id: crypto.randomUUID(),
-        text: faker.helpers.arrayElement([
-          'Select the location that best represents your home.',
-          'Choose the point on the map where you usually hang out with friends.',
-          'Indicate your favorite place in the city by selecting it on the map.',
-        ]),
-        variable: getNodeVariableId(0),
-      },
-    ],
-  }));
+export const geospatialStage = baseStageSchema.extend({
+  type: z.literal('Geospatial'),
+  subject: NodeStageSubjectSchema,
+  filter: FilterSchema.optional(),
+  mapOptions: mapOptions,
+  prompts: z
+    .array(geospatialPromptSchema)
+    .min(1)
+    .superRefine((prompts, ctx) => {
+      // Check for duplicate prompt IDs
+      const duplicatePromptId = findDuplicateId(prompts);
+      if (duplicatePromptId) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+          path: [],
+        });
+      }
+    }),
+});

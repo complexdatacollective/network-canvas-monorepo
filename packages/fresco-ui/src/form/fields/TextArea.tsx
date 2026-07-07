@@ -39,8 +39,7 @@ type TextAreaFieldProps = CreateFormFieldProps<string, 'textarea'> &
 
 const TextAreaField = forwardRef<HTMLTextAreaElement, TextAreaFieldProps>(
   function TextAreaField(props, ref) {
-    const { className, value, onChange, onBlur, disabled, readOnly, ...rest } =
-      props;
+    const { className, value, onChange, disabled, readOnly, ...rest } = props;
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       onChange?.(e.target.value);
@@ -57,7 +56,6 @@ const TextAreaField = forwardRef<HTMLTextAreaElement, TextAreaFieldProps>(
           ref={ref}
           {...rest}
           value={value ?? ''}
-          onBlur={onBlur}
           disabled={disabled}
           readOnly={readOnly}
           onChange={handleChange}

@@ -79,50 +79,9 @@ describe('processAttributes', () => {
       expect(falseCount).toBe(1); // male is false
     });
 
-    it('should not do substring matching when categorical data is a string (legacy/edge case)', async () => {
-      // This test specifically checks for the bug where includes() would do
-      // substring matching when the first argument is a string
-      const codebook = {
-        node: {
-          person: {
-            name: 'person',
-            color: 'color',
-            variables: {
-              'gender-uuid': {
-                name: 'gender',
-                type: 'categorical',
-                options: [
-                  { value: 'male', label: 'Male' },
-                  { value: 'female', label: 'Female' },
-                ],
-              },
-            },
-          },
-        },
-      } as unknown as Codebook;
-
-      // Edge case: categorical data stored as a string instead of array
-      const node = {
-        [entityPrimaryKeyProperty]: '1',
-        type: 'person',
-        [entityAttributesProperty]: {
-          'gender-uuid': 'female', // String instead of array - legacy data format
-        },
-      } as unknown as NodeWithResequencedID;
-
-      const result = await processAttributes(node, codebook, mockExportOptions);
-      const dataElements = getDataElements(result);
-
-      // 'male' should NOT be true just because it's a substring of 'female'
-      const values = Object.values(dataElements);
-      const trueCount = values.filter((v) => v === 'true').length;
-      const falseCount = values.filter((v) => v === 'false').length;
-
-      expect(trueCount).toBe(1); // Only female should be true
-      expect(falseCount).toBe(1); // male should be false (not true due to substring match)
-    });
-
-    it('should handle string categorical data with numeric-like values', async () => {
+    it('matches numeric-like categorical option values without substring matching', async () => {
+      // Categorical attributes are stored as arrays; ['10'] must match only the
+      // '10' option, not '1' or '100' via substring matching.
       const codebook = {
         node: {
           person: {
@@ -143,19 +102,17 @@ describe('processAttributes', () => {
         },
       } as unknown as Codebook;
 
-      // String value that could match substrings
       const node = {
         [entityPrimaryKeyProperty]: '1',
         type: 'person',
         [entityAttributesProperty]: {
-          'rating-uuid': '10', // String '10' contains '1' as substring
+          'rating-uuid': ['10'],
         },
       } as unknown as NodeWithResequencedID;
 
       const result = await processAttributes(node, codebook, mockExportOptions);
       const dataElements = getDataElements(result);
 
-      // '1' should NOT match just because '10' contains '1'
       const values = Object.values(dataElements);
       const trueCount = values.filter((v) => v === 'true').length;
       const falseCount = values.filter((v) => v === 'false').length;

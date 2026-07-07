@@ -77,10 +77,13 @@ export const makeVariableUUIDReplacer =
     protocolCodebook: Codebook,
     subjectType: Extract<StageSubject, { entity: 'node' }>['type'],
   ) =>
-  (node: Partial<NcNode>): NcNode => {
+  (node: Partial<NcNode>, index: number): NcNode => {
     const codebookDefinition = protocolCodebook.node?.[subjectType];
 
-    const uuid = hash(node);
+    // Salt the content hash with the row's data-file position so byte-identical
+    // rows receive distinct (but deterministic) primary keys. Without the index
+    // the Collection keyExtractor dedupes identical rows to a single card.
+    const uuid = hash({ node, index });
 
     const attributes = mapKeys(
       node[entityAttributesProperty] ?? {},

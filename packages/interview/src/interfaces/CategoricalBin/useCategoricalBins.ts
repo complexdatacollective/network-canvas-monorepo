@@ -22,13 +22,8 @@ const matchVariableValue = (
 ) => {
   const variableValue = node[entityAttributesProperty][variable];
 
-  if (variableValue === undefined || variableValue === null) return false;
-
-  if (Array.isArray(variableValue)) {
-    return variableValue.some((v) => v === value);
-  }
-
-  return variableValue === value;
+  // Categorical attributes are stored as arrays of selected option values.
+  return Array.isArray(variableValue) && variableValue.some((v) => v === value);
 };
 
 type CategoricalBinPrompts = Extract<
@@ -69,6 +64,7 @@ export function useCategoricalBins() {
       otherVariable,
       otherOptionLabel,
       bucketSortOrder,
+      binSortOrder,
     },
   } = usePrompts<CategoricalBinPrompts>();
 
@@ -109,9 +105,11 @@ export function useCategoricalBins() {
       return matchVariableValue(node, activePromptVariable, option.value);
     });
 
+    // Within-bin node order is governed by binSortOrder (mirroring OrdinalBin);
+    // bucketSortOrder is reserved for the drawer (uncategorised nodes).
     const sortedNodes = getSortedNodeList(
       nodes,
-      bucketSortOrder,
+      binSortOrder,
       codebookVariables,
     );
 
@@ -131,7 +129,7 @@ export function useCategoricalBins() {
 
     const sortedOtherNodes = getSortedNodeList(
       otherNodes,
-      bucketSortOrder,
+      binSortOrder,
       codebookVariables,
     );
 

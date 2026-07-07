@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
   workflow_dispatch:
     inputs:
       force_run:
@@ -27,26 +28,41 @@ permissions:
   checks: write
   pull-requests: write
 
+# PR runs are grouped per ref so a new push cancels the previous run for that
+# branch. Push-to-main runs get a per-commit group instead: main pushes must
+# never cancel each other, or a release-carrying run (the merge of the Release
+# apps PR) can be evicted while queued during a burst of merges and the release
+# is silently lost. See .github/scripts/detect-app-release.sh for the self-healing
+# safety net if a release run is dropped anyway.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
+  # Cancel superseded PR runs — EXCEPT the changesets bot's release PRs
+  # (`changeset-release/*`), which get force-updated on every merge to main.
+  # Cancelling those leaves the `quality` aggregate `skipped` (it is
+  # `if: !cancelled()`), and a skipped required check blocks the PR, so the
+  # release PRs could never satisfy the merge queue. Not cancelling lets their
+  # `quality` run complete (success/failure) so they stay mergeable.
+  cancel-in-progress: >-
+    ${{ github.event_name == 'pull_request'
+    && !startsWith(github.head_ref, 'changeset-release/') }}
 
 jobs:
   detect:
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-latest
     outputs:
       any_app: ${{ steps.flags.outputs.any_app }}
       docs: ${{ steps.flags.outputs.docs }}
       architect: ${{ steps.flags.outputs.architect }}
+      interviewer: ${{ steps.flags.outputs.interviewer }}
       website: ${{ steps.flags.outputs.website }}
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
       interface_images: ${{ steps.flags.outputs.interface_images }}
       interview_release_version: ${{ steps.flags.outputs.interview_release_version }}
-      interviewer_v8_changeset: ${{ steps.flags.outputs.interviewer_v8_changeset }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
           fetch-depth: 0
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
@@ -123,12 +139,13 @@ jobs:
             fi
           }
           docs=$(flag @codaco/documentation)
-          arch=$(flag @codaco/architect-web)
+          arch=$(flag @codaco/architect)
+          intvr=$(flag @codaco/interviewer)
           web=$(flag networkcanvas.com)
           fui=$(flag @codaco/fresco-ui)
           intv=$(flag @codaco/interview)
 
-          # Interface screenshots regenerate, and their consumers (architect-web,
+          # Interface screenshots regenerate, and their consumers (architect,
           # documentation) redeploy, only when the @codaco/interview RELEASE
           # VERSION moves — its package.json version, or the pending version a
           # changeset implies — not on arbitrary interview/fresco-ui edits. The
@@ -148,7 +165,7 @@ jobs:
               [[ "$new_v" != "$old_v" ]] && ifimg=true
             fi
             # Match the @codaco/interview changeset frontmatter key exactly:
-            # '@codaco/interview' is a substring of '@codaco/interviewer-v8', so a
+            # '@codaco/interview' is a substring of '@codaco/interviewer', so a
             # bare grep would false-trigger on unrelated interviewer changesets.
             key_re="^[[:space:]]*['\"]?@codaco/interview['\"]?[[:space:]]*:"
             for f in $(git diff --name-only "$PREV" "$CURR" -- '.changeset/*.md'); do
@@ -160,43 +177,24 @@ jobs:
           fi
 
           # An interview version bump regenerates the interface images, which both
-          # architect-web and documentation embed — treat it as a change to each so
+          # architect and documentation embed — treat it as a change to each so
           # their deploys (and the carry-forward / any_app gating) fire.
           if [[ "$ifimg" == "true" ]]; then docs=true; arch=true; fi
 
           any_app=false
-          if [[ "$docs" == "true" || "$arch" == "true" || "$web" == "true" ]]; then any_app=true; fi
-
-          # PR-only: detect a changeset ADDED/CHANGED in this PR whose frontmatter
-          # touches @codaco/interviewer-v8. Gates the snapshot Electron build job
-          # below. Scoping to changed files (not the whole .changeset tree) keeps
-          # unrelated PRs from triggering the build just because an interviewer-v8
-          # changeset already exists in the checkout.
-          interviewer_v8_changeset=false
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
-            if [[ -z "$PREV" ]]; then
-              # First push on the branch (no parent) — be conservative, scan all.
-              changesets=$(compgen -G '.changeset/*.md' || true)
-            else
-              changesets=$(git diff --name-only --diff-filter=d "$PREV" "$CURR" -- '.changeset/*.md')
-            fi
-            if [[ -n "$changesets" ]] && \
-               grep -lE '"?@codaco/interviewer-v8"?[[:space:]]*:' $changesets > /dev/null 2>&1; then
-              interviewer_v8_changeset=true
-            fi
-          fi
+          if [[ "$docs" == "true" || "$arch" == "true" || "$intvr" == "true" || "$web" == "true" ]]; then any_app=true; fi
 
           {
             echo "any_app=$any_app"
             echo "docs=$docs"
             echo "architect=$arch"
+            echo "interviewer=$intvr"
             echo "website=$web"
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
             echo "interview_e2e=$intv"
             echo "interface_images=$ifimg"
             echo "interview_release_version=$interview_release_version"
-            echo "interviewer_v8_changeset=$interviewer_v8_changeset"
           } >> "$GITHUB_OUTPUT"
 
   # Cache design: every Turbo-using job restores `.turbo` from the same
@@ -204,28 +202,90 @@ jobs:
   # writes the SHA-specific slot; subsequent jobs read it via `restore-keys`
   # fallback. Per-package env values (NEXT_PUBLIC_*, VITE_*) are part of each
   # build task's `env:` list in turbo.json so they participate in the cache key.
-  quality:
-    needs: detect
+  #
+  # `quality` used to be a single job running everything serially; it is now a
+  # fan-out of independent sub-jobs behind the `quality` aggregator below, so
+  # they run in parallel runners instead of one after another. Sub-jobs
+  # deliberately do NOT `needs: detect` so they still run under `merge_group`
+  # (where `detect` is skipped). `typecheck`/`test` restore `build`'s output via
+  # their own `^build` dependency; `lint` needs it too (below) because oxlint's
+  # type-aware rules resolve workspace imports through built `.d.ts` files.
+  lint:
+    needs: build
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
-    # No NEXT_PUBLIC_* / VITE_* env vars here. Quality just verifies the build
-    # compiles — env.js has skipValidation:true so missing public env values
-    # don't fail the build. Keeping these vars unset in quality matches what
-    # chromatic/e2e have, so shared package builds (fresco-ui, shared-consts,
-    # interview, …) compute the same task hash across all those jobs and the
-    # cache that quality writes is actually reusable downstream.
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      # Restore the shared-package builds (cache hit from the `build` job) so
+      # oxlint-tsgolint has the workspace types; otherwise it emits false-positive
+      # type errors (`//#lint` has no `^build` dependency of its own).
+      - run: pnpm exec turbo run build --filter='./packages/*'
+      - run: pnpm exec turbo run //#lint
+
+  knip:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm exec turbo run //#knip
+
+  check-changesets:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm check:changesets
+
+  test-scripts:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm test:scripts
+
+  build:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Build shared packages (apps build in their own deploy/release jobs)
+        run: pnpm exec turbo run build --filter='./packages/*'
+
+  typecheck:
+    needs: build
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - run: pnpm exec turbo run typecheck
+
+  test:
+    needs: build
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
@@ -237,9 +297,26 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
-      - name: Run all gates
+      - run: pnpm exec turbo run test
+
+  quality:
+    needs: [lint, knip, check-changesets, test-scripts, build, typecheck, test]
+    if: ${{ !cancelled() && github.event_name != 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all quality checks passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
         run: |
-          pnpm exec turbo run //#lint //#knip typecheck build test
+          echo "sub-job results: $RESULTS"
+          IFS=',' read -ra arr <<< "$RESULTS"
+          for r in "${arr[@]}"; do
+            if [ "$r" != "success" ]; then
+              echo "::error::quality gate failed — a sub-job concluded '$r'"
+              exit 1
+            fi
+          done
+          echo "quality gate passed"
 
   # Deploy jobs are split per-app and per-environment so:
   #   * one app's build failure never blocks the other app's deploy
@@ -277,18 +354,8 @@ jobs:
       NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
       NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
         name: Build and deploy docs preview
         run: |
@@ -304,13 +371,12 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
   deploy-docs-prod:
-    needs: [detect, quality]
+    needs: [detect]
     if: |
       always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      needs.detect.outputs.docs == 'true' &&
-      needs.quality.result == 'success'
+      needs.detect.outputs.docs == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -324,18 +390,8 @@ jobs:
       NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
       NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
         name: Build and deploy docs production
         run: |
@@ -350,14 +406,13 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
   deploy-architect-preview:
-    # Same shape as deploy-docs-preview: wait for quality (cache + write-slot)
-    # but don't gate on its success.
-    needs: [detect, quality]
+    # Runs independently of quality (quality no longer builds apps). Restores the
+    # shared `.turbo` cache so a prior run's package builds are reused when
+    # present, then builds the app itself and pushes a preview to Netlify.
+    needs: detect
     if: |
-      always() &&
       github.event_name == 'pull_request' &&
-      needs.detect.outputs.architect == 'true' &&
-      needs.quality.result != 'cancelled'
+      needs.detect.outputs.architect == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -372,26 +427,60 @@ jobs:
       # doesn't pollute the production PostHog project.
       VITE_DISABLE_ANALYTICS: 'true'
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
-        name: Build and deploy architect-web preview
+        name: Build and deploy architect preview
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect-web
+          pnpm exec turbo run build --filter=@codaco/architect^...
+          pnpm --filter=@codaco/architect build:web
           json=$(npx --yes netlify-cli@22 deploy --no-build \
-                   --filter=@codaco/architect-web \
-                   --dir=apps/architect-web/dist \
+                   --filter=@codaco/architect \
+                   --dir=apps/architect/dist \
                    --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}" \
+                   --alias="pr-${{ github.event.number }}" --json)
+          echo "$json" | jq .
+          url=$(echo "$json" | jq -r '.deploy_url')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+  # interviewer is a vite-plugin-pwa PWA, same shape as architect, but
+  # its own `build` script is a plain `vite build` (no turbo task override) so
+  # `turbo run build --filter=...` skips the post-build PWA assertion. Build
+  # workspace deps via turbo (fresco-ui, interview, etc.) then run the app's
+  # own `build:web` (vite build + assert-pwa-build.mjs) directly so a broken
+  # service-worker precache manifest fails the deploy instead of shipping.
+  #
+  # NOTE(human-setup-required): needs its own Netlify site, created manually,
+  # with its site ID stored in the NETLIFY_SITE_ID_INTERVIEWER secret —
+  # see apps/interviewer/RELEASING.md.
+  deploy-interviewer-preview:
+    # Runs independently of quality (same shape as deploy-architect-preview):
+    # restores the shared `.turbo` cache to reuse prior package builds when
+    # present, then builds the app itself and pushes a preview to Netlify.
+    needs: detect
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.detect.outputs.interviewer == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: ./.github/actions/turbo-ci-setup
+      - id: deploy
+        name: Build and deploy interviewer preview
+        run: |
+          pnpm exec turbo run build --filter=@codaco/interviewer^...
+          pnpm --filter=@codaco/interviewer build:web
+          json=$(npx --yes netlify-cli@22 deploy --no-build \
+                   --filter=@codaco/interviewer \
+                   --dir=apps/interviewer/dist \
+                   --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}" \
                    --alias="pr-${{ github.event.number }}" --json)
           echo "$json" | jq .
           url=$(echo "$json" | jq -r '.deploy_url')
@@ -415,18 +504,8 @@ jobs:
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
         name: Build and deploy networkcanvas.com preview
         run: |
@@ -445,11 +524,16 @@ jobs:
   # in place rather than spamming the PR with one new comment per run.
   comment-preview-urls:
     needs:
-      [deploy-docs-preview, deploy-architect-preview, deploy-website-preview]
+      [
+        deploy-docs-preview,
+        deploy-architect-preview,
+        deploy-interviewer-preview,
+        deploy-website-preview,
+      ]
     if: |
       always() &&
       github.event_name == 'pull_request' &&
-      (needs.deploy-docs-preview.result == 'success' || needs.deploy-architect-preview.result == 'success' || needs.deploy-website-preview.result == 'success')
+      (needs.deploy-docs-preview.result == 'success' || needs.deploy-architect-preview.result == 'success' || needs.deploy-interviewer-preview.result == 'success' || needs.deploy-website-preview.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -459,14 +543,16 @@ jobs:
         env:
           DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
           ARCHITECT_URL: ${{ needs.deploy-architect-preview.outputs.url }}
+          INTERVIEWER_URL: ${{ needs.deploy-interviewer-preview.outputs.url }}
           WEBSITE_URL: ${{ needs.deploy-website-preview.outputs.url }}
         with:
           script: |
             const marker = '<!-- ci:deploy-previews -->';
             const lines = [marker, '🚀 **Deploy previews**'];
-            const { DOCS_URL, ARCHITECT_URL, WEBSITE_URL } = process.env;
+            const { DOCS_URL, ARCHITECT_URL, INTERVIEWER_URL, WEBSITE_URL } = process.env;
             if (DOCS_URL) lines.push(`- documentation → ${DOCS_URL}`);
-            if (ARCHITECT_URL) lines.push(`- architect-web → ${ARCHITECT_URL}`);
+            if (ARCHITECT_URL) lines.push(`- architect → ${ARCHITECT_URL}`);
+            if (INTERVIEWER_URL) lines.push(`- interviewer → ${INTERVIEWER_URL}`);
             if (WEBSITE_URL) lines.push(`- networkcanvas.com → ${WEBSITE_URL}`);
             const body = lines.join('\n');
             const { data: comments } = await github.rest.issues.listComments({
@@ -492,67 +578,13 @@ jobs:
               });
             }
 
-  deploy-architect-prod:
-    needs:
-      [
-        detect,
-        quality,
-        chromatic-fresco-ui,
-        chromatic-interview,
-        interview-e2e-report,
-      ]
-    if: |
-      always() &&
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      needs.detect.outputs.architect == 'true' &&
-      needs.quality.result == 'success' &&
-      needs.chromatic-fresco-ui.result != 'failure' &&
-      needs.chromatic-interview.result != 'failure' &&
-      needs.interview-e2e-report.result != 'failure'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
-      VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
-      # Production bundle has analytics enabled (no VITE_DISABLE_ANALYTICS set).
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
-      - id: deploy
-        name: Build and deploy architect-web production
-        run: |
-          pnpm exec turbo run build --filter=@codaco/architect-web
-          json=$(npx --yes netlify-cli@22 deploy --no-build --prod \
-                   --filter=@codaco/architect-web \
-                   --dir=apps/architect-web/dist \
-                   --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}" --json)
-          echo "$json" | jq .
-          url=$(echo "$json" | jq -r '.deploy_url')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
   deploy-website-prod:
-    needs: [detect, quality]
+    needs: [detect]
     if: |
       always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      needs.detect.outputs.website == 'true' &&
-      needs.quality.result == 'success'
+      needs.detect.outputs.website == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -561,18 +593,8 @@ jobs:
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
         name: Build and deploy networkcanvas.com production
         run: |
@@ -593,8 +615,8 @@ jobs:
     if: needs.deploy-docs-preview.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version-file: '.nvmrc'
@@ -643,20 +665,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm exec turbo run build-storybook --filter=@codaco/fresco-ui
       - working-directory: packages/fresco-ui
         env:
@@ -680,20 +692,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - run: pnpm exec turbo run build-storybook --filter=@codaco/interview
       - working-directory: packages/interview
         env:
@@ -718,18 +720,8 @@ jobs:
     outputs:
       slug: ${{ steps.meta.outputs.slug }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: ./.github/actions/turbo-ci-setup
       - id: meta
         env:
           REF: ${{ github.head_ref || github.ref_name }}
@@ -747,6 +739,12 @@ jobs:
           sudo chown -R "$(id -u):$(id -g)" \
             packages/interview/e2e/playwright-report \
             packages/interview/e2e/test-results 2>/dev/null || true
+      - name: Flag flaky tests
+        # Reporting only — never gate the job on it (belt-and-suspenders with the
+        # script's own guards).
+        if: always()
+        continue-on-error: true
+        run: node packages/interview/e2e/scripts/flaky-summary.mjs
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -756,9 +754,17 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  # Publishes the Playwright report to GitHub Pages and comments the E2E result
+  # on the PR. Purely informational: whether the report PUBLISHED says nothing
+  # about whether the code is sound — the actual verdict is the interview-e2e job
+  # (and the comment below). continue-on-error keeps a reporting/Pages-deploy
+  # hiccup from failing the workflow run and gating a release; it is also
+  # excluded from the carry-forward job so its verdict is never republished onto
+  # an unrelated push (see carry-forward-statuses).
   interview-e2e-report:
     needs: interview-e2e
     if: ${{ !cancelled() && needs.interview-e2e.result != 'skipped' }}
+    continue-on-error: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -778,7 +784,7 @@ jobs:
           name: interview-playwright-report
           path: new-report
       - name: Fetch existing pages content
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
           ref: gh-pages
           path: existing-pages
@@ -800,7 +806,10 @@ jobs:
           path: merged/
       - uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
       - name: Comment on PR
-        if: github.event_name == 'pull_request'
+        # always(): still post the E2E result even if the Pages publish above
+        # failed — the report link may be stale but the pass/fail signal is the
+        # point.
+        if: ${{ always() && github.event_name == 'pull_request' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           SLUG: ${{ needs.interview-e2e.outputs.slug }}
@@ -818,7 +827,6 @@ jobs:
             });
 
   release:
-    needs: quality
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: npm-publish
@@ -828,31 +836,18 @@ jobs:
       id-token: write
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-    outputs:
-      interviewer_v8_released: ${{ steps.detect_interviewer_v8.outputs.released }}
-      interviewer_v8_version: ${{ steps.detect_interviewer_v8.outputs.version }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
           persist-credentials: false
           fetch-depth: 2
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+      - uses: ./.github/actions/turbo-ci-setup
       - name: Build all publishable packages
         # Only build the workspaces under packages/ — those are what changesets
         # publishes to npm. Apps (./apps/*) are private:true and don't need to
         # build successfully here; their deploy pipeline is per-app deploy jobs.
         run: pnpm exec turbo run build --filter='./packages/*'
-      - uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1
+      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
         with:
           version: pnpm run version-packages
           publish: pnpm run publish-packages
@@ -860,40 +855,222 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
-      - name: Detect interviewer-v8 version bump
-        # interviewer-v8 is bump-driven: its version is edited directly in a PR
-        # rather than via a changesets "Version Packages" PR. Decide whether to
-        # release by diffing the merged commit's version against its first
-        # parent (the previous main tip).
-        #
-        # Use the immutable push SHA, NOT HEAD/HEAD^: when there are pending
-        # changesets the changesets/action step above creates a local "Version
-        # Packages" commit and checks it out, so by the time this step runs the
-        # working HEAD has advanced and HEAD^ is the merge commit (same version)
-        # instead of the previous main tip. `${{ github.sha }}` is the pushed
-        # commit and `<sha>^` resolves its first parent regardless of where the
-        # working HEAD currently points; fetch-depth: 2 makes both available.
-        id: detect_interviewer_v8
+
+  # Maintains a "Release apps" PR (sibling of the library "Version Packages" PR).
+  # On every push to main it re-runs the app version step on a fresh branch and
+  # opens/updates/closes the PR. Merging the PR is the release gate (see the
+  # apps-release-architect / apps-release-interviewer jobs below). App changesets
+  # are ignored by the library release, so
+  # they persist in .changeset/ until this job consumes them.
+  apps-release-pr:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Guard against mixed changesets
+        run: pnpm check:changesets
+      - name: Compute app version bumps
+        run: node scripts/version-beta-apps.mjs --out "${RUNNER_TEMP}/apps-release-body.md"
+      - name: Open/update the Release apps PR
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          branch: changeset-release/apps
+          base: main
+          delete-branch: true
+          title: 'Release apps (beta)'
+          commit-message: 'chore(release): version beta apps'
+          body-path: ${{ runner.temp }}/apps-release-body.md
+
+  # On a push to main that changes an app version (i.e. the Release apps PR just
+  # merged), detect which app(s) moved — mirrors detect-legacy-release.sh, but
+  # idempotency is a local git-tag check (no external repo).
+  apps-release-detect:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      architect_released: ${{ steps.architect.outputs.released }}
+      architect_version: ${{ steps.architect.outputs.version }}
+      interviewer_released: ${{ steps.interviewer.outputs.released }}
+      interviewer_version: ${{ steps.interviewer.outputs.version }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: 2
+          fetch-tags: true
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+      - id: architect
         env:
-          PKG_JSON: apps/interviewer-v8/package.json
-          SHA: ${{ github.sha }}
+          PKG_JSON: apps/architect/package.json
+          PKG_NAME: '@codaco/architect'
+        run: bash .github/scripts/detect-app-release.sh
+      - id: interviewer
+        env:
+          PKG_JSON: apps/interviewer/package.json
+          PKG_NAME: '@codaco/interviewer'
+        run: bash .github/scripts/detect-app-release.sh
+
+  # Build, deploy to Netlify production, and cut a GitHub release for architect
+  # when its version changed. Separate from the interviewer job (below) so one
+  # app's build/deploy failure never blocks the other's release — the same
+  # per-app isolation the deleted deploy-*-prod jobs had.
+  apps-release-architect:
+    needs: apps-release-detect
+    if: needs.apps-release-detect.outputs.architect_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # One release per version. With per-commit push concurrency (see top of file)
+    # main pushes run in parallel, so two runs can both detect the same untagged
+    # version and race into a duplicate build/deploy/release. Serialise them on
+    # the tag so only one runs at a time; the guard step below turns the run that
+    # starts after the tag exists into a clean no-op (no redundant prod deploy).
+    concurrency:
+      group: apps-release-@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
+      VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-tags: true
+          persist-credentials: false
+      - name: Skip if this version was already released
+        id: guard
+        env:
+          TAG: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
         run: |
-          read_version() { git show "$1:$PKG_JSON" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version"; }
-          current=$(read_version "$SHA")
-          if git cat-file -e "$SHA^:$PKG_JSON" 2>/dev/null; then
-            previous=$(read_version "$SHA^")
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG already released — nothing to do"
           else
-            previous=""
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
-          if [[ "$current" != "$previous" && -n "$current" ]]; then
-            echo "released=true" >> "$GITHUB_OUTPUT"
-            echo "version=$current" >> "$GITHUB_OUTPUT"
-            echo "interviewer-v8 version changed: $previous -> $current"
+      - if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - if: steps.guard.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build & deploy architect to production
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          pnpm exec turbo run build --filter=@codaco/architect^...
+          pnpm --filter=@codaco/architect build:web
+          npx --yes netlify-cli@22 deploy --no-build --prod \
+            --filter=@codaco/architect \
+            --dir=apps/architect/dist \
+            --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}"
+      - name: architect release notes
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
+        run: >-
+          node scripts/release-notes.mjs
+          --app apps/architect
+          --pkg @codaco/architect
+          --version "$VERSION"
+          --out "${RUNNER_TEMP}/architect-notes.md"
+      - if: steps.guard.outputs.skip != 'true'
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        with:
+          tag_name: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
+          name: Architect ${{ needs.apps-release-detect.outputs.architect_version }}
+          body_path: ${{ runner.temp }}/architect-notes.md
+          prerelease: true
+          make_latest: 'false'
+
+  # Build, deploy to Netlify production, and cut a GitHub release for interviewer
+  # when its version changed. Separate job (see apps-release-architect) so a
+  # failure in one app's build never blocks the other's release.
+  # NOTE(human-setup-required): needs NETLIFY_SITE_ID_INTERVIEWER set —
+  # see apps/interviewer/RELEASING.md.
+  apps-release-interviewer:
+    needs: apps-release-detect
+    if: needs.apps-release-detect.outputs.interviewer_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # One release per version — see apps-release-architect for the rationale.
+    concurrency:
+      group: apps-release-@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-tags: true
+          persist-credentials: false
+      - name: Skip if this version was already released
+        id: guard
+        env:
+          TAG: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG already released — nothing to do"
           else
-            echo "released=false" >> "$GITHUB_OUTPUT"
-            echo "version=" >> "$GITHUB_OUTPUT"
-            echo "interviewer-v8 version unchanged ($current)"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - if: steps.guard.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build & deploy interviewer to production
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          pnpm exec turbo run build --filter=@codaco/interviewer^...
+          pnpm --filter=@codaco/interviewer build:web
+          npx --yes netlify-cli@22 deploy --no-build --prod \
+            --filter=@codaco/interviewer \
+            --dir=apps/interviewer/dist \
+            --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}"
+      - name: interviewer release notes
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
+        run: >-
+          node scripts/release-notes.mjs
+          --app apps/interviewer
+          --pkg @codaco/interviewer
+          --version "$VERSION"
+          --out "${RUNNER_TEMP}/interviewer-notes.md"
+      - if: steps.guard.outputs.skip != 'true'
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        with:
+          tag_name: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
+          name: Interviewer ${{ needs.apps-release-detect.outputs.interviewer_version }}
+          body_path: ${{ runner.temp }}/interviewer-notes.md
+          prerelease: true
+          make_latest: 'false'
 
   # Decide whether to (re)release the legacy desktop apps. A release fires when:
   #   * a workflow_dispatch selected the app (forced release at the current
@@ -906,7 +1083,6 @@ jobs:
   #     even if the release somehow predates this check).
   # version is always the current apps/<app>/package.json version.
   legacy-release-detect:
-    needs: quality
     # Only ever runs on main — a manual workflow_dispatch from a feature branch
     # must not mirror/publish branch-only code to the external app repos.
     if: >-
@@ -920,7 +1096,7 @@ jobs:
       interviewer_released: ${{ steps.interviewer.outputs.released }}
       interviewer_version: ${{ steps.interviewer.outputs.version }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
           fetch-depth: 2
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
@@ -929,7 +1105,7 @@ jobs:
       - name: Detect architect release
         id: architect
         env:
-          PKG_JSON: apps/architect/package.json
+          PKG_JSON: apps/architect-classic/package.json
           EXTERNAL_REPO: complexdatacollective/architect
           FORCED: ${{ (github.event_name == 'workflow_dispatch' && (inputs.release_app == 'architect' || inputs.release_app == 'both')) }}
           GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -937,157 +1113,11 @@ jobs:
       - name: Detect interviewer release
         id: interviewer
         env:
-          PKG_JSON: apps/interviewer/package.json
+          PKG_JSON: apps/interviewer-classic/package.json
           EXTERNAL_REPO: complexdatacollective/interviewer
           FORCED: ${{ (github.event_name == 'workflow_dispatch' && (inputs.release_app == 'interviewer' || inputs.release_app == 'both')) }}
           GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
         run: bash .github/scripts/detect-legacy-release.sh
-
-  # Per-platform Electron build for interviewer-v8. Triggered only when the
-  # release job above detected a version bump for @codaco/interviewer-v8.
-  # macOS leg signs + notarizes via Apple credentials in repo secrets;
-  # Windows ships unsigned (SmartScreen warning is acceptable for now);
-  # Linux builds AppImage + deb unsigned.
-  interviewer-v8-build:
-    needs: release
-    if: needs.release.outputs.interviewer_v8_released == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # macOS 26 (Tahoe): electron-builder 26 composes the Icon Composer
-          # `.icon` asset via actool, which requires Xcode 26 / actool 26.
-          # macos-latest still ships actool 16.4, so pin the newer image.
-          - os: macos-26
-            platform: mac
-            artifact_name: interviewer-v8-macos
-          - os: windows-latest
-            platform: win
-            artifact_name: interviewer-v8-windows
-          - os: ubuntu-latest
-            platform: linux
-            artifact_name: interviewer-v8-linux
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      # No --ignore-scripts: electron-builder install-app-deps must rebuild
-      # better-sqlite3-multiple-ciphers against the runner's Electron ABI.
-      - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            ~/.cache/electron
-            ~/.cache/electron-builder
-          key: ${{ runner.os }}-electron-${{ hashFiles('apps/interviewer-v8/package.json') }}
-          restore-keys: ${{ runner.os }}-electron-
-      # Turbo cache is keyspaced by runner.os; only the ubuntu leg can hit
-      # the cache written by the quality job. Mac/Windows rebuild deps from
-      # scratch (~1-2 min) — acceptable for now.
-      - if: matrix.os == 'ubuntu-latest'
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
-      - name: Build workspace dependencies
-        # ^... builds deps of interviewer-v8 (fresco-ui, interview, etc.)
-        # but NOT interviewer-v8 itself — electron-vite handles that.
-        run: pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
-      - name: Decode App Store Connect API key
-        # Keyed on the platform, not the runner image, so it survives the mac
-        # leg moving to macos-26.
-        if: matrix.platform == 'mac'
-        env:
-          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
-        run: |
-          key_path="${RUNNER_TEMP}/AuthKey.p8"
-          printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
-          echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
-      - name: Build Electron app (${{ matrix.platform }})
-        working-directory: apps/interviewer-v8
-        env:
-          # macOS-only credentials. Non-mac legs see empty strings, which
-          # electron-builder treats as "not configured" (no signing, no
-          # notarization). Linux has no signing concept; Windows ships
-          # unsigned per the spec.
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.CSC_KEY_PASSWORD || '' }}
-          # TEMPORARY (remove once the macOS pnpm node-module-collector failure
-          # is fixed): full electron-builder debug logging on the mac leg so the
-          # `<projectDir> not a file` collector error prints a stack trace. Not
-          # locally reproducible, so the trace must come from CI.
-          DEBUG: ${{ matrix.platform == 'mac' && 'electron-builder' || '' }}
-        # `--publish never`: the `publish` config makes electron-builder emit the
-        # latest*.yml auto-update metadata + app-update.yml, but uploading to the
-        # moving feed is done by interviewer-v8-publish via gh, not here.
-        run: |
-          pnpm electron:build
-          pnpm exec electron-builder --${{ matrix.platform }} --config electron-builder.config.cjs --publish never
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          # release-builds/* now also contains latest*.yml (+ .blockmap) so the
-          # publish job can push them to the update feed.
-          name: ${{ matrix.artifact_name }}
-          path: apps/interviewer-v8/release-builds/*
-          if-no-files-found: error
-          retention-days: 30
-
-  # Collect all platform artifacts and create one GitHub Release at tag
-  # `interviewer-v8@v<version>`. make_latest:false keeps the repo's "Latest
-  # release" pointer from bouncing between apps as different apps cut
-  # versions out of this monorepo.
-  interviewer-v8-publish:
-    needs: [release, interviewer-v8-build]
-    if: needs.release.outputs.interviewer_v8_released == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    timeout-minutes: 10
-    steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          path: artifacts
-          pattern: interviewer-v8-*
-          merge-multiple: true
-      - name: List collected artifacts
-        run: ls -la artifacts/
-      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
-        with:
-          tag_name: interviewer-v8@v${{ needs.release.outputs.interviewer_v8_version }}
-          name: Interviewer v8 v${{ needs.release.outputs.interviewer_v8_version }}
-          files: artifacts/*
-          fail_on_unmatched_files: true
-          make_latest: 'false'
-          # A version with a prerelease tag (e.g. 8.0.0-alpha.1) is flagged as a
-          # GitHub pre-release.
-          prerelease: ${{ contains(needs.release.outputs.interviewer_v8_version, '-') }}
-          generate_release_notes: true
-      # Maintain the stable `interviewer-v8-latest` release that electron-updater's
-      # generic feed reads (see electron-builder.config.cjs `publish`). The release
-      # is recreated each time so stale, differently-named installers from the
-      # previous version don't linger beside the current latest*.yml metadata.
-      - name: Update electron-updater feed
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          VERSION: ${{ needs.release.outputs.interviewer_v8_version }}
-        run: |
-          tag=interviewer-v8-latest
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release delete "$tag" --yes --cleanup-tag
-          fi
-          gh release create "$tag" artifacts/* \
-            --title "Interviewer v8 update feed" \
-            --notes "Auto-maintained download feed for the in-app updater (currently v${VERSION}). For release notes see the interviewer-v8@v* releases." \
-            --latest=false
 
   interviewer-release-build:
     needs: legacy-release-detect
@@ -1105,21 +1135,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
         with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - if: matrix.os == 'ubuntu-latest'
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+          ignore-scripts: 'false'
       - name: Build app + workspace deps
-        run: pnpm exec turbo run build --filter=network-canvas-interviewer
+        run: pnpm exec turbo run build --filter=@codaco/interviewer-classic
       - name: Decode App Store Connect API key
         if: matrix.os == 'macos-latest'
         env:
@@ -1133,7 +1154,7 @@ jobs:
       # macOS notarization runs automatically when APPLE_API_KEY is set (the
       # config gates `notarize` on it); Windows ships unsigned (no CSC_LINK).
       - name: Package
-        working-directory: apps/interviewer
+        working-directory: apps/interviewer-classic
         env:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -1143,9 +1164,9 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           # Distinct prefix so the publish job's glob doesn't also collect the
-          # `interviewer-v8-*` artifacts built in the same run.
+          # `interviewer-*` artifacts built in the same run.
           name: interviewer-release-${{ matrix.platform }}
-          path: apps/interviewer/release-builds/*
+          path: apps/interviewer-classic/release-builds/*
           if-no-files-found: error
           retention-days: 30
 
@@ -1165,21 +1186,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: ./.github/actions/turbo-ci-setup
         with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - if: matrix.os == 'ubuntu-latest'
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
+          ignore-scripts: 'false'
       - name: Build app + workspace deps
-        run: pnpm exec turbo run build --filter=network-canvas-architect
+        run: pnpm exec turbo run build --filter=@codaco/architect-classic
       - name: Decode App Store Connect API key
         if: matrix.os == 'macos-latest'
         env:
@@ -1194,7 +1206,7 @@ jobs:
       # config gates `notarize` on it); Windows ships unsigned (no CSC_LINK,
       # no certificateSubjectName).
       - name: Package
-        working-directory: apps/architect
+        working-directory: apps/architect-classic
         env:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -1204,7 +1216,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: architect-${{ matrix.platform }}
-          path: apps/architect/release-builds/*
+          path: apps/architect-classic/release-builds/*
           if-no-files-found: error
           retention-days: 30
 
@@ -1219,7 +1231,7 @@ jobs:
     outputs:
       mirror_sha: ${{ steps.mirror.outputs.mirror_sha }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: '.nvmrc'
@@ -1230,18 +1242,18 @@ jobs:
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
           node scripts/mirror-app.mjs
-          --app apps/interviewer
+          --app apps/interviewer-classic
           --repo complexdatacollective/interviewer
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
       - name: Extract release notes
         run: >-
           node scripts/release-notes.mjs
-          --app apps/interviewer
-          --pkg network-canvas-interviewer
+          --app apps/interviewer-classic
+          --pkg @codaco/interviewer-classic
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
           --out "${RUNNER_TEMP}/notes.md"
       - name: Create draft release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           repository: complexdatacollective/interviewer
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -1267,7 +1279,7 @@ jobs:
           merge-multiple: true
       - run: ls -la artifacts/
       - name: Attach artifacts and publish
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           repository: complexdatacollective/interviewer
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -1280,7 +1292,7 @@ jobs:
   # Mirror Architect source into complexdatacollective/architect master and create
   # a DRAFT release. Builds the Interviewer preview bundle first so it can be
   # vendored into the mirror (the standalone repo has no monorepo sibling to copy
-  # ../interviewer/out from).
+  # ../interviewer-classic/out from).
   architect-mirror:
     needs: legacy-release-detect
     if: needs.legacy-release-detect.outputs.architect_released == 'true'
@@ -1289,15 +1301,15 @@ jobs:
     outputs:
       mirror_sha: ${{ steps.mirror.outputs.mirror_sha }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - name: Build Interviewer preview bundle (vendored into the mirror)
-        run: pnpm exec turbo run build --filter=network-canvas-interviewer
+        run: pnpm exec turbo run build --filter=@codaco/interviewer-classic
       - name: Mirror source to external master
         id: mirror
         env:
@@ -1305,18 +1317,18 @@ jobs:
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
           node scripts/mirror-app.mjs
-          --app apps/architect
+          --app apps/architect-classic
           --repo complexdatacollective/architect
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}
       - name: Extract release notes
         run: >-
           node scripts/release-notes.mjs
-          --app apps/architect
-          --pkg network-canvas-architect
+          --app apps/architect-classic
+          --pkg @codaco/architect-classic
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}
           --out "${RUNNER_TEMP}/notes.md"
       - name: Create draft release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           repository: complexdatacollective/architect
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -1341,7 +1353,7 @@ jobs:
           merge-multiple: true
       - run: ls -la artifacts/
       - name: Attach artifacts and publish
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           repository: complexdatacollective/architect
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -1350,95 +1362,6 @@ jobs:
           fail_on_unmatched_files: true
           draft: false
           make_latest: 'false'
-
-  # PR snapshot build for testers. Triggered when the detect job flags a
-  # changeset touching @codaco/interviewer-v8 AND the quality gate passed.
-  # Uses changesets snapshot mode to produce a sha-stamped pre-release
-  # version (e.g. 7.0.1-pr-42-abc1234.0), notarizes the macOS artifact,
-  # uploads to the workflow run only — no GitHub Release is created.
-  interviewer-v8-pr-snapshot:
-    needs: [detect, quality]
-    if: |
-      github.event_name == 'pull_request' &&
-      needs.detect.outputs.interviewer_v8_changeset == 'true' &&
-      needs.quality.result == 'success'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # macOS 26 (Tahoe) for the Icon Composer `.icon` / actool 26
-          # requirement — see the interviewer-v8-build job.
-          - os: macos-26
-            platform: mac
-            artifact_name: interviewer-v8-macos-pr-${{ github.event.pull_request.number }}
-          - os: windows-latest
-            platform: win
-            artifact_name: interviewer-v8-windows-pr-${{ github.event.pull_request.number }}
-          - os: ubuntu-latest
-            platform: linux
-            artifact_name: interviewer-v8-linux-pr-${{ github.event.pull_request.number }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          # Check out the PR head directly. pull_request events default to
-          # the synthetic merge commit; the head sha is what we encode into
-          # the snapshot version string.
-          ref: ${{ github.event.pull_request.head.sha }}
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            ~/.cache/electron
-            ~/.cache/electron-builder
-          key: ${{ runner.os }}-electron-${{ hashFiles('apps/interviewer-v8/package.json') }}
-          restore-keys: ${{ runner.os }}-electron-
-      - if: matrix.os == 'ubuntu-latest'
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-turbo-
-      - name: Bump versions to PR snapshot
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          short_sha=${PR_SHA:0:7}
-          tag="pr-${PR_NUMBER}-${short_sha}"
-          pnpm exec changeset version --snapshot "$tag"
-          node -p "require('./apps/interviewer-v8/package.json').version"
-      - name: Build workspace dependencies
-        run: pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
-      - name: Decode App Store Connect API key
-        # Platform-keyed so it survives the mac leg moving to macos-26.
-        if: matrix.platform == 'mac'
-        env:
-          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
-        run: |
-          key_path="${RUNNER_TEMP}/AuthKey.p8"
-          printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
-          echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
-      - name: Build Electron app (${{ matrix.platform }})
-        working-directory: apps/interviewer-v8
-        env:
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.CSC_KEY_PASSWORD || '' }}
-        run: pnpm electron:dist:${{ matrix.platform }}
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ matrix.artifact_name }}
-          path: apps/interviewer-v8/release-builds/*
-          if-no-files-found: error
-          retention-days: 14
 
   # Carry forward prior statuses for conditional jobs that the current
   # push didn't touch. Push-to-push detection (see detect job)
@@ -1465,11 +1388,11 @@ jobs:
       - detect
       - deploy-docs-preview
       - deploy-architect-preview
+      - deploy-interviewer-preview
       - deploy-website-preview
       - chromatic-fresco-ui
       - chromatic-interview
       - interview-e2e
-      - interview-e2e-report
       - docs-preview-checks
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -1480,10 +1403,17 @@ jobs:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           # Map detect flag → list of conditional jobs gated on it.
-          # interview-e2e-report transitively depends on interview-e2e, and
-          # docs-preview-checks on deploy-docs-preview, so they share flags.
+          # docs-preview-checks depends on deploy-docs-preview, so they share a
+          # flag. interview-e2e-report is deliberately NOT here: it is a
+          # dependent, reporting-only job (publishes the Playwright report to
+          # Pages + comments) whose own `if:` already skips it whenever
+          # interview-e2e is skipped. Its verdict describes whether the report
+          # PUBLISHED, not whether the code is sound, so carrying a stale
+          # (possibly failed) report verdict onto an unrelated push would wrongly
+          # gate it — let its natural skip stand instead.
           FLAG_DOCS: ${{ needs.detect.outputs.docs }}
           FLAG_ARCHITECT: ${{ needs.detect.outputs.architect }}
+          FLAG_INTERVIEWER: ${{ needs.detect.outputs.interviewer }}
           FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
           FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
           FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
@@ -1495,10 +1425,11 @@ jobs:
             const flagToJobs = {
               FLAG_DOCS: ["deploy-docs-preview", "docs-preview-checks"],
               FLAG_ARCHITECT: ["deploy-architect-preview"],
+              FLAG_INTERVIEWER: ["deploy-interviewer-preview"],
               FLAG_WEBSITE: ["deploy-website-preview"],
               FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
               FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
-              FLAG_INTERVIEW_E2E: ["interview-e2e", "interview-e2e-report"],
+              FLAG_INTERVIEW_E2E: ["interview-e2e"],
             };
 
             // Only consider jobs the current run didn't execute (flag false).

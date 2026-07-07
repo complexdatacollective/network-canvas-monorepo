@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  BIOLOGICAL_SEX_OPTIONS,
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/shared-consts';
 import { createBaseProtocol } from '~/utils/test-utils';
 
 import ProtocolSchemaV8 from '../schema';
@@ -36,11 +41,14 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       const result = ProtocolSchemaV8.safeParse(invalidProtocol);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues).toHaveLength(2); // Stage subject not defined and form field variable not found
-        expect(result.error.issues[0]?.message).toBe(
-          'Stage subject is not defined in the codebook',
+        // The new validator emits errors in validator order; use find() to locate the subject error
+        const subjectError = result.error.issues.find((issue) =>
+          issue.message.includes(
+            'Stage subject is not defined in the codebook',
+          ),
         );
-        expect(result.error.issues[0]?.path).toEqual(['stages', 0, 'subject']);
+        expect(subjectError).toBeDefined();
+        expect(subjectError?.path).toEqual(['stages', 0, 'subject']);
       }
     });
 
@@ -141,7 +149,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         // The form field validation should fail because ego variables don't exist
         const formFieldError = result.error.issues.find((issue) =>
-          issue.message.includes('Form field variable not found in codebook'),
+          issue.message.includes('does not exist in the codebook'),
         );
         expect(formFieldError).toBeDefined();
       }
@@ -198,7 +206,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         expect(result.error.issues).toHaveLength(1);
         expect(result.error.issues[0]?.message).toBe(
-          'Form field variable not found in codebook.',
+          'The variable "nonexistentVariable" does not exist in the codebook',
         );
         expect(result.error.issues[0]?.path).toEqual([
           'stages',
@@ -271,7 +279,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         const formFieldError = result.error.issues.find((issue) =>
-          issue.message.includes('Form field variable not found in codebook'),
+          issue.message.includes('does not exist in the codebook'),
         );
         expect(formFieldError).toBeDefined();
         expect(formFieldError?.path).toEqual([
@@ -347,7 +355,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         const formFieldError = result.error.issues.find((issue) =>
-          issue.message.includes('Form field variable not found in codebook'),
+          issue.message.includes('does not exist in the codebook'),
         );
         expect(formFieldError).toBeDefined();
       }
@@ -459,7 +467,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const variableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            '"nonexistentVariable" not defined in codebook[node][person].variables',
+            'The variable "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(variableError).toBeDefined();
@@ -491,6 +499,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 text: 'Sort by category',
                 variable: 'category',
                 otherVariable: 'name',
+                otherOptionLabel: 'Other',
+                otherVariablePrompt: 'Please specify',
               },
             ],
           },
@@ -530,7 +540,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const otherVariableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            '"nonexistentVariable" not defined in codebook[node][person].variables',
+            'The variable "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(otherVariableError).toBeDefined();
@@ -690,7 +700,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const edgeVariableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            '"nonexistentVariable" not defined in codebook[edge][knows].variables',
+            'The variable "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(edgeVariableError).toBeDefined();
@@ -737,7 +747,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         const typeError = result.error.issues.find((issue) =>
-          issue.message.includes('"duration" is not of type \'ordinal\'.'),
+          issue.message.includes(
+            'The variable "duration" must be of type ordinal',
+          ),
         );
         expect(typeError).toBeDefined();
         expect(typeError?.path).toEqual([
@@ -769,7 +781,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 id: 'prompt1',
                 text: 'Position nodes',
                 layout: {
-                  layoutVariable: 'category',
+                  layoutVariable: 'layoutPosition',
                 },
               },
             ],
@@ -811,7 +823,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const layoutError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'Layout variable "nonexistentVariable" not defined',
+            'The variable "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(layoutError).toBeDefined();
@@ -907,7 +919,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const attributeError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'One or more sortable properties not defined in codebook: nonexistentVariable, anotherNonexistent',
+            'The variable "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(attributeError).toBeDefined();
@@ -917,6 +929,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           'prompts',
           0,
           'additionalAttributes',
+          0,
+          'variable',
         ]);
       }
     });
@@ -926,6 +940,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
   describe('Filter Rules Validation', () => {
     it('validates filter rules with correct entity and attribute references', () => {
+      // Node/edge rules belong in a stage filter; ego rules are only valid in
+      // skipLogic/panel/query filters, so the ego rule lives in skipLogic here.
       const protocolWithFilters = {
         ...baseValidProtocol,
         stages: [
@@ -944,16 +960,23 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                     value: 18,
                   },
                 },
-                {
-                  id: 'rule2',
-                  type: 'ego',
-                  options: {
-                    attribute: 'egoAge',
-                    operator: 'LESS_THAN',
-                    value: 65,
-                  },
-                },
               ],
+            },
+            skipLogic: {
+              action: 'SHOW',
+              filter: {
+                rules: [
+                  {
+                    id: 'rule2',
+                    type: 'ego',
+                    options: {
+                      attribute: 'egoAge',
+                      operator: 'LESS_THAN',
+                      value: 65,
+                    },
+                  },
+                ],
+              },
             },
           },
         ],
@@ -1095,23 +1118,28 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       }
     });
 
-    it('validates ego filter rules without entity type', () => {
+    it('validates ego filter rules without entity type in skipLogic', () => {
+      // Ego rules are valid in skipLogic/panel/query filters (not in a stage
+      // node/edge filter).
       const protocolWithEgoFilter = {
         ...baseValidProtocol,
         stages: [
           {
             ...baseValidProtocol.stages[1],
-            filter: {
-              rules: [
-                {
-                  id: 'egoRule',
-                  type: 'ego',
-                  options: {
-                    attribute: 'egoName',
-                    operator: 'EXISTS',
+            skipLogic: {
+              action: 'SHOW',
+              filter: {
+                rules: [
+                  {
+                    id: 'egoRule',
+                    type: 'ego',
+                    options: {
+                      attribute: 'egoName',
+                      operator: 'EXISTS',
+                    },
                   },
-                },
-              ],
+                ],
+              },
             },
           },
         ],
@@ -1131,17 +1159,20 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         stages: [
           {
             ...baseValidProtocol.stages[1],
-            filter: {
-              rules: [
-                {
-                  id: 'egoRule',
-                  type: 'ego',
-                  options: {
-                    attribute: 'egoName',
-                    operator: 'EXISTS',
+            skipLogic: {
+              action: 'SHOW',
+              filter: {
+                rules: [
+                  {
+                    id: 'egoRule',
+                    type: 'ego',
+                    options: {
+                      attribute: 'egoName',
+                      operator: 'EXISTS',
+                    },
                   },
-                },
-              ],
+                ],
+              },
             },
           },
         ],
@@ -1159,6 +1190,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         expect(egoError?.path).toEqual([
           'stages',
           0,
+          'skipLogic',
           'filter',
           'rules',
           0,
@@ -2165,12 +2197,10 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           ),
         );
         const formFieldError = result.error.issues.find((issue) =>
-          issue.message.includes('Form field variable not found in codebook'),
+          issue.message.includes('does not exist in the codebook'),
         );
         const attributeError = result.error.issues.find((issue) =>
-          issue.message.includes(
-            'One or more sortable properties not defined in codebook',
-          ),
+          issue.message.includes('does not exist in the codebook'),
         );
 
         expect(subjectError).toBeDefined();
@@ -2183,6 +2213,33 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
   describe('Geospatial Stage MapOptions Validation', () => {
     const createGeospatialProtocol = (mapOptionsOverrides = {}) => ({
       ...baseValidProtocol,
+      codebook: {
+        ...baseValidProtocol.codebook,
+        node: {
+          ...baseValidProtocol.codebook.node,
+          person: {
+            ...baseValidProtocol.codebook.node.person,
+            variables: {
+              ...baseValidProtocol.codebook.node.person.variables,
+              homeLocation: { name: 'Home_Location', type: 'location' },
+            },
+          },
+        },
+      },
+      assetManifest: {
+        'asset-token-123': {
+          id: 'asset-token-123',
+          type: 'apikey',
+          name: 'Mapbox Token',
+          value: 'pk.example',
+        },
+        'asset-geojson-456': {
+          id: 'asset-geojson-456',
+          type: 'geojson',
+          name: 'map.geojson',
+          source: 'map.geojson',
+        },
+      },
       stages: [
         {
           id: 'geospatial1',
@@ -2206,7 +2263,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             {
               id: 'geoPrompt1',
               text: 'Select your location',
-              variable: 'name',
+              variable: 'homeLocation',
             },
           ],
         },
@@ -2262,6 +2319,365 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       const protocol = createGeospatialProtocol({ allowSearch: 1 });
       const result = ProtocolSchemaV8.safeParse(protocol);
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Regression: greaterThanOrEqualToVariable cross-reference (PR #686)', () => {
+    it('validates clean when the referenced variable exists only via greaterThanOrEqualToVariable', () => {
+      const protocol = {
+        ...baseValidProtocol,
+        codebook: {
+          ...baseValidProtocol.codebook,
+          node: {
+            person: {
+              ...baseValidProtocol.codebook.node.person,
+              variables: {
+                ...baseValidProtocol.codebook.node.person.variables,
+                minAge: {
+                  name: 'MinimumAge',
+                  type: 'number',
+                  validation: {
+                    greaterThanOrEqualToVariable: 'age',
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(true);
+    });
+
+    it('emits the existence error when the variable referenced by greaterThanOrEqualToVariable is removed', () => {
+      const protocol = {
+        ...baseValidProtocol,
+        codebook: {
+          ...baseValidProtocol.codebook,
+          node: {
+            person: {
+              ...baseValidProtocol.codebook.node.person,
+              variables: {
+                // 'age' removed — only 'name', 'category', 'strength' remain
+                name: baseValidProtocol.codebook.node.person.variables.name,
+                category:
+                  baseValidProtocol.codebook.node.person.variables.category,
+                strength:
+                  baseValidProtocol.codebook.node.person.variables.strength,
+                minAge: {
+                  name: 'MinimumAge',
+                  type: 'number',
+                  validation: {
+                    greaterThanOrEqualToVariable: 'age',
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const refError = result.error.issues.find((issue) =>
+          issue.message.includes(
+            'The variable "age" does not exist in the codebook',
+          ),
+        );
+        expect(refError).toBeDefined();
+        expect(refError?.path).toEqual([
+          'codebook',
+          'node',
+          'person',
+          'variables',
+          'minAge',
+          'validation',
+          'greaterThanOrEqualToVariable',
+        ]);
+      }
+    });
+  });
+
+  describe('FamilyPedigree introScreen asset validation', () => {
+    // A shape-valid FamilyPedigree stage. Its config variables need not exist in
+    // the codebook for this suite: superRefine accumulates all issues, so the
+    // introScreen asset check runs regardless, and we assert its issue via
+    // find().
+    const familyPedigreeStage = {
+      id: 'fp1',
+      type: 'FamilyPedigree' as const,
+      label: 'Family Pedigree',
+      nodeConfig: {
+        type: 'person',
+        nodeLabelVariable: 'label',
+        egoVariable: 'isEgo',
+        relationshipVariable: 'rel',
+        biologicalSexVariable: 'bioSex',
+      },
+      edgeConfig: {
+        type: 'family',
+        relationshipTypeVariable: 'relType',
+        isActiveVariable: 'isActive',
+        isGestationalCarrierVariable: 'isGc',
+        gameteRoleVariable: 'gameteRole',
+      },
+      framing: { mode: 'fixed' as const, value: 'gamete' as const },
+      boundaries: {
+        requireGrandparents: 'off' as const,
+        requireChildrenContributors: 'off' as const,
+      },
+      censusPrompt: 'Build your family',
+    };
+
+    const protocolWithIntroItem = (
+      item: Record<string, unknown>,
+      assetManifest?: Record<string, unknown>,
+    ) => ({
+      ...baseValidProtocol,
+      ...(assetManifest ? { assetManifest } : {}),
+      stages: [{ ...familyPedigreeStage, introScreen: { items: [item] } }],
+    });
+
+    it('rejects an intro asset item absent from the manifest', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithIntroItem({
+          id: 'i1',
+          type: 'asset',
+          content: 'missing-asset',
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((i) =>
+          i.message.includes(
+            'introScreen item "missing-asset" does not reference an asset in the manifest',
+          ),
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'introScreen',
+          'items',
+          0,
+          'content',
+        ]);
+      }
+    });
+
+    it('rejects an intro asset item of a non-displayable type', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithIntroItem(
+          { id: 'i1', type: 'asset', content: 'net-1' },
+          {
+            'net-1': {
+              id: 'net-1',
+              type: 'network',
+              name: 'Roster',
+              source: 'roster.csv',
+            },
+          },
+        ),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find(
+          (i) =>
+            i.message.includes('introScreen item "net-1"') &&
+            i.message.includes('must reference an asset of type'),
+        );
+        expect(issue).toBeDefined();
+      }
+    });
+
+    it('does not raise an introScreen asset issue for a text item', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithIntroItem({ id: 'i1', type: 'text', content: 'Welcome' }),
+      );
+      const introAssetIssue =
+        !result.success &&
+        result.error.issues.find((i) => i.message.includes('introScreen item'));
+      expect(introAssetIssue).toBeFalsy();
+    });
+  });
+
+  describe('FamilyPedigree locked value-set validation', () => {
+    // Builds a protocol whose codebook carries the FamilyPedigree node/edge
+    // types with the biological-sex, relationship-type and gamete-role variables
+    // present as categorical variables with the supplied option sets.
+    const protocolWithLockedVariables = ({
+      biologicalSexOptions = BIOLOGICAL_SEX_OPTIONS,
+      relationshipTypeOptions = RELATIONSHIP_TYPE_OPTIONS,
+      gameteRoleOptions = GAMETE_ROLE_OPTIONS,
+    }: {
+      biologicalSexOptions?: { value: string; label: string }[];
+      relationshipTypeOptions?: { value: string; label: string }[];
+      gameteRoleOptions?: { value: string; label: string }[];
+    }) => ({
+      name: 'Test Protocol',
+      schemaVersion: 8 as const,
+      codebook: {
+        ego: { variables: { isEgo: { name: 'IsEgo', type: 'boolean' } } },
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              label: { name: 'Label', type: 'text' },
+              rel: { name: 'Rel', type: 'text' },
+              bioSex: {
+                name: 'BioSex',
+                type: 'categorical',
+                options: biologicalSexOptions,
+              },
+            },
+          },
+        },
+        edge: {
+          family: {
+            name: 'Family',
+            color: 'edge-color-seq-1',
+            variables: {
+              isActive: { name: 'IsActive', type: 'boolean' },
+              isGc: { name: 'IsGc', type: 'boolean' },
+              relType: {
+                name: 'RelType',
+                type: 'categorical',
+                options: relationshipTypeOptions,
+              },
+              gameteRole: {
+                name: 'GameteRole',
+                type: 'categorical',
+                options: gameteRoleOptions,
+              },
+            },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 'fp1',
+          type: 'FamilyPedigree' as const,
+          label: 'Family Pedigree',
+          nodeConfig: {
+            type: 'person',
+            nodeLabelVariable: 'label',
+            egoVariable: 'isEgo',
+            relationshipVariable: 'rel',
+            biologicalSexVariable: 'bioSex',
+          },
+          edgeConfig: {
+            type: 'family',
+            relationshipTypeVariable: 'relType',
+            isActiveVariable: 'isActive',
+            isGestationalCarrierVariable: 'isGc',
+            gameteRoleVariable: 'gameteRole',
+          },
+          framing: { mode: 'fixed' as const, value: 'gamete' as const },
+          boundaries: {
+            requireGrandparents: 'off' as const,
+            requireChildrenContributors: 'off' as const,
+          },
+          censusPrompt: 'Build your family',
+        },
+      ],
+    });
+
+    it('accepts locked variables carrying their canonical option sets', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({}),
+      );
+      expect(result.success).toBe(true);
+      const lockedIssue =
+        !result.success &&
+        result.error.issues.find((i) =>
+          i.message.includes('must use its fixed set of options'),
+        );
+      expect(lockedIssue).toBeFalsy();
+    });
+
+    it('rejects a biological-sex variable whose options were edited', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({
+          biologicalSexOptions: [
+            { value: 'female', label: 'Female' },
+            { value: 'male', label: 'Male' },
+          ],
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((i) =>
+          i.message.includes(
+            'FamilyPedigree biological sex variable "bioSex" must use its fixed set of options',
+          ),
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'nodeConfig',
+          'biologicalSexVariable',
+        ]);
+      }
+    });
+
+    it('rejects a relationship-type variable whose options were edited', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({
+          relationshipTypeOptions: [
+            { value: 'biological', label: 'Biological' },
+            { value: 'made-up', label: 'Made Up' },
+          ],
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find(
+          (i) =>
+            i.message.includes(
+              'FamilyPedigree relationship type variable "relType"',
+            ) && i.message.includes('must use its fixed set of options'),
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'edgeConfig',
+          'relationshipTypeVariable',
+        ]);
+      }
+    });
+
+    it('rejects a gamete-role variable whose options were edited', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({
+          gameteRoleOptions: [
+            { value: 'egg', label: 'Egg' },
+            { value: 'sperm', label: 'Sperm' },
+            { value: 'extra', label: 'Extra' },
+          ],
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find(
+          (i) =>
+            i.message.includes(
+              'FamilyPedigree gamete role variable "gameteRole"',
+            ) && i.message.includes('must use its fixed set of options'),
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'edgeConfig',
+          'gameteRoleVariable',
+        ]);
+      }
     });
   });
 });

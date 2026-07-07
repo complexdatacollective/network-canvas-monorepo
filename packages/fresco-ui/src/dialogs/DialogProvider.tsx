@@ -76,8 +76,12 @@ export type SkipContext = {
 };
 
 export type WizardStep = {
-  title: string;
-  description?: string;
+  // A node (not just a string) so a step title can render live state — e.g. a
+  // pedigree parent step whose heading reflects a framing chosen in an earlier
+  // step. Rendered inside the dialog chrome, outside any step-content provider,
+  // so a stateful title must carry its own context.
+  title: React.ReactNode;
+  description?: React.ReactNode;
   content: React.ComponentType;
   nextLabel?: string;
   backLabel?: string;
@@ -144,6 +148,10 @@ export type DialogContextType = {
     dialogProps: D,
   ) => Promise<DialogReturnType<D>>;
   confirm: (options: ConfirmOptions) => Promise<true | false | null>;
+  // Dismiss every open dialog at once, resolving each pending promise with
+  // `null` (the cancel value). For dismissing dialogs on a global state change
+  // such as an auth lock, so a destructive confirm can't survive it.
+  closeAllDialogs: () => void;
 };
 
 export const DialogContext = createContext<DialogContextType | null>(null);
@@ -339,6 +347,41 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
+  const closeAllDialogs = useCallback(() => {
+    // Defer to a microtask so this is safe to call from any lifecycle context
+    // (e.g. an auth-lock useEffect) — flushSync must not run inside React's
+    // commit phase. Mirrors openDialog's deferral above.
+    queueMicrotask(() => {
+      let toResolve: DialogState[] = [];
+      // flushSync so `toResolve` is captured before we resolve/remove below,
+      // mirroring closeDialog. Aborting in-flight confirm handlers here matches
+      // closeDialog's teardown.
+      flushSync(() => {
+        setDialogs((prevDialogs) => {
+          toResolve = prevDialogs.filter((d) => d.open);
+          if (toResolve.length === 0) return prevDialogs;
+          for (const d of toResolve) {
+            d.abortController?.abort();
+          }
+          return prevDialogs.map((d) => (d.open ? { ...d, open: false } : d));
+        });
+      });
+
+      if (toResolve.length === 0) return;
+
+      for (const d of toResolve) {
+        d.resolveCallback(null);
+      }
+
+      const closedIds = new Set(toResolve.map((d) => d.id));
+      setTimeout(() => {
+        setDialogs((prevDialogs) =>
+          prevDialogs.filter((d) => !closedIds.has(d.id)),
+        );
+      }, 500);
+    });
+  }, []);
+
   const setDialogAbortController = useCallback(
     (id: string, abortController: AbortController | null) => {
       setDialogs((prevDialogs) =>
@@ -425,6 +468,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
     closeDialog,
     openDialog,
     confirm,
+    closeAllDialogs,
   };
 
   const renderDialogActions = (dialog: DialogState) => {

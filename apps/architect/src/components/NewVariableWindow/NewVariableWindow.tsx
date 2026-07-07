@@ -1,0 +1,190 @@
+import { values } from 'es-toolkit/compat';
+import { useCallback, useMemo } from 'react';
+import { Field, formValueSelector } from 'redux-form';
+
+import type { Variable, VariableOptions } from '@codaco/protocol-validation';
+import { Section, Subsection } from '~/components/EditorLayout';
+import { Text } from '~/components/Form/Fields';
+import Select from '~/components/Form/Fields/Select';
+import ValidatedField from '~/components/Form/ValidatedField';
+import InlineEditScreen from '~/components/InlineEditScreen';
+import Options from '~/components/Options';
+import LockedOptions from '~/components/Options/LockedOptions';
+import {
+  isOrdinalOrCategoricalType,
+  VARIABLE_OPTIONS,
+} from '~/config/variables';
+import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
+import { getVariablesForSubject } from '~/selectors/codebook';
+import { getFieldId } from '~/utils/issues';
+import safeName from '~/utils/safeName';
+import { validations } from '~/utils/validations';
+
+const form = 'create-new-variable';
+
+const isRequired = validations.required();
+const isAllowedVariableName = validations.allowedVariableName();
+
+export type Entity = 'node' | 'edge' | 'ego';
+
+type NewVariableWindowProps = {
+  show?: boolean;
+  entity: Entity;
+  type: string;
+  allowVariableTypes?: string[] | null;
+  onComplete: (variable: string) => void;
+  onCancel: () => void;
+  initialValues?: Record<string, unknown> | null;
+  /** Pre-defined options that cannot be edited. When provided, the options section is read-only. */
+  lockedOptions?: VariableOptions | null;
+};
+
+export default function NewVariableWindow({
+  show = false,
+  entity,
+  type,
+  allowVariableTypes = null,
+  onComplete,
+  onCancel,
+  initialValues = null,
+  lockedOptions = null,
+}: NewVariableWindowProps) {
+  const dispatch = useAppDispatch();
+
+  const variableType = useAppSelector(
+    (state) => formValueSelector(form)(state, 'type') as string | undefined,
+  );
+
+  // Memoize subject to avoid creating new object on every render, which breaks selector memoization
+  const subject = useMemo(() => ({ entity, type }), [entity, type]);
+  const existingVariables = useAppSelector((state) =>
+    getVariablesForSubject(state, subject),
+  );
+
+  const existingVariableNames = useMemo(
+    () => values(existingVariables).map(({ name }: Variable) => name),
+    [existingVariables],
+  );
+
+  const validateName = useCallback(
+    (value: string) => validations.uniqueByList(existingVariableNames)(value),
+    [existingVariableNames],
+  );
+
+  const filteredVariableOptions = useMemo(
+    () =>
+      allowVariableTypes
+        ? VARIABLE_OPTIONS.filter(({ value: optionVariableType }) =>
+            allowVariableTypes.includes(optionVariableType),
+          )
+        : VARIABLE_OPTIONS,
+    [allowVariableTypes],
+  );
+
+  // Merge locked options into initial values if provided
+  const mergedInitialValues = useMemo(() => {
+    if (lockedOptions) {
+      return {
+        ...initialValues,
+        options: lockedOptions,
+      };
+    }
+    return initialValues;
+  }, [initialValues, lockedOptions]);
+
+  const handleCreateNewVariable = useCallback(
+    async (configuration: Record<string, unknown>) => {
+      // Locked options belong to an interface-owned value set the researcher may
+      // not edit; persist readOnly so the shared options editors enforce it.
+      const withReadOnly = lockedOptions
+        ? { ...configuration, readOnly: true }
+        : configuration;
+      const result = await dispatch(
+        createVariableAsync({
+          entity,
+          type,
+          configuration: withReadOnly as Partial<Variable>,
+        }),
+      ).unwrap();
+      onComplete(result.variable);
+    },
+    [dispatch, entity, type, onComplete, lockedOptions],
+  );
+
+  return (
+    <InlineEditScreen
+      show={show}
+      form={form}
+      onSubmit={(formValues: unknown) =>
+        handleCreateNewVariable(formValues as Record<string, unknown>)
+      }
+      onCancel={onCancel}
+      initialValues={mergedInitialValues ?? undefined}
+      title="Create New Variable"
+    >
+      <Section layout="vertical">
+        <Subsection
+          id={getFieldId('name')}
+          title="Variable Name"
+          summary={
+            <p>
+              Enter a name for this variable. The variable name is how you will
+              reference the variable elsewhere, including in exported data.
+            </p>
+          }
+        >
+          <Field
+            name="name"
+            component={Text}
+            placeholder="e.g. Nickname"
+            validate={[isRequired, validateName, isAllowedVariableName]}
+            normalize={safeName}
+          />
+        </Subsection>
+        <Subsection
+          id={getFieldId('type')}
+          title="Variable Type"
+          summary={<p>Choose a variable type</p>}
+        >
+          <ValidatedField
+            name="type"
+            component={Select}
+            validation={{ required: true }}
+            componentProps={{
+              placeholder: 'Select variable type',
+              options: filteredVariableOptions,
+              // Locked options only make sense for a categorical/ordinal type, so
+              // lock the type selector too — otherwise a caller passing
+              // lockedOptions without initialValues.type could switch away from
+              // that type while the options and readOnly flag stay locked.
+              isDisabled: !!initialValues?.type || !!lockedOptions,
+            }}
+          />
+        </Subsection>
+        {isOrdinalOrCategoricalType(variableType) && (
+          <Subsection
+            id={getFieldId('options')}
+            title="Options"
+            summary={
+              lockedOptions ? (
+                <p>
+                  These options are automatically configured by the interface
+                  and cannot be modified.
+                </p>
+              ) : (
+                <p>Create some options for this input control</p>
+              )
+            }
+          >
+            {lockedOptions ? (
+              <LockedOptions options={lockedOptions} />
+            ) : (
+              <Options name="options" label="Options" />
+            )}
+          </Subsection>
+        )}
+      </Section>
+    </InlineEditScreen>
+  );
+}

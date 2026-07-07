@@ -41,6 +41,14 @@ function resolveTurbo() {
   return existsSync(local) ? local : 'turbo';
 }
 
+// On Windows the turbo bin is a `node_modules/.bin/turbo` shim with no
+// extension; Node can't exec it without a shell (cmd resolves turbo.CMD via
+// PATHEXT). Mirror runReal's `shell` handling for every turbo spawn.
+const TURBO_SPAWN_OPTS = {
+  stdio: 'inherit',
+  shell: process.platform === 'win32',
+};
+
 function runReal(realCommand) {
   const [cmd, ...args] = realCommand;
   // On Windows the real command is a node_modules/.bin shim (e.g. vite.CMD);
@@ -81,7 +89,7 @@ function main() {
       `[with-turbo] "${task}" run directly; routing through turbo: turbo ${plan.run.join(' ')} ` +
         `(run that yourself to skip this notice).`,
     );
-    const result = spawnSync(turbo, plan.run, { stdio: 'inherit' });
+    const result = spawnSync(turbo, plan.run, TURBO_SPAWN_OPTS);
     if (result.error) {
       console.error(
         `[with-turbo] failed to launch turbo: ${result.error.message}`,
@@ -97,7 +105,7 @@ function main() {
     `[with-turbo] "${task}" run directly; building "${pkg}" dependencies then watching ` +
       `them while the server runs.`,
   );
-  const built = spawnSync(turbo, plan.build, { stdio: 'inherit' });
+  const built = spawnSync(turbo, plan.build, TURBO_SPAWN_OPTS);
   if (built.error) {
     console.error(
       `[with-turbo] failed to launch turbo: ${built.error.message}`,
@@ -106,7 +114,7 @@ function main() {
   }
   if (built.status) process.exit(built.status);
 
-  const watchers = spawn(turbo, plan.watch, { stdio: 'inherit' });
+  const watchers = spawn(turbo, plan.watch, TURBO_SPAWN_OPTS);
   const [cmd, ...args] = realCommand;
   const server = spawnSync(cmd, args, { stdio: 'inherit' });
   watchers.kill('SIGTERM');

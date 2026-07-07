@@ -1,19 +1,13 @@
 import type { NcEdge } from '@codaco/shared-consts';
 
+import { getEdgeRelationshipType } from '../utils/edgeUtils';
+
 export type ChecklistItem = {
   id: string;
   label: string;
   done: boolean;
   required: boolean;
 };
-
-function relTypeOf(
-  edge: NcEdge,
-  relationshipTypeVariable: string,
-): string | undefined {
-  const value = edge.attributes[relationshipTypeVariable];
-  return typeof value === 'string' ? value : undefined;
-}
 
 /**
  * An optional checklist nudge to record up to two parents for `targetId`.
@@ -29,7 +23,7 @@ export function buildParentsItem(
 ): ChecklistItem {
   let parentCount = 0;
   for (const edge of edges.values()) {
-    const rt = relTypeOf(edge, relationshipTypeVariable);
+    const rt = getEdgeRelationshipType(edge, relationshipTypeVariable);
     if (edge.to === targetId && rt !== 'partner' && rt !== 'social') {
       parentCount += 1;
     }
@@ -61,7 +55,7 @@ export function partnersNeedingParents(
   const egoChildIds = new Set<string>();
   const partnerIds = new Set<string>();
   for (const edge of edges.values()) {
-    const rt = relTypeOf(edge, relationshipTypeVariable);
+    const rt = getEdgeRelationshipType(edge, relationshipTypeVariable);
     if (edge.from === egoId && rt !== 'partner') egoChildIds.add(edge.to);
     if (rt === 'partner') {
       if (edge.from === egoId) partnerIds.add(edge.to);
@@ -72,7 +66,7 @@ export function partnersNeedingParents(
   const result: string[] = [];
   for (const partnerId of partnerIds) {
     for (const edge of edges.values()) {
-      const rt = relTypeOf(edge, relationshipTypeVariable);
+      const rt = getEdgeRelationshipType(edge, relationshipTypeVariable);
       if (
         edge.from === partnerId &&
         egoChildIds.has(edge.to) &&

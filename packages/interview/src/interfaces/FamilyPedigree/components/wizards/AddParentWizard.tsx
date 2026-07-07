@@ -6,12 +6,21 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
+import type {
+  FramingId,
+  NcEdge,
+  NcNode,
+  RelationshipType,
+  VariableValue,
+} from '@codaco/shared-consts';
+import { FamilyPedigreeStoreBridge } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
 import type {
   CommitBatch,
+  FamilyPedigreeStoreApi,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
+import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
 import type { ParentEdgeTypeOption } from '../quickStartWizard/fieldOptions';
 import PersonFields from '../quickStartWizard/PersonFields';
@@ -110,7 +119,8 @@ function getExistingParentIds(
   for (const edge of edges.values()) {
     if (
       edge.to === anchorNodeId &&
-      edge.attributes[variableConfig.relationshipTypeVariable] !== 'partner'
+      getEdgeRelationshipType(edge, variableConfig.relationshipTypeVariable) !==
+        'partner'
     ) {
       parentIds.push(edge.from);
     }
@@ -126,10 +136,11 @@ export function transformToCommitBatch(
 ): CommitBatch {
   const selection =
     (formValues['parent-selection'] as string | undefined) ?? 'new';
-  const edgeType = (formValues.edgeType as string | undefined) ?? 'biological';
+  const edgeType =
+    (formValues.edgeType as RelationshipType | undefined) ?? 'biological';
 
   const edgeAttributes: Record<string, VariableValue> = {
-    [variableConfig.relationshipTypeVariable]: edgeType,
+    [variableConfig.relationshipTypeVariable]: [edgeType],
     [variableConfig.isActiveVariable]: true,
   };
   if (edgeType === 'surrogate') {
@@ -177,7 +188,7 @@ export function transformToCommitBatch(
         target: parentId,
         data: {
           attributes: {
-            [variableConfig.relationshipTypeVariable]: 'partner',
+            [variableConfig.relationshipTypeVariable]: ['partner'],
             [variableConfig.isActiveVariable]: value === 'current',
           },
         },
@@ -190,11 +201,13 @@ export function transformToCommitBatch(
 
 export async function openAddParentWizard(
   openDialog: ReturnType<typeof useDialog>['openDialog'],
+  store: FamilyPedigreeStoreApi,
   anchorNodeId: string,
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
   parentTypeOptions: ParentEdgeTypeOption[],
+  framing: FramingId,
 ): Promise<CommitBatch | null> {
   const existingParentIds = getExistingParentIds(
     anchorNodeId,
@@ -206,7 +219,7 @@ export async function openAddParentWizard(
       if (!nodes.has(id)) return null;
       return {
         id,
-        label: getNodeLabel(id, nodes, edges, variableConfig),
+        label: getNodeLabel(id, nodes, edges, variableConfig, framing),
       };
     })
     .filter((p) => p !== null);
@@ -217,7 +230,7 @@ export async function openAddParentWizard(
     .filter((id) => nodes.has(id))
     .map((id) => ({
       value: id,
-      label: getNodeLabel(id, nodes, edges, variableConfig),
+      label: getNodeLabel(id, nodes, edges, variableConfig, framing),
     }));
 
   const result = await openDialog({
@@ -228,16 +241,20 @@ export async function openAddParentWizard(
       {
         title: 'Parent details',
         content: () => (
-          <ParentDetailsStep
-            parentTypeOptions={parentTypeOptions}
-            candidateOptions={candidateOptions}
-          />
+          <FamilyPedigreeStoreBridge store={store}>
+            <ParentDetailsStep
+              parentTypeOptions={parentTypeOptions}
+              candidateOptions={candidateOptions}
+            />
+          </FamilyPedigreeStoreBridge>
         ),
       },
       {
         title: 'Partnerships',
         content: () => (
-          <ExistingParentPartnershipsStep existingParents={existingParents} />
+          <FamilyPedigreeStoreBridge store={store}>
+            <ExistingParentPartnershipsStep existingParents={existingParents} />
+          </FamilyPedigreeStoreBridge>
         ),
         skip: (_ctx: SkipContext) => existingParentIds.length === 0,
       },

@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import {
+  expect,
+  fireEvent,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from 'storybook/test';
 
 import Surface from '../../layout/Surface';
 import Paragraph from '../../typography/Paragraph';
@@ -34,10 +41,10 @@ const meta = {
     'onChange': { action: 'onChange' },
   },
   args: {
-    value: 50,
+    value: 0.5,
     min: 0,
-    max: 100,
-    step: 0.1,
+    max: 1,
+    step: 0.001,
     disabled: false,
     readOnly: false,
   },
@@ -78,7 +85,7 @@ function ControlledVAS({
 
 export const Default: Story = {
   args: {
-    value: 50,
+    value: 0.5,
     minLabel: 'Minimum',
     maxLabel: 'Maximum',
   },
@@ -96,7 +103,7 @@ export const AtMinimum: Story = {
 
 export const AtMaximum: Story = {
   args: {
-    value: 100,
+    value: 1,
     minLabel: 'Not at all',
     maxLabel: 'Extremely',
   },
@@ -105,7 +112,7 @@ export const AtMaximum: Story = {
 
 export const Disabled: Story = {
   args: {
-    value: 50,
+    value: 0.5,
     minLabel: 'Low',
     maxLabel: 'High',
     disabled: true,
@@ -114,7 +121,7 @@ export const Disabled: Story = {
 
 export const ReadOnly: Story = {
   args: {
-    value: 75,
+    value: 0.75,
     minLabel: 'Low',
     maxLabel: 'High',
     readOnly: true,
@@ -123,7 +130,7 @@ export const ReadOnly: Story = {
 
 export const Invalid: Story = {
   args: {
-    'value': 50,
+    'value': 0.5,
     'minLabel': 'Low',
     'maxLabel': 'High',
     'aria-invalid': true,
@@ -133,7 +140,7 @@ export const Invalid: Story = {
 
 export const NoLabels: Story = {
   args: {
-    value: 50,
+    value: 0.5,
   },
   render: (args) => <ControlledVAS {...args} initialValue={args.value} />,
 };
@@ -152,10 +159,10 @@ export const CustomRange: Story = {
 
 export const FineGrained: Story = {
   args: {
-    value: 50,
+    value: 0.5,
     min: 0,
-    max: 100,
-    step: 0.01,
+    max: 1,
+    step: 0.0001,
     minLabel: 'None',
     maxLabel: 'Complete',
   },
@@ -164,7 +171,7 @@ export const FineGrained: Story = {
 
 export const MarkdownLabels: Story = {
   args: {
-    value: 50,
+    value: 0.5,
     minLabel: '**Not at all** _(lowest)_',
     maxLabel: '**Extremely** _(highest)_',
   },
@@ -219,7 +226,7 @@ export const Unset: Story = {
     await withPointerCaptureStubbed(async () => {
       await userEvent.click(thumb);
     });
-    await expect(valueDisplay).toHaveTextContent('50');
+    await expect(valueDisplay).toHaveTextContent('0.5');
   },
 };
 
@@ -242,7 +249,7 @@ export const UnsetKeyboardEnter: Story = {
     await userEvent.tab();
     await expect(thumb).toHaveFocus();
     await userEvent.keyboard('{Enter}');
-    await expect(valueDisplay).toHaveTextContent('50');
+    await expect(valueDisplay).toHaveTextContent('0.5');
   },
 };
 
@@ -265,7 +272,7 @@ export const UnsetKeyboardSpace: Story = {
     await userEvent.tab();
     await expect(thumb).toHaveFocus();
     await userEvent.keyboard(' ');
-    await expect(valueDisplay).toHaveTextContent('50');
+    await expect(valueDisplay).toHaveTextContent('0.5');
   },
 };
 
@@ -288,6 +295,47 @@ export const UnsetKeyboardArrow: Story = {
     await userEvent.keyboard('{ArrowRight}');
     // Value should no longer be unset (exact value depends on step size)
     await expect(valueDisplay).not.toHaveTextContent('unset');
+  },
+};
+
+export const ValuePopoverWhileDragging: Story = {
+  args: {
+    value: 0.5,
+    minLabel: 'Not at all',
+    maxLabel: 'Extremely',
+  },
+  render: (args) => <ControlledVAS {...args} initialValue={args.value} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const slider = canvas.getByRole('slider');
+
+    // The bubble portals out of the field, so query the whole document.
+    // Hidden at rest.
+    await expect(screen.queryByTestId('scale-value-popover')).toBeNull();
+
+    // While dragging, the popover shows the value as a percentage on the default
+    // normalised 0–1 scale, then hides again once released. The release stays
+    // inside the stubbed block so the slider's releasePointerCapture is stubbed
+    // too (jsdom otherwise throws on the uncaptured pointer).
+    await withPointerCaptureStubbed(async () => {
+      await fireEvent.pointerDown(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        buttons: 1,
+      });
+      const popover = await screen.findByTestId('scale-value-popover');
+      await expect(popover).toHaveTextContent('50%');
+
+      await fireEvent.pointerUp(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+      });
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('scale-value-popover')).toBeNull(),
+    );
   },
 };
 
@@ -314,7 +362,7 @@ export const AllStates: Story = {
         >
           Normal
         </Paragraph>
-        <VisualAnalogScaleField value={50} minLabel="Low" maxLabel="High" />
+        <VisualAnalogScaleField value={0.5} minLabel="Low" maxLabel="High" />
       </div>
       <div>
         <Paragraph
@@ -324,7 +372,7 @@ export const AllStates: Story = {
           Disabled
         </Paragraph>
         <VisualAnalogScaleField
-          value={50}
+          value={0.5}
           minLabel="Low"
           maxLabel="High"
           disabled
@@ -338,7 +386,7 @@ export const AllStates: Story = {
           Read Only
         </Paragraph>
         <VisualAnalogScaleField
-          value={75}
+          value={0.75}
           minLabel="Low"
           maxLabel="High"
           readOnly
@@ -352,7 +400,7 @@ export const AllStates: Story = {
           Invalid
         </Paragraph>
         <VisualAnalogScaleField
-          value={50}
+          value={0.5}
           minLabel="Low"
           maxLabel="High"
           aria-invalid={true}

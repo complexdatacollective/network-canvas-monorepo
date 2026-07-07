@@ -12,6 +12,10 @@ export type ResolvedAsset = {
   name: string;
   type: 'image' | 'video' | 'audio' | 'network' | 'geojson' | 'apikey';
   value?: string; // populated for apikey assets only
+  // Original source filename from the protocol manifest (e.g. `intro.mov`).
+  // The display `name` may lack an extension, so MIME-type and CSV/JSON
+  // decisions derive from `source` when present, falling back to `name`.
+  source?: string;
 };
 
 /**
@@ -55,7 +59,21 @@ export type FinishHandler = (
 
 export type AssetRequestHandler = (assetId: string) => Promise<string>;
 
-export type StepChangeHandler = (step: number) => void;
+/**
+ * Participant-facing progress for the step the package is moving to. `progress`
+ * is the 0–100 value shown in the interview's own progress bar (see
+ * `getInterviewProgress`); `totalSteps` is the true number of steps including
+ * the synthetic FinishSession stage the package appends (so it is one greater
+ * than the protocol's stage count). Hosts should persist/display these directly
+ * rather than re-deriving progress from the bare step index, which requires
+ * knowing about the appended finish stage.
+ */
+export type StepChangeMeta = {
+  progress: number;
+  totalSteps: number;
+};
+
+export type StepChangeHandler = (step: number, meta: StepChangeMeta) => void;
 
 export type InterviewerFlags = {
   isE2E?: boolean;

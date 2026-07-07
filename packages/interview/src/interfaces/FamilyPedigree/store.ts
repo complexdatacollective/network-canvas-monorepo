@@ -2,7 +2,14 @@ import { enableMapSet } from 'immer';
 import { createStore } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
-import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
+import type {
+  FramingId,
+  GAMETE_ROLES,
+  NcEdge,
+  NcNode,
+  RelationshipType,
+  VariableValue,
+} from '@codaco/shared-consts';
 import {
   addEdge as addEdgeToNetwork,
   addNode as addNodeToNetwork,
@@ -11,7 +18,12 @@ import {
 } from '~/store/modules/session';
 import type { useAppDispatch } from '~/store/store';
 
-import { computeAllDisplayLabels } from './pedigree-layout/utils/getDisplayLabel';
+import { withInferredBiologicalSex } from './deriveBiologicalSex';
+import {
+  computeAllDisplayLabels,
+  computeRelationshipsToEgo,
+} from './pedigree-layout/utils/getDisplayLabel';
+import { getEdgeRelationshipType } from './utils/edgeUtils';
 
 enableMapSet();
 
@@ -20,9 +32,15 @@ export type VariableConfig = {
   edgeType: string;
   nodeLabelVariable: string;
   egoVariable: string;
+  /** Text node variable storing the computed relationship to ego. */
+  relationshipVariable: string;
   relationshipTypeVariable: string;
   isActiveVariable: string;
   isGestationalCarrierVariable: string;
+  /** Edge variable storing the gamete role ('egg'|'sperm') of a biological/donor parent. */
+  gameteRoleVariable: string;
+  /** Node variable storing the biological sex of non-gamete-parent people. */
+  biologicalSexVariable: string;
 };
 
 export type NodeMetadata = {
@@ -30,14 +48,15 @@ export type NodeMetadata = {
 };
 
 /**
- * Which gamete a biological/donor parent contributed. Internal pedigree state:
- * persisted to stage metadata for relationship labelling, never written to the
- * interview network as an attribute.
+ * Which gamete a biological/donor parent contributed. Written to the network
+ * as an edge attribute under `variableConfig.gameteRoleVariable`. Derived from
+ * the canonical value set in shared-consts, which Architect locks onto the
+ * categorical edge variable, so the two cannot drift apart.
  */
-export type GameteRole = 'egg' | 'sperm';
+export type GameteRole = (typeof GAMETE_ROLES)[number];
 
-/** A pedigree edge plus its internal, non-network gamete-role marker. */
-export type FamilyEdge = NcEdge & { gameteRole?: GameteRole };
+/** A pedigree edge. gameteRole is stored in `attributes[gameteRoleVariable]`. */
+export type FamilyEdge = NcEdge;
 
 export type CommitBatch = {
   nodes: {
@@ -49,7 +68,6 @@ export type CommitBatch = {
   edges: {
     source: string;
     target: string;
-    gameteRole?: GameteRole;
     data: {
       attributes: Record<string, VariableValue>;
     };
@@ -59,6 +77,8 @@ export type CommitBatch = {
 type FamilyPedigreeState = {
   step: 'scaffolding' | 'diseaseNomination';
   activeNominationVariable: string | null;
+  framing: FramingId | null;
+  noChildrenAffirmed: boolean;
   network: {
     nodes: Map<string, NcNode>;
     edges: Map<string, FamilyEdge>;
@@ -78,13 +98,14 @@ type NetworkActions = {
     from: string;
     to: string;
     attributes: Record<string, VariableValue>;
-    gameteRole?: GameteRole;
     id?: string;
   }) => string;
   removeEdge: (id: string) => void;
   clearNetwork: () => void;
   setStep: (step: FamilyPedigreeState['step']) => void;
   setActiveNominationVariable: (variable: string | null) => void;
+  setFraming: (framing: FramingId) => void;
+  setNoChildrenAffirmed: (value: boolean) => void;
   commitBatch: (batch: CommitBatch) => void;
   syncMetadata: () => void;
   finalizeNetwork: () => Promise<void>;
@@ -100,6 +121,14 @@ export const createFamilyPedigreeStore = (
   variableConfig: VariableConfig,
   dispatch?: ReturnType<typeof useAppDispatch>,
   currentStep?: number,
+  // Store ids of nodes/edges that were seeded from the existing interview
+  // network and therefore already live in Redux. finalizeNetwork must not
+  // re-commit these: the network is one shared graph, so writing them again
+  // would duplicate pre-existing same-type nodes and edges.
+  preexistingReduxNodeIds: ReadonlySet<string> = new Set(),
+  preexistingReduxEdgeIds: ReadonlySet<string> = new Set(),
+  initialFraming: FramingId | null = null,
+  framingMode: 'fixed' | 'participantChoice' = 'fixed',
 ) => {
   // Guard the network invariant that at most one edge of a given relationship
   // type connects any pair of nodes. Throwing surfaces edge-creation bugs (e.g.
@@ -111,12 +140,18 @@ export const createFamilyPedigreeStore = (
     to: string,
     attributes: Record<string, VariableValue>,
   ) => {
-    const relationshipType =
-      attributes[variableConfig.relationshipTypeVariable];
+    const incomingValue = attributes[variableConfig.relationshipTypeVariable];
+    const relationshipType: RelationshipType | undefined = Array.isArray(
+      incomingValue,
+    )
+      ? (incomingValue[0] as RelationshipType | undefined)
+      : undefined;
     for (const edge of edges.values()) {
       if (
-        edge.attributes[variableConfig.relationshipTypeVariable] ===
-          relationshipType &&
+        getEdgeRelationshipType(
+          edge,
+          variableConfig.relationshipTypeVariable,
+        ) === relationshipType &&
         ((edge.from === from && edge.to === to) ||
           (edge.from === to && edge.to === from))
       ) {
@@ -132,6 +167,8 @@ export const createFamilyPedigreeStore = (
       return {
         step: 'scaffolding',
         activeNominationVariable: null,
+        framing: initialFraming,
+        noChildrenAffirmed: false,
         network: {
           nodes: initialNodes,
           edges: initialEdges,
@@ -148,6 +185,18 @@ export const createFamilyPedigreeStore = (
           set((state) => {
             state.activeNominationVariable = variable;
           }),
+
+        setFraming: (framing) =>
+          set((state) => {
+            state.framing = framing;
+          }),
+
+        setNoChildrenAffirmed: (value) => {
+          set((state) => {
+            state.noChildrenAffirmed = value;
+          });
+          get().syncMetadata();
+        },
 
         addNode: (node) => {
           const { id, attributes } = node;
@@ -193,7 +242,7 @@ export const createFamilyPedigreeStore = (
         },
 
         addEdge: (edge) => {
-          const { id, from, to, attributes, gameteRole } = edge;
+          const { id, from, to, attributes } = edge;
           const edgeId = id ?? crypto.randomUUID();
 
           set((state) => {
@@ -204,7 +253,6 @@ export const createFamilyPedigreeStore = (
               from,
               to,
               attributes,
-              ...(gameteRole ? { gameteRole } : {}),
             });
           });
 
@@ -225,7 +273,10 @@ export const createFamilyPedigreeStore = (
           });
         },
 
-        commitBatch: (batch) => {
+        commitBatch: (rawBatch) => {
+          // Every pedigree node must carry a biological-sex value: keep what was
+          // asked, otherwise infer it from the person's reproductive role.
+          const batch = withInferredBiologicalSex(rawBatch, variableConfig);
           set((state) => {
             const tempIdToRealId = new Map<string, string>();
 
@@ -260,7 +311,6 @@ export const createFamilyPedigreeStore = (
                 from: resolvedSource,
                 to: resolvedTarget,
                 attributes: edge.data.attributes,
-                ...(edge.gameteRole ? { gameteRole: edge.gameteRole } : {}),
               });
             }
           });
@@ -268,14 +318,34 @@ export const createFamilyPedigreeStore = (
 
         syncMetadata: () => {
           const { nodes, edges } = get().network;
+          const { storeToReduxIdMap } = get();
+
+          // The persisted membership snapshot must be keyed by the ids the shared
+          // Redux graph uses, because every consumer (pedigreeMemberIds ->
+          // NarrativePedigree, and this stage's own revisit view) matches it
+          // against Redux `node._uid`. After finalize, nodes created here live in
+          // Redux under fresh ids recorded in storeToReduxIdMap; seeded/pre-finalize
+          // nodes are absent from the map and keep their id (which already equals
+          // their Redux id). So map every store id through it, falling back to
+          // itself.
+          const toReduxId = (storeId: string): string =>
+            storeToReduxIdMap.get(storeId) ?? storeId;
 
           const egoEntry = [...nodes.entries()].find(
             ([, n]) => n.attributes[variableConfig.egoVariable] === true,
           );
           const egoId = egoEntry?.[0];
 
+          // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is
+          // null only the intro/chooser steps render and no gamete-parent labels exist.
           const computedLabels = egoId
-            ? computeAllDisplayLabels(egoId, nodes, edges, variableConfig)
+            ? computeAllDisplayLabels(
+                egoId,
+                nodes,
+                edges,
+                variableConfig,
+                get().framing ?? 'gamete',
+              )
             : new Map<string, string>();
 
           const serializedNodes = [...nodes.entries()].map(([id, node]) => {
@@ -289,7 +359,7 @@ export const createFamilyPedigreeStore = (
             }
 
             return {
-              id,
+              id: toReduxId(id),
               label,
               isEgo,
             };
@@ -297,10 +367,9 @@ export const createFamilyPedigreeStore = (
 
           const serializedEdges = [...edges.entries()].map(([id, edge]) => ({
             id,
-            from: edge.from,
-            to: edge.to,
+            from: toReduxId(edge.from),
+            to: toReduxId(edge.to),
             attributes: edge.attributes,
-            ...(edge.gameteRole ? { gameteRole: edge.gameteRole } : {}),
           }));
 
           dispatch?.(
@@ -310,6 +379,11 @@ export const createFamilyPedigreeStore = (
                 isNetworkCommitted: true,
                 nodes: serializedNodes,
                 edges: serializedEdges,
+                noChildrenAffirmed: get().noChildrenAffirmed,
+                ...(framingMode === 'participantChoice' &&
+                get().framing !== null
+                  ? { selectedFraming: get().framing ?? undefined }
+                  : {}),
               },
             }),
           );
@@ -319,14 +393,53 @@ export const createFamilyPedigreeStore = (
           if (!dispatch) return;
 
           const { network, syncMetadata: sync } = get();
+
+          const egoEntry = [...network.nodes.entries()].find(
+            ([, n]) => n.attributes[variableConfig.egoVariable] === true,
+          );
+          const relationships = egoEntry
+            ? computeRelationshipsToEgo(
+                egoEntry[0],
+                network.nodes,
+                network.edges,
+                variableConfig,
+              )
+            : new Map<string, string>();
+
+          // Maps every store node id to its Redux id, so edges resolve their
+          // endpoints regardless of whether each node was newly committed here
+          // or already present from seeding.
           const idMap = new Map<string, string>();
+          for (const preexistingId of preexistingReduxNodeIds) {
+            if (network.nodes.has(preexistingId)) {
+              idMap.set(preexistingId, preexistingId);
+            }
+          }
+
+          // Only the nodes this finalize created. resetNetwork deletes these;
+          // pre-existing shared-graph nodes must survive a pedigree reset.
+          const createdReduxIds = new Map<string, string>();
 
           for (const [storeId, node] of network.nodes) {
+            // Pre-existing same-type nodes already live in Redux; re-committing
+            // them would duplicate the shared graph.
+            if (preexistingReduxNodeIds.has(storeId)) {
+              continue;
+            }
+
+            const relationship = relationships.get(storeId);
+            const attributeData = {
+              ...node.attributes,
+              ...(relationship !== undefined
+                ? { [variableConfig.relationshipVariable]: relationship }
+                : {}),
+            };
+
             const reduxId = crypto.randomUUID();
             const result = await dispatch(
               addNodeToNetwork({
                 type: variableConfig.nodeType,
-                attributeData: { ...node.attributes },
+                attributeData,
                 modelData: { _uid: reduxId },
                 allowUnknownAttributes: true,
                 currentStep: currentStep ?? 0,
@@ -335,10 +448,16 @@ export const createFamilyPedigreeStore = (
 
             if (addNodeToNetwork.fulfilled.match(result)) {
               idMap.set(storeId, reduxId);
+              createdReduxIds.set(storeId, reduxId);
             }
           }
 
-          for (const [, edge] of network.edges) {
+          for (const [edgeId, edge] of network.edges) {
+            // Edges seeded from Redux already exist in the shared graph.
+            if (preexistingReduxEdgeIds.has(edgeId)) {
+              continue;
+            }
+
             const mappedFrom = idMap.get(edge.from);
             const mappedTo = idMap.get(edge.to);
             if (mappedFrom && mappedTo) {
@@ -355,7 +474,7 @@ export const createFamilyPedigreeStore = (
           }
 
           set((state) => {
-            state.storeToReduxIdMap = new Map(idMap);
+            state.storeToReduxIdMap = new Map(createdReduxIds);
             for (const key of state.nodeMetadata.keys()) {
               const meta = state.nodeMetadata.get(key);
               if (meta) {

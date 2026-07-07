@@ -1,3 +1,5 @@
+import type { z } from 'zod';
+
 import type {
   Codebook,
   EntityDefinition,
@@ -91,6 +93,25 @@ export const findDuplicateId = <T extends { id: string }>(
   }
   return null;
 };
+
+/**
+ * A `superRefine` callback that flags duplicate `id`s in an array of content
+ * items. Shared by the Information stage and the FamilyPedigree intro screen,
+ * which validate their own (separate) item schemas with the same rule.
+ * `label` names the collection in the error message.
+ */
+export const duplicateIdRefinement =
+  (label: string) =>
+  (items: { id: string }[], ctx: z.RefinementCtx): void => {
+    const duplicateItemId = findDuplicateId(items);
+    if (duplicateItemId) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `${label} contain duplicate ID "${duplicateItemId}"`,
+        path: [],
+      });
+    }
+  };
 
 /**
  * Check for duplicate names in array

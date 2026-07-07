@@ -20,9 +20,12 @@ const variableConfig: VariableConfig = {
   edgeType: 'family',
   nodeLabelVariable: 'name',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'active',
   isGestationalCarrierVariable: 'gc',
+  gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 const TEST_DIMENSIONS: LayoutDimensions = {
@@ -65,12 +68,12 @@ function makeEdges(
       to: e.to,
       attributes: e.isGestationalCarrier
         ? {
-            [variableConfig.relationshipTypeVariable]: e.relationshipType,
+            [variableConfig.relationshipTypeVariable]: [e.relationshipType],
             [variableConfig.isActiveVariable]: e.isActive ?? true,
             [variableConfig.isGestationalCarrierVariable]: true,
           }
         : {
-            [variableConfig.relationshipTypeVariable]: e.relationshipType,
+            [variableConfig.relationshipTypeVariable]: [e.relationshipType],
             [variableConfig.isActiveVariable]: e.isActive ?? true,
           },
     });

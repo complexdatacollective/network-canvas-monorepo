@@ -1,12 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 import { filter as getFilter, getQuery } from '@codaco/network-query';
-import type {
-  Filter,
-  SkipLogic,
-  Stage,
-  VariableOptions,
-} from '@codaco/protocol-validation';
+import type { Filter, SkipLogic, Stage } from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
@@ -25,14 +20,16 @@ type NcAttributeValue =
   | number
   | number[]
   | (string | number | boolean)[]
-  | Record<string, string | number | boolean>
   | { x: number; y: number }
   | null;
 
 type VariableDefinition = {
   name: string;
   type: string;
-  options?: VariableOptions;
+  // Any codebook variable's options: categorical/ordinal (string/number) or
+  // boolean variables (boolean value). Narrower codebook types (e.g.
+  // VariableOptions, which excludes boolean) are accepted structurally.
+  options?: { label: string; value: string | number | boolean }[];
   validation?: Record<string, unknown>;
   component?: string;
 };
@@ -91,7 +88,10 @@ function toVariableEntry(
     name: variable.name,
     type: variable.type as VariableEntry['type'],
     component: variable.component as VariableEntry['component'],
-    options: variable.options?.filter((o) => typeof o.value !== 'boolean'),
+    options: variable.options?.filter(
+      (o): o is { label: string; value: string | number } =>
+        typeof o.value !== 'boolean',
+    ),
     validation: variable.validation,
   };
 }
@@ -162,7 +162,9 @@ function createNodesForStage(
 
   const behaviours = getStageBehaviours(stage);
   const minNodes = behaviours?.minNodes ?? 1;
-  const maxNodes = behaviours?.maxNodes ?? 8;
+  // A configured minNodes above the default max (or above an explicit maxNodes)
+  // must not invert the range, or randomInt(min,max) throws and the preview hangs.
+  const maxNodes = Math.max(behaviours?.maxNodes ?? 8, minNodes);
   const remaining = maxNodes - stageNodeCount;
   if (remaining <= 0) return [];
 
@@ -914,9 +916,51 @@ export function generateNetwork(
         break;
       }
 
+      case 'NetworkComposer': {
+        const subject = getStageSubject(stage);
+        if (subject?.entity !== 'node') break;
+
+        // Network Composer builds the network from scratch: create nodes of the
+        // subject type (populating their codebook attributes — quickAdd, layout,
+        // and node-form variables) and draw edges of each configured edge type
+        // among them. It is promptless, so a synthetic prompt id seeds creation.
+        const newNodes = createNodesForStage(
+          codebook,
+          stage,
+          { id: stageId },
+          valueGen,
+          nodes.length,
+          0,
+        );
+        nodes.push(...newNodes);
+
+        const composerEdges = (stage as Record<string, unknown>).edges as
+          | { subject?: { type?: string } }[]
+          | undefined;
+        for (const edgeDef of composerEdges ?? []) {
+          const edgeType = edgeDef.subject?.type;
+          if (!edgeType) continue;
+          const { edges: newEdges } = createEdgesForPairs(
+            newNodes,
+            edgeType,
+            // Network Composer is a from-scratch builder rendered across several
+            // edge types at once; a per-pair 30-50% probability produced a
+            // near-complete graph in the preview. Keep it sparse and readable.
+            valueGen.randomFloat(0.05, 0.1),
+            valueGen,
+            codebook.edge?.[edgeType]?.variables,
+          );
+          edges.push(...newEdges);
+        }
+        break;
+      }
+
       case 'Information':
       case 'Anonymisation':
       case 'Narrative':
+      case 'NarrativePedigree':
+        // NarrativePedigree is read-only and never adds nodes or edges —
+        // it reads the shared network written by its source FamilyPedigree stage.
         break;
 
       default:

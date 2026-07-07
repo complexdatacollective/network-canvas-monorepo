@@ -60,6 +60,14 @@ export const extractProtocol = async (
   protocolBuffer: Buffer,
 ): Promise<{ protocol: VersionedProtocol; assets: Array<ExtractedAsset> }> => {
   const zip = await JSZip.loadAsync(protocolBuffer);
+  return extractProtocolFromZip(zip);
+};
+
+// Extract from an already-loaded zip. Lets a caller that has already parsed the
+// archive (e.g. to size-guard it before inflating) avoid parsing it twice.
+export const extractProtocolFromZip = async (
+  zip: Zip,
+): Promise<{ protocol: VersionedProtocol; assets: Array<ExtractedAsset> }> => {
   const protocol = await getProtocolJsonAsObject(zip);
   const assets = await extractProtocolAssets(protocol, zip);
 

@@ -1,24 +1,35 @@
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { NcEdge, NcNode, RelationshipType } from '@codaco/shared-consts';
 import type {
   FamilyEdge,
   GameteRole,
   VariableConfig,
 } from '~/interfaces/FamilyPedigree/store';
+import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
+
+function readGameteRole(value: unknown): GameteRole | undefined {
+  // Stored as a single-element categorical array; also tolerate a bare string.
+  const v = Array.isArray(value) ? value[0] : value;
+  return v === 'egg' || v === 'sperm' ? v : undefined;
+}
 
 export type ParentRelation = 'child' | 'sibling' | 'define-parents';
 
 /**
  * The gamete role each node has already been nominated for elsewhere in the
- * pedigree (the `from` of a parent edge carrying a `gameteRole`). Used to stop a
- * known egg parent being offered as a sperm parent, and vice versa.
+ * pedigree, read from the edge attribute stored under `gameteRoleVariable`.
+ * Used to stop a known egg parent being offered as a sperm parent, and vice versa.
  */
 export function nominatedGameteRoles(
   edges: Map<string, FamilyEdge>,
+  variableConfig: VariableConfig,
 ): Map<string, GameteRole> {
   const roles = new Map<string, GameteRole>();
   for (const edge of edges.values()) {
-    if (edge.gameteRole === 'egg' || edge.gameteRole === 'sperm') {
-      roles.set(edge.from, edge.gameteRole);
+    const role = readGameteRole(
+      edge.attributes[variableConfig.gameteRoleVariable],
+    );
+    if (role) {
+      roles.set(edge.from, role);
     }
   }
   return roles;
@@ -27,9 +38,8 @@ export function nominatedGameteRoles(
 function relTypeOf(
   edge: NcEdge,
   variableConfig: VariableConfig,
-): string | undefined {
-  const value = edge.attributes[variableConfig.relationshipTypeVariable];
-  return typeof value === 'string' ? value : undefined;
+): RelationshipType | undefined {
+  return getEdgeRelationshipType(edge, variableConfig.relationshipTypeVariable);
 }
 
 /** Children, grandchildren, … reached by following parent->child edges down. */
@@ -97,6 +107,41 @@ function siblingIds(
     if (parents.has(edge.from) && edge.to !== nodeId) {
       result.add(edge.to);
     }
+  }
+  return result;
+}
+
+/** Direct children of nodeId (non-partner edges where nodeId is the source). */
+function childIdsOf(
+  nodeId: string,
+  edges: Map<string, NcEdge>,
+  variableConfig: VariableConfig,
+): Set<string> {
+  const result = new Set<string>();
+  for (const edge of edges.values()) {
+    if (edge.from === nodeId && relTypeOf(edge, variableConfig) !== 'partner') {
+      result.add(edge.to);
+    }
+  }
+  return result;
+}
+
+/** Siblings sharing BOTH parents with nodeId (excludes half-siblings). */
+function fullSiblingIds(
+  nodeId: string,
+  edges: Map<string, NcEdge>,
+  variableConfig: VariableConfig,
+): Set<string> {
+  const parents = parentIdsOf(nodeId, edges, variableConfig);
+  if (parents.size === 0) return new Set();
+  const parentArray = [...parents];
+  const childSets = parentArray.map((p) =>
+    childIdsOf(p, edges, variableConfig),
+  );
+  const result = new Set<string>();
+  for (const candidate of childSets[0] ?? new Set<string>()) {
+    if (candidate === nodeId) continue;
+    if (childSets.every((s) => s.has(candidate))) result.add(candidate);
   }
   return result;
 }
@@ -194,5 +239,27 @@ export function socialParentCandidates(
   for (const id of nodes.keys()) {
     if (!excluded.has(id)) result.add(id);
   }
+  return result;
+}
+
+/**
+ * People eligible to be partnered with `anchorId`: everyone except the node
+ * itself and its first-degree relatives (parents, children, full siblings).
+ * Second-degree+ relatives (cousins, half-sibs, uncle/niece, grandparents) are
+ * eligible — this is what makes consanguineous unions capturable.
+ */
+export function partnerCandidates(
+  anchorId: string,
+  nodes: Map<string, NcNode>,
+  edges: Map<string, NcEdge>,
+  variableConfig: VariableConfig,
+): Set<string> {
+  const excluded = new Set<string>([anchorId]);
+  for (const p of parentIdsOf(anchorId, edges, variableConfig)) excluded.add(p);
+  for (const c of childIdsOf(anchorId, edges, variableConfig)) excluded.add(c);
+  for (const s of fullSiblingIds(anchorId, edges, variableConfig))
+    excluded.add(s);
+  const result = new Set<string>();
+  for (const id of nodes.keys()) if (!excluded.has(id)) result.add(id);
   return result;
 }

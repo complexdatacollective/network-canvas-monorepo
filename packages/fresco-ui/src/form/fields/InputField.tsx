@@ -15,8 +15,17 @@ import {
   wrapperPaddingVariants,
 } from '../../styles/controlVariants';
 import { compose, cva, cx, type VariantProps } from '../../utils/cva';
-import type { CreateFormFieldProps } from '../Field/types';
+import { useFieldController } from '../Field/FieldController';
+import type { CreateFormFieldProps, FieldSlotController } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+
+/**
+ * A prefix/suffix slot is either static content or a render function that
+ * receives the enclosing Field's controller (so a "Generate" button can set
+ * the value without importing the form store). Function slots no-op when
+ * InputField is used standalone, outside a Field.
+ */
+type InputFieldSlot = ReactNode | ((field: FieldSlotController) => ReactNode);
 
 const inputWrapperVariants = compose(
   heightVariants,
@@ -42,6 +51,21 @@ const inputWrapperVariants = compose(
       // `<input>` (see `inputVariants` below), text is clipped inside
       // a container-sized field instead of blowing out the layout.
       'w-auto shrink-0',
+      // Focus indication is one ring per focused element: the wrapper's
+      // `focus-styles` ring (from the composed `interactiveStateVariants`) is
+      // the inner <input>'s proxy — the input sets `focus:ring-0` and has none
+      // of its own. Slot controls render their own design-system focus ring
+      // (`Button`/`IconButton` use `focusable`), so the wrapper deliberately
+      // does NOT add a second ring on slot focus, which would double-ring.
+      //
+      // The wrapper clips to its rounded corners (`overflow-hidden` from
+      // `controlVariants`, needed for child backgrounds such as the number
+      // steppers). A focused slot button's offset ring (outline-offset-3 +
+      // outline-2 = 5px) exceeds the ~4px vertical clearance and would be
+      // clipped, so un-clip while a slot control is focus-visible — the ring
+      // then paints in full. Steppers are `tabIndex={-1}` so they never match
+      // `:focus-visible`, and number fields keep their clipped corners.
+      'has-[button:focus-visible]:overflow-visible',
       // Child buttons should have reduced height, but their icons should stay the same size
       '[&_button]:h-10',
     ),
@@ -89,8 +113,8 @@ type InputFieldProps = CreateFormFieldProps<
   'input',
   {
     size?: VariantProps<typeof textSizeVariants>['size'];
-    prefixComponent?: ReactNode;
-    suffixComponent?: ReactNode;
+    prefixComponent?: InputFieldSlot;
+    suffixComponent?: InputFieldSlot;
     // Forwards the native React ChangeEvent to the caller. Needed when
     // InputField is used as a base-ui `render` prop (e.g. Combobox.Input),
     // because base-ui's internal onChange handler expects the full event
@@ -103,8 +127,8 @@ type InputFieldProps = CreateFormFieldProps<
 const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
   function InputField(props, ref) {
     const {
-      prefixComponent: prefix,
-      suffixComponent: suffix,
+      prefixComponent,
+      suffixComponent,
       size = 'md',
       className,
       value,
@@ -115,6 +139,18 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
       readOnly,
       ...inputProps
     } = props;
+
+    // Function slots resolve against the enclosing Field's controller; outside
+    // a Field there is no controller, so they render nothing.
+    const fieldController = useFieldController();
+    const resolveSlot = (slot: InputFieldSlot): ReactNode =>
+      typeof slot === 'function'
+        ? fieldController
+          ? slot(fieldController)
+          : null
+        : slot;
+    const prefix = resolveSlot(prefixComponent);
+    const suffix = resolveSlot(suffixComponent);
 
     const internalRef = useRef<HTMLInputElement>(null);
     const isNumber = type === 'number';

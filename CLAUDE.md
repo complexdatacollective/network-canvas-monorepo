@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Committing and opening PRs
+
+When a change is complete and verified — types, lint, `knip`, and the relevant
+tests pass — you may commit it and open a pull request **without asking first**.
+Always work on a feature branch; never commit directly to `main`. Still confirm
+before other outward-facing or hard-to-reverse actions (merging, force-pushing,
+deleting branches, publishing releases).
+
 ## Essential Commands
 
 ### Development
@@ -14,7 +22,7 @@ pnpm install
 pnpm dev
 
 # Start specific applications
-pnpm --filter @codaco/architect-web dev
+pnpm --filter @codaco/architect dev
 pnpm --filter analytics-web dev  # Next.js with turbopack
 ```
 
@@ -114,6 +122,20 @@ pnpm version-packages
 pnpm publish-packages
 ```
 
+#### Changeset lanes: libraries vs apps
+
+- **Library packages** (`packages/*`) release to npm via `changesets/action` (the
+  "Version Packages" PR).
+- **The two PWA apps** (`@codaco/architect`, `@codaco/interviewer`) are
+  `private` and in the changeset `ignore` list. They release on a `-beta.N` line
+  via a separate "Release apps (beta)" PR (`apps-release-pr` job) that deploys to
+  Netlify production and cuts a GitHub release on merge.
+- **Never put an app and a library in the same changeset** — `changeset version`
+  errors on mixed changesets and `pnpm check:changesets` (a quality-gate step)
+  rejects them. Write two changesets.
+- See the `creating-a-changeset` skill and
+  `docs/superpowers/specs/2026-07-03-pwa-app-beta-releases-design.md`.
+
 ## Architecture Overview
 
 ### Monorepo Structure
@@ -121,7 +143,7 @@ pnpm publish-packages
 This is a **pnpm workspace** monorepo with catalog dependencies for version consistency:
 
 - **Apps**: End-user applications
-  - `architect-web` - Protocol designer (Vite + Redux)
+  - `architect` - Protocol designer (Vite + Redux)
   - `documentation` - Documentation site
 - **Packages**: Shared libraries and utilities
   - `protocol-validation` - Zod schemas for protocol validation and migration
@@ -142,7 +164,7 @@ This is a **pnpm workspace** monorepo with catalog dependencies for version cons
 
 - **Build**: Vite for apps, custom build scripts for packages
 - **Validation**: Zod with complex cross-reference validation patterns
-- **Frontend**: React with various stacks (Vite + Redux for desktop apps and architect-web, Next.js for documentation and others)
+- **Frontend**: React with various stacks (Vite + Redux for desktop apps and architect, Next.js for documentation and others)
 - **Styling**: Tailwind CSS with shared configurations
 - **Testing**: Vitest across all packages
 
@@ -165,7 +187,7 @@ The core validation system for Network Canvas protocol files (`.netcanvas`). Con
 
 Synthetic network generation and interview-payload builder for Network Canvas protocols. Provides:
 
-- **`generateNetwork`**: a pure function that produces an `NcNetwork` (plus stage metadata and step state) for a given codebook and stages, with optional seeding for deterministic output. Used by `architect-web`'s PreviewHost and by tests that need a deterministic network shape.
+- **`generateNetwork`**: a pure function that produces an `NcNetwork` (plus stage metadata and step state) for a given codebook and stages, with optional seeding for deterministic output. Used by `architect`'s PreviewHost and by tests that need a deterministic network shape.
 - **`SyntheticInterview`**: a fluent builder for codebooks, stages, prompts, forms, and full interview payloads. Used by `@codaco/interview`'s Storybook stories.
 
 #### @codaco/shared-consts
@@ -200,6 +222,8 @@ Network Canvas uses a protocol-based system where:
 3. Executed in Interviewer applications
 
 ## Development Guidelines
+
+**Before writing code for any feature, fix, or change, invoke the `developing-in-network-canvas` skill.** It covers reusing existing packages/components before building new, and the project's accessibility, internationalisation, participant-tone, and visual/motion priorities (with depth for UI work).
 
 ### Code Standards
 

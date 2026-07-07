@@ -87,11 +87,6 @@ status = 301
 
 # Legacy flat /interface-documentation/* (old Architect links)
 [[redirects]]
-from = "/interface-documentation/family-pedigree"
-to = "/en/design-protocols/interface-documentation/family-tree-census"
-status = 301
-
-[[redirects]]
 from = "/interface-documentation/*"
 to = "/en/design-protocols/interface-documentation/:splat"
 status = 301

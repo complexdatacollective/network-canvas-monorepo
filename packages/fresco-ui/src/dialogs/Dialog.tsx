@@ -5,10 +5,7 @@ import type React from 'react';
 import type { ReactNode } from 'react';
 
 import CloseButton from '../CloseButton';
-import {
-  type SurfaceVariants,
-  surfaceSpacingVariants,
-} from '../layout/Surface';
+import { surfaceSpacingVariants } from '../layout/Surface';
 import Modal from '../Modal';
 import { ScrollArea } from '../ScrollArea';
 import Heading from '../typography/Heading';
@@ -26,7 +23,7 @@ export const STATE_VARIANTS = [
 ] as const;
 
 export type DialogProps = {
-  title?: string;
+  title?: ReactNode;
   description?: ReactNode;
   accent?: (typeof STATE_VARIANTS)[number];
   closeDialog?: () => void;
@@ -42,7 +39,7 @@ export type DialogProps = {
    * @default true
    */
   dismissible?: boolean;
-} & SurfaceVariants;
+};
 
 /**
  * Dialog component using Base UI Dialog primitives with motion animations.

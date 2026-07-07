@@ -7,19 +7,14 @@ import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { FRAMING_TERMS } from '@codaco/shared-consts';
+import { useFramedTerms } from '~/interfaces/FamilyPedigree/hooks/useFramedTerms';
 
 const partnershipOptions = [
   { value: 'current', label: 'Current partner' },
   { value: 'ex', label: 'Ex-partner' },
   { value: 'none', label: "Not a partner or Don't know" },
 ];
-
-/**
- * Possessive used to label a parent who was left unnamed ("your egg parent").
- * Fixed to "your" because this quick-start step always describes the
- * interviewee's own parents.
- */
-const possessive = 'your';
 
 type ParentEntry = {
   id: string;
@@ -48,18 +43,19 @@ function getParentLabel(parent: ParentEntry): string {
 
 export default function ParentPartnershipsStep() {
   const values = useFormValue(BIO_PARENT_FIELDS);
+  const terms = useFramedTerms() ?? FRAMING_TERMS.gamete;
 
   const parents = useMemo<ParentEntry[]>(() => {
     const list: ParentEntry[] = [
       {
         id: 'egg-parent',
         name: values['egg-parent.name'] as string | undefined,
-        roleLabel: `${possessive} egg parent`,
+        roleLabel: terms.yourEggParent,
       },
       {
         id: 'sperm-parent',
         name: values['sperm-parent.name'] as string | undefined,
-        roleLabel: `${possessive} sperm parent`,
+        roleLabel: terms.yourSpermParent,
       },
     ];
 
@@ -67,7 +63,7 @@ export default function ParentPartnershipsStep() {
       list.push({
         id: 'gestational-carrier',
         name: values['gestational-carrier.name'] as string | undefined,
-        roleLabel: `${possessive} gestational carrier`,
+        roleLabel: 'your gestational carrier',
       });
     }
 
@@ -81,13 +77,13 @@ export default function ParentPartnershipsStep() {
             | undefined,
           // Additional parents always require a name, so this fallback is a
           // safety net rather than something the participant normally sees.
-          roleLabel: `${possessive} additional parent`,
+          roleLabel: 'your additional parent',
         });
       }
     }
 
     return list;
-  }, [values]);
+  }, [values, terms]);
 
   if (parents.length < 2) return null;
 

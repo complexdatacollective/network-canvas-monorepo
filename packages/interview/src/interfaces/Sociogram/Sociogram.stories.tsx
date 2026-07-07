@@ -264,7 +264,7 @@ const buildAutomaticLayout = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('Sociogram', {
     initialNodes: { count: 8 },
-    behaviours: { automaticLayout: { enabled: true } },
+    behaviours: { automaticLayout: true },
   });
   stage.addPrompt({
     layout: { layoutVariable: layoutVar.id },
@@ -369,7 +369,7 @@ const buildAutomaticLayoutLarge = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('Sociogram', {
     initialNodes: { count: 20 },
-    behaviours: { automaticLayout: { enabled: true } },
+    behaviours: { automaticLayout: true },
   });
   stage.addPrompt({
     layout: { layoutVariable: layoutVar.id },

@@ -1,0 +1,79 @@
+/// <reference types="vitest" />
+
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
+import react from '@vitejs/plugin-react';
+import { playwright } from '@vitest/browser-playwright';
+import { VitePWA } from 'vite-plugin-pwa';
+import { defineConfig } from 'vitest/config';
+
+import { arrayBufferAssetPlugin } from './vite.renderer.config';
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+export default defineConfig({
+  plugins: [
+    react(),
+    arrayBufferAssetPlugin(),
+    // Registers the `virtual:pwa-register/react` module id so components
+    // importing `useRegisterSW` can be loaded under test — vitest.config.ts
+    // doesn't otherwise share vite.config.ts's VitePWA plugin instance, and
+    // vite's import-analysis needs the id to resolve before a `vi.mock` of it
+    // can take effect. No SW is actually built under vitest.
+    VitePWA({ registerType: 'prompt', injectRegister: false }),
+  ],
+  resolve: {
+    tsconfigPaths: true,
+  },
+  // `__APP_VERSION__` is injected by vite.renderer.config.ts for real builds;
+  // stub it here so modules reading APP_VERSION can be imported under test.
+  define: {
+    __APP_VERSION__: JSON.stringify('0.0.0-test'),
+  },
+  test: {
+    exclude: ['**/node_modules/**', '**/dist/**', '**/storybook-static/**'],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          environment: 'jsdom',
+          // This jsdom suite is parallelised alongside the rest of the
+          // workspace's tests in the CI quality job; under peak runner load a
+          // borderline test can be starved past the 5s default, so give
+          // generous headroom.
+          testTimeout: 20_000,
+          setupFiles: ['./src/test-setup.ts'],
+          include: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**/*.{ts,tsx}'],
+          exclude: [
+            '**/node_modules/**',
+            '**/dist/**',
+            '**/*.stories.{ts,tsx}',
+          ],
+        },
+      },
+      {
+        extends: true,
+        plugins: [
+          storybookTest({
+            configDir: resolve(here, '.storybook'),
+            storybookScript: 'storybook dev -p 6006 --no-open',
+          }),
+        ],
+        test: {
+          name: 'storybook',
+          testTimeout: 60_000,
+          browser: {
+            provider: playwright(),
+            enabled: true,
+            instances: [{ browser: 'chromium' }],
+            headless: true,
+          },
+          exclude: ['**/*.test.{ts,tsx}'],
+        },
+      },
+    ],
+  },
+});

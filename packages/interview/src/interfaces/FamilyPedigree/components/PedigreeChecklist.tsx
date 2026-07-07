@@ -25,9 +25,15 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useStageSelector } from '~/hooks/useStageSelector';
 
 import { buildPedigreeDialog } from '../buildPedigreeDialog';
-import { useFamilyPedigreeStore } from '../FamilyPedigreeProvider';
-import { getRelationshipTypeVariable } from '../utils/edgeUtils';
+import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
+import type { VariableConfig } from '../store';
+import {
+  getEdgeRelationshipType,
+  getRelationshipTypeVariable,
+} from '../utils/edgeUtils';
 import { getEgoVariable, getNodeLabelVariable } from '../utils/nodeUtils';
+import type { Boundaries } from '../utils/validatePedigree';
+import { evaluateBoundaries } from '../utils/validatePedigree';
 import {
   buildParentsItem,
   type ChecklistItem,
@@ -38,10 +44,14 @@ export default function PedigreeChecklist({
   dragConstraints,
   onFinalize,
   onAllDoneChange,
+  variableConfig,
+  boundaries,
 }: {
   dragConstraints: RefObject<HTMLElement | null>;
   onFinalize: () => void;
   onAllDoneChange?: (allDone: boolean) => void;
+  variableConfig: VariableConfig;
+  boundaries: Boundaries;
 }) {
   const nodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const edges = useFamilyPedigreeStore((s) => s.network.edges);
@@ -51,23 +61,17 @@ export default function PedigreeChecklist({
     getRelationshipTypeVariable,
   );
   const { openDialog } = useDialog();
+  const noChildrenAffirmed = useFamilyPedigreeStore(
+    (s) => s.noChildrenAffirmed,
+  );
+  const setNoChildrenAffirmed = useFamilyPedigreeStore(
+    (s) => s.setNoChildrenAffirmed,
+  );
 
   const [dismissed, setDismissed] = useState(false);
   const [manuallyChecked, setManuallyChecked] = useState<Set<string>>(
     new Set(),
   );
-
-  const toggleManualCheck = useCallback((id: string) => {
-    setManuallyChecked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
 
   const egoId = useMemo(() => {
     for (const [id, node] of nodes) {
@@ -80,9 +84,7 @@ export default function PedigreeChecklist({
     if (!egoId) return [];
     const parents: string[] = [];
     for (const edge of edges.values()) {
-      const relType = edge.attributes[relationshipTypeVariable] as
-        | string
-        | undefined;
+      const relType = getEdgeRelationshipType(edge, relationshipTypeVariable);
       if (edge.to === egoId && relType !== 'partner' && relType !== 'social') {
         parents.push(edge.from);
       }
@@ -94,7 +96,7 @@ export default function PedigreeChecklist({
     if (!egoId) return false;
     for (const edge of edges.values()) {
       if (
-        edge.attributes[relationshipTypeVariable] === 'partner' &&
+        getEdgeRelationshipType(edge, relationshipTypeVariable) === 'partner' &&
         (edge.from === egoId || edge.to === egoId)
       ) {
         return true;
@@ -106,9 +108,7 @@ export default function PedigreeChecklist({
   const hasSiblings = useMemo(() => {
     if (!egoId || egoParentIds.length === 0) return false;
     for (const edge of edges.values()) {
-      const relType = edge.attributes[relationshipTypeVariable] as
-        | string
-        | undefined;
+      const relType = getEdgeRelationshipType(edge, relationshipTypeVariable);
       if (
         relType !== 'partner' &&
         relType !== 'social' &&
@@ -126,9 +126,7 @@ export default function PedigreeChecklist({
     for (const parentId of egoParentIds) {
       const grandparentIds: string[] = [];
       for (const edge of edges.values()) {
-        const relType = edge.attributes[relationshipTypeVariable] as
-          | string
-          | undefined;
+        const relType = getEdgeRelationshipType(edge, relationshipTypeVariable);
         if (
           edge.to === parentId &&
           relType !== 'partner' &&
@@ -139,9 +137,10 @@ export default function PedigreeChecklist({
       }
       for (const gpId of grandparentIds) {
         for (const edge of edges.values()) {
-          const relType = edge.attributes[relationshipTypeVariable] as
-            | string
-            | undefined;
+          const relType = getEdgeRelationshipType(
+            edge,
+            relationshipTypeVariable,
+          );
           if (
             edge.from === gpId &&
             relType !== 'partner' &&
@@ -161,13 +160,63 @@ export default function PedigreeChecklist({
     for (const edge of edges.values()) {
       if (
         edge.from === egoId &&
-        edge.attributes[relationshipTypeVariable] !== 'partner'
+        getEdgeRelationshipType(edge, relationshipTypeVariable) !== 'partner'
       ) {
         return true;
       }
     }
     return false;
   }, [egoId, edges, relationshipTypeVariable]);
+
+  const toggleManualCheck = useCallback(
+    (id: string) => {
+      // The children item doubles as the "no children" affirmation. When there
+      // are no actual children and the user clicks this item, persist the toggle
+      // to the store so validation can read it from stage metadata.
+      if (id === 'children' && !hasChildren) {
+        setNoChildrenAffirmed(!noChildrenAffirmed);
+        return;
+      }
+      setManuallyChecked((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    },
+    [hasChildren, noChildrenAffirmed, setNoChildrenAffirmed],
+  );
+
+  // Evaluate recommended boundary issues to surface as nudges in the checklist.
+  const boundaryNudges = useMemo(() => {
+    if (!egoId) return [];
+    return evaluateBoundaries(
+      egoId,
+      nodes,
+      edges,
+      variableConfig,
+      boundaries,
+      hasChildren || noChildrenAffirmed,
+    );
+  }, [
+    egoId,
+    nodes,
+    edges,
+    variableConfig,
+    boundaries,
+    hasChildren,
+    noChildrenAffirmed,
+  ]);
+
+  const hasGrandparentsNudge = boundaryNudges.some(
+    (i) => i.boundary === 'requireGrandparents',
+  );
+  const hasChildrenContributorsNudge = boundaryNudges.some(
+    (i) => i.boundary === 'requireChildrenContributors',
+  );
 
   const items = useMemo<ChecklistItem[]>(() => {
     if (!egoId) return [];
@@ -186,7 +235,9 @@ export default function PedigreeChecklist({
       const edgeToEgo = [...edges.values()].find(
         (e) => e.from === parentId && e.to === egoId,
       );
-      const relTypeToEgo = edgeToEgo?.attributes[relationshipTypeVariable];
+      const relTypeToEgo = edgeToEgo
+        ? getEdgeRelationshipType(edgeToEgo, relationshipTypeVariable)
+        : undefined;
       if (relTypeToEgo !== 'biological' && relTypeToEgo !== 'donor') {
         continue;
       }
@@ -247,12 +298,51 @@ export default function PedigreeChecklist({
       required: false,
     });
 
+    // The children item is required when the boundary config demands it (not
+    // 'off'). It counts as done when there are real children, the "no children"
+    // affirmation is active, or the user has manually checked it.
+    const childrenRequired = boundaries.requireChildrenContributors !== 'off';
     list.push({
       id: 'children',
-      label: 'Add children',
-      done: hasChildren || manuallyChecked.has('children'),
-      required: false,
+      label: hasChildren
+        ? 'Add children'
+        : noChildrenAffirmed
+          ? 'No children (confirmed)'
+          : 'Add children (or confirm none)',
+      done:
+        hasChildren ||
+        noChildrenAffirmed ||
+        (!childrenRequired && manuallyChecked.has('children')),
+      required: childrenRequired,
     });
+
+    // Surface a grandparents nudge item when the boundary config requests it
+    // and the requirement is not yet met. This is separate from the per-parent
+    // items above, which show for named genetic parents.
+    if (hasGrandparentsNudge && boundaries.requireGrandparents !== 'off') {
+      const gpRequired = boundaries.requireGrandparents === 'required';
+      list.push({
+        id: 'boundary-grandparents',
+        label: "Record each parent's two parents",
+        done:
+          !hasGrandparentsNudge || manuallyChecked.has('boundary-grandparents'),
+        required: gpRequired,
+      });
+    }
+
+    // Surface a children-contributors nudge when the boundary config requests
+    // it and the requirement is not yet met (applies when ego has children).
+    if (hasChildrenContributorsNudge && hasChildren) {
+      const ccRequired = boundaries.requireChildrenContributors === 'required';
+      list.push({
+        id: 'boundary-children-contributors',
+        label: "Record children's co-parents and their parents",
+        done:
+          !hasChildrenContributorsNudge ||
+          manuallyChecked.has('boundary-children-contributors'),
+        required: ccRequired,
+      });
+    }
 
     return list;
   }, [
@@ -265,8 +355,12 @@ export default function PedigreeChecklist({
     hasSiblings,
     hasPartner,
     hasChildren,
+    noChildrenAffirmed,
     manuallyChecked,
     relationshipTypeVariable,
+    boundaries,
+    hasGrandparentsNudge,
+    hasChildrenContributorsNudge,
   ]);
 
   const sortedItems = useMemo(

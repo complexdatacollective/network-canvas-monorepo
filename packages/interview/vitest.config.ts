@@ -6,8 +6,6 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
-import pkg from './package.json' with { type: 'json' };
-
 const dirname =
   typeof __dirname !== 'undefined'
     ? __dirname
@@ -15,11 +13,26 @@ const dirname =
 
 export default defineConfig({
   resolve: {
-    tsconfigPaths: true,
+    // `~/*` and `~/.storybook/*` mirror this package's tsconfig `paths`. Vite's
+    // native resolve.tsconfigPaths honours tsconfig `exclude`, and tsconfig.json
+    // excludes the test/story files — so `~/` imports (and `vi.mock('~/…')`)
+    // resolve for source files but not for those. Alias them explicitly so `~/`
+    // resolves for every file. `.storybook` is listed first because
+    // `~/.storybook/…` also matches the bare `~/` pattern and Vite uses the
+    // first matching alias.
+    alias: [
+      {
+        find: /^~\/\.storybook\//,
+        replacement: `${path.join(dirname, '.storybook')}/`,
+      },
+      { find: /^~\//, replacement: `${path.join(dirname, 'src')}/` },
+    ],
   },
   plugins: [react()],
   define: {
-    __PACKAGE_VERSION__: JSON.stringify(pkg.version),
+    // Pin to a constant so test behaviour never depends on the real release
+    // version (kept deterministic across `changeset version` bumps).
+    __PACKAGE_VERSION__: JSON.stringify('0.0.0-test'),
   },
   test: {
     globals: true,
@@ -35,6 +48,12 @@ export default defineConfig({
         test: {
           name: 'units',
           environment: 'jsdom',
+          // This heavy jsdom suite is parallelised alongside the rest of the
+          // workspace's tests in the CI quality job; under peak runner load a
+          // borderline test (e.g. a WebGL-backed interface interaction) can be
+          // starved past the 5s default, so give generous headroom.
+          testTimeout: 20_000,
+          setupFiles: [path.join(dirname, 'vitest.setup.ts')],
           include: [
             'src/**/*.{test,spec}.{ts,tsx}',
             'src/**/__tests__/**/*.{test,spec}.{ts,tsx}',

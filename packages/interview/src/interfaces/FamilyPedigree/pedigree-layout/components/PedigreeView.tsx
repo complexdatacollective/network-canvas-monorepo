@@ -1,5 +1,8 @@
 'use client';
 
+import { invariant } from 'es-toolkit';
+import { useContext } from 'react';
+
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Node from '@codaco/fresco-ui/Node';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
@@ -15,18 +18,26 @@ import {
   addableParentTypeOptions,
   countGeneticParents,
 } from '~/interfaces/FamilyPedigree/components/wizards/parentTypeOptions';
-import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeProvider';
+import {
+  FamilyPedigreeContext,
+  FamilyPedigreeStoreBridge,
+  useFamilyPedigreeStore,
+} from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import {
+  getEdgeRelationshipType,
   getEdgeTypeKey,
+  getGameteRoleVariable,
   getIsActiveVariable,
   getIsGestationalCarrierVariable,
   getRelationshipTypeVariable,
 } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 import {
+  getBiologicalSexVariable,
   getEgoVariable,
   getNodeLabelVariable,
   getNodeTypeKey,
+  getRelationshipVariable,
   getResolvedNodeFormFields,
 } from '~/interfaces/FamilyPedigree/utils/nodeUtils';
 
@@ -49,11 +60,18 @@ export default function PedigreeView({
   onToggleAttribute,
   isFinalized = false,
 }: PedigreeViewProps = {}) {
+  const familyPedigreeStore = useContext(FamilyPedigreeContext);
+  invariant(
+    familyPedigreeStore,
+    'PedigreeView must be used within a FamilyPedigreeProvider',
+  );
+
   const storeNodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const storeEdges = useFamilyPedigreeStore((s) => s.network.edges);
   const storeActiveNominationVariable = useFamilyPedigreeStore(
     (s) => s.activeNominationVariable,
   );
+  const storeFraming = useFamilyPedigreeStore((s) => s.framing);
 
   const nodes = overrideNodes ?? storeNodes;
   const edges = overrideEdges ?? storeEdges;
@@ -70,6 +88,7 @@ export default function PedigreeView({
   const edgeType = useStageSelector(getEdgeTypeKey);
   const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
   const egoVariable = useStageSelector(getEgoVariable);
+  const relationshipVariable = useStageSelector(getRelationshipVariable);
   const relationshipTypeVariable = useStageSelector(
     getRelationshipTypeVariable,
   );
@@ -77,6 +96,8 @@ export default function PedigreeView({
   const isGestationalCarrierVariable = useStageSelector(
     getIsGestationalCarrierVariable,
   );
+  const gameteRoleVariable = useStageSelector(getGameteRoleVariable);
+  const biologicalSexVariable = useStageSelector(getBiologicalSexVariable);
   const resolvedFormFields = useStageSelector(getResolvedNodeFormFields);
 
   const variableConfig: VariableConfig = {
@@ -84,9 +105,12 @@ export default function PedigreeView({
     edgeType,
     nodeLabelVariable,
     egoVariable,
+    relationshipVariable,
     relationshipTypeVariable,
     isActiveVariable,
     isGestationalCarrierVariable,
+    gameteRoleVariable,
+    biologicalSexVariable,
   };
 
   const { openDialog } = useDialog();
@@ -102,16 +126,33 @@ export default function PedigreeView({
       submitLabel: 'Add',
       cancelLabel: 'Cancel',
       children: (
-        <AddPersonFields
-          anchorNodeId={nodeId}
-          nodes={nodes}
-          edges={edges}
-          variableConfig={variableConfig}
-        />
+        <FamilyPedigreeStoreBridge store={familyPedigreeStore}>
+          <AddPersonFields
+            anchorNodeId={nodeId}
+            nodes={nodes}
+            edges={edges}
+            variableConfig={variableConfig}
+          />
+        </FamilyPedigreeStoreBridge>
       ),
     });
 
     if (!result) return;
+
+    if (
+      result.partnerType === 'existing' &&
+      typeof result.existingPartnerId === 'string'
+    ) {
+      addEdge({
+        from: nodeId,
+        to: result.existingPartnerId,
+        attributes: {
+          [relationshipTypeVariable]: ['partner'],
+          [isActiveVariable]: result.current !== 'ex',
+        },
+      });
+      return;
+    }
 
     const name = typeof result.name === 'string' ? result.name : '';
 
@@ -134,7 +175,7 @@ export default function PedigreeView({
       from: nodeId,
       to: newNodeId,
       attributes: {
-        [relationshipTypeVariable]: 'partner',
+        [relationshipTypeVariable]: ['partner'],
         [isActiveVariable]: result.current !== 'ex',
       },
     });
@@ -152,7 +193,7 @@ export default function PedigreeView({
           from: newNodeId,
           to: childId,
           attributes: {
-            [relationshipTypeVariable]: value,
+            [relationshipTypeVariable]: [value],
             [isActiveVariable]: true,
           },
         });
@@ -202,10 +243,14 @@ export default function PedigreeView({
   const handleAddChild = async (nodeId: string) => {
     const result = await openAddChildWizard(
       openDialog,
+      familyPedigreeStore,
       nodeId,
       nodes,
       edges,
       variableConfig,
+      // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is null
+      // only the intro/chooser steps render and no gamete-parent labels exist yet.
+      storeFraming ?? 'gamete',
     );
     if (result) {
       commitBatch(result);
@@ -215,10 +260,12 @@ export default function PedigreeView({
   const handleAddSibling = async (nodeId: string) => {
     const result = await openAddSiblingWizard(
       openDialog,
+      familyPedigreeStore,
       nodeId,
       nodes,
       edges,
       variableConfig,
+      storeFraming ?? 'gamete',
     );
     if (result) {
       commitBatch(result);
@@ -232,18 +279,22 @@ export default function PedigreeView({
       geneticCount >= 2
         ? await openAddParentWizard(
             openDialog,
+            familyPedigreeStore,
             nodeId,
             nodes,
             edges,
             variableConfig,
             addableParentTypeOptions(nodeId, edges, variableConfig),
+            storeFraming ?? 'gamete',
           )
         : await openDefineParentsWizard(
             openDialog,
+            familyPedigreeStore,
             nodeId,
             nodes,
             edges,
             variableConfig,
+            storeFraming ?? 'gamete',
           );
 
     if (result) {
@@ -271,7 +322,14 @@ export default function PedigreeView({
     }
   };
 
-  const displayLabels = computeNodeDisplayLabels(nodes, edges, variableConfig);
+  // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is null
+  // only the intro/chooser steps render and no gamete-parent labels exist yet.
+  const displayLabels = computeNodeDisplayLabels(
+    nodes,
+    edges,
+    variableConfig,
+    storeFraming ?? 'gamete',
+  );
 
   return (
     <div className="absolute inset-0 overflow-x-auto pt-6">
@@ -288,7 +346,8 @@ export default function PedigreeView({
             const isAdopted = [...edges.values()].some(
               (e) =>
                 e.to === node.id &&
-                e.attributes[relationshipTypeVariable] === 'adoptive',
+                getEdgeRelationshipType(e, relationshipTypeVariable) ===
+                  'adoptive',
             );
 
             return activeNominationVariable ? (
@@ -310,8 +369,10 @@ export default function PedigreeView({
                   [...edges.values()].some(
                     (e) =>
                       e.to === node.id &&
-                      e.attributes[relationshipTypeVariable] !== 'partner' &&
-                      e.attributes[relationshipTypeVariable] !== 'social',
+                      getEdgeRelationshipType(e, relationshipTypeVariable) !==
+                        'partner' &&
+                      getEdgeRelationshipType(e, relationshipTypeVariable) !==
+                        'social',
                   )
                 }
                 isEgo={isEgo}

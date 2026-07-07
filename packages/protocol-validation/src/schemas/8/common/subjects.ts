@@ -1,26 +1,25 @@
-import { getEdgeTypeId, getNodeTypeId } from '~/utils/mock-seeds';
-import { z } from '~/utils/zod-mock-extension';
+import { z } from 'zod';
+
+import { entityTypeReference } from '../entity-type-reference';
 
 export const NodeStageSubjectSchema = z.strictObject({
   entity: z.literal('node'),
-  type: z.string().generateMock(() => getNodeTypeId()),
+  type: entityTypeReference({ entity: 'node' }),
 });
 
 export const EdgeStageSubjectSchema = z.strictObject({
   entity: z.literal('edge'),
-  type: z.string().generateMock(() => getEdgeTypeId()),
+  type: entityTypeReference({ entity: 'edge' }),
 });
 
 export const EgoStageSubjectSchema = z.strictObject({
   entity: z.literal('ego'),
 });
 
-export const StageSubjectSchema = z
-  .union([
-    EgoStageSubjectSchema,
-    NodeStageSubjectSchema,
-    EdgeStageSubjectSchema,
-  ])
-  .generateMock(() => NodeStageSubjectSchema.generateMock());
+export const StageSubjectSchema = z.union([
+  EgoStageSubjectSchema,
+  NodeStageSubjectSchema,
+  EdgeStageSubjectSchema,
+]);
 
 export type StageSubject = z.infer<typeof StageSubjectSchema>;

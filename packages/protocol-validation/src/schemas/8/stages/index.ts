@@ -1,11 +1,9 @@
-import { z } from '~/utils/zod-mock-extension';
+import { z } from 'zod';
 
 // Export base stage schema
 export * from './base';
 
 // Import all stage types
-import { faker } from '@faker-js/faker';
-
 import { alterEdgeFormStage } from './alter-edge-form';
 import { alterFormStage } from './alter-form';
 import { anonymisationStage } from './anonymisation';
@@ -19,6 +17,8 @@ import { nameGeneratorStage } from './name-generator';
 import { nameGeneratorQuickAddStage } from './name-generator-quick-add';
 import { nameGeneratorRosterStage } from './name-generator-roster';
 import { narrativeStage } from './narrative';
+import { narrativePedigreeStage } from './narrative-pedigree';
+import { networkComposerStage } from './network-composer';
 import { oneToManyDyadCensusStage } from './one-to-many-dyad-census';
 import { ordinalBinStage } from './ordinal-bin';
 import { sociogramStage } from './sociogram';
@@ -37,7 +37,9 @@ export * from './information';
 export * from './name-generator';
 export * from './name-generator-quick-add';
 export * from './name-generator-roster';
+export * from './narrative-pedigree';
 export * from './narrative';
+export * from './network-composer';
 export * from './one-to-many-dyad-census';
 export * from './ordinal-bin';
 export * from './sociogram';
@@ -52,6 +54,7 @@ const stageSchemas = [
   nameGeneratorQuickAddStage,
   nameGeneratorRosterStage,
   sociogramStage,
+  networkComposerStage,
   dyadCensusStage,
   tieStrengthCensusStage,
   ordinalBinStage,
@@ -62,16 +65,11 @@ const stageSchemas = [
   oneToManyDyadCensusStage,
   familyPedigreeStage,
   geospatialStage,
+  narrativePedigreeStage,
 ] as const;
 
 // Combine all stage types
-export const stageSchema = z
-  .discriminatedUnion('type', stageSchemas)
-  .generateMock(() => {
-    // pick a random schema
-    const schema = faker.helpers.arrayElement(stageSchemas);
-    return schema.generateMock();
-  });
+export const stageSchema = z.discriminatedUnion('type', stageSchemas);
 
 // Extract all the 'type' values from stageSchema
 export type StageType = z.infer<typeof stageSchema>['type'];

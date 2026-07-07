@@ -1,0 +1,58 @@
+/*
+ * Tailwind v4 entry, design tokens, fresco theme + components.
+ * Fonts are imported via JS (see src/main.tsx) so url() refs resolve
+ * through the Vite bundler.
+ */
+@import '@codaco/tailwind-config/fresco.css';
+
+@import '@codaco/fresco-ui/styles.css';
+@import '@codaco/interview/styles.css';
+
+/* Make the root container fill the viewport so the dashboard / interview
+   shell can size to the full screen on tablet + desktop without scrolling
+   the body.
+
+   `height: 100%` (not `100dvh`/`min-h-dvh`) is load-bearing: the body is
+   padded by env(safe-area-inset-top) below, so its content box is
+   `viewport - inset`. #root inherits that exact height, and full-screen
+   surfaces fill it with `h-full`. Sizing #root (or any surface) to the raw
+   viewport (`dvh`) instead would overflow the inset by the safe-area amount
+   and scroll the whole page — the iPad-portrait overflow bug. */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Disable the two-finger swipe-back/forward navigation gesture. Chromium
+   reads this from the ROOT element (the body declaration below does not
+   propagate to the viewport). Safari ignores it for the history swipe
+   entirely (WebKit bug 240183) — that path is handled by the wheel guard in
+   src/lib/pwa/swipeNavigationGuard.ts. */
+html {
+  overscroll-behavior: none;
+}
+
+body {
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  /* iPadOS 26's window controls occupy the top safe area; inset the app so its
+     top content isn't under them. The dark/app background fills the inset, so
+     the controls blend in. env() insets are 0 on desktop/web, so this is a
+     no-op there. */
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Indeterminate-progress sweep used by the in-flight import ghost card
+   when no Content-Length is available. The bar slides left-to-right and
+   loops. */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}

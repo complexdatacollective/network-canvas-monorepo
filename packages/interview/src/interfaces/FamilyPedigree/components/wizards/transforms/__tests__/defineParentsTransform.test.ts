@@ -9,9 +9,12 @@ const variableConfig: VariableConfig = {
   edgeType: 'family',
   nodeLabelVariable: 'name',
   egoVariable: 'isEgo',
+  relationshipVariable: 'relationship',
   relationshipTypeVariable: 'rel',
   isActiveVariable: 'isActive',
   isGestationalCarrierVariable: 'isGC',
+  gameteRoleVariable: 'gameteRole',
+  biologicalSexVariable: 'biologicalSex',
 };
 
 describe('defineParentsTransform', () => {
@@ -30,12 +33,15 @@ describe('defineParentsTransform', () => {
 
     expect(batch.nodes.some((n) => n.tempId === 'focal-1')).toBe(false);
     expect(
-      batch.edges.some(
-        (e) =>
+      batch.edges.some((e) => {
+        const role = e.data.attributes[variableConfig.gameteRoleVariable];
+        return (
           e.source === 'donor-1' &&
           e.target === 'focal-1' &&
-          e.gameteRole === 'sperm',
-      ),
+          Array.isArray(role) &&
+          role[0] === 'sperm'
+        );
+      }),
     ).toBe(true);
     const mum = batch.nodes.find((n) => n.tempId === 'new-egg-source');
     expect(mum?.data.attributes.name).toBe('Mum');

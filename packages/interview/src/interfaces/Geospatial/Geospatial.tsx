@@ -194,6 +194,7 @@ export default function GeospatialInterface({
     accessToken,
     isStageReady,
     zoomLevel,
+    mapError,
     handleResetMapZoom,
     handleZoomIn,
     handleZoomOut,
@@ -386,6 +387,27 @@ export default function GeospatialInterface({
           />
         )}
 
+        {/* The map failed to initialise (e.g. WebGL unavailable on this
+            device/browser). Show a contained message rather than crashing the
+            whole stage. Stub mode never constructs a real map, so skip it. */}
+        {mapError && !useStub && (
+          <div
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center"
+            data-testid="map-error-overlay"
+          >
+            <div className="bg-background absolute inset-0 opacity-90" />
+            <div className="relative z-20 flex w-2/3 max-w-xl flex-col items-center gap-4 text-center">
+              <h2>The map could not be displayed</h2>
+              <p>
+                This can happen if your browser or device does not support the
+                features the map requires (for example, WebGL). Try a different
+                browser or device, or contact the study organizer. You may be
+                able to continue your interview by selecting the next arrow.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* if outside-selectable-areas, add an overlay */}
         {initialSelectionValue === 'outside-selectable-areas' && (
           <div
@@ -438,7 +460,6 @@ export default function GeospatialInterface({
         {/* Map toolbar - zoom controls */}
         <MotionSurface
           noContainer
-          level={0}
           spacing="none"
           shadow="none"
           className="bg-surface/80 absolute right-4 bottom-4 z-5 flex flex-col gap-2 rounded-xl p-2 shadow-2xl backdrop-blur-md"

@@ -1,31 +1,43 @@
 'use client';
 
-import { ClipboardCopy } from 'lucide-react';
+import { Check, ClipboardCopy } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
-import { useToast } from '@codaco/fresco-ui/Toast';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+
+// This button is rendered from StageErrorBoundary's fallback, which must
+// keep working even when the app around it is broken. Historically this
+// component confirmed the copy via useToast(), but that hook throws if
+// there's no ancestor Toast.Provider — and not every host (e.g. the e2e
+// test host, architect's PreviewHost) wires one up at the top level.
+// A confirmation local to this component has no such dependency, so the
+// button is self-sufficient in any host.
+const CONFIRMATION_DURATION_MS = 2000;
 
 export default function CopyDebugInfoButton({
   debugInfo,
-  showToast = true,
   className,
 }: {
   debugInfo: string;
-  showToast?: boolean;
   className?: string;
 }) {
-  const { add } = useToast();
+  const [copied, setCopied] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    return () => clearTimeout(timeoutRef.current);
+  }, []);
 
   const copyDebugInfoToClipboard = async () => {
     await navigator.clipboard.writeText(debugInfo);
 
-    if (showToast) {
-      add({
-        title: 'Debug information copied to clipboard',
-        variant: 'success',
-      });
-    }
+    setCopied(true);
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(
+      () => setCopied(false),
+      CONFIRMATION_DURATION_MS,
+    );
   };
 
   return (
@@ -34,9 +46,9 @@ export default function CopyDebugInfoButton({
       className={cx(className)}
       title="Copy to clipboard"
       color="primary"
-      icon={<ClipboardCopy />}
+      icon={copied ? <Check /> : <ClipboardCopy />}
     >
-      Copy Debug Info
+      {copied ? 'Copied!' : 'Copy Debug Info'}
     </Button>
   );
 }

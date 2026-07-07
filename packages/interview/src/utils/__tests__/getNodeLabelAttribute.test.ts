@@ -138,6 +138,33 @@ describe('getNodeLabelAttribute', () => {
     expect(result).toBe('var-456'); // Should return the first text variable with a value
   });
 
+  it('should prefer a variable whose NAME contains "name" over an earlier text variable', () => {
+    // Step 2 of the labeling algorithm must test the variable's `name` property,
+    // not the record key (a UUID in Architect protocols). Here `full_name`
+    // should win over `description` even though `description` iterates first.
+    const mockCodebook: NodeDefinition = {
+      name: 'Person',
+      color: 'node-color-seq-2',
+      shape: { default: 'circle' },
+      variables: {
+        'var-aaa': { name: 'description', type: 'text' },
+        'var-bbb': { name: 'full_name', type: 'text' },
+      },
+    };
+
+    const mockNodeAttributes = {
+      'var-aaa': 'A person',
+      'var-bbb': 'Jane Doe',
+    };
+
+    const result = getNodeLabelAttribute(
+      mockCodebook.variables,
+      mockNodeAttributes,
+    );
+
+    expect(result).toBe('var-bbb');
+  });
+
   it('should handle undefined codebook variables', () => {
     const mockCodebook: NodeDefinition['variables'] = undefined;
     const mockNodeAttributes = {

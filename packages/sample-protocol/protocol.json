@@ -473,14 +473,12 @@
         {
           "id": "f12c365f-237b-49da-99d2-2eeacc817997",
           "type": "text",
-          "content": "We developed this sample interview protocol to provide an overview of the features of Interviewer, and give examples of the key tasks associated with conducting a personal network interview. Specifically, we will be discussing:\n\n* Options for name generation within Interviewer, including the use of existing roster data\n* Name interpreter functionality, including dedicated interfaces for certain types of data, and general purpose \"form\" interfaces for everything else\n* The use of the Sociogram Interface, and other methods of creating edges\n* The use of skip logic and network filtering on a stage to minimize response burden\n* The Narrative Interface as a tool for qualitative network interviewing",
-          "size": "MEDIUM"
+          "content": "We developed this sample interview protocol to provide an overview of the features of Interviewer, and give examples of the key tasks associated with conducting a personal network interview. Specifically, we will be discussing:\n\n* Options for name generation within Interviewer, including the use of existing roster data\n* Name interpreter functionality, including dedicated interfaces for certain types of data, and general purpose \"form\" interfaces for everything else\n* The use of the Sociogram Interface, and other methods of creating edges\n* The use of skip logic and network filtering on a stage to minimize response burden\n* The Narrative Interface as a tool for qualitative network interviewing"
         },
         {
           "id": "fd3a3fea-b094-4098-ac7a-d6e06722432d",
           "type": "text",
-          "content": "To move through this protocol, use the arrows on the left hand side of the screen. When you are ready to continue, click the down arrow.",
-          "size": "SMALL"
+          "content": "To move through this protocol, use the arrows on the left hand side of the screen. When you are ready to continue, click the down arrow."
         },
         {
           "id": "f275e48b-a614-4c06-b830-217d2b15a737",
@@ -499,8 +497,7 @@
         {
           "id": "176d0f5a-132c-45b9-b542-8f7b7a83e71b",
           "type": "text",
-          "content": "The screen you are currently viewing was built using the **Information Interface** within Architect.\n\nUnlike other interfaces, this interface captures no data from the participant. Instead, researchers are able to include explanatory **text** and **image**, **audio**, and **video** files to assist in the administration of Network Canvas Interviews.\n\nWhile these screens are helpful in guiding interviews, it should be noted that Interviewer has been designed to conduct interviews in a face-to-face setting, where tasks on each screen are able to be fully explained to the participant by the researcher.\n",
-          "size": "MEDIUM"
+          "content": "The screen you are currently viewing was built using the **Information Interface** within Architect.\n\nUnlike other interfaces, this interface captures no data from the participant. Instead, researchers are able to include explanatory **text** and **image**, **audio**, and **video** files to assist in the administration of Network Canvas Interviews.\n\nWhile these screens are helpful in guiding interviews, it should be noted that Interviewer has been designed to conduct interviews in a face-to-face setting, where tasks on each screen are able to be fully explained to the participant by the researcher.\n"
         },
         {
           "id": "74fab225-4b5d-42cb-b01b-d220d7158e8a",
@@ -519,8 +516,7 @@
         {
           "id": "8d5c5245-78d9-4fe5-86fb-bbc0f4063f8e",
           "type": "text",
-          "content": "Interviewer supports collecting arbitrary data from the participant, through the use of the **Ego Form** interface. This interface allows you to present as many questions as you wish to the participant. Answers given are stored separately from node and edge attribute data, and can be exported along with other data.\n\nThe next screen uses the Ego Form interface to create an example of a consent form.\n",
-          "size": "LARGE"
+          "content": "Interviewer supports collecting arbitrary data from the participant, through the use of the **Ego Form** interface. This interface allows you to present as many questions as you wish to the participant. Answers given are stored separately from node and edge attribute data, and can be exported along with other data.\n\nThe next screen uses the Ego Form interface to create an example of a consent form.\n"
         }
       ]
     },
@@ -599,8 +595,7 @@
         {
           "id": "45ca0997-c8cf-4d94-bc71-f2dccff41442",
           "type": "text",
-          "content": "The first key step within a social network interview is the generation of the network members - or nodes. On the next screen you will see an example of a Name Generator Interface using **Quick Add**, which asks you to enter the names of any individuals whom you have felt close to or have discussed important personal matters with. \n\nEnter the names of these individuals by pressing the **‘Add a Person’ Icon** at the bottom right corner of the screen. Type the name of the individual and press enter. Numerous individuals can be entered in rapid succession. \n\nResearchers are able to choose from four types of name generator interfaces based on their priorities and needs. A researcher might choose this 'quick add' name generator if they wish to prioritize the elicitation of many names as quickly as possible. If a mistake is made, nodes can be easily deleted by dragging them toward the bottom of the screen into the garbage bin that appears.",
-          "size": "MEDIUM"
+          "content": "The first key step within a social network interview is the generation of the network members - or nodes. On the next screen you will see an example of a Name Generator Interface using **Quick Add**, which asks you to enter the names of any individuals whom you have felt close to or have discussed important personal matters with. \n\nEnter the names of these individuals by pressing the **‘Add a Person’ Icon** at the bottom right corner of the screen. Type the name of the individual and press enter. Numerous individuals can be entered in rapid succession. \n\nResearchers are able to choose from four types of name generator interfaces based on their priorities and needs. A researcher might choose this 'quick add' name generator if they wish to prioritize the elicitation of many names as quickly as possible. If a mistake is made, nodes can be easily deleted by dragging them toward the bottom of the screen into the garbage bin that appears."
         },
         {
           "id": "96e56bee-cbdb-4933-9e00-783e7505c276",
@@ -635,8 +630,7 @@
         {
           "id": "8ad0af99-37cb-40c0-b2f1-8c482aab16d7",
           "type": "text",
-          "content": "Sometimes the individuals named within network interviews have multiple relationships with the interviewee that are important to the researcher. For example, someone might be a *close friend* but also a *co-worker*. Instead of having the research participant enter these names twice, researchers can use **Side Panels** to allow the participant to select and drag over nodes already entered from the in-progress interview. The use of Side Panels speeds data entry, and can be used for simple name interpreter functionality. \n\nSide panels can also be populated before the interview (when building the protocol within Architect) by adding a network data file containing a roster of individuals from which all participants would be able to select - such as a classroom. This is the first of three locations where roster data can be used in your protocol.\n\nOn the next screen - add individuals by clicking the ‘Add a Person' Icon or dragging individuals from the side panel. \n",
-          "size": "MEDIUM"
+          "content": "Sometimes the individuals named within network interviews have multiple relationships with the interviewee that are important to the researcher. For example, someone might be a *close friend* but also a *co-worker*. Instead of having the research participant enter these names twice, researchers can use **Side Panels** to allow the participant to select and drag over nodes already entered from the in-progress interview. The use of Side Panels speeds data entry, and can be used for simple name interpreter functionality. \n\nSide panels can also be populated before the interview (when building the protocol within Architect) by adding a network data file containing a roster of individuals from which all participants would be able to select - such as a classroom. This is the first of three locations where roster data can be used in your protocol.\n\nOn the next screen - add individuals by clicking the ‘Add a Person' Icon or dragging individuals from the side panel. \n"
         },
         {
           "id": "868da7cc-9dcb-43c9-a799-6d7ea3b19747",
@@ -684,8 +678,7 @@
         {
           "id": "bf1390c3-a703-4bae-831d-9ab78e4f0ad5",
           "type": "text",
-          "content": "The previous two name generator tasks have used the **Quick Add** version of our Name Generator, which means that the participant only needed to enter a name for the alter in order to add them to the interview.\n\nFor more in-depth data collection about alters as they are collected, we provide a version of the name generator that uses **Forms**. A form is a collection of one or more variables which is shown to the participant each time they click the 'Add a Person' Icon on the name generator. \n\nFor example, on the next screen, Clinics or Health Care Providers visited within the past 12 months are entered. Names are required, along with date of visit and a text description of the purpose of the visit. \n\nThe choice of name generation interface should depend on the priorities of the researcher. The *Quick Add* version back-loads the burden of name interpreter tasks, whereas the *Name Generator using Forms* front-loads some of that burden.",
-          "size": "MEDIUM"
+          "content": "The previous two name generator tasks have used the **Quick Add** version of our Name Generator, which means that the participant only needed to enter a name for the alter in order to add them to the interview.\n\nFor more in-depth data collection about alters as they are collected, we provide a version of the name generator that uses **Forms**. A form is a collection of one or more variables which is shown to the participant each time they click the 'Add a Person' Icon on the name generator. \n\nFor example, on the next screen, Clinics or Health Care Providers visited within the past 12 months are entered. Names are required, along with date of visit and a text description of the purpose of the visit. \n\nThe choice of name generation interface should depend on the priorities of the researcher. The *Quick Add* version back-loads the burden of name interpreter tasks, whereas the *Name Generator using Forms* front-loads some of that burden."
         },
         {
           "id": "0ff569f0-4fbc-40df-93a4-cfb23467040c",
@@ -736,8 +729,7 @@
         {
           "id": "e2937966-8e0f-4a48-b090-84fc078e1852",
           "type": "text",
-          "content": "Interviewer also supports the use of rosters containing pre\\-populated lists of names. The name generator you saw earlier featuring a side panel for &quot;people already mentioned&quot; is one place this roster data can be used, but the following two screens demonstrate our dedicated interface for this type of data.\n\nThe roster interface is split into two panels. One panel displays &#39;cards&#39; that represent each item in your roster. The other panel represents nodes in the interview, and will initially be empty. **To nominate an alter**, the participant must drag a card from the first panel, into the second. This card will then be removed from the card list, and a node will be created representing the roster member in the interview network.\n\nThe interface supports configurable options for sorting cards, searching for cards, and displaying cards.\n\nThe first screen you will see shows a smaller roster. Alters elicited on this stage will be used on a later stage (Dyad Census) which requires at _at least two nodes be nominated._ Please be sure to **nominate at least two classmates from the roster.**\n\nThe second screen shows a larger roster. Where the roster is above 100 members in size, the participant must use the search function before any cards are shown.\n",
-          "size": "LARGE"
+          "content": "Interviewer also supports the use of rosters containing pre\\-populated lists of names. The name generator you saw earlier featuring a side panel for &quot;people already mentioned&quot; is one place this roster data can be used, but the following two screens demonstrate our dedicated interface for this type of data.\n\nThe roster interface is split into two panels. One panel displays &#39;cards&#39; that represent each item in your roster. The other panel represents nodes in the interview, and will initially be empty. **To nominate an alter**, the participant must drag a card from the first panel, into the second. This card will then be removed from the card list, and a node will be created representing the roster member in the interview network.\n\nThe interface supports configurable options for sorting cards, searching for cards, and displaying cards.\n\nThe first screen you will see shows a smaller roster. Alters elicited on this stage will be used on a later stage (Dyad Census) which requires at _at least two nodes be nominated._ Please be sure to **nominate at least two classmates from the roster.**\n\nThe second screen shows a larger roster. Where the roster is above 100 members in size, the participant must use the search function before any cards are shown.\n"
         }
       ]
     },
@@ -853,8 +845,7 @@
         {
           "id": "dab3ed09-8b8b-4bd0-a9aa-550e29fac2c4",
           "type": "text",
-          "content": "The next interface we will introduce is the **Sociogram**. Participants use this interface to position their alters on the screen, create ties between them, and to nominate alters as having a given attribute. \n\nOn the next two screens you will be asked to position alters onto the Sociogram screen, first onto a default image of concentric circles, placing folks who know each other closer together and those who do not know each other farther away. On the second screen, you will see an example of a customized background image, using the political compass diagram. We included this image by adding it as a resource when we were building the protocol within Architect. This allows the researcher immense flexibility in how the Sociogram might be utilized. ",
-          "size": "MEDIUM"
+          "content": "The next interface we will introduce is the **Sociogram**. Participants use this interface to position their alters on the screen, create ties between them, and to nominate alters as having a given attribute. \n\nOn the next two screens you will be asked to position alters onto the Sociogram screen, first onto a default image of concentric circles, placing folks who know each other closer together and those who do not know each other farther away. On the second screen, you will see an example of a customized background image, using the political compass diagram. We included this image by adding it as a resource when we were building the protocol within Architect. This allows the researcher immense flexibility in how the Sociogram might be utilized. "
         },
         {
           "id": "6acf6657-b16a-4ac2-bca9-50a831ff83c3",
@@ -922,8 +913,7 @@
         {
           "id": "56717145-8fcc-44f7-913f-359a591b6766",
           "type": "text",
-          "content": "Once alters have been positioned on the screen, the *Sociogram Interface* can also be used to measure relationships between alters. \n\nOn the next screens you will be asked to create connections or **edges** between individuals who have a certain relationship with each other. To do this, you tap one node and then tap a second node. You can go through this process again to remove a tie. \n\nMultiple kinds of edges can be created. While on the first screen we ask you to connect any two people who might spend time together without you being there, on the second screen we ask you to connect individuals are have conflict or who do not get along with each other well. ",
-          "size": "MEDIUM"
+          "content": "Once alters have been positioned on the screen, the *Sociogram Interface* can also be used to measure relationships between alters. \n\nOn the next screens you will be asked to create connections or **edges** between individuals who have a certain relationship with each other. To do this, you tap one node and then tap a second node. You can go through this process again to remove a tie. \n\nMultiple kinds of edges can be created. While on the first screen we ask you to connect any two people who might spend time together without you being there, on the second screen we ask you to connect individuals are have conflict or who do not get along with each other well. "
         },
         {
           "id": "f835d765-e864-4197-b6bb-f703fadc7d5c",
@@ -1035,8 +1025,7 @@
         {
           "id": "85353555-72d0-49ef-aba9-75023648ead1",
           "type": "text",
-          "content": "The dyad census interface was not shown because you do not have any \"classmates\" in this interview network. \n\nTo see the dyad census interface:\n\n1. Click the timeline on the left to show the interview timeline\n2. Click on Stage \"10. Small Roster - Classroom\"\n3. Add two or more classmates\n4. Return to Stage \"19. Classmates Dyad Census\" ",
-          "size": "MEDIUM"
+          "content": "The dyad census interface was not shown because you do not have any \"classmates\" in this interview network. \n\nTo see the dyad census interface:\n\n1. Click the timeline on the left to show the interview timeline\n2. Click on Stage \"10. Small Roster - Classroom\"\n3. Add two or more classmates\n4. Return to Stage \"19. Classmates Dyad Census\" "
         }
       ]
     },
@@ -1049,8 +1038,7 @@
         {
           "id": "8b518105-17f1-4f95-91b4-f0d00a7bf5e5",
           "type": "text",
-          "content": "On the next series of screens, we will demonstrate several ways that information can be gathered about numerous alters at once using either the *Sociogram Interface* or by using various **Name Interpreter Interfaces**\n\nWhen a researcher wants to ask a question where the answer is either *Yes* or *No*, they may wish to utilize a sociogram screen so participants just select particular individuals. For example, on this screen we ask to select anyone whom you have asked for advice within the prior 6 months. \n\nFollowing the *Sociogram*, we demonstrate the **Ordinal Bin Interface**, where nodes appear at the top and can be quickly sorted into the correct category, and rearranged at any point. Next, the **Categorical Bin Interface** is demonstrated, where nodes can again be sorted into the most appropriate category. Bins can be clicked on to move nodes after they have been placed. \n",
-          "size": "MEDIUM"
+          "content": "On the next series of screens, we will demonstrate several ways that information can be gathered about numerous alters at once using either the *Sociogram Interface* or by using various **Name Interpreter Interfaces**\n\nWhen a researcher wants to ask a question where the answer is either *Yes* or *No*, they may wish to utilize a sociogram screen so participants just select particular individuals. For example, on this screen we ask to select anyone whom you have asked for advice within the prior 6 months. \n\nFollowing the *Sociogram*, we demonstrate the **Ordinal Bin Interface**, where nodes appear at the top and can be quickly sorted into the correct category, and rearranged at any point. Next, the **Categorical Bin Interface** is demonstrated, where nodes can again be sorted into the most appropriate category. Bins can be clicked on to move nodes after they have been placed. \n"
         },
         {
           "id": "407e60d2-a5ec-488b-a086-0f48a6d20396",
@@ -1154,20 +1142,12 @@
         {
           "id": "7043ca48-87e6-4517-a461-13957c71aa4c",
           "type": "text",
-          "content": "On the next screen, we have implemented both skip logic and network filtering for the stage. \n\nSkip logic is a feature that allows you to conditionally skip or show a stage within an interview, based on information previously provided by a participant. By implementing skip logic, a participant will bypass information not relevant to them, thus making for a more streamlined interview process. Skip logic rules can be based on _ego, alter,_ or _edges_ and resolve to either **true** or **false** which determines whether the stage is shown.\n\n",
-          "size": "SMALL"
-        },
-        {
-          "id": "828ce70c-c5d4-4e32-ab61-8e8cfca46fd4",
-          "type": "text",
-          "content": "Skip logic is a feature that allows you to conditionally skip or show a stage within an interview, based on information previously provided by a participant. By implementing skip logic, a participant will bypass information not relevant to them, thus making for a more streamlined interview process. Skip logic rules can be based on _ego, alter,_ or _edges_ and resolve to either **true** or **false** which determines whether the stage is shown.\n",
-          "size": "SMALL"
+          "content": "On the next screen, we have implemented both skip logic and network filtering for the stage. \n\nSkip logic is a feature that allows you to conditionally skip or show a stage within an interview, based on information previously provided by a participant. By implementing skip logic, a participant will bypass information not relevant to them, thus making for a more streamlined interview process. Skip logic rules can be based on _ego, alter,_ or _edges_ and resolve to either **true** or **false** which determines whether the stage is shown.\n\n"
         },
         {
           "id": "7e33fc24-0899-4779-b523-01d5254671bd",
           "type": "text",
-          "content": "Network filtering refers to a feature that allows you to define rules that determine which nodes or edges should be shown on a given stage. It can be used to only show a subset of a network, based on node type, node attributes, and edge types. \n\nIn summary, _skip logic_ determines if a stage should be shown at all and _network filtering_ determines which nodes should be shown on a given stage. \n",
-          "size": "SMALL"
+          "content": "Network filtering refers to a feature that allows you to define rules that determine which nodes or edges should be shown on a given stage. It can be used to only show a subset of a network, based on node type, node attributes, and edge types. \n\nIn summary, _skip logic_ determines if a stage should be shown at all and _network filtering_ determines which nodes should be shown on a given stage. \n"
         },
         {
           "id": "0bcb1e4b-f9d1-4906-9682-6aa0a809ec89",
@@ -1245,8 +1225,7 @@
         {
           "id": "80806937-1630-4600-8212-4cf21de990dd",
           "type": "text",
-          "content": "While we've already demonstrated how the *Sociogram Interface* can be used to place nodes, draw edges, and select particular nodes, the **Narrative Interface** is able to display information on the sociogram in a way to elicit qualitative data from the participant about their network. \n\nResearchers are able to configure display presets that are then able to be toggled on and off to reveal colored convex hulls which represent group-level data, to highlight nodes of a certain type, or to display different edge types. \n\nParticipants can interact with this screen by drawing, freezing, and erasing lines. Unlike many other screens, no data is collected on this Interface.",
-          "size": "MEDIUM"
+          "content": "While we've already demonstrated how the *Sociogram Interface* can be used to place nodes, draw edges, and select particular nodes, the **Narrative Interface** is able to display information on the sociogram in a way to elicit qualitative data from the participant about their network. \n\nResearchers are able to configure display presets that are then able to be toggled on and off to reveal colored convex hulls which represent group-level data, to highlight nodes of a certain type, or to display different edge types. \n\nParticipants can interact with this screen by drawing, freezing, and erasing lines. Unlike many other screens, no data is collected on this Interface."
         }
       ]
     },

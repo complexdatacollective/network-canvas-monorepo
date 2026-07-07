@@ -88,18 +88,24 @@ function fakeName(sex?: 'male' | 'female') {
 
 const STORY_LABEL_VAR = 'label';
 const STORY_EGO_VAR = 'isEgo';
+const STORY_RELATIONSHIP_VAR = 'relationship';
 const STORY_REL_TYPE_VAR = 'relationshipType';
 const STORY_IS_ACTIVE_VAR = 'isActive';
 const STORY_IS_GC_VAR = 'isGestationalCarrier';
+const STORY_GAMETE_ROLE_VAR = 'gameteRole';
+const STORY_BIOLOGICAL_SEX_VAR = 'biologicalSex';
 
 const storyVariableConfig: VariableConfig = {
   nodeType: 'person',
   edgeType: 'relationship',
   nodeLabelVariable: STORY_LABEL_VAR,
   egoVariable: STORY_EGO_VAR,
+  relationshipVariable: STORY_RELATIONSHIP_VAR,
   relationshipTypeVariable: STORY_REL_TYPE_VAR,
   isActiveVariable: STORY_IS_ACTIVE_VAR,
   isGestationalCarrierVariable: STORY_IS_GC_VAR,
+  gameteRoleVariable: STORY_GAMETE_ROLE_VAR,
+  biologicalSexVariable: STORY_BIOLOGICAL_SEX_VAR,
 };
 
 function buildNetwork(

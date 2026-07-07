@@ -9,23 +9,83 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
-    # The legacy apps (apps/architect, apps/interviewer) pin strict dependency
-    # versions and break on routine version bumps. exclude-paths (GA Aug 2025)
-    # is applied before manifest parsing, so Dependabot never reads these
-    # package.json files and never opens version-update PRs that touch them. The
-    # modern apps keep receiving all updates, including dependencies the legacy
-    # apps also use (react, vite, electron, ...). Paths are relative to the repo
-    # root. Note: exclude-paths suppresses version updates only — it does NOT
-    # stop security (CVE) update PRs, which are repo-level and can still target
-    # the legacy apps.
+    # Align Dependabot with pnpm's minimumReleaseAge gate (24h — see
+    # pnpm-workspace.yaml): hold routine version-update PRs until the release is
+    # at least a day old, by which point the pnpm age gate also accepts it, so
+    # the PR's CI is green on arrival instead of failing the frozen install.
+    # NOTE: cooldown applies to VERSION updates only — it does NOT delay
+    # security (CVE) updates, which still open immediately against a freshly
+    # published fix. Those are handled by the dependabot age-gate exempt
+    # workflows, which add a narrow, version-pinned minimumReleaseAgeExclude
+    # entry.
+    cooldown:
+      default-days: 1
+    # The legacy apps (apps/architect-classic, apps/interviewer-classic) pin
+    # strict dependency versions and break on routine version bumps.
+    # exclude-paths (GA Aug 2025) is applied before manifest parsing, so
+    # Dependabot never reads these package.json files and never opens
+    # version-update PRs that touch them. The modern apps keep receiving all
+    # updates, including dependencies the legacy apps also use (react, vite,
+    # electron, ...). Paths are relative to the repo root. Note: exclude-paths
+    # suppresses version updates only — it does NOT stop security (CVE) update
+    # PRs, which are repo-level and can still target the legacy apps.
     exclude-paths:
-      - 'apps/architect/**'
-      - 'apps/interviewer/**'
+      - 'apps/architect-classic/**'
+      - 'apps/interviewer-classic/**'
+    # Group dependency families their publishers release in lock-step at
+    # identical versions. Dependabot updates each catalog entry independently, so
+    # a partial bump (one moved, its siblings left behind) skews the versions and
+    # breaks the build — grouping keeps each family in a single, consistent PR.
+    groups:
+      # @playwright/test + playwright must resolve to the same version or
+      # interview-e2e crashes with "two different versions of @playwright/test".
+      # (The e2e Docker image tag is derived from the resolved version — see
+      # packages/interview/e2e/scripts/run.sh.)
+      playwright:
+        patterns:
+          - '@playwright/test'
+          - 'playwright'
+      # Storybook errors at boot unless every @storybook/* package and the
+      # storybook CLI are the exact same version.
+      storybook:
+        patterns:
+          - '@storybook/*'
+          - 'storybook'
+      # @vitest/* release in lock-step with vitest; a skew installs duplicate
+      # peer variants and triggers TS2769 "two different types" errors.
+      vitest:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+      # react-dom must match react exactly; keep the @types packages on the same
+      # React version line.
+      react:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
+      # @next/* ship in lock-step with next.
+      next:
+        patterns:
+          - 'next'
+          - '@next/*'
+      # Tailwind v4 core packages release together. NOT the independently-
+      # versioned plugins (@tailwindcss/typography, @tailwindcss/container-queries).
+      tailwindcss:
+        patterns:
+          - 'tailwindcss'
+          - '@tailwindcss/postcss'
+          - '@tailwindcss/vite'
 
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: 'weekly'
+    # Same 1-day cooldown posture for action updates — don't adopt a brand-new
+    # action release the day it ships.
+    cooldown:
+      default-days: 1
     groups:
       actions:
         patterns:

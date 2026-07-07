@@ -1,10 +1,10 @@
+import { z } from 'zod';
+
 import { VariableNameSchema } from '@codaco/shared-consts';
-import { getEdgeTypeId, getNodeTypeId } from '~/utils/mock-seeds';
 import {
   findDuplicateName,
   getAllEntityNames,
 } from '~/utils/validation-helpers';
-import { z } from '~/utils/zod-mock-extension';
 
 import {
   EdgeDefinitionSchema,
@@ -29,25 +29,35 @@ export const CodebookSchema = z
         path: [],
       });
     }
-  })
-  .generateMock(() => {
-    const personNode = NodeDefinitionSchema.generateMock();
-    const orgNode = NodeDefinitionSchema.generateMock();
-    const friendshipEdge = EdgeDefinitionSchema.generateMock();
-    const worksWithEdge = EdgeDefinitionSchema.generateMock();
-    const ego = EgoDefinitionSchema.generateMock();
 
-    return {
-      node: {
-        [getNodeTypeId(0)]: { ...personNode, name: 'Person' },
-        [getNodeTypeId(1)]: { ...orgNode, name: 'Organization' },
-      },
-      edge: {
-        [getEdgeTypeId(0)]: { ...friendshipEdge, name: 'Friendship' },
-        [getEdgeTypeId(1)]: { ...worksWithEdge, name: 'WorksWith' },
-      },
-      ego: ego,
+    // Variable record keys must be unique across all entity types. The
+    // interview flattens every entity's variables into a single key->variable
+    // map, so a key reused under a different entity type silently overwrites the
+    // other entity's definition and resolves to the wrong type at runtime.
+    const seenRecordKeys = new Set<string>();
+    const collectKeys = (variables?: Record<string, unknown>) => {
+      if (!variables) {
+        return;
+      }
+      for (const key of Object.keys(variables)) {
+        if (seenRecordKeys.has(key)) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Variable record key "${key}" is reused across entity types`,
+            path: [],
+          });
+        }
+        seenRecordKeys.add(key);
+      }
     };
+
+    Object.values(codebook.node ?? {}).forEach((entity) =>
+      collectKeys(entity.variables),
+    );
+    Object.values(codebook.edge ?? {}).forEach((entity) =>
+      collectKeys(entity.variables),
+    );
+    collectKeys(codebook.ego?.variables);
   });
 
 export type Codebook = z.infer<typeof CodebookSchema>;
