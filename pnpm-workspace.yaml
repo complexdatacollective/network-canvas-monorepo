@@ -51,9 +51,9 @@ catalog:
   '@storybook/addon-vitest': ^10.4.6
   '@storybook/react-vite': ^10.4.6
   '@tailwindcss/container-queries': ^0.1.1
-  '@tailwindcss/postcss': ^4.3.0
+  '@tailwindcss/postcss': ^4.3.2
   '@tailwindcss/typography': ^0.5.20
-  '@tailwindcss/vite': ^4.3.0
+  '@tailwindcss/vite': ^4.3.2
   '@tanstack/react-table': ^8.21.3
   '@testing-library/jest-dom': ^6.9.1
   '@testing-library/react': ^16.3.2
@@ -90,7 +90,7 @@ catalog:
   sass: ^1.100.0
   storybook: ^10.4.6
   tailwind-merge: ^3.6.0
-  tailwindcss: ^4.3.0
+  tailwindcss: ^4.3.2
   tsx: ^4.22.4
   typescript: ^6.0.3
   uuid: ^14.0.1
