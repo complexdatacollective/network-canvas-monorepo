@@ -139,7 +139,7 @@ export default function ToggleField(props: ToggleFieldProps) {
       onCheckedChange={onChange}
       disabled={disabled}
       readOnly={readOnly}
-      aria-checked={!!value}
+      aria-checked={value}
       aria-invalid={isInvalid || undefined}
       aria-required={ariaRequired}
       aria-describedby={ariaDescribedBy}

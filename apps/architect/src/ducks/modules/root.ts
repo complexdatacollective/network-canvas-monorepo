@@ -22,7 +22,7 @@ type ActionWithMeta = UnknownAction & { meta?: { skipTimeline?: boolean } };
 
 const timelineOptions = {
   exclude: (action: UnknownAction) => {
-    const type = action.type.toString();
+    const type = action.type;
     return (
       !protocolPattern.test(type) ||
       thunkLifecyclePattern.test(type) ||

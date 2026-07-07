@@ -366,13 +366,13 @@ const EncryptionBackground = ({
 
   return (
     <div
-      className="preserve-3d pointer-events-none absolute inset-0 size-full overflow-hidden text-white/60 select-none"
+      className="pointer-events-none absolute inset-0 size-full overflow-hidden text-white/60 select-none transform-3d"
       style={{ perspective: '1000px' }}
     >
       {streams.map((stream) => (
         <div
           key={stream.id}
-          className="absolute font-mono whitespace-nowrap transition-colors duration-300 will-change-transform"
+          className="font-monospace absolute whitespace-nowrap transition-colors duration-300 will-change-transform"
           style={{
             transform: `translate3d(${stream.x}vw, ${stream.y}vh, 0)`,
             opacity: Math.max(0, Math.min(1, (100 - stream.y) / 50)),

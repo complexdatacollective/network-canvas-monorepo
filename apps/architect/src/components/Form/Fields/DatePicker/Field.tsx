@@ -54,7 +54,7 @@ class DatePickerField extends Component<DatePickerFieldProps> {
 
     const { error, invalid = false, touched = false } = meta;
 
-    const hasError = !!(invalid && touched);
+    const hasError = invalid && touched;
 
     const anyLabel = fieldLabel || label;
     return (

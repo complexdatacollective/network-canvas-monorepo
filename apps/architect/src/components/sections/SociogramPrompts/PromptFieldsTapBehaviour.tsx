@@ -168,8 +168,8 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
       toggleable
       startExpanded={
         tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES ||
-        !!hasCreateEdgeBehaviour ||
-        !!hasToggleAttributeBehaviour
+        hasCreateEdgeBehaviour ||
+        hasToggleAttributeBehaviour
       }
       handleToggleChange={handleToggleChange}
       layout="vertical"
