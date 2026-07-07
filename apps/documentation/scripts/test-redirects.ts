@@ -129,6 +129,12 @@ const redirectTests: RedirectTest[] = [
     description: 'bare /en/fresco lands on the fresco about page',
   },
   {
+    from: '/en/fresco/',
+    expectedDestination: '/en/collect-data/fresco/about',
+    description:
+      'trailing-slash /en/fresco/ lands on about (exact beats the /* splat)',
+  },
+  {
     from: '/en/fresco/deployment/troubleshooting',
     expectedDestination: '/en/collect-data/fresco/deployment-troubleshooting',
     description:
