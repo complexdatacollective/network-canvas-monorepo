@@ -1,5 +1,5 @@
 ---
-"@codaco/architect": patch
+'@codaco/architect': patch
 ---
 
 Close a batch of data-durability, privacy and safety gaps surfaced by the pre-release audit follow-up:
@@ -10,6 +10,6 @@ Close a batch of data-durability, privacy and safety gaps surfaced by the pre-re
 - **Validation timing:** an edit that lands while a validation is in flight is no longer dropped, and auto-undo no longer reverts a valid newer edit or stacks dialogs.
 - **Undo/persistence:** inline-created variables with an invalid name show a friendly error instead of throwing; a mismatched rehydrated protocol id/content pair can't autosave the wrong content into a library row; a `sessionStorage` quota failure now surfaces the storage-unavailable banner instead of silently going in-memory.
 - **Preview:** assets held in the Safari-private in-memory fallback are now transferred to the preview tab, so media/roster protocols preview correctly.
-- **PWA updates:** accepting an update no longer force-reloads other tabs and discards their unsaved work, and the reload guard now also covers the autosave-debounce window after a stage edit and bundled-template imports.
+- **PWA updates:** the update auto-apply now also defers during the autosave-debounce window after a stage edit and during bundled-template imports, so a fresh-load auto-update can't reload mid-write.
 - **Storage GC:** orphaned asset blobs are now removed within a transaction that includes the assets table, so the delete no longer throws and leaves the blob behind.
 - **Stage editor:** a multi-step browser Back from a dirty stage editor now prompts before discarding the draft, and the unsaved-variable dialog confirms before a backdrop dismiss.
