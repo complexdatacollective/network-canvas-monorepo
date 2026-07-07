@@ -32,6 +32,13 @@ function pageKeyFor(location: string): string {
 export default function App() {
   const [location] = useLocation();
 
+  // The interview route paints its own opaque background across the viewport
+  // (see Interview.tsx), so the animated backdrop is never visible during a
+  // session. Unmount it there to stop its requestAnimationFrame loop — an
+  // interview can run uninterrupted for a long time, and animating a backdrop
+  // nobody can see is pure battery drain.
+  const showBackgroundLights = !location.startsWith('/interview/');
+
   return (
     <ThemedRegion theme="interview" className="isolate h-full">
       {/* Bare, dependency-free outer boundary: catches crashes in AppProviders
@@ -41,20 +48,26 @@ export default function App() {
       <ErrorBoundary>
         <AppProviders>
           <PwaUpdateBanner />
-          <motion.div
-            className="fixed inset-0 -z-10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.8 }}
-            transition={{ duration: 2 }}
-          >
-            <BackgroundLights
-              large={0}
-              medium={4}
-              small={0}
-              blendMode="color-dodge"
-              speedFactor={30}
-            />
-          </motion.div>
+          <AnimatePresence>
+            {showBackgroundLights && (
+              <motion.div
+                key="background-lights"
+                className="fixed inset-0 -z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.8 }}
+                exit={{ opacity: 0, transition: { duration: 0.5 } }}
+                transition={{ duration: 2 }}
+              >
+                <BackgroundLights
+                  large={0}
+                  medium={4}
+                  small={0}
+                  blendMode="color-dodge"
+                  speedFactor={30}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
           <AuthGate>
             <AnimatePresence mode="wait">
               <motion.div
