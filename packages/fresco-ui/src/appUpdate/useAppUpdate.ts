@@ -19,6 +19,14 @@ export type UseAppUpdateOptions = {
   needRefresh: boolean;
   hasUnsavedWork: boolean;
   installUpdate: () => void;
+  /**
+   * How long after mount an update may still be auto-applied. Auto-apply is for
+   * updates present at (or detected shortly after) a fresh load; an update the
+   * hourly poll surfaces later in a long-lived session is not reloaded under the
+   * user — it waits behind the manual button. Defaults to
+   * {@link FRESH_LOAD_AUTO_APPLY_MS}.
+   */
+  autoApplyWindowMs?: number;
 };
 
 export type UseAppUpdateResult = {
@@ -27,6 +35,13 @@ export type UseAppUpdateResult = {
   releaseNotes: ReleaseNotes | 'loading' | null;
   install: () => void;
 };
+
+// Auto-apply is a fresh-load affordance: an update already waiting when the app
+// loads (or one the initial service-worker check surfaces within this window) is
+// applied automatically when no work is in progress. After the window closes,
+// updates found by the hourly poll surface the manual button instead of
+// reloading a long-lived idle session.
+export const FRESH_LOAD_AUTO_APPLY_MS = 20_000;
 
 const lastVersionKey = (app: AppId) => `nc:lastLaunchedVersion:${app}`;
 
@@ -49,6 +64,7 @@ export default function useAppUpdate({
   needRefresh,
   hasUnsavedWork,
   installUpdate,
+  autoApplyWindowMs = FRESH_LOAD_AUTO_APPLY_MS,
 }: UseAppUpdateOptions): UseAppUpdateResult {
   const [justUpdated, setJustUpdated] = useState(false);
   const [releaseNotes, setReleaseNotes] = useState<
@@ -60,6 +76,7 @@ export default function useAppUpdate({
 
   const detectedRef = useRef(false);
   const autoAppliedRef = useRef(false);
+  const freshLoadWindowOpenRef = useRef(true);
   const hasUnsavedWorkRef = useRef(hasUnsavedWork);
   hasUnsavedWorkRef.current = hasUnsavedWork;
 
@@ -70,13 +87,24 @@ export default function useAppUpdate({
     setJustUpdated(detectJustUpdated(app, currentVersion));
   }, [app, currentVersion]);
 
-  // One-shot auto-apply: the first time an update is pending while no work is in
-  // progress, apply it (which reloads). Later detections, or one arriving while
-  // work is in progress, fall through to the manual button.
+  // Close the fresh-load auto-apply window a short time after mount.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      freshLoadWindowOpenRef.current = false;
+    }, autoApplyWindowMs);
+    return () => window.clearTimeout(id);
+  }, [autoApplyWindowMs]);
+
+  // One-shot auto-apply, limited to a fresh load: the first time an update is
+  // pending, apply it only if we're still within the fresh-load window and no
+  // work is in progress. An update surfaced later (the hourly poll, or one that
+  // arrives while work is in progress) falls through to the manual button.
   useEffect(() => {
     if (!needRefresh || autoAppliedRef.current) return;
     autoAppliedRef.current = true;
-    if (!hasUnsavedWorkRef.current) installUpdate();
+    if (freshLoadWindowOpenRef.current && !hasUnsavedWorkRef.current) {
+      installUpdate();
+    }
   }, [needRefresh, installUpdate]);
 
   // An available update means we just completed an online SW check — fetch the

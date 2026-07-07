@@ -97,6 +97,30 @@ describe('auto-apply', () => {
     await waitFor(() => expect(result.current.status).toBe('available'));
     expect(installUpdate).not.toHaveBeenCalled();
   });
+
+  it('does not auto-apply an update surfaced after the fresh-load window', async () => {
+    const installUpdate = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ needRefresh }: { needRefresh: boolean }) =>
+        useAppUpdate({
+          app: 'architect',
+          currentVersion: '2.0.0',
+          needRefresh,
+          hasUnsavedWork: false,
+          installUpdate,
+          autoApplyWindowMs: 10,
+        }),
+      { initialProps: { needRefresh: false } },
+    );
+
+    // Let the fresh-load window elapse before the update is detected (as the
+    // hourly poll would in a long-lived idle session).
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    rerender({ needRefresh: true });
+
+    await waitFor(() => expect(result.current.status).toBe('available'));
+    expect(installUpdate).not.toHaveBeenCalled();
+  });
 });
 
 describe('release-notes state', () => {
