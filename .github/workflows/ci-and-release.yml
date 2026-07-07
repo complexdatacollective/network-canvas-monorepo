@@ -30,7 +30,15 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Cancel superseded PR runs — EXCEPT the changesets bot's release PRs
+  # (`changeset-release/*`), which get force-updated on every merge to main.
+  # Cancelling those leaves the `quality` aggregate `skipped` (it is
+  # `if: !cancelled()`), and a skipped required check blocks the PR, so the
+  # release PRs could never satisfy the merge queue. Not cancelling lets their
+  # `quality` run complete (success/failure) so they stay mergeable.
+  cancel-in-progress: >-
+    ${{ github.event_name == 'pull_request'
+    && !startsWith(github.head_ref, 'changeset-release/') }}
 
 jobs:
   detect:
