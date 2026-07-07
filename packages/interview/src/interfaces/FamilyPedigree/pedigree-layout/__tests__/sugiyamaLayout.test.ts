@@ -10,6 +10,7 @@ import {
   consanguineousUnion,
   multipleMarriages,
   nuclearFamily,
+  remarriedParentWithSibling,
   singleParent,
   surrogacyFamily,
   threeGeneration,
@@ -145,6 +146,25 @@ describe('minimizeCrossings', () => {
       positions.sort((a, b) => a - b);
 
       // All members must be at consecutive positions
+      for (let i = 1; i < positions.length; i++) {
+        expect(positions[i]! - positions[i - 1]!).toBe(1);
+      }
+    }
+  });
+
+  it('keeps both marriages of a remarried sibling contiguous', () => {
+    // A sibling who anchors two marriages must sit between her spouses; a
+    // grouping that pushes both spouses to one side leaves the far spouse
+    // non-adjacent and silently drops that marriage line.
+    const graph = buildPedigreeGraph(remarriedParentWithSibling);
+    const ordering = minimizeCrossings(graph);
+
+    for (const pg of graph.partnerGroups) {
+      const layer = graph.layers[pg.members[0]!]!;
+      const layerOrdering = ordering[layer]!;
+      const positions = pg.members
+        .map((m) => layerOrdering.indexOf(m))
+        .toSorted((a, b) => a - b);
       for (let i = 1; i < positions.length; i++) {
         expect(positions[i]! - positions[i - 1]!).toBe(1);
       }
