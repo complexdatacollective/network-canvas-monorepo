@@ -1,12 +1,12 @@
 import * as React from 'react';
 
-import { cva, type VariantProps } from './utils/cva';
+import { cva, cx, type VariantProps } from './utils/cva';
 
 export const pillVariants = cva({
   // border is ALWAYS present (transparent by default) so the border-box is
   // identical across variants — toggling background/border never reflows the
   // pill or its neighbours.
-  base: 'font-monospace inline-flex items-center rounded-full border border-transparent whitespace-nowrap',
+  base: 'inline-flex items-center rounded-full border border-transparent font-monospace whitespace-nowrap',
   variants: {
     size: {
       sm: 'gap-1 px-2 py-0.5 text-xs',
@@ -31,36 +31,42 @@ export type PillProps = PillOwnProps &
   React.HTMLAttributes<HTMLElement> &
   Pick<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'disabled'>;
 
-const Pill = React.forwardRef<HTMLSpanElement | HTMLButtonElement, PillProps>(
-  (
-    {
-      as = 'span',
-      size,
-      variant,
-      icon,
-      className,
-      children,
-      type,
-      disabled,
-      ...props
-    },
-    ref,
-  ) => {
-    const Comp: React.ElementType = as;
-    const buttonProps =
-      as === 'button' ? { type: type ?? 'button', disabled } : {};
+const Pill = React.forwardRef<HTMLElement, PillProps>(function Pill(
+  { as = 'span', size, variant, icon, className, children, type, disabled, ...props },
+  ref,
+) {
+  // A single callback ref forwards to either concrete element without a cast:
+  // a function taking HTMLElement is assignable to both span and button ref
+  // slots, and HTMLButtonElement/HTMLSpanElement widen to HTMLElement.
+  const setRef = (node: HTMLElement | null) => {
+    if (typeof ref === 'function') ref(node);
+    else if (ref) ref.current = node;
+  };
 
-    const element = React.createElement(Comp, {
-      ref,
-      className: pillVariants({ size, variant, className }),
-      ...buttonProps,
-      ...props,
-      children: [icon, children],
-    });
+  const classes = pillVariants({ size, variant, className });
 
-    return element;
-  },
-);
+  if (as === 'button') {
+    return (
+      <button
+        ref={setRef}
+        type={type ?? 'button'}
+        disabled={disabled}
+        className={classes}
+        {...props}
+      >
+        {icon}
+        {children}
+      </button>
+    );
+  }
+
+  return (
+    <span ref={setRef} className={classes} {...props}>
+      {icon}
+      {children}
+    </span>
+  );
+});
 Pill.displayName = 'Pill';
 
 export default Pill;
