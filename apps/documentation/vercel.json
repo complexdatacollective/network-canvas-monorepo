@@ -231,6 +231,11 @@
       "permanent": true
     },
     {
+      "source": "/en/fresco/",
+      "destination": "/en/collect-data/fresco/about",
+      "permanent": true
+    },
+    {
       "source": "/en/fresco/:path*",
       "destination": "/en/collect-data/fresco/:path*",
       "permanent": true

@@ -236,10 +236,16 @@ from = "/en/fresco/deployment/*"
 to = "/en/collect-data/fresco/:splat"
 status = 301
 
-# Bare /en/fresco must precede the /en/fresco/* splat below — otherwise the
-# splat matches with an empty :splat and shadows this dedicated landing page.
+# Bare /en/fresco (and its trailing-slash form) must precede the /en/fresco/*
+# splat below — otherwise the splat matches with an empty :splat and lands on
+# /en/collect-data/fresco/ (no such page) instead of this dedicated landing.
 [[redirects]]
 from = "/en/fresco"
+to = "/en/collect-data/fresco/about"
+status = 301
+
+[[redirects]]
+from = "/en/fresco/"
 to = "/en/collect-data/fresco/about"
 status = 301
 

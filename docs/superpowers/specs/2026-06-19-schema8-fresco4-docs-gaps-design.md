@@ -131,7 +131,7 @@ Needs a new screenshot of the filtered table / a filter popover.
 
 ### Screenshots (Tier-1, from the live sandbox)
 
-Capture from `https://fresco-sandbox.networkcanvas.com` (admin / Administrator1!) and
+Capture from `https://fresco-sandbox.networkcanvas.com` (request current sandbox credentials via a secure team channel) and
 replace the on-disk PNGs under `apps/documentation/public/assets/img/fresco-images/`:
 
 - `features/dashboard.png` — main dashboard hero.
