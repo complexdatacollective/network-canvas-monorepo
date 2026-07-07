@@ -36,8 +36,11 @@ catalog:
   '@faker-js/faker': ^10.4.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
+  '@microsoft/api-extractor': ^7.58.9
   '@next/bundle-analyzer': ^16.2.9
   '@next/third-parties': ^16.2.10
+  # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
+  # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.61.1
   '@posthog/react': ^1.9.1
   '@radix-ui/react-dialog': ^1.1.15
@@ -75,7 +78,9 @@ catalog:
   lucide-react: ^1.17.0
   motion: ^12.40.0
   next: ^16.2.6
-  playwright: ^1.60.0
+  # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
+  # mismatch crashes interview-e2e with "two different versions of @playwright/test".
+  playwright: ^1.61.1
   posthog-js: ^1.376.5
   react: ^19.2.6
   react-dom: ^19.2.6

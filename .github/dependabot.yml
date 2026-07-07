@@ -32,6 +32,51 @@ updates:
     exclude-paths:
       - 'apps/architect-classic/**'
       - 'apps/interviewer-classic/**'
+    # Group dependency families their publishers release in lock-step at
+    # identical versions. Dependabot updates each catalog entry independently, so
+    # a partial bump (one moved, its siblings left behind) skews the versions and
+    # breaks the build — grouping keeps each family in a single, consistent PR.
+    groups:
+      # @playwright/test + playwright must resolve to the same version or
+      # interview-e2e crashes with "two different versions of @playwright/test".
+      # (The e2e Docker image tag is derived from the resolved version — see
+      # packages/interview/e2e/scripts/run.sh.)
+      playwright:
+        patterns:
+          - '@playwright/test'
+          - 'playwright'
+      # Storybook errors at boot unless every @storybook/* package and the
+      # storybook CLI are the exact same version.
+      storybook:
+        patterns:
+          - '@storybook/*'
+          - 'storybook'
+      # @vitest/* release in lock-step with vitest; a skew installs duplicate
+      # peer variants and triggers TS2769 "two different types" errors.
+      vitest:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+      # react-dom must match react exactly; keep the @types packages on the same
+      # React version line.
+      react:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
+      # @next/* ship in lock-step with next.
+      next:
+        patterns:
+          - 'next'
+          - '@next/*'
+      # Tailwind v4 core packages release together. NOT the independently-
+      # versioned plugins (@tailwindcss/typography, @tailwindcss/container-queries).
+      tailwindcss:
+        patterns:
+          - 'tailwindcss'
+          - '@tailwindcss/postcss'
+          - '@tailwindcss/vite'
 
   - package-ecosystem: 'github-actions'
     directory: '/'
