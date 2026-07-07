@@ -1068,8 +1068,6 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
-        with:
-          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
         with:
           ignore-scripts: 'false'
@@ -1121,8 +1119,6 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
-        with:
-          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
         with:
           ignore-scripts: 'false'
