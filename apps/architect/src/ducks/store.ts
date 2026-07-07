@@ -31,8 +31,17 @@ const rememberedKeys = ['app', 'activeProtocol'];
 // instead. The driver notifies once; the store may not exist yet when the
 // driver is constructed, so dispatch is deferred behind a setter.
 let dispatchStorageUnavailable: (() => void) | null = null;
+// redux-remember rehydrates during store creation, so the driver can hit an
+// unavailable sessionStorage (its getItem fallback) before the setter below is
+// installed. Buffer that first signal so the banner still fires once the store
+// exists, rather than being lost to the no-op.
+let storageUnavailablePending = false;
 const rememberDriver = createSessionStorageDriver(() => {
-  dispatchStorageUnavailable?.();
+  if (dispatchStorageUnavailable) {
+    dispatchStorageUnavailable();
+  } else {
+    storageUnavailablePending = true;
+  }
 });
 
 // Persist only the timeline `present` (not the up-to-1000-entry undo history),
@@ -81,6 +90,10 @@ const store = configureStore({
 dispatchStorageUnavailable = () => {
   store.dispatch(setStorageUnavailable(true));
 };
+// Flush a fallback that happened during rehydration, before the setter existed.
+if (storageUnavailablePending) {
+  dispatchStorageUnavailable();
+}
 
 // Keep the non-redux asset scope in sync with the persisted active protocol id,
 // so asset utils resolve against the right protocol after dispatches and after

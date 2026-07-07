@@ -31,7 +31,9 @@ type ActiveProtocolState = { present: Protocol; timeline: Locus[] };
 const setPresent = createAction<{ present: Protocol; locusId: string }>(
   'test/setPresent',
 );
-const jump = createAction<string>('activeProtocol/jump');
+// Must match the real timelineActions.jump type ('timeline/jump') so the mocked
+// reducer applies the revert the listener dispatches.
+const jump = createAction<string>('timeline/jump');
 
 const activeProtocolReducer = createReducer<ActiveProtocolState>(
   { present: null, timeline: [] },
@@ -50,16 +52,21 @@ const activeProtocolReducer = createReducer<ActiveProtocolState>(
   },
 );
 
-const dialogAdded = createAction<{ id: string }>('dialogs/addDialog');
+const dialogAdded = createAction<{ id: string; onConfirm?: () => void }>(
+  'dialogs/addDialog',
+);
 const dialogClosed = createAction<string>('dialogs/closeDialog');
 
-type DialogsState = { dialogs: { id: string }[] };
+type DialogsState = { dialogs: { id: string; onConfirm?: () => void }[] };
 const dialogsReducer = createReducer<DialogsState>(
   { dialogs: [] },
   (builder) => {
     builder
       .addCase(dialogAdded, (state, action) => {
-        state.dialogs.push({ id: action.payload.id });
+        state.dialogs.push({
+          id: action.payload.id,
+          onConfirm: action.payload.onConfirm,
+        });
       })
       .addCase(dialogClosed, (state, action) => {
         state.dialogs = state.dialogs.filter((d) => d.id !== action.payload);
@@ -83,7 +90,11 @@ const buildStore = async () => {
   return configureStore({
     reducer: rootReducer,
     middleware: (getDefault) =>
-      getDefault().prepend(protocolValidationListenerMiddleware.middleware),
+      // onConfirm callbacks are captured in the mocked dialog state for the
+      // revert test; disable the serializable check so they don't trip warnings.
+      getDefault({ serializableCheck: false }).prepend(
+        protocolValidationListenerMiddleware.middleware,
+      ),
   });
 };
 
@@ -160,5 +171,44 @@ describe('protocolValidationListener', () => {
     // The valid newer edit L2 must still be the timeline head (not reverted).
     const { timeline } = store.getState().activeProtocol;
     expect(timeline[timeline.length - 1]?.id).toBe('L2');
+  });
+
+  // #776 follow-up: a SECOND invalid edit that lands after the dialog opened must
+  // not freeze the dialog's revert target. Confirming still reverts to the last
+  // valid state rather than no-oping on the stale first-failure locus.
+  it('still reverts after a further invalid edit lands while the dialog is open', async () => {
+    validateProtocol
+      .mockResolvedValueOnce({ success: true }) // L0 valid baseline
+      .mockResolvedValueOnce({ success: false, error: 'bad1' }) // L1 invalid
+      .mockResolvedValueOnce({ success: false, error: 'bad2' }); // L2 invalid
+
+    const store = await buildStore();
+
+    store.dispatch(setPresent({ present: { name: 'p0' }, locusId: 'L0' }));
+    await flush();
+    await flush();
+
+    // Invalid edit L1 opens the dialog; a further invalid edit L2 lands during
+    // L1's in-flight validation.
+    store.dispatch(setPresent({ present: { name: 'p1' }, locusId: 'L1' }));
+    await Promise.resolve();
+    store.dispatch(setPresent({ present: { name: 'p2' }, locusId: 'L2' }));
+
+    await flush();
+    await flush();
+    await flush();
+
+    // One dialog (opened for L1) is present; L2 is the current head.
+    const openDialogs = store.getState().dialogs.dialogs;
+    expect(openDialogs).toHaveLength(1);
+    const before = store.getState().activeProtocol.timeline;
+    expect(before[before.length - 1]?.id).toBe('L2');
+
+    // Confirm the revert: it must jump back to the last valid locus (L0), not
+    // no-op because the current locus (L2) differs from the first failure (L1).
+    openDialogs[0]?.onConfirm?.();
+
+    const after = store.getState().activeProtocol.timeline;
+    expect(after[after.length - 1]?.id).toBe('L0');
   });
 });

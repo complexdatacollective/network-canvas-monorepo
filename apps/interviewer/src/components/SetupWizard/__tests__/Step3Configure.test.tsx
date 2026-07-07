@@ -96,4 +96,21 @@ describe('Step3Configure — read-only summary reconciliation', () => {
     // ...and forces re-enrolment (Next must not proceed without re-enrolling).
     expect(setNextEnabledMock).not.toHaveBeenCalledWith(true);
   });
+
+  it('recovers instead of stranding when the vault status check rejects', async () => {
+    // A rejected status() must not leave the wizard stuck on the summary with
+    // Next permanently disabled — fail safe by forcing re-enrolment.
+    wizardData = { selectedMethod: 'pin', enrolmentCommitted: true };
+    statusMock.mockRejectedValue(new Error('vault unreadable'));
+
+    render(<Step3Configure />);
+
+    await waitFor(() =>
+      expect(setStepDataMock).toHaveBeenCalledWith({
+        enrolmentCommitted: false,
+      }),
+    );
+    expect(screen.queryByText('PIN configured.')).not.toBeInTheDocument();
+    expect(setNextEnabledMock).not.toHaveBeenCalledWith(true);
+  });
 });

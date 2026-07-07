@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import Button from '@codaco/fresco-ui/Button';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import * as authApi from '~/lib/auth/api';
 import type { WizardSelectedMethod } from '~/components/SetupWizardDialog';
+import * as authApi from '~/lib/auth/api';
 
 import Step3BiometricConfigure from './Step3BiometricConfigure';
 import Step3PassphraseConfigure from './Step3PassphraseConfigure';
@@ -67,17 +67,28 @@ function ReadOnlySummary({
 
   useEffect(() => {
     let cancelled = false;
-    void authApi.status().then((status) => {
-      if (cancelled) return;
-      if (status.configured && status.mode === method) {
-        setReconciled(true);
-        return;
-      }
-      // The vault does not hold the selected mode — the committed enrolment is
-      // stale. Force re-enrolment rather than finishing on a phantom mode.
+    // The vault does not hold the selected mode — the committed enrolment is
+    // stale. Force re-enrolment rather than finishing on a phantom mode.
+    const forceReEnrolment = () => {
       wizard.setStepData({ enrolmentCommitted: false });
       onChange();
-    });
+    };
+    void authApi
+      .status()
+      .then((status) => {
+        if (cancelled) return;
+        if (status.configured && status.mode === method) {
+          setReconciled(true);
+          return;
+        }
+        forceReEnrolment();
+      })
+      .catch(() => {
+        // Fail safe: a rejected status() must not strand the wizard with Next
+        // permanently disabled — treat it like a mismatch and re-enrol.
+        if (cancelled) return;
+        forceReEnrolment();
+      });
     return () => {
       cancelled = true;
     };

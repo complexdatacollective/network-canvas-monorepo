@@ -39,6 +39,12 @@ let revalidatePending = false;
 // lets a later successful validation dismiss the now-stale dialog.
 let invalidDialogId: string | null = null;
 
+// The locus of the most recent invalid state. The open dialog's revert closure
+// reads this at confirm time (rather than a value frozen when it opened), so a
+// further invalid edit that lands while the dialog is open still lets the revert
+// fire for the state the user is actually looking at instead of no-oping.
+let latestInvalidLocusId: string | null = null;
+
 // Listen for any protocol changes and trigger validation
 startAppListening({
   predicate: (action, currentState, previousState) => {
@@ -94,6 +100,7 @@ startAppListening({
         if (result.result.success) {
           // Record this known-valid position as the auto-revert target.
           lastValidLocusId = validatedLocusId;
+          latestInvalidLocusId = null;
 
           // A previously-opened revert dialog is now stale: the latest state
           // validated cleanly, so dismiss it rather than let the user revert a
@@ -108,44 +115,51 @@ startAppListening({
             ...updateLastModified(new Date().toISOString()),
             meta: { skipTimeline: true },
           });
-        } else if (!invalidDialogId) {
-          const errorMessage = ensureError(result.result.error).message;
-          // Capture the revert target and the locus that failed now, so a later
-          // edit can't move them.
-          const revertLocusId = lastValidLocusId;
-          const invalidLocusId = validatedLocusId;
-          const dialogId = uuid();
-          invalidDialogId = dialogId;
-          void listenerApi
-            .dispatch(
-              invalidProtocolDialog(
-                errorMessage,
-                () => {
-                  // Staleness check: only revert if the invalid state is still
-                  // the current state. If a valid newer edit superseded it, the
-                  // success branch will already have dismissed this dialog, but
-                  // guard here too so a confirm can never discard valid work.
-                  const currentLocusId = getTimelineLocus(
-                    listenerApi.getState(),
-                  );
-                  if (currentLocusId !== invalidLocusId) {
-                    return;
-                  }
-                  if (revertLocusId) {
-                    listenerApi.dispatch(timelineActions.jump(revertLocusId));
-                  }
-                  navigate('/protocol');
-                },
-                dialogId,
-              ),
-            )
-            .finally(() => {
-              // Clear only if this dialog is still the tracked one; a later
-              // success may have already dismissed it and opened nothing new.
-              if (invalidDialogId === dialogId) {
-                invalidDialogId = null;
-              }
-            });
+        } else {
+          // Track the newest invalid position even when a dialog is already
+          // open, so its revert targets the state currently on screen rather
+          // than freezing on the first failure.
+          latestInvalidLocusId = validatedLocusId;
+
+          if (!invalidDialogId) {
+            const errorMessage = ensureError(result.result.error).message;
+            const dialogId = uuid();
+            invalidDialogId = dialogId;
+            void listenerApi
+              .dispatch(
+                invalidProtocolDialog(
+                  errorMessage,
+                  () => {
+                    // Staleness check: only revert if the current state is still
+                    // an invalid one we flagged (a valid newer edit dismisses
+                    // this dialog via the success branch), and always revert to
+                    // the last known-valid point. Reads the module-scoped locus
+                    // so a further invalid edit after the dialog opened doesn't
+                    // freeze the target and make the revert a no-op.
+                    const currentLocusId = getTimelineLocus(
+                      listenerApi.getState(),
+                    );
+                    if (currentLocusId !== latestInvalidLocusId) {
+                      return;
+                    }
+                    if (lastValidLocusId) {
+                      listenerApi.dispatch(
+                        timelineActions.jump(lastValidLocusId),
+                      );
+                    }
+                    navigate('/protocol');
+                  },
+                  dialogId,
+                ),
+              )
+              .finally(() => {
+                // Clear only if this dialog is still the tracked one; a later
+                // success may have already dismissed it and opened nothing new.
+                if (invalidDialogId === dialogId) {
+                  invalidDialogId = null;
+                }
+              });
+          }
         }
       } catch {
         // Validation threw (thunk rejected). isValidating is already cleared by

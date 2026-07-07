@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { StoredProtocolRow } from '~/utils/assetDB';
+
 import LibraryPanel from '../LibraryPanel';
 
 const downloadProtocolAsNetcanvasMock = vi.fn();
@@ -103,8 +104,7 @@ describe('<LibraryPanel /> download', () => {
     });
 
     const warningCall = openDialogMock.mock.calls.find(
-      ([config]) =>
-        (config as { type?: string }).type === 'Warning',
+      ([config]) => (config as { type?: string }).type === 'Warning',
     );
     expect(warningCall).toBeDefined();
     expect((warningCall![0] as { message: string }).message).toContain(
@@ -121,6 +121,9 @@ describe('<LibraryPanel /> download', () => {
     await waitFor(() => {
       expect(downloadProtocolAsNetcanvasMock).toHaveBeenCalled();
     });
+    // Let the resolved-download continuation (the warn-or-not decision) run so
+    // the negative assertion below isn't vacuous.
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     const warningCall = openDialogMock.mock.calls.find(
       ([config]) => (config as { type?: string }).type === 'Warning',

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-
 import { assetKey } from '~/utils/assetDB';
 import { getAssetById, saveProtocolAssetsToMemory } from '~/utils/assetUtils';
 import {
@@ -61,7 +60,10 @@ describe('preview in-memory asset transfer (Safari private browsing)', () => {
   it('the preview realm cannot resolve an in-memory asset it never received', async () => {
     // A fresh preview realm has an empty memory map: nothing was ferried, so the
     // editor-side fallback asset is invisible here. This is the reported failure.
-    const missing = await getAssetById('photo', SCOPE);
+    // Use a scope no other test populates so the assertion holds regardless of
+    // test order (the in-memory store is shared module state).
+    const untouchedScope = 'never-received-scope';
+    const missing = await getAssetById('photo', untouchedScope);
     expect(missing).toBeUndefined();
   });
 
