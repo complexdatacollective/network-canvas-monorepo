@@ -26,19 +26,19 @@ const GROUPS: Group[] = [
     schema: 7,
     rows: [
       {
-        app: 'Interviewer 6.6.0',
+        app: 'Interviewer Classic 6.x.x',
         platform: 'Desktop & tablet',
         schema7: 'native',
         schema8: 'unsupported',
       },
       {
-        app: 'Architect 6.6.0',
+        app: 'Architect Classic 6.x.x',
         platform: 'Desktop',
         schema7: 'native',
         schema8: 'unsupported',
       },
       {
-        app: 'Fresco 3.1.2',
+        app: 'Fresco 3.x.x',
         platform: 'Browser',
         schema7: 'native',
         schema8: 'unsupported',
@@ -50,19 +50,19 @@ const GROUPS: Group[] = [
     schema: 8,
     rows: [
       {
-        app: 'Interviewer 8.0.0',
+        app: 'Interviewer 8.x.x',
         platform: 'Desktop & tablet',
         schema7: 'migrate',
         schema8: 'native',
       },
       {
-        app: 'Architect Web',
+        app: 'Architect',
         platform: 'Browser',
         schema7: 'migrate',
         schema8: 'native',
       },
       {
-        app: 'Fresco 4.0.0',
+        app: 'Fresco 4.x.x',
         platform: 'Browser',
         schema7: 'migrate',
         schema8: 'native',

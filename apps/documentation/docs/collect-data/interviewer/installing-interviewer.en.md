@@ -8,8 +8,8 @@ Install **Interviewer** on any device you will use to interview participants. It
 
 Interviewer comes in two versions, and both are supported — you can install them side by side and use whichever suits your study:
 
-- **Interviewer 6.x** — the established desktop and tablet app. Runs schema 7 protocols and works fully offline.
-- **Interviewer 8** (beta) — built on the same new platform as Fresco 4.0. It supports schema 8, is compatible with all your existing protocols, and is recommended for new studies.
+- **Interviewer Classic** — the established desktop and tablet app. Runs schema 7 protocols and works fully offline.
+- **Interviewer** (beta) — built on the same new platform as Fresco 4.0. It supports schema 8, is compatible with all your existing protocols, and is recommended for new studies.
 
 Both versions are available from the [download page](https://networkcanvas.com/download).
 

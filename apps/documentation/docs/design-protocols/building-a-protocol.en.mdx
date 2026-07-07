@@ -12,14 +12,14 @@ Network Canvas protocol using Architect. We will be rebuilding the sample
 protocol that is available to install within Interviewer and Fresco, which was discussed
 extensively in the tutorial on [using Interviewer](/en/collect-data/interviewer/using-interviewer).
 
-<AppOnly app="web">
+<AppOnly app="current">
 
 If you would like to download and open the finished protocol, you can do so <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">from
 here</DownloadLink>.
 
 </AppOnly>
 
-<AppOnly app="desktop">
+<AppOnly app="classic">
 
 If you would like to download and open the finished protocol, you can do so <DownloadLink href="/protocols/Sample Protocol v4.netcanvas">from
 here</DownloadLink>.
@@ -36,11 +36,11 @@ We recommend following along using your own computer. Before you begin, read [Ge
 </PrerequisitesSection>
 </SummaryCard>
 
-This article covers the steps for building a protocol, from adding your first stage through finishing off. These steps are largely the same in Architect Web and Architect Desktop. Choose which version you are using below to see the matching screenshots and a few version-specific notes.
+This article covers the steps for building a protocol, from adding your first stage through finishing off. These steps are largely the same in Architect and Architect Classic. Choose which version you are using below to see the matching screenshots and a few version-specific notes.
 
 <AppSwitch>
-  <AppOption label="Architect Web" icon="globe"></AppOption>
-  <AppOption label="Architect Desktop" icon="desktop"></AppOption>
+  <AppOption label="Architect" icon="globe"></AppOption>
+  <AppOption label="Architect Classic" icon="desktop"></AppOption>
 </AppSwitch>
 
 ## Adding a stage
@@ -107,11 +107,11 @@ Finally, select the person icon to use for this node type. This icon appears in 
 
 <Screenshot axis="architect" name="node-type"></Screenshot>
 
-<AppOnly app="web">
+<AppOnly app="current">
 
-In Architect Web you can also choose a **shape** for the node type, which is used alongside the color and icon to represent the node across interfaces.
+In Architect you can also choose a **shape** for the node type, which is used alongside the color and icon to represent the node across interfaces.
 
-![The Shape selector in Architect Web, offering Circle, Square, and Diamond.](/assets/img/architect-web-guide/node-type-shape.png)
+![The Shape selector in Architect, offering Circle, Square, and Diamond.](/assets/img/architect-guide/node-type-shape.png)
 
 </AppOnly>
 
@@ -158,17 +158,17 @@ Next, choose a data source for this side panel. You have two options: either use
 
 You can optionally preview the interface at this point, checking that the prompts and the form look and function as you expected. When you are satisfied, click continue to add your stage.
 
-<AppOnly app="web">
+<AppOnly app="current">
 
 <TipBox>
 
-Architect Web saves your work automatically as you go — there is no Save button. See [Saving and backing up](/en/design-protocols/saving-and-backing-up) for how your protocols are stored and how to back them up.
+Architect saves your work automatically as you go — there is no Save button. See [Saving and backing up](/en/design-protocols/saving-and-backing-up) for how your protocols are stored and how to back them up.
 
 </TipBox>
 
 </AppOnly>
 
-<AppOnly app="desktop">
+<AppOnly app="classic">
 
 <TipBox>
 
@@ -196,9 +196,9 @@ For the first field, you want to know the name of the clinic the participant is 
 
 <Screenshot axis="architect" name="form-fields"></Screenshot>
 
-<AppOnly app="web">
+<AppOnly app="current">
 
-In Architect Web, each form field can include an optional **hint** — a short, markdown-formatted note shown beneath the question to guide the participant on how to answer.
+In Architect, each form field can include an optional **hint** — a short, markdown-formatted note shown beneath the question to guide the participant on how to answer.
 
 </AppOnly>
 
@@ -224,9 +224,9 @@ The most appropriate input control for a variable depends on the specific nature
 
 Because you are asking for the name of the clinic (a simple text variable), a Text Input is the most appropriate option.
 
-<AppOnly app="web">
+<AppOnly app="current">
 
-![The Input Control selector and live preview in Architect Web.](/assets/img/architect-web-guide/input-control.png)
+![The Input Control selector and live preview in Architect.](/assets/img/architect-guide/input-control.png)
 
 </AppOnly>
 
@@ -234,9 +234,9 @@ Finally, define validation requirements for this field. Indicate that this text 
 
 <Screenshot axis="architect" name="validation"></Screenshot>
 
-<AppOnly app="web">
+<AppOnly app="current">
 
-Architect Web also offers a **Show validation hints** option. When enabled, it automatically shows participants a hint derived from the field's validation rules, so they understand the input requirements.
+Architect also offers a **Show validation hints** option. When enabled, it automatically shows participants a hint derived from the field's validation rules, so they understand the input requirements.
 
 </AppOnly>
 
@@ -444,17 +444,17 @@ We will now complete the exact same steps for the second prompt, which reads, "P
 
 We have now finished configuring this sociogram stage.
 
-<AppOnly app="web">
+<AppOnly app="current">
 
 <TipBox>
 
-Interfaces that do not create nodes — such as the sociogram, ordinal bin, and categorical bin — need an existing network to display anything. In Architect Web you don't have to build one by hand: preview starts with **Start preview with example data** turned on, so an example network of nodes and edges is generated automatically and the stage you are previewing already has data to work with. The previewed stage is intentionally left partly incomplete, so you can still exercise its interaction (positioning nodes, sorting them into bins, creating edges, toggling attributes). See [Preview mode](/en/design-protocols/key-concepts/preview-mode) for more on the preview settings.
+Interfaces that do not create nodes — such as the sociogram, ordinal bin, and categorical bin — need an existing network to display anything. In Architect you don't have to build one by hand: preview starts with **Start preview with example data** turned on, so an example network of nodes and edges is generated automatically and the stage you are previewing already has data to work with. The previewed stage is intentionally left partly incomplete, so you can still exercise its interaction (positioning nodes, sorting them into bins, creating edges, toggling attributes). See [Preview mode](/en/design-protocols/key-concepts/preview-mode) for more on the preview settings.
 
 </TipBox>
 
 </AppOnly>
 
-<AppOnly app="desktop">
+<AppOnly app="classic">
 
 <TipBox danger>
 
@@ -599,27 +599,27 @@ Click "Save and Return" and are now able to view the configured Narrative stage 
 
 ## Finishing Off Your Protocol
 
-<AppOnly app="web">
+<AppOnly app="current">
 
-Architect Web saves your protocol automatically. When you are ready to use it, click **Download** on the protocol overview screen to export it as a `.netcanvas` file. The file name uniquely identifies the protocol in the apps that run it.
+Architect saves your protocol automatically. When you are ready to use it, click **Download** on the protocol overview screen to export it as a `.netcanvas` file. The file name uniquely identifies the protocol in the apps that run it.
 
-Protocols built in Architect Web use schema 8, so they run in **Fresco** and in the new **Interviewer 8** app — they cannot be run in Interviewer 6.x.
+Protocols built in Architect use schema 8, so they run in **Fresco** and in the new **Interviewer** app — they cannot be run in Interviewer Classic.
 
 #### Fresco
 
 - To deploy the protocol in Fresco, upload the downloaded `.netcanvas` file — see our [using Fresco](/en/collect-data/fresco/using-fresco#uploading-protocols) tutorial.
 
-#### Interviewer 8
+#### Interviewer
 
 - Import the downloaded `.netcanvas` file directly from your computer, or host it on a web server and import it from a web URL.
 
 </AppOnly>
 
-<AppOnly app="desktop">
+<AppOnly app="classic">
 
 Make sure to save your file. The file name of the protocol will uniquely identify it in the Network Canvas Interviewer app and in [Fresco](/en/collect-data/fresco/using-fresco#uploading-protocols).
 
-Protocols built in Architect Desktop use schema 7, so they run in **Interviewer 6.x**, and can be automatically upgraded to schema 8 when uploading to **Fresco**.
+Protocols built in Architect Classic use schema 7, so they run in **Interviewer Classic**, and can be automatically upgraded to schema 8 when uploading to **Fresco**.
 
 There are numerous ways to transition from building the protocol within Architect to deployment.
 

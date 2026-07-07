@@ -44,7 +44,7 @@ const WORKFLOWS: Workflow[] = [
       {
         tool: 'Architect',
         detail:
-          'Design a protocol in Architect Web for Interviewer 8 (new studies); desktop Architect for Interviewer 6.x.',
+          'Design a protocol in Architect for Interviewer (new studies); Architect Classic for Interviewer Classic.',
       },
       {
         tool: 'Interviewer',
@@ -64,7 +64,7 @@ const WORKFLOWS: Workflow[] = [
       {
         tool: 'Architect',
         detail:
-          'Design a protocol in Architect Web for Interviewer 8 (new studies); desktop Architect for Interviewer 6.x.',
+          'Design a protocol in Architect for Interviewer (new studies); Architect Classic for Interviewer Classic.',
       },
       {
         tool: 'Interviewer',
@@ -79,7 +79,7 @@ const WORKFLOWS: Workflow[] = [
     summary: 'Remote interviews completed in the browser.',
     steps: [
       {
-        tool: 'Architect Web',
+        tool: 'Architect',
         href: '/en/design-protocols/getting-started',
         detail: 'Design the protocol in the browser.',
       },

@@ -13,12 +13,12 @@ import {
 // The reader sees `primary` until they switch to `secondary`.
 const AXIS = {
   architect: {
-    primary: { variant: APP_LABELS.web, dir: 'architect-web-guide' },
-    secondary: { variant: APP_LABELS.desktop, dir: 'architect-guide' },
+    primary: { variant: APP_LABELS.current, dir: 'architect-guide' },
+    secondary: { variant: APP_LABELS.classic, dir: 'architect-classic-guide' },
   },
   interviewer: {
-    primary: { variant: INTERVIEWER_LABELS.v8, dir: 'interviewer-v8-guide' },
-    secondary: { variant: INTERVIEWER_LABELS.v6, dir: 'sample-protocol' },
+    primary: { variant: INTERVIEWER_LABELS.current, dir: 'interviewer-guide' },
+    secondary: { variant: INTERVIEWER_LABELS.classic, dir: 'sample-protocol' },
   },
 } as const;
 

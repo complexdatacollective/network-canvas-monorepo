@@ -32,9 +32,9 @@ The first two are **desktop workflows** built around the [Interviewer](/en/colle
 - **Option 1: Online workflow** — deploy protocols and export data via a cloud file sharing service.
 - **Option 2: Offline workflow** — deploy protocols and export data via a USB flash drive or other external storage.
 
-The third is a **web-based workflow** built around [Architect Web](/en/design-protocols/getting-started) and [Fresco](/en/collect-data/fresco/about), which removes the need to install software on, or copy files to and from, each interview device:
+The third is a **web-based workflow** built around [Architect](/en/design-protocols/getting-started) and [Fresco](/en/collect-data/fresco/about), which removes the need to install software on, or copy files to and from, each interview device:
 
-- **Option 3: Web-based workflow** — author protocols in Architect Web, upload them to a Fresco dashboard, and let participants complete interviews in their browser, with all data stored centrally and exported from the dashboard.
+- **Option 3: Web-based workflow** — author protocols in Architect, upload them to a Fresco dashboard, and let participants complete interviews in their browser, with all data stored centrally and exported from the dashboard.
 
 In the desktop workflows, you deploy a protocol to each device and collect an export from each device. In the web-based workflow, protocol deployment and data export are both handled centrally through the Fresco dashboard.
 
@@ -96,7 +96,7 @@ If you are working in a scenario where you do not have access to an internet con
 
 <TipBox>
 
-The offline workflow assumes every interface in your protocol works offline. Some schema-8 interfaces in **Interviewer 8** — notably [Geospatial](/en/design-protocols/interface-documentation/geospatial), which loads maps over the internet — require a connection _during the interview_, so a protocol that uses them cannot be run fully offline. Schema-7 protocols in **Interviewer 6.x** are unaffected.
+The offline workflow assumes every interface in your protocol works offline. Some schema-8 interfaces in **Interviewer** — notably [Geospatial](/en/design-protocols/interface-documentation/geospatial), which loads maps over the internet — require a connection _during the interview_, so a protocol that uses them cannot be run fully offline. Schema-7 protocols in **Interviewer Classic** are unaffected.
 
 </TipBox>
 
@@ -133,9 +133,9 @@ As above, the only option for exporting data in an offline setting is to use a U
    - If you are using a PC or Mac, you will be prompted to choose a location on the device's filesystem to save the export. Navigate to the external storage device's folder that you created in step 1.
    - If you are using a tablet device, you will be prompted to choose an app to handle the export. The export functionality on tablet devices works using the "share" feature built into both Android and iOS. This means that options for saving exported data are determined by which apps you have installed on your device. You therefore need to install a third-party file management app such as "[CX File Explorer](https://play.google.com/store/apps/details?id=com.cxinventor.file.explorer)". Once installed, choose the file manager app from the share menu. The app will then open and you will be prompted to choose a location to save the export. Navigate to the external storage device's folder that you created in step 1.
 
-## Option 3: Web-based workflow (Architect Web + Fresco)
+## Option 3: Web-based workflow (Architect + Fresco)
 
-If you want to conduct interviews remotely in a web browser without installing software on each device, you can use the web-based tooling: author your protocol in [Architect Web](/en/design-protocols/getting-started) and run your study using [Fresco](/en/collect-data/fresco/about).
+If you want to conduct interviews remotely in a web browser without installing software on each device, you can use the web-based tooling: author your protocol in [Architect](/en/design-protocols/getting-started) and run your study using [Fresco](/en/collect-data/fresco/about).
 
 This workflow greatly simplifies protocol deployment and data export compared with the desktop workflows above. There is no copying of files to each interview device and no collecting of separate exports from each device — protocols are deployed once by uploading them to your Fresco dashboard, and all collected data is exported centrally from that same dashboard.
 
@@ -147,7 +147,7 @@ The web-based workflow requires a deployed Fresco instance. Fresco is self-hoste
 
 ### Authoring the protocol
 
-Design your protocol in [Architect Web](/en/design-protocols/getting-started), the browser-based version of the Architect protocol designer. There is nothing to install — it runs entirely in your web browser. Architect Web produces schema 8 protocols and exports a standard `.netcanvas` file, exactly like the desktop Architect.
+Design your protocol in [Architect](/en/design-protocols/getting-started), the browser-based version of the Architect protocol designer. There is nothing to install — it runs entirely in your web browser. Architect produces schema 8 protocols and exports a standard `.netcanvas` file, exactly like the Architect Classic.
 
 ### Protocol deployment
 
@@ -156,7 +156,7 @@ Rather than sharing the `.netcanvas` file via a cloud service or USB drive and i
 1. Open your deployed Fresco instance and log in to the dashboard.
 2. Navigate to the **protocols** page in the dashboard.
 3. Click the **Upload protocol** button.
-4. Select the `.netcanvas` file you exported from Architect Web.
+4. Select the `.netcanvas` file you exported from Architect.
 5. Click **Upload**.
 
 Once the protocol is listed on the protocols page, you can add participants and share a participation URL with them. For the full set of steps — including adding participants, choosing a recruitment strategy, and generating participant URLs — see the [Using Fresco guide](/en/collect-data/fresco/using-fresco).

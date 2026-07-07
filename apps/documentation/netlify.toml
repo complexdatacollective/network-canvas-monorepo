@@ -7,6 +7,12 @@ status = 301
 # exists at the path. Force this rule so the 301 wins over index.html.
 force = true
 
+# Renamed page slugs (keep old URLs working — may be embedded in apps/documents)
+[[redirects]]
+from = "/en/design-protocols/installing-architect-desktop"
+to = "/en/design-protocols/installing-architect-classic"
+status = 301
+
 # Legacy flat (pre-locale) top-level pages
 [[redirects]]
 from = "/citing-the-software"

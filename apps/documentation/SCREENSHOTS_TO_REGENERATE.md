@@ -3,113 +3,113 @@
 Screenshots that need to be replaced, grouped by the documentation page they appear on.
 Image paths are relative to `apps/documentation/public`.
 
-## Using Interviewer (Interviewer 8 screenshots)
+## Using Interviewer (Interviewer screenshots)
 
 Source: `docs/collect-data/interviewer/using-interviewer.en.mdx`
 
-This article switches between **Interviewer 6.x** and **Interviewer 8** via
+This article switches between **Interviewer Classic** and **Interviewer** via
 `<AppSwitch axis="interviewer">`. Screens that exist in both versions use
 `<InterviewerScreenshot name="<name>">`, which shows the 6.x shot from
 `/assets/img/sample-protocol/<name>.png` (these already exist) and the
-Interviewer 8 shot from `/assets/img/interviewer-v8-guide/<name>.png` — the name
+Interviewer shot from `/assets/img/interviewer-guide/<name>.png` — the name
 must match the 6.x screenshot it replaces. Interviewer-8-only screens (the setup
 wizard, security, import/delete dialogs) use plain `![](…)` images pointing
-directly at `/assets/img/interviewer-v8-guide/`.
+directly at `/assets/img/interviewer-guide/`.
 
-> Note: the article now defaults to the **Interviewer 8** tab, so a missing 8 image
+> Note: the article now defaults to the **Interviewer** tab, so a missing 8 image
 > shows as broken by default. `start-new-section` and `export-section` are now
-> **6.x-only** (inside `app="v6"` blocks) and need no 8 capture.
+> **6.x-only** (inside `app="classic"` blocks) and need no 8 capture.
 
 **Dashboard / setup / shell:**
 
-| Image (`/assets/img/interviewer-v8-guide/…`) | Screen                                                 | Status      |
-| -------------------------------------------- | ------------------------------------------------------ | ----------- |
-| `start-screen.png`                           | Dashboard (deck + Protocols / Data toggle)             | ✅ Captured |
-| `protocol-card.png`                          | Protocol card (anatomy + Start new interview button)   | ✅ Captured |
-| `case-id.png`                                | Case ID entry dialog                                   | ✅ Captured |
-| `import-protocol.png`                        | Import a protocol dialog (file + URL) — 8 only         | ✅ Captured |
-| `delete-protocol.png`                        | Delete-protocol confirmation — 8 only                  | ✅ Captured |
-| `welcome.png`                                | First-run welcome screen — 8 only                      | ✅ Captured |
-| `setup-intro.png`                            | Setup wizard introduction — 8 only                     | ✅ Captured |
-| `securing-data.png`                          | Wizard "Securing your data" step — 8 only              | ✅ Captured |
-| `auth-method.png`                            | Wizard "Choose an authentication method" — 8 only      | ✅ Captured |
-| `analytics.png`                              | Wizard analytics-preference step — 8 only              | ✅ Captured |
-| `settings.png`                               | Settings screen — 8 only                               | ✅ Captured |
-| `interviewer-ui.png`                         | In-interview navigation (rail / bar: up / down / exit) | ✅ Captured |
-| `finish.png`                                 | Finish screen                                          | ✅ Captured |
-| `finish-confirm.png`                         | Finish confirmation dialog — 8 only                    | ✅ Captured |
-| `interview-complete.png`                     | Interview-complete screen — 8 only                     | ✅ Captured |
-| `resume-section.png`                         | The Data page (status, progress, multi-select)         | ✅ Captured |
-| `lock-screen.png`                            | The lock screen — 8 only                               | ✅ Captured |
+| Image (`/assets/img/interviewer-guide/…`) | Screen                                                 | Status      |
+| ----------------------------------------- | ------------------------------------------------------ | ----------- |
+| `start-screen.png`                        | Dashboard (deck + Protocols / Data toggle)             | ✅ Captured |
+| `protocol-card.png`                       | Protocol card (anatomy + Start new interview button)   | ✅ Captured |
+| `case-id.png`                             | Case ID entry dialog                                   | ✅ Captured |
+| `import-protocol.png`                     | Import a protocol dialog (file + URL) — 8 only         | ✅ Captured |
+| `delete-protocol.png`                     | Delete-protocol confirmation — 8 only                  | ✅ Captured |
+| `welcome.png`                             | First-run welcome screen — 8 only                      | ✅ Captured |
+| `setup-intro.png`                         | Setup wizard introduction — 8 only                     | ✅ Captured |
+| `securing-data.png`                       | Wizard "Securing your data" step — 8 only              | ✅ Captured |
+| `auth-method.png`                         | Wizard "Choose an authentication method" — 8 only      | ✅ Captured |
+| `analytics.png`                           | Wizard analytics-preference step — 8 only              | ✅ Captured |
+| `settings.png`                            | Settings screen — 8 only                               | ✅ Captured |
+| `interviewer-ui.png`                      | In-interview navigation (rail / bar: up / down / exit) | ✅ Captured |
+| `finish.png`                              | Finish screen                                          | ✅ Captured |
+| `finish-confirm.png`                      | Finish confirmation dialog — 8 only                    | ✅ Captured |
+| `interview-complete.png`                  | Interview-complete screen — 8 only                     | ✅ Captured |
+| `resume-section.png`                      | The Data page (status, progress, multi-select)         | ✅ Captured |
+| `lock-screen.png`                         | The lock screen — 8 only                               | ✅ Captured |
 
 **Interview interface stages** (version-swapped — each matches a 6.x shot of the same name in `sample-protocol/`):
 
-| Image (`/assets/img/interviewer-v8-guide/…`) | Interface                          | Status      |
-| -------------------------------------------- | ---------------------------------- | ----------- |
-| `welcome-info.png`                           | Information (welcome stage)        | ✅ Captured |
-| `consent-form.png`                           | Ego Form (consent)                 | ✅ Captured |
-| `ego-form.png`                               | Ego Form (full)                    | ✅ Captured |
-| `quick-add.png`                              | Quick Add name generator           | ✅ Captured |
-| `side-panel.png`                             | Name generator with side panel     | ✅ Captured |
-| `using-forms.png`                            | Name generator using forms         | ✅ Captured |
-| `blue-nodes.png`                             | Multiple node types (clinic nodes) | ✅ Captured |
-| `small-roster.png`                           | Small roster name generator        | ✅ Captured |
-| `large-roster.png`                           | Large roster name generator        | ✅ Captured |
-| `per-alter-form.png`                         | Per-Alter Form                     | ✅ Captured |
-| `sociogram-positioning.png`                  | Sociogram                          | ✅ Captured |
-| `dyad-census.png`                            | Dyad Census                        | ✅ Captured |
-| `cat-bin.png`                                | Categorical Bin                    | ✅ Captured |
-| `narrative.png`                              | Narrative                          | ✅ Captured |
-| `ordinal-bin.png`                            | Ordinal Bin (contact frequency)    | ✅ Captured |
+| Image (`/assets/img/interviewer-guide/…`) | Interface                          | Status      |
+| ----------------------------------------- | ---------------------------------- | ----------- |
+| `welcome-info.png`                        | Information (welcome stage)        | ✅ Captured |
+| `consent-form.png`                        | Ego Form (consent)                 | ✅ Captured |
+| `ego-form.png`                            | Ego Form (full)                    | ✅ Captured |
+| `quick-add.png`                           | Quick Add name generator           | ✅ Captured |
+| `side-panel.png`                          | Name generator with side panel     | ✅ Captured |
+| `using-forms.png`                         | Name generator using forms         | ✅ Captured |
+| `blue-nodes.png`                          | Multiple node types (clinic nodes) | ✅ Captured |
+| `small-roster.png`                        | Small roster name generator        | ✅ Captured |
+| `large-roster.png`                        | Large roster name generator        | ✅ Captured |
+| `per-alter-form.png`                      | Per-Alter Form                     | ✅ Captured |
+| `sociogram-positioning.png`               | Sociogram                          | ✅ Captured |
+| `dyad-census.png`                         | Dyad Census                        | ✅ Captured |
+| `cat-bin.png`                             | Categorical Bin                    | ✅ Captured |
+| `narrative.png`                           | Narrative                          | ✅ Captured |
+| `ordinal-bin.png`                         | Ordinal Bin (contact frequency)    | ✅ Captured |
 
-## Building a protocol (Architect Web screenshots)
+## Building a protocol (Architect screenshots)
 
 Source: `docs/design-protocols/building-a-protocol.en.mdx`
 
-This article switches every screenshot between Architect Web and Architect
+This article switches every screenshot between Architect and Architect
 Desktop via `<AppScreenshot name="<name>" web="true"></AppScreenshot>`. The
 component derives both paths from `name`: the Desktop shot at
-`/assets/img/architect-guide/<name>.png` (these already exist) and the Web shot at
-`/assets/img/architect-web-guide/<name>.png`. Without `web="true"`, the Desktop
+`/assets/img/architect-classic-guide/<name>.png` (these already exist) and the Web shot at
+`/assets/img/architect-guide/<name>.png`. Without `web="true"`, the Desktop
 shot is shown in both views. To wire a new Web capture, drop it at
-`/assets/img/architect-web-guide/<name>.png` and add `web="true"` to that
+`/assets/img/architect-guide/<name>.png` and add `web="true"` to that
 screenshot in the article.
 
-| Image (`/assets/img/architect-web-guide/…`) | Status      |
-| ------------------------------------------- | ----------- |
-| `add-a-stage.png`                           | ✅ Captured |
-| `information-interface.png`                 | ✅ Captured |
-| `edit-item.png`                             | ✅ Captured |
-| `completed-stage.png`                       | ✅ Captured |
-| `node-type.png`                             | ✅ Captured |
-| `node-type-shape.png` (Web-only)            | ✅ Captured |
-| `edit-prompt.png`                           | ✅ Captured |
-| `side-panel.png`                            | ✅ Captured |
-| `form-fields.png`                           | ✅ Captured |
-| `input-control.png` (Web-only)              | ✅ Captured |
-| `validation.png`                            | ✅ Captured |
-| `fields-inputs-prompts.png`                 | ✅ Captured |
-| `adding-roster.png`                         | ✅ Captured |
-| `roster-sort.png`                           | ✅ Captured |
-| `roster-search.png`                         | ✅ Captured |
-| `ego-form.png`                              | ✅ Captured |
-| `ego-form-fields.png`                       | ✅ Captured |
-| `per-alter-form.png`                        | ✅ Captured |
-| `sociogram-background.png`                  | ✅ Captured |
-| `sociogram-layout.png`                      | ✅ Captured |
-| `edge-creation.png`                         | ✅ Captured |
-| `dyad-skip.png`                             | ✅ Captured |
-| `dyad-prompt.png`                           | ✅ Captured |
-| `variable-toggling.png`                     | ✅ Captured |
-| `catbin-variables.png`                      | ✅ Captured |
-| `filter-skip.png`                           | ✅ Captured |
-| `skip.png`                                  | ✅ Captured |
-| `catbin-prompt.png`                         | ✅ Captured |
-| `followup.png`                              | ✅ Captured |
-| `narrative.png`                             | ✅ Captured |
-| `edit-preset.png`                           | ✅ Captured |
-| `edit-preset2.png`                          | ✅ Captured |
-| `narrative-behaviors.png`                   | ✅ Captured |
+| Image (`/assets/img/architect-guide/…`) | Status      |
+| --------------------------------------- | ----------- |
+| `add-a-stage.png`                       | ✅ Captured |
+| `information-interface.png`             | ✅ Captured |
+| `edit-item.png`                         | ✅ Captured |
+| `completed-stage.png`                   | ✅ Captured |
+| `node-type.png`                         | ✅ Captured |
+| `node-type-shape.png` (Web-only)        | ✅ Captured |
+| `edit-prompt.png`                       | ✅ Captured |
+| `side-panel.png`                        | ✅ Captured |
+| `form-fields.png`                       | ✅ Captured |
+| `input-control.png` (Web-only)          | ✅ Captured |
+| `validation.png`                        | ✅ Captured |
+| `fields-inputs-prompts.png`             | ✅ Captured |
+| `adding-roster.png`                     | ✅ Captured |
+| `roster-sort.png`                       | ✅ Captured |
+| `roster-search.png`                     | ✅ Captured |
+| `ego-form.png`                          | ✅ Captured |
+| `ego-form-fields.png`                   | ✅ Captured |
+| `per-alter-form.png`                    | ✅ Captured |
+| `sociogram-background.png`              | ✅ Captured |
+| `sociogram-layout.png`                  | ✅ Captured |
+| `edge-creation.png`                     | ✅ Captured |
+| `dyad-skip.png`                         | ✅ Captured |
+| `dyad-prompt.png`                       | ✅ Captured |
+| `variable-toggling.png`                 | ✅ Captured |
+| `catbin-variables.png`                  | ✅ Captured |
+| `filter-skip.png`                       | ✅ Captured |
+| `skip.png`                              | ✅ Captured |
+| `catbin-prompt.png`                     | ✅ Captured |
+| `followup.png`                          | ✅ Captured |
+| `narrative.png`                         | ✅ Captured |
+| `edit-preset.png`                       | ✅ Captured |
+| `edit-preset2.png`                      | ✅ Captured |
+| `narrative-behaviors.png`               | ✅ Captured |
 
 ## About Fresco
 

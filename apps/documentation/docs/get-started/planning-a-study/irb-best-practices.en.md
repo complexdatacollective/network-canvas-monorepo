@@ -9,7 +9,7 @@ Network Canvas uses modern security features, and has built on existing technolo
 
 How that data is stored, and therefore what security measures you need to put in place, depends on which tool you use:
 
-- **Desktop Suite (Interviewer & Architect Desktop)** — data is stored only on the local device. Security relies on protecting that device.
+- **Desktop Suite (Interviewer & Architect Classic)** — data is stored only on the local device. Security relies on protecting that device.
 - **Fresco (self-hosted web app)** — data is stored centrally in a database and storage that you deploy and host. Security relies on protecting that server infrastructure.
 
 <TipBox>
@@ -18,11 +18,11 @@ This page summarizes the practical best practices for each tool. For a comprehen
 
 </TipBox>
 
-## Desktop Suite (Interviewer & Architect Desktop)
+## Desktop Suite (Interviewer & Architect Classic)
 
 <TipBox>
 
-This describes **Interviewer 6.x**, which is fully offline. **Interviewer 8** (beta) stores interview data locally in the same way, but some schema-8 interfaces (e.g. [Geospatial](/en/design-protocols/interface-documentation/geospatial)) require an internet connection and contact third-party services during the interview — factor this into your risk assessment if you use them.
+This describes **Interviewer Classic**, which is fully offline. **Interviewer** (beta) stores interview data locally in the same way, but some schema-8 interfaces (e.g. [Geospatial](/en/design-protocols/interface-documentation/geospatial)) require an internet connection and contact third-party services during the interview — factor this into your risk assessment if you use them.
 
 </TipBox>
 

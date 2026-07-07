@@ -11,20 +11,20 @@
 export type AppRole = 'configure' | 'run';
 
 export type AppId =
-  | 'architect-desktop'
-  | 'architect-web'
+  | 'architect-classic'
+  | 'architect'
   | 'interviewer'
   | 'fresco';
 
 const APPS: Record<AppId, { label: string; role: AppRole; maxSchema: number }> =
   {
-    'architect-desktop': {
-      label: 'Architect (Desktop)',
+    'architect-classic': {
+      label: 'Architect Classic',
       role: 'configure',
       maxSchema: 7,
     },
-    'architect-web': {
-      label: 'Architect (Web)',
+    'architect': {
+      label: 'Architect',
       role: 'configure',
       maxSchema: 8,
     },

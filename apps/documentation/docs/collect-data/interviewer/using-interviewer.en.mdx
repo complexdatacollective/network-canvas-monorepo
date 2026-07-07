@@ -24,7 +24,7 @@ To get the most from this tutorial, you should have first:
 - Read and understood the [project overview](/en/get-started/project-information/project-overview).
 - To follow along using your own computer or device, you should have [downloaded and installed Interviewer](https://networkcanvas.com/download).
 
-Please note that a separate tutorial article covers how to create a protocol, called [getting started with Architect Desktop](/en/design-protocols/getting-started). You should continue with the current tutorial before learning the more advanced concepts involved in protocol creation, but you can read these articles in any order you wish.
+Please note that a separate tutorial article covers how to create a protocol, called [getting started with Architect Classic](/en/design-protocols/getting-started). You should continue with the current tutorial before learning the more advanced concepts involved in protocol creation, but you can read these articles in any order you wish.
 
 </PrerequisitesSection>
 </SummaryCard>
@@ -40,43 +40,43 @@ Once you have collected data with Interviewer, you can export network datafiles 
 Interviewer comes in two supported versions. Choose the one you are using below — the screenshots and version-specific notes throughout this tutorial update to match.
 
 <AppSwitch axis="interviewer">
-  <AppOption label="Interviewer 8"></AppOption>
-  <AppOption label="Interviewer 6.x"></AppOption>
+  <AppOption label="Interviewer"></AppOption>
+  <AppOption label="Interviewer Classic"></AppOption>
 </AppSwitch>
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
-**Interviewer 6.x** is the established desktop and tablet app. It runs schema 7 protocols and works fully offline.
+**Interviewer Classic** is the established desktop and tablet app. It runs schema 7 protocols and works fully offline.
 
 </AppOnly>
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
-**Interviewer 8** (beta) is built on the same new platform as Fresco 4.0. It supports **schema 8** (so it can run protocols built in [Architect Web](/en/design-protocols/getting-started)) and is compatible with your existing protocols, while adding an improved interview experience, data export, and on-device security. Because some schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)) need an internet connection, fully offline collection isn't always possible. It's **recommended for new studies**.
+**Interviewer** (beta) is built on the same new platform as Fresco 4.0. It supports **schema 8** (so it can run protocols built in [Architect](/en/design-protocols/getting-started)) and is compatible with your existing protocols, while adding an improved interview experience, data export, and on-device security. Because some schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)) need an internet connection, fully offline collection isn't always possible. It's **recommended for new studies**.
 
 </AppOnly>
 
 The following introduction to the software describes some of its key features and concepts. To follow along, open Interviewer on your own computer or device.
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
 ## Security and locking
 
-Interviewer 8 keeps everything it stores — protocols, interviews, and settings — on the device, with no cloud sync or server component. On desktop, that on-device data is **encrypted at rest**, and the same authentication that unlocks the app releases the key used to decrypt it.
+Interviewer keeps everything it stores — protocols, interviews, and settings — on the device, with no cloud sync or server component. On desktop, that on-device data is **encrypted at rest**, and the same authentication that unlocks the app releases the key used to decrypt it.
 
 ### Setting up security
 
-The very first time you open Interviewer 8 you are greeted with a welcome screen and guided through a short setup wizard before you reach the dashboard. Most of what it configures can be changed later from **Settings** (the exception is your security method — see below).
+The very first time you open Interviewer you are greeted with a welcome screen and guided through a short setup wizard before you reach the dashboard. Most of what it configures can be changed later from **Settings** (the exception is your security method — see below).
 
-![The Interviewer 8 welcome screen](/assets/img/interviewer-v8-guide/welcome.png)
+![The Interviewer welcome screen](/assets/img/interviewer-guide/welcome.png)
 
 The wizard opens with a brief overview of what it will cover — securing your data, and setting your app preferences.
 
-![The setup wizard introduction](/assets/img/interviewer-v8-guide/setup-intro.png)
+![The setup wizard introduction](/assets/img/interviewer-guide/setup-intro.png)
 
 It then explains the two layers that protect your research data: **secure data storage** and **app authorization**. On platforms where the operating system already sandboxes the app's data, encryption isn't required, and the wizard tells you so.
 
-![The 'Securing your data' step of the setup wizard](/assets/img/interviewer-v8-guide/securing-data.png)
+![The 'Securing your data' step of the setup wizard](/assets/img/interviewer-guide/securing-data.png)
 
 Next, you choose how you will unlock the app. Depending on your device, the options are:
 
@@ -85,7 +85,7 @@ Next, you choose how you will unlock the app. Depending on your device, the opti
 - **Passphrase** — a phrase of at least twelve characters.
 - **No security** — no app-level protection (your data still relies on the device's own protections).
 
-![Choosing an authentication method](/assets/img/interviewer-v8-guide/auth-method.png)
+![Choosing an authentication method](/assets/img/interviewer-guide/auth-method.png)
 
 <TipBox danger={true}>
 
@@ -95,15 +95,15 @@ There is **no way to recover a lost credential**. If you lose the enrolled biome
 
 Finally, the wizard asks whether you would like to share anonymous usage data to help improve the app. No participant or personal data — network data, interview responses, case IDs, or protocol contents — ever leaves the device, and you can change this choice at any time in **Settings → Privacy**.
 
-![The analytics preference step of the setup wizard](/assets/img/interviewer-v8-guide/analytics.png)
+![The analytics preference step of the setup wizard](/assets/img/interviewer-guide/analytics.png)
 
 ### Locking and unlocking
 
 When the app is locked you see only the lock screen — never any protocol names, session counts, or other details about what is stored.
 
-<Screenshot axis="interviewer" name="lock-screen" alt="The Interviewer 8 lock screen"></Screenshot>
+<Screenshot axis="interviewer" name="lock-screen" alt="The Interviewer lock screen"></Screenshot>
 
-Interviewer 8 locks itself automatically after a period of inactivity (configurable in **Settings**, from one minute up to an hour), as well as when the app is closed. You can also lock it immediately with **Lock now** in Settings.
+Interviewer locks itself automatically after a period of inactivity (configurable in **Settings**, from one minute up to an hour), as well as when the app is closed. You can also lock it immediately with **Lock now** in Settings.
 
 For extra protection, you can require re-authentication at interview boundaries — **entering** an interview (on by default), **exiting** to the dashboard, and **exporting** data — each toggled independently in Settings.
 
@@ -111,7 +111,7 @@ For extra protection, you can require re-authentication at interview boundaries 
 
 **Settings** is where you manage app preferences, control what your exports contain, and check on the app itself. Open it from the gear icon on the dashboard. It is organized into five areas: **About**, **Data export**, **Privacy**, **Security**, and **Synthetic data**.
 
-![The Interviewer 8 settings screen](/assets/img/interviewer-v8-guide/settings.png)
+![The Interviewer settings screen](/assets/img/interviewer-guide/settings.png)
 
 **About** reports basic information about the app and this device: the app version, how much of your storage is in use (shown as a usage bar — on desktop it also shows free disk space), and your installation ID, a unique per-device identifier. The version and installation ID are the details to quote when contacting us for support. This area also lets you re-show the one-click sample protocol card on the home screen if you previously dismissed it.
 
@@ -134,7 +134,7 @@ After opening Interviewer, the first thing you will see is the 'start screen'. T
 
 <Screenshot axis="interviewer" name="start-screen" alt="The Interviewer start screen"></Screenshot>
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 The start screen is divided into sections that group related tasks together, such as "starting an interview" or "exporting and managing interview data". Not all sections are visible all of the time. The start screen intelligently shows options only when they are available to use. For example, the export data section will only become visible once you have conducted one or more interviews.
 
@@ -159,9 +159,9 @@ The **protocols section** which allows you to quickly import a [Network Canvas p
 
 </AppOnly>
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
-Interviewer 8 presents this as a dashboard. You switch between two views from the toggle at the top of the screen — **Protocols** and **Data** — with a settings icon alongside them:
+Interviewer presents this as a dashboard. You switch between two views from the toggle at the top of the screen — **Protocols** and **Data** — with a settings icon alongside them:
 
 - **Protocols** — your installed protocols, shown as a deck you can flip through, alongside a card for importing a new protocol.
 - **Data** — every collected session, ready to resume, review, or export (covered under [Resuming, exporting, and managing interview sessions](#resuming-exporting-and-managing-interview-sessions) below).
@@ -173,17 +173,17 @@ Interviewer 8 presents this as a dashboard. You switch between two views from th
 
 Interviewer must be configured using one or more Network Canvas interview protocols before it can be used to collect data.
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 There are two ways to import a protocol into the devices running Interviewer. Which one you choose will depend on the needs of your study.
 
 </AppOnly>
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
-There are two ways to import a protocol into Interviewer 8: from a `.netcanvas` file on your device, or from a URL. Each protocol is validated on import, and any protocol built against an older schema is migrated to schema 8 automatically, with a notification telling you the migration occurred.
+There are two ways to import a protocol into Interviewer: from a `.netcanvas` file on your device, or from a URL. Each protocol is validated on import, and any protocol built against an older schema is migrated to schema 8 automatically, with a notification telling you the migration occurred.
 
-![The Import a protocol dialog in Interviewer 8](/assets/img/interviewer-v8-guide/import-protocol.png)
+![The Import a protocol dialog in Interviewer](/assets/img/interviewer-guide/import-protocol.png)
 
 </AppOnly>
 
@@ -198,7 +198,7 @@ running Interviewer is also the device used to author protocols in Architect.
 
 </TipBox>
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 ### Importing from a URL
 
@@ -217,7 +217,7 @@ provider to distribute protocol files to multiple devices.
 
 For the purposes of this tutorial, we will proceed using the built-in sample protocol.
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 To follow along on your own device, **click the "install sample protocol" button in the welcome section of the app** to install the protocol that we will be using. Alternatively, <DownloadLink href="/protocols/Sample Protocol v4.netcanvas">click here</DownloadLink> to download the file, and then import it into Interviewer using the import from file method described above.
 
@@ -225,9 +225,9 @@ Once a protocol has been imported, a new section will appear on the start screen
 
 </AppOnly>
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
-The sample protocol is built into Interviewer 8 — select it from the protocol deck on the **Home** screen to follow along. Alternatively, <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">click here</DownloadLink> to download the file, and import it from the **Protocols** area.
+The sample protocol is built into Interviewer — select it from the protocol deck on the **Home** screen to follow along. Alternatively, <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">click here</DownloadLink> to download the file, and import it from the **Protocols** area.
 
 Once a protocol is installed it appears as a card in the Home deck, representing the protocol you imported.
 
@@ -247,9 +247,9 @@ The protocol card can often be clicked, tapped, or dragged in order to perform a
 
 It also contains a **Start new interview** button, a **Requires internet** indicator (shown when the protocol uses internet-dependent interfaces such as Geospatial), and a trash icon for removing the protocol from the device.
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
-In Interviewer 6.x the card's metadata shows the protocol's [schema version](/en/get-started/advanced-topics/protocol-schema-information) instead of an interview count, and you start interviews and manage protocols from the start screen rather than from buttons on the card itself.
+In Interviewer Classic the card's metadata shows the protocol's [schema version](/en/get-started/advanced-topics/protocol-schema-information) instead of an interview count, and you start interviews and manage protocols from the start screen rather than from buttons on the card itself.
 
 </AppOnly>
 
@@ -257,7 +257,7 @@ In Interviewer 6.x the card's metadata shows the protocol's [schema version](/en
 
 ### Removing or managing installed protocols
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 To help you to manage protocols that are installed in Interviewer, there is a dedicated overlay. This can be opened from the protocols section, which will now display a "manage installed protocols" button.
 
@@ -269,17 +269,17 @@ From within this overlay, you can sort your installed protocols, as well as filt
 
 </AppOnly>
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
 Open the **Protocols** area to manage everything installed on the device. Each protocol lists its schema version, import date, and the number of interviews collected against it. Deleting a protocol asks you to confirm first, since it cannot be undone — and any interviews recorded against that protocol are removed along with it.
 
-![Confirming protocol deletion in Interviewer 8](/assets/img/interviewer-v8-guide/delete-protocol.png)
+![Confirming protocol deletion in Interviewer](/assets/img/interviewer-guide/delete-protocol.png)
 
 </AppOnly>
 
 ## Starting a new interview
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 By default, the start a new interview section shows the last protocol you installed (or started an interview with). It can be tapped or clicked to immediately begin an interview.
 
@@ -289,7 +289,7 @@ If you have more than one protocol installed in Interviewer, a card stack will a
 
 </AppOnly>
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
 To begin an interview, find the protocol in the **Home** deck and click **Start new interview** on its card (shown in the card anatomy above). The card you most recently used sits at the front of the deck for quick access; if you have several protocols installed, flip through the deck or open the **Protocols** area to search the full list.
 
@@ -309,7 +309,7 @@ For example, you might consider:
 - `STUDY_ID-PARTICIPANT_NAME-VISIT_NUMBER` (e.g `NetCanvas-Joshua-4`)
 - ...or simply `PARTICIPANT_NAME` (e.g `James Montgomery Williams`)
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 <TipBox>
 
@@ -340,7 +340,7 @@ In terms of the user interface elements that are always visible when within the 
 
 <Screenshot axis="interviewer" name="interviewer-ui" alt="The always-visible interview navigation elements"></Screenshot>
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 The **menu button** at the very top of the screen opens the primary app menu, which allows you to:
 
@@ -367,9 +367,9 @@ device, which may help with engagement.
 
 </AppOnly>
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
-Interviewer 8 keeps the interview chrome deliberately minimal. The navigation adapts to the device — a rail down the side on wider, landscape displays, and a bar along the bottom on tall, portrait ones — and contains just three controls:
+Interviewer keeps the interview chrome deliberately minimal. The navigation adapts to the device — a rail down the side on wider, landscape displays, and a bar along the bottom on tall, portrait ones — and contains just three controls:
 
 - An **exit** control (the door icon) that leaves the interview and returns to the dashboard.
 - An **up** arrow to move to the previous stage or prompt.
@@ -561,7 +561,7 @@ For more information on network filtering, see the [network filtering guide](/en
 
 You may wish to navigate back and forth between the quick add name generator and this stage to see the skip logic and network filtering in action.
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 <TipBox>
 
@@ -589,15 +589,15 @@ Each interview protocol has a "finish" screen automatically inserted by Intervie
 
 <Screenshot axis="interviewer" name="finish" alt="The finish screen"></Screenshot>
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
-Interviewer 8 asks you to confirm before finishing, since responses can't be changed once an interview is marked complete.
+Interviewer asks you to confirm before finishing, since responses can't be changed once an interview is marked complete.
 
-![Confirming that you want to finish the interview](/assets/img/interviewer-v8-guide/finish-confirm.png)
+![Confirming that you want to finish the interview](/assets/img/interviewer-guide/finish-confirm.png)
 
 After confirming, you arrive at a short completion screen, and from there return to the dashboard.
 
-![The interview-complete screen](/assets/img/interviewer-v8-guide/interview-complete.png)
+![The interview-complete screen](/assets/img/interviewer-guide/interview-complete.png)
 
 </AppOnly>
 
@@ -605,7 +605,7 @@ For now click "Finish" to finish the interview.
 
 ## Resuming, exporting, and managing interview sessions
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 Now that you have completed an interview, new sections and options will appear on the start screen for managing and resuming interview sessions.
 
@@ -621,7 +621,7 @@ The data export process consists of selecting one or more sessions from this sec
 
 </AppOnly>
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
 Every session you collect — whether in progress, finished, or already exported — is listed in the **Interviews** area. Each row shows the case ID, the protocol used, when the interview started, and its status.
 
@@ -633,15 +633,15 @@ Select a session to resume an in-progress interview or review a finished one. Yo
 
 ## File types
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 After clicking "export selected to file," you will be prompted to choose a file type for the export. The two options are:
 
 </AppOnly>
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
-Interviewer 8 packages the sessions you select into a single `.zip` archive, reporting progress as it goes and flagging each session as exported once it completes. The file types included are chosen ahead of time in **Settings** rather than at export time. The two options are:
+Interviewer packages the sessions you select into a single `.zip` archive, reporting progress as it goes and flagging each session as exported once it completes. The file types included are chosen ahead of time in **Settings** rather than at export time. The two options are:
 
 </AppOnly>
 
@@ -657,7 +657,7 @@ Which file type you should choose depends largely on the needs of your analysis 
 
 You may configure a variety of specialized export options that will impact the data you receive in a variety of ways. These options can be left at their default values unless you know that you need to change them.
 
-<AppOnly axis="interviewer" app="v6">
+<AppOnly axis="interviewer" app="classic">
 
 #### Merge sessions by protocol
 
@@ -671,9 +671,9 @@ If this option is left deselected, the export process will produce separate file
 
 Position data from layout variables used on the Sociogram interface in Interviewer is stored on nodes as normalized x/y coordinates, with the origin in the top left of the screen. This allows you to later visualize these layouts on a canvas of arbitrary size, and to compare layouts that were created on screens with different proportions.
 
-<AppOnly axis="interviewer" app="v8">
+<AppOnly axis="interviewer" app="current">
 
-In Interviewer 8 you can optionally export node positions as screen-coordinate pixels instead of normalized coordinates, at a resolution you set in **Settings** — useful when you want positions to match a specific screen size.
+In Interviewer you can optionally export node positions as screen-coordinate pixels instead of normalized coordinates, at a resolution you set in **Settings** — useful when you want positions to match a specific screen size.
 
 </AppOnly>
 
@@ -681,6 +681,6 @@ In Interviewer 8 you can optionally export node positions as screen-coordinate p
 
 Now that you have experienced the general flow of an interview in Network Canvas Interviewer from the participant perspective, you may wish to:
 
-- Learn how to create your own protocol in [getting started with Architect Desktop](/en/design-protocols/getting-started)
+- Learn how to create your own protocol in [getting started with Architect Classic](/en/design-protocols/getting-started)
 - Export your interview data using the [Data Export guide](/en/analyze-data/data-export)
 - Explore the full [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows) for conducting research

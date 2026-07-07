@@ -19,12 +19,12 @@ export const AppOnly = (props: AppOnlyProps) => {
   const [selectedApp] = useSelectedApp(axis);
 
   if (props.axis === 'interviewer') {
-    const activeApp = selectedApp ?? INTERVIEWER_LABELS.v8;
+    const activeApp = selectedApp ?? INTERVIEWER_LABELS.current;
     return activeApp === INTERVIEWER_LABELS[props.app] ? (
       <>{props.children}</>
     ) : null;
   }
 
-  const activeApp = selectedApp ?? APP_LABELS.web;
+  const activeApp = selectedApp ?? APP_LABELS.current;
   return activeApp === APP_LABELS[props.app] ? <>{props.children}</> : null;
 };

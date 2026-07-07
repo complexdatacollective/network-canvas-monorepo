@@ -27,6 +27,11 @@ const redirectTests: RedirectTest[] = [
     description: 'Root redirects to /en',
   },
   {
+    from: '/en/design-protocols/installing-architect-desktop',
+    expectedDestination: '/en/design-protocols/installing-architect-classic',
+    description: 'Installing Architect page renamed to Architect Classic',
+  },
+  {
     from: '/citing-the-software',
     expectedDestination:
       '/en/get-started/project-information/citing-the-software',

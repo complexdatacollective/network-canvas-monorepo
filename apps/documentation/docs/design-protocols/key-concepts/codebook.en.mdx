@@ -14,12 +14,12 @@ The protocol's codebook provides an overview of all entities and variables defin
 
 Architect automatically constructs the codebook as you create variables in your protocol. How you open it depends on which version of Architect you use:
 
-- In **Architect Desktop**, click the **Manage codebook** button at the top of a protocol file.
-- In **Architect Web**, open the **Codebook** page from the navigation bar at the top of the editor.
+- In **Architect Classic**, click the **Manage codebook** button at the top of a protocol file.
+- In **Architect**, open the **Codebook** page from the navigation bar at the top of the editor.
 
-![Clicking the Manage codebook button in Architect Desktop navigates to the codebook view](/assets/img/key-concepts/codebook/manage-codebook.png)
+![Clicking the Manage codebook button in Architect Classic navigates to the codebook view](/assets/img/key-concepts/codebook/manage-codebook.png)
 
-![In Architect Web, the codebook is a dedicated page opened from the Codebook link in the top navigation bar](/assets/img/architect-web/codebook-web.png)
+![In Architect, the codebook is a dedicated page opened from the Codebook link in the top navigation bar](/assets/img/architect/codebook-web.png)
 
 ## Entity types
 
@@ -27,11 +27,11 @@ The codebook organizes entities by entity type -- ego, node, and edge, and organ
 
 ![A view of the codebook in Architect](/assets/img/key-concepts/codebook/codebook.png)
 
-In both versions of Architect you can customize an entity type's name and color. Architect Web goes further for node types, letting you also set the shape and icon used to represent the node across interfaces.
+In both versions of Architect you can customize an entity type's name and color. Architect goes further for node types, letting you also set the shape and icon used to represent the node across interfaces.
 
-![Editing a node type in Architect Web, where you can set its shape and icon in addition to its name and color](/assets/img/architect-web/edit-node-type-web.png)
+![Editing a node type in Architect, where you can set its shape and icon in addition to its name and color](/assets/img/architect/edit-node-type-web.png)
 
-In Architect Web you can also make a node type's shape **dynamic**, so that the shape reflects the value of one of the node's variables rather than staying fixed. Enable the **Map variable to shape** option in the node type's Shape section to override the default shape based on a variable's value. The mapping works in one of two ways depending on the variable you choose:
+In Architect you can also make a node type's shape **dynamic**, so that the shape reflects the value of one of the node's variables rather than staying fixed. Enable the **Map variable to shape** option in the node type's Shape section to override the default shape based on a variable's value. The mapping works in one of two ways depending on the variable you choose:
 
 - For **categorical**, **ordinal**, or **boolean** variables, you assign a shape to each discrete value. Any value you leave unmapped falls back to the default shape.
 - For **number** or **scalar** variables, you define up to two numeric **thresholds**. Values below the first threshold use the default shape, and each threshold sets the shape used at or above its value.

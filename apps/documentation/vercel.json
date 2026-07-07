@@ -6,6 +6,11 @@
       "permanent": true
     },
     {
+      "source": "/en/design-protocols/installing-architect-desktop",
+      "destination": "/en/design-protocols/installing-architect-classic",
+      "permanent": true
+    },
+    {
       "source": "/citing-the-software",
       "destination": "/en/get-started/project-information/citing-the-software",
       "permanent": true
