@@ -10,15 +10,15 @@ export function isGeneticRelationshipType(
 }
 
 /**
- * Reads the relationship type from an edge attribute.
- * The categorical variable is stored as a single-element array; this handles
- * both the array form and (defensively) a plain string.
+ * Reads a categorical edge attribute. The categorical variable is stored as a
+ * single-element array; this handles both the array form and (defensively) a
+ * plain string, returning the value or `undefined`.
  */
-export function readRelationshipType(
+function readCategoricalEdgeAttribute(
   edge: NcEdge,
-  relationshipTypeVariable: string,
+  variable: string,
 ): string | undefined {
-  const raw = edge[entityAttributesProperty][relationshipTypeVariable];
+  const raw = edge[entityAttributesProperty][variable];
   if (Array.isArray(raw)) {
     const first = raw[0];
     return typeof first === 'string' ? first : undefined;
@@ -26,20 +26,22 @@ export function readRelationshipType(
   return typeof raw === 'string' ? raw : undefined;
 }
 
+/** Reads the relationship type (`biological`/`donor`/…) from an edge. */
+export function readRelationshipType(
+  edge: NcEdge,
+  relationshipTypeVariable: string,
+): string | undefined {
+  return readCategoricalEdgeAttribute(edge, relationshipTypeVariable);
+}
+
 /**
- * Reads the gamete role (`egg`/`sperm`) from an edge attribute, in the same
- * single-element-array categorical form as the relationship type. Returns
- * `undefined` when the variable is unset — the caller then falls back to the
- * sex-derived mtDNA rule.
+ * Reads the gamete role (`egg`/`sperm`) from an edge. Returns `undefined` when
+ * the variable is unset — the caller then falls back to the sex-derived mtDNA
+ * rule.
  */
 export function readGameteRole(
   edge: NcEdge,
   gameteRoleVariable: string,
 ): string | undefined {
-  const raw = edge[entityAttributesProperty][gameteRoleVariable];
-  if (Array.isArray(raw)) {
-    const first = raw[0];
-    return typeof first === 'string' ? first : undefined;
-  }
-  return typeof raw === 'string' ? raw : undefined;
+  return readCategoricalEdgeAttribute(edge, gameteRoleVariable);
 }

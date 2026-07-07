@@ -10,9 +10,11 @@ import { SyntheticInterview } from '@codaco/protocol-utilities';
 // Names follow North-American patrilineal convention — a wife takes her
 // husband's surname, children take their father's, a married-in spouse brings
 // their own. That convention is itself part of the demonstration: ego's parents
-// are first cousins who carry DIFFERENT surnames (Marsh vs Bauer) because one
+// are first cousins BORN with different surnames (Marsh vs Bauer) because one
 // descends through a son and the other through a daughter of the shared Marsh
-// great-grandparents.
+// great-grandparents. (Rose's displayed name is her married surname "Marsh",
+// which coincidentally matches David's; the "Bauer" birth surname shows only in
+// the `née Bauer` annotations below, not in the rendered pedigree.)
 
 const NAME_VAR = 'name';
 const EGO_VAR = 'isEgo';
@@ -57,7 +59,13 @@ const BOOL_DEFAULTS = {
  *  - Cystic fibrosis (autosomal recessive): ego's parents Rose & David are FIRST
  *    COUSINS (both descend from the Marsh great-grandparents), so ego's affected
  *    sibling Sam makes them obligate carriers and ego herself at-risk-homozygous.
- *    The consanguinity is the lesson.
+ *    The consanguinity is the lesson. NOTE: because ego's parents are obligate
+ *    carriers, the engine also marks BOTH grandparents (Nancy + George) as
+ *    at-risk carriers, which makes ego's aunt/uncles (Margaret, Thomas, Robert)
+ *    show the at-risk-homozygous marker too — a known over-flag of the
+ *    research-gated homozygous rule (it fires on any child of two at-risk-carrier
+ *    parents, regardless of how certain that carriage is). This is pre-existing
+ *    engine behaviour, not specific to this fixture.
  *  - Haemophilia A (X-linked recessive): ego's maternal uncle Thomas is affected,
  *    making his mother Nancy an OBLIGATE carrier; the carrier-female line reaches
  *    Rose, ego (may carry) and her son Noah (may develop).

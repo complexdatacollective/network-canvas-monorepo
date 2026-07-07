@@ -323,3 +323,26 @@ export const remarriedParentWithSibling: PedigreeInput = {
     { partnerIndex1: 2, partnerIndex2: 6, isActive: true },
   ],
 };
+
+/**
+ * A child with a couple (mom + dad) PLUS TWO auxiliary contributors — an egg
+ * donor and a surrogate. Both auxiliary parents must be seated adjacent to the
+ * couple (one on each side) so their donor/surrogate connectors stay short.
+ */
+export const dualAuxiliary: PedigreeInput = {
+  id: ['mom', 'dad', 'donor', 'surrogate', 'child'],
+  parents: [
+    [],
+    [],
+    [],
+    [],
+    [
+      { parentIndex: 0, edgeType: 'biological' },
+      { parentIndex: 1, edgeType: 'biological' },
+      { parentIndex: 2, edgeType: 'donor' },
+      { parentIndex: 3, edgeType: 'surrogate' },
+    ],
+  ],
+  partners: [{ partnerIndex1: 0, partnerIndex2: 1, isActive: true }],
+  relation: [{ id1: 0, id2: 1, code: 4 }],
+};

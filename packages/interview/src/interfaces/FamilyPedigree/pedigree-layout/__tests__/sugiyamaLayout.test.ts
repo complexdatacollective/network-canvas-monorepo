@@ -8,6 +8,7 @@ import {
 } from '../sugiyamaLayout';
 import {
   consanguineousUnion,
+  dualAuxiliary,
   multipleMarriages,
   nuclearFamily,
   remarriedParentWithSibling,
@@ -277,6 +278,21 @@ describe('minimizeCrossings', () => {
       Math.abs(col(5) - col(4)),
     );
     expect(gapToCouple).toBe(1);
+  });
+
+  it('seats two auxiliary parents (donor + surrogate) both adjacent to the couple', () => {
+    // dualAuxiliary: mom(0) + dad(1) are the couple; donor(2) and surrogate(3)
+    // both contribute to child(4). Both auxiliaries must land beside the couple
+    // (one on each side), not drift away.
+    const graph = buildPedigreeGraph(dualAuxiliary);
+    const ordering = minimizeCrossings(graph);
+    const coupleLayer = graph.layers[0]!;
+    const row = ordering[coupleLayer]!;
+    const col = (node: number) => row.indexOf(node);
+    const gapTo = (aux: number) =>
+      Math.min(Math.abs(col(aux) - col(0)), Math.abs(col(aux) - col(1)));
+    expect(gapTo(2)).toBe(1); // donor adjacent to the couple
+    expect(gapTo(3)).toBe(1); // surrogate adjacent to the couple
   });
 });
 

@@ -813,7 +813,6 @@ function minimizeCrossings(graph: PedigreeGraph): number[][] {
     const reflected = reverseBlocks(bestOrdering, graph, bestCrossings, 24);
     if (reflected.crossings < bestCrossings) {
       bestOrdering = reflected.ordering;
-      bestCrossings = reflected.crossings;
     }
   }
 

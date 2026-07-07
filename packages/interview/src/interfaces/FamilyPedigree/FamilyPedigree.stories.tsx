@@ -465,7 +465,8 @@ async function setFieldInput(
  * ego's recorded sex.
  */
 async function selectEgoSex(
-  label: string = BIOLOGICAL_SEX_OPTIONS[0]?.label ?? 'Female',
+  label: string = BIOLOGICAL_SEX_OPTIONS.find((o) => o.value === 'female')
+    ?.label ?? 'Female',
 ) {
   await setFieldInput('biologicalSex', label);
   await clickContinue();

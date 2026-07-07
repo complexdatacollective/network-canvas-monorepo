@@ -51,6 +51,13 @@ function pushInto(
  * - Two or more eggs (mitochondrial donation) → the mtDNA egg is the `donor`
  *   egg (the enucleated donor egg retains its cytoplasm), else the first egg;
  *   the nuclear parents are everyone EXCEPT that donor egg.
+ *
+ * This assumes COHERENT gamete tagging (as produced by Architect / the fixture):
+ * an MRT birth tags both eggs `gameteRole='egg'` with the donor egg additionally
+ * `relationshipType='donor'`. It does not validate the tagging — malformed input
+ * (e.g. two eggs with no `donor` tag, or only the donor egg tagged) would route
+ * mtDNA/nuclear parentage by edge order rather than intent. Garbage in, garbage
+ * out; upstream (the schema + Architect UI) is responsible for coherent tags.
  */
 function splitParents(
   parentEdges: ParentEdge[],
