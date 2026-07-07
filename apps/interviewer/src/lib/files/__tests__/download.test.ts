@@ -28,7 +28,7 @@ describe('shareOrDownloadBlob (web)', () => {
         title: 'export.zip',
       }),
     );
-    expect(result).toEqual({ saved: true });
+    expect(result).toEqual({ saved: true, confirmed: true });
   });
 
   it('returns saved:false when the user cancels the share sheet', async () => {
@@ -39,7 +39,7 @@ describe('shareOrDownloadBlob (web)', () => {
 
     const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
 
-    expect(result).toEqual({ saved: false });
+    expect(result).toEqual({ saved: false, confirmed: false });
   });
 
   it('falls back to an object-URL <a download> when canShare is false', async () => {
@@ -61,7 +61,11 @@ describe('shareOrDownloadBlob (web)', () => {
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(anchor.download).toBe('export.zip');
     expect(click).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ saved: true });
+    // The object-URL <a download> fires the OS Save dialog with no observable
+    // outcome — a cancelled Save-As or blocked download is indistinguishable
+    // from success. It must NOT report a confirmed save, or the caller would
+    // stamp exportedAt for a file that was never written (data-loss primitive).
+    expect(result).toEqual({ saved: true, confirmed: false });
   });
 
   it('falls back when navigator has no canShare (older browsers)', async () => {
@@ -78,6 +82,6 @@ describe('shareOrDownloadBlob (web)', () => {
 
     const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
     expect(createObjectURL).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ saved: true });
+    expect(result).toEqual({ saved: true, confirmed: false });
   });
 });

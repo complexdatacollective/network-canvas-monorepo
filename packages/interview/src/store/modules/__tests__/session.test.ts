@@ -9,6 +9,7 @@ import type {
 } from '@codaco/shared-consts';
 
 import { createInitialNetwork } from '../../../contract/network';
+import type { AppDispatch } from '../../store';
 import sessionReducer, {
   addEdge,
   addNode,
@@ -42,7 +43,7 @@ function createTestStore(options: {
   type ProtocolState = ReturnType<typeof createTestProtocolState>;
   type UIState = typeof uiState;
 
-  return configureStore({
+  const store = configureStore({
     reducer: {
       session: (state: SessionState = sessionState): SessionState => state,
       protocol: (state: ProtocolState = protocolState): ProtocolState => state,
@@ -54,6 +55,11 @@ function createTestStore(options: {
       ui: uiState,
     },
   });
+
+  // This mock store models only the slices these thunks read, so its inferred
+  // dispatch type doesn't match the app thunks (pinned to the real RootState).
+  // Bridge its dispatch to the real AppDispatch so the tests can dispatch them.
+  return store as unknown as typeof store & { dispatch: AppDispatch };
 
   function createTestSessionState() {
     return {
@@ -317,7 +323,7 @@ function createTestStoreWithEgo(options: {
   type ProtocolState = ReturnType<typeof createTestProtocolState>;
   type UIState = typeof uiState;
 
-  return configureStore({
+  const store = configureStore({
     reducer: {
       session: (state: SessionState = sessionState): SessionState => state,
       protocol: (state: ProtocolState = protocolState): ProtocolState => state,
@@ -329,6 +335,8 @@ function createTestStoreWithEgo(options: {
       ui: uiState,
     },
   });
+
+  return store as unknown as typeof store & { dispatch: AppDispatch };
 
   function createTestSessionState() {
     return {
@@ -384,7 +392,7 @@ function createTestStoreWithEdge(options: {
   type ProtocolState = ReturnType<typeof createTestProtocolState>;
   type UIState = typeof uiState;
 
-  return configureStore({
+  const store = configureStore({
     reducer: {
       session: (state: SessionState = sessionState): SessionState => state,
       protocol: (state: ProtocolState = protocolState): ProtocolState => state,
@@ -396,6 +404,8 @@ function createTestStoreWithEdge(options: {
       ui: uiState,
     },
   });
+
+  return store as unknown as typeof store & { dispatch: AppDispatch };
 
   function createTestSessionState() {
     return {
@@ -594,7 +604,7 @@ function createTestStoreWithPrompts(options: {
 
   type ProtocolState = typeof protocolState;
 
-  return configureStore({
+  const store = configureStore({
     reducer: {
       // Use the real session reducer so .fulfilled handlers run and we can
       // assert the resulting node state.
@@ -606,6 +616,8 @@ function createTestStoreWithPrompts(options: {
       protocol: protocolState,
     },
   });
+
+  return store as unknown as typeof store & { dispatch: AppDispatch };
 }
 
 describe('addNodeToPrompt', () => {
@@ -803,10 +815,12 @@ function createTestStoreWithMetadata(stageMetadata: StageMetadata) {
     stageMetadata,
   };
 
-  return configureStore({
+  const store = configureStore({
     reducer: { session: sessionReducer },
     preloadedState: { session: sessionState },
   });
+
+  return store as unknown as typeof store & { dispatch: AppDispatch };
 }
 
 describe('deleteNode', () => {

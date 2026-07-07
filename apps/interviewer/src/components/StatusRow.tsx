@@ -1,5 +1,6 @@
 import { HardDrive, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
+import type React from 'react';
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 
@@ -11,6 +12,8 @@ import {
   formatBytes,
   isStoragePersisted,
 } from '~/lib/storage';
+
+import AppUpdatePill from './AppUpdate/AppUpdatePill';
 
 type Durability = { persisted: boolean; usage: number | null };
 
@@ -47,11 +50,13 @@ export function StatusRowView({
   interviewCount,
   mode,
   durability,
+  versionSlot = <span>Interviewer {APP_VERSION}</span>,
 }: {
   protocolCount: number;
   interviewCount: number;
   mode: AuthMode | undefined;
   durability: Durability | null;
+  versionSlot?: React.ReactNode;
 }) {
   return (
     <motion.div
@@ -72,7 +77,7 @@ export function StatusRowView({
           interviews
         </span>
       </Link>
-      <div className="flex items-center gap-3.5">
+      <div className="flex items-center gap-6">
         {/* Two orthogonal facts, stated separately so neither can be read as
             the other: encryption comes from the enrolled vault mode; storage
             durability (browser eviction) deliberately avoids security words
@@ -118,7 +123,7 @@ export function StatusRowView({
             )}
           </span>
         ) : null}
-        <span>Interviewer {APP_VERSION}</span>
+        {versionSlot}
       </div>
     </motion.div>
   );
@@ -182,6 +187,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
       interviewCount={interviewCount}
       mode={mode}
       durability={durability}
+      versionSlot={<AppUpdatePill />}
     />
   );
 }

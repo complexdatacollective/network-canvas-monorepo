@@ -41,8 +41,7 @@ export default function PasswordField({
   const masked = Boolean(suppressPasswordManager) && supportsTextSecurity;
 
   const strength = useMemo(
-    () =>
-      showStrengthMeter ? getPasswordStrength(String(props.value ?? '')) : null,
+    () => (showStrengthMeter ? getPasswordStrength(props.value ?? '') : null),
     [showStrengthMeter, props.value],
   );
 

@@ -26,7 +26,7 @@ const CONTENT_SECURITY_POLICY = [
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob:",
   "media-src 'self' blob:",
-  "connect-src 'self' data: blob: https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://fonts.googleapis.com https://fonts.gstatic.com",
+  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://fonts.googleapis.com https://fonts.gstatic.com",
   "worker-src 'self' blob:",
   "frame-src 'self'",
   "base-uri 'none'",
@@ -176,5 +176,11 @@ export default defineConfig({
     testTimeout: 20_000,
     setupFiles: ['./src/test-setup.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
+    // Honour the app's own analytics gate (analytics.ts) so PostHog doesn't
+    // init a real client (in debug mode) against the production host during
+    // unit tests, spamming stderr with config dumps and $pageview payloads.
+    env: {
+      VITE_DISABLE_ANALYTICS: 'true',
+    },
   },
 });

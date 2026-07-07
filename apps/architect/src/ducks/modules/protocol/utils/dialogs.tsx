@@ -8,7 +8,7 @@ const basename = (filePath: string | null | undefined) => {
   if (filePath == null) return filePath;
 
   // Trim trailing path separators so behavior matches node:path.basename
-  const trimmedPath = String(filePath).replace(/[\\/]+$/, '');
+  const trimmedPath = filePath.replace(/[\\/]+$/, '');
   const parts = trimmedPath.split(/[\\/]/);
 
   return parts.pop() ?? trimmedPath;

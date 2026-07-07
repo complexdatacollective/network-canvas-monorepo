@@ -1,6 +1,6 @@
-import { createAsyncThunk, type Dispatch } from '@reduxjs/toolkit';
+import { type Dispatch } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
-import { z } from 'zod';
+import { type z } from 'zod';
 
 import {
   type CurrentProtocol,
@@ -8,17 +8,18 @@ import {
   extractProtocolFromZip,
   getMigrationInfo,
   migrateProtocol,
+  NetcanvasInflationLimitError,
   validateProtocol,
 } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
 import { APP_SCHEMA_VERSION } from '~/config';
+import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import {
   appUpgradeRequiredDialog,
   generalErrorDialog,
   mayUpgradeProtocolDialog,
   validationErrorDialog,
 } from '~/ducks/modules/userActions/dialogs';
-import type { RootState } from '~/ducks/store';
 import {
   saveProtocolAssets,
   saveProtocolAssetsToMemory,
@@ -63,14 +64,17 @@ const trackImportValidationFailure = (
   source: ImportSource,
   error: z.ZodError,
 ) => {
-  const flattenedErrors = z.flattenError(error);
+  // Report only the structural shape of each failure — the issue code and its
+  // schema path — never the prettified message or flattened error maps, which
+  // embed protocol-derived names and values (codebook record keys, variable
+  // names, entered values). Mirrors the editor-time `protocol_validation_failed`
+  // event in analyticsListener.
   posthog.capture('protocol_import_failed', {
     source,
     reason: 'validation',
     error_count: error.issues.length,
-    error_message: z.prettifyError(error),
-    form_errors: flattenedErrors.formErrors,
-    field_errors: flattenedErrors.fieldErrors,
+    error_codes: error.issues.map((issue) => issue.code),
+    error_paths: error.issues.map((issue) => issue.path.join('.')),
   });
 };
 
@@ -149,7 +153,7 @@ const instantiateProtocol = async (
   navigate('/protocol');
 };
 
-export const openLocalNetcanvas = createAsyncThunk(
+export const openLocalNetcanvas = createAppAsyncThunk(
   'protocol/openLocalNetcanvas',
   async (file: File, { dispatch }) => {
     // Signal an import is in flight so a fresh-load service-worker update won't
@@ -195,8 +199,26 @@ export const openLocalNetcanvas = createAsyncThunk(
         throw error;
       }
 
-      // Reuse the zip the guard already parsed rather than re-loading the archive.
-      const { protocol, assets } = await extractProtocolFromZip(guardedZip);
+      // Reuse the zip the guard already parsed rather than re-loading the
+      // archive. extractProtocolFromZip caps the *actual* inflated output as it
+      // streams, so a deflate bomb that under-declares its size in the central
+      // directory (and so slips past loadGuardedNetcanvas) still aborts here
+      // instead of OOM-crashing the tab.
+      let protocol: Awaited<
+        ReturnType<typeof extractProtocolFromZip>
+      >['protocol'];
+      let assets: Awaited<ReturnType<typeof extractProtocolFromZip>>['assets'];
+      try {
+        ({ protocol, assets } = await extractProtocolFromZip(guardedZip));
+      } catch (error) {
+        if (error instanceof NetcanvasInflationLimitError) {
+          dispatch(
+            generalErrorDialog('Failed to Open Protocol', error.message),
+          );
+          return false;
+        }
+        throw error;
+      }
       const protocolName = file.name.replace(/\.netcanvas$/, '');
 
       // Handle migration if needed
@@ -275,7 +297,7 @@ const checkSchemaVersion = (protocol: CurrentProtocol): schemaVersionStates => {
 };
 
 // helper function so we can use loadingLock
-const handleProtocolMigration = createAsyncThunk(
+const handleProtocolMigration = createAppAsyncThunk(
   'protocol/openOrUpgrade',
   async (
     { protocol, name }: { protocol: CurrentProtocol; name: string },
@@ -322,7 +344,7 @@ type CreateNetcanvasParams = {
 };
 
 // Create a new protocol
-export const createNetcanvas = createAsyncThunk(
+export const createNetcanvas = createAppAsyncThunk(
   'webUserActions/createNetcanvas',
   async ({ name, description }: CreateNetcanvasParams, { dispatch }) => {
     // Create a new empty protocol
@@ -351,7 +373,7 @@ export const createNetcanvas = createAsyncThunk(
 // migration steps and validate it directly. Like the remote-template flow, a
 // fresh library entry (new id) is created so a template can be opened
 // repeatedly without overwriting earlier copies.
-export const openBundledTemplate = createAsyncThunk(
+export const openBundledTemplate = createAppAsyncThunk(
   'webUserActions/openBundledTemplate',
   async (
     {
@@ -361,6 +383,10 @@ export const openBundledTemplate = createAsyncThunk(
     }: { protocol: CurrentProtocol; name?: string; assets?: ExtractedAsset[] },
     { dispatch },
   ) => {
+    // Signal an import is in flight so a fresh-load service-worker update won't
+    // silently reload mid-import (which could leave a library row whose bundled
+    // assets were never written). Mirrors openLocalNetcanvas.
+    setImportInProgress(true);
     try {
       const validationResult = await validateProtocol(protocol);
 
@@ -387,15 +413,17 @@ export const openBundledTemplate = createAsyncThunk(
       const errorMessage = ensureError(error).message;
       dispatch(generalErrorDialog('Protocol Import Error', errorMessage));
       return false;
+    } finally {
+      setImportInProgress(false);
     }
   },
 );
 
 // Export protocol as .netcanvas file
-export const exportNetcanvas = createAsyncThunk(
+export const exportNetcanvas = createAppAsyncThunk(
   'webUserActions/exportNetcanvas',
   async (_, { dispatch, getState }) => {
-    const state = getState() as RootState;
+    const state = getState();
     const protocol = state.activeProtocol?.present;
 
     if (!protocol) {
@@ -435,7 +463,7 @@ export const exportNetcanvas = createAsyncThunk(
 
 // Load a protocol already saved in the library into the editing buffer. Its
 // assets are already namespaced under this id in IndexedDB.
-export const openLibraryProtocol = createAsyncThunk(
+export const openLibraryProtocol = createAppAsyncThunk(
   'webUserActions/openLibraryProtocol',
   async (id: string, { dispatch }) => {
     const row = await getStoredProtocol(id);
@@ -460,12 +488,12 @@ export const openLibraryProtocol = createAsyncThunk(
 
 // Remove a protocol (and its assets) from the library. If it is the one
 // currently being edited, also close the editing buffer.
-export const deleteLibraryProtocol = createAsyncThunk(
+export const deleteLibraryProtocol = createAppAsyncThunk(
   'webUserActions/deleteLibraryProtocol',
   async (id: string, { dispatch, getState }) => {
     await deleteStoredProtocol(id);
 
-    const state = getState() as RootState;
+    const state = getState();
     if (getActiveProtocolId(state) === id) {
       disarmInMemoryUnloadGuard();
       dispatch(setActiveProtocolId(null));

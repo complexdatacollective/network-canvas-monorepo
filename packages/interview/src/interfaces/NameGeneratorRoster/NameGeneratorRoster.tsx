@@ -391,7 +391,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                               key={
                                 Array.isArray(sp.property)
                                   ? sp.property.join('-')
-                                  : String(sp.property)
+                                  : sp.property
                               }
                               property={sp.property}
                               type={sp.type}

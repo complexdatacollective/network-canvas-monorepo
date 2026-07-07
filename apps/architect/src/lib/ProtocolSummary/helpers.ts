@@ -127,13 +127,7 @@ export const getCodebookIndex = (protocol: Protocol | null | undefined) => {
             variables?: Record<string, VariableConfiguration>;
           }
         ).variables,
-        buildVariableEntry(
-          protocol,
-          variablePaths,
-          fields,
-          entity,
-          String(entityType),
-        ),
+        buildVariableEntry(protocol, variablePaths, fields, entity, entityType),
       ),
     );
   });

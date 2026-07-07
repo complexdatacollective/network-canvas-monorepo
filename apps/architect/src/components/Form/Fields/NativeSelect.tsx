@@ -304,7 +304,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
               {...inputProps}
               value={inputProps.value || '_placeholder'}
               onChange={handleChange}
-              disabled={!!disabled}
+              disabled={disabled}
               {...rest}
             >
               <option disabled={!allowPlaceholderSelect} value="_placeholder">

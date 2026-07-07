@@ -112,6 +112,10 @@
       "types": "./dist/Popover.d.ts",
       "default": "./dist/Popover.js"
     },
+    "./Pill": {
+      "types": "./dist/Pill.d.ts",
+      "default": "./dist/Pill.js"
+    },
     "./Tooltip": {
       "types": "./dist/Tooltip.d.ts",
       "default": "./dist/Tooltip.js"
@@ -536,6 +540,14 @@
     "./form/hooks/useForm": {
       "types": "./dist/form/hooks/useForm.d.ts",
       "default": "./dist/form/hooks/useForm.js"
+    },
+    "./appUpdate/useAppUpdate": {
+      "types": "./dist/appUpdate/useAppUpdate.d.ts",
+      "default": "./dist/appUpdate/useAppUpdate.js"
+    },
+    "./appUpdate/AppUpdateIndicator": {
+      "types": "./dist/appUpdate/AppUpdateIndicator.d.ts",
+      "default": "./dist/appUpdate/AppUpdateIndicator.js"
     }
   },
   "publishConfig": {

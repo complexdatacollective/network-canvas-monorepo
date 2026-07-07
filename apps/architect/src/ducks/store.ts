@@ -14,7 +14,7 @@ import { protocolLibraryListenerMiddleware } from './middleware/protocolLibraryL
 import { protocolValidationListenerMiddleware } from './middleware/protocolValidationListener';
 import { scrollPositionsListenerMiddleware } from './middleware/scrollPositionsListener';
 import { stageEditorDraftListenerMiddleware } from './middleware/stageEditorDraftListener';
-import { getActiveProtocolId } from './modules/app';
+import { getActiveProtocolId, setStorageUnavailable } from './modules/app';
 import type { RootState } from './modules/root';
 import { rootReducer } from './modules/root';
 
@@ -23,13 +23,34 @@ import { rootReducer } from './modules/root';
 // editing different protocols stay isolated. The durable protocol content lives
 // in IndexedDB (protocolLibrary); sessionStorage only holds the in-session view.
 const rememberedKeys = ['app', 'activeProtocol'];
-const rememberDriver = createSessionStorageDriver();
+
+// If sessionStorage rejects writes or hits its quota, the driver silently
+// degrades to an in-memory map — which means a reload would rehydrate the stale
+// persisted `present` over the newer durable IndexedDB row, dropping autosaved
+// edits. Surface that via the storage-unavailable banner (and disable autosave)
+// instead. The driver notifies once; the store may not exist yet when the
+// driver is constructed, so dispatch is deferred behind a setter.
+let dispatchStorageUnavailable: (() => void) | null = null;
+// redux-remember rehydrates during store creation, so the driver can hit an
+// unavailable sessionStorage (its getItem fallback) before the setter below is
+// installed. Buffer that first signal so the banner still fires once the store
+// exists, rather than being lost to the no-op.
+let storageUnavailablePending = false;
+const rememberDriver = createSessionStorageDriver(() => {
+  if (dispatchStorageUnavailable) {
+    dispatchStorageUnavailable();
+  } else {
+    storageUnavailablePending = true;
+  }
+});
 
 // Persist only the timeline `present` (not the up-to-1000-entry undo history),
-// and rebuild it into a full empty-history timeline on reload.
+// stamping the owning library id so a reload can reject a mismatched id/present
+// pair, and rebuild it into a full empty-history timeline on reload. The store
+// is created below, so read the current id lazily at serialise time.
 const serialize = (data: unknown, key: string): string =>
   key === 'activeProtocol'
-    ? serializeActiveProtocol(data)
+    ? serializeActiveProtocol(data, getActiveProtocolId(store.getState()))
     : JSON.stringify(data);
 
 const unserialize = (data: string, key: string): unknown =>
@@ -62,6 +83,17 @@ const store = configureStore({
       }) as unknown as ReturnType<typeof getDefaultEnhancers>[0],
     ),
 });
+
+// Now the store exists, let the session-storage driver surface a write/quota
+// failure via the banner. Dispatched at most once (the driver only notifies on
+// its first fallback).
+dispatchStorageUnavailable = () => {
+  store.dispatch(setStorageUnavailable(true));
+};
+// Flush a fallback that happened during rehydration, before the setter existed.
+if (storageUnavailablePending) {
+  dispatchStorageUnavailable();
+}
 
 // Keep the non-redux asset scope in sync with the persisted active protocol id,
 // so asset utils resolve against the right protocol after dispatches and after

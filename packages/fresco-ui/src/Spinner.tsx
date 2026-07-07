@@ -50,7 +50,7 @@ const spinnerVariants = cva({
     '[--container-size:calc(var(--circle-size)*3)]',
     'relative',
     'will-change-transform',
-    'backface-visibility-hidden',
+    'backface-hidden',
     'w-(--container-size)',
     'h-(--container-size)',
     'm-(--circle-size)',

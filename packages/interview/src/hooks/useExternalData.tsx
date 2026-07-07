@@ -47,7 +47,7 @@ const useExternalData = (
     if (!asset) {
       setStatus({
         isLoading: false,
-        error: new Error(`Unknown asset id: ${String(dataSource)}`),
+        error: new Error(`Unknown asset id: ${dataSource}`),
       });
       return () => {
         cancelled = true;

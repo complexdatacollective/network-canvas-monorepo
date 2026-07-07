@@ -69,6 +69,47 @@ describe('bundleProtocol', () => {
     expect(await zip.file(`assets/${s2}`)?.async('string')).toBe('bytes-id-2');
   });
 
+  it('disambiguates distinct ids that sanitise to the same entry name (F09)', async () => {
+    // `photo 1` and `photo/1` both reduce to the safe stem `photo_1`, so a
+    // naive per-id sanitiser would emit `photo_1.jpg` twice and lose one
+    // asset's bytes to JSZip last-write-wins.
+    const protocol = makeProtocol({
+      'photo 1': asset('image', 'a.jpg', 'Space id'),
+      'photo/1': asset('image', 'b.jpg', 'Slash id'),
+    });
+
+    getAssetById.mockImplementation((id: string) =>
+      Promise.resolve({ data: new Blob([`bytes-${id}`]) }),
+    );
+
+    const { blob, skippedAssets } = await bundleProtocol(protocol);
+    expect(skippedAssets).toEqual([]);
+
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const exported = JSON.parse(
+      (await zip.file('protocol.json')?.async('string')) ?? '{}',
+    ) as CurrentProtocol;
+
+    const manifest = exported.assetManifest ?? {};
+    const s1 = (manifest['photo 1'] as { source: string }).source;
+    const s2 = (manifest['photo/1'] as { source: string }).source;
+
+    // Distinct entry names, and each resolves to its own bytes (no overwrite).
+    expect(s1).not.toBe(s2);
+    expect(await zip.file(`assets/${s1}`)?.async('string')).toBe(
+      'bytes-photo 1',
+    );
+    expect(await zip.file(`assets/${s2}`)?.async('string')).toBe(
+      'bytes-photo/1',
+    );
+
+    // Exactly two files were written to the assets folder — nothing clobbered.
+    const assetEntries = Object.keys(zip.files).filter(
+      (path) => path.startsWith('assets/') && !zip.files[path]?.dir,
+    );
+    expect(assetEntries).toHaveLength(2);
+  });
+
   it('skips unresolvable assets and reports them instead of throwing (F10)', async () => {
     const protocol = makeProtocol({
       'id-ok': asset('image', 'good.jpg', 'Good asset'),

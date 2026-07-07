@@ -35,7 +35,7 @@ export function SelectAllHeader<TData>({ table }: SelectAllHeaderProps<TData>) {
           if (isAllSelected) {
             table.toggleAllRowsSelected(false);
           } else {
-            table.toggleAllPageRowsSelected(!!value);
+            table.toggleAllPageRowsSelected(value);
           }
         }}
         aria-label="Select all on page"

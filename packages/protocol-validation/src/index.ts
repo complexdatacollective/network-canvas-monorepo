@@ -9,6 +9,8 @@ import {
   type ExtractedAsset,
   extractProtocol,
   extractProtocolFromZip,
+  MAX_INFLATED_BYTES,
+  NetcanvasInflationLimitError,
 } from './utils/extractProtocol';
 import { hashProtocol } from './utils/hashProtocol';
 import {
@@ -47,7 +49,9 @@ export {
   extractProtocolFromZip,
   getVariableNamesFromNetwork,
   hashProtocol,
+  MAX_INFLATED_BYTES,
   type Network,
+  NetcanvasInflationLimitError,
   validateNames,
   validateProtocol,
 };

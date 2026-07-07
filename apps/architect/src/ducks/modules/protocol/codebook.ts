@@ -1,9 +1,4 @@
-import {
-  createAsyncThunk,
-  createSlice,
-  current,
-  type PayloadAction,
-} from '@reduxjs/toolkit';
+import { createSlice, current, type PayloadAction } from '@reduxjs/toolkit';
 import { find, get, has, isEmpty, omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
@@ -15,7 +10,7 @@ import type {
   EntityDefinition,
   Variable,
 } from '@codaco/protocol-validation';
-import type { RootState } from '~/ducks/modules/root';
+import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import {
   getAllVariableUUIDsByEntity,
   getVariablesForSubject,
@@ -75,7 +70,7 @@ const defaultTypeTemplate: Partial<EntityDefinition> = {
 };
 
 // Async thunks
-export const createTypeAsync = createAsyncThunk(
+export const createTypeAsync = createAppAsyncThunk(
   'codebook/createTypeAsync',
   async (
     {
@@ -99,7 +94,7 @@ export const createTypeAsync = createAsyncThunk(
   },
 );
 
-export const updateTypeAsync = createAsyncThunk(
+export const updateTypeAsync = createAppAsyncThunk(
   'codebook/updateTypeAsync',
   async (
     {
@@ -119,11 +114,11 @@ export const updateTypeAsync = createAsyncThunk(
   },
 );
 
-export const createEdgeAsync = createAsyncThunk(
+export const createEdgeAsync = createAppAsyncThunk(
   'codebook/createEdgeAsync',
   async (configuration: Partial<EdgeDefinition>, { dispatch, getState }) => {
     const entity: Entity = 'edge';
-    const state = getState() as RootState;
+    const state = getState();
     const protocol = (state.activeProtocol?.present ||
       state.activeProtocol) as CurrentProtocol;
     const colorFromHelper = getNextCategoryColor(protocol, entity);
@@ -145,7 +140,7 @@ export const createEdgeAsync = createAsyncThunk(
   },
 );
 
-export const createVariableAsync = createAsyncThunk(
+export const createVariableAsync = createAppAsyncThunk(
   'codebook/createVariableAsync',
   async (
     {
@@ -172,7 +167,7 @@ export const createVariableAsync = createAsyncThunk(
       throw new Error('Variable name contains no valid characters');
     }
 
-    const state = getState() as RootState;
+    const state = getState();
     const variables = getVariablesForSubject(state, { entity, type });
     const variableNameExists = Object.values(variables).some(
       ({ name }) => name === safeConfiguration.name,
@@ -198,7 +193,7 @@ export const createVariableAsync = createAsyncThunk(
   },
 );
 
-export const updateVariableAsync = createAsyncThunk(
+export const updateVariableAsync = createAppAsyncThunk(
   'codebook/updateVariableAsync',
   async (
     {
@@ -222,7 +217,7 @@ export const updateVariableAsync = createAsyncThunk(
 
     // If entity and type are provided, validate the variable exists
     if (entity && type) {
-      const state = getState() as RootState;
+      const state = getState();
       const variableExists = has(
         getVariablesForSubject(state, { entity, type }),
         variable,
@@ -244,7 +239,7 @@ export const updateVariableAsync = createAsyncThunk(
   },
 );
 
-export const deleteVariableAsync = createAsyncThunk(
+export const deleteVariableAsync = createAppAsyncThunk(
   'codebook/deleteVariableAsync',
   async (
     {
@@ -254,7 +249,7 @@ export const deleteVariableAsync = createAsyncThunk(
     }: { entity: Entity; type?: string; variable: string },
     { dispatch, getState },
   ) => {
-    const state = getState() as RootState;
+    const state = getState();
     const isUsed = getIsUsed(state);
 
     if (get(isUsed, variable, false)) {
@@ -267,7 +262,7 @@ export const deleteVariableAsync = createAsyncThunk(
   },
 );
 
-export const deleteTypeAsync = createAsyncThunk(
+export const deleteTypeAsync = createAppAsyncThunk(
   'codebook/deleteTypeAsync',
   async ({ entity, type }: { entity: Entity; type: string }, { dispatch }) => {
     const payload: DeleteTypePayload = { entity, type };

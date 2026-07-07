@@ -3,6 +3,10 @@ import { z } from 'zod';
 import { entityAttributeReference } from '../entity-attribute-reference';
 
 export const FormFieldSchema = z.strictObject({
+  // Architect assigns a stable id (uuid) on creation so the editor's
+  // OrderedList / motion Reorder keying survives reorder + delete; it is
+  // persisted, so the schema must tolerate it.
+  id: z.string().optional(),
   variable: entityAttributeReference({ subject: 'stageSubject' }),
   prompt: z.string(),
   hint: z.string().optional(),

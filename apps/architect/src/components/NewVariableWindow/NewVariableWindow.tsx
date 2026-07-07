@@ -1,6 +1,6 @@
 import { values } from 'es-toolkit/compat';
 import { useCallback, useMemo } from 'react';
-import { Field, formValueSelector } from 'redux-form';
+import { Field, formValueSelector, isDirty } from 'redux-form';
 
 import type { Variable, VariableOptions } from '@codaco/protocol-validation';
 import { Section, Subsection } from '~/components/EditorLayout';
@@ -15,6 +15,7 @@ import {
   VARIABLE_OPTIONS,
 } from '~/config/variables';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { getVariablesForSubject } from '~/selectors/codebook';
 import { getFieldId } from '~/utils/issues';
@@ -55,6 +56,8 @@ export default function NewVariableWindow({
   const variableType = useAppSelector(
     (state) => formValueSelector(form)(state, 'type') as string | undefined,
   );
+
+  const hasUnsavedChanges = useAppSelector((state) => isDirty(form)(state));
 
   // Memoize subject to avoid creating new object on every render, which breaks selector memoization
   const subject = useMemo(() => ({ entity, type }), [entity, type]);
@@ -112,6 +115,30 @@ export default function NewVariableWindow({
     [dispatch, entity, type, onComplete, lockedOptions],
   );
 
+  const handleCancel = useCallback(() => {
+    // An untouched form loses nothing, so close immediately. Once the author has
+    // started filling it in, confirm before discarding — so an accidental
+    // backdrop/outside click or Esc can't silently drop a partially-authored
+    // variable.
+    if (!hasUnsavedChanges) {
+      onCancel();
+      return;
+    }
+
+    void dispatch(
+      dialogActions.openDialog({
+        type: 'Warning',
+        title: 'Unsaved Changes',
+        message:
+          'You have unsaved changes. Are you sure you want to close without saving?',
+        confirmLabel: 'Close Without Saving',
+        onConfirm: () => {
+          onCancel();
+        },
+      }),
+    );
+  }, [hasUnsavedChanges, onCancel, dispatch]);
+
   return (
     <InlineEditScreen
       show={show}
@@ -119,7 +146,7 @@ export default function NewVariableWindow({
       onSubmit={(formValues: unknown) =>
         handleCreateNewVariable(formValues as Record<string, unknown>)
       }
-      onCancel={onCancel}
+      onCancel={handleCancel}
       initialValues={mergedInitialValues ?? undefined}
       title="Create New Variable"
     >

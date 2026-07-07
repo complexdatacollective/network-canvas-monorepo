@@ -1,4 +1,4 @@
-import { connect } from 'react-redux';
+import { connect, type ConnectedProps } from 'react-redux';
 
 type Entity = 'node' | 'edge' | 'ego';
 
@@ -12,18 +12,34 @@ import {
   updateVariableAsync,
 } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/modules/root';
+import { ensureError } from '~/utils/ensureError';
 
 import { makeGetVariable } from '../../../selectors/codebook';
 import { getCodebookProperties } from './helpers';
 
-type FormHandlerProps = {
-  updateVariable: typeof updateVariableAsync;
-  createVariable: typeof createVariableAsync;
+const mapDispatchToProps = {
+  changeForm: change as (
+    form: string,
+    field: string,
+    value: unknown,
+  ) => FormAction,
+  updateVariable: updateVariableAsync,
+  createVariable: createVariableAsync,
+};
+
+const mapStateToProps = (state: RootState) => ({
+  getVariable: (uuid: string) => makeGetVariable(uuid)(state),
+});
+
+const connector = connect(mapStateToProps, mapDispatchToProps);
+
+// ConnectedProps resolves the object-form thunk creators to their dispatched
+// form — functions returning the thunk promise (with `.unwrap()`) — matching
+// react-redux's runtime binding.
+type FormHandlerProps = ConnectedProps<typeof connector> & {
   type: string;
   entity: string;
-  changeForm: (form: string, field: string, value: unknown) => FormAction;
   form: string;
-  getVariable: (uuid: string) => ReturnType<ReturnType<typeof makeGetVariable>>;
 };
 
 const formHandlers = withHandlers({
@@ -92,39 +108,27 @@ const formHandlers = withHandlers({
       }
 
       try {
-        const result = await props.createVariable({
-          entity: props.entity as Entity,
-          type: props.type,
-          configuration: {
-            ...configuration,
-            name: _createNewVariable,
-          } as Record<string, unknown>,
-        });
-        const payload = result as unknown as { payload: { variable: string } };
+        // unwrap() re-throws the thunk's error instead of resolving to a
+        // rejected action whose payload is undefined (which would make
+        // payload.payload.variable a TypeError).
+        const { variable: createdVariable } = await props
+          .createVariable({
+            entity: props.entity as Entity,
+            type: props.type,
+            configuration: {
+              ...configuration,
+              name: _createNewVariable,
+            } as Record<string, unknown>,
+          })
+          .unwrap();
         return {
-          variable: payload.payload.variable,
+          variable: createdVariable,
           ...rest,
         };
       } catch (e) {
-        throw new SubmissionError({ variable: String(e) });
+        throw new SubmissionError({ variable: ensureError(e).message });
       }
     },
 });
 
-const mapDispatchToProps = {
-  changeForm: change as (
-    form: string,
-    field: string,
-    value: unknown,
-  ) => FormAction,
-  updateVariable: updateVariableAsync,
-  createVariable: createVariableAsync,
-};
-
-const mapStateToProps = (state: RootState) => ({
-  getVariable: (uuid: string) => makeGetVariable(uuid)(state),
-});
-
-const formState = connect(mapStateToProps, mapDispatchToProps);
-
-export default compose(formState, formHandlers);
+export default compose(connector, formHandlers);
