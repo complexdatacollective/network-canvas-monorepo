@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 
+import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
 import BackgroundLights from '~/components/BackgroundLights';
 import DialogManager from '~/components/DialogManager';
 import InstallBanner from '~/components/InstallBanner';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
-import PwaUpdateBanner from '~/components/PwaUpdateBanner';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
 import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
@@ -48,9 +48,6 @@ const AppContents = () => {
         </div>
       </div>
       <DialogManager />
-      {/* The update banner registers the service worker (so the app is
-          installable) and prompts on updates. */}
-      <PwaUpdateBanner />
       <JsonPreviewOverlay />
     </>
   );
@@ -58,7 +55,9 @@ const AppContents = () => {
 
 const AppView = () => (
   <ProtocolGuardedRouter>
-    <AppContents />
+    <AppUpdateProvider>
+      <AppContents />
+    </AppUpdateProvider>
   </ProtocolGuardedRouter>
 );
 
