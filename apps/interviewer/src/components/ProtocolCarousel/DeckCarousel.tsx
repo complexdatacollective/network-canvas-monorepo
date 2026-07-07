@@ -324,7 +324,13 @@ function DeckSlide({
     ) {
       return;
     }
-    activate();
+    // A tap on the card body only navigates to that card. Consequential
+    // actions (start an interview, install the sample) must go through the
+    // card's own button, so an active card's body tap does nothing. The
+    // import card is exempt: its whole surface is a button, handled by the
+    // early return above.
+    if (disabled || !isPresent || isActive) return;
+    onSelect(index);
   };
 
   return (
