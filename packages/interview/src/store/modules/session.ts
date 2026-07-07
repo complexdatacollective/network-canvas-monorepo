@@ -1,9 +1,4 @@
-import {
-  createAction,
-  createAsyncThunk,
-  createReducer,
-  createSelector,
-} from '@reduxjs/toolkit';
+import { createAction, createReducer, createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 import { find, get } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
@@ -36,7 +31,7 @@ import {
 } from '~/selectors/session';
 import { getDefaultAttributesForEntityType } from '~/utils/getDefaultAttributesForEntityType';
 
-import type { RootState } from '../store';
+import { createAppAsyncThunk } from '../createAppAsyncThunk';
 import { getShouldEncryptNames } from './protocol';
 
 // reducer helpers:
@@ -160,7 +155,7 @@ type AddNodeArgs = {
   allowUnknownAttributes?: boolean;
 };
 
-export const addNode = createAsyncThunk(
+export const addNode = createAppAsyncThunk(
   actionTypes.addNode,
   async (args: AddNodeArgs, thunkApi) => {
     const {
@@ -171,7 +166,7 @@ export const addNode = createAsyncThunk(
       allowUnknownAttributes,
       currentStep,
     } = args;
-    const state = thunkApi.getState() as RootState;
+    const state = thunkApi.getState();
 
     const getCodebookVariablesForNodeType =
       makeGetCodebookVariablesForNodeType(state);
@@ -230,7 +225,7 @@ export const addNode = createAsyncThunk(
   },
 );
 
-export const addEdge = createAsyncThunk(
+export const addEdge = createAppAsyncThunk(
   actionTypes.addEdge,
   (
     props: {
@@ -243,7 +238,7 @@ export const addEdge = createAsyncThunk(
     { getState },
   ) => {
     const { from, to, type, attributeData, currentStep } = props;
-    const state = getState() as RootState;
+    const state = getState();
     const sessionMeta = getSessionMeta(state, currentStep);
 
     const getCodebookVariablesForEdgeType =
@@ -281,7 +276,7 @@ export const addEdge = createAsyncThunk(
   },
 );
 
-export const updateNode = createAsyncThunk(
+export const updateNode = createAppAsyncThunk(
   actionTypes.updateNode,
   async (
     args: {
@@ -293,7 +288,7 @@ export const updateNode = createAsyncThunk(
     thunkApi,
   ) => {
     const { newAttributeData, newModelData, nodeId, currentStep } = args;
-    const state = thunkApi.getState() as RootState;
+    const state = thunkApi.getState();
     const getNodeById = makeGetNodeById(state, currentStep);
     const node = getNodeById(nodeId);
 
@@ -366,10 +361,10 @@ export const updatePrompt = createAction<number>(actionTypes.updatePrompt);
  */
 export const transitionStage = createAction(actionTypes.transitionStage);
 
-export const updateEgo = createAsyncThunk(
+export const updateEgo = createAppAsyncThunk(
   actionTypes.updateEgo,
   (egoAttributes: NcEgo[EntityAttributesProperty], { getState }) => {
-    const state = getState() as RootState;
+    const state = getState();
     const codebook = state.protocol.codebook as Codebook; // Needed because schema 7 doesn't have strongly typed codebook
     const egoVariables = codebook.ego?.variables;
 
@@ -393,7 +388,7 @@ export const updateEgo = createAsyncThunk(
   },
 );
 
-export const toggleEdge = createAsyncThunk(
+export const toggleEdge = createAppAsyncThunk(
   actionTypes.toggleEdge,
   async (
     props: {
@@ -406,7 +401,7 @@ export const toggleEdge = createAsyncThunk(
     { getState, dispatch },
   ) => {
     const { from, to, type, attributeData, currentStep } = props;
-    const state = getState() as RootState;
+    const state = getState();
 
     const existingEdge = edgeExists(
       state.session.network.edges,
@@ -429,7 +424,7 @@ const getSessionMeta = createSelector(
   (promptId, stageId) => ({ promptId, stageId }),
 );
 
-export const addNodeToPrompt = createAsyncThunk(
+export const addNodeToPrompt = createAppAsyncThunk(
   actionTypes.addNodeToPrompt,
   (
     props: {
@@ -440,7 +435,7 @@ export const addNodeToPrompt = createAsyncThunk(
     { getState },
   ) => {
     const { nodeId, promptAttributes, currentStep } = props;
-    const state = getState() as RootState;
+    const state = getState();
     const promptId = getPromptId(state, currentStep);
 
     return {
@@ -474,14 +469,14 @@ function getPromptAdditionalAttributesMap(
   );
 }
 
-export const removeNodeFromPrompt = createAsyncThunk(
+export const removeNodeFromPrompt = createAppAsyncThunk(
   actionTypes.removeNodeFromPrompt,
   (
     args: { nodeId: NcNode[EntityPrimaryKey]; currentStep: number },
     { getState },
   ) => {
     const { nodeId, currentStep } = args;
-    const state = getState() as RootState;
+    const state = getState();
     const promptId = getPromptId(state, currentStep);
     invariant(promptId, 'Prompt ID is required to remove a node from a prompt');
 
@@ -535,7 +530,7 @@ export const removeNodeFromPrompt = createAsyncThunk(
   },
 );
 
-export const updateEdge = createAsyncThunk(
+export const updateEdge = createAppAsyncThunk(
   actionTypes.updateEdge,
   (
     args: {
@@ -546,7 +541,7 @@ export const updateEdge = createAsyncThunk(
     { getState },
   ) => {
     const { edgeId, newModelData, newAttributeData } = args;
-    const state = getState() as RootState;
+    const state = getState();
     const edge = state.session.network.edges.find(
       (e) => e[entityPrimaryKeyProperty] === edgeId,
     );
