@@ -544,6 +544,10 @@
     "./appUpdate/useAppUpdate": {
       "types": "./dist/appUpdate/useAppUpdate.d.ts",
       "default": "./dist/appUpdate/useAppUpdate.js"
+    },
+    "./appUpdate/AppUpdateIndicator": {
+      "types": "./dist/appUpdate/AppUpdateIndicator.d.ts",
+      "default": "./dist/appUpdate/AppUpdateIndicator.js"
     }
   },
   "publishConfig": {
