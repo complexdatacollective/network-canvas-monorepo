@@ -1,5 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
+import {
+  expect,
+  fireEvent,
+  fn,
+  userEvent,
+  waitFor,
+  within,
+} from 'storybook/test';
 
 import { ImportTriggerCard } from './ImportTriggerCard';
 
@@ -29,18 +37,22 @@ function ResizableFrame({
 
 type StoryArgs = {
   size: number;
+  onActivate: () => void;
+  onImportFile: (file: File) => void;
 };
 
 const meta: Meta<StoryArgs> = {
   title: 'Components/ImportTriggerCard',
   parameters: { layout: 'centered' },
-  args: { size: 480 },
+  args: { size: 480, onActivate: fn(), onImportFile: fn() },
   argTypes: {
     size: { control: { type: 'range', min: 140, max: 720, step: 4 } },
+    onActivate: { control: false },
+    onImportFile: { control: false },
   },
-  render: ({ size }) => (
+  render: ({ size, onActivate, onImportFile }) => (
     <ResizableFrame size={size}>
-      <ImportTriggerCard onActivate={() => {}} onImportFile={() => {}} />
+      <ImportTriggerCard onActivate={onActivate} onImportFile={onImportFile} />
     </ResizableFrame>
   ),
 };
@@ -49,3 +61,41 @@ export default meta;
 type Story = StoryObj<StoryArgs>;
 
 export const Default: Story = {};
+
+// Exercises the card's real import surface: dragging a file over it highlights
+// the dashed border, dropping the file reports it through onImportFile, and a
+// plain click opens the file picker (onActivate).
+export const DropAndClickToImport: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const surface = canvas.getByRole('button', { name: 'Import a protocol' });
+    const card = surface.parentElement;
+    if (!(card instanceof HTMLElement)) {
+      throw new Error('import card wrapper not found');
+    }
+
+    // Base state: the dashed outline border, not highlighted.
+    await expect(card).toHaveClass('border-outline');
+
+    const file = new File(['netcanvas'], 'study.netcanvas');
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    // A real DragEvent carries the DataTransfer on its read-only `dataTransfer`
+    // property; fireEvent's plain-object init doesn't populate `files`.
+    const dragEvent = (type: string) =>
+      new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer });
+
+    // Dragging a file over the card highlights it.
+    await fireEvent(card, dragEvent('dragover'));
+    await waitFor(() => expect(card).toHaveClass('border-sea-green'));
+
+    // Dropping reports the file and clears the highlight.
+    await fireEvent(card, dragEvent('drop'));
+    await expect(args.onImportFile).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(card).toHaveClass('border-outline'));
+
+    // A plain click opens the file picker.
+    await userEvent.click(surface);
+    await expect(args.onActivate).toHaveBeenCalledTimes(1);
+  },
+};

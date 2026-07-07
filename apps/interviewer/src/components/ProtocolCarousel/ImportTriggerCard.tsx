@@ -51,8 +51,6 @@ export function ImportTriggerCard({
       onDrop={handleDrop}
       // Match the protocol card's radius so the visual footprint (and
       // therefore perceived size) is identical.
-      // Match the protocol card's radius so the visual footprint (and
-      // therefore perceived size) is identical.
       style={{ borderRadius: CARD_RADIUS_PX }}
       className={cx(
         'text-text/80 effect-shadow-xl @container relative h-full w-full border-[3px] border-dashed transition-colors duration-180',
