@@ -51,21 +51,27 @@ export function ImportTriggerCard({
       onDrop={handleDrop}
       // Match the protocol card's radius so the visual footprint (and
       // therefore perceived size) is identical.
+      // Match the protocol card's radius so the visual footprint (and
+      // therefore perceived size) is identical.
       style={{ borderRadius: CARD_RADIUS_PX }}
       className={cx(
-        'text-text/80 effect-shadow-xl @container flex h-full w-full flex-col items-center border-[3px] border-dashed transition-colors duration-180',
+        'text-text/80 effect-shadow-xl @container relative h-full w-full border-[3px] border-dashed transition-colors duration-180',
         dragOver
           ? 'border-sea-green bg-[color-mix(in_oklab,oklch(var(--sea-green))_20%,var(--surface))]'
           : 'border-outline bg-surface/50',
       )}
     >
+      {/* The button fills the whole card so a click anywhere on it — not just
+          the centred content — opens the picker. The note below overlays the
+          bottom with pointer-events disabled so its (non-link) area falls
+          through to the button too, keeping the entire surface clickable. */}
       <button
         type="button"
         onClick={onActivate}
         aria-label="Import a protocol"
         className={cx(
           cardBase(),
-          'flex w-full flex-1 flex-col items-center justify-center gap-3 rounded-[inherit] px-8 text-center',
+          'absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-[inherit] px-8 pb-12 text-center',
         )}
       >
         <span
@@ -82,11 +88,13 @@ export function ImportTriggerCard({
           file, or click to browse
         </span>
       </button>
-      <p className="text-text/70 px-8 pb-6 text-center text-xs">
+      <p className="text-text/70 pointer-events-none absolute inset-x-0 bottom-0 px-8 pb-6 text-center text-xs">
         Protocols are authored in{' '}
-        <ExternalLink href="https://architect.networkcanvas.com">
-          Architect
-        </ExternalLink>
+        <span className="pointer-events-auto">
+          <ExternalLink href="https://architect.networkcanvas.com">
+            Architect
+          </ExternalLink>
+        </span>
         .
       </p>
     </div>
