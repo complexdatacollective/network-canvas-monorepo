@@ -1,5 +1,12 @@
 # @codaco/interviewer
 
+## 8.0.0-beta.3
+
+### Patch Changes
+
+- On the home screen, clicking a protocol or sample card no longer starts an interview or installs the sample by itself — those actions now require the card's own button. Clicking a card still brings it to the centre of the deck.
+- Importing a protocol is quicker: drop a `.netcanvas` file straight onto the import card on the home screen, or click the card to choose a file. The card now carries the note about authoring protocols in Architect, and the separate import dialog it used to open has been removed.
+
 ## 8.0.0-beta.2
 
 ### Major Changes
