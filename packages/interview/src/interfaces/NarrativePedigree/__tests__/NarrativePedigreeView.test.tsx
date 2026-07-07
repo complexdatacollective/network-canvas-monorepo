@@ -889,3 +889,88 @@ describe('NarrativePedigreeView — affected nodes omit the contradictory homozy
     expect(kid).not.toHaveAccessibleDescription(/homozygous/i);
   });
 });
+
+// ---------------------------------------------------------------------------
+// No-focal dimming. When no focal node is selected, NOTHING should be dimmed —
+// including a couple connector where one partner is a SOCIAL/gestational parent
+// (no genetic edge). Before the fix, the couple-bar splitter ran in the
+// "everything highlighted" state and dimmed that partner's half of the bar.
+// The view now passes no highlight sets when there is no focal node.
+// ---------------------------------------------------------------------------
+describe('NarrativePedigreeView — no dimming without a focal node', () => {
+  const SRC_SOCIAL = 'source-fp-social';
+
+  it('does not dim a social parent’s couple connector when nothing is focused', async () => {
+    const socialSource = { ...sourceStage, id: SRC_SOCIAL };
+    // Social mother + biological father → child. The mother's link to the child
+    // is a non-genetic `social` edge, so she has no genetic parent→child edge.
+    const socialNodes: NcNode[] = [
+      makeNode('socialMum', { [NAME_VAR]: 'Mum', [BIO_SEX_VAR]: 'female' }),
+      makeNode('bioDad', { [NAME_VAR]: 'Dad', [BIO_SEX_VAR]: 'male' }),
+      makeNode('kid', {
+        [NAME_VAR]: 'Kid',
+        [EGO_VAR]: true,
+        [BIO_SEX_VAR]: 'male',
+      }),
+    ];
+    const socialEdges: NcEdge[] = [
+      makeCEdge('socialMum', 'kid', ['social']),
+      makeCEdge('bioDad', 'kid', ['biological']),
+      makeCEdge('socialMum', 'bioDad', ['partner']),
+    ];
+    const stage: NarrativeStage = {
+      id: 'np-social',
+      type: 'NarrativePedigree',
+      label: 'Social Parent Pedigree',
+      sourceStageId: SRC_SOCIAL,
+      showAtRiskStatuses: false,
+      diseases: [
+        {
+          id: 'da',
+          label: 'Disease A',
+          color: '#ff0000',
+          variable: asEntityAttributeReference(DISEASE_A_VAR),
+          inheritancePattern: 'autosomalDominant',
+        },
+      ],
+    };
+    const store = configureStore({
+      reducer: { protocol, session },
+      preloadedState: {
+        protocol: {
+          codebook,
+          stages: [socialSource, stage],
+          assets: [],
+        } as never,
+        session: {
+          id: 'social-session',
+          network: {
+            nodes: socialNodes,
+            edges: socialEdges,
+            ego: { [entityAttributesProperty]: {} },
+          },
+          stageMetadata: {},
+        } as never,
+      },
+      middleware: (g) => g({ serializableCheck: false }),
+    });
+    function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </Provider>
+      );
+    }
+    render(<NarrativePedigreeView stage={stage} />, { wrapper: Wrapper });
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
+    );
+
+    // No focal node is selected → no edge anywhere may be dimmed.
+    const view = document.querySelector('[data-narrative-pedigree-view]');
+    expect(view?.querySelectorAll('[data-edge-dimmed]').length).toBe(0);
+  });
+});

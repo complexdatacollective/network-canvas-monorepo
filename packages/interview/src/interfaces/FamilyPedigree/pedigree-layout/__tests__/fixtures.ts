@@ -220,3 +220,19 @@ export const crossFamily: PedigreeInput = {
     { partnerIndex1: 4, partnerIndex2: 5, isActive: true },
   ],
 };
+
+/**
+ * A remarried parent who ALSO has a sibling shown. Grandparents (0,1) have two
+ * children Mom(2) and Aunt(3); Mom is partnered to Dad(5, ex) and StepDad(6),
+ * and Ego(4) descends from Mom+Dad. Mom is a multi-marriage anchor AND a member
+ * of a sibship, so she must sit BETWEEN her two spouses — both marriage lines
+ * must stay contiguous.
+ */
+export const remarriedParentWithSibling: PedigreeInput = {
+  id: ['gp1', 'gp2', 'mom', 'aunt', 'ego', 'dad', 'stepDad'],
+  parents: [[], [], [sp(0), sp(1)], [sp(0), sp(1)], [sp(2), sp(5)], [], []],
+  partners: [
+    { partnerIndex1: 2, partnerIndex2: 5, isActive: false },
+    { partnerIndex1: 2, partnerIndex2: 6, isActive: true },
+  ],
+};

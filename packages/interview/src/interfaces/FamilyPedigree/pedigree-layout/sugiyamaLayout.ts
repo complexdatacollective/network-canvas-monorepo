@@ -326,21 +326,27 @@ function buildConstraintBlocks(
     );
 
   // 1. One block per real sibship: siblings in index order, with each married
-  //    sibling's attachable spouse beside it — the leftmost sibling's spouse to
-  //    its left, later siblings' spouses to their right — so couples stay
-  //    adjacent while the sibship stays contiguous.
+  //    sibling's attachable spouse(s) beside it so couples stay adjacent while
+  //    the sibship stays contiguous. A sibling that anchors TWO OR MORE marriages
+  //    must sit BETWEEN its spouses — pushing them all to one side would leave a
+  //    spouse non-adjacent and silently drop that marriage line. A single spouse
+  //    goes on the outer side (the leftmost sibling's to its left, later siblings'
+  //    to their right) to keep the block compact.
   for (const members of realSibships) {
     const siblings = members.toSorted((a, b) => a - b);
     const ordered: number[] = [];
     siblings.forEach((sib, idx) => {
       const spouses = attachableSpouses(sib).toSorted((a, b) => a - b);
-      if (idx === 0) {
+      assigned.add(sib);
+      for (const sp of spouses) assigned.add(sp);
+      if (spouses.length >= 2) {
+        const half = Math.floor(spouses.length / 2);
+        ordered.push(...spouses.slice(0, half), sib, ...spouses.slice(half));
+      } else if (idx === 0) {
         ordered.push(...spouses, sib);
       } else {
         ordered.push(sib, ...spouses);
       }
-      assigned.add(sib);
-      for (const sp of spouses) assigned.add(sp);
     });
     blocks.push({ nodes: ordered, barycenter: 0 });
   }
