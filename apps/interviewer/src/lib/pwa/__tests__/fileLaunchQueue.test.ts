@@ -2,11 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // The module registers the launchQueue consumer on init and holds module
 // state, so load a fresh copy per test with a stubbed queue.
+type Handle = { getFile: () => Promise<File> };
+
 const loadModule = async () => {
   vi.resetModules();
-  let consumer:
-    | ((params: { files: { getFile: () => Promise<File> }[] }) => void)
-    | undefined;
+  let consumer: ((params: { files: Handle[] }) => void) | undefined;
   vi.stubGlobal('launchQueue', {
     setConsumer: (fn: typeof consumer) => {
       consumer = fn;
@@ -15,17 +15,24 @@ const loadModule = async () => {
   const mod = await import('../fileLaunchQueue');
   mod.initFileLaunchCapture();
   if (!consumer) throw new Error('consumer was not registered');
+  const settle = async () => {
+    // getFile() resolution is async; let the consumer settle.
+    await Promise.resolve();
+    await Promise.resolve();
+  };
   const launch = async (...names: string[]) => {
     consumer?.({
       files: names.map((name) => ({
         getFile: () => Promise.resolve(new File(['zip-bytes'], name)),
       })),
     });
-    // getFile() resolution is async; let the consumer settle.
-    await Promise.resolve();
-    await Promise.resolve();
+    await settle();
   };
-  return { mod, launch };
+  const launchHandles = async (...handles: Handle[]) => {
+    consumer?.({ files: handles });
+    await settle();
+  };
+  return { mod, launch, launchHandles };
 };
 
 afterEach(() => {
@@ -81,5 +88,35 @@ describe('fileLaunchQueue', () => {
     expect(mod.getLaunchFiles()).toBe(first);
     await launch('b.netcanvas');
     expect(mod.getLaunchFiles()).not.toBe(first);
+  });
+
+  it('keeps readable files when a sibling handle fails to read', async () => {
+    const { mod, launchHandles } = await loadModule();
+
+    await launchHandles(
+      { getFile: () => Promise.reject(new Error('file moved')) },
+      { getFile: () => Promise.resolve(new File(['zip'], 'good.netcanvas')) },
+    );
+
+    expect(mod.getLaunchFiles().map((f) => f.name)).toEqual(['good.netcanvas']);
+  });
+
+  it('records a user-facing failure count for unreadable handles', async () => {
+    const { mod, launchHandles } = await loadModule();
+    const listener = vi.fn();
+    mod.subscribeLaunchFiles(listener);
+
+    await launchHandles(
+      { getFile: () => Promise.reject(new Error('volume unmounted')) },
+      { getFile: () => Promise.reject(new Error('file deleted')) },
+    );
+
+    expect(mod.getLaunchFailureCount()).toBe(2);
+    expect(listener).toHaveBeenCalled();
+
+    const taken = mod.takeLaunchFailureCount();
+    expect(taken).toBe(2);
+    expect(mod.getLaunchFailureCount()).toBe(0);
+    expect(mod.takeLaunchFailureCount()).toBe(0);
   });
 });
