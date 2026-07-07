@@ -34,15 +34,13 @@ const CONDITIONS: { variable: string; pattern: InheritancePattern }[] = [
   { variable: 'hasMitochondrialMyopathy', pattern: 'mitochondrial' },
 ];
 
-function engine() {
+// The fixture is deterministic for a fixed seed (guarded by
+// comprehensivePedigreeFixture.test.ts) and the genetics functions never mutate
+// the graph, so the engine is built once and shared across the whole suite.
+function buildEngine() {
   const { nodes, edges } = buildComprehensivePedigree(1).getNetwork();
   const resolveSexFn = (id: string) => resolveSex(id, nodes, edges, CFG);
-  const graph = buildGeneticGraph(
-    nodes,
-    edges,
-    { relationshipTypeVariable: 'relType' },
-    resolveSexFn,
-  );
+  const graph = buildGeneticGraph(nodes, edges, CFG, resolveSexFn);
   const statusesFor = (variable: string, pattern: InheritancePattern) =>
     computeStatuses(graph, affectedSet(nodes, variable), pattern, resolveSexFn);
   const homozygousFor = (variable: string, pattern: InheritancePattern) => {
@@ -56,9 +54,11 @@ function engine() {
   return { nodes, graph, statusesFor, homozygousFor, statusOf };
 }
 
+const engine = buildEngine();
+
 describe('comprehensive example — every symbol and every pattern', () => {
   it('surfaces every notation symbol across the six conditions', () => {
-    const { statusesFor, homozygousFor } = engine();
+    const { statusesFor, homozygousFor } = engine;
     const seen = new Set<Status>();
     let seenHomozygous = false;
     for (const c of CONDITIONS) {
@@ -84,7 +84,7 @@ describe('comprehensive example — every symbol and every pattern', () => {
   });
 
   it("Huntington's (autosomal dominant) sweeps the maternal line to ego's children", () => {
-    const status = engine().statusOf('hasHuntingtons', 'autosomalDominant');
+    const status = engine.statusOf('hasHuntingtons', 'autosomalDominant');
     expect(status('mgf')).toBe('affected'); // Arthur
     expect(status('mother')).toBe('affected'); // Rose
     expect(status('ego')).toBe('atRiskAffected');
@@ -96,10 +96,7 @@ describe('comprehensive example — every symbol and every pattern', () => {
   });
 
   it('Mitochondrial: matrilineal, and males do not transmit', () => {
-    const status = engine().statusOf(
-      'hasMitochondrialMyopathy',
-      'mitochondrial',
-    );
+    const status = engine.statusOf('hasMitochondrialMyopathy', 'mitochondrial');
     expect(status('mgm')).toBe('affected'); // Eleanor
     expect(status('mother')).toBe('atRiskAffected');
     expect(status('ego')).toBe('atRiskAffected');
@@ -111,7 +108,7 @@ describe('comprehensive example — every symbol and every pattern', () => {
   });
 
   it("Y-linked descends the Sullivan male line and infers the youngest boy 'will develop it'", () => {
-    const status = engine().statusOf('hasYLinkedHearingLoss', 'yLinked');
+    const status = engine.statusOf('hasYLinkedHearingLoss', 'yLinked');
     expect(status('pgf')).toBe('affected'); // Harold
     expect(status('father')).toBe('affected'); // David
     expect(status('brother')).toBe('affected'); // Ben
@@ -122,7 +119,7 @@ describe('comprehensive example — every symbol and every pattern', () => {
   });
 
   it("Haemophilia (X-linked recessive): two affected brothers make their mother an obligate carrier; the line reaches ego's children", () => {
-    const status = engine().statusOf('hasHaemophilia', 'xLinkedRecessive');
+    const status = engine.statusOf('hasHaemophilia', 'xLinkedRecessive');
     expect(status('unc1')).toBe('affected'); // Frank
     expect(status('unc2')).toBe('affected'); // George
     expect(status('mgm')).toBe('obligateCarrier'); // Eleanor (2 affected sons)
@@ -133,7 +130,7 @@ describe('comprehensive example — every symbol and every pattern', () => {
   });
 
   it("X-linked dominant: an affected male's daughters all 'will develop it', his son is spared", () => {
-    const status = engine().statusOf('hasHypophosphataemia', 'xLinkedDominant');
+    const status = engine.statusOf('hasHypophosphataemia', 'xLinkedDominant');
     expect(status('pf')).toBe('affected'); // Walter
     expect(status('psis')).toBe('obligateAffected'); // Paula — will develop it
     expect(status('pnephew')).toBe('atRiskAffected'); // Ethan (Paula transmits on)
@@ -144,7 +141,7 @@ describe('comprehensive example — every symbol and every pattern', () => {
   });
 
   it('Cystic fibrosis: the consanguineous cousin union yields an affected child and an at-risk-homozygous sibling', () => {
-    const { statusOf, homozygousFor } = engine();
+    const { statusOf, homozygousFor } = engine;
     const status = statusOf('hasCysticFibrosis', 'autosomalRecessive');
     expect(status('cfchild')).toBe('affected'); // Sophie
     expect(status('c1')).toBe('obligateCarrier'); // Michael
@@ -159,7 +156,7 @@ describe('comprehensive example — every symbol and every pattern', () => {
   });
 
   it('the consanguineous CF union is wired: the cousins share the Marsh grandparents', () => {
-    const { graph } = engine();
+    const { graph } = engine;
     const c1Parents = new Set(graph.parentsOf('c1').map((p) => p.id));
     const c2Parents = new Set(graph.parentsOf('c2').map((p) => p.id));
     expect(c1Parents.has('unc1')).toBe(true); // Michael via Frank
@@ -174,7 +171,7 @@ describe('comprehensive example — every symbol and every pattern', () => {
   });
 
   it("the egg-donation child inherits from the donor, not her at-risk social mother, so she escapes the family's conditions", () => {
-    const { graph, statusOf } = engine();
+    const { graph, statusOf } = engine;
     // Chloe's genetic parents are Paul (sperm) and the egg donor Ivy — NOT her
     // gestational/social mother Margaret (whose social edge is non-genetic).
     const chloeParents = new Set(graph.parentsOf('eggchild').map((p) => p.id));
