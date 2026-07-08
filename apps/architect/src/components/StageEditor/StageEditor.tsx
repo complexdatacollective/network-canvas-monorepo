@@ -413,7 +413,7 @@ const StageEditor = (props: StageEditorProps) => {
           isOpeningPreview={isOpeningPreview}
           hasUnsavedChanges={hasUnsavedChanges}
         />
-        <div className="tablet-portrait:px-6 px-4">
+        <div className="phone-landscape:px-6 px-4">
           <div className="mx-auto w-full max-w-7xl">
             <StageHeading
               stageNumber={stageNumber}
