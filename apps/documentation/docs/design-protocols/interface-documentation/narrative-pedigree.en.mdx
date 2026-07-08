@@ -49,7 +49,7 @@ Certain statuses include _affected_, _will develop it_ (an obligate/presymptomat
 
 ## Possible (at-risk) statuses
 
-There is a **Show possible (at-risk) statuses** option, which is **off by default**. When it is off, the pedigree shows only certain statuses. When it is on, it also shows _may develop_, _may carry_, and _may be affected_ — drawn as the usual symbol with a question mark added.
+There is a **Show possible (at-risk) statuses** option, which is **off by default**. When it is off, the pedigree shows only certain statuses. When it is on, it also shows _may develop_ and _may carry_ — drawn as the usual symbol with a question mark added.
 
 At-risk statuses are **inferred, not observed**. They are a strong visual signal that can be misread as established fact, so they are intended for **clinician-directed use**, where a professional interprets them in context. Standard pedigree nomenclature deliberately does not encode probabilistic risk.
 
@@ -66,12 +66,13 @@ When at-risk statuses are shown, the interface works out possible statuses from 
 - **Only biological connections transmit.** Only _biological_ and _donor_ relationships pass a condition on. Social, adoptive, surrogate, and partner relationships never do, so risk is never inferred across them.
 - **Unknown sex stays uncertain.** Sex-linked inheritance (X-linked, Y-linked, mitochondrial) depends on biological sex. Where a person's sex was not recorded, the interface leaves inheritance through that person uncertain rather than guessing. This is why capturing sex recorded at birth in the Family Pedigree matters.
 - **X-linked risk follows the maternal line.** For X-linked recessive conditions, risk travels down the mother's X chromosome. Relatives connected only through an unaffected father — for example, a mother's half-sibling who shares only her father — carry none of that X and are correctly **not** marked at risk.
+- **Mitochondrial inheritance follows the egg.** A condition carried in mitochondrial DNA is traced down the maternal (egg) line. Where a child was conceived using a donor egg, the mitochondrial line follows that donor egg — so a child conceived through mitochondrial donation does not inherit the birth mother's mitochondrial condition, even though they inherit her nuclear genome.
 
-<KeyConcept title="When someone is already known to be a carrier">
+<KeyConcept title="A filled symbol always means affected">
 
-The _may be affected_ (possibly two copies of a recessive condition) marker is only shown for a person whose status is still open. It is deliberately **not** shown for someone the pedigree already establishes is an _unaffected carrier_ of a recessive condition — such a person cannot also be affected, so labelling them "may be affected" would contradict what the pedigree already tells us.
+A solid, filled symbol always means the person is **affected** — it is never used for someone who is only _at risk_, however that risk arises. This follows standard pedigree nomenclature (Bennett et al.), which reserves shading for people who actually have the condition and never encodes a probability in the shape itself.
 
-There is one deliberate exception, grounded in genetics. For **X-linked recessive** conditions, a daughter of an affected father **and** a carrier mother is still shown as _may be affected_. She inherits an affected X from her father for certain, and may inherit a second affected X from her mother — so a real chance of being affected remains. Carrier females of X-linked conditions can also show symptoms themselves. The result is that autosomal-recessive carriers are not flagged this way, while these specific X-linked daughters are — an intentional difference that reflects how the two patterns actually behave.
+So a relative who might have inherited a recessive condition from two carrier parents is shown with an ordinary at-risk symbol — _may develop_ where both parents are established carriers (a genuine one-in-four chance), or _may carry_ where their own carrier status is itself only possible — never a filled, affected-looking symbol. Reserving the fill for affected people keeps the strongest visual signal honest: it only ever marks a condition someone actually has.
 
 </KeyConcept>
 
@@ -99,6 +100,6 @@ Capture **sex recorded at birth** for each person in the Family Pedigree. Sex-li
 
 <BadPractice>
 
-Don't enable at-risk statuses for participant-facing use without a clinician. Inferred "may be affected" or "may carry" symbols can be mistaken for a diagnosis.
+Don't enable at-risk statuses for participant-facing use without a clinician. Inferred "may develop" or "may carry" symbols can be mistaken for a diagnosis.
 
 </BadPractice>
