@@ -57,7 +57,9 @@ function pushInto(
  * `relationshipType='donor'`. It does not validate the tagging — malformed input
  * (e.g. two eggs with no `donor` tag, or only the donor egg tagged) would route
  * mtDNA/nuclear parentage by edge order rather than intent. Garbage in, garbage
- * out; upstream (the schema + Architect UI) is responsible for coherent tags.
+ * out: the participant UI cannot create a second egg, so coherent tagging is only
+ * ever required of Architect-authored or imported networks; there is no
+ * schema-level guard (see genetics/MODELLING_DECISIONS.md §3).
  */
 function splitParents(
   parentEdges: ParentEdge[],

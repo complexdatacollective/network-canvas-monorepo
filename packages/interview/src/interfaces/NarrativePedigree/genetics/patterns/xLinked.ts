@@ -220,66 +220,6 @@ export function computeXLinkedRecessive(
 }
 
 /**
- * X-linked-recessive at-risk-homozygous flag (spec §3, non-lattice).
- *
- * A separate boolean signal from the primary `Status`. A daughter who inherits
- * her affected father's only disease-bearing X (so she is at least an obligate
- * carrier) AND whose mother is herself a carrier/affected female is ~50%
- * homozygous-affected. `computeXLinkedRecessive` stops at `obligateCarrier` for
- * her, so this parallel flag carries the homozygous-risk signal alongside it.
- *
- * For each DAUGHTER (`resolveSex(id) === 'female'`), inspect her parents: if one
- * is a `male` parent that is `affected`/`obligateAffected` (an affected father)
- * AND another is a `female` parent whose status is carrier-or-affected
- * (`affected`/`obligateAffected`/`obligateCarrier`/`atRiskCarrier`), set the
- * flag `true`. A parent whose `parent.sex` is `unknown` cannot fill either role,
- * and a child who is not `female` is never a daughter — both omit the flag
- * (omission ⇒ `false`). `statuses` is read-only here; it is never mutated.
- */
-export function computeXLinkedRecessiveHomozygous(
-  graph: GeneticGraph,
-  statuses: Map<string, Status>,
-  resolveSex: (id: string) => Sex,
-): Map<string, boolean> {
-  const result = new Map<string, boolean>();
-
-  const carrierOrAffectedFemaleStatuses: ReadonlySet<Status> = new Set<Status>([
-    'affected',
-    'obligateAffected',
-    'obligateCarrier',
-    'atRiskCarrier',
-  ]);
-  const affectedFatherStatuses: ReadonlySet<Status> = new Set<Status>([
-    'affected',
-    'obligateAffected',
-  ]);
-
-  for (const id of graph.nodeIds()) {
-    if (resolveSex(id) !== 'female') {
-      continue;
-    }
-    const parents = graph.parentsOf(id);
-    const hasAffectedFather = parents.some(
-      (parent) =>
-        parent.sex === 'male' &&
-        affectedFatherStatuses.has(statuses.get(parent.id) ?? 'unknown'),
-    );
-    const hasCarrierMother = parents.some(
-      (parent) =>
-        parent.sex === 'female' &&
-        carrierOrAffectedFemaleStatuses.has(
-          statuses.get(parent.id) ?? 'unknown',
-        ),
-    );
-    if (hasAffectedFather && hasCarrierMother) {
-      result.set(id, true);
-    }
-  }
-
-  return result;
-}
-
-/**
  * X-linked dominant status computation (spec §3).
  *
  * One affected X copy suffices, so the disease shows in both sexes, but

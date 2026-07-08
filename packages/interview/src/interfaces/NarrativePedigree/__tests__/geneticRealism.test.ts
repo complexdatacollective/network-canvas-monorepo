@@ -3,10 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { InheritancePattern } from '@codaco/shared-consts';
 
 import { buildComprehensivePedigree } from '../comprehensivePedigreeFixture';
-import {
-  computeAtRiskHomozygous,
-  computeStatuses,
-} from '../genetics/computeStatuses';
+import { computeStatuses } from '../genetics/computeStatuses';
 import { buildGeneticGraph } from '../genetics/geneticGraph';
 import { resolveSex } from '../genetics/resolveSex';
 import { affectedSet, type Status } from '../genetics/status';
@@ -14,11 +11,10 @@ import { affectedSet, type Status } from '../genetics/status';
 // Guards that the comprehensive example is GENETICALLY COHERENT and EGO-CENTRIC:
 // every condition reaches ego, her partner or her children; each branch computes
 // the pattern the fixture docstring promises; the six patterns COLLECTIVELY
-// surface every notation symbol (including the two the plain view previously
-// never reached — "will develop it" (obligateAffected) and the "two copies"
-// homozygous marker); and mitochondrial DONATION lets the aunt's child escape
-// the mtDNA condition while still inheriting her nuclear genome. Runs the real
-// engine on the seeded fixture.
+// surface every notation symbol (including the one the plain view previously
+// never reached — "will develop it" (obligateAffected)); and mitochondrial
+// DONATION lets the aunt's child escape the mtDNA condition while still
+// inheriting her nuclear genome. Runs the real engine on the seeded fixture.
 
 const CFG = {
   biologicalSexVariable: 'biologicalSex',
@@ -37,37 +33,36 @@ const CONDITIONS: { variable: string; pattern: InheritancePattern }[] = [
 
 // The fixture is deterministic for a fixed seed (guarded by
 // comprehensivePedigreeFixture.test.ts) and the genetics functions never mutate
-// the graph, so the engine is built once and shared across the whole suite.
+// the graph, so the engine is built once and shared across the whole suite. The
+// MRT branch is included here so the mitochondrial-donation assertions can run;
+// it adds only the disjoint donor/child nodes and does not change any existing
+// person's status.
 function buildEngine() {
-  const { nodes, edges } = buildComprehensivePedigree(1).getNetwork();
+  const { nodes, edges } = buildComprehensivePedigree(
+    1,
+    true,
+    true,
+  ).getNetwork();
   const resolveSexFn = (id: string) => resolveSex(id, nodes, edges, CFG);
   const graph = buildGeneticGraph(nodes, edges, CFG, resolveSexFn);
   const statusesFor = (variable: string, pattern: InheritancePattern) =>
     computeStatuses(graph, affectedSet(nodes, variable), pattern, resolveSexFn);
-  const homozygousFor = (variable: string, pattern: InheritancePattern) => {
-    const statuses = statusesFor(variable, pattern);
-    return computeAtRiskHomozygous(graph, statuses, pattern, resolveSexFn);
-  };
   const statusOf =
     (variable: string, pattern: InheritancePattern) =>
     (uid: string): Status =>
       statusesFor(variable, pattern).get(uid) ?? 'unknown';
-  return { nodes, graph, statusesFor, homozygousFor, statusOf };
+  return { nodes, graph, statusesFor, statusOf };
 }
 
 const engine = buildEngine();
 
 describe('comprehensive example — every symbol, every pattern, ego-centric', () => {
   it('surfaces every notation symbol across the six conditions', () => {
-    const { statusesFor, homozygousFor } = engine;
+    const { statusesFor } = engine;
     const seen = new Set<Status>();
-    let seenHomozygous = false;
     for (const c of CONDITIONS) {
       for (const s of statusesFor(c.variable, c.pattern).values()) {
         seen.add(s);
-      }
-      for (const flagged of homozygousFor(c.variable, c.pattern).values()) {
-        if (flagged) seenHomozygous = true;
       }
     }
     for (const status of [
@@ -79,7 +74,6 @@ describe('comprehensive example — every symbol, every pattern, ego-centric', (
     ] as const) {
       expect(seen.has(status), `status ${status} should appear`).toBe(true);
     }
-    expect(seenHomozygous).toBe(true);
   });
 
   it("Huntington's (autosomal dominant) sweeps the maternal line to ego's children", () => {
@@ -94,16 +88,13 @@ describe('comprehensive example — every symbol, every pattern, ego-centric', (
     expect(status('partner')).toBe('unknown'); // Chris
   });
 
-  it("cystic fibrosis: ego's parents are first cousins, so ego is at-risk-homozygous", () => {
-    const { statusOf, homozygousFor } = engine;
-    const status = statusOf('hasCysticFibrosis', 'autosomalRecessive');
+  it("cystic fibrosis: ego's parents are first cousins, so ego is at-risk-affected", () => {
+    const status = engine.statusOf('hasCysticFibrosis', 'autosomalRecessive');
     expect(status('sib')).toBe('affected'); // Sam (autozygous)
     expect(status('mother')).toBe('obligateCarrier'); // Rose
     expect(status('father')).toBe('obligateCarrier'); // David
+    // Ego is a full sibling of the affected with both carrier parents recorded.
     expect(status('ego')).toBe('atRiskAffected');
-    // Ego carries the "two copies" homozygous risk (consanguineous parents).
-    const homozygous = homozygousFor('hasCysticFibrosis', 'autosomalRecessive');
-    expect(homozygous.get('ego')).toBe(true);
   });
 
   it("haemophilia (X-linked recessive): two affected uncles make Nancy an obligate carrier; the line reaches ego's son", () => {

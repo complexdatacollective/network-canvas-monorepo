@@ -2,7 +2,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { Status } from '../../genetics/status';
-import { HomozygousMarker, StatusMarker } from '../StatusMarker';
+import { StatusMarker } from '../StatusMarker';
 
 describe('StatusMarker', () => {
   describe('data-status attribute', () => {
@@ -232,28 +232,6 @@ describe('StatusMarker', () => {
       );
       const svg = container.querySelector('svg');
       expect(svg?.getAttribute('aria-hidden')).toBeTruthy();
-    });
-  });
-
-  describe('HomozygousMarker override glyph', () => {
-    it('renders data-status="atRiskHomozygous"', () => {
-      render(<HomozygousMarker color="#e53e3e" shape="square" />);
-      expect(
-        document.querySelector('[data-status="atRiskHomozygous"]'),
-      ).toBeInTheDocument();
-    });
-
-    it('is a solid fill (condition colour) with a centred WHITE "?"', () => {
-      const { container } = render(
-        <HomozygousMarker color="#e53e3e" shape="circle" />,
-      );
-      const filled = container.querySelector('[data-filled-shape]');
-      expect(filled?.getAttribute('fill')).toBe('#e53e3e');
-      const qMark = container.querySelector('[data-question-mark]');
-      expect(qMark?.textContent).toBe('?');
-      expect(qMark?.getAttribute('fill')).toBe('white');
-      // No white circular break behind the "?" — it reads on the solid fill.
-      expect(container.querySelector('[data-query-break]')).toBeNull();
     });
   });
 });

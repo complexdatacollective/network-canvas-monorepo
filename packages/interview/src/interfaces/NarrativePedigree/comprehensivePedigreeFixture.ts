@@ -58,14 +58,9 @@ const BOOL_DEFAULTS = {
  *    sweeping down a line.
  *  - Cystic fibrosis (autosomal recessive): ego's parents Rose & David are FIRST
  *    COUSINS (both descend from the Marsh great-grandparents), so ego's affected
- *    sibling Sam makes them obligate carriers and ego herself at-risk-homozygous.
- *    The consanguinity is the lesson. NOTE: because ego's parents are obligate
- *    carriers, the engine also marks BOTH grandparents (Nancy + George) as
- *    at-risk carriers, which makes ego's aunt/uncles (Margaret, Thomas, Robert)
- *    show the at-risk-homozygous marker too — a known over-flag of the
- *    research-gated homozygous rule (it fires on any child of two at-risk-carrier
- *    parents, regardless of how certain that carriage is). This is pre-existing
- *    engine behaviour, not specific to this fixture.
+ *    sibling Sam makes them obligate carriers and ego herself at-risk-affected
+ *    (25%, a full sibling of the affected with both carrier parents recorded).
+ *    The consanguinity is the lesson.
  *  - Haemophilia A (X-linked recessive): ego's maternal uncle Thomas is affected,
  *    making his mother Nancy an OBLIGATE carrier; the carrier-female line reaches
  *    Rose, ego (may carry) and her son Noah (may develop).
@@ -76,21 +71,33 @@ const BOOL_DEFAULTS = {
  *    Chris is affected, so ego's son Noah "will develop it"; ego's daughter (no
  *    Y) is untouched.
  *  - Mitochondrial myopathy (mitochondrial): Eleanor Marsh affected → the whole
- *    maternal line (Nancy → Rose → ego → her children) is at risk. Built-in
- *    contrast: ego's aunt Margaret, also at risk, conceives Chloe by MITOCHONDRIAL
- *    DONATION (a donor egg supplies the mtDNA) — so Chloe escapes the mito
- *    condition while still inheriting Margaret's autosomes (she stays at risk for
- *    Huntington's).
+ *    maternal line (Nancy → Rose → ego → her children) is at risk.
  *
  * The stages are appended in order (FamilyPedigree then NarrativePedigree), so a
  * caller that prepends its own stages knows the resulting indices by construction.
  *
+ * The default pedigree contains only structure a participant can actually build
+ * through the FamilyPedigree onboarding + building interactions (at most one egg
+ * contributor per child). Mitochondrial replacement therapy (MRT) — a child
+ * conceived from TWO eggs, one donor-tagged to supply the mtDNA — is NOT reachable
+ * through that participant interface; it is authorable only via Architect or
+ * protocol import. Pass `includeMrtBranch` to add that Architect/import-authored
+ * contrast: ego's aunt Margaret (also at risk down the maternal line) conceives
+ * Chloe by mitochondrial donation (a donor egg supplies the mtDNA), so Chloe
+ * escapes the mito condition while still inheriting Margaret's autosomes (she stays
+ * at risk for Huntington's).
+ *
  * @param showAtRisk  Whether the NarrativePedigree stage shows the at-risk
  *   (probabilistic) statuses. Defaults to `true` so every status is visible.
+ * @param includeMrtBranch  Whether to add the mitochondrial-donation (MRT) branch
+ *   (donor Ivy, child Chloe, and the two-egg parentage edges). Defaults to `false`
+ *   so the default pedigree stays participant-reachable; the dedicated MRT story
+ *   sets it `true`.
  */
 export function addComprehensivePedigree(
   si: SyntheticInterview,
   showAtRisk = true,
+  includeMrtBranch = false,
 ): void {
   const nodeType = si.addNodeType({
     name: 'Person',
@@ -280,8 +287,8 @@ export function addComprehensivePedigree(
     [BIO_SEX_VAR]: 'male',
     [XLH_VAR]: true,
   });
-  // Ego's maternal aunt Margaret — at risk down the maternal (mito) line; she
-  // conceives by mitochondrial donation.
+  // Ego's maternal aunt Margaret — at risk down the maternal (mito) line. In the
+  // MRT branch she conceives Chloe by mitochondrial donation.
   person('maunt', { [nameVarId]: 'Margaret Nolan', [BIO_SEX_VAR]: 'female' }); // née Bauer
   person('mhusb', { [nameVarId]: 'Paul Nolan', [BIO_SEX_VAR]: 'male' });
   // Ego's maternal uncles Thomas and Robert — two affected haemophiliac brothers,
@@ -296,8 +303,10 @@ export function addComprehensivePedigree(
     [BIO_SEX_VAR]: 'male',
     [HAEM_VAR]: true,
   });
-  // The mitochondrial-egg donor (an unaffected outsider).
-  person('donor', { [nameVarId]: 'Ivy Brooks', [BIO_SEX_VAR]: 'female' });
+  // The mitochondrial-egg donor (an unaffected outsider) — MRT branch only.
+  if (includeMrtBranch) {
+    person('donor', { [nameVarId]: 'Ivy Brooks', [BIO_SEX_VAR]: 'female' });
+  }
   // Partner's Adler line — Y-linked hearing loss.
   person('pf', {
     [nameVarId]: 'Walter Adler',
@@ -306,7 +315,7 @@ export function addComprehensivePedigree(
   });
   person('pm', { [nameVarId]: 'Diane Adler', [BIO_SEX_VAR]: 'female' });
 
-  // --- Gen IV: ego's household, ego's affected sibling, the MRT child -------
+  // --- Gen IV: ego's household + ego's affected sibling (MRT child below) ---
   person('ego', {
     [nameVarId]: 'You',
     [EGO_VAR]: true,
@@ -324,9 +333,11 @@ export function addComprehensivePedigree(
     [BIO_SEX_VAR]: 'male',
     [YHL_VAR]: true,
   });
-  // Chloe — Margaret's daughter by mitochondrial donation. Nucleus from
-  // Margaret, mtDNA from the donor Ivy, sperm from Paul.
-  person('mrtchild', { [nameVarId]: 'Chloe Nolan', [BIO_SEX_VAR]: 'female' });
+  // Chloe — Margaret's daughter by mitochondrial donation (MRT branch only).
+  // Nucleus from Margaret, mtDNA from the donor Ivy, sperm from Paul.
+  if (includeMrtBranch) {
+    person('mrtchild', { [nameVarId]: 'Chloe Nolan', [BIO_SEX_VAR]: 'female' });
+  }
 
   // --- Gen V: ego's children -----------------------------------------------
   person('son', { [nameVarId]: 'Noah Adler', [BIO_SEX_VAR]: 'male' });
@@ -380,26 +391,30 @@ export function addComprehensivePedigree(
   bioEdge('b-pf-partner', 'pf', 'partner');
   bioEdge('b-pm-partner', 'pm', 'partner');
 
-  // Mitochondrial donation → Chloe. The intended mother Margaret supplies the
-  // egg NUCLEUS (a biological egg), the donor Ivy supplies the egg CYTOPLASM /
-  // mtDNA (a donor egg), Paul supplies the sperm. Because two egg edges reach
-  // Chloe, the genetics engine routes her mtDNA down the donor's line while her
-  // nuclear genome comes from Margaret + Paul.
-  si.addManualEdge(edgeType.id, 'e-maunt-chloe', 'maunt', 'mrtchild', {
-    [REL_TYPE_VAR]: ['biological'],
-    [IS_ACTIVE_VAR]: true,
-    [GAMETE_ROLE_VAR]: 'egg',
-  });
-  si.addManualEdge(edgeType.id, 'e-donor-chloe', 'donor', 'mrtchild', {
-    [REL_TYPE_VAR]: ['donor'],
-    [IS_ACTIVE_VAR]: true,
-    [GAMETE_ROLE_VAR]: 'egg',
-  });
-  si.addManualEdge(edgeType.id, 'e-paul-chloe', 'mhusb', 'mrtchild', {
-    [REL_TYPE_VAR]: ['biological'],
-    [IS_ACTIVE_VAR]: true,
-    [GAMETE_ROLE_VAR]: 'sperm',
-  });
+  // Mitochondrial donation → Chloe (MRT branch only). The intended mother
+  // Margaret supplies the egg NUCLEUS (a biological egg), the donor Ivy supplies
+  // the egg CYTOPLASM / mtDNA (a donor egg), Paul supplies the sperm. Because two
+  // egg edges reach Chloe, the genetics engine routes her mtDNA down the donor's
+  // line while her nuclear genome comes from Margaret + Paul. A participant cannot
+  // build a two-egg child through the FamilyPedigree interface, so this branch is
+  // Architect/import-authored only.
+  if (includeMrtBranch) {
+    si.addManualEdge(edgeType.id, 'e-maunt-chloe', 'maunt', 'mrtchild', {
+      [REL_TYPE_VAR]: ['biological'],
+      [IS_ACTIVE_VAR]: true,
+      [GAMETE_ROLE_VAR]: 'egg',
+    });
+    si.addManualEdge(edgeType.id, 'e-donor-chloe', 'donor', 'mrtchild', {
+      [REL_TYPE_VAR]: ['donor'],
+      [IS_ACTIVE_VAR]: true,
+      [GAMETE_ROLE_VAR]: 'egg',
+    });
+    si.addManualEdge(edgeType.id, 'e-paul-chloe', 'mhusb', 'mrtchild', {
+      [REL_TYPE_VAR]: ['biological'],
+      [IS_ACTIVE_VAR]: true,
+      [GAMETE_ROLE_VAR]: 'sperm',
+    });
+  }
 
   // Gen IV → V: ego's children.
   bioEdge('b-ego-son', 'ego', 'son');
@@ -413,9 +428,16 @@ export function addComprehensivePedigree(
  * pedigree. Used by the interface's default story, its capture story and the
  * genetics tests; the mutator form above is used where a caller needs to prepend
  * its own stages (the flow example adds an intro screen first).
+ *
+ * @param includeMrtBranch  Forwarded to `addComprehensivePedigree`; defaults to
+ *   `false` so the built pedigree is participant-reachable.
  */
-export function buildComprehensivePedigree(seed: number, showAtRisk = true) {
+export function buildComprehensivePedigree(
+  seed: number,
+  showAtRisk = true,
+  includeMrtBranch = false,
+) {
   const si = new SyntheticInterview(seed);
-  addComprehensivePedigree(si, showAtRisk);
+  addComprehensivePedigree(si, showAtRisk, includeMrtBranch);
   return si;
 }
