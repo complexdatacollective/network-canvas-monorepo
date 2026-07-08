@@ -22,11 +22,11 @@ const rootDir = dirname(fileURLToPath(import.meta.url));
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' data: https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
   "img-src 'self' data: blob:",
   "media-src 'self' blob:",
-  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://fonts.googleapis.com https://fonts.gstatic.com",
+  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com",
   "worker-src 'self' blob:",
   "frame-src 'self'",
   "base-uri 'none'",
@@ -114,6 +114,18 @@ export default defineConfig({
             },
           },
           {
+            // Self-hosted fonts (bundled via @codaco/tailwind-config). Matched
+            // before the /assets/ catch-all below so font files get the long
+            // one-year expiry.
+            urlPattern: /\.(?:woff2?|ttf|otf|eot)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'architect-fonts',
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             // Bundled non-image assets (template / Sample protocol media: video,
             // GeoJSON, CSV, etc.). Content-hashed and same-origin; the JS/CSS in
             // /assets are already precached and served from there first, and
@@ -127,38 +139,10 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'StaleWhileRevalidate',
-            options: { cacheName: 'google-fonts-stylesheets' },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-webfonts',
-              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
         ],
       },
     }),
   ],
-  css: {
-    preprocessorOptions: {
-      scss: {
-        quietDeps: true,
-        silenceDeprecations: [
-          'mixed-decls',
-          'import',
-          'color-functions',
-          'global-builtin',
-        ],
-        verbose: false,
-      },
-    },
-  },
   build: {
     rollupOptions: {
       input: {

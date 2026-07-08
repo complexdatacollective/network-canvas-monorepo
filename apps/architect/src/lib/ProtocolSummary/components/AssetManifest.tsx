@@ -30,7 +30,7 @@ const AssetManifest = () => {
       <h1>Resource Library</h1>
       {assets &&
         map(assets, (typeAssets, type) => (
-          <div className="mt-(--space-xl)" key={type}>
+          <div className="mt-10" key={type}>
             <h2>{type}</h2>
             {typeAssets.map(([id]) => (
               <Asset id={id} key={id} />

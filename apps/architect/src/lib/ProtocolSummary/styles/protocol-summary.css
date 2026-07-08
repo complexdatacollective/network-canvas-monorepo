@@ -9,7 +9,8 @@
  *     uglier than this single rule
  *
  * Surface-level styles (page dimensions, base font size, print color/font
- * overrides) live in the `protocol-summary-surface` @utility in tailwind.css. */
+ * overrides) live in the `protocol-summary-surface` @utility in
+ * architect-theme.css. */
 
 :root {
   --margin: 1.5cm;
@@ -20,14 +21,13 @@
 }
 
 @media print {
-  /* Scale the printed document to the summary's intended 12px base. The
-     surface's `--base-font-size` only re-bases inherited text; the summary's
-     headings/labels use rem-based Tailwind utilities tied to the root font
-     size, so overriding it here on the <html> element (which already reads
-     `font-size: var(--base-font-size)`) shrinks the whole document uniformly.
-     The app chrome is `print:hidden`, so this only affects the printed page. */
+  /* Scale the printed document to the summary's intended 12px base.
+     Re-declaring --theme-root-size on the <html> element re-bases the shared
+     theme's fluid type scale and the root-computed --spacing-base, so the
+     whole document shrinks uniformly. The app chrome is `print:hidden`, so
+     this only affects the printed page. */
   .summary-view {
-    --base-font-size: 12px;
+    --theme-root-size: 12px;
     overflow: visible;
     height: auto;
     width: auto;
@@ -46,7 +46,7 @@
     overflow: visible;
     height: auto;
     width: auto;
-    background: hsl(var(--platinum));
+    background: oklch(var(--platinum));
   }
 
   .page-break-marker {
@@ -58,8 +58,11 @@
     width: var(--page-size-width);
     min-height: var(--page-size-height);
     margin: var(--margin) auto;
-    border: 1px hsl(var(--platinum-dark)) solid;
-    border-radius: var(--radius-xs);
+    border: 1px oklch(var(--platinum--dark)) solid;
+    /* Mirrors the theme's radius-xs token: the theme is @theme inline, so
+       --radius-xs has no runtime variable; --radius-base is the runtime knob
+       it derives from. */
+    border-radius: calc(var(--radius-base) * 0.25);
     box-shadow: 0 4px 5px rgb(75 75 75 / 20%);
   }
 }

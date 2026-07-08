@@ -19,9 +19,9 @@ const Panels = ({ panels = null }: PanelsProps) => {
 
   return (
     <SectionFrame title="Panels">
-      <ol className="m-0 ps-(--space-xl)">
+      <ol className="m-0 ps-10">
         {panels.map((panel) => (
-          <li className="my-(--space-md) pl-(--space-md)" key={panel.id}>
+          <li className="my-5 pl-5" key={panel.id}>
             <MiniTable
               rotated
               rows={[

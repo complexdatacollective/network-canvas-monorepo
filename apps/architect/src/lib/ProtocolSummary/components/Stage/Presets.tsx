@@ -22,9 +22,9 @@ const Presets = ({ presets = null }: PresetsProps) => {
 
   return (
     <SectionFrame title="Presets">
-      <ol className="m-0 ps-(--space-xl)">
+      <ol className="m-0 ps-10">
         {presets.map((preset) => (
-          <li className="my-(--space-md) pl-(--space-md)" key={preset.label}>
+          <li className="my-5 pl-5" key={preset.label}>
             <SectionFrame title={preset.label}>
               <MiniTable
                 rotated
