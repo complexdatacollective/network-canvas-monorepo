@@ -34,13 +34,15 @@
       `home.png` (Home `/`), `editor-stage.png` (open the Sample/development protocol from Home → open a name-generator stage in the StageEditor), `editor-form-section.png` (a form-heavy section of the same editor, e.g. the prompts/form panel), `codebook.png` (Codebook screen), `navshell-modal.png` (open the ProjectNav modal), `appupdate-dialog.png` (AppUpdate pill's dialog — force it visible per `apps/architect/src/components/AppUpdate/AppUpdatePill.tsx`; if unforceable in dev, screenshot the pill and note it), `legacy-heavy.png` (a screen using `lib/legacy-ui` Button/icons — the Query/Rules editor), `summary-print.png` (ProtocolSummary via `/summary` route or the Summary page, plus a print-media-emulation capture).
 - [ ] **Step 3:** Write NOTES.md with the interaction path for each capture (Phase 3 must be able to reproduce them exactly), then stop the dev server.
 
-### Task 1: Author `architect-theme.css`
+### Task 1: Author `architect-theme.css` and the sequence-color helper
 
 **Files:**
 
 - Create: `apps/architect/src/styles/architect-theme.css`
+- Create: `apps/architect/src/utils/resolveProtocolColor.ts`
+- Test: `apps/architect/src/utils/__tests__/resolveProtocolColor.test.ts`
 
-**Interfaces:** Produces every token/utility named in Appendix A's "survives via app layer" column. Consumed by Task 2's entry file.
+**Interfaces:** Produces every token/utility named in Appendix A's "survives via app layer" column (consumed by Task 2's entry file), plus `resolveProtocolColor(name: string, opts?: { dark?: boolean }): string` — the function R5's dynamic color sites import.
 
 - [ ] **Step 1:** Create the file with exactly this content (values verified against `apps/architect/src/styles/tailwind.css` and `tooling/tailwind/shared/colors.css`; shared palette triplets are oklch, dark variants use the shared `--x--dark` double-hyphen names):
 
@@ -49,7 +51,7 @@
  * Architect app theme — layered over @codaco/tailwind-config/fresco.css.
  * Section 1 re-declares shared semantic variables with Architect's brand
  * values (the extension mechanism sanctioned by themes/default.css).
- * Sections 2-4 add Architect-only vocabulary.
+ * Sections 2-3 add Architect-only vocabulary.
  */
 
 /* 1. Brand overrides (shared variable names, Architect values). */
@@ -86,14 +88,17 @@
   }
 }
 
-/* 2. Architect-only semantic tokens (no shared concept), plus runtime
-   re-emission of the named palette. `static` is load-bearing twice over:
-   some tokens are consumed only by fresco-ui dist classes or runtime
-   var() reads (never by scanned utility classes), and the shared theme
-   is `@theme inline` — it emits NO --color-* variables at runtime, so
-   Architect's var(--color-x)/var(--color-x-dark) inline-style and SVG
-   reads (149 sites) only resolve because of the block below. */
-@theme static {
+/* 2. Architect-only semantic tokens (no shared concept). `inline` matches
+   the shared theme's convention: token values are inlined into generated
+   utilities and re-resolve at the usage site. NO --color-* variables are
+   emitted at runtime — root-level emission would freeze var() indirection
+   at :root and break re-resolution inside themed regions, which is the
+   documented reason the shared theme is @theme inline (theme.css:12-26).
+   Consequence for the codemods: every runtime var(--color-*) read must be
+   rewritten to variables that DO exist (Appendix A, R5). Values are
+   written out per token — under inline, a var(--color-*) alias chain
+   would reference a variable that never exists at runtime. */
+@theme inline {
   --color-rules-type: oklch(var(--neon-coral));
   --color-rules-assert: oklch(var(--sea-green));
   --color-rules-control: oklch(var(--slate-blue));
@@ -101,12 +106,12 @@
   --color-rules-attribute: oklch(var(--mustard));
   --color-rules-operator: oklch(var(--cyber-grape));
   --color-rules-value: oklch(var(--sea-serpent));
-  --color-rule-type: var(--color-rules-type);
-  --color-rule-control: var(--color-rules-control);
-  --color-rule-delete: var(--color-rules-delete);
-  --color-rule-attribute: var(--color-rules-attribute);
-  --color-rule-operator: var(--color-rules-operator);
-  --color-rule-value: var(--color-rules-value);
+  --color-rule-type: oklch(var(--neon-coral));
+  --color-rule-control: oklch(var(--slate-blue));
+  --color-rule-delete: oklch(var(--tomato));
+  --color-rule-attribute: oklch(var(--mustard));
+  --color-rule-operator: oklch(var(--cyber-grape));
+  --color-rule-value: oklch(var(--sea-serpent));
 
   --color-timeline: oklch(var(--neon-coral));
   --color-timeline-contrast: oklch(var(--white));
@@ -125,103 +130,12 @@
   --color-surface-accent-contrast: oklch(var(--white));
   --color-fresco-purple: oklch(10% 0.4 290);
   --color-fresco-purple-contrast: oklch(var(--white));
-
-  /* 2b. Runtime palette re-emission. Same names/values as the shared
-     theme's utility tokens, but emitted as real :root variables. Dark
-     aliases use Architect's established single-hyphen -dark suffix,
-     resolving the shared double-hyphen --x--dark triplets. */
-  --color-white: oklch(var(--white));
-  --color-neon-coral: oklch(var(--neon-coral));
-  --color-neon-coral-dark: oklch(var(--neon-coral--dark));
-  --color-sea-green: oklch(var(--sea-green));
-  --color-sea-green-dark: oklch(var(--sea-green--dark));
-  --color-slate-blue: oklch(var(--slate-blue));
-  --color-slate-blue-dark: oklch(var(--slate-blue--dark));
-  --color-navy-taupe: oklch(var(--navy-taupe));
-  --color-navy-taupe-dark: oklch(var(--navy-taupe--dark));
-  --color-cyber-grape: oklch(var(--cyber-grape));
-  --color-cyber-grape-dark: oklch(var(--cyber-grape--dark));
-  --color-mustard: oklch(var(--mustard));
-  --color-mustard-dark: oklch(var(--mustard--dark));
-  --color-rich-black: oklch(var(--rich-black));
-  --color-rich-black-dark: oklch(var(--rich-black--dark));
-  --color-charcoal: oklch(var(--charcoal));
-  --color-charcoal-dark: oklch(var(--charcoal--dark));
-  --color-platinum: oklch(var(--platinum));
-  --color-platinum-dark: oklch(var(--platinum--dark));
-  --color-sea-serpent: oklch(var(--sea-serpent));
-  --color-sea-serpent-dark: oklch(var(--sea-serpent--dark));
-  --color-purple-pizazz: oklch(var(--purple-pizazz));
-  --color-purple-pizazz-dark: oklch(var(--purple-pizazz--dark));
-  --color-paradise-pink: oklch(var(--paradise-pink));
-  --color-paradise-pink-dark: oklch(var(--paradise-pink--dark));
-  --color-cerulean-blue: oklch(var(--cerulean-blue));
-  --color-cerulean-blue-dark: oklch(var(--cerulean-blue--dark));
-  --color-kiwi: oklch(var(--kiwi));
-  --color-kiwi-dark: oklch(var(--kiwi--dark));
-  --color-neon-carrot: oklch(var(--neon-carrot));
-  --color-neon-carrot-dark: oklch(var(--neon-carrot--dark));
-  --color-barbie-pink: oklch(var(--barbie-pink));
-  --color-barbie-pink-dark: oklch(var(--barbie-pink--dark));
-  --color-tomato: oklch(var(--tomato));
-  --color-tomato-dark: oklch(var(--tomato--dark));
 }
 
-/* 3. Sequence aliases: protocol-data color names resolve against the
-   shared sequences. Order 1-8 is position-identical by verification;
-   -dark variants are derived (shared sequences ship none). */
-:root {
-  --node-color-seq-1: var(--node-1);
-  --node-color-seq-2: var(--node-2);
-  --node-color-seq-3: var(--node-3);
-  --node-color-seq-4: var(--node-4);
-  --node-color-seq-5: var(--node-5);
-  --node-color-seq-6: var(--node-6);
-  --node-color-seq-7: var(--node-7);
-  --node-color-seq-8: var(--node-8);
-  --node-color-seq-1-dark: oklch(from var(--node-1) calc(l - 0.05) c h);
-  --node-color-seq-2-dark: oklch(from var(--node-2) calc(l - 0.05) c h);
-  --node-color-seq-3-dark: oklch(from var(--node-3) calc(l - 0.05) c h);
-  --node-color-seq-4-dark: oklch(from var(--node-4) calc(l - 0.05) c h);
-  --node-color-seq-5-dark: oklch(from var(--node-5) calc(l - 0.05) c h);
-  --node-color-seq-6-dark: oklch(from var(--node-6) calc(l - 0.05) c h);
-  --node-color-seq-7-dark: oklch(from var(--node-7) calc(l - 0.05) c h);
-  --node-color-seq-8-dark: oklch(from var(--node-8) calc(l - 0.05) c h);
-  --edge-color-seq-1: var(--edge-1);
-  --edge-color-seq-2: var(--edge-2);
-  --edge-color-seq-3: var(--edge-3);
-  --edge-color-seq-4: var(--edge-4);
-  --edge-color-seq-5: var(--edge-5);
-  --edge-color-seq-6: var(--edge-6);
-  --edge-color-seq-7: var(--edge-7);
-  --edge-color-seq-8: var(--edge-8);
-  --edge-color-seq-1-dark: oklch(from var(--edge-1) calc(l - 0.05) c h);
-  --edge-color-seq-2-dark: oklch(from var(--edge-2) calc(l - 0.05) c h);
-  --edge-color-seq-3-dark: oklch(from var(--edge-3) calc(l - 0.05) c h);
-  --edge-color-seq-4-dark: oklch(from var(--edge-4) calc(l - 0.05) c h);
-  --edge-color-seq-5-dark: oklch(from var(--edge-5) calc(l - 0.05) c h);
-  --edge-color-seq-6-dark: oklch(from var(--edge-6) calc(l - 0.05) c h);
-  --edge-color-seq-7-dark: oklch(from var(--edge-7) calc(l - 0.05) c h);
-  --edge-color-seq-8-dark: oklch(from var(--edge-8) calc(l - 0.05) c h);
-  --ord-color-seq-1: var(--ord-1);
-  --ord-color-seq-2: var(--ord-2);
-  --ord-color-seq-3: var(--ord-3);
-  --ord-color-seq-4: var(--ord-4);
-  --ord-color-seq-5: var(--ord-5);
-  --ord-color-seq-6: var(--ord-6);
-  --ord-color-seq-7: var(--ord-7);
-  --ord-color-seq-8: var(--ord-8);
-  --ord-color-seq-1-dark: oklch(from var(--ord-1) calc(l - 0.05) c h);
-  --ord-color-seq-2-dark: oklch(from var(--ord-2) calc(l - 0.05) c h);
-  --ord-color-seq-3-dark: oklch(from var(--ord-3) calc(l - 0.05) c h);
-  --ord-color-seq-4-dark: oklch(from var(--ord-4) calc(l - 0.05) c h);
-  --ord-color-seq-5-dark: oklch(from var(--ord-5) calc(l - 0.05) c h);
-  --ord-color-seq-6-dark: oklch(from var(--ord-6) calc(l - 0.05) c h);
-  --ord-color-seq-7-dark: oklch(from var(--ord-7) calc(l - 0.05) c h);
-  --ord-color-seq-8-dark: oklch(from var(--ord-8) calc(l - 0.05) c h);
-}
-
-/* 4. Ported utilities, variant, and base layer. */
+/* 3. Ported utilities, variant, and base layer. Runtime var() values
+   inside utility bodies reference only variables that exist at runtime:
+   bare theme vars (--input, --primary, ...) and raw palette triplets
+   wrapped in oklch(). Never var(--color-*). */
 @custom-variant short (@media (max-height: 760px));
 
 @layer base {
@@ -280,7 +194,7 @@
 }
 @utility action-link {
   @apply cursor-pointer font-bold underline decoration-2 underline-offset-4;
-  text-decoration-color: var(--color-action);
+  text-decoration-color: oklch(var(--sea-green));
 }
 @utility small-heading {
   font-family: var(--heading-font);
@@ -297,25 +211,25 @@
 }
 @utility form-field {
   @apply border-outline w-full rounded-sm border;
-  background-color: var(--color-white);
-  color: var(--color-input-contrast);
+  background-color: var(--input);
+  color: var(--input-contrast);
   padding: 0.6rem 1.2rem;
   line-height: 1.5;
 
   &:focus {
     @apply ring-1 outline-none;
-    border-color: var(--color-primary);
-    --tw-ring-color: var(--color-primary);
+    border-color: var(--primary);
+    --tw-ring-color: var(--primary);
   }
   &::placeholder {
-    color: var(--color-muted);
+    color: color-mix(in oklab, var(--input-contrast) 50%, transparent);
   }
   & .form-field__label {
     font-size: var(--text-base);
     font-weight: 200;
     display: block;
     margin: 0;
-    color: var(--color-input-contrast);
+    color: var(--input-contrast);
   }
 }
 @utility clickable {
@@ -353,7 +267,70 @@
 }
 ```
 
-- [ ] **Step 2:** Deliberately dropped (do not port): `focusable` (shared version + `--focus-color` covers it), `nav-link`, `allow-text-selection`, `prevent-text-selection` (zero consumers).
+- [ ] **Step 2:** Deliberately dropped (do not port): `focusable` (shared version + `--focus-color` covers it), `nav-link`, `allow-text-selection`, `prevent-text-selection` (zero consumers). Deliberately absent: any runtime re-emission of `--color-*` variables and any `--node-color-seq-*` CSS aliases — root-level emission freezes `var()` indirection at `:root` and breaks themed-region re-resolution; sequence names resolve in code via the helper below.
+- [ ] **Step 3:** Write the failing test `apps/architect/src/utils/__tests__/resolveProtocolColor.test.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { resolveProtocolColor } from '../resolveProtocolColor';
+
+describe('resolveProtocolColor', () => {
+  it('maps sequence names onto shared theme variables', () => {
+    expect(resolveProtocolColor('node-color-seq-3')).toBe('var(--node-3)');
+    expect(resolveProtocolColor('edge-color-seq-1')).toBe('var(--edge-1)');
+    expect(resolveProtocolColor('ord-color-seq-8')).toBe('var(--ord-8)');
+  });
+
+  it('derives dark sequence variants via relative color syntax', () => {
+    expect(resolveProtocolColor('node-color-seq-3', { dark: true })).toBe(
+      'oklch(from var(--node-3) calc(l - 0.05) c h)',
+    );
+  });
+
+  it('wraps named palette hues in the oklch color function', () => {
+    expect(resolveProtocolColor('sea-green')).toBe('oklch(var(--sea-green))');
+    expect(resolveProtocolColor('sea-green', { dark: true })).toBe(
+      'oklch(var(--sea-green--dark))',
+    );
+  });
+});
+```
+
+- [ ] **Step 4:** Run it to verify it fails: `pnpm --filter @codaco/architect exec vitest run src/utils/__tests__/resolveProtocolColor.test.ts`. Expected: FAIL (module not found).
+- [ ] **Step 5:** Create `apps/architect/src/utils/resolveProtocolColor.ts`:
+
+```ts
+const SEQ_PREFIXES = [
+  'node-color-seq-',
+  'edge-color-seq-',
+  'ord-color-seq-',
+] as const;
+
+/**
+ * Resolve a protocol color name to a CSS color expression built on variables
+ * that exist at runtime under the shared fresco theme. Codebook sequence
+ * names ('node-color-seq-3') map onto the theme's --node-N/--edge-N/--ord-N
+ * variables, which re-resolve inside themed regions; the theme ships no dark
+ * sequence variants, so `dark` derives one via relative color syntax
+ * (mirroring the palette's 0.05 lightness step). Named palette hues resolve
+ * from the raw oklch triplets, which require the color-function wrapper.
+ */
+export function resolveProtocolColor(
+  name: string,
+  opts?: { dark?: boolean },
+): string {
+  const prefix = SEQ_PREFIXES.find((p) => name.startsWith(p));
+  if (prefix) {
+    const themeVar = `--${prefix.replace('-color-seq-', '-')}${name.slice(prefix.length)}`;
+    return opts?.dark
+      ? `oklch(from var(${themeVar}) calc(l - 0.05) c h)`
+      : `var(${themeVar})`;
+  }
+  return opts?.dark ? `oklch(var(--${name}--dark))` : `oklch(var(--${name}))`;
+}
+```
+
+- [ ] **Step 6:** Run the test again — expected: PASS. (This is the only test run permitted outside Phase 3; it is a single isolated file.)
 
 ### Task 2: Rewrite the entry stylesheet and index.html
 
@@ -380,7 +357,7 @@
 
 - [ ] **Step 1:** Create a scratch probe `apps/architect/src/spike-probe.tsx` containing `export const Probe = () => <div className="p-4.8 z-1000 tablet-portrait:w-auto bg-rules-type text-muted var-probe" />;` (unreferenced file — Tailwind scans it regardless).
 - [ ] **Step 2:** Run `pnpm --filter @codaco/architect build`. Expected: build succeeds (Tailwind compile errors here mean Task 1/2 have a bug — fix before proceeding).
-- [ ] **Step 3:** `grep -o 'p-4\.8\|z-1000\|bg-rules-type' apps/architect/dist/assets/*.css | sort -u`. If `.p-4\.8` is present → **Branch A**; absent → **Branch B**. If `z-1000` absent, shard rule R4 uses `z-[1000]`-style arbitrary values. `bg-rules-type` must be present (else the `@theme static` block in the app layer isn't merging — stop and fix). Also `grep -c -- '--color-platinum-dark:' apps/architect/dist/assets/*.css` — expected ≥1 (proves the runtime palette re-emission works; if 0, the 149 `var(--color-*)` runtime reads will silently break — stop and fix).
+- [ ] **Step 3:** `grep -o 'p-4\.8\|z-1000\|bg-rules-type' apps/architect/dist/assets/*.css | sort -u`. If `.p-4\.8` is present → **Branch A**; absent → **Branch B**. If `z-1000` absent, shard rule R4 uses `z-[1000]`-style arbitrary values. `bg-rules-type` must be present and its declaration must contain `oklch(var(--neon-coral))` inlined (else the app layer's `@theme inline` block isn't merging — stop and fix). Note: no `--color-*` variables are expected in the output — the theme is inline by design.
 - [ ] **Step 4:** Delete `apps/architect/src/spike-probe.tsx`. Record the branch decision.
 - [ ] **Step 5 (orchestrator):** Commit: `git add -A && git commit -m "feat(architect): adopt shared fresco theme foundation"`. NOTE: the app now builds but renders visually broken until Phase 1 completes — expected mid-migration state; do not run visual checks yet.
 
@@ -462,7 +439,7 @@ Do not migrate any existing Architect modal to `useDialog` — wiring only.
 
 - Modify: `apps/architect/src/lib/ProtocolSummary/styles/protocol-summary.css`, plus every `.tsx` under `apps/architect/src/lib/ProtocolSummary/**` (this directory was excluded from Phase 1 shards; apply Appendix A rules here too)
 
-- [ ] **Step 1:** In `protocol-summary.css`: `hsl(var(--platinum))` (line 49) → `var(--color-platinum)`; `border: 1px hsl(var(--platinum-dark)) solid` (line 61) → `border: 1px var(--color-platinum-dark) solid`; the print-block `--base-font-size: 12px` re-base (lines 29–34) → `--theme-root-size: 12px` (the ported `protocol-summary-surface` utility in `architect-theme.css` already sets it for screen; keep the print block consistent).
+- [ ] **Step 1:** In `protocol-summary.css`: `hsl(var(--platinum))` (line 49) → `oklch(var(--platinum))`; `border: 1px hsl(var(--platinum-dark)) solid` (line 61) → `border: 1px oklch(var(--platinum--dark)) solid` (R5 rule 2 — no `--color-*` variables exist at runtime); the print-block `--base-font-size: 12px` re-base (lines 29–34) → `--theme-root-size: 12px` (the ported `protocol-summary-surface` utility in `architect-theme.css` already sets it for screen; keep the print block consistent).
 - [ ] **Step 2:** Apply Appendix A rules R1–R6 to the ProtocolSummary `.tsx` files (known sites: `var(--heading-font-family)` in `components/Stage/Stage.tsx` → `var(--heading-font)`; `bg-platinum`, `text-neon-coral`, `border-platinum-dark`, `text-navy-taupe/70`, `bg-cyber-grape`, `table-row-tint` in `MiniTable.tsx` survive by name).
 - [ ] **Step 3:** Self-check with the R7 greps over `lib/ProtocolSummary/**` — zero matches expected.
 
@@ -483,7 +460,7 @@ Do not migrate any existing Architect modal to `useDialog` — wiring only.
 
 ### Task 9: Machine gates
 
-- [ ] **Step 1:** `pnpm typecheck` — expected: clean (first run may surface shard misses; failures go to the Phase 4 fix loop).
+- [ ] **Step 1:** `pnpm typecheck` — expected: clean (first run may surface shard misses; failures go to the Phase 4 fix loop). Then `pnpm --filter @codaco/architect test` — expected: pass (includes the Task 1 `resolveProtocolColor` unit tests).
 - [ ] **Step 2:** `pnpm lint` (repo root) — expected: no new errors vs `main`; tailwind-plugin unknown-class warnings in `apps/architect` are real misses, send to fix loop.
 - [ ] **Step 3:** `pnpm knip` — expected: clean (Task 1 dropped utilities; Task 8 removed deps).
 - [ ] **Step 4:** `pnpm --filter @codaco/architect build` — expected: success, no Tailwind `@apply`/unknown-utility errors.
@@ -523,19 +500,19 @@ Authoritative copy in the spec (`docs/superpowers/specs/2026-07-08-architect-sha
 
 **R1 — Semantic renames:**
 
-| From                                                                                                                                                     | To                                                                 |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `*-error` / `*-error-foreground`                                                                                                                         | `*-destructive` / `*-destructive-contrast`                         |
-| `text-foreground` (any `*-foreground` where stem is `foreground` itself)                                                                                 | `text-text` etc.                                                   |
-| `*-muted-foreground`                                                                                                                                     | `*-muted`                                                          |
-| `*-{primary,secondary,accent,surface-1,surface-2,surface-3,surface-accent,timeline,input,sortable,action,warning,success,info,fresco-purple}-foreground` | same stem + `-contrast`                                            |
-| `sortable-background`                                                                                                                                    | unchanged (app token); `sortable-foreground` → `sortable-contrast` |
-| `border-border`                                                                                                                                          | `border-outline`                                                   |
-| `*-divider`                                                                                                                                              | `*-outline`                                                        |
-| `*-input-placeholder`                                                                                                                                    | `placeholder:text-input-contrast/50` idiom                         |
-| `bg-shadow` / `bg-shadow-elevated` (1 site)                                                                                                              | inline `bg-black/15` / `bg-black/25`                               |
-| `var(--modal-overlay)` (1 site)                                                                                                                          | `var(--color-overlay)` (or `bg-overlay` in class position)         |
-| `var(--heading-font-family)` / `var(--body-font-family)`                                                                                                 | `var(--heading-font)` / `var(--body-font)`                         |
+| From                                                                                                                                                     | To                                                                                              |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `*-error` / `*-error-foreground`                                                                                                                         | `*-destructive` / `*-destructive-contrast`                                                      |
+| `text-foreground` (any `*-foreground` where stem is `foreground` itself)                                                                                 | `text-text` etc.                                                                                |
+| `*-muted-foreground`                                                                                                                                     | `*-muted`                                                                                       |
+| `*-{primary,secondary,accent,surface-1,surface-2,surface-3,surface-accent,timeline,input,sortable,action,warning,success,info,fresco-purple}-foreground` | same stem + `-contrast`                                                                         |
+| `sortable-background`                                                                                                                                    | unchanged (app token); `sortable-foreground` → `sortable-contrast`                              |
+| `border-border`                                                                                                                                          | `border-outline`                                                                                |
+| `*-divider`                                                                                                                                              | `*-outline`                                                                                     |
+| `*-input-placeholder`                                                                                                                                    | `placeholder:text-input-contrast/50` idiom                                                      |
+| `bg-shadow` / `bg-shadow-elevated` (1 site)                                                                                                              | inline `bg-black/15` / `bg-black/25`                                                            |
+| `var(--modal-overlay)` (1 site)                                                                                                                          | `bg-overlay` in class position; `var(--overlay-tone)` in CSS (the runtime var behind the token) |
+| `var(--heading-font-family)` / `var(--body-font-family)`                                                                                                 | `var(--heading-font)` / `var(--body-font)`                                                      |
 
 Survive via app layer (leave alone): `background`, `selected`, `warning`, `success`, `info`, `link`, `primary`, `secondary`, `accent`, `surface-1/2/3`, `input`, `white`, `black`, `transparent`, named palette utilities, `rules-*`/`rule-*`, `timeline`, `sortable-background`, `table-row-tint`, `form-control`, `action`, `hover`/`focus`/`active`, `input-active`, `surface-accent`, `fresco-purple`, `muted`.
 
@@ -561,7 +538,13 @@ Forms: `p-(--space-md)` → `p-4.8`/`p-5`; `gap-(--space-sm)` → `gap-2.4`/`gap
 
 **R4 — Z-index:** `--z-fx`→`z-1`, `--z-panel`→`z-10`, `--z-global-ui`→`z-20`, `--z-default`→`z-100`, `--z-dialog`→`z-1000`, `--z-modal`→`z-2000`, `--z-tooltip`→`z-3000`. Use `z-[N]` arbitrary form if Task 3 found bare numbers don't compile. Raw CSS `var(--z-*)` → the literal number.
 
-**R5 — hsl()/vars:** Background: the shared theme is `@theme inline` and emits **no** `--color-*` variables at runtime; `var(--color-x)` only resolves because the app layer's `@theme static` re-emission block (Task 1 §2b) defines it. Rules: `hsl(var(--x))` → `var(--color-x)`; `hsl(var(--x-dark))` → `var(--color-x-dark)`; `hsl(var(--x) / N)` → opacity modifier (e.g. `bg-navy-taupe/50`) in class positions, `color-mix(in oklab, var(--color-x) N%, transparent)` in CSS positions (judgment). **Existing `var(--color-x)` / `var(--color-x-dark)` reads (SVG icons, inline styles — 149 sites) are left unchanged** — they resolve via §2b. Dynamic sites: determine each site's value domain first; codebook sequence names (`node/edge/ord-color-seq-N`) → `var(--${color})` and `var(--${color}-dark)` (app-layer aliases, single-hyphen dark); palette-name domains → `var(--color-${color})` / `var(--color-${color}-dark)`. `var(--picker-size)`/`var(--picker-border-size)` (ColorPicker only) → literals `60px`/`4px`.
+**R5 — runtime color reads (inline styles, SVG attrs, CSS files; class positions unaffected).** Background: both the shared theme and the app layer are `@theme inline` — **no `--color-*` variable exists at runtime, anywhere**. Every runtime color read must target a variable that does exist, chosen by this hierarchy:
+
+1. **Semantic concepts** → bare theme variables defined by `themes/*.css` (`var(--primary)`, `var(--destructive)`, `var(--input)`, `var(--input-contrast)`, `var(--selected)`, `var(--background)`, `var(--text)`, `var(--surface-1..3)`, `var(--node-N)`, `var(--edge-N)`, `var(--ord-N)`, …) — these re-resolve inside themed regions; always prefer them when the read means a concept rather than a hue.
+2. **Named palette hues** → the raw oklch triplets from `shared/colors.css`, wrapped in the color function: `oklch(var(--sea-green))`, dark = `oklch(var(--sea-green--dark))` (double-hyphen).
+3. **Codebook sequence names** (including dynamic `${color}` templates) → `resolveProtocolColor(name, { dark? })` from `apps/architect/src/utils/resolveProtocolColor.ts` (Task 1).
+
+Mappings: `hsl(var(--x))` → per hierarchy; `hsl(var(--x-dark))` → `oklch(var(--x--dark))`; `hsl(var(--x) / N)` → `oklch(var(--x) / N)` in CSS positions, opacity modifier (e.g. `bg-navy-taupe/50`) in class positions. **Existing `var(--color-x)` / `var(--color-x-dark)` reads (149 sites: 7 legacy SVG icon components + inline styles) are hard breaks — rewrite per hierarchy** (typically rule 2). The 9 runtime reads of Architect-only token names: `var(--color-error)` → `var(--destructive)`; `var(--color-divider)` → `oklch(var(--platinum--dark))`; `var(--color-sortable-background)` → `oklch(var(--slate-blue))`; `var(--color-fresco-purple)` → literal `oklch(10% 0.4 290)`; `var(--color-surface-N-foreground)` → `var(--surface-N-contrast)`. `var(--picker-size)`/`var(--picker-border-size)` (ColorPicker only) → literals `60px`/`4px`.
 
 **R6 — Breakpoints:** `md:`→`tablet-portrait:`, `lg:`→`tablet-landscape:`, `xl:`→`laptop:`, `2xl:`→`desktop:` (mechanical); `sm:`→ judgment per site (`phone-landscape:` at 480 or `tablet-portrait:` at 768 — pick by layout intent, record the decision).
 
@@ -573,6 +556,7 @@ grep -rn -- "--space-\|--animation-\|--z-\|--picker-\|--modal-overlay\|--heading
 grep -rnE "\b(text|bg|border|outline|ring|fill|stroke|decoration)-(error|foreground|muted-foreground|divider)\b|border-border|-(foreground)\b" --include='*.tsx' --include='*.ts' --include='*.css'
 grep -rnE "[\"'\` ](sm|md|lg|xl|2xl):" --include='*.tsx' --include='*.ts'
 grep -rn "@import 'tailwindcss'" apps/architect/src
+grep -rn "var(--color-" --include='*.tsx' --include='*.ts' --include='*.css'
 ```
 
 (The `-foreground` grep intentionally catches all remaining `*-foreground` class tokens; `--base-font-size` must be gone everywhere including the print CSS after Task 7.)
