@@ -33,6 +33,8 @@ const buttonSpecificVariants = cva({
       text: 'text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
       dashed:
         'border-2 border-dashed border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
+      glass:
+        'control-glass border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
       link: 'elevation-none hover:elevation-none! text-link h-auto! rounded-none p-0! underline-offset-4 hover:translate-none! hover:enabled:underline',
     },
     color: {
@@ -73,13 +75,13 @@ const buttonSpecificVariants = cva({
     },
     // Default color bg is too light to use as outline or text color
     {
-      variant: ['outline', 'text', 'dashed'],
+      variant: ['outline', 'text', 'dashed', 'glass'],
       color: 'default',
       className:
         'interview:[--component-text:var(--neutral)] [--component-text:var(--neutral-contrast)] hover:enabled:[--component-text:var(--neutral)]',
     },
     {
-      variant: ['outline', 'dashed'],
+      variant: ['outline', 'dashed', 'glass'],
       color: ['dynamic', 'default'],
       className: 'border-current',
     },

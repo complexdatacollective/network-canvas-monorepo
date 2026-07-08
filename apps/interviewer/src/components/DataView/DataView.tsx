@@ -175,7 +175,7 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="flex min-h-0 w-full flex-1 flex-col gap-6 px-11 pt-8 pb-8"
+      className="tablet-landscape:px-11 flex min-h-0 w-full flex-1 flex-col gap-6 px-6 pt-8 pb-8"
     >
       <DataViewToolbar
         table={table}

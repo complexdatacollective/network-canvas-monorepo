@@ -25,7 +25,7 @@ const Table = React.forwardRef<
     <div
       className={cx(
         'w-full max-w-full overflow-x-auto overscroll-x-none',
-        bodyScroll && 'min-h-0 flex-1 overflow-y-auto',
+        bodyScroll && 'min-h-0 flex-1 overflow-y-auto overscroll-y-none',
       )}
     >
       <table

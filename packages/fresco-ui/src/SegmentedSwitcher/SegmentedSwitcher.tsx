@@ -4,7 +4,6 @@ import type { LucideIcon } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { type ReactElement, type ReactNode, useId } from 'react';
 
-import Surface from '../layout/Surface';
 import { cva, cx } from '../utils/cva';
 
 export type SegmentedOption<T extends string> = {
@@ -20,11 +19,41 @@ export type SegmentedSwitcherProps<T extends string> = {
   'value': T;
   'onValueChange': (value: T) => void;
   'options': SegmentedOption<T>[];
-  'size'?: 'sm' | 'md' | 'lg';
+  'size'?: 'sm' | 'md' | 'lg' | 'xl';
+  /**
+   * Track treatment. `outline` (default) reads like a normal outline button;
+   * `glass` adds the translucent, backdrop-blurred, shadowed glass treatment
+   * with a thicker border.
+   */
+  'variant'?: 'outline' | 'glass';
   'aria-label': string;
   'className'?: string;
 };
 
+// The outer track height is pinned to the matching Button height at each size
+// token (sm h-10=40, md h-12=48, lg h-16=64, xl h-20=80) via `trackHeightClass`
+// so the switcher lines up with Buttons exactly. The segments stretch to fill
+// whatever inner height remains after the border + `p-1` padding, so they stay
+// concentric with the track regardless of the border width (see below).
+const trackHeightClass: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
+  sm: 'h-10',
+  md: 'h-12',
+  lg: 'h-16',
+  xl: 'h-20',
+};
+
+const trackVariantClass: Record<'outline' | 'glass', string> = {
+  // Like a normal outline button: a 2px themed border, no fill.
+  outline: 'border-2 border-outline',
+  // Translucent surface + backdrop blur + shadow + a thicker (control) border.
+  glass: 'control-glass border-outline',
+};
+
+// Segments stretch to fill the track's inner height (the flex chain uses
+// `items-stretch`) rather than taking a fixed height. A `rounded-full` segment
+// that fills the inner box is concentric with the `rounded-full` track — inset
+// uniformly by the border + `p-1` — so the active pill nests cleanly at any
+// size and border width instead of leaving a crescent gap at the rounded ends.
 const segmentVariants = cva({
   base: cx(
     'font-heading relative inline-flex items-center justify-center rounded-full font-extrabold uppercase transition-colors',
@@ -32,18 +61,20 @@ const segmentVariants = cva({
   ),
   variants: {
     size: {
-      sm: 'gap-1.5 px-3.5 py-1.5 text-xs tracking-[0.06em]',
-      md: 'gap-2 px-[18px] py-2.5 text-xs tracking-[0.06em]',
-      lg: 'gap-2 px-5 py-2 text-sm tracking-wide',
+      sm: 'gap-1.5 px-3.5 text-xs tracking-[0.06em]',
+      md: 'gap-2 px-[18px] text-xs tracking-[0.06em]',
+      lg: 'gap-2 px-5 text-sm tracking-wide',
+      xl: 'gap-2.5 px-6 text-base tracking-wide',
     },
   },
   defaultVariants: { size: 'md' },
 });
 
-const iconSizeClass: Record<'sm' | 'md' | 'lg', string> = {
+const iconSizeClass: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
   sm: 'size-3.5',
   md: 'size-4',
   lg: 'size-[18px]',
+  xl: 'size-5',
 };
 
 export default function SegmentedSwitcher<T extends string>({
@@ -51,6 +82,7 @@ export default function SegmentedSwitcher<T extends string>({
   onValueChange,
   options,
   size = 'md',
+  variant = 'outline',
   'aria-label': ariaLabel,
   className,
 }: SegmentedSwitcherProps<T>) {
@@ -58,11 +90,17 @@ export default function SegmentedSwitcher<T extends string>({
   const reduced = useReducedMotion();
 
   return (
-    <Surface
-      floating
-      noContainer
-      spacing="none"
-      className={cx('inline-flex items-center rounded-full p-1', className)}
+    // A plain track rather than a `Surface`: Surface always paints an opaque
+    // depth/floating background that would sit over the translucent
+    // `control-glass` fill and defeat the blur. The segments colour themselves,
+    // so none of Surface's depth/contrast machinery is needed here.
+    <div
+      className={cx(
+        'publish-colors relative inline-flex items-stretch rounded-full p-1',
+        trackVariantClass[variant],
+        trackHeightClass[size],
+        className,
+      )}
     >
       <ToggleGroup
         aria-label={ariaLabel}
@@ -75,7 +113,7 @@ export default function SegmentedSwitcher<T extends string>({
           const picked = options.find((option) => option.value === first);
           if (picked) onValueChange(picked.value);
         }}
-        className="flex items-center"
+        className="flex items-stretch"
       >
         {options.map((option) => {
           const active = option.value === value;
@@ -117,6 +155,6 @@ export default function SegmentedSwitcher<T extends string>({
           );
         })}
       </ToggleGroup>
-    </Surface>
+    </div>
   );
 }

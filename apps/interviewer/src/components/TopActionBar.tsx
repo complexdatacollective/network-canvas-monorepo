@@ -5,10 +5,9 @@ import { IconButton } from '@codaco/fresco-ui/Button';
 import { ViewSwitcher } from '~/components/ViewSwitcher';
 import { useAuth } from '~/lib/auth/AuthContext';
 
-// Glass-pill treatment layered over the standard Button: backdrop-blur surface
-// with the theme outline, sized to match BrandHeader's height (h-14).
-export const GLASS_PILL =
-  'border border-outline bg-surface/50 backdrop-blur-md effect-shadow-md uppercase font-black';
+// Icon buttons in the top bar share the SegmentedSwitcher's size token so
+// their heights line up (switcher height == Button height per token).
+const TOP_BAR_SIZE = 'md';
 
 const variants = {
   hidden: { opacity: 0, y: -6 },
@@ -38,11 +37,12 @@ export function TopActionBarView({
           className="inline-flex"
         >
           <IconButton
-            variant="text"
+            variant="glass"
+            size={TOP_BAR_SIZE}
             icon={<Lock size={22} className="stroke-[3px]" aria-hidden />}
             aria-label="Lock app"
             onClick={onLock}
-            className={GLASS_PILL}
+            className="border-outline"
           />
         </motion.span>
       )}
@@ -53,11 +53,12 @@ export function TopActionBarView({
         className="inline-flex"
       >
         <IconButton
-          variant="text"
+          variant="glass"
+          size={TOP_BAR_SIZE}
           icon={<Settings size={22} className="stroke-[3px]" aria-hidden />}
           aria-label="Settings"
           onClick={onOpenSettings}
-          className={GLASS_PILL}
+          className="border-outline"
         />
       </motion.span>
     </div>
