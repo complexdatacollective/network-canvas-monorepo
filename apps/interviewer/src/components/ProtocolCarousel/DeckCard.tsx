@@ -243,8 +243,14 @@ function useCardTextBudget({
       let footerMaxHeight: CardTextBudget['footerMaxHeight'] = null;
       if (footerRow) {
         // The description skeletons (no real text yet) count as a fixed row;
-        // the real span occupies exactly its clamped lines.
-        const descriptionShown = descriptionEl !== null && descriptionLines > 0;
+        // the real span occupies exactly its clamped lines. Presence comes
+        // from the IN-FLOW row scan, not descriptionRef — during a footer
+        // swap the exiting description is popped out of the flow but its
+        // ref is still live, and counting it would cap the incoming footer
+        // (the case-ID form) a description's height too short.
+        const descriptionShown =
+          descriptionLines > 0 &&
+          rows.some((el) => el.dataset.deckRow === 'description');
         const descriptionHeight = descriptionShown
           ? descriptionLines * descriptionLineHeight
           : 0;
@@ -282,7 +288,16 @@ function useCardTextBudget({
     // viewport's child.
     const footerContent = footerViewportRef.current?.firstElementChild;
     if (footerContent instanceof HTMLElement) observer.observe(footerContent);
-    return () => observer.disconnect();
+    // An exiting row leaving the DOM (its pop-fade finishing) changes no
+    // observed box — the row was already out of the flow — but it can shift
+    // what the budget should count (a measure taken mid-exit sticks
+    // otherwise). Re-measure on any child list change.
+    const mutations = new MutationObserver(measure);
+    mutations.observe(column, { childList: true });
+    return () => {
+      observer.disconnect();
+      mutations.disconnect();
+    };
   }, [
     name,
     description,
