@@ -171,3 +171,61 @@ export const HorizontalStageNavigation: Story = {
     await openAndAssertMenu(canvasElement, args.stageCount);
   },
 };
+
+const exitAndAssertConfirmation = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+
+  const exitButton = await canvas.findByRole('button', {
+    name: /exit interview/i,
+  });
+  await userEvent.click(exitButton);
+
+  const dialog = await canvas.findByRole('dialog', {
+    name: /exit this interview/i,
+  });
+  const scoped = within(dialog);
+
+  await expect(
+    scoped.getByText(/your answers so far will be saved/i),
+  ).toBeInTheDocument();
+
+  // Cancel rather than confirm, so the story stays on the interview.
+  await userEvent.click(scoped.getByRole('button', { name: /cancel/i }));
+  await waitFor(() => expect(dialog).not.toBeInTheDocument());
+};
+
+export const ExitConfirmation: Story = {
+  name: 'Exit confirmation (vertical rail)',
+  render: ({ stageCount }) => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getRawPayload(stageCount)}
+        navigationOrientation="vertical"
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await exitAndAssertConfirmation(canvasElement);
+  },
+};
+
+export const HorizontalExitConfirmation: Story = {
+  name: 'Exit confirmation (horizontal bar)',
+  render: ({ stageCount }) => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getRawPayload(stageCount)}
+        navigationOrientation="horizontal"
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await exitAndAssertConfirmation(canvasElement);
+  },
+};
