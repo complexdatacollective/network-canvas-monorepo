@@ -2,4 +2,4 @@
 '@codaco/interviewer': patch
 ---
 
-Fix a strip of empty space along the bottom of the screen when Interviewer is installed to the home screen (as a PWA) on iPad. In standalone display mode the app was sizing to an area that stopped short of the screen by the height of the bottom safe area, leaving the backdrop showing through below the interface. The app now fills the full visible viewport, so content reaches the bottom edge on every screen.
+Fix the band of empty background around the screen edges when Interviewer is installed to the home screen (as a PWA) on iPad. In standalone display mode the app was sizing to an area that stopped short of the screen (leaving the backdrop showing below the interface) and reserved the top safe area app-wide (leaving a band above the interview navigation). The app now fills the full visible viewport and renders edge-to-edge, so backgrounds reach every edge while on-screen controls stay clear of the status bar and home indicator.

@@ -22,12 +22,10 @@
    bottom" on iPad. `100vh` (the large/static viewport) reports the full screen
    height correctly from the first paint, so the app reaches the real bottom.
 
-   #root stays at `height: 100%`: the body is padded by
-   env(safe-area-inset-top), so its content box is `viewport - top-inset` and
-   #root inherits exactly that for `h-full` surfaces. Only html/body — whose
-   border box equals the viewport — are sized to the raw viewport; sizing the
-   padded #root to `100vh` would overflow the top inset and scroll the whole
-   page (the iPad-portrait overflow bug). */
+   #root inherits the viewport with `height: 100%`, and full-screen surfaces
+   fill it with `h-full`. The app renders edge-to-edge — there is no body-level
+   safe-area padding; edge-anchored surfaces (e.g. the interview navigation)
+   own their own safe-area insets instead (see below). */
 html,
 body {
   height: 100vh;
@@ -55,12 +53,33 @@ body {
   overscroll-behavior: none;
   -webkit-user-select: none;
   user-select: none;
-  /* iPadOS 26's window controls occupy the top safe area; inset the app so its
-     top content isn't under them. The dark/app background fills the inset, so
-     the controls blend in. env() insets are 0 on desktop/web, so this is a
-     no-op there. */
-  box-sizing: border-box;
-  padding-top: env(safe-area-inset-top);
+  /* The app is edge-to-edge: the safe-area insets (iPadOS window controls /
+     status bar / home indicator) are NOT reserved at the body level — that
+     would leave a band of background above the interview's left-hand
+     navigation. Each edge-anchored surface owns its own inset instead (e.g.
+     the interview Navigation pads its buttons past the top/bottom safe areas),
+     so backgrounds reach the screen edges while controls stay clear. */
+}
+
+/* Inset the interview navigation's controls past the device safe areas so the
+   rail/bar can meet the screen edges in the installed PWA without buttons
+   sliding under the status bar, iPadOS window controls, or home indicator.
+
+   Deliberately scoped to THIS app's stylesheet (targeting the navigation's
+   rendered element) rather than the shared @codaco/interview Navigation, so no
+   other host is affected — and to env() insets, which are 0 outside a PWA with
+   safe areas. The calc keeps the navigation Surface's own vertical padding
+   (`py-3` = 0.75rem); `.flex-col` / `.flex-row` are the Navigation's own
+   orientation classes, and `[role="navigation"]` is unique to it. */
+[role='navigation'].flex-col {
+  /* Vertical rail — meets both the top and bottom edges. */
+  padding-top: calc(0.75rem + env(safe-area-inset-top));
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+[role='navigation'].flex-row {
+  /* Horizontal bar — sits at the bottom, so only its bottom edge needs inset. */
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
 }
 
 /* Indeterminate-progress sweep used by the in-flight import ghost card
