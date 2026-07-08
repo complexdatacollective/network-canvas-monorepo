@@ -218,6 +218,7 @@ export default function BooleanField(props: BooleanFieldProps) {
               type="button"
               role="radio"
               aria-checked={isSelected}
+              data-value={String(option.value)}
               tabIndex={
                 isSelected || (value === undefined && index === 0) ? 0 : -1
               }

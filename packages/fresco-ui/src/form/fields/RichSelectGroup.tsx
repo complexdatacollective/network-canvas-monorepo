@@ -411,6 +411,7 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
           disabled={isOptionDisabled}
           whileTap={isOptionDisabled || readOnly ? undefined : { scale: 0.98 }}
           transition={selectionSpring}
+          data-value={String(option.value)}
           {...ariaProps}
         >
           <span

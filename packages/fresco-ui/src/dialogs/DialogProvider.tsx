@@ -477,6 +477,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         <Button
           color="primary"
           onClick={() => closeDialog(dialog.id, dialog.actions.primary.value)}
+          data-testid="dialog-primary"
         >
           {dialog.actions.primary.label}
         </Button>
@@ -514,6 +515,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
                 closeDialog(dialog.id, dialog.actions.cancel.value)
               }
               autoFocus={autoFocusButton === 'cancel'}
+              data-testid="dialog-cancel"
             >
               {dialog.actions.cancel.label}
             </Button>
@@ -523,6 +525,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
               onClick={() =>
                 closeDialog(dialog.id, dialog.actions.secondary!.value)
               }
+              data-testid="dialog-secondary"
             >
               {dialog.actions.secondary.label}
             </Button>
@@ -533,6 +536,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             autoFocus={autoFocusButton === 'primary'}
             disabled={isLoading}
             icon={isLoading ? <Loader2 className="animate-spin" /> : undefined}
+            data-testid="dialog-primary"
           >
             {isLoading ? 'Please wait...' : dialog.actions.primary.label}
           </Button>
@@ -567,10 +571,13 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             open={dialog.open}
             footer={
               <>
-                <Button onClick={() => closeDialog(dialog.id, null)}>
+                <Button
+                  onClick={() => closeDialog(dialog.id, null)}
+                  data-testid="dialog-cancel"
+                >
                   {dialog.cancelLabel ?? 'Cancel'}
                 </Button>
-                <SubmitButton form={formId}>
+                <SubmitButton form={formId} data-testid="dialog-submit">
                   {dialog.submitLabel ?? 'Submit'}
                 </SubmitButton>
               </>
