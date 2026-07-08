@@ -20,16 +20,22 @@ const MotionChevron = motion.create(ChevronUp);
  * Floating, draggable panel showing the current prompt. Collapsible via the
  * chevron tab so the prompt text can be moved out of the way of the canvas;
  * re-opens automatically when the prompt changes so the new task is visible.
+ *
+ * Pass `collapsible={false}` on stages where the prompt is the participant's
+ * core task and must therefore stay visible (e.g. Geospatial).
  */
 const CollapsablePrompts = (props: {
   dragConstraints: RefObject<HTMLElement | null>;
   children?: ReactNode;
   className?: string;
+  collapsible?: boolean;
 }) => {
-  const { dragConstraints, children, className } = props;
+  const { dragConstraints, children, className, collapsible = true } = props;
   const { prompt } = usePrompts();
   const [collapsed, setCollapsed] = useState(false);
   const contentId = useId();
+
+  const isCollapsed = collapsible && collapsed;
 
   const promptId = prompt.id;
   const prevPromptId = usePrevious(promptId);
@@ -68,27 +74,29 @@ const CollapsablePrompts = (props: {
     >
       <div className="flex w-full items-center justify-between gap-4">
         <GripHorizontal aria-hidden className="size-[1.2em] opacity-50" />
-        <button
-          type="button"
-          onClick={() => setCollapsed(!collapsed)}
-          aria-expanded={!collapsed}
-          aria-controls={contentId}
-          aria-label={collapsed ? 'Show instructions' : 'Hide instructions'}
-          className="focusable -m-2 cursor-pointer rounded p-2"
-          data-testid="prompts-toggle"
-        >
-          <MotionChevron
-            className="size-[1.2em]"
-            animate={{ rotate: collapsed ? 180 : 0 }}
-          />
-        </button>
+        {collapsible && (
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            aria-expanded={!collapsed}
+            aria-controls={contentId}
+            aria-label={collapsed ? 'Show instructions' : 'Hide instructions'}
+            className="focusable -m-2 cursor-pointer rounded p-2"
+            data-testid="prompts-toggle"
+          >
+            <MotionChevron
+              className="size-[1.2em]"
+              animate={{ rotate: collapsed ? 180 : 0 }}
+            />
+          </button>
+        )}
       </div>
       <motion.div
         id={contentId}
         className="w-full overflow-hidden"
         initial={false}
         animate={
-          collapsed
+          isCollapsed
             ? {
                 height: 0,
                 opacity: 0,

@@ -505,7 +505,9 @@ export default function GeospatialInterface({
           />
         </MotionSurface>
 
-        <CollapsablePrompts dragConstraints={dragSafeRef}>
+        {/* The prompt is the participant's core task on this stage, so it is
+            not collapsible. */}
+        <CollapsablePrompts dragConstraints={dragSafeRef} collapsible={false}>
           <AnimatePresence mode="wait">
             <motion.div
               key={stageNodes[navState.activeIndex]?.[entityPrimaryKeyProperty]}
@@ -514,7 +516,6 @@ export default function GeospatialInterface({
               initial="initial"
               animate="animate"
               exit="exit"
-              className="[--base-node-size:calc(var(--nc-base-font-size)*6.6)]"
             >
               {stageNodes[navState.activeIndex] && (
                 <Node
