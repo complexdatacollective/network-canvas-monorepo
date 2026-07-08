@@ -14,6 +14,7 @@ type StoryArgs = {
   interviewCount: number;
   mode: AuthMode;
   persisted: boolean;
+  installed: boolean;
   usage: number;
 };
 
@@ -24,6 +25,7 @@ const meta: Meta<StoryArgs> = {
     interviewCount: 12,
     mode: 'pin',
     persisted: true,
+    installed: false,
     usage: 4.2 * 1024 * 1024,
   },
   argTypes: {
@@ -35,14 +37,29 @@ const meta: Meta<StoryArgs> = {
       control: 'boolean',
       description: 'navigator.storage.persisted(), polled by the container',
     },
+    installed: {
+      control: 'boolean',
+      description:
+        'Running as an installed/standalone app (isRunningInstalled()). ' +
+        'When storage is not persisted, installed swaps the warning for a ' +
+        'calm "best effort" state — there is no install action left to take.',
+    },
     usage: { control: 'number', description: 'Bytes reported by estimate()' },
   },
-  render: ({ protocolCount, interviewCount, mode, persisted, usage }) => (
+  render: ({
+    protocolCount,
+    interviewCount,
+    mode,
+    persisted,
+    installed,
+    usage,
+  }) => (
     <StatusRowView
       protocolCount={protocolCount}
       interviewCount={interviewCount}
       mode={mode}
       durability={{ persisted, usage }}
+      installed={installed}
     />
   ),
 };
@@ -54,4 +71,11 @@ export const Default: Story = {};
 
 export const NotEncryptedNotPersisted: Story = {
   args: { mode: 'none', persisted: false },
+};
+
+// Safari decides persist() from opaque interaction heuristics and may never
+// grant it to an installed app (#886) — installed-but-not-persisted is the
+// steady state there, presented without warning styling.
+export const InstalledBestEffort: Story = {
+  args: { persisted: false, installed: true },
 };
