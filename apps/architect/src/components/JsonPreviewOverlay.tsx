@@ -26,23 +26,23 @@ export function JsonPreviewOverlay() {
       />
       <div className="relative flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-white/10 px-7 py-5">
-          <span className="font-mono text-sm text-white/70">
+          <span className="font-monospace text-sm text-white/70">
             {context.label}
           </span>
           <div className="flex items-center gap-2.5">
-            <span className="font-mono text-xs text-white/40">
+            <span className="font-monospace text-xs text-white/40">
               Alt+Shift+J to close
             </span>
             <button
               type="button"
               onClick={handleCopy}
-              className="cursor-pointer rounded bg-white/10 px-2.5 py-1 font-mono text-xs text-white/80 transition-colors hover:bg-white/20"
+              className="font-monospace cursor-pointer rounded bg-white/10 px-2.5 py-1 text-xs text-white/80 transition-colors hover:bg-white/20"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
         </div>
-        <pre className="m-0 flex-1 overflow-auto p-7 font-mono text-sm whitespace-pre text-white/90 select-all">
+        <pre className="font-monospace m-0 flex-1 overflow-auto p-7 text-sm whitespace-pre text-white/90 select-all">
           {jsonString}
         </pre>
       </div>
