@@ -126,6 +126,9 @@ type NavigationProps = {
   backButtonRef?: Ref<HTMLButtonElement>;
   onExit?: () => void;
   allowStageNavigation?: boolean;
+  /** Extra classes for the navigation surface, e.g. a host applying
+   * device-specific safe-area padding. Merged after the orientation variant. */
+  className?: string;
   goToStage?: (
     targetIndex: number,
     confirmSkip?: () => Promise<boolean>,
@@ -144,6 +147,7 @@ const Navigation = ({
   backButtonRef,
   onExit,
   allowStageNavigation,
+  className,
   goToStage,
 }: NavigationProps) => {
   const BackIcon = orientation === 'vertical' ? ChevronUp : ChevronLeft;
@@ -221,7 +225,7 @@ const Navigation = ({
     <>
       <MotionSurface
         role="navigation"
-        className={navigationVariants({ orientation })}
+        className={cx(navigationVariants({ orientation }), className)}
         spacing="xs"
         shadow="xs"
         noContainer

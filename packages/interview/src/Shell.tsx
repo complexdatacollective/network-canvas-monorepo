@@ -56,11 +56,13 @@ function Interview({
   onExit,
   hideNavigation = false,
   navigationOrientation: orientationProp,
+  navigationClassnames,
   allowStageNavigation,
 }: {
   onExit?: () => void;
   hideNavigation?: boolean;
   navigationOrientation?: NavigationOrientation;
+  navigationClassnames?: Partial<Record<NavigationOrientation, string>>;
   allowStageNavigation?: boolean;
 }) {
   const {
@@ -173,6 +175,7 @@ function Interview({
               pulseNext={pulseNext}
               progress={progress}
               orientation={navigationOrientation}
+              className={navigationClassnames?.[navigationOrientation]}
               forwardButtonRef={forwardButtonRef}
               backButtonRef={backButtonRef}
               onExit={onExit}
@@ -228,6 +231,13 @@ type ShellProps = {
    * omitted, the orientation responds to the aspect ratio automatically.
    */
   navigationOrientation?: NavigationOrientation;
+  /**
+   * Extra class(es) applied to the Navigation surface, keyed by the resolved
+   * orientation, so a host can add device-specific styling (e.g. safe-area
+   * padding in an installed PWA) without the shared component owning it. Omit
+   * to leave the navigation unstyled beyond its defaults.
+   */
+  navigationClassnames?: Partial<Record<NavigationOrientation, string>>;
   allowStageNavigation?: boolean;
 };
 
@@ -245,6 +255,7 @@ const Shell = ({
   onExit,
   hideNavigation,
   navigationOrientation,
+  navigationClassnames,
   allowStageNavigation,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
@@ -322,6 +333,7 @@ const Shell = ({
               onExit={onExit}
               hideNavigation={hideNavigation}
               navigationOrientation={navigationOrientation}
+              navigationClassnames={navigationClassnames}
               allowStageNavigation={
                 allowStageNavigation &&
                 (currentStep === undefined || onStepChange !== undefined)

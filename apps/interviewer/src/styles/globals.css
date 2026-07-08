@@ -61,27 +61,6 @@ body {
      so backgrounds reach the screen edges while controls stay clear. */
 }
 
-/* Inset the interview navigation's controls past the device safe areas so the
-   rail/bar can meet the screen edges in the installed PWA without buttons
-   sliding under the status bar, iPadOS window controls, or home indicator.
-
-   Deliberately scoped to THIS app's stylesheet (targeting the navigation's
-   rendered element) rather than the shared @codaco/interview Navigation, so no
-   other host is affected — and to env() insets, which are 0 outside a PWA with
-   safe areas. The calc keeps the navigation Surface's own vertical padding
-   (`py-3` = 0.75rem); `.flex-col` / `.flex-row` are the Navigation's own
-   orientation classes, and `[role="navigation"]` is unique to it. */
-[role='navigation'].flex-col {
-  /* Vertical rail — meets both the top and bottom edges. */
-  padding-top: calc(0.75rem + env(safe-area-inset-top));
-  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
-}
-
-[role='navigation'].flex-row {
-  /* Horizontal bar — sits at the bottom, so only its bottom edge needs inset. */
-  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
-}
-
 /* Indeterminate-progress sweep used by the in-flight import ghost card
    when no Content-Length is available. The bar slides left-to-right and
    loops. */
