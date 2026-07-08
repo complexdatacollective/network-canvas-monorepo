@@ -37,7 +37,7 @@
     "@codaco/tailwind-config": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
     "@tanstack/react-table": "catalog:",
-    "dexie": "^4.4.3",
+    "dexie": "^4.4.4",
     "effect": "catalog:",
     "jszip": "catalog:",
     "lucide-react": "catalog:",
