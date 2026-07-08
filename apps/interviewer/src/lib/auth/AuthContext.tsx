@@ -56,11 +56,6 @@ export type AuthContextValue = AuthState & AuthActions;
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
-// Lock 30s after window blur / tab hide, separate from the idle timeout — a
-// brief grace period to alt-tab without losing the session. Disabled in dev
-// (Vite live-reload constantly steals focus).
-const BLUR_LOCK_DELAY_MS = import.meta.env.DEV ? null : 30_000;
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     kind: 'loading',
@@ -118,7 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onIdle: () => {
       void lock();
     },
-    lockOnBlurMs: state.mode === 'none' ? null : BLUR_LOCK_DELAY_MS,
   });
 
   const runAndRefresh = useCallback(
