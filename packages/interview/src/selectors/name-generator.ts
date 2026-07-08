@@ -2,7 +2,11 @@ import { createSelector } from '@reduxjs/toolkit';
 
 import { filter as customFilter } from '@codaco/network-query';
 import type { Panel } from '@codaco/protocol-validation';
-import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
@@ -103,7 +107,7 @@ export const getPanelNodes = (
       // If a filter is provided, we apply it to the nodes
       const filterFunction = customFilter(panelConfig.filter);
 
-      const defaultEgo = { _uid: '', attributes: {} };
+      const defaultEgo = { _uid: '', [entityAttributesProperty]: {} };
       const filteredNetwork = filterFunction({
         nodes,
         edges: panelConfig.dataSource === 'existing' ? networkEdges : [],

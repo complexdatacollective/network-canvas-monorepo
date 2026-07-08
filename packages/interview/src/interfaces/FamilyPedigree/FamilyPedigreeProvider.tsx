@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
 import { useStageSelector } from '~/hooks/useStageSelector';
@@ -98,7 +99,7 @@ export const FamilyPedigreeProvider = ({
   const initialNodeMetadata = new Map<string, NodeMetadata>(
     seededNodes.map((node) => [
       node._uid,
-      { readOnly: node.attributes[egoVariable] === true },
+      { readOnly: node[entityAttributesProperty][egoVariable] === true },
     ]),
   );
 

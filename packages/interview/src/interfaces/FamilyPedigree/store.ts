@@ -2,6 +2,7 @@ import { enableMapSet } from 'immer';
 import { createStore } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type {
   FramingId,
   GAMETE_ROLES,
@@ -207,7 +208,7 @@ export const createFamilyPedigreeStore = (
             state.network.nodes.set(nodeId, {
               _uid: nodeId,
               type: variableConfig.nodeType,
-              attributes,
+              [entityAttributesProperty]: attributes,
             });
             state.nodeMetadata.set(nodeId, { readOnly: isEgo });
           });
@@ -219,7 +220,7 @@ export const createFamilyPedigreeStore = (
           set((state) => {
             const node = state.network.nodes.get(id);
             if (node) {
-              Object.assign(node.attributes, attributes);
+              Object.assign(node[entityAttributesProperty], attributes);
             }
           });
         },
@@ -252,7 +253,7 @@ export const createFamilyPedigreeStore = (
               type: variableConfig.edgeType,
               from,
               to,
-              attributes,
+              [entityAttributesProperty]: attributes,
             });
           });
 
@@ -288,7 +289,7 @@ export const createFamilyPedigreeStore = (
               state.network.nodes.set(realId, {
                 _uid: realId,
                 type: variableConfig.nodeType,
-                attributes: data.attributes,
+                [entityAttributesProperty]: data.attributes,
               });
               state.nodeMetadata.set(realId, { readOnly: isEgo });
             }
@@ -310,7 +311,7 @@ export const createFamilyPedigreeStore = (
                 type: variableConfig.edgeType,
                 from: resolvedSource,
                 to: resolvedTarget,
-                attributes: edge.data.attributes,
+                [entityAttributesProperty]: edge.data.attributes,
               });
             }
           });
@@ -332,7 +333,8 @@ export const createFamilyPedigreeStore = (
             storeToReduxIdMap.get(storeId) ?? storeId;
 
           const egoEntry = [...nodes.entries()].find(
-            ([, n]) => n.attributes[variableConfig.egoVariable] === true,
+            ([, n]) =>
+              n[entityAttributesProperty][variableConfig.egoVariable] === true,
           );
           const egoId = egoEntry?.[0];
 
@@ -349,10 +351,13 @@ export const createFamilyPedigreeStore = (
             : new Map<string, string>();
 
           const serializedNodes = [...nodes.entries()].map(([id, node]) => {
-            const isEgo = node.attributes[variableConfig.egoVariable] === true;
+            const isEgo =
+              node[entityAttributesProperty][variableConfig.egoVariable] ===
+              true;
             let label =
-              (node.attributes[variableConfig.nodeLabelVariable] as string) ??
-              '';
+              (node[entityAttributesProperty][
+                variableConfig.nodeLabelVariable
+              ] as string) ?? '';
 
             if (!label && !isEgo) {
               label = computedLabels.get(id) ?? 'Family Member';
@@ -369,7 +374,7 @@ export const createFamilyPedigreeStore = (
             id,
             from: toReduxId(edge.from),
             to: toReduxId(edge.to),
-            attributes: edge.attributes,
+            attributes: edge[entityAttributesProperty],
           }));
 
           dispatch?.(
@@ -395,7 +400,8 @@ export const createFamilyPedigreeStore = (
           const { network, syncMetadata: sync } = get();
 
           const egoEntry = [...network.nodes.entries()].find(
-            ([, n]) => n.attributes[variableConfig.egoVariable] === true,
+            ([, n]) =>
+              n[entityAttributesProperty][variableConfig.egoVariable] === true,
           );
           const relationships = egoEntry
             ? computeRelationshipsToEgo(
@@ -429,7 +435,7 @@ export const createFamilyPedigreeStore = (
 
             const relationship = relationships.get(storeId);
             const attributeData = {
-              ...node.attributes,
+              ...node[entityAttributesProperty],
               ...(relationship !== undefined
                 ? { [variableConfig.relationshipVariable]: relationship }
                 : {}),
@@ -466,7 +472,7 @@ export const createFamilyPedigreeStore = (
                   type: variableConfig.edgeType,
                   from: mappedFrom,
                   to: mappedTo,
-                  attributeData: { ...edge.attributes },
+                  attributeData: { ...edge[entityAttributesProperty] },
                   currentStep: currentStep ?? 0,
                 }),
               );

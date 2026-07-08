@@ -1,6 +1,8 @@
 import { Effect, Layer, Queue } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
+
 import { DatabaseError, describeExportError } from '../errors';
 import type { ExportEvent } from '../events';
 import type { InterviewExportInput, ProtocolExportInput } from '../input';
@@ -98,7 +100,11 @@ describe('exportPipeline', () => {
       participantIdentifier: 'p1',
       startTime: new Date('2025-01-01'),
       finishTime: new Date('2025-01-01'),
-      network: { nodes: [], edges: [], ego: { _uid: 'ego-1', attributes: {} } },
+      network: {
+        nodes: [],
+        edges: [],
+        ego: { _uid: 'ego-1', [entityAttributesProperty]: {} },
+      },
       protocolHash: 'h1',
     };
 
@@ -147,7 +153,11 @@ describe('exportPipeline', () => {
       participantIdentifier: 'p2',
       startTime: new Date('2025-01-01'),
       finishTime: new Date('2025-01-01'),
-      network: { nodes: [], edges: [], ego: { _uid: 'ego-2', attributes: {} } },
+      network: {
+        nodes: [],
+        edges: [],
+        ego: { _uid: 'ego-2', [entityAttributesProperty]: {} },
+      },
       protocolHash: 'h2',
     };
 
@@ -187,7 +197,11 @@ describe('exportPipeline', () => {
         participantIdentifier: 'p-ok',
         startTime: new Date('2025-01-01'),
         finishTime: new Date('2025-01-01'),
-        network: { nodes: [], edges: [], ego: { _uid: 'ego', attributes: {} } },
+        network: {
+          nodes: [],
+          edges: [],
+          ego: { _uid: 'ego', [entityAttributesProperty]: {} },
+        },
         protocolHash: 'hA',
       },
       {
@@ -195,7 +209,11 @@ describe('exportPipeline', () => {
         participantIdentifier: 'p-missing',
         startTime: new Date('2025-01-01'),
         finishTime: new Date('2025-01-01'),
-        network: { nodes: [], edges: [], ego: { _uid: 'ego', attributes: {} } },
+        network: {
+          nodes: [],
+          edges: [],
+          ego: { _uid: 'ego', [entityAttributesProperty]: {} },
+        },
         protocolHash: 'hMISSING',
       },
     ];

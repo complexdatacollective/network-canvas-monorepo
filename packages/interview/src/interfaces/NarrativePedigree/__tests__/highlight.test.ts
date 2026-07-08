@@ -107,9 +107,23 @@ function buildStubGraph(
     return v;
   }
 
+  // No gamete roles in the stub, so mtDNA follows the female-parent fallback.
+  function mitochondrialParentsOf(id: string): string[] {
+    return (parentMap.get(id) ?? []).filter(
+      (pid) => (sexMap?.get(pid) ?? 'unknown') === 'female',
+    );
+  }
+
+  function mitochondrialChildrenOf(id: string): string[] {
+    if ((sexMap?.get(id) ?? 'unknown') !== 'female') return [];
+    return childMap.get(id) ?? [];
+  }
+
   return {
     parentsOf,
     childrenOf,
+    mitochondrialParentsOf,
+    mitochondrialChildrenOf,
     fullSiblingsOf: () => [],
     halfSiblingsOf: () => [],
     maternalHalfSiblingsOf: () => [],

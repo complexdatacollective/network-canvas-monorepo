@@ -7,7 +7,10 @@ import {
   getVariableNamesFromNetwork,
   type Network as NetworkType,
 } from '@codaco/protocol-validation';
-import type { VariableValue } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type VariableValue,
+} from '@codaco/shared-consts';
 
 import { networkReader } from '../../utils/protocols/assetTools';
 import Table, { type TableColumn } from './Table';
@@ -21,11 +24,13 @@ const initialContent: NetworkType = {
 };
 
 type NetworkNode = {
-  attributes: Record<string, VariableValue>;
+  [entityAttributesProperty]: Record<string, VariableValue>;
 };
 
 const getRows = (data: NetworkType): Record<string, VariableValue>[] =>
-  (data.nodes ?? []).map(({ attributes }: NetworkNode) => attributes);
+  (data.nodes ?? []).map(
+    ({ [entityAttributesProperty]: attributes }: NetworkNode) => attributes,
+  );
 
 const getColumns = (data: NetworkType): TableColumn[] =>
   getVariableNamesFromNetwork(data).map((col) => ({

@@ -21,11 +21,6 @@ export const STATUS_LABELS: Record<Status, string> = {
   unknown: 'Status unknown',
 };
 
-// Label for the secondary at-risk-homozygous marker (a person who may be
-// homozygous-affected), shown alongside their primary status.
-export const AT_RISK_HOMOZYGOUS_LABEL =
-  'At risk of being affected (homozygous)';
-
 // Lower index = higher precedence (affected is highest, unknown is lowest).
 const STATUS_PRECEDENCE: readonly Status[] = [
   'affected',

@@ -35,7 +35,8 @@ export function ViewSwitcher() {
   return (
     <SegmentedSwitcher
       aria-label="Home view"
-      size="lg"
+      size="md"
+      variant="glass"
       value={value}
       onValueChange={() => {
         /* Navigation is handled by each segment's <Link href>; navigating here too would double-push the history stack. */

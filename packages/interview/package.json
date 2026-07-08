@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
-    "@codaco/network-query": "workspace:^",
+    "@codaco/network-query": "workspace:*",
     "@faker-js/faker": "catalog:",
     "@mapbox/search-js-react": "^1.5.1",
     "@reduxjs/toolkit": "catalog:",
@@ -71,7 +71,7 @@
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:",
     "@codaco/interface-images": "workspace:*",
-    "@codaco/protocol-utilities": "workspace:^",
+    "@codaco/protocol-utilities": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
     "@microsoft/api-extractor": "catalog:",
     "@playwright/test": "catalog:",
@@ -106,10 +106,10 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@codaco/fresco-ui": "workspace:^",
-    "@codaco/protocol-validation": "workspace:^",
-    "@codaco/shared-consts": "workspace:^",
-    "@codaco/tailwind-config": "workspace:^",
+    "@codaco/fresco-ui": "workspace:*",
+    "@codaco/protocol-validation": "workspace:*",
+    "@codaco/shared-consts": "workspace:*",
+    "@codaco/tailwind-config": "workspace:*",
     "motion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

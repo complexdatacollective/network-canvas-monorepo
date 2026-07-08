@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 import { computeNodeDisplayLabels } from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeNode';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
@@ -38,7 +42,7 @@ function makeNode(
   return {
     _uid: uid,
     type: 'Person',
-    attributes: {
+    [entityAttributesProperty]: {
       [NAME_VAR]: name,
       [EGO_VAR]: egoFlag,
       [BIO_SEX_VAR]: sex,
@@ -52,7 +56,7 @@ function makeEdge(uid: string, from: string, to: string): NcEdge {
     type: 'Family',
     from,
     to,
-    attributes: {
+    [entityAttributesProperty]: {
       [REL_TYPE_VAR]: ['biological'],
       [IS_ACTIVE_VAR]: true,
     },

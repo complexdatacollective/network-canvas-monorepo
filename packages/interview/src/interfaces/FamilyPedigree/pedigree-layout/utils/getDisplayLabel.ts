@@ -1,4 +1,5 @@
 import {
+  entityAttributesProperty,
   FRAMING_TERMS,
   type FramingId,
   type NcEdge,
@@ -203,7 +204,7 @@ function getDirectParentGameteRole(
     );
     if (edge.from === nodeId && edge.to === egoId && relType !== 'partner') {
       const role = readGameteRole(
-        edge.attributes[variableConfig.gameteRoleVariable],
+        edge[entityAttributesProperty][variableConfig.gameteRoleVariable],
       );
       if (role) return role;
     }
@@ -258,9 +259,9 @@ function findNearestNamedIntermediary(
   // Search from end (closest to target) back toward ego
   for (let i = intermediaries.length - 1; i >= 0; i--) {
     const node = nodes.get(intermediaries[i]!);
-    const name = node?.attributes[variableConfig.nodeLabelVariable] as
-      | string
-      | undefined;
+    const name = node?.[entityAttributesProperty][
+      variableConfig.nodeLabelVariable
+    ] as string | undefined;
     if (name) return { name, index: i };
   }
   return null;
@@ -297,9 +298,9 @@ export function getDisplayLabel(
   if (!node) return 'Family Member';
 
   // Return stored name if present
-  const storedName = node.attributes[variableConfig.nodeLabelVariable] as
-    | string
-    | undefined;
+  const storedName = node[entityAttributesProperty][
+    variableConfig.nodeLabelVariable
+  ] as string | undefined;
   if (storedName) return storedName;
 
   // BFS to find path from ego to this node
@@ -374,11 +375,12 @@ export function computeAllDisplayLabels(
   ]);
 
   for (const [nodeId, node] of nodes) {
-    if (node.attributes[variableConfig.egoVariable] === true) continue;
+    if (node[entityAttributesProperty][variableConfig.egoVariable] === true)
+      continue;
 
-    const storedName = node.attributes[variableConfig.nodeLabelVariable] as
-      | string
-      | undefined;
+    const storedName = node[entityAttributesProperty][
+      variableConfig.nodeLabelVariable
+    ] as string | undefined;
     if (storedName) continue;
 
     const entry = bfsResults.get(nodeId);
@@ -452,7 +454,8 @@ export function computeRelationshipsToEgo(
 
   for (const [nodeId, node] of nodes) {
     if (nodeId === egoId) continue;
-    if (node.attributes[variableConfig.egoVariable] === true) continue;
+    if (node[entityAttributesProperty][variableConfig.egoVariable] === true)
+      continue;
 
     const entry = bfsResults.get(nodeId);
     if (!entry) continue;
@@ -487,11 +490,13 @@ export function getNodeLabel(
   framing: FramingId,
 ): string {
   const egoEntry = [...nodes.entries()].find(
-    ([, n]) => n.attributes[variableConfig.egoVariable] === true,
+    ([, n]) => n[entityAttributesProperty][variableConfig.egoVariable] === true,
   );
   if (!egoEntry) {
     const name =
-      nodes.get(nodeId)?.attributes[variableConfig.nodeLabelVariable];
+      nodes.get(nodeId)?.[entityAttributesProperty][
+        variableConfig.nodeLabelVariable
+      ];
     return typeof name === 'string' && name.length > 0
       ? name
       : 'Unknown person';
@@ -500,7 +505,9 @@ export function getNodeLabel(
   // would fall through to the generic fallback. Label it explicitly.
   if (nodeId === egoEntry[0]) {
     const name =
-      nodes.get(nodeId)?.attributes[variableConfig.nodeLabelVariable];
+      nodes.get(nodeId)?.[entityAttributesProperty][
+        variableConfig.nodeLabelVariable
+      ];
     return typeof name === 'string' && name.length > 0 ? name : 'You';
   }
   return getDisplayLabel(

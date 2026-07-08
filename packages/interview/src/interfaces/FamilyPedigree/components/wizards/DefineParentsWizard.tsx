@@ -1,4 +1,5 @@
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import { FamilyPedigreeStoreBridge } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import type {
@@ -28,8 +29,9 @@ function getNodeDisplayName(
 ): string {
   const node = nodes.get(nodeId);
   if (!node) return "This Person's";
-  if (node.attributes[variableConfig.egoVariable] === true) return 'Your';
-  const name = node.attributes[variableConfig.nodeLabelVariable];
+  if (node[entityAttributesProperty][variableConfig.egoVariable] === true)
+    return 'Your';
+  const name = node[entityAttributesProperty][variableConfig.nodeLabelVariable];
   return typeof name === 'string' && name.length > 0
     ? `${name}'s`
     : "This Person's";

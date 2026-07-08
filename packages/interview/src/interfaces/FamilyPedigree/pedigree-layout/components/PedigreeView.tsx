@@ -5,6 +5,7 @@ import { useContext } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Node from '@codaco/fresco-ui/Node';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
@@ -206,8 +207,9 @@ export default function PedigreeView({
     if (!currentNode) return;
 
     const currentName =
-      typeof currentNode.attributes[nodeLabelVariable] === 'string'
-        ? currentNode.attributes[nodeLabelVariable]
+      typeof currentNode[entityAttributesProperty][nodeLabelVariable] ===
+      'string'
+        ? currentNode[entityAttributesProperty][nodeLabelVariable]
         : '';
 
     const result = await openDialog({
@@ -217,7 +219,10 @@ export default function PedigreeView({
       cancelLabel: 'Cancel',
       children: (
         <PersonFields
-          initial={{ name: currentName, attributes: currentNode.attributes }}
+          initial={{
+            name: currentName,
+            attributes: currentNode[entityAttributesProperty],
+          }}
         />
       ),
     });
@@ -234,7 +239,7 @@ export default function PedigreeView({
     }
 
     updateNode(nodeId, {
-      ...currentNode.attributes,
+      ...currentNode[entityAttributesProperty],
       [nodeLabelVariable]: name,
       ...formAttrs,
     });
@@ -342,7 +347,7 @@ export default function PedigreeView({
           nodeWidth={nodeWidth}
           nodeHeight={nodeHeight}
           renderNode={(node) => {
-            const isEgo = node.attributes[egoVariable] === true;
+            const isEgo = node[entityAttributesProperty][egoVariable] === true;
             const isAdopted = [...edges.values()].some(
               (e) =>
                 e.to === node.id &&
@@ -357,7 +362,10 @@ export default function PedigreeView({
                 displayLabel={displayLabels.get(node.id) ?? ''}
                 allowDrag={false}
                 isAdopted={isAdopted}
-                selected={node.attributes[activeNominationVariable] === true}
+                selected={
+                  node[entityAttributesProperty][activeNominationVariable] ===
+                  true
+                }
                 onClick={() =>
                   onToggleAttribute?.(node.id, activeNominationVariable)
                 }

@@ -172,6 +172,7 @@ export function DataViewToolbar({
         <SegmentedSwitcher
           aria-label="Status filter"
           size="md"
+          variant="glass"
           value={chipFilter ?? 'all'}
           onValueChange={setChipFilter}
           options={statusOptions}
@@ -188,7 +189,9 @@ export function DataViewToolbar({
           onChange={(next) => onGlobalFilterChange(next ?? '')}
           placeholder="Search case ID or protocol..."
           aria-label="Search case ID or protocol"
-          className="h-12 min-w-[260px]"
+          // `control-glass` applies the blur/border/shadow, but InputField paints
+          // its own opaque `bg-input`; force the translucent glass fill over it.
+          className="control-glass border-outline bg-surface/50! h-12 min-w-[260px]"
         />
       </motion.div>
 

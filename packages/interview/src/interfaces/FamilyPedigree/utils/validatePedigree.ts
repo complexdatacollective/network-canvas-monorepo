@@ -1,3 +1,4 @@
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import type { VariableConfig } from '../store';
@@ -162,7 +163,8 @@ export function validatePedigreeCompleteness(
   const issues: ValidationIssue[] = [];
 
   const egoEntry = [...nodes.entries()].find(
-    ([, node]) => node.attributes[variableConfig.egoVariable] === true,
+    ([, node]) =>
+      node[entityAttributesProperty][variableConfig.egoVariable] === true,
   );
   if (!egoEntry) return issues;
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
@@ -30,7 +31,7 @@ function makeEdge(
     type: 'relationship',
     from,
     to,
-    attributes: {
+    [entityAttributesProperty]: {
       relationshipType: [relationshipType],
       isActive,
     },

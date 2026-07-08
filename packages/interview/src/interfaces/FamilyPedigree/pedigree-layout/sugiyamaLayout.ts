@@ -419,6 +419,57 @@ function buildConstraintBlocks(
     }
   }
 
+  // 2b. Seat auxiliary parents (donor/surrogate) beside the couple they
+  //     contribute to. An auxiliary parent is not part of any partnership or
+  //     sibship, so without this it would fall through to a singleton and drift
+  //     away from its couple — drawing a very long donor/surrogate line. Attach
+  //     it to the OUTER edge of the block holding the child's family-unit
+  //     parents so the couple stays contiguous and the connector stays short.
+  for (const [child, auxParents] of graph.auxiliaryParents) {
+    for (const aux of auxParents) {
+      if (!nodeSet.has(aux) || assigned.has(aux)) continue;
+      // Skip aux parents that are themselves partnered or in a sibship here;
+      // those are already placed by steps 1–2.
+      if (inRealSibship.has(aux) || spousesOf.has(aux)) continue;
+
+      // Find the family unit for this child, then the block holding its parents.
+      const familyUnit = graph.familyUnits.find((fu) =>
+        fu.children.includes(child),
+      );
+      if (!familyUnit) continue;
+
+      const coupleOnLayer = familyUnit.parentGroup.members.filter((m) =>
+        nodeSet.has(m),
+      );
+      if (coupleOnLayer.length === 0) continue; // couple not on this layer
+
+      const coupleSet = new Set(coupleOnLayer);
+      const targetBlock = blocks.find((b) =>
+        b.nodes.some((node) => coupleSet.has(node)),
+      );
+      if (!targetBlock) continue;
+
+      // Seat the aux parent immediately adjacent to the couple, on the couple's
+      // OUTER side (the side nearer the block boundary). When the couple is its
+      // own block this lands on the block edge; when the couple is embedded in a
+      // sibship block it lands beside the couple rather than at the far end, so
+      // the donor/surrogate connector stays short either way.
+      const couplePositions = targetBlock.nodes
+        .map((node, i) => (coupleSet.has(node) ? i : -1))
+        .filter((i) => i >= 0);
+      const leftPos = Math.min(...couplePositions);
+      const rightPos = Math.max(...couplePositions);
+      const distToLeftEdge = leftPos;
+      const distToRightEdge = targetBlock.nodes.length - 1 - rightPos;
+      if (distToRightEdge <= distToLeftEdge) {
+        targetBlock.nodes.splice(rightPos + 1, 0, aux);
+      } else {
+        targetBlock.nodes.splice(leftPos, 0, aux);
+      }
+      assigned.add(aux);
+    }
+  }
+
   // 3. Singleton blocks for remaining nodes.
   for (const node of nodesOnLayer) {
     if (!assigned.has(node)) {
@@ -619,6 +670,94 @@ function barycentricSweep(
   return result;
 }
 
+/**
+ * Recover the contiguous constraint blocks present in a layer's CURRENT
+ * left-to-right ordering. buildConstraintBlocks emits blocks in canonical
+ * (index) order; the barycentric sweeps then reorder whole blocks, so the
+ * current ordering is a permutation of those blocks laid end to end. This walks
+ * the ordering and groups consecutive nodes that belong to the same block,
+ * returning each block as a [start, end) half-open range into `layerOrdering`.
+ */
+function currentBlockRuns(
+  layerOrdering: number[],
+  graph: PedigreeGraph,
+): [number, number][] {
+  const blocks = buildConstraintBlocks(layerOrdering, graph);
+  const nodeToBlock = new Map<number, number>();
+  for (let bi = 0; bi < blocks.length; bi++) {
+    for (const node of blocks[bi]!.nodes) {
+      nodeToBlock.set(node, bi);
+    }
+  }
+
+  const runs: [number, number][] = [];
+  let start = 0;
+  while (start < layerOrdering.length) {
+    const blockId = nodeToBlock.get(layerOrdering[start]!);
+    let end = start + 1;
+    while (
+      end < layerOrdering.length &&
+      nodeToBlock.get(layerOrdering[end]!) === blockId
+    ) {
+      end++;
+    }
+    runs.push([start, end]);
+    start = end;
+  }
+  return runs;
+}
+
+/**
+ * Block-reversal (reflection) refinement. The barycentric sweeps only reorder
+ * whole blocks and re-emit each block's internal node order verbatim, so a
+ * block whose internal orientation is wrong (e.g. two intermarrying sibships
+ * forced into one order by ascending node index) can never be corrected by the
+ * sweeps. This pass tries reversing each contiguous block's node run in place
+ * and keeps a reversal only when it STRICTLY reduces crossings. Reversing a
+ * whole block preserves couple/sibship contiguity.
+ */
+function reverseBlocks(
+  ordering: number[][],
+  graph: PedigreeGraph,
+  startingCrossings: number,
+  iterationCap: number,
+): { ordering: number[][]; crossings: number } {
+  let current = ordering.map((layer) => [...layer]);
+  let currentCrossings = startingCrossings;
+
+  for (let iter = 0; iter < iterationCap; iter++) {
+    let improvedThisPass = false;
+
+    for (let layer = 0; layer < current.length; layer++) {
+      const layerOrdering = current[layer]!;
+      if (layerOrdering.length < 2) continue;
+
+      const runs = currentBlockRuns(layerOrdering, graph);
+      for (const [start, end] of runs) {
+        if (end - start < 2) continue;
+
+        const candidate = current.map((l) => [...l]);
+        const run = candidate[layer]!.slice(start, end).toReversed();
+        for (let i = 0; i < run.length; i++) {
+          candidate[layer]![start + i] = run[i]!;
+        }
+
+        const candidateCrossings = countCrossings(candidate, graph);
+        if (candidateCrossings < currentCrossings) {
+          current = candidate;
+          currentCrossings = candidateCrossings;
+          improvedThisPass = true;
+        }
+      }
+    }
+
+    if (!improvedThisPass) break;
+    if (currentCrossings === 0) break;
+  }
+
+  return { ordering: current, crossings: currentCrossings };
+}
+
 function minimizeCrossings(graph: PedigreeGraph): number[][] {
   const maxLayer = Math.max(...graph.layers);
 
@@ -664,6 +803,17 @@ function minimizeCrossings(graph: PedigreeGraph): number[][] {
 
     if (bestCrossings === 0) break;
     if (noImprovementCount >= 3) break;
+  }
+
+  // Block-reversal refinement: run after the sweeps converge. The sweeps can
+  // only permute blocks, never reflect one, so a block frozen in the wrong
+  // internal orientation (two intermarrying sibships) still leaves crossings a
+  // whole-block reversal can remove.
+  if (bestCrossings > 0) {
+    const reflected = reverseBlocks(bestOrdering, graph, bestCrossings, 24);
+    if (reflected.crossings < bestCrossings) {
+      bestOrdering = reflected.ordering;
+    }
   }
 
   return bestOrdering;

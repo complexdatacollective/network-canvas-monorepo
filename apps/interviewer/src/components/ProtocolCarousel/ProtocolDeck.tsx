@@ -10,7 +10,6 @@ import type {
 } from '~/lib/db/types';
 import type { PendingImport } from '~/lib/protocol/useProtocolImport';
 
-import { GLASS_PILL } from '../TopActionBar';
 import {
   DeckCarousel,
   type DeckCarouselHandle,
@@ -384,12 +383,12 @@ export function ProtocolDeck({
         >
           <IconButton
             size="xl"
-            variant="text"
+            variant="glass"
             icon={<ChevronLeft strokeWidth={2.8} aria-hidden />}
             aria-label="Previous protocol"
             onClick={() => setActiveIndex(Math.max(0, activeIndex - 1))}
             disabled={atStart}
-            className={GLASS_PILL}
+            className="border-outline"
           />
           <div className="flex items-center gap-2.5">
             {slides.map((slide, i) => (
@@ -407,14 +406,14 @@ export function ProtocolDeck({
           </div>
           <IconButton
             size="xl"
-            variant="text"
+            variant="glass"
             icon={<ChevronRight strokeWidth={2.8} aria-hidden />}
             aria-label="Next protocol"
             onClick={() =>
               setActiveIndex(Math.min(slides.length - 1, activeIndex + 1))
             }
             disabled={atEnd}
-            className={GLASS_PILL}
+            className="border-outline"
           />
         </motion.div>
       )}
