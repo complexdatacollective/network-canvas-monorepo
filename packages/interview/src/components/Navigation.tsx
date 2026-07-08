@@ -66,13 +66,15 @@ const containerVariants = {
 const NavigationButton = ({
   disabled,
   className,
+  wrapperClassName,
   buttonRef,
   ...props
 }: ComponentProps<typeof IconButton> & {
   buttonRef?: Ref<HTMLButtonElement>;
+  wrapperClassName?: string;
 }) => {
   return (
-    <motion.div variants={variants}>
+    <motion.div variants={variants} className={wrapperClassName}>
       <IconButton
         ref={buttonRef}
         color="dynamic"
@@ -177,6 +179,22 @@ const Navigation = ({
     [confirm],
   );
 
+  const handleExit = useCallback(async () => {
+    if (!onExit) return;
+    const confirmed = await confirm({
+      title: 'Exit this interview?',
+      description:
+        'Your answers so far will be saved and you can continue later.',
+      confirmLabel: 'Exit interview',
+      cancelLabel: 'Cancel',
+      intent: 'warning',
+      onConfirm: () => {},
+    });
+    if (confirmed === true) {
+      onExit();
+    }
+  }, [confirm, onExit]);
+
   const closeMenu = useCallback(
     (immediate: boolean) => {
       setMenuSettled(false);
@@ -215,14 +233,20 @@ const Navigation = ({
       >
         {onExit && (
           <NavigationButton
-            onClick={onExit}
+            onClick={() => void handleExit()}
             icon={<LogOut />}
             className="[&>.lucide]:h-[1.5em]!"
+            wrapperClassName={
+              orientation === 'horizontal' ? 'order-1' : undefined
+            }
             aria-label="Exit interview"
             data-testid="exit-button"
           />
         )}
         <NavigationButton
+          wrapperClassName={
+            orientation === 'horizontal' ? 'order-3' : undefined
+          }
           onClick={moveBackward}
           disabled={disableMoveBackward}
           icon={<BackIcon />}
@@ -241,6 +265,7 @@ const Navigation = ({
             variants={variants}
             className={cx(
               progressContainerVariants({ orientation }),
+              orientation === 'horizontal' && 'order-2',
               // Wrap the bar directly so the focus ring hugs its pill shape
               // rather than a rectangular wrapper.
               'focusable cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0',
@@ -250,7 +275,10 @@ const Navigation = ({
           </motion.button>
         ) : (
           <motion.div
-            className={progressContainerVariants({ orientation })}
+            className={cx(
+              progressContainerVariants({ orientation }),
+              orientation === 'horizontal' && 'order-2',
+            )}
             variants={variants}
           >
             <ProgressBar percentProgress={progress} orientation={orientation} />
@@ -261,6 +289,9 @@ const Navigation = ({
             pulseNext && 'bg-success hover:enabled:bg-success outline-success',
             pulseNext && !shouldReduceMotion && 'animate-pulse-glow',
           )}
+          wrapperClassName={
+            orientation === 'horizontal' ? 'order-4' : undefined
+          }
           onClick={moveForward}
           disabled={disableMoveForward}
           icon={<ForwardIcon className="size-8" strokeWidth="3px" />}
