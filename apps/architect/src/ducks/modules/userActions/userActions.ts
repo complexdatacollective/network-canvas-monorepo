@@ -1,6 +1,6 @@
 import { type Dispatch } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
-import { z } from 'zod';
+import { type z } from 'zod';
 
 import {
   type CurrentProtocol,

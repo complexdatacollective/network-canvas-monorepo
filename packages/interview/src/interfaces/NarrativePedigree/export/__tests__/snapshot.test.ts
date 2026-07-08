@@ -22,7 +22,9 @@ describe('exportSnapshot', () => {
     const originalAppend = document.body.appendChild.bind(document.body);
     vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
       if (node instanceof HTMLAnchorElement) {
-        vi.spyOn(node, 'click');
+        // No-op impl: without it the spy calls through and jsdom logs
+        // "Not implemented: navigation to another Document" for the download click.
+        vi.spyOn(node, 'click').mockImplementation(() => {});
         appendedAnchors.push(node);
       }
       return originalAppend(node);
