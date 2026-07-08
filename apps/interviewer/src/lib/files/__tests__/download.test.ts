@@ -1,12 +1,111 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { shareOrDownloadBlob } from '../download';
+import { saveBlob } from '../download';
 
 function makeBlob() {
   return new Blob(['export-bytes'], { type: 'application/zip' });
 }
 
-describe('shareOrDownloadBlob (web)', () => {
+function stubAnchorDownload() {
+  const createObjectURL = vi.fn().mockReturnValue('blob:mock');
+  vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+  const click = vi.fn();
+  const anchor = { href: '', download: '', click, remove: vi.fn() };
+  vi.spyOn(document, 'createElement').mockReturnValue(
+    anchor as unknown as HTMLAnchorElement,
+  );
+  vi.spyOn(document.body, 'appendChild').mockImplementation(
+    (node) => node as never,
+  );
+  return { createObjectURL, click, anchor };
+}
+
+function stubSavePicker() {
+  const write = vi.fn().mockResolvedValue(undefined);
+  const close = vi.fn().mockResolvedValue(undefined);
+  const createWritable = vi.fn().mockResolvedValue({ write, close });
+  const showSaveFilePicker = vi.fn().mockResolvedValue({ createWritable });
+  vi.stubGlobal('showSaveFilePicker', showSaveFilePicker);
+  return { showSaveFilePicker, createWritable, write, close };
+}
+
+describe('saveBlob (rung 1: File System Access picker)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('writes through the Save-As picker and reports saved', async () => {
+    const picker = stubSavePicker();
+    const share = vi.fn();
+    vi.stubGlobal('navigator', { share, canShare: () => true });
+
+    const result = await saveBlob(makeBlob(), 'export.zip');
+
+    expect(picker.showSaveFilePicker).toHaveBeenCalledWith(
+      expect.objectContaining({ suggestedName: 'export.zip' }),
+    );
+    expect(picker.write).toHaveBeenCalledTimes(1);
+    expect(picker.close).toHaveBeenCalledTimes(1);
+    // The picker owns the save on this platform; Web Share is never tried.
+    expect(share).not.toHaveBeenCalled();
+    expect(result).toEqual({ saved: true });
+  });
+
+  it('reports not saved when the picker is cancelled, with no fallthrough', async () => {
+    const showSaveFilePicker = vi
+      .fn()
+      .mockRejectedValue(new DOMException('The user aborted', 'AbortError'));
+    vi.stubGlobal('showSaveFilePicker', showSaveFilePicker);
+    const share = vi.fn();
+    vi.stubGlobal('navigator', { share, canShare: () => true });
+    const { createObjectURL } = stubAnchorDownload();
+
+    const result = await saveBlob(makeBlob(), 'export.zip');
+
+    // A cancelled picker is a final "no" — offering another save mechanism
+    // would recreate the nagging the ladder exists to remove.
+    expect(share).not.toHaveBeenCalled();
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(result).toEqual({ saved: false });
+  });
+
+  it('falls through to the anchor download when the write fails after picking', async () => {
+    const write = vi.fn().mockRejectedValue(new Error('disk full'));
+    const createWritable = vi.fn().mockResolvedValue({
+      write,
+      close: vi.fn(),
+    });
+    vi.stubGlobal(
+      'showSaveFilePicker',
+      vi.fn().mockResolvedValue({ createWritable }),
+    );
+    vi.stubGlobal('navigator', {});
+    const { createObjectURL, click } = stubAnchorDownload();
+
+    const result = await saveBlob(makeBlob(), 'export.zip');
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ saved: true });
+  });
+
+  it('falls through to the anchor download when the picker fails to open (non-cancel)', async () => {
+    vi.stubGlobal(
+      'showSaveFilePicker',
+      vi.fn().mockRejectedValue(new DOMException('denied', 'SecurityError')),
+    );
+    vi.stubGlobal('navigator', {});
+    const { createObjectURL } = stubAnchorDownload();
+
+    const result = await saveBlob(makeBlob(), 'export.zip');
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ saved: true });
+  });
+});
+
+describe('saveBlob (rung 2: Web Share, no picker available)', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -17,7 +116,7 @@ describe('shareOrDownloadBlob (web)', () => {
     const canShare = vi.fn().mockReturnValue(true);
     vi.stubGlobal('navigator', { share, canShare });
 
-    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip');
 
     expect(canShare).toHaveBeenCalledWith(
       expect.objectContaining({ files: expect.any(Array) }),
@@ -28,111 +127,54 @@ describe('shareOrDownloadBlob (web)', () => {
         title: 'export.zip',
       }),
     );
-    expect(result).toEqual({ saved: true, confirmed: true });
+    expect(result).toEqual({ saved: true });
   });
 
-  it('returns saved:false when the user cancels the share sheet', async () => {
+  it('reports not saved when the user cancels the share sheet', async () => {
     const abort = Object.assign(new Error('cancelled'), { name: 'AbortError' });
     const share = vi.fn().mockRejectedValue(abort);
-    const canShare = vi.fn().mockReturnValue(true);
-    vi.stubGlobal('navigator', { share, canShare });
+    vi.stubGlobal('navigator', { share, canShare: () => true });
 
-    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip');
 
-    expect(result).toEqual({ saved: false, confirmed: false });
+    expect(result).toEqual({ saved: false });
   });
 
-  it('falls back to an object-URL <a download> when share throws NotAllowedError', async () => {
-    // Chromium can report canShare({files}) as true while the OS-level share
-    // backend then rejects with NotAllowedError ("Permission denied") — seen
-    // on desktop Chrome (#889). The archive is already built, so the export
-    // must fall through to the plain download instead of failing.
+  it('falls through to the anchor download when share fails (canShare overpromised, #889)', async () => {
     const share = vi
       .fn()
       .mockRejectedValue(
         new DOMException('Permission denied', 'NotAllowedError'),
       );
-    const canShare = vi.fn().mockReturnValue(true);
-    vi.stubGlobal('navigator', { share, canShare });
-    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
-    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
-    const click = vi.fn();
-    const anchor = { href: '', download: '', click, remove: vi.fn() };
-    vi.spyOn(document, 'createElement').mockReturnValue(
-      anchor as unknown as HTMLAnchorElement,
-    );
-    vi.spyOn(document.body, 'appendChild').mockImplementation(
-      (node) => node as never,
-    );
+    vi.stubGlobal('navigator', { share, canShare: () => true });
+    const { createObjectURL, click } = stubAnchorDownload();
 
-    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip');
 
     expect(share).toHaveBeenCalledTimes(1);
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(click).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ saved: true, confirmed: false });
+    expect(result).toEqual({ saved: true });
+  });
+});
+
+describe('saveBlob (rung 3: anchor download, no picker or share)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
-  it('falls back to an object-URL <a download> when share fails unexpectedly', async () => {
-    const share = vi.fn().mockRejectedValue(new Error('share target crashed'));
-    const canShare = vi.fn().mockReturnValue(true);
-    vi.stubGlobal('navigator', { share, canShare });
-    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
-    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
-    const anchor = { href: '', download: '', click: vi.fn(), remove: vi.fn() };
-    vi.spyOn(document, 'createElement').mockReturnValue(
-      anchor as unknown as HTMLAnchorElement,
-    );
-    vi.spyOn(document.body, 'appendChild').mockImplementation(
-      (node) => node as never,
-    );
+  it('fires the object-URL download and reports saved optimistically', async () => {
+    vi.stubGlobal('navigator', {});
+    const { createObjectURL, click, anchor } = stubAnchorDownload();
 
-    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
-
-    expect(createObjectURL).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ saved: true, confirmed: false });
-  });
-
-  it('falls back to an object-URL <a download> when canShare is false', async () => {
-    vi.stubGlobal('navigator', { canShare: vi.fn().mockReturnValue(false) });
-    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
-    const revokeObjectURL = vi.fn();
-    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
-    const click = vi.fn();
-    const anchor = { href: '', download: '', click, remove: vi.fn() };
-    vi.spyOn(document, 'createElement').mockReturnValue(
-      anchor as unknown as HTMLAnchorElement,
-    );
-    vi.spyOn(document.body, 'appendChild').mockImplementation(
-      (node) => node as never,
-    );
-
-    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
+    const result = await saveBlob(makeBlob(), 'export.zip');
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(anchor.download).toBe('export.zip');
     expect(click).toHaveBeenCalledTimes(1);
-    // The object-URL <a download> fires the OS Save dialog with no observable
-    // outcome — a cancelled Save-As or blocked download is indistinguishable
-    // from success. It must NOT report a confirmed save, or the caller would
-    // stamp exportedAt for a file that was never written (data-loss primitive).
-    expect(result).toEqual({ saved: true, confirmed: false });
-  });
-
-  it('falls back when navigator has no canShare (older browsers)', async () => {
-    vi.stubGlobal('navigator', {});
-    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
-    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
-    const anchor = { href: '', download: '', click: vi.fn(), remove: vi.fn() };
-    vi.spyOn(document, 'createElement').mockReturnValue(
-      anchor as unknown as HTMLAnchorElement,
-    );
-    vi.spyOn(document.body, 'appendChild').mockImplementation(
-      (node) => node as never,
-    );
-
-    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
-    expect(createObjectURL).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ saved: true, confirmed: false });
+    // The outcome is unobservable on this rung; saved is reported
+    // optimistically by design (see the 2026-07-08 export-save-ladder spec).
+    expect(result).toEqual({ saved: true });
   });
 });

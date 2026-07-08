@@ -58,8 +58,24 @@ declare global {
     setConsumer(consumer: (params: LaunchParams) => void): void;
   }
 
+  // The File System Access Save-As picker (Chromium desktop) is not in
+  // TypeScript's DOM lib; only the subset the export save path uses is
+  // declared. FileSystemFileHandle/createWritable come from lib.dom.
+  interface SaveFilePickerType {
+    readonly description?: string;
+    readonly accept: Record<string, readonly string[]>;
+  }
+
+  interface SaveFilePickerOptions {
+    readonly suggestedName?: string;
+    readonly types?: readonly SaveFilePickerType[];
+  }
+
   interface Window {
     readonly launchQueue?: LaunchQueue;
+    readonly showSaveFilePicker?: (
+      options?: SaveFilePickerOptions,
+    ) => Promise<FileSystemFileHandle>;
   }
 
   // The PWA install prompt event is not in TypeScript's DOM lib. Captured
