@@ -12,10 +12,12 @@ import {
 import { APP_VERSION } from '~/lib/appVersion';
 import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
+import { isRunningInstalled } from '~/lib/pwa/isRunningInstalled';
 import {
   estimateStorage,
   formatBytes,
   isStoragePersisted,
+  STORAGE_PERSISTED_EVENT,
 } from '~/lib/storage';
 
 import AppUpdatePill from './AppUpdate/AppUpdatePill';
@@ -55,12 +57,14 @@ export function StatusRowView({
   interviewCount,
   mode,
   durability,
+  installed,
   versionSlot = <span>Interviewer {APP_VERSION}</span>,
 }: {
   protocolCount: number;
   interviewCount: number;
   mode: AuthMode | undefined;
   durability: Durability | null;
+  installed: boolean;
   versionSlot?: React.ReactNode;
 }) {
   return (
@@ -131,13 +135,27 @@ export function StatusRowView({
             <TooltipTrigger
               render={
                 <span
-                  tabIndex={durability.usage !== null ? 0 : undefined}
+                  tabIndex={
+                    durability.usage !== null ||
+                    (!durability.persisted && installed)
+                      ? 0
+                      : undefined
+                  }
                   className="focusable inline-flex items-center gap-1.5 rounded-sm"
                 >
                   {durability.persisted ? (
                     <>
                       <HardDrive className="size-3.5" />
                       Storage persistent
+                    </>
+                  ) : installed ? (
+                    // Installed apps are already partitioned away from
+                    // browsing data and exempt from routine cleanup, and no
+                    // further user action can flip the grant — a warning here
+                    // would alarm without offering a remedy (#886).
+                    <>
+                      <HardDrive className="size-3.5" />
+                      Storage best effort
                     </>
                   ) : (
                     <span className="text-warning inline-flex items-center gap-1.5">
@@ -148,7 +166,17 @@ export function StatusRowView({
                 </span>
               }
             />
-            {durability.usage !== null ? (
+            {!durability.persisted && installed ? (
+              <TooltipContent>
+                The browser keeps installed-app data separate from browsing data
+                and does not clear it routinely, but it has not guaranteed it
+                against eviction if disk space runs low. Export interviews
+                regularly.
+                {durability.usage !== null
+                  ? ` ${formatBytes(durability.usage)} stored.`
+                  : ''}
+              </TooltipContent>
+            ) : durability.usage !== null ? (
               <TooltipContent>
                 {formatBytes(durability.usage)} stored
               </TooltipContent>
@@ -169,6 +197,9 @@ type StatusRowProps = {
 export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
   const { mode } = useAuth();
   const [durability, setDurability] = useState<Durability | null>(null);
+  // Static per page load, like InstallBanner: installing mid-session still
+  // requires launching the installed app.
+  const [installed] = useState(isRunningInstalled);
 
   useEffect(() => {
     let active = true;
@@ -182,18 +213,22 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
     read();
 
     // A persist() grant can land after this component mounts: main.tsx requests
-    // it at startup and on install, and the auth enrol path requests it when
-    // encryption is enabled. Re-read on the events that follow such a grant so
-    // the durability label updates without a reload — focus/visibility for a
-    // late startup grant, appinstalled for the install grant.
+    // it at startup, on the first user gesture, and on install, and the auth
+    // enrol path requests it when encryption is enabled. Re-read on the events
+    // that follow such a grant so the durability label updates without a
+    // reload — focus/visibility for a late startup grant, appinstalled for the
+    // install grant, and the storage module's own event for any fresh grant it
+    // observes directly.
     window.addEventListener('focus', read);
     document.addEventListener('visibilitychange', read);
     window.addEventListener('appinstalled', read);
+    window.addEventListener(STORAGE_PERSISTED_EVENT, read);
     return () => {
       active = false;
       window.removeEventListener('focus', read);
       document.removeEventListener('visibilitychange', read);
       window.removeEventListener('appinstalled', read);
+      window.removeEventListener(STORAGE_PERSISTED_EVENT, read);
     };
   }, []);
 
@@ -219,6 +254,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
       interviewCount={interviewCount}
       mode={mode}
       durability={durability}
+      installed={installed}
       versionSlot={<AppUpdatePill />}
     />
   );

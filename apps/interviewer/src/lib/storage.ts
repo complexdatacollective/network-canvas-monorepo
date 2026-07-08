@@ -4,6 +4,10 @@ export type StorageEstimate = {
   percent: number | null;
 };
 
+// Dispatched on window when a persist() request is freshly granted, so live UI
+// (StatusRow) can re-read durability without waiting for a focus change.
+export const STORAGE_PERSISTED_EVENT = 'interviewer:storage-persisted';
+
 export async function requestPersistentStorage(): Promise<boolean> {
   if (typeof navigator === 'undefined' || !navigator.storage?.persist) {
     return false;
@@ -11,10 +15,34 @@ export async function requestPersistentStorage(): Promise<boolean> {
   try {
     const already = await navigator.storage.persisted?.();
     if (already) return true;
-    return await navigator.storage.persist();
+    const granted = await navigator.storage.persist();
+    if (granted && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(STORAGE_PERSISTED_EVENT));
+    }
+    return granted;
   } catch {
     return false;
   }
+}
+
+// WebKit and Chromium decide persist() silently from the user's interaction
+// history, so the startup request — made before any interaction, and for a
+// freshly installed app in a data store with no history at all — is routinely
+// denied (#886). Ask once more on the first gesture, when there is finally
+// interaction history to judge. Firefox is excluded: it pops a permission
+// dialog on every ask, and the startup request already asked this session.
+export function requestPersistentStorageOnFirstInteraction(): void {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return;
+  }
+  if (navigator.userAgent.includes('Firefox')) return;
+  const request = () => {
+    window.removeEventListener('pointerdown', request);
+    window.removeEventListener('keydown', request);
+    void requestPersistentStorage();
+  };
+  window.addEventListener('pointerdown', request);
+  window.addEventListener('keydown', request);
 }
 
 export async function isStoragePersisted(): Promise<boolean> {
