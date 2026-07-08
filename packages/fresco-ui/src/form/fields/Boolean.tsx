@@ -188,11 +188,11 @@ export default function BooleanField(props: BooleanFieldProps) {
   const groupState = getInputState(props);
 
   return (
-    <div className={cx('flex w-full flex-col gap-2', className)}>
+    <div className={cx('@container flex w-full flex-col gap-2', className)}>
       <fieldset
         id={id}
         {...rest}
-        className="flex w-full items-stretch gap-2 border-0 p-0 *:flex-1"
+        className="flex w-full flex-col items-stretch gap-2 border-0 p-0 *:flex-1 @xs:flex-row"
         disabled={disabled}
         aria-label={label ?? rest['aria-label']}
         aria-invalid={rest['aria-invalid'] ?? undefined}
