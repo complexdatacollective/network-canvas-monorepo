@@ -126,8 +126,6 @@ type NavigationProps = {
   backButtonRef?: Ref<HTMLButtonElement>;
   onExit?: () => void;
   allowStageNavigation?: boolean;
-  /** Extra classes for the navigation surface, e.g. a host applying
-   * device-specific safe-area padding. Merged after the orientation variant. */
   className?: string;
   goToStage?: (
     targetIndex: number,

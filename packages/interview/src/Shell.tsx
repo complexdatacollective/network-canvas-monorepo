@@ -231,12 +231,6 @@ type ShellProps = {
    * omitted, the orientation responds to the aspect ratio automatically.
    */
   navigationOrientation?: NavigationOrientation;
-  /**
-   * Extra class(es) applied to the Navigation surface, keyed by the resolved
-   * orientation, so a host can add device-specific styling (e.g. safe-area
-   * padding in an installed PWA) without the shared component owning it. Omit
-   * to leave the navigation unstyled beyond its defaults.
-   */
   navigationClassnames?: Partial<Record<NavigationOrientation, string>>;
   allowStageNavigation?: boolean;
 };

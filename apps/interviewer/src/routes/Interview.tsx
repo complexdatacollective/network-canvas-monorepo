@@ -260,11 +260,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="flex h-full w-full">
-      {/* The animated blob backdrop (App.tsx, fixed -z-10) is unmounted during
-          an interview, so paint an opaque themed base across the full viewport
-          — fixed, so it covers the safe-area regions too — behind the
-          edge-to-edge Shell. This guarantees a solid background wherever the
-          Shell's own surfaces don't reach (e.g. beside the navigation rail). */}
       <div
         aria-hidden
         className="bg-background pointer-events-none fixed inset-0 z-[-1]"

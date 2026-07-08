@@ -53,12 +53,6 @@ body {
   overscroll-behavior: none;
   -webkit-user-select: none;
   user-select: none;
-  /* The app is edge-to-edge: the safe-area insets (iPadOS window controls /
-     status bar / home indicator) are NOT reserved at the body level — that
-     would leave a band of background above the interview's left-hand
-     navigation. Each edge-anchored surface owns its own inset instead (e.g.
-     the interview Navigation pads its buttons past the top/bottom safe areas),
-     so backgrounds reach the screen edges while controls stay clear. */
 }
 
 /* Indeterminate-progress sweep used by the in-flight import ghost card
