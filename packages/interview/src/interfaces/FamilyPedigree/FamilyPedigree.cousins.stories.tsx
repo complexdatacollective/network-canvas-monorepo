@@ -6,6 +6,8 @@ import SuperJSON from 'superjson';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
 
+import { selectBiologicalSex } from './familyPedigreeWizardHelpers';
+
 /**
  * Shared protocol setup: mirrors the structure in FamilyPedigree.stories.tsx so
  * the pedigree interface can resolve all required stage variables.
@@ -380,6 +382,18 @@ async function openNodeContextMenu(nodeName: string) {
   await screen.findByRole('menu', {}, WIZARD_TIMEOUT);
 }
 
+/**
+ * Answer the "About you" (EgoSexStep) biological-sex question and continue. It
+ * is the first quick-start step for fixed-framing protocols (no leading
+ * Introduction or FramingSelection step). The radios are labelled by their
+ * option label (from BIOLOGICAL_SEX_OPTIONS; the default here is "Female").
+ */
+async function selectEgoSex(label = 'Female') {
+  const dialog = await getDialog();
+  await selectBiologicalSex(dialog, label);
+  await clickContinue();
+}
+
 export const FirstCousinCreationViaWizard: Story = {
   render: () => {
     const buildFn = () => {
@@ -438,10 +452,13 @@ export const FirstCousinCreationViaWizard: Story = {
   play: async () => {
     // -----------------------------------------------------------------------
     // Step 1: Quick-start wizard — ego with parents Linda (egg) and Robert.
-    // Fixed gamete framing means the wizard opens directly on EggParentStep
-    // (no leading IntroStep, FramingSelectionStep, or BioParentsIntroStep).
+    // Fixed gamete framing means the wizard opens on the "About you"
+    // (EgoSexStep) step first (no leading IntroStep or FramingSelectionStep),
+    // then EggParentStep.
     // -----------------------------------------------------------------------
     await clickGetStarted();
+
+    await selectEgoSex();
 
     await setFieldInput('egg-parent.is-donor', false);
     await setFieldInput('egg-parent.name', 'Linda');
@@ -566,6 +583,7 @@ export const FirstCousinCreationViaWizard: Story = {
     await userEvent.click(addSiblingAfterText);
 
     await setFieldInput('sibling.name', 'Carol');
+    await setFieldInput('sibling.biologicalSex', 'Female');
     await setFieldInput('sibling.gender_identity', 'Woman/girl');
     await clickContinue(); // Sibling details → BioTriadStep
 
@@ -589,6 +607,7 @@ export const FirstCousinCreationViaWizard: Story = {
     );
 
     await setFieldInput('child.name', 'Emma');
+    await setFieldInput('child.biologicalSex', 'Female');
     await setFieldInput('child.gender_identity', 'Woman/girl');
     await clickContinue(); // Child details → BioTriadStep
 
