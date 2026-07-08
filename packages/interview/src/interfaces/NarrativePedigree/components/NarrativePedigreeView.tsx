@@ -51,6 +51,7 @@ import {
 import { computeContributors } from '../highlight';
 import ConditionPanel from './ConditionPanel';
 import { Sticker } from './Sticker';
+import ZoomableViewport from './ZoomableViewport';
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 type Disease = NarrativeStage['diseases'][number];
@@ -150,7 +151,6 @@ export default function NarrativePedigreeView({
   // be captured to a PNG (see the capture effect below).
   const [isCapturing, setIsCapturing] = useState(false);
 
-  const viewRef = useRef<HTMLDivElement>(null);
   const snapshotRef = useRef<HTMLDivElement>(null);
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
     component: <Node size="sm" />,
@@ -664,17 +664,10 @@ export default function NarrativePedigreeView({
             click / Escape clears the focal person; the Clear-focus control floats
             over it when one is set. */}
         <div className="relative flex min-h-0 min-w-0 grow flex-col overflow-hidden">
-          <div
-            ref={viewRef}
-            data-narrative-pedigree-view
-            role="presentation"
-            className="relative flex min-h-0 w-full min-w-0 grow items-start justify-center-safe overflow-auto pt-6"
-            onClick={() => setFocalId(null)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                setFocalId(null);
-              }
-            }}
+          <ZoomableViewport
+            toolbarLabel="Zoom controls"
+            onBackgroundClick={() => setFocalId(null)}
+            onEscape={() => setFocalId(null)}
           >
             <PedigreeLayout
               nodes={nodesMap}
@@ -690,7 +683,7 @@ export default function NarrativePedigreeView({
                 focalId !== null ? highlight.edges : undefined
               }
             />
-          </div>
+          </ZoomableViewport>
           {focalId !== null && (
             <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
               <Button
