@@ -30,7 +30,7 @@
     "@types/redux-logger": "^3.0.13",
     "csvtojson": "catalog:",
     "cva": "1.0.0-beta.4",
-    "dexie": "^4.4.3",
+    "dexie": "^4.4.4",
     "es-toolkit": "catalog:",
     "fuse.js": "^7.4.0",
     "is-hotkey": "^0.2.0",
