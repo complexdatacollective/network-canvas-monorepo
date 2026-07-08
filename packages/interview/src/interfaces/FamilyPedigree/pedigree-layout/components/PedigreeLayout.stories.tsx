@@ -126,7 +126,7 @@ function buildNetwork(
     nodes.set(id, {
       _uid: id,
       type: 'person',
-      attributes: {
+      [entityAttributesProperty]: {
         [STORY_LABEL_VAR]: label,
         [STORY_EGO_VAR]: isEgo ?? false,
       },
