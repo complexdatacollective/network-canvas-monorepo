@@ -6,6 +6,8 @@ import SuperJSON from 'superjson';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
 
+import { selectBiologicalSex } from './familyPedigreeWizardHelpers';
+
 /**
  * Shared protocol setup: mirrors the structure in FamilyPedigree.stories.tsx so
  * the pedigree interface can resolve all required stage variables.
@@ -388,12 +390,7 @@ async function openNodeContextMenu(nodeName: string) {
  */
 async function selectEgoSex(label = 'Female') {
   const dialog = await getDialog();
-  const field = dialog.querySelector('[data-field-name="biologicalSex"]');
-  if (!field) throw new Error('No biologicalSex field found (EgoSexStep)');
-  const radio = within(field as HTMLElement).getByRole('radio', {
-    name: label,
-  });
-  await userEvent.click(radio);
+  await selectBiologicalSex(dialog, label);
   await clickContinue();
 }
 
