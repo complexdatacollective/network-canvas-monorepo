@@ -49,7 +49,7 @@ Derived decisions made in this design (flagged for review):
 
 ### architect-theme.css — the permanent app layer
 
-One file, four sections. All color values are full oklch colors (never HSL triplets — the local HSL plumbing is deleted wholesale).
+One CSS file (sections 1, 2, and 4) plus a small TS helper (section 3). All color values are full oklch colors (never HSL triplets — the local HSL plumbing is deleted wholesale).
 
 **1. Brand overrides** (`@layer theme` re-declarations of shared variables):
 
