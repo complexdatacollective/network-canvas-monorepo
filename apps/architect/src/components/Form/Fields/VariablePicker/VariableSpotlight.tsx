@@ -27,8 +27,7 @@ type ListItemProps = {
   removeSelected?: () => void;
 };
 
-const LIST_ITEM_BASE =
-  'flex w-full items-center justify-between rounded-md px-5 py-2.5';
+const LIST_ITEM_BASE = 'flex w-full items-center justify-between px-5 py-2.5';
 
 // When `data-selected`, the row sets the foreground to white (so descendant
 // text reads on the primary background) and overrides the cascade variable

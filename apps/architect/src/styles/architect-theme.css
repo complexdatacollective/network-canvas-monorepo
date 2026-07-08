@@ -39,48 +39,84 @@
   }
 }
 
-/* 2. Architect-only semantic tokens (no shared concept). `inline` matches
-   the shared theme's convention: token values are inlined into generated
-   utilities and re-resolve at the usage site. NO --color-* variables are
-   emitted at runtime — root-level emission would freeze var() indirection
-   at :root and break re-resolution inside themed regions, which is the
-   documented reason the shared theme is @theme inline (theme.css:12-26).
-   Consequence for the codemods: every runtime var(--color-*) read must be
-   rewritten to variables that DO exist (Appendix A, R5). Values are
-   written out per token — under inline, a var(--color-*) alias chain
-   would reference a variable that never exists at runtime. */
-@theme inline {
-  --color-rules-type: oklch(var(--neon-coral));
-  --color-rules-assert: oklch(var(--sea-green));
-  --color-rules-control: oklch(var(--slate-blue));
-  --color-rules-delete: oklch(var(--tomato));
-  --color-rules-attribute: oklch(var(--mustard));
-  --color-rules-operator: oklch(var(--cyber-grape));
-  --color-rules-value: oklch(var(--sea-serpent));
-  --color-rule-type: oklch(var(--neon-coral));
-  --color-rule-control: oklch(var(--slate-blue));
-  --color-rule-delete: oklch(var(--tomato));
-  --color-rule-attribute: oklch(var(--mustard));
-  --color-rule-operator: oklch(var(--cyber-grape));
-  --color-rule-value: oklch(var(--sea-serpent));
+/* 2. Architect-only semantic tokens (no shared concept). Split exactly like
+   the shared theme: bare runtime variables in :root, mapped through
+   @theme inline. The bare vars exist because the elevation plugin publishes
+   --scoped-bg for every bg-* utility by stripping the --color- prefix, so
+   each color token needs a bare runtime counterpart. The @theme block is
+   inline (never emitted at runtime) because root-level --color-* emission
+   would freeze var() indirection at :root and break re-resolution inside
+   themed regions — the documented reason the shared theme is @theme inline
+   (theme.css:12-26). Runtime code must read the bare vars, never
+   var(--color-*). */
+@layer theme {
+  :root {
+    --rules-type: oklch(var(--neon-coral));
+    --rules-assert: oklch(var(--sea-green));
+    --rules-control: oklch(var(--slate-blue));
+    --rules-delete: oklch(var(--tomato));
+    --rules-attribute: oklch(var(--mustard));
+    --rules-operator: oklch(var(--cyber-grape));
+    --rules-value: oklch(var(--sea-serpent));
+    --rule-type: var(--rules-type);
+    --rule-control: var(--rules-control);
+    --rule-delete: var(--rules-delete);
+    --rule-attribute: var(--rules-attribute);
+    --rule-operator: var(--rules-operator);
+    --rule-value: var(--rules-value);
 
-  --color-timeline: oklch(var(--neon-coral));
-  --color-timeline-contrast: oklch(var(--white));
-  --color-sortable-background: oklch(var(--slate-blue));
-  --color-sortable-contrast: oklch(var(--white));
-  --color-table-row-tint: rgb(58 106 117 / 5%);
-  --color-form-control: oklch(var(--sea-serpent));
-  --color-action: oklch(var(--sea-green));
-  --color-action-contrast: oklch(var(--white));
-  --color-muted: oklch(var(--cyber-grape) / 60%);
-  --color-hover: oklch(var(--sea-green--dark));
-  --color-focus: oklch(var(--sea-green));
-  --color-active: oklch(var(--sea-green));
-  --color-input-active: oklch(var(--sea-green));
-  --color-surface-accent: oklch(var(--navy-taupe));
-  --color-surface-accent-contrast: oklch(var(--white));
-  --color-fresco-purple: oklch(10% 0.4 290);
-  --color-fresco-purple-contrast: oklch(var(--white));
+    --timeline: oklch(var(--neon-coral));
+    --timeline-contrast: oklch(var(--white));
+    --sortable-background: oklch(var(--slate-blue));
+    --sortable-contrast: oklch(var(--white));
+    --table-row-tint: rgb(58 106 117 / 5%);
+    --form-control: oklch(var(--sea-serpent));
+    --action: oklch(var(--sea-green));
+    --action-contrast: oklch(var(--white));
+    --muted: oklch(var(--cyber-grape) / 60%);
+    --hover: oklch(var(--sea-green--dark));
+    --focus: oklch(var(--sea-green));
+    --active: oklch(var(--sea-green));
+    --input-active: oklch(var(--sea-green));
+    --surface-accent: oklch(var(--navy-taupe));
+    --surface-accent-contrast: oklch(var(--white));
+    --fresco-purple: oklch(10% 0.4 290);
+    --fresco-purple-contrast: oklch(var(--white));
+  }
+}
+
+@theme inline {
+  --color-rules-type: var(--rules-type);
+  --color-rules-assert: var(--rules-assert);
+  --color-rules-control: var(--rules-control);
+  --color-rules-delete: var(--rules-delete);
+  --color-rules-attribute: var(--rules-attribute);
+  --color-rules-operator: var(--rules-operator);
+  --color-rules-value: var(--rules-value);
+  --color-rule-type: var(--rule-type);
+  --color-rule-control: var(--rule-control);
+  --color-rule-delete: var(--rule-delete);
+  --color-rule-attribute: var(--rule-attribute);
+  --color-rule-operator: var(--rule-operator);
+  --color-rule-value: var(--rule-value);
+
+  --color-timeline: var(--timeline);
+  --color-timeline-contrast: var(--timeline-contrast);
+  --color-sortable-background: var(--sortable-background);
+  --color-sortable-contrast: var(--sortable-contrast);
+  --color-table-row-tint: var(--table-row-tint);
+  --color-form-control: var(--form-control);
+  --color-action: var(--action);
+  --color-action-contrast: var(--action-contrast);
+  --color-muted: var(--muted);
+  --color-hover: var(--hover);
+  --color-focus: var(--focus);
+  --color-active: var(--active);
+  --color-input-active: var(--input-active);
+  --color-surface-accent: var(--surface-accent);
+  --color-surface-accent-contrast: var(--surface-accent-contrast);
+  --color-fresco-purple: var(--fresco-purple);
+  --color-fresco-purple-contrast: var(--fresco-purple-contrast);
 }
 
 /* 3. Ported utilities, variant, and base layer. Runtime var() values
