@@ -229,8 +229,12 @@
     transform: translateY(0.2rem);
   }
 }
-/* Print surface: re-bases the fluid type scale via --theme-root-size
-   (replaces the old html { font-size: var(--base-font-size) } trick). */
+/* Print surface: re-bases the fluid type scale via --theme-root-size.
+   Applied to a descendant element this re-scales type only — the theme's
+   root-computed spacing base is untouched. The print block in
+   protocol-summary.css re-bases the whole document by overriding the same
+   variable on <html> itself. (Replaces the old html-level base-font-size
+   re-base trick from the pre-migration theme.) */
 @utility protocol-summary-surface {
   --page-size-height: 29.7cm;
   --page-size-width: 21cm;

@@ -24,8 +24,12 @@
   /* Scale the printed document to the summary's intended 12px base.
      Re-declaring --theme-root-size on the <html> element re-bases the shared
      theme's fluid type scale and the root-computed --spacing-base, so the
-     whole document shrinks uniformly. The app chrome is `print:hidden`, so
-     this only affects the printed page. */
+     whole document shrinks uniformly. This works only because .summary-view
+     IS the html element: the unlayered override outcascades the theme's
+     layered :root declaration on the same element, so :root-computed values
+     like --spacing-base re-resolve. (On a descendant element it would
+     re-base type alone.) The app chrome is `print:hidden`, so this only
+     affects the printed page. */
   .summary-view {
     --theme-root-size: 12px;
     overflow: visible;
