@@ -4,6 +4,11 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import { APP_VERSION } from '~/lib/appVersion';
 import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -84,44 +89,71 @@ export function StatusRowView({
             and iconography. */}
         {mode ? (
           mode === 'none' ? (
-            <span
-              className="text-warning inline-flex items-center gap-1.5"
-              title="No app security is enrolled — data is stored unencrypted. Enrol a PIN, passphrase, or biometric in Settings to encrypt it."
-            >
-              <ShieldAlert className="size-3.5" />
-              Not encrypted
-            </span>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span
+                    tabIndex={0}
+                    className="focusable text-warning inline-flex items-center gap-1.5 rounded-sm"
+                  >
+                    <ShieldAlert className="size-3.5" />
+                    Not encrypted
+                  </span>
+                }
+              />
+              <TooltipContent>
+                No app security is enrolled — data is stored unencrypted. Enrol
+                a PIN, passphrase, or biometric in Settings to encrypt it.
+              </TooltipContent>
+            </Tooltip>
           ) : (
-            <span
-              className="inline-flex items-center gap-1.5"
-              title="Interview data is encrypted at rest with your enrolled unlock method."
-            >
-              <ShieldCheck className="size-3.5" />
-              Encrypted
-            </span>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span
+                    tabIndex={0}
+                    className="focusable inline-flex items-center gap-1.5 rounded-sm"
+                  >
+                    <ShieldCheck className="size-3.5" />
+                    Encrypted
+                  </span>
+                }
+              />
+              <TooltipContent>
+                Interview data is encrypted at rest with your enrolled unlock
+                method.
+              </TooltipContent>
+            </Tooltip>
           )
         ) : null}
         {durability ? (
-          <span
-            className="inline-flex items-center gap-1.5"
-            title={
-              durability.usage !== null
-                ? `${formatBytes(durability.usage)} stored`
-                : undefined
-            }
-          >
-            {durability.persisted ? (
-              <>
-                <HardDrive className="size-3.5" />
-                Storage persistent
-              </>
-            ) : (
-              <span className="text-warning inline-flex items-center gap-1.5">
-                <HardDrive className="size-3.5" />
-                Storage not persistent
-              </span>
-            )}
-          </span>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span
+                  tabIndex={0}
+                  className="focusable inline-flex items-center gap-1.5 rounded-sm"
+                >
+                  {durability.persisted ? (
+                    <>
+                      <HardDrive className="size-3.5" />
+                      Storage persistent
+                    </>
+                  ) : (
+                    <span className="text-warning inline-flex items-center gap-1.5">
+                      <HardDrive className="size-3.5" />
+                      Storage not persistent
+                    </span>
+                  )}
+                </span>
+              }
+            />
+            {durability.usage !== null ? (
+              <TooltipContent>
+                {formatBytes(durability.usage)} stored
+              </TooltipContent>
+            ) : null}
+          </Tooltip>
         ) : null}
         {versionSlot}
       </div>
