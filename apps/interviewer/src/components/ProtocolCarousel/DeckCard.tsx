@@ -147,10 +147,6 @@ function useCardTextBudget({
   const columnRef = useRef<HTMLDivElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const descriptionRef = useRef<HTMLSpanElement | null>(null);
-  // The ScrollArea viewport inside the footer row: its scrollHeight is the
-  // footer's natural (uncapped) content height, which the row's own box
-  // stops reporting once the cap is applied.
-  const footerViewportRef = useRef<HTMLElement | null>(null);
   const descriptionLineHeightRatio = useRef<number | null>(null);
   const [budget, setBudget] = useState<CardTextBudget>({
     headingLines: null,
@@ -183,11 +179,14 @@ function useCardTextBudget({
       );
       const footerRow = rows.find((el) => el.dataset.deckRow === 'footer');
       const others = rows.filter((el) => el.dataset.deckRow === undefined);
+      // The footer's natural (uncapped) content height: the ScrollArea
+      // viewport's scrollHeight, which keeps reporting the full content
+      // once the cap is applied. Resolved from the IN-FLOW row (not a ref)
+      // because two footers coexist during a swap — the exiting one is out
+      // of the flow but still mounted, and a shared ref could point at it.
+      const footerViewport = footerRow?.querySelector('section');
       const footerNaturalHeight = footerRow
-        ? Math.max(
-            footerRow.offsetHeight,
-            footerViewportRef.current?.scrollHeight ?? 0,
-          )
+        ? Math.max(footerRow.offsetHeight, footerViewport?.scrollHeight ?? 0)
         : 0;
       const fixedHeight =
         others.reduce((sum, el) => sum + el.offsetHeight, 0) +
@@ -244,6 +243,10 @@ function useCardTextBudget({
             )
           : 0;
 
+      // null = the footer fits; it then renders as a plain (overflow
+      // visible) region so nothing clips its buttons' shadows and no
+      // scroll container exists to grow a scrollbar. A number = genuine
+      // overflow; the footer is capped there and scrolls.
       let footerMaxHeight: CardTextBudget['footerMaxHeight'] = null;
       if (footerRow) {
         // The description skeletons (no real text yet) count as a fixed row;
@@ -258,16 +261,21 @@ function useCardTextBudget({
         const descriptionHeight = descriptionShown
           ? descriptionLines * descriptionLineHeight
           : 0;
-        footerMaxHeight = Math.max(
-          48,
-          Math.floor(
-            contentHeight -
-              (fixedHeight - footerNaturalHeight) -
-              headingHeight -
-              descriptionHeight -
-              gap * (fixedRowCount + (descriptionShown ? 1 : 0)),
-          ),
-        );
+        const footerAvailable =
+          contentHeight -
+          (fixedHeight - footerNaturalHeight) -
+          headingHeight -
+          descriptionHeight -
+          gap * (fixedRowCount + (descriptionShown ? 1 : 0));
+        // 2px tolerance: the natural height is a rounded-up integer
+        // (scrollHeight) compared against a fractional budget, so a
+        // sub-pixel discrepancy must not flip the footer into scroll mode
+        // — a couple of pixels absorbed by the column beats a scrollbar
+        // that scrolls one pixel.
+        footerMaxHeight =
+          footerNaturalHeight <= footerAvailable + 2
+            ? null
+            : Math.max(48, Math.floor(footerAvailable));
       }
 
       setBudget((previous) =>
@@ -289,9 +297,13 @@ function useCardTextBudget({
     }
     // The footer's cap freezes its row box, so content growth inside the
     // scroll viewport (a validation error appearing) is only visible on the
-    // viewport's child.
-    const footerContent = footerViewportRef.current?.firstElementChild;
-    if (footerContent instanceof HTMLElement) observer.observe(footerContent);
+    // viewport's child. Observe every mounted footer's content — during a
+    // swap both the entering and exiting footers exist.
+    for (const content of column.querySelectorAll(
+      '[data-deck-row="footer"] section > *',
+    )) {
+      if (content instanceof HTMLElement) observer.observe(content);
+    }
     // An exiting row leaving the DOM (its pop-fade finishing) changes no
     // observed box — the row was already out of the flow — but it can shift
     // what the budget should count (a measure taken mid-exit sticks
@@ -316,7 +328,6 @@ function useCardTextBudget({
     columnRef,
     headingRef,
     descriptionRef,
-    footerViewportRef,
     ...budget,
   };
 }
@@ -745,17 +756,27 @@ export function DeckCard(props: DeckCardProps) {
                   // card can hold (the case-ID form on a small card) scrolls
                   // inside the ScrollArea — with its edge fade as the "there's
                   // more" hint — instead of pushing the submit button past the
-                  // clipped card edge (#888).
+                  // clipped card edge (#888). While the footer FITS
+                  // (footerMaxHeight null) the viewport is overflow-visible
+                  // with the fade machinery off: a scroll container would
+                  // clip ink overflow (the submit button's shadow) and turn
+                  // rounding noise into a one-pixel scrollbar. Scroll mode
+                  // keeps ScrollArea's own vertical padding so the shadow
+                  // has room at the scroll edges.
                   style={{ maxHeight: budget.footerMaxHeight ?? undefined }}
                   className="flex shrink-0 flex-col"
                 >
                   <ScrollArea
-                    ref={budget.footerViewportRef}
                     // The footer's own controls are the tab stops; the
                     // viewport scrolls them into view on focus, so it needs
                     // no tab stop of its own.
                     tabIndex={-1}
-                    viewportClassName="py-0"
+                    fade={budget.footerMaxHeight !== null}
+                    viewportClassName={
+                      budget.footerMaxHeight === null
+                        ? 'overflow-visible py-0'
+                        : undefined
+                    }
                   >
                     {footer}
                   </ScrollArea>
