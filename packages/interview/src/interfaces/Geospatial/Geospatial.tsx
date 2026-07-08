@@ -505,11 +505,7 @@ export default function GeospatialInterface({
           />
         </MotionSurface>
 
-        <CollapsablePrompts
-          currentPromptIndex={promptIndex}
-          dragConstraints={dragSafeRef}
-          className="flex flex-col items-center gap-4"
-        >
+        <CollapsablePrompts dragConstraints={dragSafeRef}>
           <AnimatePresence mode="wait">
             <motion.div
               key={stageNodes[navState.activeIndex]?.[entityPrimaryKeyProperty]}
