@@ -22,6 +22,12 @@ import { useDeckKeyboard } from './useDeckKeyboard';
 
 // Cards are square; height is measured from the section, width follows.
 const CARD_ASPECT = 1 / 1;
+// Readability floor: below this the card's container-query type becomes too
+// small to read, so the deck stops shrinking and lets the section clip
+// symmetrically instead. Lives here (not on DeckCard) so the slides and the
+// card always agree on size — a card bigger than its slot broke the deck
+// geometry and clipped card content (#888).
+const MIN_CARD_EDGE_PX = 300;
 // Top/bottom inset so the deck sits below the header instead of hugging it,
 // and so the card's drop shadow has room to render. Scaled with section
 // height: short viewports (Electron default 1280×800 leaves ~470px) get a
@@ -310,7 +316,10 @@ export function ProtocolDeck({
   const { cardWidth, cardHeight } = useMemo(() => {
     const padding = computeSectionPadding(sectionHeight);
     const innerHeight = Math.max(0, sectionHeight - padding * 2);
-    const ch = Math.round(innerHeight);
+    // The floor applies only once the section has been measured at all —
+    // cardHeight 0 still means "don't render the carousel yet".
+    const ch =
+      innerHeight > 0 ? Math.round(Math.max(innerHeight, MIN_CARD_EDGE_PX)) : 0;
     const cw = Math.round(ch * CARD_ASPECT);
     return { cardHeight: ch, cardWidth: cw };
   }, [sectionHeight]);

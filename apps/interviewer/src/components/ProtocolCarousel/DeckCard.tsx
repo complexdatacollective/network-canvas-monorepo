@@ -449,7 +449,10 @@ export function DeckCard(props: DeckCardProps) {
         // style={{ borderColor: seedToPatternPalette(protocol.name).backgroundTop }}
         className={cx(
           cardBase(),
-          'min-h-[300px] min-w-[325px]',
+          // No minimum size of its own: the card always fills the box it's
+          // given (the text budget degrades content gracefully), so it can
+          // never overflow its carousel slot or a story frame. The deck's
+          // readability floor lives in ProtocolDeck's card-size computation.
           'text-navy-taupe bg-platinum publish-colors',
           'effect-shadow-xl @container relative h-full w-full overflow-clip rounded',
           isActive && 'spring-medium effect-shadow-2xl',
