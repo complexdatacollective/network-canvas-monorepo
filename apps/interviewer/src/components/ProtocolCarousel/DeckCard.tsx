@@ -80,11 +80,13 @@ function withUnderscoreBreaks(name: string): ReactNode[] {
 // so Tailwind's scanner emits them. Names are identifiers (machine-style
 // names often differ only at the END), so shrinking is preferred over
 // truncation; the fitted line clamp below is only a backstop for
-// pathological lengths.
+// pathological lengths. Each tier carries a pixel floor so the name stays
+// legible on the smallest cards — when text stops shrinking, the budget
+// hook trades description lines away instead.
 function headingSizeClass(name: string): string {
-  if (name.length <= 24) return 'text-[8cqi]';
-  if (name.length <= 48) return 'text-[6.5cqi]';
-  return 'text-[5cqi]';
+  if (name.length <= 24) return 'text-[max(20px,8cqi)]';
+  if (name.length <= 48) return 'text-[max(18px,6.5cqi)]';
+  return 'text-[max(16px,5cqi)]';
 }
 
 // Ceiling on the description even when space allows — beyond this it trails
@@ -92,10 +94,12 @@ function headingSizeClass(name: string): string {
 const DESCRIPTION_MAX_LINES = 6;
 
 // The description's line height as a fraction of the card width —
-// text-[3.5cqi] × leading-tight (1.25) on the span below. Used only until
-// the span has been measured once (a card born too small to ever show the
-// description), so the budget can still tell when enough room has returned
-// for it to re-enter.
+// text-[max(12px,3.5cqi)] × leading-tight (1.25) on the span below. Used
+// only until the span has been measured once (a card born too small to
+// ever show the description), so the budget can still tell when enough
+// room has returned for it to re-enter. Approximate below the 12px floor,
+// where the real line height stops scaling with the card — a ±1-line
+// error in when the description re-enters, nothing more.
 const DESCRIPTION_FALLBACK_LINE_HEIGHT_RATIO = 0.035 * 1.25;
 
 type CardTextBudget = {
@@ -631,7 +635,7 @@ export function DeckCard(props: DeckCardProps) {
                   {protocol.description ? (
                     <span
                       ref={budget.descriptionRef}
-                      className="text-[3.5cqi] leading-tight text-current/80"
+                      className="text-[max(12px,3.5cqi)] leading-tight text-current/80"
                       style={{
                         display: '-webkit-box',
                         WebkitBoxOrient: 'vertical',
@@ -795,7 +799,7 @@ export function DeckCardFooterButton({
       onClick={onClick}
       className={cx(
         buttonVariants({ color }),
-        'flex h-auto items-center justify-center gap-[1.5cqi] border-b-[1.25cqi] p-[2.5cqi] text-[3cqi] font-extrabold tracking-widest uppercase',
+        'flex h-auto items-center justify-center gap-[1.5cqi] border-b-[1.25cqi] p-[max(10px,2.5cqi)] text-[max(12px,3cqi)] font-extrabold tracking-widest uppercase',
         // 3D bottom edge: the translucent black border paints over the
         // button's own background (border-box clipping), darkening whatever
         // the color resolves to in the active theme.
@@ -831,7 +835,7 @@ export function DeckCardProgressFooter({
         label={message ?? 'Loading protocol'}
         className="h-[2cqi] min-h-2"
       />
-      <div className="font-monospace flex min-h-lh items-center justify-between text-[2.8cqi]">
+      <div className="font-monospace flex min-h-lh items-center justify-between text-[max(11px,2.8cqi)]">
         <span>{message}</span>
         {progress !== undefined && (
           <span>{Math.round(Math.min(1, Math.max(0, progress)) * 100)}%</span>

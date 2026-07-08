@@ -2,7 +2,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
-import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
@@ -16,6 +15,7 @@ import { TopActionBar } from '~/components/TopActionBar';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
 import { pickProtocolFile } from '~/lib/files/pickFile';
+import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
@@ -98,8 +98,9 @@ export function HomeRoute() {
     void startImport({ source: 'sample' });
   }, [startImport]);
 
-  // Dev-only: installs the Development protocol (exercises every stage type)
-  // without leaving a teaser card in production builds.
+  // Dev-only: installs the Development protocol (exercises every stage
+  // type) from its teaser card in the deck; the card never renders in
+  // production builds (see showDevelopmentCard below).
   const handleInstallDevelopment = useCallback(() => {
     if (!import.meta.env.DEV) return;
     void startImport({ source: 'development' });
@@ -235,6 +236,14 @@ export function HomeRoute() {
                     !pendingImports.some((p) => p.source === 'sample')
                   : false
               }
+              showDevelopmentCard={
+                // Dev-only teaser; disappears once the Development protocol
+                // is installed (or while its import is in flight — the
+                // pending card shadows the slot during the install itself).
+                import.meta.env.DEV &&
+                !protocols.some((p) => p.name === DEVELOPMENT_PROTOCOL.name) &&
+                !pendingImports.some((p) => p.source === 'development')
+              }
               pendingImports={pendingImports}
               onImport={() => void handleChooseFile()}
               onImportFile={handleImportFile}
@@ -242,25 +251,11 @@ export function HomeRoute() {
               onDeleteProtocol={handleDeleteProtocol}
               onInstallSample={handleInstallSample}
               onDismissSample={handleDismissSample}
+              onInstallDevelopment={handleInstallDevelopment}
               newSessionProtocolHash={pendingProtocolHash}
               onCancelNewSession={closeNewSession}
               onSessionCreated={handleSessionCreated}
             />
-
-            {import.meta.env.DEV && (
-              <div
-                inert={newSessionActive}
-                className="tablet-landscape:px-11 flex justify-center px-6"
-              >
-                <Button
-                  variant="text"
-                  size="sm"
-                  onClick={handleInstallDevelopment}
-                >
-                  Install development protocol
-                </Button>
-              </div>
-            )}
 
             <div inert={newSessionActive} className="contents">
               <StatusRow

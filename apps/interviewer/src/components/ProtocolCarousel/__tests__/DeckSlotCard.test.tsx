@@ -42,6 +42,7 @@ const baseProps = {
   onDeleteProtocol: noop,
   onDismissSample: noop,
   onInstallSample: noop,
+  onInstallDevelopment: noop,
 };
 
 describe('DeckSlotCard', () => {
@@ -81,6 +82,26 @@ describe('DeckSlotCard', () => {
       screen.getByRole('button', { name: 'Install sample protocol' }),
     );
     expect(onInstallSample).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the development teaser with an install button and no dismiss control', () => {
+    const onInstallDevelopment = vi.fn();
+    render(
+      <DeckSlotCard
+        {...baseProps}
+        entry={{ kind: 'development' }}
+        onInstallDevelopment={onInstallDevelopment}
+      />,
+    );
+
+    expect(screen.getByText('Development Protocol')).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Install development protocol' }),
+    );
+    expect(onInstallDevelopment).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole('button', { name: /dismiss/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders the pending card with the phase label and metadata skeletons', () => {

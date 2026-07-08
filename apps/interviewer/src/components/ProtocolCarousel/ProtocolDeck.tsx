@@ -49,6 +49,8 @@ type ProtocolDeckProps = {
   sessions: StoredSessionLite[];
   initialProtocolHash?: string;
   showSampleCard?: boolean;
+  // Dev-only teaser slot for the bundled Development protocol.
+  showDevelopmentCard?: boolean;
   pendingImports?: PendingImport[];
   onImport: () => void;
   onImportFile: (file: File) => void;
@@ -56,6 +58,7 @@ type ProtocolDeckProps = {
   onDeleteProtocol: (hash: string) => void;
   onInstallSample?: () => void;
   onDismissSample?: () => void;
+  onInstallDevelopment?: () => void;
   // When set, the matching card is rendered in its "new session" state: the
   // case-ID form replaces the description, metadata, and Start button in the
   // card footer, and swipe/keyboard navigation is locked.
@@ -103,6 +106,7 @@ export function ProtocolDeck({
   sessions,
   initialProtocolHash,
   showSampleCard = false,
+  showDevelopmentCard = false,
   pendingImports = [],
   onImport,
   onImportFile,
@@ -110,6 +114,7 @@ export function ProtocolDeck({
   onDeleteProtocol,
   onInstallSample = () => {},
   onDismissSample = () => {},
+  onInstallDevelopment = () => {},
   newSessionProtocolHash,
   onCancelNewSession,
   onSessionCreated,
@@ -121,8 +126,14 @@ export function ProtocolDeck({
   const [sectionHeight, setSectionHeight] = useState(0);
 
   const deck = useMemo(
-    () => buildDeck({ protocols, showSampleCard, pendingImports }),
-    [protocols, showSampleCard, pendingImports],
+    () =>
+      buildDeck({
+        protocols,
+        showSampleCard,
+        showDevelopmentCard,
+        pendingImports,
+      }),
+    [protocols, showSampleCard, showDevelopmentCard, pendingImports],
   );
 
   // Per-protocol session count, hoisted here so DeckCard doesn't take the
@@ -169,7 +180,9 @@ export function ProtocolDeck({
               ? () => onStartInterview(entry.protocol.hash)
               : entry.kind === 'sample'
                 ? onInstallSample
-                : undefined,
+                : entry.kind === 'development'
+                  ? onInstallDevelopment
+                  : undefined,
           render: (isActive: boolean, activate: () => void) => (
             <DeckSlotCard
               entry={entry}
@@ -183,6 +196,7 @@ export function ProtocolDeck({
               onDeleteProtocol={onDeleteProtocol}
               onDismissSample={onDismissSample}
               onInstallSample={onInstallSample}
+              onInstallDevelopment={onInstallDevelopment}
               newSession={newSession}
             />
           ),
@@ -197,6 +211,7 @@ export function ProtocolDeck({
       onStartInterview,
       onInstallSample,
       onDismissSample,
+      onInstallDevelopment,
       onDeleteProtocol,
       onCancelNewSession,
       onSessionCreated,
