@@ -42,6 +42,57 @@ describe('shareOrDownloadBlob (web)', () => {
     expect(result).toEqual({ saved: false, confirmed: false });
   });
 
+  it('falls back to an object-URL <a download> when share throws NotAllowedError', async () => {
+    // Chromium can report canShare({files}) as true while the OS-level share
+    // backend then rejects with NotAllowedError ("Permission denied") — seen
+    // on desktop Chrome (#889). The archive is already built, so the export
+    // must fall through to the plain download instead of failing.
+    const share = vi
+      .fn()
+      .mockRejectedValue(
+        new DOMException('Permission denied', 'NotAllowedError'),
+      );
+    const canShare = vi.fn().mockReturnValue(true);
+    vi.stubGlobal('navigator', { share, canShare });
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+    const click = vi.fn();
+    const anchor = { href: '', download: '', click, remove: vi.fn() };
+    vi.spyOn(document, 'createElement').mockReturnValue(
+      anchor as unknown as HTMLAnchorElement,
+    );
+    vi.spyOn(document.body, 'appendChild').mockImplementation(
+      (node) => node as never,
+    );
+
+    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
+
+    expect(share).toHaveBeenCalledTimes(1);
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ saved: true, confirmed: false });
+  });
+
+  it('falls back to an object-URL <a download> when share fails unexpectedly', async () => {
+    const share = vi.fn().mockRejectedValue(new Error('share target crashed'));
+    const canShare = vi.fn().mockReturnValue(true);
+    vi.stubGlobal('navigator', { share, canShare });
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+    const anchor = { href: '', download: '', click: vi.fn(), remove: vi.fn() };
+    vi.spyOn(document, 'createElement').mockReturnValue(
+      anchor as unknown as HTMLAnchorElement,
+    );
+    vi.spyOn(document.body, 'appendChild').mockImplementation(
+      (node) => node as never,
+    );
+
+    const result = await shareOrDownloadBlob(makeBlob(), 'export.zip');
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ saved: true, confirmed: false });
+  });
+
   it('falls back to an object-URL <a download> when canShare is false', async () => {
     vi.stubGlobal('navigator', { canShare: vi.fn().mockReturnValue(false) });
     const createObjectURL = vi.fn().mockReturnValue('blob:mock');

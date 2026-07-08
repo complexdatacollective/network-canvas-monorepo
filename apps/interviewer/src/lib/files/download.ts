@@ -7,7 +7,11 @@ export type DownloadResult = { saved: boolean; confirmed: boolean };
 // Shares or saves a Blob. Must be called from within a user gesture so
 // Web Share / the download is allowed to proceed. Web Share is preferred when
 // the platform can share files (iOS/Android/desktop Safari + Chrome), otherwise
-// falls back to an object-URL <a download>.
+// falls back to an object-URL <a download>. canShare({files}) only reports
+// that the API accepts the payload, not that the OS can actually present a
+// share sheet — desktop Chromium can pass canShare and then reject share()
+// with NotAllowedError (#889) — so any share failure other than the user
+// cancelling also falls through to the download.
 export async function shareOrDownloadBlob(
   blob: Blob,
   suggestedName: string,
@@ -19,7 +23,6 @@ export async function shareOrDownloadBlob(
       return { saved: true, confirmed: true };
     } catch (cause) {
       if (isShareCanceled(cause)) return { saved: false, confirmed: false };
-      throw cause;
     }
   }
 
