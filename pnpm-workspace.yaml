@@ -58,7 +58,7 @@ catalog:
   '@testing-library/jest-dom': ^6.9.1
   '@testing-library/react': ^16.3.2
   '@types/node': ^24.12.4
-  '@types/react': ^19.2.15
+  '@types/react': ^19.2.17
   '@types/react-dom': ^19.2.3
   '@vitejs/plugin-react': ^6.0.2
   '@vitest/browser': ^4.1.10
@@ -82,8 +82,8 @@ catalog:
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.61.1
   posthog-js: ^1.376.5
-  react: ^19.2.6
-  react-dom: ^19.2.6
+  react: ^19.2.7
+  react-dom: ^19.2.7
   react-redux: ^9.3.0
   redux-form: ^8.3.10
   redux-logger: ^3.0.6
