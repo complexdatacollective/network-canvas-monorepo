@@ -1434,10 +1434,10 @@ importers:
   packages/fresco-ui:
     dependencies:
       '@codaco/shared-consts':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../shared-consts
       '@codaco/tailwind-config':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../tooling/tailwind
       '@radix-ui/react-slot':
         specifier: 'catalog:'
@@ -1664,19 +1664,19 @@ importers:
         specifier: 'catalog:'
         version: 1.5.0(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@codaco/fresco-ui':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../fresco-ui
       '@codaco/network-query':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../network-query
       '@codaco/protocol-validation':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../protocol-validation
       '@codaco/shared-consts':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../shared-consts
       '@codaco/tailwind-config':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../tooling/tailwind
       '@faker-js/faker':
         specifier: 'catalog:'
@@ -1752,7 +1752,7 @@ importers:
         specifier: workspace:*
         version: link:../interface-images
       '@codaco/protocol-utilities':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../protocol-utilities
       '@codaco/tsconfig':
         specifier: workspace:*
@@ -1931,13 +1931,13 @@ importers:
   packages/protocol-utilities:
     dependencies:
       '@codaco/network-query':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../network-query
       '@codaco/protocol-validation':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../protocol-validation
       '@codaco/shared-consts':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../shared-consts
       '@faker-js/faker':
         specifier: 'catalog:'
