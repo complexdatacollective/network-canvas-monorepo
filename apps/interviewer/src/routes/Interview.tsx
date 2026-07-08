@@ -32,6 +32,18 @@ import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 
+// Inset the interview navigation past the device safe areas so, on an installed
+// PWA, its buttons stay clear of the status bar / iPadOS window controls / home
+// indicator while the rail's background still meets the screen edges. `calc`
+// keeps the navigation surface's own py-3 (0.75rem); env() insets are 0 off a
+// safe-area device, so browser/desktop are unchanged. The vertical rail meets
+// the top and bottom edges; the horizontal bar only meets the bottom.
+const NAVIGATION_SAFE_AREA_CLASSNAMES = {
+  vertical:
+    'pt-[calc(0.75rem_+_env(safe-area-inset-top))] pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]',
+  horizontal: 'pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]',
+} as const;
+
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'missing' }
@@ -248,13 +260,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="flex h-full w-full">
-      {/* The body is inset by env(safe-area-inset-top), so the interview's
-          opaque content starts below the status bar and the global blob
-          backdrop (App.tsx, fixed -z-10) shows through in that top strip.
-          Paint the themed background across the full viewport — fixed, so it
-          escapes the body padding — behind the Shell content but above the
-          blob backdrop, so the interview reads as edge-to-edge up to the
-          status bar. */}
       <div
         aria-hidden
         className="bg-background pointer-events-none fixed inset-0 z-[-1]"
@@ -271,6 +276,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         disableAnalytics={!analyticsEnabled}
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
+        navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
       />
     </div>
   );
