@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -31,6 +31,7 @@ import { useFamilyPedigreeStore } from './FamilyPedigreeContext';
 import { FamilyPedigreeProvider } from './FamilyPedigreeProvider';
 import FamilyPedigreePlaceholder from './pedigree-layout/components/FamilyPedigreePlaceholder';
 import PedigreeView from './pedigree-layout/components/PedigreeView';
+import { SuppressPedigreeHintContext } from './pedigreeHintContext';
 import type { VariableConfig } from './store';
 import {
   getEdgeTypeKey,
@@ -86,6 +87,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
 
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
+  const suppressHint = useContext(SuppressPedigreeHintContext);
   const { isDevelopment } = useContractFlags();
   const { moveForward } = props.getNavigationHelpers();
   const { updateReady } = useReadyForNextStage();
@@ -555,7 +557,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                 nodes_created: Object.keys(result.batch.nodes ?? {}).length,
                 edges_created: Object.keys(result.batch.edges ?? {}).length,
               });
-              void openDialog(buildPedigreeDialog);
+              if (!suppressHint) void openDialog(buildPedigreeDialog);
             }}
             variableConfig={variableConfig}
           />
