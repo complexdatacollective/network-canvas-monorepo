@@ -3,7 +3,11 @@ import type { Meta, StoryFn } from '@storybook/react-vite';
 import { useMemo } from 'react';
 
 import Node from '@codaco/fresco-ui/Node';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
@@ -133,7 +137,7 @@ function buildNetwork(
   for (let i = 0; i < edgeDefs.length; i++) {
     const e = edgeDefs[i]!;
     const eid = `e${i}`;
-    const attrs: NcEdge['attributes'] = {
+    const attrs: NcEdge[typeof entityAttributesProperty] = {
       [STORY_REL_TYPE_VAR]: [e.relationshipType],
       [STORY_IS_ACTIVE_VAR]: e.isActive,
     };
@@ -145,7 +149,7 @@ function buildNetwork(
       type: 'relationship',
       from: e.source,
       to: e.target,
-      attributes: attrs,
+      [entityAttributesProperty]: attrs,
     });
   }
 

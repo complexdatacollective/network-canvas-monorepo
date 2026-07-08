@@ -24,7 +24,7 @@ distinction is deliberate and is documented per-decision.
 There is **no** separate "at-risk-homozygous" / "may be compound-heterozygous"
 signal. The engine computes six statuses only —
 
-```
+```text
 affected · obligateAffected · obligateCarrier · atRiskAffected · atRiskCarrier · unknown
 ```
 
@@ -253,7 +253,7 @@ Where multiple rules assign a status to the same person, `mergeStatus`
 (`status.ts`) keeps the **higher-precedence** status via a single ordered lattice
 (lower index wins):
 
-```
+```text
 affected › obligateAffected › obligateCarrier › atRiskAffected › atRiskCarrier › unknown
 ```
 
