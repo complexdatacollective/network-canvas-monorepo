@@ -125,6 +125,9 @@ const StoryInterviewShell = (props: {
   /** Set for capture stories so dev-only UI (e.g. FamilyPedigree's
    * Dump/Load buttons) never appears in screenshots. */
   isDevelopment?: boolean;
+  /** Renders the Navigation exit button when provided, so stories can
+   * demonstrate the exit-confirmation flow. */
+  onExit?: () => void;
 }) => {
   const { payload, initialStep, assetUrls } = useMemo(() => {
     const raw = SuperJSON.parse<RawSyntheticPayload>(props.rawPayload);
@@ -169,6 +172,7 @@ const StoryInterviewShell = (props: {
       hideNavigation={props.hideNavigation}
       navigationOrientation={props.navigationOrientation}
       allowStageNavigation={props.allowStageNavigation}
+      onExit={props.onExit}
     />
   );
 };
