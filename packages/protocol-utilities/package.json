@@ -30,9 +30,9 @@
     "clean": "rm -rf .turbo node_modules dist"
   },
   "dependencies": {
-    "@codaco/network-query": "workspace:^",
-    "@codaco/protocol-validation": "workspace:^",
-    "@codaco/shared-consts": "workspace:^",
+    "@codaco/network-query": "workspace:*",
+    "@codaco/protocol-validation": "workspace:*",
+    "@codaco/shared-consts": "workspace:*",
     "@faker-js/faker": "catalog:",
     "es-toolkit": "catalog:",
     "uuid": "catalog:"

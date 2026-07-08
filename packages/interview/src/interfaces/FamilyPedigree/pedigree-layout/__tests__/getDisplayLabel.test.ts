@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
@@ -30,7 +31,7 @@ function makeNodes(
       {
         _uid: id,
         type: 'person',
-        attributes: {
+        [entityAttributesProperty]: {
           [variableConfig.egoVariable]: isEgo ?? false,
           ...(name !== undefined ? { name } : {}),
         },
@@ -59,7 +60,7 @@ function makeEdges(
         type: 'family',
         from,
         to,
-        attributes: {
+        [entityAttributesProperty]: {
           [variableConfig.relationshipTypeVariable]: [relType],
           [variableConfig.isActiveVariable]: isActive ?? true,
           ...(gameteRole

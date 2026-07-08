@@ -1,3 +1,4 @@
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { RelationshipType } from '@codaco/shared-consts';
 import type {
   FamilyEdge,
@@ -35,7 +36,7 @@ export function derivePreselection(
         source: edge.from,
         relationshipType,
         gameteRole: readGameteRole(
-          edge.attributes[variableConfig.gameteRoleVariable],
+          edge[entityAttributesProperty][variableConfig.gameteRoleVariable],
         ),
       });
     }

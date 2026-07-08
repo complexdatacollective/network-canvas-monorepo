@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
+
 import { createFamilyPedigreeStore, type VariableConfig } from '../store';
 
 const variableConfig: VariableConfig = {
@@ -84,7 +86,7 @@ describe('commitBatch', () => {
 
     let egoId: string | null = null;
     for (const [id, node] of nodes) {
-      if (node.attributes[variableConfig.egoVariable] === true) {
+      if (node[entityAttributesProperty][variableConfig.egoVariable] === true) {
         egoId = id;
         break;
       }
@@ -94,7 +96,7 @@ describe('commitBatch', () => {
     const parentIds: string[] = [];
     for (const edge of edges.values()) {
       const relTypeValue =
-        edge.attributes[variableConfig.relationshipTypeVariable];
+        edge[entityAttributesProperty][variableConfig.relationshipTypeVariable];
       const relType = Array.isArray(relTypeValue)
         ? relTypeValue[0]
         : relTypeValue;
@@ -104,7 +106,9 @@ describe('commitBatch', () => {
     }
     expect(parentIds).toHaveLength(2);
 
-    const parentNames = parentIds.map((id) => nodes.get(id)?.attributes.name);
+    const parentNames = parentIds.map(
+      (id) => nodes.get(id)?.[entityAttributesProperty].name,
+    );
     expect(parentNames).toContain('Linda');
     expect(parentNames).toContain('Robert');
   });
@@ -170,7 +174,7 @@ describe('commitBatch', () => {
 
     let egoId: string | null = null;
     for (const [id, node] of store.getState().network.nodes) {
-      if (node.attributes[variableConfig.egoVariable] === true) {
+      if (node[entityAttributesProperty][variableConfig.egoVariable] === true) {
         egoId = id;
         break;
       }
@@ -180,20 +184,24 @@ describe('commitBatch', () => {
     const eggEdge = [...edges.values()].find(
       (e) =>
         e.to === egoId &&
-        e.attributes[variableConfig.gameteRoleVariable] === 'egg',
+        e[entityAttributesProperty][variableConfig.gameteRoleVariable] ===
+          'egg',
     );
     const spermEdge = [...edges.values()].find(
       (e) =>
         e.to === egoId &&
-        e.attributes[variableConfig.gameteRoleVariable] === 'sperm',
+        e[entityAttributesProperty][variableConfig.gameteRoleVariable] ===
+          'sperm',
     );
 
     expect(eggEdge).toBeDefined();
     expect(spermEdge).toBeDefined();
     // The gameteRole must live in attributes, not as a separate field
-    expect(eggEdge?.attributes[variableConfig.gameteRoleVariable]).toBe('egg');
-    expect(spermEdge?.attributes[variableConfig.gameteRoleVariable]).toBe(
-      'sperm',
-    );
+    expect(
+      eggEdge?.[entityAttributesProperty][variableConfig.gameteRoleVariable],
+    ).toBe('egg');
+    expect(
+      spermEdge?.[entityAttributesProperty][variableConfig.gameteRoleVariable],
+    ).toBe('sperm');
   });
 });

@@ -59,14 +59,20 @@ describe('AtRiskStatuses', () => {
 
   it('explains what is displayed, how it is calculated, and why it defaults off', () => {
     renderSection();
-    // WHAT — the "may develop / may carry / may be affected" symbols.
+    // WHAT — the "may develop / may carry" at-risk symbols.
     expect(screen.getAllByText(/may develop/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/may carry/i).length).toBeGreaterThan(0);
     // HOW — derived from inheritance pattern, not observed status.
     expect(screen.getAllByText(/inheritance pattern/i).length).toBeGreaterThan(
       0,
     );
     // WHY (caution + Bennett 2022 reference)
     expect(screen.getByText(/clinician-directed use/i)).toBeDefined();
-    expect(screen.getByText(/Bennett/)).toBeDefined();
+    expect(screen.getAllByText(/Bennett/).length).toBeGreaterThan(0);
+  });
+
+  it('does not reference the removed "may be affected" (homozygous) marker', () => {
+    renderSection();
+    expect(screen.queryByText(/may be affected/i)).toBeNull();
   });
 });

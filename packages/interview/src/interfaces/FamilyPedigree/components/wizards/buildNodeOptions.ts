@@ -1,3 +1,4 @@
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
@@ -14,7 +15,7 @@ export function buildNodeOptions(
   const options: { value: string; label: string }[] = [];
   for (const [id, node] of nodes) {
     if (!candidateIds.has(id)) continue;
-    if (node.attributes[variableConfig.egoVariable] === true) {
+    if (node[entityAttributesProperty][variableConfig.egoVariable] === true) {
       options.push({ value: id, label: 'You' });
       continue;
     }

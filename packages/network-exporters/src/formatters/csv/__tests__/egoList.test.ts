@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   caseProperty,
   egoProperty,
+  entityAttributesProperty,
   ncCaseProperty,
   ncProtocolNameProperty,
   ncSessionProperty,
@@ -78,7 +79,7 @@ describe('egoListRows', () => {
   it('yields only header row when ego has no attributes', () => {
     const emptyNetwork = {
       ...mockNetwork,
-      ego: { _uid: 'ego-id', attributes: {} },
+      ego: { _uid: 'ego-id', [entityAttributesProperty]: {} },
       sessionVariables: {
         [caseProperty]: 'c1',
         [sessionProperty]: 's1',

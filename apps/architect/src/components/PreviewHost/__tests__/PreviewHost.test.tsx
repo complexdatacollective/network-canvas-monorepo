@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { InterviewPayload } from '@codaco/interview';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { PreviewPayload } from '../messages';
 
@@ -200,8 +201,12 @@ describe('PreviewHost', () => {
     };
     const nodes = call.payload.session.network.nodes;
     expect(nodes.length).toBeGreaterThan(0);
-    const unplaced = nodes.filter((n) => n.attributes['var-ord'] === null);
-    const placed = nodes.filter((n) => n.attributes['var-ord'] !== null);
+    const unplaced = nodes.filter(
+      (n) => n[entityAttributesProperty]['var-ord'] === null,
+    );
+    const placed = nodes.filter(
+      (n) => n[entityAttributesProperty]['var-ord'] !== null,
+    );
     expect(unplaced.length).toBeGreaterThan(0);
     expect(placed.length).toBeGreaterThan(0);
   });

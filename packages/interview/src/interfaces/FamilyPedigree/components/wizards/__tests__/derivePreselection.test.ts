@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { VariableValue } from '@codaco/shared-consts';
 
 import type { FamilyEdge, VariableConfig } from '../../../store';
@@ -35,7 +36,7 @@ function edge(
       type: 'family',
       from,
       to,
-      attributes: attrs,
+      [entityAttributesProperty]: attrs,
     },
   ];
 }

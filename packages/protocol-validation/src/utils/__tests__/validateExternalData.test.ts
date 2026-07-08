@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
+
 import type { Network } from '../validateExternalData';
 import {
   getVariableNamesFromNetwork,
@@ -11,8 +13,8 @@ describe('validateExternalData', () => {
     it('should extract unique attribute names from nodes', () => {
       const network: Network = {
         nodes: [
-          { attributes: { name: 'Alice', age: '30' } },
-          { attributes: { name: 'Bob', gender: 'M' } },
+          { [entityAttributesProperty]: { name: 'Alice', age: '30' } },
+          { [entityAttributesProperty]: { name: 'Bob', gender: 'M' } },
         ],
         edges: [],
       };
@@ -26,8 +28,13 @@ describe('validateExternalData', () => {
       const network: Network = {
         nodes: [],
         edges: [
-          { attributes: { type: 'friend', since: '2020' } },
-          { attributes: { type: 'colleague', strength: 'strong' } },
+          { [entityAttributesProperty]: { type: 'friend', since: '2020' } },
+          {
+            [entityAttributesProperty]: {
+              type: 'colleague',
+              strength: 'strong',
+            },
+          },
         ],
       };
 
@@ -41,12 +48,12 @@ describe('validateExternalData', () => {
     it('should extract unique attribute names from both nodes and edges', () => {
       const network: Network = {
         nodes: [
-          { attributes: { name: 'Alice', age: '30' } },
-          { attributes: { name: 'Bob', location: 'NYC' } },
+          { [entityAttributesProperty]: { name: 'Alice', age: '30' } },
+          { [entityAttributesProperty]: { name: 'Bob', location: 'NYC' } },
         ],
         edges: [
-          { attributes: { type: 'friend', weight: '5' } },
-          { attributes: { type: 'colleague' } },
+          { [entityAttributesProperty]: { type: 'friend', weight: '5' } },
+          { [entityAttributesProperty]: { type: 'colleague' } },
         ],
       };
 
@@ -60,9 +67,9 @@ describe('validateExternalData', () => {
     it('should not duplicate attribute names across items', () => {
       const network: Network = {
         nodes: [
-          { attributes: { name: 'Alice', age: '30' } },
-          { attributes: { name: 'Bob', age: '25' } },
-          { attributes: { name: 'Charlie', age: '35' } },
+          { [entityAttributesProperty]: { name: 'Alice', age: '30' } },
+          { [entityAttributesProperty]: { name: 'Bob', age: '25' } },
+          { [entityAttributesProperty]: { name: 'Charlie', age: '35' } },
         ],
         edges: [],
       };
@@ -75,7 +82,7 @@ describe('validateExternalData', () => {
     it('should handle empty nodes array', () => {
       const network: Network = {
         nodes: [],
-        edges: [{ attributes: { type: 'friend' } }],
+        edges: [{ [entityAttributesProperty]: { type: 'friend' } }],
       };
 
       const result = getVariableNamesFromNetwork(network);
@@ -84,7 +91,7 @@ describe('validateExternalData', () => {
 
     it('should handle empty edges array', () => {
       const network: Network = {
-        nodes: [{ attributes: { name: 'Alice' } }],
+        nodes: [{ [entityAttributesProperty]: { name: 'Alice' } }],
         edges: [],
       };
 
@@ -114,8 +121,8 @@ describe('validateExternalData', () => {
 
     it('should handle items with no attributes', () => {
       const network: Network = {
-        nodes: [{ attributes: {} }],
-        edges: [{ attributes: {} }],
+        nodes: [{ [entityAttributesProperty]: {} }],
+        edges: [{ [entityAttributesProperty]: {} }],
       };
 
       const result = getVariableNamesFromNetwork(network);
@@ -126,7 +133,7 @@ describe('validateExternalData', () => {
       const network: Network = {
         nodes: [
           {
-            attributes: {
+            [entityAttributesProperty]: {
               'user.name': 'Alice',
               'user_id': '123',
               'data-value': 'test',

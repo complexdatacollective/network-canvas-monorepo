@@ -630,8 +630,8 @@
   },
   "peerDependencies": {
     "@base-ui/react": "^1.4.0",
-    "@codaco/shared-consts": "workspace:^",
-    "@codaco/tailwind-config": "workspace:^",
+    "@codaco/shared-consts": "workspace:*",
+    "@codaco/tailwind-config": "workspace:*",
     "@tanstack/react-table": "catalog:",
     "motion": "catalog:",
     "react": "catalog:",

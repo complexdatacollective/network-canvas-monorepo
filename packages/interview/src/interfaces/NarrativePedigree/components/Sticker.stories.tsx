@@ -37,7 +37,6 @@ const meta = {
       options: ALL_SHAPES,
     },
     color: { control: { type: 'color' } },
-    atRiskHomozygous: { control: { type: 'boolean' } },
     size: { control: { type: 'range', min: 16, max: 96, step: 2 } },
   },
 } satisfies Meta<typeof Sticker>;
@@ -49,12 +48,10 @@ type Story = StoryObj<typeof Sticker>;
 function StickerCell({
   status,
   shape,
-  atRiskHomozygous,
   caption,
 }: {
   status: Status;
   shape: NodeShape;
-  atRiskHomozygous?: boolean;
   caption: string;
 }) {
   return (
@@ -72,7 +69,6 @@ function StickerCell({
         shape={shape}
         color={SAMPLE_COLOR}
         size={GRID_SIZE}
-        atRiskHomozygous={atRiskHomozygous}
       />
       <span className="text-muted" style={{ fontSize: 9, textAlign: 'center' }}>
         {caption}
@@ -82,12 +78,11 @@ function StickerCell({
 }
 
 /**
- * Every status × every shape, plus the at-risk-homozygous override glyph, so the
- * Bennett-2022 notation can be checked at a glance: solid fill (affected),
- * vertical line (obligate-affected), horizontal hatch (obligate-carrier), the
- * "?"-on-break at-risk variants, the plain outline (unknown), and the solid +
- * white-"?" homozygous override. Verifies shape conformance (circle/square/
- * diamond) and white-on-dark legibility.
+ * Every status × every shape, so the Bennett-2022 notation can be checked at a
+ * glance: solid fill (affected), vertical line (obligate-affected), horizontal
+ * hatch (obligate-carrier), the "?"-on-break at-risk variants, and the plain
+ * outline (unknown). Verifies shape conformance (circle/square/diamond) and
+ * white-on-dark legibility.
  */
 export const ShapesAndStatuses: Story = {
   name: 'All shapes × all statuses',
@@ -115,12 +110,6 @@ export const ShapesAndStatuses: Story = {
                 caption={status}
               />
             ))}
-            <StickerCell
-              status="affected"
-              shape={shape}
-              atRiskHomozygous
-              caption="atRiskHomozygous"
-            />
           </div>
         </div>
       ))}
@@ -128,14 +117,13 @@ export const ShapesAndStatuses: Story = {
   ),
 };
 
-/** Interactive args story — dial in status, shape, colour, at-risk flag, size. */
+/** Interactive args story — dial in status, shape, colour, size. */
 export const Interactive: Story = {
   name: 'Interactive (args)',
   args: {
     status: 'affected',
     shape: 'circle',
     color: SAMPLE_COLOR,
-    atRiskHomozygous: false,
     size: STICKER_SIZE_PX * 2,
   },
 };

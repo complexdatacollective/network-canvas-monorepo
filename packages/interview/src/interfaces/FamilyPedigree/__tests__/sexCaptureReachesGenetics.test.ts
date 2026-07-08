@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import { resolveSex } from '~/interfaces/NarrativePedigree/genetics/resolveSex';
 
@@ -44,14 +45,14 @@ function toNetwork(rawBatch: CommitBatch): {
   const nodes = batch.nodes.map((n) => ({
     _uid: n.tempId,
     type: variableConfig.nodeType,
-    attributes: n.data.attributes,
+    [entityAttributesProperty]: n.data.attributes,
   })) as NcNode[];
   const edges = batch.edges.map((e, i) => ({
     _uid: `edge-${String(i)}`,
     type: variableConfig.edgeType,
     from: e.source,
     to: e.target,
-    attributes: e.data.attributes,
+    [entityAttributesProperty]: e.data.attributes,
   })) as NcEdge[];
   return { nodes, edges };
 }
@@ -110,7 +111,7 @@ describe('biological sex captured in the wizard reaches the genetics engine', ()
     // Every node carries a stored biological-sex value.
     for (const node of nodes) {
       expect(
-        node.attributes[variableConfig.biologicalSexVariable],
+        node[entityAttributesProperty][variableConfig.biologicalSexVariable],
       ).toBeDefined();
     }
   });

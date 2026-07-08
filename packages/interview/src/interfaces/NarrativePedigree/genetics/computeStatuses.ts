@@ -4,13 +4,11 @@ import type { GeneticGraph } from './geneticGraph';
 import {
   computeAutosomalDominant,
   computeAutosomalRecessive,
-  computeAutosomalRecessiveHomozygous,
 } from './patterns/autosomal';
 import { computeMitochondrial, computeYLinked } from './patterns/uniparental';
 import {
   computeXLinkedDominant,
   computeXLinkedRecessive,
-  computeXLinkedRecessiveHomozygous,
 } from './patterns/xLinked';
 import type { Status } from './status';
 
@@ -64,47 +62,6 @@ export function computeStatuses(
     case 'multifactorial':
     case 'unknown':
       return affectedOnly(affected);
-    default: {
-      const exhaustive: never = pattern;
-      return exhaustive;
-    }
-  }
-}
-
-/**
- * Orchestrator: dispatch the non-lattice at-risk-homozygous flag computation on
- * the disease's `InheritancePattern` (spec §3).
- *
- * The flag is a parallel signal to the primary `Status`, NOT part of the status
- * lattice. `statuses` is the already-computed primary status map for the SAME
- * disease/pattern — it is reused here and never recomputed or mutated.
- *
- * - `autosomalRecessive` → two-sided carrier rule (autozygosity / compound-het).
- * - `xLinkedRecessive` → the XLR daughter rule (affected father + carrier mother).
- * - All other patterns → empty: only a recessive trait can make a child
- *   homozygous-affected through two carrier parents.
- *
- * The `switch` is exhaustive over `INHERITANCE_PATTERNS`; the `never` default
- * makes any unhandled pattern a compile-time error (no `any`/`as`).
- */
-export function computeAtRiskHomozygous(
-  graph: GeneticGraph,
-  statuses: Map<string, Status>,
-  pattern: InheritancePattern,
-  resolveSex: (id: string) => Sex,
-): Map<string, boolean> {
-  switch (pattern) {
-    case 'autosomalRecessive':
-      return computeAutosomalRecessiveHomozygous(graph, statuses);
-    case 'xLinkedRecessive':
-      return computeXLinkedRecessiveHomozygous(graph, statuses, resolveSex);
-    case 'autosomalDominant':
-    case 'xLinkedDominant':
-    case 'yLinked':
-    case 'mitochondrial':
-    case 'multifactorial':
-    case 'unknown':
-      return new Map<string, boolean>();
     default: {
       const exhaustive: never = pattern;
       return exhaustive;

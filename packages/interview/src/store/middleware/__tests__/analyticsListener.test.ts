@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it, vi } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { Tracker } from '~/analytics/tracker';
 import protocol from '~/store/modules/protocol';
 import session, {
@@ -97,14 +98,14 @@ describe('analyticsListener — global entity events', () => {
         {
           _uid: 'a',
           type: 'person',
-          attributes: {},
+          [entityAttributesProperty]: {},
           promptIDs: [],
           stageId: 's1',
         },
         {
           _uid: 'b',
           type: 'person',
-          attributes: {},
+          [entityAttributesProperty]: {},
           promptIDs: [],
           stageId: 's1',
         },
@@ -144,7 +145,7 @@ describe('analyticsListener — global entity events', () => {
         {
           _uid: 'n1',
           type: 'person',
-          attributes: {},
+          [entityAttributesProperty]: {},
           promptIDs: [],
           stageId: 's1',
         },
@@ -170,7 +171,7 @@ describe('analyticsListener — global entity events', () => {
         {
           _uid: 'n1',
           type: 'person',
-          attributes: {},
+          [entityAttributesProperty]: {},
           promptIDs: ['p1'],
           stageId: 's1',
         },

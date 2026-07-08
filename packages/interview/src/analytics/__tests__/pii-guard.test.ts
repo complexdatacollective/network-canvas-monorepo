@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it, vi } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import { createAnalyticsListenerMiddleware } from '~/store/middleware/analyticsListener';
 import protocol from '~/store/modules/protocol';
 import session, {
@@ -47,7 +48,7 @@ function buildStore(tracker: Tracker) {
             {
               _uid: 'n1',
               type: 'person',
-              attributes: { label: 'NODE_LABEL_TRIGGER' },
+              [entityAttributesProperty]: { label: 'NODE_LABEL_TRIGGER' },
               promptIDs: [],
             },
           ],

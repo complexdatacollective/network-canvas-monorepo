@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
@@ -35,7 +36,7 @@ function edge(
       type: 'family',
       from,
       to,
-      attributes: isGC
+      [entityAttributesProperty]: isGC
         ? { rel: [rel], isActive: true, isGC: true }
         : { rel: [rel], isActive: true },
     },

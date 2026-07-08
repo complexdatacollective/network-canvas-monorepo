@@ -11,6 +11,7 @@ vi.mock('~/forms/useProtocolForm', () => ({
   default: () => ({ fieldComponents: null }),
 }));
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import { FamilyPedigreeContext } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import {
@@ -37,7 +38,7 @@ function makeNode(id: string, label: string): NcNode {
   return {
     _uid: id,
     type: 'person',
-    attributes: { label },
+    [entityAttributesProperty]: { label },
   };
 }
 

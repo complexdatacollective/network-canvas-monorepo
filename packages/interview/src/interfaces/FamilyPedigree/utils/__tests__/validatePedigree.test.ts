@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
@@ -35,7 +36,7 @@ function makeNodes(
     map.set(id, {
       _uid: id,
       type: 'person',
-      attributes: {
+      [entityAttributesProperty]: {
         [variableConfig.egoVariable]: isEgo ?? false,
         [variableConfig.nodeLabelVariable]: name ?? '',
       },
@@ -53,7 +54,7 @@ function makeEdges(entries: [string, string, string][]): Map<string, NcEdge> {
       type: 'family',
       from: source,
       to: target,
-      attributes: {
+      [entityAttributesProperty]: {
         [variableConfig.relationshipTypeVariable]: [relType],
         [variableConfig.isActiveVariable]: true,
       },

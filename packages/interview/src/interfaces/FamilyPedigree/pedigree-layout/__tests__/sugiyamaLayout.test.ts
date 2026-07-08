@@ -8,13 +8,16 @@ import {
 } from '../sugiyamaLayout';
 import {
   consanguineousUnion,
+  dualAuxiliary,
   multipleMarriages,
   nuclearFamily,
   remarriedParentWithSibling,
   singleParent,
   surrogacyFamily,
+  surrogacyWithSibling,
   threeGeneration,
   twinFamily,
+  twoSibshipIntermarriage,
   unrelatedCouple,
 } from './fixtures';
 
@@ -207,6 +210,89 @@ describe('minimizeCrossings', () => {
 
     const crossings = countCrossings(ordering, graph);
     expect(crossings).toBe(0);
+  });
+
+  it('reflects a frozen sibship block to reach the mirror orientation', () => {
+    // Two intermarrying sibships form ONE gen-II block whose couples' left/right
+    // orientation is frozen by ascending node index. The barycentric sweeps only
+    // reorder whole blocks, never reflect one, so without the block-reversal pass
+    // this ordering keeps a spurious crossing (2). The reflection pass reaches the
+    // mirror orientation that removes it.
+    const graph = buildPedigreeGraph(twoSibshipIntermarriage);
+    const ordering = minimizeCrossings(graph);
+
+    expect(countCrossings(ordering, graph)).toBe(0);
+
+    // In the mirror orientation each cousin descends directly under its own
+    // parent couple, so the two cousins appear in the SAME left-to-right order as
+    // their respective sibship halves — no descent line crosses.
+    const genII = ordering[2]!; // sibA, spA, sibB, spB (some order)
+    const genIII = ordering[3]!; // cousinA(6), cousinB(7), extraA(8)
+    const colGenII = (node: number) => genII.indexOf(node);
+    const colGenIII = (node: number) => genIII.indexOf(node);
+
+    // Couple A = {sibA(2), spA(4)} → cousinA(6); Couple B = {sibB(3), spB(5)} →
+    // cousinB(7). The couple that sits left must own the left cousin.
+    const coupleAMid = (colGenII(2) + colGenII(4)) / 2;
+    const coupleBMid = (colGenII(3) + colGenII(5)) / 2;
+    const cousinAOnLeft = coupleAMid < coupleBMid;
+    expect(colGenIII(6) < colGenIII(7)).toBe(cousinAOnLeft);
+
+    // The block stays contiguous through the reflection: each couple's two
+    // members remain adjacent.
+    expect(Math.abs(colGenII(2) - colGenII(4))).toBe(1);
+    expect(Math.abs(colGenII(3) - colGenII(5))).toBe(1);
+  });
+
+  it('seats a surrogate/donor parent adjacent to its couple (own block)', () => {
+    // surrogacyFamily: parent1(0) + parent2(1) form the couple; surrogate(2)
+    // contributes to child(3). The surrogate must sit beside the couple.
+    const graph = buildPedigreeGraph(surrogacyFamily);
+    const ordering = minimizeCrossings(graph);
+
+    const parentLayer = graph.layers[0]!;
+    const row = ordering[parentLayer]!;
+    const col = (node: number) => row.indexOf(node);
+
+    const gapToCouple = Math.min(
+      Math.abs(col(2) - col(0)),
+      Math.abs(col(2) - col(1)),
+    );
+    expect(gapToCouple).toBe(1);
+  });
+
+  it('seats a surrogate adjacent to a couple embedded in a sibship block', () => {
+    // surrogacyWithSibling: dad(2) + mom(4) are the couple; dad is one of a
+    // dad/uncle sibship, so the couple is embedded in a sibship block rather than
+    // being its own block. The surrogate(5) must still land beside the couple,
+    // not at the far end of the sibship.
+    const graph = buildPedigreeGraph(surrogacyWithSibling);
+    const ordering = minimizeCrossings(graph);
+
+    const coupleLayer = graph.layers[2]!;
+    const row = ordering[coupleLayer]!;
+    const col = (node: number) => row.indexOf(node);
+
+    const gapToCouple = Math.min(
+      Math.abs(col(5) - col(2)),
+      Math.abs(col(5) - col(4)),
+    );
+    expect(gapToCouple).toBe(1);
+  });
+
+  it('seats two auxiliary parents (donor + surrogate) both adjacent to the couple', () => {
+    // dualAuxiliary: mom(0) + dad(1) are the couple; donor(2) and surrogate(3)
+    // both contribute to child(4). Both auxiliaries must land beside the couple
+    // (one on each side), not drift away.
+    const graph = buildPedigreeGraph(dualAuxiliary);
+    const ordering = minimizeCrossings(graph);
+    const coupleLayer = graph.layers[0]!;
+    const row = ordering[coupleLayer]!;
+    const col = (node: number) => row.indexOf(node);
+    const gapTo = (aux: number) =>
+      Math.min(Math.abs(col(aux) - col(0)), Math.abs(col(aux) - col(1)));
+    expect(gapTo(2)).toBe(1); // donor adjacent to the couple
+    expect(gapTo(3)).toBe(1); // surrogate adjacent to the couple
   });
 });
 

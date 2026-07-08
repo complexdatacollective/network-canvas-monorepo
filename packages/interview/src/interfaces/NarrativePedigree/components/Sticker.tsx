@@ -1,13 +1,12 @@
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 
 import { STATUS_LABELS, type Status } from '../genetics/status';
-import { HomozygousMarker, StatusMarker } from './StatusMarker';
+import { StatusMarker } from './StatusMarker';
 
 export type StickerProps = {
   status: Status;
   color: string;
   shape: NodeShape;
-  atRiskHomozygous?: boolean;
   /**
    * CSS length for the (square) chip: a px number for a fixed size (key glyphs,
    * stories) or a percentage string like `'100%'` to fill a parent-sized slot
@@ -40,10 +39,6 @@ export const STICKER_SIZE_PX = 28;
  * diamond) carrying the standard pedigree-notation `StatusMarker` glyph drawn in
  * the disease colour.
  *
- * When `atRiskHomozygous` is set the marker shows the higher-severity homozygous
- * glyph (a solid shape with a centred white "?") in place of the status glyph,
- * conveying "may be affected".
- *
  * Used both as the small illustrative glyphs in the condition key (`nodeMode`
  * `'perimeter'`, the default) and as the large single-condition pedigree node
  * (`nodeMode='single'`). `Sticker` is position-agnostic — the caller owns
@@ -57,7 +52,6 @@ export function Sticker({
   status,
   color,
   shape,
-  atRiskHomozygous = false,
   size = STICKER_SIZE_PX,
   surfaceColor,
   nodeMode = 'perimeter',
@@ -95,16 +89,12 @@ export function Sticker({
         ].join(' ')}
         onClick={handleClick}
       >
-        {atRiskHomozygous ? (
-          <HomozygousMarker color={color} shape={shape} />
-        ) : (
-          <StatusMarker
-            status={status}
-            color={color}
-            shape={shape}
-            surfaceColor={surfaceColor}
-          />
-        )}
+        <StatusMarker
+          status={status}
+          color={color}
+          shape={shape}
+          surfaceColor={surfaceColor}
+        />
       </span>
     </span>
   );
