@@ -19,7 +19,7 @@ const RichTextContainer = ({
       data-active={focused ? '' : undefined}
       className={cx(
         'group bg-input overflow-hidden rounded-t-sm',
-        hasError ? 'border-error border-2' : 'border-border border',
+        hasError ? 'border-destructive border-2' : 'border-outline border',
       )}
     >
       {children}

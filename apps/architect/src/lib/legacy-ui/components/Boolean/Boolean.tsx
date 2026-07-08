@@ -38,7 +38,7 @@ const BooleanToggle = ({
       ))}
     </div>
     {!noReset && (
-      <div className="text-input-foreground mt-(--space-md) block cursor-pointer text-sm underline">
+      <div className="text-input-contrast mt-5 block cursor-pointer text-sm underline">
         <button type="button" onClick={() => onChange(null)}>
           Reset answer
         </button>

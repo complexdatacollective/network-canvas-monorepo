@@ -92,7 +92,7 @@ const NodePanels = ({
         />
 
         {!isFull && (
-          <div className="mt-(--space-lg)">
+          <div className="mt-7">
             <Button
               onClick={() => createNewPanel()}
               icon="add"

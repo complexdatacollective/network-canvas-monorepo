@@ -121,7 +121,7 @@ export function PopoverContent({
         side={side}
         align={align}
         sideOffset={sideOffset}
-        className="z-(--z-tooltip)"
+        className="z-3000"
       >
         <BasePopover.Popup
           className={cx(

@@ -20,8 +20,8 @@ export default function Tooltip({
 }: TooltipProps) {
   const popupClasses = cx(
     'max-w-sm rounded-sm px-3 py-2 text-sm shadow-lg',
-    variant === 'default' && 'bg-surface-accent text-surface-accent-foreground',
-    variant === 'error' && 'bg-error text-error-foreground',
+    variant === 'default' && 'bg-surface-accent text-surface-accent-contrast',
+    variant === 'error' && 'bg-destructive text-destructive-contrast',
   );
 
   return (
@@ -34,11 +34,7 @@ export default function Tooltip({
         }
       />
       <BaseTooltip.Portal>
-        <BaseTooltip.Positioner
-          side={side}
-          sideOffset={8}
-          className="z-(--z-tooltip)"
-        >
+        <BaseTooltip.Positioner side={side} sideOffset={8} className="z-3000">
           <BaseTooltip.Popup className={popupClasses}>
             {content}
           </BaseTooltip.Popup>

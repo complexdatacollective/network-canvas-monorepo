@@ -30,16 +30,16 @@ const PreviewRules = ({
     <div
       className={cx(
         'bg-input rounded-sm border-2 border-transparent',
-        hasError && 'border-error rounded-b-none',
+        hasError && 'border-destructive rounded-b-none',
       )}
     >
       {rules.length === 0 && (
-        <div className="text-input-placeholder px-(--space-md) py-(--space-md) italic">
+        <div className="text-input-contrast/50 px-5 py-5 italic">
           Add rule types from the options below.
         </div>
       )}
       {rules.length > 0 && (
-        <div className="flex w-full flex-col items-start py-(--space-md)">
+        <div className="flex w-full flex-col items-start py-5">
           {rules.map((rule, index) => (
             <div className="w-full" key={rule.id}>
               <PreviewRule

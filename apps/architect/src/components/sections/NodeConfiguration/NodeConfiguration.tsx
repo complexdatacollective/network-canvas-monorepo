@@ -182,7 +182,7 @@ export const NodeConfigurationComponent = ({
             fieldName="behaviours.automaticLayout"
             description="Default automatic layout"
           />
-          <label className="flex cursor-pointer flex-row items-center gap-(--space-md)">
+          <label className="flex cursor-pointer flex-row items-center gap-5">
             <Switch
               checked={automaticLayout}
               onCheckedChange={(checked) =>

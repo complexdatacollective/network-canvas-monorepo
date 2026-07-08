@@ -47,7 +47,7 @@ const ExperimentsPage = () => {
   return (
     <div className="relative h-full overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0">
       <Layout>
-        <div className="mx-auto my-(--space-xl) flex max-w-7xl flex-col gap-6 px-(--space-md) sm:px-(--space-lg) lg:px-(--space-5xl)">
+        <div className="phone-landscape:px-7 tablet-landscape:px-29 mx-auto my-10 flex max-w-7xl flex-col gap-6 px-5">
           <div className="flex flex-col">
             <div className="flex items-center gap-3">
               <div className="bg-mustard/20 rounded-lg p-2">
@@ -71,7 +71,7 @@ const ExperimentsPage = () => {
             >
               <div className="min-w-0 flex-1">
                 <h4>Encrypted Variables</h4>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-muted text-sm">
                   Enable support for encrypted variables in the codebook. This
                   allows sensitive data to be collected securely.
                 </p>

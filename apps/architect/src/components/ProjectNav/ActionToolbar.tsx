@@ -20,7 +20,7 @@ const ActionToolbar = ({
   const layout = shouldReduceMotion ? false : true;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-(--space-md) z-(--z-global-ui) px-4 sm:px-6 print:hidden">
+    <div className="phone-landscape:px-6 pointer-events-none fixed inset-x-0 bottom-5 z-20 px-4 print:hidden">
       <div className="mx-auto flex max-w-7xl justify-end">
         <motion.div
           layout={layout}
@@ -32,11 +32,11 @@ const ActionToolbar = ({
             role="toolbar"
             aria-label={ariaLabel}
             className={cx(
-              'flex items-center gap-(--space-sm) py-3 pr-3 pl-2 sm:px-3',
-              // Shrink buttons to size="small" equivalent below md.
-              'max-md:[&_button]:h-8 max-md:[&_button]:text-xs',
-              'max-md:[&_button.aspect-square]:w-8',
-              'max-md:[&_button:not(.aspect-square)]:px-4',
+              'phone-landscape:px-3 flex items-center gap-2.5 py-3 pr-3 pl-2',
+              // Shrink buttons to size="small" equivalent below tablet-portrait.
+              'max-tablet-portrait:[&_button]:h-8 max-tablet-portrait:[&_button]:text-xs',
+              'max-tablet-portrait:[&_button.aspect-square]:w-8',
+              'max-tablet-portrait:[&_button:not(.aspect-square)]:px-4',
               className,
             )}
           >

@@ -17,7 +17,7 @@ export function JsonPreviewOverlay() {
   if (!isOpen || !context) return null;
 
   return (
-    <div className="fixed inset-0 z-(--z-modal) flex flex-col bg-black/95">
+    <div className="fixed inset-0 z-2000 flex flex-col bg-black/95">
       <button
         type="button"
         className="absolute inset-0 cursor-default"
@@ -25,24 +25,24 @@ export function JsonPreviewOverlay() {
         aria-label="Close preview"
       />
       <div className="relative flex h-full flex-col">
-        <div className="flex items-center justify-between border-b border-white/10 px-(--space-lg) py-(--space-md)">
+        <div className="flex items-center justify-between border-b border-white/10 px-7 py-5">
           <span className="font-mono text-sm text-white/70">
             {context.label}
           </span>
-          <div className="flex items-center gap-(--space-sm)">
+          <div className="flex items-center gap-2.5">
             <span className="font-mono text-xs text-white/40">
               Alt+Shift+J to close
             </span>
             <button
               type="button"
               onClick={handleCopy}
-              className="cursor-pointer rounded bg-white/10 px-(--space-sm) py-(--space-xs) font-mono text-xs text-white/80 transition-colors hover:bg-white/20"
+              className="cursor-pointer rounded bg-white/10 px-2.5 py-1 font-mono text-xs text-white/80 transition-colors hover:bg-white/20"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
         </div>
-        <pre className="m-0 flex-1 overflow-auto p-(--space-lg) font-mono text-sm whitespace-pre text-white/90 select-all">
+        <pre className="m-0 flex-1 overflow-auto p-7 font-mono text-sm whitespace-pre text-white/90 select-all">
           {jsonString}
         </pre>
       </div>

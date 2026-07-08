@@ -85,10 +85,10 @@ const Select = ({
           aria-labelledby={labelId}
           aria-describedby={errorId}
           className={cx(
-            'bg-surface-1 text-foreground flex w-full cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-left text-base',
+            'bg-surface-1 text-text flex w-full cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-left text-base',
             'data-disabled:cursor-not-allowed data-disabled:opacity-60',
             hasError
-              ? 'border-error rounded-b-none border-2'
+              ? 'border-destructive rounded-b-none border-2'
               : 'border-surface-2',
           )}
         >
@@ -100,7 +100,7 @@ const Select = ({
                 selectedValue === ''
               ) {
                 return (
-                  <span className="text-surface-2-foreground italic">
+                  <span className="text-surface-2-contrast italic">
                     {placeholder}
                   </span>
                 );
@@ -110,7 +110,7 @@ const Select = ({
             }}
           </BaseSelect.Value>
           <BaseSelect.Icon className="shrink-0">
-            <ChevronDown size={16} className="text-surface-2-foreground" />
+            <ChevronDown size={16} className="text-surface-2-contrast" />
           </BaseSelect.Icon>
         </BaseSelect.Trigger>
         <BaseSelect.Portal>
@@ -118,7 +118,7 @@ const Select = ({
             align="start"
             sideOffset={4}
             alignItemWithTrigger={false}
-            className="z-(--z-tooltip)"
+            className="z-3000"
           >
             <BaseSelect.Popup className="border-surface-2 bg-surface-1 w-(--anchor-width) min-w-(--anchor-width) overflow-hidden rounded border shadow-md">
               <BaseSelect.List className="max-h-72 overflow-y-auto p-1">
@@ -126,12 +126,12 @@ const Select = ({
                   <BaseSelect.Item
                     key={option.value}
                     value={option.value}
-                    className="text-foreground data-highlighted:bg-surface-2 flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-base outline-none"
+                    className="text-text data-highlighted:bg-surface-2 flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-base outline-none"
                   >
                     <BaseSelect.ItemText className="min-w-0 flex-1">
                       {option.label}
                     </BaseSelect.ItemText>
-                    <BaseSelect.ItemIndicator className="text-foreground shrink-0">
+                    <BaseSelect.ItemIndicator className="text-text shrink-0">
                       <Check size={16} />
                     </BaseSelect.ItemIndicator>
                   </BaseSelect.Item>
@@ -144,7 +144,7 @@ const Select = ({
       {hasError && (
         <div
           id={errorId}
-          className="bg-error text-error-foreground flex items-center rounded-b-sm px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)"
+          className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5"
         >
           <Icon name="warning" />
           {error}

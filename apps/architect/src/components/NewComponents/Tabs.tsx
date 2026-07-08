@@ -18,7 +18,7 @@ type TabsListProps = React.ComponentProps<typeof BaseTabs.List>;
 export function TabsList({ className, children, ...rest }: TabsListProps) {
   return (
     <BaseTabs.List
-      className={cx('relative flex items-center gap-(--space-lg)', className)}
+      className={cx('relative flex items-center gap-7', className)}
       {...rest}
     >
       {children}

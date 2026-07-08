@@ -16,7 +16,7 @@ type CustomEditor = Editor &
   };
 
 const Spacer = () => (
-  <div className="bg-platinum-dark mx-(--space-sm) h-(--space-lg) w-0.5 flex-none" />
+  <div className="bg-platinum-dark mx-2.5 h-7 w-0.5 flex-none" />
 );
 
 const Toolbar = () => {
@@ -27,7 +27,7 @@ const Toolbar = () => {
   );
 
   return (
-    <div className="bg-platinum flex items-center justify-start px-(--space-md)">
+    <div className="bg-platinum flex items-center justify-start px-5">
       {includes(filteredItems, 'bold') && (
         <MarkButton format="bold" icon="bold" tooltip="Bold" />
       )}

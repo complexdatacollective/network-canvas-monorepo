@@ -56,10 +56,7 @@ const StageEditorNav = ({
     <>
       <NavShell leading={<Breadcrumb items={breadcrumbItems} />} />
       <ActionToolbar aria-label="Stage editor actions">
-        <motion.div
-          layout={layout}
-          className="flex items-center gap-(--space-sm)"
-        >
+        <motion.div layout={layout} className="flex items-center gap-2.5">
           <Issues ref={issuesRef} />
           <Button onClick={onCancel} color="platinum" icon={<X />}>
             Cancel
@@ -100,10 +97,7 @@ const StageEditorNav = ({
             )}
           </AnimatePresence>
         </motion.div>
-        <motion.div
-          layout={layout}
-          className="ml-(--space-md) flex items-center gap-(--space-sm)"
-        >
+        <motion.div layout={layout} className="ml-5 flex items-center gap-2.5">
           <Tooltip content={previewTooltip}>
             <Button
               onClick={onPreview}

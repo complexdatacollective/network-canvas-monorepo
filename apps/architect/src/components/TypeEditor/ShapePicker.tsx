@@ -37,15 +37,15 @@ const ShapePicker = ({
   return (
     <div className="m-0 [&>h4]:m-0">
       <div>
-        <div className="flex flex-wrap gap-(--space-sm)">
+        <div className="flex flex-wrap gap-2.5">
           {SHAPES.map(({ value, label }) => (
             <button
               key={value}
               type="button"
               className={cx(
-                'flex flex-col items-center gap-(--space-xs) p-(--space-sm)',
+                'flex flex-col items-center gap-1 p-2.5',
                 'bg-surface-1 cursor-pointer border-2 border-transparent',
-                'transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)',
+                'transition-colors duration-300 ease-in-out',
                 input.value === value && 'border-neon-coral',
               )}
               onClick={() => input.onChange(value)}
@@ -58,14 +58,12 @@ const ShapePicker = ({
                 color={nodeColor as NodeColorSequence}
                 size={nodeSize}
               />
-              {!small && (
-                <span className="text-foreground text-sm">{label}</span>
-              )}
+              {!small && <span className="text-text text-sm">{label}</span>}
             </button>
           ))}
         </div>
         {showError && (
-          <div className="bg-error text-error-foreground flex items-center px-(--space-xs) py-(--space-xs) [&_svg]:max-h-(--space-md)">
+          <div className="bg-destructive text-destructive-contrast flex items-center px-1 py-1 [&_svg]:max-h-5">
             <Icon name="warning" />
             {error}
           </div>

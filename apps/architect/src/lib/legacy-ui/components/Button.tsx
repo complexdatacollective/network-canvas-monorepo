@@ -72,7 +72,7 @@ const computeButtonClasses = ({
     size === 'small' && 'h-8 px-4 text-xs',
     size === 'large' && 'h-12 px-8 text-base',
     // colors
-    'bg-platinum border-border hover:bg-platinum-dark border',
+    'bg-platinum border-outline hover:bg-platinum-dark border',
     color === 'neon-coral' &&
       'bg-neon-coral border-neon-coral-dark hover:bg-neon-coral-dark text-white',
     color === 'sea-green' &&

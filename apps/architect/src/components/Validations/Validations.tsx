@@ -84,8 +84,8 @@ const ValidationsField = ({
   const hasError = !!(submitFailed && error);
 
   return (
-    <div className={cx(hasError && '[--rule-bg:var(--color-error)]')}>
-      <div className="flex flex-col gap-(--space-md)">
+    <div className={cx(hasError && '[--rule-bg:var(--destructive)]')}>
+      <div className="flex flex-col gap-5">
         {input.value.map(([key, value]) => (
           <Validation
             key={key}
@@ -102,9 +102,7 @@ const ValidationsField = ({
       <FieldError
         show={hasError}
         error={error}
-        className={
-          hasError ? 'my-(--space-xs) rounded-(--space-xs)' : undefined
-        }
+        className={hasError ? 'my-1 rounded-[0.3rem]' : undefined}
       />
     </div>
   );
@@ -141,7 +139,7 @@ const Validations = ({
   const isFull = usedOptions.length === availableOptions.length;
 
   return (
-    <div className="flex w-full flex-col gap-(--space-md) [--rule-bg:var(--color-sortable-background)] [&_button]:m-0">
+    <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
       <Field
         name={name}
         component={ValidationsField}

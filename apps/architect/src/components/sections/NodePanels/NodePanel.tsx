@@ -23,7 +23,7 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
       }
       id={getFieldId(`${fieldId}.title`)}
       layout="vertical"
-      className="bg-slate-blue-dark mt-(--space-xl) text-white [--text-dark:white]"
+      className="bg-slate-blue-dark mt-10 text-white [--text-dark:white]"
     >
       <ValidatedField
         name={`${fieldId}.title`}
@@ -45,7 +45,7 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
       }
       id={getFieldId(`${fieldId}.dataSource`)}
       layout="vertical"
-      className="bg-slate-blue-dark mt-(--space-xl) text-white [--text-dark:white]"
+      className="bg-slate-blue-dark mt-10 text-white [--text-dark:white]"
     >
       <ValidatedField
         component={

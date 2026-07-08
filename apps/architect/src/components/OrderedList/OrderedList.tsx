@@ -54,7 +54,7 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
 
   return (
     <Reorder.Group
-      className="flex w-full flex-col gap-(--space-md)"
+      className="flex w-full flex-col gap-5"
       onReorder={handleReorder}
       values={values}
       axis="y"
@@ -92,7 +92,7 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
         })}
       </AnimatePresence>
       {(dirty || submitFailed) && error && !isArray(error) && (
-        <p className="text-error">{error}</p>
+        <p className="text-destructive">{error}</p>
       )}
     </Reorder.Group>
   );

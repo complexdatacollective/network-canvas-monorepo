@@ -235,7 +235,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
       <AnimatePresence initial={false} mode="wait">
         {showCreateOptionForm ? (
           <motion.div
-            className="bg-surface-2 rounded-(--radius) p-(--space-md)"
+            className="bg-surface-2 rounded-(--radius) p-5"
             key="new-section"
             variants={variants}
             initial="hide"
@@ -260,7 +260,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
                 error: calculateMeta.error ?? undefined,
               }}
             />
-            <div className="flex items-center justify-end [&_button]:mr-(--space-sm) [&_button]:min-w-40 [&_button:last-of-type]:mr-0">
+            <div className="flex items-center justify-end [&_button]:mr-2.5 [&_button]:min-w-40 [&_button:last-of-type]:mr-0">
               <Button
                 color="platinum"
                 onClick={() => setShowCreateOptionForm(false)}
@@ -286,19 +286,19 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
             {label && <h4>{label}</h4>}
             <select
               className={cx(
-                'm-0 block min-h-(--space-md) w-full max-w-full px-(--space-md) py-(--space-sm)',
-                'border-border appearance-none rounded-sm border shadow-none',
-                'text-input-foreground bg-surface-1 text-base font-normal',
+                'm-0 block min-h-5 w-full max-w-full px-5 py-2.5',
+                'border-outline appearance-none rounded-sm border shadow-none',
+                'text-input-contrast bg-surface-1 text-base font-normal',
                 'focus:border-primary focus:shadow-none focus:outline-none',
                 'disabled:cursor-not-allowed',
-                '[&_option:disabled]:text-surface-2-foreground [&_option:disabled]:italic',
+                '[&_option:disabled]:text-surface-2-contrast [&_option:disabled]:italic',
                 hasError &&
-                  'border-error mb-0 rounded-b-none border-2 border-solid',
+                  'border-destructive mb-0 rounded-b-none border-2 border-solid',
               )}
               style={{
                 backgroundImage: CHEVRON_BACKGROUND_IMAGE,
                 backgroundRepeat: 'no-repeat, repeat',
-                backgroundPosition: 'right var(--space-xl) top 50%, 0 0',
+                backgroundPosition: 'right 2.4rem top 50%, 0 0',
                 backgroundSize: '0.9rem auto, 100%',
               }}
               {...inputProps}
@@ -324,7 +324,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
               ))}
             </select>
             {hasError && (
-              <div className="bg-error text-error-foreground flex items-center rounded-b-sm px-(--space-xs) py-(--space-xs) [&_svg]:max-h-(--space-md)">
+              <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-1 [&_svg]:max-h-5">
                 <Icon name="warning" />
                 {error}
               </div>

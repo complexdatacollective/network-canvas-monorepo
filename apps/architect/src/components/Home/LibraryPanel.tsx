@@ -90,7 +90,7 @@ const RowMenuItem = ({
       event.stopPropagation();
       onClick();
     }}
-    className="flex w-full items-center gap-(--space-sm) rounded-sm px-(--space-sm) py-(--space-xs) text-left text-sm transition-colors hover:bg-current/10 disabled:pointer-events-none disabled:opacity-50"
+    className="flex w-full items-center gap-2.5 rounded-sm px-2.5 py-1 text-left text-sm transition-colors hover:bg-current/10 disabled:pointer-events-none disabled:opacity-50"
   >
     <span aria-hidden className="shrink-0 [&_svg]:size-4">
       {icon}
@@ -147,7 +147,7 @@ const PanelRow = ({
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={handleKeyDown}
-      className="group focusable hover:bg-surface-2 flex w-full shrink-0 cursor-pointer items-center gap-(--space-sm) rounded-sm px-(--space-md) py-(--space-sm) text-left transition-colors"
+      className="group focusable hover:bg-surface-2 flex w-full shrink-0 cursor-pointer items-center gap-2.5 rounded-sm px-5 py-2.5 text-left transition-colors"
     >
       <img
         src={fileIcon}
@@ -161,12 +161,10 @@ const PanelRow = ({
           {name}
         </span>
         {meta ? (
-          <span className="text-muted-foreground block truncate text-sm">
-            {meta}
-          </span>
+          <span className="text-muted block truncate text-sm">{meta}</span>
         ) : (
           description && (
-            <span className="text-muted-foreground line-clamp-3 text-sm">
+            <span className="text-muted line-clamp-3 text-sm">
               {description}
             </span>
           )
@@ -194,7 +192,7 @@ const PanelRow = ({
             <PopoverContent
               side="bottom"
               align="end"
-              className="bg-surface-accent text-surface-accent-foreground min-w-48 p-(--space-xs)"
+              className="bg-surface-accent text-surface-accent-contrast min-w-48 p-1"
             >
               <RowMenuItem
                 icon={<FolderOpen />}
@@ -245,7 +243,7 @@ type LibraryPanelProps = {
 };
 
 const PANEL_CLASSES =
-  'h-[min(28rem,65dvh)] overflow-x-hidden overflow-y-auto px-(--space-sm) pb-(--space-xl)';
+  'h-[min(28rem,65dvh)] overflow-x-hidden overflow-y-auto px-2.5 pb-10';
 
 // Persist the protocol-gallery card's dismissal so it stays hidden across
 // reloads once the user closes it.
@@ -489,15 +487,15 @@ const LibraryPanel = ({
             setTab(value);
           }
         }}
-        className="bg-surface-1 text-surface-1-foreground flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-hidden rounded shadow-md"
+        className="bg-surface-1 text-surface-1-contrast flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-hidden rounded shadow-md"
       >
-        <div className="flex shrink-0 items-center px-(--space-lg) py-(--space-md)">
+        <div className="flex shrink-0 items-center px-7 py-5">
           <TabsList>
             <TabsTab value="recent">Recent</TabsTab>
             <TabsTab value="templates">Templates</TabsTab>
           </TabsList>
           {activeTab === 'recent' ? (
-            <div className="ml-auto flex h-8 items-center gap-(--space-sm)">
+            <div className="ml-auto flex h-8 items-center gap-2.5">
               <Badge color="platinum" className="shadow-none">
                 {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
               </Badge>
@@ -534,7 +532,7 @@ const LibraryPanel = ({
 
         <TabsPanel value="recent" className={PANEL_CLASSES}>
           {protocols.length === 0 ? (
-            <p className="text-muted-foreground px-(--space-md) py-(--space-xl) text-center text-sm">
+            <p className="text-muted px-5 py-10 text-center text-sm">
               No recent protocols yet.
             </p>
           ) : (
@@ -576,19 +574,17 @@ const LibraryPanel = ({
             />
           ))}
           {!galleryDismissed && (
-            <div className="border-border bg-surface-2 relative mt-(--space-sm) flex flex-col gap-(--space-xs) rounded-sm border p-(--space-md)">
+            <div className="border-outline bg-surface-2 relative mt-2.5 flex flex-col gap-1 rounded-sm border p-5">
               <IconButton
                 variant="text"
                 size="small"
                 aria-label="Dismiss"
-                className="absolute top-(--space-xs) right-(--space-xs)"
+                className="absolute top-1 right-1"
                 onClick={dismissGalleryCard}
                 icon={<X />}
               />
-              <p className="m-0 pr-(--space-lg) font-semibold">
-                Looking for more?
-              </p>
-              <p className="text-muted-foreground m-0 text-sm">
+              <p className="m-0 pr-7 font-semibold">Looking for more?</p>
+              <p className="text-muted m-0 text-sm">
                 More examples of Network Canvas protocols can be found on our{' '}
                 <ExternalLink href="https://protocolgallery.networkcanvas.com/">
                   protocol gallery
@@ -606,7 +602,7 @@ const LibraryPanel = ({
         cancelText="Close"
       >
         {info && (
-          <div className="flex flex-col gap-(--space-md)">
+          <div className="flex flex-col gap-5">
             <p className="whitespace-pre-wrap">
               {info.description?.trim() || 'This protocol has no description.'}
             </p>

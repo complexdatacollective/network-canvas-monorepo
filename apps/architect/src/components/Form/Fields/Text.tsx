@@ -84,26 +84,25 @@ const TextInput = ({
             'group-hover:border-b-input-active focus:border-b-input-active',
             hasLeftAdornment && 'pl-[3.25em]',
             hasRightAdornment && 'pr-[3.25em]',
-            hasError && 'border-error rounded-b-none border-2',
-            variant === 'embedded' &&
-              'm-0 rounded-(--radius) border-0 pb-(--space-sm)',
+            hasError && 'border-destructive rounded-b-none border-2',
+            variant === 'embedded' && 'm-0 rounded-(--radius) border-0 pb-2.5',
           )}
           placeholder={placeholder?.toString()}
           type={type}
           {...input}
         />
         {adornmentLeft && (
-          <div className="absolute inset-y-0 left-[1em] flex w-[1.5em] items-center justify-center transition-all duration-(--animation-duration-fast) ease-(--animation-easing)">
+          <div className="absolute inset-y-0 left-[1em] flex w-[1.5em] items-center justify-center transition-all duration-150 ease-in-out">
             {adornmentLeft}
           </div>
         )}
         {adornmentRight && (
-          <div className="absolute inset-y-0 right-[1em] flex w-[1.5em] items-center justify-center transition-all duration-(--animation-duration-fast) ease-(--animation-easing)">
+          <div className="absolute inset-y-0 right-[1em] flex w-[1.5em] items-center justify-center transition-all duration-150 ease-in-out">
             {adornmentRight}
           </div>
         )}
         {hasError && (
-          <div className="bg-error text-error-foreground flex items-center rounded-b-sm px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)">
+          <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5">
             <Icon name="warning" />
             {error}
           </div>

@@ -21,7 +21,7 @@ const TestingMapboxTokenAlert = () => {
   return (
     <div
       role="status"
-      className="bg-mustard border-mustard-dark mx-auto mb-(--space-xl) w-full max-w-3xl rounded border p-(--space-lg) text-white shadow-xl"
+      className="bg-mustard border-mustard-dark mx-auto mb-10 w-full max-w-3xl rounded border p-7 text-white shadow-xl"
     >
       <h2 className="font-heading mt-0 flex items-center gap-2 text-xl font-bold">
         <TriangleAlert className="size-5 shrink-0" aria-hidden="true" />

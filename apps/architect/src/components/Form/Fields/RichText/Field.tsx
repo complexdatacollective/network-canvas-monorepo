@@ -62,7 +62,7 @@ const RichTextField = ({
           hasError={hasError}
         />
         {hasError && (
-          <div className="bg-error text-error-foreground flex items-center rounded-b-sm px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)">
+          <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5">
             <Icon name="warning" />
             {meta.error}
           </div>

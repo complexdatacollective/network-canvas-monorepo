@@ -39,7 +39,7 @@ const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
   });
 
   return (
-    <div className="flex flex-col items-start *:m-(--space-xs)" key="usage">
+    <div className="flex flex-col items-start *:m-1" key="usage">
       {stages}
     </div>
   );

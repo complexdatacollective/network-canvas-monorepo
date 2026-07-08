@@ -37,7 +37,7 @@ const Attribute = ({
   type,
 }: AttributeProps) => {
   return (
-    <div className="[&_.form-field]:bg-surface-2 my-(--space-md) flex rounded-(--radius) p-(--space-md) [&_.form-field]:mb-0">
+    <div className="[&_.form-field]:bg-surface-2 my-5 flex rounded-(--radius) p-5 [&_.form-field]:mb-0">
       <div className="flex shrink-0 grow basis-auto flex-col">
         <div className="shrink-0 grow basis-auto">
           <ValidatedField
@@ -55,7 +55,7 @@ const Attribute = ({
           />
         </div>
         {variable && (
-          <fieldset className="border-border shrink-0 grow basis-auto rounded-(--radius) border-2 border-dashed p-(--space-md) [&>legend]:px-(--space-md)">
+          <fieldset className="border-outline shrink-0 grow basis-auto rounded-(--radius) border-2 border-dashed p-5 [&>legend]:px-5">
             <legend>Set value of variable to:</legend>
             <ValidatedField
               name={`${field}.value`}
@@ -74,7 +74,7 @@ const Attribute = ({
       </div>
       <button
         type="button"
-        className="flex shrink-0 grow-0 basis-(--space-3xl) cursor-pointer items-center justify-center pl-(--space-md) [&_.icon]:h-(--space-md) [&_.icon]:cursor-pointer"
+        className="flex shrink-0 grow-0 basis-19 cursor-pointer items-center justify-center pl-5 [&_.icon]:h-5 [&_.icon]:cursor-pointer"
         onClick={handleDelete}
         aria-label="Delete attribute"
       >

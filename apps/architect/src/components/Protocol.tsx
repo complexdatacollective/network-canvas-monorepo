@@ -7,7 +7,7 @@ import Timeline from './Timeline';
 const Protocol = () => {
   useProtocolLoader();
   return (
-    <div className="mt-(--space-xl) flex flex-col items-center">
+    <div className="mt-10 flex flex-col items-center">
       <TestingMapboxTokenAlert />
       <ProtocolInfoCard />
       <Timeline />

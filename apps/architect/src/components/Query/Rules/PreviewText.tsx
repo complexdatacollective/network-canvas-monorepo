@@ -9,7 +9,7 @@ import PreviewNode from '../../sections/fields/EntitySelectField/PreviewNode';
 
 // Ego is rendered as a one-off platinum node — not a real codebook color
 const EGO_NODE_STYLE: CSSProperties = {
-  ['--base' as string]: 'var(--color-platinum)',
+  ['--base' as string]: 'oklch(var(--platinum))',
 };
 
 const operatorsAsText = (isEgo: boolean) => ({
@@ -70,8 +70,8 @@ type JoinProps = {
 };
 
 export const Join = ({ value = '' }: JoinProps) => (
-  <fieldset className="border-platinum h-0 w-full border-t-4 px-(--space-xl) py-(--space-md) text-center">
-    <legend className="text-platinum-dark px-(--space-md) uppercase italic">
+  <fieldset className="border-platinum h-0 w-full border-t-4 px-10 py-5 text-center">
+    <legend className="text-platinum-dark px-5 uppercase italic">
       {value.toLowerCase()}
     </legend>
   </fieldset>
@@ -107,7 +107,7 @@ type ValueProps = {
 const Value = ({ value = '' }: ValueProps) => {
   const formattedValue = formatValue(value);
   return (
-    <div className="border-rules-assert mx-(--space-xs) -mb-0.75 border-b-[3px] border-dotted font-semibold">
+    <div className="border-rules-assert mx-1 -mb-0.75 border-b-[3px] border-dotted font-semibold">
       {formattedValue}
     </div>
   );
@@ -141,7 +141,7 @@ const PreviewText = ({ type, options, summary }: PreviewTextProps) => {
           label="Ego"
           color="custom"
           size="xs"
-          className="text-surface-2-foreground"
+          className="text-surface-2-contrast"
           style={EGO_NODE_STYLE}
         />
         <Copy>has</Copy>

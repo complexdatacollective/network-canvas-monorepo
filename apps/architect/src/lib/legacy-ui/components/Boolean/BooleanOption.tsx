@@ -41,12 +41,12 @@ const BooleanOption = ({
         'clickable relative cursor-pointer',
         'inline-flex w-full grow basis-full items-center',
         'border-2 border-solid',
-        'rounded p-(--space-md)',
-        'mr-(--space-xs) ml-0 last:mr-0',
-        'bg-input text-input-foreground',
+        'rounded p-5',
+        'mr-1 ml-0 last:mr-0',
+        'bg-input text-input-contrast',
         selected
           ? negative
-            ? 'border-error'
+            ? 'border-destructive'
             : 'border-input-active'
           : 'border-transparent',
         classes,

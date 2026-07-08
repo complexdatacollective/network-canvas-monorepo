@@ -21,8 +21,8 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
   return (
     <>
       <Section layout="vertical" required={false}>
-        <div className="flex items-center gap-(--space-md)">
-          <div className="flex shrink-0 basis-(--space-3xl) items-center justify-center">
+        <div className="flex items-center gap-5">
+          <div className="flex shrink-0 basis-19 items-center justify-center">
             <EntityIcon entity="asset" size="small" />
           </div>
           <h2 className="my-0 me-auto">{name}</h2>
@@ -34,7 +34,7 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
           </Button>
         </div>
         {variables.length > 0 && (
-          <div className="mt-(--space-md)">
+          <div className="mt-5">
             <h3>Variables:</h3>
             <VariableList variables={variables} />
           </div>

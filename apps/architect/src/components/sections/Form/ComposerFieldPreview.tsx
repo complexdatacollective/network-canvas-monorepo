@@ -34,7 +34,7 @@ const ComposerFieldPreview = ({
   };
 
   return (
-    <div className="m-(--space-md) flex flex-col gap-(--space-sm)">
+    <div className="m-5 flex flex-col gap-2.5">
       {/* Mirror the drawer's caption: the field label, else the variable name. */}
       <strong>{label ?? codebookVariable.name ?? variable}</strong>
       <div>

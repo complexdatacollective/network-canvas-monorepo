@@ -88,7 +88,7 @@ const VariablePicker = ({
 
   return (
     <>
-      <fieldset className="border-border rounded-(--radius) border-2 border-dashed p-(--space-md) [&_.variable-pill]:mb-(--space-md) [&>legend]:px-(--space-md)">
+      <fieldset className="border-outline rounded-(--radius) border-2 border-dashed p-5 [&_.variable-pill]:mb-5 [&>legend]:px-5">
         {label && <legend>{label}</legend>}
 
         {value && (
@@ -112,7 +112,7 @@ const VariablePicker = ({
         >
           {value ? 'Change Variable' : 'Select Variable'}
         </Button>
-        {invalid && touched && <p className="text-error mb-0">{error}</p>}
+        {invalid && touched && <p className="text-destructive mb-0">{error}</p>}
       </fieldset>
       <VariableSpotlight
         open={showPicker}

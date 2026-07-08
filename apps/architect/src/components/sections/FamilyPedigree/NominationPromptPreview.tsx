@@ -33,7 +33,7 @@ const NominationPromptPreview = ({
   };
 
   return (
-    <div className="m-(--space-md) flex flex-col gap-(--space-sm)">
+    <div className="m-5 flex flex-col gap-2.5">
       <Markdown label={text} className="[&>p]:m-0" />
       <div>
         <Badge color={getColorForType(codebookVariable.type)}>

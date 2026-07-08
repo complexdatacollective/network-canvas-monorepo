@@ -12,14 +12,14 @@ const Tick = ({ tick, label = null }: TickProps) => {
 
   return (
     <div
-      className="after:border-platinum absolute top-0 after:absolute after:top-0 after:left-0 after:h-(--space-2xl) after:w-0 after:-translate-x-1/2 after:-translate-y-1/2 after:border-l-2 after:content-['']"
+      className="after:border-platinum absolute top-0 after:absolute after:top-0 after:left-0 after:h-14 after:w-0 after:-translate-x-1/2 after:-translate-y-1/2 after:border-l-2 after:content-['']"
       style={{ left: `${percent}%` }}
     >
       {label && (
         <MarkdownLabel
           inline
           label={label}
-          className="absolute top-(--space-xl) flex min-h-(--space-xl) w-max max-w-(--space-6xl) -translate-x-1/2 justify-center text-center"
+          className="absolute top-10 flex min-h-10 w-max max-w-34 -translate-x-1/2 justify-center text-center"
         />
       )}
     </div>

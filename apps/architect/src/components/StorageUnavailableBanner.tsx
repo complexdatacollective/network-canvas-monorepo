@@ -21,9 +21,9 @@ const StorageUnavailableBanner = () => {
   return (
     <div
       role="status"
-      className="bg-warning/20 text-foreground flex items-center justify-between gap-(--space-md) px-(--space-lg) py-(--space-sm) text-sm"
+      className="bg-warning/20 text-text flex items-center justify-between gap-5 px-7 py-2.5 text-sm"
     >
-      <span className="flex items-center gap-(--space-sm)">
+      <span className="flex items-center gap-2.5">
         <TriangleAlert className="size-4 shrink-0" aria-hidden />
         This protocol isn&apos;t being saved on this device — your
         browser&apos;s storage is unavailable, which is common in private

@@ -84,7 +84,7 @@ const SliderField = ({
       <div
         className={cx(
           hasError &&
-            '[&_.form-field]:border-error [&_.form-field]:mb-0 [&_.form-field]:border-2',
+            '[&_.form-field]:border-destructive [&_.form-field]:mb-0 [&_.form-field]:border-2',
           className,
         )}
         data-name={input.name}
@@ -97,7 +97,7 @@ const SliderField = ({
           value={getValue(input.value)}
         />
         {hasError && (
-          <div className="bg-error text-foreground flex items-center px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)">
+          <div className="bg-destructive text-text flex items-center px-1 py-2.5 [&_svg]:max-h-5">
             <Icon name="warning" />
             {error}
           </div>
