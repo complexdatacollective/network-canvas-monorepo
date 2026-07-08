@@ -61,12 +61,19 @@ export function BaseField({
   return (
     <div
       {...containerProps}
-      className={cx('group w-full grow not-last:mb-8', 'flex flex-col')}
+      className={cx(
+        'group @container w-full grow not-last:mb-8',
+        'flex flex-col',
+      )}
     >
       <div
         className={cx(
+          // `inline` fields lay out as two columns (label | control) once the
+          // field's own CONTAINER is wide enough, and stack when it's narrow —
+          // a container query, not a viewport breakpoint, so a field adapts to
+          // where it's placed (e.g. a narrow sidebar) rather than the screen.
           inline &&
-            'tablet-portrait:flex-row tablet-portrait:align-middle tablet-portrait:items-center tablet-portrait:justify-between tablet-portrait:gap-4',
+            '@min-[28rem]:flex-row @min-[28rem]:items-center @min-[28rem]:justify-between @min-[28rem]:gap-4',
           'flex flex-col',
         )}
       >

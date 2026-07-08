@@ -60,11 +60,12 @@ const inputWrapperVariants = compose(
       //
       // The wrapper clips to its rounded corners (`overflow-hidden` from
       // `controlVariants`, needed for child backgrounds such as the number
-      // steppers). A focused slot button's offset ring (outline-offset-3 +
-      // outline-2 = 5px) exceeds the ~4px vertical clearance and would be
+      // steppers). A focused slot button's outward offset ring (outline-offset-3
+      // + outline-2 = 5px) exceeds the ~4px vertical clearance and would be
       // clipped, so un-clip while a slot control is focus-visible — the ring
-      // then paints in full. Steppers are `tabIndex={-1}` so they never match
-      // `:focus-visible`, and number fields keep their clipped corners.
+      // then paints in full. Number steppers instead paint an INSET ring (see
+      // `stepperButtonVariants`) so they stay fully visible without depending on
+      // this un-clip, and number fields keep their clipped corners.
       'has-[button:focus-visible]:overflow-visible',
       // Child buttons should have reduced height, but their icons should stay the same size
       '[&_button]:h-10',
@@ -106,6 +107,12 @@ const stepperButtonVariants = cx(
   'bg-input-contrast/5 text-input-contrast',
   'hover:bg-input-contrast/10',
   'disabled:pointer-events-none disabled:opacity-30',
+  // The steppers sit flush against the wrapper edges, which clips its rounded
+  // corners with `overflow-hidden` (from `controlVariants`). The default
+  // outward focus ring (`outline-offset-3`) would be clipped on the top,
+  // bottom and inner edges. Paint the ring INSET instead so it's fully visible
+  // on all four sides without relying on the wrapper un-clipping.
+  'focus-visible:-outline-offset-3',
 );
 
 type InputFieldProps = CreateFormFieldProps<
@@ -193,7 +200,10 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
             }
           }}
           autoComplete="off"
-          className={inputVariants({ className })}
+          // The caller's `className` styles the wrapper (the control container),
+          // not the inner input — otherwise a background/backdrop passed to the
+          // field (e.g. the glass treatment) would double-apply onto the input.
+          className={inputVariants()}
           type={type}
           {...inputProps}
           onChange={(e) => {

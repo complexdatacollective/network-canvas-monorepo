@@ -63,6 +63,11 @@ export function HomeRoute() {
     pendingProtocolHash !== null &&
     protocols.some((p) => p.hash === pendingProtocolHash);
 
+  // Mirrors ResumePill's own render predicate (an in-progress session exists).
+  // When it does, the pill occupies the band just below the header in
+  // portrait, so the protocols column reserves top space to clear it.
+  const hasResumableSession = sessions.some((s) => s.finishedAt === null);
+
   // Default the active card to the user's last-used protocol; fall back to
   // the most-recently-imported one if they've never opened a protocol (or
   // the remembered one has since been deleted).
@@ -173,7 +178,7 @@ export function HomeRoute() {
           controls out of the tab order while the new-session form is up. */}
       <InstallBanner />
       <header
-        className="relative flex items-center justify-between px-11 pt-9"
+        className="tablet-landscape:px-11 tablet-landscape:pt-9 relative flex items-center justify-between px-6 pt-6"
         inert={newSessionActive}
       >
         <BrandHeader />
@@ -186,13 +191,16 @@ export function HomeRoute() {
             pass through the empty area to the items below; the pill
             itself opts back in via pointer-events-auto.
 
-            On narrow screens (iPad portrait and below) there isn't room
-            for a centered pill between BrandHeader and TopActionBar, so the
-            expanded pill would cover the protocols/data switcher. Drop it
-            one header-height down (`translate-y-full`) so it sits in the
-            band just below the header — clear of the switcher — and restore
-            the in-header centering once there's room (`tablet-landscape`). */}
-        <div className="tablet-landscape:translate-y-0 pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-11 pt-9">
+            In portrait (both iPads) there isn't room for a centered pill
+            between BrandHeader and TopActionBar, so the expanded pill would
+            cover the protocols/data switcher. Drop it one header-height down
+            (`translate-y-full`) so it sits in the band just below the header
+            — clear of the switcher — and restore the in-header centering in
+            landscape, where there's room (`landscape:`). We key this off
+            actual ORIENTATION, not a min-width breakpoint: the 13" iPad's
+            portrait width (~1024px) would otherwise trip a min-width
+            breakpoint and pull the pill up into the header. */}
+        <div className="tablet-landscape:px-11 tablet-landscape:pt-9 pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-6 landscape:translate-y-0">
           <AnimatePresence>
             {view === 'protocols' ? (
               <ResumePill key="resume-pill" sessions={sessions} />
@@ -209,7 +217,13 @@ export function HomeRoute() {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="flex min-h-0 w-full flex-1 flex-col gap-8"
+            // In portrait the resume pill drops into the band just below the
+            // header (see the overlay comment above). Reserve top space so the
+            // protocol deck starts below it — only in portrait, and only when a
+            // resumable session actually renders the pill (pill is h-20 = 80px).
+            className={`flex min-h-0 w-full flex-1 flex-col gap-8 ${
+              hasResumableSession ? 'portrait:pt-24' : ''
+            }`}
           >
             <ProtocolDeck
               protocols={protocols}
@@ -236,7 +250,7 @@ export function HomeRoute() {
             {import.meta.env.DEV && (
               <div
                 inert={newSessionActive}
-                className="flex justify-center px-11"
+                className="tablet-landscape:px-11 flex justify-center px-6"
               >
                 <Button
                   variant="text"

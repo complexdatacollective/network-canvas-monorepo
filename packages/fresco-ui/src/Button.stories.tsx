@@ -105,6 +105,12 @@ export const Variants: Story = {
         <Button {...args} variant="dashed">
           Dashed
         </Button>
+        {/* `glass`: a thicker border, a translucent backdrop-blurred fill, and a
+            shadow — all on the button itself. The blur reads over whatever sits
+            behind it in real use. */}
+        <Button {...args} variant="glass">
+          Glass
+        </Button>
         <Button {...args} variant="link">
           Link
         </Button>

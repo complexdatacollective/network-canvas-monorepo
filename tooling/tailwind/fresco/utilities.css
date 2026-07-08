@@ -102,6 +102,25 @@
 }
 
 /*
+ * Border width for the glass control treatment (see `control-glass` below); the
+ * value lives in the theme as `--control-border-width`. Border COLOR stays
+ * per-component. This is only the glass border — other controls keep `border-2`.
+ */
+@utility border-control {
+  border-width: var(--control-border-width);
+}
+
+/*
+ * Glass control treatment: translucent surface + backdrop blur + the shared
+ * control border + a prominent effect shadow. Single source of truth for the
+ * "glass" look shared by the interviewer home-screen glass Buttons and the
+ * SegmentedSwitcher track. Border colour is left to the consumer.
+ */
+@utility control-glass {
+  @apply bg-surface/50 border-control effect-shadow-md backdrop-blur-md;
+}
+
+/*
  * Foundational themed-surface defaults. Applied to `body` so unthemed page
  * chrome has reasonable defaults, AND to every `ThemedRegion` so the
  * inherited / cascading themed values (font-family, color, --scoped-bg,

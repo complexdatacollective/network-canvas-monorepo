@@ -132,6 +132,10 @@
       "types": "./dist/Table.d.ts",
       "default": "./dist/Table.js"
     },
+    "./Tabs": {
+      "types": "./dist/Tabs/Tabs.d.ts",
+      "default": "./dist/Tabs/Tabs.js"
+    },
     "./Label": {
       "types": "./dist/Label.d.ts",
       "default": "./dist/Label.js"
