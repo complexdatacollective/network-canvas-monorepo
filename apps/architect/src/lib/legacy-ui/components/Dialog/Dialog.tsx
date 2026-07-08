@@ -22,13 +22,13 @@ type DialogProps = {
 };
 
 const dialogVariants = cva({
-  base: 'bg-surface-1 text-foreground fixed top-1/2 left-1/2 z-(--z-dialog) flex w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-(--space-lg) rounded-lg border-l-8 p-(--space-lg)',
+  base: 'bg-surface-1 text-text fixed top-1/2 left-1/2 z-1000 flex w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-7 rounded-lg border-l-8 p-7',
   variants: {
     type: {
       notice: 'border-l-info',
       confirm: 'border-l-info',
       warning: 'border-l-warning',
-      error: 'border-l-error',
+      error: 'border-l-destructive',
       simple: 'border-l-primary',
     },
   },
@@ -78,7 +78,7 @@ const Dialog = ({
         />
       }
     >
-      <div className="flex gap-(--space-lg)">
+      <div className="flex gap-7">
         {icon && (
           <div className="flex shrink-0 items-center justify-center">
             <Icon name={icon} />
@@ -90,7 +90,7 @@ const Dialog = ({
           {children}
         </div>
       </div>
-      <footer className="flex justify-end gap-(--space-md)">{options}</footer>
+      <footer className="flex justify-end gap-5">{options}</footer>
     </BaseDialog.Popup>
   </Modal>
 );

@@ -66,7 +66,7 @@ pnpm --filter @codaco/architect typecheck
 - **Vite** - Build tool and dev server
 - **React** - UI framework
 - **Redux** + **Redux Form** - State management
-- **Tailwind CSS** + **SCSS** - Styling
+- **Tailwind CSS** - Styling (shared theme via `@codaco/tailwind-config`)
 - **Wouter** - Client-side routing
 - **Zod** - Schema validation (via `@codaco/protocol-validation`)
 - **PostHog** - Analytics
@@ -87,7 +87,7 @@ src/
 ├── hooks/            # Custom React hooks
 ├── lib/              # Legacy UI components and utilities
 ├── selectors/        # Redux selectors
-├── styles/           # Global SCSS styles
+├── styles/           # Entry stylesheet and app theme layer
 ├── types/            # TypeScript type definitions
 └── utils/            # Utility functions
 ```

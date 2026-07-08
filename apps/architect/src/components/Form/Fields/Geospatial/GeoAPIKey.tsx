@@ -16,7 +16,7 @@ const GeoAPIKey = ({ input: { value, onChange } }: GeoAPIKeyProps) => {
   const [showAPIKeyBrowser, setShowAPIKeyBrowser] = useState(false);
   return (
     <>
-      <div className="flex flex-col items-start gap-(--space-md)">
+      <div className="flex flex-col items-start gap-5">
         {value && <APIKeyThumbnail id={value} />}
         <Button onClick={() => setShowAPIKeyBrowser(true)} color="sea-green">
           {!value ? 'Select API Key' : 'Update API Key'}

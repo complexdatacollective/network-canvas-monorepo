@@ -108,7 +108,7 @@ const PromptFields = ({
       >
         <div>
           <h4>Prompt Text</h4>
-          <p className="mb-(--space-sm) text-sm text-current/70">
+          <p className="mb-2.5 text-sm text-current/70">
             Enter the question to display to the participant. Supports markdown
             formatting.
           </p>
@@ -124,7 +124,7 @@ const PromptFields = ({
         </div>
         <div>
           <h4>Hint Text</h4>
-          <p className="mb-(--space-sm) text-sm text-current/70">
+          <p className="mb-2.5 text-sm text-current/70">
             Optionally display a markdown-formatted hint below the question to
             help participants understand how to answer.
           </p>
@@ -135,7 +135,7 @@ const PromptFields = ({
             placeholder="e.g. Select all that apply..."
           />
         </div>
-        <div className="flex items-center justify-between gap-(--space-md)">
+        <div className="flex items-center justify-between gap-5">
           <div>
             <h4>Show validation hints?</h4>
             <p className="text-sm text-current/70">

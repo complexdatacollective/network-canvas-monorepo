@@ -37,7 +37,7 @@ const Radio = ({
       data-disabled={disabled || undefined}
       htmlFor={id.current}
       className={cx(
-        'group relative mb-(--space-md) inline-flex cursor-pointer items-center last:mb-0',
+        'group relative mb-5 inline-flex cursor-pointer items-center last:mb-0',
         'data-[disabled]:pointer-events-none data-[disabled]:cursor-default',
         className,
       )}
@@ -59,12 +59,12 @@ const Radio = ({
       />
       <div
         className={cx(
-          'relative mr-(--space-sm) inline-block size-(--space-lg) shrink-0',
-          "before:border-border before:absolute before:inset-0 before:rounded-full before:border-2 before:border-solid before:content-['']",
-          'before:transition-[border-color] before:duration-(--animation-duration-standard) before:ease-(--animation-easing)',
+          'relative mr-2.5 inline-block size-7 shrink-0',
+          "before:border-outline before:absolute before:inset-0 before:rounded-full before:border-2 before:border-solid before:content-['']",
+          'before:transition-[border-color] before:duration-300 before:ease-in-out',
           "after:absolute after:inset-1.5 after:content-['']",
           'after:bg-input-active after:rounded-full after:opacity-0',
-          'after:transition-opacity after:duration-(--animation-duration-standard) after:ease-(--animation-easing)',
+          'after:transition-opacity after:duration-300 after:ease-in-out',
           'peer-checked:before:border-input-active peer-checked:after:opacity-100',
           'group-data-[disabled]:before:border-surface-2 group-data-[disabled]:after:opacity-0',
         )}
@@ -77,7 +77,7 @@ const Radio = ({
             className="[&>:first-child]:mt-0 [&>:last-child]:mb-0"
           />
         ) : (
-          <div className="size-(--space-2xl)">{label}</div>
+          <div className="size-14">{label}</div>
         ))}
     </label>
   );

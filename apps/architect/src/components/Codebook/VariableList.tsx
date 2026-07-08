@@ -27,7 +27,7 @@ const Variables = ({
 
   return (
     <div>
-      <table className="mt-(--space-lg) w-full">
+      <table className="mt-7 w-full">
         <thead>
           <tr>
             <Heading
@@ -42,9 +42,7 @@ const Variables = ({
         <tbody>
           {variables.map((name) => (
             <tr key={name}>
-              <td className="m-0 px-(--space-sm) py-(--space-sm) text-base">
-                {name}
-              </td>
+              <td className="m-0 px-2.5 py-2.5 text-base">{name}</td>
             </tr>
           ))}
         </tbody>

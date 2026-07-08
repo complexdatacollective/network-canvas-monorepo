@@ -35,15 +35,15 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
   const [unusedOnly, setUnusedOnly] = useState(false);
 
   return (
-    <div className="my-(--space-xl)">
-      <div className="bg-surface-1 mb-(--space-lg) flex flex-wrap items-center gap-(--space-lg) rounded p-6 shadow-md">
+    <div className="my-10">
+      <div className="bg-surface-1 mb-7 flex flex-wrap items-center gap-7 rounded p-6 shadow-md">
         <input
           type="text"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search types and variables by name…"
           aria-label="Search the codebook by name"
-          className="border-border bg-surface-2 h-12 flex-1 rounded border px-(--space-md) text-lg"
+          className="border-outline bg-surface-2 h-12 flex-1 rounded border px-5 text-lg"
         />
         <Checkbox
           label="Show unused only"
@@ -56,8 +56,8 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
       </div>
 
       {!hasAnyContent && (
-        <div className="bg-surface-2 border-divider mb-(--space-lg) rounded border p-(--space-lg)">
-          <p className="text-muted-foreground text-center">
+        <div className="bg-surface-2 border-outline mb-7 rounded border p-7">
+          <p className="text-muted text-center">
             There are currently no types or variables defined in this protocol.
             Use the buttons below to create your first node or edge type, or add
             ego variables.
@@ -65,15 +65,15 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         </div>
       )}
 
-      <div className="mb-(--space-lg)">
-        <h2 className="mt-0 mb-(--space-md)">Ego</h2>
+      <div className="mb-7">
+        <h2 className="mt-0 mb-5">Ego</h2>
         <Section layout="vertical" required={false}>
           <EgoType search={search} unusedOnly={unusedOnly} />
         </Section>
       </div>
 
-      <div className="mb-(--space-lg)">
-        <div className="mb-(--space-md) flex items-center gap-(--space-md)">
+      <div className="mb-7">
+        <div className="mb-5 flex items-center gap-5">
           <h2 className="my-0">Node Types ({nodes.length})</h2>
           <Button
             color="sea-green"
@@ -85,7 +85,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           </Button>
         </div>
         {nodes.length === 0 ? (
-          <p className="text-muted-foreground">No node types yet.</p>
+          <p className="text-muted">No node types yet.</p>
         ) : (
           nodes.map((node) => (
             <EntityType
@@ -102,8 +102,8 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         )}
       </div>
 
-      <div className="mb-(--space-lg)">
-        <div className="mb-(--space-md) flex items-center gap-(--space-md)">
+      <div className="mb-7">
+        <div className="mb-5 flex items-center gap-5">
           <h2 className="my-0">Edge Types ({edges.length})</h2>
           <Button
             color="sea-green"
@@ -115,7 +115,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           </Button>
         </div>
         {edges.length === 0 ? (
-          <p className="text-muted-foreground">No edge types yet.</p>
+          <p className="text-muted">No edge types yet.</p>
         ) : (
           edges.map((edge) => (
             <EntityType
@@ -133,8 +133,8 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
       </div>
 
       {processedNetworkAssets.length > 0 && (
-        <div className="mb-(--space-lg)">
-          <h2 className="mt-0 mb-(--space-md)">
+        <div className="mb-7">
+          <h2 className="mt-0 mb-5">
             Network Assets ({processedNetworkAssets.length})
           </h2>
           {processedNetworkAssets.map((networkAsset) => (

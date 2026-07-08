@@ -24,7 +24,7 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => (
         }}
       />
     </Row>
-    <div className="[&_h5]:mt-(--space-md) [&_h5]:mb-(--space-xs) [&_h5]:font-semibold [&_li]:mb-(--space-xs) [&_p]:mb-(--space-sm) [&_ul]:mb-(--space-sm) [&_ul]:list-disc [&_ul]:pl-(--space-lg)">
+    <div className="[&_h5]:mt-5 [&_h5]:mb-1 [&_h5]:font-semibold [&_li]:mb-1 [&_p]:mb-2.5 [&_ul]:mb-2.5 [&_ul]:list-disc [&_ul]:pl-7">
       <p>
         When enabled, the pedigree also shows a person who <em>may develop</em>{' '}
         a condition or <em>may carry</em> it. These are drawn as the usual

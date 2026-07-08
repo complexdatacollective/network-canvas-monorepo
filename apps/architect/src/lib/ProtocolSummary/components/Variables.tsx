@@ -53,7 +53,7 @@ const Variables = ({ variables }: VariablesProps) => {
 
   return (
     <div className="[&_a]:text-neon-coral">
-      <table className="[&_thead>tr>th]:bg-platinum [&_tbody>tr>td]:border-t-platinum-dark w-full [&_tbody>tr>td]:border-t [&_tbody>tr>td]:p-(--space-sm) [&_tbody>tr>td]:align-top [&_tbody>tr>td:first-of-type]:wrap-break-word [&_tbody>tr>td:first-of-type]:hyphens-auto [&_td]:max-w-[7cm] [&_th]:max-w-[7cm] [&_thead>tr>th]:p-(--space-sm) [&_thead>tr>th]:pe-(--space-md) [&_thead>tr>th]:align-top">
+      <table className="[&_thead>tr>th]:bg-platinum [&_tbody>tr>td]:border-t-platinum-dark w-full [&_tbody>tr>td]:border-t [&_tbody>tr>td]:p-2.5 [&_tbody>tr>td]:align-top [&_tbody>tr>td:first-of-type]:wrap-break-word [&_tbody>tr>td:first-of-type]:hyphens-auto [&_td]:max-w-[7cm] [&_th]:max-w-[7cm] [&_thead>tr>th]:p-2.5 [&_thead>tr>th]:pe-5 [&_thead>tr>th]:align-top">
         <thead>
           <tr>
             <th>Name</th>

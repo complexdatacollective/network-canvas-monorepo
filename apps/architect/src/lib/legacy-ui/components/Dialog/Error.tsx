@@ -53,7 +53,7 @@ const AdditionalInformation = ({ stack }: AdditionalInformationProps) => {
   const buttonText = expanded ? 'Hide details \u25b2' : 'Show details \u25bc';
 
   return (
-    <div className="mt-(--space-md) mb-[0.15rem]">
+    <div className="mt-5 mb-[0.15rem]">
       <Button color="platinum" onClick={() => setExpanded(!expanded)}>
         {buttonText}
       </Button>
@@ -63,8 +63,8 @@ const AdditionalInformation = ({ stack }: AdditionalInformationProps) => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
         >
-          <div className="bg-background mt-(--space-md) max-h-60 overflow-y-auto rounded select-text">
-            <pre className="w-full p-(--space-md) wrap-break-word whitespace-pre-wrap">
+          <div className="bg-background mt-5 max-h-60 overflow-y-auto rounded select-text">
+            <pre className="w-full p-5 wrap-break-word whitespace-pre-wrap">
               {stack}
             </pre>
           </div>

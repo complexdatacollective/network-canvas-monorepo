@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 
 import { Icon } from '~/lib/legacy-ui/components';
 import { cx } from '~/utils/cva';
+import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
 type PreviewEdgeProps = {
   label: string;
@@ -19,9 +20,9 @@ const PreviewEdge = ({
   surface = 1,
 }: PreviewEdgeProps) => {
   const wrapperStyle = {
-    '--edge-color': `hsl(var(--${color}))`,
-    '--icon-tone-primary': `hsl(var(--${color}-dark))`,
-    '--icon-tone-secondary': `hsl(var(--${color}))`,
+    '--edge-color': resolveProtocolColor(color),
+    '--icon-tone-primary': resolveProtocolColor(color, { dark: true }),
+    '--icon-tone-secondary': resolveProtocolColor(color),
   } as CSSProperties;
 
   const content = (
@@ -33,11 +34,11 @@ const PreviewEdge = ({
 
   const surfaceClasses =
     surface === 2
-      ? 'bg-surface-2 text-surface-2-foreground'
-      : 'bg-surface-1 text-surface-1-foreground';
+      ? 'bg-surface-2 text-surface-2-contrast'
+      : 'bg-surface-1 text-surface-1-contrast';
 
   const baseClasses =
-    'relative flex flex-row items-center rounded-full border-4 border-transparent px-(--space-md) py-(--space-sm) transition-[border-color] duration-(--animation-duration-standard) ease-(--animation-easing) [&_.icon]:mr-(--space-sm)';
+    'relative flex flex-row items-center rounded-full border-4 border-transparent px-5 py-2.5 transition-[border-color] duration-300 ease-in-out [&_.icon]:mr-2.5';
 
   if (onClick && !selected) {
     return (

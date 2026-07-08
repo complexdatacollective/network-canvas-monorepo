@@ -59,15 +59,13 @@ const VariableRow = ({
   onCreateOption,
   edgeType,
 }: VariableRowProps) => (
-  <div className="flex items-start gap-(--space-md)">
-    <div className="flex flex-1 basis-0 flex-col gap-(--space-xs) pt-(--space-sm)">
+  <div className="flex items-start gap-5">
+    <div className="flex flex-1 basis-0 flex-col gap-1 pt-2.5">
       <span className="font-semibold">
         {label}
-        <span className="text-error ms-(--space-xs)">*</span>
+        <span className="text-destructive ms-1">*</span>
       </span>
-      <span className="text-foreground/60 text-sm leading-snug">
-        {description}
-      </span>
+      <span className="text-text/60 text-sm leading-snug">{description}</span>
     </div>
     <div className="relative flex-1 basis-0">
       <IssueAnchor fieldName={name} description={`${label} Variable`} />
@@ -218,7 +216,7 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
         </Row>
         {edgeType && (
           // `[&_.variable-pill]:bg-white` lifts the pills off the surface-2 panel
-          <div className="bg-surface-2 text-surface-2-foreground mt-(--space-lg) flex flex-col gap-(--space-lg) rounded p-(--space-md) [&_.variable-pill]:bg-white">
+          <div className="bg-surface-2 text-surface-2-contrast mt-7 flex flex-col gap-7 rounded p-5 [&_.variable-pill]:bg-white">
             <VariableRow
               name="edgeConfig.relationshipTypeVariable"
               label="Relationship Type"

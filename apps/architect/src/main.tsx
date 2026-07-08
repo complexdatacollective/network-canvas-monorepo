@@ -1,6 +1,11 @@
+import '@codaco/tailwind-config/fonts/inclusive-sans.css';
+import '@codaco/tailwind-config/fonts/nunito.css';
 import './analytics';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
+
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 
 import { AppErrorBoundary } from './components/Errors';
 import AppView from './components/ViewManager/views/App';
@@ -35,7 +40,16 @@ const root = document.getElementById('root') as Element;
 createRoot(root).render(
   <AppErrorBoundary>
     <Provider store={store}>
-      <AppView />
+      {/* PortalContainerProvider outermost so fresco-ui overlays portal into
+          its viewport layer; the `root` (isolation: isolate) wrapper keeps the
+          app's own stacking contexts from competing with that layer. */}
+      <PortalContainerProvider>
+        <DialogProvider>
+          <div className="root h-full">
+            <AppView />
+          </div>
+        </DialogProvider>
+      </PortalContainerProvider>
     </Provider>
   </AppErrorBoundary>,
 );

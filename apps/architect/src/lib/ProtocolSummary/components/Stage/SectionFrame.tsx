@@ -15,14 +15,14 @@ const SectionFrame = ({
   wrapperClassName,
   contentClassName,
 }: SectionFrameProps) => (
-  <div className={cx('mb-(--space-xl) last:mb-0', wrapperClassName)}>
+  <div className={cx('mb-10 last:mb-0', wrapperClassName)}>
     <div
       className={cx(
-        'border-platinum relative overflow-hidden rounded border-2 px-(--space-md) pt-(--space-xl) pb-(--space-sm)',
+        'border-platinum relative overflow-hidden rounded border-2 px-5 pt-10 pb-2.5',
         contentClassName,
       )}
     >
-      <h2 className="bg-platinum absolute top-0 left-0 m-0 w-full px-(--space-md) py-(--space-sm) text-xs font-semibold tracking-widest uppercase">
+      <h2 className="bg-platinum absolute top-0 left-0 m-0 w-full px-5 py-2.5 text-xs font-semibold tracking-widest uppercase">
         {title}
       </h2>
       {children}

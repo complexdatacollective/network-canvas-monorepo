@@ -27,10 +27,10 @@ const ProtocolCard = ({
     <Pattern aria-hidden seed={name} className="absolute inset-0 size-full" />
     <div className="from-rich-black/25 via-platinum/50 to-platinum absolute inset-0 size-full bg-linear-to-b via-20% to-45%" />
 
-    <div className="relative z-10 flex min-h-(--space-6xl) flex-col gap-(--space-md) p-(--space-lg)">
+    <div className="relative z-10 flex min-h-34 flex-col gap-5 p-7">
       {/* Reserve space above the heading so the dark title clears the
           gradient's dark top, mirroring the timeline card's controls row. */}
-      <div className="min-h-(--space-2xl)" aria-hidden />
+      <div className="min-h-14" aria-hidden />
 
       {/* break-words so a long name with no spaces (or an over-long word)
           wraps instead of overflowing the overflow-hidden card and being
@@ -42,7 +42,7 @@ const ProtocolCard = ({
         <div className="text-sm wrap-break-word">{description}</div>
       )}
 
-      <div className="text-navy-taupe/70 font-monospace mt-(--space-sm) flex flex-col gap-(--space-xs) text-xs tracking-widest uppercase">
+      <div className="text-navy-taupe/70 font-monospace mt-2.5 flex flex-col gap-1 text-xs tracking-widest uppercase">
         <span>Last Modified: {formatDate(lastModified)}</span>
         <span>Schema Version: {schemaVersion}</span>
       </div>

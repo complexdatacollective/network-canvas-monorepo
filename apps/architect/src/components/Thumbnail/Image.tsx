@@ -25,7 +25,7 @@ const ImageThumbnail = ({
 }: ImageThumbnailProps) => {
   const className = cx(
     thumbnailBase,
-    'h-(--space-6xl) bg-contain bg-center bg-no-repeat',
+    'h-34 bg-contain bg-center bg-no-repeat',
     fullWidth && thumbnailFullWidth,
     interactive && thumbnailInteractive,
   );

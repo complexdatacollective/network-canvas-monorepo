@@ -124,14 +124,14 @@ const EntitySelectField = ({
   );
 
   return (
-    <div className="flex flex-col items-start gap-(--space-md)">
+    <div className="flex flex-col items-start gap-5">
       {label && <h4>{label}</h4>}
 
       {options.length > 0 ? (
         <div
           className={cx(
-            'flex flex-row flex-wrap justify-start gap-(--space-sm) p-(--space-sm)',
-            hasError && 'border-error border-solid border-(--space-xs)',
+            'flex flex-row flex-wrap justify-start gap-2.5 p-2.5',
+            hasError && 'border-destructive border-4 border-solid',
           )}
         >
           {renderOptions()}
@@ -146,7 +146,7 @@ const EntitySelectField = ({
         Create new {entityType} type
       </Button>
       {invalid && touched && (
-        <div className="bg-error text-error-foreground flex items-center p-(--space-xs) [&_svg]:max-h-(--space-md)">
+        <div className="bg-destructive text-destructive-contrast flex items-center p-1 [&_svg]:max-h-5">
           <Icon name="warning" />
           {error}
         </div>

@@ -135,7 +135,7 @@ const Timeline = () => {
 
   const itemClasses = cx(
     'group relative grid w-2xl cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-10 p-4',
-    'hover:bg-timeline-hover transition-colors duration-300 ease-in-out',
+    'hover:bg-timeline/10 transition-colors duration-300 ease-in-out',
     // Focus state for accessibility
     'focus:ring-timeline focus:ring-2 focus:ring-offset-2 focus:outline-none',
   );
@@ -144,12 +144,12 @@ const Timeline = () => {
     <>
       {/* Wrapper with timeline line. Top padding leaves a stretch of line below
 			    the protocol overview card so the timeline visually connects to it. */}
-      <div className="relative pt-(--space-xl)">
+      <div className="relative pt-10">
         {/* Line — clipped from below on initial mount so it reveals top-to-bottom.
             clip-path doesn't share the transform property with Tailwind's
             -translate-x-1/2, so there's no positioning conflict. */}
         <motion.div
-          className="bg-timeline pointer-events-none absolute top-0 left-1/2 h-[calc(100%-1.25rem)] w-(--space-xs) -translate-x-1/2"
+          className="bg-timeline pointer-events-none absolute top-0 left-1/2 h-[calc(100%-1.25rem)] w-1 -translate-x-1/2"
           initial={animate ? { clipPath: 'inset(0 0 100% 0)' } : false}
           animate={{ clipPath: 'inset(0 0 0% 0)' }}
           transition={{ delay: 0.5, duration: 1.4, ease: 'easeOut' }}
@@ -210,7 +210,7 @@ const Timeline = () => {
                     className="pointer-events-none w-56 rounded-xs shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
                   />
                 </div>
-                <div className="bg-timeline text-timeline-foreground flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
+                <div className="bg-timeline text-timeline-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
                   {index + 1}
                 </div>
                 <div className="justify-self-start">
@@ -259,7 +259,7 @@ const Timeline = () => {
             variants={timelineInsertVariants}
           >
             <div />
-            <div className="bg-action text-primary-foreground flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
+            <div className="bg-action text-primary-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
               <Plus className="h-6 w-6" strokeWidth={2.5} />
             </div>
             <span className="justify-self-start text-lg font-semibold transition-all group-hover:font-bold">

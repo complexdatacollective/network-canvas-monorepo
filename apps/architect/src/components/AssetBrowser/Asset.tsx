@@ -140,7 +140,7 @@ const Asset = ({
 
       <div
         className={cx(
-          'bg-rich-black absolute top-(--space-sm) right-(--space-sm) flex items-center justify-center gap-(--space-sm) rounded-sm p-(--space-sm) opacity-0 transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing) group-hover:opacity-100',
+          'bg-rich-black absolute top-2.5 right-2.5 flex items-center justify-center gap-2.5 rounded-sm p-2.5 opacity-0 transition-opacity duration-300 ease-in-out group-hover:opacity-100',
         )}
       >
         {onPreview && (
@@ -188,7 +188,7 @@ const Asset = ({
       </div>
 
       {!isUsed && (
-        <span className="bg-error text-error-foreground absolute bottom-(--space-xs) left-(--space-xs) rounded p-(--space-sm) text-xs">
+        <span className="bg-destructive text-destructive-contrast absolute bottom-1 left-1 rounded p-2.5 text-xs">
           Unused
         </span>
       )}

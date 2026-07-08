@@ -8,7 +8,7 @@ export function DialogBackdrop(props: BaseDialog.Backdrop.Props) {
     <BaseDialog.Backdrop
       render={
         <motion.div
-          className="bg-rich-black/50 fixed inset-0 z-(--z-dialog) min-h-dvh backdrop-blur-md supports-[-webkit-touch-callout:none]:absolute"
+          className="bg-rich-black/50 fixed inset-0 z-1000 min-h-dvh backdrop-blur-md supports-[-webkit-touch-callout:none]:absolute"
           initial={{ opacity: 0, pointerEvents: 'none' }}
           animate={{ opacity: 1, pointerEvents: 'auto' }}
           exit={{ opacity: 0, pointerEvents: 'none' }}

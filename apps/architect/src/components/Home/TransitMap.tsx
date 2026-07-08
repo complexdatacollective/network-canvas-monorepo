@@ -331,7 +331,7 @@ function Station({
           height={20}
         >
           <div
-            className="font-mono text-[12px] tracking-widest text-[hsl(220_4%_44%)]"
+            className="font-monospace text-[12px] tracking-widest text-[hsl(220_4%_44%)]"
             style={{ textAlign: labelLeft ? 'left' : 'right' }}
           >
             {String(index + 1).padStart(2, '0')}

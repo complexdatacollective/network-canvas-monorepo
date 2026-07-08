@@ -60,7 +60,9 @@ describe('<OrderedList />', () => {
     it('shows no errors by default', () => {
       const { container } = renderWithProvider(<OrderedList {...mockProps} />);
 
-      expect(container.querySelector('.text-error')).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.text-destructive'),
+      ).not.toBeInTheDocument();
     });
 
     it('shows error on submit', () => {
@@ -75,7 +77,7 @@ describe('<OrderedList />', () => {
         />,
       );
 
-      expect(container.querySelector('.text-error')).toBeInTheDocument();
+      expect(container.querySelector('.text-destructive')).toBeInTheDocument();
     });
 
     it('shows error on changed', () => {
@@ -90,7 +92,7 @@ describe('<OrderedList />', () => {
         />,
       );
 
-      expect(container.querySelector('.text-error')).toBeInTheDocument();
+      expect(container.querySelector('.text-destructive')).toBeInTheDocument();
     });
   });
 });

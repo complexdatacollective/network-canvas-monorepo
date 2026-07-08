@@ -13,19 +13,19 @@ export default function SVG(props: SVGProps<SVGSVGElement>) {
       <g id="Server">
         {' '}
         <path
-          fill="var(--color-cyber-grape)"
+          fill="oklch(var(--cyber-grape))"
           d="M201.3,310.9H35.1C15.7,310.9,0,295.1,0,275.7l0,0V35.1C0,15.7,15.7,0,35.1,0h107.4l94,95.9v179.8 C236.5,295.1,220.8,310.9,201.3,310.9C201.3,310.9,201.3,310.9,201.3,310.9z"
         />{' '}
         <g id="NC-Flat">
           {' '}
           <circle
-            fill="hsl(var(--navy-taupe) / 0.5)"
+            fill="oklch(var(--navy-taupe) / 0.5)"
             cx="118.4"
             cy="188.9"
             r="83.7"
           />{' '}
           <circle
-            fill="var(--color-navy-taupe)"
+            fill="oklch(var(--navy-taupe))"
             cx="118.4"
             cy="188.9"
             r="44.1"
@@ -33,7 +33,7 @@ export default function SVG(props: SVGProps<SVGSVGElement>) {
           <g id="NC-Nodes">
             {' '}
             <rect
-              fill="var(--color-platinum-dark)"
+              fill="oklch(var(--platinum--dark))"
               x="54.1"
               y="132.4"
               transform="matrix(0.7062 -0.708 0.708 0.7062 -67.8495 108.9422)"
@@ -41,23 +41,23 @@ export default function SVG(props: SVGProps<SVGSVGElement>) {
               height="7.6"
             />{' '}
             <polygon
-              fill="var(--color-platinum-dark)"
+              fill="oklch(var(--platinum--dark))"
               points="141.2,242.4 58.9,160 66.1,152.8 148.4,235.1"
             />{' '}
             <circle
-              fill="var(--color-platinum)"
+              fill="oklch(var(--platinum))"
               cx="123.4"
               cy="111.1"
               r="15.2"
             />{' '}
             <circle
-              fill="var(--color-platinum)"
+              fill="oklch(var(--platinum))"
               cx="70.1"
               cy="163.2"
               r="22.1"
             />{' '}
             <circle
-              fill="var(--color-platinum)"
+              fill="oklch(var(--platinum))"
               cx="155.7"
               cy="248.7"
               r="33.2"
@@ -65,7 +65,7 @@ export default function SVG(props: SVGProps<SVGSVGElement>) {
           </g>{' '}
         </g>{' '}
         <path
-          fill="var(--color-slate-blue)"
+          fill="oklch(var(--slate-blue))"
           d="M236.5,95.9h-66.1c-15.4,0-27.8-12.5-27.8-27.8V0L236.5,95.9z"
         />{' '}
       </g>{' '}

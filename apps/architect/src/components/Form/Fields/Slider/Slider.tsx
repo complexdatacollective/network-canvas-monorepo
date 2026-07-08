@@ -130,18 +130,18 @@ const SliderInput = ({
         min={min}
         max={max}
         step={step}
-        className="relative mx-(--space-3xl) mb-(--space-xl) h-(--space-3xl) w-[calc(100%-var(--space-3xl)*2)]"
+        className="relative mx-19 mb-10 h-19 w-[calc(100%-9.6rem)]"
       >
         {/* Ticks render first so the track and thumb paint above them, matching
             the original z-order (tick lines beneath the track). pointer-events
             are disabled so track-presses fall through to the control. */}
-        <div className="pointer-events-none absolute top-(--space-xl) left-0 w-full">
+        <div className="pointer-events-none absolute top-10 left-0 w-full">
           {ticks.map((tick) => (
             <Tick key={tick.id} tick={tick} label={tick.label ?? null} />
           ))}
         </div>
-        <Slider.Control className="absolute top-(--space-xl) left-0 flex h-(--space-xl) w-full -translate-y-1/2 cursor-pointer items-center">
-          <Slider.Track className="bg-platinum h-(--space-md) w-full rounded-none">
+        <Slider.Control className="absolute top-10 left-0 flex h-10 w-full -translate-y-1/2 cursor-pointer items-center">
+          <Slider.Track className="bg-platinum h-5 w-full rounded-none">
             <Slider.Thumb
               getAriaLabel={() => 'Slider'}
               render={(thumbProps, state) => (

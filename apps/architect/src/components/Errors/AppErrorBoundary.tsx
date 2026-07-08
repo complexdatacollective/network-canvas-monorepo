@@ -92,8 +92,8 @@ class AppErrorBoundary extends Component<
             {error.message}
             &quot; error occurred:
           </p>
-          <div className="bg-surface-accent text-surface-accent-foreground my-(--space-md) overflow-hidden rounded">
-            <pre className="block max-h-36 overflow-auto p-(--space-md)">
+          <div className="bg-surface-accent text-surface-accent-contrast my-5 overflow-hidden rounded">
+            <pre className="block max-h-36 overflow-auto p-5">
               <code>{error.stack ?? error.message}</code>
             </pre>
           </div>

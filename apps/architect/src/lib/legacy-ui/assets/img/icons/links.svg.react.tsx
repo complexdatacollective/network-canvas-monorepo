@@ -12,7 +12,7 @@ export default function SVG({ className, ...props }: SVGProps<SVGSVGElement>) {
       aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 60 60"
-      className={cx('size-(--space-xl)', className)}
+      className={cx('size-10', className)}
       {...props}
     >
       <circle

@@ -119,9 +119,9 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
         side="top"
         align="start"
         sideOffset={8}
-        className="bg-sea-serpent text-primary-foreground max-w-lg min-w-md"
+        className="bg-sea-serpent text-primary-contrast max-w-lg min-w-md"
       >
-        <div className="border-sea-serpent-dark/40 flex items-center gap-(--space-md) border-b px-(--space-md) py-3">
+        <div className="border-sea-serpent-dark/40 flex items-center gap-5 border-b px-5 py-3">
           <TriangleAlert className="size-4 shrink-0" aria-hidden />
           <span className="text-sm font-semibold tracking-wider uppercase">
             Issues ({issueCount})
@@ -134,12 +134,12 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
               <li
                 key={fieldId}
                 data-testid="issue"
-                className="hover:bg-sea-serpent-dark m-0 bg-transparent p-0 transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)"
+                className="hover:bg-sea-serpent-dark m-0 bg-transparent p-0 transition-colors duration-300 ease-in-out"
               >
                 <a
                   href={`#${fieldId}`}
                   onClick={(e) => handleClickIssue(e, field)}
-                  className="text-primary-foreground block w-full px-(--space-md) py-(--space-sm) no-underline before:mr-(--space-sm) before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
+                  className="text-primary-contrast block w-full px-5 py-2.5 no-underline before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
                 >
                   <span ref={(el) => setIssueRef(el, fieldId)}>{field}</span> -{' '}
                   {issue}

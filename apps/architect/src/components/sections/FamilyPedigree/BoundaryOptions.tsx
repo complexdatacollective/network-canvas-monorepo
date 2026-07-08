@@ -26,7 +26,7 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => (
       Each boundary below can be set to one of three enforcement levels, which
       determine how the interview behaves when the condition is not yet met:
     </p>
-    <ul className="mb-(--space-md) list-disc pl-(--space-lg) [&_li]:mb-(--space-xs)">
+    <ul className="mb-5 list-disc pl-7 [&_li]:mb-1">
       <li>
         <strong>Off</strong> — the condition is never checked, and participants
         are not asked to provide this information.
@@ -57,7 +57,7 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => (
             placeholder: 'Select an option',
           }}
         />
-        <p className="mt-(--space-xs) text-sm text-current/70">
+        <p className="mt-1 text-sm text-current/70">
           Asks the participant to record two parents for each of their own
           parents, so that all of the participant&rsquo;s grandparents appear in
           the family pedigree.
@@ -78,7 +78,7 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => (
             placeholder: 'Select an option',
           }}
         />
-        <p className="mt-(--space-xs) text-sm text-current/70">
+        <p className="mt-1 text-sm text-current/70">
           For each of the participant&rsquo;s children, asks that the
           child&rsquo;s other genetic parent has their own parents and
           grandparents recorded, extending the family pedigree to that side of

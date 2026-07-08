@@ -11,8 +11,7 @@ type Asset = {
   [key: string]: unknown;
 };
 
-const headingClass =
-  'uppercase font-semibold text-xs tracking-widest my-(--space-md)';
+const headingClass = 'uppercase font-semibold text-xs tracking-widest my-5';
 
 const Contents = () => {
   const { protocol } = useContext(SummaryContext);
@@ -27,7 +26,7 @@ const Contents = () => {
   return (
     <div>
       <h1>Contents</h1>
-      <div className="[&_a]:text-neon-coral [&_li]:my-(--space-sm) [&_ol_ol]:ps-(--space-xl) [&_ol_ul]:ps-(--space-xl) [&_ul_li]:flex [&_ul_li]:items-center [&_ul_li]:ps-0">
+      <div className="[&_a]:text-neon-coral [&_li]:my-2.5 [&_ol_ol]:ps-10 [&_ol_ul]:ps-10 [&_ul_li]:flex [&_ul_li]:items-center [&_ul_li]:ps-0">
         <ol className="ps-0">
           <li className={`list-none ${headingClass}`}>Stages</li>
           <ol>

@@ -69,7 +69,7 @@ const FramingConfig = ({ form }: StageEditorSectionProps) => {
         The framing determines the language the interface uses when talking
         about biological parents:
       </p>
-      <ul className="mb-(--space-md) list-disc pl-(--space-lg) [&_li]:mb-(--space-xs)">
+      <ul className="mb-5 list-disc pl-7 [&_li]:mb-1">
         <li>
           <strong>Gamete-based</strong> — describes each parent by their
           reproductive contribution, using terms such as &ldquo;egg
@@ -85,7 +85,7 @@ const FramingConfig = ({ form }: StageEditorSectionProps) => {
           each child has a mother and a father.
         </li>
       </ul>
-      <p className="mb-(--space-md)">
+      <p className="mb-5">
         Both framings use the same wording for gestational carriers and donors.
       </p>
       <RadioGroup
@@ -98,7 +98,7 @@ const FramingConfig = ({ form }: StageEditorSectionProps) => {
       />
 
       {mode === 'fixed' && (
-        <div className="mt-(--space-md)">
+        <div className="mt-5">
           <NativeSelect
             aria-label="Select framing"
             sortOptionsByLabel={false}

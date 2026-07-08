@@ -366,7 +366,7 @@ const StageEditor = (props: StageEditorProps) => {
       <PopoverContent
         side="top"
         sideOffset={8}
-        className="bg-surface-accent text-surface-accent-foreground p-3"
+        className="bg-surface-accent text-surface-accent-contrast p-3"
       >
         <div className="flex flex-col gap-3">
           <label className="flex items-center gap-3">
@@ -413,14 +413,14 @@ const StageEditor = (props: StageEditorProps) => {
           isOpeningPreview={isOpeningPreview}
           hasUnsavedChanges={hasUnsavedChanges}
         />
-        <div className="px-4 sm:px-6">
+        <div className="phone-landscape:px-6 px-4">
           <div className="mx-auto w-full max-w-7xl">
             <StageHeading
               stageNumber={stageNumber}
               totalStages={totalStages}
               isNewStage={!isExistingStage}
             />
-            <div className="flex flex-col gap-10 pt-(--space-2xl)">
+            <div className="flex flex-col gap-10 pt-14">
               {renderSections(sections)}
             </div>
           </div>

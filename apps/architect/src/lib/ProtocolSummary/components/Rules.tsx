@@ -32,7 +32,7 @@ const Rules = ({ filter = null }: RulesProps) => {
         const key = `rule-${type}-${JSON.stringify(options)}`;
         return (
           <React.Fragment key={key}>
-            <div className="flex w-full grow items-center not-last:mb-(--space-sm)">
+            <div className="flex w-full grow items-center not-last:mb-2.5">
               <Rule
                 type={type}
                 options={options}

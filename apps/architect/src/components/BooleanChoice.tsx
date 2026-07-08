@@ -66,8 +66,8 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
         enabled, this will make the option red when selected, and use a cross
         icon rather than a tick.
       </p>
-      <div className="grid grid-cols-2 gap-x-(--space-md)">
-        <div className="bg-surface-3 space-y-md rounded-(--radius) p-(--space-lg) [&_h3]:mt-0">
+      <div className="grid grid-cols-2 gap-x-5">
+        <div className="bg-surface-3 rounded p-7 [&_h3]:mt-0">
           <h3>Option One</h3>
           <p>
             This option will set the value <strong>true</strong> when selected.
@@ -87,7 +87,7 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
             name="options[0].negative"
           />
         </div>
-        <div className="bg-surface-3 space-y-md rounded-(--radius) p-(--space-lg) [&_h3]:mt-0">
+        <div className="bg-surface-3 rounded p-7 [&_h3]:mt-0">
           <h3>Option Two</h3>
           <p>
             This option will set the value <strong>false</strong> when selected.

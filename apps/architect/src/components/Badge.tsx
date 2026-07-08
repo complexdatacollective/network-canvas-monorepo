@@ -9,11 +9,11 @@ type BadgeProps = React.HTMLAttributes<HTMLDivElement> & {
 const Badge = ({ color, className, children = null, ...rest }: BadgeProps) => {
   const badgeClasses = cx(
     'inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm',
-    color === 'white' && 'bg-surface-1 text-foreground',
+    color === 'white' && 'bg-surface-1 text-text',
     color === 'neon-coral' && 'bg-neon-coral text-white',
     color === 'sea-green' && 'bg-sea-green text-white',
     color === 'slate-blue' && 'bg-slate-blue text-white',
-    color === 'navy-taupe' && 'bg-navy-taupe text-navy-taupe-foreground',
+    color === 'navy-taupe' && 'bg-navy-taupe text-white',
     color === 'cyber-grape' && 'bg-cyber-grape text-white',
     color === 'mustard' && 'bg-mustard text-white',
     color === 'platinum' && 'bg-platinum text-charcoal',

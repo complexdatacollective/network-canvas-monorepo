@@ -128,7 +128,7 @@ const OptionsFieldComponent = ({
     <div>
       <div>
         <Reorder.Group
-          className="mb-(--space-md) flex flex-col gap-(--space-md)"
+          className="mb-5 flex flex-col gap-5"
           onReorder={handleReorder}
           values={internalItems}
           axis="y"
@@ -151,9 +151,7 @@ const OptionsFieldComponent = ({
         <FieldError
           show={hasError}
           error={error}
-          className={
-            hasError ? 'my-(--space-md) overflow-hidden rounded-xl' : undefined
-          }
+          className={hasError ? 'my-5 overflow-hidden rounded-xl' : undefined}
         />
       </div>
       <AddItem onClick={() => fields.push({})} />

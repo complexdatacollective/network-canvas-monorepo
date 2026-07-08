@@ -7,88 +7,91 @@ export default function SVG({ className, ...props }: SVGProps<SVGSVGElement>) {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 176 194"
-      className={cx('size-(--space-3xl)', className)}
+      className={cx('size-19', className)}
       {...props}
     >
       <title>Error</title>
       <path
-        fill="var(--color-tomato)"
+        fill="oklch(var(--tomato))"
         d="M170.82 80.82a7.14 7.14 0 0 1-7.16 7.12 7.14 7.14 0 0 1-7.16-7.12V63a7.14 7.14 0 0 1 7.16-7.12 7.14 7.14 0 0 1 7.16 7.12z"
       />
       <path
-        fill="var(--color-platinum)"
+        fill="oklch(var(--platinum))"
         d="M163.75 87.14a7.14 7.14 0 0 1-7.16 7.12 7.14 7.14 0 0 1-7.16-7.12V56.7a7.14 7.14 0 0 1 7.16-7.12 7.14 7.14 0 0 1 7.16 7.12z"
       />
       <path
-        fill="var(--color-tomato)"
+        fill="oklch(var(--tomato))"
         d="M5.18 80.82a7.14 7.14 0 0 0 7.16 7.12 7.14 7.14 0 0 0 7.16-7.12V63a7.14 7.14 0 0 0-7.16-7.12A7.14 7.14 0 0 0 5.18 63z"
       />
       <path
-        fill="var(--color-platinum)"
+        fill="oklch(var(--platinum))"
         d="M12.25 87.14a7.14 7.14 0 0 0 7.16 7.12 7.14 7.14 0 0 0 7.16-7.12V56.7a7.14 7.14 0 0 0-7.16-7.12 7.14 7.14 0 0 0-7.16 7.12z"
       />
-      <path fill="var(--color-tomato)" d="M40.74 108h94.51v31.1H40.74z" />
+      <path fill="oklch(var(--tomato))" d="M40.74 108h94.51v31.1H40.74z" />
       <path
-        fill="var(--color-platinum)"
+        fill="oklch(var(--platinum))"
         d="M135.26 139.1h-63.4l31.12-31.1h32.28v31.1z"
       />
       <path
-        fill="var(--color-platinum)"
+        fill="oklch(var(--platinum))"
         d="M88 38.46a4.4 4.4 0 0 1-4.41-4.39V4.39a4.41 4.41 0 0 1 8.82 0v29.69A4.4 4.4 0 0 1 88 38.46zM20.37 134.36h135.26V194H20.37z"
       />
-      <circle fill="var(--color-platinum)" cx="20.37" cy="154.73" r="20.37" />
+      <circle fill="oklch(var(--platinum))" cx="20.37" cy="154.73" r="20.37" />
       <circle
-        fill="var(--color-platinum-dark)"
+        fill="oklch(var(--platinum--dark))"
         cx="155.63"
         cy="154.73"
         r="20.37"
       />
-      <path fill="var(--color-platinum)" d="M0 154.73h139.48V194H0z" />
+      <path fill="oklch(var(--platinum))" d="M0 154.73h139.48V194H0z" />
       <path
-        fill="var(--color-platinum-dark)"
+        fill="oklch(var(--platinum--dark))"
         d="M136.73 154.73H176V194h-39.27z"
       />
       <path
-        fill="var(--color-platinum-dark)"
+        fill="oklch(var(--platinum--dark))"
         d="M155.63 194H58.89L118 134.36h37.63V194z"
       />
-      <circle fill="var(--color-tomato-dark)" cx="88" cy="164.62" r="10" />
+      <circle fill="oklch(var(--tomato--dark))" cx="88" cy="164.62" r="10" />
       <path
-        fill="var(--color-tomato)"
+        fill="oklch(var(--tomato))"
         d="M88 154.62a10 10 0 0 0-7.07 17.07l14.14-14.14a10 10 0 0 0-7.07-2.93z"
       />
-      <circle fill="var(--color-tomato-dark)" cx="118" cy="164.62" r="10" />
+      <circle fill="oklch(var(--tomato--dark))" cx="118" cy="164.62" r="10" />
       <path
-        fill="var(--color-tomato)"
+        fill="oklch(var(--tomato))"
         d="M118 154.62a10 10 0 0 0-7.07 17.07l14.14-14.14a10 10 0 0 0-7.07-2.93z"
       />
-      <circle fill="var(--color-tomato-dark)" cx="58" cy="164.62" r="10" />
+      <circle fill="oklch(var(--tomato--dark))" cx="58" cy="164.62" r="10" />
       <path
-        fill="var(--color-tomato)"
+        fill="oklch(var(--tomato))"
         d="M58 154.62a10 10 0 0 0-7.07 17.07l14.14-14.14a10 10 0 0 0-7.07-2.93z"
       />
       <circle
-        fill="var(--color-platinum-dark)"
+        fill="oklch(var(--platinum--dark))"
         cx="134.98"
         cy="42.98"
         r="17.88"
       />
-      <circle fill="var(--color-platinum)" cx="41.02" cy="42.98" r="17.88" />
+      <circle fill="oklch(var(--platinum))" cx="41.02" cy="42.98" r="17.88" />
       <circle
-        fill="var(--color-platinum-dark)"
+        fill="oklch(var(--platinum--dark))"
         cx="134.98"
         cy="108.78"
         r="17.88"
       />
-      <circle fill="var(--color-platinum)" cx="41.02" cy="108.78" r="17.88" />
-      <path fill="var(--color-platinum)" d="M23.14 42.98h129.72v65.81H23.14z" />
+      <circle fill="oklch(var(--platinum))" cx="41.02" cy="108.78" r="17.88" />
       <path
-        fill="var(--color-platinum-dark)"
+        fill="oklch(var(--platinum))"
+        d="M23.14 42.98h129.72v65.81H23.14z"
+      />
+      <path
+        fill="oklch(var(--platinum--dark))"
         d="M124.52 42.98h28.34v65.81h-28.34z"
       />
-      <path fill="var(--color-platinum)" d="M41.02 25.09h93.95v46.25H41.02z" />
+      <path fill="oklch(var(--platinum))" d="M41.02 25.09h93.95v46.25H41.02z" />
       <path
-        fill="var(--color-platinum-dark)"
+        fill="oklch(var(--platinum--dark))"
         d="M134.97 126.67H41.02l93.95-101.58v101.58z"
       />
       <path d="M48.86 162.7l78.28-78.29" />

@@ -147,10 +147,10 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
   return (
     <div className="page-break-marker break-before-page" id={`stage-${id}`}>
       <div className="overflow-hidden">
-        <div className="flex items-center pb-(--space-xl)">
-          <div className="me-(--space-md) flex-1">
+        <div className="flex items-center pb-10">
+          <div className="me-5 flex-1">
             <div
-              className="before:bg-cyber-grape flex items-center text-2xl font-bold before:me-(--space-md) before:flex before:size-(--space-3xl) before:flex-none before:items-center before:justify-center before:rounded-full before:[font-family:var(--heading-font-family)] before:text-white before:content-[attr(data-number)]"
+              className="before:bg-cyber-grape flex items-center text-2xl font-bold before:me-5 before:flex before:size-19 before:flex-none before:items-center before:justify-center before:rounded-full before:[font-family:var(--heading-font)] before:text-white before:content-[attr(data-number)]"
               data-number={stageNumber}
             >
               <h1>{label}</h1>

@@ -21,7 +21,7 @@ const Cover = () => {
         <h2>Protocol Summary Document</h2>
         <div className="flex items-center justify-end">
           <img
-            className="size-(--space-3xl)"
+            className="size-19"
             src={networkCanvasLogo}
             alt="A Network Canvas project"
           />

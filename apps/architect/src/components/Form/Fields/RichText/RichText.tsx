@@ -275,14 +275,14 @@ const RichText = ({
         <Toolbar />
         <div
           className={cx(
-            'text-input-foreground cursor-text px-(--space-md) py-0',
+            'text-input-contrast cursor-text px-5 py-0',
             'border-b-2 border-b-transparent',
-            'transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)',
+            'transition-colors duration-300 ease-in-out',
             'group-hover:border-b-input-active group-data-[active]:border-b-input-active',
             'focus-within:outline-none focus:outline-none [&_[contenteditable]]:outline-none',
-            '[&_ul]:my-(--space-md) [&_ul]:list-disc [&_ul]:pl-(--space-lg)',
-            '[&_ol]:my-(--space-md) [&_ol]:list-decimal [&_ol]:pl-(--space-lg)',
-            '[&_li]:my-(--space-xs) [&_li_p]:m-0',
+            '[&_ul]:my-5 [&_ul]:list-disc [&_ul]:pl-7',
+            '[&_ol]:my-5 [&_ol]:list-decimal [&_ol]:pl-7',
+            '[&_li]:my-1 [&_li_p]:m-0',
             !inline && 'resize-y overflow-auto',
           )}
         >

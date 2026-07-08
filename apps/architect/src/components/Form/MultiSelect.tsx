@@ -19,16 +19,14 @@ import ValidatedField from './ValidatedField';
 // Row background reads `--rule-bg` so callers (e.g. Validations error state)
 // can flip it without re-defining the row layout.
 export const MULTI_SELECT_RULE_CLASSES =
-  'flex items-center py-(--space-md) bg-(--rule-bg) text-sortable-foreground rounded-(--space-xs) z-(--z-fx) transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)';
+  'flex items-center py-5 bg-(--rule-bg) text-sortable-contrast rounded-[0.3rem] z-1 transition-colors duration-300 ease-in-out';
 
-export const MULTI_SELECT_CONTROL_CLASSES =
-  'flex grow-0 items-center px-(--space-md)';
+export const MULTI_SELECT_CONTROL_CLASSES = 'flex grow-0 items-center px-5';
 
-export const MULTI_SELECT_OPTIONS_CLASSES =
-  'flex-1 flex items-center px-(--space-md)';
+export const MULTI_SELECT_OPTIONS_CLASSES = 'flex-1 flex items-center px-5';
 
 export const MULTI_SELECT_OPTION_CLASSES =
-  'flex flex-1 items-start ml-(--space-md) first:ml-0';
+  'flex flex-1 items-start ml-5 first:ml-0';
 
 type PropertyField = {
   fieldName: string;
@@ -123,7 +121,7 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
     >
       <div className={MULTI_SELECT_CONTROL_CLASSES}>
         <div
-          className="text-sortable-foreground flex h-[1.8rem] w-[1.8rem] cursor-grab items-center justify-center bg-transparent"
+          className="text-sortable-contrast flex h-[1.8rem] w-[1.8rem] cursor-grab items-center justify-center bg-transparent"
           onPointerDown={(e) => controls.start(e)}
         >
           <GripVertical className="cursor-grab" />
@@ -305,7 +303,7 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({
   return (
     <>
       <Reorder.Group
-        className="flex flex-col gap-(--space-md)"
+        className="flex flex-col gap-5"
         onReorder={handleReorder}
         values={internalItems}
         axis="y"
@@ -361,7 +359,7 @@ const MultiSelect = ({
   label = '',
   ...rest
 }: MultiSelectProps) => (
-  <div className="flex w-full flex-col gap-(--space-md) [--rule-bg:var(--color-sortable-background)] [&_button]:m-0">
+  <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
     {label && <h4>{label}</h4>}
     <FieldArray
       name={name}

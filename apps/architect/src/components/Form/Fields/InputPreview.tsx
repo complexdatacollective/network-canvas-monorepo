@@ -11,11 +11,11 @@ type InputPreviewProps = {
 };
 
 const InputPreview = ({ image, label, description }: InputPreviewProps) => (
-  <div className="bg-surface-1 flex rounded-(--radius) p-(--space-md)">
+  <div className="bg-surface-1 flex rounded p-5">
     <div className="basis-1/2">
       <img className="w-full" src={getInputImage(image)} alt={label} />
     </div>
-    <div className="basis-1/2 pl-(--space-xl)">
+    <div className="basis-1/2 pl-10">
       <p>{description}</p>
     </div>
   </div>

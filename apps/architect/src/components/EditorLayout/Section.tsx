@@ -7,14 +7,14 @@ import Switch from '../NewComponents/Switch';
 import SectionDepthContext from './SectionDepthContext';
 
 const containerClasses =
-  'p-6 shadow-md rounded bg-(--current-surface) text-(--current-surface-foreground) relative';
+  'p-6 shadow-md rounded bg-(--current-surface) text-(--current-surface-contrast) relative';
 
 // Surface tokens by nesting level (capped at surface-3). Class strings are
 // written out in full so Tailwind's scanner picks up the arbitrary properties.
 const surfaceClassesByLevel: Record<number, string> = {
-  1: '[--current-surface-foreground:var(--color-surface-1-foreground)] [--current-surface:var(--color-surface-1)]',
-  2: '[--current-surface-foreground:var(--color-surface-2-foreground)] [--current-surface:var(--color-surface-2)]',
-  3: '[--current-surface-foreground:var(--color-surface-3-foreground)] [--current-surface:var(--color-surface-3)]',
+  1: '[--current-surface-contrast:var(--surface-1-contrast)] [--current-surface:var(--surface-1)]',
+  2: '[--current-surface-contrast:var(--surface-2-contrast)] [--current-surface:var(--surface-2)]',
+  3: '[--current-surface-contrast:var(--surface-3-contrast)] [--current-surface:var(--surface-3)]',
 };
 
 type SectionProps = {
@@ -72,11 +72,11 @@ const Section = ({
     }
   }, [isOpen, handleToggleChange]);
 
-  // In the "horizontal" layout, below the lg: breakpoint we render the section
-  // as the "vertical" layout
+  // In the "horizontal" layout, below the tablet-landscape: breakpoint we
+  // render the section as the "vertical" layout
   const classes = cx(
     layout === 'horizontal' &&
-      'lg:min-w-2xl lg:overflow-hidden lg:rounded lg:bg-(--current-surface) lg:p-6 lg:text-(--current-surface-foreground) lg:shadow-md',
+      'tablet-landscape:min-w-2xl tablet-landscape:overflow-hidden tablet-landscape:rounded tablet-landscape:bg-(--current-surface) tablet-landscape:p-6 tablet-landscape:text-(--current-surface-contrast) tablet-landscape:shadow-md',
     'relative',
   );
 
@@ -86,13 +86,13 @@ const Section = ({
         id={id ?? undefined}
         data-name={typeof title === 'string' ? title : undefined}
         className={cx(
-          '[--input-background:var(--color-surface-1)] [--slider-color:hsl(var(--charcoal))]',
+          '[--input-background:var(--surface-1)] [--slider-color:oklch(var(--charcoal))]',
           'relative',
           surfaceClassesByLevel[surfaceLevel],
           'w-full max-w-7xl',
           layout === 'horizontal' &&
-            'max-lg:mb-4 max-lg:flex max-lg:flex-col max-lg:gap-(--space-md) max-lg:rounded max-lg:bg-(--current-surface) max-lg:p-6 max-lg:text-(--current-surface-foreground) max-lg:shadow-md lg:grid lg:grid-cols-[20rem_auto] lg:gap-8',
-          layout === 'vertical' && 'mb-4 flex flex-col gap-(--space-md)',
+            'max-tablet-landscape:mb-4 max-tablet-landscape:flex max-tablet-landscape:flex-col max-tablet-landscape:gap-5 max-tablet-landscape:rounded max-tablet-landscape:bg-(--current-surface) max-tablet-landscape:p-6 max-tablet-landscape:text-(--current-surface-contrast) max-tablet-landscape:shadow-md tablet-landscape:grid tablet-landscape:grid-cols-[20rem_auto] tablet-landscape:gap-8',
+          layout === 'vertical' && 'mb-4 flex flex-col gap-5',
           layout === 'vertical' && containerClasses,
           className,
         )}
@@ -103,17 +103,17 @@ const Section = ({
               className={cx(
                 'flex items-center gap-4 text-right',
                 layout === 'vertical' && 'text-xl font-semibold tracking-tight',
-                // `lg:top-(--space-4xl)` (6rem) pins the heading just below the
-                // sticky top menu bar so it never overlaps it; `z-(--z-fx)` keeps
+                // `tablet-landscape:top-24` (6rem) pins the heading just below
+                // the sticky top menu bar so it never overlaps it; `z-1` keeps
                 // it above the section content but below the nav.
                 layout === 'horizontal' &&
-                  'lg:small-heading lg:bg-border max-lg:text-xl max-lg:font-semibold max-lg:tracking-tight lg:sticky lg:top-(--space-4xl) lg:z-(--z-fx) lg:flex-row-reverse lg:items-center lg:justify-between lg:rounded lg:px-6 lg:py-2',
+                  'tablet-landscape:small-heading tablet-landscape:bg-outline max-tablet-landscape:text-xl max-tablet-landscape:font-semibold max-tablet-landscape:tracking-tight tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:z-1 tablet-landscape:flex-row-reverse tablet-landscape:items-center tablet-landscape:justify-between tablet-landscape:rounded tablet-landscape:px-6 tablet-landscape:py-2',
               )}
             >
               <span>
                 {title}
                 {!toggleable && required && (
-                  <span className="text-error ms-1">*</span>
+                  <span className="text-destructive ms-1">*</span>
                 )}
               </span>
               {toggleable && (
@@ -135,11 +135,11 @@ const Section = ({
         <fieldset className={classes}>
           {disabled ? (
             layout === 'horizontal' ? (
-              <div className="bg-border/75 text-foreground/70 flex items-center justify-center font-semibold italic max-lg:rounded max-lg:p-8 max-lg:text-center lg:absolute lg:inset-0 lg:h-full lg:w-full">
+              <div className="bg-outline/75 text-text/70 max-tablet-landscape:rounded max-tablet-landscape:p-8 max-tablet-landscape:text-center tablet-landscape:absolute tablet-landscape:inset-0 tablet-landscape:h-full tablet-landscape:w-full flex items-center justify-center font-semibold italic">
                 {disabledMessage}
               </div>
             ) : (
-              <div className="bg-border/75 text-foreground/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
+              <div className="bg-outline/75 text-text/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
                 {disabledMessage}
               </div>
             )
@@ -147,7 +147,7 @@ const Section = ({
             <>
               {isOpen && children}
               {toggleable && !isOpen && layout !== 'vertical' && (
-                <div className="bg-border/75 text-foreground/70 absolute inset-0 flex h-full w-full items-center justify-center font-semibold italic max-lg:hidden">
+                <div className="bg-outline/75 text-text/70 max-tablet-landscape:hidden absolute inset-0 flex h-full w-full items-center justify-center font-semibold italic">
                   Click the toggle to enable this feature...
                 </div>
               )}
