@@ -12,13 +12,24 @@
    shell can size to the full screen on tablet + desktop without scrolling
    the body.
 
-   `height: 100%` (not `100dvh`/`min-h-dvh`) is load-bearing: the body is
-   padded by env(safe-area-inset-top) below, so its content box is
-   `viewport - inset`. #root inherits that exact height, and full-screen
-   surfaces fill it with `h-full`. Sizing #root (or any surface) to the raw
-   viewport (`dvh`) instead would overflow the inset by the safe-area amount
-   and scroll the whole page — the iPad-portrait overflow bug. */
-html,
+   <html> is sized to `100dvh` (the true visible viewport), NOT `height: 100%`.
+   In an installed PWA (standalone display) `height: 100%` resolves against an
+   initial containing block that stops short of the screen by the bottom
+   safe-area inset, so the app ends ~1 inset above the home indicator and a
+   strip of the fixed backdrop shows through — the visible "gap at the bottom"
+   on iPad. `100dvh` tracks the actual visible viewport, so the app reaches the
+   real bottom edge.
+
+   <body> and #root stay at `height: 100%`: the body is padded by
+   env(safe-area-inset-top), so its content box is `viewport - top-inset`, and
+   #root inherits that exact height for `h-full` surfaces. Only the unpadded
+   <html> is sized to the raw viewport — sizing #root (or any padded/shifted
+   surface) to `dvh` instead would overflow the top inset and scroll the whole
+   page (the iPad-portrait overflow bug). */
+html {
+  height: 100dvh;
+}
+
 body,
 #root {
   height: 100%;
