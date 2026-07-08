@@ -60,7 +60,7 @@ const TextArea = ({
             'form-field block resize-y placeholder:italic',
             'group-hover:border-b-input-active focus:border-b-input-active',
             hasError && 'border-destructive rounded-b-none border-2',
-            variant === 'embedded' && 'm-0 rounded-(--radius) border-0 pb-2.5',
+            variant === 'embedded' && 'm-0 rounded border-0 pb-2.5',
           )}
           placeholder={placeholder}
           {...input}

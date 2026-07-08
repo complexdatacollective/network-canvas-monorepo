@@ -88,7 +88,7 @@ const VariablePicker = ({
 
   return (
     <>
-      <fieldset className="border-outline rounded-(--radius) border-2 border-dashed p-5 [&_.variable-pill]:mb-5 [&>legend]:px-5">
+      <fieldset className="border-outline rounded border-2 border-dashed p-5 [&_.variable-pill]:mb-5 [&>legend]:px-5">
         {label && <legend>{label}</legend>}
 
         {value && (

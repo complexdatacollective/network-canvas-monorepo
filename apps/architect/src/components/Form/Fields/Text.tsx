@@ -85,7 +85,7 @@ const TextInput = ({
             hasLeftAdornment && 'pl-[3.25em]',
             hasRightAdornment && 'pr-[3.25em]',
             hasError && 'border-destructive rounded-b-none border-2',
-            variant === 'embedded' && 'm-0 rounded-(--radius) border-0 pb-2.5',
+            variant === 'embedded' && 'm-0 rounded border-0 pb-2.5',
           )}
           placeholder={placeholder?.toString()}
           type={type}

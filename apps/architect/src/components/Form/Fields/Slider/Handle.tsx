@@ -57,7 +57,7 @@ const Handle = ({
           <MarkdownLabel
             inline
             label={label}
-            className="bg-surface-accent flex min-h-10 w-max max-w-34 -translate-x-1/2 translate-y-[-0.48rem] items-center justify-center rounded-(--radius) px-5 py-2.5 text-xs"
+            className="bg-surface-accent flex min-h-10 w-max max-w-34 -translate-x-1/2 translate-y-[-0.48rem] items-center justify-center rounded px-5 py-2.5 text-xs"
           />
         </div>
       )}

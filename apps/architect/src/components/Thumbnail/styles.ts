@@ -1,5 +1,5 @@
 export const thumbnailBase =
-  'inline-flex items-center bg-cyber-grape text-primary-contrast rounded-(--radius) p-5 w-[25rem] transition-[background-color] duration-300 ease-in-out';
+  'inline-flex items-center bg-cyber-grape text-primary-contrast rounded p-5 w-[25rem] transition-[background-color] duration-300 ease-in-out';
 
 export const thumbnailInteractive =
   'cursor-pointer transition-opacity duration-150 ease-in-out hover:opacity-80';

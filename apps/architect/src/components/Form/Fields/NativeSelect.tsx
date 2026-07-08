@@ -235,7 +235,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
       <AnimatePresence initial={false} mode="wait">
         {showCreateOptionForm ? (
           <motion.div
-            className="bg-surface-2 rounded-(--radius) p-5"
+            className="bg-surface-2 rounded p-5"
             key="new-section"
             variants={variants}
             initial="hide"

@@ -43,7 +43,7 @@ const PreviewRule = ({
       <div
         role="button"
         tabIndex={0}
-        className="group text-surface-1-contrast hover:bg-surface-accent hover:text-primary-contrast mx-auto flex min-h-19 w-[95%] cursor-pointer items-center rounded-(--radius) px-5 py-2.5"
+        className="group text-surface-1-contrast hover:bg-surface-accent hover:text-primary-contrast mx-auto flex min-h-19 w-[95%] cursor-pointer items-center rounded px-5 py-2.5"
         onClick={onClick}
         onKeyDown={handleKeyDown}
         aria-label="Edit rule"

@@ -37,7 +37,7 @@ const Attribute = ({
   type,
 }: AttributeProps) => {
   return (
-    <div className="[&_.form-field]:bg-surface-2 my-5 flex rounded-(--radius) p-5 [&_.form-field]:mb-0">
+    <div className="[&_.form-field]:bg-surface-2 my-5 flex rounded p-5 [&_.form-field]:mb-0">
       <div className="flex shrink-0 grow basis-auto flex-col">
         <div className="shrink-0 grow basis-auto">
           <ValidatedField
@@ -55,7 +55,7 @@ const Attribute = ({
           />
         </div>
         {variable && (
-          <fieldset className="border-outline shrink-0 grow basis-auto rounded-(--radius) border-2 border-dashed p-5 [&>legend]:px-5">
+          <fieldset className="border-outline shrink-0 grow basis-auto rounded border-2 border-dashed p-5 [&>legend]:px-5">
             <legend>Set value of variable to:</legend>
             <ValidatedField
               name={`${field}.value`}
