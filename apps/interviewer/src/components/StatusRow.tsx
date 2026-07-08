@@ -131,7 +131,7 @@ export function StatusRowView({
             <TooltipTrigger
               render={
                 <span
-                  tabIndex={0}
+                  tabIndex={durability.usage !== null ? 0 : undefined}
                   className="focusable inline-flex items-center gap-1.5 rounded-sm"
                 >
                   {durability.persisted ? (
