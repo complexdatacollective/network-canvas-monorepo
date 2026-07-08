@@ -61,6 +61,7 @@ describe('buildDeck', () => {
     const deck = buildDeck({
       protocols: [],
       showSampleCard: false,
+      showDevelopmentCard: false,
       pendingImports: [],
     });
     expect(deck).toEqual([{ kind: 'import' }]);
@@ -74,6 +75,7 @@ describe('buildDeck', () => {
         makeProtocol('beta'),
       ],
       showSampleCard: true,
+      showDevelopmentCard: false,
       pendingImports: [],
     });
     expect(deck.map((e) => entryKey(e))).toEqual([
@@ -92,6 +94,7 @@ describe('buildDeck', () => {
         makeProtocol('MyStudy', 'hash-new'),
       ],
       showSampleCard: false,
+      showDevelopmentCard: false,
       pendingImports: [],
     });
     expect(deck.map((e) => entryKey(e))).toEqual([
@@ -105,6 +108,7 @@ describe('buildDeck', () => {
     const deck = buildDeck({
       protocols: [],
       showSampleCard: true,
+      showDevelopmentCard: false,
       pendingImports: [makePending('Sample Protocol')],
     });
     expect(deck).toHaveLength(2);
@@ -115,6 +119,7 @@ describe('buildDeck', () => {
     const deck = buildDeck({
       protocols: [makeProtocol('Study A')],
       showSampleCard: false,
+      showDevelopmentCard: false,
       pendingImports: [makePending('Study A')],
     });
     expect(deck).toHaveLength(2);
@@ -125,9 +130,35 @@ describe('buildDeck', () => {
     const deck = buildDeck({
       protocols: [makeProtocol('Sample Protocol')],
       showSampleCard: true,
+      showDevelopmentCard: false,
       pendingImports: [],
     });
     expect(deck).toHaveLength(2);
     expect(deck[0]?.kind).toBe('sample');
+  });
+
+  it('includes the development teaser in its own name slot when requested', () => {
+    const deck = buildDeck({
+      protocols: [],
+      showSampleCard: true,
+      showDevelopmentCard: true,
+      pendingImports: [],
+    });
+    expect(deck.map((e) => entryKey(e))).toEqual([
+      'slot:Development Protocol',
+      'slot:Sample Protocol',
+      'import',
+    ]);
+  });
+
+  it('lets a pending import shadow the development teaser in the same slot', () => {
+    const deck = buildDeck({
+      protocols: [],
+      showSampleCard: false,
+      showDevelopmentCard: true,
+      pendingImports: [makePending('Development Protocol')],
+    });
+    expect(deck).toHaveLength(2);
+    expect(deck[0]?.kind).toBe('pending');
   });
 });

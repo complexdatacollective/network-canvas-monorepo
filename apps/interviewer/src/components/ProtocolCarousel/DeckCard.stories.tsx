@@ -216,6 +216,50 @@ export const LongDescription: Story = {
   },
 };
 
+// The heading's rendered box must hold every line of the name (no clamp
+// mid-name, no glyphs clipped by the row). Compared in whole lines because
+// scrollHeight on a line-clamped `-webkit-box` overshoots the line grid by
+// a few pixels even when nothing is hidden.
+async function expectFullNameVisible(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  const heading = await canvas.findByRole('heading', { level: 2 });
+  await waitFor(() => {
+    const lineHeight = parseFloat(getComputedStyle(heading).lineHeight);
+    const visibleLines = Math.round(heading.clientHeight / lineHeight);
+    const naturalLines = Math.round(heading.scrollHeight / lineHeight);
+    expect(visibleLines).toBeGreaterThanOrEqual(naturalLines);
+    const row = heading.parentElement;
+    if (!row) throw new Error('heading row not found');
+    expect(row.clientHeight).toBeGreaterThanOrEqual(heading.clientHeight - 1);
+  });
+}
+
+/**
+ * Regression for #888: an active card at the size a ~900px-tall window
+ * produces. The old layout flexed the heading and fixed the description at
+ * six lines, so activating the card (divider + Start button mounting)
+ * squeezed the title to a clipped single line. The name now outranks the
+ * description: it always renders in full, and the description takes only
+ * the whole lines that remain.
+ */
+export const SmallActiveCard: Story = {
+  args: {
+    name: 'Mental Health Networks - test',
+    description:
+      'An example template for studying how a personal network both supports ' +
+      'a participant and adds stress while they manage their mental health. ' +
+      'It uses separate name generators for supportive and difficult ' +
+      'relationships, and records who knows about the participant’s ' +
+      'mental health (disclosure).',
+    size: 360,
+    isActive: true,
+  },
+  play: async ({ canvasElement }) => {
+    await expectFullNameVisible(canvasElement);
+    await expectFooterInsideCard(canvasElement);
+  },
+};
+
 /**
  * Long names step the heading size down (8cqi → 6.5cqi → 5cqi by character
  * count) so multi-line names stay inside the heading region instead of
@@ -307,17 +351,35 @@ export const RequiresInternetPill: Story = {
   },
 };
 
-/**
- * The layout the case-ID form needs: the controls row, description, and
- * metadata all clear out (hideControls/hideDescription/hideMetadata), so a
- * long heading and the form share the card. The footer here is a stand-in
- * for NewSessionForm, which needs app providers the story can't host.
- */
-export const CaseIdFormLayout: Story = {
-  args: {
-    name: 'Longitudinal Study of Social Support and Health Resource Access Among Recent Migrant Families',
-  },
-  render: ({ name, size }) => (
+// Stand-in for NewSessionForm (which needs app providers the story can't
+// host), sized like the real thing: intro paragraph, label + hint, input,
+// and the Cancel/submit row.
+function CaseIdFormStandIn() {
+  return (
+    <div className="flex flex-col gap-4 text-base">
+      <span>
+        Before the interview begins, enter a case ID. This will be shown on the
+        resume interview screen to help you quickly identify this session.
+      </span>
+      <div>
+        <div className="font-bold">Case ID</div>
+        <div className="text-current/80">
+          A label used to identify this interview in exports.
+        </div>
+      </div>
+      <div className="border-navy-taupe/40 rounded-full border px-4 py-3">
+        &nbsp;
+      </div>
+      <div className="flex items-center justify-end gap-4">
+        <button type="button">Cancel</button>
+        <button type="button">Start interview</button>
+      </div>
+    </div>
+  );
+}
+
+function renderCaseIdFormLayout({ name, size }: StoryArgs) {
+  return (
     <ResizableFrame size={size}>
       <DeckCard
         protocol={makeProtocol({ name })}
@@ -330,20 +392,59 @@ export const CaseIdFormLayout: Story = {
         hideMetadata
         footer={
           <DeckCardFooter key="new-session">
-            <div className="flex flex-col gap-[2.5cqi] text-[3.5cqi]">
-              <span>
-                Before the interview begins, enter a case ID. This stand-in
-                occupies the space the real case-ID form would.
-              </span>
-              <div className="border-navy-taupe/40 rounded border px-[2.5cqi] py-[2cqi]">
-                Case ID
-              </div>
-            </div>
+            <CaseIdFormStandIn />
           </DeckCardFooter>
         }
       />
     </ResizableFrame>
-  ),
+  );
+}
+
+/**
+ * The layout the case-ID form needs: the controls row, description, and
+ * metadata all clear out (hideControls/hideDescription/hideMetadata), so a
+ * long heading and the form share the card.
+ */
+export const CaseIdFormLayout: Story = {
+  args: {
+    name: 'Longitudinal Study of Social Support and Health Resource Access Among Recent Migrant Families',
+  },
+  render: renderCaseIdFormLayout,
+};
+
+/**
+ * Regression for #888 (form overflow): on a card too small for the whole
+ * form, the footer is capped at the card's leftover budget and scrolls
+ * inside a ScrollArea — the submit row must be reachable by scrolling, never
+ * clipped away by the card edge.
+ */
+export const CaseIdFormSmallCard: Story = {
+  args: {
+    name: 'Sample Protocol',
+    size: 300,
+  },
+  render: renderCaseIdFormLayout,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const submit = await canvas.findByRole('button', {
+      name: 'Start interview',
+    });
+    const card = submit.closest('[aria-label]');
+    if (!card) throw new Error('card root not found');
+    const viewport = card.querySelector('[data-deck-row="footer"] section');
+    if (!(viewport instanceof HTMLElement)) {
+      throw new Error('footer scroll viewport not found');
+    }
+    await waitFor(() => {
+      viewport.scrollTop = viewport.scrollHeight;
+      const submitRect = submit.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      expect(submitRect.height).toBeGreaterThan(0);
+      expect(submitRect.bottom).toBeLessThanOrEqual(cardRect.bottom + 1);
+      expect(submitRect.top).toBeGreaterThanOrEqual(cardRect.top - 1);
+    });
+    await expectFullNameVisible(canvasElement);
+  },
 };
 
 /**
