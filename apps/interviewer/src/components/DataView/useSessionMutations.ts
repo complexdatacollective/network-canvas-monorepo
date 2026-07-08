@@ -14,7 +14,7 @@ import {
   type ExportProgress,
   runExport,
 } from '~/lib/export/exportSessions';
-import { shareOrDownloadBlob } from '~/lib/files/download';
+import { saveBlob } from '~/lib/files/download';
 
 const noopExportEvent = (_event: ExportProgress) => {};
 
@@ -39,10 +39,10 @@ export function useSessionMutations({
   const { requireFreshUnlock } = useStepUpAuth();
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  // Archive built by handleExport, awaiting a fresh user gesture to
-  // share/download it — see handleShareReady. sessionIds are the sessions
-  // whose export generation succeeded; they are marked exportedAt only once
-  // the file is confirmed saved, never on the in-memory build.
+  // Archive built by handleExport, awaiting a fresh user gesture to save it —
+  // see handleShareReady. sessionIds are the sessions whose export generation
+  // succeeded; they are marked exportedAt only once the file is saved, never
+  // on the in-memory build.
   const [pendingShare, setPendingShare] = useState<{
     blob: Blob;
     fileName: string;
@@ -128,8 +128,8 @@ export function useSessionMutations({
   ]);
 
   // Runs in the "Save export" button's own click — a gesture the long-running
-  // archive build in handleExport would otherwise have consumed — so
-  // navigator.share stays gesture-fresh on iOS Safari.
+  // archive build in handleExport would otherwise have consumed — so the
+  // Save-As picker / navigator.share stays gesture-fresh.
   const shareInFlightRef = useRef(false);
   const handleShareReady = useCallback(async () => {
     // A double-tap on Save export would otherwise start two save flows and
@@ -145,7 +145,7 @@ export function useSessionMutations({
       failedCount,
     } = pendingShare;
     try {
-      const outcome = await shareOrDownloadBlob(blob, fileName);
+      const outcome = await saveBlob(blob, fileName);
       if (!outcome.saved) {
         // pendingShare is retained so the Save export button stays available
         // for a retry; sessions are NOT marked exported until a genuine save.
@@ -154,32 +154,6 @@ export function useSessionMutations({
           description: 'The archive was not saved.',
         });
         return;
-      }
-      // The object-URL <a download> path can't observe whether the Save-As
-      // dialog was completed or cancelled/blocked, so it reports an
-      // unconfirmed save. Marking exportedAt on that unverifiable claim is a
-      // data-loss primitive (a falsely-"exported" session can be filtered and
-      // bulk-deleted). Require the researcher to confirm the file downloaded
-      // before we stamp it as exported; keep pendingShare for a retry if not.
-      if (!outcome.confirmed) {
-        const downloaded = await dialog.openDialog({
-          type: 'choice',
-          title: 'Did the archive download?',
-          description:
-            'Confirm the export file saved to this device before it is marked as exported. If it did not download, choose Not yet and try Save export again.',
-          intent: 'warning',
-          actions: {
-            primary: { label: 'Yes, it downloaded', value: true },
-            cancel: { label: 'Not yet', value: false },
-          },
-        });
-        if (downloaded !== true) {
-          toast.add({
-            title: 'Not marked as exported',
-            description: 'Try Save export again to download the archive.',
-          });
-          return;
-        }
       }
       await markSessionsExported(sessionIds);
       // Counts only — never session contents, case IDs, or file names.
@@ -211,7 +185,7 @@ export function useSessionMutations({
     } finally {
       shareInFlightRef.current = false;
     }
-  }, [analytics, dialog, onReload, pendingShare, reloadData, toast]);
+  }, [analytics, onReload, pendingShare, reloadData, toast]);
 
   const handleDelete = useCallback(async () => {
     if (selectedCount === 0 || deleting) return;
