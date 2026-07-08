@@ -61,7 +61,7 @@ describe('processEntityVariables', () => {
       );
 
       // female should be true, male and non-binary should be false
-      expect(result.attributes).toEqual({
+      expect(result[entityAttributesProperty]).toEqual({
         'gender_male': false,
         'gender_female': true,
         'gender_non-binary': false,
@@ -105,7 +105,7 @@ describe('processEntityVariables', () => {
         mockExportOptions,
       );
 
-      expect(result.attributes).toEqual({
+      expect(result[entityAttributesProperty]).toEqual({
         favoriteColors_red: true,
         favoriteColors_redish: false,
         favoriteColors_blue: true,
@@ -150,7 +150,7 @@ describe('processEntityVariables', () => {
       );
 
       // 10 should be true, 1 and 100 should be false (not substring matched)
-      expect(result.attributes).toEqual({
+      expect(result[entityAttributesProperty]).toEqual({
         rating_1: false,
         rating_10: true,
         rating_100: false,
@@ -192,7 +192,7 @@ describe('processEntityVariables', () => {
         mockExportOptions,
       );
 
-      expect(result.attributes).toEqual({
+      expect(result[entityAttributesProperty]).toEqual({
         gender_male: false,
         gender_female: false,
       });
@@ -233,7 +233,7 @@ describe('processEntityVariables', () => {
         mockExportOptions,
       );
 
-      expect(result.attributes).toEqual({
+      expect(result[entityAttributesProperty]).toEqual({
         gender_male: false,
         gender_female: false,
       });
@@ -277,7 +277,7 @@ describe('processEntityVariables', () => {
         mockExportOptions,
       );
 
-      expect(result.attributes).toEqual({
+      expect(result[entityAttributesProperty]).toEqual({
         rating_1: false,
         rating_10: true,
         rating_100: false,

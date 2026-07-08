@@ -5,7 +5,10 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
-import { isFamilyPedigreeStageMetadata } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  isFamilyPedigreeStageMetadata,
+} from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import Prompts from '~/components/Prompts/Prompts';
 import { useContractFlags } from '~/contract/context';
@@ -154,7 +157,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   );
   const handleToggleAttribute = (nodeId: string, variable: string) => {
     const node = allNodes.find((n) => n._uid === nodeId);
-    const currentValue = node?.attributes[variable] === true;
+    const currentValue = node?.[entityAttributesProperty][variable] === true;
     dispatch(
       toggleNodeAttributes({
         nodeId,
@@ -164,10 +167,10 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   };
 
   const egoId = [...nodesMap.entries()].find(
-    ([, n]) => n.attributes[egoVariable] === true,
+    ([, n]) => n[entityAttributesProperty][egoVariable] === true,
   )?.[0];
   const nonEgoNodeCount = [...nodesMap.values()].filter(
-    (n) => n.attributes[egoVariable] !== true,
+    (n) => n[entityAttributesProperty][egoVariable] !== true,
   ).length;
   const hasNodes = nonEgoNodeCount > 0;
 
@@ -452,7 +455,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                     for (const [id, node] of Object.entries(data.nodes)) {
                       addNode({
                         id,
-                        attributes: node.attributes as Record<
+                        attributes: node[entityAttributesProperty] as Record<
                           string,
                           VariableValue
                         >,

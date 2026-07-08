@@ -1425,7 +1425,7 @@ describe('processProtocolSortRule', () => {
         stageId: 'namegen1a',
         _uid: '0e09311ce13248772645155bd78705e2636f8f15',
         itemType: 'NEW_NODE',
-        attributes: {
+        [entityAttributesProperty]: {
           'name_variable': 'Albert',
           '0ff25001-a2b8-46de-82a9-53143aa00d10': null,
           'c5fee926-855d-4419-b5bb-54e89010cea6': 49,
@@ -1459,7 +1459,7 @@ describe('processProtocolSortRule', () => {
         stageId: 'namegen1a',
         _uid: '5b909d77cee1b8d8bcb44562f4c736aaf9bb3868',
         itemType: 'NEW_NODE',
-        attributes: {
+        [entityAttributesProperty]: {
           'name_variable': 'Benjamin',
           '0ff25001-a2b8-46de-82a9-53143aa00d10': null,
           'c5fee926-855d-4419-b5bb-54e89010cea6': 67,
@@ -1493,7 +1493,7 @@ describe('processProtocolSortRule', () => {
         stageId: 'namegen1a',
         _uid: '41ecadb17067e2eecc58ce735d9036705db15900',
         itemType: 'NEW_NODE',
-        attributes: {
+        [entityAttributesProperty]: {
           'name_variable': 'Charlie',
           '0ff25001-a2b8-46de-82a9-53143aa00d10': null,
           'c5fee926-855d-4419-b5bb-54e89010cea6': 32,
@@ -1526,7 +1526,7 @@ describe('processProtocolSortRule', () => {
         type: 'venue_node_type',
         stageId: 'namegen2',
         _uid: 'ea3bebf8-4c3b-419b-a998-05db3e2a936a',
-        attributes: {
+        [entityAttributesProperty]: {
           'name_variable': 'One',
           '7316d500-6c1e-4188-a531-b2ef587721e0': null,
           'venueVisitFreqVariable': 1,
@@ -1548,7 +1548,7 @@ describe('processProtocolSortRule', () => {
         type: 'venue_node_type',
         stageId: 'namegen2',
         _uid: '3e7ee30a-9b6d-4e35-a721-9d8bec70b6e4',
-        attributes: {
+        [entityAttributesProperty]: {
           'name_variable': 'Two',
           '7316d500-6c1e-4188-a531-b2ef587721e0': null,
           'venueVisitFreqVariable': 3,
@@ -1570,7 +1570,7 @@ describe('processProtocolSortRule', () => {
         type: 'venue_node_type',
         stageId: 'namegen2',
         _uid: '5fd6cb24-281c-46d0-af18-033c0fe85879',
-        attributes: {
+        [entityAttributesProperty]: {
           'name_variable': 'Three',
           '7316d500-6c1e-4188-a531-b2ef587721e0': null,
           'venueVisitFreqVariable': 4,
@@ -1647,7 +1647,7 @@ describe('processProtocolSortRule', () => {
     const sorter = createSorter<MockItem>(processedRules);
 
     const sorted = sorter(mockItems).map(
-      (item) => item.attributes.name_variable,
+      (item) => item[entityAttributesProperty].name_variable,
     );
     expect(sorted).toEqual([
       'Three',

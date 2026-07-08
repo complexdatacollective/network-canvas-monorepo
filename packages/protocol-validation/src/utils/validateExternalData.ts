@@ -1,11 +1,11 @@
 // Variables and option values must respect NMTOKEN rules so that
 // they are compatable with XML export formats
 
-import type { NcEntity } from '@codaco/shared-consts';
+import { entityAttributesProperty, type NcEntity } from '@codaco/shared-consts';
 
 // External data types - represent imported data before conversion to full NcNetwork format
 // These reference the shared types but allow for the simpler structure of external data
-type Item = Pick<NcEntity, 'attributes'>;
+type Item = Pick<NcEntity, typeof entityAttributesProperty>;
 export type Network = {
   nodes: Item[];
   edges: Item[];
@@ -20,7 +20,7 @@ const allowedVariableName = (value: string) => {
 
 const getUniqueAttributes = (items: Item[]) => {
   const uniqueSet = items.reduce<Set<string>>((acc, node) => {
-    for (const key of Object.keys(node.attributes)) {
+    for (const key of Object.keys(node[entityAttributesProperty])) {
       acc.add(key);
     }
     return acc;

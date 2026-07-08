@@ -1930,14 +1930,18 @@ const NODE_MEASUREMENT_COMPONENTS: Record<string, React.ReactElement> = {
 
 const NODE_RENDERERS: Record<string, NodeRenderer> = {
   'Colored Node': (node, edges) => {
-    const label = node.attributes[STORY_LABEL_VAR] as string | undefined;
+    const label = node[entityAttributesProperty][STORY_LABEL_VAR] as
+      | string
+      | undefined;
     const nodeEl = (
       <Node
         color="node-color-seq-1"
-        label={!node.attributes[STORY_EGO_VAR] ? (label ?? '') : ''}
+        label={
+          !node[entityAttributesProperty][STORY_EGO_VAR] ? (label ?? '') : ''
+        }
         size="sm"
       >
-        {node.attributes[STORY_EGO_VAR] === true && (
+        {node[entityAttributesProperty][STORY_EGO_VAR] === true && (
           <EgoIcon className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-1/2" />
         )}
       </Node>
@@ -1948,15 +1952,19 @@ const NODE_RENDERERS: Record<string, NodeRenderer> = {
     return nodeEl;
   },
   'Labeled Node': (node, edges) => {
-    const label = node.attributes[STORY_LABEL_VAR] as string | undefined;
+    const label = node[entityAttributesProperty][STORY_LABEL_VAR] as
+      | string
+      | undefined;
     const nodeEl = (
       <Node
         className="shrink-0"
         color="node-color-seq-1"
-        label={!node.attributes[STORY_EGO_VAR] ? (label ?? '') : ''}
+        label={
+          !node[entityAttributesProperty][STORY_EGO_VAR] ? (label ?? '') : ''
+        }
         size="sm"
       >
-        {node.attributes[STORY_EGO_VAR] === true && (
+        {node[entityAttributesProperty][STORY_EGO_VAR] === true && (
           <EgoIcon className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-1/2" />
         )}
       </Node>
@@ -1976,18 +1984,22 @@ const NODE_RENDERERS: Record<string, NodeRenderer> = {
   },
   'Responsive': (node, _edges) => (
     <div
-      className={`rounded-full ${node.attributes[STORY_EGO_VAR] === true ? 'bg-node-2' : 'bg-node-1'}`}
+      className={`rounded-full ${node[entityAttributesProperty][STORY_EGO_VAR] === true ? 'bg-node-2' : 'bg-node-1'}`}
       style={{
         width: 'clamp(24px, 5vw, 80px)',
         height: 'clamp(24px, 5vw, 80px)',
       }}
-      title={node.attributes[STORY_LABEL_VAR] as string | undefined}
+      title={
+        node[entityAttributesProperty][STORY_LABEL_VAR] as string | undefined
+      }
     />
   ),
   'Dot': (node, _edges) => (
     <div
-      className={`m-4 size-4 rounded-full ${node.attributes[STORY_EGO_VAR] === true ? 'bg-mustard' : 'bg-white'}`}
-      title={node.attributes[STORY_LABEL_VAR] as string | undefined}
+      className={`m-4 size-4 rounded-full ${node[entityAttributesProperty][STORY_EGO_VAR] === true ? 'bg-mustard' : 'bg-white'}`}
+      title={
+        node[entityAttributesProperty][STORY_LABEL_VAR] as string | undefined
+      }
     />
   ),
 };

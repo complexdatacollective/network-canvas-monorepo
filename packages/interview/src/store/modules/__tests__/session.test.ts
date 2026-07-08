@@ -1,11 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
-import type {
-  DyadCensusMetadataItem,
-  NcEdge,
-  NcNode,
-  StageMetadata,
+import {
+  type DyadCensusMetadataItem,
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+  type StageMetadata,
 } from '@codaco/shared-consts';
 
 import { createInitialNetwork } from '../../../contract/network';
@@ -379,8 +380,8 @@ function createTestStoreWithEdge(options: {
   const network = createInitialNetwork();
   // Add two nodes so we can create edges between them
   network.nodes = [
-    { _uid: 'node-1', type: 'person', attributes: {} },
-    { _uid: 'node-2', type: 'person', attributes: {} },
+    { _uid: 'node-1', type: 'person', [entityAttributesProperty]: {} },
+    { _uid: 'node-2', type: 'person', [entityAttributesProperty]: {} },
   ];
   network.edges = edges;
 
@@ -493,7 +494,7 @@ describe('updateEdge', () => {
             from: 'node-1',
             to: 'node-2',
             type: 'test-edge-type-uuid',
-            attributes: {},
+            [entityAttributesProperty]: {},
           },
         ],
       });
@@ -531,7 +532,7 @@ describe('updateEdge', () => {
             from: 'node-1',
             to: 'node-2',
             type: 'test-edge-type-uuid',
-            attributes: {},
+            [entityAttributesProperty]: {},
           },
         ],
       });
@@ -638,7 +639,7 @@ describe('addNodeToPrompt', () => {
         {
           _uid: 'node-1',
           type: 'person',
-          attributes: { isCloseTie: false },
+          [entityAttributesProperty]: { isCloseTie: false },
           promptIDs: [],
         },
       ],
@@ -654,7 +655,7 @@ describe('addNodeToPrompt', () => {
 
     const node = store.getState().session.network.nodes[0];
     // The prompt's value wins over the value the node already carried.
-    expect(node?.attributes.isCloseTie).toBe(true);
+    expect(node?.[entityAttributesProperty].isCloseTie).toBe(true);
     // The node is still recorded as belonging to the prompt.
     expect(node?.promptIDs).toEqual(['prompt-1']);
   });
@@ -672,7 +673,7 @@ describe('addNodeToPrompt', () => {
         {
           _uid: 'node-1',
           type: 'person',
-          attributes: { isCloseTie: null },
+          [entityAttributesProperty]: { isCloseTie: null },
           promptIDs: [],
         },
       ],
@@ -687,7 +688,7 @@ describe('addNodeToPrompt', () => {
     );
 
     const node = store.getState().session.network.nodes[0];
-    expect(node?.attributes.isCloseTie).toBe(true);
+    expect(node?.[entityAttributesProperty].isCloseTie).toBe(true);
     expect(node?.promptIDs).toEqual(['prompt-1']);
   });
 });
@@ -713,7 +714,7 @@ describe('removeNodeFromPrompt', () => {
         {
           _uid: 'node-1',
           type: 'person',
-          attributes: { isCloseTie: false },
+          [entityAttributesProperty]: { isCloseTie: false },
           promptIDs: ['prompt-1'],
         },
       ],
@@ -724,7 +725,7 @@ describe('removeNodeFromPrompt', () => {
     );
 
     const node = store.getState().session.network.nodes[0];
-    expect(node?.attributes.isCloseTie).toBeNull();
+    expect(node?.[entityAttributesProperty].isCloseTie).toBeNull();
     expect(node?.promptIDs).toEqual([]);
   });
 
@@ -744,7 +745,7 @@ describe('removeNodeFromPrompt', () => {
         {
           _uid: 'node-1',
           type: 'person',
-          attributes: { isCloseTie: false },
+          [entityAttributesProperty]: { isCloseTie: false },
           promptIDs: ['prompt-1'],
         },
       ],
@@ -757,7 +758,7 @@ describe('removeNodeFromPrompt', () => {
     const node = store.getState().session.network.nodes[0];
     // The node no longer belongs to any prompt asserting isCloseTie, so the
     // attribute must be cleared to null rather than left as a stale value.
-    expect(node?.attributes.isCloseTie).toBeNull();
+    expect(node?.[entityAttributesProperty].isCloseTie).toBeNull();
     expect(node?.promptIDs).toEqual([]);
   });
 
@@ -781,7 +782,7 @@ describe('removeNodeFromPrompt', () => {
         {
           _uid: 'node-1',
           type: 'person',
-          attributes: { isCloseTie: true },
+          [entityAttributesProperty]: { isCloseTie: true },
           promptIDs: ['prompt-1', 'prompt-2'],
         },
       ],
@@ -792,7 +793,7 @@ describe('removeNodeFromPrompt', () => {
     );
 
     const node = store.getState().session.network.nodes[0];
-    expect(node?.attributes.isCloseTie).toBe(true);
+    expect(node?.[entityAttributesProperty].isCloseTie).toBe(true);
     expect(node?.promptIDs).toEqual(['prompt-2']);
   });
 });
@@ -800,8 +801,8 @@ describe('removeNodeFromPrompt', () => {
 function createTestStoreWithMetadata(stageMetadata: StageMetadata) {
   const network = createInitialNetwork();
   network.nodes = [
-    { _uid: 'node-1', type: 'person', attributes: {} },
-    { _uid: 'node-2', type: 'person', attributes: {} },
+    { _uid: 'node-1', type: 'person', [entityAttributesProperty]: {} },
+    { _uid: 'node-2', type: 'person', [entityAttributesProperty]: {} },
   ];
 
   const sessionState = {

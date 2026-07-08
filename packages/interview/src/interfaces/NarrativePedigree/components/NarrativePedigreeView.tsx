@@ -17,7 +17,11 @@ import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import type { Codebook } from '@codaco/protocol-validation';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import PedigreeLayout from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeLayout';
@@ -196,7 +200,9 @@ export default function NarrativePedigreeView({
   const egoId = useMemo(() => {
     if (!sourceConfig) return undefined;
     const { egoVariable } = sourceConfig.config;
-    return pedigreeNodes.find((n) => n.attributes[egoVariable] === true)?._uid;
+    return pedigreeNodes.find(
+      (n) => n[entityAttributesProperty][egoVariable] === true,
+    )?._uid;
   }, [pedigreeNodes, sourceConfig]);
 
   // When a disease is selected, show only that disease; otherwise show all.
@@ -299,7 +305,10 @@ export default function NarrativePedigreeView({
 
   const resolveShape = (node: NcNode): NodeShape => {
     if (!sourceConfig?.shapeDefinition) return 'square';
-    return resolveNodeShape(sourceConfig.shapeDefinition, node.attributes);
+    return resolveNodeShape(
+      sourceConfig.shapeDefinition,
+      node[entityAttributesProperty],
+    );
   };
 
   const labelFor = (node: RenderableNode): string => {

@@ -104,7 +104,7 @@ const processEntityVariables = (
     }
   }
 
-  return { ...entityObject, attributes };
+  return { ...entityObject, [entityAttributesProperty]: attributes };
 };
 
 export default processEntityVariables;

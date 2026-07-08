@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { MouseEventHandler, ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import { FamilyPedigreeContext } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
 import {
@@ -248,7 +249,7 @@ function makeNode(id: string, isEgo = false): NcNode {
   return {
     _uid: id,
     type: 'person',
-    attributes: { label: id, isEgo },
+    [entityAttributesProperty]: { label: id, isEgo },
   };
 }
 

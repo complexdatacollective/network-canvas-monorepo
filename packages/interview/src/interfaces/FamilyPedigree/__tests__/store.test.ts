@@ -49,7 +49,7 @@ describe('store creation', () => {
         {
           _uid: 'n1',
           type: 'person',
-          attributes: {
+          [entityAttributesProperty]: {
             [testConfig.nodeLabelVariable]: 'ego',
             [testConfig.egoVariable]: true,
           },
@@ -60,7 +60,7 @@ describe('store creation', () => {
         {
           _uid: 'n2',
           type: 'person',
-          attributes: {
+          [entityAttributesProperty]: {
             [testConfig.nodeLabelVariable]: 'mother',
             [testConfig.egoVariable]: false,
           },
@@ -75,7 +75,7 @@ describe('store creation', () => {
           type: 'family',
           from: 'n2',
           to: 'n1',
-          attributes: {
+          [entityAttributesProperty]: {
             [testConfig.relationshipTypeVariable]: ['biological'],
             [testConfig.isActiveVariable]: true,
           },
@@ -94,7 +94,9 @@ describe('store creation', () => {
     expect(state.network.nodes.size).toBe(2);
     expect(state.network.edges.size).toBe(1);
     expect(
-      state.network.nodes.get('n1')?.attributes[testConfig.nodeLabelVariable],
+      state.network.nodes.get('n1')?.[entityAttributesProperty][
+        testConfig.nodeLabelVariable
+      ],
     ).toBe('ego');
   });
 });
@@ -133,8 +135,10 @@ describe('addNode', () => {
     });
 
     const node = store.getState().network.nodes.get(id);
-    expect(node?.attributes[testConfig.nodeLabelVariable]).toBe('ego');
-    expect(node?.attributes[testConfig.egoVariable]).toBe(true);
+    expect(node?.[entityAttributesProperty][testConfig.nodeLabelVariable]).toBe(
+      'ego',
+    );
+    expect(node?.[entityAttributesProperty][testConfig.egoVariable]).toBe(true);
     expect(node?.type).toBe('person');
     expect(node?._uid).toBe(id);
   });
@@ -179,8 +183,12 @@ describe('updateNode', () => {
     });
 
     const node = store.getState().network.nodes.get(id);
-    expect(node?.attributes[testConfig.nodeLabelVariable]).toBe('updated');
-    expect(node?.attributes[testConfig.egoVariable]).toBe(false);
+    expect(node?.[entityAttributesProperty][testConfig.nodeLabelVariable]).toBe(
+      'updated',
+    );
+    expect(node?.[entityAttributesProperty][testConfig.egoVariable]).toBe(
+      false,
+    );
   });
 });
 
@@ -258,9 +266,9 @@ describe('addEdge', () => {
 
     const edge = store.getState().network.edges.get(id);
     expect(edge).toBeDefined();
-    expect(edge?.attributes[testConfig.relationshipTypeVariable]).toEqual([
-      'biological',
-    ]);
+    expect(
+      edge?.[entityAttributesProperty][testConfig.relationshipTypeVariable],
+    ).toEqual(['biological']);
   });
 
   it('creates a partner edge with current flag', () => {
@@ -281,10 +289,12 @@ describe('addEdge', () => {
 
     const edge = store.getState().network.edges.get(id);
     expect(edge).toBeDefined();
-    expect(edge?.attributes[testConfig.relationshipTypeVariable]).toEqual([
-      'partner',
-    ]);
-    expect(edge?.attributes[testConfig.isActiveVariable]).toBe(true);
+    expect(
+      edge?.[entityAttributesProperty][testConfig.relationshipTypeVariable],
+    ).toEqual(['partner']);
+    expect(edge?.[entityAttributesProperty][testConfig.isActiveVariable]).toBe(
+      true,
+    );
   });
 
   it('strips the id field from stored data', () => {
