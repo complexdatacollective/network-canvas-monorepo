@@ -749,9 +749,18 @@ while (cleanRounds < 2 && round < 4) {
         },
       ),
   ]);
-  const all = [gates, visual, reviewA, reviewB]
-    .filter(Boolean)
-    .flatMap((r) => r.findings);
+  const verifiers = { gates, visual, reviewA, reviewB };
+  const dead = Object.entries(verifiers)
+    .filter(([, r]) => !r)
+    .map(([k]) => k);
+  if (dead.length > 0) {
+    // A null verifier means the agent died (e.g. rate limit) — its silence
+    // is NOT a clean result. Halt so the run can resume with cache intact.
+    throw new Error(
+      `Verification round ${round} incomplete — dead verifier(s): ${dead.join(', ')}. Resume the workflow to re-run them.`,
+    );
+  }
+  const all = [gates, visual, reviewA, reviewB].flatMap((r) => r.findings);
   const actionable = all.filter((f) => f.severity !== 'minor');
   log(
     `Round ${round}: ${all.length} findings (${actionable.length} actionable)`,
