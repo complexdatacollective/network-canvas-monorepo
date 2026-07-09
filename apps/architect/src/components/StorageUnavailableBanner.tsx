@@ -1,5 +1,4 @@
-import { TriangleAlert } from 'lucide-react';
-
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
@@ -20,54 +19,56 @@ const StorageUnavailableBanner = () => {
   }
 
   return (
-    <div
-      role="status"
-      className="bg-warning/20 text-text flex items-center justify-between gap-5 px-7 py-2.5 text-sm"
+    <Alert
+      variant="warning"
+      density="compact"
+      className="my-0 rounded-none! px-7 py-2.5 shadow-none!"
     >
-      <span className="flex items-center gap-2.5">
-        <TriangleAlert className="size-4 shrink-0" aria-hidden />
-        This protocol isn&apos;t being saved on this device — your
-        browser&apos;s storage is unavailable, which is common in private
-        browsing. Download a copy to keep your work.
-      </span>
-      <Button
-        size="sm"
-        color="primary"
-        onClick={() => {
-          // This is the one escape hatch for work that isn't being persisted,
-          // so a failed download must surface rather than fail silently.
-          void dispatch(exportNetcanvas())
-            .unwrap()
-            .then(({ skippedAssets }) => {
-              if (skippedAssets.length === 0) return;
-              const assetList = skippedAssets
-                .map((asset) => asset.name)
-                .join(', ');
-              void openDialog({
-                type: 'acknowledge',
-                intent: 'warning',
-                title: 'Some assets could not be exported',
-                description:
-                  'Your protocol was downloaded, but these assets could not be ' +
-                  `included and are missing from the file: ${assetList}.`,
-                actions: { primary: { label: 'OK', value: true } },
+      <AlertDescription className="flex items-center justify-between gap-5 text-sm">
+        <span>
+          This protocol isn&apos;t being saved on this device — your
+          browser&apos;s storage is unavailable, which is common in private
+          browsing. Download a copy to keep your work.
+        </span>
+        <Button
+          size="sm"
+          color="primary"
+          onClick={() => {
+            // This is the one escape hatch for work that isn't being persisted,
+            // so a failed download must surface rather than fail silently.
+            void dispatch(exportNetcanvas())
+              .unwrap()
+              .then(({ skippedAssets }) => {
+                if (skippedAssets.length === 0) return;
+                const assetList = skippedAssets
+                  .map((asset) => asset.name)
+                  .join(', ');
+                void openDialog({
+                  type: 'acknowledge',
+                  intent: 'warning',
+                  title: 'Some assets could not be exported',
+                  description:
+                    'Your protocol was downloaded, but these assets could not be ' +
+                    `included and are missing from the file: ${assetList}.`,
+                  actions: { primary: { label: 'OK', value: true } },
+                });
+              })
+              .catch(() => {
+                void openDialog({
+                  type: 'acknowledge',
+                  intent: 'destructive',
+                  title: 'Download failed',
+                  description:
+                    "Your protocol couldn't be downloaded. Please try again.",
+                  actions: { primary: { label: 'OK', value: true } },
+                });
               });
-            })
-            .catch(() => {
-              void openDialog({
-                type: 'acknowledge',
-                intent: 'destructive',
-                title: 'Download failed',
-                description:
-                  "Your protocol couldn't be downloaded. Please try again.",
-                actions: { primary: { label: 'OK', value: true } },
-              });
-            });
-        }}
-      >
-        Download .netcanvas
-      </Button>
-    </div>
+          }}
+        >
+          Download .netcanvas
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 };
 

@@ -3,6 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FilterRule } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
@@ -16,7 +17,6 @@ import {
   withFieldConnector,
   withStoreConnector,
 } from '../Query';
-import Tip from '../Tip';
 import getEdgeFilteringWarning from './SociogramPrompts/utils';
 
 const FilterField = (
@@ -120,12 +120,14 @@ const Filter = () => {
       layout="vertical"
     >
       {shouldShowWarning && (
-        <Tip type="warning">
-          <p>
-            This stage has edge creation or display values that will not be
-            shown based on the current filter rules.
-          </p>
-        </Tip>
+        <Alert variant="warning" className="my-7">
+          <AlertDescription>
+            <p>
+              This stage has edge creation or display values that will not be
+              shown based on the current filter rules.
+            </p>
+          </AlertDescription>
+        </Alert>
       )}
       <IssueAnchor fieldName="filter" description="Filter text" />
       <Field name="filter" component={FilterField} validate={ruleValidator} />

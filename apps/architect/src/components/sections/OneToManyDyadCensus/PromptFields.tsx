@@ -3,11 +3,11 @@ import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
 import { formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Row, Section } from '~/components/EditorLayout';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
 import ValidatedField from '~/components/Form/ValidatedField';
 import IssueAnchor from '~/components/IssueAnchor';
-import Tip from '~/components/Tip';
 import type { RootState } from '~/ducks/modules/root';
 
 import BinSortOrderSection from '../BinSortOrderSection';
@@ -46,18 +46,21 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
           &apos;conflict&apos;). Enter prompt text below, and select an edge
           type that will be created when the participant selects a target node.
         </p>
-        <Tip type="info">
-          <p>
-            Remember to write your prompt text so that it clearly indicates the
-            participant is evaluating the relationship between one specific
-            individual and each of the others shown. Use phrases such as &apos;
-            <strong>which of the following people</strong>
-            &apos;, or &apos;
-            <strong>select all people with whom this person</strong>
-            &apos; to indicate that the participant should focus on selecting
-            from the group.
-          </p>
-        </Tip>
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
+            <p>
+              Remember to write your prompt text so that it clearly indicates
+              the participant is evaluating the relationship between one
+              specific individual and each of the others shown. Use phrases such
+              as &apos;
+              <strong>which of the following people</strong>
+              &apos;, or &apos;
+              <strong>select all people with whom this person</strong>
+              &apos; to indicate that the participant should focus on selecting
+              from the group.
+            </p>
+          </AlertDescription>
+        </Alert>
         <Row>
           <ValidatedField
             name="text"

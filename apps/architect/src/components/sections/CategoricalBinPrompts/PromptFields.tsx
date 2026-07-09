@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Row, Section } from '~/components/EditorLayout';
 import { ValidatedField } from '~/components/Form';
 import { Field as RichTextField } from '~/components/Form/Fields/RichText';
@@ -10,7 +11,6 @@ import NewVariableWindow, {
 } from '~/components/NewVariableWindow';
 import Options from '~/components/Options';
 import PromptText from '~/components/sections/PromptText';
-import Tip from '~/components/Tip';
 import { getFieldId } from '~/utils/issues';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -128,16 +128,18 @@ const PromptFields = ({
               Create <strong>up to 8</strong> options for this variable.
             </p>
             {showVariableOptionsTip && (
-              <Tip type="error">
-                <p>
-                  The categorical bin interface is designed to use{' '}
-                  <strong>up to 8 option values</strong> ( including an
-                  &quot;other&quot; variable). Using more will create a
-                  sub-optimal experience for participants, and might reduce data
-                  quality. Consider grouping your variable options and capturing
-                  further detail with follow-up questions.
-                </p>
-              </Tip>
+              <Alert variant="destructive" className="my-7">
+                <AlertDescription>
+                  <p>
+                    The categorical bin interface is designed to use{' '}
+                    <strong>up to 8 option values</strong> ( including an
+                    &quot;other&quot; variable). Using more will create a
+                    sub-optimal experience for participants, and might reduce
+                    data quality. Consider grouping your variable options and
+                    capturing further detail with follow-up questions.
+                  </p>
+                </AlertDescription>
+              </Alert>
             )}
             <Options name="variableOptions" label="Options" />
           </Row>

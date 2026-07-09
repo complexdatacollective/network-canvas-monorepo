@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 import { useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { Section } from '~/components/EditorLayout';
 import { CheckboxGroup } from '~/components/Form/Fields';
@@ -13,7 +14,6 @@ import { getNodeTypes } from '~/selectors/codebook';
 
 import { updateVariableByUUID } from '../../../ducks/modules/protocol/codebook';
 import DetachedField from '../../DetachedField';
-import Tip from '../../Tip';
 
 type Variable = {
   name: string;
@@ -133,11 +133,13 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
             You may encrypt one or more text variables. Select the text
             variables for each node type that should be encrypted.
           </p>
-          <Tip>
-            <p>
-              Values for encrypted variables are not stored in the database.
-            </p>
-          </Tip>
+          <Alert variant="info" className="my-7">
+            <AlertDescription>
+              <p>
+                Values for encrypted variables are not stored in the database.
+              </p>
+            </AlertDescription>
+          </Alert>
         </>
       }
     >

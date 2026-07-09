@@ -1,8 +1,8 @@
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Row, Section } from '~/components/EditorLayout';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
 import ValidatedField from '~/components/Form/ValidatedField';
 import IssueAnchor from '~/components/IssueAnchor';
-import Tip from '~/components/Tip';
 
 import EntitySelectField from '../fields/EntitySelectField/EntitySelectField';
 
@@ -17,23 +17,25 @@ const PromptFields = () => (
         select an edge type that will be created when the participant answers
         &apos;yes&apos;.
       </p>
-      <Tip type="info">
-        <p>
-          Remember to write your prompt text to take into account that the
-          participant will be looking at pairs of prompts in sequence. Use
-          phrases such as &apos;
-          <strong>these people</strong>
-          &apos;, or &apos;
-          <strong>the two people shown</strong>
-          &apos; to indicate that the participant should focus on the visible
-          pair.
-        </p>
-        <p>
-          You should also phrase your prompt so that it can be answered with
-          either a &apos;yes&apos; or a &apos;no&apos; by the participant, since
-          these are the user-interface options that are shown.
-        </p>
-      </Tip>
+      <Alert variant="info" className="my-7">
+        <AlertDescription>
+          <p>
+            Remember to write your prompt text to take into account that the
+            participant will be looking at pairs of prompts in sequence. Use
+            phrases such as &apos;
+            <strong>these people</strong>
+            &apos;, or &apos;
+            <strong>the two people shown</strong>
+            &apos; to indicate that the participant should focus on the visible
+            pair.
+          </p>
+          <p>
+            You should also phrase your prompt so that it can be answered with
+            either a &apos;yes&apos; or a &apos;no&apos; by the participant,
+            since these are the user-interface options that are shown.
+          </p>
+        </AlertDescription>
+      </Alert>
       <ValidatedField
         name="text"
         component={RichText}

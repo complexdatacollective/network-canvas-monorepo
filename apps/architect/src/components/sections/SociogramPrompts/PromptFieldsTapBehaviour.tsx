@@ -3,11 +3,11 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import type { VariableType } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
 import ValidatedField from '~/components/Form/ValidatedField';
-import Tip from '~/components/Tip';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { AppDispatch, RootState } from '~/ducks/store';
 
@@ -206,15 +206,18 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
           {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
             <>
               {showNetworkFilterWarning && (
-                <Tip type="warning">
-                  <p>
-                    Stage level network filtering is enabled, but the edge type
-                    you want to create on this prompt is not currently included
-                    in the filter. This means that these edges may not be
-                    displayed. Either remove the stage-level network filtering,
-                    or add these edge types to the filter to resolve this issue.
-                  </p>
-                </Tip>
+                <Alert variant="warning" className="my-7">
+                  <AlertDescription>
+                    <p>
+                      Stage level network filtering is enabled, but the edge
+                      type you want to create on this prompt is not currently
+                      included in the filter. This means that these edges may
+                      not be displayed. Either remove the stage-level network
+                      filtering, or add these edge types to the filter to
+                      resolve this issue.
+                    </p>
+                  </AlertDescription>
+                </Alert>
               )}
 
               <ValidatedField

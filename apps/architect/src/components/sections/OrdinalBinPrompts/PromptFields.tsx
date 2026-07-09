@@ -1,6 +1,7 @@
 import type React from 'react';
 import { compose } from 'react-recompose';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Row, Section } from '~/components/EditorLayout';
 import { ValidatedField } from '~/components/Form';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
@@ -14,7 +15,6 @@ import { getSortOrderOptionGetter } from '~/components/sections/CategoricalBinPr
 import withVariableHandlers from '~/components/sections/CategoricalBinPrompts/withVariableHandlers';
 import withVariableOptions from '~/components/sections/CategoricalBinPrompts/withVariableOptions';
 import PromptText from '~/components/sections/PromptText';
-import Tip from '~/components/Tip';
 import { getFieldId } from '~/utils/issues';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -114,14 +114,16 @@ const PromptFields = ({
           <Row>
             <div id={getFieldId('variableOptions')} />
             {showVariableOptionsTip && (
-              <Tip type="error">
-                <p>
-                  The ordinal bin interface is designed to use{' '}
-                  <strong>up to 5 option values </strong>. Using more will
-                  create a sub-optimal experience for participants, and might
-                  reduce data quality.
-                </p>
-              </Tip>
+              <Alert variant="destructive" className="my-7">
+                <AlertDescription>
+                  <p>
+                    The ordinal bin interface is designed to use{' '}
+                    <strong>up to 5 option values </strong>. Using more will
+                    create a sub-optimal experience for participants, and might
+                    reduce data quality.
+                  </p>
+                </AlertDescription>
+              </Alert>
             )}
             <Options name="variableOptions" label="Options" />
           </Row>

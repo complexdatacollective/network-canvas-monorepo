@@ -1,11 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import {
-  AlertCircle,
-  AlertTriangle,
-  Bell,
-  CheckCircle,
-  Info,
-} from 'lucide-react';
+import { Bell, CheckCircle } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from './Alert';
 import Heading from './typography/Heading';
@@ -13,10 +7,7 @@ import { UnorderedList } from './typography/UnorderedList';
 
 const iconMap = {
   default: undefined,
-  info: Info,
   checkCircle: CheckCircle,
-  alertCircle: AlertCircle,
-  alertTriangle: AlertTriangle,
   bell: Bell,
   none: false as const,
 };
@@ -34,11 +25,18 @@ const meta = {
       options: ['default', 'info', 'success', 'warning', 'destructive'],
       description: 'The visual style variant of the alert',
     },
+    density: {
+      control: 'select',
+      options: ['default', 'compact'],
+      description:
+        'The layout density. Use compact for thin banners and inline warnings.',
+    },
     icon: {
       control: 'select',
       options: Object.keys(iconMap),
       mapping: iconMap,
-      description: 'Custom icon to display. Use "none" to hide icon entirely.',
+      description:
+        'Custom icon to display. The default info and warning/destructive variants use illustrated Fresco icons. Use "none" to hide the icon entirely.',
     },
   },
 } satisfies Meta<typeof Alert>;
@@ -61,6 +59,14 @@ export const Default: Story = {
 };
 
 export const Variants: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The info variant uses the illustrated Fresco light bulb. Warning and destructive variants share the illustrated warning icon, with the accent color following the alert intent. Icons perform a short attention shake when they enter the viewport, respecting reduced-motion preferences.',
+      },
+    },
+  },
   render: () => (
     <div className="flex flex-col gap-4">
       <Alert variant="default">
@@ -95,6 +101,26 @@ export const Variants: Story = {
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
           An error occurred while processing your request.
+        </AlertDescription>
+      </Alert>
+    </div>
+  ),
+};
+
+export const CompactDensity: Story = {
+  name: 'Compact Density',
+  render: () => (
+    <div className="flex flex-col gap-4">
+      <Alert variant="warning" density="compact" className="my-0 rounded-none!">
+        <AlertDescription>
+          Compact alerts keep the illustrated icon while fitting banner-style
+          layouts.
+        </AlertDescription>
+      </Alert>
+
+      <Alert variant="info" density="compact">
+        <AlertDescription>
+          Compact info alerts use the same light bulb icon at a smaller size.
         </AlertDescription>
       </Alert>
     </div>
@@ -260,7 +286,7 @@ export const IconAlignment: Story = {
     docs: {
       description: {
         story:
-          'The leading icon must align with the first line of whichever child renders first — `AlertTitle` (a heading) or `AlertDescription` (a paragraph) — without per-variant magic-number offsets. The icon wrapper is sized to one line-height (`h-lh`) of the inherited text and centres the icon vertically within that slot, so alignment stays correct regardless of which child comes first or what mix of children is rendered.',
+          'The leading icon aligns with the top of whichever child renders first — `AlertTitle` (a heading) or `AlertDescription` (a paragraph) — without per-variant magic-number offsets. The icon wrapper has stable dimensions for each density so alignment stays correct regardless of which child comes first or what mix of children is rendered.',
       },
     },
   },

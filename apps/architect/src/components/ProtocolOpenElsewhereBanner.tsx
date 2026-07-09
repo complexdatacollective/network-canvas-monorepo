@@ -1,6 +1,6 @@
-import { Copy } from 'lucide-react';
 import { useLocation } from 'wouter';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import { useAppSelector } from '~/ducks/hooks';
 import { getProtocolOpenElsewhere } from '~/ducks/modules/app';
@@ -18,20 +18,22 @@ const ProtocolOpenElsewhereBanner = () => {
   }
 
   return (
-    <div
-      role="status"
-      className="bg-warning/20 text-text flex items-center justify-between gap-5 px-7 py-2.5 text-sm"
+    <Alert
+      variant="warning"
+      density="compact"
+      className="my-0 rounded-none! px-7 py-2.5 shadow-none!"
     >
-      <span className="flex items-center gap-2.5">
-        <Copy className="size-4 shrink-0" aria-hidden />
-        This protocol is already open in another tab. To avoid conflicting
-        edits, changes here won&apos;t be saved. Continue editing in the other
-        tab, or return to the start screen.
-      </span>
-      <Button size="sm" color="primary" onClick={() => setLocation('/')}>
-        Return to start screen
-      </Button>
-    </div>
+      <AlertDescription className="flex items-center justify-between gap-5 text-sm">
+        <span>
+          This protocol is already open in another tab. To avoid conflicting
+          edits, changes here won&apos;t be saved. Continue editing in the other
+          tab, or return to the start screen.
+        </span>
+        <Button size="sm" color="primary" onClick={() => setLocation('/')}>
+          Return to start screen
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 };
 

@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Section } from '~/components/EditorLayout';
 import MultiSelect from '~/components/Form/MultiSelect';
-import Tip from '~/components/Tip';
 import { useAppDispatch } from '~/ducks/hooks';
 
 type BucketSortOrderSectionProps = {
@@ -56,12 +56,14 @@ const BucketSortOrderSection = ({
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
-      <Tip>
-        <p>
-          Use the asterisk property to sort by the order that nodes were
-          created.
-        </p>
-      </Tip>
+      <Alert variant="info" className="my-7">
+        <AlertDescription>
+          <p>
+            Use the asterisk property to sort by the order that nodes were
+            created.
+          </p>
+        </AlertDescription>
+      </Alert>
       <MultiSelect
         name="bucketSortOrder"
         properties={[{ fieldName: 'property' }, { fieldName: 'direction' }]}

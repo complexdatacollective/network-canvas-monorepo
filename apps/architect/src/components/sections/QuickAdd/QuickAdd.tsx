@@ -1,5 +1,6 @@
 import { compose } from 'react-recompose';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
@@ -8,7 +9,6 @@ import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequ
 import withSubject from '../../enhancers/withSubject';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import ValidatedField from '../../Form/ValidatedField';
-import Tip from '../../Tip';
 import withOptions from './withOptions';
 import withQuickAddVariable from './withQuickAddVariable';
 
@@ -43,7 +43,7 @@ const QuickAdd = ({
     return null;
   }
 
-  // The Tip nudges the user to store the quick-add value in a variable named
+  // The alert nudges the user to store the quick-add value in a variable named
   // "name". Once they've done so, the recommendation is satisfied — hide it.
   const selectedOption = options.find(
     (option) => option.value === quickAdd || option.label === quickAdd,
@@ -63,13 +63,15 @@ const QuickAdd = ({
       }
     >
       {!hasNameVariable && (
-        <Tip type="info">
-          <p>
-            Use a variable called &quot;name&quot; here, unless you have a good
-            reason not to. Interviewer will then automatically use this variable
-            as the label for the node in the interview.
-          </p>
-        </Tip>
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
+            <p>
+              Use a variable called &quot;name&quot; here, unless you have a
+              good reason not to. Interviewer will then automatically use this
+              variable as the label for the node in the interview.
+            </p>
+          </AlertDescription>
+        </Alert>
       )}
       <ValidatedField
         name="quickAdd"

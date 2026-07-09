@@ -3,6 +3,7 @@ import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
 import withCreateVariableHandlers from '~/components/enhancers/withCreateVariableHandler';
@@ -13,7 +14,6 @@ import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
-import Tip from '../../Tip';
 import { getSortOrderOptionGetter } from '../CategoricalBinPrompts/optionGetters';
 import withCanCreateEdgesState from './withCanCreateEdgesState';
 import withLayoutOptions from './withLayoutOptions';
@@ -78,13 +78,15 @@ const PromptFields = ({
           fieldName="layout.layoutVariable"
           description="Layout Variable"
         />
-        <Tip type="info">
-          <p>
-            If you use the same layout variable across all prompts, the position
-            of nodes will be automatically set as the participant moves between
-            tasks.
-          </p>
-        </Tip>
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
+            <p>
+              If you use the same layout variable across all prompts, the
+              position of nodes will be automatically set as the participant
+              moves between tasks.
+            </p>
+          </AlertDescription>
+        </Alert>
         <ValidatedField
           name="layout.layoutVariable"
           component={VariablePicker}

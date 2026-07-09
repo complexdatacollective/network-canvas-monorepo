@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Section, Subsection } from '~/components/EditorLayout';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import Text from '~/components/Form/Fields/Text';
@@ -20,7 +21,6 @@ import ExternalLink from '../ExternalLink';
 import InputPreview from '../Form/Fields/InputPreview';
 import VariablePicker from '../Form/Fields/VariablePicker/VariablePicker';
 import { useFieldHandlers } from '../sections/Form/withFieldsHandlers';
-import Tip from '../Tip';
 
 type ComposerAttributeFieldsProps = {
   form: string;
@@ -57,13 +57,15 @@ const ComposerAttributeFields = ({
     <Section layout="vertical">
       <Subsection id={getFieldId('variable')} title="Variable">
         {variable && !isNewVariable && (
-          <Tip>
-            <p>
-              When selecting an existing variable, changes you make to the input
-              control or validation options will also change other uses of this
-              variable.
-            </p>
-          </Tip>
+          <Alert variant="info" className="my-7">
+            <AlertDescription>
+              <p>
+                When selecting an existing variable, changes you make to the
+                input control or validation options will also change other uses
+                of this variable.
+              </p>
+            </AlertDescription>
+          </Alert>
         )}
         <ValidatedField
           name="variable"
@@ -127,27 +129,31 @@ const ComposerAttributeFields = ({
           }}
         />
         {isNewVariable && variableType && (
-          <Tip>
-            <p>
-              The selected input control will cause this variable to be defined
-              as type <strong>{variableType}</strong>. Once set, this cannot be
-              changed (although you may change the input control within this
-              type).
-            </p>
-          </Tip>
+          <Alert variant="info" className="my-7">
+            <AlertDescription>
+              <p>
+                The selected input control will cause this variable to be
+                defined as type <strong>{variableType}</strong>. Once set, this
+                cannot be changed (although you may change the input control
+                within this type).
+              </p>
+            </AlertDescription>
+          </Alert>
         )}
         {!isNewVariable && variableType && (
-          <Tip type="warning">
-            <div>
-              <p>
-                A pre-existing variable is currently selected. You cannot change
-                a variable type after it has been created, so only{' '}
-                <strong>{variableType}</strong> compatible input controls can be
-                selected above. If you would like to use a different input
-                control type, you will need to create a new variable.
-              </p>
-            </div>
-          </Tip>
+          <Alert variant="warning" className="my-7">
+            <AlertDescription>
+              <div>
+                <p>
+                  A pre-existing variable is currently selected. You cannot
+                  change a variable type after it has been created, so only{' '}
+                  <strong>{variableType}</strong> compatible input controls can
+                  be selected above. If you would like to use a different input
+                  control type, you will need to create a new variable.
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
         {variableType &&
           metaForType &&

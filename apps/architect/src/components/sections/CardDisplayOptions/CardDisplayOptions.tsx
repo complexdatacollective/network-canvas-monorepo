@@ -3,6 +3,7 @@ import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Row, Section } from '~/components/EditorLayout';
 import withDisabledAssetRequired from '~/components/enhancers/withDisabledAssetRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
@@ -13,7 +14,6 @@ import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
 
-import Tip from '../../Tip';
 import getVariableOptionsGetter from '../SortOptionsForExternalData/getVariableOptionsGetter';
 
 type CardDisplayOptionsProps = StageEditorSectionProps & {
@@ -67,12 +67,14 @@ const CardDisplayOptions = ({
       disabled={disabled}
     >
       <Row>
-        <Tip>
-          <p>
-            Cards will use the <strong>name</strong> attribute from your
-            external data as the main card title.
-          </p>
-        </Tip>
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
+            <p>
+              Cards will use the <strong>name</strong> attribute from your
+              external data as the main card title.
+            </p>
+          </AlertDescription>
+        </Alert>
       </Row>
       <Row>
         <h4>Additional Display Properties</h4>

@@ -1,6 +1,7 @@
 import { compose } from '@reduxjs/toolkit';
 import type { ComponentType } from 'react';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Row, Section } from '~/components/EditorLayout';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import RichText from '~/components/Form/Fields/RichText/Field';
@@ -10,7 +11,6 @@ import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
 import Options from '~/components/Options';
-import Tip from '~/components/Tip';
 import { getFieldId } from '~/utils/issues';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -194,15 +194,17 @@ const PromptFields = ({
                   be used on this interface.
                 </p>
                 {showVariableOptionsTip && (
-                  <Tip type="error">
-                    <p>
-                      The ordinal bin interface is designed to use{' '}
-                      <strong>up to 5 option values</strong>
-                      including the negative label. Using more will create a
-                      sub-optimal experience for participants, and might reduce
-                      data quality.
-                    </p>
-                  </Tip>
+                  <Alert variant="destructive" className="my-7">
+                    <AlertDescription>
+                      <p>
+                        The ordinal bin interface is designed to use{' '}
+                        <strong>up to 5 option values</strong>
+                        including the negative label. Using more will create a
+                        sub-optimal experience for participants, and might
+                        reduce data quality.
+                      </p>
+                    </AlertDescription>
+                  </Alert>
                 )}
                 <Options name="variableOptions" label="Options" />
               </Row>

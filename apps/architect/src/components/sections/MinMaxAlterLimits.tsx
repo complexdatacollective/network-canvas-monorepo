@@ -3,6 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { change, FormSection, formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { Row, Section } from '~/components/EditorLayout';
 import { Number as NumberField } from '~/components/Form/Fields';
@@ -12,7 +13,6 @@ import type { RootState } from '~/ducks/modules/root';
 
 import { ValidatedField } from '../Form';
 import IssueAnchor from '../IssueAnchor';
-import Tip from '../Tip';
 
 const maxValidation = (
   value: number | null | undefined,
@@ -114,16 +114,18 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
       handleToggleChange={handleToggleChange}
     >
       {hasMultiplePrompts && (
-        <Tip type="warning">
-          <p>
-            You have multiple prompts configured on this stage. Remember that
-            the limits you specify here apply to the{' '}
-            <strong>stage as a whole</strong>. Consider splitting your prompts
-            up into multiple stages, or ensure you take extra care in the
-            phrasing of your prompts so that you communicate the alter limits to
-            your participants.
-          </p>
-        </Tip>
+        <Alert variant="warning" className="my-7">
+          <AlertDescription>
+            <p>
+              You have multiple prompts configured on this stage. Remember that
+              the limits you specify here apply to the{' '}
+              <strong>stage as a whole</strong>. Consider splitting your prompts
+              up into multiple stages, or ensure you take extra care in the
+              phrasing of your prompts so that you communicate the alter limits
+              to your participants.
+            </p>
+          </AlertDescription>
+        </Alert>
       )}
       <FormSection name="behaviours">
         <Row>
