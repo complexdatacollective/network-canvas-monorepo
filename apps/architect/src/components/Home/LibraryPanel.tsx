@@ -8,9 +8,12 @@ import {
   X,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
+import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
+import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
+import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
@@ -72,7 +75,31 @@ const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
   ].join(' · ');
 };
 
+type LibraryRowItem = Record<string, unknown> & {
+  kind: 'row';
+  id: string;
+  textValue: string;
+  name: string;
+  description?: string;
+  meta?: string;
+  downloading?: boolean;
+  onOpen: () => void;
+  onDownload?: () => void;
+  onDelete?: () => void;
+  onShowInfo?: () => void;
+};
+
+type GalleryCardItem = Record<string, unknown> & {
+  kind: 'gallery-card';
+  id: string;
+  textValue: string;
+  onDismiss: () => void;
+};
+
+type LibraryPanelItem = LibraryRowItem | GalleryCardItem;
+
 type PanelRowProps = {
+  itemProps: ItemProps;
   name: string;
   description?: string;
   meta?: string;
@@ -84,6 +111,7 @@ type PanelRowProps = {
 };
 
 const PanelRow = ({
+  itemProps,
   name,
   description,
   meta,
@@ -95,7 +123,15 @@ const PanelRow = ({
 }: PanelRowProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const handleClick = (event: React.MouseEvent) => {
+    itemProps.onClick?.(event);
+    if (event.defaultPrevented) return;
+    onOpen();
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent) => {
+    itemProps.onKeyDown?.(event);
+    if (event.defaultPrevented) return;
     // Ignore keys on the inner action buttons so they don't also open the row.
     if (event.target !== event.currentTarget) return;
     if (event.key === 'Enter' || event.key === ' ') {
@@ -116,11 +152,10 @@ const PanelRow = ({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
+      {...itemProps}
+      onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className="group focusable hover:bg-surface-2 flex w-full shrink-0 cursor-pointer items-center gap-2.5 rounded-sm px-5 py-2.5 text-left transition-colors"
+      className="group focusable hover:bg-surface-2 data-focused:bg-surface-2 flex w-full shrink-0 cursor-pointer items-center gap-2.5 rounded-sm px-5 py-2.5 text-left transition-colors"
     >
       <img
         src={fileIcon}
@@ -204,6 +239,65 @@ const PanelRow = ({
   );
 };
 
+type GalleryCardProps = {
+  itemProps: ItemProps;
+  onDismiss: () => void;
+};
+
+const GalleryCard = ({ itemProps, onDismiss }: GalleryCardProps) => {
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    itemProps.onKeyDown?.(event);
+  };
+
+  return (
+    <div
+      {...itemProps}
+      onKeyDown={handleKeyDown}
+      className="border-outline bg-surface-2 focusable data-focused:bg-surface-3 relative mt-2.5 flex flex-col gap-1 rounded-sm border p-5"
+    >
+      <IconButton
+        variant="text"
+        size="sm"
+        aria-label="Dismiss"
+        className="absolute top-1 right-1"
+        onClick={onDismiss}
+        icon={<X />}
+      />
+      <p className="m-0 pr-7 font-semibold">Looking for more?</p>
+      <p className="text-muted m-0 text-sm">
+        More examples of Network Canvas protocols can be found on our{' '}
+        <ExternalLink href="https://protocolgallery.networkcanvas.com/">
+          protocol gallery
+        </ExternalLink>
+      </p>
+    </div>
+  );
+};
+
+const getLibraryItemKey = (item: LibraryPanelItem) => item.id;
+
+const getLibraryItemTextValue = (item: LibraryPanelItem) => item.textValue;
+
+const renderLibraryItem = (item: LibraryPanelItem, itemProps: ItemProps) => {
+  if (item.kind === 'gallery-card') {
+    return <GalleryCard itemProps={itemProps} onDismiss={item.onDismiss} />;
+  }
+
+  return (
+    <PanelRow
+      itemProps={itemProps}
+      name={item.name}
+      description={item.description}
+      meta={item.meta}
+      downloading={item.downloading}
+      onOpen={item.onOpen}
+      onDownload={item.onDownload}
+      onDelete={item.onDelete}
+      onShowInfo={item.onShowInfo}
+    />
+  );
+};
+
 type LibraryPanelProps = {
   // Open a saved protocol from the library.
   onOpenProtocol: (id: string) => void;
@@ -217,8 +311,8 @@ type LibraryPanelProps = {
   onOpenTemplate: (template: BundledTemplate) => void;
 };
 
-const PANEL_CLASSES =
-  'h-[min(28rem,65dvh)] overflow-x-hidden overflow-y-auto px-2.5 pb-10';
+const PANEL_CLASSES = 'h-[min(28rem,65dvh)] min-h-0';
+const PANEL_VIEWPORT_CLASSES = 'overflow-x-hidden px-2.5 pb-10';
 
 // Persist the protocol-gallery card's dismissal so it stays hidden across
 // reloads once the user closes it.
@@ -235,13 +329,21 @@ const LibraryPanel = ({
   const { openDialog } = useDialog();
   const { protocols } = useProtocolLibrary();
   const [tab, setTab] = useState<Tab>('recent');
+  const recentLayout = useMemo(
+    () => new ListLayout<LibraryPanelItem>({ gap: 0 }),
+    [],
+  );
+  const templateLayout = useMemo(
+    () => new ListLayout<LibraryPanelItem>({ gap: 0 }),
+    [],
+  );
   const [galleryDismissed, setGalleryDismissed] = useState(
     () => localStorage.getItem(GALLERY_CARD_DISMISSED_KEY) === 'true',
   );
-  const dismissGalleryCard = () => {
+  const dismissGalleryCard = useCallback(() => {
     setGalleryDismissed(true);
     localStorage.setItem(GALLERY_CARD_DISMISSED_KEY, 'true');
-  };
+  }, []);
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [info, setInfo] = useState<{
     title: string;
@@ -435,6 +537,87 @@ const LibraryPanel = ({
     }
   }, [openDialog]);
 
+  const recentItems = useMemo<LibraryPanelItem[]>(
+    () =>
+      protocols.map((protocol) => ({
+        kind: 'row' as const,
+        id: protocol.id,
+        textValue: protocol.name,
+        name: protocol.name,
+        meta: formatProtocolMeta(protocol),
+        downloading: downloadingIds.has(protocol.id),
+        onOpen: () => onOpenProtocol(protocol.id),
+        onDownload: () => handleDownload(protocol),
+        onDelete: () => handleDelete(protocol),
+        onShowInfo: () => handleShowInfo(protocol),
+      })),
+    [
+      protocols,
+      downloadingIds,
+      onOpenProtocol,
+      handleDownload,
+      handleDelete,
+      handleShowInfo,
+    ],
+  );
+
+  const templateItems = useMemo<LibraryPanelItem[]>(() => {
+    const items: LibraryPanelItem[] = [
+      {
+        kind: 'row',
+        id: 'sample-protocol',
+        textValue: 'Sample Protocol',
+        name: 'Sample Protocol',
+        description:
+          sampleProtocol.description ??
+          'An example introducing the key features and techniques available in Network Canvas.',
+        onOpen: onOpenSample,
+      },
+    ];
+
+    if (import.meta.env.DEV) {
+      items.push({
+        kind: 'row',
+        id: 'development-protocol',
+        textValue: 'Development Protocol',
+        name: 'Development Protocol',
+        description: 'Includes examples of every stage type',
+        onOpen: onOpenDevProtocol,
+      });
+    }
+
+    items.push(
+      ...templates.map((template) => ({
+        kind: 'row' as const,
+        id: `template-${template.id}`,
+        textValue: template.name,
+        name: template.name,
+        description: template.description,
+        onOpen: () => onOpenTemplate(template),
+        onShowInfo: () => handleShowTemplateInfo(template),
+      })),
+    );
+
+    if (!galleryDismissed) {
+      items.push({
+        kind: 'gallery-card',
+        id: 'protocol-gallery-card',
+        textValue: 'Protocol gallery',
+        onDismiss: dismissGalleryCard,
+      });
+    }
+
+    return items;
+  }, [
+    dismissGalleryCard,
+    galleryDismissed,
+    handleShowTemplateInfo,
+    onOpenDevProtocol,
+    onOpenSample,
+    onOpenTemplate,
+    templates,
+  ]);
+
   const templateCount = (import.meta.env.DEV ? 2 : 1) + templates.length;
   const templateLabel = `${templateCount} ${templateCount === 1 ? 'template' : 'templates'}`;
   const protocolCount = protocols.length;
@@ -506,74 +689,46 @@ const LibraryPanel = ({
         className="bg-surface text-surface-contrast max-h-[85dvh] w-full max-w-3xl overflow-hidden rounded p-5 shadow-md"
       >
         <TabsPanel value="recent" className="flex min-h-0 flex-col">
-          <div className={PANEL_CLASSES}>
-            {protocols.length === 0 ? (
+          <Collection
+            id="recent-protocols"
+            items={recentItems}
+            keyExtractor={getLibraryItemKey}
+            textValueExtractor={getLibraryItemTextValue}
+            layout={recentLayout}
+            renderItem={renderLibraryItem}
+            selectionMode="none"
+            animate={false}
+            fade={false}
+            aria-label="Recent protocols"
+            className={PANEL_CLASSES}
+            viewportClassName={PANEL_VIEWPORT_CLASSES}
+            emptyState={
               <p className="text-muted px-5 py-10 text-center text-sm">
                 No recent protocols yet.
               </p>
-            ) : (
-              protocols.map((protocol) => (
-                <PanelRow
-                  key={protocol.id}
-                  name={protocol.name}
-                  meta={formatProtocolMeta(protocol)}
-                  downloading={downloadingIds.has(protocol.id)}
-                  onOpen={() => onOpenProtocol(protocol.id)}
-                  onDownload={() => handleDownload(protocol)}
-                  onDelete={() => handleDelete(protocol)}
-                  onShowInfo={() => handleShowInfo(protocol)}
-                />
-              ))
-            )}
-          </div>
+            }
+          >
+            {(CollectionElements) => CollectionElements}
+          </Collection>
         </TabsPanel>
 
         <TabsPanel value="templates" className="flex min-h-0 flex-col">
-          <div className={PANEL_CLASSES}>
-            <PanelRow
-              name="Sample Protocol"
-              description={
-                sampleProtocol.description ??
-                'An example introducing the key features and techniques available in Network Canvas.'
-              }
-              onOpen={onOpenSample}
-            />
-            {import.meta.env.DEV && (
-              <PanelRow
-                name="Development Protocol"
-                description="Includes examples of every stage type"
-                onOpen={onOpenDevProtocol}
-              />
-            )}
-            {templates.map((template) => (
-              <PanelRow
-                key={template.id}
-                name={template.name}
-                description={template.description}
-                onOpen={() => onOpenTemplate(template)}
-                onShowInfo={() => handleShowTemplateInfo(template)}
-              />
-            ))}
-            {!galleryDismissed && (
-              <div className="border-outline bg-surface-2 relative mt-2.5 flex flex-col gap-1 rounded-sm border p-5">
-                <IconButton
-                  variant="text"
-                  size="sm"
-                  aria-label="Dismiss"
-                  className="absolute top-1 right-1"
-                  onClick={dismissGalleryCard}
-                  icon={<X />}
-                />
-                <p className="m-0 pr-7 font-semibold">Looking for more?</p>
-                <p className="text-muted m-0 text-sm">
-                  More examples of Network Canvas protocols can be found on our{' '}
-                  <ExternalLink href="https://protocolgallery.networkcanvas.com/">
-                    protocol gallery
-                  </ExternalLink>
-                </p>
-              </div>
-            )}
-          </div>
+          <Collection
+            id="protocol-templates"
+            items={templateItems}
+            keyExtractor={getLibraryItemKey}
+            textValueExtractor={getLibraryItemTextValue}
+            layout={templateLayout}
+            renderItem={renderLibraryItem}
+            selectionMode="none"
+            animate={false}
+            fade={false}
+            aria-label="Protocol templates"
+            className={PANEL_CLASSES}
+            viewportClassName={PANEL_VIEWPORT_CLASSES}
+          >
+            {(CollectionElements) => CollectionElements}
+          </Collection>
         </TabsPanel>
       </Tabs>
 
