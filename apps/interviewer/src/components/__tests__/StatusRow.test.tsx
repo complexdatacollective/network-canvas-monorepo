@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const { mockEstimateStorage, mockIsPersisted } = vi.hoisted(() => ({
@@ -17,7 +18,19 @@ vi.mock('~/lib/storage', async () => {
 });
 
 vi.mock('wouter', () => ({
-  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+  Link: ({
+    children,
+    className,
+    href,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+    href: string;
+  }) => (
+    <a href={href} className={className}>
+      {children}
+    </a>
+  ),
 }));
 
 const useAuthMock = vi.fn(() => ({ kind: 'unlocked', mode: 'pin' }));
@@ -43,7 +56,7 @@ vi.mock('../AppUpdate/AppUpdatePill', () => ({
 
 import { STORAGE_PERSISTED_EVENT } from '~/lib/storage';
 
-import { StatusRow } from '../StatusRow';
+import { StatusRow, StatusRowView } from '../StatusRow';
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -62,6 +75,60 @@ describe('StatusRow', () => {
     render(<StatusRow protocolCount={3} interviewCount={7} />);
     expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText('7')).toBeInTheDocument();
+  });
+
+  it('hides count and status text below tablet landscape', async () => {
+    mockEstimateStorage.mockResolvedValue({
+      usage: 0,
+      quota: 0,
+      percent: 0,
+    });
+    mockIsPersisted.mockResolvedValue(true);
+    render(<StatusRow protocolCount={3} interviewCount={7} />);
+
+    expect(screen.getByRole('link')).toHaveClass(
+      'hidden',
+      'tablet-landscape:inline-flex',
+    );
+    expect(screen.getByText('Encrypted')).toHaveClass(
+      'sr-only',
+      'tablet-landscape:not-sr-only',
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/storage persistent/i)).toHaveClass(
+        'sr-only',
+        'tablet-landscape:not-sr-only',
+      ),
+    );
+  });
+
+  it('includes compact status labels in tooltip text', async () => {
+    const user = userEvent.setup();
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={{ persisted: true, usage: null }}
+        installed={false}
+      />,
+    );
+
+    const encryptedTrigger = screen.getByText('Encrypted').parentElement;
+    const storageTrigger = screen.getByText('Storage persistent').parentElement;
+    if (!encryptedTrigger || !storageTrigger) {
+      throw new Error('Expected tooltip triggers to render');
+    }
+
+    await user.hover(encryptedTrigger);
+    await waitFor(() =>
+      expect(screen.getByText(/^Encrypted\./)).toBeInTheDocument(),
+    );
+
+    await user.hover(storageTrigger);
+    await waitFor(() =>
+      expect(screen.getByText(/^Storage persistent\./)).toBeInTheDocument(),
+    );
   });
 
   it('surfaces persisted-storage durability once resolved', async () => {
