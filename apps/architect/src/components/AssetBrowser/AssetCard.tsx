@@ -159,26 +159,36 @@ const AssetPreview = ({
 
   if (type === 'image' && previewUrl) {
     return (
-      <img
-        src={previewUrl}
-        alt={name}
-        className="size-full object-cover"
-        draggable={false}
-      />
+      <div
+        data-theme-interview
+        className="bg-background flex size-full items-center justify-center"
+      >
+        <img
+          src={previewUrl}
+          alt={name}
+          className="max-h-full max-w-full object-contain"
+          draggable={false}
+        />
+      </div>
     );
   }
 
   if (type === 'video' && previewUrl) {
     return (
-      <video
-        src={previewUrl}
-        aria-label={`${name} video preview`}
-        className="size-full object-cover"
-        muted
-        playsInline
-        disablePictureInPicture
-        preload="auto"
-      />
+      <div
+        data-theme-interview
+        className="bg-background flex size-full items-center justify-center"
+      >
+        <video
+          src={previewUrl}
+          aria-label={`${name} video preview`}
+          className="size-full object-contain"
+          muted
+          playsInline
+          disablePictureInPicture
+          preload="auto"
+        />
+      </div>
     );
   }
 
