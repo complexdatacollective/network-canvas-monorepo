@@ -74,7 +74,7 @@ export function Tabs({
       style={style}
       className={cx(
         '@container flex min-h-0',
-        layout === 'side' ? 'flex-row gap-6' : 'flex-col gap-0',
+        layout === 'side' ? 'flex-row gap-6' : 'flex-col gap-2',
         className,
       )}
     >
