@@ -183,6 +183,9 @@ catalogs:
     react-dom:
       specifier: ^19.2.7
       version: 19.2.7
+    react-dropzone:
+      specifier: ^15.0.0
+      version: 15.0.0
     react-redux:
       specifier: ^9.3.0
       version: 9.3.0
@@ -372,7 +375,7 @@ importers:
         specifier: 'catalog:'
         version: 19.2.7(react@19.2.7)
       react-dropzone:
-        specifier: ^15.0.0
+        specifier: 'catalog:'
         version: 15.0.0(react@19.2.7)
       react-markdown:
         specifier: ^10.1.0
@@ -950,6 +953,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.7(react@19.2.7)
+      react-dropzone:
+        specifier: 'catalog:'
+        version: 15.0.0(react@19.2.7)
       uuid:
         specifier: 'catalog:'
         version: 14.0.1

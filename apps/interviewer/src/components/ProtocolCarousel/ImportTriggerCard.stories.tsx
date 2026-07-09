@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
+import { useDropzone } from 'react-dropzone';
 import {
   expect,
   fireEvent,
@@ -10,6 +11,8 @@ import {
 } from 'storybook/test';
 
 import { ImportTriggerCard } from './ImportTriggerCard';
+
+const NETCANVAS_ACCEPT = { 'application/x-netcanvas': ['.netcanvas'] };
 
 // The always-last card in the deck: a dashed, translucent card that is
 // itself the import surface — click it to open the file picker, or drop a
@@ -41,6 +44,31 @@ type StoryArgs = {
   onImportFile: (file: File) => void;
 };
 
+function ImportTriggerCardStory({
+  onActivate,
+  onImportFile,
+}: Pick<StoryArgs, 'onActivate' | 'onImportFile'>) {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (files) => {
+      const file = files[0];
+      if (file) onImportFile(file);
+    },
+    accept: NETCANVAS_ACCEPT,
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+  });
+
+  return (
+    <ImportTriggerCard
+      onActivate={onActivate}
+      getRootProps={getRootProps}
+      getInputProps={getInputProps}
+      isDragActive={isDragActive}
+    />
+  );
+}
+
 const meta: Meta<StoryArgs> = {
   title: 'Components/ImportTriggerCard',
   parameters: { layout: 'centered' },
@@ -52,7 +80,10 @@ const meta: Meta<StoryArgs> = {
   },
   render: ({ size, onActivate, onImportFile }) => (
     <ResizableFrame size={size}>
-      <ImportTriggerCard onActivate={onActivate} onImportFile={onImportFile} />
+      <ImportTriggerCardStory
+        onActivate={onActivate}
+        onImportFile={onImportFile}
+      />
     </ResizableFrame>
   ),
 };
@@ -77,7 +108,9 @@ export const DropAndClickToImport: Story = {
     // Base state: the dashed outline border, not highlighted.
     await expect(card).toHaveClass('border-outline');
 
-    const file = new File(['netcanvas'], 'study.netcanvas');
+    const file = new File(['netcanvas'], 'study.netcanvas', {
+      type: 'application/x-netcanvas',
+    });
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(file);
     // A real DragEvent carries the DataTransfer on its read-only `dataTransfer`
@@ -86,12 +119,12 @@ export const DropAndClickToImport: Story = {
       new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer });
 
     // Dragging a file over the card highlights it.
-    await fireEvent(card, dragEvent('dragover'));
+    await fireEvent(card, dragEvent('dragenter'));
     await waitFor(() => expect(card).toHaveClass('border-sea-green'));
 
     // Dropping reports the file and clears the highlight.
     await fireEvent(card, dragEvent('drop'));
-    await expect(args.onImportFile).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(args.onImportFile).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(card).toHaveClass('border-outline'));
 
     // A plain click opens the file picker.

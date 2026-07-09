@@ -1,6 +1,5 @@
 import { Upload } from 'lucide-react';
-import type { DragEvent } from 'react';
-import { useState } from 'react';
+import type { DropzoneState } from 'react-dropzone';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -12,8 +11,9 @@ type ImportTriggerCardProps = {
   // Carousel activation (click / Enter on the active card): opens the file
   // picker. On a non-active card the carousel intercepts this to navigate.
   onActivate: () => void;
-  // A file dropped onto the card.
-  onImportFile: (file: File) => void;
+  getRootProps: DropzoneState['getRootProps'];
+  getInputProps: DropzoneState['getInputProps'];
+  isDragActive: boolean;
 };
 
 // The always-last card in the deck. The card itself is the import surface —
@@ -23,42 +23,28 @@ type ImportTriggerCardProps = {
 // transform, so the (separately transformed) wrapper reads the blob backdrop.
 export function ImportTriggerCard({
   onActivate,
-  onImportFile,
+  getRootProps,
+  getInputProps,
+  isDragActive,
 }: ImportTriggerCardProps) {
-  const [dragOver, setDragOver] = useState(false);
-
-  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setDragOver(false);
-    const file = event.dataTransfer.files?.[0];
-    if (file) onImportFile(file);
-  };
-
+  const rootProps = getRootProps({
+    // Match the protocol card's radius so the visual footprint (and
+    // therefore perceived size) is identical.
+    style: { borderRadius: CARD_RADIUS_PX },
+    className: cx(
+      'text-text/80 effect-shadow-xl @container relative h-full w-full border-[3px] border-dashed transition-colors duration-180',
+      isDragActive
+        ? 'border-sea-green bg-[color-mix(in_oklab,oklch(var(--sea-green))_20%,var(--surface))]'
+        : 'border-outline bg-surface/50',
+    ),
+  });
   return (
-    <div
-      onDragOver={(event) => {
-        event.preventDefault();
-        setDragOver(true);
-      }}
-      // dragenter/dragleave also fire when crossing descendant boundaries, so
-      // only clear the highlight once the pointer actually leaves the card.
-      onDragLeave={(event) => {
-        const next = event.relatedTarget;
-        if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
-          setDragOver(false);
-        }
-      }}
-      onDrop={handleDrop}
-      // Match the protocol card's radius so the visual footprint (and
-      // therefore perceived size) is identical.
-      style={{ borderRadius: CARD_RADIUS_PX }}
-      className={cx(
-        'text-text/80 effect-shadow-xl @container relative h-full w-full border-[3px] border-dashed transition-colors duration-180',
-        dragOver
-          ? 'border-sea-green bg-[color-mix(in_oklab,oklch(var(--sea-green))_20%,var(--surface))]'
-          : 'border-outline bg-surface/50',
-      )}
-    >
+    <div {...rootProps}>
+      <input
+        {...getInputProps({
+          'aria-label': 'Choose a .netcanvas protocol file',
+        })}
+      />
       {/* The button fills the whole card so a click anywhere on it — not just
           the centred content — opens the picker. The note below overlays the
           bottom with pointer-events disabled so its (non-link) area falls

@@ -14,7 +14,6 @@ import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
-import { pickProtocolFile } from '~/lib/files/pickFile';
 import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
@@ -88,11 +87,6 @@ export function HomeRoute() {
     },
     [startImport],
   );
-
-  const handleChooseFile = useCallback(async () => {
-    const picked = await pickProtocolFile();
-    if (picked) handleImportFile(picked.file);
-  }, [handleImportFile]);
 
   const handleInstallSample = useCallback(() => {
     void startImport({ source: 'sample' });
@@ -245,7 +239,6 @@ export function HomeRoute() {
                 !pendingImports.some((p) => p.source === 'development')
               }
               pendingImports={pendingImports}
-              onImport={() => void handleChooseFile()}
               onImportFile={handleImportFile}
               onStartInterview={setPendingProtocolHash}
               onDeleteProtocol={handleDeleteProtocol}

@@ -42,7 +42,7 @@
     "posthog-js": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-dropzone": "^15.0.0",
+    "react-dropzone": "catalog:",
     "react-markdown": "^10.1.0",
     "react-recompose": "^0.33.0",
     "react-redux": "catalog:",
