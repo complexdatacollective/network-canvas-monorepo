@@ -1,11 +1,11 @@
 import {
   AudioLines,
-  Database,
   Download,
   Eye,
   FileImage,
   FileJson,
   KeyRound,
+  Share2,
   Trash2,
   Video,
 } from 'lucide-react';
@@ -18,7 +18,7 @@ import {
   useState,
 } from 'react';
 
-import { Badge } from '@codaco/fresco-ui/Badge';
+import { Badge, type BadgeColor } from '@codaco/fresco-ui/Badge';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -51,11 +51,20 @@ const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   geojson: 'GeoJSON',
 };
 
+const ASSET_TYPE_BADGE_COLORS = {
+  image: 'sea-green',
+  video: 'slate-blue',
+  audio: 'neon-coral',
+  network: 'cerulean-blue',
+  apikey: 'mustard',
+  geojson: 'sea-serpent',
+} satisfies Record<AssetType, BadgeColor>;
+
 const ASSET_TYPE_ICONS = {
   image: FileImage,
   video: Video,
   audio: AudioLines,
-  network: Database,
+  network: Share2,
   apikey: KeyRound,
   geojson: FileJson,
 } satisfies Record<AssetType, ComponentType<{ className?: string }>>;
@@ -166,6 +175,7 @@ const AssetCard = ({
   onPreview = null,
 }: AssetCardProps) => {
   const typeLabel = ASSET_TYPE_LABELS[type];
+  const typeColor = ASSET_TYPE_BADGE_COLORS[type];
   const handleDelete = useCallback(
     (event: MouseEvent) => {
       event.stopPropagation();
@@ -257,12 +267,12 @@ const AssetCard = ({
       {...itemProps}
       data-current={isCurrent || undefined}
       className={cx(
-        'focusable group bg-surface-1 text-surface-1-contrast flex h-full min-h-72 flex-col overflow-hidden rounded border-2 border-transparent',
+        'focusable group bg-surface-1 text-surface-1-contrast flex h-80 flex-col overflow-hidden rounded border-2 border-transparent',
         'effect-shadow-sm transition-[border-color,background-color,box-shadow,translate] duration-200',
         'data-current:border-primary data-focused:border-primary data-selected:border-primary data-selected:bg-selected',
       )}
     >
-      <div className="bg-surface relative aspect-video overflow-hidden rounded-t">
+      <div className="bg-surface relative h-40 shrink-0 overflow-hidden rounded-t">
         <AssetPreview id={id} name={name} type={type} />
         {!isUsed && (
           <Badge
@@ -275,29 +285,30 @@ const AssetCard = ({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
-        <div className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0">
-            <Heading level="h4" margin="none" className="truncate text-lg">
-              {name}
-            </Heading>
-            <Paragraph
-              margin="none"
-              className="text-muted mt-1 truncate text-sm"
-              title={source}
-            >
-              {source ?? typeLabel}
-            </Paragraph>
-          </div>
-          <Badge variant="outline" className="shrink-0">
-            {typeLabel}
-          </Badge>
+        <div className="min-w-0">
+          <Heading level="h4" margin="none" className="truncate text-lg">
+            {name}
+          </Heading>
+          <Paragraph
+            margin="none"
+            className="text-muted mt-1 truncate text-sm"
+            title={source}
+          >
+            {source ?? typeLabel}
+          </Paragraph>
         </div>
 
-        {actions.some(Boolean) && (
-          <div className="mt-auto flex justify-end gap-1 opacity-70 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-            {actions}
-          </div>
-        )}
+        <div className="mt-auto flex items-center justify-between gap-3">
+          <Badge color={typeColor} className="shrink-0">
+            {typeLabel}
+          </Badge>
+
+          {actions.some(Boolean) && (
+            <div className="flex justify-end gap-1 opacity-70 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+              {actions}
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );

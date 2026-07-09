@@ -121,7 +121,8 @@ const Assets = ({
           options={ASSET_TYPES}
           value={selectedAssetType}
           onValueChange={handleAssetTypeChange}
-          size="sm"
+          size="md"
+          className="w-fit max-w-full"
         />
       )}
       <Collection

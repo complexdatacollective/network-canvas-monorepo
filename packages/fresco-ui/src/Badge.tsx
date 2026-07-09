@@ -5,6 +5,12 @@ import { cva, cx, type VariantProps } from './utils/cva';
 const BADGE_BASE_CLASSES =
   'inline-flex shrink items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors';
 
+type ThemeColorStyle = {
+  color: string;
+  contrast: string;
+  label?: string;
+};
+
 const badgeVariants = cva({
   base: BADGE_BASE_CLASSES,
   variants: {
@@ -179,7 +185,7 @@ const themeColorStyles = {
     color: 'var(--color-tomato-dark)',
     contrast: 'var(--color-white)',
   },
-};
+} satisfies Record<string, ThemeColorStyle>;
 
 type BadgeColor = keyof typeof themeColorStyles;
 
@@ -209,7 +215,9 @@ const themedBadgeVariants = cva({
 
 function Badge({ className, color, variant, style, ...props }: BadgeProps) {
   const colorVariant = variant === 'outline' ? 'outline' : 'filled';
-  const colorStyle = color ? themeColorStyles[color] : null;
+  const colorStyle: ThemeColorStyle | null = color
+    ? themeColorStyles[color]
+    : null;
   const badgeStyle: BadgeStyle | undefined = colorStyle
     ? {
         ...style,
