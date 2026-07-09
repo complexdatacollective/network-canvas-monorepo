@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Creating a Network Canvas Interface'
+  short_description: 'Add a complete Network Canvas stage type'
+  default_prompt: 'Use $creating-a-network-canvas-interface to plan and implement a new Network Canvas interview stage type.'
