@@ -1,11 +1,16 @@
+import type { ComponentType } from 'react';
+
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
-import TextField from '~/components/Form/Fields/Text';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
-import { ValidatedField } from '../Form';
+import { FrescoReduxField, ValidatedField } from '../Form';
 import IssueAnchor from '../IssueAnchor';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
 const IntroductionPanel = (_props: StageEditorSectionProps) => {
   const summaryText =
     'This panel is shown prior to completion of the forms, and should serve as an introduction to the task.';
@@ -21,8 +26,9 @@ const IntroductionPanel = (_props: StageEditorSectionProps) => {
         />
         <ValidatedField
           name="introductionPanel.title"
-          component={TextField}
-          componentProps={{ label: 'Title', maxLength: '50' }}
+          label="Title"
+          component={FrescoReduxField}
+          componentProps={{ fieldComponent: FrescoInputField, maxLength: 50 }}
           validation={{ required: true }}
         />
       </Row>

@@ -1,5 +1,8 @@
+import type { ComponentType } from 'react';
+
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { Row } from '~/components/EditorLayout';
-import RadioGroup from '~/components/Form/Fields/RadioGroup';
+import { FrescoReduxField } from '~/components/Form';
 import ValidatedField from '~/components/Form/ValidatedField';
 import {
   Query,
@@ -11,15 +14,19 @@ import {
 import { getFieldId } from '../../../utils/issues';
 import IssueAnchor from '../../IssueAnchor';
 
+const FrescoRadioGroupField = RadioGroupField as ComponentType<
+  Record<string, unknown>
+>;
+
 const ConnectedQuery = (
   withFieldConnector as unknown as (
-    c: React.ComponentType,
-  ) => React.ComponentType<Record<string, unknown>>
+    c: ComponentType,
+  ) => ComponentType<Record<string, unknown>>
 )(
   withStoreConnector(
-    Query as unknown as React.ComponentType,
-  ) as unknown as React.ComponentType,
-) as React.ComponentType<Record<string, unknown>>;
+    Query as unknown as ComponentType,
+  ) as unknown as ComponentType,
+) as ComponentType<Record<string, unknown>>;
 
 const SkipLogicFields = () => (
   <>
@@ -30,9 +37,11 @@ const SkipLogicFields = () => (
       />
       <ValidatedField
         name="skipLogic.action"
-        component={RadioGroup as React.ComponentType<Record<string, unknown>>}
+        component={FrescoReduxField}
         validation={{ required: true }}
         componentProps={{
+          fieldComponent: FrescoRadioGroupField,
+          label: 'Skip logic action',
           options: [
             { value: 'SHOW', label: 'Show this stage if' },
             { value: 'SKIP', label: 'Skip this stage if' },

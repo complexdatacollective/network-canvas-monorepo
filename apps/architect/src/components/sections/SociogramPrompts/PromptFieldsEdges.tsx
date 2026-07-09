@@ -1,18 +1,24 @@
 import { union } from 'es-toolkit/compat';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 import type { FormAction } from 'redux-form';
 import { change, Field, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import { CheckboxGroup } from '~/components/Form/Fields';
+import { FrescoReduxField } from '~/components/Form';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 
 import { getEdgeFilters, getEdgesForSubject } from './selectors';
 import getEdgeFilteringWarning from './utils';
+
+const FrescoCheckboxGroupField = CheckboxGroupField as ComponentType<
+  Record<string, unknown>
+>;
+
 type Option = {
   value: string;
   label: string;
@@ -124,7 +130,8 @@ const DisplayEdges = ({ form }: DisplayEdgesProps) => {
         )}
         <Field
           name="edges.display"
-          component={CheckboxGroup}
+          component={FrescoReduxField}
+          fieldComponent={FrescoCheckboxGroupField}
           options={displayEdgesOptions}
           label="Display edges of the following type(s)"
         />

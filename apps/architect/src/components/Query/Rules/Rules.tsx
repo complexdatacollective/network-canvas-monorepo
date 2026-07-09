@@ -1,19 +1,23 @@
 import { get } from 'es-toolkit/compat';
-import { useCallback } from 'react';
+import { useCallback, type ComponentType } from 'react';
 import { compose } from 'react-recompose';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import DetachedField from '~/components/DetachedField';
+import { FrescoReduxField } from '~/components/Form';
 import FieldError from '~/components/Form/FieldError';
-import RadioGroup from '~/components/Form/Fields/RadioGroup';
 
 import EditRule from './EditRule';
 import PreviewRules from './PreviewRules';
 import validateRule, { type Rule } from './validateRule';
 import withDraftRule from './withDraftRule';
+const FrescoRadioGroupField = RadioGroupField as ComponentType<
+  Record<string, unknown>
+>;
 type RulesProps = {
   type?: 'filter' | 'query';
   rules?: Rule[];
@@ -177,9 +181,9 @@ const Rules = ({
         <div className="mt-10">
           <Heading level="h4">Must match</Heading>
           <DetachedField
-            component={
-              RadioGroup as React.ComponentType<Record<string, unknown>>
-            }
+            component={FrescoReduxField}
+            fieldComponent={FrescoRadioGroupField}
+            label="Rule matching"
             options={[
               { label: 'All rules', value: 'AND' },
               { label: 'Any rule', value: 'OR' },

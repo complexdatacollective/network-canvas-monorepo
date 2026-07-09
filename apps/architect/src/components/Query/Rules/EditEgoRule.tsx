@@ -1,8 +1,10 @@
 import { isArray, isNil } from 'es-toolkit/compat';
+import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import DetachedField from '~/components/DetachedField';
-import NativeSelect from '~/components/Form/Fields/NativeSelect';
+import { FrescoReduxField } from '~/components/Form';
 
 import Section from '../../EditorLayout/Section';
 import EditValue from './EditValue';
@@ -20,6 +22,10 @@ const defaultOptions = {
   operator: '',
   value: '',
 };
+
+const FrescoNativeSelectField = NativeSelectField as ComponentType<
+  Record<string, unknown>
+>;
 
 type OptionItem = {
   value: string | number;
@@ -77,9 +83,9 @@ const EditEgoRule = ({
     <>
       <Section title="Ego Variable" layout="vertical">
         <DetachedField
-          component={
-            NativeSelect as React.ComponentType<Record<string, unknown>>
-          }
+          component={FrescoReduxField}
+          fieldComponent={FrescoNativeSelectField}
+          label="Ego variable"
           name="attribute"
           options={variablesAsOptions}
           onChange={handleRuleChange}
@@ -90,9 +96,9 @@ const EditEgoRule = ({
       {optionsWithDefaults.attribute && (
         <Section title="Operator" layout="vertical">
           <DetachedField
-            component={
-              NativeSelect as React.ComponentType<Record<string, unknown>>
-            }
+            component={FrescoReduxField}
+            fieldComponent={FrescoNativeSelectField}
+            label="Operator"
             name="operator"
             options={operatorOptions}
             onChange={handleRuleChange}

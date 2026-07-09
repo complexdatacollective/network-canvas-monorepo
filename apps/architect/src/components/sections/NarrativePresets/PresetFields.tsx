@@ -1,11 +1,13 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
+import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
+import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import CheckboxGroup from '~/components/Form/Fields/CheckboxGroup';
-import Text from '~/components/Form/Fields/Text';
+import { FrescoReduxField } from '~/components/Form';
 import ValidatedField from '~/components/Form/ValidatedField';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
@@ -18,6 +20,12 @@ type SelectOption = {
   label: string;
   value: string;
 };
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+const FrescoCheckboxGroupField = CheckboxGroupField as ComponentType<
+  Record<string, unknown>
+>;
+
 type PresetFieldsProps = {
   form: string;
   edgesForSubject?: SelectOption[];
@@ -93,10 +101,11 @@ const PresetFields = ({
         <Row>
           <ValidatedField
             name="label"
-            component={Text}
+            label="Preset label"
+            component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{
-              label: 'Preset label',
+              fieldComponent: FrescoInputField,
               placeholder: 'Enter a label for the preset...',
             }}
           />
@@ -176,9 +185,9 @@ const PresetFields = ({
         <Row>
           <Field
             name="edges.display"
-            component={CheckboxGroup}
+            component={FrescoReduxField}
+            fieldComponent={FrescoCheckboxGroupField}
             label="Edge types"
-            placeholder="&mdash; Toggle an edge to display &mdash;"
             options={edgesForSubject}
           />
         </Row>
@@ -203,9 +212,9 @@ const PresetFields = ({
         <Row>
           <Field
             name="highlight"
-            component={CheckboxGroup}
+            component={FrescoReduxField}
+            fieldComponent={FrescoCheckboxGroupField}
             label="Select one or more boolean variables"
-            placeholder="&mdash; Toggle a variable to highlight &mdash;"
             options={highlightVariablesForSubject}
           />
         </Row>

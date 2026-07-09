@@ -1,13 +1,18 @@
 import { Trash2 } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ComponentType } from 'react';
 import { compose } from 'react-recompose';
 
-import { BooleanField } from '~/components/Form/Fields';
+import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
+import { FrescoReduxField } from '~/components/Form';
 import ValidatedField from '~/components/Form/ValidatedField';
 
 import withCreateVariableHandler from '../enhancers/withCreateVariableHandler';
 import VariablePicker from '../Form/Fields/VariablePicker/VariablePicker';
 import withAttributeHandlers from './withAttributeHandlers';
+
+const FrescoBooleanControl = FrescoBooleanField as ComponentType<
+  Record<string, unknown>
+>;
 
 type VariableOption = {
   disabled?: boolean;
@@ -59,9 +64,11 @@ const Attribute = ({
             <legend>Set value of variable to:</legend>
             <ValidatedField
               name={`${field}.value`}
-              component={BooleanField}
+              component={FrescoReduxField}
               validation={{ required: true }}
               componentProps={{
+                fieldComponent: FrescoBooleanControl,
+                label: 'Value',
                 options: [
                   { label: 'True', value: true },
                   { label: 'False', value: false },

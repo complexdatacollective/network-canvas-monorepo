@@ -1,11 +1,17 @@
+import type { ComponentType } from 'react';
+
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Text } from '~/components/Form/Fields';
+import { FrescoReduxField } from '~/components/Form';
 import DataSource from '~/components/Form/Fields/DataSource';
 import ValidatedField from '~/components/Form/ValidatedField';
 import NetworkFilter from '~/components/sections/fields/NetworkFilter';
 import { getFieldId } from '~/utils/issues';
 
 import Section from '../../EditorLayout/Section';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
 type NodePanelProps = {
   fieldId: string;
   form: string;
@@ -26,9 +32,11 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
     >
       <ValidatedField
         name={`${fieldId}.title`}
-        component={Text}
+        label="Panel title"
+        component={FrescoReduxField}
         validation={{ required: true }}
         componentProps={{
+          fieldComponent: FrescoInputField,
           placeholder: 'Panel title',
         }}
       />

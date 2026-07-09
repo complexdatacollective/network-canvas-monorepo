@@ -1,16 +1,22 @@
 import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ComponentType } from 'react';
 import { useEffect, useState } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 import { change, formValues } from 'redux-form';
 
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { FrescoReduxField } from '~/components/Form';
 import { DatePicker } from '~/components/Form/Fields';
 import { DATE_FORMATS, DATE_TYPES } from '~/components/Form/Fields/DatePicker';
-import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import ValidatedField from '~/components/Form/ValidatedField';
+
+const FrescoNativeSelectField = NativeSelectField as ComponentType<
+  Record<string, unknown>
+>;
+
 const dateTypes = DATE_TYPES.map((type) => ({
   ...type,
   label: `${type.label} (${DATE_FORMATS[type.value].toUpperCase()})`,
@@ -46,11 +52,12 @@ const DateTimeParameters = ({
         choose to collect only a year and a month, or only a year.
       </Paragraph>
       <ValidatedField
-        component={NativeSelect}
+        component={FrescoReduxField}
         name={`${name}.type`}
         validation={{ required: true }}
+        label="Date resolution"
         componentProps={{
-          label: '',
+          fieldComponent: FrescoNativeSelectField,
           options: dateTypes,
         }}
         onChange={

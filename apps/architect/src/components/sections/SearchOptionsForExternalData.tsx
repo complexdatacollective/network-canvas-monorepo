@@ -1,19 +1,27 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
+import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import withDisabledAssetRequired from '~/components/enhancers/withDisabledAssetRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
-import { CheckboxGroup, LikertScale } from '~/components/Form/Fields';
+import { FrescoReduxField } from '~/components/Form';
+import { LikertScale } from '~/components/Form/Fields';
 import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
+
+const FrescoCheckboxGroupField = CheckboxGroupField as ComponentType<
+  Record<string, unknown>
+>;
+
 type SearchOptionsProps = StageEditorSectionProps & {
   dataSource: string;
   disabled: boolean;
@@ -68,11 +76,10 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
         </Alert>
         <ValidatedField
           name="searchOptions.matchProperties"
-          component={
-            CheckboxGroup as React.ComponentType<Record<string, unknown>>
-          }
+          component={FrescoReduxField}
           validation={{ minSelected: 1 }}
           componentProps={{
+            fieldComponent: FrescoCheckboxGroupField,
             label: 'Which attributes should be searchable?',
             options: variableOptions,
           }}

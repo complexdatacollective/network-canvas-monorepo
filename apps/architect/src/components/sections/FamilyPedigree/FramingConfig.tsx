@@ -1,6 +1,8 @@
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   FRAMING_AUTHOR_LABELS,
@@ -8,8 +10,6 @@ import {
   type FramingId,
 } from '@codaco/shared-consts';
 import { Section } from '~/components/EditorLayout';
-import NativeSelect from '~/components/Form/Fields/NativeSelect';
-import RadioGroup from '~/components/Form/Fields/RadioGroup';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
@@ -85,26 +85,21 @@ const FramingConfig = ({ form }: StageEditorSectionProps) => {
       <Paragraph className="mb-5">
         Both framings use the same wording for gestational carriers and donors.
       </Paragraph>
-      <RadioGroup
+      <RadioGroupField
         options={FRAMING_MODE_OPTIONS}
-        input={{
-          value: mode,
-          name: 'framing.mode',
-          onChange: handleModeChange,
-        }}
+        name="framing.mode"
+        value={mode}
+        onChange={handleModeChange}
       />
 
       {mode === 'fixed' && (
         <div className="mt-5">
-          <NativeSelect
+          <NativeSelectField
             aria-label="Select framing"
-            sortOptionsByLabel={false}
             options={FRAMING_VALUE_OPTIONS}
-            input={{
-              name: 'framing.value',
-              value: fixedValue,
-              onChange: handleValueChange,
-            }}
+            name="framing.value"
+            value={fixedValue}
+            onChange={handleValueChange}
           />
         </div>
       )}

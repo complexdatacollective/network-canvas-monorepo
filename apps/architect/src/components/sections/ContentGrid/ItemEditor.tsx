@@ -1,8 +1,9 @@
 import { get } from 'es-toolkit/compat';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ComponentType } from 'react';
 
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { Row, Section } from '~/components/EditorLayout';
-import RadioGroup from '~/components/Form/Fields/RadioGroup';
+import { FrescoReduxField } from '~/components/Form';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
 import IssueAnchor from '~/components/IssueAnchor';
 
@@ -12,6 +13,10 @@ import Video from '../../Form/Fields/Video';
 import ValidatedField from '../../Form/ValidatedField';
 import { sizeOptions, typeOptions } from './options';
 import withItemHandlers from './withItemHandlers';
+
+const FrescoRadioGroupField = RadioGroupField as ComponentType<
+  Record<string, unknown>
+>;
 
 const contentInputs = {
   text: RichText,
@@ -41,9 +46,11 @@ const ItemEditor = ({ type, allowSize, handleChangeType }: ItemEditorProps) => (
         <IssueAnchor fieldName="type" description="Content Type" />
         <ValidatedField
           name="type"
-          component={RadioGroup}
+          component={FrescoReduxField}
           validation={{ required: true }}
           componentProps={{
+            fieldComponent: FrescoRadioGroupField,
+            label: 'Content type',
             options: typeOptions,
           }}
           onChange={
@@ -76,10 +83,12 @@ const ItemEditor = ({ type, allowSize, handleChangeType }: ItemEditorProps) => (
         <Row>
           <ValidatedField
             name="size"
-            component={RadioGroup}
+            component={FrescoReduxField}
             validation={{}}
             format={(value: unknown) => value ?? ''}
             componentProps={{
+              fieldComponent: FrescoRadioGroupField,
+              label: 'Display size',
               options: sizeOptions,
               orientation: 'horizontal',
             }}
@@ -91,5 +100,5 @@ const ItemEditor = ({ type, allowSize, handleChangeType }: ItemEditorProps) => (
 );
 
 export default withItemHandlers(
-  ItemEditor as unknown as React.ComponentType<unknown>,
-) as unknown as React.ComponentType<{ form: string }>;
+  ItemEditor as unknown as ComponentType<unknown>,
+) as unknown as ComponentType<{ form: string }>;

@@ -1,11 +1,18 @@
+import type { ComponentType } from 'react';
 import { FormSection } from 'redux-form';
 
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import NativeSelect from '~/components/Form/Fields/NativeSelect';
+import { FrescoReduxField } from '~/components/Form';
 import ValidatedField from '~/components/Form/ValidatedField';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+
+const FrescoNativeSelectField = NativeSelectField as ComponentType<
+  Record<string, unknown>
+>;
+
 const BOUNDARY_REQUIREMENT_OPTIONS = [
   { value: 'required', label: 'Required' },
   { value: 'recommended', label: 'Recommended' },
@@ -48,10 +55,11 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => (
         />
         <ValidatedField
           name="requireGrandparents"
-          component={NativeSelect}
+          component={FrescoReduxField}
           validation={{ required: true }}
+          label="Require Grandparents"
           componentProps={{
-            label: 'Require Grandparents',
+            fieldComponent: FrescoNativeSelectField,
             options: BOUNDARY_REQUIREMENT_OPTIONS,
             placeholder: 'Select an option',
           }}
@@ -69,10 +77,11 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => (
         />
         <ValidatedField
           name="requireChildrenContributors"
-          component={NativeSelect}
+          component={FrescoReduxField}
           validation={{ required: true }}
+          label="Require Co-Parents' Families"
           componentProps={{
-            label: "Require Co-Parents' Families",
+            fieldComponent: FrescoNativeSelectField,
             options: BOUNDARY_REQUIREMENT_OPTIONS,
             placeholder: 'Select an option',
           }}

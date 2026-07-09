@@ -1,8 +1,10 @@
+import type { ComponentType } from 'react';
 import { PureComponent } from 'react';
 import { compose } from 'react-recompose';
 import { Field } from 'redux-form';
 
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 /**
  * The Narrative stage schema forbids a background image (its background is a
  * strict object of only concentricCircles/skewedTowardCenter). The shared
@@ -12,13 +14,17 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
-import { Number as NumberField, Toggle } from '~/components/Form/Fields';
+import { FrescoReduxField, reduxNumberValue } from '~/components/Form';
+import { Toggle } from '~/components/Form/Fields';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
 import Image from '../../Form/Fields/Image';
 import ValidatedField from '../../Form/ValidatedField';
 import withBackgroundChangeHandler from './withBackgroundChangeHandler';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
 export const allowsBackgroundImage = (interfaceType: StageType): boolean =>
   interfaceType !== 'Narrative';
 type BackgroundProps = StageEditorSectionProps & {
@@ -73,12 +79,14 @@ class Background extends PureComponent<BackgroundProps> {
               />
               <ValidatedField
                 name="background.concentricCircles"
-                component={NumberField}
+                component={FrescoReduxField}
                 normalize={(value) => Number.parseInt(value, 10) || value}
                 validation={{ required: true, positiveNumber: true }}
+                label="Number of concentric circles to use:"
                 componentProps={{
-                  label: 'Number of concentric circles to use:',
+                  fieldComponent: FrescoInputField,
                   type: 'number',
+                  ...reduxNumberValue,
                 }}
               />
             </Row>

@@ -1,10 +1,16 @@
+import type { ComponentType } from 'react';
+
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import { RichText, Text } from '~/components/Form/Fields';
+import { RichText } from '~/components/Form/Fields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
-import { ValidatedField } from '../../Form';
+import { FrescoReduxField, ValidatedField } from '../../Form';
 import IssueAnchor from '../../IssueAnchor';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
 const AnonymisationExplanation = (_props: StageEditorSectionProps) => (
   <Section
     title="Task Explanation"
@@ -23,10 +29,11 @@ const AnonymisationExplanation = (_props: StageEditorSectionProps) => (
       <ValidatedField
         label="Title"
         name="explanationText.title"
-        component={Text}
+        component={FrescoReduxField}
         placeholder="This interview uses enhanced privacy protection"
         validation={{ required: true }}
         maxLength={50}
+        componentProps={{ fieldComponent: FrescoInputField }}
       />
     </Row>
     <Row>

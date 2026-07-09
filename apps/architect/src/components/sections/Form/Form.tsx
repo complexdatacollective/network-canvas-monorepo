@@ -1,12 +1,14 @@
+import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import EditableList from '~/components/EditableList';
 import { Section } from '~/components/EditorLayout';
 import withDisabledFormTitle from '~/components/enhancers/withDisabledFormTitle';
 import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
 import withSubject from '~/components/enhancers/withSubject';
-import TextField from '~/components/Form/Fields/Text';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
@@ -14,6 +16,9 @@ import FieldFields from './FieldFields';
 import FieldPreview from './FieldPreview';
 import { itemSelector, normalizeField } from './helpers';
 import withFormHandlers from './withFormHandlers';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
 type FormProps = StageEditorSectionProps & {
   handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
   disabled?: boolean;
@@ -47,10 +52,11 @@ const Form = ({
     {!disableFormTitle && (
       <ValidatedField
         name="form.title"
-        component={TextField}
+        component={FrescoReduxField}
         validation={{ required: true }}
+        label="Form heading text (e.g 'Add a person')"
         componentProps={{
-          label: "Form heading text (e.g 'Add a person')",
+          fieldComponent: FrescoInputField,
           placeholder: 'Enter your title here',
         }}
       />

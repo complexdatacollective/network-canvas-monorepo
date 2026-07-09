@@ -1,18 +1,23 @@
 import { ArrowRight } from 'lucide-react';
+import type { ComponentType } from 'react';
 import { useCallback } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import Assets from '~/components/AssetBrowser/Assets';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { Layout, Section } from '~/components/EditorLayout';
-import { Text } from '~/components/Form/Fields';
+import { FrescoReduxField } from '~/components/Form';
 import ValidatedField from '~/components/Form/ValidatedField';
 import { useAppDispatch } from '~/ducks/hooks';
 
 import { addApiKeyAsset } from '../../../../ducks/modules/protocol/assetManifest';
 import BasicForm from '../../../BasicForm';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
 type APIKeyBrowserProps = {
   show?: boolean;
   type?: string | null;
@@ -69,22 +74,24 @@ const APIKeyBrowser = ({
             </Paragraph>
             <div data-name="API Key Name" />
             <ValidatedField
-              component={Text}
+              label="API Key Name"
+              component={FrescoReduxField}
               name="keyName"
               validation={{ required: true }}
               componentProps={{
-                label: 'API Key Name',
+                fieldComponent: FrescoInputField,
                 type: 'text',
                 placeholder: 'Name this key',
               }}
             />
             <div data-name="API Key Value" />
             <ValidatedField
-              component={Text}
+              label="API Key"
+              component={FrescoReduxField}
               name="keyValue"
               validation={{ required: true }}
               componentProps={{
-                label: 'API Key',
+                fieldComponent: FrescoInputField,
                 type: 'text',
                 placeholder: 'Enter an API Key...',
               }}

@@ -5,11 +5,12 @@ import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section, Subsection } from '~/components/EditorLayout';
-import NativeSelect from '~/components/Form/Fields/NativeSelect';
+import { FrescoReduxField } from '~/components/Form';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Options from '~/components/Options';
@@ -31,6 +32,11 @@ import InputPreview from '../../Form/Fields/InputPreview';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import ValidationSection from '../ValidationSection';
 import { useFieldHandlers } from './withFieldsHandlers';
+
+const FrescoNativeSelectField = NativeSelectField as ComponentType<
+  Record<string, unknown>
+>;
+
 type PromptFieldsProps = {
   form: string;
   entity?: string | null;
@@ -169,12 +175,17 @@ const PromptFields = ({
       >
         <ValidatedField
           name="component"
-          component={NativeSelect as ComponentType<Record<string, unknown>>}
+          label="Input control"
+          component={FrescoReduxField}
           validation={{ required: true }}
           componentProps={{
+            fieldComponent: FrescoNativeSelectField,
             placeholder: 'Select an input control',
-            options: componentOptions,
-            sortOptionsByLabel: !isNewVariable,
+            options: isNewVariable
+              ? componentOptions
+              : [...componentOptions].toSorted((a, b) =>
+                  a.label.localeCompare(b.label),
+                ),
             onChange: handleChangeComponent,
           }}
         />

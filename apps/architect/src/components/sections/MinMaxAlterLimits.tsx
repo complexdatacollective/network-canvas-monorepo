@@ -1,19 +1,24 @@
 import { get, isNull, isUndefined } from 'es-toolkit/compat';
+import type { ComponentType } from 'react';
 import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { change, FormSection, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import { Number as NumberField } from '~/components/Form/Fields';
+import { FrescoReduxField, reduxNumberValue } from '~/components/Form';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 
 import { ValidatedField } from '../Form';
 import IssueAnchor from '../IssueAnchor';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
 const maxValidation = (
   value: number | null | undefined,
   allValues: Record<string, unknown>,
@@ -123,7 +128,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
           />
           <ValidatedField
             name="minNodes"
-            component={NumberField}
+            component={FrescoReduxField}
             validation={{
               lessThanMax: minValidation,
               positiveNumber: (value: number | null | undefined) => {
@@ -131,9 +136,12 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
                 return value >= 0 ? undefined : 'Must be a positive number';
               },
             }}
+            label="Minimum Number of Alters. (0 = no minimum)"
             componentProps={{
-              label: 'Minimum Number of Alters. (0 = no minimum)',
+              fieldComponent: FrescoInputField,
               placeholder: '0',
+              type: 'number',
+              ...reduxNumberValue,
             }}
           />
         </Row>
@@ -144,7 +152,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
           />
           <ValidatedField
             name="maxNodes"
-            component={NumberField}
+            component={FrescoReduxField}
             validation={{
               greaterThanMin: maxValidation,
               minValue: (value: number | null | undefined) => {
@@ -152,9 +160,12 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
                 return value >= 1 ? undefined : 'Must be at least 1';
               },
             }}
+            label="Maximum Number of Alters. _(Leave empty for no maximum)_"
             componentProps={{
-              label: 'Maximum Number of Alters. _(Leave empty for no maximum)_',
+              fieldComponent: FrescoInputField,
               placeholder: 'Infinity',
+              type: 'number',
+              ...reduxNumberValue,
             }}
           />
         </Row>

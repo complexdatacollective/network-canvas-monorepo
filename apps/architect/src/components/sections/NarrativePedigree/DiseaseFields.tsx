@@ -1,11 +1,13 @@
 import { startCase } from 'es-toolkit/compat';
+import type { ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
 import { Row, Section } from '~/components/EditorLayout';
+import { FrescoReduxField } from '~/components/Form';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
-import Select from '~/components/Form/Fields/Select';
-import Text from '~/components/Form/Fields/Text';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import ValidatedField from '~/components/Form/ValidatedField';
 import IssueAnchor from '~/components/IssueAnchor';
@@ -16,6 +18,11 @@ const INHERITANCE_PATTERN_OPTIONS = INHERITANCE_PATTERNS.map((value) => ({
   value,
   label: startCase(value),
 }));
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+const FrescoStyledSelectField = StyledSelectField as ComponentType<
+  Record<string, unknown>
+>;
 
 type DiseaseFieldsProps = {
   nodeType: string | undefined;
@@ -37,10 +44,11 @@ const DiseaseFields = ({ nodeType }: DiseaseFieldsProps) => {
           <IssueAnchor fieldName="label" description="Disease label" />
           <ValidatedField
             name="label"
-            component={Text}
+            label="Disease label"
+            component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{
-              label: 'Disease label',
+              fieldComponent: FrescoInputField,
               placeholder: 'Enter a name for this disease...',
             }}
           />
@@ -85,10 +93,11 @@ const DiseaseFields = ({ nodeType }: DiseaseFieldsProps) => {
           />
           <ValidatedField
             name="inheritancePattern"
-            component={Select}
+            label="Inheritance pattern"
+            component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{
-              label: 'Inheritance pattern',
+              fieldComponent: FrescoStyledSelectField,
               options: INHERITANCE_PATTERN_OPTIONS,
               placeholder: 'Select an inheritance pattern...',
             }}

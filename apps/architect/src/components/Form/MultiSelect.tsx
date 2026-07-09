@@ -9,14 +9,20 @@ import { change, FieldArray, formValueSelector } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 // Row background reads `--rule-bg` so callers (e.g. Validations error state)
 // can flip it without re-defining the row layout.
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import NativeSelect from '~/components/Form/Fields/NativeSelect';
+import { FrescoReduxField } from '~/components/Form';
 import type { RootState } from '~/ducks/modules/root';
 
 import ValidatedField from './ValidatedField';
+
+const FrescoNativeSelectField = NativeSelectField as React.ComponentType<
+  Record<string, unknown>
+>;
+
 export const MULTI_SELECT_RULE_CLASSES =
   'flex items-center py-5 bg-(--rule-bg) text-sortable-contrast rounded-[0.3rem] z-1 transition-colors duration-300 ease-in-out';
 export const MULTI_SELECT_CONTROL_CLASSES = 'flex grow-0 items-center px-5';
@@ -134,10 +140,14 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
       <div className={MULTI_SELECT_OPTIONS_CLASSES}>
         {properties.map(({ fieldName, component, ...rest }, propertyIndex) => {
           const selectOptions = options(fieldName, rowValues, allValues);
-          const FieldComponent = component ?? NativeSelect;
+          const FieldComponent = component ?? FrescoReduxField;
           const componentProps = component
             ? rest
-            : { options: selectOptions, ...rest };
+            : {
+                fieldComponent: FrescoNativeSelectField,
+                options: selectOptions,
+                ...rest,
+              };
           return (
             <div className={MULTI_SELECT_OPTION_CLASSES} key={fieldName}>
               <ValidatedField

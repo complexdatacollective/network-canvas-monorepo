@@ -1,20 +1,18 @@
 import { omit } from 'es-toolkit/compat';
-import type { ComponentType } from 'react';
 import { useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import { CheckboxGroup } from '~/components/Form/Fields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import type { RootState } from '~/ducks/modules/root';
 import type { AppDispatch } from '~/ducks/store';
 import { getNodeTypes } from '~/selectors/codebook';
 
 import { updateVariableByUUID } from '../../../ducks/modules/protocol/codebook';
-import DetachedField from '../../DetachedField';
 type Variable = {
   name: string;
   type?: string;
@@ -150,13 +148,11 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
             }
           >
             <div className="max-h-75 overflow-y-auto">
-              <DetachedField
-                component={
-                  CheckboxGroup as ComponentType<Record<string, unknown>>
-                }
+              <CheckboxGroupField
+                name={`${nodeTypeId}-encrypted-variables`}
                 options={variableOptions}
                 value={encryptedVariableIds}
-                onChange={(_event: unknown, nextValue: unknown) => {
+                onChange={(nextValue) => {
                   const nextValueArray = nextValue as string[];
                   Object.entries(variables).forEach(
                     ([variableId, variable]) => {

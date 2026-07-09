@@ -1,11 +1,12 @@
 import type { ComponentType } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section, Subsection } from '~/components/EditorLayout';
-import NativeSelect from '~/components/Form/Fields/NativeSelect';
-import Text from '~/components/Form/Fields/Text';
+import { FrescoReduxField } from '~/components/Form';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Options from '~/components/Options';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';
@@ -23,6 +24,12 @@ import ExternalLink from '../ExternalLink';
 import InputPreview from '../Form/Fields/InputPreview';
 import VariablePicker from '../Form/Fields/VariablePicker/VariablePicker';
 import { useFieldHandlers } from '../sections/Form/withFieldsHandlers';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+const FrescoNativeSelectField = NativeSelectField as ComponentType<
+  Record<string, unknown>
+>;
+
 type ComposerAttributeFieldsProps = {
   form: string;
   entity?: string | null;
@@ -90,9 +97,11 @@ const ComposerAttributeFields = ({
       >
         <ValidatedField
           name="label"
-          component={Text as ComponentType<Record<string, unknown>>}
+          label="Label"
+          component={FrescoReduxField}
           validation={{}}
           componentProps={{
+            fieldComponent: FrescoInputField,
             placeholder: 'Defaults to the variable name',
           }}
         />
@@ -115,12 +124,17 @@ const ComposerAttributeFields = ({
       >
         <ValidatedField
           name="component"
-          component={NativeSelect as ComponentType<Record<string, unknown>>}
+          label="Input control"
+          component={FrescoReduxField}
           validation={{ required: true }}
           componentProps={{
+            fieldComponent: FrescoNativeSelectField,
             placeholder: 'Select an input control',
-            options: componentOptions,
-            sortOptionsByLabel: !isNewVariable,
+            options: isNewVariable
+              ? componentOptions
+              : [...componentOptions].toSorted((a, b) =>
+                  a.label.localeCompare(b.label),
+                ),
             onChange: handleChangeComponent,
           }}
         />

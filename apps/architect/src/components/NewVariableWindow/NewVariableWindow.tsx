@@ -1,13 +1,15 @@
 import { values } from 'es-toolkit/compat';
+import type { ComponentType } from 'react';
 import { useCallback, useMemo } from 'react';
 import { Field, formValueSelector, isDirty } from 'redux-form';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Variable, VariableOptions } from '@codaco/protocol-validation';
 import { Section, Subsection } from '~/components/EditorLayout';
-import { Text } from '~/components/Form/Fields';
-import Select from '~/components/Form/Fields/Select';
+import { FrescoReduxField } from '~/components/Form';
 import ValidatedField from '~/components/Form/ValidatedField';
 import InlineEditScreen from '~/components/InlineEditScreen';
 import Options from '~/components/Options';
@@ -25,6 +27,11 @@ import { validations } from '~/utils/validations';
 const form = 'create-new-variable';
 const isRequired = validations.required();
 const isAllowedVariableName = validations.allowedVariableName();
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+const FrescoStyledSelectField = StyledSelectField as ComponentType<
+  Record<string, unknown>
+>;
+
 export type Entity = 'node' | 'edge' | 'ego';
 type NewVariableWindowProps = {
   show?: boolean;
@@ -151,8 +158,10 @@ export default function NewVariableWindow({
         >
           <Field
             name="name"
-            component={Text}
+            label="Variable name"
+            component={FrescoReduxField}
             placeholder="e.g. Nickname"
+            fieldComponent={FrescoInputField}
             validate={[isRequired, validateName, isAllowedVariableName]}
             normalize={safeName}
           />
@@ -164,16 +173,18 @@ export default function NewVariableWindow({
         >
           <ValidatedField
             name="type"
-            component={Select}
+            label="Variable type"
+            component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{
+              fieldComponent: FrescoStyledSelectField,
               placeholder: 'Select variable type',
               options: filteredVariableOptions,
               // Locked options only make sense for a categorical/ordinal type, so
               // lock the type selector too — otherwise a caller passing
               // lockedOptions without initialValues.type could switch away from
               // that type while the options and readOnly flag stay locked.
-              isDisabled: !!initialValues?.type || !!lockedOptions,
+              disabled: !!initialValues?.type || !!lockedOptions,
             }}
           />
         </Subsection>

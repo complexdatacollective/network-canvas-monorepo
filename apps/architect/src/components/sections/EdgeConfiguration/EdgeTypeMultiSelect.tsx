@@ -6,9 +6,9 @@ import { Field } from 'redux-form';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
+import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import NewTypeDialog from '~/components/Dialog/NewTypeDialog';
-import CheckboxGroup from '~/components/Form/Fields/CheckboxGroup';
 import type { RootState } from '~/ducks/store';
 import { getEdgeTypes } from '~/selectors/codebook/index';
 import { asOptions } from '~/selectors/utils';
@@ -65,13 +65,11 @@ export const EdgeTypeMultiSelectInner = ({
   return (
     <div className="flex flex-col items-start gap-5">
       {edgeTypes.length > 0 ? (
-        <CheckboxGroup
+        <CheckboxGroupField
+          name="edges"
           options={edgeTypes}
-          input={{
-            name: 'edges',
-            value: checkedTypes,
-            onChange: handleChange,
-          }}
+          value={checkedTypes}
+          onChange={handleChange}
         />
       ) : (
         <Paragraph>

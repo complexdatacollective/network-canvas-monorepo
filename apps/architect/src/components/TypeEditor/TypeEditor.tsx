@@ -1,12 +1,13 @@
 import { capitalize, toPairs } from 'es-toolkit/compat';
+import type { ComponentType } from 'react';
 import { useEffect, useMemo } from 'react';
 import { connect } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Layout, Section } from '~/components/EditorLayout';
-import { ValidatedField } from '~/components/Form';
-import { Text } from '~/components/Form/Fields';
+import { FrescoReduxField, ValidatedField } from '~/components/Form';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getCodebook } from '~/selectors/protocol';
@@ -17,6 +18,9 @@ import getPalette from './getPalette';
 import IconPicker from './IconPicker';
 import ShapePicker from './ShapePicker';
 import ShapeVariableMapping from './ShapeVariableMapping';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
 type TypeEditorProps = {
   form: string;
   entity: string;
@@ -65,7 +69,8 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
         }
       >
         <ValidatedField
-          component={Text}
+          label={`${capitalize(entity)} type name`}
+          component={FrescoReduxField}
           name="name"
           validation={{
             required: true,
@@ -73,6 +78,7 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
             uniqueByList: existingTypes,
           }}
           componentProps={{
+            fieldComponent: FrescoInputField,
             placeholder: `Enter a name for this ${entity} type...`,
           }}
         />

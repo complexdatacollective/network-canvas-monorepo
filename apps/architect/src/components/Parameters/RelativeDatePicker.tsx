@@ -1,17 +1,22 @@
 import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
+import type { ComponentType } from 'react';
 import { useState } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { FrescoReduxField, reduxNumberValue } from '~/components/Form';
 import { DatePicker } from '~/components/Form/Fields';
 import { DATE_FORMATS } from '~/components/Form/Fields/DatePicker';
-import NumberField from '~/components/Form/Fields/Number';
 import Toggle from '~/components/Form/Fields/Toggle';
 import ValidatedField from '~/components/Form/ValidatedField';
 import type { RootState } from '~/ducks/modules/root';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
 type RelativeDatePickerParametersProps = {
   name: string;
   resetField: () => void;
@@ -68,9 +73,12 @@ const RelativeDatePickerParameters = ({
       </Paragraph>
       <Field
         label=""
-        component={NumberField}
+        component={FrescoReduxField}
         name={`${name}.before`}
         placeholder="180"
+        fieldComponent={FrescoInputField}
+        type="number"
+        {...reduxNumberValue}
       />
       <Heading level="h4">Days After</Heading>
       <Paragraph>
@@ -79,9 +87,12 @@ const RelativeDatePickerParameters = ({
       </Paragraph>
       <Field
         label=""
-        component={NumberField}
+        component={FrescoReduxField}
         name={`${name}.after`}
         placeholder="0"
+        fieldComponent={FrescoInputField}
+        type="number"
+        {...reduxNumberValue}
       />
     </>
   );

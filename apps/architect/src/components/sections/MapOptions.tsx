@@ -1,10 +1,12 @@
+import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import withDisabledAPIKeyRequired from '~/components/enhancers/withDisabledAPIKeyRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
-import NativeSelect from '~/components/Form/Fields/NativeSelect';
+import { FrescoReduxField } from '~/components/Form';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
 import useVariablesFromExternalData from '../../hooks/useVariablesFromExternalData';
@@ -17,6 +19,11 @@ import { mapboxStyleOptions } from '../Form/Fields/Geospatial/mapboxConstants';
 import MapSelection from '../Form/Fields/Geospatial/MapSelection';
 import Toggle from '../Form/Fields/Toggle';
 import ValidatedField from '../Form/ValidatedField';
+
+const FrescoNativeSelectField = NativeSelectField as ComponentType<
+  Record<string, unknown>
+>;
+
 type MapOptionsProps = StageEditorSectionProps & {
   mapOptions?: {
     center?: number[];
@@ -101,10 +108,11 @@ const MapOptions = ({
           <Row>
             <ValidatedField
               name="mapOptions.targetFeatureProperty"
-              component={NativeSelect as React.ComponentType}
+              label="Which property should be used for map selection?"
+              component={FrescoReduxField}
               validation={{ required: true }}
               componentProps={{
-                label: 'Which property should be used for map selection?',
+                fieldComponent: FrescoNativeSelectField,
                 options: variableOptions,
               }}
             />
@@ -132,13 +140,13 @@ const MapOptions = ({
           }}
         />
         <ValidatedField
-          component={NativeSelect as React.ComponentType}
+          label="Which mapbox style would you like to use for the map itself?"
+          component={FrescoReduxField}
           name="mapOptions.style"
           validation={{ required: true }}
           componentProps={{
+            fieldComponent: FrescoNativeSelectField,
             options: mapboxStyleOptions,
-            label:
-              'Which mapbox style would you like to use for the map itself?',
           }}
         />
 

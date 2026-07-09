@@ -1,15 +1,22 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
+import type { ComponentType } from 'react';
 import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { change, Field } from 'redux-form';
 
+import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import Select from '~/components/Form/Fields/Select';
+import { FrescoReduxField } from '~/components/Form';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getStageList } from '~/selectors/protocol';
+
+const FrescoStyledSelectField = StyledSelectField as ComponentType<
+  Record<string, unknown>
+>;
+
 const SourceStage = ({ form }: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
   const familyPedigreeStages = useSelector((state: RootState) =>
@@ -47,12 +54,13 @@ const SourceStage = ({ form }: StageEditorSectionProps) => {
       <Row>
         <Field
           name="sourceStageId"
-          component={Select}
+          component={FrescoReduxField}
           onChange={handleSourceStageChange}
           label="Family Pedigree stage"
           placeholder="Select a Family Pedigree stage..."
           options={options}
-          isDisabled={options.length === 0}
+          disabled={options.length === 0}
+          fieldComponent={FrescoStyledSelectField}
         />
       </Row>
     </Section>
