@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from 'react';
 import { compose } from 'react-recompose';
 
-import SegmentedSwitcher, {
-  type SegmentedOption,
-} from '@codaco/fresco-ui/SegmentedSwitcher';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { GridLayout } from '@codaco/fresco-ui/collection/layout/GridLayout';
 import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
+import SegmentedSwitcher, {
+  type SegmentedOption,
+} from '@codaco/fresco-ui/SegmentedSwitcher';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import AssetCard from './AssetCard';
@@ -136,7 +136,7 @@ const Assets = ({
         onSelectionChange={handleSelectionChange}
         animate
         animationKey={selectedAssetType}
-        className="h-[min(62vh,42rem)]"
+        className="!flex-none"
         viewportClassName="pr-3"
         emptyState={
           <Paragraph margin="none" className="text-muted py-10">

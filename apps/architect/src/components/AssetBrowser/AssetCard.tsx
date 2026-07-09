@@ -126,7 +126,7 @@ const AssetPreview = ({
       <img
         src={previewUrl}
         alt={name}
-        className="size-full object-contain"
+        className="size-full object-cover"
         draggable={false}
       />
     );
@@ -140,7 +140,8 @@ const AssetPreview = ({
         className="size-full object-cover"
         muted
         playsInline
-        preload="metadata"
+        disablePictureInPicture
+        preload="auto"
       />
     );
   }
@@ -261,7 +262,7 @@ const AssetCard = ({
         'data-current:border-primary data-focused:border-primary data-selected:border-primary data-selected:bg-selected',
       )}
     >
-      <div className="bg-surface relative aspect-video overflow-hidden">
+      <div className="bg-surface relative aspect-video overflow-hidden rounded-t">
         <AssetPreview id={id} name={name} type={type} />
         {!isUsed && (
           <Badge
