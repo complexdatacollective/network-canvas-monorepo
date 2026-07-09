@@ -1,15 +1,23 @@
 import { get } from 'es-toolkit/compat';
-import { Info, Plus, TriangleAlert } from 'lucide-react';
-import { motion } from 'motion/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Info, Plus, Search, TriangleAlert } from 'lucide-react';
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { useSelector } from 'react-redux';
 
+import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
+import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
+import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Modal from '@codaco/fresco-ui/Modal';
-import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
+import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
-import Search from '~/components/Form/Fields/Search';
 import type { RootState } from '~/ducks/store';
 import { cx } from '~/utils/cva';
 import { validations } from '~/utils/validations';
@@ -18,107 +26,42 @@ import { getVariablesForSubject } from '../../../../selectors/codebook';
 import { sortByLabel } from '../../../Codebook/helpers';
 import ExternalLink from '../../../ExternalLink';
 import { SimpleVariablePill } from './VariablePill';
+
 const EMPTY_CLASSES =
-  'flex grow basis-full items-center rounded px-7 py-5 [&_svg]:mr-1 [&_svg]:shrink-0';
-type ListItemProps = {
-  disabled?: boolean;
-  selected?: boolean;
-  onSelect?: () => void;
-  children?: React.ReactNode;
-  setSelected?: () => void;
-  removeSelected?: () => void;
-};
-const LIST_ITEM_BASE = 'flex w-full items-center justify-between px-5 py-2.5';
-// When `data-selected`, the row sets the foreground to white (so descendant
-// text reads on the primary background) and overrides the cascade variable
-// `--variable-pill-shadow-color` so any nested variable-pill grows a halo.
-const LIST_ITEM_SELECTED =
-  'data-selected:bg-primary data-selected:text-white data-selected:[--variable-pill-shadow-color:oklch(var(--sea-green--dark))]';
-const ListItem = ({
-  disabled = false,
-  selected = false,
-  onSelect,
-  children = null,
-  setSelected = () => {},
-  removeSelected = () => {},
-}: ListItemProps) => {
-  const ref = useRef<HTMLLIElement>(null);
-  useEffect(() => {
-    if (selected && ref.current) {
-      // Move element into view when it is selected
-      ref.current.scrollIntoView({ block: 'nearest' });
-    }
-  }, [selected]);
-  const handleClick = () => {
-    if (onSelect && !disabled) {
-      onSelect();
-    }
-  };
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (onSelect && !disabled && (e.key === 'Enter' || e.key === ' ')) {
-      e.preventDefault();
-      onSelect();
-    }
-  };
-  if (onSelect) {
-    return (
-      <li ref={ref}>
-        <button
-          type="button"
-          data-testid="spotlight-list-item"
-          data-selected={selected || undefined}
-          className={cx(
-            LIST_ITEM_BASE,
-            LIST_ITEM_SELECTED,
-            'cursor-pointer disabled:cursor-not-allowed',
-          )}
-          onClick={handleClick}
-          onKeyDown={handleKeyDown}
-          onMouseEnter={setSelected}
-          onMouseLeave={removeSelected}
-          disabled={disabled}
-        >
-          {children}
-          {selected && (
-            <kbd className="border-charcoal bg-surface-1 text-input-contrast ml-5 flex items-center justify-center rounded-sm border p-1">
-              Enter&nbsp;&#8629;
-            </kbd>
-          )}
-        </button>
-      </li>
-    );
-  }
-  return (
-    <li ref={ref}>
-      <div
-        data-testid="spotlight-list-item"
-        data-disabled={disabled || undefined}
-        className={cx(LIST_ITEM_BASE, 'data-disabled:cursor-not-allowed')}
-      >
-        {children}
-      </div>
-    </li>
-  );
-};
-type DividerProps = {
-  legend: string;
-};
-const Divider = ({ legend }: DividerProps) => (
-  <li className="px-5 pt-5 pb-1 first:pt-1">
-    <span
-      className={headingVariants({
-        level: 'label',
-        variant: 'all-caps',
-        margin: 'none',
-        className: 'text-muted',
-      })}
-    >
-      {legend}
-    </span>
-  </li>
-);
+  'flex grow basis-full items-start rounded px-7 py-5 text-current/80 [&_svg]:mr-3 [&_svg]:mt-1 [&_svg]:shrink-0';
+
 const CREATE_NEW_CLASSES =
   'flex items-center justify-center px-5 py-1 font-medium text-current [&_svg]:mr-5 [&_svg]:h-5';
+
+const RESULTS_ID = 'variable-spotlight-results';
+
+type VariableOption = {
+  value: string;
+  label: string;
+  type?: string;
+};
+
+type VariableSpotlightItem =
+  | {
+      id: string;
+      kind: 'create';
+      label: string;
+      value: string;
+    }
+  | {
+      id: string;
+      kind: 'invalid';
+      label: string;
+      reason: string;
+    }
+  | {
+      id: string;
+      kind: 'variable';
+      label: string;
+      value: string;
+      variableType: VariableType;
+    };
+
 type VariableSpotlightProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -128,12 +71,16 @@ type VariableSpotlightProps = {
   type?: string;
   onCancel: () => void;
   onCreateOption: (value: string) => void;
-  options: Array<{
-    value: string;
-    label: string;
-    type?: string;
-  }>;
+  options: VariableOption[];
 };
+
+const renderEmptyMessage = (icon: ReactNode, children: ReactNode) => (
+  <div data-testid="variable-spotlight-empty" className={EMPTY_CLASSES}>
+    {icon}
+    <div>{children}</div>
+  </div>
+);
+
 const VariableSpotlight = ({
   open,
   onOpenChange,
@@ -146,40 +93,44 @@ const VariableSpotlight = ({
   disallowCreation = false,
 }: VariableSpotlightProps) => {
   const [filterTerm, setFilterTerm] = useState('');
-  // Cursor positions:
-  // -2: Search input
-  // -1: Create option (if visible)
-  // 0-n: Existing variables
-  const [cursor, setCursor] = useState(-2);
-  const [showCursor, setShowCursor] = useState(false);
-  const resetState = () => {
+
+  const resetState = useCallback(() => {
     setFilterTerm('');
-    setCursor(-2);
-    setShowCursor(false);
-  };
-  const handleClose = () => {
+  }, []);
+
+  const handleClose = useCallback(() => {
     resetState();
     onCancel();
-  };
-  const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      resetState();
-    }
-    onOpenChange(isOpen);
-  };
-  const handleCreateOption = () => {
-    setFilterTerm(''); // Clear search term so the user doesn't see a flash of invalid text
-    onCreateOption(filterTerm);
-  };
+  }, [onCancel, resetState]);
+
+  const handleOpenChange = useCallback(
+    (isOpen: boolean) => {
+      if (!isOpen) {
+        resetState();
+      }
+      onOpenChange(isOpen);
+    },
+    [onOpenChange, resetState],
+  );
+
+  const handleCreateOption = useCallback(
+    (value: string) => {
+      setFilterTerm('');
+      onCreateOption(value);
+    },
+    [onCreateOption],
+  );
+
   const sortedAndFilteredItems = useMemo(() => {
-    options.sort(sortByLabel);
+    const sortedOptions = [...options].toSorted(sortByLabel);
     if (!filterTerm) {
-      return options;
+      return sortedOptions;
     }
-    return options.filter((item) =>
+    return sortedOptions.filter((item) =>
       item.label.toLowerCase().includes(filterTerm.toLowerCase()),
     );
   }, [filterTerm, options]);
+
   // Memoize subject to avoid creating new object on every render, which breaks selector memoization
   const subject = useMemo(
     () => ({
@@ -188,276 +139,292 @@ const VariableSpotlight = ({
     }),
     [entity, type],
   );
+
   const existingVariables = useSelector((state: RootState) =>
     getVariablesForSubject(state, subject),
   );
-  const hasOptions = useMemo(() => options.length > 0, [options]);
-  const hasFilterTerm = useMemo(() => filterTerm.length > 0, [filterTerm]);
-  const hasFilterResults = useMemo(
-    () => sortedAndFilteredItems.length > 0,
-    [sortedAndFilteredItems],
+
+  const hasOptions = options.length > 0;
+  const hasFilterTerm = filterTerm.length > 0;
+  const hasFilterResults = sortedAndFilteredItems.length > 0;
+  const hasExactFilterMatch = options.some((item) => item.label === filterTerm);
+
+  const existingVariableNames = useMemo(
+    () =>
+      Object.keys(existingVariables)
+        .map((variable) => get(existingVariables[variable], 'name'))
+        .filter((value): value is string => typeof value === 'string'),
+    [existingVariables],
   );
-  const existingVariableNames = Object.keys(existingVariables).map((variable) =>
-    get(existingVariables[variable], 'name'),
-  );
+
   const invalidVariableName = useMemo(() => {
     const unique = validations.uniqueByList(existingVariableNames)(filterTerm);
     const allowed = validations.allowedVariableName()(filterTerm);
     return unique || allowed || undefined;
   }, [filterTerm, existingVariableNames]);
-  const renderResults = () => (
-    <ScrollArea fade={false} viewportClassName="scroll-smooth">
-      <ol className="m-0 flex list-none flex-col gap-1 p-1">
-        {filterTerm &&
-          options.filter((item) => item.label === filterTerm).length !== 1 && (
-            <>
-              {disallowCreation && hasFilterTerm && !hasFilterResults && (
-                <div
-                  data-testid="variable-spotlight-empty"
-                  className={EMPTY_CLASSES}
-                >
-                  <TriangleAlert aria-hidden />
-                  <div>
-                    <Paragraph>
-                      You cannot create a new variable from here. Please create
-                      one or more variables elsewhere in your protocol, and
-                      return here to select them.
-                    </Paragraph>
-                  </div>
-                </div>
-              )}
-              {!disallowCreation && (
-                <>
-                  <Divider legend="Create" />
-                  {!invalidVariableName ? (
-                    <ListItem
-                      onSelect={handleCreateOption}
-                      selected={showCursor && cursor === -1}
-                      setSelected={() => {
-                        setShowCursor(true);
-                        setCursor(-1);
-                      }}
-                      removeSelected={() => setCursor(0)}
-                    >
-                      <div className={CREATE_NEW_CLASSES}>
-                        <Plus aria-hidden />
-                        <span>
-                          Create new variable called &quot;
-                          {filterTerm}
-                          &quot;.
-                        </span>
-                      </div>
-                    </ListItem>
-                  ) : (
-                    <ListItem disabled>
-                      <div className={CREATE_NEW_CLASSES}>
-                        <TriangleAlert aria-hidden />
-                        <span>
-                          Cannot create variable named &quot;
-                          {filterTerm}
-                          &quot;&nbsp;&mdash;&nbsp;
-                          {invalidVariableName}.
-                        </span>
-                      </div>
-                    </ListItem>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        {hasFilterResults && (
-          <Divider
-            legend={
-              hasFilterTerm
-                ? `Existing Variables Containing "${filterTerm}"`
-                : 'Existing Variables'
-            }
-          />
-        )}
-        {sortedAndFilteredItems.map(
-          ({ value, label, type: optionType }, index) => (
-            <ListItem
-              key={value}
-              onSelect={() => onSelect(value)}
-              selected={
-                showCursor && (cursor === index || label === filterTerm)
-              }
-              setSelected={() => {
-                setShowCursor(true);
-                setCursor(index);
-              }}
-              removeSelected={() => setCursor(-1)}
-            >
-              <SimpleVariablePill
-                label={label}
-                type={(optionType as VariableType) || 'text'}
-              >
-                <span />
-              </SimpleVariablePill>
-            </ListItem>
-          ),
-        )}
-      </ol>
-    </ScrollArea>
+
+  const collectionItems = useMemo<VariableSpotlightItem[]>(() => {
+    const items: VariableSpotlightItem[] = [];
+    const canShowCreation = hasFilterTerm && !hasExactFilterMatch;
+
+    if (canShowCreation && !disallowCreation) {
+      if (invalidVariableName) {
+        items.push({
+          id: `invalid:${filterTerm}`,
+          kind: 'invalid',
+          label: `Cannot create variable named "${filterTerm}"`,
+          reason: invalidVariableName,
+        });
+      } else {
+        items.push({
+          id: `create:${filterTerm}`,
+          kind: 'create',
+          label: `Create new variable called "${filterTerm}".`,
+          value: filterTerm,
+        });
+      }
+    }
+
+    items.push(
+      ...sortedAndFilteredItems.map(({ value, label, type: optionType }) => ({
+        id: value,
+        kind: 'variable' as const,
+        label,
+        value,
+        variableType: ((optionType as VariableType) || 'text') as VariableType,
+      })),
+    );
+
+    return items;
+  }, [
+    disallowCreation,
+    filterTerm,
+    hasExactFilterMatch,
+    hasFilterTerm,
+    invalidVariableName,
+    sortedAndFilteredItems,
+  ]);
+
+  const disabledKeys = useMemo(
+    () =>
+      collectionItems
+        .filter((item) => item.kind === 'invalid')
+        .map((item) => item.id),
+    [collectionItems],
   );
-  // Reset cursor position when list is filtered
-  useEffect(() => {
-    // Set cursor to create if there are no other options
-    if (!hasFilterResults) {
-      setCursor(-1);
-      setShowCursor(true);
-      return;
-    }
-    // If we are beyond the end, wrap to the end of the list
-    if (cursor > sortedAndFilteredItems.length - 1) {
-      setCursor(sortedAndFilteredItems.length - 1);
-    }
-  }, [sortedAndFilteredItems, cursor, hasFilterResults]);
-  const handleFilter = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFilterTerm(event.target.value);
-  };
-  // Navigate within the list of results using the keyboard
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Close the picker when pressing escape
-    if (e.key === 'Escape') {
-      handleClose();
-    }
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      e.preventDefault(); // Prevent moving cursor within search input
-      // Show the cursor only when either arrow key is pressed for the first time
-      if (!showCursor) {
-        setShowCursor(true);
-      }
-    }
-    if (e.key === 'ArrowUp') {
-      // If there are items and the cursor is not at the top,
-      // or if there are no items and the cursor is not at the top
-      // move the cursor up
-      if ((hasFilterTerm && cursor > -1) || cursor > 0) {
-        setCursor(cursor - 1);
-      }
-    } else if (e.key === 'ArrowDown') {
-      // If there is no filterTerm and the cursor is in the search input,
-      // or if the filterterm is invalid and the cursor is in the search input,
-      // move the cursor to the first item
-      if (
-        (filterTerm.length === 0 && cursor === -2) ||
-        (cursor === -2 && invalidVariableName)
-      ) {
-        setCursor(0);
+
+  const layout = useMemo(
+    () => new ListLayout<VariableSpotlightItem>({ gap: 1 }),
+    [],
+  );
+
+  const handleSelectItem = useCallback(
+    (item: VariableSpotlightItem) => {
+      if (item.kind === 'create') {
+        handleCreateOption(item.value);
         return;
       }
-      // If the cursor is not at the bottom
-      // Or there are no items and the cursor is in the search input
-      // move the cursor down
-      if (
-        cursor < sortedAndFilteredItems.length - 1 ||
-        (filterTerm.length === 0 && cursor === -2)
-      ) {
-        setCursor(cursor + 1);
+      if (item.kind === 'variable') {
+        onSelect(item.value);
       }
-    } else if (e.key === 'Enter') {
-      // If the cursor is within the list of results, select the value
-      if (cursor > -1 && sortedAndFilteredItems[cursor]) {
-        onSelect(sortedAndFilteredItems[cursor].value);
+    },
+    [handleCreateOption, onSelect],
+  );
+
+  const handleSelectionChange = useCallback(
+    (keys: Set<Key>) => {
+      const [selectedKey] = [...keys];
+      const selectedItem = collectionItems.find(
+        (item) => item.id === selectedKey,
+      );
+
+      if (!selectedItem || selectedItem.kind === 'invalid') return;
+      handleSelectItem(selectedItem);
+    },
+    [collectionItems, handleSelectItem],
+  );
+
+  const handleFilter = useCallback((value: string | undefined) => {
+    setFilterTerm(value ?? '');
+  }, []);
+
+  const handleInputKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Escape') {
+        handleClose();
         return;
       }
-      // If the cursor is in the create option,
-      // and there is a filter term,
-      // create a new variable with that value
+
       if (
-        !disallowCreation &&
-        !invalidVariableName &&
+        (event.key === 'ArrowDown' || event.key === 'ArrowUp') &&
+        collectionItems.length > 0
+      ) {
+        event.preventDefault();
+        window.requestAnimationFrame(() => {
+          document.getElementById(RESULTS_ID)?.focus();
+        });
+        return;
+      }
+
+      if (event.key !== 'Enter') return;
+
+      if (
         hasFilterTerm &&
-        cursor === -1
+        !disallowCreation &&
+        !hasExactFilterMatch &&
+        !invalidVariableName
       ) {
-        handleCreateOption();
+        event.preventDefault();
+        handleCreateOption(filterTerm);
+        return;
       }
-    }
-  };
-  const containerVariants = {
-    visible: {
-      y: 0,
-      opacity: 1,
+
+      if (hasFilterTerm && sortedAndFilteredItems.length === 1) {
+        event.preventDefault();
+        const [result] = sortedAndFilteredItems;
+        if (result) onSelect(result.value);
+      }
     },
-    hidden: {
-      y: -50,
-      opacity: 0,
-    },
-  };
-  const resultsVariants = {
-    visible: { height: 'auto', transitionEnd: { display: 'flex' } },
-    hidden: { height: 0 },
-  };
+    [
+      collectionItems.length,
+      disallowCreation,
+      filterTerm,
+      handleClose,
+      handleCreateOption,
+      hasExactFilterMatch,
+      hasFilterTerm,
+      invalidVariableName,
+      onSelect,
+      sortedAndFilteredItems,
+    ],
+  );
+
+  const renderItem = useCallback(
+    (item: VariableSpotlightItem, itemProps: ItemProps) => (
+      <div
+        {...itemProps}
+        data-testid="spotlight-list-item"
+        className={cx(
+          'focusable flex w-full items-center justify-between rounded px-4 py-2.5 transition-colors',
+          'data-focused:bg-surface-2 data-selected:bg-primary data-selected:text-primary-contrast',
+          'data-disabled:cursor-not-allowed data-disabled:opacity-60',
+        )}
+      >
+        {item.kind === 'variable' && (
+          <SimpleVariablePill label={item.label} type={item.variableType}>
+            <span />
+          </SimpleVariablePill>
+        )}
+        {item.kind === 'create' && (
+          <div className={CREATE_NEW_CLASSES}>
+            <Plus aria-hidden />
+            <span>{item.label}</span>
+          </div>
+        )}
+        {item.kind === 'invalid' && (
+          <div className={CREATE_NEW_CLASSES}>
+            <TriangleAlert aria-hidden />
+            <span>
+              {item.label}: {item.reason}.
+            </span>
+          </div>
+        )}
+      </div>
+    ),
+    [],
+  );
+
   return (
     <Modal open={open} onOpenChange={handleOpenChange}>
-      <motion.div
-        className="bg-surface-1 text-surface-1-contrast fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 overflow-hidden rounded-lg"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        exit="hidden"
-        transition={{
-          type: 'spring',
-        }}
+      <ModalPopup
+        key="variable-spotlight-popup"
+        className="fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
       >
-        <header className="shrink-0 grow-0 basis-14 px-7 py-5 [&_.form-field]:mb-0">
-          <Search
-            autoFocus
-            placeholder={
-              disallowCreation
-                ? 'Find a variable...'
-                : 'Create or find a variable...'
-            }
-            input={{
-              value: filterTerm,
-              onChange: handleFilter,
-              onKeyDown: handleKeyDown,
-            }}
-          />
-        </header>
-        <motion.main
-          className="max-h-[60vh] flex-auto flex-col overflow-hidden pb-1"
-          variants={resultsVariants}
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
+        <MotionSurface
+          floating
+          noContainer
+          spacing="none"
+          shadow="none"
+          className="effect-shadow flex max-h-[calc(100vh-5rem)] flex-col overflow-hidden"
         >
-          {!disallowCreation && !hasOptions && (
-            <div
-              data-testid="variable-spotlight-empty"
-              className={EMPTY_CLASSES}
-            >
-              <Info aria-hidden />
-              <div>
-                <Paragraph>
-                  To create your first variable of this type, type a name above
-                  and press enter. See our&nbsp;
-                  <ExternalLink href="https://documentation.networkcanvas.com/reference/variable-naming/">
-                    documentation on variable naming
-                  </ExternalLink>
-                  &nbsp;for more information.
-                </Paragraph>
-              </div>
-            </div>
-          )}
-          {disallowCreation && !hasFilterTerm && !hasOptions && (
-            <div
-              data-testid="variable-spotlight-empty"
-              className={EMPTY_CLASSES}
-            >
-              <TriangleAlert aria-hidden />
-              <div>
-                <Paragraph>
+          <header className="shrink-0 grow-0 basis-14 px-7 py-5">
+            <InputField
+              autoFocus
+              type="search"
+              placeholder={
+                disallowCreation
+                  ? 'Find a variable...'
+                  : 'Create or find a variable...'
+              }
+              value={filterTerm}
+              onChange={handleFilter}
+              onKeyDown={handleInputKeyDown}
+              prefixComponent={<Search aria-hidden className="size-4" />}
+              className="w-full"
+              aria-label="Find or create a variable"
+            />
+          </header>
+          <main className="min-h-0 flex-auto pb-1">
+            {!disallowCreation && !hasOptions && (
+              <>
+                {renderEmptyMessage(
+                  <Info aria-hidden />,
+                  <Paragraph margin="none">
+                    To create your first variable of this type, type a name
+                    above and press enter. See our&nbsp;
+                    <ExternalLink href="https://documentation.networkcanvas.com/reference/variable-naming/">
+                      documentation on variable naming
+                    </ExternalLink>
+                    &nbsp;for more information.
+                  </Paragraph>,
+                )}
+              </>
+            )}
+            {disallowCreation &&
+              !hasFilterTerm &&
+              !hasOptions &&
+              renderEmptyMessage(
+                <TriangleAlert aria-hidden />,
+                <Paragraph margin="none">
                   No variables exist for you to select, and you cannot create a
                   new variable from here. Please create one or more variables
                   elsewhere in your protocol, and return here to select them.
-                </Paragraph>
-              </div>
-            </div>
-          )}
-          {renderResults()}
-        </motion.main>
-      </motion.div>
+                </Paragraph>,
+              )}
+            {disallowCreation &&
+              hasFilterTerm &&
+              !hasFilterResults &&
+              renderEmptyMessage(
+                <TriangleAlert aria-hidden />,
+                <Paragraph margin="none">
+                  You cannot create a new variable from here. Please create one
+                  or more variables elsewhere in your protocol, and return here
+                  to select them.
+                </Paragraph>,
+              )}
+            {collectionItems.length > 0 && (
+              <Collection
+                id={RESULTS_ID}
+                aria-label="Variable results"
+                items={collectionItems}
+                keyExtractor={(item) => item.id}
+                textValueExtractor={(item) => item.label}
+                layout={layout}
+                renderItem={renderItem}
+                selectionMode="single"
+                selectedKeys={[]}
+                onSelectionChange={handleSelectionChange}
+                disabledKeys={disabledKeys}
+                className="h-[min(60vh,28rem)]"
+                viewportClassName="scroll-smooth px-3 pb-3"
+                fade
+              />
+            )}
+          </main>
+        </MotionSurface>
+      </ModalPopup>
     </Modal>
   );
 };
+
 export default VariableSpotlight;
