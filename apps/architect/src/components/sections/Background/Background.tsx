@@ -3,6 +3,13 @@ import { compose } from 'react-recompose';
 import { Field } from 'redux-form';
 
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
+/**
+ * The Narrative stage schema forbids a background image (its background is a
+ * strict object of only concentricCircles/skewedTowardCenter). The shared
+ * Background section must not offer the image option for Narrative stages.
+ */
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
 import { Number as NumberField, Toggle } from '~/components/Form/Fields';
@@ -12,41 +19,32 @@ import type { StageEditorSectionProps } from '~/components/StageEditor/Interface
 import Image from '../../Form/Fields/Image';
 import ValidatedField from '../../Form/ValidatedField';
 import withBackgroundChangeHandler from './withBackgroundChangeHandler';
-
-/**
- * The Narrative stage schema forbids a background image (its background is a
- * strict object of only concentricCircles/skewedTowardCenter). The shared
- * Background section must not offer the image option for Narrative stages.
- */
 export const allowsBackgroundImage = (interfaceType: StageType): boolean =>
   interfaceType !== 'Narrative';
-
 type BackgroundProps = StageEditorSectionProps & {
   handleChooseBackgroundType: (value: boolean) => void;
   useImage: boolean;
 };
-
 class Background extends PureComponent<BackgroundProps> {
   render() {
     const { handleChooseBackgroundType, useImage, interfaceType } = this.props;
     const imageAllowed = allowsBackgroundImage(interfaceType);
     const showImage = imageAllowed && useImage;
-
     return (
       <Section
         title="Background"
         summary={
-          <p>
+          <Paragraph>
             This section determines the graphical background for this prompt.
             {imageAllowed
               ? ' You can choose between a conventional series of concentric circles, or provide your own background image.'
               : ' This stage uses the conventional series of concentric circles.'}
-          </p>
+          </Paragraph>
         }
       >
         {imageAllowed && (
           <Row>
-            <h4>Choose a background type</h4>
+            <Heading level="h4">Choose a background type</Heading>
             <FrescoBooleanField
               value={useImage}
               options={[
@@ -113,7 +111,6 @@ class Background extends PureComponent<BackgroundProps> {
     );
   }
 }
-
 export default compose<BackgroundProps, StageEditorSectionProps>(
   withBackgroundChangeHandler,
 )(Background);

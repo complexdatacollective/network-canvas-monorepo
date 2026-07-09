@@ -7,6 +7,7 @@ import { useSelector } from 'react-redux';
 import Modal from '@codaco/fresco-ui/Modal';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
 import Search from '~/components/Form/Fields/Search';
 import type { RootState } from '~/ducks/store';
@@ -17,10 +18,8 @@ import { getVariablesForSubject } from '../../../../selectors/codebook';
 import { sortByLabel } from '../../../Codebook/helpers';
 import ExternalLink from '../../../ExternalLink';
 import { SimpleVariablePill } from './VariablePill';
-
 const EMPTY_CLASSES =
   'flex grow basis-full items-center rounded px-7 py-5 [&_svg]:mr-1 [&_svg]:shrink-0';
-
 type ListItemProps = {
   disabled?: boolean;
   selected?: boolean;
@@ -29,15 +28,12 @@ type ListItemProps = {
   setSelected?: () => void;
   removeSelected?: () => void;
 };
-
 const LIST_ITEM_BASE = 'flex w-full items-center justify-between px-5 py-2.5';
-
 // When `data-selected`, the row sets the foreground to white (so descendant
 // text reads on the primary background) and overrides the cascade variable
 // `--variable-pill-shadow-color` so any nested variable-pill grows a halo.
 const LIST_ITEM_SELECTED =
   'data-selected:bg-primary data-selected:text-white data-selected:[--variable-pill-shadow-color:oklch(var(--sea-green--dark))]';
-
 const ListItem = ({
   disabled = false,
   selected = false,
@@ -47,27 +43,23 @@ const ListItem = ({
   removeSelected = () => {},
 }: ListItemProps) => {
   const ref = useRef<HTMLLIElement>(null);
-
   useEffect(() => {
     if (selected && ref.current) {
       // Move element into view when it is selected
       ref.current.scrollIntoView({ block: 'nearest' });
     }
   }, [selected]);
-
   const handleClick = () => {
     if (onSelect && !disabled) {
       onSelect();
     }
   };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (onSelect && !disabled && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
       onSelect();
     }
   };
-
   if (onSelect) {
     return (
       <li ref={ref}>
@@ -96,7 +88,6 @@ const ListItem = ({
       </li>
     );
   }
-
   return (
     <li ref={ref}>
       <div
@@ -109,11 +100,9 @@ const ListItem = ({
     </li>
   );
 };
-
 type DividerProps = {
   legend: string;
 };
-
 const Divider = ({ legend }: DividerProps) => (
   <li className="px-5 pt-5 pb-1 first:pt-1">
     <span
@@ -128,10 +117,8 @@ const Divider = ({ legend }: DividerProps) => (
     </span>
   </li>
 );
-
 const CREATE_NEW_CLASSES =
   'flex items-center justify-center px-5 py-1 font-medium text-current [&_svg]:mr-5 [&_svg]:h-5';
-
 type VariableSpotlightProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -147,7 +134,6 @@ type VariableSpotlightProps = {
     type?: string;
   }>;
 };
-
 const VariableSpotlight = ({
   open,
   onOpenChange,
@@ -160,40 +146,33 @@ const VariableSpotlight = ({
   disallowCreation = false,
 }: VariableSpotlightProps) => {
   const [filterTerm, setFilterTerm] = useState('');
-
   // Cursor positions:
   // -2: Search input
   // -1: Create option (if visible)
   // 0-n: Existing variables
   const [cursor, setCursor] = useState(-2);
   const [showCursor, setShowCursor] = useState(false);
-
   const resetState = () => {
     setFilterTerm('');
     setCursor(-2);
     setShowCursor(false);
   };
-
   const handleClose = () => {
     resetState();
     onCancel();
   };
-
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       resetState();
     }
     onOpenChange(isOpen);
   };
-
   const handleCreateOption = () => {
     setFilterTerm(''); // Clear search term so the user doesn't see a flash of invalid text
     onCreateOption(filterTerm);
   };
-
   const sortedAndFilteredItems = useMemo(() => {
     options.sort(sortByLabel);
-
     if (!filterTerm) {
       return options;
     }
@@ -201,7 +180,6 @@ const VariableSpotlight = ({
       item.label.toLowerCase().includes(filterTerm.toLowerCase()),
     );
   }, [filterTerm, options]);
-
   // Memoize subject to avoid creating new object on every render, which breaks selector memoization
   const subject = useMemo(
     () => ({
@@ -213,25 +191,20 @@ const VariableSpotlight = ({
   const existingVariables = useSelector((state: RootState) =>
     getVariablesForSubject(state, subject),
   );
-
   const hasOptions = useMemo(() => options.length > 0, [options]);
   const hasFilterTerm = useMemo(() => filterTerm.length > 0, [filterTerm]);
   const hasFilterResults = useMemo(
     () => sortedAndFilteredItems.length > 0,
     [sortedAndFilteredItems],
   );
-
   const existingVariableNames = Object.keys(existingVariables).map((variable) =>
     get(existingVariables[variable], 'name'),
   );
-
   const invalidVariableName = useMemo(() => {
     const unique = validations.uniqueByList(existingVariableNames)(filterTerm);
     const allowed = validations.allowedVariableName()(filterTerm);
-
     return unique || allowed || undefined;
   }, [filterTerm, existingVariableNames]);
-
   const renderResults = () => (
     <ScrollArea fade={false} viewportClassName="scroll-smooth">
       <ol className="m-0 flex list-none flex-col gap-1 p-1">
@@ -245,11 +218,11 @@ const VariableSpotlight = ({
                 >
                   <TriangleAlert aria-hidden />
                   <div>
-                    <p>
+                    <Paragraph>
                       You cannot create a new variable from here. Please create
                       one or more variables elsewhere in your protocol, and
                       return here to select them.
-                    </p>
+                    </Paragraph>
                   </div>
                 </div>
               )}
@@ -327,7 +300,6 @@ const VariableSpotlight = ({
       </ol>
     </ScrollArea>
   );
-
   // Reset cursor position when list is filtered
   useEffect(() => {
     // Set cursor to create if there are no other options
@@ -336,33 +308,27 @@ const VariableSpotlight = ({
       setShowCursor(true);
       return;
     }
-
     // If we are beyond the end, wrap to the end of the list
     if (cursor > sortedAndFilteredItems.length - 1) {
       setCursor(sortedAndFilteredItems.length - 1);
     }
   }, [sortedAndFilteredItems, cursor, hasFilterResults]);
-
   const handleFilter = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFilterTerm(event.target.value);
   };
-
   // Navigate within the list of results using the keyboard
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Close the picker when pressing escape
     if (e.key === 'Escape') {
       handleClose();
     }
-
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault(); // Prevent moving cursor within search input
-
       // Show the cursor only when either arrow key is pressed for the first time
       if (!showCursor) {
         setShowCursor(true);
       }
     }
-
     if (e.key === 'ArrowUp') {
       // If there are items and the cursor is not at the top,
       // or if there are no items and the cursor is not at the top
@@ -381,7 +347,6 @@ const VariableSpotlight = ({
         setCursor(0);
         return;
       }
-
       // If the cursor is not at the bottom
       // Or there are no items and the cursor is in the search input
       // move the cursor down
@@ -397,7 +362,6 @@ const VariableSpotlight = ({
         onSelect(sortedAndFilteredItems[cursor].value);
         return;
       }
-
       // If the cursor is in the create option,
       // and there is a filter term,
       // create a new variable with that value
@@ -411,7 +375,6 @@ const VariableSpotlight = ({
       }
     }
   };
-
   const containerVariants = {
     visible: {
       y: 0,
@@ -422,12 +385,10 @@ const VariableSpotlight = ({
       opacity: 0,
     },
   };
-
   const resultsVariants = {
     visible: { height: 'auto', transitionEnd: { display: 'flex' } },
     hidden: { height: 0 },
   };
-
   return (
     <Modal open={open} onOpenChange={handleOpenChange}>
       <motion.div
@@ -467,14 +428,14 @@ const VariableSpotlight = ({
             >
               <Info aria-hidden />
               <div>
-                <p>
+                <Paragraph>
                   To create your first variable of this type, type a name above
                   and press enter. See our&nbsp;
                   <ExternalLink href="https://documentation.networkcanvas.com/reference/variable-naming/">
                     documentation on variable naming
                   </ExternalLink>
                   &nbsp;for more information.
-                </p>
+                </Paragraph>
               </div>
             </div>
           )}
@@ -485,11 +446,11 @@ const VariableSpotlight = ({
             >
               <TriangleAlert aria-hidden />
               <div>
-                <p>
+                <Paragraph>
                   No variables exist for you to select, and you cannot create a
                   new variable from here. Please create one or more variables
                   elsewhere in your protocol, and return here to select them.
-                </p>
+                </Paragraph>
               </div>
             </div>
           )}
@@ -499,5 +460,4 @@ const VariableSpotlight = ({
     </Modal>
   );
 };
-
 export default VariableSpotlight;

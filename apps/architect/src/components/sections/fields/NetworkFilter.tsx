@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { change, Field, getFormValues } from 'redux-form';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   Filter as FilterQuery,
   ruleValidator,
@@ -15,7 +16,6 @@ import type { RootState } from '~/ducks/modules/root';
 
 import Section from '../../EditorLayout/Section';
 import { handleFilterDeactivate } from '../Filter';
-
 const FilterField = (
   withFieldConnector as unknown as (
     c: React.ComponentType,
@@ -25,13 +25,11 @@ const FilterField = (
     FilterQuery as unknown as React.ComponentType,
   ) as unknown as React.ComponentType,
 );
-
 type NetworkFilterProps = {
   form: string;
   name?: string;
   variant?: 'contrast';
 };
-
 const NetworkFilter = ({
   form,
   name = 'filter',
@@ -42,13 +40,11 @@ const NetworkFilter = ({
   const hasFilter = useSelector(
     (state: RootState) => get(getFormValues(form)(state), name, null) !== null,
   );
-
   const handleToggleChange = useCallback(
     async (newStatus: boolean) => {
       if (newStatus) {
         return Promise.resolve(true);
       }
-
       if (hasFilter) {
         const result = await handleFilterDeactivate(
           async () =>
@@ -62,18 +58,15 @@ const NetworkFilter = ({
               onConfirm: () => {},
             })) === true,
         );
-
         if (!result) {
           return Promise.resolve(false);
         }
       }
-
       dispatch(change(form, name, null));
       return Promise.resolve(true);
     },
     [confirm, dispatch, form, hasFilter, name],
   );
-
   const contrastProps =
     variant === 'contrast'
       ? {
@@ -82,13 +75,14 @@ const NetworkFilter = ({
           layout: 'vertical' as 'vertical' | 'horizontal',
         }
       : {};
-
   return (
     <Section
       title="Filter"
       toggleable
       summary={
-        <p>You can optionally filter which nodes are shown on in this panel.</p>
+        <Paragraph>
+          You can optionally filter which nodes are shown on in this panel.
+        </Paragraph>
       }
       startExpanded={hasFilter}
       handleToggleChange={handleToggleChange}
@@ -98,5 +92,4 @@ const NetworkFilter = ({
     </Section>
   );
 };
-
 export default NetworkFilter;

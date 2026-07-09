@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import OrderedList from '~/components/OrderedList/OrderedList';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -17,14 +18,12 @@ import type { RootState } from '~/ducks/modules/root';
 
 import IssueAnchor from '../../IssueAnchor';
 import NodePanel from './NodePanel';
-
 type NodePanelsProps = {
   form: string;
   createNewPanel: () => void;
   panels?: Array<Record<string, unknown>> | null;
   disabled?: boolean;
 };
-
 const NodePanels = ({
   form,
   createNewPanel,
@@ -34,13 +33,11 @@ const NodePanels = ({
 }: NodePanelsProps) => {
   const dispatch = useAppDispatch();
   const { confirm } = useDialog();
-
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
       if (!panels || panels.length === 0 || newState) {
         return true;
       }
-
       const confirmed = await confirm({
         title: 'This will delete your panel configuration',
         description:
@@ -50,19 +47,15 @@ const NodePanels = ({
         intent: 'warning',
         onConfirm: () => {},
       });
-
       if (confirmed) {
         dispatch(change(form, 'panels', null) as unknown as FormAction);
         return true;
       }
-
       return false;
     },
     [confirm, dispatch, panels, form],
   );
-
   const isFull = panels && panels.length === 2;
-
   return (
     <Section
       // eslint-disable-next-line react/jsx-props-no-spreading
@@ -70,10 +63,10 @@ const NodePanels = ({
       title="Side Panels"
       toggleable
       summary={
-        <p>
+        <Paragraph>
           Use this section to configure up to two side panels on this name
           generator.
-        </p>
+        </Paragraph>
       }
       startExpanded={!!panels}
       handleToggleChange={handleToggleChange}
@@ -102,8 +95,12 @@ const NodePanels = ({
     </Section>
   );
 };
-
-const mapStateToProps = (state: RootState, props: { form: string }) => {
+const mapStateToProps = (
+  state: RootState,
+  props: {
+    form: string;
+  },
+) => {
   const getFormValues = formValueSelector(props.form);
   const panels = getFormValues(state, 'panels') as
     | Array<Record<string, unknown>>
@@ -113,16 +110,18 @@ const mapStateToProps = (state: RootState, props: { form: string }) => {
     getFormValues(state, 'subject') as Record<string, unknown>,
     'type',
   );
-
   return {
     disabled,
     panels,
   };
 };
-
 const mapDispatchToProps = (
   dispatch: Dispatch,
-  { form }: { form: string },
+  {
+    form,
+  }: {
+    form: string;
+  },
 ) => ({
   createNewPanel: bindActionCreators(
     () =>
@@ -135,5 +134,4 @@ const mapDispatchToProps = (
     dispatch,
   ),
 });
-
 export default connect(mapStateToProps, mapDispatchToProps)(NodePanels);

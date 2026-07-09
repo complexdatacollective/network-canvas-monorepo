@@ -3,25 +3,22 @@ import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { change, Field } from 'redux-form';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import Select from '~/components/Form/Fields/Select';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getStageList } from '~/selectors/protocol';
-
 const SourceStage = ({ form }: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
-
   const familyPedigreeStages = useSelector((state: RootState) =>
     getStageList(state).filter((stage) => stage.type === 'FamilyPedigree'),
   );
-
   const options = familyPedigreeStages.map((stage) => ({
     value: stage.id,
     label: stage.label,
   }));
-
   // Diseases map to boolean variables of the source stage's node type, so a
   // different source stage invalidates the existing selections. Clear them so
   // the researcher reconfigures against the new source rather than saving an
@@ -37,15 +34,14 @@ const SourceStage = ({ form }: StageEditorSectionProps) => {
     },
     [dispatch, form],
   );
-
   return (
     <Section
       title="Source Stage"
       summary={
-        <p>
+        <Paragraph>
           Select the Family Pedigree stage whose network data this Narrative
           Pedigree will visualize. Only Family Pedigree stages are listed here.
-        </p>
+        </Paragraph>
       }
     >
       <Row>
@@ -62,5 +58,4 @@ const SourceStage = ({ form }: StageEditorSectionProps) => {
     </Section>
   );
 };
-
 export default SourceStage;

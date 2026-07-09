@@ -2,7 +2,6 @@ import type React from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-
 type PageHeadingProps = {
   title: React.ReactNode;
   description?: React.ReactNode;

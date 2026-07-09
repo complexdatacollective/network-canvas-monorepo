@@ -9,37 +9,31 @@ import { change, FieldArray, formValueSelector } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+// Row background reads `--rule-bg` so callers (e.g. Validations error state)
+// can flip it without re-defining the row layout.
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import type { RootState } from '~/ducks/modules/root';
 
 import ValidatedField from './ValidatedField';
-
-// Row background reads `--rule-bg` so callers (e.g. Validations error state)
-// can flip it without re-defining the row layout.
 export const MULTI_SELECT_RULE_CLASSES =
   'flex items-center py-5 bg-(--rule-bg) text-sortable-contrast rounded-[0.3rem] z-1 transition-colors duration-300 ease-in-out';
-
 export const MULTI_SELECT_CONTROL_CLASSES = 'flex grow-0 items-center px-5';
-
 export const MULTI_SELECT_OPTIONS_CLASSES = 'flex-1 flex items-center px-5';
-
 export const MULTI_SELECT_OPTION_CLASSES =
   'flex flex-1 items-start ml-5 first:ml-0';
-
 type PropertyField = {
   fieldName: string;
   [key: string]: unknown;
 };
-
 type ItemValue = {
   [key: string]: unknown;
 };
-
 type InternalItem<T> = {
   _internalId: string;
   data: T;
 };
-
 const AddItem = (props: React.ComponentProps<typeof Button>) => (
   <Button
     color="primary"
@@ -50,13 +44,13 @@ const AddItem = (props: React.ComponentProps<typeof Button>) => (
     Add new
   </Button>
 );
-
 type ItemOwnProps = {
   field: string;
   fields: WrappedFieldArrayProps<ItemValue>['fields'];
-  meta: { form: string };
+  meta: {
+    form: string;
+  };
 };
-
 const mapStateToItemProps = (
   state: RootState,
   { field, fields: { name: fieldsName }, meta: { form } }: ItemOwnProps,
@@ -67,7 +61,6 @@ const mapStateToItemProps = (
     | undefined,
   form,
 });
-
 const mapDispatchToItemProps = (
   dispatch: Dispatch,
   { meta: { form } }: ItemOwnProps,
@@ -75,7 +68,6 @@ const mapDispatchToItemProps = (
   resetField: (fieldName: string) =>
     dispatch(change(form, fieldName, null) as UnknownAction),
 });
-
 type ItemHandlerProps = ItemOwnProps &
   ReturnType<typeof mapStateToItemProps> &
   ReturnType<typeof mapDispatchToItemProps> & {
@@ -87,11 +79,9 @@ type ItemHandlerProps = ItemOwnProps &
       allValues: ItemValue[] | undefined,
     ) => Array<Record<string, unknown>>;
   };
-
 type ItemComponentProps = ItemHandlerProps & {
   internalItem: InternalItem<ItemValue>;
 };
-
 const ItemComponent: React.FC<ItemComponentProps> = ({
   field,
   fields,
@@ -105,7 +95,6 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
 }) => {
   const controls = useDragControls();
   const { confirm } = useDialog();
-
   const handleDelete = () => {
     void confirm({
       title: 'Remove item',
@@ -118,7 +107,6 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
       },
     });
   };
-
   const handleChange = (changedIndex: number) => {
     // Reset any fields after this one in the property index
     for (const { fieldName: propertyFieldName } of properties.slice(
@@ -127,7 +115,6 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
       resetField(`${field}.${propertyFieldName}`);
     }
   };
-
   return (
     <Reorder.Item
       className={`group ${MULTI_SELECT_RULE_CLASSES}`}
@@ -182,7 +169,6 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
     </Reorder.Item>
   );
 };
-
 type ItemExportProps = ItemOwnProps & {
   index: number;
   properties: PropertyField[];
@@ -193,17 +179,16 @@ type ItemExportProps = ItemOwnProps & {
   ) => Array<Record<string, unknown>>;
   internalItem: InternalItem<ItemValue>;
 };
-
 const Item = connect(
   mapStateToItemProps,
   mapDispatchToItemProps,
 )(ItemComponent) as unknown as React.ComponentType<ItemExportProps>;
-
 type ItemsOwnProps = {
-  meta: { form: string };
+  meta: {
+    form: string;
+  };
   fields: WrappedFieldArrayProps<ItemValue>['fields'];
 };
-
 type ItemsProps = ItemsOwnProps & {
   maxItems?: number | null;
   properties: PropertyField[];
@@ -213,9 +198,7 @@ type ItemsProps = ItemsOwnProps & {
     allValues: ItemValue[] | undefined,
   ) => Array<Record<string, unknown>>;
 };
-
 type ItemsComponentProps = WrappedFieldArrayProps<ItemValue> & ItemsProps;
-
 const ItemsComponent: React.FC<ItemsComponentProps> = ({
   fields,
   maxItems = null,
@@ -223,13 +206,10 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({
 }) => {
   const hasSpace = maxItems === null || fields.length < (maxItems ?? 0);
   const showAdd = hasSpace;
-
   const items = (fields.getAll() as ItemValue[]) || [];
-
   // Track stable wrapper objects - Reorder.Group needs stable references to track items
   // Pattern from Options.tsx
   const internalItemsRef = useRef<InternalItem<ItemValue>[]>([]);
-
   // Sync internalItemsRef with current items, maintaining stable references
   // Handle additions - add new wrappers for new items
   while (internalItemsRef.current.length < items.length) {
@@ -238,7 +218,6 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({
       data: {} as ItemValue,
     });
   }
-
   // Handle deletions - find which specific item was removed
   if (internalItemsRef.current.length > items.length) {
     const currentDataSet = new Set(items);
@@ -252,7 +231,6 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({
       internalItemsRef.current.length = items.length;
     }
   }
-
   // Update data references (stable wrapper objects, fresh data)
   for (let i = 0; i < items.length; i++) {
     const wrapper = internalItemsRef.current[i];
@@ -261,10 +239,8 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({
       wrapper.data = item;
     }
   }
-
   // Use the stable reference array
   const internalItems = internalItemsRef.current;
-
   const handleReorder = (newOrder: InternalItem<ItemValue>[]) => {
     for (let i = 0; i < newOrder.length; i++) {
       const newItem = newOrder[i];
@@ -289,7 +265,6 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({
       }
     }
   };
-
   return (
     <>
       <Reorder.Group
@@ -300,7 +275,6 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({
       >
         {internalItems.map((internalItem, index) => {
           const field = `${fields.name}[${index}]`;
-
           return (
             <Item
               index={index}
@@ -318,18 +292,16 @@ const ItemsComponent: React.FC<ItemsComponentProps> = ({
       {showAdd && <AddItem onClick={() => fields.push({})} />}
 
       {!showAdd && fields.length === 0 && (
-        <p>
+        <Paragraph>
           <em>No properties available.</em>
-        </p>
+        </Paragraph>
       )}
     </>
   );
 };
-
 const Items = ItemsComponent as unknown as React.ComponentType<
   WrappedFieldArrayProps<ItemValue> & ItemsProps
 >;
-
 type MultiSelectProps = {
   name: string;
   properties: Array<Record<string, unknown>>;
@@ -341,7 +313,6 @@ type MultiSelectProps = {
   label?: string;
   maxItems?: number | null;
 };
-
 const MultiSelect = ({
   name,
   properties,
@@ -350,7 +321,7 @@ const MultiSelect = ({
   ...rest
 }: MultiSelectProps) => (
   <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
-    {label && <h4>{label}</h4>}
+    {label && <Heading level="h4">{label}</Heading>}
     <FieldArray
       name={name}
       component={
@@ -365,5 +336,4 @@ const MultiSelect = ({
     />
   </div>
 );
-
 export default MultiSelect;

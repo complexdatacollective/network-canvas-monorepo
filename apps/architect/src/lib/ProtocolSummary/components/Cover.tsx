@@ -6,7 +6,6 @@ import networkCanvasLogo from '~/images/NC-Mark.svg';
 
 import ProtocolCard from './ProtocolCard';
 import SummaryContext from './SummaryContext';
-
 const Cover = () => {
   const { protocol, protocolName } = useContext(SummaryContext);
 

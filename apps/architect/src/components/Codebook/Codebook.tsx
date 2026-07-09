@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 
 import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import Checkbox from '~/components/Form/Fields/Checkbox';
 import { getCodebook } from '~/selectors/protocol';
@@ -12,11 +13,9 @@ import EgoType from './EgoType';
 import EntityType from './EntityType';
 import ExternalEntity from './ExternalEntity';
 import { useCodebookData } from './useCodebookData';
-
 type CodebookProps = {
   onEditEntity?: (entity: string, type?: string) => void;
 };
-
 const Codebook = ({ onEditEntity }: CodebookProps) => {
   const codebook = useSelector(getCodebook);
   const {
@@ -28,13 +27,10 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
     hasEdges,
     hasNetworkAssets,
   } = useCodebookData(codebook);
-
   const hasAnyContent =
     hasEgoVariables || hasNodes || hasEdges || hasNetworkAssets;
-
   const [search, setSearch] = useState('');
   const [unusedOnly, setUnusedOnly] = useState(false);
-
   return (
     <div className="my-10">
       <div className="bg-surface-1 mb-7 flex flex-wrap items-center gap-7 rounded p-6 shadow-md">
@@ -58,11 +54,11 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
       {!hasAnyContent && (
         <div className="bg-surface-2 border-outline mb-7 rounded border p-7">
-          <p className="text-muted text-center">
+          <Paragraph className="text-muted text-center">
             There are currently no types or variables defined in this protocol.
             Use the buttons below to create your first node or edge type, or add
             ego variables.
-          </p>
+          </Paragraph>
         </div>
       )}
 
@@ -90,7 +86,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           </Button>
         </div>
         {nodes.length === 0 ? (
-          <p className="text-muted">No node types yet.</p>
+          <Paragraph className="text-muted">No node types yet.</Paragraph>
         ) : (
           nodes.map((node) => (
             <EntityType
@@ -122,7 +118,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           </Button>
         </div>
         {edges.length === 0 ? (
-          <p className="text-muted">No edge types yet.</p>
+          <Paragraph className="text-muted">No edge types yet.</Paragraph>
         ) : (
           edges.map((edge) => (
             <EntityType
@@ -156,5 +152,4 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
     </div>
   );
 };
-
 export default Codebook;

@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import APIKey from '~/components/Assets/APIKey';
 import Audio from '~/components/Assets/Audio';
 import BackgroundImage from '~/components/Assets/BackgroundImage';
@@ -12,13 +13,11 @@ import Network from '~/components/Assets/Network';
 import Video from '~/components/Assets/Video';
 import withAssetMeta from '~/components/Assets/withAssetMeta';
 import withAssetPath from '~/components/Assets/withAssetPath';
-
 type AssetMeta = Record<string, unknown> & {
   type?: string;
   name?: string;
   value?: string;
 };
-
 const getRenderer = (meta: AssetMeta) => {
   switch (meta.type) {
     case 'image':
@@ -34,22 +33,19 @@ const getRenderer = (meta: AssetMeta) => {
     case 'apikey':
       return APIKey;
     default:
-      return () => <p>No preview available.</p>;
+      return () => <Paragraph>No preview available.</Paragraph>;
   }
 };
-
 type PreviewOwnProps = {
   id: string;
   show?: boolean;
   onDownload?: (path: string, meta: AssetMeta) => void;
   onClose?: () => void;
 };
-
 type PreviewProps = PreviewOwnProps & {
   meta: AssetMeta;
   assetPath: string;
 };
-
 const Preview = ({
   id,
   meta,
@@ -59,17 +55,14 @@ const Preview = ({
   onClose = () => {},
 }: PreviewProps) => {
   const AssetRenderer = getRenderer(meta);
-
   const handleDownload = useCallback(() => {
     onDownload(assetPath, meta);
   }, [onDownload, assetPath, meta]);
-
   const handleCopyKey = useCallback(() => {
     if (meta.value) {
       navigator.clipboard.writeText(meta.value);
     }
   }, [meta.value]);
-
   return (
     <Dialog
       open={show}
@@ -100,7 +93,6 @@ const Preview = ({
     </Dialog>
   );
 };
-
 export default compose(
   withAssetMeta,
   withAssetPath,

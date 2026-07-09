@@ -2,13 +2,12 @@ import { Select as BaseSelect } from '@base-ui/react/select';
 import { Check, ChevronDown, TriangleAlert } from 'lucide-react';
 import { useEffect, useId, useRef } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '~/utils/cva';
-
 type SelectOption = {
   value: string;
   label: string;
 };
-
 type SelectProps = {
   className?: string;
   options?: SelectOption[];
@@ -27,7 +26,6 @@ type SelectProps = {
   placeholder?: string;
   isDisabled?: boolean;
 };
-
 const Select = ({
   className,
   options = [],
@@ -39,7 +37,6 @@ const Select = ({
 }: SelectProps) => {
   const reactId = useId();
   const currentValue = input?.value ?? null;
-
   // Track the latest selected value so onBlur fired by handleOpenChange
   // sees the value committed by handleValueChange in the same event, not
   // the stale render-time value.
@@ -47,31 +44,29 @@ const Select = ({
   useEffect(() => {
     latestValueRef.current = currentValue;
   }, [currentValue]);
-
   if (!input) return null;
-
   const { value, onChange, onBlur, name } = input;
   const { invalid, error, touched } = meta;
   const hasError = !!(invalid && touched && error);
-
   const labelId = label ? `${reactId}-label` : undefined;
   const errorId = hasError ? `${reactId}-error` : undefined;
-
   const handleValueChange = (next: string | null) => {
     if (next === null) return;
     latestValueRef.current = next;
     onChange?.(next);
   };
-
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       onBlur?.(latestValueRef.current);
     }
   };
-
   return (
     <div className={cx('flex flex-col', className)}>
-      {label && <h4 id={labelId}>{label}</h4>}
+      {label && (
+        <Heading level="h4" id={labelId}>
+          {label}
+        </Heading>
+      )}
       <BaseSelect.Root
         value={value ?? null}
         onValueChange={handleValueChange}
@@ -152,5 +147,4 @@ const Select = ({
     </div>
   );
 };
-
 export default Select;

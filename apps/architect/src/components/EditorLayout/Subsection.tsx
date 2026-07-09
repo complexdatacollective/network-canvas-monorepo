@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { paragraphVariants } from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '~/utils/cva';
-
 type SubsectionProps = {
   /** Used as the scroll-to-error anchor (see utils/issues getFieldId). */
   id?: string;

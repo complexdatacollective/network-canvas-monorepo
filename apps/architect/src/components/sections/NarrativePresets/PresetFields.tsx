@@ -3,6 +3,7 @@ import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import CheckboxGroup from '~/components/Form/Fields/CheckboxGroup';
 import Text from '~/components/Form/Fields/Text';
 import ValidatedField from '~/components/Form/ValidatedField';
@@ -13,12 +14,10 @@ import Row from '../../EditorLayout/Row';
 import Section from '../../EditorLayout/Section';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import withPresetProps from './withPresetProps';
-
 type SelectOption = {
   label: string;
   value: string;
 };
-
 type PresetFieldsProps = {
   form: string;
   edgesForSubject?: SelectOption[];
@@ -31,7 +30,6 @@ type PresetFieldsProps = {
   layoutVariablesForSubject?: SelectOption[];
   type: string;
 };
-
 const PresetFields = ({
   form,
   edgesForSubject = [],
@@ -45,7 +43,6 @@ const PresetFields = ({
   type,
 }: PresetFieldsProps) => {
   const getFormValue = formValueSelector(form);
-
   const dispatch = useAppDispatch();
   const hasGroupVariable = !!groupVariable;
   const displayEdges = useSelector(
@@ -59,44 +56,37 @@ const PresetFields = ({
   );
   const hasHighlightVariables =
     highlightVariables && highlightVariables.length > 0;
-
   const handleToggleHighlightVariables = (open: boolean) => {
     if (open) {
       return true;
     }
-
     dispatch(change(form, 'highlight', undefined) as UnknownAction);
     return true;
   };
-
   const handleToggleDisplayEdges = (open: boolean) => {
     if (open) {
       return true;
     }
-
     dispatch(change(form, 'edges', undefined) as UnknownAction);
     return true;
   };
-
   const handleToggleGroupVariable = (open: boolean) => {
     if (open) {
       return true;
     }
-
     dispatch(change(form, 'groupVariable', null) as UnknownAction);
     return true;
   };
-
   return (
     <>
       <Section
         title="Preset Label"
         summary={
-          <p>
+          <Paragraph>
             The preset label will used to quickly identify the preset from
             within the narrative interface. It will be visible to the
             participant.
-          </p>
+          </Paragraph>
         }
         layout="vertical"
       >
@@ -116,7 +106,9 @@ const PresetFields = ({
         layout="vertical"
         title="Layout Variable"
         summary={
-          <p>Select a variable to use to position the nodes for this preset.</p>
+          <Paragraph>
+            Select a variable to use to position the nodes for this preset.
+          </Paragraph>
         }
       >
         <Row>
@@ -137,10 +129,10 @@ const PresetFields = ({
       <Section
         title="Group Variable"
         summary={
-          <p>
+          <Paragraph>
             Select a categorical variable which will be used to draw convex
             hulls around nodes.
-          </p>
+          </Paragraph>
         }
         toggleable
         disabled={groupVariablesForSubject.length === 0}
@@ -149,13 +141,13 @@ const PresetFields = ({
         layout="vertical"
       >
         <Row>
-          <p>
+          <Paragraph>
             This feature will draw a semi-transparent convex hull for each
             categorical value of the variable you select. If a node&apos;s
             attributes include this categorical value, the hull will be expanded
             to include the node. If a node has multiple values for this
             categorical variable, it will appear in multiple overlapping hulls.
-          </p>
+          </Paragraph>
           <Field
             name="groupVariable"
             label="Select a categorical variable for grouping"
@@ -175,9 +167,9 @@ const PresetFields = ({
         handleToggleChange={handleToggleDisplayEdges}
         disabled={edgesForSubject.length === 0}
         summary={
-          <p>
+          <Paragraph>
             Select one or more edge types to display on this narrative preset.
-          </p>
+          </Paragraph>
         }
         layout="vertical"
       >
@@ -194,11 +186,11 @@ const PresetFields = ({
       <Section
         title="Highlight Node Attributes"
         summary={
-          <p>
+          <Paragraph>
             Select one or more boolean variables below. Nodes whose value is
             &quot;true&quot; for this variable will be highlighted when this
             preset is active.
-          </p>
+          </Paragraph>
         }
         toggleable
         startExpanded={
@@ -221,10 +213,13 @@ const PresetFields = ({
     </>
   );
 };
-
 export default compose<
   PresetFieldsProps,
-  { entity: string; type: string; form: string }
+  {
+    entity: string;
+    type: string;
+    form: string;
+  }
 >(withPresetProps)(PresetFields) as unknown as React.ComponentType<{
   entity: string;
   type: string;

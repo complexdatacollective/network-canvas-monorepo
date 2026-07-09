@@ -28,6 +28,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@codaco/fresco-ui/Tooltip';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import Table from '~/components/Assets/Table';
 import Badge from '~/components/Badge';
 import ExternalLink from '~/components/ExternalLink';
@@ -41,11 +42,8 @@ import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
 import { reportError } from '~/utils/reportError';
-
 type Tab = 'recent' | 'templates';
-
 const RELATIVE_CUTOFF_DAYS = 7;
-
 const formatTimestamp = (millis: number): string => {
   const dt = DateTime.fromMillis(millis);
   const secondsAgo = -dt.diffNow('seconds').seconds;
@@ -58,14 +56,15 @@ const formatTimestamp = (millis: number): string => {
     hour: 'numeric',
     minute: '2-digit',
   });
-  if (secondsAgo < RELATIVE_CUTOFF_DAYS * 86_400) {
+  if (secondsAgo < RELATIVE_CUTOFF_DAYS * 86400) {
     return dt.toRelative() ?? absolute;
   }
   return absolute;
 };
-
-type MetaStat = { label: string; value: string };
-
+type MetaStat = {
+  label: string;
+  value: string;
+};
 const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
   const stageCount = protocol.protocol.stages.length;
   return [
@@ -74,7 +73,6 @@ const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
     `Edited ${formatTimestamp(protocol.updatedAt)}`,
   ].join(' · ');
 };
-
 type LibraryRowItem = Record<string, unknown> & {
   kind: 'row';
   id: string;
@@ -88,16 +86,13 @@ type LibraryRowItem = Record<string, unknown> & {
   onDelete?: () => void;
   onShowInfo?: () => void;
 };
-
 type GalleryCardItem = Record<string, unknown> & {
   kind: 'gallery-card';
   id: string;
   textValue: string;
   onDismiss: () => void;
 };
-
 type LibraryPanelItem = LibraryRowItem | GalleryCardItem;
-
 type PanelRowProps = {
   itemProps: ItemProps;
   name: string;
@@ -109,7 +104,6 @@ type PanelRowProps = {
   onDelete?: () => void;
   onShowInfo?: () => void;
 };
-
 const PanelRow = ({
   itemProps,
   name,
@@ -122,13 +116,11 @@ const PanelRow = ({
   onShowInfo,
 }: PanelRowProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
-
   const handleClick = (event: React.MouseEvent) => {
     itemProps.onClick?.(event);
     if (event.defaultPrevented) return;
     onOpen();
   };
-
   const handleKeyDown = (event: React.KeyboardEvent) => {
     itemProps.onKeyDown?.(event);
     if (event.defaultPrevented) return;
@@ -139,7 +131,6 @@ const PanelRow = ({
       onOpen();
     }
   };
-
   const runMenuAction = (action: () => void | Promise<void>) => () => {
     setMenuOpen(false);
     void Promise.resolve(action()).catch((error: unknown) => {
@@ -147,9 +138,7 @@ const PanelRow = ({
       reportError(error);
     });
   };
-
   const hasMenu = Boolean(onDownload || onDelete || onShowInfo);
-
   return (
     <div
       {...itemProps}
@@ -238,17 +227,14 @@ const PanelRow = ({
     </div>
   );
 };
-
 type GalleryCardProps = {
   itemProps: ItemProps;
   onDismiss: () => void;
 };
-
 const GalleryCard = ({ itemProps, onDismiss }: GalleryCardProps) => {
   const handleKeyDown = (event: React.KeyboardEvent) => {
     itemProps.onKeyDown?.(event);
   };
-
   return (
     <div
       {...itemProps}
@@ -263,26 +249,24 @@ const GalleryCard = ({ itemProps, onDismiss }: GalleryCardProps) => {
         onClick={onDismiss}
         icon={<X />}
       />
-      <p className="m-0 pr-7 font-semibold">Looking for more?</p>
-      <p className="text-muted m-0 text-sm">
+      <Paragraph className="m-0 pr-7 font-semibold">
+        Looking for more?
+      </Paragraph>
+      <Paragraph className="text-muted m-0 text-sm">
         More examples of Network Canvas protocols can be found on our{' '}
         <ExternalLink href="https://protocolgallery.networkcanvas.com/">
           protocol gallery
         </ExternalLink>
-      </p>
+      </Paragraph>
     </div>
   );
 };
-
 const getLibraryItemKey = (item: LibraryPanelItem) => item.id;
-
 const getLibraryItemTextValue = (item: LibraryPanelItem) => item.textValue;
-
 const renderLibraryItem = (item: LibraryPanelItem, itemProps: ItemProps) => {
   if (item.kind === 'gallery-card') {
     return <GalleryCard itemProps={itemProps} onDismiss={item.onDismiss} />;
   }
-
   return (
     <PanelRow
       itemProps={itemProps}
@@ -297,7 +281,6 @@ const renderLibraryItem = (item: LibraryPanelItem, itemProps: ItemProps) => {
     />
   );
 };
-
 type LibraryPanelProps = {
   // Open a saved protocol from the library.
   onOpenProtocol: (id: string) => void;
@@ -310,14 +293,11 @@ type LibraryPanelProps = {
   // Open one of the bundled research templates.
   onOpenTemplate: (template: BundledTemplate) => void;
 };
-
 const COLLECTION_CLASSES = 'h-[min(28rem,65dvh)] min-h-0';
 const COLLECTION_VIEWPORT_CLASSES = 'overflow-x-hidden px-2.5 pb-10';
-
 // Persist the protocol-gallery card's dismissal so it stays hidden across
 // reloads once the user closes it.
 const GALLERY_CARD_DISMISSED_KEY = 'architect:templates-gallery-dismissed';
-
 const LibraryPanel = ({
   onOpenProtocol,
   onOpenSample,
@@ -351,9 +331,7 @@ const LibraryPanel = ({
     stats: MetaStat[];
   } | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
-
   const activeTab = tab;
-
   const handleDownload = useCallback(
     async (protocol: StoredProtocolRow) => {
       setDownloadingIds((prev) => new Set(prev).add(protocol.id));
@@ -363,7 +341,6 @@ const LibraryPanel = ({
           protocol.name,
           protocol.id,
         );
-
         // Export is best-effort: unresolvable assets are omitted rather than
         // aborting the whole download, but the author must be told which ones
         // so a silently incomplete .netcanvas isn't shipped.
@@ -399,7 +376,6 @@ const LibraryPanel = ({
     },
     [openDialog],
   );
-
   const handleDelete = useCallback(
     async (protocol: StoredProtocolRow) => {
       const confirmed = await openDialog({
@@ -412,11 +388,9 @@ const LibraryPanel = ({
           cancel: { label: 'Cancel', value: false },
         },
       });
-
       if (!confirmed) {
         return;
       }
-
       try {
         await dispatch(deleteLibraryProtocol(protocol.id)).unwrap();
       } catch (error) {
@@ -432,7 +406,6 @@ const LibraryPanel = ({
     },
     [dispatch, openDialog],
   );
-
   const handleShowInfo = useCallback(async (protocol: StoredProtocolRow) => {
     const { codebook } = protocol.protocol;
     const assetCount = await getProtocolAssetCount(protocol.id);
@@ -457,7 +430,6 @@ const LibraryPanel = ({
     });
     setInfoOpen(true);
   }, []);
-
   // Templates aren't stored in the library, so build their info from the
   // in-memory protocol object rather than the asset DB. This surfaces the
   // template's full title and (rich) description, which the truncated row can't.
@@ -481,7 +453,6 @@ const LibraryPanel = ({
     });
     setInfoOpen(true);
   }, []);
-
   const handleShowStorageInfo = useCallback(() => {
     void openDialog({
       type: 'acknowledge',
@@ -489,23 +460,22 @@ const LibraryPanel = ({
       title: 'Protocol Storage',
       children: (
         <>
-          <p>
+          <Paragraph>
             Your protocols are saved only in this browser, on this device. They
             are never uploaded to a server.
-          </p>
-          <p>
+          </Paragraph>
+          <Paragraph>
             Because your work lives in this browser&apos;s storage, clearing
             your browsing data, or using &quot;Clear all protocols&quot;, will
             permanently remove it. Download the protocol as a{' '}
             <code>.netcanvas</code> file to save a copy or move it to another
             device.
-          </p>
+          </Paragraph>
         </>
       ),
       actions: { primary: { label: 'OK', value: true } },
     });
   }, [openDialog]);
-
   const handleClearAll = useCallback(async () => {
     const confirmed = await openDialog({
       type: 'choice',
@@ -518,11 +488,9 @@ const LibraryPanel = ({
         cancel: { label: 'Cancel', value: false },
       },
     });
-
     if (!confirmed) {
       return;
     }
-
     try {
       await clearAllStorage();
     } catch (error) {
@@ -536,7 +504,6 @@ const LibraryPanel = ({
       });
     }
   }, [openDialog]);
-
   const recentItems = useMemo<LibraryPanelItem[]>(
     () =>
       protocols.map((protocol) => ({
@@ -560,7 +527,6 @@ const LibraryPanel = ({
       handleShowInfo,
     ],
   );
-
   const templateItems = useMemo<LibraryPanelItem[]>(() => {
     const items: LibraryPanelItem[] = [
       {
@@ -574,7 +540,6 @@ const LibraryPanel = ({
         onOpen: onOpenSample,
       },
     ];
-
     if (import.meta.env.DEV) {
       items.push({
         kind: 'row',
@@ -585,7 +550,6 @@ const LibraryPanel = ({
         onOpen: onOpenDevProtocol,
       });
     }
-
     items.push(
       ...templates.map((template) => ({
         kind: 'row' as const,
@@ -597,7 +561,6 @@ const LibraryPanel = ({
         onShowInfo: () => handleShowTemplateInfo(template),
       })),
     );
-
     if (!galleryDismissed) {
       items.push({
         kind: 'gallery-card',
@@ -606,7 +569,6 @@ const LibraryPanel = ({
         onDismiss: dismissGalleryCard,
       });
     }
-
     return items;
   }, [
     dismissGalleryCard,
@@ -617,7 +579,6 @@ const LibraryPanel = ({
     onOpenTemplate,
     templates,
   ]);
-
   const templateCount = (import.meta.env.DEV ? 2 : 1) + templates.length;
   const templateLabel = `${templateCount} ${templateCount === 1 ? 'template' : 'templates'}`;
   const protocolCount = protocols.length;
@@ -669,7 +630,6 @@ const LibraryPanel = ({
         </Badge>
       </div>
     ) : null;
-
   return (
     <>
       <Tabs
@@ -702,9 +662,9 @@ const LibraryPanel = ({
             className={COLLECTION_CLASSES}
             viewportClassName={COLLECTION_VIEWPORT_CLASSES}
             emptyState={
-              <p className="text-muted px-5 py-10 text-center text-sm">
+              <Paragraph className="text-muted px-5 py-10 text-center text-sm">
                 No recent protocols yet.
-              </p>
+              </Paragraph>
             }
           >
             {(CollectionElements) => CollectionElements}
@@ -738,9 +698,9 @@ const LibraryPanel = ({
       >
         {info && (
           <div className="flex flex-col gap-5">
-            <p className="whitespace-pre-wrap">
+            <Paragraph className="whitespace-pre-wrap">
               {info.description?.trim() || 'This protocol has no description.'}
-            </p>
+            </Paragraph>
             <div className="flex flex-col overflow-hidden rounded">
               <Table
                 columns={[
@@ -756,5 +716,4 @@ const LibraryPanel = ({
     </>
   );
 };
-
 export default LibraryPanel;

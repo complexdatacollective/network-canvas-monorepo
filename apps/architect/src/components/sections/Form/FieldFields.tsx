@@ -6,6 +6,8 @@ import { change, Field, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section, Subsection } from '~/components/EditorLayout';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
@@ -29,20 +31,17 @@ import InputPreview from '../../Form/Fields/InputPreview';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import ValidationSection from '../ValidationSection';
 import { useFieldHandlers } from './withFieldsHandlers';
-
 type PromptFieldsProps = {
   form: string;
   entity?: string | null;
   type?: string | null;
 };
-
 const PromptFields = ({
   form,
   entity = null,
   type = null,
 }: PromptFieldsProps) => {
   const dispatch = useAppDispatch();
-
   const {
     variable,
     variableType,
@@ -60,16 +59,13 @@ const PromptFields = ({
     entity: entity ?? '',
     type: type ?? '',
   });
-
   const showValidationHints = useSelector(
     (state: RootState) =>
       formValueSelector(form)(state, 'showValidationHints') as
         | boolean
         | undefined,
   );
-
   const lockedOptions = getLockedOptions(existingVariables, variable);
-
   return (
     <Section layout="vertical">
       <Subsection id={getFieldId('variable')} title="Variable">
@@ -100,18 +96,18 @@ const PromptFields = ({
         id={getFieldId('prompt')}
         title="Question"
         summary={
-          <p>
+          <Paragraph>
             Configure the question prompt and optional hints for the
             participant.
-          </p>
+          </Paragraph>
         }
       >
         <div>
-          <h4>Prompt Text</h4>
-          <p className="mb-2.5 text-sm text-current/70">
+          <Heading level="h4">Prompt Text</Heading>
+          <Paragraph className="mb-2.5 text-sm text-current/70">
             Enter the question to display to the participant. Supports markdown
             formatting.
-          </p>
+          </Paragraph>
           <ValidatedField
             name="prompt"
             component={RichText as ComponentType<Record<string, unknown>>}
@@ -123,11 +119,11 @@ const PromptFields = ({
           />
         </div>
         <div>
-          <h4>Hint Text</h4>
-          <p className="mb-2.5 text-sm text-current/70">
+          <Heading level="h4">Hint Text</Heading>
+          <Paragraph className="mb-2.5 text-sm text-current/70">
             Optionally display a markdown-formatted hint below the question to
             help participants understand how to answer.
-          </p>
+          </Paragraph>
           <Field
             name="hint"
             component={RichText as ComponentType<Record<string, unknown>>}
@@ -137,12 +133,12 @@ const PromptFields = ({
         </div>
         <div className="flex items-center justify-between gap-5">
           <div>
-            <h4>Show validation hints?</h4>
-            <p className="text-sm text-current/70">
+            <Heading level="h4">Show validation hints?</Heading>
+            <Paragraph className="text-sm text-current/70">
               Automatically display hints derived from this field&apos;s
               validation rules, helping participants understand input
               requirements.
-            </p>
+            </Paragraph>
           </div>
           <ToggleField
             value={!!showValidationHints}
@@ -161,14 +157,14 @@ const PromptFields = ({
         title="Input Control"
         disabled={!variable}
         summary={
-          <p>
+          <Paragraph>
             Choose an input control that should be used to collect the answer.
             For detailed information about these options, see our{' '}
             <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/input-controls/">
               documentation
             </ExternalLink>
             .
-          </p>
+          </Paragraph>
         }
       >
         <ValidatedField
@@ -208,7 +204,7 @@ const PromptFields = ({
           metaForType &&
           typeof metaForType.label === 'string' && (
             <div>
-              <h4>Preview</h4>
+              <Heading level="h4">Preview</Heading>
               <InputPreview
                 label={metaForType.label}
                 description={metaForType.description}
@@ -224,16 +220,16 @@ const PromptFields = ({
           title="Categorical/Ordinal options"
           summary={
             lockedOptions ? (
-              <p>
+              <Paragraph>
                 These options are automatically configured by the interface and
                 cannot be modified.
-              </p>
+              </Paragraph>
             ) : (
-              <p>
+              <Paragraph>
                 The input type you selected indicates that this is a categorical
                 or ordinal variable. Next, please create a minimum of two
                 possible values for the participant to choose between.
-              </p>
+              </Paragraph>
             )
           }
         >
@@ -275,5 +271,4 @@ const PromptFields = ({
     </Section>
   );
 };
-
 export default PromptFields;

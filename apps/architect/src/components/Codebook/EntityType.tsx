@@ -7,6 +7,7 @@ import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -18,14 +19,11 @@ import { filterEntityType } from './filterEntityType';
 import { getEntityProperties } from './helpers';
 import Tag from './Tag';
 import Variables from './Variables';
-
 type Entity = 'node' | 'edge' | 'ego';
-
 type UsageItem = {
   id?: string;
   label: string;
 };
-
 type Variable = {
   id: string;
   name: string;
@@ -34,13 +32,11 @@ type Variable = {
   usage: UsageItem[];
   usageString?: string;
 };
-
 type VariablesComponentProps = {
   variables: Variable[];
   entity: Entity;
   type?: string;
 };
-
 // Props expected by the unwrapped component
 type EntityTypeProps = {
   entity: Entity;
@@ -55,7 +51,6 @@ type EntityTypeProps = {
   onEditEntity?: (entity: string, type?: string) => void;
   variables?: Record<string, Variable>;
 };
-
 const EntityType = ({
   name,
   color,
@@ -72,11 +67,9 @@ const EntityType = ({
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
   const [showAddVariable, setShowAddVariable] = useState(false);
-
   const variableArray = Object.values(variables);
   const VariablesTyped =
     Variables as unknown as React.ComponentType<VariablesComponentProps>;
-
   // Apply the codebook's "Show unused only" / search filters at the variable
   // level (mirroring EgoType) so a type stays visible when it itself matches
   // or merely contains matching variables.
@@ -84,11 +77,9 @@ const EntityType = ({
     variableArray,
     { name, inUse, search, unusedOnly },
   );
-
   const handleEdit = useCallback(() => {
     onEditEntity?.(entity, type);
   }, [entity, onEditEntity, type]);
-
   const handleDelete = useCallback(() => {
     if (inUse) {
       void openDialog({
@@ -96,16 +87,14 @@ const EntityType = ({
         intent: 'info',
         title: `Cannot delete ${name} ${entity}`,
         children: (
-          <p>
+          <Paragraph>
             The {name} {entity} cannot be deleted as it is currently in use.
-          </p>
+          </Paragraph>
         ),
         actions: { primary: { label: 'OK', value: true } },
       });
-
       return;
     }
-
     void confirm({
       title: `Delete ${name} ${entity}`,
       description: `Are you sure you want to delete the ${name} ${entity}? This cannot be undone.`,
@@ -117,11 +106,9 @@ const EntityType = ({
       },
     });
   }, [confirm, dispatch, entity, inUse, name, openDialog, type]);
-
   if (!visible) {
     return null;
   }
-
   const stages = usage.map(({ id, label }, index) => {
     // If there is no id, don't create a link. This is the case for
     // usages that are only present as validation options. Include the index
@@ -129,14 +116,12 @@ const EntityType = ({
     if (!id) {
       return <Tag key={`validation-${index}-${label}`}>{label}</Tag>;
     }
-
     return (
       <Link key={id} href={`/protocol/stage/${id}`}>
         <Tag>{label}</Tag>
       </Link>
     );
   });
-
   return (
     <Section layout="vertical" required={false}>
       <div className="flex items-center gap-5">
@@ -204,18 +189,14 @@ const EntityType = ({
     </Section>
   );
 };
-
 type StateProps = {
   entity: Entity;
   type: string;
 };
-
 const mapStateToProps = (state: RootState, { entity, type }: StateProps) => {
   const entityProperties = getEntityProperties(state, { entity, type });
-
   return entityProperties;
 };
-
 // OwnProps - props that must be passed from outside
 type OwnProps = StateProps & {
   inUse?: boolean;
@@ -224,7 +205,6 @@ type OwnProps = StateProps & {
   unusedOnly?: boolean;
   onEditEntity?: (entity: string, type?: string) => void;
 };
-
 export default compose<EntityTypeProps, OwnProps>(connect(mapStateToProps))(
   EntityType,
 );

@@ -1,22 +1,22 @@
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
 import ValidatedField from '~/components/Form/ValidatedField';
 import IssueAnchor from '~/components/IssueAnchor';
 
 import EntitySelectField from '../fields/EntitySelectField/EntitySelectField';
-
 const PromptFields = () => (
   <Section title="Dyad Census Prompts" layout="vertical">
     <Row>
       <IssueAnchor fieldName="text" description="Dyad Census Prompts" />
-      <p>
+      <Paragraph>
         Dyad Census prompts explain to your participant which relationship they
         should evaluate (for example, &apos;friendship&apos;, &apos;material
         support&apos; or &apos;conflict&apos;). Enter prompt text below, and
         select an edge type that will be created when the participant answers
         &apos;yes&apos;.
-      </p>
+      </Paragraph>
       <Alert variant="info" className="my-7">
         <AlertDescription className="space-y-4">
           <div>
@@ -56,5 +56,4 @@ const PromptFields = () => (
     </Row>
   </Section>
 );
-
 export default PromptFields;

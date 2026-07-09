@@ -1,5 +1,6 @@
 import { compose } from 'react-recompose';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
@@ -10,7 +11,6 @@ import withMapFormToProps from '../../enhancers/withMapFormToProps';
 import withSubject from '../../enhancers/withSubject';
 import { PromptPreview } from '../NameGeneratorPrompts';
 import PromptFields from '../NameGeneratorPrompts/PromptFields';
-
 type NameGeneratorRosterPromptsProps = StageEditorSectionProps & {
   entity?: string;
   type?: string;
@@ -18,7 +18,6 @@ type NameGeneratorRosterPromptsProps = StageEditorSectionProps & {
   disabledMessage?: string;
   dataSource?: string;
 };
-
 const NameGeneratorRosterPrompts = ({
   form,
   entity,
@@ -31,10 +30,10 @@ const NameGeneratorRosterPrompts = ({
     disabled={disabled}
     disabledMessage={disabledMessage}
     summary={
-      <p>
+      <Paragraph>
         Add one or more prompts below to frame the task for the user. You can
         reorder the prompts using the draggable handles on the left hand side.
-      </p>
+      </Paragraph>
     }
     title="Prompts"
   >
@@ -47,7 +46,6 @@ const NameGeneratorRosterPrompts = ({
     />
   </Section>
 );
-
 export default compose<
   NameGeneratorRosterPromptsProps,
   StageEditorSectionProps

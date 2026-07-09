@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import MarkdownLabel from '~/components/Form/Fields/MarkdownLabel';
 import { cx } from '~/utils/cva';
 
@@ -12,7 +13,6 @@ import {
   richTextContentToMarkdown,
   type RichTextContent,
 } from './markdownAdapter';
-
 type RichTextFieldProps = {
   input: {
     name?: string;
@@ -34,7 +34,6 @@ type RichTextFieldProps = {
   disallowedTypes?: string[];
   className?: string | null;
 };
-
 const RichTextField = ({
   input,
   meta = {},
@@ -46,7 +45,6 @@ const RichTextField = ({
   className = null,
 }: RichTextFieldProps) => {
   const _id = useRef(uuid());
-
   const anyLabel = label;
   const hasError = !!(meta.invalid && meta.touched && meta.error);
   const toolbarOptions = {
@@ -58,19 +56,16 @@ const RichTextField = ({
     thematicBreak: !inline && !disallowedTypes.includes('thematic_break'),
     history: !disallowedTypes.includes('history'),
   };
-
   const editorValue = markdownToRichTextContent(input.value, inline);
-
   const handleChange = (value: RichTextContent | undefined) => {
     input.onChange(richTextContentToMarkdown(value, inline));
   };
-
   return (
     <div className="m-0 w-full [&>h4]:m-0">
       {anyLabel && (
-        <h4>
+        <Heading level="h4">
           <MarkdownLabel label={anyLabel} />
-        </h4>
+        </Heading>
       )}
       <div className={cx(className)}>
         <RichTextEditorField
@@ -98,5 +93,4 @@ const RichTextField = ({
     </div>
   );
 };
-
 export default RichTextField;

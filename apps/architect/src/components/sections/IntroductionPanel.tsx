@@ -1,3 +1,4 @@
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
 import TextField from '~/components/Form/Fields/Text';
@@ -5,13 +6,14 @@ import type { StageEditorSectionProps } from '~/components/StageEditor/Interface
 
 import { ValidatedField } from '../Form';
 import IssueAnchor from '../IssueAnchor';
-
 const IntroductionPanel = (_props: StageEditorSectionProps) => {
   const summaryText =
     'This panel is shown prior to completion of the forms, and should serve as an introduction to the task.';
-
   return (
-    <Section title="Introduction Panel" summary={<p>{summaryText}</p>}>
+    <Section
+      title="Introduction Panel"
+      summary={<Paragraph>{summaryText}</Paragraph>}
+    >
       <Row>
         <IssueAnchor
           fieldName="introductionPanel.title"
@@ -39,5 +41,4 @@ const IntroductionPanel = (_props: StageEditorSectionProps) => {
     </Section>
   );
 };
-
 export default IntroductionPanel;

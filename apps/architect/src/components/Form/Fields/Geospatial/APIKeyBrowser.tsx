@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import Assets from '~/components/AssetBrowser/Assets';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { Layout, Section } from '~/components/EditorLayout';
@@ -12,7 +13,6 @@ import { useAppDispatch } from '~/ducks/hooks';
 
 import { addApiKeyAsset } from '../../../../ducks/modules/protocol/assetManifest';
 import BasicForm from '../../../BasicForm';
-
 type APIKeyBrowserProps = {
   show?: boolean;
   type?: string | null;
@@ -21,7 +21,6 @@ type APIKeyBrowserProps = {
   onCancel?: () => void;
   close: () => void;
 };
-
 const APIKeyBrowser = ({
   show = true,
   close,
@@ -31,7 +30,6 @@ const APIKeyBrowser = ({
   const formName = 'create-api-key';
   const dispatch = useAppDispatch();
   const [preview, handleShowPreview] = useExternalDataPreview();
-
   const handleSelectAsset = useCallback(
     (assetId: string) => {
       onSelect(assetId);
@@ -39,7 +37,6 @@ const APIKeyBrowser = ({
     },
     [onSelect, close],
   );
-
   const handleSubmit = useCallback(
     (formValues: Record<string, unknown>) => {
       const { keyName, keyValue } = formValues as {
@@ -50,7 +47,6 @@ const APIKeyBrowser = ({
     },
     [dispatch],
   );
-
   return (
     <Dialog
       open={show}
@@ -65,12 +61,12 @@ const APIKeyBrowser = ({
       <BasicForm form={formName} onSubmit={handleSubmit}>
         <Layout>
           <Section title="Create New API Key" layout="vertical">
-            <p className="text-sm text-current/70">
+            <Paragraph className="text-sm text-current/70">
               This key is saved inside your protocol and is included, in plain
               text, in any exported <code>.netcanvas</code> file. Anyone you
               share the exported protocol with can read it, so only use a key
               you are comfortable distributing.
-            </p>
+            </Paragraph>
             <div data-name="API Key Name" />
             <ValidatedField
               component={Text}
@@ -120,5 +116,4 @@ const APIKeyBrowser = ({
     </Dialog>
   );
 };
-
 export default APIKeyBrowser;

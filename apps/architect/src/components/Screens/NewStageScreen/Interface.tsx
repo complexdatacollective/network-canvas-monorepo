@@ -7,7 +7,6 @@ import StageTypeImage from '~/components/StageTypeImage';
 import Tag from '~/components/Tag';
 
 import { INTERFACE_TYPES, TAG_COLORS } from './interfaceOptions';
-
 type InterfaceThumbnailProps = {
   type: string;
   onClick: (type: string) => void;

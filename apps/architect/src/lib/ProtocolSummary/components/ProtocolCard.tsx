@@ -1,6 +1,5 @@
 import { Pattern } from '@codaco/art';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-
 type ProtocolCardProps = {
   name: string;
   description?: string | null;

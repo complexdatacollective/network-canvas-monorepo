@@ -20,12 +20,9 @@ import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
 import { useAssetResolver } from './useAssetResolver';
-
-const PAYLOAD_TIMEOUT_MS = 5_000;
-
+const PAYLOAD_TIMEOUT_MS = 5000;
 const noopSync = async () => {};
 const noopFinish = async () => {};
-
 function buildSession(payload: PreviewPayload): SessionPayload {
   const now = new Date().toISOString();
   const base: SessionPayload = {
@@ -36,11 +33,9 @@ function buildSession(payload: PreviewPayload): SessionPayload {
     lastUpdated: now,
     network: createInitialNetwork(),
   };
-
   if (!payload.useSyntheticData) {
     return base;
   }
-
   const generated = generateNetwork(
     payload.protocol.codebook,
     payload.protocol.stages,
@@ -51,7 +46,6 @@ function buildSession(payload: PreviewPayload): SessionPayload {
       inProgressStageIndex: payload.startStage,
     },
   );
-
   // Stages that record a finalized state (e.g. a FamilyPedigree's committed
   // network) do so via stageMetadata; without it they preview as never
   // finalized. Parse each entry independently so a single malformed entry is
@@ -68,14 +62,12 @@ function buildSession(payload: PreviewPayload): SessionPayload {
     }
     stageMetadata = validEntries;
   }
-
   return {
     ...base,
     network: generated.network,
     stageMetadata,
   };
 }
-
 export function PreviewHost() {
   const [interviewPayload, setInterviewPayload] =
     useState<InterviewPayload | null>(null);
@@ -92,22 +84,18 @@ export function PreviewHost() {
   const [skipLogicNoticeDismissed, setSkipLogicNoticeDismissed] =
     useState(false);
   const onRequestAsset = useAssetResolver(protocolId);
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce is the deliberate retrigger key
   useEffect(() => {
     const opener = window.opener as Window | null;
     if (!opener) return;
-
     const expectedOrigin = window.location.origin;
     let received = false;
-
     const onMessage = (event: MessageEvent) => {
       if (event.source !== opener) return;
       if (event.origin !== expectedOrigin) return;
       if (!isPreviewMessage(event.data)) return;
       if (event.data.type !== 'preview:payload') return;
       const previewPayload: PreviewPayload = event.data;
-
       // Hydrate this realm's in-memory store with any Safari-private fallback
       // assets ferried from the editor. getAssetById reads IndexedDB first, then
       // this map, so once hydrated the resolver finds them like any other asset.
@@ -120,7 +108,6 @@ export function PreviewHost() {
           data: asset.data,
         });
       }
-
       let nextPayload: InterviewPayload;
       try {
         // Build the payload before marking the handshake received: a throw here
@@ -136,7 +123,6 @@ export function PreviewHost() {
         setProcessingFailed(true);
         return;
       }
-
       received = true;
       setProcessingFailed(false);
       setInterviewPayload(nextPayload);
@@ -148,20 +134,16 @@ export function PreviewHost() {
       setSkipLogicNoticeDismissed(false);
       setTimedOut(false);
     };
-
     window.addEventListener('message', onMessage);
     opener.postMessage({ type: 'preview:ready' }, expectedOrigin);
-
     const timeoutId = setTimeout(() => {
       if (!received) setTimedOut(true);
     }, PAYLOAD_TIMEOUT_MS);
-
     return () => {
       window.removeEventListener('message', onMessage);
       clearTimeout(timeoutId);
     };
   }, [retryNonce]);
-
   if (!window.opener) {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
@@ -177,7 +159,6 @@ export function PreviewHost() {
       </div>
     );
   }
-
   if (!interviewPayload && timedOut) {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
@@ -205,7 +186,6 @@ export function PreviewHost() {
       </div>
     );
   }
-
   if (!interviewPayload && processingFailed) {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
@@ -233,15 +213,13 @@ export function PreviewHost() {
       </div>
     );
   }
-
   if (!interviewPayload) {
     return (
       <div className="flex h-dvh w-full items-center justify-center">
-        <p>Loading preview…</p>
+        <Paragraph>Loading preview…</Paragraph>
       </div>
     );
   }
-
   return (
     <div className="h-screen">
       {currentStep === bypassedStageIndex && !skipLogicNoticeDismissed && (

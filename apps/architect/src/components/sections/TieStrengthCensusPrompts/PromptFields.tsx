@@ -2,6 +2,8 @@ import { compose } from '@reduxjs/toolkit';
 import type { ComponentType } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import RichText from '~/components/Form/Fields/RichText/Field';
@@ -17,14 +19,12 @@ import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import withCreateEdgeHandlers from './withCreateEdgeHandler';
 import withEdgesOptions from './withEdgesOptions';
 import withVariableOptions from './withVariableOptions';
-
 type SelectOption = {
   label: string;
   value: string;
   type?: string;
   [key: string]: unknown;
 };
-
 type PromptFieldsProps = {
   form: string;
   changeForm: (form: string, field: string, value: unknown) => void;
@@ -36,7 +36,6 @@ type PromptFieldsProps = {
   variableOptions?: SelectOption[];
   optionsForVariableDraft?: SelectOption[];
 };
-
 const PromptFields = ({
   form,
   changeForm,
@@ -51,33 +50,36 @@ const PromptFields = ({
   const newVariableWindowInitialProps: {
     entity: Entity;
     type: string;
-    initialValues: { name: string; type: string };
+    initialValues: {
+      name: string;
+      type: string;
+    };
   } = {
     entity: 'edge',
     type: createEdge,
     initialValues: { name: '', type: '' },
   };
-
   const handleCreatedNewVariable = (...args: unknown[]) => {
-    const [id, params] = args as [string, { field: string }];
+    const [id, params] = args as [
+      string,
+      {
+        field: string;
+      },
+    ];
     changeForm(form, params.field, id);
   };
-
   const [newVariableWindowProps, openNewVariableWindow] =
     useNewVariableWindowState(
       newVariableWindowInitialProps,
       handleCreatedNewVariable,
     );
-
   const handleNewVariable = (name: string) =>
     openNewVariableWindow(
       { initialValues: { name, type: 'ordinal' } },
       { field: 'edgeVariable' },
     );
-
   const totalOptionsLength = optionsForVariableDraft?.length;
   const showVariableOptionsTip = totalOptionsLength > 5;
-
   return (
     <>
       <Section
@@ -86,15 +88,15 @@ const PromptFields = ({
         layout="vertical"
       >
         <Row>
-          <p>
+          <Paragraph>
             Tie-Strength Census prompts explain to your participant which
             relationship they should evaluate (for example,
             &apos;friendship&apos;, &apos;material support&apos; or
             &apos;conflict&apos;). Enter prompt text below, and select an edge
             type that will be created when the participant answers
             &apos;yes&apos;.
-          </p>
-          <p>
+          </Paragraph>
+          <Paragraph>
             Remember to write your prompt text to take into account that the
             participant will be looking at pairs of prompts in sequence. Use
             phrases such as &apos;
@@ -103,7 +105,7 @@ const PromptFields = ({
             <strong>the two people shown</strong>
             &apos; to indicate that the participant should focus on the visible
             pair.
-          </p>
+          </Paragraph>
           <ValidatedField
             name="text"
             component={RichText as ComponentType<Record<string, unknown>>}
@@ -121,10 +123,10 @@ const PromptFields = ({
         id={getFieldId('set-ordinal-value')}
         summary={
           <>
-            <p>
+            <Paragraph>
               This interface works by presenting the user with a choice to
               either:
-            </p>
+            </Paragraph>
             <ul>
               <li>
                 Create an edge between two alters, and simultaneously assign a
@@ -139,12 +141,12 @@ const PromptFields = ({
         <Section
           title="Create an Edge"
           summary={
-            <p>
+            <Paragraph>
               Begin by selecting or creating an edge type. You will then be able
               to select or create an ordinal variable on this edge type. The
               options of this ordinal variable will represent the choices
               provided to the user when creating an edge.
-            </p>
+            </Paragraph>
           }
           layout="vertical"
         >
@@ -187,12 +189,14 @@ const PromptFields = ({
             </Row>
             {edgeVariable && (
               <Row>
-                <h4 id={getFieldId('variableOptions')}>Variable Options</h4>
-                <p>
+                <Heading level="h4" id={getFieldId('variableOptions')}>
+                  Variable Options
+                </Heading>
+                <Paragraph>
                   The following choices or &apos;options&apos; are configured
                   for this variable. We suggest no more than four options should
                   be used on this interface.
-                </p>
+                </Paragraph>
                 {showVariableOptionsTip && (
                   <Alert variant="destructive" className="my-7">
                     <AlertTitle>Too many option values</AlertTitle>
@@ -213,11 +217,11 @@ const PromptFields = ({
         <Section
           title="Decline Option"
           summary={
-            <p>
+            <Paragraph>
               Enter text to display for the option that will{' '}
               <strong>cancel edge creation</strong>. This option will be shown
               on the far right of the screen.
-            </p>
+            </Paragraph>
           }
           id={getFieldId('negativeLabel')}
           layout="vertical"
@@ -238,7 +242,6 @@ const PromptFields = ({
     </>
   );
 };
-
 export default compose<PromptFieldsProps>(
   withCreateEdgeHandlers,
   withEdgesOptions,

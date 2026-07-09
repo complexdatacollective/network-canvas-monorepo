@@ -5,6 +5,7 @@ import { change, FormSection, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import { Number as NumberField } from '~/components/Form/Fields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -13,22 +14,18 @@ import type { RootState } from '~/ducks/modules/root';
 
 import { ValidatedField } from '../Form';
 import IssueAnchor from '../IssueAnchor';
-
 const maxValidation = (
   value: number | null | undefined,
   allValues: Record<string, unknown>,
 ) => {
   const minValue = get(allValues, 'behaviours.minNodes', null) as number | null;
-
   if (isUndefined(minValue) || isNull(minValue) || !value) {
     return undefined;
   }
-
   return value >= minValue
     ? undefined
     : 'Maximum number of alters must be greater than or equal to the minimum number';
 };
-
 const minValidation = (
   value: number | null | undefined,
   allValues: Record<string, unknown>,
@@ -37,16 +34,13 @@ const minValidation = (
     | number
     | null
     | undefined;
-
   if (isUndefined(maxValue) || isNull(maxValue) || !value) {
     return undefined;
   }
-
   return value <= maxValue
     ? undefined
     : 'Minimum number of alters must be less than or equal to the maximum number';
 };
-
 const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
   const formSelector = useMemo(() => formValueSelector('edit-stage'), []);
   const currentMinValue = useSelector(
@@ -61,10 +55,8 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
     const prompts = formSelector(state, 'prompts') as unknown[] | undefined;
     return !!prompts && prompts.length > 1;
   });
-
   const dispatch = useAppDispatch();
   const { confirm } = useDialog();
-
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
       if (
@@ -73,7 +65,6 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
       ) {
         return true;
       }
-
       const confirmed = await confirm({
         title: 'This will clear your values',
         description:
@@ -83,33 +74,29 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
         intent: 'warning',
         onConfirm: () => {},
       });
-
       if (confirmed) {
         dispatch(change('edit-stage', 'behaviours.minNodes', null));
         dispatch(change('edit-stage', 'behaviours.maxNodes', null));
         return true;
       }
-
       return false;
     },
     [confirm, dispatch, currentMinValue, currentMaxValue],
   );
-
   const startExpanded = useMemo(
     () => !isUndefined(currentMinValue) || !isUndefined(currentMaxValue),
     [currentMaxValue, currentMinValue],
   );
-
   return (
     <Section
       title="Min/max alters"
       summary={
-        <p>
+        <Paragraph>
           This feature allows you to specify a minimum or maximum number of
           alters that can be named on this stage. Please note that these limits
           apply to the <strong>stage as a whole</strong>, regardless of the
           number of prompts you have created.
-        </p>
+        </Paragraph>
       }
       toggleable
       startExpanded={startExpanded}
@@ -175,5 +162,4 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
     </Section>
   );
 };
-
 export default MinMaxAlterLimits;

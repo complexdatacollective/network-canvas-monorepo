@@ -7,7 +7,6 @@ import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
 
 import EntityIcon from './EntityIcon';
 import VariableList from './VariableList';
-
 type ExternalEntityProps = {
   name: string;
   id: string;

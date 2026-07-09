@@ -1,5 +1,6 @@
 import { compose } from 'react-recompose';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
@@ -8,14 +9,12 @@ import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequ
 import withSubject from '../../enhancers/withSubject';
 import PromptFields from './PromptFields';
 import PromptPreview from './PromptPreview';
-
 type OneToManyDyadCensusPromptsProps = StageEditorSectionProps & {
   entity?: string;
   type?: string;
   disabled?: boolean;
   disabledMessage?: string;
 };
-
 const OneToManyDyadCensusPrompts = ({
   form,
   entity,
@@ -27,10 +26,10 @@ const OneToManyDyadCensusPrompts = ({
     disabled={disabled}
     disabledMessage={disabledMessage}
     summary={
-      <p>
+      <Paragraph>
         Add one or more prompts below to frame the task for the user. You can
         reorder the prompts using the draggable handles on the left hand side.
-      </p>
+      </Paragraph>
     }
     title="Prompts"
   >
@@ -44,7 +43,6 @@ const OneToManyDyadCensusPrompts = ({
     />
   </Section>
 );
-
 export default compose<
   OneToManyDyadCensusPromptsProps,
   StageEditorSectionProps

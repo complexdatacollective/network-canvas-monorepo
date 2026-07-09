@@ -9,9 +9,9 @@ import { useSelector } from 'react-redux';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Layout, Section } from '~/components/EditorLayout';
 import { getAssetManifest } from '~/selectors/protocol';
-
 type MapOptions = {
   center?: number[];
   tokenAssetId?: string;
@@ -21,13 +21,11 @@ type MapOptions = {
   targetFeatureProperty?: string;
   style?: string;
 };
-
 type MapViewProps = {
   mapOptions?: MapOptions;
   onChange: (options: MapOptions) => void;
   close: () => void;
 };
-
 const MapView = ({
   mapOptions = {
     center: [0, 0],
@@ -46,10 +44,8 @@ const MapView = ({
   const mapboxAPIKey = tokenAssetId
     ? get(assetManifest, [tokenAssetId, 'value'], '')
     : '';
-
   const mapRef = useRef<MapboxMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-
   const [center, setCenter] = useState<[number, number]>(
     (mapOptions.center as [number, number]) || [0, 0],
   );
@@ -61,21 +57,17 @@ const MapView = ({
       initialZoom: newZoom,
     });
   };
-
   const isMapChanged =
     center !== mapOptions.center || zoom !== mapOptions.initialZoom;
-
   useEffect(() => {
     if (!mapboxAPIKey || !mapContainerRef.current || mapRef.current) {
       return;
     }
-
     let map: MapboxMap | null = null;
     const frame = window.requestAnimationFrame(() => {
       if (!mapContainerRef.current || mapRef.current) {
         return;
       }
-
       map = new mapboxgl.Map({
         container: mapContainerRef.current,
         style: style || 'mapbox://styles/mapbox/streets-v12',
@@ -83,34 +75,28 @@ const MapView = ({
         zoom: mapOptions.initialZoom || 0,
         accessToken: mapboxAPIKey,
       });
-
       mapRef.current = map;
-
       map.addControl(
         new mapboxgl.NavigationControl({
           showCompass: false,
         }),
       );
-
       map.on('move', () => {
         if (!map) {
           return;
         }
         const mapCenter = map.getCenter();
         const mapZoom = map.getZoom();
-
         setCenter([mapCenter.lng, mapCenter.lat]);
         setZoom(mapZoom);
       });
     });
-
     return () => {
       window.cancelAnimationFrame(frame);
       map?.remove();
       mapRef.current = null;
     };
   }, [mapboxAPIKey, style, mapOptions.center, mapOptions.initialZoom]);
-
   return (
     <Dialog
       open={true}
@@ -141,12 +127,12 @@ const MapView = ({
         <Section
           title="Set Initial Map View"
           summary={
-            <p>
+            <Paragraph>
               Pan and zoom the map below to configure the initial view. When the
               map is first loaded, it will be centered at the initial center and
               zoom level as it appears here. Resetting the map will return it to
               this view.
-            </p>
+            </Paragraph>
           }
           layout="vertical"
         >
@@ -156,5 +142,4 @@ const MapView = ({
     </Dialog>
   );
 };
-
 export default MapView;

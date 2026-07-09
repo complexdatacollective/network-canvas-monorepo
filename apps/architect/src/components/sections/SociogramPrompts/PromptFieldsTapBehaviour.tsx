@@ -5,6 +5,12 @@ import { change, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+// TODO: Move this somewhere else!
+// This was created as part of removing the HOC pattern used throughout the app.
+// It replaces withCreateVariableHandler. Other uses of this handler could be
+// updated to use this function.
+// Internal helper - not exported
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
 import ValidatedField from '~/components/Form/ValidatedField';
@@ -16,12 +22,6 @@ import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import EntitySelectField from '../fields/EntitySelectField/EntitySelectField';
 import { getEdgeFilters, getHighlightVariablesForSubject } from './selectors';
 import getEdgeFilteringWarning from './utils';
-
-// TODO: Move this somewhere else!
-// This was created as part of removing the HOC pattern used throughout the app.
-// It replaces withCreateVariableHandler. Other uses of this handler could be
-// updated to use this function.
-// Internal helper - not exported
 const createVariableHandler =
   (
     dispatch: AppDispatch,
@@ -31,12 +31,10 @@ const createVariableHandler =
   ) =>
   async (variableName: string, variableType: VariableType, field: string) => {
     const withType = variableType ? { type: variableType } : {};
-
     const configuration = {
       name: variableName,
       ...withType,
     };
-
     const result = await dispatch(
       createVariableAsync({
         entity: entity,
@@ -44,28 +42,22 @@ const createVariableHandler =
         configuration,
       }),
     ).unwrap();
-
     const { variable } = result;
-
     // If we supplied a field, update it with the result of the variable creation
     if (field) {
       dispatch(change(form, field, variable));
     }
-
     return variable;
   };
-
 const TAP_BEHAVIOURS = {
   CREATE_EDGES: 'create edges',
   HIGHLIGHT_ATTRIBUTES: 'highlight attributes',
 };
-
 type TapBehaviourProps = {
   form: string;
   entity: 'node' | 'edge' | 'ego';
   type: VariableType;
 };
-
 const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
   const dispatch = useAppDispatch();
   const getFormValue = formValueSelector(form);
@@ -78,32 +70,25 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
   const highlightVariable = useSelector((state: RootState) =>
     getFormValue(state, 'highlight.variable'),
   );
-
   const highlightVariablesForSubject = useSelector((state: RootState) =>
     getHighlightVariablesForSubject(state, { type, entity }),
   );
-
   const handleCreateVariable = createVariableHandler(
     dispatch,
     entity,
     type,
     form,
   );
-
   const initialState = () => {
     if (hasCreateEdgeBehaviour) {
       return TAP_BEHAVIOURS.CREATE_EDGES;
     }
-
     if (hasToggleAttributeBehaviour) {
       return TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES;
     }
-
     return null;
   };
-
   const [tapBehaviour, setTapBehaviour] = React.useState(initialState());
-
   const handleChangeTapBehaviour = (behaviour: string | number | undefined) => {
     const nextBehaviour = typeof behaviour === 'string' ? behaviour : null;
     setTapBehaviour(nextBehaviour);
@@ -114,7 +99,6 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
         change(form, 'highlight.allowHighlighting', true) as UnknownAction,
       );
     }
-
     if (nextBehaviour === TAP_BEHAVIOURS.CREATE_EDGES) {
       // Reset attribute highlighting
       dispatch(
@@ -123,39 +107,33 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
       dispatch(change(form, 'highlight.variable', null) as UnknownAction);
     }
   };
-
   const handleToggleChange = (value: boolean) => {
     if (value) {
       return true;
     }
-
     // Reset edge creation
     dispatch(change(form, 'edges.create', null));
     dispatch(change(form, 'highlight.allowHighlighting', false));
     dispatch(change(form, 'highlight.variable', null));
-
     return true;
   };
-
   const selectedValue = useSelector((state: RootState) =>
     getFormValue(state, 'edges.create'),
   ) as string;
-
   const edgeFilters = useSelector(getEdgeFilters);
   const showNetworkFilterWarning = getEdgeFilteringWarning(edgeFilters, [
     selectedValue,
   ]);
-
   return (
     <Section
       group
       title="Interaction Behavior"
       summary={
-        <p>
+        <Paragraph>
           Tapping a node on the sociogram can trigger one of two behaviors:
           assigning an attribute to the node, or creating an edge between two
           nodes.
-        </p>
+        </Paragraph>
       }
       toggleable
       startExpanded={
@@ -238,5 +216,4 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
     </Section>
   );
 };
-
 export default TapBehaviour;

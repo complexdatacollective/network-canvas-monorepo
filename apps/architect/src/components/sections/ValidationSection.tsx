@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Variable } from '@codaco/protocol-validation';
 import { Subsection } from '~/components/EditorLayout';
 import Validations from '~/components/Validations';
@@ -14,7 +15,6 @@ import type { RootState } from '~/ducks/modules/root';
 import { cx } from '~/utils/cva';
 
 import { getFieldId } from '../../utils/issues';
-
 type ValidationSectionProps = {
   disabled?: boolean;
   form: string;
@@ -22,7 +22,6 @@ type ValidationSectionProps = {
   variableType?: string;
   existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
 };
-
 const ValidationSection = ({
   disabled = false,
   form,
@@ -31,7 +30,6 @@ const ValidationSection = ({
   existingVariables,
 }: ValidationSectionProps) => {
   const dispatch = useAppDispatch();
-
   // Create memoized selector for hasValidation
   const hasValidationSelector = useMemo(() => {
     const formSelector = formValueSelector(form);
@@ -40,11 +38,8 @@ const ValidationSection = ({
       (validation) => validation && Object.keys(validation).length > 0,
     );
   }, [form]);
-
   const hasValidation = useSelector(hasValidationSelector);
-
   const [isEnabled, setIsEnabled] = useState(!!hasValidation);
-
   // Keep the toggle in sync when the underlying validation is set/cleared
   // elsewhere (e.g. a form reset). Adding a rule sets hasValidation, removing
   // the last rule clears it; enabling the toggle before adding a rule keeps
@@ -52,14 +47,12 @@ const ValidationSection = ({
   useEffect(() => {
     setIsEnabled(!!hasValidation);
   }, [hasValidation]);
-
   const handleToggle = (nextState: boolean) => {
     setIsEnabled(nextState);
     if (!nextState) {
       dispatch(change(form, 'validation', null) as UnknownAction);
     }
   };
-
   const existingVariablesForType = useMemo(
     () =>
       pickBy(
@@ -68,12 +61,15 @@ const ValidationSection = ({
       ),
     [existingVariables, variableType],
   );
-
   return (
     <Subsection
       id={getFieldId('validation')}
       title="Validation"
-      summary={<p>Add one or more validation rules to this form field.</p>}
+      summary={
+        <Paragraph>
+          Add one or more validation rules to this form field.
+        </Paragraph>
+      }
       disabled={disabled}
       action={
         <ToggleField
@@ -100,5 +96,4 @@ const ValidationSection = ({
     </Subsection>
   );
 };
-
 export default ValidationSection;

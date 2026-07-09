@@ -2,6 +2,7 @@ import { get } from 'es-toolkit/compat';
 import { useId } from 'react';
 
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
 import Badge from '~/components/Badge';
 import ExternalLink from '~/components/ExternalLink';
@@ -13,7 +14,6 @@ import ValidatedField from '../Form/ValidatedField';
 import IssueAnchor from '../IssueAnchor';
 import { useAutoStageName } from './autoStageName/useAutoStageName';
 import { getInterface } from './Interfaces';
-
 type HeadingInputProps = {
   input?: {
     name?: string;
@@ -32,7 +32,6 @@ type HeadingInputProps = {
   autoFocus?: boolean;
   onFieldBlur?: () => void;
 };
-
 const HeadingInput = ({
   input = {},
   meta = {},
@@ -74,32 +73,25 @@ const HeadingInput = ({
     </>
   );
 };
-
 type StageHeadingProps = {
   stageNumber: number;
   totalStages: number;
   isNewStage: boolean;
 };
-
 const StageHeading = ({
   stageNumber,
   totalStages,
   isNewStage,
 }: StageHeadingProps) => {
   const { values } = useFormContext();
-
   const type = get(values, 'type') as string | undefined;
-
   const { onLabelBlur } = useAutoStageName(isNewStage);
-
   if (!type) {
     return null;
   }
-
   const interfaceMeta = getInterface(type as StageType);
   const typeLabel = interfaceMeta.name;
   const documentationLink = interfaceMeta.documentation;
-
   return (
     <div className="max-tablet-landscape:flex max-tablet-landscape:flex-col max-tablet-landscape:gap-5 tablet-portrait:pt-10 tablet-landscape:grid tablet-landscape:grid-cols-[20rem_auto] tablet-landscape:gap-8 w-full pt-7">
       <div className="flex items-center justify-center">
@@ -120,7 +112,7 @@ const StageHeading = ({
         </div>
       </div>
       <div className="flex min-w-0 flex-col justify-center gap-5">
-        <p
+        <Paragraph
           className={headingVariants({
             level: 'label',
             variant: 'all-caps',
@@ -129,9 +121,11 @@ const StageHeading = ({
           })}
         >
           Stage {stageNumber} of {totalStages}
-        </p>
+        </Paragraph>
         <IssueAnchor fieldName="label" description="Stage name" />
-        <ValidatedField<{ onFieldBlur?: () => void }>
+        <ValidatedField<{
+          onFieldBlur?: () => void;
+        }>
           name="label"
           component={HeadingInput}
           componentProps={{ onFieldBlur: onLabelBlur }}
@@ -150,5 +144,4 @@ const StageHeading = ({
     </div>
   );
 };
-
 export default StageHeading;

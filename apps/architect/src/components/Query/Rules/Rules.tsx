@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import DetachedField from '~/components/DetachedField';
 import FieldError from '~/components/Form/FieldError';
 import RadioGroup from '~/components/Form/Fields/RadioGroup';
@@ -13,7 +14,6 @@ import EditRule from './EditRule';
 import PreviewRules from './PreviewRules';
 import validateRule, { type Rule } from './validateRule';
 import withDraftRule from './withDraftRule';
-
 type RulesProps = {
   type?: 'filter' | 'query';
   rules?: Rule[];
@@ -31,7 +31,6 @@ type RulesProps = {
   handleCreateEgoRule: () => void;
   onChange?: (value: unknown) => void;
 };
-
 const Rules = ({
   type = 'filter',
   rules = [],
@@ -53,7 +52,6 @@ const Rules = ({
   // Default to true as may not be defined if used without redux-form
   const isTouched = get(meta, 'touched', true) as boolean;
   const hasError = isTouched && !!error;
-
   const updateJoin = useCallback(
     (nextJoin: string) =>
       onChange({
@@ -62,11 +60,9 @@ const Rules = ({
       }),
     [onChange, rules],
   );
-
   const updateRule = useCallback(
     (rule: Rule) => {
       let updatedRules: Rule[] = [];
-
       if (!rule.id) {
         updatedRules = [...rules, { ...rule, id: uuid() }];
       } else {
@@ -77,7 +73,6 @@ const Rules = ({
           return existingRule;
         });
       }
-
       onChange({
         join: join ?? undefined,
         rules: updatedRules,
@@ -85,19 +80,15 @@ const Rules = ({
     },
     [join, onChange, rules],
   );
-
   const deleteRule = useCallback(
     (ruleId: string) => {
       const updatedRules = rules.filter((rule) => rule.id !== ruleId);
-
       if (updatedRules.length < 2) {
         onChange({
           rules: updatedRules,
         });
-
         return;
       }
-
       onChange({
         join: join ?? undefined,
         rules: updatedRules,
@@ -105,7 +96,6 @@ const Rules = ({
     },
     [join, onChange, rules],
   );
-
   const handleSaveDraft = useCallback(() => {
     if (!validateRule(draftRule)) {
       void openDialog({
@@ -118,13 +108,11 @@ const Rules = ({
       });
       return;
     }
-
     if (draftRule) {
       updateRule(draftRule);
     }
     resetDraft();
   }, [draftRule, openDialog, resetDraft, updateRule]);
-
   const handleDeleteRule = useCallback(
     (ruleId: string) => {
       void confirm({
@@ -138,7 +126,6 @@ const Rules = ({
     },
     [confirm, deleteRule],
   );
-
   return (
     <div>
       <EditRule
@@ -150,9 +137,15 @@ const Rules = ({
       />
 
       <div>
-        <h4>Rules</h4>
+        <Heading level="h4">Rules</Heading>
         <PreviewRules
-          rules={rules as Array<Record<string, unknown> & { id: string }>}
+          rules={
+            rules as Array<
+              Record<string, unknown> & {
+                id: string;
+              }
+            >
+          }
           join={join}
           onClickRule={handleClickRule}
           onDeleteRule={handleDeleteRule}
@@ -182,7 +175,7 @@ const Rules = ({
 
       {rules.length > 1 && (
         <div className="mt-10">
-          <h4>Must match</h4>
+          <Heading level="h4">Must match</Heading>
           <DetachedField
             component={
               RadioGroup as React.ComponentType<Record<string, unknown>>
@@ -199,7 +192,6 @@ const Rules = ({
     </div>
   );
 };
-
 export default compose<
   RulesProps,
   {

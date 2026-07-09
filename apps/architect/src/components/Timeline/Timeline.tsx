@@ -21,7 +21,6 @@ import { cx } from '~/utils/cva';
 import NewStageScreen from '../Screens/NewStageScreen';
 import StageTypeImage from '../StageTypeImage';
 import InsertButton from './InsertButton';
-
 const timelineContainerVariants: Variants = {
   hidden: {},
   visible: {

@@ -1,6 +1,7 @@
 import { compose } from 'react-recompose';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
@@ -11,13 +12,11 @@ import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import ValidatedField from '../../Form/ValidatedField';
 import withOptions from './withOptions';
 import withQuickAddVariable from './withQuickAddVariable';
-
 type VariableOption = {
   label: string;
   value: string;
   type?: string;
 };
-
 type QuickAddProps = StageEditorSectionProps & {
   disabled?: boolean;
   entity: string;
@@ -30,7 +29,6 @@ type QuickAddProps = StageEditorSectionProps & {
   type?: string | null;
   quickAdd?: string | null;
 };
-
 const QuickAdd = ({
   disabled = false,
   entity,
@@ -42,14 +40,12 @@ const QuickAdd = ({
   if (!type) {
     return null;
   }
-
   // The alert nudges the user to store the quick-add value in a variable named
   // "name". Once they've done so, the recommendation is satisfied — hide it.
   const selectedOption = options.find(
     (option) => option.value === quickAdd || option.label === quickAdd,
   );
   const hasNameVariable = selectedOption?.label.toLowerCase() === 'name';
-
   return (
     <Section
       disabled={disabled}
@@ -57,9 +53,9 @@ const QuickAdd = ({
       title="Quick Add Variable"
       id="issue-form"
       summary={
-        <p>
+        <Paragraph>
           Choose which variable to use to store the value of the quick add form.
-        </p>
+        </Paragraph>
       }
     >
       {!hasNameVariable && (
@@ -87,7 +83,6 @@ const QuickAdd = ({
     </Section>
   );
 };
-
 export default compose<QuickAddProps, StageEditorSectionProps>(
   withSubject,
   withDisabledSubjectRequired,

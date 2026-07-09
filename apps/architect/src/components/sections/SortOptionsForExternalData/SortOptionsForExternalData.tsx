@@ -3,6 +3,8 @@ import { useSelector } from 'react-redux';
 import type { FormAction } from 'redux-form';
 import { change, formValueSelector } from 'redux-form';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import withDisabledAssetRequired from '~/components/enhancers/withDisabledAssetRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
@@ -15,12 +17,10 @@ import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
 
 import getSortOrderOptionGetter from './getSortOrderOptionGetter';
 import getVariableOptionsGetter from './getVariableOptionsGetter';
-
 type SortOptionsProps = StageEditorSectionProps & {
   dataSource: string;
   disabled: boolean;
 };
-
 const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
   const { variables: variableOptions } = useVariablesFromExternalData(
     dataSource,
@@ -29,7 +29,6 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
   const variableOptionsGetter = getVariableOptionsGetter(variableOptions);
   const maxVariableOptions = variableOptions.length;
   const sortOrderOptionGetter = getSortOrderOptionGetter(variableOptions);
-
   const dispatch = useAppDispatch();
   const getFormValue = formValueSelector('edit-stage');
   const hasSortOrder = useSelector((state: RootState) =>
@@ -38,27 +37,24 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
   const hasSortableProperties = useSelector((state: RootState) =>
     getFormValue(state, 'sortOptions.sortableProperties'),
   );
-
   const handleToggleSortOptions = (nextState: boolean) => {
     if (!nextState) {
       dispatch(
         change('edit-stage', 'sortOptions', null) as unknown as FormAction,
       );
     }
-
     return true;
   };
-
   return (
     <Section
       title="Sort Options"
       summary={
-        <p>
+        <Paragraph>
           Your roster will be presented to the interview participant as a list
           of cards. You may configure the sort options of this list, including
           which attributes are available for the participant to sort by during
           the interview.
-        </p>
+        </Paragraph>
       }
       toggleable
       startExpanded={!!hasSortOrder || !!hasSortableProperties}
@@ -66,13 +62,13 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
       disabled={disabled}
     >
       <Row>
-        <h4>Initial Sort Order</h4>
-        <p>
+        <Heading level="h4">Initial Sort Order</Heading>
+        <Paragraph>
           Create one or more rules to determine the default sort order or the
           roster, when it is first shown to the participant. By default,
           Interviewer will use the order that nodes are defined in your data
           file.
-        </p>
+        </Paragraph>
         <MultiSelect
           name="sortOptions.sortOrder"
           maxItems={1}
@@ -81,12 +77,12 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
         />
       </Row>
       <Row>
-        <h4>Participant Sortable Properties</h4>
-        <p>
+        <Heading level="h4">Participant Sortable Properties</Heading>
+        <Paragraph>
           This interface allows the participant to sort the roster, to help with
           locating a specific member. Select one or more attributes from your
           roster that the participant can use to sort the list.
-        </p>
+        </Paragraph>
         <MultiSelect
           name="sortOptions.sortableProperties"
           maxItems={maxVariableOptions}
@@ -115,7 +111,6 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
     </Section>
   );
 };
-
 export default compose<SortOptionsProps, StageEditorSectionProps>(
   withMapFormToProps('dataSource'),
   withDisabledAssetRequired,

@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import withDisabledAssetRequired from '~/components/enhancers/withDisabledAssetRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
@@ -13,12 +14,10 @@ import type { StageEditorSectionProps } from '~/components/StageEditor/Interface
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
-
 type SearchOptionsProps = StageEditorSectionProps & {
   dataSource: string;
   disabled: boolean;
 };
-
 const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
   const { variables: variableOptions } = useVariablesFromExternalData(
     dataSource,
@@ -29,15 +28,12 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
   const hasSearchOptions = useSelector((state: RootState) =>
     getFormValue(state, 'searchOptions'),
   );
-
   const handleToggleSearchOptions = (nextState: boolean) => {
     if (!nextState) {
       dispatch(change('edit-stage', 'searchOptions', null) as UnknownAction);
     }
-
     return true;
   };
-
   return (
     <Section
       title="Search Options"
@@ -45,21 +41,21 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
       handleToggleChange={handleToggleSearchOptions}
       startExpanded={!!hasSearchOptions}
       summary={
-        <p>
+        <Paragraph>
           To find and select nodes from the roster, the participant will use a
           search function. This section controls how this search function works
           on this stage.
-        </p>
+        </Paragraph>
       }
       disabled={disabled}
     >
       <Section
         title="Searchable Attributes"
         summary={
-          <p>
+          <Paragraph>
             You can configure which attributes are considered when matching
             roster nodes to the user&apos;s query.
-          </p>
+          </Paragraph>
         }
         layout="vertical"
       >
@@ -85,10 +81,10 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
       <Section
         title="Search Accuracy"
         summary={
-          <p>
+          <Paragraph>
             Search accuracy determines how closely the text the participant
             types must be to an attribute for it to be considered a match.
-          </p>
+          </Paragraph>
         }
         layout="vertical"
       >
@@ -120,7 +116,6 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
     </Section>
   );
 };
-
 export default compose<SearchOptionsProps, StageEditorSectionProps>(
   withMapFormToProps(['dataSource']),
   withDisabledAssetRequired,

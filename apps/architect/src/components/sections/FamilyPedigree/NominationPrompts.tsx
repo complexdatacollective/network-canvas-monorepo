@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import EditableList from '~/components/EditableList';
 import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -11,30 +12,24 @@ import type { RootState } from '~/ducks/store';
 
 import NominationPromptFields from './NominationPromptFields';
 import NominationPromptPreview from './NominationPromptPreview';
-
 const NominationPrompts = ({ form }: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
   const { confirm } = useDialog();
   const getFormValue = formValueSelector(form);
-
   const nodeType = useSelector(
     (state: RootState) =>
       getFormValue(state, 'nodeConfig.type') as string | undefined,
   );
-
   const hasNominationPrompts = useSelector(
     (state: RootState) =>
       getFormValue(state, 'nominationPrompts') as unknown[] | undefined,
   );
-
   const isDisabled = !nodeType;
-
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
       if (!hasNominationPrompts?.length || newState) {
         return true;
       }
-
       const confirmed = await confirm({
         title: 'This will clear your nomination prompts',
         description:
@@ -44,26 +39,23 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
         intent: 'warning',
         onConfirm: () => {},
       });
-
       if (confirmed) {
         dispatch(change(form, 'nominationPrompts', null));
         return true;
       }
-
       return false;
     },
     [confirm, dispatch, form, hasNominationPrompts],
   );
-
   return (
     <Section
       disabled={isDisabled}
       summary={
-        <p>
+        <Paragraph>
           Optionally add prompts to collect attribute information about family
           members. Each prompt should ask about a specific condition or trait
           and will store the response in the selected boolean variable.
-        </p>
+        </Paragraph>
       }
       title="Nomination Prompts"
       toggleable
@@ -79,14 +71,13 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
         editProps={{ nodeType }}
       >
         {!hasNominationPrompts?.length && (
-          <p className="text-current/70 italic">
+          <Paragraph className="text-current/70 italic">
             No nomination prompts have been created yet. Click &ldquo;Create
             new&rdquo; to add your first prompt.
-          </p>
+          </Paragraph>
         )}
       </EditableList>
     </Section>
   );
 };
-
 export default NominationPrompts;

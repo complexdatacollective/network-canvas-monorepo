@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useMemo } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ExternalLink from '~/components/ExternalLink';
 import { SUPPORTED_EXTENSION_TYPE_MAP } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -12,14 +13,12 @@ import {
 } from '~/ducks/modules/protocol/assetManifest';
 
 import Dropzone from './Dropzone';
-
 type AutoFileDropProps = {
   type?: string;
   onDrop: (ids: string[]) => void;
   className?: string;
   disabled?: boolean;
 };
-
 const isImportAssetErrorInfo = (
   value: unknown,
 ): value is ImportAssetErrorInfo =>
@@ -27,7 +26,6 @@ const isImportAssetErrorInfo = (
   value !== null &&
   'filename' in value &&
   'message' in value;
-
 const getImportAssetErrorInfo = (
   value: unknown,
   filename: string,
@@ -35,7 +33,6 @@ const getImportAssetErrorInfo = (
   if (isImportAssetErrorInfo(value)) {
     return value;
   }
-
   return {
     filename,
     message:
@@ -44,32 +41,30 @@ const getImportAssetErrorInfo = (
         : 'The file could not be imported.',
   };
 };
-
 const documentationMessage = (
   <>
-    <p>
+    <Paragraph>
       Please see our{' '}
       <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/resources/#supported-file-types">
         documentation page
       </ExternalLink>{' '}
       on using external data by clicking the button below.
-    </p>
-    <p>
+    </Paragraph>
+    <Paragraph>
       If you believe you are seeing this message in error, please help us to
       troubleshoot this issue by creating a topic on our&nbsp;
       <ExternalLink href="https://community.networkcanvas.com/">
         community website
       </ExternalLink>
       &nbsp;with further details.
-    </p>
-    <p>
+    </Paragraph>
+    <Paragraph>
       <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/resources/#supported-file-types">
         <Button>View documentation</Button>
       </ExternalLink>
-    </p>
+    </Paragraph>
   </>
 );
-
 const getValidationErrorContent = ({
   code,
   message,
@@ -77,52 +72,47 @@ const getValidationErrorContent = ({
   if (code === 'VARIABLE_NAME') {
     return (
       <>
-        <p>
+        <Paragraph>
           The file you attempted to import contained invalid variable names.
-        </p>
-        <p>{message}</p>
+        </Paragraph>
+        <Paragraph>{message}</Paragraph>
         {documentationMessage}
       </>
     );
   }
-
   if (code === 'COLUMN_MISMATCHED') {
     return (
       <>
-        <p>
+        <Paragraph>
           The file you attempted to import contained data with a different
           number of columns to the header row.
-        </p>
-        <p>{message}</p>
+        </Paragraph>
+        <Paragraph>{message}</Paragraph>
         {documentationMessage}
       </>
     );
   }
-
   return (
     <>
-      <p>
+      <Paragraph>
         The file you attempted to import is not in a format supported by
         Interviewer.
-      </p>
-      <p>{message}</p>
+      </Paragraph>
+      <Paragraph>{message}</Paragraph>
       {documentationMessage}
     </>
   );
 };
-
 const getAccepts = (type?: string): string[] => {
   if (!type || !has(SUPPORTED_EXTENSION_TYPE_MAP, type)) {
     return Object.values(SUPPORTED_EXTENSION_TYPE_MAP).flat();
   }
-
   const extensionKey = type as keyof typeof SUPPORTED_EXTENSION_TYPE_MAP;
   const extensions = SUPPORTED_EXTENSION_TYPE_MAP[extensionKey];
   return Array.isArray(extensions)
     ? extensions
     : Array.from(extensions as Iterable<string>);
 };
-
 const AutoFileDrop = ({
   type,
   onDrop,
@@ -132,16 +122,13 @@ const AutoFileDrop = ({
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const accepts = useMemo(() => getAccepts(type), [type]);
-
   const handleDrop = useCallback(
     async (files: File[]) => {
       const ids: string[] = [];
-
       for (const file of files) {
         try {
           const result = await dispatch(importAssetAsync(file)).unwrap();
           ids.push(result.id);
-
           if (result.duplicateCount > 0) {
             void openDialog({
               type: 'acknowledge',
@@ -149,15 +136,15 @@ const AutoFileDrop = ({
               title: `Warning: ${file.name} contains duplicate rows`,
               children: (
                 <>
-                  <p>
+                  <Paragraph>
                     The file contains {result.duplicateCount} duplicate{' '}
                     {result.duplicateCount === 1 ? 'row' : 'rows'}. Duplicate
                     rows will be removed when this roster is used in Fresco.
-                  </p>
-                  <p>
+                  </Paragraph>
+                  <Paragraph>
                     Consider removing duplicates from your CSV file before
                     importing.
-                  </p>
+                  </Paragraph>
                 </>
               ),
               actions: { primary: { label: 'OK', value: true } },
@@ -168,7 +155,6 @@ const AutoFileDrop = ({
           const isValidationError =
             importError.code === 'VARIABLE_NAME' ||
             importError.code === 'COLUMN_MISMATCHED';
-
           void openDialog({
             type: 'acknowledge',
             intent: 'destructive',
@@ -181,7 +167,7 @@ const AutoFileDrop = ({
               <>
                 The file <strong>{importError.filename}</strong> could not be
                 imported.
-                <p>{importError.message}</p>
+                <Paragraph>{importError.message}</Paragraph>
               </>
             ),
             actions: { primary: { label: 'OK', value: true } },
@@ -189,12 +175,10 @@ const AutoFileDrop = ({
           return;
         }
       }
-
       onDrop(ids);
     },
     [dispatch, onDrop, openDialog],
   );
-
   return (
     <Dropzone
       accepts={accepts}
@@ -204,5 +188,4 @@ const AutoFileDrop = ({
     />
   );
 };
-
 export default AutoFileDrop;

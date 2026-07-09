@@ -8,6 +8,7 @@ import { v4 } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { Validation } from '@codaco/protocol-validation';
 import ValidatedField from '~/components/Form/ValidatedField';
 import OrderedList, {
@@ -19,15 +20,12 @@ import Layout from '../EditorLayout';
 import { MarkdownLabel } from '../Form/Fields';
 import Form from '../InlineEditScreen/Form';
 import { useEditHandlers } from './useEditHandlers';
-
 const notEmpty = (value: unknown) =>
   value && Array.isArray(value) && value.length > 0
     ? undefined
     : 'You must create at least one item.';
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
 type EditableListProps = {
   label?: string;
   form?: string;
@@ -47,10 +45,12 @@ type EditableListProps = {
   template?: () => Record<string, unknown>;
   itemSelector?: (
     state: Record<string, unknown>,
-    params: { form: string; editField: string },
+    params: {
+      form: string;
+      editField: string;
+    },
   ) => unknown;
 };
-
 const EditableList = ({
   label,
   fieldName = 'prompts',
@@ -83,23 +83,17 @@ const EditableList = ({
     normalize,
     template,
   });
-
   const isOpen = editIndex !== null;
-
   // Get current item values for editing & enrich with codebook data using itemSelector
   const currentItemValues = useSelector((state: Record<string, unknown>) => {
     if (editIndex === null) return null;
-
     const editFieldPath = `${fieldName}[${editIndex}]`;
-
     if (itemSelector) {
       return itemSelector(state, { form, editField: editFieldPath });
     }
-
     const selector = formValueSelector(form);
     return selector(state, `${fieldName}[${editIndex}]`);
   });
-
   // Memoize template result to prevent form reinitialization
   // Note: a unique `id` is assigned to every new item unless the template
   // supplies a non-empty one; an empty-string id would collide across items.
@@ -117,13 +111,12 @@ const EditableList = ({
   const initialValuesForEdit = isRecord(currentItemValues)
     ? currentItemValues
     : templateValues;
-
   return (
     <div className="flex flex-col items-start gap-5">
       {label && (
-        <h4>
+        <Heading level="h4">
           <MarkdownLabel label={label} />
-        </h4>
+        </Heading>
       )}
       {children}
       <ValidatedField<OrderedListProps>

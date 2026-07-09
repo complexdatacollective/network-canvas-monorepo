@@ -6,34 +6,30 @@ import { Field } from 'redux-form';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import NewTypeDialog from '~/components/Dialog/NewTypeDialog';
 import CheckboxGroup from '~/components/Form/Fields/CheckboxGroup';
 import type { RootState } from '~/ducks/store';
 import { getEdgeTypes } from '~/selectors/codebook/index';
 import { asOptions } from '~/selectors/utils';
-
 type EdgeEntrySubject = {
   entity: 'edge';
   type: string;
 };
-
 export type EdgeEntry = {
   id: string;
   subject: EdgeEntrySubject;
   form?: Record<string, unknown>;
 };
-
 type EdgeTypeOption = {
   value: string;
   label: string;
 };
-
 type EdgeTypeMultiSelectInnerProps = {
   edgeTypes: EdgeTypeOption[];
   value: EdgeEntry[];
   onChange: (edges: EdgeEntry[]) => void;
 };
-
 export const EdgeTypeMultiSelectInner = ({
   edgeTypes,
   value,
@@ -41,10 +37,8 @@ export const EdgeTypeMultiSelectInner = ({
 }: EdgeTypeMultiSelectInnerProps) => {
   const [showNewTypeDialog, setShowNewTypeDialog] = useState(false);
   const checkedTypes = value.map((entry) => entry.subject.type);
-
   const handleChange = (newCheckedTypes: unknown[]) => {
     const typedCheckedTypes = newCheckedTypes as string[];
-
     const nextEntries = typedCheckedTypes.map((type) => {
       const existing = value.find((entry) => entry.subject.type === type);
       if (existing) {
@@ -55,10 +49,8 @@ export const EdgeTypeMultiSelectInner = ({
         subject: { entity: 'edge' as const, type },
       };
     });
-
     onChange(nextEntries);
   };
-
   // A type created from here is meant for THIS stage, so select it immediately
   // rather than making the user find and tick the new checkbox.
   const handleNewTypeComplete = (newTypeId?: string) => {
@@ -70,7 +62,6 @@ export const EdgeTypeMultiSelectInner = ({
       ]);
     }
   };
-
   return (
     <div className="flex flex-col items-start gap-5">
       {edgeTypes.length > 0 ? (
@@ -83,9 +74,9 @@ export const EdgeTypeMultiSelectInner = ({
           }}
         />
       ) : (
-        <p>
+        <Paragraph>
           No edge types currently defined. Use the button below to create one.
-        </p>
+        </Paragraph>
       )}
       <Button
         icon={<Plus />}
@@ -103,23 +94,18 @@ export const EdgeTypeMultiSelectInner = ({
     </div>
   );
 };
-
 const getEdgeOptions = createSelector([getEdgeTypes], (edgeTypes) =>
   asOptions(edgeTypes),
 );
-
 type OwnProps = {
   form: string;
 };
-
 const withEdgeTypes = connect((state: RootState) => ({
   edgeTypes: getEdgeOptions(state),
 }));
-
 type ConnectedProps = {
   edgeTypes: EdgeTypeOption[];
 };
-
 type EdgeTypeMultiSelectControlProps = {
   // redux-form types a field value loosely and initialises an unset field to ''
   // (not an array), so value can arrive as a string — the render guards for it.
@@ -129,7 +115,6 @@ type EdgeTypeMultiSelectControlProps = {
   };
   edgeTypes: EdgeTypeOption[];
 };
-
 export const EdgeTypeMultiSelectControl = ({
   input,
   edgeTypes,
@@ -142,7 +127,6 @@ export const EdgeTypeMultiSelectControl = ({
     onChange={input.onChange}
   />
 );
-
 const EdgeTypeMultiSelectField = ({ edgeTypes }: ConnectedProps & OwnProps) => (
   <Field
     name="edges"
@@ -150,5 +134,4 @@ const EdgeTypeMultiSelectField = ({ edgeTypes }: ConnectedProps & OwnProps) => (
     edgeTypes={edgeTypes}
   />
 );
-
 export default withEdgeTypes(EdgeTypeMultiSelectField);

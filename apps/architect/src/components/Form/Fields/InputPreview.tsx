@@ -1,24 +1,22 @@
 import { get } from 'es-toolkit/compat';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+
 import inputImages from '../../../images/inputs';
-
 const getInputImage = (type: string) => get(inputImages, type);
-
 type InputPreviewProps = {
   image: string;
   label: string;
   description: string;
 };
-
 const InputPreview = ({ image, label, description }: InputPreviewProps) => (
   <div className="bg-surface-1 flex rounded p-5">
     <div className="basis-1/2">
       <img className="w-full" src={getInputImage(image)} alt={label} />
     </div>
     <div className="basis-1/2 pl-10">
-      <p>{description}</p>
+      <Paragraph>{description}</Paragraph>
     </div>
   </div>
 );
-
 export default InputPreview;

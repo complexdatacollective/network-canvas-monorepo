@@ -19,7 +19,6 @@ import {
   TAG_COLORS,
   TAGS,
 } from './interfaceOptions';
-
 type FuseResultWithScore<T> = {
   item: T;
   score?: number;

@@ -40,7 +40,6 @@ import LibraryPanel from './LibraryPanel';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
 import { TIMELINE_SCRIPT } from './timelineScript';
 import TransitMap from './TransitMap';
-
 const NAV_LINKS = [
   {
     href: 'https://documentation.networkcanvas.com',
@@ -58,7 +57,6 @@ const NAV_LINKS = [
     Icon: CodeXml,
   },
 ];
-
 const Home = () => {
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
@@ -71,12 +69,10 @@ const Home = () => {
     sourceRef?: ProtocolSourceRef;
   } | null>(null);
   const [visibleCount, setVisibleCount] = useState(3);
-
   useEffect(() => {
     const id = setInterval(() => setVisibleCount((c) => c + 1), 2400);
     return () => clearInterval(id);
   }, []);
-
   const runAction = useCallback(async (action: () => Promise<unknown>) => {
     setIsLoading(true);
     try {
@@ -85,7 +81,6 @@ const Home = () => {
       setIsLoading(false);
     }
   }, []);
-
   const handleCreate = useCallback(
     (values: { name: string; description?: string }) => {
       setShowNewDialog(false);
@@ -95,7 +90,6 @@ const Home = () => {
     },
     [dispatch, runAction],
   );
-
   const handleOpenLocalFile = useCallback(
     async (file: File) => {
       const result = await dispatch(openLocalNetcanvas({ file })).unwrap();
@@ -115,7 +109,6 @@ const Home = () => {
     },
     [dispatch, openDialog],
   );
-
   const onDrop = (files: File[]) => {
     const file = files[0];
     if (file) {
@@ -124,7 +117,6 @@ const Home = () => {
       });
     }
   };
-
   const {
     getRootProps,
     getInputProps,
@@ -137,7 +129,6 @@ const Home = () => {
     noClick: true,
     noKeyboard: true,
   });
-
   // Templates are named before opening, so the new library entry lands in
   // Recents under a user-chosen name. Selecting a template opens the naming
   // dialog; confirming it fetches and instantiates the protocol.
@@ -149,7 +140,6 @@ const Home = () => {
       sourceRef: { kind: 'sample', id: 'sample' },
     });
   }, []);
-
   // Dev-only. The dynamic import sits behind `import.meta.env.DEV` so the
   // Development protocol and its bundled assets (a ~24 MB video) are tree-shaken
   // out of the production build entirely.
@@ -167,7 +157,6 @@ const Home = () => {
       })();
     }
   }, []);
-
   const handleOpenTemplate = useCallback((template: BundledTemplate) => {
     setPendingTemplate({
       protocol: template.protocol,
@@ -176,7 +165,6 @@ const Home = () => {
       sourceRef: template.sourceRef,
     });
   }, []);
-
   const handleConfirmTemplate = useCallback(
     ({ name }: { name: string }) => {
       const template = pendingTemplate;
@@ -212,7 +200,6 @@ const Home = () => {
     },
     [dispatch, openDialog, pendingTemplate, runAction],
   );
-
   const handleOpenLibraryProtocol = useCallback(
     (id: string) => {
       void runAction(async () => {
@@ -222,7 +209,6 @@ const Home = () => {
     },
     [dispatch, openDialog, runAction],
   );
-
   return (
     <>
       <ProtocolLoadingOverlay open={isLoading} />
@@ -324,11 +310,11 @@ const Home = () => {
                   </Button>
                 </div>
 
-                <p className="hint my-0 flex items-center gap-1.5">
+                <Paragraph className="hint my-0 flex items-center gap-1.5">
                   <Upload className="h-3.5 w-3.5" />
                   Or drop a <code className="code">.netcanvas</code> file
                   anywhere on this page
-                </p>
+                </Paragraph>
               </div>
 
               <LibraryPanel
@@ -345,5 +331,4 @@ const Home = () => {
     </>
   );
 };
-
 export default Home;

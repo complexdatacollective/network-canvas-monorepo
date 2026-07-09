@@ -1,18 +1,18 @@
 import { Field, FormSection } from 'redux-form';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import { BooleanField } from '~/components/Form/Fields';
-
 const RemoveAfterConsideration = () => (
   <Section
     title="Remove After Consideration"
     summary={
-      <p>
+      <Paragraph>
         This toggle determines if a node should continue to be shown in the bin
         after it has been the main focal node. If it is set to true, the node
         will be removed from the pool after it has been shown in the primary
         position for consideration.
-      </p>
+      </Paragraph>
     }
   >
     <Row>
@@ -36,5 +36,4 @@ const RemoveAfterConsideration = () => (
     </Row>
   </Section>
 );
-
 export default RemoveAfterConsideration;

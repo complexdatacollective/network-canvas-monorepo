@@ -1,5 +1,6 @@
 import { compose } from 'react-recompose';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import EditableList from '~/components/EditableList';
 import { Section } from '~/components/EditorLayout';
 import withDisabledFormTitle from '~/components/enhancers/withDisabledFormTitle';
@@ -13,7 +14,6 @@ import FieldFields from './FieldFields';
 import FieldPreview from './FieldPreview';
 import { itemSelector, normalizeField } from './helpers';
 import withFormHandlers from './withFormHandlers';
-
 type FormProps = StageEditorSectionProps & {
   handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
   disabled?: boolean;
@@ -22,7 +22,6 @@ type FormProps = StageEditorSectionProps & {
   type?: string | null;
   entity?: string | null;
 };
-
 const Form = ({
   handleChangeFields,
   form,
@@ -38,11 +37,11 @@ const Form = ({
     group
     title="Form"
     summary={
-      <p>
+      <Paragraph>
         Add one or more fields to your form to collect attributes about each
         node the participant creates. Use the drag handle on the left of each
         prompt adjust its order.
-      </p>
+      </Paragraph>
     }
   >
     {!disableFormTitle && (
@@ -75,14 +74,16 @@ const Form = ({
       itemSelector={
         itemSelector(entity, type) as (
           state: Record<string, unknown>,
-          params: { form: string; editField: string },
+          params: {
+            form: string;
+            editField: string;
+          },
         ) => unknown
       }
       form={form}
     />
   </Section>
 );
-
 export default compose<FormProps, StageEditorSectionProps>(
   withSubject,
   withFormHandlers,

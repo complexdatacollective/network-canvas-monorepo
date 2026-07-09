@@ -3,15 +3,13 @@ import { Component, type ReactNode, useCallback, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { posthog } from '~/analytics';
-
 type AppErrorBoundaryProps = {
   children?: ReactNode;
 };
-
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
-
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(value);
@@ -21,7 +19,6 @@ function CopyButton({ value }: { value: string }) {
       posthog.captureException(ensureError(err));
     }
   }, [value]);
-
   return (
     <Button
       color="default"
@@ -32,11 +29,9 @@ function CopyButton({ value }: { value: string }) {
     </Button>
   );
 }
-
 type AppErrorBoundaryState = {
   error: Error | null;
 };
-
 function ensureError(value: unknown): Error {
   if (value instanceof Error) return value;
   try {
@@ -45,7 +40,6 @@ function ensureError(value: unknown): Error {
     return new Error(String(value));
   }
 }
-
 class AppErrorBoundary extends Component<
   AppErrorBoundaryProps,
   AppErrorBoundaryState
@@ -54,21 +48,17 @@ class AppErrorBoundary extends Component<
     super(props);
     this.state = { error: null };
   }
-
   componentDidCatch(error: unknown) {
     const normalizedError = ensureError(error);
     posthog.captureException(normalizedError);
     this.setState({ error: normalizedError });
   }
-
   resetError = () => {
     this.setState({ error: null });
   };
-
   render() {
     const { error } = this.state;
     const { children } = this.props;
-
     if (error) {
       return (
         <Dialog
@@ -84,11 +74,11 @@ class AppErrorBoundary extends Component<
             </>
           }
         >
-          <p>
+          <Paragraph>
             The following &quot;
             {error.message}
             &quot; error occurred:
-          </p>
+          </Paragraph>
           <div className="bg-surface-accent text-surface-accent-contrast my-5 overflow-hidden rounded">
             <pre className="block max-h-36 overflow-auto p-5">
               <code>{error.stack ?? error.message}</code>
@@ -97,9 +87,7 @@ class AppErrorBoundary extends Component<
         </Dialog>
       );
     }
-
     return children;
   }
 }
-
 export default AppErrorBoundary;

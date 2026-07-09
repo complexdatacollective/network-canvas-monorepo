@@ -5,6 +5,9 @@ import { useSelector } from 'react-redux';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+// Memoized selectors for options
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import NewTypeDialog from '~/components/Dialog/NewTypeDialog';
 import { cx } from '~/utils/cva';
 
@@ -12,15 +15,12 @@ import { getEdgeTypes, getNodeTypes } from '../../../../selectors/codebook';
 import { asOptions } from '../../../../selectors/utils';
 import PreviewEdge from './PreviewEdge';
 import PreviewNode from './PreviewNode';
-
-// Memoized selectors for options
 const getEdgeOptions = createSelector([getEdgeTypes], (edgeTypes) =>
   asOptions(edgeTypes),
 );
 const getNodeOptions = createSelector([getNodeTypes], (nodeTypes) =>
   asOptions(nodeTypes),
 );
-
 type EntitySelectFieldProps = {
   entityType: 'node' | 'edge';
   label?: string | null;
@@ -35,7 +35,6 @@ type EntitySelectFieldProps = {
   };
   promptBeforeChange?: string | null;
 };
-
 const EntitySelectField = ({
   entityType,
   label = null,
@@ -47,23 +46,19 @@ const EntitySelectField = ({
   const edgeOptions = useSelector(getEdgeOptions);
   const nodeOptions = useSelector(getNodeOptions);
   const [showNewTypeDialog, setShowNewTypeDialog] = useState(false);
-
   const options = useMemo(() => {
     if (entityType === 'edge') {
       return edgeOptions;
     }
     return nodeOptions;
   }, [entityType, edgeOptions, nodeOptions]);
-
   const hasError = !!touched && !!error;
-
   const handleClickItem = useCallback(
     (clickedItem: string) => {
       if (!value || !promptBeforeChange) {
         onChange(clickedItem);
         return;
       }
-
       void confirm({
         title: `Change ${entityType} type?`,
         description: promptBeforeChange,
@@ -75,11 +70,9 @@ const EntitySelectField = ({
     },
     [value, promptBeforeChange, onChange, confirm, entityType],
   );
-
   const handleOpenCreateNewType = useCallback(() => {
     setShowNewTypeDialog(true);
   }, []);
-
   const handleNewTypeComplete = useCallback(
     (newTypeId?: string) => {
       setShowNewTypeDialog(false);
@@ -89,11 +82,9 @@ const EntitySelectField = ({
     },
     [onChange],
   );
-
   const handleNewTypeCancel = useCallback(() => {
     setShowNewTypeDialog(false);
   }, []);
-
   const renderOptions = useCallback(
     () =>
       options.map(({ label: optionLabel, color, shape, value: optionValue }) =>
@@ -120,10 +111,9 @@ const EntitySelectField = ({
       ),
     [options, value, handleClickItem, entityType],
   );
-
   return (
     <div className="flex flex-col items-start gap-5">
-      {label && <h4>{label}</h4>}
+      {label && <Heading level="h4">{label}</Heading>}
 
       {options.length > 0 ? (
         <div
@@ -135,10 +125,10 @@ const EntitySelectField = ({
           {renderOptions()}
         </div>
       ) : (
-        <p>
+        <Paragraph>
           No {entityType} types currently defined. Use the button below to
           create one.
-        </p>
+        </Paragraph>
       )}
       <Button icon={<Plus />} onClick={handleOpenCreateNewType} color="primary">
         Create new {entityType} type
@@ -158,5 +148,4 @@ const EntitySelectField = ({
     </div>
   );
 };
-
 export default EntitySelectField;

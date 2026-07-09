@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
-
 import { compose } from 'react-recompose';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
@@ -11,7 +11,6 @@ import withSubject from '../../enhancers/withSubject';
 import PromptFields from './PromptFields';
 import PromptPreview from './PromptPreview';
 import withFormUsedVariableIndex from './withFormUsedVariableIndex';
-
 type SociogramPromptsProps = StageEditorSectionProps & {
   entity?: string;
   type?: string;
@@ -19,7 +18,6 @@ type SociogramPromptsProps = StageEditorSectionProps & {
   disabledMessage?: string;
   usedVariableIndex?: Record<string, unknown>;
 };
-
 const SociogramPrompts = ({
   form,
   entity,
@@ -32,10 +30,10 @@ const SociogramPrompts = ({
     disabled={disabled}
     disabledMessage={disabledMessage}
     summary={
-      <p>
+      <Paragraph>
         Add one or more prompts below to frame the task for the user. You can
         reorder the prompts using the draggable handles on the left hand side.
-      </p>
+      </Paragraph>
     }
     title="Prompts"
   >
@@ -48,7 +46,6 @@ const SociogramPrompts = ({
     />
   </Section>
 );
-
 export default compose<SociogramPromptsProps, StageEditorSectionProps>(
   withSubject,
   withFormUsedVariableIndex,

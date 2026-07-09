@@ -1,18 +1,18 @@
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import { RichText, Text } from '~/components/Form/Fields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
 import { ValidatedField } from '../../Form';
 import IssueAnchor from '../../IssueAnchor';
-
 const AnonymisationExplanation = (_props: StageEditorSectionProps) => (
   <Section
     title="Task Explanation"
     summary={
-      <p>
+      <Paragraph>
         Use this section to explain the anonymisation process to your
         participants.
-      </p>
+      </Paragraph>
     }
   >
     <Row>
@@ -44,5 +44,4 @@ const AnonymisationExplanation = (_props: StageEditorSectionProps) => (
     </Row>
   </Section>
 );
-
 export default AnonymisationExplanation;

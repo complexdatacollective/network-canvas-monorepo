@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import { CheckboxGroup } from '~/components/Form/Fields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -14,20 +15,17 @@ import { getNodeTypes } from '~/selectors/codebook';
 
 import { updateVariableByUUID } from '../../../ducks/modules/protocol/codebook';
 import DetachedField from '../../DetachedField';
-
 type Variable = {
   name: string;
   type?: string;
   encrypted?: boolean;
   [key: string]: unknown;
 };
-
 type NodeType = {
   name: string;
   variables?: Record<string, Variable>;
   [key: string]: unknown;
 };
-
 /**
  * Encryption only supports text variables: the interview's secure-attribute
  * path encrypts string values only, so a non-text variable flagged encrypted
@@ -42,25 +40,21 @@ export const getEncryptableVariableOptions = (
       value: variableId,
       label: variable.name,
     }));
-
 const EncryptedVariables = (_props: StageEditorSectionProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const { confirm } = useDialog();
   const nodeTypes = useSelector(
     (state: RootState) => getNodeTypes(state) as Record<string, NodeType>,
   );
-
   const handleEncryptionToggle = useCallback(
     (variableId: string, encrypted: boolean, variable: Variable) => {
       const properties = encrypted
         ? { ...variable, encrypted: true }
         : omit(variable, 'encrypted');
-
       void dispatch(updateVariableByUUID(variableId, properties, false));
     },
     [dispatch],
   );
-
   const handleToggleChange = useCallback(
     async (
       hasEncryptedVariable: boolean,
@@ -70,7 +64,6 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
       if (!hasEncryptedVariable || newState) {
         return true;
       }
-
       const confirmed = await confirm({
         title: 'This will clear selected variables',
         description: `This will deselect all encrypted variables for the ${nodeType.name} node type. Do you want to continue?`,
@@ -79,7 +72,6 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
         intent: 'warning',
         onConfirm: () => {},
       });
-
       if (confirmed) {
         Object.entries(nodeType.variables || {}).forEach(
           ([variableId, variable]) => {
@@ -90,12 +82,10 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
         );
         return true;
       }
-
       return false;
     },
     [confirm, handleEncryptionToggle],
   );
-
   const nodeTypeVariableData = useMemo(
     () =>
       Object.entries(nodeTypes).map(([nodeTypeId, nodeType]) => {
@@ -103,15 +93,12 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
         const hasEncryptedVariable = Object.values(variables).some(
           (variable) => variable?.encrypted,
         );
-
         const variableOptions = getEncryptableVariableOptions(variables);
-
         const encryptedVariableIds = Object.entries(variables)
           .filter(
             ([, variable]) => variable.type === 'text' && variable.encrypted,
           )
           .map(([variableId]) => variableId);
-
         return {
           nodeTypeId,
           nodeType,
@@ -123,16 +110,15 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
       }),
     [nodeTypes],
   );
-
   return (
     <Section
       title="Encrypted Variables"
       summary={
         <>
-          <p>
+          <Paragraph>
             You may encrypt one or more text variables. Select the text
             variables for each node type that should be encrypted.
-          </p>
+          </Paragraph>
           <Alert variant="info" className="my-7">
             <AlertDescription>
               Values for encrypted variables are not stored in the database.
@@ -159,7 +145,9 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
             handleToggleChange={(newState) =>
               handleToggleChange(hasEncryptedVariable, nodeType, newState)
             }
-            summary={<p>Which variables should be encrypted?</p>}
+            summary={
+              <Paragraph>Which variables should be encrypted?</Paragraph>
+            }
           >
             <div className="max-h-75 overflow-y-auto">
               <DetachedField
@@ -191,5 +179,4 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
     </Section>
   );
 };
-
 export default EncryptedVariables;

@@ -1,3 +1,4 @@
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Text } from '~/components/Form/Fields';
 import DataSource from '~/components/Form/Fields/DataSource';
 import ValidatedField from '~/components/Form/ValidatedField';
@@ -5,21 +6,19 @@ import NetworkFilter from '~/components/sections/fields/NetworkFilter';
 import { getFieldId } from '~/utils/issues';
 
 import Section from '../../EditorLayout/Section';
-
 type NodePanelProps = {
   fieldId: string;
   form: string;
 };
-
 const NodePanel = ({ fieldId, form }: NodePanelProps) => (
   <>
     <Section
       title="Panel Title"
       summary={
-        <p>
+        <Paragraph>
           The panel title will be shown above the list of nodes within the
           panel.
-        </p>
+        </Paragraph>
       }
       id={getFieldId(`${fieldId}.title`)}
       layout="vertical"
@@ -37,11 +36,11 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
     <Section
       title="Data Source"
       summary={
-        <p>
+        <Paragraph>
           Choose where the data for this panel should come from (either the
           in-progress interview session [&quot;People you have already
           named&quot;], or an external network data file that you have added).
-        </p>
+        </Paragraph>
       }
       id={getFieldId(`${fieldId}.dataSource`)}
       layout="vertical"
@@ -61,5 +60,4 @@ const NodePanel = ({ fieldId, form }: NodePanelProps) => (
     <NetworkFilter form={form} variant="contrast" name={`${fieldId}.filter`} />
   </>
 );
-
 export default NodePanel;

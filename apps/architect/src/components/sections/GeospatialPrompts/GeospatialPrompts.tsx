@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
-
 import { compose } from 'react-recompose';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
@@ -10,14 +10,12 @@ import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequ
 import withSubject from '../../enhancers/withSubject';
 import PromptFields from './PromptFields';
 import PromptPreview from './PromptPreview';
-
 type GeospatialPromptsProps = StageEditorSectionProps & {
   entity?: string;
   type?: string;
   disabled?: boolean;
   disabledMessage?: string;
 };
-
 const GeospatialPrompts = ({
   form,
   entity,
@@ -29,10 +27,10 @@ const GeospatialPrompts = ({
     disabled={disabled}
     disabledMessage={disabledMessage}
     summary={
-      <p>
+      <Paragraph>
         Add one or more prompts below to frame the task for the user. You can
         reorder the prompts using the draggable handles on the left hand side.
-      </p>
+      </Paragraph>
     }
     title="Prompts"
   >
@@ -47,7 +45,6 @@ const GeospatialPrompts = ({
     />
   </Section>
 );
-
 export default compose<GeospatialPromptsProps, StageEditorSectionProps>(
   withSubject,
   withDisabledSubjectRequired,

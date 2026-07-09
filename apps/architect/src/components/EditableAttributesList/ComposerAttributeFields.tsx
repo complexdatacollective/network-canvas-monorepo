@@ -1,6 +1,8 @@
 import type { ComponentType } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section, Subsection } from '~/components/EditorLayout';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import Text from '~/components/Form/Fields/Text';
@@ -21,13 +23,11 @@ import ExternalLink from '../ExternalLink';
 import InputPreview from '../Form/Fields/InputPreview';
 import VariablePicker from '../Form/Fields/VariablePicker/VariablePicker';
 import { useFieldHandlers } from '../sections/Form/withFieldsHandlers';
-
 type ComposerAttributeFieldsProps = {
   form: string;
   entity?: string | null;
   type?: string | null;
 };
-
 const ComposerAttributeFields = ({
   form,
   entity = null,
@@ -50,9 +50,7 @@ const ComposerAttributeFields = ({
     entity: entity ?? '',
     type: type ?? '',
   });
-
   const lockedOptions = getLockedOptions(existingVariables, variable);
-
   return (
     <Section layout="vertical">
       <Subsection id={getFieldId('variable')} title="Variable">
@@ -84,10 +82,10 @@ const ComposerAttributeFields = ({
         title="Label"
         disabled={!variable}
         summary={
-          <p>
+          <Paragraph>
             Optionally caption this attribute in the side panel. When left
             empty, the variable&apos;s name is shown instead.
-          </p>
+          </Paragraph>
         }
       >
         <ValidatedField
@@ -105,14 +103,14 @@ const ComposerAttributeFields = ({
         title="Input Control"
         disabled={!variable}
         summary={
-          <p>
+          <Paragraph>
             Choose an input control that should be used to collect the answer.
             For detailed information about these options, see our{' '}
             <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/input-controls/">
               documentation
             </ExternalLink>
             .
-          </p>
+          </Paragraph>
         }
       >
         <ValidatedField
@@ -152,7 +150,7 @@ const ComposerAttributeFields = ({
           metaForType &&
           typeof metaForType.label === 'string' && (
             <div>
-              <h4>Preview</h4>
+              <Heading level="h4">Preview</Heading>
               <InputPreview
                 label={metaForType.label}
                 description={metaForType.description}
@@ -168,16 +166,16 @@ const ComposerAttributeFields = ({
           title="Categorical/Ordinal options"
           summary={
             lockedOptions ? (
-              <p>
+              <Paragraph>
                 These options are automatically configured by the interface and
                 cannot be modified.
-              </p>
+              </Paragraph>
             ) : (
-              <p>
+              <Paragraph>
                 The input type you selected indicates that this is a categorical
                 or ordinal variable. Next, please create a minimum of two
                 possible values for the participant to choose between.
-              </p>
+              </Paragraph>
             )
           }
         >
@@ -209,5 +207,4 @@ const ComposerAttributeFields = ({
     </Section>
   );
 };
-
 export default ComposerAttributeFields;

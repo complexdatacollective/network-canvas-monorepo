@@ -4,38 +4,34 @@ import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 
 import IssueAnchor from '../IssueAnchor';
-
 const FORM_PROPERTY = 'behaviours.automaticLayout';
-
 const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
   const formSelector = useMemo(() => formValueSelector(form), [form]);
   const formValue = useSelector(
     (state: RootState) => !!formSelector(state, FORM_PROPERTY),
   );
-
   const [useAutomaticLayout, setUseAutomaticLayout] = useState(formValue);
-
   const handleChooseLayoutMode = (nextValue: boolean | undefined) => {
     const useNextValue = !!nextValue;
     dispatch(change(form, FORM_PROPERTY, useNextValue) as UnknownAction);
     setUseAutomaticLayout(useNextValue);
   };
-
   return (
     <Section
       title="Layout Mode"
       summary={
-        <p>
+        <Paragraph>
           Interviewer offers two modes for positioning nodes on the sociogram:
           &quot;Manual&quot;, and &quot;Automatic&quot;.
-        </p>
+        </Paragraph>
       }
     >
       <Row>
@@ -43,18 +39,18 @@ const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
           fieldName="behaviours.automaticLayout"
           description="Layout mode"
         />
-        <p>
+        <Paragraph>
           <strong>Automatic mode</strong> positions nodes when the stage is
           first shown by simulating physical forces such as attraction and
           repulsion. This simulation can be paused and resumed within the
           interview. When paused, the position of nodes can be adjusted
           manually.
-        </p>
-        <p>
+        </Paragraph>
+        <Paragraph>
           <strong>Manual mode</strong> first places all nodes into a
           &quot;bucket&quot; at the bottom of the screen, from which the
           participant can drag nodes to their desired position.
-        </p>
+        </Paragraph>
       </Row>
       <Row>
         <FrescoBooleanField
@@ -78,5 +74,4 @@ const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
     </Section>
   );
 };
-
 export default AutomaticLayout;

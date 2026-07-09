@@ -1,5 +1,6 @@
 import { compose } from 'react-recompose';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
@@ -10,7 +11,6 @@ import { itemSelector } from './helpers';
 import PromptFields from './PromptFields';
 import PromptPreview from './PromptPreview';
 import withPromptChangeHandler from './withPromptChangeHandler';
-
 type TieStrengthCensusPromptsProps = StageEditorSectionProps & {
   handleChangePrompt: (prompts: unknown[]) => void;
   entity?: string;
@@ -18,7 +18,6 @@ type TieStrengthCensusPromptsProps = StageEditorSectionProps & {
   disabled?: boolean;
   disabledMessage?: string;
 };
-
 const TieStrengthCensusPrompts = ({
   handleChangePrompt,
   form,
@@ -31,10 +30,10 @@ const TieStrengthCensusPrompts = ({
     disabled={disabled}
     disabledMessage={disabledMessage}
     summary={
-      <p>
+      <Paragraph>
         Add one or more prompts below to frame the task for the user. You can
         reorder the prompts using the draggable handles on the left hand side.
-      </p>
+      </Paragraph>
     }
     title="Prompts"
   >
@@ -48,7 +47,10 @@ const TieStrengthCensusPrompts = ({
       itemSelector={
         itemSelector() as (
           state: Record<string, unknown>,
-          params: { form: string; editField: string },
+          params: {
+            form: string;
+            editField: string;
+          },
         ) => unknown
       }
       onChange={(prompts: unknown) => handleChangePrompt(prompts as unknown[])}
@@ -57,7 +59,6 @@ const TieStrengthCensusPrompts = ({
     />
   </Section>
 );
-
 export default compose<TieStrengthCensusPromptsProps, StageEditorSectionProps>(
   withSubject,
   withDisabledSubjectRequired,

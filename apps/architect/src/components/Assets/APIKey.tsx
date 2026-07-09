@@ -3,7 +3,6 @@ import type React from 'react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import withAssetMeta from './withAssetMeta';
-
 type APIKeyProps = {
   meta?: {
     value?: string;

@@ -4,6 +4,10 @@ import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { change, getFormValues } from 'redux-form';
 
+// Screen message listeners removed as part of screen system refactor
+// List of fields that are independent of the stage subject, and so do not need to be
+// reset when the subject changes.
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
@@ -14,10 +18,6 @@ import ValidatedField from '../Form/ValidatedField';
 import IssueAnchor from '../IssueAnchor';
 import EntitySelectField from './fields/EntitySelectField/EntitySelectField';
 import Filter from './Filter';
-// Screen message listeners removed as part of screen system refactor
-
-// List of fields that are independent of the stage subject, and so do not need to be
-// reset when the subject changes.
 export const SUBJECT_INDEPENDENT_FIELDS = [
   'id',
   'type',
@@ -25,36 +25,33 @@ export const SUBJECT_INDEPENDENT_FIELDS = [
   'interviewScript',
   'introductionPanel',
 ];
-
 type NodeTypeProps = StageEditorSectionProps & {
   withFilter?: boolean;
 };
-
 const NodeType = (props: NodeTypeProps) => {
   const { form, withFilter = false } = props;
-
   const dispatch = useAppDispatch();
   const formValues = useSelector((state: RootState) =>
     getFormValues(form)(state),
   );
   const fields = keys(formValues);
-
   const _currentSubject = get(formValues, 'subject');
-
   const handleResetStage = useCallback(() => {
     const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
     fieldsToReset.forEach((field) => {
       dispatch(change(form, field, null) as UnknownAction);
     });
   }, [dispatch, fields, form]);
-
   // TODO: Restore auto-selection of newly created types when type creation dialogs
   // are properly integrated with form state management
-
   return (
     <Section
       title="Node Type"
-      summary={<p>Select the type of node that this stage will create.</p>}
+      summary={
+        <Paragraph>
+          Select the type of node that this stage will create.
+        </Paragraph>
+      }
     >
       <Row>
         <IssueAnchor fieldName="subject" description="Node Type" />
@@ -77,9 +74,7 @@ const NodeType = (props: NodeTypeProps) => {
     </Section>
   );
 };
-
 export const FilteredNodeType = (props: NodeTypeProps) => (
   <NodeType withFilter {...props} />
 );
-
 export default NodeType;

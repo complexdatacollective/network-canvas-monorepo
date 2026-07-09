@@ -1,17 +1,17 @@
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import Toggle from '~/components/Form/Fields/Toggle';
 import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-
 const AtRiskStatuses = (_props: StageEditorSectionProps) => (
   <Section
     title="At-Risk Statuses"
     summary={
-      <p>
+      <Paragraph>
         Optionally show <strong>possible</strong> (at-risk) statuses alongside
         the certain ones, inferred from family structure and inheritance
         patterns.
-      </p>
+      </Paragraph>
     }
   >
     <Row>
@@ -25,21 +25,21 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => (
       />
     </Row>
     <div className="[&_h5]:mt-5 [&_h5]:mb-1 [&_h5]:font-semibold [&_li]:mb-1 [&_p]:mb-2.5 [&_ul]:mb-2.5 [&_ul]:list-disc [&_ul]:pl-7">
-      <p>
+      <Paragraph>
         When enabled, the pedigree also shows a person who <em>may develop</em>{' '}
         a condition or <em>may carry</em> it. These are drawn as the usual
         status symbol with a question mark (&ldquo;?&rdquo;) added. A solid,
         filled symbol always indicates a clinically <em>affected</em> individual
         (per Bennett et al., 2022 nomenclature), so at-risk relatives always
         appear as unfilled symbols marked with a &ldquo;?&rdquo;.
-      </p>
+      </Paragraph>
 
       <h5>How it is calculated</h5>
-      <p>
+      <Paragraph>
         At-risk statuses are not observed or diagnosed &mdash; they are inferred
         from the family structure together with each condition&rsquo;s
         inheritance pattern. For example:
-      </p>
+      </Paragraph>
       <ul>
         <li>
           The child of a parent affected by a dominant condition is shown as{' '}
@@ -51,7 +51,9 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => (
           carriers, <em>may develop</em> it.
         </li>
       </ul>
-      <p>Two rules constrain how risk travels through the family:</p>
+      <Paragraph>
+        Two rules constrain how risk travels through the family:
+      </Paragraph>
       <ul>
         <li>
           Only <em>biological</em> and <em>donor</em> relationships pass
@@ -64,16 +66,15 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => (
       </ul>
 
       <h5>Why this is off by default</h5>
-      <p>
+      <Paragraph>
         At-risk symbols are a strong visual signal that can be read as
         established fact rather than inferred risk. They are intended for{' '}
         <strong>clinician-directed use</strong>, where the result is interpreted
         in context. Standard pedigree nomenclature (Bennett et al., 2022)
         deliberately does not encode probabilistic risk, so leave this off
         unless a clinician is guiding interpretation.
-      </p>
+      </Paragraph>
     </div>
   </Section>
 );
-
 export default AtRiskStatuses;

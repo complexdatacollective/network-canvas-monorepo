@@ -2,6 +2,7 @@ import type React from 'react';
 import { compose } from 'react-recompose';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import { ValidatedField } from '~/components/Form';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
@@ -20,14 +21,12 @@ import { getFieldId } from '~/utils/issues';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
-
 type SelectOption = {
   label: string;
   value: string;
   type?: string;
   [key: string]: unknown;
 };
-
 type PromptFieldsProps = {
   variableOptions?: SelectOption[];
   entity: string;
@@ -37,7 +36,6 @@ type PromptFieldsProps = {
   variable?: string | null;
   optionsForVariableDraft?: SelectOption[];
 };
-
 const PromptFields = ({
   changeForm,
   entity,
@@ -52,35 +50,32 @@ const PromptFields = ({
     type,
     initialValues: { name: '', type: '' },
   };
-
   const handleCreatedNewVariable = (...args: unknown[]) => {
-    const [id, params] = args as [string, { field: string }];
+    const [id, params] = args as [
+      string,
+      {
+        field: string;
+      },
+    ];
     changeForm(form, params.field, id);
   };
-
   const [newVariableWindowProps, openNewVariableWindow] =
     useNewVariableWindowState(
       newVariableWindowInitialProps,
       handleCreatedNewVariable,
     );
-
   const handleNewVariable = (name: string) =>
     openNewVariableWindow(
       { initialValues: { name, type: 'ordinal' } },
       { field: 'variable' },
     );
-
   const ordinalVariableOptions = variableOptions.filter(
     ({ type: variableType }) => variableType === 'ordinal',
   );
-
   const getOptions = getSortOrderOptionGetter(variableOptions);
   const sortMaxItems = getOptions('property', undefined, []).length;
-
   const totalOptionsLength = optionsForVariableDraft?.length;
-
   const showVariableOptionsTip = totalOptionsLength > 5;
-
   return (
     <>
       <PromptText />
@@ -105,9 +100,9 @@ const PromptFields = ({
         <Section
           title="Variable Options"
           summary={
-            <p>
+            <Paragraph>
               Create <strong>up to 5</strong> options for this variable.
-            </p>
+            </Paragraph>
           }
           layout="vertical"
         >
@@ -131,10 +126,10 @@ const PromptFields = ({
       <Section
         title="Color"
         summary={
-          <p>
+          <Paragraph>
             Interviewer will render each option in your ordinal variable using a
             color gradient.
-          </p>
+          </Paragraph>
         }
         layout="vertical"
       >
@@ -171,7 +166,6 @@ const PromptFields = ({
     </>
   );
 };
-
 export default compose<PromptFieldsProps, Record<string, never>>(
   withVariableOptions,
   withVariableHandlers,

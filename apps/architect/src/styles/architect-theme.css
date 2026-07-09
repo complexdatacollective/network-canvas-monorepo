@@ -127,33 +127,6 @@
   strong {
     @apply font-extrabold;
   }
-  :where(h1, h2, h3, h4) {
-    @apply font-heading scroll-m-20 font-bold text-pretty;
-    margin-top: 0;
-    margin-bottom: 0;
-  }
-  :where(h1, h2, h3, h4):not(:first-child) {
-    margin-top: 1em;
-  }
-  :where(h1, h2, h3, h4):not(:last-child) {
-    margin-bottom: 0.5em;
-  }
-  h1 {
-    @apply text-3xl;
-  }
-  h2 {
-    @apply text-2xl;
-  }
-  h3 {
-    @apply text-xl;
-  }
-  h4 {
-    @apply text-lg;
-  }
-  p {
-    @apply text-base;
-    margin: 1em 0;
-  }
 }
 
 @utility hint {

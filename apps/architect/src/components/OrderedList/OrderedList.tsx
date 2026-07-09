@@ -5,18 +5,17 @@ import { useCallback } from 'react';
 import { arrayRemove, type WrappedFieldProps } from 'redux-form';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+// Only the unique props for OrderedList (excluding WrappedFieldProps)
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useAppDispatch } from '~/ducks/hooks';
 
 import ListItem from './ListItem';
-
-// Only the unique props for OrderedList (excluding WrappedFieldProps)
 export type OrderedListProps = {
   item: React.ElementType;
   onClickItem?: (index: number) => void;
   sortable?: boolean;
   editIndex?: number | null;
 };
-
 const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
   const {
     input: { value: values, name, onChange },
@@ -25,10 +24,8 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
     onClickItem = noop,
     sortable = true,
   } = props;
-
   const dispatch = useAppDispatch();
   const { confirm } = useDialog();
-
   const getDeleteHandler = useCallback(
     (index: number) => async () => {
       void confirm({
@@ -44,15 +41,12 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
     },
     [confirm, dispatch, form, name],
   );
-
   const handleReorder = (newOrder: unknown[]) => {
     onChange(newOrder);
   };
-
   if (!values || !Array.isArray(values)) {
     return null;
   }
-
   return (
     <Reorder.Group
       className="flex w-full flex-col gap-5"
@@ -93,10 +87,9 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
         })}
       </AnimatePresence>
       {(dirty || submitFailed) && error && !isArray(error) && (
-        <p className="text-destructive">{error}</p>
+        <Paragraph className="text-destructive">{error}</Paragraph>
       )}
     </Reorder.Group>
   );
 };
-
 export default OrderedList;

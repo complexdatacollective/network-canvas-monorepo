@@ -1,5 +1,7 @@
 import { compose } from 'react-recompose';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import withDisabledAPIKeyRequired from '~/components/enhancers/withDisabledAPIKeyRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
@@ -15,7 +17,6 @@ import { mapboxStyleOptions } from '../Form/Fields/Geospatial/mapboxConstants';
 import MapSelection from '../Form/Fields/Geospatial/MapSelection';
 import Toggle from '../Form/Fields/Toggle';
 import ValidatedField from '../Form/ValidatedField';
-
 type MapOptionsProps = StageEditorSectionProps & {
   mapOptions?: {
     center?: number[];
@@ -30,7 +31,6 @@ type MapOptionsProps = StageEditorSectionProps & {
   };
   disabled: boolean;
 };
-
 const defaultMapOptions = {
   center: [0, 0],
   tokenAssetId: '',
@@ -42,7 +42,6 @@ const defaultMapOptions = {
   showTransit: false,
   allowSearch: false,
 };
-
 const MapOptions = ({
   mapOptions = defaultMapOptions,
   disabled,
@@ -52,25 +51,23 @@ const MapOptions = ({
     true,
     'geojson',
   );
-
   const { paletteName, paletteSize } = {
     paletteName: 'ord-color-seq',
     paletteSize: 8,
   };
-
   return (
     <>
       <Section
         title="API Key"
         summary={
-          <p>
+          <Paragraph>
             This interface requires an API key from Mapbox. For more information
             about Mapbox and retreiving an API Key, read our{' '}
             <ExternalLink href="https://documentation.networkcanvas.com/interface-documentation/geospatial/">
               documentation
             </ExternalLink>{' '}
             on the interface.
-          </p>
+          </Paragraph>
         }
       >
         <div data-name="Map Options Mapbox Key" />
@@ -86,10 +83,10 @@ const MapOptions = ({
       <Section
         title="Data source for map layers"
         summary={
-          <p>
+          <Paragraph>
             This interface requires a GeoJSON source for map layers. These
             provide selectable areas for prompts. Select a GeoJSON file to use.
-          </p>
+          </Paragraph>
         }
       >
         <Row>
@@ -116,7 +113,11 @@ const MapOptions = ({
       </Section>
       <Section
         title="Map Style"
-        summary={<p>Customize the colors, style, and features of the map.</p>}
+        summary={
+          <Paragraph>
+            Customize the colors, style, and features of the map.
+          </Paragraph>
+        }
         disabled={disabled}
       >
         <ValidatedField
@@ -141,7 +142,7 @@ const MapOptions = ({
           }}
         />
 
-        <h4>Show Public Transit</h4>
+        <Heading level="h4">Show Public Transit</Heading>
         <ValidatedField
           name="mapOptions.showTransit"
           component={Toggle as React.ComponentType}
@@ -151,7 +152,7 @@ const MapOptions = ({
           }}
         />
 
-        <h4>Allow Location Search</h4>
+        <Heading level="h4">Allow Location Search</Heading>
         <ValidatedField
           name="mapOptions.allowSearch"
           component={Toggle as React.ComponentType}
@@ -165,10 +166,10 @@ const MapOptions = ({
       <Section
         title="Initial Map View"
         summary={
-          <p>
+          <Paragraph>
             Configure the initial map view to adjust where it will be centered
             and zoomed to.
-          </p>
+          </Paragraph>
         }
         disabled={disabled}
       >
@@ -184,7 +185,6 @@ const MapOptions = ({
     </>
   );
 };
-
 export default compose<MapOptionsProps, StageEditorSectionProps>(
   withMapFormToProps(['mapOptions']),
   withDisabledAPIKeyRequired,

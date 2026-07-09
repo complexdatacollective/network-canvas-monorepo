@@ -3,10 +3,10 @@ import { TriangleAlert } from 'lucide-react';
 import { memo, useEffect, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '~/utils/cva';
 
 import MarkdownLabel from './MarkdownLabel';
-
 type TextInputProps = {
   input?: {
     name?: string;
@@ -32,7 +32,6 @@ type TextInputProps = {
   adornmentLeft?: React.ReactNode;
   adornmentRight?: React.ReactNode;
 };
-
 const TextInput = ({
   input = {},
   meta = {},
@@ -50,7 +49,6 @@ const TextInput = ({
   const { error, invalid, touched } = meta;
   const id = useRef(uuid());
   const inputRef = useRef<HTMLInputElement>(null);
-
   // Focus on mount when requested (e.g. the variable spotlight search) so the
   // user can type immediately. A ref/effect is used instead of the native
   // `autoFocus` attribute to focus reliably after a dialog's focus trap settles.
@@ -59,19 +57,16 @@ const TextInput = ({
       inputRef.current?.focus();
     }
   }, [autoFocus]);
-
   const hasLeftAdornment = !!adornmentLeft;
   const hasRightAdornment = !!adornmentRight;
   const hasError = !!(invalid && touched && error);
-
   const anyLabel = fieldLabel || label;
-
   return (
     <div className="m-0 w-full [&>h4]:m-0" hidden={hidden}>
       {anyLabel && (
-        <h4>
+        <Heading level="h4">
           <MarkdownLabel label={anyLabel} />
-        </h4>
+        </Heading>
       )}
       <div className={cx('group relative', className)}>
         <input
@@ -110,5 +105,4 @@ const TextInput = ({
     </div>
   );
 };
-
 export default memo(TextInput);

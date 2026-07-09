@@ -1,5 +1,6 @@
 import { compose } from 'react-recompose';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import EditableList from '~/components/EditableList';
 import { Section } from '~/components/EditorLayout';
 import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
@@ -10,9 +11,7 @@ import { PromptPreview } from '~/components/sections/NameGeneratorPrompts';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
 import PromptFields from './PromptFields';
-
 const template = () => ({ color: 'ord-color-seq-1' });
-
 type OrdinalBinPromptsProps = StageEditorSectionProps & {
   handleChangePrompt: (data: unknown) => void;
   entity?: string | null;
@@ -20,7 +19,6 @@ type OrdinalBinPromptsProps = StageEditorSectionProps & {
   disabled?: boolean;
   disabledMessage?: string;
 };
-
 const OrdinalBinPrompts = ({
   handleChangePrompt,
   entity = null,
@@ -33,10 +31,10 @@ const OrdinalBinPrompts = ({
     disabled={disabled}
     disabledMessage={disabledMessage}
     summary={
-      <p>
+      <Paragraph>
         Add one or more prompts below to frame the task for the user. You can
         reorder the prompts using the draggable handles on the left hand side.
-      </p>
+      </Paragraph>
     }
     title="Prompts"
   >
@@ -51,7 +49,10 @@ const OrdinalBinPrompts = ({
       itemSelector={
         itemSelector(entity, type) as (
           state: Record<string, unknown>,
-          params: { form: string; editField: string },
+          params: {
+            form: string;
+            editField: string;
+          },
         ) => unknown
       }
       editProps={{ entity, type }}
@@ -59,7 +60,6 @@ const OrdinalBinPrompts = ({
     />
   </Section>
 );
-
 export default compose<OrdinalBinPromptsProps, StageEditorSectionProps>(
   withSubject,
   withDisabledSubjectRequired,

@@ -1,6 +1,7 @@
 import { isArray, isNil } from 'es-toolkit/compat';
 import { compose } from 'react-recompose';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import DetachedField from '~/components/DetachedField';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import RadioGroup from '~/components/Form/Fields/RadioGroup';
@@ -22,12 +23,10 @@ import {
 } from './withEntityRuleType';
 import withOptions from './withOptions';
 import withRuleChangeHandler from './withRuleChangeHandler';
-
 type OptionItem = {
   value: string | number;
   label: string;
 };
-
 type EditEntityRuleProps = {
   entityRuleType?: string;
   handleChangeEntityRuleType: (value: string) => void;
@@ -49,7 +48,6 @@ type EditEntityRuleProps = {
   codebook?: Record<string, unknown>;
   onChange?: (value: Record<string, unknown>) => void;
 };
-
 const EditEntityRule = ({
   entityRuleType,
   handleChangeEntityRuleType,
@@ -94,16 +92,15 @@ const EditEntityRule = ({
     ...optionsWithDefaults,
     value: isArray(optionsWithDefaults.value) ? '' : countFriendlyValue,
   };
-
   return (
     <>
       <Section
         title={`${entityType} Type`}
         summary={
-          <p>
+          <Paragraph>
             Choose an {entityType} type to base your rule on. Remember you can
             add multiple rules if you need to cover different types.
-          </p>
+          </Paragraph>
         }
         layout="vertical"
       >
@@ -151,7 +148,7 @@ const EditEntityRule = ({
       {isVariableRule && optionsWithDefaults.type && (
         <Section
           title="Variable"
-          summary={<p>Select a variable to query.</p>}
+          summary={<Paragraph>Select a variable to query.</Paragraph>}
           layout="vertical"
         >
           <DetachedField
@@ -236,11 +233,13 @@ const EditEntityRule = ({
     </>
   );
 };
-
 export default compose<
   EditEntityRuleProps,
   {
-    rule?: { options?: Record<string, unknown>; type?: string };
+    rule?: {
+      options?: Record<string, unknown>;
+      type?: string;
+    };
     codebook?: Record<string, unknown>;
     onChange?: (value: Record<string, unknown>) => void;
   }

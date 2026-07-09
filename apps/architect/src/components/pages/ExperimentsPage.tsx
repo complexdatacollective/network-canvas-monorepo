@@ -5,23 +5,22 @@ import { useLocation } from 'wouter';
 import Button from '@codaco/fresco-ui/Button';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Layout } from '~/components/EditorLayout';
 import ActionToolbar from '~/components/ProjectNav/ActionToolbar';
 import { useAppDispatch } from '~/ducks/hooks';
 import { actionCreators } from '~/ducks/modules/activeProtocol';
 import { getExperiments, getProtocol } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
-
 const ExperimentsPage = () => {
   const [, setLocation] = useLocation();
   const dispatch = useAppDispatch();
   const protocol = useSelector(getProtocol);
   const experiments = useSelector(getExperiments) ?? {};
-
   const handleGoBack = () => {
     setLocation('/protocol');
   };
-
   const handleToggleExperiment = (key: string, checked: boolean) => {
     dispatch(
       actionCreators.updateProtocol({
@@ -29,12 +28,13 @@ const ExperimentsPage = () => {
       }),
     );
   };
-
   if (!protocol) {
     return (
       <Layout>
         <div className="flex h-full flex-col items-center justify-center gap-4">
-          <p>No protocol loaded. Please open a protocol first.</p>
+          <Paragraph>
+            No protocol loaded. Please open a protocol first.
+          </Paragraph>
           <Button onClick={() => setLocation('/')} color="default">
             Go Home
           </Button>
@@ -42,7 +42,6 @@ const ExperimentsPage = () => {
       </Layout>
     );
   }
-
   const isEncryptedEnabled = experiments.encryptedVariables ?? false;
   const toolbarItems: ToolbarSegment[] = [
     {
@@ -54,7 +53,6 @@ const ExperimentsPage = () => {
       onClick: handleGoBack,
     },
   ];
-
   return (
     <div className="relative h-full overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0">
       <Layout>
@@ -64,11 +62,11 @@ const ExperimentsPage = () => {
               <div className="bg-mustard/20 rounded-lg p-2">
                 <FlaskConical className="text-mustard h-6 w-6" />
               </div>
-              <h1>Experimental Features</h1>
+              <Heading level="h1">Experimental Features</Heading>
             </div>
-            <p>
+            <Paragraph>
               These features are experimental and may not be fully supported.
-            </p>
+            </Paragraph>
           </div>
 
           <div className="flex flex-col gap-4">
@@ -81,11 +79,11 @@ const ExperimentsPage = () => {
               )}
             >
               <div className="min-w-0 flex-1">
-                <h4>Encrypted Variables</h4>
-                <p className="text-muted text-sm">
+                <Heading level="h4">Encrypted Variables</Heading>
+                <Paragraph className="text-muted text-sm">
                   Enable support for encrypted variables in the codebook. This
                   allows sensitive data to be collected securely.
-                </p>
+                </Paragraph>
               </div>
               <ToggleField
                 value={isEncryptedEnabled}
@@ -101,5 +99,4 @@ const ExperimentsPage = () => {
     </div>
   );
 };
-
 export default ExperimentsPage;
