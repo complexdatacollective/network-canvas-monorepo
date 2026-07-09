@@ -686,7 +686,7 @@ const LibraryPanel = ({
           { value: 'templates', label: 'Templates' },
         ]}
         headerEnd={headerEnd}
-        className="bg-surface text-surface-contrast publish-colors max-h-[85dvh] w-full max-w-3xl overflow-hidden rounded p-5 shadow-md"
+        className="bg-surface text-surface-contrast publish-colors max-h-[85dvh] w-full overflow-hidden rounded p-5 shadow-md"
       >
         <TabsPanel value="recent" className="flex min-h-0 flex-col">
           <Collection
