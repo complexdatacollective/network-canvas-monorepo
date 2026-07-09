@@ -338,6 +338,7 @@ jobs:
     if: |
       always() &&
       github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.detect.outputs.docs == 'true' &&
       needs.quality.result != 'cancelled'
     runs-on: ubuntu-latest
@@ -412,6 +413,7 @@ jobs:
     needs: detect
     if: |
       github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.detect.outputs.architect == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -460,6 +462,7 @@ jobs:
     needs: detect
     if: |
       github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.detect.outputs.interviewer == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -493,6 +496,7 @@ jobs:
     if: |
       always() &&
       github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.detect.outputs.website == 'true' &&
       needs.quality.result != 'cancelled'
     runs-on: ubuntu-latest
@@ -661,7 +665,7 @@ jobs:
     # does NOT consume quality's result. `!cancelled()` opts out of the
     # implicit needs-success gate so an unrelated quality failure can't
     # cascade-skip a flagged run, while a superseded (cancelled) run still skips.
-    if: ${{ !cancelled() && needs.detect.outputs.fresco_ui_storybook == 'true' }}
+    if: ${{ !cancelled() && github.event.pull_request.user.login != 'dependabot[bot]' && needs.detect.outputs.fresco_ui_storybook == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -688,7 +692,7 @@ jobs:
     needs: [quality, detect]
     # See chromatic-fresco-ui: `quality` orders this job for cache reuse only;
     # `!cancelled()` keeps a quality failure from cascade-skipping a flagged run.
-    if: ${{ !cancelled() && needs.detect.outputs.interview_storybook == 'true' }}
+    if: ${{ !cancelled() && github.event.pull_request.user.login != 'dependabot[bot]' && needs.detect.outputs.interview_storybook == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
