@@ -68,6 +68,37 @@ const escapeLinkTitle = (value: string): string =>
 
 const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
 const LINK_PROTOCOL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
+const SCHEME_DELIMITER_PATTERN = /[/?#]/;
+
+type InlineParseOptions = {
+  links?: boolean;
+};
+
+type SerializeInlineOptions = {
+  links?: boolean;
+};
+
+const hasUnsafeSchemeCharacters = (href: string): boolean => {
+  const colonIndex = href.indexOf(':');
+
+  if (colonIndex === -1) {
+    return false;
+  }
+
+  const delimiterIndex = href.search(SCHEME_DELIMITER_PATTERN);
+
+  if (delimiterIndex !== -1 && delimiterIndex < colonIndex) {
+    return false;
+  }
+
+  return /\s/.test(href.slice(0, colonIndex));
+};
+
+const hasControlCharacter = (href: string): boolean =>
+  Array.from(href).some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f;
+  });
 
 const sanitizeLinkDestination = (
   value: string | null | undefined,
@@ -78,7 +109,20 @@ const sanitizeLinkDestination = (
     return undefined;
   }
 
-  if (!LINK_PROTOCOL_PATTERN.test(href) && !href.startsWith('//')) {
+  if (hasControlCharacter(href) || hasUnsafeSchemeCharacters(href)) {
+    return undefined;
+  }
+
+  if (href.startsWith('//')) {
+    try {
+      const url = new URL(href, 'https://networkcanvas.local');
+      return SAFE_LINK_PROTOCOLS.has(url.protocol) ? href : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (!LINK_PROTOCOL_PATTERN.test(href)) {
     return href;
   }
 
@@ -108,22 +152,25 @@ const addMark = (
     };
   });
 
-const inlineFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
+const inlineFromMarkdown = (
+  node: MarkdownNode,
+  options: InlineParseOptions = {},
+): RichTextContent[] => {
   switch (node.type) {
     case 'text':
       return node.value ? [{ type: 'text', text: node.value }] : [];
 
     case 'strong':
-      return addMark(childrenAsInline(node), { type: 'bold' });
+      return addMark(childrenAsInline(node, options), { type: 'bold' });
 
     case 'emphasis':
-      return addMark(childrenAsInline(node), { type: 'italic' });
+      return addMark(childrenAsInline(node, options), { type: 'italic' });
 
     case 'link': {
       const href = sanitizeLinkDestination(node.url);
-      const content = childrenAsInline(node);
+      const content = childrenAsInline(node, options);
 
-      if (!href) {
+      if (!href || options.links === false) {
         return content;
       }
 
@@ -151,12 +198,15 @@ const inlineFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
       return node.alt ? [{ type: 'text', text: node.alt }] : [];
 
     default:
-      return childrenAsInline(node);
+      return childrenAsInline(node, options);
   }
 };
 
-const childrenAsInline = (node: MarkdownNode): RichTextContent[] =>
-  (node.children ?? []).flatMap(inlineFromMarkdown);
+const childrenAsInline = (
+  node: MarkdownNode,
+  options: InlineParseOptions = {},
+): RichTextContent[] =>
+  (node.children ?? []).flatMap((child) => inlineFromMarkdown(child, options));
 
 const paragraphFromInline = (content: RichTextContent[]): RichTextContent =>
   content.length > 0 ? { type: 'paragraph', content } : { type: 'paragraph' };
@@ -221,8 +271,8 @@ const inlineDocumentFromMarkdown = (root: MarkdownNode): RichTextContent => {
   const inlineContent = (root.children ?? []).flatMap((node, index) => {
     const content =
       node.type === 'paragraph' || node.type === 'heading'
-        ? childrenAsInline(node)
-        : inlineFromMarkdown(node);
+        ? childrenAsInline(node, { links: false })
+        : inlineFromMarkdown(node, { links: false });
 
     if (index === 0 || content.length === 0) {
       return content;
@@ -271,7 +321,10 @@ const getMark = (
 ): RichTextMark | undefined =>
   node.marks?.find((mark) => mark.type === markType);
 
-const serializeTextNode = (node: RichTextContent): string => {
+const serializeTextNode = (
+  node: RichTextContent,
+  options: SerializeInlineOptions = {},
+): string => {
   const text = escapeMarkdownText(node.text ?? '');
   const isBold = Boolean(getMark(node, 'bold'));
   const isItalic = Boolean(getMark(node, 'italic'));
@@ -289,32 +342,71 @@ const serializeTextNode = (node: RichTextContent): string => {
 
   const href = link?.attrs?.href;
 
-  if (typeof href === 'string' && href.trim() !== '') {
+  if (typeof href === 'string' && options.links !== false) {
+    const safeHref = sanitizeLinkDestination(href);
     const title = link?.attrs?.title;
     const titleText =
       typeof title === 'string' && title.trim() !== ''
         ? ` "${escapeLinkTitle(title)}"`
         : '';
-    serialized = `[${serialized}](${escapeLinkDestination(href)}${titleText})`;
+
+    if (safeHref) {
+      serialized = `[${serialized}](${escapeLinkDestination(safeHref)}${titleText})`;
+    }
   }
 
   return serialized;
 };
 
-const serializeInline = (content: RichTextContent[] | undefined): string =>
+const serializeInline = (
+  content: RichTextContent[] | undefined,
+  options: SerializeInlineOptions = {},
+): string =>
   (content ?? [])
     .map((node) => {
       if (node.type === 'text') {
-        return serializeTextNode(node);
+        return serializeTextNode(node, options);
       }
 
       if (node.type === 'hardBreak') {
         return '  \n';
       }
 
-      return serializeInline(node.content);
+      return serializeInline(node.content, options);
     })
     .join('');
+
+const getInlineContent = (node: RichTextContent): RichTextContent[] => {
+  switch (node.type) {
+    case 'text':
+    case 'hardBreak':
+      return [node];
+
+    case 'paragraph':
+    case 'heading':
+      return node.content ?? [];
+
+    default:
+      return flattenInlineContent(node.content);
+  }
+};
+
+const flattenInlineContent = (
+  content: RichTextContent[] | undefined,
+): RichTextContent[] =>
+  (content ?? []).flatMap((node, index) => {
+    const inlineContent = getInlineContent(node);
+
+    if (inlineContent.length === 0) {
+      return [];
+    }
+
+    if (index === 0) {
+      return inlineContent;
+    }
+
+    return [{ type: 'text', text: ' ' }, ...inlineContent];
+  });
 
 const indentBlock = (value: string): string =>
   value
@@ -412,8 +504,9 @@ export const richTextContentToMarkdown = (
   }
 
   if (inline) {
-    const firstBlock = content.content?.[0];
-    return serializeInline(firstBlock?.content);
+    return serializeInline(flattenInlineContent(content.content), {
+      links: false,
+    });
   }
 
   return serializeBlock(content);

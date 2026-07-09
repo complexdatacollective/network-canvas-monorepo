@@ -42,6 +42,64 @@ const linkAttributeWithDefault = (
   return value ?? undefined;
 };
 
+const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+const LINK_PROTOCOL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
+const SCHEME_DELIMITER_PATTERN = /[/?#]/;
+
+const hasUnsafeSchemeCharacters = (href: string): boolean => {
+  const colonIndex = href.indexOf(':');
+
+  if (colonIndex === -1) {
+    return false;
+  }
+
+  const delimiterIndex = href.search(SCHEME_DELIMITER_PATTERN);
+
+  if (delimiterIndex !== -1 && delimiterIndex < colonIndex) {
+    return false;
+  }
+
+  return /\s/.test(href.slice(0, colonIndex));
+};
+
+const hasControlCharacter = (href: string): boolean =>
+  Array.from(href).some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f;
+  });
+
+const sanitizeLinkHref = (value: string | undefined): string | undefined => {
+  const href = value?.trim();
+
+  if (!href) {
+    return undefined;
+  }
+
+  if (hasControlCharacter(href) || hasUnsafeSchemeCharacters(href)) {
+    return undefined;
+  }
+
+  if (href.startsWith('//')) {
+    try {
+      const url = new URL(href, 'https://networkcanvas.local');
+      return SAFE_LINK_PROTOCOLS.has(url.protocol) ? href : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (!LINK_PROTOCOL_PATTERN.test(href)) {
+    return href;
+  }
+
+  try {
+    const url = new URL(href);
+    return SAFE_LINK_PROTOCOLS.has(url.protocol) ? href : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 type TextMark = {
   type: 'bold' | 'italic' | 'code' | 'strike' | 'underline' | 'link';
   attrs?: {
@@ -81,23 +139,24 @@ function renderMarks(text: string, marks?: TextMark[]): ReactNode {
         return <s key={key}>{acc}</s>;
       case 'underline':
         return <u key={key}>{acc}</u>;
-      case 'link':
-        return mark.attrs?.href ? (
+      case 'link': {
+        const attrs = mark.attrs;
+        const href = sanitizeLinkHref(attrs?.href);
+
+        return href ? (
           <NativeLink
             key={key}
-            href={mark.attrs.href}
-            target={linkAttributeWithDefault(mark.attrs.target, '_blank')}
-            rel={linkAttributeWithDefault(
-              mark.attrs.rel,
-              'noopener noreferrer',
-            )}
-            title={mark.attrs.title ?? undefined}
+            href={href}
+            target={linkAttributeWithDefault(attrs?.target, '_blank')}
+            rel={linkAttributeWithDefault(attrs?.rel, 'noopener noreferrer')}
+            title={attrs?.title ?? undefined}
           >
             {acc}
           </NativeLink>
         ) : (
           acc
         );
+      }
       default:
         return acc;
     }

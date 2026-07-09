@@ -141,6 +141,7 @@ function createCustomExtensions({
       link: enableLinks
         ? {
             openOnClick: false,
+            protocols: ['mailto'],
             HTMLAttributes: {
               class: 'text-link underline underline-offset-4',
               rel: 'noopener noreferrer',
@@ -307,6 +308,8 @@ export default function RichTextEditorField({
   ...props
 }: RichTextEditorFieldProps) {
   const skipNextContentSyncRef = useRef(false);
+  const onChangeRef = useRef(onChange);
+  const changeModeRef = useRef(changeMode);
   const linkSelectionRef = useRef<EditorSelectionRange | null>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [linkHref, setLinkHref] = useState('');
@@ -320,6 +323,10 @@ export default function RichTextEditorField({
   const linkErrorId = `${linkInputId}-error`;
   const ariaDescribedBy = props['aria-describedby'];
   const ariaInvalid = props['aria-invalid'];
+
+  onChangeRef.current = onChange;
+  changeModeRef.current = changeMode;
+
   const inputState = getInputState({
     disabled,
     readOnly,
@@ -404,15 +411,15 @@ export default function RichTextEditorField({
       editable: !disabled && !readOnly,
       autofocus: autoFocus ? 'end' : false,
       onUpdate: ({ editor: updateEditor }) => {
-        if (changeMode === 'input') {
+        if (changeModeRef.current === 'input') {
           skipNextContentSyncRef.current = true;
-          onChange?.(updateEditor.getJSON());
+          onChangeRef.current?.(updateEditor.getJSON());
         }
       },
       onBlur: ({ editor: blurEditor }) => {
-        if (changeMode === 'blur') {
+        if (changeModeRef.current === 'blur') {
           skipNextContentSyncRef.current = true;
-          onChange?.(blurEditor.getJSON());
+          onChangeRef.current?.(blurEditor.getJSON());
         }
       },
     },

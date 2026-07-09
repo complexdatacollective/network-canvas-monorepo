@@ -39,6 +39,47 @@ describe('RichText markdown adapter', () => {
     expect(roundTrip('A **bold** label', true)).toBe('A **bold** label');
   });
 
+  it('keeps all top-level blocks when serializing inline content', () => {
+    const content: RichTextContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'First' }],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'Second',
+              marks: [{ type: 'bold' }],
+            },
+          ],
+        },
+        {
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [{ type: 'text', text: 'Third' }],
+        },
+      ],
+    };
+
+    expect(richTextContentToMarkdown(content, true)).toBe(
+      'First **Second** Third',
+    );
+  });
+
+  it('does not emit link marks for inline content', () => {
+    const content = markdownToRichTextContent(
+      '[Help](https://example.com) label',
+      true,
+    );
+
+    expect(content.content?.[0]?.content?.[0]?.marks).toBeUndefined();
+    expect(richTextContentToMarkdown(content, true)).toBe('Help label');
+  });
+
   it('does not parse existing angle brackets as block quotes', () => {
     expect(roundTrip('A > B')).toBe('A > B');
   });
@@ -102,11 +143,93 @@ describe('RichText markdown adapter', () => {
           '[Data](data:text/html,Hello)',
           '[HTTP](https://example.com/a%20path)',
           '[Mail](mailto:team@example.com)',
+          '[Protocol](//example.com/x)',
           '[Relative](/docs/a%20path)',
         ].join(' '),
       ),
     ).toBe(
-      'Unsafe Data [HTTP](https://example.com/a%20path) [Mail](mailto:team@example.com) [Relative](/docs/a%20path)',
+      'Unsafe Data [HTTP](https://example.com/a%20path) [Mail](mailto:team@example.com) [Protocol](//example.com/x) [Relative](/docs/a%20path)',
     );
+  });
+
+  it('drops markdown links with embedded control characters', () => {
+    const content: RichTextContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'Unsafe',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'java\tscript:alert(1)',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(richTextContentToMarkdown(content)).toBe('Unsafe');
+  });
+
+  it('drops markdown links with unsafe scheme whitespace', () => {
+    const content: RichTextContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'Unsafe',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'java script:alert(1)',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(richTextContentToMarkdown(content)).toBe('Unsafe');
+  });
+
+  it('does not serialize link marks in inline mode', () => {
+    const content: RichTextContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'Help',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://example.com',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(richTextContentToMarkdown(content, true)).toBe('Help');
   });
 });
