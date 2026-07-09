@@ -6,6 +6,10 @@ import * as React from 'react';
 
 import { MotionSurface } from './layout/Surface';
 import { ArrowSvg } from './Popover';
+import {
+  POPOVER_ARROW_CLASS_NAME,
+  POPOVER_ARROW_PADDING,
+} from './popoverArrow';
 import { usePortalContainer } from './PortalContainer';
 import { cx } from './utils/cva';
 
@@ -49,6 +53,7 @@ const TooltipContent = React.forwardRef<
           side={side}
           sideOffset={sideOffset}
           align={align}
+          arrowPadding={POPOVER_ARROW_PADDING}
         >
           <AnimatePresence>
             <BaseTooltip.Popup
@@ -92,10 +97,7 @@ const TooltipArrow = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <BaseTooltip.Arrow
     ref={ref}
-    className={cx(
-      'data-[side=bottom]:top-[-15px] data-[side=left]:right-[-20px] data-[side=left]:rotate-90 data-[side=right]:left-[-20px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-15px] data-[side=top]:rotate-180',
-      className,
-    )}
+    className={cx(POPOVER_ARROW_CLASS_NAME, className)}
     {...props}
   >
     <ArrowSvg />
