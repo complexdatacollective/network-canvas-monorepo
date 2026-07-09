@@ -136,6 +136,7 @@ const AssetPreview = ({
     return (
       <video
         src={previewUrl}
+        aria-label={`${name} video preview`}
         className="size-full object-cover"
         muted
         playsInline
@@ -292,7 +293,7 @@ const AssetCard = ({
         </div>
 
         {actions.some(Boolean) && (
-          <div className="mt-auto flex justify-end gap-1 opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <div className="mt-auto flex justify-end gap-1 opacity-70 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
             {actions}
           </div>
         )}
