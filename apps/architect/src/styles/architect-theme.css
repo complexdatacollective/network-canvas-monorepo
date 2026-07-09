@@ -165,10 +165,39 @@
   @apply cursor-pointer font-bold underline decoration-2 underline-offset-4;
   text-decoration-color: oklch(var(--sea-green));
 }
+@utility variable-pill-effect-border {
+  --variable-pill-border-angle: 0deg;
+  background: conic-gradient(
+    from var(--variable-pill-border-angle),
+    var(--surface-3),
+    var(--selected),
+    var(--primary),
+    var(--accent),
+    var(--surface-3)
+  );
+}
 @utility scrollable {
   @apply overflow-hidden overflow-y-auto;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+}
+
+@property --variable-pill-border-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes variable-pill-border-orbit {
+  to {
+    --variable-pill-border-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .variable-pill-effect-border {
+    animation: variable-pill-border-orbit 3.5s linear infinite;
+  }
 }
 @utility form-field {
   @apply border-outline w-full rounded-sm border;

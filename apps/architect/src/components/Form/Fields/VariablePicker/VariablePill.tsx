@@ -23,18 +23,6 @@ import { validations } from '~/utils/validations';
 
 const EDIT_COMPLETE_BUTTON_ID = 'editCompleteButton';
 
-const ICON_BACKGROUND_BY_TYPE: Record<VariableType, string> = {
-  number: 'bg-paradise-pink',
-  text: 'bg-cerulean-blue',
-  boolean: 'bg-neon-carrot',
-  ordinal: 'bg-sea-green',
-  categorical: 'bg-mustard',
-  scalar: 'bg-kiwi',
-  datetime: 'bg-tomato',
-  layout: 'bg-purple-pizazz',
-  location: 'bg-slate-blue-dark',
-};
-
 type BaseVariablePillProps = {
   type: VariableType;
   children: React.ReactNode;
@@ -53,10 +41,8 @@ const BaseVariablePill = React.forwardRef<
     // `VariablePicker.tsx` (mb on nested pills) and `PreviewRule.tsx` (zoom).
     <motion.div
       className={cx(
-        'variable-pill font-monospace inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap overflow-hidden rounded-full text-base shadow-[0_0_0.6rem_var(--variable-pill-shadow-color,transparent)]',
-        summary
-          ? 'm-2 max-w-[24rem] zoom-[0.8] bg-white [--variable-pill-shadow-color:oklch(var(--platinum--dark))]'
-          : 'bg-platinum',
+        'variable-pill variable-pill-effect-border inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap rounded-full p-0.5 text-base font-(--font-monospace)',
+        summary && 'm-2 max-w-[24rem] zoom-[0.8]',
       )}
       style={
         width
@@ -65,16 +51,13 @@ const BaseVariablePill = React.forwardRef<
       }
       ref={ref}
     >
-      <div
-        className={cx(
-          'flex shrink-0 basis-12 items-center justify-center [&_.icon]:w-5',
-          ICON_BACKGROUND_BY_TYPE[type],
-        )}
-      >
-        <img className="icon" src={icon} alt={type} />
-      </div>
-      <div className="flex w-[calc(100%-3rem)] flex-1 items-center justify-between">
-        {children}
+      <div className="bg-surface-1 text-surface-1-contrast flex h-full w-full overflow-hidden rounded-[inherit]">
+        <div className="bg-surface-2 text-surface-2-contrast border-surface-3 flex shrink-0 basis-12 items-center justify-center border-r [&_.icon]:w-5">
+          <img className="icon opacity-80" src={icon} alt={type} />
+        </div>
+        <div className="flex w-[calc(100%-3rem)] flex-1 items-center justify-between">
+          {children}
+        </div>
       </div>
     </motion.div>
   );
@@ -90,9 +73,9 @@ export const SimpleVariablePill = ({
 }: SimpleVariablePillProps) => (
   // eslint-disable-next-line react/jsx-props-no-spreading
   <BaseVariablePill {...props}>
-    <motion.h4 className="text-input-contrast m-0 shrink-0 grow px-6 break-keep">
+    <motion.span className="m-0 shrink-0 grow px-6 break-keep">
       {label}
-    </motion.h4>
+    </motion.span>
   </BaseVariablePill>
 );
 
@@ -263,9 +246,9 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
             </Tooltip>
           </motion.div>
         ) : (
-          <motion.h4
+          <motion.span
             key="label"
-            className="text-input-contrast m-0 w-full shrink-0 grow cursor-text overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
+            className="m-0 w-full shrink-0 grow cursor-text overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -273,7 +256,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
             title="Click to rename this variable..."
           >
             {name}
-          </motion.h4>
+          </motion.span>
         )}
       </AnimatePresence>
     </BaseVariablePill>
