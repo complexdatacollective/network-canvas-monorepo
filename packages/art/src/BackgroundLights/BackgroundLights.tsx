@@ -37,6 +37,106 @@ type Light = {
   velocityY: number;
 };
 
+type LightRuntime = {
+  x: number;
+  y: number;
+  size: number;
+};
+
+type AnimatedLightRuntime = LightRuntime & {
+  hasEntered: boolean;
+  light: Pick<Light, 'velocityX' | 'velocityY'>;
+};
+
+type RandomFn = (min: number, max: number) => number;
+
+const INITIAL_OFFSCREEN_PROBABILITY = 0.5;
+export const MAX_INITIAL_OFFSCREEN_LEAD_SECONDS = 12;
+const MINIMUM_INCOMING_VELOCITY = 0.001;
+
+export const isDomLightWithinWrapBounds = (
+  entry: LightRuntime,
+  width: number,
+  height: number,
+) =>
+  entry.x >= -entry.size &&
+  entry.x <= width &&
+  entry.y >= -entry.size &&
+  entry.y <= height;
+
+export const wrapDomLightPosition = (
+  entry: LightRuntime,
+  width: number,
+  height: number,
+) => {
+  // These CSS lights are positioned by the element's top-left corner. When a
+  // light exits one side, place that same edge exactly at the opposite viewport
+  // edge so the next frame starts drifting it back onscreen.
+  if (entry.x < -entry.size) entry.x = width;
+  else if (entry.x > width) entry.x = -entry.size;
+
+  if (entry.y < -entry.size) entry.y = height;
+  else if (entry.y > height) entry.y = -entry.size;
+};
+
+export const placeDomLightInitial = (
+  entry: AnimatedLightRuntime,
+  width: number,
+  height: number,
+  randomValue: RandomFn = random,
+) => {
+  const { velocityX, velocityY } = entry.light;
+  const sides: Array<'left' | 'right' | 'top' | 'bottom'> = [];
+
+  if (velocityX > MINIMUM_INCOMING_VELOCITY) sides.push('left');
+  else if (velocityX < -MINIMUM_INCOMING_VELOCITY) sides.push('right');
+
+  if (velocityY > MINIMUM_INCOMING_VELOCITY) sides.push('top');
+  else if (velocityY < -MINIMUM_INCOMING_VELOCITY) sides.push('bottom');
+
+  const shouldSpawnOffscreen =
+    sides.length > 0 && randomValue(0, 1) < INITIAL_OFFSCREEN_PROBABILITY;
+
+  if (!shouldSpawnOffscreen) {
+    entry.x = randomValue(-entry.size / 2, width - entry.size / 2);
+    entry.y = randomValue(-entry.size / 2, height - entry.size / 2);
+    entry.hasEntered = true;
+    return;
+  }
+
+  const sideIndex = Math.min(
+    sides.length - 1,
+    Math.floor(randomValue(0, sides.length)),
+  );
+  const side = sides[sideIndex];
+
+  if (side === 'left' || side === 'right') {
+    const speedTowardViewport = Math.abs(velocityX);
+    const distance = randomValue(
+      0,
+      speedTowardViewport * MAX_INITIAL_OFFSCREEN_LEAD_SECONDS,
+    );
+    const secondsUntilVisible = distance / speedTowardViewport;
+    const yWhenVisible = randomValue(-entry.size, height);
+
+    entry.x = side === 'left' ? -entry.size - distance : width + distance;
+    entry.y = yWhenVisible - velocityY * secondsUntilVisible;
+  } else {
+    const speedTowardViewport = Math.abs(velocityY);
+    const distance = randomValue(
+      0,
+      speedTowardViewport * MAX_INITIAL_OFFSCREEN_LEAD_SECONDS,
+    );
+    const secondsUntilVisible = distance / speedTowardViewport;
+    const xWhenVisible = randomValue(-entry.size, width);
+
+    entry.x = xWhenVisible - velocityX * secondsUntilVisible;
+    entry.y = side === 'top' ? -entry.size - distance : height + distance;
+  }
+
+  entry.hasEntered = isDomLightWithinWrapBounds(entry, width, height);
+};
+
 const makeLayer = (
   layer: Layer,
   count: number,
@@ -94,7 +194,13 @@ const BackgroundLights = ({
 
     // Runtime position/size lives outside React state so the animation loop can
     // mutate transforms every frame without triggering a re-render.
-    const runtime = lights.map((light) => ({ light, x: 0, y: 0, size: 0 }));
+    const runtime = lights.map((light) => ({
+      light,
+      x: 0,
+      y: 0,
+      size: 0,
+      hasEntered: false,
+    }));
     let width = 0;
     let height = 0;
     let placed = false;
@@ -127,8 +233,7 @@ const BackgroundLights = ({
     const ensurePlaced = () => {
       if (placed || width <= 0 || height <= 0) return;
       runtime.forEach((entry) => {
-        entry.x = random(-entry.size / 2, width - entry.size / 2);
-        entry.y = random(-entry.size / 2, height - entry.size / 2);
+        placeDomLightInitial(entry, width, height);
       });
       placed = true;
       applyTransforms();
@@ -160,12 +265,13 @@ const BackgroundLights = ({
         runtime.forEach((entry) => {
           entry.x += entry.light.velocityX * dt;
           entry.y += entry.light.velocityY * dt;
-          // Wrap offscreen → reappear on the opposite edge (mirrors NCBlob;
-          // branches stay mutually exclusive so a reset can't re-trigger).
-          if (entry.x < -entry.size) entry.x = width + entry.size;
-          else if (entry.x > width) entry.x = -entry.size;
-          if (entry.y < -entry.size) entry.y = height + entry.size;
-          else if (entry.y > height) entry.y = -entry.size;
+          // Wrap offscreen → reappear on the opposite edge. Branches stay
+          // mutually exclusive so a reset can't re-trigger.
+          if (entry.hasEntered) {
+            wrapDomLightPosition(entry, width, height);
+          } else if (isDomLightWithinWrapBounds(entry, width, height)) {
+            entry.hasEntered = true;
+          }
         });
         applyTransforms();
       }
