@@ -11,6 +11,7 @@ export const ALLOWED_MARKDOWN_TAGS = [
   'p',
   'strong',
   'hr',
+  'a',
 ] as const;
 
 const _ALLOWED_MARKDOWN_PROMPT_TAGS = ['p', 'em', 'strong'] as const;
@@ -22,6 +23,11 @@ export const ALLOWED_MARKDOWN_LABEL_TAGS = [
   'ul',
   'ol',
   'li',
+  'a',
 ] as const;
 
-export const ALLOWED_MARKDOWN_INLINE_LABEL_TAGS = ['em', 'strong'] as const;
+export const ALLOWED_MARKDOWN_INLINE_LABEL_TAGS = [
+  'em',
+  'strong',
+  'a',
+] as const;

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolWithCounts } from '~/lib/db/types';
@@ -59,6 +60,17 @@ function CarouselHarness({
   cardHeight: number;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const {
+    getRootProps: getImportRootProps,
+    getInputProps: getImportInputProps,
+    isDragActive: isImportDragActive,
+    open: openImportDialog,
+  } = useDropzone({
+    onDrop: () => {},
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+  });
 
   const slides: DeckCarouselSlide[] = [
     ...PROTOCOLS.map((protocol) => ({
@@ -86,9 +98,14 @@ function CarouselHarness({
     {
       key: 'import',
       backdropBlur: true,
-      onActivate: () => {},
+      onActivate: openImportDialog,
       render: (_isActive: boolean, activate: () => void) => (
-        <ImportTriggerCard onActivate={activate} onImportFile={() => {}} />
+        <ImportTriggerCard
+          onActivate={activate}
+          getRootProps={getImportRootProps}
+          getInputProps={getImportInputProps}
+          isDragActive={isImportDragActive}
+        />
       ),
     },
   ];

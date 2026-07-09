@@ -1,4 +1,4 @@
-import developmentProtocolJson from '@codaco/development-protocol';
+import developmentProtocolJson from '@codaco/protocols/development';
 
 import { type BundledProtocol, resolveAssets } from './bundledAssets';
 
@@ -10,7 +10,7 @@ import { type BundledProtocol, resolveAssets } from './bundledAssets';
 // regardless of the DEV guard; splitting the module lets Vite code-split it
 // into a chunk production never fetches.
 const developmentAssetBytes = import.meta.glob<ArrayBuffer>(
-  '../../../../../packages/development-protocol/assets/*',
+  '../../../../../packages/protocols/development/assets/*',
   { query: '?arraybuffer', import: 'default', eager: true },
 );
 

@@ -1,0 +1,32 @@
+{
+  "name": "@codaco/protocols",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Canonical source protocols and protocol fixtures for Network Canvas",
+  "license": "GPL-3.0-or-later",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "files": [
+    "manifest.json",
+    "templates",
+    "sample",
+    "development",
+    "e2e",
+    "documentation",
+    "AUTHORING_GUIDE.md"
+  ],
+  "type": "module",
+  "exports": {
+    "./manifest.json": "./manifest.json",
+    "./templates/*": "./templates/*/protocol.json",
+    "./template-files/*": "./templates/*",
+    "./sample": "./sample/protocol.json",
+    "./sample-files/*": "./sample/*",
+    "./development": "./development/protocol.json",
+    "./development-files/*": "./development/*",
+    "./e2e/*": "./e2e/*",
+    "./documentation/*": "./documentation/*"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

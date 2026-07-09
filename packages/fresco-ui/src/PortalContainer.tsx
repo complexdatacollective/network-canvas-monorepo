@@ -11,7 +11,7 @@ export function PortalContainerProvider({ children }: { children: ReactNode }) {
       {children}
       {/*
        * `isolate` (isolation: isolate) creates a new stacking context for
-       * everything portaled into this container. Combined with `z-50`,
+       * everything portaled into this container. Combined with `z-3000`,
        * the entire portal layer sits above sibling stage content —
        * tooltips, popovers, dropdowns, modals, the drag preview — none of
        * which set their own z-index — would otherwise compete with stage
@@ -33,7 +33,7 @@ export function PortalContainerProvider({ children }: { children: ReactNode }) {
        */}
       <div
         ref={setContainer}
-        className="pointer-events-none fixed inset-0 isolate z-50 [&>*]:pointer-events-auto"
+        className="pointer-events-none fixed inset-0 isolate z-3000 [&>*]:pointer-events-auto"
       />
     </PortalContainerContext.Provider>
   );

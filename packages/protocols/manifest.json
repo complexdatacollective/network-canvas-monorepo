@@ -1,0 +1,202 @@
+{
+  "protocols": [
+    {
+      "id": "transnational-networks",
+      "kind": "template",
+      "name": "Transnational Networks",
+      "description": "The important people in a migrant's life, here and abroad, placed on a world map",
+      "protocolPath": "templates/transnational-networks/protocol.json",
+      "assetDir": "templates/transnational-networks/assets",
+      "architectTemplate": true
+    },
+    {
+      "id": "mental-health-networks",
+      "kind": "template",
+      "name": "Mental Health Networks",
+      "description": "Supportive and difficult relationships, and who knows about your mental health",
+      "protocolPath": "templates/mental-health-networks/protocol.json",
+      "assetDir": "templates/mental-health-networks/assets",
+      "architectTemplate": true
+    },
+    {
+      "id": "social-connection-isolation",
+      "kind": "template",
+      "name": "Social Connection & Isolation",
+      "description": "A map of close relationships paired with questionnaires about loneliness",
+      "protocolPath": "templates/social-connection-isolation/protocol.json",
+      "assetDir": "templates/social-connection-isolation/assets",
+      "architectTemplate": true
+    },
+    {
+      "id": "behavioural-influence-networks",
+      "kind": "template",
+      "name": "Behavioural Influence Networks",
+      "description": "How your health habits compare with those of the people around you",
+      "protocolPath": "templates/behavioural-influence-networks/protocol.json",
+      "assetDir": "templates/behavioural-influence-networks/assets",
+      "architectTemplate": true
+    },
+    {
+      "id": "care-support-networks",
+      "kind": "template",
+      "name": "Care & Support Networks",
+      "description": "Who helps you through a period of care, and the kinds of help they give",
+      "protocolPath": "templates/care-support-networks/protocol.json",
+      "assetDir": "templates/care-support-networks/assets",
+      "architectTemplate": true
+    },
+    {
+      "id": "sexual-injection-risk-networks",
+      "kind": "template",
+      "name": "Sexual & Injection Risk Networks",
+      "description": "Sexual and injecting partners and timing, with encrypted partner names",
+      "protocolPath": "templates/sexual-injection-risk-networks/protocol.json",
+      "assetDir": "templates/sexual-injection-risk-networks/assets",
+      "architectTemplate": true
+    },
+    {
+      "id": "sample",
+      "kind": "sample",
+      "name": "Sample Protocol",
+      "description": "An example introducing the key features and techniques available in Network Canvas.",
+      "protocolPath": "sample/protocol.json",
+      "assetDir": "sample/assets",
+      "architectTemplate": false
+    },
+    {
+      "id": "development",
+      "kind": "development",
+      "name": "Development Protocol",
+      "description": "Includes examples of every stage type",
+      "protocolPath": "development/protocol.json",
+      "assetDir": "development/assets",
+      "architectTemplate": false
+    },
+    {
+      "id": "silos",
+      "kind": "e2e",
+      "name": "SILOS Chicago",
+      "description": "SILOS protocol fixture used by the Interview e2e suite.",
+      "protocolPath": "e2e/silos/silos_chicago-2026-06-02_17-31.netcanvas",
+      "assetDir": "e2e/silos",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-hbh-ps-v21",
+      "kind": "documentation",
+      "name": "HBH-PS v21",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/HBH-PS-v21(9-15-22).netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-hbh-ps-v22",
+      "kind": "documentation",
+      "name": "HBH-PS v22",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/HBH-PS-v22(12-9-22).netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-hbh-ps-v24",
+      "kind": "documentation",
+      "name": "HBH-PS v24",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/HBH-PS-v24.netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-public-health-demo",
+      "kind": "documentation",
+      "name": "Public Health Demo Protocol",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/Public Health Demo Protocol.netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-public-health-schema-2",
+      "kind": "documentation",
+      "name": "Public Health Protocol schema 2",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/Public Health Protocol schema 2.netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-public-health",
+      "kind": "documentation",
+      "name": "Public Health Protocol",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/Public Health Protocol.netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-roster-example-v1",
+      "kind": "documentation",
+      "name": "Roster Example Protocol v1",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/Roster Example Protocol v1.netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-sb21-workshop-protocol-1",
+      "kind": "documentation",
+      "name": "SB21 workshop protocol 1",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/SB21_workshop_protocol_1.netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-sb21-workshop-protocol-2alter-demo",
+      "kind": "documentation",
+      "name": "SB21 workshop protocol 2 alter demo",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/SB21_workshop_protocol_2alterDemo.netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-sample-v1",
+      "kind": "documentation",
+      "name": "Sample Protocol v1",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/Sample Protocol v1.netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-sample-v2",
+      "kind": "documentation",
+      "name": "Sample Protocol v2",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/Sample Protocol v2.netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-sample-v3",
+      "kind": "documentation",
+      "name": "Sample Protocol v3",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/Sample Protocol v3.netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    },
+    {
+      "id": "documentation-sample-v4",
+      "kind": "documentation",
+      "name": "Sample Protocol v4",
+      "description": "Downloadable protocol used by the documentation site.",
+      "protocolPath": "documentation/protocols/Sample Protocol v4.netcanvas",
+      "assetDir": "documentation/protocols",
+      "architectTemplate": false
+    }
+  ]
+}

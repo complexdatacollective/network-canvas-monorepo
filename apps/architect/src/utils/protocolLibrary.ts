@@ -1,4 +1,5 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import type { ProtocolSourceRef } from '~/templates';
 
 import { assetDb, type StoredProtocolRow } from './assetDB';
 import { deleteOrphanedAssets, deleteProtocolAssets } from './assetUtils';
@@ -22,6 +23,7 @@ type UpsertProtocolInput = {
   protocol: CurrentProtocol;
   name: string;
   description?: string;
+  sourceRef?: ProtocolSourceRef;
 };
 
 export const putStoredProtocol = async ({
@@ -29,6 +31,7 @@ export const putStoredProtocol = async ({
   protocol,
   name,
   description,
+  sourceRef,
 }: UpsertProtocolInput): Promise<void> => {
   const now = Date.now();
   const existing = await assetDb.protocols.get(id);
@@ -37,6 +40,7 @@ export const putStoredProtocol = async ({
     protocol,
     name,
     description,
+    sourceRef: sourceRef ?? existing?.sourceRef,
     schemaVersion: protocol.schemaVersion,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,

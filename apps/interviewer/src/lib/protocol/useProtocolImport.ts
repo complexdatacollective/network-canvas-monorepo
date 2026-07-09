@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { updateSettings } from '~/lib/db/api';
@@ -13,6 +14,7 @@ import {
   importProtocolFromFile,
   peekProtocolName,
 } from './importProtocol';
+import { openProtocolValidationDetailsDialog } from './ProtocolValidationDetailsDialog';
 import { SAMPLE_PROTOCOL } from './sampleProtocol';
 
 export type ImportRequest = { source: 'file'; file: File; label: string };
@@ -75,6 +77,7 @@ type UseProtocolImportOptions = {
 
 export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
   const toast = useToast();
+  const dialog = useDialog();
   const analytics = useAnalytics();
   const [pendingImports, setPendingImports] = useState<PendingImport[]>([]);
 
@@ -166,10 +169,22 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
             source: request.source,
             reason: result.error,
           });
+          const validationDetails =
+            result.error === 'validation-failed'
+              ? {
+                  issues: result.issues,
+                  message: result.message,
+                }
+              : null;
           toast.add({
             title: 'Import failed',
             description: result.message,
             variant: 'destructive',
+            ...(validationDetails && {
+              cancelLabel: 'View details',
+              onCancel: () =>
+                openProtocolValidationDetailsDialog(dialog, validationDetails),
+            }),
           });
         }
       };
@@ -188,7 +203,7 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
         });
       }, IMPORT_START_DELAY_MS);
     },
-    [analytics, onInstalled, toast],
+    [analytics, dialog, onInstalled, toast],
   );
 
   return { pendingImports, startImport };
