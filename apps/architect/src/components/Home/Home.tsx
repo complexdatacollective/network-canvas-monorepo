@@ -277,11 +277,11 @@ const Home = () => {
 
         {/* Hero section */}
 
-        <main className="laptop:px-12 mx-auto flex min-h-0 w-full max-w-[96rem] flex-1 flex-col overflow-x-hidden overflow-y-auto px-8 pb-8">
-          <div className="tablet-portrait:flex-row flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch gap-8">
+        <main className="laptop:px-0 mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col overflow-x-hidden overflow-y-auto px-8 pb-8">
+          <div className="tablet-portrait:flex-row laptop:gap-4 flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch gap-6">
             <div
               aria-hidden
-              className="tablet-portrait:block tablet-portrait:w-5/12 pointer-events-none hidden h-full shrink-0"
+              className="tablet-portrait:block tablet-portrait:w-1/2 laptop:w-[48%] pointer-events-none hidden h-full shrink-0"
             >
               <TransitMap stops={TIMELINE_SCRIPT} count={visibleCount} />
             </div>

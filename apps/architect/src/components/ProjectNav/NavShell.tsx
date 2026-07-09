@@ -79,7 +79,7 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
       <motion.div
         className={cx(
           NAV_SURFACE,
-          'phone-landscape:pr-10 phone-landscape:pl-4 mx-auto flex max-w-7xl flex-wrap items-center gap-5 rounded-full py-3 pr-6 pl-3',
+          'phone-landscape:pr-10 phone-landscape:pl-6 mx-auto flex max-w-7xl flex-wrap items-center gap-5 rounded-full py-3 pr-6 pl-6',
         )}
         variants={containerVariants}
         initial={animate ? 'hidden' : false}
