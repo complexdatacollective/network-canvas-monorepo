@@ -43,7 +43,7 @@ export const NodeConfigSchema = z.strictObject({
   }),
   // Boolean variable marking the ego node
   egoVariable: entityAttributeReference({
-    subject: 'ego',
+    subject: { sibling: 'type', entity: 'node' },
   }),
   // String variable storing the relationship to ego (e.g. 'sibling', 'parent')
   relationshipVariable: entityAttributeReference({

@@ -6,7 +6,7 @@ import { narrativePedigreeStage } from '../narrative-pedigree';
 
 // Minimal valid FamilyPedigree stage (source).
 // Node variables are on 'person', edge variables are on 'family' (distinct keys).
-// egoVariable lives on the ego entity (subject: 'ego' in family-pedigree schema).
+// egoVariable lives on the FamilyPedigree node type and marks which node is ego.
 const validFamilyPedigreeStage = {
   id: 'fp1',
   label: 'FamilyPedigree',
@@ -58,17 +58,13 @@ const makeProtocol = (overrides?: {
   name: 'Test Protocol',
   schemaVersion: 8 as const,
   codebook: overrides?.codebook ?? {
-    ego: {
-      variables: {
-        egoIsEgo: { name: 'EgoIsEgo', type: 'boolean' },
-      },
-    },
     node: {
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' as const },
         variables: {
+          egoIsEgo: { name: 'EgoIsEgo', type: 'boolean' },
           personLabel: { name: 'PersonLabel', type: 'text' },
           personRel: { name: 'PersonRel', type: 'text' },
           personBioSex: { name: 'PersonBioSex', type: 'text' },
