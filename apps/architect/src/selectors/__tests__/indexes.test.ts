@@ -148,7 +148,7 @@ describe('indexes selectors', () => {
       const thisDir = dirname(fileURLToPath(import.meta.url));
       const protocolPath = join(
         thisDir,
-        '../../../../../packages/development-protocol/protocol.json',
+        '../../../../../packages/protocols/development/protocol.json',
       );
       const protocol = JSON.parse(
         readFileSync(protocolPath, 'utf-8'),
@@ -160,7 +160,7 @@ describe('indexes selectors', () => {
 
       const index = getVariableIndex(state);
 
-      // stages.10.prompts.0.variable in development-protocol/protocol.json
+      // stages.10.prompts.0.variable in protocols/development/protocol.json
       expect(Object.values(index)).toContain(
         '1096204b-48fe-444c-b642-4ab211f7f57c',
       );

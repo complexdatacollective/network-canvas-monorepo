@@ -6,12 +6,12 @@ permissions:
 on:
   pull_request:
     paths:
-      - 'packages/development-protocol'
-      - 'packages/protocol-validation'
+      - 'packages/protocols/development/**'
+      - 'packages/protocol-validation/**'
   push:
     paths:
-      - 'packages/development-protocol'
-      - 'packages/protocol-validation'
+      - 'packages/protocols/development/**'
+      - 'packages/protocol-validation/**'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -41,4 +41,4 @@ jobs:
           pnpm build
 
       - name: Validate protocol
-        run: node scripts/cli.js ../development-protocol/protocol.json
+        run: node scripts/cli.js ../protocols/development/protocol.json

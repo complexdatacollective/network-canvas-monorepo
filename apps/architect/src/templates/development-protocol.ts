@@ -1,19 +1,19 @@
-import developmentProtocolJson from '@codaco/development-protocol';
 import type {
   CurrentProtocol,
   ExtractedAsset,
 } from '@codaco/protocol-validation';
+import developmentProtocolJson from '@codaco/protocols/development';
 
-// The Development Protocol, vendored as `@codaco/development-protocol`, so the
-// dev-mode template opens from the bundled app rather than a remote URL. It
-// exercises every stage type and is only surfaced in development builds.
+// The Development Protocol, vendored in `@codaco/protocols`, so the dev-mode
+// template opens from the bundled app rather than a remote URL. It exercises
+// every stage type and is only surfaced in development builds.
 export const developmentProtocol =
   developmentProtocolJson as unknown as CurrentProtocol;
 
 // Vite emits each bundled asset file and gives us its URL. The file name matches
 // the `source` of the corresponding `assetManifest` entry in the protocol.
 const assetUrlByPath = import.meta.glob<string>(
-  '../../../../packages/development-protocol/assets/*',
+  '../../../../packages/protocols/development/assets/*',
   { query: '?url', import: 'default', eager: true },
 );
 

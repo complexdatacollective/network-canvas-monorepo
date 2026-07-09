@@ -290,9 +290,6 @@ importers:
       '@codaco/art':
         specifier: workspace:*
         version: link:../../packages/art
-      '@codaco/development-protocol':
-        specifier: workspace:*
-        version: link:../../packages/development-protocol
       '@codaco/fresco-ui':
         specifier: workspace:*
         version: link:../../packages/fresco-ui
@@ -308,9 +305,9 @@ importers:
       '@codaco/protocol-validation':
         specifier: workspace:*
         version: link:../../packages/protocol-validation
-      '@codaco/sample-protocol':
+      '@codaco/protocols':
         specifier: workspace:*
-        version: link:../../packages/sample-protocol
+        version: link:../../packages/protocols
       '@codaco/shared-consts':
         specifier: workspace:*
         version: link:../../packages/shared-consts
@@ -896,9 +893,6 @@ importers:
       '@codaco/art':
         specifier: workspace:*
         version: link:../../packages/art
-      '@codaco/development-protocol':
-        specifier: workspace:*
-        version: link:../../packages/development-protocol
       '@codaco/fresco-ui':
         specifier: workspace:*
         version: link:../../packages/fresco-ui
@@ -914,9 +908,9 @@ importers:
       '@codaco/protocol-validation':
         specifier: workspace:*
         version: link:../../packages/protocol-validation
-      '@codaco/sample-protocol':
+      '@codaco/protocols':
         specifier: workspace:*
-        version: link:../../packages/sample-protocol
+        version: link:../../packages/protocols
       '@codaco/shared-consts':
         specifier: workspace:*
         version: link:../../packages/shared-consts
@@ -2016,6 +2010,8 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.2(@types/node@24.13.2)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.23.0)(yaml@2.9.0))
+
+  packages/protocols: {}
 
   packages/sample-protocol: {}
 
@@ -14960,7 +14956,7 @@ snapshots:
     dependencies:
       '@babel/compat-data': 7.29.7
       '@babel/helper-validator-option': 7.29.7
-      browserslist: 4.28.4
+      browserslist: 4.28.5
       lru-cache: 5.1.1
       semver: 6.3.1
 
@@ -20701,7 +20697,6 @@ snapshots:
       electron-to-chromium: 1.5.388
       node-releases: 2.0.50
       update-browserslist-db: 1.2.3(browserslist@4.28.5)
-    optional: true
 
   buffer-alloc-unsafe@1.1.0: {}
 
@@ -28253,7 +28248,6 @@ snapshots:
       browserslist: 4.28.5
       escalade: 3.2.0
       picocolors: 1.1.1
-    optional: true
 
   uri-js@4.4.1:
     dependencies:

@@ -33,6 +33,7 @@ import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
 import fileIcon from '~/images/file-icon.svg';
 import { IconButton } from '~/lib/legacy-ui/components/Button';
 import type { BundledTemplate } from '~/templates';
+import { sampleProtocol } from '~/templates/sample-protocol';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
@@ -554,7 +555,10 @@ const LibraryPanel = ({
         <TabsPanel value="templates" className={PANEL_CLASSES}>
           <PanelRow
             name="Sample Protocol"
-            description="An example introducing the key features and techniques available in Network Canvas."
+            description={
+              sampleProtocol.description ??
+              'An example introducing the key features and techniques available in Network Canvas.'
+            }
             onOpen={onOpenSample}
           />
           {import.meta.env.DEV && (

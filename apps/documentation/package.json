@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm writeSidebarJson && pnpm next dev",
+    "dev": "pnpm writeSidebarJson && pnpm copyProtocolDownloads && pnpm next dev",
     "build": "pnpm next build",
     "postbuild": "pnpm next-sitemap",
-    "prebuild": "pnpm writeSidebarJson",
+    "prebuild": "pnpm writeSidebarJson && pnpm copyProtocolDownloads",
+    "copyProtocolDownloads": "tsx ./scripts/copyProtocolDownloads.ts",
     "writeSidebarJson": "tsx ./lib/writeSidebarJson.ts",
     "start": "pnpm next start",
     "typecheck": "tsgo --noEmit",
