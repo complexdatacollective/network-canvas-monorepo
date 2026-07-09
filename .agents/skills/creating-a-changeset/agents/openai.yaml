@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Creating a Changeset'
+  short_description: 'Decide and author Network Canvas changesets'
+  default_prompt: 'Use $creating-a-changeset to decide whether this Network Canvas change needs release notes.'

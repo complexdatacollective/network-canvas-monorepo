@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Developing in Network Canvas'
+  short_description: 'Repo guidance for Network Canvas changes'
+  default_prompt: 'Use $developing-in-network-canvas before making a Network Canvas monorepo change.'

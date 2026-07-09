@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Shipping a Pull Request'
+  short_description: 'Open and monitor a Network Canvas PR'
+  default_prompt: 'Use $shipping-a-pull-request to prepare, open, and monitor a Network Canvas pull request.'
