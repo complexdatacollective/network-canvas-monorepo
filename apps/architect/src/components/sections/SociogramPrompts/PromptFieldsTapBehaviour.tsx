@@ -206,7 +206,11 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
           {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
             <>
               {showNetworkFilterWarning && (
-                <Alert variant="warning" className="my-7">
+                <Alert
+                  variant="warning"
+                  density="compact"
+                  className="my-5 text-sm"
+                >
                   <AlertDescription>
                     <p>
                       Stage level network filtering is enabled, but the edge

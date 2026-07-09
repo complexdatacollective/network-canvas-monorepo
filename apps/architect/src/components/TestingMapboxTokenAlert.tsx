@@ -32,6 +32,7 @@ const TestingMapboxTokenAlert = () => {
         <Button
           color="warning"
           size="sm"
+          className="[--component-bg:var(--warning)] [--component-text:oklch(var(--white))]"
           onClick={() => {
             window.open(MAPBOX_TOKEN_HELP_URL, '_blank', 'noopener,noreferrer');
           }}

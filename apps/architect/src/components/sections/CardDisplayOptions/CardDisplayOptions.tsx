@@ -67,7 +67,7 @@ const CardDisplayOptions = ({
       disabled={disabled}
     >
       <Row>
-        <Alert variant="info" className="my-7">
+        <Alert variant="info" density="compact" className="my-5 text-sm">
           <AlertDescription>
             <p>
               Cards will use the <strong>name</strong> attribute from your

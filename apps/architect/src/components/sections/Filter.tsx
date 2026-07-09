@@ -120,7 +120,7 @@ const Filter = () => {
       layout="vertical"
     >
       {shouldShowWarning && (
-        <Alert variant="warning" className="my-7">
+        <Alert variant="warning" density="compact" className="my-5 text-sm">
           <AlertDescription>
             <p>
               This stage has edge creation or display values that will not be

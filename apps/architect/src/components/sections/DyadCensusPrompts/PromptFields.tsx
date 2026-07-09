@@ -17,7 +17,7 @@ const PromptFields = () => (
         select an edge type that will be created when the participant answers
         &apos;yes&apos;.
       </p>
-      <Alert variant="info" className="my-7">
+      <Alert variant="info" density="compact" className="my-5 text-sm">
         <AlertDescription>
           <p>
             Remember to write your prompt text to take into account that the

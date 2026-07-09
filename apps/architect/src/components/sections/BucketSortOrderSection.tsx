@@ -56,7 +56,7 @@ const BucketSortOrderSection = ({
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
-      <Alert variant="info" className="my-7">
+      <Alert variant="info" density="compact" className="my-5 text-sm">
         <AlertDescription>
           <p>
             Use the asterisk property to sort by the order that nodes were

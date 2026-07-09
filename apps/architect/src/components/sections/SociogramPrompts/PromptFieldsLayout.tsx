@@ -78,7 +78,7 @@ const PromptFields = ({
           fieldName="layout.layoutVariable"
           description="Layout Variable"
         />
-        <Alert variant="info" className="my-7">
+        <Alert variant="info" density="compact" className="my-5 text-sm">
           <AlertDescription>
             <p>
               If you use the same layout variable across all prompts, the

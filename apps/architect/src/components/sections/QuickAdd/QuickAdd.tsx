@@ -63,7 +63,7 @@ const QuickAdd = ({
       }
     >
       {!hasNameVariable && (
-        <Alert variant="info" className="my-7">
+        <Alert variant="info" density="compact" className="my-5 text-sm">
           <AlertDescription>
             <p>
               Use a variable called &quot;name&quot; here, unless you have a

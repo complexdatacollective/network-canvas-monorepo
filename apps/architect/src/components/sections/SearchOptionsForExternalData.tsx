@@ -63,7 +63,7 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
         }
         layout="vertical"
       >
-        <Alert variant="info" className="my-7">
+        <Alert variant="info" density="compact" className="my-5 text-sm">
           <AlertDescription>
             <p>
               The selecting lots of attributes here may slow the performance of
@@ -94,7 +94,7 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
         }
         layout="vertical"
       >
-        <Alert variant="info" className="my-7">
+        <Alert variant="info" density="compact" className="my-5 text-sm">
           <AlertDescription>
             <p>
               If the roster contains many similar nodes, selecting

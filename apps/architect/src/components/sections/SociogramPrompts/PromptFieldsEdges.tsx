@@ -109,7 +109,7 @@ const DisplayEdges = ({ form }: DisplayEdgesProps) => {
     >
       <Row>
         {shouldShowNetworkFilterWarning && (
-          <Alert variant="warning" className="my-7">
+          <Alert variant="warning" density="compact" className="my-5 text-sm">
             <AlertDescription>
               <p>
                 Stage level network filtering is enabled, but one or more of the
@@ -123,7 +123,7 @@ const DisplayEdges = ({ form }: DisplayEdgesProps) => {
           </Alert>
         )}
         {hasDisabledEdgeOption && (
-          <Alert variant="info" className="my-7">
+          <Alert variant="info" density="compact" className="my-5 text-sm">
             <AlertDescription>
               <p>
                 The edge type being created must always be displayed. This edge

@@ -114,7 +114,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
       handleToggleChange={handleToggleChange}
     >
       {hasMultiplePrompts && (
-        <Alert variant="warning" className="my-7">
+        <Alert variant="warning" density="compact" className="my-5 text-sm">
           <AlertDescription>
             <p>
               You have multiple prompts configured on this stage. Remember that

@@ -57,7 +57,7 @@ const ComposerAttributeFields = ({
     <Section layout="vertical">
       <Subsection id={getFieldId('variable')} title="Variable">
         {variable && !isNewVariable && (
-          <Alert variant="info" className="my-7">
+          <Alert variant="info" density="compact" className="my-5 text-sm">
             <AlertDescription>
               <p>
                 When selecting an existing variable, changes you make to the
@@ -129,7 +129,7 @@ const ComposerAttributeFields = ({
           }}
         />
         {isNewVariable && variableType && (
-          <Alert variant="info" className="my-7">
+          <Alert variant="info" density="compact" className="my-5 text-sm">
             <AlertDescription>
               <p>
                 The selected input control will cause this variable to be
@@ -141,7 +141,7 @@ const ComposerAttributeFields = ({
           </Alert>
         )}
         {!isNewVariable && variableType && (
-          <Alert variant="warning" className="my-7">
+          <Alert variant="warning" density="compact" className="my-5 text-sm">
             <AlertDescription>
               <div>
                 <p>

@@ -194,7 +194,11 @@ const PromptFields = ({
                   be used on this interface.
                 </p>
                 {showVariableOptionsTip && (
-                  <Alert variant="destructive" className="my-7">
+                  <Alert
+                    variant="destructive"
+                    density="compact"
+                    className="my-5 text-sm"
+                  >
                     <AlertDescription>
                       <p>
                         The ordinal bin interface is designed to use{' '}

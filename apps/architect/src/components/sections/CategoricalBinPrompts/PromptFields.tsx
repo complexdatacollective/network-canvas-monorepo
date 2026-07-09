@@ -128,7 +128,11 @@ const PromptFields = ({
               Create <strong>up to 8</strong> options for this variable.
             </p>
             {showVariableOptionsTip && (
-              <Alert variant="destructive" className="my-7">
+              <Alert
+                variant="destructive"
+                density="compact"
+                className="my-5 text-sm"
+              >
                 <AlertDescription>
                   <p>
                     The categorical bin interface is designed to use{' '}
