@@ -54,7 +54,7 @@ const BaseVariablePill = React.forwardRef<
     // `VariablePicker.tsx` (mb on nested pills) and `PreviewRule.tsx` (zoom).
     <motion.div
       className={cx(
-        'variable-pill variable-pill-effect-border effect-shadow-md font-monospace inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap rounded-full p-0.5 text-base',
+        'variable-pill variable-pill-effect-border effect-shadow-sm font-monospace inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap rounded-full p-0.5 text-base',
         summary && 'm-2 max-w-[24rem] zoom-[0.8]',
       )}
       style={style}
