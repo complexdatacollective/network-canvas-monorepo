@@ -281,13 +281,13 @@ const Home = () => {
           <div className="tablet-portrait:flex-row flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch gap-8">
             <div
               aria-hidden
-              className="tablet-portrait:block tablet-portrait:w-1/2 pointer-events-none hidden h-full shrink-0"
+              className="tablet-portrait:block tablet-portrait:w-5/12 pointer-events-none hidden h-full shrink-0"
             >
               <TransitMap stops={TIMELINE_SCRIPT} count={visibleCount} />
             </div>
 
             <div className="short:justify-start short:gap-3 laptop:gap-8 flex min-w-0 flex-1 flex-col items-start justify-center gap-6 text-left">
-              <div className="short:gap-2 flex flex-col items-start gap-4">
+              <div className="short:gap-2 @container flex w-full flex-col items-start gap-4">
                 <div>
                   <h1 className="hero laptop:text-[clamp(3rem,9vh,6rem)] mb-3">
                     Welcome to <span className="text-action">Architect</span>
@@ -299,7 +299,7 @@ const Home = () => {
                   </p>
                 </div>
 
-                <div className="flex w-full flex-wrap items-center gap-3">
+                <div className="flex w-full flex-col items-start gap-3 @min-[40rem]:flex-row @min-[40rem]:flex-nowrap">
                   <Button
                     size="lg"
                     color="primary"

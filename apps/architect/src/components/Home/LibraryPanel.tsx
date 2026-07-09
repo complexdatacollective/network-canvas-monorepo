@@ -311,8 +311,8 @@ type LibraryPanelProps = {
   onOpenTemplate: (template: BundledTemplate) => void;
 };
 
-const PANEL_CLASSES = 'h-[min(28rem,65dvh)] min-h-0';
-const PANEL_VIEWPORT_CLASSES = 'overflow-x-hidden px-2.5 pb-10';
+const COLLECTION_CLASSES = 'h-[min(28rem,65dvh)] min-h-0';
+const COLLECTION_VIEWPORT_CLASSES = 'overflow-x-hidden px-2.5 pb-10';
 
 // Persist the protocol-gallery card's dismissal so it stays hidden across
 // reloads once the user closes it.
@@ -700,8 +700,8 @@ const LibraryPanel = ({
             animate={false}
             fade={false}
             aria-label="Recent protocols"
-            className={PANEL_CLASSES}
-            viewportClassName={PANEL_VIEWPORT_CLASSES}
+            className={COLLECTION_CLASSES}
+            viewportClassName={COLLECTION_VIEWPORT_CLASSES}
             emptyState={
               <p className="text-muted px-5 py-10 text-center text-sm">
                 No recent protocols yet.
@@ -724,8 +724,8 @@ const LibraryPanel = ({
             animate={false}
             fade={false}
             aria-label="Protocol templates"
-            className={PANEL_CLASSES}
-            viewportClassName={PANEL_VIEWPORT_CLASSES}
+            className={COLLECTION_CLASSES}
+            viewportClassName={COLLECTION_VIEWPORT_CLASSES}
           >
             {(CollectionElements) => CollectionElements}
           </Collection>
