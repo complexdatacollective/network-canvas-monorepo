@@ -30,6 +30,20 @@ function makeProtocol(name: string, description: string): ProtocolWithCounts {
   };
 }
 
+async function uploadProtocolFile(canvas: ReturnType<typeof within>) {
+  const fileInput = canvas.getByLabelText('Choose a .netcanvas protocol file');
+  if (!(fileInput instanceof HTMLInputElement)) {
+    throw new Error('protocol import file input not found');
+  }
+  await userEvent.upload(
+    fileInput,
+    new File(['netcanvas'], 'study.netcanvas', {
+      type: 'application/x-netcanvas',
+    }),
+  );
+  fileInput.blur();
+}
+
 // Interactive harness for the deck's slide lifecycle: activate the import
 // card to run a simulated import (pending card drops in, the deck travels
 // to it, then the slot fills with the installed protocol), delete a
@@ -163,8 +177,8 @@ export const ChevronAndDotNavigation: Story = {
   },
 };
 
-// Window-level arrows step the deck; Enter activates the active card (the
-// import card's primary action adds a protocol in this harness).
+// Window-level arrows step the deck; Enter activates the active import card,
+// then a selected file starts the harness import flow.
 export const KeyboardNavigation: Story = {
   render: () => <DeckHarness />,
   play: async ({ canvasElement }) => {
@@ -178,6 +192,7 @@ export const KeyboardNavigation: Story = {
     );
 
     await userEvent.keyboard('{Enter}');
+    await uploadProtocolFile(canvas);
     await waitFor(async () => {
       const updated = await canvas.findAllByLabelText(/Go to card/);
       expect(updated).toHaveLength(5);
@@ -215,6 +230,7 @@ export const ImportTravelsToPendingCard: Story = {
     );
 
     await userEvent.click(importCard);
+    await uploadProtocolFile(canvas);
     await waitFor(async () => {
       const updated = await canvas.findAllByLabelText(/Go to card/);
       expect(updated).toHaveLength(5);

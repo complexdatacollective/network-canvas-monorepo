@@ -37,6 +37,7 @@ const MIN_CARD_EDGE_PX = 300;
 const SECTION_PADDING_RATIO = 0.12;
 const MIN_SECTION_PADDING = 24;
 const MAX_SECTION_PADDING = 100;
+const NETCANVAS_ACCEPT = { 'application/x-netcanvas': ['.netcanvas'] };
 
 function computeSectionPadding(sectionHeight: number): number {
   return Math.min(
@@ -137,6 +138,7 @@ export function ProtocolDeck({
     open: openImportDialog,
   } = useDropzone({
     onDrop: handleDrop,
+    accept: NETCANVAS_ACCEPT,
     multiple: false,
     noClick: true,
     noKeyboard: true,

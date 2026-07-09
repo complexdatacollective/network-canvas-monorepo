@@ -42,7 +42,6 @@ export function ImportTriggerCard({
     <div {...rootProps}>
       <input
         {...getInputProps({
-          'accept': '.netcanvas',
           'aria-label': 'Choose a .netcanvas protocol file',
         })}
       />
