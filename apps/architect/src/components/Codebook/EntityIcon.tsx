@@ -22,6 +22,12 @@ const nodeSizeMap: Record<EntityIconSize, 'xxs' | 'xs' | 'sm'> = {
   tiny: 'xxs',
 };
 
+const edgeSizeMap: Record<EntityIconSize, string> = {
+  default: 'size-24',
+  small: 'size-16',
+  tiny: 'size-8',
+};
+
 const graphicVariants = cva({
   base: 'flex items-center justify-center',
   variants: {
@@ -56,6 +62,7 @@ const renderIcon = (
       return (
         <Icon
           name="links"
+          className={edgeSizeMap[size]}
           style={
             color
               ? ({
