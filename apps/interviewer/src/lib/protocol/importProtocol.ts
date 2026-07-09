@@ -8,19 +8,10 @@ import {
   hashProtocol,
   migrateProtocol,
   validateProtocol,
-  type VersionedProtocol,
   VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
 
 import { saveProtocol } from '../db/api';
-
-// `validateProtocol` takes the already-typed `VersionedProtocol` union, but the
-// documents flowing through this module start as `unknown` (parsed JSON from a
-// zip or a bundled asset). Narrow with the same schema `validateProtocol` uses
-// internally, rather than asserting the type.
-function isVersionedProtocol(document: unknown): document is VersionedProtocol {
-  return VersionedProtocolSchema.safeParse(document).success;
-}
 
 const APP_SCHEMA_VERSION = 8;
 
@@ -55,6 +46,55 @@ export type ImportProtocolResult =
   | ImportProtocolSuccess
   | ImportProtocolFailure;
 
+type ValidationIssue = {
+  path: PropertyKey[];
+  message: string;
+};
+
+type AssetManifestEntry = {
+  type: string;
+  name: string;
+  source?: string;
+  value?: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isAssetManifestEntry(value: unknown): value is AssetManifestEntry {
+  if (!isRecord(value)) return false;
+  const { type, name, source, value: entryValue } = value;
+  return (
+    typeof type === 'string' &&
+    typeof name === 'string' &&
+    (source === undefined || typeof source === 'string') &&
+    (entryValue === undefined || typeof entryValue === 'string')
+  );
+}
+
+function getAssetManifest(
+  protocol: unknown,
+): Record<string, AssetManifestEntry> {
+  if (!isRecord(protocol) || !isRecord(protocol.assetManifest)) return {};
+
+  return Object.fromEntries(
+    Object.entries(protocol.assetManifest).filter(
+      (entry): entry is [string, AssetManifestEntry] =>
+        isAssetManifestEntry(entry[1]),
+    ),
+  );
+}
+
+function formatValidationIssues(
+  issues: readonly ValidationIssue[],
+): ImportProtocolFailure['issues'] {
+  return issues.map((issue) => ({
+    path: issue.path.map(String).join('.'),
+    message: issue.message,
+  }));
+}
+
 export async function peekProtocolName(
   buffer: Uint8Array,
 ): Promise<string | null> {
@@ -62,7 +102,8 @@ export async function peekProtocolName(
     const zip = await JSZip.loadAsync(buffer);
     const json = await zip.file('protocol.json')?.async('string');
     if (!json) return null;
-    const parsed = JSON.parse(json) as { name?: unknown };
+    const parsed: unknown = JSON.parse(json);
+    if (!isRecord(parsed)) return null;
     if (typeof parsed.name === 'string' && parsed.name.trim().length > 0) {
       return parsed.name;
     }
@@ -80,12 +121,8 @@ async function extractZip(
   if (!protocolJson) {
     throw new Error('protocol.json not found in archive');
   }
-  const protocol = JSON.parse(protocolJson) as Record<string, unknown>;
-  const manifest =
-    (protocol.assetManifest as Record<
-      string,
-      { type: string; name: string; source?: string; value?: string }
-    >) ?? {};
+  const protocol: unknown = JSON.parse(protocolJson);
+  const manifest = getAssetManifest(protocol);
   const assets: ExtractedAsset[] = [];
   for (const [assetId, def] of Object.entries(manifest)) {
     if (def.type === 'apikey') {
@@ -136,24 +173,23 @@ async function importParsedProtocol(
     }
   }
 
-  if (!isVersionedProtocol(migratedDocument)) {
+  const versionedProtocol = VersionedProtocolSchema.safeParse(migratedDocument);
+  if (!versionedProtocol.success) {
     return {
       success: false,
       error: 'validation-failed',
       message: 'Protocol failed schema validation.',
+      issues: formatValidationIssues(versionedProtocol.error.issues),
     };
   }
 
-  const validation = await validateProtocol(migratedDocument);
+  const validation = await validateProtocol(versionedProtocol.data);
   if (!validation.success) {
     return {
       success: false,
       error: 'validation-failed',
       message: 'Protocol failed schema validation.',
-      issues: validation.error.issues.map((i) => ({
-        path: i.path.join('.'),
-        message: i.message,
-      })),
+      issues: formatValidationIssues(validation.error.issues),
     };
   }
 
