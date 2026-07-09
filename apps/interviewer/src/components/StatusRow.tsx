@@ -49,6 +49,12 @@ const variants = {
   },
 } as const;
 
+const compactLabelClassName =
+  'tablet-landscape:not-sr-only sr-only tablet-landscape:whitespace-nowrap';
+const statusTriggerClassName =
+  'focusable inline-flex items-center gap-1.5 rounded-sm';
+const statusIconClassName = 'tablet-landscape:size-3.5 size-4';
+
 // Pure presentation: the dashboard's bottom-of-screen footer strip. `mode`
 // mirrors useAuth's enrolled security mode; `durability` mirrors the
 // storage-persistence poll (null until the first check resolves).
@@ -70,11 +76,11 @@ export function StatusRowView({
   return (
     <motion.div
       variants={variants}
-      className="font-monospace text-text/60 tablet-landscape:px-11 flex items-center justify-between px-6 pb-4 text-xs"
+      className="font-monospace text-text/60 tablet-landscape:px-11 tablet-landscape:justify-between flex items-center justify-end px-6 pb-4 text-xs"
     >
       <Link
         href="/data"
-        className="inline-flex cursor-pointer items-center gap-3.5 text-current no-underline"
+        className="tablet-landscape:inline-flex hidden cursor-pointer items-center gap-3.5 text-current no-underline"
       >
         <span>
           <strong className="text-text font-bold">{protocolCount}</strong>{' '}
@@ -98,16 +104,18 @@ export function StatusRowView({
                 render={
                   <span
                     tabIndex={0}
-                    className="focusable text-warning inline-flex items-center gap-1.5 rounded-sm"
+                    data-testid="encryption-status-trigger"
+                    className={`${statusTriggerClassName} text-warning`}
                   >
-                    <ShieldAlert className="size-3.5" />
-                    Not encrypted
+                    <ShieldAlert className={statusIconClassName} />
+                    <span className={compactLabelClassName}>Not encrypted</span>
                   </span>
                 }
               />
               <TooltipContent>
-                No app security is enrolled — data is stored unencrypted. Enrol
-                a PIN, passphrase, or biometric in Settings to encrypt it.
+                Not encrypted. No app security is enrolled — data is stored
+                unencrypted. Enrol a PIN, passphrase, or biometric in Settings
+                to encrypt it.
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -116,16 +124,17 @@ export function StatusRowView({
                 render={
                   <span
                     tabIndex={0}
-                    className="focusable inline-flex items-center gap-1.5 rounded-sm"
+                    data-testid="encryption-status-trigger"
+                    className={`${statusTriggerClassName} text-primary`}
                   >
-                    <ShieldCheck className="size-3.5" />
-                    Encrypted
+                    <ShieldCheck className={statusIconClassName} />
+                    <span className={compactLabelClassName}>Encrypted</span>
                   </span>
                 }
               />
               <TooltipContent>
-                Interview data is encrypted at rest with your enrolled unlock
-                method.
+                Encrypted. Interview data is encrypted at rest with your
+                enrolled unlock method.
               </TooltipContent>
             </Tooltip>
           )
@@ -141,26 +150,33 @@ export function StatusRowView({
                       ? 0
                       : undefined
                   }
-                  className="focusable inline-flex items-center gap-1.5 rounded-sm"
+                  data-testid="storage-status-trigger"
+                  className={statusTriggerClassName}
                 >
                   {durability.persisted ? (
-                    <>
-                      <HardDrive className="size-3.5" />
-                      Storage persistent
-                    </>
+                    <span className="text-primary inline-flex items-center gap-1.5">
+                      <HardDrive className={statusIconClassName} />
+                      <span className={compactLabelClassName}>
+                        Storage persistent
+                      </span>
+                    </span>
                   ) : installed ? (
                     // Installed apps are already partitioned away from
                     // browsing data and exempt from routine cleanup, and no
                     // further user action can flip the grant — a warning here
                     // would alarm without offering a remedy (#886).
                     <>
-                      <HardDrive className="size-3.5" />
-                      Storage best effort
+                      <HardDrive className={statusIconClassName} />
+                      <span className={compactLabelClassName}>
+                        Storage best effort
+                      </span>
                     </>
                   ) : (
                     <span className="text-warning inline-flex items-center gap-1.5">
-                      <HardDrive className="size-3.5" />
-                      Storage not persistent
+                      <HardDrive className={statusIconClassName} />
+                      <span className={compactLabelClassName}>
+                        Storage not persistent
+                      </span>
                     </span>
                   )}
                 </span>
@@ -168,19 +184,28 @@ export function StatusRowView({
             />
             {!durability.persisted && installed ? (
               <TooltipContent>
-                The browser keeps installed-app data separate from browsing data
-                and does not clear it routinely, but it has not guaranteed it
-                against eviction if disk space runs low. Export interviews
-                regularly.
+                Storage best effort. The browser keeps installed-app data
+                separate from browsing data and does not clear it routinely, but
+                it has not guaranteed it against eviction if disk space runs
+                low. Export interviews regularly.
+                {durability.usage !== null
+                  ? ` ${formatBytes(durability.usage)} stored.`
+                  : ''}
+              </TooltipContent>
+            ) : durability.persisted ? (
+              <TooltipContent>
+                Storage persistent.
                 {durability.usage !== null
                   ? ` ${formatBytes(durability.usage)} stored.`
                   : ''}
               </TooltipContent>
             ) : durability.usage !== null ? (
               <TooltipContent>
-                {formatBytes(durability.usage)} stored
+                Storage not persistent. {formatBytes(durability.usage)} stored.
               </TooltipContent>
-            ) : null}
+            ) : (
+              <TooltipContent>Storage not persistent.</TooltipContent>
+            )}
           </Tooltip>
         ) : null}
         {versionSlot}
