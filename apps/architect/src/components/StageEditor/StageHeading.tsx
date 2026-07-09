@@ -1,6 +1,7 @@
 import { get } from 'es-toolkit/compat';
 import { useId } from 'react';
 
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import type { StageType } from '@codaco/protocol-validation';
 import Badge from '~/components/Badge';
 import ExternalLink from '~/components/ExternalLink';
@@ -60,7 +61,8 @@ const HeadingInput = ({
         aria-invalid={hasError}
         aria-describedby={hasError ? errorId : undefined}
         className={cx(
-          'h1 my-0 w-full border-none bg-transparent p-0 outline-none placeholder:opacity-40',
+          headingVariants({ level: 'h1', margin: 'none' }),
+          'w-full border-none bg-transparent p-0 outline-none placeholder:opacity-40',
           hasError && 'text-destructive',
         )}
       />
@@ -118,7 +120,14 @@ const StageHeading = ({
         </div>
       </div>
       <div className="flex min-w-0 flex-col justify-center gap-5">
-        <p className="small-heading text-muted m-0">
+        <p
+          className={headingVariants({
+            level: 'label',
+            variant: 'all-caps',
+            margin: 'none',
+            className: 'text-muted',
+          })}
+        >
           Stage {stageNumber} of {totalStages}
         </p>
         <IssueAnchor fieldName="label" description="Stage name" />

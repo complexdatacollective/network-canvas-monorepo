@@ -126,17 +126,28 @@
   strong {
     @apply font-extrabold;
   }
+  :where(h1, h2, h3, h4) {
+    @apply font-heading scroll-m-20 font-bold text-pretty;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  :where(h1, h2, h3, h4):not(:first-child) {
+    margin-top: 1em;
+  }
+  :where(h1, h2, h3, h4):not(:last-child) {
+    margin-bottom: 0.5em;
+  }
   h1 {
-    @apply h1;
+    @apply text-3xl;
   }
   h2 {
-    @apply h2;
+    @apply text-2xl;
   }
   h3 {
-    @apply h3;
+    @apply text-xl;
   }
   h4 {
-    @apply h4;
+    @apply text-lg;
   }
   p {
     @apply text-base;
@@ -144,25 +155,6 @@
   }
 }
 
-@utility h1 {
-  @apply font-heading mx-0 my-6 text-3xl leading-tight font-bold;
-}
-@utility h2 {
-  @apply font-heading mx-0 my-6 text-2xl leading-tight font-bold;
-}
-@utility h3 {
-  @apply font-heading mx-0 my-2 text-xl leading-tight font-semibold;
-}
-@utility h4 {
-  @apply font-heading mx-0 my-2 text-lg leading-normal font-semibold;
-}
-@utility hero {
-  @apply font-heading leading-tight font-bold tracking-tight;
-  font-size: clamp(2.75rem, 8vh, 4.5rem);
-}
-@utility lead {
-  @apply text-muted text-lg leading-normal;
-}
 @utility hint {
   @apply text-muted text-xs leading-normal;
 }
@@ -172,14 +164,6 @@
 @utility action-link {
   @apply cursor-pointer font-bold underline decoration-2 underline-offset-4;
   text-decoration-color: oklch(var(--sea-green));
-}
-@utility small-heading {
-  @apply text-sm;
-  font-family: var(--heading-font);
-  font-weight: 900;
-  line-height: 1.5;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
 }
 @utility scrollable {
   @apply overflow-hidden overflow-y-auto;

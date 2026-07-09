@@ -6,6 +6,7 @@ import { Link } from 'wouter';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import { Section } from '~/components/EditorLayout';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -147,7 +148,9 @@ const EntityType = ({
             size="small"
           />
         </div>
-        <h2 className="my-0">{name}</h2>
+        <Heading level="h2" margin="none">
+          {name}
+        </Heading>
         <div className="flex-1">
           {!inUse && <Tag notUsed>not in use</Tag>}
           {inUse && (

@@ -1,4 +1,5 @@
 import Button from '@codaco/fresco-ui/Button';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import useExternalDataDownload from '~/components/AssetBrowser/useExternalDataDownload';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { Section } from '~/components/EditorLayout';
@@ -25,7 +26,9 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
           <div className="flex shrink-0 basis-19 items-center justify-center">
             <EntityIcon entity="asset" size="small" />
           </div>
-          <h2 className="my-0 me-auto">{name}</h2>
+          <Heading level="h2" margin="none" className="me-auto">
+            {name}
+          </Heading>
           <Button onClick={() => handleShowPreview(id)} color="primary">
             Preview
           </Button>
@@ -35,7 +38,7 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
         </div>
         {variables.length > 0 && (
           <div className="mt-5">
-            <h3>Variables:</h3>
+            <Heading level="h3">Variables:</Heading>
             <VariableList variables={variables} />
           </div>
         )}

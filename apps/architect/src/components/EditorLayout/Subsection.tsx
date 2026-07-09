@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import { paragraphVariants } from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '~/utils/cva';
 
 type SubsectionProps = {
@@ -35,8 +37,24 @@ const Subsection = ({
   >
     <div className="flex items-start justify-between gap-5">
       <div>
-        <h3 className="m-0 text-lg font-semibold tracking-tight">{title}</h3>
-        {summary && <div className="text-sm text-current/70">{summary}</div>}
+        <Heading
+          level="h3"
+          margin="none"
+          className="text-lg font-semibold tracking-tight"
+        >
+          {title}
+        </Heading>
+        {summary && (
+          <div
+            className={paragraphVariants({
+              intent: 'smallText',
+              margin: 'none',
+              className: 'text-current/70',
+            })}
+          >
+            {summary}
+          </div>
+        )}
       </div>
       {action}
     </div>

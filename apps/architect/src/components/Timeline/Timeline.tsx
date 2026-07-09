@@ -6,6 +6,7 @@ import { useLocation } from 'wouter';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   actionCreators as stageActions,
@@ -227,9 +228,13 @@ const Timeline = () => {
                   {index + 1}
                 </div>
                 <div className="justify-self-start">
-                  <h4 className="transition-all group-hover:font-bold">
+                  <Heading
+                    level="h4"
+                    margin="none"
+                    className="my-2 transition-all group-hover:font-bold"
+                  >
                     {stage.label || '\u00A0'}
-                  </h4>
+                  </Heading>
                   {(stage.hasFilter || stage.hasSkipLogic) && (
                     <div className="mt-1 flex items-center gap-1">
                       {stage.hasFilter && (

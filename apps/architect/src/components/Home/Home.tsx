@@ -11,6 +11,8 @@ import { useDropzone } from 'react-dropzone';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type {
   CurrentProtocol,
   ExtractedAsset,
@@ -289,14 +291,22 @@ const Home = () => {
             <div className="short:justify-start short:gap-3 laptop:gap-8 flex min-w-0 flex-1 flex-col items-start justify-center gap-6 text-left">
               <div className="short:gap-2 @container flex w-full flex-col items-start gap-4">
                 <div>
-                  <h1 className="hero laptop:text-[clamp(3rem,9vh,6rem)] mb-3 leading-[0.95]">
+                  <Heading
+                    level="h1"
+                    margin="none"
+                    className="laptop:text-[clamp(3rem,9vh,6rem)] mb-3 text-[clamp(2.75rem,8vh,4.5rem)] leading-[0.95] tracking-tight"
+                  >
                     Welcome to <span className="text-action">Architect</span>
-                  </h1>
-                  <p className="lead short:hidden my-0 max-w-xl">
+                  </Heading>
+                  <Paragraph
+                    intent="lead"
+                    margin="none"
+                    className="text-muted short:hidden max-w-xl"
+                  >
                     Architect is the protocol designer for Network Canvas.
                     Compose name generators, capture ordinal and categorical
                     data, map connections, and explore narratives.
-                  </p>
+                  </Paragraph>
                 </div>
 
                 <div className="flex w-full flex-col items-start gap-3 @min-[40rem]:flex-row @min-[40rem]:flex-nowrap">

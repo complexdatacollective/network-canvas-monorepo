@@ -1,6 +1,8 @@
 import { TriangleAlert } from 'lucide-react';
 import { useSelector } from 'react-redux';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { getUsesTestingMapboxToken } from '~/selectors/issues';
 
 const MAPBOX_TOKEN_HELP_URL =
@@ -23,16 +25,20 @@ const TestingMapboxTokenAlert = () => {
       role="status"
       className="bg-mustard border-mustard-dark mx-auto mb-10 w-full max-w-3xl rounded border p-7 text-white shadow-xl"
     >
-      <h2 className="font-heading mt-0 flex items-center gap-2 text-xl font-bold">
+      <Heading level="h2" margin="none" className="flex items-center gap-2">
         <TriangleAlert className="size-5 shrink-0" aria-hidden="true" />
         Using a testing Mapbox token
-      </h2>
-      <p className="text-sm leading-relaxed text-white/90">
+      </Heading>
+      <Paragraph
+        intent="smallText"
+        margin="none"
+        className="leading-relaxed text-white/90"
+      >
         This protocol uses Network Canvas&apos;s shared Mapbox testing token so
         the map renders out of the box. It is rate-limited and for evaluation
         only. Before you deploy this study, replace it with your own token in
         the Resource Library.
-      </p>
+      </Paragraph>
       <a
         href={MAPBOX_TOKEN_HELP_URL}
         target="_blank"

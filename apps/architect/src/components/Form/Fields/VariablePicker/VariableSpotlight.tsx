@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 
 import Modal from '@codaco/fresco-ui/Modal';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import type { VariableType } from '@codaco/protocol-validation';
 import Search from '~/components/Form/Fields/Search';
 import type { RootState } from '~/ducks/store';
@@ -115,7 +116,16 @@ type DividerProps = {
 
 const Divider = ({ legend }: DividerProps) => (
   <li className="px-5 pt-5 pb-1 first:pt-1">
-    <span className="small-heading text-muted">{legend}</span>
+    <span
+      className={headingVariants({
+        level: 'label',
+        variant: 'all-caps',
+        margin: 'none',
+        className: 'text-muted',
+      })}
+    >
+      {legend}
+    </span>
   </li>
 );
 

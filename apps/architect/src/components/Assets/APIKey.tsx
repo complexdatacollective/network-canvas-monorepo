@@ -1,5 +1,7 @@
 import type React from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+
 import withAssetMeta from './withAssetMeta';
 
 type APIKeyProps = {
@@ -10,7 +12,9 @@ type APIKeyProps = {
 };
 
 const APIKey = ({ meta = { value: '' } }: APIKeyProps) => (
-  <h1 className="wrap-break-word">{meta.value}</h1>
+  <Heading level="h1" className="wrap-break-word">
+    {meta.value}
+  </Heading>
 );
 
 export default withAssetMeta(APIKey) as React.ComponentType<unknown>;

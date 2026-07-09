@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '~/utils/cva';
 
 type SectionProps = {
@@ -58,12 +59,29 @@ const Section = ({
   }, [isOpen, handleToggleChange]);
 
   const sectionLabel = (
-    <>
+    <span
+      className={cx(
+        layout === 'vertical' &&
+          headingVariants({
+            level: 'h3',
+            margin: 'none',
+            className: 'tracking-tight',
+          }),
+        layout === 'horizontal' &&
+          headingVariants({
+            level: 'label',
+            variant: 'all-caps',
+            margin: 'none',
+            className:
+              'max-tablet-landscape:text-xl max-tablet-landscape:leading-tight max-tablet-landscape:font-semibold max-tablet-landscape:tracking-tight max-tablet-landscape:normal-case',
+          }),
+      )}
+    >
       {title}
       {!toggleable && required && (
         <span className="text-destructive ms-1">*</span>
       )}
-    </>
+    </span>
   );
 
   const sectionHeader = title != null && (
@@ -71,15 +89,14 @@ const Section = ({
       <div
         className={cx(
           'flex items-center gap-4 text-right',
-          layout === 'vertical' && 'text-xl font-semibold tracking-tight',
           // `tablet-landscape:top-24` (6rem) pins the heading just below
           // the sticky top menu bar so it never overlaps it; `z-1` keeps
           // it above the section content but below the nav.
           layout === 'horizontal' &&
-            'tablet-landscape:small-heading tablet-landscape:bg-outline max-tablet-landscape:text-xl max-tablet-landscape:font-semibold max-tablet-landscape:tracking-tight tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:z-1 tablet-landscape:flex-row-reverse tablet-landscape:items-center tablet-landscape:justify-between tablet-landscape:rounded tablet-landscape:px-6 tablet-landscape:py-2',
+            'tablet-landscape:bg-outline tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:z-1 tablet-landscape:flex-row-reverse tablet-landscape:items-center tablet-landscape:justify-between tablet-landscape:rounded tablet-landscape:px-6 tablet-landscape:py-2',
         )}
       >
-        <span>{sectionLabel}</span>
+        {sectionLabel}
         {toggleable && (
           <ToggleField
             title="Turn this feature on or off"

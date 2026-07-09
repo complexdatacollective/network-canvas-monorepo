@@ -4,6 +4,8 @@ import { v4 as uuid } from 'uuid';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   createInitialNetwork,
   type InterviewPayload,
@@ -163,8 +165,12 @@ export function PreviewHost() {
   if (!window.opener) {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-2xl font-semibold">This preview has ended</h1>
-        <p>Return to Architect and click Preview again to start a new one.</p>
+        <Heading level="h1" margin="none" className="text-2xl font-semibold">
+          This preview has ended
+        </Heading>
+        <Paragraph margin="none">
+          Return to Architect and click Preview again to start a new one.
+        </Paragraph>
         <Button color="primary" onClick={() => window.close()}>
           Close tab
         </Button>
@@ -175,13 +181,13 @@ export function PreviewHost() {
   if (!interviewPayload && timedOut) {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-2xl font-semibold">
+        <Heading level="h1" margin="none" className="text-2xl font-semibold">
           Couldn't reach the Architect tab
-        </h1>
-        <p>
+        </Heading>
+        <Paragraph margin="none">
           The preview couldn't be loaded. The Architect tab may be closed or no
           longer responding.
-        </p>
+        </Paragraph>
         <div className="flex gap-3">
           <Button
             color="primary"
@@ -203,11 +209,13 @@ export function PreviewHost() {
   if (!interviewPayload && processingFailed) {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-2xl font-semibold">Couldn't build the preview</h1>
-        <p>
+        <Heading level="h1" margin="none" className="text-2xl font-semibold">
+          Couldn't build the preview
+        </Heading>
+        <Paragraph margin="none">
           Something went wrong preparing this protocol for preview. Return to
           Architect, check the protocol, and try again.
-        </p>
+        </Paragraph>
         <div className="flex gap-3">
           <Button
             color="primary"

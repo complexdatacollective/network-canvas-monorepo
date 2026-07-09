@@ -1,3 +1,4 @@
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import architectIcon from '~/images/architect-icon.png';
 import { cx } from '~/utils/cva';
 
@@ -47,7 +48,15 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
   const content = (
     <>
       {iconImg}
-      <p className="h3 m-0">Architect</p>
+      <span
+        className={headingVariants({
+          level: 'h3',
+          margin: 'none',
+          className: 'font-semibold',
+        })}
+      >
+        Architect
+      </span>
     </>
   );
 

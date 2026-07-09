@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import Button from '@codaco/fresco-ui/Button';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import { Section } from '~/components/EditorLayout';
 import Checkbox from '~/components/Form/Fields/Checkbox';
 import { getCodebook } from '~/selectors/protocol';
@@ -66,7 +67,9 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
       )}
 
       <div className="mb-7">
-        <h2 className="mt-0 mb-5">Ego</h2>
+        <Heading level="h2" margin="none" className="mb-5">
+          Ego
+        </Heading>
         <Section layout="vertical" required={false}>
           <EgoType search={search} unusedOnly={unusedOnly} />
         </Section>
@@ -74,7 +77,9 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
       <div className="mb-7">
         <div className="mb-5 flex items-center gap-5">
-          <h2 className="my-0">Node Types ({nodes.length})</h2>
+          <Heading level="h2" margin="none">
+            Node Types ({nodes.length})
+          </Heading>
           <Button
             color="primary"
             size="sm"
@@ -104,7 +109,9 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
       <div className="mb-7">
         <div className="mb-5 flex items-center gap-5">
-          <h2 className="my-0">Edge Types ({edges.length})</h2>
+          <Heading level="h2" margin="none">
+            Edge Types ({edges.length})
+          </Heading>
           <Button
             color="primary"
             size="sm"
@@ -134,9 +141,9 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
       {processedNetworkAssets.length > 0 && (
         <div className="mb-7">
-          <h2 className="mt-0 mb-5">
+          <Heading level="h2" margin="none" className="mb-5">
             Network Assets ({processedNetworkAssets.length})
-          </h2>
+          </Heading>
           {processedNetworkAssets.map((networkAsset) => (
             <ExternalEntity
               key={networkAsset.id}

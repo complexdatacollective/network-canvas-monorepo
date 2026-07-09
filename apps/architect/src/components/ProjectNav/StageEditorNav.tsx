@@ -84,6 +84,7 @@ const StageEditorNav = ({
         label: 'Finished Editing',
         icon: <Check />,
         showLabel: true,
+        className: 'bg-sea-green text-white',
         onClick: () => {
           openIssues();
           dispatch(submit(formName));

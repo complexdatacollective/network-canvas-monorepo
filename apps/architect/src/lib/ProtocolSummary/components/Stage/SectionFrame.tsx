@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '~/utils/cva';
 
 type SectionFrameProps = {
@@ -22,9 +23,14 @@ const SectionFrame = ({
         contentClassName,
       )}
     >
-      <h2 className="bg-platinum absolute top-0 left-0 m-0 w-full px-5 py-2.5 text-xs font-semibold tracking-widest uppercase">
+      <Heading
+        level="h2"
+        variant="all-caps"
+        margin="none"
+        className="bg-platinum absolute top-0 left-0 w-full px-5 py-2.5 text-xs font-semibold"
+      >
         {title}
-      </h2>
+      </Heading>
       {children}
     </div>
   </div>

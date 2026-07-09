@@ -6,6 +6,7 @@ import { useLocation } from 'wouter';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import Search from '~/components/Form/Fields/Search';
 import Tag from '~/components/Tag';
 import type { RootState } from '~/ducks/modules/root';
@@ -274,7 +275,13 @@ const NewStageScreen = ({
           </div>
           <div className="flex items-center gap-4">
             <div className="shrink-0 text-white">
-              <h4 className="text-sm font-semibold">Filter by capabilities:</h4>
+              <Heading
+                level="h4"
+                margin="none"
+                className="text-sm font-semibold"
+              >
+                Filter by capabilities:
+              </Heading>
             </div>
             <div className="text-navy-taupe flex flex-wrap gap-1">
               {tags.map(({ value, selected, disabled }) => (

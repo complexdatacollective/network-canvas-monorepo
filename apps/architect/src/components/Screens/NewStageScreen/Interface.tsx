@@ -2,6 +2,7 @@ import { find, get } from 'es-toolkit/compat';
 import { motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '~/components/StageTypeImage';
 import Tag from '~/components/Tag';
 
@@ -73,9 +74,13 @@ const InterfaceThumbnail = ({
           />
         </div>
         <div className="flex flex-col">
-          <h4 className={`mt-0 mb-2 ${highlighted ? 'text-white' : ''}`}>
+          <Heading
+            level="h4"
+            margin="none"
+            className={`mb-2 ${highlighted ? 'text-white' : ''}`}
+          >
             {title}
-          </h4>
+          </Heading>
           <div className={`mb-3 ${highlighted ? 'text-white' : ''}`}>
             {description}
           </div>

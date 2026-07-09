@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { change, formValueSelector } from 'redux-form';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
@@ -222,9 +223,13 @@ const ShapeVariableMapping = ({
 
           {selectedVar && dynamic?.type === 'discrete' && (
             <div className="flex flex-col gap-1">
-              <h4 className="text-muted mb-1 block text-base text-sm font-semibold">
+              <Heading
+                level="h4"
+                margin="none"
+                className="text-muted mb-1 block text-sm font-semibold"
+              >
                 Shape for each value
-              </h4>
+              </Heading>
               {getDiscreteOptions().map((option) => {
                 const currentShape = getShapeForValue(option.value);
                 return (
@@ -257,7 +262,13 @@ const ShapeVariableMapping = ({
 
           {selectedVar && dynamic?.type === 'breakpoints' && (
             <div className="flex flex-col gap-1">
-              <h4 className="text-muted mb-1 block text-sm">Thresholds</h4>
+              <Heading
+                level="h4"
+                margin="none"
+                className="text-muted mb-1 block text-sm"
+              >
+                Thresholds
+              </Heading>
               <div className="bg-surface-1 flex items-center gap-2.5 px-2.5 py-1 opacity-60">
                 <span className="flex-1 text-sm">Below first threshold</span>
                 <span className="text-muted text-xs">uses default shape</span>

@@ -53,7 +53,7 @@ const BaseVariablePill = React.forwardRef<
     // `VariablePicker.tsx` (mb on nested pills) and `PreviewRule.tsx` (zoom).
     <motion.div
       className={cx(
-        'variable-pill inline-flex h-14 w-(--variable-pill-width,20rem) flex-nowrap overflow-hidden rounded-full shadow-[0_0_0.6rem_var(--variable-pill-shadow-color,transparent)]',
+        'variable-pill font-monospace inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap overflow-hidden rounded-full text-base shadow-[0_0_0.6rem_var(--variable-pill-shadow-color,transparent)]',
         summary
           ? 'm-2 max-w-[24rem] zoom-[0.8] bg-white [--variable-pill-shadow-color:oklch(var(--platinum--dark))]'
           : 'bg-platinum',
@@ -67,13 +67,13 @@ const BaseVariablePill = React.forwardRef<
     >
       <div
         className={cx(
-          'flex shrink-0 basis-14 items-center justify-center [&_.icon]:w-7',
+          'flex shrink-0 basis-12 items-center justify-center [&_.icon]:w-5',
           ICON_BACKGROUND_BY_TYPE[type],
         )}
       >
         <img className="icon" src={icon} alt={type} />
       </div>
-      <div className="flex w-[calc(100%-3.6rem)] flex-1 items-center justify-between">
+      <div className="flex w-[calc(100%-3rem)] flex-1 items-center justify-between">
         {children}
       </div>
     </motion.div>
@@ -90,7 +90,7 @@ export const SimpleVariablePill = ({
 }: SimpleVariablePillProps) => (
   // eslint-disable-next-line react/jsx-props-no-spreading
   <BaseVariablePill {...props}>
-    <motion.h4 className="text-input-contrast m-0 shrink-0 grow px-5 py-2.5 break-keep">
+    <motion.h4 className="text-input-contrast m-0 shrink-0 grow px-6 break-keep">
       {label}
     </motion.h4>
   </BaseVariablePill>
@@ -265,7 +265,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
         ) : (
           <motion.h4
             key="label"
-            className="text-input-contrast m-0 w-full shrink-0 grow cursor-text overflow-hidden px-5 py-2.5 break-keep text-ellipsis whitespace-nowrap"
+            className="text-input-contrast m-0 w-full shrink-0 grow cursor-text overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
