@@ -3,7 +3,6 @@ import { Check, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useMemo, useRef, useState } from 'react';
 
-import Surface from '@codaco/fresco-ui/layout/Surface';
 import {
   Tooltip,
   TooltipContent,
@@ -55,25 +54,20 @@ const BaseVariablePill = React.forwardRef<
     // `VariablePicker.tsx` (mb on nested pills) and `PreviewRule.tsx` (zoom).
     <motion.div
       className={cx(
-        'variable-pill variable-pill-effect-border font-monospace inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap rounded-full p-0.5 text-base',
+        'variable-pill variable-pill-effect-border effect-shadow-md font-monospace inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap rounded-full p-0.5 text-base',
         summary && 'm-2 max-w-[24rem] zoom-[0.8]',
       )}
       style={style}
       ref={ref}
     >
-      <Surface
-        noContainer
-        spacing="none"
-        shadow="none"
-        className="flex h-full w-full overflow-hidden rounded-[inherit]"
-      >
+      <div className="text-text flex h-full w-full overflow-hidden rounded-[inherit] bg-white">
         <div className="flex shrink-0 basis-12 items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
           <img className="icon opacity-80" src={icon} alt={type} />
         </div>
         <div className="flex w-[calc(100%-3rem)] flex-1 items-center justify-between">
           {children}
         </div>
-      </Surface>
+      </div>
     </motion.div>
   );
 });

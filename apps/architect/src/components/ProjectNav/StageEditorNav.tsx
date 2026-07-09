@@ -15,6 +15,9 @@ import ActionToolbar from './ActionToolbar';
 import Breadcrumb, { type BreadcrumbItem } from './Breadcrumb';
 import NavShell from './NavShell';
 
+const previewButtonClassName =
+  'bg-slate-blue! text-white! hover:enabled:bg-slate-blue! hover:enabled:text-white!';
+
 type StageEditorNavProps = {
   stageName: string;
   onCancel: () => void;
@@ -100,7 +103,7 @@ const StageEditorNav = ({
       component: function PreviewSplitButton({ size }) {
         return (
           <SplitButton
-            className="bg-slate-blue text-white"
+            className={previewButtonClassName}
             disabled={isOpeningPreview || isStageInvalid}
             icon={
               isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />
@@ -115,7 +118,7 @@ const StageEditorNav = ({
             }}
             segment={{
               'aria-label': 'Preview settings',
-              'className': 'bg-slate-blue text-white',
+              'className': previewButtonClassName,
               'disabled': !previewOptionsContent,
               'icon': <Settings />,
             }}
