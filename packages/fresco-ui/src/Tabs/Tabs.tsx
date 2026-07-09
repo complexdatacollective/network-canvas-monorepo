@@ -19,6 +19,8 @@ export type TabsProps = {
   'layout'?: 'side' | 'top';
   /** The tabs to render in the rail. */
   'tabs': TabItem[];
+  /** Content rendered at the end of the tab header, beside top-aligned tabs. */
+  'headerEnd'?: ReactNode;
   /** Accessible name for the tab rail (`tablist`). */
   'aria-label': string;
   'className'?: string;
@@ -53,6 +55,7 @@ export function Tabs({
   onValueChange,
   layout = 'side',
   tabs,
+  headerEnd,
   'aria-label': ariaLabel,
   className,
   style,
@@ -75,7 +78,26 @@ export function Tabs({
         className,
       )}
     >
-      <TabRail tabs={tabs} aria-label={ariaLabel} layout={layout} />
+      {headerEnd ? (
+        <div
+          className={cx(
+            'flex shrink-0 gap-4',
+            layout === 'side'
+              ? 'flex-col'
+              : 'min-w-0 flex-row items-center justify-between',
+          )}
+        >
+          <TabRail
+            tabs={tabs}
+            aria-label={ariaLabel}
+            layout={layout}
+            hasEndContent
+          />
+          <div className="shrink-0">{headerEnd}</div>
+        </div>
+      ) : (
+        <TabRail tabs={tabs} aria-label={ariaLabel} layout={layout} />
+      )}
       {children}
     </BaseTabs.Root>
   );
@@ -92,24 +114,30 @@ function TabRail({
   tabs,
   'aria-label': ariaLabel,
   layout,
+  hasEndContent = false,
 }: {
   'tabs': TabItem[];
   'aria-label': string;
   'layout': NonNullable<TabsProps['layout']>;
+  'hasEndContent'?: boolean;
 }) {
   return (
     <BaseTabs.List
       aria-label={ariaLabel}
       className={cx(
-        'relative flex shrink-0 gap-1',
+        'relative flex gap-1',
         layout === 'side' && [
+          'shrink-0',
           'flex-col',
           'w-fit max-w-[11rem] min-w-[7rem]',
           '@min-[34rem]:max-w-[14rem] @min-[34rem]:min-w-[9rem]',
           '@min-[48rem]:max-w-[17rem] @min-[48rem]:min-w-[11rem]',
           '@min-[64rem]:max-w-[20rem] @min-[64rem]:min-w-[13rem]',
         ],
-        layout === 'top' && 'w-full flex-row overflow-x-auto',
+        layout === 'top' && [
+          'flex-row overflow-x-auto',
+          hasEndContent ? 'min-w-0 flex-1' : 'w-full',
+        ],
       )}
     >
       <TabIndicator layout={layout} />

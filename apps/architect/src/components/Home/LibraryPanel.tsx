@@ -451,6 +451,50 @@ const LibraryPanel = ({
     protocolCount === 1
       ? 'Your 1 protocol is saved only in this browser, on this device. It is never uploaded to a server.'
       : `Your ${protocolCount} protocols are saved only in this browser, on this device. They are never uploaded to a server.`;
+  const headerEnd =
+    activeTab === 'recent' ? (
+      <div className="flex min-w-max items-center justify-end gap-2.5">
+        <Badge color="platinum" className="shadow-none">
+          {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
+        </Badge>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <IconButton
+                variant="text"
+                size="sm"
+                aria-label="Where your protocols are stored"
+                onClick={handleShowStorageInfo}
+                icon={<Info />}
+              />
+            }
+          />
+          <TooltipContent side="bottom">{storageTooltip}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <IconButton
+                variant="text"
+                size="sm"
+                aria-label="Clear all protocols from this browser"
+                onClick={() => void handleClearAll()}
+                icon={<Trash2 />}
+              />
+            }
+          />
+          <TooltipContent side="bottom">
+            Clear all protocols from this browser
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    ) : activeTab === 'templates' ? (
+      <div className="flex min-w-max items-center justify-end">
+        <Badge color="platinum" className="shadow-none">
+          {templateLabel}
+        </Badge>
+      </div>
+    ) : null;
 
   return (
     <>
@@ -467,44 +511,10 @@ const LibraryPanel = ({
           { value: 'recent', label: 'Recent' },
           { value: 'templates', label: 'Templates' },
         ]}
-        className="bg-surface-1 text-surface-1-contrast max-h-[85dvh] w-full max-w-3xl overflow-hidden rounded p-5 shadow-md"
+        headerEnd={headerEnd}
+        className="bg-surface text-surface-contrast max-h-[85dvh] w-full max-w-3xl overflow-hidden rounded p-5 shadow-md"
       >
         <TabsPanel value="recent" className="flex min-h-0 flex-col">
-          <div className="flex h-8 shrink-0 items-center justify-end gap-2.5 px-2.5 pb-2.5">
-            <Badge color="platinum" className="shadow-none">
-              {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
-            </Badge>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <IconButton
-                    variant="text"
-                    size="sm"
-                    aria-label="Where your protocols are stored"
-                    onClick={handleShowStorageInfo}
-                    icon={<Info />}
-                  />
-                }
-              />
-              <TooltipContent side="bottom">{storageTooltip}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <IconButton
-                    variant="text"
-                    size="sm"
-                    aria-label="Clear all protocols from this browser"
-                    onClick={() => void handleClearAll()}
-                    icon={<Trash2 />}
-                  />
-                }
-              />
-              <TooltipContent side="bottom">
-                Clear all protocols from this browser
-              </TooltipContent>
-            </Tooltip>
-          </div>
           <div className={PANEL_CLASSES}>
             {protocols.length === 0 ? (
               <p className="text-muted px-5 py-10 text-center text-sm">
@@ -528,11 +538,6 @@ const LibraryPanel = ({
         </TabsPanel>
 
         <TabsPanel value="templates" className="flex min-h-0 flex-col">
-          <div className="flex h-8 shrink-0 items-center justify-end px-2.5 pb-2.5">
-            <Badge color="platinum" className="shadow-none">
-              {templateLabel}
-            </Badge>
-          </div>
           <div className={PANEL_CLASSES}>
             <PanelRow
               name="Sample Protocol"

@@ -53,6 +53,7 @@ const BODIES = [
 type StoryArgs = {
   containerWidth: number;
   showIcons: boolean;
+  showHeaderEnd: boolean;
   labelLength: keyof typeof LABEL_SETS;
   layout: 'side' | 'top';
 };
@@ -71,6 +72,7 @@ import { Info, LineChart } from 'lucide-react';
   value={section}
   onValueChange={setSection}
   layout="top"
+  headerEnd={<span>6 sections</span>}
   tabs={[
     { value: 'about', label: 'About', icon: Info },
     { value: 'privacy', label: 'Privacy', icon: LineChart },
@@ -86,9 +88,10 @@ import { Info, LineChart } from 'lucide-react';
 - **\`Tabs\`** — root, rail and layout (a container-query flex layout). Props:
   \`tabs\` (\`{ value: string; label: ReactNode; icon?: LucideIcon; disabled?: boolean }[]\`),
   \`aria-label\`, \`value\`, \`defaultValue\`, \`onValueChange(value: string)\`,
-  \`layout\` (\`'side'\` default, or \`'top'\`), \`className\`, \`style\`. Side layout
-  places the tab rail beside the panel and sizes it to the widest label, bounded
-  per breakpoint. Top layout places the rail above the panel.
+  \`layout\` (\`'side'\` default, or \`'top'\`), \`headerEnd\`, \`className\`, \`style\`.
+  Side layout places the tab rail beside the panel and sizes it to the widest
+  label, bounded per breakpoint. Top layout places the rail above the panel;
+  \`headerEnd\` renders at the opposite end of that header row.
 - **\`TabsPanel\`** — content for a tab \`value\`; fills the row and is its own
   \`@container\`. Props: \`value\`, \`keepMounted?\`, \`className\`.
 
@@ -106,6 +109,7 @@ const meta: Meta<StoryArgs> = {
   args: {
     containerWidth: 640,
     showIcons: true,
+    showHeaderEnd: false,
     labelLength: 'default',
     layout: 'side',
   },
@@ -118,6 +122,11 @@ const meta: Meta<StoryArgs> = {
     showIcons: {
       control: 'boolean',
       description: 'Render a leading icon on each tab.',
+    },
+    showHeaderEnd: {
+      control: 'boolean',
+      description:
+        'Render supplementary header content opposite the tab rail. This is most useful with top layout.',
     },
     labelLength: {
       control: 'inline-radio',
@@ -132,7 +141,13 @@ const meta: Meta<StoryArgs> = {
         'Choose whether the tabs appear beside the panel or above it.',
     },
   },
-  render: ({ containerWidth, showIcons, labelLength, layout }) => {
+  render: ({
+    containerWidth,
+    showIcons,
+    showHeaderEnd,
+    labelLength,
+    layout,
+  }) => {
     const [section, setSection] = useState<string>('0');
     const labels = LABEL_SETS[labelLength];
     const tabs = labels.map((label, i) => ({
@@ -146,6 +161,13 @@ const meta: Meta<StoryArgs> = {
         value={section}
         onValueChange={setSection}
         layout={layout}
+        headerEnd={
+          showHeaderEnd ? (
+            <span className="text-muted whitespace-nowrap text-xs font-semibold">
+              {tabs.length} sections
+            </span>
+          ) : null
+        }
         tabs={tabs}
         // The dashed outline marks the component's own bounds so its size can be
         // judged; it is not part of the component.
@@ -181,3 +203,8 @@ export const WithoutIcons: Story = { args: { showIcons: false } };
 
 // Tabs above the content, for compact two-row layouts.
 export const Top: Story = { args: { layout: 'top' } };
+
+// Header metadata/actions can sit opposite the tab rail in top layout.
+export const TopWithHeaderEnd: Story = {
+  args: { layout: 'top', showHeaderEnd: true },
+};
