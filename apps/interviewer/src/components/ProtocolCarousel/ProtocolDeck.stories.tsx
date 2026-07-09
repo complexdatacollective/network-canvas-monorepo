@@ -112,8 +112,7 @@ function DeckHarness() {
         sessions={[]}
         showSampleCard={showSample}
         pendingImports={pending}
-        onImport={addProtocol}
-        onImportFile={addProtocol}
+        onImportFile={() => addProtocol()}
         onStartInterview={() => {}}
         onDeleteProtocol={(hash) =>
           setProtocols((prev) => prev.filter((p) => p.hash !== hash))

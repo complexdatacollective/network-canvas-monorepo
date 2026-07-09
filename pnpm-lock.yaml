@@ -953,6 +953,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.7(react@19.2.7)
+      react-dropzone:
+        specifier: ^15.0.0
+        version: 15.0.0(react@19.2.7)
       uuid:
         specifier: 'catalog:'
         version: 14.0.1

@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type {
@@ -52,7 +53,6 @@ type ProtocolDeckProps = {
   // Dev-only teaser slot for the bundled Development protocol.
   showDevelopmentCard?: boolean;
   pendingImports?: PendingImport[];
-  onImport: () => void;
   onImportFile: (file: File) => void;
   onStartInterview: (protocolHash: string) => void;
   onDeleteProtocol: (hash: string) => void;
@@ -108,7 +108,6 @@ export function ProtocolDeck({
   showSampleCard = false,
   showDevelopmentCard = false,
   pendingImports = [],
-  onImport,
   onImportFile,
   onStartInterview,
   onDeleteProtocol,
@@ -124,6 +123,24 @@ export function ProtocolDeck({
   const carouselRef = useRef<DeckCarouselHandle | null>(null);
   const didInitialScroll = useRef(false);
   const [sectionHeight, setSectionHeight] = useState(0);
+  const handleDrop = useCallback(
+    (files: File[]) => {
+      const file = files[0];
+      if (file) onImportFile(file);
+    },
+    [onImportFile],
+  );
+  const {
+    getRootProps: getImportRootProps,
+    getInputProps: getImportInputProps,
+    isDragActive: isImportDragActive,
+    open: openImportDialog,
+  } = useDropzone({
+    onDrop: handleDrop,
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+  });
 
   const deck = useMemo(
     () =>
@@ -155,11 +172,13 @@ export function ProtocolDeck({
             key: entryKey(entry),
             entry,
             backdropBlur: true,
-            onActivate: onImport,
+            onActivate: openImportDialog,
             render: (_isActive: boolean, activate: () => void) => (
               <ImportTriggerCard
                 onActivate={activate}
-                onImportFile={onImportFile}
+                getRootProps={getImportRootProps}
+                getInputProps={getImportInputProps}
+                isDragActive={isImportDragActive}
               />
             ),
           };
@@ -206,8 +225,10 @@ export function ProtocolDeck({
       deck,
       sessionCounts,
       newSessionProtocolHash,
-      onImport,
-      onImportFile,
+      getImportRootProps,
+      getImportInputProps,
+      isImportDragActive,
+      openImportDialog,
       onStartInterview,
       onInstallSample,
       onDismissSample,

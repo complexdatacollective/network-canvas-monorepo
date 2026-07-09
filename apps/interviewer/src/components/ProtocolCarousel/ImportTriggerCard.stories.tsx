@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
+import { useDropzone } from 'react-dropzone';
 import {
   expect,
   fireEvent,
@@ -41,6 +42,30 @@ type StoryArgs = {
   onImportFile: (file: File) => void;
 };
 
+function ImportTriggerCardStory({
+  onActivate,
+  onImportFile,
+}: Pick<StoryArgs, 'onActivate' | 'onImportFile'>) {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (files) => {
+      const file = files[0];
+      if (file) onImportFile(file);
+    },
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+  });
+
+  return (
+    <ImportTriggerCard
+      onActivate={onActivate}
+      getRootProps={getRootProps}
+      getInputProps={getInputProps}
+      isDragActive={isDragActive}
+    />
+  );
+}
+
 const meta: Meta<StoryArgs> = {
   title: 'Components/ImportTriggerCard',
   parameters: { layout: 'centered' },
@@ -52,7 +77,10 @@ const meta: Meta<StoryArgs> = {
   },
   render: ({ size, onActivate, onImportFile }) => (
     <ResizableFrame size={size}>
-      <ImportTriggerCard onActivate={onActivate} onImportFile={onImportFile} />
+      <ImportTriggerCardStory
+        onActivate={onActivate}
+        onImportFile={onImportFile}
+      />
     </ResizableFrame>
   ),
 };
@@ -91,7 +119,7 @@ export const DropAndClickToImport: Story = {
 
     // Dropping reports the file and clears the highlight.
     await fireEvent(card, dragEvent('drop'));
-    await expect(args.onImportFile).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(args.onImportFile).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(card).toHaveClass('border-outline'));
 
     // A plain click opens the file picker.
