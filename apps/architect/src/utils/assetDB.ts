@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import type { ProtocolSourceRef } from '~/templates';
 
 // A protocol saved in the local library. The library is the durable, multi-
 // protocol store surfaced on the home screen; the redux `activeProtocol` slice
@@ -11,6 +12,7 @@ export type StoredProtocolRow = {
   description?: string;
   schemaVersion: number;
   protocol: CurrentProtocol;
+  sourceRef?: ProtocolSourceRef;
   createdAt: number;
   updatedAt: number;
 };

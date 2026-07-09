@@ -15,10 +15,13 @@ vi.mock('~/utils/bundleProtocol', () => ({
     downloadProtocolAsNetcanvasMock(...args),
 }));
 
-const openDialogMock = vi.fn((config: unknown) => ({
-  type: 'dialogs/openDialog',
-  payload: config,
-}));
+const openDialogMock = vi.fn((config: unknown) => {
+  const thunk = () => ({ unwrap: () => Promise.resolve(true) });
+  return Object.assign(thunk, {
+    type: 'dialogs/openDialog',
+    payload: config,
+  });
+});
 
 vi.mock('~/ducks/modules/dialogs', () => ({
   openDialog: (config: unknown) => openDialogMock(config),

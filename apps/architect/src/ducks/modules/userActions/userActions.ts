@@ -20,6 +20,7 @@ import {
   mayUpgradeProtocolDialog,
   validationErrorDialog,
 } from '~/ducks/modules/userActions/dialogs';
+import type { ProtocolSourceRef } from '~/templates';
 import {
   saveProtocolAssets,
   saveProtocolAssetsToMemory,
@@ -101,18 +102,26 @@ const instantiateProtocol = async (
     assets = [],
     name,
     description,
+    sourceRef,
   }: {
     protocol: CurrentProtocol;
     assets?: ExtractedAsset[];
     name: string;
     description?: string;
+    sourceRef?: ProtocolSourceRef;
   },
   dispatch: Dispatch,
 ): Promise<void> => {
   const protocolId = crypto.randomUUID();
 
   try {
-    await putStoredProtocol({ id: protocolId, protocol, name, description });
+    await putStoredProtocol({
+      id: protocolId,
+      protocol,
+      name,
+      description,
+      sourceRef,
+    });
     try {
       await saveProtocolAssets(assets, protocolId);
     } catch (error) {
@@ -380,7 +389,13 @@ export const openBundledTemplate = createAppAsyncThunk(
       protocol,
       name,
       assets,
-    }: { protocol: CurrentProtocol; name?: string; assets?: ExtractedAsset[] },
+      sourceRef,
+    }: {
+      protocol: CurrentProtocol;
+      name?: string;
+      assets?: ExtractedAsset[];
+      sourceRef?: ProtocolSourceRef;
+    },
     { dispatch },
   ) => {
     // Signal an import is in flight so a fresh-load service-worker update won't
@@ -404,6 +419,7 @@ export const openBundledTemplate = createAppAsyncThunk(
           assets,
           name: finalName,
           description: protocol.description,
+          sourceRef,
         },
         dispatch,
       );

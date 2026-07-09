@@ -1,0 +1,1267 @@
+{
+  "name": "Sample Protocol",
+  "description": "This is a demonstration protocol designed to illustrate the features of the Network Canvas Interviewer app",
+  "experiments": {},
+  "lastModified": "2022-11-22T18:28:58.258Z",
+  "schemaVersion": 8,
+  "codebook": {
+    "node": {
+      "3d5c30be-e733-490e-868d-fcc0dc3d5a4d": {
+        "name": "Person",
+        "icon": "add-a-person",
+        "variables": {
+          "c7053a78-bcd5-44bb-bfca-36c8aefa793f": {
+            "name": "name",
+            "type": "text"
+          },
+          "ee090c9b-2b70-4648-a6db-328d4ef4dbfe": {
+            "name": "sociogram_layout",
+            "type": "layout"
+          },
+          "88271ba2-301d-402c-8407-cfa89446ca1d": {
+            "name": "box_layout",
+            "type": "layout"
+          },
+          "6637c4a8-c383-4a54-bfd8-7f093a1cb4e1": {
+            "name": "communication_freq",
+            "type": "ordinal",
+            "options": [
+              {
+                "label": "Last 24 hours",
+                "value": 5
+              },
+              {
+                "label": "Last week",
+                "value": 4
+              },
+              {
+                "label": "Last six months",
+                "value": 3
+              },
+              {
+                "label": "Last two years",
+                "value": 2
+              },
+              {
+                "label": "Over two years ago",
+                "value": -1
+              }
+            ]
+          },
+          "7e84034b-9aa5-4996-a1c4-2deb3e38c645": {
+            "name": "provides_advice",
+            "type": "boolean"
+          },
+          "20cf8ab4-9356-4568-81e2-8460258e1b45": {
+            "name": "provides_material_support",
+            "type": "boolean"
+          },
+          "132ad372-2ef2-4eec-820e-9eae91829e53": {
+            "name": "group",
+            "type": "categorical",
+            "options": [
+              {
+                "label": "Family Member",
+                "value": "family"
+              },
+              {
+                "label": "Friends",
+                "value": "friends"
+              },
+              {
+                "label": "Work Colleague",
+                "value": "colleague"
+              },
+              {
+                "label": "School",
+                "value": "school"
+              }
+            ]
+          },
+          "1380a661-ae08-4477-8e53-253f6c928ed9": {
+            "name": "group_other",
+            "type": "text"
+          },
+          "1d6a2675-3cff-4740-8c56-d5f26982eaeb": {
+            "name": "discuss_network_research",
+            "type": "boolean"
+          },
+          "52138688-e1e9-418b-9c33-ec9f3def499b": {
+            "name": "social_networks_research_relationship",
+            "type": "categorical",
+            "options": [
+              {
+                "label": "Work Colleague",
+                "value": "Work_Colleague"
+              },
+              {
+                "label": "Classmate",
+                "value": "Classmate"
+              },
+              {
+                "label": "Co-author",
+                "value": "Co-author"
+              },
+              {
+                "label": "Supervisor",
+                "value": "Supervisor"
+              }
+            ]
+          },
+          "2bee574a-a12e-4ee0-8610-263130299a2d": {
+            "name": "social_network_research_relationship_other",
+            "type": "text"
+          }
+        },
+        "color": "node-color-seq-1",
+        "shape": {
+          "default": "circle"
+        }
+      },
+      "14a93cae-06c6-4d40-9c19-66c9ac434d34": {
+        "name": "Clinic",
+        "icon": "add-a-place",
+        "variables": {
+          "45a62b9c-42ec-4735-bf1a-4074a2001d2c": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true
+            }
+          },
+          "1d1460f2-8c11-4f66-8647-83801116aebf": {
+            "name": "last_visit",
+            "type": "datetime",
+            "component": "DatePicker",
+            "parameters": {
+              "type": "full",
+              "min": "2020-01-01"
+            }
+          },
+          "37fb19da-3ec0-4427-bb4b-3b59003a7e60": {
+            "name": "visit_purpose",
+            "type": "text",
+            "component": "TextArea"
+          }
+        },
+        "color": "node-color-seq-2",
+        "shape": {
+          "default": "circle"
+        }
+      },
+      "a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32": {
+        "name": "University",
+        "icon": "add-a-place",
+        "variables": {
+          "d91ca102-954d-4da1-b8b8-d9490c7bca44": {
+            "name": "overall_review",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": "Excellent",
+                "value": 5
+              },
+              {
+                "label": "Above Average",
+                "value": 4
+              },
+              {
+                "label": "Average",
+                "value": 3
+              },
+              {
+                "label": "Below Average",
+                "value": 2
+              },
+              {
+                "label": "Poor",
+                "value": 1
+              }
+            ]
+          },
+          "95c5bb4d-5ac2-4ddd-8dd9-fca518f15748": {
+            "name": "visited",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              {
+                "label": "Visited\n",
+                "value": true
+              },
+              {
+                "label": "Studied\n",
+                "value": false,
+                "negative": false
+              }
+            ]
+          }
+        },
+        "color": "node-color-seq-5",
+        "shape": {
+          "default": "circle"
+        }
+      },
+      "83c596f7-2244-425c-b2ed-4186dbf4c815": {
+        "name": "Classmate",
+        "icon": "add-a-person",
+        "color": "node-color-seq-7",
+        "shape": {
+          "default": "circle"
+        }
+      }
+    },
+    "edge": {
+      "a489e869-2555-4896-a760-2d38046b54f9": {
+        "name": "know",
+        "color": "edge-color-seq-1"
+      },
+      "8487418e-cd64-452b-9064-b46ffff28a79": {
+        "name": "conflict",
+        "color": "edge-color-seq-6"
+      }
+    },
+    "ego": {
+      "variables": {
+        "4ab18994-a252-47cb-ba19-20b6ffc0e927": {
+          "name": "first_name",
+          "type": "text",
+          "component": "Text",
+          "validation": {
+            "required": true
+          }
+        },
+        "3b5197a9-d024-421c-8663-1e06e0587999": {
+          "name": "last_name",
+          "type": "text",
+          "component": "Text",
+          "validation": {
+            "required": true
+          }
+        },
+        "198bdb95-9556-4775-9c82-22531a382aa5": {
+          "name": "dob",
+          "type": "datetime",
+          "component": "DatePicker",
+          "parameters": {
+            "type": "full"
+          }
+        },
+        "92326a8e-f5a1-4918-8717-a4d6917a9264": {
+          "name": "languages_spoken",
+          "type": "categorical",
+          "component": "ToggleButtonGroup",
+          "options": [
+            {
+              "label": "English",
+              "value": "english"
+            },
+            {
+              "label": "Mandarin Chinese",
+              "value": "mandarin-chinese"
+            },
+            {
+              "label": "Hindi",
+              "value": "hindi"
+            },
+            {
+              "label": "Spanish",
+              "value": "spanish"
+            },
+            {
+              "label": "French",
+              "value": "french"
+            },
+            {
+              "label": "Arabic",
+              "value": "arabic"
+            },
+            {
+              "label": "Bengali",
+              "value": "bengali"
+            },
+            {
+              "label": "Russian",
+              "value": "russian"
+            }
+          ]
+        },
+        "aa418971-ce17-4f0f-8060-438197298a82": {
+          "name": "existing_software",
+          "type": "ordinal",
+          "component": "RadioGroup",
+          "options": [
+            {
+              "label": "Very Satisfied",
+              "value": 5
+            },
+            {
+              "label": "Somewhat Satisfied",
+              "value": 4
+            },
+            {
+              "label": "Neither Satisfied or Dissatisfied",
+              "value": 3
+            },
+            {
+              "label": "Somewhat Dissatisfied",
+              "value": 2
+            },
+            {
+              "label": "Very Dissatisfied",
+              "value": 1
+            }
+          ]
+        },
+        "d2ac00d6-337a-4ce4-87de-028eccd81617": {
+          "name": "research_support",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            {
+              "label": "Very Satisfied",
+              "value": 2
+            },
+            {
+              "label": "Somewhat Satisfied",
+              "value": 1
+            },
+            {
+              "label": "Neither Satisfied or Dissatisfied",
+              "value": 0
+            },
+            {
+              "label": "Somewhat Dissatisfied",
+              "value": -1
+            },
+            {
+              "label": "Very Dissatisfied",
+              "value": -2
+            }
+          ]
+        },
+        "3609188b-dfbe-482a-995c-d71387e22054": {
+          "name": "operation_pain",
+          "type": "scalar",
+          "component": "VisualAnalogScale",
+          "parameters": {
+            "minLabel": "No pain",
+            "maxLabel": "Unbearable pain"
+          }
+        },
+        "5a77b483-8120-4a64-aff1-c8c5d4ac33d1": {
+          "name": "other_info",
+          "type": "text",
+          "component": "TextArea"
+        },
+        "835ea5b5-1fbf-472d-ad3a-df74ec1d6870": {
+          "name": "preferred_contact_method",
+          "type": "categorical",
+          "component": "CheckboxGroup",
+          "options": [
+            {
+              "label": "Email",
+              "value": "email"
+            },
+            {
+              "label": "Post",
+              "value": "post"
+            },
+            {
+              "label": "SMS",
+              "value": "sms"
+            },
+            {
+              "label": "Phonecall",
+              "value": "phone"
+            }
+          ]
+        },
+        "09306238-68e4-498c-8c12-923eb2eec760": {
+          "name": "participant_consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "validation": {
+            "required": true
+          },
+          "options": [
+            {
+              "label": "**Yes**. I wish to participate in the study in accordance with the terms outlined above.\n",
+              "value": true,
+              "negative": false
+            },
+            {
+              "label": "**No**. I decline to participate, and wish to immediately withdraw from this study.\n",
+              "value": false,
+              "negative": true
+            }
+          ]
+        }
+      }
+    }
+  },
+  "assetManifest": {
+    "89aab5e0-8cc9-43de-b564-770aafa87b28": {
+      "id": "89aab5e0-8cc9-43de-b564-770aafa87b28",
+      "name": "NC-Type and Mark Pos@4x.png",
+      "type": "image",
+      "source": "0a85f140-32e2-11eb-8503-3b4fa95b8bc6.png"
+    },
+    "d94b5dae-4ed5-42bf-9d1c-b6585fbe078d": {
+      "id": "d94b5dae-4ed5-42bf-9d1c-b6585fbe078d",
+      "name": "world-universities.csv",
+      "type": "network",
+      "source": "862d52c0-32ec-11eb-8503-3b4fa95b8bc6.csv"
+    },
+    "86b7feeb-b71a-4c15-8eb4-25a75491d512": {
+      "id": "86b7feeb-b71a-4c15-8eb4-25a75491d512",
+      "name": "class roster.csv",
+      "type": "network",
+      "source": "a3cf6c90-32ed-11eb-8503-3b4fa95b8bc6.csv"
+    },
+    "ed673344-caac-4702-b029-7fa4b842af75": {
+      "id": "ed673344-caac-4702-b029-7fa4b842af75",
+      "name": "political-compass@4x.png",
+      "type": "image",
+      "source": "2946e670-3e45-11eb-ac1c-7b8de3fada93.png"
+    },
+    "9e85e738-ebd3-40d5-952e-62f6aef95615": {
+      "id": "9e85e738-ebd3-40d5-952e-62f6aef95615",
+      "name": "01.mov",
+      "type": "video",
+      "source": "1193f170-3ef5-11eb-9463-ef503e14de0c.mov"
+    },
+    "a1f8d707-c9f2-4990-a544-8cf1148c8ad4": {
+      "id": "a1f8d707-c9f2-4990-a544-8cf1148c8ad4",
+      "name": "02.mov",
+      "type": "video",
+      "source": "8f010350-3ef5-11eb-9463-ef503e14de0c.mov"
+    },
+    "fd0ec703-7091-448d-a3ff-ec40a6e0256d": {
+      "id": "fd0ec703-7091-448d-a3ff-ec40a6e0256d",
+      "name": "03.mov",
+      "type": "video",
+      "source": "d0900b30-3ef6-11eb-9463-ef503e14de0c.mov"
+    },
+    "02a6cd2a-8ca1-4126-a847-b3913b312ad4": {
+      "id": "02a6cd2a-8ca1-4126-a847-b3913b312ad4",
+      "name": "05.mov",
+      "type": "video",
+      "source": "27bad7e0-3ef8-11eb-9463-ef503e14de0c.mov"
+    },
+    "1b5d57eb-f86c-4e7d-b8a8-9b4d09e821f4": {
+      "id": "1b5d57eb-f86c-4e7d-b8a8-9b4d09e821f4",
+      "name": "06.mov",
+      "type": "video",
+      "source": "51a06610-3ef8-11eb-9463-ef503e14de0c.mov"
+    },
+    "f502aa5b-13d3-400f-97fa-2c363d076478": {
+      "id": "f502aa5b-13d3-400f-97fa-2c363d076478",
+      "name": "07.mov",
+      "type": "video",
+      "source": "e0d7e970-3ef8-11eb-9463-ef503e14de0c.mov"
+    }
+  },
+  "stages": [
+    {
+      "id": "3a352ae0-32e3-11eb-8503-3b4fa95b8bc6",
+      "label": "Welcome",
+      "type": "Information",
+      "title": "Welcome to the Sample Protocol",
+      "items": [
+        {
+          "id": "f12c365f-237b-49da-99d2-2eeacc817997",
+          "type": "text",
+          "content": "We developed this sample interview protocol to provide an overview of the features of Interviewer, and give examples of the key tasks associated with conducting a personal network interview. Specifically, we will be discussing:\n\n* Options for name generation within Interviewer, including the use of existing roster data\n* Name interpreter functionality, including dedicated interfaces for certain types of data, and general purpose \"form\" interfaces for everything else\n* The use of the Sociogram Interface, and other methods of creating edges\n* The use of skip logic and network filtering on a stage to minimize response burden\n* The Narrative Interface as a tool for qualitative network interviewing"
+        },
+        {
+          "id": "fd3a3fea-b094-4098-ac7a-d6e06722432d",
+          "type": "text",
+          "content": "To move through this protocol, use the arrows on the left hand side of the screen. When you are ready to continue, click the down arrow."
+        },
+        {
+          "id": "f275e48b-a614-4c06-b830-217d2b15a737",
+          "type": "asset",
+          "content": "89aab5e0-8cc9-43de-b564-770aafa87b28",
+          "size": "SMALL"
+        }
+      ]
+    },
+    {
+      "id": "426884b0-3594-11eb-8030-7590bae3c8d1",
+      "label": "Information Interface",
+      "type": "Information",
+      "title": "Information Interface",
+      "items": [
+        {
+          "id": "176d0f5a-132c-45b9-b542-8f7b7a83e71b",
+          "type": "text",
+          "content": "The screen you are currently viewing was built using the **Information Interface** within Architect.\n\nUnlike other interfaces, this interface captures no data from the participant. Instead, researchers are able to include explanatory **text** and **image**, **audio**, and **video** files to assist in the administration of Network Canvas Interviews.\n\nWhile these screens are helpful in guiding interviews, it should be noted that Interviewer has been designed to conduct interviews in a face-to-face setting, where tasks on each screen are able to be fully explained to the participant by the researcher.\n"
+        },
+        {
+          "id": "74fab225-4b5d-42cb-b01b-d220d7158e8a",
+          "type": "asset",
+          "content": "89aab5e0-8cc9-43de-b564-770aafa87b28",
+          "size": "SMALL"
+        }
+      ]
+    },
+    {
+      "id": "3bc23580-acdf-11eb-a565-f3cb02ccfc34",
+      "label": "Ego Form Introduction",
+      "type": "Information",
+      "title": "Introducing the Ego Form",
+      "items": [
+        {
+          "id": "8d5c5245-78d9-4fe5-86fb-bbc0f4063f8e",
+          "type": "text",
+          "content": "Interviewer supports collecting arbitrary data from the participant, through the use of the **Ego Form** interface. This interface allows you to present as many questions as you wish to the participant. Answers given are stored separately from node and edge attribute data, and can be exported along with other data.\n\nThe next screen uses the Ego Form interface to create an example of a consent form.\n"
+        }
+      ]
+    },
+    {
+      "id": "400b9810-9dc2-11eb-8192-d9f6b822b280",
+      "label": "Consent Form",
+      "type": "EgoForm",
+      "form": {
+        "fields": [
+          {
+            "variable": "09306238-68e4-498c-8c12-923eb2eec760",
+            "prompt": "Do you consent to participate in this study in accordance with the terms above?\n"
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": "Sample Consent Form",
+        "text": "**STUDY TITLE:** A Sample Network Canvas Study\n\n**RESEARCHER DETAILS:** Joshua Melville, Northwestern University\n\n**PURPOSE OF STUDY:** Demonstration\n\nBy answering **yes** below, you confirm the following:\n\n\n1. I have read the information sheet, have asked questions and received satisfactory answers\n1. I understand that this project has been reviewed by, and received ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;\n1. I understand that my participation is voluntary and that I am free to withdraw myself or my data at any time, without giving any reason, and without any adverse consequences\n1. I understand who will have access to personal data provided\n1. I understand how personal data will be stored and what will happen to the data at the end of the project\n1. I understand that the research will be written up and published in the public domain.\n1. I understand how to raise concerns or make a complaint\n\n"
+      }
+    },
+    {
+      "id": "e922f680-32ee-11eb-8503-3b4fa95b8bc6",
+      "label": "Ego Form",
+      "type": "EgoForm",
+      "form": {
+        "fields": [
+          {
+            "variable": "4ab18994-a252-47cb-ba19-20b6ffc0e927",
+            "prompt": "What is your first name?"
+          },
+          {
+            "variable": "3b5197a9-d024-421c-8663-1e06e0587999",
+            "prompt": "What is your last name?"
+          },
+          {
+            "variable": "198bdb95-9556-4775-9c82-22531a382aa5",
+            "prompt": "What is your date of birth?"
+          },
+          {
+            "variable": "92326a8e-f5a1-4918-8717-a4d6917a9264",
+            "prompt": "Which of the following languages do you speak fluently?"
+          },
+          {
+            "variable": "aa418971-ce17-4f0f-8060-438197298a82",
+            "prompt": "Overall, how satisfied are you with existing social network analysis software?"
+          },
+          {
+            "variable": "d2ac00d6-337a-4ce4-87de-028eccd81617",
+            "prompt": "How satisfied are you with the level of support you receive?"
+          },
+          {
+            "variable": "3609188b-dfbe-482a-995c-d71387e22054",
+            "prompt": "Thinking back to your last medical procedure, how much pain do you feel you experienced?"
+          },
+          {
+            "variable": "835ea5b5-1fbf-472d-ad3a-df74ec1d6870",
+            "prompt": "How would you prefer to be contacted about your next interview?"
+          },
+          {
+            "variable": "5a77b483-8120-4a64-aff1-c8c5d4ac33d1",
+            "prompt": "Is there any other information you would like to provide at this time?"
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": "Conventional Ego Data Collection Example",
+        "text": "This screen shows an example of a more conventional participant-level data collection form. Note the collection of many different types of data, and the use of touch optimized input controls alongside more familiar text entry.\n\nInterviewer is not intended to replace dedicated participant-level survey tools. However, it can be used to collect basic ego data, and is especially useful if you need to collect information that can link your participant to survey data collected through a different platform.\n"
+      }
+    },
+    {
+      "id": "33a5faa0-32e4-11eb-8503-3b4fa95b8bc6",
+      "label": "Generating Nodes",
+      "type": "Information",
+      "title": "Generating Nodes",
+      "items": [
+        {
+          "id": "45ca0997-c8cf-4d94-bc71-f2dccff41442",
+          "type": "text",
+          "content": "The first key step within a social network interview is the generation of the network members - or nodes. On the next screen you will see an example of a Name Generator Interface using **Quick Add**, which asks you to enter the names of any individuals whom you have felt close to or have discussed important personal matters with. \n\nEnter the names of these individuals by pressing the **‘Add a Person’ Icon** at the bottom right corner of the screen. Type the name of the individual and press enter. Numerous individuals can be entered in rapid succession. \n\nResearchers are able to choose from four types of name generator interfaces based on their priorities and needs. A researcher might choose this 'quick add' name generator if they wish to prioritize the elicitation of many names as quickly as possible. If a mistake is made, nodes can be easily deleted by dragging them toward the bottom of the screen into the garbage bin that appears."
+        },
+        {
+          "id": "96e56bee-cbdb-4933-9e00-783e7505c276",
+          "type": "asset",
+          "content": "9e85e738-ebd3-40d5-952e-62f6aef95615",
+          "size": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "id": "f6cff4b0-32e7-11eb-8503-3b4fa95b8bc6",
+      "label": "Quick Add Name Generator",
+      "type": "NameGeneratorQuickAdd",
+      "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
+      "subject": {
+        "entity": "node",
+        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+      },
+      "prompts": [
+        {
+          "id": "ef3a3de1-b986-472a-a074-1b42634680dd",
+          "text": "Within the **past 6 months**, who have you felt **close to**, or discussed **important personal matters** with?"
+        }
+      ]
+    },
+    {
+      "id": "73f13080-32e8-11eb-8503-3b4fa95b8bc6",
+      "label": "Name Generation Using a Side Panel",
+      "type": "Information",
+      "title": "Name Generation Using a Side Panel",
+      "items": [
+        {
+          "id": "8ad0af99-37cb-40c0-b2f1-8c482aab16d7",
+          "type": "text",
+          "content": "Sometimes the individuals named within network interviews have multiple relationships with the interviewee that are important to the researcher. For example, someone might be a *close friend* but also a *co-worker*. Instead of having the research participant enter these names twice, researchers can use **Side Panels** to allow the participant to select and drag over nodes already entered from the in-progress interview. The use of Side Panels speeds data entry, and can be used for simple name interpreter functionality. \n\nSide panels can also be populated before the interview (when building the protocol within Architect) by adding a network data file containing a roster of individuals from which all participants would be able to select - such as a classroom. This is the first of three locations where roster data can be used in your protocol.\n\nOn the next screen - add individuals by clicking the ‘Add a Person' Icon or dragging individuals from the side panel. \n"
+        },
+        {
+          "id": "868da7cc-9dcb-43c9-a799-6d7ea3b19747",
+          "type": "asset",
+          "content": "a1f8d707-c9f2-4990-a544-8cf1148c8ad4",
+          "size": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "id": "39e14c40-32e8-11eb-8503-3b4fa95b8bc6",
+      "label": "Quick Add with Sidepanel",
+      "type": "NameGeneratorQuickAdd",
+      "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
+      "subject": {
+        "entity": "node",
+        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+      },
+      "panels": [
+        {
+          "id": "a4666c9c-d2a6-4730-abf7-8d15e39378e9",
+          "title": "People you have already mentioned",
+          "dataSource": "existing"
+        }
+      ],
+      "prompts": [
+        {
+          "id": "f98a377f-314a-4313-a4f3-fa7aa921333b",
+          "text": "Within the **past 6 months**, who have you discussed **social networks research** with?",
+          "additionalAttributes": [
+            {
+              "variable": "1d6a2675-3cff-4740-8c56-d5f26982eaeb",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "501a9420-32e9-11eb-8503-3b4fa95b8bc6",
+      "label": "Name Generator using Forms",
+      "type": "Information",
+      "title": "Name Generation using Forms",
+      "items": [
+        {
+          "id": "bf1390c3-a703-4bae-831d-9ab78e4f0ad5",
+          "type": "text",
+          "content": "The previous two name generator tasks have used the **Quick Add** version of our Name Generator, which means that the participant only needed to enter a name for the alter in order to add them to the interview.\n\nFor more in-depth data collection about alters as they are collected, we provide a version of the name generator that uses **Forms**. A form is a collection of one or more variables which is shown to the participant each time they click the 'Add a Person' Icon on the name generator. \n\nFor example, on the next screen, Clinics or Health Care Providers visited within the past 12 months are entered. Names are required, along with date of visit and a text description of the purpose of the visit. \n\nThe choice of name generation interface should depend on the priorities of the researcher. The *Quick Add* version back-loads the burden of name interpreter tasks, whereas the *Name Generator using Forms* front-loads some of that burden."
+        },
+        {
+          "id": "0ff569f0-4fbc-40df-93a4-cfb23467040c",
+          "type": "asset",
+          "content": "fd0ec703-7091-448d-a3ff-ec40a6e0256d",
+          "size": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "id": "1aa15990-32ea-11eb-8503-3b4fa95b8bc6",
+      "label": "Clinic or Health Care Provider Name Generator",
+      "type": "NameGenerator",
+      "form": {
+        "title": "Add a Clinic or Health Care Provider",
+        "fields": [
+          {
+            "variable": "45a62b9c-42ec-4735-bf1a-4074a2001d2c",
+            "prompt": "What is the name of this clinic or health care provider?"
+          },
+          {
+            "variable": "1d1460f2-8c11-4f66-8647-83801116aebf",
+            "prompt": "When was your visit?"
+          },
+          {
+            "variable": "37fb19da-3ec0-4427-bb4b-3b59003a7e60",
+            "prompt": "In your own words, what was the purpose of your visit?"
+          }
+        ]
+      },
+      "subject": {
+        "entity": "node",
+        "type": "14a93cae-06c6-4d40-9c19-66c9ac434d34"
+      },
+      "prompts": [
+        {
+          "id": "eea94879-29d5-4a15-98e7-6741521ee928",
+          "text": "Within **the past 12 months**, which **clinics** or **healthcare providers** have you visited?"
+        }
+      ]
+    },
+    {
+      "id": "ae3f75f0-32eb-11eb-8503-3b4fa95b8bc6",
+      "label": "Name Generator with Roster Info",
+      "type": "Information",
+      "title": "Name Generation Using Roster Data",
+      "items": [
+        {
+          "id": "e2937966-8e0f-4a48-b090-84fc078e1852",
+          "type": "text",
+          "content": "Interviewer also supports the use of rosters containing pre\\-populated lists of names. The name generator you saw earlier featuring a side panel for &quot;people already mentioned&quot; is one place this roster data can be used, but the following two screens demonstrate our dedicated interface for this type of data.\n\nThe roster interface is split into two panels. One panel displays &#39;cards&#39; that represent each item in your roster. The other panel represents nodes in the interview, and will initially be empty. **To nominate an alter**, the participant must drag a card from the first panel, into the second. This card will then be removed from the card list, and a node will be created representing the roster member in the interview network.\n\nThe interface supports configurable options for sorting cards, searching for cards, and displaying cards.\n\nThe first screen you will see shows a smaller roster. Alters elicited on this stage will be used on a later stage (Dyad Census) which requires at _at least two nodes be nominated._ Please be sure to **nominate at least two classmates from the roster.**\n\nThe second screen shows a larger roster. Where the roster is above 100 members in size, the participant must use the search function before any cards are shown.\n"
+        }
+      ]
+    },
+    {
+      "id": "01455ba0-32ee-11eb-8503-3b4fa95b8bc6",
+      "label": "Small Roster - Classroom",
+      "type": "NameGeneratorRoster",
+      "subject": {
+        "entity": "node",
+        "type": "83c596f7-2244-425c-b2ed-4186dbf4c815"
+      },
+      "dataSource": "86b7feeb-b71a-4c15-8eb4-25a75491d512",
+      "cardOptions": {
+        "additionalProperties": [
+          {
+            "label": "First Name",
+            "variable": "first_name"
+          },
+          {
+            "label": "Last Name",
+            "variable": "last_name"
+          }
+        ]
+      },
+      "sortOptions": {
+        "sortOrder": [
+          {
+            "property": "first_name",
+            "direction": "asc"
+          }
+        ],
+        "sortableProperties": [
+          {
+            "label": "First Name",
+            "variable": "first_name"
+          },
+          {
+            "label": "Last Name",
+            "variable": "last_name"
+          }
+        ]
+      },
+      "prompts": [
+        {
+          "id": "ef6cbd25-7614-4d96-92d6-bd8fc89b3a87",
+          "text": "Please select any members of your class that you spend time with **other than when studying**. Tap a card to select, and press the **down arrow** when you are finished."
+        }
+      ]
+    },
+    {
+      "id": "dfde4a90-32ec-11eb-8503-3b4fa95b8bc6",
+      "label": "University Roster",
+      "type": "NameGeneratorRoster",
+      "subject": {
+        "entity": "node",
+        "type": "a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"
+      },
+      "dataSource": "d94b5dae-4ed5-42bf-9d1c-b6585fbe078d",
+      "cardOptions": {
+        "additionalProperties": [
+          {
+            "label": "Website",
+            "variable": "website"
+          },
+          {
+            "label": "Country Code",
+            "variable": "country"
+          }
+        ]
+      },
+      "searchOptions": {
+        "fuzziness": 0.25,
+        "matchProperties": ["website", "country", "name"]
+      },
+      "prompts": [
+        {
+          "id": "fe89d20d-d517-4ee6-83f4-bbff5115a45f",
+          "text": "Which universities have you either **visited** or **studied at**?"
+        }
+      ]
+    },
+    {
+      "id": "3ca90480-32f8-11eb-8503-3b4fa95b8bc6",
+      "label": "University Per Alter Form",
+      "type": "AlterForm",
+      "subject": {
+        "entity": "node",
+        "type": "a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "95c5bb4d-5ac2-4ddd-8dd9-fca518f15748",
+            "prompt": "Did you visit this university, or study there?"
+          },
+          {
+            "variable": "d91ca102-954d-4da1-b8b8-d9490c7bca44",
+            "prompt": "Overall, how would you describe your experience at this university?"
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": "University Per-alter Form",
+        "text": "Name interpreter interfaces can also be used to capture data about the network members named. On the next screens, we will first demonstrate how data might be captured utilizing a **Per Alter Form**, which shows a form for each alter - in this case, University - that the participant named."
+      }
+    },
+    {
+      "id": "36e08b20-3b06-11eb-9e09-d7e61d6a0624",
+      "label": "Sociogram Information",
+      "type": "Information",
+      "title": "Using the Sociogram",
+      "items": [
+        {
+          "id": "dab3ed09-8b8b-4bd0-a9aa-550e29fac2c4",
+          "type": "text",
+          "content": "The next interface we will introduce is the **Sociogram**. Participants use this interface to position their alters on the screen, create ties between them, and to nominate alters as having a given attribute. \n\nOn the next two screens you will be asked to position alters onto the Sociogram screen, first onto a default image of concentric circles, placing folks who know each other closer together and those who do not know each other farther away. On the second screen, you will see an example of a customized background image, using the political compass diagram. We included this image by adding it as a resource when we were building the protocol within Architect. This allows the researcher immense flexibility in how the Sociogram might be utilized. "
+        },
+        {
+          "id": "6acf6657-b16a-4ac2-bca9-50a831ff83c3",
+          "type": "asset",
+          "content": "02a6cd2a-8ca1-4126-a847-b3913b312ad4",
+          "size": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "id": "73ac2120-32fc-11eb-8503-3b4fa95b8bc6",
+      "label": "Person Sociogram",
+      "type": "Sociogram",
+      "subject": {
+        "entity": "node",
+        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "prompts": [
+        {
+          "id": "788a8dcb-f2fb-4ec5-8a3f-304a4e575752",
+          "text": "Please position the people you have named amongst the concentric circles. Place people who know each other together, and put people you are closer to towards the center of the circles.",
+          "layout": {
+            "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
+          },
+          "highlight": {
+            "allowHighlighting": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "8dcc71c0-32fe-11eb-8503-3b4fa95b8bc6",
+      "label": "Person Sociogram with Background Image",
+      "type": "Sociogram",
+      "subject": {
+        "entity": "node",
+        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+      },
+      "background": {
+        "image": "ed673344-caac-4702-b029-7fa4b842af75"
+      },
+      "prompts": [
+        {
+          "id": "53b81a21-402c-443f-9421-4ca752d8fa0a",
+          "text": "Please position the people you have named in the boxes according to which group you feel they most belong to",
+          "layout": {
+            "layoutVariable": "88271ba2-301d-402c-8407-cfa89446ca1d"
+          },
+          "highlight": {
+            "allowHighlighting": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "0f0dbd20-32ff-11eb-8982-61526ca14943",
+      "label": "Information about Edge Creation Between Alters",
+      "type": "Information",
+      "title": "Creating Edges on the Sociogram",
+      "items": [
+        {
+          "id": "56717145-8fcc-44f7-913f-359a591b6766",
+          "type": "text",
+          "content": "Once alters have been positioned on the screen, the *Sociogram Interface* can also be used to measure relationships between alters. \n\nOn the next screens you will be asked to create connections or **edges** between individuals who have a certain relationship with each other. To do this, you tap one node and then tap a second node. You can go through this process again to remove a tie. \n\nMultiple kinds of edges can be created. While on the first screen we ask you to connect any two people who might spend time together without you being there, on the second screen we ask you to connect individuals are have conflict or who do not get along with each other well. "
+        },
+        {
+          "id": "f835d765-e864-4197-b6bb-f703fadc7d5c",
+          "type": "asset",
+          "content": "1b5d57eb-f86c-4e7d-b8a8-9b4d09e821f4",
+          "size": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "id": "692ce010-32ff-11eb-8982-61526ca14943",
+      "label": "Sociogram Edge Creation",
+      "type": "Sociogram",
+      "subject": {
+        "entity": "node",
+        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "prompts": [
+        {
+          "id": "ebbdc24d-51d4-4790-bf45-76493ae41d63",
+          "text": "Please connect any two people who might spend time together without you being there",
+          "layout": {
+            "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
+          },
+          "edges": {
+            "display": ["a489e869-2555-4896-a760-2d38046b54f9"],
+            "create": "a489e869-2555-4896-a760-2d38046b54f9"
+          },
+          "highlight": {
+            "allowHighlighting": false
+          }
+        },
+        {
+          "id": "47a9bfde-fd5c-4fb2-a8fe-c79744b0589a",
+          "text": "Please connect any two people who have conflict, or who don't get on well with each other",
+          "layout": {
+            "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
+          },
+          "edges": {
+            "display": ["8487418e-cd64-452b-9064-b46ffff28a79"],
+            "create": "8487418e-cd64-452b-9064-b46ffff28a79"
+          },
+          "highlight": {
+            "allowHighlighting": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "b267f9e0-32ff-11eb-8982-61526ca14943",
+      "label": "Classmates Dyad Census",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "type": "node",
+              "id": "f3de3b38-5317-46e3-ac4b-928fb84a86cc",
+              "options": {
+                "type": "83c596f7-2244-425c-b2ed-4186dbf4c815",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "type": "DyadCensus",
+      "subject": {
+        "entity": "node",
+        "type": "83c596f7-2244-425c-b2ed-4186dbf4c815"
+      },
+      "prompts": [
+        {
+          "id": "be867d80-1dce-49ed-984d-5de4ca344d5c",
+          "text": "To the best of your knowledge, do these two people spend time together outside of class?",
+          "createEdge": "a489e869-2555-4896-a760-2d38046b54f9"
+        }
+      ],
+      "introductionPanel": {
+        "title": "Dyad Census",
+        "text": "Edges can also be made between alters using something called the **Dyad Census Interface**. \n\nWhile before we showed how ties can be captured by placing and drawing edges between nodes on the *Sociogram* itself, some researchers might want each potential edge between alters to be systematically queried.  \n\nIn the next screens, if you selected two or more classmate alters on the prior *Small Roster Name Generator*, then you will be systematically presented every possible pair of alters. By answering 'Yes' to if these two individuals spend time together outside of class, an edge between both alters will then be created."
+      }
+    },
+    {
+      "id": "5d1c3b80-3300-11eb-8982-61526ca14943",
+      "label": "Dyad Census Skipped",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "type": "node",
+              "id": "9a92a997-6638-43c8-8a22-7b37d80c0a06",
+              "options": {
+                "type": "83c596f7-2244-425c-b2ed-4186dbf4c815",
+                "operator": "EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "type": "Information",
+      "title": "Please create some \"classmate\" nodes",
+      "items": [
+        {
+          "id": "85353555-72d0-49ef-aba9-75023648ead1",
+          "type": "text",
+          "content": "The dyad census interface was not shown because you do not have any \"classmates\" in this interview network. \n\nTo see the dyad census interface:\n\n1. Click the timeline on the left to show the interview timeline\n2. Click on Stage \"10. Small Roster - Classroom\"\n3. Add two or more classmates\n4. Return to Stage \"19. Classmates Dyad Census\" "
+        }
+      ]
+    },
+    {
+      "id": "82824a20-3302-11eb-8982-61526ca14943",
+      "label": "Name Interpreter Introduction",
+      "type": "Information",
+      "title": "Name Interpreter Techniques",
+      "items": [
+        {
+          "id": "8b518105-17f1-4f95-91b4-f0d00a7bf5e5",
+          "type": "text",
+          "content": "On the next series of screens, we will demonstrate several ways that information can be gathered about numerous alters at once using either the *Sociogram Interface* or by using various **Name Interpreter Interfaces**\n\nWhen a researcher wants to ask a question where the answer is either *Yes* or *No*, they may wish to utilize a sociogram screen so participants just select particular individuals. For example, on this screen we ask to select anyone whom you have asked for advice within the prior 6 months. \n\nFollowing the *Sociogram*, we demonstrate the **Ordinal Bin Interface**, where nodes appear at the top and can be quickly sorted into the correct category, and rearranged at any point. Next, the **Categorical Bin Interface** is demonstrated, where nodes can again be sorted into the most appropriate category. Bins can be clicked on to move nodes after they have been placed. \n"
+        },
+        {
+          "id": "407e60d2-a5ec-488b-a086-0f48a6d20396",
+          "type": "asset",
+          "content": "f502aa5b-13d3-400f-97fa-2c363d076478",
+          "size": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "id": "0f43c470-3303-11eb-8982-61526ca14943",
+      "label": "Sociogram Attribute Nomination",
+      "type": "Sociogram",
+      "subject": {
+        "entity": "node",
+        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "prompts": [
+        {
+          "id": "1acac0d9-0ef6-4792-acb2-ba5e1dcc7b39",
+          "text": "Please select anyone who you have asked for advice within the previous 6 months",
+          "layout": {
+            "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
+          },
+          "edges": {
+            "display": [
+              "a489e869-2555-4896-a760-2d38046b54f9",
+              "8487418e-cd64-452b-9064-b46ffff28a79"
+            ]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "7e84034b-9aa5-4996-a1c4-2deb3e38c645"
+          }
+        },
+        {
+          "id": "ec442369-54a0-4306-8387-1cc612a5f778",
+          "text": "Please select anyone who has supported you financially within the previous 6 months",
+          "layout": {
+            "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
+          },
+          "edges": {
+            "display": [
+              "a489e869-2555-4896-a760-2d38046b54f9",
+              "8487418e-cd64-452b-9064-b46ffff28a79"
+            ]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "20cf8ab4-9356-4568-81e2-8460258e1b45"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3b85fcc0-3302-11eb-8982-61526ca14943",
+      "label": "Contact Frequency",
+      "type": "OrdinalBin",
+      "subject": {
+        "entity": "node",
+        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+      },
+      "prompts": [
+        {
+          "id": "e0a50862-a3c2-461a-bece-5e4f7144c209",
+          "text": "When was the last time that you communicated with each of the people you named?",
+          "variable": "6637c4a8-c383-4a54-bfd8-7f093a1cb4e1",
+          "color": "ord-color-seq-1"
+        }
+      ]
+    },
+    {
+      "id": "44cbe790-330c-11eb-8982-61526ca14943",
+      "label": "Categorical Group Membership",
+      "type": "CategoricalBin",
+      "subject": {
+        "entity": "node",
+        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+      },
+      "prompts": [
+        {
+          "id": "663ae627-2b6e-4785-948e-01c2f8fbe725",
+          "text": "Which of these options best describes how you know this person?",
+          "variable": "132ad372-2ef2-4eec-820e-9eae91829e53",
+          "otherVariable": "1380a661-ae08-4477-8e53-253f6c928ed9",
+          "otherVariablePrompt": "Which context best describes how you know this person?",
+          "otherOptionLabel": "Other"
+        }
+      ]
+    },
+    {
+      "id": "cd76d7f0-32fb-11eb-8503-3b4fa95b8bc6",
+      "label": "Skip Logic and Filtering Info",
+      "type": "Information",
+      "title": "Skip Logic and Network Filtering",
+      "items": [
+        {
+          "id": "7043ca48-87e6-4517-a461-13957c71aa4c",
+          "type": "text",
+          "content": "On the next screen, we have implemented both skip logic and network filtering for the stage. \n\nSkip logic is a feature that allows you to conditionally skip or show a stage within an interview, based on information previously provided by a participant. By implementing skip logic, a participant will bypass information not relevant to them, thus making for a more streamlined interview process. Skip logic rules can be based on _ego, alter,_ or _edges_ and resolve to either **true** or **false** which determines whether the stage is shown.\n\n"
+        },
+        {
+          "id": "7e33fc24-0899-4779-b523-01d5254671bd",
+          "type": "text",
+          "content": "Network filtering refers to a feature that allows you to define rules that determine which nodes or edges should be shown on a given stage. It can be used to only show a subset of a network, based on node type, node attributes, and edge types. \n\nIn summary, _skip logic_ determines if a stage should be shown at all and _network filtering_ determines which nodes should be shown on a given stage. \n"
+        },
+        {
+          "id": "0bcb1e4b-f9d1-4906-9682-6aa0a809ec89",
+          "type": "asset",
+          "content": "89aab5e0-8cc9-43de-b564-770aafa87b28",
+          "size": "SMALL"
+        }
+      ]
+    },
+    {
+      "id": "8acc7f90-32fb-11eb-8503-3b4fa95b8bc6",
+      "label": "Relationship Type",
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "join": "AND",
+          "rules": [
+            {
+              "type": "node",
+              "id": "63d5e820-80b2-40a3-8bef-9a480acd3ed2",
+              "options": {
+                "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d",
+                "operator": "EXISTS"
+              }
+            },
+            {
+              "type": "node",
+              "id": "3a16ec03-3fcb-4f12-b557-182768beb445",
+              "options": {
+                "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d",
+                "attribute": "1d6a2675-3cff-4740-8c56-d5f26982eaeb",
+                "operator": "EXACTLY",
+                "value": true
+              }
+            }
+          ]
+        }
+      },
+      "type": "CategoricalBin",
+      "subject": {
+        "entity": "node",
+        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+      },
+      "filter": {
+        "rules": [
+          {
+            "type": "node",
+            "id": "ee442a58-2ce6-4b69-9254-91c08b4f5187",
+            "options": {
+              "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d",
+              "attribute": "1d6a2675-3cff-4740-8c56-d5f26982eaeb",
+              "operator": "EXACTLY",
+              "value": true
+            }
+          }
+        ]
+      },
+      "prompts": [
+        {
+          "id": "7b354391-fe50-4de6-80ec-307a185b74ef",
+          "text": "You indicated that you've discussed social networks research with these people. Which category best describes your relationship with each person?",
+          "variable": "52138688-e1e9-418b-9c33-ec9f3def499b",
+          "otherVariable": "2bee574a-a12e-4ee0-8610-263130299a2d",
+          "otherVariablePrompt": "What is your relationship with this person?",
+          "otherOptionLabel": "Other"
+        }
+      ]
+    },
+    {
+      "id": "8f07cf90-330c-11eb-8982-61526ca14943",
+      "label": "Narrative Introduction",
+      "type": "Information",
+      "title": "Narrative Interface",
+      "items": [
+        {
+          "id": "80806937-1630-4600-8212-4cf21de990dd",
+          "type": "text",
+          "content": "While we've already demonstrated how the *Sociogram Interface* can be used to place nodes, draw edges, and select particular nodes, the **Narrative Interface** is able to display information on the sociogram in a way to elicit qualitative data from the participant about their network. \n\nResearchers are able to configure display presets that are then able to be toggled on and off to reveal colored convex hulls which represent group-level data, to highlight nodes of a certain type, or to display different edge types. \n\nParticipants can interact with this screen by drawing, freezing, and erasing lines. Unlike many other screens, no data is collected on this Interface."
+        }
+      ]
+    },
+    {
+      "id": "7fb3b540-330c-11eb-8982-61526ca14943",
+      "label": "Narrative Interface",
+      "type": "Narrative",
+      "subject": {
+        "entity": "node",
+        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+      },
+      "presets": [
+        {
+          "id": "b6241839-24df-4e50-bcb5-bdf7f3337ada",
+          "label": "Sample Preset",
+          "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe",
+          "groupVariable": "132ad372-2ef2-4eec-820e-9eae91829e53",
+          "edges": {
+            "display": [
+              "a489e869-2555-4896-a760-2d38046b54f9",
+              "8487418e-cd64-452b-9064-b46ffff28a79"
+            ]
+          },
+          "highlight": [
+            "7e84034b-9aa5-4996-a1c4-2deb3e38c645",
+            "20cf8ab4-9356-4568-81e2-8460258e1b45"
+          ]
+        }
+      ],
+      "background": {
+        "concentricCircles": 1
+      },
+      "behaviours": {
+        "freeDraw": true,
+        "allowRepositioning": true
+      }
+    }
+  ]
+}

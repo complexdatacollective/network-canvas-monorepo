@@ -25,7 +25,11 @@ import {
   openLocalNetcanvas,
 } from '~/ducks/modules/userActions/userActions';
 import Button from '~/lib/legacy-ui/components/Button';
-import { BUNDLED_TEMPLATES, type BundledTemplate } from '~/templates';
+import {
+  BUNDLED_TEMPLATES,
+  type BundledTemplate,
+  type ProtocolSourceRef,
+} from '~/templates';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { reportError } from '~/utils/reportError';
 
@@ -60,6 +64,7 @@ const Home = () => {
     protocol: CurrentProtocol;
     defaultName: string;
     loadAssets?: () => Promise<ExtractedAsset[]>;
+    sourceRef?: ProtocolSourceRef;
   } | null>(null);
   const [visibleCount, setVisibleCount] = useState(3);
 
@@ -117,6 +122,7 @@ const Home = () => {
       protocol: sampleProtocol,
       loadAssets: loadSampleAssets,
       defaultName: 'Sample Protocol',
+      sourceRef: { kind: 'sample', id: 'sample' },
     });
   }, []);
 
@@ -132,6 +138,7 @@ const Home = () => {
           protocol: developmentProtocol,
           loadAssets: loadDevelopmentAssets,
           defaultName: 'Development Protocol',
+          sourceRef: { kind: 'development', id: 'development' },
         });
       })();
     }
@@ -142,6 +149,7 @@ const Home = () => {
       protocol: template.protocol,
       loadAssets: template.loadAssets,
       defaultName: template.name,
+      sourceRef: template.sourceRef,
     });
   }, []);
 
@@ -162,7 +170,12 @@ const Home = () => {
           return;
         }
         await dispatch(
-          openBundledTemplate({ protocol: template.protocol, name, assets }),
+          openBundledTemplate({
+            protocol: template.protocol,
+            name,
+            assets,
+            sourceRef: template.sourceRef,
+          }),
         );
       });
     },
