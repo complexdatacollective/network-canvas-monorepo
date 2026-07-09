@@ -19,11 +19,12 @@
     --link: oklch(var(--neon-coral));
     --warning: oklch(var(--neon-carrot));
     --info: oklch(var(--cerulean-blue));
-    --surface-2: oklch(var(--platinum));
+    --surface-1: oklch(var(--platinum));
+    --surface-1-contrast: oklch(var(--navy-taupe));
+    --surface-2: oklch(var(--platinum--dark));
     --surface-2-contrast: oklch(var(--navy-taupe));
-    --surface-3: oklch(var(--platinum--dark));
-    --surface-3-contrast: oklch(var(--navy-taupe--dark));
-    --input-contrast: oklch(var(--charcoal));
+    --surface-3: oklch(var(--slate-blue));
+    --surface-3-contrast: oklch(var(--white));
     /* Focus rings stay mustard through the shared focus-styles machinery. */
     --focus-color: oklch(var(--mustard));
   }

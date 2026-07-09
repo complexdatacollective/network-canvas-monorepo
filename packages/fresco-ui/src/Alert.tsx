@@ -47,11 +47,11 @@ type AlertIconStyle = React.CSSProperties & {
 };
 
 const InfoAlertIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <Icon name="info" {...props} />
+  <Icon {...props} name="info" />
 );
 
 const WarningAlertIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <Icon name="warning" {...props} />
+  <Icon {...props} name="warning" />
 );
 
 const variantIcons: Record<Variant, AlertIcon | null> = {
