@@ -104,6 +104,7 @@ export function StatusRowView({
                 render={
                   <span
                     tabIndex={0}
+                    data-testid="encryption-status-trigger"
                     className={`${statusTriggerClassName} text-warning`}
                   >
                     <ShieldAlert className={statusIconClassName} />
@@ -123,6 +124,7 @@ export function StatusRowView({
                 render={
                   <span
                     tabIndex={0}
+                    data-testid="encryption-status-trigger"
                     className={`${statusTriggerClassName} text-primary`}
                   >
                     <ShieldCheck className={statusIconClassName} />
@@ -148,6 +150,7 @@ export function StatusRowView({
                       ? 0
                       : undefined
                   }
+                  data-testid="storage-status-trigger"
                   className={statusTriggerClassName}
                 >
                   {durability.persisted ? (

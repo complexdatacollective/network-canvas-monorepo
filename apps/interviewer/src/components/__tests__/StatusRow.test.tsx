@@ -114,11 +114,8 @@ describe('StatusRow', () => {
       />,
     );
 
-    const encryptedTrigger = screen.getByText('Encrypted').parentElement;
-    const storageTrigger = screen.getByText('Storage persistent').parentElement;
-    if (!encryptedTrigger || !storageTrigger) {
-      throw new Error('Expected tooltip triggers to render');
-    }
+    const encryptedTrigger = screen.getByTestId('encryption-status-trigger');
+    const storageTrigger = screen.getByTestId('storage-status-trigger');
 
     await user.hover(encryptedTrigger);
     await waitFor(() =>
