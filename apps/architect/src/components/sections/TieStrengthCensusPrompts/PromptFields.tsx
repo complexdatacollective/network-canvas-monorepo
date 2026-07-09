@@ -109,7 +109,7 @@ const PromptFields = ({
           <ValidatedField
             name="text"
             component={RichText as ComponentType<Record<string, unknown>>}
-            validation={{ required: true, maxLength: 220 }}
+            validation={{ required: true }}
             componentProps={{
               inline: true,
               label: 'Prompt Text',
@@ -229,7 +229,7 @@ const PromptFields = ({
           <ValidatedField
             name="negativeLabel"
             component={RichText}
-            validation={{ required: true, maxLength: 220 }}
+            validation={{ required: true }}
             componentProps={{
               inline: true,
               label: 'Label for the decline option',

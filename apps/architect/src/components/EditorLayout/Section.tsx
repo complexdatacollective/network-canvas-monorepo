@@ -63,17 +63,14 @@ const Section = ({
       className={cx(
         layout === 'vertical' &&
           headingVariants({
-            level: 'h3',
+            level: 'h4',
             margin: 'none',
-            className: 'tracking-tight',
           }),
         layout === 'horizontal' &&
           headingVariants({
-            level: 'label',
+            level: 'h4',
             variant: 'all-caps',
             margin: 'none',
-            className:
-              'max-tablet-landscape:text-xl max-tablet-landscape:leading-tight max-tablet-landscape:font-semibold max-tablet-landscape:tracking-tight max-tablet-landscape:normal-case',
           }),
       )}
     >
@@ -93,7 +90,7 @@ const Section = ({
           // the sticky top menu bar so it never overlaps it; `z-1` keeps
           // it above the section content but below the nav.
           layout === 'horizontal' &&
-            'tablet-landscape:bg-outline tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:z-1 tablet-landscape:flex-row-reverse tablet-landscape:items-center tablet-landscape:justify-between tablet-landscape:rounded tablet-landscape:px-6 tablet-landscape:py-2',
+            'tablet-landscape:bg-surface-2 tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:z-1 tablet-landscape:flex-row-reverse tablet-landscape:items-center tablet-landscape:justify-between tablet-landscape:rounded tablet-landscape:px-6 tablet-landscape:py-2',
         )}
       >
         {sectionLabel}
@@ -116,11 +113,11 @@ const Section = ({
 
   const fieldsetContent = disabled ? (
     layout === 'horizontal' ? (
-      <div className="bg-outline/75 text-text/70 max-tablet-landscape:rounded max-tablet-landscape:p-8 max-tablet-landscape:text-center tablet-landscape:absolute tablet-landscape:inset-0 tablet-landscape:h-full tablet-landscape:w-full flex items-center justify-center font-semibold italic">
+      <div className="bg-surface-2/75 text-text/70 max-tablet-landscape:rounded max-tablet-landscape:p-8 max-tablet-landscape:text-center tablet-landscape:absolute tablet-landscape:inset-0 tablet-landscape:h-full tablet-landscape:w-full flex items-center justify-center font-semibold italic">
         {disabledMessage}
       </div>
     ) : (
-      <div className="bg-outline/75 text-text/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
+      <div className="bg-surface-2/75 text-text/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
         {disabledMessage}
       </div>
     )
@@ -128,7 +125,7 @@ const Section = ({
     <>
       {isOpen && children}
       {toggleable && !isOpen && layout !== 'vertical' && (
-        <div className="bg-outline/75 text-text/70 max-tablet-landscape:hidden absolute inset-0 flex h-full w-full items-center justify-center font-semibold italic">
+        <div className="bg-surface-2/75 text-text/70 max-tablet-landscape:hidden absolute inset-0 flex h-full w-full items-center justify-center font-semibold italic">
           Click the toggle to enable this feature...
         </div>
       )}
@@ -154,7 +151,7 @@ const Section = ({
           shadow="sm"
           className="relative overflow-visible!"
         >
-          <fieldset className="tablet-landscape:min-w-2xl tablet-landscape:overflow-hidden relative">
+          <fieldset className="tablet-landscape:min-w-2xl relative">
             {fieldsetContent}
           </fieldset>
         </Surface>
@@ -171,8 +168,7 @@ const Section = ({
       id={id ?? undefined}
       data-name={typeof title === 'string' ? title : undefined}
       className={cx(
-        '[--input-background:var(--surface-1)] [--slider-color:oklch(var(--charcoal))]',
-        'relative mb-4 flex w-full min-w-[min(100%,42rem)] max-w-7xl flex-col gap-5 overflow-visible! p-6',
+        'relative mb-4 flex w-full max-w-7xl min-w-[min(100%,42rem)] flex-col gap-5 overflow-visible! p-6',
         className,
       )}
     >

@@ -418,7 +418,9 @@ const VariableSpotlight = ({
                 className="h-[min(60vh,28rem)]"
                 viewportClassName="scroll-smooth px-3 pb-3"
                 fade
-              />
+              >
+                {(CollectionElements) => CollectionElements}
+              </Collection>
             )}
           </main>
         </MotionSurface>

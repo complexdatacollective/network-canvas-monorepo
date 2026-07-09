@@ -80,7 +80,7 @@ const PromptFields = ({
             className="stage-editor-section-prompt__textarea"
             label="Prompt Text"
             placeholder="Enter text for the prompt here..."
-            validation={{ required: true, maxLength: 220 }}
+            validation={{ required: true }}
             issueDescription="text"
           />
         </Row>
@@ -189,7 +189,7 @@ const PromptFields = ({
             className="stage-editor-section-prompt__textarea"
             label="Label for the decline option"
             placeholder="Enter text for the negative label here..."
-            validation={{ required: true, maxLength: 220 }}
+            validation={{ required: true }}
             issueDescription="negativeLabel"
           />
         </Section>
