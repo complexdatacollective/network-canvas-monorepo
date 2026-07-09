@@ -1,5 +1,5 @@
 ---
-'@codaco/fresco-ui': minor
+'@codaco/fresco-ui': patch
 ---
 
-Add configurable rich text editor controls for links, thematic breaks, placeholders, and input-mode change events.
+Fix shared rich text editor link controls, toolbar affordances, and input-mode content updates.

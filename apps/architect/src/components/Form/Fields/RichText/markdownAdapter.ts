@@ -66,6 +66,30 @@ const escapeLinkDestination = (value: string): string =>
 const escapeLinkTitle = (value: string): string =>
   value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
+const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+const LINK_PROTOCOL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
+
+const sanitizeLinkDestination = (
+  value: string | null | undefined,
+): string | undefined => {
+  const href = value?.trim();
+
+  if (!href) {
+    return undefined;
+  }
+
+  if (!LINK_PROTOCOL_PATTERN.test(href) && !href.startsWith('//')) {
+    return href;
+  }
+
+  try {
+    const url = new URL(href);
+    return SAFE_LINK_PROTOCOLS.has(url.protocol) ? href : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 const addMark = (
   content: RichTextContent[],
   mark: RichTextMark,
@@ -95,14 +119,22 @@ const inlineFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
     case 'emphasis':
       return addMark(childrenAsInline(node), { type: 'italic' });
 
-    case 'link':
-      return addMark(childrenAsInline(node), {
+    case 'link': {
+      const href = sanitizeLinkDestination(node.url);
+      const content = childrenAsInline(node);
+
+      if (!href) {
+        return content;
+      }
+
+      return addMark(content, {
         type: 'link',
         attrs: {
-          href: node.url ?? '',
+          href,
           title: node.title ?? null,
         },
       });
+    }
 
     case 'break':
       return [{ type: 'hardBreak' }];

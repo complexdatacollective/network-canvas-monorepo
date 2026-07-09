@@ -31,7 +31,7 @@ import {
   Trash2,
   Undo,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import Button, { iconButtonVariants } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
@@ -318,60 +318,106 @@ export default function RichTextEditorField({
   const editorName = name ?? editorId;
   const linkInputId = `${editorId}-link-url`;
   const linkErrorId = `${linkInputId}-error`;
-  const editorAttributes: Record<string, string> = {
-    'role': 'textbox',
-    'aria-label': editorName,
-    'name': editorName,
-    'id': editorId,
-  };
+  const ariaDescribedBy = props['aria-describedby'];
+  const ariaInvalid = props['aria-invalid'];
+  const inputState = getInputState({
+    disabled,
+    readOnly,
+    'aria-invalid': ariaInvalid,
+  });
+  const editorAttributes = useMemo<Record<string, string>>(() => {
+    const attributes: Record<string, string> = {
+      'role': 'textbox',
+      'aria-label': editorName,
+      'name': editorName,
+      'id': editorId,
+    };
 
-  if (props['aria-describedby']) {
-    editorAttributes['aria-describedby'] = props['aria-describedby'];
-  }
+    if (ariaDescribedBy) {
+      attributes['aria-describedby'] = ariaDescribedBy;
+    }
 
-  if (placeholder) {
-    editorAttributes['aria-placeholder'] = placeholder;
-    editorAttributes['data-placeholder'] = placeholder;
-  }
+    if (ariaInvalid || inputState === 'invalid') {
+      attributes['aria-invalid'] = 'true';
+    }
+
+    if (placeholder) {
+      attributes['aria-placeholder'] = placeholder;
+      attributes['data-placeholder'] = placeholder;
+    }
+
+    return attributes;
+  }, [
+    ariaDescribedBy,
+    ariaInvalid,
+    editorId,
+    editorName,
+    inputState,
+    placeholder,
+  ]);
 
   // Compute which heading levels are enabled
-  const headingLevels = (
+  const headingLevels = useMemo(
+    () =>
+      (
+        [
+          options.headings.h1 && 1,
+          options.headings.h2 && 2,
+          options.headings.h3 && 3,
+          options.headings.h4 && 4,
+        ] as const
+      ).filter((level): level is 1 | 2 | 3 | 4 => typeof level === 'number'),
     [
-      options.headings.h1 && 1,
-      options.headings.h2 && 2,
-      options.headings.h3 && 3,
-      options.headings.h4 && 4,
-    ] as const
-  ).filter((level): level is 1 | 2 | 3 | 4 => typeof level === 'number');
-
-  const editor = useEditor({
-    editorProps: {
-      attributes: editorAttributes,
-    },
-    extensions: createCustomExtensions({
+      options.headings.h1,
+      options.headings.h2,
+      options.headings.h3,
+      options.headings.h4,
+    ],
+  );
+  const editorExtensions = useMemo(
+    () =>
+      createCustomExtensions({
+        headingLevels,
+        enableBulletList: options.lists.bullet,
+        enableOrderedList: options.lists.ordered,
+        enableLinks: options.links,
+        enableThematicBreak: options.thematicBreak,
+        placeholder,
+      }),
+    [
       headingLevels,
-      enableBulletList: options.lists.bullet,
-      enableOrderedList: options.lists.ordered,
-      enableLinks: options.links,
-      enableThematicBreak: options.thematicBreak,
+      options.lists.bullet,
+      options.lists.ordered,
+      options.links,
+      options.thematicBreak,
       placeholder,
-    }),
-    content: value,
-    editable: !disabled && !readOnly,
-    autofocus: autoFocus ? 'end' : false,
-    onUpdate: ({ editor: updateEditor }) => {
-      if (changeMode === 'input') {
-        skipNextContentSyncRef.current = true;
-        onChange?.(updateEditor.getJSON());
-      }
+    ],
+  );
+
+  const editor = useEditor(
+    {
+      editorProps: {
+        attributes: editorAttributes,
+      },
+      extensions: editorExtensions,
+      content: value,
+      editable: !disabled && !readOnly,
+      autofocus: autoFocus ? 'end' : false,
+      onUpdate: ({ editor: updateEditor }) => {
+        if (changeMode === 'input') {
+          skipNextContentSyncRef.current = true;
+          onChange?.(updateEditor.getJSON());
+        }
+      },
+      onBlur: ({ editor: blurEditor }) => {
+        if (changeMode === 'blur') {
+          skipNextContentSyncRef.current = true;
+          onChange?.(blurEditor.getJSON());
+        }
+      },
     },
-    onBlur: ({ editor: blurEditor }) => {
-      if (changeMode === 'blur') {
-        skipNextContentSyncRef.current = true;
-        onChange?.(blurEditor.getJSON());
-      }
-    },
-  });
+    [autoFocus, editorExtensions],
+  );
 
   // Track editor state changes to update toolbar button states
   const editorState = useEditorState({
@@ -413,6 +459,16 @@ export default function RichTextEditorField({
     }
   }, [editor, disabled, readOnly]);
 
+  useEffect(() => {
+    if (editor) {
+      editor.setOptions({
+        editorProps: {
+          attributes: editorAttributes,
+        },
+      });
+    }
+  }, [editor, editorAttributes]);
+
   if (!editor) {
     return null;
   }
@@ -440,15 +496,19 @@ export default function RichTextEditorField({
     return [];
   };
 
+  const prepareLinkPopoverState = () => {
+    const previousHref = editor.getAttributes('link').href;
+    const { from, to } = editor.state.selection;
+
+    linkSelectionRef.current = { from, to };
+    setLinkHref(typeof previousHref === 'string' ? previousHref : '');
+    setIsEditingExistingLink(typeof previousHref === 'string');
+    setLinkValidationMessage('');
+  };
+
   const setLinkPopoverOpen = (open: boolean) => {
     if (open) {
-      const previousHref = editor.getAttributes('link').href;
-      const { from, to } = editor.state.selection;
-
-      linkSelectionRef.current = { from, to };
-      setLinkHref(typeof previousHref === 'string' ? previousHref : '');
-      setIsEditingExistingLink(typeof previousHref === 'string');
-      setLinkValidationMessage('');
+      prepareLinkPopoverState();
     }
 
     if (!open) {
@@ -504,14 +564,7 @@ export default function RichTextEditorField({
   };
 
   const selectLinkForEditing = () => {
-    const previousHref = editor.getAttributes('link').href;
-
-    linkSelectionRef.current = {
-      from: editor.state.selection.from,
-      to: editor.state.selection.to,
-    };
-    setLinkHref(typeof previousHref === 'string' ? previousHref : '');
-    setIsEditingExistingLink(typeof previousHref === 'string');
+    prepareLinkPopoverState();
   };
 
   const showTextFormatting = options.bold || options.italic || options.links;
@@ -533,7 +586,7 @@ export default function RichTextEditorField({
   return (
     <div
       className={editorContainerVariants({
-        state: getInputState({ disabled, readOnly, ...props }),
+        state: inputState,
       })}
     >
       <EditorContent editor={editor} className={editorContentStyles} />

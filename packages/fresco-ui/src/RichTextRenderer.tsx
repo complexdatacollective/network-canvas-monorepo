@@ -31,6 +31,17 @@ const listClasses = {
   ordered: 'ml-8 list-decimal [&>li]:not-last:mb-2',
 };
 
+const linkAttributeWithDefault = (
+  value: string | null | undefined,
+  fallback: string,
+): string | undefined => {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return value ?? undefined;
+};
+
 type TextMark = {
   type: 'bold' | 'italic' | 'code' | 'strike' | 'underline' | 'link';
   attrs?: {
@@ -75,8 +86,11 @@ function renderMarks(text: string, marks?: TextMark[]): ReactNode {
           <NativeLink
             key={key}
             href={mark.attrs.href}
-            target={mark.attrs.target ?? '_blank'}
-            rel={mark.attrs.rel ?? 'noopener noreferrer'}
+            target={linkAttributeWithDefault(mark.attrs.target, '_blank')}
+            rel={linkAttributeWithDefault(
+              mark.attrs.rel,
+              'noopener noreferrer',
+            )}
             title={mark.attrs.title ?? undefined}
           >
             {acc}
