@@ -10,6 +10,7 @@ import {
 import { DateTime } from 'luxon';
 import { useCallback, useMemo, useState } from 'react';
 
+import { Badge } from '@codaco/fresco-ui/Badge';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
@@ -30,7 +31,6 @@ import {
 } from '@codaco/fresco-ui/Tooltip';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import Table from '~/components/Assets/Table';
-import Badge from '~/components/Badge';
 import ExternalLink from '~/components/ExternalLink';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';

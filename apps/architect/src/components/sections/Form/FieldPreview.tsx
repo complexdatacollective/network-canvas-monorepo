@@ -1,7 +1,7 @@
 import { get } from 'es-toolkit/compat';
 import { useSelector } from 'react-redux';
 
-import Badge from '~/components/Badge';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import withSubject from '~/components/enhancers/withSubject';
 import { Markdown } from '~/components/Form/Fields';
 import { getColorForType } from '~/config/variables';

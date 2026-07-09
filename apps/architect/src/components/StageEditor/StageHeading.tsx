@@ -1,10 +1,10 @@
 import { get } from 'es-toolkit/compat';
 import { useId } from 'react';
 
+import { Badge } from '@codaco/fresco-ui/Badge';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
-import Badge from '~/components/Badge';
 import ExternalLink from '~/components/ExternalLink';
 import StageTypeImage from '~/components/StageTypeImage';
 import { cx } from '~/utils/cva';
