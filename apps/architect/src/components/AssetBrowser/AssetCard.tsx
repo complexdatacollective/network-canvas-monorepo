@@ -23,6 +23,7 @@ import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { getBundledAssetUrl } from '~/templates/bundled-asset-url';
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
 import { cx } from '~/utils/cva';
 import { reportError } from '~/utils/reportError';
@@ -71,12 +72,38 @@ const ASSET_TYPE_ICONS = {
 
 const PREVIEW_URL_TYPES = new Set<AssetType>(['image', 'video']);
 
-const useAssetPreviewUrl = (id: string, type: AssetType) => {
+type AssetPreviewUrl = {
+  url: string;
+  revoke: boolean;
+};
+
+const loadAssetPreviewUrl = async (
+  id: string,
+  source: string | undefined,
+): Promise<AssetPreviewUrl | null> => {
+  try {
+    const blobUrl = await getAssetBlobUrl(id);
+    if (blobUrl) {
+      return { url: blobUrl, revoke: true };
+    }
+  } catch (error) {
+    reportError(error);
+  }
+
+  const bundledUrl = getBundledAssetUrl(source);
+  return bundledUrl ? { url: bundledUrl, revoke: false } : null;
+};
+
+const useAssetPreviewUrl = (
+  id: string,
+  source: string | undefined,
+  type: AssetType,
+) => {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    let currentUrl: string | null = null;
+    let currentUrl: AssetPreviewUrl | null = null;
 
     setUrl(null);
 
@@ -85,31 +112,29 @@ const useAssetPreviewUrl = (id: string, type: AssetType) => {
     }
 
     const loadPreviewUrl = async () => {
-      try {
-        const nextUrl = await getAssetBlobUrl(id);
-        if (!nextUrl) return;
+      const nextUrl = await loadAssetPreviewUrl(id, source);
+      if (!nextUrl) return;
 
-        if (!isMounted) {
-          revokeBlobUrl(nextUrl);
-          return;
+      if (!isMounted) {
+        if (nextUrl.revoke) {
+          revokeBlobUrl(nextUrl.url);
         }
-
-        currentUrl = nextUrl;
-        setUrl(nextUrl);
-      } catch (error) {
-        reportError(error);
+        return;
       }
+
+      currentUrl = nextUrl;
+      setUrl(nextUrl.url);
     };
 
     void loadPreviewUrl();
 
     return () => {
       isMounted = false;
-      if (currentUrl) {
-        revokeBlobUrl(currentUrl);
+      if (currentUrl?.revoke) {
+        revokeBlobUrl(currentUrl.url);
       }
     };
-  }, [id, type]);
+  }, [id, source, type]);
 
   return url;
 };
@@ -121,13 +146,15 @@ const stopCardSelection = (event: MouseEvent) => {
 const AssetPreview = ({
   id,
   name,
+  source,
   type,
 }: {
   id: string;
   name: string;
+  source?: string;
   type: AssetType;
 }) => {
-  const previewUrl = useAssetPreviewUrl(id, type);
+  const previewUrl = useAssetPreviewUrl(id, source, type);
   const Icon = ASSET_TYPE_ICONS[type];
 
   if (type === 'image' && previewUrl) {
@@ -273,7 +300,7 @@ const AssetCard = ({
       )}
     >
       <div className="bg-surface relative h-40 shrink-0 overflow-hidden rounded-t">
-        <AssetPreview id={id} name={name} type={type} />
+        <AssetPreview id={id} name={name} source={source} type={type} />
         {!isUsed && (
           <Badge
             variant="destructive"
