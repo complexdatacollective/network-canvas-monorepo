@@ -586,7 +586,7 @@
     "fuse.js": "^7.4.0",
     "immer": "^11.1.8",
     "lucide-react": "catalog:",
-    "nanoid": "^5.1.11",
+    "nanoid": "^5.1.16",
     "react-aria-components": "^1.18.0",
     "react-best-merge-refs": "^1.0.2",
     "react-markdown": "^10.1.0",
