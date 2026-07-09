@@ -299,7 +299,7 @@ const Home = () => {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex w-full flex-wrap items-center gap-3">
                   <Button
                     size="lg"
                     color="primary"
