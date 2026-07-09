@@ -99,7 +99,7 @@ describe('SplitButton', () => {
     expect(await screen.findByText('More save options')).toBeInTheDocument();
   });
 
-  it('disables both segments when the split button is disabled', () => {
+  it('disables both segments when the split button is disabled', async () => {
     render(
       <SplitButton
         disabled
@@ -111,6 +111,11 @@ describe('SplitButton', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Saved' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Open options' })).toBeDisabled();
+    const segmentButton = screen.getByRole('button', { name: 'Open options' });
+    expect(segmentButton).toBeDisabled();
+
+    await userEvent.click(segmentButton);
+
+    expect(screen.queryByText('More save options')).not.toBeInTheDocument();
   });
 });
