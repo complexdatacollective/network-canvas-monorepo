@@ -239,7 +239,10 @@ const Home = () => {
         initialName={pendingTemplate?.defaultName}
       />
 
-      <div {...getRootProps()} className="flex h-full flex-col">
+      <div
+        {...getRootProps()}
+        className="flex h-full min-w-0 flex-col overflow-x-hidden"
+      >
         <input {...getInputProps()} />
 
         {/* Dropzone */}
@@ -274,8 +277,8 @@ const Home = () => {
 
         {/* Hero section */}
 
-        <main className="short:gap-4 laptop:gap-12 laptop:px-12 mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-8 overflow-y-auto px-8 pb-8">
-          <div className="tablet-portrait:flex-row flex min-h-0 w-full flex-1 flex-col items-stretch gap-8">
+        <main className="short:gap-4 laptop:gap-12 laptop:px-12 mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-8 overflow-x-hidden overflow-y-auto px-8 pb-8">
+          <div className="tablet-portrait:flex-row flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch gap-8">
             <div
               aria-hidden
               className="tablet-portrait:block tablet-portrait:w-1/2 pointer-events-none hidden h-full shrink-0"
@@ -283,7 +286,7 @@ const Home = () => {
               <TransitMap stops={TIMELINE_SCRIPT} count={visibleCount} />
             </div>
 
-            <div className="short:justify-start short:gap-3 laptop:gap-8 flex flex-1 flex-col items-start justify-center gap-6 text-left">
+            <div className="short:justify-start short:gap-3 laptop:gap-8 flex min-w-0 flex-1 flex-col items-start justify-center gap-6 text-left">
               <div className="short:gap-2 flex flex-col items-start gap-4">
                 <div>
                   <h1 className="hero laptop:text-[clamp(3rem,9vh,6rem)] mb-3">
@@ -296,7 +299,7 @@ const Home = () => {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <Button
                     size="lg"
                     color="primary"

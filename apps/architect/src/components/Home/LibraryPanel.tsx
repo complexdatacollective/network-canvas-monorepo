@@ -8,7 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -233,10 +233,8 @@ const LibraryPanel = ({
 }: LibraryPanelProps) => {
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
-  const { protocols, isLoaded } = useProtocolLibrary();
-  // null until the user picks a tab; the default is chosen once the library has
-  // loaded (Templates when there are no recents, Recent otherwise).
-  const [tab, setTab] = useState<Tab | null>(null);
+  const { protocols } = useProtocolLibrary();
+  const [tab, setTab] = useState<Tab>('recent');
   const [galleryDismissed, setGalleryDismissed] = useState(
     () => localStorage.getItem(GALLERY_CARD_DISMISSED_KEY) === 'true',
   );
@@ -252,14 +250,7 @@ const LibraryPanel = ({
   } | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
 
-  useEffect(() => {
-    if (tab === null && isLoaded) {
-      setTab(protocols.length === 0 ? 'templates' : 'recent');
-    }
-  }, [tab, isLoaded, protocols.length]);
-
-  const loadedDefault: Tab = protocols.length === 0 ? 'templates' : 'recent';
-  const activeTab = tab ?? (isLoaded ? loadedDefault : null);
+  const activeTab = tab;
 
   const handleDownload = useCallback(
     async (protocol: StoredProtocolRow) => {
@@ -501,7 +492,7 @@ const LibraryPanel = ({
       <Tabs
         aria-label="Protocol library"
         layout="top"
-        value={activeTab ?? undefined}
+        value={activeTab}
         onValueChange={(value) => {
           if (value === 'recent' || value === 'templates') {
             setTab(value);
