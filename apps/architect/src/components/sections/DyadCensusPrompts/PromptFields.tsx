@@ -17,9 +17,9 @@ const PromptFields = () => (
         select an edge type that will be created when the participant answers
         &apos;yes&apos;.
       </p>
-      <Alert variant="info" density="compact" className="my-5 text-sm">
-        <AlertDescription>
-          <p>
+      <Alert variant="info" className="my-7">
+        <AlertDescription className="space-y-4">
+          <div>
             Remember to write your prompt text to take into account that the
             participant will be looking at pairs of prompts in sequence. Use
             phrases such as &apos;
@@ -28,12 +28,12 @@ const PromptFields = () => (
             <strong>the two people shown</strong>
             &apos; to indicate that the participant should focus on the visible
             pair.
-          </p>
-          <p>
+          </div>
+          <div>
             You should also phrase your prompt so that it can be answered with
             either a &apos;yes&apos; or a &apos;no&apos; by the participant,
             since these are the user-interface options that are shown.
-          </p>
+          </div>
         </AlertDescription>
       </Alert>
       <ValidatedField

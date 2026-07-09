@@ -63,13 +63,11 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
         }
         layout="vertical"
       >
-        <Alert variant="info" density="compact" className="my-5 text-sm">
+        <Alert variant="info" className="my-7">
           <AlertDescription>
-            <p>
-              The selecting lots of attributes here may slow the performance of
-              the search feature. Select only the attributes that participants
-              will search for.
-            </p>
+            The selecting lots of attributes here may slow the performance of
+            the search feature. Select only the attributes that participants
+            will search for.
           </AlertDescription>
         </Alert>
         <ValidatedField
@@ -94,14 +92,12 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
         }
         layout="vertical"
       >
-        <Alert variant="info" density="compact" className="my-5 text-sm">
+        <Alert variant="info" className="my-7">
           <AlertDescription>
-            <p>
-              If the roster contains many similar nodes, selecting
-              &quot;Exact&quot; or &quot;High accuracy&quot; will help narrow
-              down searches. In contrast, a low accuracy search will allow for
-              typos and spelling mistakes.
-            </p>
+            If the roster contains many similar nodes, selecting
+            &quot;Exact&quot; or &quot;High accuracy&quot; will help narrow down
+            searches. In contrast, a low accuracy search will allow for typos
+            and spelling mistakes.
           </AlertDescription>
         </Alert>
         <ValidatedField

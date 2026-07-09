@@ -63,13 +63,11 @@ const QuickAdd = ({
       }
     >
       {!hasNameVariable && (
-        <Alert variant="info" density="compact" className="my-5 text-sm">
+        <Alert variant="info" className="my-7">
           <AlertDescription>
-            <p>
-              Use a variable called &quot;name&quot; here, unless you have a
-              good reason not to. Interviewer will then automatically use this
-              variable as the label for the node in the interview.
-            </p>
+            Use a variable called &quot;name&quot; here, unless you have a good
+            reason not to. Interviewer will then automatically use this variable
+            as the label for the node in the interview.
           </AlertDescription>
         </Alert>
       )}

@@ -4,7 +4,7 @@ import type { ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { Section, Subsection } from '~/components/EditorLayout';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
@@ -74,13 +74,11 @@ const PromptFields = ({
     <Section layout="vertical">
       <Subsection id={getFieldId('variable')} title="Variable">
         {variable && !isNewVariable && (
-          <Alert variant="info" density="compact" className="my-5 text-sm">
+          <Alert variant="info" className="my-7">
             <AlertDescription>
-              <p>
-                When selecting an existing variable, changes you make to the
-                input control or validation options will also change other uses
-                of this variable.
-              </p>
+              When selecting an existing variable, changes you make to the input
+              control or validation options will also change other uses of this
+              variable.
             </AlertDescription>
           </Alert>
         )}
@@ -185,29 +183,24 @@ const PromptFields = ({
           }}
         />
         {isNewVariable && variableType && (
-          <Alert variant="info" density="compact" className="my-5 text-sm">
+          <Alert variant="info" className="my-7">
             <AlertDescription>
-              <p>
-                The selected input control will cause this variable to be
-                defined as type <strong>{variableType}</strong>. Once set, this
-                cannot be changed (although you may change the input control
-                within this type).
-              </p>
+              The selected input control will cause this variable to be defined
+              as type <strong>{variableType}</strong>. Once set, this cannot be
+              changed (although you may change the input control within this
+              type).
             </AlertDescription>
           </Alert>
         )}
         {!isNewVariable && variableType && (
-          <Alert variant="warning" density="compact" className="my-5 text-sm">
+          <Alert variant="warning" className="my-7">
+            <AlertTitle>Variable type is locked</AlertTitle>
             <AlertDescription>
-              <div>
-                <p>
-                  A pre-existing variable is currently selected. You cannot
-                  change a variable type after it has been created, so only{' '}
-                  <strong>{variableType}</strong> compatible input controls can
-                  be selected above. If you would like to use a different input
-                  control type, you will need to create a new variable.
-                </p>
-              </div>
+              A pre-existing variable is currently selected. You cannot change a
+              variable type after it has been created, so only{' '}
+              <strong>{variableType}</strong> compatible input controls can be
+              selected above. If you would like to use a different input control
+              type, you will need to create a new variable.
             </AlertDescription>
           </Alert>
         )}

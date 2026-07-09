@@ -133,11 +133,9 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
             You may encrypt one or more text variables. Select the text
             variables for each node type that should be encrypted.
           </p>
-          <Alert variant="info" density="compact" className="my-5 text-sm">
+          <Alert variant="info" className="my-7">
             <AlertDescription>
-              <p>
-                Values for encrypted variables are not stored in the database.
-              </p>
+              Values for encrypted variables are not stored in the database.
             </AlertDescription>
           </Alert>
         </>

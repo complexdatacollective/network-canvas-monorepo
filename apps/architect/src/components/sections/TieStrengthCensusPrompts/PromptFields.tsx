@@ -1,7 +1,7 @@
 import { compose } from '@reduxjs/toolkit';
 import type { ComponentType } from 'react';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Row, Section } from '~/components/EditorLayout';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import RichText from '~/components/Form/Fields/RichText/Field';
@@ -194,19 +194,14 @@ const PromptFields = ({
                   be used on this interface.
                 </p>
                 {showVariableOptionsTip && (
-                  <Alert
-                    variant="destructive"
-                    density="compact"
-                    className="my-5 text-sm"
-                  >
+                  <Alert variant="destructive" className="my-7">
+                    <AlertTitle>Too many option values</AlertTitle>
                     <AlertDescription>
-                      <p>
-                        The ordinal bin interface is designed to use{' '}
-                        <strong>up to 5 option values</strong>
-                        including the negative label. Using more will create a
-                        sub-optimal experience for participants, and might
-                        reduce data quality.
-                      </p>
+                      The ordinal bin interface is designed to use{' '}
+                      <strong>up to 5 option values</strong> including the
+                      negative label. Using more will create a sub-optimal
+                      experience for participants, and might reduce data
+                      quality.
                     </AlertDescription>
                   </Alert>
                 )}

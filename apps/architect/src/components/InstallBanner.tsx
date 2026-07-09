@@ -77,7 +77,7 @@ const InstallBanner = () => {
       className="border-outline bg-surface-1! text-surface-1-contrast! my-0 shrink-0 rounded-none! border-x-0 border-t-0 border-b px-6 py-2 shadow-none!"
     >
       <AlertDescription className="flex items-center gap-3 text-sm">
-        <p className="m-0 flex-1">{bannerMessage(deferredPrompt !== null)}</p>
+        <span className="flex-1">{bannerMessage(deferredPrompt !== null)}</span>
         {deferredPrompt !== null && (
           <Button
             color="primary"

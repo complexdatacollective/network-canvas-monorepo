@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Row, Section } from '~/components/EditorLayout';
 import { ValidatedField } from '~/components/Form';
 import { Field as RichTextField } from '~/components/Form/Fields/RichText';
@@ -128,20 +128,15 @@ const PromptFields = ({
               Create <strong>up to 8</strong> options for this variable.
             </p>
             {showVariableOptionsTip && (
-              <Alert
-                variant="destructive"
-                density="compact"
-                className="my-5 text-sm"
-              >
+              <Alert variant="destructive" className="my-7">
+                <AlertTitle>Too many option values</AlertTitle>
                 <AlertDescription>
-                  <p>
-                    The categorical bin interface is designed to use{' '}
-                    <strong>up to 8 option values</strong> ( including an
-                    &quot;other&quot; variable). Using more will create a
-                    sub-optimal experience for participants, and might reduce
-                    data quality. Consider grouping your variable options and
-                    capturing further detail with follow-up questions.
-                  </p>
+                  The categorical bin interface is designed to use{' '}
+                  <strong>up to 8 option values</strong> (including an
+                  &quot;other&quot; variable). Using more will create a
+                  sub-optimal experience for participants, and might reduce data
+                  quality. Consider grouping your variable options and capturing
+                  further detail with follow-up questions.
                 </AlertDescription>
               </Alert>
             )}

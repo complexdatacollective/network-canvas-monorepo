@@ -3,7 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { change, FormSection, formValueSelector } from 'redux-form';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { Row, Section } from '~/components/EditorLayout';
 import { Number as NumberField } from '~/components/Form/Fields';
@@ -103,27 +103,28 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
   return (
     <Section
       title="Min/max alters"
-      summary=<p>
-        This feature allows you to specify a minimum or maximum number of alters
-        that can be named on this stage. Please note that these limits apply to
-        the <strong>stage as a whole</strong>, regardless of the number of
-        prompts you have created.
-      </p>
+      summary={
+        <p>
+          This feature allows you to specify a minimum or maximum number of
+          alters that can be named on this stage. Please note that these limits
+          apply to the <strong>stage as a whole</strong>, regardless of the
+          number of prompts you have created.
+        </p>
+      }
       toggleable
       startExpanded={startExpanded}
       handleToggleChange={handleToggleChange}
     >
       {hasMultiplePrompts && (
-        <Alert variant="warning" density="compact" className="my-5 text-sm">
+        <Alert variant="warning" className="my-7">
+          <AlertTitle>Limits apply to the whole stage</AlertTitle>
           <AlertDescription>
-            <p>
-              You have multiple prompts configured on this stage. Remember that
-              the limits you specify here apply to the{' '}
-              <strong>stage as a whole</strong>. Consider splitting your prompts
-              up into multiple stages, or ensure you take extra care in the
-              phrasing of your prompts so that you communicate the alter limits
-              to your participants.
-            </p>
+            You have multiple prompts configured on this stage. Remember that
+            the limits you specify here apply to the{' '}
+            <strong>stage as a whole</strong>. Consider splitting your prompts
+            up into multiple stages, or ensure you take extra care in the
+            phrasing of your prompts so that you communicate the alter limits to
+            your participants.
           </AlertDescription>
         </Alert>
       )}

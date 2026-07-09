@@ -46,19 +46,16 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
           &apos;conflict&apos;). Enter prompt text below, and select an edge
           type that will be created when the participant selects a target node.
         </p>
-        <Alert variant="info" density="compact" className="my-5 text-sm">
+        <Alert variant="info" className="my-7">
           <AlertDescription>
-            <p>
-              Remember to write your prompt text so that it clearly indicates
-              the participant is evaluating the relationship between one
-              specific individual and each of the others shown. Use phrases such
-              as &apos;
-              <strong>which of the following people</strong>
-              &apos;, or &apos;
-              <strong>select all people with whom this person</strong>
-              &apos; to indicate that the participant should focus on selecting
-              from the group.
-            </p>
+            Remember to write your prompt text so that it clearly indicates the
+            participant is evaluating the relationship between one specific
+            individual and each of the others shown. Use phrases such as &apos;
+            <strong>which of the following people</strong>
+            &apos;, or &apos;
+            <strong>select all people with whom this person</strong>
+            &apos; to indicate that the participant should focus on selecting
+            from the group.
           </AlertDescription>
         </Alert>
         <Row>

@@ -23,12 +23,12 @@ const TestingMapboxTokenAlert = () => {
     <Alert variant="warning" className="mx-auto mb-10 max-w-3xl">
       <AlertTitle>Using a testing Mapbox token</AlertTitle>
       <AlertDescription className="space-y-4 text-sm">
-        <p>
+        <span className="block">
           This protocol uses Network Canvas&apos;s shared Mapbox testing token
           so the map renders out of the box. It is rate-limited and for
           evaluation only. Before you deploy this study, replace it with your
           own token in the Resource Library.
-        </p>
+        </span>
         <Button
           color="warning"
           size="sm"

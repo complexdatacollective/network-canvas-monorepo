@@ -3,7 +3,7 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import type { VariableType } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
@@ -206,20 +206,14 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
           {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
             <>
               {showNetworkFilterWarning && (
-                <Alert
-                  variant="warning"
-                  density="compact"
-                  className="my-5 text-sm"
-                >
+                <Alert variant="warning" className="my-7">
+                  <AlertTitle>Network filter hides this edge type</AlertTitle>
                   <AlertDescription>
-                    <p>
-                      Stage level network filtering is enabled, but the edge
-                      type you want to create on this prompt is not currently
-                      included in the filter. This means that these edges may
-                      not be displayed. Either remove the stage-level network
-                      filtering, or add these edge types to the filter to
-                      resolve this issue.
-                    </p>
+                    Stage level network filtering is enabled, but the edge type
+                    you want to create on this prompt is not currently included
+                    in the filter. This means that these edges may not be
+                    displayed. Either remove the stage-level network filtering,
+                    or add these edge types to the filter to resolve this issue.
                   </AlertDescription>
                 </Alert>
               )}

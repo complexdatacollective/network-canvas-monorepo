@@ -67,12 +67,10 @@ const CardDisplayOptions = ({
       disabled={disabled}
     >
       <Row>
-        <Alert variant="info" density="compact" className="my-5 text-sm">
+        <Alert variant="info" className="my-7">
           <AlertDescription>
-            <p>
-              Cards will use the <strong>name</strong> attribute from your
-              external data as the main card title.
-            </p>
+            Cards will use the <strong>name</strong> attribute from your
+            external data as the main card title.
           </AlertDescription>
         </Alert>
       </Row>

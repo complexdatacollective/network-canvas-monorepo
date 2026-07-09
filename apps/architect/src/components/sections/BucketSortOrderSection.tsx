@@ -56,12 +56,10 @@ const BucketSortOrderSection = ({
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
-      <Alert variant="info" density="compact" className="my-5 text-sm">
+      <Alert variant="info" className="my-7">
         <AlertDescription>
-          <p>
-            Use the asterisk property to sort by the order that nodes were
-            created.
-          </p>
+          Use the asterisk property to sort by the order that nodes were
+          created.
         </AlertDescription>
       </Alert>
       <MultiSelect

@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import type { FormAction } from 'redux-form';
 import { change, Field, formValueSelector } from 'redux-form';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Row, Section } from '~/components/EditorLayout';
 import { CheckboxGroup } from '~/components/Form/Fields';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -109,26 +109,22 @@ const DisplayEdges = ({ form }: DisplayEdgesProps) => {
     >
       <Row>
         {shouldShowNetworkFilterWarning && (
-          <Alert variant="warning" density="compact" className="my-5 text-sm">
+          <Alert variant="warning" className="my-7">
+            <AlertTitle>Network filter hides configured edge types</AlertTitle>
             <AlertDescription>
-              <p>
-                Stage level network filtering is enabled, but one or more of the
-                edge types you have configured to display on this prompt are not
-                currently included in the filter. This means that these edges
-                may not be displayed. Either remove the stage-level network
-                filtering, or add these edge types to the filter to resolve this
-                issue.
-              </p>
+              Stage level network filtering is enabled, but one or more of the
+              edge types you have configured to display on this prompt are not
+              currently included in the filter. This means that these edges may
+              not be displayed. Either remove the stage-level network filtering,
+              or add these edge types to the filter to resolve this issue.
             </AlertDescription>
           </Alert>
         )}
         {hasDisabledEdgeOption && (
-          <Alert variant="info" density="compact" className="my-5 text-sm">
+          <Alert variant="info" className="my-7">
             <AlertDescription>
-              <p>
-                The edge type being created must always be displayed. This edge
-                type is shown in italics below, and cannot be deselected.
-              </p>
+              The edge type being created must always be displayed. This edge
+              type is shown in italics below, and cannot be deselected.
             </AlertDescription>
           </Alert>
         )}

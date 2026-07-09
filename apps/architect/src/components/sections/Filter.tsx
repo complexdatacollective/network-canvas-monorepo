@@ -3,7 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FilterRule } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
@@ -120,12 +120,11 @@ const Filter = () => {
       layout="vertical"
     >
       {shouldShowWarning && (
-        <Alert variant="warning" density="compact" className="my-5 text-sm">
+        <Alert variant="warning" className="my-7">
+          <AlertTitle>Filter rules hide configured values</AlertTitle>
           <AlertDescription>
-            <p>
-              This stage has edge creation or display values that will not be
-              shown based on the current filter rules.
-            </p>
+            This stage has edge creation or display values that will not be
+            shown based on the current filter rules.
           </AlertDescription>
         </Alert>
       )}

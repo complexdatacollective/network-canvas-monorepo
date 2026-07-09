@@ -286,7 +286,7 @@ export const IconAlignment: Story = {
     docs: {
       description: {
         story:
-          'The leading icon aligns with the top of whichever child renders first — `AlertTitle` (a heading) or `AlertDescription` (a paragraph) — without per-variant magic-number offsets. The icon wrapper has stable dimensions for each density so alignment stays correct regardless of which child comes first or what mix of children is rendered.',
+          'The leading icon aligns with the top of whichever child renders first — `AlertTitle` or `AlertDescription` — without per-variant magic-number offsets. The icon wrapper has stable dimensions for each density so alignment stays correct regardless of which child comes first or what mix of children is rendered.',
       },
     },
   },
@@ -299,7 +299,7 @@ export const IconAlignment: Story = {
       <Alert variant="info">
         <AlertDescription>
           Description only — icon should align with the first line of this
-          paragraph, not float above it.
+          description, not float above it.
         </AlertDescription>
       </Alert>
 
@@ -318,10 +318,10 @@ export const IconAlignment: Story = {
       </Alert>
 
       <Alert variant="info">
-        <p className="m-0">
-          Raw paragraph (no AlertDescription wrapper) — icon should still align
-          with this line.
-        </p>
+        <AlertDescription>
+          Longer description-only content keeps the icon aligned with this first
+          line.
+        </AlertDescription>
       </Alert>
     </div>
   ),
