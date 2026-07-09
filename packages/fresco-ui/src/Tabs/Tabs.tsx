@@ -73,15 +73,15 @@ export function Tabs({
       orientation={orientation}
       style={style}
       className={cx(
-        '@container flex min-h-0 gap-6',
-        layout === 'side' ? 'flex-row' : 'flex-col',
+        '@container flex min-h-0',
+        layout === 'side' ? 'flex-row gap-6' : 'flex-col gap-0',
         className,
       )}
     >
       {headerEnd ? (
         <div
           className={cx(
-            'flex shrink-0 gap-4',
+            'flex w-full shrink-0 gap-4',
             layout === 'side'
               ? 'flex-col'
               : 'min-w-0 flex-row items-center justify-between',
@@ -93,7 +93,7 @@ export function Tabs({
             layout={layout}
             hasEndContent
           />
-          <div className="shrink-0">{headerEnd}</div>
+          <div className="ml-auto shrink-0">{headerEnd}</div>
         </div>
       ) : (
         <TabRail tabs={tabs} aria-label={ariaLabel} layout={layout} />
@@ -136,7 +136,7 @@ function TabRail({
         ],
         layout === 'top' && [
           'flex-row overflow-x-auto',
-          hasEndContent ? 'min-w-0 flex-1' : 'w-full',
+          hasEndContent ? 'w-fit max-w-full shrink' : 'w-full',
         ],
       )}
     >
