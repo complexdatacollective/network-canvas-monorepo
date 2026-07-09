@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
   Bold,
+  Eye,
   Grid3x3,
   Italic,
   List,
@@ -10,6 +11,7 @@ import {
   Pencil,
   Plus,
   Redo2,
+  Settings,
   Snowflake,
   Sparkles,
   Spline,
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import SplitButton from '../SplitButton';
 import { SegmentedToolbar, type ToolbarSegment } from './SegmentedToolbar';
 
 const meta = {
@@ -235,6 +238,55 @@ export const PopoverInput: Story = {
             placeholder="Type a name, then press Enter"
             className="w-64 rounded-full border-2 border-current/20 bg-transparent px-4 py-2"
           />
+        ),
+      },
+    ];
+    return <SegmentedToolbar {...args} items={items} />;
+  },
+};
+
+/**
+ * A `component` segment renders a caller-supplied component inside the toolbar
+ * surface. Use it for composite controls such as `SplitButton`, where one
+ * logical toolbar slot contains more than one button.
+ */
+export const ComponentSegment: Story = {
+  args: { label: 'Stage actions', items: [] },
+  render: function ComponentSegmentRender(args) {
+    const [open, setOpen] = useState(false);
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo2 />,
+        onClick: noop,
+      },
+      { type: 'separator', id: 'sep' },
+      {
+        type: 'component',
+        id: 'preview',
+        component: ({ size }) => (
+          <SplitButton
+            className="bg-slate-blue text-white"
+            icon={<Eye />}
+            onClick={noop}
+            onOpenChange={setOpen}
+            open={open}
+            popover={{
+              content: <div className="w-48">Preview settings</div>,
+              side: 'top',
+            }}
+            segment={{
+              'aria-label': 'Preview settings',
+              'className': 'bg-slate-blue text-white',
+              'icon': <Settings />,
+            }}
+            size={size}
+            variant="text"
+          >
+            Preview
+          </SplitButton>
         ),
       },
     ];

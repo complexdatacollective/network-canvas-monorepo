@@ -93,15 +93,56 @@ const StageEditorNav = ({
       });
     }
 
+    items.push({ type: 'separator', id: 'preview-separator' });
+    items.push({
+      type: 'component',
+      id: 'preview',
+      component: function PreviewSplitButton({ size }) {
+        return (
+          <SplitButton
+            className="bg-slate-blue text-white"
+            disabled={isOpeningPreview || isStageInvalid}
+            icon={
+              isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />
+            }
+            onClick={onPreview}
+            onOpenChange={setPreviewOptionsOpen}
+            open={previewOptionsOpen}
+            popover={{
+              content: previewOptionsContent,
+              side: 'top',
+              align: 'end',
+            }}
+            segment={{
+              'aria-label': 'Preview settings',
+              'className': 'bg-slate-blue text-white',
+              'disabled': !previewOptionsContent,
+              'icon': <Settings />,
+            }}
+            size={size}
+            variant="text"
+          >
+            {isOpeningPreview ? previewLabel : 'Preview'}
+          </SplitButton>
+        );
+      },
+    });
+
     return items;
   }, [
     canRedo,
     canUndo,
     dispatch,
     hasUnsavedChanges,
+    isOpeningPreview,
+    isStageInvalid,
     issuesSegment,
     onCancel,
+    onPreview,
     openIssues,
+    previewLabel,
+    previewOptionsContent,
+    previewOptionsOpen,
     redo,
     undo,
   ]);
@@ -109,32 +150,7 @@ const StageEditorNav = ({
   return (
     <>
       <NavShell leading={<Breadcrumb items={breadcrumbItems} />} />
-      <ActionToolbar aria-label="Stage editor actions" items={toolbarItems}>
-        <SplitButton
-          className="bg-slate-blue text-white"
-          disabled={isOpeningPreview || isStageInvalid}
-          icon={
-            isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />
-          }
-          onClick={onPreview}
-          onOpenChange={setPreviewOptionsOpen}
-          open={previewOptionsOpen}
-          popover={{
-            content: previewOptionsContent,
-            side: 'top',
-            align: 'end',
-          }}
-          segment={{
-            'aria-label': 'Preview settings',
-            'className': 'bg-slate-blue text-white',
-            'disabled': !previewOptionsContent,
-            'icon': <Settings />,
-          }}
-          size="md"
-        >
-          {isOpeningPreview ? previewLabel : 'Preview'}
-        </SplitButton>
-      </ActionToolbar>
+      <ActionToolbar aria-label="Stage editor actions" items={toolbarItems} />
     </>
   );
 };

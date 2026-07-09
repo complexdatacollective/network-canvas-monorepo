@@ -146,6 +146,31 @@ describe('SegmentedToolbar — buttons & separators', () => {
     await userEvent.keyboard('{ArrowRight}');
     expect(screen.getByRole('button', { name: 'B' })).toHaveFocus();
   });
+
+  it('renders a caller-supplied component segment inside the toolbar', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'component',
+        id: 'preview',
+        component: ({ orientation, size }) => (
+          <button type="button">{`${orientation} ${size}`}</button>
+        ),
+      },
+    ];
+
+    render(
+      <SegmentedToolbar
+        label="Tools"
+        items={items}
+        orientation="vertical"
+        size="lg"
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'vertical lg' }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('SegmentedToolbar — toggles', () => {
