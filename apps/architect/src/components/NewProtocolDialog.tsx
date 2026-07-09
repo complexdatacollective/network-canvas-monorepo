@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
-import { Row, Section } from '~/components/EditorLayout';
 import Text from '~/components/Form/Fields/Text';
 
 type NewProtocolDialogProps = {
@@ -21,6 +20,8 @@ const NewProtocolDialog = ({
   initialName = '',
 }: NewProtocolDialogProps) => {
   const [name, setName] = useState(initialName);
+  const inputId = useId();
+  const descriptionId = useId();
 
   // The dialog stays mounted, so reseed the field from `initialName` each time
   // it opens (different templates prefill different default names).
@@ -64,22 +65,30 @@ const NewProtocolDialog = ({
         </>
       }
     >
-      <Section title="Protocol Name" layout="vertical">
-        <Row>
-          <Text
-            placeholder="Enter a name for your protocol..."
-            input={{
-              value: name,
-              onChange: (e) => setName(e.target.value),
-            }}
-            meta={{
-              error: !name.trim() ? 'Protocol name is required' : undefined,
-              invalid: !name.trim(),
-              touched: name !== '',
-            }}
-          />
-        </Row>
-      </Section>
+      <div className="flex flex-col gap-2">
+        <label htmlFor={inputId} className="text-lg font-semibold">
+          Protocol Name <span className="text-destructive">*</span>
+        </label>
+        <p id={descriptionId} className="text-muted m-0 max-w-prose text-sm">
+          Use a short, recognizable name. Include a version number or date when
+          it helps distinguish drafts, but avoid long project notes.
+        </p>
+        <Text
+          placeholder="Enter a name for your protocol..."
+          input={{
+            id: inputId,
+            value: name,
+            onChange: (e) => setName(e.target.value),
+            'aria-describedby': descriptionId,
+            'aria-required': true,
+          }}
+          meta={{
+            error: !name.trim() ? 'Protocol name is required' : undefined,
+            invalid: !name.trim(),
+            touched: name !== '',
+          }}
+        />
+      </div>
     </Dialog>
   );
 };
