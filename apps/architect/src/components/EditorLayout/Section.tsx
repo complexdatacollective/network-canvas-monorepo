@@ -172,7 +172,7 @@ const Section = ({
       data-name={typeof title === 'string' ? title : undefined}
       className={cx(
         '[--input-background:var(--surface-1)] [--slider-color:oklch(var(--charcoal))]',
-        'relative mb-4 flex w-full max-w-7xl flex-col gap-5 overflow-visible! p-6',
+        'relative mb-4 flex w-full min-w-[min(100%,42rem)] max-w-7xl flex-col gap-5 overflow-visible! p-6',
         className,
       )}
     >
