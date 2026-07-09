@@ -16,6 +16,10 @@ const randomInt = (a = 1, b = 0) => {
   return Math.floor(lower + Math.random() * (upper - lower + 1));
 };
 
+const INITIAL_OFFSCREEN_PROBABILITY = 0.5;
+export const MAX_INITIAL_OFFSCREEN_LEAD_SECONDS = 12;
+const MINIMUM_INCOMING_VELOCITY = 0.001;
+
 export class NCBlob {
   layer: 1 | 2 | 3;
   speed: number;
@@ -33,6 +37,7 @@ export class NCBlob {
   cachedGradient: CanvasGradient | null;
   animation: ReturnType<typeof blobs2Animate.canvasPath> | null;
   currentTime: number;
+  hasEntered: boolean;
 
   constructor(
     layer: 1 | 2 | 3,
@@ -65,6 +70,87 @@ export class NCBlob {
     this.cachedGradient = null;
     this.animation = null;
     this.currentTime = 0;
+    this.hasEntered = false;
+  }
+
+  isWithinWrapBounds() {
+    return (
+      this.positionX >= -this.size &&
+      this.positionX <= this.canvasWidth &&
+      this.positionY >= -this.size &&
+      this.positionY <= this.canvasHeight
+    );
+  }
+
+  wrapPosition() {
+    // The blob path is generated inside a 0..size box and translated by
+    // positionX/positionY. When a blob exits, place its centre on the opposite
+    // canvas edge so the replacement is immediately visible instead of waiting
+    // offscreen for the whole blob width to drift back in.
+    if (this.positionX < -this.size) {
+      this.positionX = this.canvasWidth - this.size / 2;
+    } else if (this.positionX > this.canvasWidth) {
+      this.positionX = -this.size / 2;
+    }
+
+    if (this.positionY < -this.size) {
+      this.positionY = this.canvasHeight - this.size / 2;
+    } else if (this.positionY > this.canvasHeight) {
+      this.positionY = -this.size / 2;
+    }
+  }
+
+  placeInitialPosition() {
+    const sides: Array<'left' | 'right' | 'top' | 'bottom'> = [];
+
+    if (this.velocityX > MINIMUM_INCOMING_VELOCITY) sides.push('left');
+    else if (this.velocityX < -MINIMUM_INCOMING_VELOCITY) sides.push('right');
+
+    if (this.velocityY > MINIMUM_INCOMING_VELOCITY) sides.push('top');
+    else if (this.velocityY < -MINIMUM_INCOMING_VELOCITY) sides.push('bottom');
+
+    const shouldSpawnOffscreen =
+      sides.length > 0 && random(0, 1) < INITIAL_OFFSCREEN_PROBABILITY;
+
+    if (!shouldSpawnOffscreen) {
+      this.positionX = random(-this.size / 2, this.canvasWidth - this.size / 2);
+      this.positionY = random(
+        -this.size / 2,
+        this.canvasHeight - this.size / 2,
+      );
+      this.hasEntered = true;
+      return;
+    }
+
+    const side = sides[Math.floor(random(0, sides.length))] ?? sides[0];
+
+    if (side === 'left' || side === 'right') {
+      const speedTowardCanvas = Math.abs(this.velocityX);
+      const distance = random(
+        0,
+        speedTowardCanvas * MAX_INITIAL_OFFSCREEN_LEAD_SECONDS,
+      );
+      const secondsUntilVisible = distance / speedTowardCanvas;
+      const yWhenVisible = random(-this.size, this.canvasHeight);
+
+      this.positionX =
+        side === 'left' ? -this.size - distance : this.canvasWidth + distance;
+      this.positionY = yWhenVisible - this.velocityY * secondsUntilVisible;
+    } else {
+      const speedTowardCanvas = Math.abs(this.velocityY);
+      const distance = random(
+        0,
+        speedTowardCanvas * MAX_INITIAL_OFFSCREEN_LEAD_SECONDS,
+      );
+      const secondsUntilVisible = distance / speedTowardCanvas;
+      const xWhenVisible = random(-this.size, this.canvasWidth);
+
+      this.positionX = xWhenVisible - this.velocityX * secondsUntilVisible;
+      this.positionY =
+        side === 'top' ? -this.size - distance : this.canvasHeight + distance;
+    }
+
+    this.hasEntered = this.isWithinWrapBounds();
   }
 
   updatePosition(time: number) {
@@ -83,19 +169,10 @@ export class NCBlob {
     this.positionX += this.velocityX * timeDelta;
     this.positionY += this.velocityY * timeDelta;
 
-    // Wrap around screen boundaries, taking into account shape size.
-    // Branches must be mutually exclusive: a left-exit reset to
-    // (canvasWidth + size) would otherwise re-trigger the right-exit branch.
-    if (this.positionX < 0 - this.size) {
-      this.positionX = this.canvasWidth + this.size;
-    } else if (this.positionX > this.canvasWidth) {
-      this.positionX = -this.size;
-    }
-
-    if (this.positionY < 0 - this.size) {
-      this.positionY = this.canvasHeight + this.size;
-    } else if (this.positionY > this.canvasHeight) {
-      this.positionY = -this.size;
+    if (this.hasEntered) {
+      this.wrapPosition();
+    } else if (this.isWithinWrapBounds()) {
+      this.hasEntered = true;
     }
   }
 
@@ -150,14 +227,7 @@ export class NCBlob {
 
     this.size = sizes[this.layer];
 
-    this.positionX = randomInt(
-      0 - this.size / 2,
-      this.canvasWidth - this.size / 2,
-    );
-    this.positionY = randomInt(
-      0 - this.size / 2,
-      this.canvasHeight - this.size / 2,
-    );
+    this.placeInitialPosition();
 
     if (this.gradient) {
       const grd = ctx.createLinearGradient(0, 0, this.size, 0);
