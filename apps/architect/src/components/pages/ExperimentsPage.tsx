@@ -2,12 +2,13 @@ import { ArrowLeft, FlaskConical } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
+import Button from '@codaco/fresco-ui/Button';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
 import { Layout } from '~/components/EditorLayout';
-import Switch from '~/components/NewComponents/Switch';
 import ActionToolbar from '~/components/ProjectNav/ActionToolbar';
 import { useAppDispatch } from '~/ducks/hooks';
 import { actionCreators } from '~/ducks/modules/activeProtocol';
-import { Button } from '~/lib/legacy-ui/components';
 import { getExperiments, getProtocol } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
@@ -34,7 +35,7 @@ const ExperimentsPage = () => {
       <Layout>
         <div className="flex h-full flex-col items-center justify-center gap-4">
           <p>No protocol loaded. Please open a protocol first.</p>
-          <Button onClick={() => setLocation('/')} color="platinum">
+          <Button onClick={() => setLocation('/')} color="default">
             Go Home
           </Button>
         </div>
@@ -43,6 +44,16 @@ const ExperimentsPage = () => {
   }
 
   const isEncryptedEnabled = experiments.encryptedVariables ?? false;
+  const toolbarItems: ToolbarSegment[] = [
+    {
+      type: 'button',
+      id: 'go-back',
+      label: 'Go Back',
+      icon: <ArrowLeft />,
+      showLabel: true,
+      onClick: handleGoBack,
+    },
+  ];
 
   return (
     <div className="relative h-full overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0">
@@ -76,21 +87,17 @@ const ExperimentsPage = () => {
                   allows sensitive data to be collected securely.
                 </p>
               </div>
-              <Switch
-                checked={isEncryptedEnabled}
-                onCheckedChange={(checked) =>
-                  handleToggleExperiment('encryptedVariables', checked)
+              <ToggleField
+                value={isEncryptedEnabled}
+                onChange={(checked) =>
+                  handleToggleExperiment('encryptedVariables', !!checked)
                 }
               />
             </div>
           </div>
         </div>
       </Layout>
-      <ActionToolbar aria-label="Experiments actions">
-        <Button onClick={handleGoBack} color="platinum" icon={<ArrowLeft />}>
-          Go Back
-        </Button>
-      </ActionToolbar>
+      <ActionToolbar aria-label="Experiments actions" items={toolbarItems} />
     </div>
   );
 };

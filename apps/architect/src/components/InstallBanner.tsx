@@ -1,7 +1,7 @@
 import { Download, MonitorDown, X } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 
-import Button from '~/lib/legacy-ui/components/Button';
+import Button from '@codaco/fresco-ui/Button';
 import {
   getDeferredPrompt,
   getInstalled,
@@ -77,8 +77,8 @@ const InstallBanner = () => {
       <p className="m-0 flex-1">{bannerMessage(deferredPrompt !== null)}</p>
       {deferredPrompt !== null && (
         <Button
-          color="sea-green"
-          size="small"
+          color="primary"
+          size="sm"
           className="text-sm"
           onClick={() => void promptInstall()}
         >

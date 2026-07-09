@@ -1,8 +1,8 @@
 import { isBoolean } from 'es-toolkit/compat';
+import { TriangleAlert } from 'lucide-react';
 import { useEffect, useId } from 'react';
 
-import Switch from '~/components/NewComponents/Switch';
-import Icon from '~/lib/legacy-ui/components/Icon';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { cx } from '~/utils/cva';
 
 import MarkdownLabel from './MarkdownLabel';
@@ -63,10 +63,10 @@ const Toggle = ({
         )}
         title={title}
       >
-        <Switch
+        <ToggleField
           name={name}
-          checked={!!value}
-          onCheckedChange={(checked) => onChange(checked)}
+          value={!!value}
+          onChange={(checked) => onChange(!!checked)}
           disabled={disabled}
           aria-labelledby={label ? labelId : undefined}
           className={cx(
@@ -85,7 +85,7 @@ const Toggle = ({
       </label>
       {hasError && (
         <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5">
-          <Icon name="warning" />
+          <TriangleAlert aria-hidden />
           {error}
         </div>
       )}

@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Search from '~/components/Form/Fields/Search';
-import Dialog from '~/components/NewComponents/Dialog';
 import Tag from '~/components/Tag';
 import type { RootState } from '~/ducks/modules/root';
-import { Button } from '~/lib/legacy-ui/components';
 import { getExperiments, getTimelineLocus } from '~/selectors/protocol';
 
 import InterfaceList from './InterfaceList';
@@ -250,62 +250,57 @@ const NewStageScreen = ({
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
-      header={
-        <div className="flex flex-col gap-4">
-          <h2 className="m-0">Select an Interface Type</h2>
-          <div className="flex flex-col gap-4">
-            <div className="w-full">
-              <Search
-                placeholder="Search interfaces by name or keyword..."
-                input={{
-                  value: query,
-                  onChange: handleUpdateQuery,
-                  onKeyDown: handleKeyDown,
-                }}
-                autoFocus
-              />
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="shrink-0 text-white">
-                <h4 className="text-sm font-semibold">
-                  Filter by capabilities:
-                </h4>
-              </div>
-              <div className="text-navy-taupe flex flex-wrap gap-1">
-                {tags.map(({ value, selected, disabled }) => (
-                  <Tag
-                    key={value}
-                    id={value}
-                    selected={selected}
-                    onClick={handleTagClick}
-                    color={get(TAG_COLORS, value)}
-                    disabled={disabled}
-                  >
-                    {value}
-                  </Tag>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      }
+      closeDialog={() => onOpenChange(false)}
+      title="Select an Interface Type"
       footer={
-        <Dialog.Close
-          nativeButton={false}
-          render={<Button color="platinum">Cancel</Button>}
-        />
+        <Button color="default" onClick={() => onOpenChange(false)}>
+          Cancel
+        </Button>
       }
       className="h-[calc(100vh-4rem)] max-h-[64rem] w-[calc(100vw-4rem)] max-w-[100rem]"
     >
-      <InterfaceList
-        items={filteredInterfaces}
-        onSelect={handleSelectInterface}
-        highlightedIndex={cursorActive ? cursor : undefined}
-        handleClearSearchAndFilter={handleClearSearchAndFilter}
-        setHighlighted={handleSetHighlight}
-        removeHighlighted={handleRemoveHighlight}
-      />
+      <div className="flex min-h-0 flex-col gap-4">
+        <div className="flex flex-col gap-4">
+          <div className="w-full">
+            <Search
+              placeholder="Search interfaces by name or keyword..."
+              input={{
+                value: query,
+                onChange: handleUpdateQuery,
+                onKeyDown: handleKeyDown,
+              }}
+              autoFocus
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="shrink-0 text-white">
+              <h4 className="text-sm font-semibold">Filter by capabilities:</h4>
+            </div>
+            <div className="text-navy-taupe flex flex-wrap gap-1">
+              {tags.map(({ value, selected, disabled }) => (
+                <Tag
+                  key={value}
+                  id={value}
+                  selected={selected}
+                  onClick={handleTagClick}
+                  color={get(TAG_COLORS, value)}
+                  disabled={disabled}
+                >
+                  {value}
+                </Tag>
+              ))}
+            </div>
+          </div>
+        </div>
+        <InterfaceList
+          items={filteredInterfaces}
+          onSelect={handleSelectInterface}
+          highlightedIndex={cursorActive ? cursor : undefined}
+          handleClearSearchAndFilter={handleClearSearchAndFilter}
+          setHighlighted={handleSetHighlight}
+          removeHighlighted={handleRemoveHighlight}
+        />
+      </div>
     </Dialog>
   );
 };

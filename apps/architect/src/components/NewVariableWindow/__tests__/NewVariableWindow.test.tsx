@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -43,13 +43,13 @@ vi.mock('~/ducks/modules/protocol/codebook', () => ({
   createVariableAsync: vi.fn(),
 }));
 
-const openDialogSpy = vi.fn((config: unknown) => ({
-  type: 'openDialog',
-  payload: config,
-}));
-vi.mock('~/ducks/modules/dialogs', () => ({
-  actionCreators: { openDialog: (config: unknown) => openDialogSpy(config) },
-}));
+const openDialogSpy = globalThis.__architectDialogMocks.openDialog;
+
+type ChoiceDialogConfig = {
+  type: string;
+  intent?: string;
+  description?: string;
+};
 
 // Router for the two useAppSelector calls: `type` value and the dirty flag.
 let dirtyState: Record<string, boolean> = {};
@@ -91,8 +91,14 @@ describe('NewVariableWindow dirty-guard on dismiss', () => {
     expect(openDialogSpy).not.toHaveBeenCalled();
   });
 
-  it('confirms before discarding when the form is dirty', () => {
+  it('confirms before discarding when the form is dirty', async () => {
     dirtyState = { 'create-new-variable': true };
+    let resolveDialog: ((value: boolean) => void) | undefined;
+    openDialogSpy.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveDialog = resolve;
+      }),
+    );
     const onCancel = vi.fn();
     renderWindow(onCancel);
 
@@ -103,14 +109,14 @@ describe('NewVariableWindow dirty-guard on dismiss', () => {
 
     // Instead a confirmation dialog is opened.
     expect(openDialogSpy).toHaveBeenCalledTimes(1);
-    const config = openDialogSpy.mock.calls[0]![0] as {
-      type: string;
-      onConfirm: () => void;
-    };
-    expect(config.type).toBe('Warning');
+    const config = openDialogSpy.mock.calls[0]![0] as ChoiceDialogConfig;
+    expect(config.type).toBe('choice');
+    expect(config.intent).toBe('warning');
+    expect(config.description).toMatch(/unsaved changes/i);
 
     // Only on explicit confirm is the discard performed.
-    config.onConfirm();
-    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(resolveDialog).toBeDefined();
+    resolveDialog!(true);
+    await waitFor(() => expect(onCancel).toHaveBeenCalledTimes(1));
   });
 });

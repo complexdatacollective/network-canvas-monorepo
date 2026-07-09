@@ -1,30 +1,19 @@
 import { map } from 'es-toolkit/compat';
 import { TriangleAlert } from 'lucide-react';
 import type React from 'react';
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { getFormSyncErrors, hasSubmitFailed } from 'redux-form';
 
-import Button from '~/lib/legacy-ui/components/Button';
+import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
 
 import { candidateIdsFor, flattenIssues, getFieldId } from '../utils/issues';
 import scrollTo from '../utils/scrollTo';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from './NewComponents/Popover';
 import { formName } from './StageEditor/configuration';
 
-export type IssuesHandle = {
-  open: () => void;
+type UseIssuesToolbarSegmentResult = {
+  segment: ToolbarSegment | null;
+  openIssues: () => void;
   hasIssues: boolean;
 };
 
@@ -38,7 +27,7 @@ const resolveTarget = (field: string): HTMLElement | null => {
   return null;
 };
 
-const Issues = forwardRef<IssuesHandle>((_, ref) => {
+export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
   const formErrors = useSelector(getFormSyncErrors(formName));
   const submitFailed = useSelector(hasSubmitFailed(formName));
   const issues = formErrors as Record<string, unknown>;
@@ -49,15 +38,24 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
   const [open, setOpen] = useState(false);
   const issueRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      open: () => {
-        if (hasIssues) setOpen(true);
-      },
-      hasIssues,
-    }),
-    [hasIssues],
+  const openIssues = useCallback(() => {
+    if (hasIssues) setOpen(true);
+  }, [hasIssues]);
+
+  const setIssueRef = useCallback((el: HTMLElement | null, fieldId: string) => {
+    issueRefs.current[fieldId] = el;
+  }, []);
+
+  const handleClickIssue = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, field: string) => {
+      e.preventDefault();
+      const destination = resolveTarget(field);
+      if (destination) {
+        scrollTo(destination);
+        setOpen(false);
+      }
+    },
+    [],
   );
 
   useEffect(() => {
@@ -69,10 +67,6 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
   useEffect(() => {
     if (!hasIssues) setOpen(false);
   }, [hasIssues]);
-
-  const setIssueRef = (el: HTMLElement | null, fieldId: string) => {
-    issueRefs.current[fieldId] = el;
-  };
 
   // Field display labels live in the DOM; harvest friendly names from each field's
   // data-name/textContent so the list reads as a label rather than an internal path.
@@ -94,65 +88,59 @@ const Issues = forwardRef<IssuesHandle>((_, ref) => {
     });
   }, [flatIssues, open]);
 
-  if (!hasIssues || !submitFailed) return null;
+  const segment = useMemo<ToolbarSegment | null>(() => {
+    if (!hasIssues || !submitFailed) return null;
 
-  const handleClickIssue = (
-    e: React.MouseEvent<HTMLAnchorElement>,
-    field: string,
-  ) => {
-    e.preventDefault();
-    const destination = resolveTarget(field);
-    if (destination) {
-      scrollTo(destination);
-      setOpen(false);
-    }
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button color="sea-serpent" icon={<TriangleAlert />}>
-          Issues ({issueCount})
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        side="top"
-        align="start"
-        sideOffset={8}
-        className="bg-sea-serpent text-primary-contrast max-w-lg min-w-md"
-      >
-        <div className="border-sea-serpent-dark/40 flex items-center gap-5 border-b px-5 py-3">
-          <TriangleAlert className="size-4 shrink-0" aria-hidden />
-          <span className="text-sm font-semibold tracking-wider uppercase">
-            Issues ({issueCount})
-          </span>
-        </div>
-        <ol className="m-0 list-none overflow-y-auto p-0 [counter-reset:issue]">
-          {map(flatIssues, ({ field, issue }) => {
-            const fieldId = getFieldId(field);
-            return (
-              <li
-                key={fieldId}
-                data-testid="issue"
-                className="hover:bg-sea-serpent-dark m-0 bg-transparent p-0 transition-colors duration-300 ease-in-out"
-              >
-                <a
-                  href={`#${fieldId}`}
-                  onClick={(e) => handleClickIssue(e, field)}
-                  className="text-primary-contrast block w-full px-5 py-2.5 no-underline before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
+    return {
+      type: 'popover',
+      id: 'issues',
+      label: `Issues (${issueCount})`,
+      icon: <TriangleAlert />,
+      showLabel: true,
+      open,
+      onOpenChange: setOpen,
+      side: 'top',
+      children: (
+        <>
+          <div className="border-outline flex items-center gap-5 border-b px-5 py-3">
+            <TriangleAlert className="size-4 shrink-0" aria-hidden />
+            <span className="text-sm font-semibold tracking-wider uppercase">
+              Issues ({issueCount})
+            </span>
+          </div>
+          <ol className="m-0 list-none overflow-y-auto p-0 [counter-reset:issue]">
+            {map(flatIssues, ({ field, issue }) => {
+              const fieldId = getFieldId(field);
+              return (
+                <li
+                  key={fieldId}
+                  data-testid="issue"
+                  className="hover:bg-surface-2 m-0 bg-transparent p-0 transition-colors duration-300 ease-in-out"
                 >
-                  <span ref={(el) => setIssueRef(el, fieldId)}>{field}</span> -{' '}
-                  {issue}
-                </a>
-              </li>
-            );
-          })}
-        </ol>
-      </PopoverContent>
-    </Popover>
-  );
-});
+                  <a
+                    href={`#${fieldId}`}
+                    onClick={(e) => handleClickIssue(e, field)}
+                    className="block w-full px-5 py-2.5 no-underline before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
+                  >
+                    <span ref={(el) => setIssueRef(el, fieldId)}>{field}</span>{' '}
+                    - {issue}
+                  </a>
+                </li>
+              );
+            })}
+          </ol>
+        </>
+      ),
+    };
+  }, [
+    flatIssues,
+    handleClickIssue,
+    hasIssues,
+    issueCount,
+    open,
+    setIssueRef,
+    submitFailed,
+  ]);
 
-Issues.displayName = 'Issues';
-
-export default Issues;
+  return { segment, openIssues, hasIssues };
+}

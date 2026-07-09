@@ -1,7 +1,7 @@
 import { motion, useAnimation } from 'motion/react';
 import type React from 'react';
 
-import Icon from '~/lib/legacy-ui/components/Icon';
+import Icon from '@codaco/fresco-ui/Icon';
 import { cx } from '~/utils/cva';
 
 type TipProps = {

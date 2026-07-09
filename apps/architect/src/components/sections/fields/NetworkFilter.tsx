@@ -1,17 +1,16 @@
 import { get } from 'es-toolkit/compat';
-import type { ComponentProps } from 'react';
 import { useCallback } from 'react';
-import { compose, defaultProps } from 'react-recompose';
-import { connect } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { change, Field, getFormValues } from 'redux-form';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
   Filter as FilterQuery,
   ruleValidator,
   withFieldConnector,
   withStoreConnector,
 } from '~/components/Query';
-import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
+import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 
 import Section from '../../EditorLayout/Section';
@@ -29,21 +28,21 @@ const FilterField = (
 
 type NetworkFilterProps = {
   form: string;
-  hasFilter: boolean;
-  changeField: (form: string, name: string, value: unknown) => void;
-  openDialog: (dialog: Record<string, unknown>) => Promise<boolean>;
-  name: string;
+  name?: string;
   variant?: 'contrast';
 };
 
 const NetworkFilter = ({
   form,
-  hasFilter,
-  changeField,
-  openDialog,
-  name,
+  name = 'filter',
   variant,
 }: NetworkFilterProps) => {
+  const dispatch = useAppDispatch();
+  const { confirm } = useDialog();
+  const hasFilter = useSelector(
+    (state: RootState) => get(getFormValues(form)(state), name, null) !== null,
+  );
+
   const handleToggleChange = useCallback(
     async (newStatus: boolean) => {
       if (newStatus) {
@@ -51,14 +50,17 @@ const NetworkFilter = ({
       }
 
       if (hasFilter) {
-        const result = await handleFilterDeactivate(() =>
-          openDialog({
-            type: 'Warning',
-            title: 'This will clear your filter',
-            message:
-              'This will clear your filter, and delete any rules you have created. Do you want to continue?',
-            confirmLabel: 'Clear filter',
-          }),
+        const result = await handleFilterDeactivate(
+          async () =>
+            (await confirm({
+              title: 'This will clear your filter',
+              description:
+                'This will clear your filter, and delete any rules you have created. Do you want to continue?',
+              confirmLabel: 'Clear filter',
+              cancelLabel: 'Cancel',
+              intent: 'warning',
+              onConfirm: () => {},
+            })) === true,
         );
 
         if (!result) {
@@ -66,10 +68,10 @@ const NetworkFilter = ({
         }
       }
 
-      changeField(form, name, null);
+      dispatch(change(form, name, null));
       return Promise.resolve(true);
     },
-    [openDialog, changeField, form, hasFilter, name],
+    [confirm, dispatch, form, hasFilter, name],
   );
 
   const contrastProps =
@@ -97,25 +99,4 @@ const NetworkFilter = ({
   );
 };
 
-const mapStateToProps = (
-  state: RootState,
-  props: { form: string; name: string },
-) => ({
-  hasFilter: get(getFormValues(props.form)(state), props.name, null) !== null,
-});
-
-const mapDispatchToProps = {
-  openDialog: dialogActions.openDialog,
-  changeField: change,
-};
-
-type OuterProps = {
-  form: string;
-  name?: string;
-  variant?: 'contrast';
-};
-
-export default compose<ComponentProps<typeof NetworkFilter>, OuterProps>(
-  defaultProps({ name: 'filter' }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(NetworkFilter);
+export default NetworkFilter;

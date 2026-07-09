@@ -1,13 +1,13 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
 import { sortBy } from 'es-toolkit/compat';
+import { TriangleAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useMemo, useState } from 'react';
 import { untouch } from 'redux-form';
 
+import Button from '@codaco/fresco-ui/Button';
 import { Text } from '~/components/Form/Fields';
 import { useAppDispatch } from '~/ducks/hooks';
-import { Button } from '~/lib/legacy-ui/components';
-import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
 import { getValidator } from '~/utils/validations';
 
@@ -262,7 +262,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
             />
             <div className="flex items-center justify-end [&_button]:mr-2.5 [&_button]:min-w-40 [&_button:last-of-type]:mr-0">
               <Button
-                color="platinum"
+                color="default"
                 onClick={() => setShowCreateOptionForm(false)}
               >
                 Cancel
@@ -325,7 +325,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
             </select>
             {hasError && (
               <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-1 [&_svg]:max-h-5">
-                <Icon name="warning" />
+                <TriangleAlert aria-hidden />
                 {error}
               </div>
             )}

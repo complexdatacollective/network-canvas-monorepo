@@ -8,30 +8,30 @@ import {
   X,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
+import Button, { IconButton } from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@codaco/fresco-ui/DropdownMenu';
+import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import Table from '~/components/Assets/Table';
 import Badge from '~/components/Badge';
 import ExternalLink from '~/components/ExternalLink';
-import Dialog from '~/components/NewComponents/Dialog';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '~/components/NewComponents/Popover';
-import {
-  Tabs,
-  TabsList,
-  TabsPanel,
-  TabsTab,
-} from '~/components/NewComponents/Tabs';
-import Tooltip from '~/components/NewComponents/Tooltip';
 import { useAppDispatch } from '~/ducks/hooks';
-import { openDialog } from '~/ducks/modules/dialogs';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
 import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
 import fileIcon from '~/images/file-icon.svg';
-import { IconButton } from '~/lib/legacy-ui/components/Button';
 import type { BundledTemplate } from '~/templates';
 import { sampleProtocol } from '~/templates/sample-protocol';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
@@ -71,34 +71,6 @@ const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
     `Edited ${formatTimestamp(protocol.updatedAt)}`,
   ].join(' · ');
 };
-
-const RowMenuItem = ({
-  icon,
-  label,
-  onClick,
-  disabled = false,
-}: {
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) => (
-  <button
-    type="button"
-    role="menuitem"
-    disabled={disabled}
-    onClick={(event) => {
-      event.stopPropagation();
-      onClick();
-    }}
-    className="flex w-full items-center gap-2.5 rounded-sm px-2.5 py-1 text-left text-sm transition-colors hover:bg-current/10 disabled:pointer-events-none disabled:opacity-50"
-  >
-    <span aria-hidden className="shrink-0 [&_svg]:size-4">
-      {icon}
-    </span>
-    {label}
-  </button>
-);
 
 type PanelRowProps = {
   name: string;
@@ -174,56 +146,58 @@ const PanelRow = ({
 
       {hasMenu && (
         <span className="flex shrink-0 items-center">
-          <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-            <PopoverTrigger asChild>
-              <IconButton
-                variant="text"
-                aria-label={`Actions for ${name}`}
-                disabled={downloading}
-                onClick={(event) => event.stopPropagation()}
-                icon={
-                  downloading ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Ellipsis />
-                  )
-                }
-              />
-            </PopoverTrigger>
-            <PopoverContent
-              side="bottom"
-              align="end"
-              className="bg-surface-accent text-surface-accent-contrast min-w-48 p-1"
-            >
-              <RowMenuItem
-                icon={<FolderOpen />}
-                label="Open"
-                onClick={runMenuAction(onOpen)}
-              />
-              {onShowInfo && (
-                <RowMenuItem
-                  icon={<Info />}
-                  label="See more info"
-                  onClick={runMenuAction(onShowInfo)}
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger
+              render={
+                <IconButton
+                  variant="text"
+                  aria-label={`Actions for ${name}`}
+                  disabled={downloading}
+                  onClick={(event) => event.stopPropagation()}
+                  icon={
+                    downloading ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Ellipsis />
+                    )
+                  }
                 />
+              }
+            />
+            <DropdownMenuContent side="bottom" align="end">
+              <DropdownMenuItem
+                icon={<FolderOpen />}
+                onClick={runMenuAction(onOpen)}
+              >
+                Open
+              </DropdownMenuItem>
+              {onShowInfo && (
+                <DropdownMenuItem
+                  icon={<Info />}
+                  onClick={runMenuAction(onShowInfo)}
+                >
+                  See more info
+                </DropdownMenuItem>
               )}
               {onDownload && (
-                <RowMenuItem
+                <DropdownMenuItem
                   icon={<Download />}
-                  label="Download"
                   disabled={downloading}
                   onClick={runMenuAction(onDownload)}
-                />
+                >
+                  Download
+                </DropdownMenuItem>
               )}
               {onDelete && (
-                <RowMenuItem
+                <DropdownMenuItem
                   icon={<Trash2 />}
-                  label="Delete"
                   onClick={runMenuAction(onDelete)}
-                />
+                >
+                  Delete
+                </DropdownMenuItem>
               )}
-            </PopoverContent>
-          </Popover>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </span>
       )}
     </div>
@@ -258,6 +232,7 @@ const LibraryPanel = ({
   onOpenTemplate,
 }: LibraryPanelProps) => {
   const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
   const { protocols, isLoaded } = useProtocolLibrary();
   // null until the user picks a tab; the default is chosen once the library has
   // loaded (Templates when there are no recents, Recent otherwise).
@@ -301,27 +276,26 @@ const LibraryPanel = ({
         // so a silently incomplete .netcanvas isn't shipped.
         if (skippedAssets.length > 0) {
           const assetList = skippedAssets.map((asset) => asset.name).join(', ');
-          void dispatch(
-            openDialog({
-              type: 'Warning',
-              title: 'Some assets could not be included',
-              message: `"${protocol.name}" was downloaded, but these assets could not be included and are missing from the file: ${assetList}.`,
-            }),
-          );
+          void openDialog({
+            type: 'acknowledge',
+            intent: 'warning',
+            title: 'Some assets could not be included',
+            description: `"${protocol.name}" was downloaded, but these assets could not be included and are missing from the file: ${assetList}.`,
+            actions: { primary: { label: 'OK', value: true } },
+          });
         }
       } catch (error) {
         // Surface bundling/download failures instead of letting the promise
         // reject unhandled with no feedback. Not awaited so the spinner clears
         // immediately rather than waiting for the user to dismiss the dialog.
         reportError(error);
-        void dispatch(
-          openDialog({
-            type: 'Error',
-            title: 'Download failed',
-            message: `"${protocol.name}" could not be downloaded.`,
-            error: error instanceof Error ? error : String(error),
-          }),
-        );
+        void openDialog({
+          type: 'acknowledge',
+          intent: 'destructive',
+          title: 'Download failed',
+          description: `"${protocol.name}" could not be downloaded.`,
+          actions: { primary: { label: 'OK', value: true } },
+        });
       } finally {
         setDownloadingIds((prev) => {
           const next = new Set(prev);
@@ -330,21 +304,21 @@ const LibraryPanel = ({
         });
       }
     },
-    [dispatch],
+    [openDialog],
   );
 
   const handleDelete = useCallback(
     async (protocol: StoredProtocolRow) => {
-      const confirmed = await dispatch(
-        openDialog({
-          type: 'Warning',
-          title: 'Delete protocol?',
-          message: `"${protocol.name}" and its assets will be permanently removed from this device. This cannot be undone.`,
-          confirmLabel: 'Delete',
-          cancelLabel: 'Cancel',
-          canCancel: true,
-        }),
-      ).unwrap();
+      const confirmed = await openDialog({
+        type: 'choice',
+        intent: 'destructive',
+        title: 'Delete protocol?',
+        description: `"${protocol.name}" and its assets will be permanently removed from this device. This cannot be undone.`,
+        actions: {
+          primary: { label: 'Delete', value: true },
+          cancel: { label: 'Cancel', value: false },
+        },
+      });
 
       if (!confirmed) {
         return;
@@ -354,17 +328,16 @@ const LibraryPanel = ({
         await dispatch(deleteLibraryProtocol(protocol.id)).unwrap();
       } catch (error) {
         reportError(error);
-        void dispatch(
-          openDialog({
-            type: 'Error',
-            title: 'Delete failed',
-            message: `"${protocol.name}" could not be deleted.`,
-            error: error instanceof Error ? error : String(error),
-          }),
-        );
+        void openDialog({
+          type: 'acknowledge',
+          intent: 'destructive',
+          title: 'Delete failed',
+          description: `"${protocol.name}" could not be deleted.`,
+          actions: { primary: { label: 'OK', value: true } },
+        });
       }
     },
-    [dispatch],
+    [dispatch, openDialog],
   );
 
   const handleShowInfo = useCallback(async (protocol: StoredProtocolRow) => {
@@ -417,40 +390,41 @@ const LibraryPanel = ({
   }, []);
 
   const handleShowStorageInfo = useCallback(() => {
-    void dispatch(
-      openDialog({
-        type: 'Notice',
-        title: 'Protocol Storage',
-        message: (
-          <>
-            <p>
-              Your protocols are saved only in this browser, on this device.
-              They are never uploaded to a server.
-            </p>
-            <p>
-              Because your work lives in this browser's storage, clearing your
-              browsing data, or using "Clear all protocols", will permanently
-              remove it. Download the protocol as a <code>.netcanvas</code> file
-              to save a copy or move it to another device.
-            </p>
-          </>
-        ),
-      }),
-    );
-  }, [dispatch]);
+    void openDialog({
+      type: 'acknowledge',
+      intent: 'info',
+      title: 'Protocol Storage',
+      children: (
+        <>
+          <p>
+            Your protocols are saved only in this browser, on this device. They
+            are never uploaded to a server.
+          </p>
+          <p>
+            Because your work lives in this browser&apos;s storage, clearing
+            your browsing data, or using &quot;Clear all protocols&quot;, will
+            permanently remove it. Download the protocol as a{' '}
+            <code>.netcanvas</code> file to save a copy or move it to another
+            device.
+          </p>
+        </>
+      ),
+      actions: { primary: { label: 'OK', value: true } },
+    });
+  }, [openDialog]);
 
   const handleClearAll = useCallback(async () => {
-    const confirmed = await dispatch(
-      openDialog({
-        type: 'Warning',
-        title: 'Remove all data?',
-        message:
-          'Every protocol, asset, and saved setting stored in this browser will be permanently removed. This cannot be undone.',
-        confirmLabel: 'Remove all',
-        cancelLabel: 'Cancel',
-        canCancel: true,
-      }),
-    ).unwrap();
+    const confirmed = await openDialog({
+      type: 'choice',
+      intent: 'destructive',
+      title: 'Remove all data?',
+      description:
+        'Every protocol, asset, and saved setting stored in this browser will be permanently removed. This cannot be undone.',
+      actions: {
+        primary: { label: 'Remove all', value: true },
+        cancel: { label: 'Cancel', value: false },
+      },
+    });
 
     if (!confirmed) {
       return;
@@ -460,16 +434,15 @@ const LibraryPanel = ({
       await clearAllStorage();
     } catch (error) {
       reportError(error);
-      void dispatch(
-        openDialog({
-          type: 'Error',
-          title: 'Could not remove data',
-          message: 'The stored data could not be removed from this browser.',
-          error: error instanceof Error ? error : String(error),
-        }),
-      );
+      void openDialog({
+        type: 'acknowledge',
+        intent: 'destructive',
+        title: 'Could not remove data',
+        description: 'The stored data could not be removed from this browser.',
+        actions: { primary: { label: 'OK', value: true } },
+      });
     }
-  }, [dispatch]);
+  }, [openDialog]);
 
   const templateCount = (import.meta.env.DEV ? 2 : 1) + templates.length;
   const templateLabel = `${templateCount} ${templateCount === 1 ? 'template' : 'templates'}`;
@@ -482,128 +455,137 @@ const LibraryPanel = ({
   return (
     <>
       <Tabs
-        value={activeTab}
+        aria-label="Protocol library"
+        layout="top"
+        value={activeTab ?? undefined}
         onValueChange={(value) => {
           if (value === 'recent' || value === 'templates') {
             setTab(value);
           }
         }}
-        className="bg-surface-1 text-surface-1-contrast flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-hidden rounded shadow-md"
+        tabs={[
+          { value: 'recent', label: 'Recent' },
+          { value: 'templates', label: 'Templates' },
+        ]}
+        className="bg-surface-1 text-surface-1-contrast max-h-[85dvh] w-full max-w-3xl overflow-hidden rounded p-5 shadow-md"
       >
-        <div className="flex shrink-0 items-center px-7 py-5">
-          <TabsList>
-            <TabsTab value="recent">Recent</TabsTab>
-            <TabsTab value="templates">Templates</TabsTab>
-          </TabsList>
-          {activeTab === 'recent' ? (
-            <div className="ml-auto flex h-8 items-center gap-2.5">
-              <Badge color="platinum" className="shadow-none">
-                {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
-              </Badge>
-              <Tooltip content={storageTooltip} side="bottom">
-                <IconButton
-                  variant="text"
-                  size="small"
-                  aria-label="Where your protocols are stored"
-                  onClick={handleShowStorageInfo}
-                  icon={<Info />}
-                />
-              </Tooltip>
-              <Tooltip
-                content="Clear all protocols from this browser"
-                side="bottom"
-              >
-                <IconButton
-                  variant="text"
-                  size="small"
-                  aria-label="Clear all protocols from this browser"
-                  onClick={() => void handleClearAll()}
-                  icon={<Trash2 />}
-                />
-              </Tooltip>
-            </div>
-          ) : (
-            <div className="ml-auto flex h-8 items-center">
-              <Badge color="platinum" className="shadow-none">
-                {templateLabel}
-              </Badge>
-            </div>
-          )}
-        </div>
-
-        <TabsPanel value="recent" className={PANEL_CLASSES}>
-          {protocols.length === 0 ? (
-            <p className="text-muted px-5 py-10 text-center text-sm">
-              No recent protocols yet.
-            </p>
-          ) : (
-            protocols.map((protocol) => (
-              <PanelRow
-                key={protocol.id}
-                name={protocol.name}
-                meta={formatProtocolMeta(protocol)}
-                downloading={downloadingIds.has(protocol.id)}
-                onOpen={() => onOpenProtocol(protocol.id)}
-                onDownload={() => handleDownload(protocol)}
-                onDelete={() => handleDelete(protocol)}
-                onShowInfo={() => handleShowInfo(protocol)}
+        <TabsPanel value="recent" className="flex min-h-0 flex-col">
+          <div className="flex h-8 shrink-0 items-center justify-end gap-2.5 px-2.5 pb-2.5">
+            <Badge color="platinum" className="shadow-none">
+              {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
+            </Badge>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton
+                    variant="text"
+                    size="sm"
+                    aria-label="Where your protocols are stored"
+                    onClick={handleShowStorageInfo}
+                    icon={<Info />}
+                  />
+                }
               />
-            ))
-          )}
+              <TooltipContent side="bottom">{storageTooltip}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton
+                    variant="text"
+                    size="sm"
+                    aria-label="Clear all protocols from this browser"
+                    onClick={() => void handleClearAll()}
+                    icon={<Trash2 />}
+                  />
+                }
+              />
+              <TooltipContent side="bottom">
+                Clear all protocols from this browser
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div className={PANEL_CLASSES}>
+            {protocols.length === 0 ? (
+              <p className="text-muted px-5 py-10 text-center text-sm">
+                No recent protocols yet.
+              </p>
+            ) : (
+              protocols.map((protocol) => (
+                <PanelRow
+                  key={protocol.id}
+                  name={protocol.name}
+                  meta={formatProtocolMeta(protocol)}
+                  downloading={downloadingIds.has(protocol.id)}
+                  onOpen={() => onOpenProtocol(protocol.id)}
+                  onDownload={() => handleDownload(protocol)}
+                  onDelete={() => handleDelete(protocol)}
+                  onShowInfo={() => handleShowInfo(protocol)}
+                />
+              ))
+            )}
+          </div>
         </TabsPanel>
 
-        <TabsPanel value="templates" className={PANEL_CLASSES}>
-          <PanelRow
-            name="Sample Protocol"
-            description={
-              sampleProtocol.description ??
-              'An example introducing the key features and techniques available in Network Canvas.'
-            }
-            onOpen={onOpenSample}
-          />
-          {import.meta.env.DEV && (
+        <TabsPanel value="templates" className="flex min-h-0 flex-col">
+          <div className="flex h-8 shrink-0 items-center justify-end px-2.5 pb-2.5">
+            <Badge color="platinum" className="shadow-none">
+              {templateLabel}
+            </Badge>
+          </div>
+          <div className={PANEL_CLASSES}>
             <PanelRow
-              name="Development Protocol"
-              description="Includes examples of every stage type"
-              onOpen={onOpenDevProtocol}
+              name="Sample Protocol"
+              description={
+                sampleProtocol.description ??
+                'An example introducing the key features and techniques available in Network Canvas.'
+              }
+              onOpen={onOpenSample}
             />
-          )}
-          {templates.map((template) => (
-            <PanelRow
-              key={template.id}
-              name={template.name}
-              description={template.description}
-              onOpen={() => onOpenTemplate(template)}
-              onShowInfo={() => handleShowTemplateInfo(template)}
-            />
-          ))}
-          {!galleryDismissed && (
-            <div className="border-outline bg-surface-2 relative mt-2.5 flex flex-col gap-1 rounded-sm border p-5">
-              <IconButton
-                variant="text"
-                size="small"
-                aria-label="Dismiss"
-                className="absolute top-1 right-1"
-                onClick={dismissGalleryCard}
-                icon={<X />}
+            {import.meta.env.DEV && (
+              <PanelRow
+                name="Development Protocol"
+                description="Includes examples of every stage type"
+                onOpen={onOpenDevProtocol}
               />
-              <p className="m-0 pr-7 font-semibold">Looking for more?</p>
-              <p className="text-muted m-0 text-sm">
-                More examples of Network Canvas protocols can be found on our{' '}
-                <ExternalLink href="https://protocolgallery.networkcanvas.com/">
-                  protocol gallery
-                </ExternalLink>
-              </p>
-            </div>
-          )}
+            )}
+            {templates.map((template) => (
+              <PanelRow
+                key={template.id}
+                name={template.name}
+                description={template.description}
+                onOpen={() => onOpenTemplate(template)}
+                onShowInfo={() => handleShowTemplateInfo(template)}
+              />
+            ))}
+            {!galleryDismissed && (
+              <div className="border-outline bg-surface-2 relative mt-2.5 flex flex-col gap-1 rounded-sm border p-5">
+                <IconButton
+                  variant="text"
+                  size="sm"
+                  aria-label="Dismiss"
+                  className="absolute top-1 right-1"
+                  onClick={dismissGalleryCard}
+                  icon={<X />}
+                />
+                <p className="m-0 pr-7 font-semibold">Looking for more?</p>
+                <p className="text-muted m-0 text-sm">
+                  More examples of Network Canvas protocols can be found on our{' '}
+                  <ExternalLink href="https://protocolgallery.networkcanvas.com/">
+                    protocol gallery
+                  </ExternalLink>
+                </p>
+              </div>
+            )}
+          </div>
         </TabsPanel>
       </Tabs>
 
       <Dialog
         open={infoOpen}
-        onOpenChange={setInfoOpen}
+        closeDialog={() => setInfoOpen(false)}
         title={info?.title ?? ''}
-        cancelText="Close"
+        footer={<Button onClick={() => setInfoOpen(false)}>Close</Button>}
       >
         {info && (
           <div className="flex flex-col gap-5">

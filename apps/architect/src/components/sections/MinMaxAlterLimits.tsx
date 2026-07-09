@@ -3,11 +3,11 @@ import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { change, FormSection, formValueSelector } from 'redux-form';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { Row, Section } from '~/components/EditorLayout';
 import { Number as NumberField } from '~/components/Form/Fields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
-import { openDialog } from '~/ducks/modules/dialogs';
 import type { RootState } from '~/ducks/modules/root';
 
 import { ValidatedField } from '../Form';
@@ -63,6 +63,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
   });
 
   const dispatch = useAppDispatch();
+  const { confirm } = useDialog();
 
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
@@ -73,17 +74,17 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
         return true;
       }
 
-      const confirm = await dispatch(
-        openDialog({
-          type: 'Warning',
-          title: 'This will clear your values',
-          message:
-            'This will clear the minimum and maximum alter values. Do you want to continue?',
-          confirmLabel: 'Clear values',
-        }),
-      );
+      const confirmed = await confirm({
+        title: 'This will clear your values',
+        description:
+          'This will clear the minimum and maximum alter values. Do you want to continue?',
+        confirmLabel: 'Clear values',
+        cancelLabel: 'Cancel',
+        intent: 'warning',
+        onConfirm: () => {},
+      });
 
-      if (confirm) {
+      if (confirmed) {
         dispatch(change('edit-stage', 'behaviours.minNodes', null));
         dispatch(change('edit-stage', 'behaviours.maxNodes', null));
         return true;
@@ -91,7 +92,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
 
       return false;
     },
-    [dispatch, currentMinValue, currentMaxValue],
+    [confirm, dispatch, currentMinValue, currentMaxValue],
   );
 
   const startExpanded = useMemo(

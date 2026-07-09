@@ -1,21 +1,19 @@
-import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
+import type { Dispatch } from '@reduxjs/toolkit';
 import { bindActionCreators } from '@reduxjs/toolkit';
 import { has } from 'es-toolkit/compat';
+import { Plus } from 'lucide-react';
 import { useCallback } from 'react';
 import { connect } from 'react-redux';
 import type { FormAction } from 'redux-form';
 import { arrayPush, change, Field, formValueSelector } from 'redux-form';
 import { v4 as uuid } from 'uuid';
 
+import Button from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { Section } from '~/components/EditorLayout';
 import OrderedList from '~/components/OrderedList/OrderedList';
 import { useAppDispatch } from '~/ducks/hooks';
-import {
-  type DialogConfig,
-  actionCreators as dialogActions,
-} from '~/ducks/modules/dialogs';
 import type { RootState } from '~/ducks/modules/root';
-import { Button } from '~/lib/legacy-ui/components';
 
 import IssueAnchor from '../../IssueAnchor';
 import NodePanel from './NodePanel';
@@ -35,11 +33,7 @@ const NodePanels = ({
   ...rest
 }: NodePanelsProps) => {
   const dispatch = useAppDispatch();
-  const openDialog = useCallback(
-    (dialog: DialogConfig) =>
-      dispatch(dialogActions.openDialog(dialog) as unknown as UnknownAction),
-    [dispatch],
-  );
+  const { confirm } = useDialog();
 
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
@@ -47,22 +41,24 @@ const NodePanels = ({
         return true;
       }
 
-      const confirm = await openDialog({
-        type: 'Warning',
+      const confirmed = await confirm({
         title: 'This will delete your panel configuration',
-        message:
+        description:
           'This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?',
         confirmLabel: 'Remove panels',
+        cancelLabel: 'Cancel',
+        intent: 'warning',
+        onConfirm: () => {},
       });
 
-      if (confirm) {
+      if (confirmed) {
         dispatch(change(form, 'panels', null) as unknown as FormAction);
         return true;
       }
 
       return false;
     },
-    [dispatch, openDialog, panels, form],
+    [confirm, dispatch, panels, form],
   );
 
   const isFull = panels && panels.length === 2;
@@ -95,8 +91,8 @@ const NodePanels = ({
           <div className="mt-7">
             <Button
               onClick={() => createNewPanel()}
-              icon="add"
-              color="sea-green"
+              icon={<Plus />}
+              color="primary"
             >
               Add new panel
             </Button>

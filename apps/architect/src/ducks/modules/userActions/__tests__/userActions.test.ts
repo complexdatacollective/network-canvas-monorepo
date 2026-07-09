@@ -56,13 +56,6 @@ vi.mock('~/utils/beforeUnloadGuard', () => ({
   disarmInMemoryUnloadGuard: vi.fn(),
 }));
 
-vi.mock('~/ducks/modules/userActions/dialogs', () => ({
-  appUpgradeRequiredDialog: vi.fn(() => ({ type: 'dialog' })),
-  generalErrorDialog: vi.fn(() => ({ type: 'dialog' })),
-  mayUpgradeProtocolDialog: vi.fn(() => ({ type: 'dialog' })),
-  validationErrorDialog: vi.fn(() => ({ type: 'dialog' })),
-}));
-
 vi.mock('../../activeProtocol', () => ({
   clearActiveProtocol: vi.fn(() => ({ type: 'clearActiveProtocol' })),
   setActiveProtocol: vi.fn(() => ({ type: 'setActiveProtocol' })),

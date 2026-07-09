@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-import { Icon } from '~/lib/legacy-ui/components';
+import Icon from '@codaco/fresco-ui/Icon';
 import { cx } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
@@ -27,7 +27,7 @@ const PreviewEdge = ({
 
   const content = (
     <>
-      <Icon name="links" />
+      <Icon name="links" className="mr-2.5" />
       {label}
     </>
   );
@@ -38,7 +38,7 @@ const PreviewEdge = ({
       : 'bg-surface-1 text-surface-1-contrast';
 
   const baseClasses =
-    'relative flex flex-row items-center rounded-full border-4 border-transparent px-5 py-2.5 transition-[border-color] duration-300 ease-in-out [&_.icon]:mr-2.5';
+    'relative flex flex-row items-center rounded-full border-4 border-transparent px-5 py-2.5 transition-[border-color] duration-300 ease-in-out';
 
   if (onClick && !selected) {
     return (

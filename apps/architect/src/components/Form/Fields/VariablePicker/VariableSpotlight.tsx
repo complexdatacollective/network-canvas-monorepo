@@ -1,12 +1,14 @@
 import { get } from 'es-toolkit/compat';
+import { Info, Plus, TriangleAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import Modal from '@codaco/fresco-ui/Modal';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { VariableType } from '@codaco/protocol-validation';
 import Search from '~/components/Form/Fields/Search';
 import type { RootState } from '~/ducks/store';
-import { Icon, Modal, Scroller } from '~/lib/legacy-ui/components';
 import { cx } from '~/utils/cva';
 import { validations } from '~/utils/validations';
 
@@ -16,7 +18,7 @@ import ExternalLink from '../../../ExternalLink';
 import { SimpleVariablePill } from './VariablePill';
 
 const EMPTY_CLASSES =
-  'flex grow basis-full items-center rounded px-7 py-5 [&_.icon]:mr-1 [&_.icon]:shrink-0 [--info-fill-primary:oklch(var(--platinum--dark))] [--warning-body:oklch(var(--platinum--dark))]';
+  'flex grow basis-full items-center rounded px-7 py-5 [&_svg]:mr-1 [&_svg]:shrink-0';
 
 type ListItemProps = {
   disabled?: boolean;
@@ -118,7 +120,7 @@ const Divider = ({ legend }: DividerProps) => (
 );
 
 const CREATE_NEW_CLASSES =
-  'flex items-center justify-center px-5 py-1 font-medium text-current [&_.icon]:h-5 [&_.icon]:mr-5 [--warning-body:var(--warning)] [--warning-body-shadow:var(--warning)] [--warning-mark:oklch(var(--white))] [--warning-mark-shadow:oklch(var(--white))]';
+  'flex items-center justify-center px-5 py-1 font-medium text-current [&_svg]:mr-5 [&_svg]:h-5';
 
 type VariableSpotlightProps = {
   open: boolean;
@@ -221,7 +223,7 @@ const VariableSpotlight = ({
   }, [filterTerm, existingVariableNames]);
 
   const renderResults = () => (
-    <Scroller>
+    <ScrollArea fade={false} viewportClassName="scroll-smooth">
       <ol className="m-0 flex list-none flex-col gap-1 p-1">
         {filterTerm &&
           options.filter((item) => item.label === filterTerm).length !== 1 && (
@@ -231,7 +233,7 @@ const VariableSpotlight = ({
                   data-testid="variable-spotlight-empty"
                   className={EMPTY_CLASSES}
                 >
-                  <Icon name="warning" />
+                  <TriangleAlert aria-hidden />
                   <div>
                     <p>
                       You cannot create a new variable from here. Please create
@@ -255,7 +257,7 @@ const VariableSpotlight = ({
                       removeSelected={() => setCursor(0)}
                     >
                       <div className={CREATE_NEW_CLASSES}>
-                        <Icon name="add" />
+                        <Plus aria-hidden />
                         <span>
                           Create new variable called &quot;
                           {filterTerm}
@@ -266,7 +268,7 @@ const VariableSpotlight = ({
                   ) : (
                     <ListItem disabled>
                       <div className={CREATE_NEW_CLASSES}>
-                        <Icon name="warning" />
+                        <TriangleAlert aria-hidden />
                         <span>
                           Cannot create variable named &quot;
                           {filterTerm}
@@ -313,7 +315,7 @@ const VariableSpotlight = ({
           ),
         )}
       </ol>
-    </Scroller>
+    </ScrollArea>
   );
 
   // Reset cursor position when list is filtered
@@ -417,7 +419,7 @@ const VariableSpotlight = ({
   };
 
   return (
-    <Modal open={open} onOpenChange={handleOpenChange} forceRender>
+    <Modal open={open} onOpenChange={handleOpenChange}>
       <motion.div
         className="bg-surface-1 text-surface-1-contrast fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 overflow-hidden rounded-lg"
         variants={containerVariants}
@@ -453,7 +455,7 @@ const VariableSpotlight = ({
               data-testid="variable-spotlight-empty"
               className={EMPTY_CLASSES}
             >
-              <Icon name="info" />
+              <Info aria-hidden />
               <div>
                 <p>
                   To create your first variable of this type, type a name above
@@ -471,7 +473,7 @@ const VariableSpotlight = ({
               data-testid="variable-spotlight-empty"
               className={EMPTY_CLASSES}
             >
-              <Icon name="warning" />
+              <TriangleAlert aria-hidden />
               <div>
                 <p>
                   No variables exist for you to select, and you cannot create a

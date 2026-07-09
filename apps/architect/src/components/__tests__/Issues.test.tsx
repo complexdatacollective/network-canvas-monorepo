@@ -1,10 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { getFormSyncErrors, hasSubmitFailed } from 'redux-form';
 import { describe, expect, it, type Mock, vi } from 'vitest';
 
-import Issues from '../Issues';
+import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
+
+import { useIssuesToolbarSegment } from '../Issues';
 
 vi.mock('redux-form');
 
@@ -24,6 +26,13 @@ const mockStore = configureStore({
   },
 });
 
+function IssuesHarness() {
+  const { segment } = useIssuesToolbarSegment();
+  return segment ? (
+    <SegmentedToolbar label="Stage editor actions" items={[segment]} />
+  ) : null;
+}
+
 describe('<Issues />', () => {
   it('will render', () => {
     (getFormSyncErrors as Mock).mockReturnValue(() => ({}));
@@ -31,26 +40,25 @@ describe('<Issues />', () => {
 
     const { container } = render(
       <Provider store={mockStore}>
-        <Issues />
+        <IssuesHarness />
       </Provider>,
     );
 
     expect(container).toMatchSnapshot();
   });
 
-  it('renders issues from object', () => {
+  it('renders issues from object', async () => {
     (getFormSyncErrors as Mock).mockReturnValue(() => mockIssues);
     (hasSubmitFailed as Mock).mockReturnValue(() => true);
 
     render(
       <Provider store={mockStore}>
-        <Issues />
+        <IssuesHarness />
       </Provider>,
     );
 
     // Popover content lives in a portal mounted to document.body, and opens
     // automatically on mount because submitFailed + hasIssues.
-    const issueElements = document.querySelectorAll('li[data-testid="issue"]');
-    expect(issueElements).toHaveLength(3);
+    expect(await screen.findAllByTestId('issue')).toHaveLength(3);
   });
 });

@@ -3,16 +3,15 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import type { VariableType } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
-import BooleanField from '~/components/Form/Fields/BooleanField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Tip from '~/components/Tip';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { AppDispatch, RootState } from '~/ducks/store';
 
 import { createVariableAsync } from '../../../ducks/modules/protocol/codebook';
-import DetachedField from '../../DetachedField';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import EntitySelectField from '../fields/EntitySelectField/EntitySelectField';
 import { getEdgeFilters, getHighlightVariablesForSubject } from './selectors';
@@ -105,17 +104,10 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
 
   const [tapBehaviour, setTapBehaviour] = React.useState(initialState());
 
-  const handleChangeTapBehaviour = (
-    eventOrValue: unknown,
-    nextValue: unknown,
-    _currentValue: unknown,
-    _name: string | null,
-  ) => {
-    const behaviour = (
-      typeof eventOrValue === 'string' ? eventOrValue : nextValue
-    ) as string | null;
-    setTapBehaviour(behaviour);
-    if (behaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES) {
+  const handleChangeTapBehaviour = (behaviour: string | number | undefined) => {
+    const nextBehaviour = typeof behaviour === 'string' ? behaviour : null;
+    setTapBehaviour(nextBehaviour);
+    if (nextBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES) {
       // Reset edge creation
       dispatch(change(form, 'edges.create', null) as UnknownAction);
       dispatch(
@@ -123,7 +115,7 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
       );
     }
 
-    if (behaviour === TAP_BEHAVIOURS.CREATE_EDGES) {
+    if (nextBehaviour === TAP_BEHAVIOURS.CREATE_EDGES) {
       // Reset attribute highlighting
       dispatch(
         change(form, 'highlight.allowHighlighting', false) as UnknownAction,
@@ -175,40 +167,21 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
       layout="vertical"
     >
       <Row>
-        <DetachedField
-          component={
-            BooleanField as React.ComponentType<Record<string, unknown>>
-          }
+        <RadioGroupField
           onChange={handleChangeTapBehaviour}
-          value={tapBehaviour}
-          validation={{ required: true }}
+          value={tapBehaviour ?? undefined}
           options={[
             {
               value: TAP_BEHAVIOURS.CREATE_EDGES,
-              label: () => (
-                <div>
-                  <h4>Edge Creation</h4>
-                  <p>
-                    Clicking or tapping a node will allow the participant to
-                    create an edge.
-                  </p>
-                </div>
-              ),
+              label:
+                '**Edge Creation**\n\nClicking or tapping a node will allow the participant to create an edge.',
             },
             {
               value: TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES,
-              label: () => (
-                <div>
-                  <h4>Attribute Toggling</h4>
-                  <p>
-                    Clicking or tapping a node will toggle a boolean variable to
-                    true or false.
-                  </p>
-                </div>
-              ),
+              label:
+                '**Attribute Toggling**\n\nClicking or tapping a node will toggle a boolean variable to true or false.',
             },
           ]}
-          noReset
         />
       </Row>
       {tapBehaviour && (

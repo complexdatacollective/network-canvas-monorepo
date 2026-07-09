@@ -3,6 +3,7 @@ import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import EditableAttributesList from '~/components/EditableAttributesList/EditableAttributesList';
 import { Row, Section, Subsection } from '~/components/EditorLayout';
 import withCreateVariableHandlers from '~/components/enhancers/withCreateVariableHandler';
@@ -10,7 +11,6 @@ import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubj
 import withSubject from '~/components/enhancers/withSubject';
 import { ValidatedField } from '~/components/Form';
 import IssueAnchor from '~/components/IssueAnchor';
-import Switch from '~/components/NewComponents/Switch';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
@@ -182,15 +182,16 @@ export const NodeConfigurationComponent = ({
             fieldName="behaviours.automaticLayout"
             description="Default automatic layout"
           />
-          <label className="flex cursor-pointer flex-row items-center gap-5">
-            <Switch
-              checked={automaticLayout}
-              onCheckedChange={(checked) =>
+          <div className="flex flex-row items-center gap-5">
+            <ToggleField
+              title="Start with automatic layout switched on"
+              value={automaticLayout}
+              onChange={(checked) =>
                 dispatch(change(form, 'behaviours.automaticLayout', checked))
               }
             />
             <span>Start with automatic layout switched on</span>
-          </label>
+          </div>
         </Row>
       </Subsection>
 

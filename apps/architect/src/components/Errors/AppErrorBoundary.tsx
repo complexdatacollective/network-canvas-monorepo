@@ -1,9 +1,9 @@
 import { Check, Copy } from 'lucide-react';
 import { Component, type ReactNode, useCallback, useState } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { posthog } from '~/analytics';
-import Dialog from '~/components/NewComponents/Dialog';
-import { Button } from '~/lib/legacy-ui/components';
 
 type AppErrorBoundaryProps = {
   children?: ReactNode;
@@ -24,7 +24,7 @@ function CopyButton({ value }: { value: string }) {
 
   return (
     <Button
-      color="platinum"
+      color="default"
       icon={copied ? <Check /> : <Copy />}
       onClick={handleCopy}
     >
@@ -73,17 +73,14 @@ class AppErrorBoundary extends Component<
       return (
         <Dialog
           open
-          onOpenChange={(open) => {
-            if (!open) this.resetError();
-          }}
+          closeDialog={this.resetError}
           title="Something went wrong."
           footer={
             <>
               <CopyButton value={error.stack ?? error.message} />
-              <Dialog.Close
-                nativeButton={false}
-                render={<Button color="platinum">OK</Button>}
-              />
+              <Button color="default" onClick={this.resetError}>
+                OK
+              </Button>
             </>
           }
         >

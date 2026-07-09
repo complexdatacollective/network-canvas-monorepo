@@ -1,7 +1,7 @@
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { Layout } from '~/components/EditorLayout';
-import { Button } from '~/lib/legacy-ui/components';
 
-import Dialog from '../NewComponents/Dialog';
 import AssetBrowser from './AssetBrowser';
 
 type AssetBrowserWindowProps = {
@@ -22,13 +22,12 @@ const AssetBrowserWindow = ({
   return (
     <Dialog
       open={show}
-      onOpenChange={(open) => !open && onCancel()}
+      closeDialog={onCancel}
       title="Resource Browser"
       footer={
-        <Dialog.Close
-          nativeButton={false}
-          render={<Button color="platinum">Cancel</Button>}
-        />
+        <Button color="default" onClick={onCancel}>
+          Cancel
+        </Button>
       }
     >
       <Layout>

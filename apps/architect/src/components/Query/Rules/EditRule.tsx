@@ -1,7 +1,9 @@
 import { Component } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+
 import ExternalLink from '../../ExternalLink';
-import Dialog from '../../NewComponents/Dialog';
 import EditEgoRule from './EditEgoRule';
 import EditEntityRule from './EditEntityRule';
 
@@ -40,11 +42,18 @@ class EditRule extends Component<EditRuleProps> {
     return (
       <Dialog
         open={!!rule}
-        onOpenChange={(open) => !open && onCancel()}
+        closeDialog={onCancel}
         title="Construct a Rule"
-        onConfirm={onSave}
-        confirmText="Finish and Close"
-        cancelText="Cancel"
+        footer={
+          <>
+            <Button color="default" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button color="primary" onClick={onSave}>
+              Finish and Close
+            </Button>
+          </>
+        }
       >
         <div>
           <p>

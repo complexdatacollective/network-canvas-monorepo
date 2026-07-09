@@ -1,4 +1,5 @@
 import { get } from 'es-toolkit/compat';
+import { ArrowRight } from 'lucide-react';
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 import * as mapboxgl from 'mapbox-gl/esm';
 
@@ -6,9 +7,9 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { Layout, Section } from '~/components/EditorLayout';
-import Dialog from '~/components/NewComponents/Dialog';
-import Button from '~/lib/legacy-ui/components/Button';
 import { getAssetManifest } from '~/selectors/protocol';
 
 type MapOptions = {
@@ -53,8 +54,6 @@ const MapView = ({
     (mapOptions.center as [number, number]) || [0, 0],
   );
   const [zoom, setZoom] = useState(mapOptions.initialZoom || 0);
-  const [isAnimationComplete, setIsAnimationComplete] = useState(false);
-
   const saveMapSelection = (newCenter: [number, number], newZoom: number) => {
     onChange({
       ...mapOptions,
@@ -67,76 +66,70 @@ const MapView = ({
     center !== mapOptions.center || zoom !== mapOptions.initialZoom;
 
   useEffect(() => {
-    if (
-      !isAnimationComplete ||
-      !mapboxAPIKey ||
-      !mapContainerRef.current ||
-      mapRef.current
-    ) {
+    if (!mapboxAPIKey || !mapContainerRef.current || mapRef.current) {
       return;
     }
 
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: style || 'mapbox://styles/mapbox/streets-v12',
-      center: (mapOptions.center as [number, number]) || [0, 0],
-      zoom: mapOptions.initialZoom || 0,
-      accessToken: mapboxAPIKey,
-    });
+    let map: MapboxMap | null = null;
+    const frame = window.requestAnimationFrame(() => {
+      if (!mapContainerRef.current || mapRef.current) {
+        return;
+      }
 
-    mapRef.current = map;
+      map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: style || 'mapbox://styles/mapbox/streets-v12',
+        center: (mapOptions.center as [number, number]) || [0, 0],
+        zoom: mapOptions.initialZoom || 0,
+        accessToken: mapboxAPIKey,
+      });
 
-    map.addControl(
-      new mapboxgl.NavigationControl({
-        showCompass: false,
-      }),
-    );
+      mapRef.current = map;
 
-    map.on('move', () => {
-      const mapCenter = map.getCenter();
-      const mapZoom = map.getZoom();
+      map.addControl(
+        new mapboxgl.NavigationControl({
+          showCompass: false,
+        }),
+      );
 
-      setCenter([mapCenter.lng, mapCenter.lat]);
-      setZoom(mapZoom);
+      map.on('move', () => {
+        if (!map) {
+          return;
+        }
+        const mapCenter = map.getCenter();
+        const mapZoom = map.getZoom();
+
+        setCenter([mapCenter.lng, mapCenter.lat]);
+        setZoom(mapZoom);
+      });
     });
 
     return () => {
-      map.remove();
+      window.cancelAnimationFrame(frame);
+      map?.remove();
       mapRef.current = null;
     };
-  }, [
-    isAnimationComplete,
-    mapboxAPIKey,
-    style,
-    mapOptions.center,
-    mapOptions.initialZoom,
-  ]);
-
-  const handleAnimationComplete = () => {
-    setIsAnimationComplete(true);
-  };
+  }, [mapboxAPIKey, style, mapOptions.center, mapOptions.initialZoom]);
 
   return (
     <Dialog
       open={true}
-      onOpenChange={(open) => !open && close()}
-      onAnimationComplete={handleAnimationComplete}
+      closeDialog={close}
       title="Initial Map View"
       footer={
         <>
-          <Dialog.Close
-            nativeButton={false}
-            render={<Button color="platinum">Cancel</Button>}
-          />
+          <Button color="default" onClick={close}>
+            Cancel
+          </Button>
           {isMapChanged && (
             <Button
-              color="sea-green"
+              color="primary"
               onClick={() => {
                 saveMapSelection(center, zoom);
                 close();
               }}
               iconPosition="right"
-              icon="arrow-right"
+              icon={<ArrowRight />}
             >
               Save Changes
             </Button>

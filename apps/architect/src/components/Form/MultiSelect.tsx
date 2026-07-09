@@ -1,19 +1,17 @@
 import type { Dispatch } from '@reduxjs/toolkit';
-import { bindActionCreators } from '@reduxjs/toolkit';
-import { GripVertical, Trash2 } from 'lucide-react';
+import { GripVertical, Plus, Trash2 } from 'lucide-react';
 import { motion, Reorder, useDragControls } from 'motion/react';
 import { useRef } from 'react';
-import { withHandlers } from 'react-recompose';
 import { connect } from 'react-redux';
 import type { UnknownAction } from 'redux';
 import type { WrappedFieldArrayProps } from 'redux-form';
 import { change, FieldArray, formValueSelector } from 'redux-form';
 
+import Button from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import type { RootState } from '~/ducks/modules/root';
-import { Button } from '~/lib/legacy-ui/components';
 
-import { actionCreators as dialogsActions } from '../../ducks/modules/dialogs';
 import ValidatedField from './ValidatedField';
 
 // Row background reads `--rule-bg` so callers (e.g. Validations error state)
@@ -44,8 +42,8 @@ type InternalItem<T> = {
 
 const AddItem = (props: React.ComponentProps<typeof Button>) => (
   <Button
-    color="sea-green"
-    icon="add"
+    color="primary"
+    icon={<Plus />}
     // eslint-disable-next-line react/jsx-props-no-spreading
     {...props}
   >
@@ -74,7 +72,6 @@ const mapDispatchToItemProps = (
   dispatch: Dispatch,
   { meta: { form } }: ItemOwnProps,
 ) => ({
-  openDialog: bindActionCreators(dialogsActions.openDialog, dispatch),
   resetField: (fieldName: string) =>
     dispatch(change(form, fieldName, null) as UnknownAction),
 });
@@ -91,26 +88,45 @@ type ItemHandlerProps = ItemOwnProps &
     ) => Array<Record<string, unknown>>;
   };
 
-type ItemHandlers = {
-  handleDelete: () => void;
-  handleChange: (index: number) => void;
-};
-
 type ItemComponentProps = ItemHandlerProps & {
   internalItem: InternalItem<ItemValue>;
-} & ItemHandlers;
+};
 
 const ItemComponent: React.FC<ItemComponentProps> = ({
   field,
+  fields,
   properties,
   options,
   rowValues,
   allValues,
-  handleDelete,
-  handleChange,
   internalItem,
+  index,
+  resetField,
 }) => {
   const controls = useDragControls();
+  const { confirm } = useDialog();
+
+  const handleDelete = () => {
+    void confirm({
+      title: 'Remove item',
+      description: 'Are you sure you want to remove this item?',
+      confirmLabel: 'Remove item',
+      cancelLabel: 'Cancel',
+      intent: 'destructive',
+      onConfirm: () => {
+        fields.remove(index);
+      },
+    });
+  };
+
+  const handleChange = (changedIndex: number) => {
+    // Reset any fields after this one in the property index
+    for (const { fieldName: propertyFieldName } of properties.slice(
+      changedIndex + 1,
+    )) {
+      resetField(`${field}.${propertyFieldName}`);
+    }
+  };
 
   return (
     <Reorder.Item
@@ -129,7 +145,7 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
       </div>
 
       <div className={MULTI_SELECT_OPTIONS_CLASSES}>
-        {properties.map(({ fieldName, component, ...rest }, index) => {
+        {properties.map(({ fieldName, component, ...rest }, propertyIndex) => {
           const selectOptions = options(fieldName, rowValues, allValues);
           const FieldComponent = component ?? NativeSelect;
           const componentProps = component
@@ -144,7 +160,7 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
                 name={`${field}.${fieldName}`}
                 componentProps={componentProps}
                 validation={{ required: true }}
-                onChange={() => handleChange(index)}
+                onChange={() => handleChange(propertyIndex)}
               />
             </div>
           );
@@ -167,32 +183,6 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
   );
 };
 
-const ItemWithHandlers = withHandlers<ItemHandlerProps, ItemHandlers>({
-  handleDelete:
-    ({ fields, openDialog, index }: ItemHandlerProps) =>
-    () => {
-      openDialog({
-        type: 'Warning',
-        title: 'Remove item',
-        message: 'Are you sure you want to remove this item?',
-        onConfirm: () => {
-          fields.remove(index);
-        },
-        confirmLabel: 'Remove item',
-      });
-    },
-  handleChange:
-    ({ properties, field, resetField }: ItemHandlerProps) =>
-    (index: number) => {
-      // Reset any fields after this one in the property index
-      for (const { fieldName: propertyFieldName } of properties.slice(
-        index + 1,
-      )) {
-        resetField(`${field}.${propertyFieldName}`);
-      }
-    },
-})(ItemComponent);
-
 type ItemExportProps = ItemOwnProps & {
   index: number;
   properties: PropertyField[];
@@ -207,7 +197,7 @@ type ItemExportProps = ItemOwnProps & {
 const Item = connect(
   mapStateToItemProps,
   mapDispatchToItemProps,
-)(ItemWithHandlers) as unknown as React.ComponentType<ItemExportProps>;
+)(ItemComponent) as unknown as React.ComponentType<ItemExportProps>;
 
 type ItemsOwnProps = {
   meta: { form: string };

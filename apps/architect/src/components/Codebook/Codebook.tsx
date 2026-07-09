@@ -2,9 +2,9 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import Button from '@codaco/fresco-ui/Button';
 import { Section } from '~/components/EditorLayout';
 import Checkbox from '~/components/Form/Fields/Checkbox';
-import { Button } from '~/lib/legacy-ui/components';
 import { getCodebook } from '~/selectors/protocol';
 
 import EgoType from './EgoType';
@@ -76,8 +76,8 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         <div className="mb-5 flex items-center gap-5">
           <h2 className="my-0">Node Types ({nodes.length})</h2>
           <Button
-            color="sea-green"
-            size="small"
+            color="primary"
+            size="sm"
             icon={<Plus />}
             onClick={() => onEditEntity?.('node')}
           >
@@ -106,8 +106,8 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         <div className="mb-5 flex items-center gap-5">
           <h2 className="my-0">Edge Types ({edges.length})</h2>
           <Button
-            color="sea-green"
-            size="small"
+            color="primary"
+            size="sm"
             icon={<Plus />}
             onClick={() => onEditEntity?.('edge')}
           >

@@ -1,6 +1,6 @@
 import { DeleteIcon } from 'lucide-react';
 
-import Button from '~/lib/legacy-ui/components/Button';
+import Button from '@codaco/fresco-ui/Button';
 
 type ControlsColumnProps = {
   id: string;
@@ -17,7 +17,7 @@ const ControlsColumn = ({ id, inUse, onDelete }: ControlsColumnProps) => {
   return (
     <span title={label} className="inline-block">
       <Button
-        color="neon-coral"
+        color="destructive"
         icon={<DeleteIcon />}
         onClick={() => onDelete(id)}
         disabled={inUse}

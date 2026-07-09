@@ -4,11 +4,11 @@ import type { ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { Section, Subsection } from '~/components/EditorLayout';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
 import ValidatedField from '~/components/Form/ValidatedField';
-import Switch from '~/components/NewComponents/Switch';
 import Options from '~/components/Options';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';
 import LockedOptions from '~/components/Options/LockedOptions';
@@ -144,9 +144,9 @@ const PromptFields = ({
               requirements.
             </p>
           </div>
-          <Switch
-            checked={!!showValidationHints}
-            onCheckedChange={(checked) =>
+          <ToggleField
+            value={!!showValidationHints}
+            onChange={(checked) =>
               dispatch(
                 change(form, 'showValidationHints', checked) as UnknownAction,
               )

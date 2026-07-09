@@ -1,10 +1,8 @@
 import Rules from './Rules';
-
-type Rule = Record<string, unknown>;
+import type { Rule } from './Rules/validateRule';
 
 type FilterProps = {
   onChange: (value: unknown) => void;
-  openDialog: (dialog: unknown) => void;
   rules?: Rule[];
   codebook: Record<string, unknown>;
   join?: string;
@@ -16,14 +14,12 @@ const Filter = ({
   join,
   codebook,
   onChange,
-  openDialog,
   error,
 }: FilterProps) => (
   <Rules
     rules={rules}
     join={join}
     onChange={onChange}
-    openDialog={openDialog}
     codebook={codebook}
     error={error}
   />

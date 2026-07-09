@@ -3,10 +3,10 @@ import type { ComponentType } from 'react';
 import { useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { Section } from '~/components/EditorLayout';
 import { CheckboxGroup } from '~/components/Form/Fields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import type { RootState } from '~/ducks/modules/root';
 import type { AppDispatch } from '~/ducks/store';
 import { getNodeTypes } from '~/selectors/codebook';
@@ -45,13 +45,7 @@ export const getEncryptableVariableOptions = (
 
 const EncryptedVariables = (_props: StageEditorSectionProps) => {
   const dispatch = useDispatch<AppDispatch>();
-  const openDialog = useCallback(
-    async (dialog: Parameters<typeof dialogActions.openDialog>[0]) => {
-      const result = await dispatch(dialogActions.openDialog(dialog));
-      return result.payload as boolean;
-    },
-    [dispatch],
-  );
+  const { confirm } = useDialog();
   const nodeTypes = useSelector(
     (state: RootState) => getNodeTypes(state) as Record<string, NodeType>,
   );
@@ -77,14 +71,16 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
         return true;
       }
 
-      const confirm = await openDialog({
-        type: 'Warning',
+      const confirmed = await confirm({
         title: 'This will clear selected variables',
-        message: `This will deselect all encrypted variables for the ${nodeType.name} node type. Do you want to continue?`,
+        description: `This will deselect all encrypted variables for the ${nodeType.name} node type. Do you want to continue?`,
         confirmLabel: 'Clear encrypted variables',
+        cancelLabel: 'Cancel',
+        intent: 'warning',
+        onConfirm: () => {},
       });
 
-      if (confirm) {
+      if (confirmed) {
         Object.entries(nodeType.variables || {}).forEach(
           ([variableId, variable]) => {
             if (variable?.encrypted) {
@@ -97,7 +93,7 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
 
       return false;
     },
-    [openDialog, handleEncryptionToggle],
+    [confirm, handleEncryptionToggle],
   );
 
   const nodeTypeVariableData = useMemo(

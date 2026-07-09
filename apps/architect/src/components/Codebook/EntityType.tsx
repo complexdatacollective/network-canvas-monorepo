@@ -1,15 +1,16 @@
-import { useState } from 'react';
-import { compose, withHandlers } from 'react-recompose';
+import { useCallback, useState } from 'react';
+import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 import { Link } from 'wouter';
 
+import Button from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import { Section } from '~/components/EditorLayout';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
-import { actionCreators as dialogActionCreators } from '~/ducks/modules/dialogs';
+import { useAppDispatch } from '~/ducks/hooks';
 import { deleteTypeAsync } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
-import { Button } from '~/lib/legacy-ui/components';
 
 import EntityIcon from './EntityIcon';
 import { filterEntityType } from './filterEntityType';
@@ -50,8 +51,7 @@ type EntityTypeProps = {
   inUse?: boolean;
   search?: string;
   unusedOnly?: boolean;
-  handleDelete?: () => void;
-  handleEdit?: () => void;
+  onEditEntity?: (entity: string, type?: string) => void;
   variables?: Record<string, Variable>;
 };
 
@@ -66,9 +66,10 @@ const EntityType = ({
   variables = {},
   search = '',
   unusedOnly = false,
-  handleEdit = () => {},
-  handleDelete = () => {},
+  onEditEntity,
 }: EntityTypeProps) => {
+  const dispatch = useAppDispatch();
+  const { confirm, openDialog } = useDialog();
   const [showAddVariable, setShowAddVariable] = useState(false);
 
   const variableArray = Object.values(variables);
@@ -82,6 +83,39 @@ const EntityType = ({
     variableArray,
     { name, inUse, search, unusedOnly },
   );
+
+  const handleEdit = useCallback(() => {
+    onEditEntity?.(entity, type);
+  }, [entity, onEditEntity, type]);
+
+  const handleDelete = useCallback(() => {
+    if (inUse) {
+      void openDialog({
+        type: 'acknowledge',
+        intent: 'info',
+        title: `Cannot delete ${name} ${entity}`,
+        children: (
+          <p>
+            The {name} {entity} cannot be deleted as it is currently in use.
+          </p>
+        ),
+        actions: { primary: { label: 'OK', value: true } },
+      });
+
+      return;
+    }
+
+    void confirm({
+      title: `Delete ${name} ${entity}`,
+      description: `Are you sure you want to delete the ${name} ${entity}? This cannot be undone.`,
+      confirmLabel: `Delete ${name} ${entity}`,
+      cancelLabel: 'Cancel',
+      intent: 'destructive',
+      onConfirm: () => {
+        void dispatch(deleteTypeAsync({ entity, type }));
+      },
+    });
+  }, [confirm, dispatch, entity, inUse, name, openDialog, type]);
 
   if (!visible) {
     return null;
@@ -123,7 +157,7 @@ const EntityType = ({
             </div>
           )}
         </div>
-        <Button onClick={handleEdit} color="sea-green">
+        <Button onClick={handleEdit} color="primary">
           Edit entity
         </Button>
         <span
@@ -134,7 +168,7 @@ const EntityType = ({
           }
           className="inline-block"
         >
-          <Button color="neon-coral" onClick={handleDelete} disabled={inUse}>
+          <Button color="destructive" onClick={handleDelete} disabled={inUse}>
             Delete entity
           </Button>
         </span>
@@ -142,8 +176,8 @@ const EntityType = ({
       <div className="mt-5">
         <div className="flex justify-end">
           <Button
-            color="sea-green"
-            size="small"
+            color="primary"
+            size="sm"
             onClick={() => setShowAddVariable(true)}
           >
             Add variable
@@ -179,60 +213,6 @@ const mapStateToProps = (state: RootState, { entity, type }: StateProps) => {
   return entityProperties;
 };
 
-type ConnectedProps = {
-  openDialog: typeof dialogActionCreators.openDialog;
-  deleteType: typeof deleteTypeAsync;
-};
-
-type HandlerProps = ConnectedProps &
-  EntityTypeProps & {
-    onEditEntity?: (entity: string, type?: string) => void;
-  };
-
-const withEntityHandlers = compose(
-  connect(null, {
-    openDialog: dialogActionCreators.openDialog,
-    deleteType: deleteTypeAsync,
-  }),
-  withHandlers<HandlerProps, object>({
-    handleEdit:
-      ({ entity, type, onEditEntity }: HandlerProps) =>
-      () => {
-        onEditEntity?.(entity, type);
-      },
-    handleDelete:
-      ({ deleteType, openDialog, entity, type, name, inUse }: HandlerProps) =>
-      () => {
-        if (inUse) {
-          openDialog({
-            type: 'Notice',
-            title: `Cannot delete ${name} ${entity}`,
-            message: (
-              <p>
-                The {name} {entity} cannot be deleted as it is currently in use.
-              </p>
-            ),
-          });
-
-          return;
-        }
-
-        openDialog({
-          type: 'Warning',
-          title: `Delete ${name} ${entity}`,
-          message: (
-            <p>
-              Are you sure you want to delete the {name} {entity}? This cannot
-              be undone.
-            </p>
-          ),
-          onConfirm: () => deleteType({ entity, type }),
-          confirmLabel: `Delete ${name} ${entity}`,
-        });
-      },
-  }),
-);
-
 // OwnProps - props that must be passed from outside
 type OwnProps = StateProps & {
   inUse?: boolean;
@@ -242,7 +222,6 @@ type OwnProps = StateProps & {
   onEditEntity?: (entity: string, type?: string) => void;
 };
 
-export default compose<EntityTypeProps, OwnProps>(
-  connect(mapStateToProps),
-  withEntityHandlers,
-)(EntityType);
+export default compose<EntityTypeProps, OwnProps>(connect(mapStateToProps))(
+  EntityType,
+);

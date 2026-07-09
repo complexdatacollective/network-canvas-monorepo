@@ -1,13 +1,12 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
 import type React from 'react';
 import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FilterRule } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
 import { useAppDispatch } from '~/ducks/hooks';
-import { openDialog } from '~/ducks/modules/dialogs';
 import type { RootState } from '~/ducks/modules/root';
 
 import IssueAnchor from '../IssueAnchor';
@@ -40,6 +39,7 @@ export const handleFilterDeactivate = async (
 const Filter = () => {
   const getFormValue = formValueSelector('edit-stage');
   const dispatch = useAppDispatch();
+  const { confirm } = useDialog();
   const currentValue = useSelector(
     (state: RootState) =>
       getFormValue(state, 'filter') as { rules?: unknown[] } | undefined,
@@ -82,27 +82,27 @@ const Filter = () => {
         return true;
       }
 
-      const confirm = await handleFilterDeactivate(
-        () =>
-          dispatch(
-            openDialog({
-              type: 'Warning',
-              title: 'This will clear your filter',
-              message:
-                'This will clear your filter, and delete any rules you have created. Do you want to continue?',
-              confirmLabel: 'Clear filter',
-            }) as unknown as UnknownAction,
-          ) as unknown as Promise<boolean>,
+      const confirmed = await handleFilterDeactivate(
+        async () =>
+          (await confirm({
+            title: 'This will clear your filter',
+            description:
+              'This will clear your filter, and delete any rules you have created. Do you want to continue?',
+            confirmLabel: 'Clear filter',
+            cancelLabel: 'Cancel',
+            intent: 'warning',
+            onConfirm: () => {},
+          })) === true,
       );
 
-      if (confirm) {
+      if (confirmed) {
         dispatch(change('edit-stage', 'filter', null));
         return true;
       }
 
       return false;
     },
-    [dispatch, currentValue],
+    [confirm, dispatch, currentValue],
   );
 
   return (

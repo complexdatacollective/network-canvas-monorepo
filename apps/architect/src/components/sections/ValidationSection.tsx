@@ -5,9 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import type { Variable } from '@codaco/protocol-validation';
 import { Subsection } from '~/components/EditorLayout';
-import Switch from '~/components/NewComponents/Switch';
 import Validations from '~/components/Validations';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
@@ -76,10 +76,10 @@ const ValidationSection = ({
       summary={<p>Add one or more validation rules to this form field.</p>}
       disabled={disabled}
       action={
-        <Switch
+        <ToggleField
           title="Turn validation on or off"
-          checked={isEnabled}
-          onCheckedChange={handleToggle}
+          value={isEnabled}
+          onChange={(checked) => handleToggle(!!checked)}
           disabled={disabled}
           className={cx(
             'shrink-0',

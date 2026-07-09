@@ -1,15 +1,10 @@
 import { get, isString } from 'es-toolkit/compat';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { ComponentProps } from 'react';
-import {
-  compose,
-  withHandlers,
-  withProps,
-  withStateHandlers,
-} from 'react-recompose';
-import { connect } from 'react-redux';
+import { useCallback, type ComponentProps } from 'react';
+import { compose, withProps, withStateHandlers } from 'react-recompose';
 
-import { actionCreators as dialogActionCreators } from '~/ducks/modules/dialogs';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useAppDispatch } from '~/ducks/hooks';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
 
 import EditableVariablePill from '../Form/Fields/VariablePicker/VariablePill';
@@ -93,9 +88,10 @@ type Variable = {
   usageString?: string;
 };
 
+type Entity = 'node' | 'edge' | 'ego';
+
 type VariablesProps = {
-  entity: string;
-  onDelete?: (id: string) => void;
+  entity: Entity;
   sort: (options: { sortBy: string; sortDirection: SortDirectionType }) => void;
   sortBy: string;
   sortDirection: SortDirectionType;
@@ -105,17 +101,38 @@ type VariablesProps = {
 
 const Variables = ({
   variables = [],
-  onDelete = () => {},
+  entity,
   sortBy,
   sortDirection,
   sort,
-  type: _type,
+  type,
 }: VariablesProps) => {
+  const dispatch = useAppDispatch();
+  const { confirm } = useDialog();
   const headingProps = {
     sortBy,
     sortDirection,
     onSort: sort,
   };
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      const variable = variables.find((v: Variable) => v.id === id);
+      const { name } = variable || { name: 'Unknown' };
+
+      void confirm({
+        title: `Delete ${name}`,
+        description: `Are you sure you want to delete the variable called ${name}? This cannot be undone.`,
+        confirmLabel: `Delete ${name}`,
+        cancelLabel: 'Cancel',
+        intent: 'destructive',
+        onConfirm: () => {
+          void dispatch(deleteVariableAsync({ entity, type, variable: id }));
+        },
+      });
+    },
+    [confirm, dispatch, entity, type, variables],
+  );
 
   return (
     <div className="border-outline mt-7 overflow-hidden rounded border">
@@ -155,7 +172,7 @@ const Variables = ({
                 <UsageColumn inUse={inUse} usage={usage} />
               </td>
               <td className="border-outline/40 m-0 border-l px-5 py-2.5 text-right text-base">
-                <ControlsColumn onDelete={onDelete} inUse={inUse} id={id} />
+                <ControlsColumn onDelete={handleDelete} inUse={inUse} id={id} />
               </td>
             </tr>
           ))}
@@ -164,52 +181,6 @@ const Variables = ({
     </div>
   );
 };
-
-type WithVariableHandlersProps = {
-  deleteVariable: (params: {
-    entity: string;
-    type?: string;
-    variable: string;
-  }) => void;
-  openDialog: (dialog: unknown) => void;
-  entity: string;
-  type?: string;
-  variables: Variable[];
-};
-
-const withVariableHandlers = compose(
-  connect(null, {
-    openDialog: dialogActionCreators.openDialog,
-    deleteVariable: deleteVariableAsync,
-  }),
-  withHandlers<WithVariableHandlersProps, { onDelete: (id: string) => void }>({
-    onDelete:
-      ({
-        deleteVariable,
-        openDialog,
-        entity,
-        type,
-        variables,
-      }: WithVariableHandlersProps) =>
-      (id: string) => {
-        const variable = variables.find((v: Variable) => v.id === id);
-        const { name } = variable || { name: 'Unknown' };
-
-        openDialog({
-          type: 'Warning',
-          title: `Delete ${name}`,
-          message: (
-            <p>
-              Are you sure you want to delete the variable called {name}? This
-              cannot be undone.
-            </p>
-          ),
-          onConfirm: () => deleteVariable({ entity, type, variable: id }),
-          confirmLabel: `Delete ${name}`,
-        });
-      },
-  }),
-);
 
 const homogenizedProp = (item: Variable, prop: string) => {
   const v = get(item, prop, '');
@@ -284,6 +255,5 @@ const withSort = compose(
 export { Heading, SortDirection, withSort };
 
 export default compose<ComponentProps<typeof Variables>, typeof Variables>(
-  withVariableHandlers,
   withSort,
 )(Variables);

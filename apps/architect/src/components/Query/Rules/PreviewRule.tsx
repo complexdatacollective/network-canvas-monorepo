@@ -1,6 +1,5 @@
+import { Trash2 } from 'lucide-react';
 import { compose, withHandlers } from 'react-recompose';
-
-import { Icon } from '~/lib/legacy-ui/components';
 
 import RuleText, { Join } from './PreviewText';
 import withDisplayOptions from './withDisplayOptions';
@@ -56,7 +55,7 @@ const PreviewRule = ({
           className="bg-destructive text-destructive-contrast ml-2.5 flex size-7 shrink-0 grow-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-0 opacity-0 transition-opacity duration-150 ease-in-out group-hover:opacity-100 [&_.icon]:size-5"
           onClick={handleDelete}
         >
-          <Icon name="delete" />
+          <Trash2 aria-hidden />
         </button>
       </div>
       {join && <Join value={join} />}

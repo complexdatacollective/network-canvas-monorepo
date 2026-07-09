@@ -9,6 +9,8 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
+import Button from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type {
   CurrentProtocol,
   ExtractedAsset,
@@ -16,15 +18,14 @@ import type {
 import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavShell from '~/components/ProjectNav/NavShell';
+import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
 import { useAppDispatch } from '~/ducks/hooks';
-import { generalErrorDialog } from '~/ducks/modules/userActions/dialogs';
 import {
   createNetcanvas,
   openBundledTemplate,
   openLibraryProtocol,
   openLocalNetcanvas,
 } from '~/ducks/modules/userActions/userActions';
-import Button from '~/lib/legacy-ui/components/Button';
 import {
   BUNDLED_TEMPLATES,
   type BundledTemplate,
@@ -58,6 +59,7 @@ const NAV_LINKS = [
 
 const Home = () => {
   const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
   const [isLoading, setIsLoading] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<{
@@ -92,11 +94,31 @@ const Home = () => {
     [dispatch, runAction],
   );
 
+  const handleOpenLocalFile = useCallback(
+    async (file: File) => {
+      const result = await dispatch(openLocalNetcanvas({ file })).unwrap();
+      await showProtocolOpenResultDialog({
+        result,
+        openDialog,
+        onApproveMigration: async () => {
+          const approvedResult = await dispatch(
+            openLocalNetcanvas({ file, migrationApproved: true }),
+          ).unwrap();
+          await showProtocolOpenResultDialog({
+            result: approvedResult,
+            openDialog,
+          });
+        },
+      });
+    },
+    [dispatch, openDialog],
+  );
+
   const onDrop = (files: File[]) => {
     const file = files[0];
     if (file) {
       void runAction(async () => {
-        await dispatch(openLocalNetcanvas(file));
+        await handleOpenLocalFile(file);
       });
     }
   };
@@ -166,29 +188,37 @@ const Home = () => {
             : undefined;
         } catch (error) {
           const { message } = reportError(error);
-          dispatch(generalErrorDialog('Protocol Import Error', message));
+          void openDialog({
+            type: 'acknowledge',
+            intent: 'destructive',
+            title: 'Protocol Import Error',
+            description: message,
+            actions: { primary: { label: 'OK', value: true } },
+          });
           return;
         }
-        await dispatch(
+        const result = await dispatch(
           openBundledTemplate({
             protocol: template.protocol,
             name,
             assets,
             sourceRef: template.sourceRef,
           }),
-        );
+        ).unwrap();
+        await showProtocolOpenResultDialog({ result, openDialog });
       });
     },
-    [dispatch, pendingTemplate, runAction],
+    [dispatch, openDialog, pendingTemplate, runAction],
   );
 
   const handleOpenLibraryProtocol = useCallback(
     (id: string) => {
       void runAction(async () => {
-        await dispatch(openLibraryProtocol(id));
+        const result = await dispatch(openLibraryProtocol(id)).unwrap();
+        await showProtocolOpenResultDialog({ result, openDialog });
       });
     },
-    [dispatch, runAction],
+    [dispatch, openDialog, runAction],
   );
 
   return (
@@ -268,18 +298,14 @@ const Home = () => {
 
                 <div className="flex items-center gap-3">
                   <Button
-                    size="large"
-                    color="sea-green"
+                    size="lg"
+                    color="primary"
                     onClick={() => setShowNewDialog(true)}
                   >
                     <FilePlus />
                     Create a new protocol
                   </Button>
-                  <Button
-                    size="large"
-                    color="slate-blue"
-                    onClick={openFileDialog}
-                  >
+                  <Button size="lg" color="secondary" onClick={openFileDialog}>
                     <FolderOpen />
                     Open existing protocol
                   </Button>

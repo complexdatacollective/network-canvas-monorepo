@@ -1,9 +1,9 @@
+import { Trash2 } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { compose } from 'react-recompose';
 
 import { BooleanField } from '~/components/Form/Fields';
 import ValidatedField from '~/components/Form/ValidatedField';
-import Icon from '~/lib/legacy-ui/components/Icon';
 
 import withCreateVariableHandler from '../enhancers/withCreateVariableHandler';
 import VariablePicker from '../Form/Fields/VariablePicker/VariablePicker';
@@ -64,7 +64,7 @@ const Attribute = ({
               componentProps={{
                 options: [
                   { label: 'True', value: true },
-                  { label: 'False', value: false, negative: true },
+                  { label: 'False', value: false },
                 ],
                 noReset: true,
               }}
@@ -78,7 +78,7 @@ const Attribute = ({
         onClick={handleDelete}
         aria-label="Delete attribute"
       >
-        <Icon name="delete" />
+        <Trash2 aria-hidden />
       </button>
     </div>
   );

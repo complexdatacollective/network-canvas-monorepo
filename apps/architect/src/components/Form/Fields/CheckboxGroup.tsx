@@ -1,8 +1,7 @@
+import { TriangleAlert } from 'lucide-react';
 /* eslint-disable react/jsx-props-no-spreading */
-
 import { useCallback } from 'react';
 
-import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
 
 import type { CheckboxProps } from './Checkbox';
@@ -106,7 +105,7 @@ const CheckboxGroup = ({
       </div>
       {hasError && (
         <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5">
-          <Icon name="warning" />
+          <TriangleAlert aria-hidden />
           {error}
         </div>
       )}

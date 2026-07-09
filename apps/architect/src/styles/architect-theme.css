@@ -10,29 +10,19 @@
   :root {
     --background: oklch(var(--platinum));
     --text: oklch(var(--cyber-grape));
-    --primary: oklch(var(--cyber-grape));
-    --primary-contrast: oklch(var(--white));
+    --primary: oklch(var(--sea-green));
+    --neutral: oklch(var(--platinum));
+    --neutral-contrast: oklch(var(--cyber-grape));
     --secondary: oklch(var(--neon-coral));
-    --secondary-contrast: oklch(var(--white));
     --accent: oklch(var(--slate-blue));
-    --accent-contrast: oklch(var(--white));
     --selected: oklch(var(--mustard));
     --link: oklch(var(--neon-coral));
-    --destructive: oklch(var(--tomato));
-    --destructive-contrast: oklch(var(--white));
     --warning: oklch(var(--neon-carrot));
-    --warning-contrast: oklch(var(--white));
-    --success: oklch(var(--kiwi));
-    --success-contrast: oklch(var(--white));
     --info: oklch(var(--cerulean-blue));
-    --info-contrast: oklch(var(--white));
-    --surface-1: oklch(var(--white));
-    --surface-1-contrast: oklch(var(--navy-taupe));
     --surface-2: oklch(var(--platinum));
     --surface-2-contrast: oklch(var(--navy-taupe));
     --surface-3: oklch(var(--platinum--dark));
     --surface-3-contrast: oklch(var(--navy-taupe--dark));
-    --input: oklch(var(--white));
     --input-contrast: oklch(var(--charcoal));
     /* Focus rings stay mustard through the shared focus-styles machinery. */
     --focus-color: oklch(var(--mustard));

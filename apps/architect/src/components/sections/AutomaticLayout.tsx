@@ -1,16 +1,14 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
-import type { ComponentType } from 'react';
 import { useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { Row, Section } from '~/components/EditorLayout';
-import { BooleanField } from '~/components/Form/Fields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 
-import DetachedField from '../DetachedField';
 import IssueAnchor from '../IssueAnchor';
 
 const FORM_PROPERTY = 'behaviours.automaticLayout';
@@ -24,15 +22,10 @@ const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
 
   const [useAutomaticLayout, setUseAutomaticLayout] = useState(formValue);
 
-  const handleChooseLayoutMode = () => {
-    if (useAutomaticLayout) {
-      dispatch(change('edit-stage', FORM_PROPERTY, false) as UnknownAction);
-      setUseAutomaticLayout(false);
-      return;
-    }
-
-    dispatch(change('edit-stage', FORM_PROPERTY, true) as UnknownAction);
-    setUseAutomaticLayout(true);
+  const handleChooseLayoutMode = (nextValue: boolean | undefined) => {
+    const useNextValue = !!nextValue;
+    dispatch(change(form, FORM_PROPERTY, useNextValue) as UnknownAction);
+    setUseAutomaticLayout(useNextValue);
   };
 
   return (
@@ -64,29 +57,19 @@ const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
         </p>
       </Row>
       <Row>
-        <DetachedField
-          component={BooleanField as ComponentType<Record<string, unknown>>}
+        <FrescoBooleanField
           onChange={handleChooseLayoutMode}
           value={useAutomaticLayout}
-          validation={{ required: true }}
           options={[
             {
               value: false,
-              label: () => (
-                <div>
-                  <h4>Manual mode</h4>
-                  <p>Participants must position their alters manually.</p>
-                </div>
-              ),
+              label:
+                '**Manual mode**\n\nParticipants must position their alters manually.',
             },
             {
               value: true,
-              label: () => (
-                <div>
-                  <h4>Automatic mode</h4>
-                  <p>A force-directed layout positions nodes automatically.</p>
-                </div>
-              ),
+              label:
+                '**Automatic mode**\n\nA force-directed layout positions nodes automatically.',
             },
           ]}
           noReset

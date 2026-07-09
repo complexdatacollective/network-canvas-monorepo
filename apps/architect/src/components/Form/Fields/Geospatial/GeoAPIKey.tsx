@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
 import APIKeyThumbnail from '~/components/Thumbnail/APIKey';
-import Button from '~/lib/legacy-ui/components/Button';
 
 import APIKeyBrowser from './APIKeyBrowser';
 
@@ -18,7 +18,7 @@ const GeoAPIKey = ({ input: { value, onChange } }: GeoAPIKeyProps) => {
     <>
       <div className="flex flex-col items-start gap-5">
         {value && <APIKeyThumbnail id={value} />}
-        <Button onClick={() => setShowAPIKeyBrowser(true)} color="sea-green">
+        <Button onClick={() => setShowAPIKeyBrowser(true)} color="primary">
           {!value ? 'Select API Key' : 'Update API Key'}
         </Button>
       </div>

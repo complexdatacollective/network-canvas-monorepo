@@ -7,12 +7,11 @@ import { navigate } from 'wouter/use-browser-location';
 
 import { getProtocol, getTimelineLocus } from '~/selectors/protocol';
 import { ensureError } from '~/utils/ensureError';
+import { enqueueProtocolValidationDialogEvent } from '~/utils/protocolValidationDialogQueue';
 
 import { updateLastModified } from '../modules/activeProtocol';
-import { closeDialog } from '../modules/dialogs';
 import { validateProtocolAsync } from '../modules/protocolValidation';
 import type { RootState } from '../modules/root';
-import { invalidProtocolDialog } from '../modules/userActions/dialogs';
 import type { AppDispatch } from '../store';
 import { timelineActions } from './timeline';
 
@@ -106,7 +105,10 @@ startAppListening({
           // validated cleanly, so dismiss it rather than let the user revert a
           // valid protocol back to an older point.
           if (invalidDialogId) {
-            listenerApi.dispatch(closeDialog(invalidDialogId));
+            enqueueProtocolValidationDialogEvent({
+              type: 'close',
+              id: invalidDialogId,
+            });
             invalidDialogId = null;
           }
 
@@ -125,40 +127,34 @@ startAppListening({
             const errorMessage = ensureError(result.result.error).message;
             const dialogId = uuid();
             invalidDialogId = dialogId;
-            void listenerApi
-              .dispatch(
-                invalidProtocolDialog(
-                  errorMessage,
-                  () => {
-                    // Staleness check: only revert if the current state is still
-                    // an invalid one we flagged (a valid newer edit dismisses
-                    // this dialog via the success branch), and always revert to
-                    // the last known-valid point. Reads the module-scoped locus
-                    // so a further invalid edit after the dialog opened doesn't
-                    // freeze the target and make the revert a no-op.
-                    const currentLocusId = getTimelineLocus(
-                      listenerApi.getState(),
-                    );
-                    if (currentLocusId !== latestInvalidLocusId) {
-                      return;
-                    }
-                    if (lastValidLocusId) {
-                      listenerApi.dispatch(
-                        timelineActions.jump(lastValidLocusId),
-                      );
-                    }
-                    navigate('/protocol');
-                  },
-                  dialogId,
-                ),
-              )
-              .finally(() => {
+            enqueueProtocolValidationDialogEvent({
+              type: 'open',
+              id: dialogId,
+              errorMessage,
+              onConfirm: () => {
+                // Staleness check: only revert if the current state is still
+                // an invalid one we flagged (a valid newer edit dismisses
+                // this dialog via the success branch), and always revert to
+                // the last known-valid point. Reads the module-scoped locus
+                // so a further invalid edit after the dialog opened doesn't
+                // freeze the target and make the revert a no-op.
+                const currentLocusId = getTimelineLocus(listenerApi.getState());
+                if (currentLocusId !== latestInvalidLocusId) {
+                  return;
+                }
+                if (lastValidLocusId) {
+                  listenerApi.dispatch(timelineActions.jump(lastValidLocusId));
+                }
+                navigate('/protocol');
+              },
+              onClose: () => {
                 // Clear only if this dialog is still the tracked one; a later
                 // success may have already dismissed it and opened nothing new.
                 if (invalidDialogId === dialogId) {
                   invalidDialogId = null;
                 }
-              });
+              },
+            });
           }
         }
       } catch {

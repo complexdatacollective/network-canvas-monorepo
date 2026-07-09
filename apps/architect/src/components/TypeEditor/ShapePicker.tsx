@@ -1,8 +1,9 @@
+import { TriangleAlert } from 'lucide-react';
+
 import Node, {
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
-import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
 
 const SHAPES: Array<{ value: NodeShape; label: string }> = [
@@ -64,7 +65,7 @@ const ShapePicker = ({
         </div>
         {showError && (
           <div className="bg-destructive text-destructive-contrast flex items-center px-1 py-1 [&_svg]:max-h-5">
-            <Icon name="warning" />
+            <TriangleAlert aria-hidden />
             {error}
           </div>
         )}

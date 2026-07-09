@@ -8,8 +8,6 @@ import {
   useState,
 } from 'react';
 
-import useScrollTo from '~/lib/legacy-ui/hooks/useScrollTo';
-
 import DateComponent from './DatePicker/DateComponent';
 import DatePicker from './DatePicker/DatePicker';
 import Days from './DatePicker/Days';
@@ -37,6 +35,7 @@ const DatePickerInput = ({
   placeholder = null,
 }: DatePickerInputProps) => {
   const ref = useRef<HTMLDivElement>(null);
+  const scrollTimer = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const [panelsOpen, setPanelsOpen] = useState(false);
 
@@ -61,10 +60,21 @@ const DatePickerInput = ({
     setPanelsOpen(false);
   }, []);
 
-  useScrollTo(parentRef, (panelsOpenArg: unknown) => !!panelsOpenArg, [
-    panelsOpen,
-    parentRef,
-  ]);
+  useEffect(() => {
+    if (parentRef.current && panelsOpen) {
+      clearTimeout(scrollTimer.current);
+      scrollTimer.current = setTimeout(() => {
+        parentRef.current?.scrollIntoView({
+          behavior: 'instant',
+          block: 'start',
+        });
+      });
+    }
+
+    return () => {
+      clearTimeout(scrollTimer.current);
+    };
+  }, [panelsOpen, parentRef]);
 
   useEffect(() => {
     if (panelsOpen) {

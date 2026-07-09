@@ -1,15 +1,19 @@
 import { get } from 'es-toolkit/compat';
+import { Check, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useMemo, useRef, useState } from 'react';
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import type { VariableType } from '@codaco/protocol-validation';
 import TextInput from '~/components/Form/Fields/Text';
-import Tooltip from '~/components/NewComponents/Tooltip';
 import { getIconForType } from '~/config/variables';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableByUUID } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
-import { Icon } from '~/lib/legacy-ui/components';
 import {
   getVariablesForSubject,
   makeGetVariableWithEntity,
@@ -199,58 +203,63 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <Tooltip
-              content={validation}
-              open={!!validation}
-              side="bottom"
-              variant="error"
-            >
-              <div className="w-full flex-auto">
-                <TextInput
-                  autoFocus
-                  placeholder="Enter a new variable name..."
-                  input={{
-                    value: newName,
-                    onChange: handleUpdateName,
-                    onBlur: handleBlur,
-                    onKeyDown: handleKeyDown,
-                  }}
-                  adornmentRight={
-                    <motion.div className="relative right-5 flex shrink-0 grow-0">
-                      <motion.div
-                        title="Finished"
-                        aria-label="Finished"
-                        initial={{ x: '100%', opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.4 }}
-                        role="button"
-                        tabIndex={0} // Needed to allow focus
-                        id={EDIT_COMPLETE_BUTTON_ID}
-                        onClick={onEditComplete}
-                        className={cx(
-                          'cursor-pointer [&_.icon]:size-5',
-                          !canSubmit && 'cursor-not-allowed grayscale',
-                        )}
-                      >
-                        <Icon name="tick" className="text-sea-green" />
-                      </motion.div>
-                      <motion.div
-                        title="Cancel"
-                        aria-label="Cancel"
-                        initial={{ x: '100%', opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.6 }}
-                        role="button"
-                        tabIndex={0} // Needed to allow focus
-                        onClick={handleCancel}
-                        className="ml-2.5 cursor-pointer [&_.icon]:size-5"
-                      >
-                        <Icon name="cross" className="text-tomato" />
-                      </motion.div>
-                    </motion.div>
-                  }
-                />
-              </div>
+            <Tooltip open={!!validation}>
+              <TooltipTrigger
+                render={
+                  <div className="w-full flex-auto">
+                    <TextInput
+                      autoFocus
+                      placeholder="Enter a new variable name..."
+                      input={{
+                        value: newName,
+                        onChange: handleUpdateName,
+                        onBlur: handleBlur,
+                        onKeyDown: handleKeyDown,
+                      }}
+                      adornmentRight={
+                        <motion.div className="relative right-5 flex shrink-0 grow-0">
+                          <motion.div
+                            title="Finished"
+                            aria-label="Finished"
+                            initial={{ x: '100%', opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.4 }}
+                            role="button"
+                            tabIndex={0} // Needed to allow focus
+                            id={EDIT_COMPLETE_BUTTON_ID}
+                            onClick={onEditComplete}
+                            className={cx(
+                              'cursor-pointer [&_svg]:size-5',
+                              !canSubmit && 'cursor-not-allowed grayscale',
+                            )}
+                          >
+                            <Check aria-hidden className="text-success" />
+                          </motion.div>
+                          <motion.div
+                            title="Cancel"
+                            aria-label="Cancel"
+                            initial={{ x: '100%', opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.6 }}
+                            role="button"
+                            tabIndex={0} // Needed to allow focus
+                            onClick={handleCancel}
+                            className="ml-2.5 cursor-pointer [&_svg]:size-5"
+                          >
+                            <X aria-hidden className="text-destructive" />
+                          </motion.div>
+                        </motion.div>
+                      }
+                    />
+                  </div>
+                }
+              />
+              <TooltipContent
+                side="bottom"
+                className="bg-destructive text-destructive-contrast"
+              >
+                {validation}
+              </TooltipContent>
             </Tooltip>
           </motion.div>
         ) : (

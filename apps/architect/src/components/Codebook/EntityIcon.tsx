@@ -1,8 +1,8 @@
+import Icon from '@codaco/fresco-ui/Icon';
 import Node, {
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
-import { Icon } from '~/lib/legacy-ui/components';
 import { cva } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 

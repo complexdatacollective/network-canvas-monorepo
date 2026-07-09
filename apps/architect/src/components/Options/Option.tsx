@@ -1,15 +1,12 @@
 import { toNumber } from 'es-toolkit/compat';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, Trash2 } from 'lucide-react';
 import { Reorder, useDragControls } from 'motion/react';
 import type React from 'react';
-import { compose, withHandlers } from 'react-recompose';
-import { connect } from 'react-redux';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import RichTextField from '~/components/Form/Fields/RichText';
 import TextField from '~/components/Form/Fields/Text';
 import ValidatedField from '~/components/Form/ValidatedField';
-import { actionCreators as dialogsActions } from '~/ducks/modules/dialogs';
-import { Icon } from '~/lib/legacy-ui/components';
 import { cx } from '~/utils/cva';
 
 import type { OptionValue } from './Options';
@@ -22,34 +19,6 @@ type InternalItem<T> = {
   data: T;
 };
 
-const deleteOption =
-  ({
-    fields,
-    openDialog,
-    index,
-  }: {
-    fields: { remove: (index: number) => void };
-    openDialog: (options: {
-      type: string;
-      title: string;
-      message: string;
-      onConfirm: () => void;
-      confirmLabel: string;
-    }) => void;
-    index: number;
-  }) =>
-  () => {
-    openDialog({
-      type: 'Warning',
-      title: 'Remove option',
-      message: 'Are you sure you want to remove this option?',
-      onConfirm: () => {
-        fields.remove(index);
-      },
-      confirmLabel: 'Remove option',
-    });
-  };
-
 // Layout for the side controls (drag handle + delete button). Both are 3rem wide
 // flex centers; the only difference is `cursor: grab` for the handle.
 const sideControlClasses =
@@ -61,7 +30,7 @@ const DeleteOption = (props: React.HTMLAttributes<HTMLDivElement>) => (
     // eslint-disable-next-line react/jsx-props-no-spreading
     {...props}
   >
-    <Icon name="delete" />
+    <Trash2 aria-hidden />
   </div>
 );
 
@@ -76,20 +45,28 @@ type OptionBaseProps = {
   hasError?: boolean;
 };
 
-// Props injected by HOCs
-type OptionInjectedProps = {
-  handleDelete: () => void;
-};
-
-type OptionProps = OptionBaseProps & OptionInjectedProps;
-
 const Option = ({
   field,
-  handleDelete,
   internalItem,
+  index,
+  fields,
   hasError = false,
-}: OptionProps) => {
+}: OptionBaseProps) => {
   const controls = useDragControls();
+  const { confirm } = useDialog();
+
+  const handleDelete = () => {
+    void confirm({
+      title: 'Remove option',
+      description: 'Are you sure you want to remove this option?',
+      confirmLabel: 'Remove option',
+      cancelLabel: 'Cancel',
+      intent: 'destructive',
+      onConfirm: () => {
+        fields.remove(index);
+      },
+    });
+  };
 
   return (
     <Reorder.Item
@@ -168,17 +145,4 @@ const Option = ({
   );
 };
 
-const mapDispatchToItemProps = {
-  openDialog: dialogsActions.openDialog,
-};
-
-type ConnectedProps = OptionBaseProps & {
-  openDialog: typeof dialogsActions.openDialog;
-};
-
-export default compose<OptionProps, OptionBaseProps>(
-  connect(null, mapDispatchToItemProps),
-  withHandlers<ConnectedProps, { handleDelete: () => void }>({
-    handleDelete: deleteOption as (props: ConnectedProps) => () => void,
-  }),
-)(Option);
+export default Option;

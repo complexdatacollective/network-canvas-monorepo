@@ -54,6 +54,7 @@ type StoryArgs = {
   containerWidth: number;
   showIcons: boolean;
   labelLength: keyof typeof LABEL_SETS;
+  layout: 'side' | 'top';
 };
 
 const COMPOSITION_DOC = `
@@ -69,6 +70,7 @@ import { Info, LineChart } from 'lucide-react';
   aria-label="Settings sections"
   value={section}
   onValueChange={setSection}
+  layout="top"
   tabs={[
     { value: 'about', label: 'About', icon: Info },
     { value: 'privacy', label: 'Privacy', icon: LineChart },
@@ -81,11 +83,12 @@ import { Info, LineChart } from 'lucide-react';
 
 **The parts**
 
-- **\`Tabs\`** — root, rail and layout (a container-query flex row). Props:
+- **\`Tabs\`** — root, rail and layout (a container-query flex layout). Props:
   \`tabs\` (\`{ value: string; label: ReactNode; icon?: LucideIcon; disabled?: boolean }[]\`),
   \`aria-label\`, \`value\`, \`defaultValue\`, \`onValueChange(value: string)\`,
-  \`orientation\` (\`'vertical'\` default), \`className\`, \`style\`. The rail sizes to
-  the widest label, bounded per breakpoint.
+  \`layout\` (\`'side'\` default, or \`'top'\`), \`className\`, \`style\`. Side layout
+  places the tab rail beside the panel and sizes it to the widest label, bounded
+  per breakpoint. Top layout places the rail above the panel.
 - **\`TabsPanel\`** — content for a tab \`value\`; fills the row and is its own
   \`@container\`. Props: \`value\`, \`keepMounted?\`, \`className\`.
 
@@ -100,7 +103,12 @@ const meta: Meta<StoryArgs> = {
     layout: 'padded',
     docs: { description: { component: COMPOSITION_DOC } },
   },
-  args: { containerWidth: 640, showIcons: true, labelLength: 'default' },
+  args: {
+    containerWidth: 640,
+    showIcons: true,
+    labelLength: 'default',
+    layout: 'side',
+  },
   argTypes: {
     containerWidth: {
       control: { type: 'range', min: 240, max: 820, step: 20 },
@@ -115,10 +123,16 @@ const meta: Meta<StoryArgs> = {
       control: 'inline-radio',
       options: ['short', 'default', 'long'],
       description:
-        'Swap the label set. "long" labels demonstrate multi-line wrapping within the tab column.',
+        'Swap the label set. In side layout, "long" labels demonstrate multi-line wrapping within the tab column.',
+    },
+    layout: {
+      control: 'inline-radio',
+      options: ['side', 'top'],
+      description:
+        'Choose whether the tabs appear beside the panel or above it.',
     },
   },
-  render: ({ containerWidth, showIcons, labelLength }) => {
+  render: ({ containerWidth, showIcons, labelLength, layout }) => {
     const [section, setSection] = useState<string>('0');
     const labels = LABEL_SETS[labelLength];
     const tabs = labels.map((label, i) => ({
@@ -131,6 +145,7 @@ const meta: Meta<StoryArgs> = {
         aria-label="Example sections"
         value={section}
         onValueChange={setSection}
+        layout={layout}
         tabs={tabs}
         // The dashed outline marks the component's own bounds so its size can be
         // judged; it is not part of the component.
@@ -163,3 +178,6 @@ export const Narrow: Story = { args: { containerWidth: 300 } };
 
 // Text-only tabs, no leading icons.
 export const WithoutIcons: Story = { args: { showIcons: false } };
+
+// Tabs above the content, for compact two-row layouts.
+export const Top: Story = { args: { layout: 'top' } };

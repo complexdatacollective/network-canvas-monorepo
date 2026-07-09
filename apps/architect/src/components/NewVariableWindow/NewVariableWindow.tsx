@@ -2,6 +2,7 @@ import { values } from 'es-toolkit/compat';
 import { useCallback, useMemo } from 'react';
 import { Field, formValueSelector, isDirty } from 'redux-form';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { Variable, VariableOptions } from '@codaco/protocol-validation';
 import { Section, Subsection } from '~/components/EditorLayout';
 import { Text } from '~/components/Form/Fields';
@@ -15,7 +16,6 @@ import {
   VARIABLE_OPTIONS,
 } from '~/config/variables';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
-import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { getVariablesForSubject } from '~/selectors/codebook';
 import { getFieldId } from '~/utils/issues';
@@ -52,6 +52,7 @@ export default function NewVariableWindow({
   lockedOptions = null,
 }: NewVariableWindowProps) {
   const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
 
   const variableType = useAppSelector(
     (state) => formValueSelector(form)(state, 'type') as string | undefined,
@@ -115,7 +116,7 @@ export default function NewVariableWindow({
     [dispatch, entity, type, onComplete, lockedOptions],
   );
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = useCallback(async () => {
     // An untouched form loses nothing, so close immediately. Once the author has
     // started filling it in, confirm before discarding — so an accidental
     // backdrop/outside click or Esc can't silently drop a partially-authored
@@ -125,19 +126,22 @@ export default function NewVariableWindow({
       return;
     }
 
-    void dispatch(
-      dialogActions.openDialog({
-        type: 'Warning',
-        title: 'Unsaved Changes',
-        message:
-          'You have unsaved changes. Are you sure you want to close without saving?',
-        confirmLabel: 'Close Without Saving',
-        onConfirm: () => {
-          onCancel();
-        },
-      }),
-    );
-  }, [hasUnsavedChanges, onCancel, dispatch]);
+    const confirmed = await openDialog({
+      type: 'choice',
+      intent: 'warning',
+      title: 'Unsaved Changes',
+      description:
+        'You have unsaved changes. Are you sure you want to close without saving?',
+      actions: {
+        primary: { label: 'Close Without Saving', value: true },
+        cancel: { label: 'Cancel', value: false },
+      },
+    });
+
+    if (confirmed) {
+      onCancel();
+    }
+  }, [hasUnsavedChanges, onCancel, openDialog]);
 
   return (
     <InlineEditScreen

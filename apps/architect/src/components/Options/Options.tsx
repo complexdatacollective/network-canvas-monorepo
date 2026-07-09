@@ -1,11 +1,12 @@
+import { Plus } from 'lucide-react';
 import { Reorder } from 'motion/react';
 import type React from 'react';
 import { useRef } from 'react';
 import { FieldArray } from 'redux-form';
 
+import Button from '@codaco/fresco-ui/Button';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import FieldError from '~/components/Form/FieldError';
-import { Button } from '~/lib/legacy-ui/components';
 
 import Option from './Option';
 
@@ -23,8 +24,8 @@ const minTwoOptions = (value: unknown) =>
 
 const AddItem = (props: React.ComponentProps<typeof Button>) => (
   <Button
-    color="sea-green"
-    icon="add"
+    color="primary"
+    icon={<Plus />}
     // eslint-disable-next-line react/jsx-props-no-spreading
     {...props}
   >

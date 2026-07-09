@@ -1,9 +1,8 @@
+import { TriangleAlert } from 'lucide-react';
 /* eslint-disable react/jsx-props-no-spreading */
-
 import { useCallback, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
 
 import MarkdownLabel from './MarkdownLabel';
@@ -113,7 +112,7 @@ const RadioGroup = ({
       </div>
       {hasError && (
         <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5">
-          <Icon name="warning" />
+          <TriangleAlert aria-hidden />
           {error}
         </div>
       )}

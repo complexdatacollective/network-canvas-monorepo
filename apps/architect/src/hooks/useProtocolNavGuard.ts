@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 
+import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAppDispatch } from '~/ducks/hooks';
 import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import type { AppDispatch } from '~/ducks/store';
 import { store } from '~/ducks/store';
@@ -49,6 +50,7 @@ const isStageEditorPath = (path: string) => path.startsWith('/protocol/stage/');
 // confirm. A pristine editor keeps the reassuring "saved automatically" copy.
 export const promptLeaveEditor = async (
   dispatch: AppDispatch,
+  openDialog: DialogContextType['openDialog'],
   performLeave: () => void,
   draftDirty = false,
 ) => {
@@ -57,33 +59,49 @@ export const promptLeaveEditor = async (
   try {
     const dialogConfig = draftDirty
       ? {
-          type: 'Warning' as const,
+          intent: 'warning' as const,
           title: 'Return to start screen?',
-          message:
+          description:
             'You have unsaved changes in the stage editor that will be lost if you leave now. Are you sure you want to return to the start screen?',
           confirmLabel: 'Discard Changes and Leave',
         }
       : {
-          type: 'Confirm' as const,
+          intent: 'default' as const,
           title: 'Return to start screen?',
-          message:
+          description:
             "Your work is saved automatically in your browser, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
           confirmLabel: 'Return to Start Screen',
         };
-    await dispatch(
-      dialogActions.openDialog({
-        ...dialogConfig,
-        onConfirm: () => {
-          guardState.bypass = true;
-          if (draftDirty) {
-            dispatch(resetDraft(null));
-          }
-          dispatch(clearActiveProtocol());
-          performLeave();
-          guardState.bypass = false;
+
+    const confirmed = await openDialog({
+      type: 'choice',
+      title: dialogConfig.title,
+      description: dialogConfig.description,
+      intent: dialogConfig.intent,
+      actions: {
+        primary: {
+          label: dialogConfig.confirmLabel,
+          value: true,
         },
-      }),
-    );
+        cancel: {
+          label: 'Cancel',
+          value: false,
+        },
+      },
+    });
+
+    if (confirmed !== true) return;
+
+    guardState.bypass = true;
+    try {
+      if (draftDirty) {
+        dispatch(resetDraft(null));
+      }
+      dispatch(clearActiveProtocol());
+      performLeave();
+    } finally {
+      guardState.bypass = false;
+    }
   } finally {
     guardState.prompting = false;
   }
@@ -95,26 +113,39 @@ export const promptLeaveEditor = async (
 // already in flight.
 const promptDiscardDraft = async (
   dispatch: AppDispatch,
+  openDialog: DialogContextType['openDialog'],
   performLeave: () => void,
 ) => {
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
-    await dispatch(
-      dialogActions.openDialog({
-        type: 'Warning',
-        title: 'Unsaved Changes',
-        message:
-          'You have unsaved changes. Are you sure you want to leave without saving?',
-        confirmLabel: 'Leave Without Saving',
-        onConfirm: () => {
-          guardState.bypass = true;
-          dispatch(resetDraft(null));
-          performLeave();
-          guardState.bypass = false;
+    const confirmed = await openDialog({
+      type: 'choice',
+      title: 'Unsaved Changes',
+      description:
+        'You have unsaved changes. Are you sure you want to leave without saving?',
+      intent: 'warning',
+      actions: {
+        primary: {
+          label: 'Leave Without Saving',
+          value: true,
         },
-      }),
-    );
+        cancel: {
+          label: 'Cancel',
+          value: false,
+        },
+      },
+    });
+
+    if (confirmed !== true) return;
+
+    guardState.bypass = true;
+    try {
+      dispatch(resetDraft(null));
+      performLeave();
+    } finally {
+      guardState.bypass = false;
+    }
   } finally {
     guardState.prompting = false;
   }
@@ -122,6 +153,7 @@ const promptDiscardDraft = async (
 
 export const useProtocolNavGuard = () => {
   const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -173,11 +205,16 @@ export const useProtocolNavGuard = () => {
         // be lost — so surface it and reset the draft on confirm.
         const draftDirty =
           isStageEditorPath(oldPath) && getStageDraftDirty(store.getState());
-        void promptLeaveEditor(dispatch, () => setLocation('/'), draftDirty);
+        void promptLeaveEditor(
+          dispatch,
+          openDialog,
+          () => setLocation('/'),
+          draftDirty,
+        );
         return;
       }
 
-      void promptDiscardDraft(dispatch, () => setLocation(newPath));
+      void promptDiscardDraft(dispatch, openDialog, () => setLocation(newPath));
     };
 
     window.addEventListener('popstate', onPop);
@@ -188,5 +225,5 @@ export const useProtocolNavGuard = () => {
       window.removeEventListener('pushState', updatePrevPath);
       window.removeEventListener('replaceState', updatePrevPath);
     };
-  }, [dispatch, setLocation]);
+  }, [dispatch, openDialog, setLocation]);
 };

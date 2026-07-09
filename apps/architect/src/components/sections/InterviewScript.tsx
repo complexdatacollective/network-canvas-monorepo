@@ -2,14 +2,11 @@ import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { Section } from '~/components/EditorLayout';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
-import {
-  type DialogConfig,
-  actionCreators as dialogActions,
-} from '~/ducks/modules/dialogs';
 import type { RootState } from '~/ducks/store';
 import { getFieldId } from '~/utils/issues';
 
@@ -19,10 +16,7 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
     getFormValue(state, 'interviewScript'),
   );
   const dispatch = useAppDispatch();
-  const openDialog = useCallback(
-    (dialog: DialogConfig) => dispatch(dialogActions.openDialog(dialog)),
-    [dispatch],
-  );
+  const { confirm } = useDialog();
 
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
@@ -30,22 +24,24 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
         return true;
       }
 
-      const confirm = await openDialog({
-        type: 'Warning',
+      const confirmed = await confirm({
         title: 'This will clear your interview script',
-        message:
+        description:
           'This will clear your interview script, and delete content you previously entered. Do you want to continue?',
         confirmLabel: 'Clear script',
+        cancelLabel: 'Cancel',
+        intent: 'warning',
+        onConfirm: () => {},
       });
 
-      if (confirm) {
+      if (confirmed) {
         dispatch(change('edit-stage', 'interviewScript', null));
         return true;
       }
 
       return false;
     },
-    [dispatch, openDialog, currentValue],
+    [confirm, dispatch, currentValue],
   );
 
   return (

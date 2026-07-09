@@ -1,6 +1,7 @@
+import { Plus } from 'lucide-react';
 import type { FieldArrayFieldsProps } from 'redux-form';
 
-import Button from '~/lib/legacy-ui/components/Button';
+import Button from '@codaco/fresco-ui/Button';
 import { cx } from '~/utils/cva';
 
 import Attribute from './Attribute';
@@ -67,7 +68,7 @@ const AssignAttributes = ({
       </div>
     )}
     <div className={cx(fields.length > 0 && 'mt-5', '[&_button]:m-0')}>
-      <Button color="sea-green" icon="add" onClick={handleAddNew}>
+      <Button color="primary" icon={<Plus />} onClick={handleAddNew}>
         Add new variable to assign
       </Button>
     </div>

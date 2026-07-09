@@ -1,6 +1,6 @@
+import { TriangleAlert } from 'lucide-react';
 /* eslint-disable react/jsx-props-no-spreading */
 
-import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
 
 import MarkdownLabel from './MarkdownLabel';
@@ -98,7 +98,7 @@ const SliderField = ({
         />
         {hasError && (
           <div className="bg-destructive text-text flex items-center px-1 py-2.5 [&_svg]:max-h-5">
-            <Icon name="warning" />
+            <TriangleAlert aria-hidden />
             {error}
           </div>
         )}

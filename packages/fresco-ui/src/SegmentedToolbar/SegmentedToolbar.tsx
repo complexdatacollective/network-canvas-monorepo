@@ -150,9 +150,10 @@ export type SegmentedToolbarProps = {
   dragHandleLabel?: string;
 };
 
-// Layout only — the pill's surface colour, contrast, and shadow come from `Surface`.
+// Layout only — the pill's surface colour and contrast come from `Surface`.
+// A medium effect shadow keeps floating chrome elevated without a heavy halo.
 const rootLayoutVariants = cva({
-  base: 'flex w-fit items-center gap-1 rounded-full p-1.5',
+  base: 'effect-shadow-md flex w-fit items-center gap-1 rounded-full p-1.5',
   variants: {
     orientation: {
       horizontal: 'flex-row',
@@ -689,7 +690,7 @@ export function SegmentedToolbar({
       <LayoutGroup>
         <MotionSurface
           floating
-          shadow="md"
+          shadow="none"
           spacing="none"
           noContainer
           layout
@@ -707,7 +708,7 @@ export function SegmentedToolbar({
     <LayoutGroup>
       <MotionSurface
         floating
-        shadow="md"
+        shadow="none"
         spacing="none"
         noContainer
         layout

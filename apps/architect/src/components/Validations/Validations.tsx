@@ -1,10 +1,11 @@
 import { keys as getKeys, isNull, toPairs } from 'es-toolkit/compat';
+import { Plus } from 'lucide-react';
 import type React from 'react';
 import { Field } from 'redux-form';
 
+import Button from '@codaco/fresco-ui/Button';
 import type { Variable } from '@codaco/protocol-validation';
 import FieldError from '~/components/Form/FieldError';
-import { Button } from '~/lib/legacy-ui/components';
 import { cx } from '~/utils/cva';
 
 import Validation from './Validation';
@@ -42,8 +43,8 @@ const getOptionsWithUsedDisabled = (
 
 const AddItem = (props: React.ComponentProps<typeof Button>) => (
   <Button
-    color="sea-green"
-    icon="add"
+    color="primary"
+    icon={<Plus />}
     className="self-start"
     // eslint-disable-next-line react/jsx-props-no-spreading
     {...props}

@@ -1,13 +1,14 @@
+import { ArrowRight } from 'lucide-react';
 import { useCallback } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Assets from '~/components/AssetBrowser/Assets';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { Layout, Section } from '~/components/EditorLayout';
 import { Text } from '~/components/Form/Fields';
 import ValidatedField from '~/components/Form/ValidatedField';
-import Dialog from '~/components/NewComponents/Dialog';
 import { useAppDispatch } from '~/ducks/hooks';
-import Button from '~/lib/legacy-ui/components/Button';
 
 import { addApiKeyAsset } from '../../../../ducks/modules/protocol/assetManifest';
 import BasicForm from '../../../BasicForm';
@@ -53,13 +54,12 @@ const APIKeyBrowser = ({
   return (
     <Dialog
       open={show}
-      onOpenChange={(open) => !open && close()}
+      closeDialog={close}
       title="API Key Browser"
       footer={
-        <Dialog.Close
-          nativeButton={false}
-          render={<Button color="platinum">Cancel</Button>}
-        />
+        <Button color="default" onClick={close}>
+          Cancel
+        </Button>
       }
     >
       <BasicForm form={formName} onSubmit={handleSubmit}>
@@ -98,8 +98,8 @@ const APIKeyBrowser = ({
                 key="save"
                 type="submit"
                 iconPosition="right"
-                icon="arrow-right"
-                color="sea-green"
+                icon={<ArrowRight />}
+                color="primary"
               >
                 Create Key
               </Button>

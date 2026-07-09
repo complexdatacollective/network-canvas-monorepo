@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 
-import { Button } from '~/lib/legacy-ui/components';
+import Button from '@codaco/fresco-ui/Button';
 
 import Interface from './Interface';
 

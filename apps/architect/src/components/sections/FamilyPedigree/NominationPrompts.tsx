@@ -2,11 +2,11 @@ import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import EditableList from '~/components/EditableList';
 import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
-import { openDialog } from '~/ducks/modules/dialogs';
 import type { RootState } from '~/ducks/store';
 
 import NominationPromptFields from './NominationPromptFields';
@@ -14,6 +14,7 @@ import NominationPromptPreview from './NominationPromptPreview';
 
 const NominationPrompts = ({ form }: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
+  const { confirm } = useDialog();
   const getFormValue = formValueSelector(form);
 
   const nodeType = useSelector(
@@ -34,24 +35,24 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
         return true;
       }
 
-      const confirm = await dispatch(
-        openDialog({
-          type: 'Warning',
-          title: 'This will clear your nomination prompts',
-          message:
-            'This will clear your nomination prompts and delete any prompts you have created. Do you want to continue?',
-          confirmLabel: 'Clear prompts',
-        }),
-      ).unwrap();
+      const confirmed = await confirm({
+        title: 'This will clear your nomination prompts',
+        description:
+          'This will clear your nomination prompts and delete any prompts you have created. Do you want to continue?',
+        confirmLabel: 'Clear prompts',
+        cancelLabel: 'Cancel',
+        intent: 'warning',
+        onConfirm: () => {},
+      });
 
-      if (confirm) {
+      if (confirmed) {
         dispatch(change(form, 'nominationPrompts', null));
         return true;
       }
 
       return false;
     },
-    [dispatch, form, hasNominationPrompts],
+    [confirm, dispatch, form, hasNominationPrompts],
   );
 
   return (

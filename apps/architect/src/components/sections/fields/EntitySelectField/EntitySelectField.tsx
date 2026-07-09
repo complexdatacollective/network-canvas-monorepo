@@ -1,12 +1,11 @@
 import { createSelector } from '@reduxjs/toolkit';
+import { Plus, TriangleAlert } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import Button from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import NewTypeDialog from '~/components/Dialog/NewTypeDialog';
-import { useAppDispatch } from '~/ducks/hooks';
-import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
-import { Icon } from '~/lib/legacy-ui/components';
-import Button from '~/lib/legacy-ui/components/Button';
 import { cx } from '~/utils/cva';
 
 import { getEdgeTypes, getNodeTypes } from '../../../../selectors/codebook';
@@ -44,7 +43,7 @@ const EntitySelectField = ({
   meta: { error, invalid, touched },
   promptBeforeChange = null,
 }: EntitySelectFieldProps) => {
-  const dispatch = useAppDispatch();
+  const { confirm } = useDialog();
   const edgeOptions = useSelector(getEdgeOptions);
   const nodeOptions = useSelector(getNodeOptions);
   const [showNewTypeDialog, setShowNewTypeDialog] = useState(false);
@@ -65,17 +64,16 @@ const EntitySelectField = ({
         return;
       }
 
-      dispatch(
-        dialogActions.openDialog({
-          type: 'Confirm',
-          title: `Change ${entityType} type?`,
-          message: promptBeforeChange,
-          onConfirm: () => onChange(clickedItem),
-          confirmLabel: 'Continue',
-        }),
-      );
+      void confirm({
+        title: `Change ${entityType} type?`,
+        description: promptBeforeChange,
+        confirmLabel: 'Continue',
+        cancelLabel: 'Cancel',
+        intent: 'warning',
+        onConfirm: () => onChange(clickedItem),
+      });
     },
-    [value, promptBeforeChange, onChange, dispatch, entityType],
+    [value, promptBeforeChange, onChange, confirm, entityType],
   );
 
   const handleOpenCreateNewType = useCallback(() => {
@@ -142,12 +140,12 @@ const EntitySelectField = ({
           create one.
         </p>
       )}
-      <Button icon="add" onClick={handleOpenCreateNewType} color="sea-green">
+      <Button icon={<Plus />} onClick={handleOpenCreateNewType} color="primary">
         Create new {entityType} type
       </Button>
       {invalid && touched && (
         <div className="bg-destructive text-destructive-contrast flex items-center p-1 [&_svg]:max-h-5">
-          <Icon name="warning" />
+          <TriangleAlert aria-hidden />
           {error}
         </div>
       )}

@@ -2,17 +2,13 @@ import { PureComponent } from 'react';
 import { compose } from 'react-recompose';
 import { Field } from 'redux-form';
 
+import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import type { StageType } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
-import {
-  BooleanField,
-  Number as NumberField,
-  Toggle,
-} from '~/components/Form/Fields';
+import { Number as NumberField, Toggle } from '~/components/Form/Fields';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
-import DetachedField from '../../DetachedField';
 import Image from '../../Form/Fields/Image';
 import ValidatedField from '../../Form/ValidatedField';
 import withBackgroundChangeHandler from './withBackgroundChangeHandler';
@@ -51,42 +47,21 @@ class Background extends PureComponent<BackgroundProps> {
         {imageAllowed && (
           <Row>
             <h4>Choose a background type</h4>
-            <DetachedField
-              component={
-                BooleanField as React.ComponentType<Record<string, unknown>>
-              }
+            <FrescoBooleanField
               value={useImage}
               options={[
                 {
                   value: false,
-                  label: () => (
-                    <div>
-                      <h4>Concentric Circles</h4>
-                      <p>
-                        Use the conventional concentric circles sociogram
-                        background.
-                      </p>
-                    </div>
-                  ),
+                  label:
+                    '**Concentric Circles**\n\nUse the conventional concentric circles sociogram background.',
                 },
                 {
                   value: true,
-                  label: () => (
-                    <div>
-                      <h4>Image</h4>
-                      <p>
-                        Use a custom image of your choosing as the background.
-                      </p>
-                    </div>
-                  ),
+                  label:
+                    '**Image**\n\nUse a custom image of your choosing as the background.',
                 },
               ]}
-              onChange={(
-                _event: unknown,
-                nextValue: unknown,
-                _currentValue: unknown,
-                _name: string | null,
-              ) => handleChooseBackgroundType(nextValue as boolean)}
+              onChange={(value) => handleChooseBackgroundType(!!value)}
               noReset
             />
           </Row>

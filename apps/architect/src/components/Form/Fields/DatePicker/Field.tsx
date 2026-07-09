@@ -1,7 +1,7 @@
+import { TriangleAlert } from 'lucide-react';
 import React, { Component, type RefObject } from 'react';
 
 import MarkdownLabel from '~/components/Form/Fields/MarkdownLabel';
-import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
 
 import DatePicker from './DatePicker';
@@ -77,7 +77,7 @@ class DatePickerField extends Component<DatePickerFieldProps> {
           />
           {hasError && (
             <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5">
-              <Icon name="warning" />
+              <TriangleAlert aria-hidden />
               {error}
             </div>
           )}

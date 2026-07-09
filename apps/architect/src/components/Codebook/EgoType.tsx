@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 
+import Button from '@codaco/fresco-ui/Button';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import type { RootState } from '~/ducks/store';
-import { Button } from '~/lib/legacy-ui/components';
 
 import { getEntityProperties } from './helpers';
 import Variables from './Variables';
@@ -60,8 +60,8 @@ const EgoType = ({
     <div className="py-5">
       <div className="flex justify-end">
         <Button
-          color="sea-green"
-          size="small"
+          color="primary"
+          size="sm"
           onClick={() => setShowAddVariable(true)}
         >
           Add variable

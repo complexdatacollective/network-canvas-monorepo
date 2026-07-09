@@ -1,8 +1,8 @@
+import Button from '@codaco/fresco-ui/Button';
 import useExternalDataDownload from '~/components/AssetBrowser/useExternalDataDownload';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { Section } from '~/components/EditorLayout';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
-import { Button } from '~/lib/legacy-ui/components';
 
 import EntityIcon from './EntityIcon';
 import VariableList from './VariableList';
@@ -26,10 +26,10 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
             <EntityIcon entity="asset" size="small" />
           </div>
           <h2 className="my-0 me-auto">{name}</h2>
-          <Button onClick={() => handleShowPreview(id)} color="sea-green">
+          <Button onClick={() => handleShowPreview(id)} color="primary">
             Preview
           </Button>
-          <Button onClick={() => handleDownloadAsset(id)} color="sea-serpent">
+          <Button onClick={() => handleDownloadAsset(id)} color="info">
             Download
           </Button>
         </div>

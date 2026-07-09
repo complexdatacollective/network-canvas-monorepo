@@ -7,6 +7,7 @@ import {
   type ExtractedAsset,
   extractProtocolFromZip,
   getMigrationInfo,
+  type MigrationNote,
   migrateProtocol,
   NetcanvasInflationLimitError,
   validateProtocol,
@@ -14,12 +15,6 @@ import {
 import { posthog } from '~/analytics';
 import { APP_SCHEMA_VERSION } from '~/config';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
-import {
-  appUpgradeRequiredDialog,
-  generalErrorDialog,
-  mayUpgradeProtocolDialog,
-  validationErrorDialog,
-} from '~/ducks/modules/userActions/dialogs';
 import type { ProtocolSourceRef } from '~/templates';
 import {
   saveProtocolAssets,
@@ -56,6 +51,30 @@ import {
 } from '../app';
 
 type ImportSource = 'local' | 'bundled';
+
+export type ProtocolOpenResult =
+  | { status: 'opened' }
+  | {
+      status: 'error';
+      title: string;
+      message: string;
+    }
+  | {
+      status: 'validation-error';
+      message: string;
+    }
+  | {
+      status: 'migration-required';
+      protocolSchemaVersion: number;
+      targetSchemaVersion: number;
+      migrationNotes: MigrationNote[];
+    }
+  | {
+      status: 'app-upgrade-required';
+      protocolSchemaVersion: number;
+    };
+
+const openedResult: ProtocolOpenResult = { status: 'opened' };
 
 // A protocol failed schema validation during import. This is an expected
 // outcome for an old or malformed file, so we record an analytics event
@@ -162,9 +181,17 @@ const instantiateProtocol = async (
   navigate('/protocol');
 };
 
+type OpenLocalNetcanvasParams = {
+  file: File;
+  migrationApproved?: boolean;
+};
+
 export const openLocalNetcanvas = createAppAsyncThunk(
   'protocol/openLocalNetcanvas',
-  async (file: File, { dispatch }) => {
+  async (
+    { file, migrationApproved = false }: OpenLocalNetcanvasParams,
+    { dispatch: storeDispatch },
+  ): Promise<ProtocolOpenResult> => {
     // Signal an import is in flight so a fresh-load service-worker update won't
     // silently reload mid-import (which could leave a partial library row).
     setImportInProgress(true);
@@ -174,13 +201,11 @@ export const openLocalNetcanvas = createAppAsyncThunk(
       if (!fileName.endsWith('.netcanvas')) {
         // Expected user mistake, not an error to report: surface the same
         // dialog and return without reaching the exception-reporting catch.
-        dispatch(
-          generalErrorDialog(
-            'Failed to Open Protocol',
-            'Unsupported file type. Please open a .netcanvas file.',
-          ),
-        );
-        return false;
+        return {
+          status: 'error',
+          title: 'Failed to Open Protocol',
+          message: 'Unsupported file type. Please open a .netcanvas file.',
+        };
       }
 
       // Reject oversized files and deflate bombs before inflating any asset, so
@@ -200,10 +225,11 @@ export const openLocalNetcanvas = createAppAsyncThunk(
         guardedZip = await loadGuardedNetcanvas(bytes);
       } catch (error) {
         if (error instanceof NetcanvasTooLargeError) {
-          dispatch(
-            generalErrorDialog('Failed to Open Protocol', error.message),
-          );
-          return false;
+          return {
+            status: 'error',
+            title: 'Failed to Open Protocol',
+            message: error.message,
+          };
         }
         throw error;
       }
@@ -221,35 +247,28 @@ export const openLocalNetcanvas = createAppAsyncThunk(
         ({ protocol, assets } = await extractProtocolFromZip(guardedZip));
       } catch (error) {
         if (error instanceof NetcanvasInflationLimitError) {
-          dispatch(
-            generalErrorDialog('Failed to Open Protocol', error.message),
-          );
-          return false;
+          return {
+            status: 'error',
+            title: 'Failed to Open Protocol',
+            message: error.message,
+          };
         }
         throw error;
       }
       const protocolName = file.name.replace(/\.netcanvas$/, '');
 
       // Handle migration if needed
-      const migratedProtocol = await dispatch(
-        handleProtocolMigration({
-          protocol: protocol as CurrentProtocol,
-          name: protocolName,
-        }),
-      ).unwrap();
+      const migrationResult = handleProtocolMigration({
+        protocol: protocol as CurrentProtocol,
+        name: protocolName,
+        approved: migrationApproved,
+      });
 
-      if (!migratedProtocol) {
-        // Migration was canceled or app upgrade is required; the migration
-        // step has already surfaced the appropriate dialog. Treat as a benign
-        // exit rather than a reportable exception.
-        dispatch(
-          generalErrorDialog(
-            'Failed to Open Protocol',
-            'Protocol migration failed or was canceled.',
-          ),
-        );
-        return false;
+      if (migrationResult.status !== 'ready') {
+        return migrationResult.result;
       }
+
+      const migratedProtocol = migrationResult.protocol;
 
       // Validate the protocol
       const validationResult = await validateProtocol(
@@ -259,8 +278,7 @@ export const openLocalNetcanvas = createAppAsyncThunk(
       if (!validationResult.success) {
         trackImportValidationFailure('local', validationResult.error);
         const errorMessage = ensureError(validationResult.error).message;
-        dispatch(validationErrorDialog(errorMessage));
-        return false;
+        return { status: 'validation-error', message: errorMessage };
       }
 
       const finalProtocol = migratedProtocol as CurrentProtocol;
@@ -271,14 +289,18 @@ export const openLocalNetcanvas = createAppAsyncThunk(
           name: finalProtocol.name ?? protocolName,
           description: finalProtocol.description,
         },
-        dispatch,
+        storeDispatch,
       );
+      return openedResult;
     } catch (error) {
       trackImportException('local', error);
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      dispatch(generalErrorDialog('Failed to Open Protocol', errorMessage));
-      return false;
+      return {
+        status: 'error',
+        title: 'Failed to Open Protocol',
+        message: errorMessage,
+      };
     } finally {
       setImportInProgress(false);
     }
@@ -305,47 +327,71 @@ const checkSchemaVersion = (protocol: CurrentProtocol): schemaVersionStates => {
   return schemaVersionStates.UPGRADE_APP;
 };
 
-// helper function so we can use loadingLock
-const handleProtocolMigration = createAppAsyncThunk(
-  'protocol/openOrUpgrade',
-  async (
-    { protocol, name }: { protocol: CurrentProtocol; name: string },
-    { dispatch },
-  ) => {
-    const schemaVersionStatus = checkSchemaVersion(protocol);
-    switch (schemaVersionStatus) {
-      case schemaVersionStates.OK: {
-        return protocol;
-      }
-      case schemaVersionStates.UPGRADE_PROTOCOL: {
+type ProtocolMigrationResult =
+  | { status: 'ready'; protocol: CurrentProtocol }
+  | {
+      status: 'needs-ui';
+      result: Extract<
+        ProtocolOpenResult,
+        { status: 'migration-required' | 'app-upgrade-required' | 'error' }
+      >;
+    };
+
+const handleProtocolMigration = ({
+  protocol,
+  name,
+  approved,
+}: {
+  protocol: CurrentProtocol;
+  name: string;
+  approved: boolean;
+}): ProtocolMigrationResult => {
+  const schemaVersionStatus = checkSchemaVersion(protocol);
+  switch (schemaVersionStatus) {
+    case schemaVersionStates.OK: {
+      return { status: 'ready', protocol };
+    }
+    case schemaVersionStates.UPGRADE_PROTOCOL: {
+      if (!approved) {
         const migrationInfo = getMigrationInfo(
           protocol.schemaVersion,
           APP_SCHEMA_VERSION,
         );
-        const upgradeDialog = mayUpgradeProtocolDialog(
-          protocol.schemaVersion,
-          APP_SCHEMA_VERSION,
-          migrationInfo.notes,
-        );
-
-        const confirm = await dispatch(upgradeDialog).unwrap();
-        if (!confirm) {
-          return false;
-        }
-
-        const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION, {
-          name,
-        });
-        return migratedProtocol as CurrentProtocol;
+        return {
+          status: 'needs-ui',
+          result: {
+            status: 'migration-required',
+            protocolSchemaVersion: protocol.schemaVersion,
+            targetSchemaVersion: APP_SCHEMA_VERSION,
+            migrationNotes: migrationInfo.notes,
+          },
+        };
       }
-      case schemaVersionStates.UPGRADE_APP:
-        await dispatch(appUpgradeRequiredDialog(protocol.schemaVersion));
-        return false;
-      default:
-        return false;
+
+      const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION, {
+        name,
+      });
+      return { status: 'ready', protocol: migratedProtocol as CurrentProtocol };
     }
-  },
-);
+    case schemaVersionStates.UPGRADE_APP:
+      return {
+        status: 'needs-ui',
+        result: {
+          status: 'app-upgrade-required',
+          protocolSchemaVersion: protocol.schemaVersion,
+        },
+      };
+    default:
+      return {
+        status: 'needs-ui',
+        result: {
+          status: 'error',
+          title: 'Failed to Open Protocol',
+          message: 'Protocol migration failed.',
+        },
+      };
+  }
+};
 
 type CreateNetcanvasParams = {
   name: string;
@@ -397,7 +443,7 @@ export const openBundledTemplate = createAppAsyncThunk(
       sourceRef?: ProtocolSourceRef;
     },
     { dispatch },
-  ) => {
+  ): Promise<ProtocolOpenResult> => {
     // Signal an import is in flight so a fresh-load service-worker update won't
     // silently reload mid-import (which could leave a library row whose bundled
     // assets were never written). Mirrors openLocalNetcanvas.
@@ -408,8 +454,7 @@ export const openBundledTemplate = createAppAsyncThunk(
       if (!validationResult.success) {
         trackImportValidationFailure('bundled', validationResult.error);
         const errorMessage = ensureError(validationResult.error).message;
-        dispatch(validationErrorDialog(errorMessage));
-        return false;
+        return { status: 'validation-error', message: errorMessage };
       }
 
       const finalName = name ?? protocol.name;
@@ -423,12 +468,15 @@ export const openBundledTemplate = createAppAsyncThunk(
         },
         dispatch,
       );
-      return true;
+      return openedResult;
     } catch (error) {
       trackImportException('bundled', error);
       const errorMessage = ensureError(error).message;
-      dispatch(generalErrorDialog('Protocol Import Error', errorMessage));
-      return false;
+      return {
+        status: 'error',
+        title: 'Protocol Import Error',
+        message: errorMessage,
+      };
     } finally {
       setImportInProgress(false);
     }
@@ -438,7 +486,7 @@ export const openBundledTemplate = createAppAsyncThunk(
 // Export protocol as .netcanvas file
 export const exportNetcanvas = createAppAsyncThunk(
   'webUserActions/exportNetcanvas',
-  async (_, { dispatch, getState }) => {
+  async (_, { getState }) => {
     const state = getState();
     const protocol = state.activeProtocol?.present;
 
@@ -456,21 +504,7 @@ export const exportNetcanvas = createAppAsyncThunk(
         getActiveProtocolId(state) ?? undefined,
       );
 
-      // Export is best-effort: unresolvable assets are omitted rather than
-      // aborting the whole export, but the author must be told which ones so a
-      // silently incomplete file isn't shared.
-      if (skippedAssets.length > 0) {
-        const assetList = skippedAssets.map((asset) => asset.name).join(', ');
-        dispatch(
-          generalErrorDialog(
-            'Some assets could not be exported',
-            `Your protocol was downloaded, but these assets could not be ` +
-              `included and are missing from the file: ${assetList}.`,
-          ),
-        );
-      }
-
-      return true;
+      return { skippedAssets };
     } finally {
       setExportInProgress(false);
     }
@@ -481,16 +515,14 @@ export const exportNetcanvas = createAppAsyncThunk(
 // assets are already namespaced under this id in IndexedDB.
 export const openLibraryProtocol = createAppAsyncThunk(
   'webUserActions/openLibraryProtocol',
-  async (id: string, { dispatch }) => {
+  async (id: string, { dispatch }): Promise<ProtocolOpenResult> => {
     const row = await getStoredProtocol(id);
     if (!row) {
-      dispatch(
-        generalErrorDialog(
-          'Protocol Not Found',
-          'This protocol could not be found in your library.',
-        ),
-      );
-      return;
+      return {
+        status: 'error',
+        title: 'Protocol Not Found',
+        message: 'This protocol could not be found in your library.',
+      };
     }
 
     // This protocol is loaded from durable storage, so any earlier in-memory
@@ -499,6 +531,7 @@ export const openLibraryProtocol = createAppAsyncThunk(
     dispatch(setActiveProtocolId(id));
     dispatch(setActiveProtocol(row.protocol));
     navigate('/protocol');
+    return openedResult;
   },
 );
 

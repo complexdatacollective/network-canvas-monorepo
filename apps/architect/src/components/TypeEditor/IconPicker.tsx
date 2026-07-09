@@ -1,20 +1,37 @@
 import { Combobox } from '@base-ui/react/combobox';
 import type { LucideProps } from 'lucide-react';
-import { ChevronDown, icons as lucideIconMap, Search } from 'lucide-react';
+import {
+  ChevronDown,
+  icons as lucideIconMap,
+  Search,
+  TriangleAlert,
+} from 'lucide-react';
 import { type ComponentType, useMemo, useState } from 'react';
 
-import Icon from '~/lib/legacy-ui/components/Icon';
+import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
 
-const CUSTOM_ICONS = ['add-a-person', 'add-a-place'] as const;
+const CUSTOM_ICONS = [
+  'add-a-person',
+  'add-a-place',
+] as const satisfies readonly InterviewerIconName[];
 
-type IconEntry = {
-  name: string;
-  isCustom: boolean;
+type CustomIconEntry = {
+  name: (typeof CUSTOM_ICONS)[number];
+  isCustom: true;
 };
 
+type LucideIconEntry = {
+  name: keyof typeof lucideIconMap;
+  isCustom: false;
+};
+
+type IconEntry = CustomIconEntry | LucideIconEntry;
+
 const allIcons: IconEntry[] = [
-  ...CUSTOM_ICONS.map((name) => ({ name, isCustom: true })),
-  ...Object.keys(lucideIconMap).map((name) => ({ name, isCustom: false })),
+  ...CUSTOM_ICONS.map((name) => ({ name, isCustom: true }) as const),
+  ...(Object.keys(lucideIconMap) as Array<keyof typeof lucideIconMap>).map(
+    (name) => ({ name, isCustom: false }) as const,
+  ),
 ];
 
 function IconPreview({
@@ -53,14 +70,24 @@ type IconPickerProps = {
 
 const MAX_VISIBLE_ITEMS = 200;
 
+function isCustomIconName(
+  value: string,
+): value is (typeof CUSTOM_ICONS)[number] {
+  return (CUSTOM_ICONS as readonly string[]).includes(value);
+}
+
+function isLucideIconName(value: string): value is keyof typeof lucideIconMap {
+  return Object.hasOwn(lucideIconMap, value);
+}
+
 function findEntryByValue(value: string): IconEntry | null {
   if (!value) return null;
 
-  if ((CUSTOM_ICONS as readonly string[]).includes(value)) {
+  if (isCustomIconName(value)) {
     return { name: value, isCustom: true };
   }
 
-  if (Object.hasOwn(lucideIconMap, value)) {
+  if (isLucideIconName(value)) {
     return { name: value, isCustom: false };
   }
 
@@ -167,7 +194,7 @@ const IconPicker = ({
 
       {showError && (
         <div className="text-destructive mt-1 text-sm">
-          <Icon name="warning" />
+          <TriangleAlert aria-hidden />
           {error}
         </div>
       )}

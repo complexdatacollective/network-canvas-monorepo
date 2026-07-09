@@ -65,7 +65,7 @@ const store = configureStore({
       serializableCheck: false,
       immutableCheck: {
         warnAfter: 32, // Warn after 32ms to catch performance issues
-        ignorePaths: ['form', 'dialogs'], // Ignore paths with functions/non-serializable data
+        ignorePaths: ['form'], // Ignore paths with functions/non-serializable data
       },
       // thunk is included by default in RTK
     })

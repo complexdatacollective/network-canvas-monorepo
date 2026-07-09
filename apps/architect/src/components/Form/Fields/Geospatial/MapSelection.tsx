@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import Button from '~/lib/legacy-ui/components/Button';
+import Button from '@codaco/fresco-ui/Button';
 
 import MapView from './MapView';
 
@@ -27,7 +27,7 @@ const MapSelection = ({ input: { value, onChange } }: MapSelectionProps) => {
 
   return (
     <>
-      <Button onClick={() => setShowMap(true)} color="sea-green">
+      <Button onClick={() => setShowMap(true)} color="primary">
         {value.center ? 'Edit Map View' : 'Set Map View'}
       </Button>
 

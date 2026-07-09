@@ -1,19 +1,17 @@
+import { TriangleAlert } from 'lucide-react';
 /* eslint-disable react/jsx-props-no-spreading */
 
-import BooleanToggle from '~/lib/legacy-ui/components/Boolean/Boolean';
-import Icon from '~/lib/legacy-ui/components/Icon';
+import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { cx } from '~/utils/cva';
 
 import MarkdownLabel from './MarkdownLabel';
 
-type BooleanValue = boolean | string | number | null;
+type BooleanValue = boolean | null | undefined;
 
 type BooleanOption = {
-  label: string | (() => string);
-  value: boolean | string | number;
-  classes?: string;
-  icon?: () => React.ReactNode;
-  negative?: boolean;
+  label: string;
+  value: boolean;
+  disabled?: boolean;
 };
 
 type BooleanFieldProps = {
@@ -41,10 +39,10 @@ const BooleanField = ({
   noReset = false,
   className = '',
   input,
-  disabled: _disabled = false,
+  disabled = false,
   options = [
     { label: 'Yes', value: true },
-    { label: 'No', value: false, negative: true },
+    { label: 'No', value: false },
   ],
   meta = {},
 }: BooleanFieldProps) => {
@@ -54,25 +52,20 @@ const BooleanField = ({
   const anyLabel = fieldLabel || label;
 
   return (
-    <div
-      className={cx(
-        'mb-10 [&>h4]:m-0',
-        hasError &&
-          '[&_.form-field]:border-destructive [&_.form-field]:mb-0 [&_.form-field]:border-2',
-        className,
-      )}
-    >
+    <div className={cx('mb-10 [&>h4]:m-0', className)}>
       {anyLabel && <MarkdownLabel label={anyLabel} />}
       <div>
-        <BooleanToggle
-          options={options as Parameters<typeof BooleanToggle>[0]['options']}
-          value={input.value as boolean | null}
-          onChange={input.onChange as (value: boolean | null) => void}
+        <FrescoBooleanField
+          options={options}
+          value={input.value ?? undefined}
+          onChange={(value) => input.onChange(value ?? null)}
           noReset={noReset}
+          disabled={disabled}
+          aria-invalid={hasError || undefined}
         />
         {hasError && (
-          <div className="bg-destructive text-text flex items-center px-1 py-2.5 [&_svg]:max-h-5">
-            <Icon name="warning" />
+          <div className="bg-destructive text-destructive-contrast mt-1 flex items-center gap-1 rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5">
+            <TriangleAlert aria-hidden />
             {error}
           </div>
         )}

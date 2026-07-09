@@ -15,7 +15,8 @@ export type TabsProps = {
   'value'?: string;
   'defaultValue'?: string;
   'onValueChange'?: (value: string) => void;
-  'orientation'?: 'vertical' | 'horizontal';
+  /** Side places the tab rail beside the panel; top places it above the panel. */
+  'layout'?: 'side' | 'top';
   /** The tabs to render in the rail. */
   'tabs': TabItem[];
   /** Accessible name for the tab rail (`tablist`). */
@@ -41,21 +42,24 @@ export type TabsProps = {
  * </Tabs>
  * ```
  *
- * The root is a container-query context (`@container`) laid out as flex, so the
- * rail sizes its column to the widest label and each `TabsPanel` adapts to the
- * panel width rather than the viewport.
+ * The root is a container-query context (`@container`) laid out as flex. Side
+ * layout renders a tab rail beside the panel; top layout renders the rail above
+ * the panel. Each `TabsPanel` adapts to the panel width rather than the
+ * viewport.
  */
 export function Tabs({
   value,
   defaultValue,
   onValueChange,
-  orientation = 'vertical',
+  layout = 'side',
   tabs,
   'aria-label': ariaLabel,
   className,
   style,
   children,
 }: TabsProps) {
+  const orientation = layout === 'side' ? 'vertical' : 'horizontal';
+
   return (
     <BaseTabs.Root
       value={value}
@@ -67,11 +71,11 @@ export function Tabs({
       style={style}
       className={cx(
         '@container flex min-h-0 gap-6',
-        orientation === 'vertical' ? 'flex-row' : 'flex-col',
+        layout === 'side' ? 'flex-row' : 'flex-col',
         className,
       )}
     >
-      <TabRail tabs={tabs} aria-label={ariaLabel} />
+      <TabRail tabs={tabs} aria-label={ariaLabel} layout={layout} />
       {children}
     </BaseTabs.Root>
   );
@@ -79,36 +83,43 @@ export function Tabs({
 
 /**
  * The tab rail. Internal — driven by `Tabs`' `tabs` prop. Renders the tabs plus
- * the moving active highlight. In the vertical layout it sizes to the widest
- * label (`w-fit`) bounded by a floor and cap that both step up with the
- * container width, so the rail gains presence as the component grows and only
- * wraps a label once it exceeds the cap for that breakpoint.
+ * the moving active highlight. In side layout it sizes to the widest label
+ * (`w-fit`) bounded by a floor and cap that both step up with the container
+ * width, so the rail gains presence as the component grows and only wraps a
+ * label once it exceeds the cap for that breakpoint.
  */
 function TabRail({
   tabs,
   'aria-label': ariaLabel,
+  layout,
 }: {
   'tabs': TabItem[];
   'aria-label': string;
+  'layout': NonNullable<TabsProps['layout']>;
 }) {
   return (
     <BaseTabs.List
       aria-label={ariaLabel}
       className={cx(
-        'relative flex shrink-0 flex-col gap-1',
-        'w-fit max-w-[11rem] min-w-[7rem]',
-        '@min-[34rem]:max-w-[14rem] @min-[34rem]:min-w-[9rem]',
-        '@min-[48rem]:max-w-[17rem] @min-[48rem]:min-w-[11rem]',
-        '@min-[64rem]:max-w-[20rem] @min-[64rem]:min-w-[13rem]',
+        'relative flex shrink-0 gap-1',
+        layout === 'side' && [
+          'flex-col',
+          'w-fit max-w-[11rem] min-w-[7rem]',
+          '@min-[34rem]:max-w-[14rem] @min-[34rem]:min-w-[9rem]',
+          '@min-[48rem]:max-w-[17rem] @min-[48rem]:min-w-[11rem]',
+          '@min-[64rem]:max-w-[20rem] @min-[64rem]:min-w-[13rem]',
+        ],
+        layout === 'top' && 'w-full flex-row overflow-x-auto',
       )}
     >
-      <TabIndicator />
+      <TabIndicator layout={layout} />
       {tabs.map((tab) => (
         <Tab
           key={tab.value}
           value={tab.value}
           icon={tab.icon}
           disabled={tab.disabled}
+          layout={layout}
         >
           {tab.label}
         </Tab>
@@ -127,11 +138,13 @@ function Tab({
   value,
   icon: Icon,
   disabled,
+  layout,
   children,
 }: {
   value: string;
   icon?: LucideIcon;
   disabled?: boolean;
+  layout: NonNullable<TabsProps['layout']>;
   children: ReactNode;
 }) {
   return (
@@ -139,8 +152,10 @@ function Tab({
       value={value}
       disabled={disabled}
       className={cx(
-        'font-heading focusable relative z-10 flex w-full cursor-pointer items-center gap-3',
-        'border-0 bg-transparent px-4 py-3 text-left text-sm leading-tight font-extrabold',
+        'font-heading focusable relative z-10 flex cursor-pointer items-center gap-3',
+        'border-0 bg-transparent px-4 py-3 text-sm leading-tight font-extrabold',
+        layout === 'side' && 'w-full text-left',
+        layout === 'top' && 'shrink-0 justify-center text-center',
         TAB_RADIUS,
         'text-text/80 data-[selected]:text-text',
         'disabled:cursor-not-allowed disabled:opacity-40',
@@ -154,17 +169,29 @@ function Tab({
 
 /**
  * The moving highlight behind the active tab. Internal — rendered by the rail.
- * Positions itself from the Base UI `--active-tab-top`/`--active-tab-height`
- * variables and eases between tabs; the global reduced-motion query zeroes it.
+ * Positions itself from the Base UI active-tab CSS variables and eases between
+ * tabs; the global reduced-motion query zeroes it.
  */
-function TabIndicator() {
+function TabIndicator({
+  layout,
+}: {
+  layout: NonNullable<TabsProps['layout']>;
+}) {
   return (
     <BaseTabs.Indicator
       className={cx(
-        'bg-surface-2 pointer-events-none absolute top-0 left-0 z-0 w-full',
+        'bg-surface-2 pointer-events-none absolute top-0 left-0 z-0',
         TAB_RADIUS,
-        'h-(--active-tab-height) translate-y-(--active-tab-top)',
-        'transition-[translate,height] duration-200 ease-out',
+        layout === 'side' && [
+          'w-full',
+          'h-(--active-tab-height) translate-y-(--active-tab-top)',
+          'transition-[translate,height] duration-200 ease-out',
+        ],
+        layout === 'top' && [
+          'h-full',
+          'w-(--active-tab-width) translate-x-(--active-tab-left)',
+          'transition-[translate,width] duration-200 ease-out',
+        ],
       )}
     />
   );

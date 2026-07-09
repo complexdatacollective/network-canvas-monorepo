@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Button from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import {
   createInitialNetwork,
@@ -11,7 +12,6 @@ import {
 } from '@codaco/interview';
 import { generateNetwork } from '@codaco/protocol-utilities';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
-import Button from '~/lib/legacy-ui/components/Button';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 
@@ -165,7 +165,7 @@ export function PreviewHost() {
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
         <h1 className="text-2xl font-semibold">This preview has ended</h1>
         <p>Return to Architect and click Preview again to start a new one.</p>
-        <Button color="sea-green" onClick={() => window.close()}>
+        <Button color="primary" onClick={() => window.close()}>
           Close tab
         </Button>
       </div>
@@ -184,7 +184,7 @@ export function PreviewHost() {
         </p>
         <div className="flex gap-3">
           <Button
-            color="sea-green"
+            color="primary"
             onClick={() => {
               setTimedOut(false);
               setRetryNonce((n) => n + 1);
@@ -192,7 +192,7 @@ export function PreviewHost() {
           >
             Try again
           </Button>
-          <Button color="platinum" onClick={() => window.close()}>
+          <Button color="default" onClick={() => window.close()}>
             Close tab
           </Button>
         </div>
@@ -210,7 +210,7 @@ export function PreviewHost() {
         </p>
         <div className="flex gap-3">
           <Button
-            color="sea-green"
+            color="primary"
             onClick={() => {
               setProcessingFailed(false);
               setRetryNonce((n) => n + 1);
@@ -218,7 +218,7 @@ export function PreviewHost() {
           >
             Try again
           </Button>
-          <Button color="platinum" onClick={() => window.close()}>
+          <Button color="default" onClick={() => window.close()}>
             Close tab
           </Button>
         </div>

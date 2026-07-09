@@ -1,6 +1,6 @@
 import { range } from 'es-toolkit';
+import { TriangleAlert } from 'lucide-react';
 
-import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
@@ -98,7 +98,7 @@ const ColorPicker = ({
         </div>
         {showError && (
           <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-1 [&_svg]:max-h-5">
-            <Icon name="warning" />
+            <TriangleAlert aria-hidden />
             {error}
           </div>
         )}

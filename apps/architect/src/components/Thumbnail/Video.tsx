@@ -1,5 +1,5 @@
+import Icon from '@codaco/fresco-ui/Icon';
 import withAssetMeta from '~/components/Assets/withAssetMeta';
-import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
 
 import {

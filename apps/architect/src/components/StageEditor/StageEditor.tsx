@@ -1,22 +1,17 @@
 import { omit } from 'es-toolkit/compat';
-import { Settings } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { getFormValues, isInvalid } from 'redux-form';
 import { useLocation } from 'wouter';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import {
   type Stage,
   type StageType,
   validateProtocol,
 } from '@codaco/protocol-validation';
 import Editor from '~/components/Editor';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '~/components/NewComponents/Popover';
-import Switch from '~/components/NewComponents/Switch';
 import { launchPreview } from '~/components/PreviewHost/launchPreview';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -26,12 +21,10 @@ import {
   setPreviewIgnoreSkipLogic,
   setPreviewUseSyntheticData,
 } from '~/ducks/modules/app';
-import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import { actionCreators as stageActions } from '~/ducks/modules/protocol/stages';
 import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import type { RootState } from '~/ducks/store';
 import { useStageEditorKeyboard } from '~/hooks/useStageEditorKeyboard';
-import { IconButton } from '~/lib/legacy-ui/components/Button';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { markAutosavePending } from '~/utils/criticalOperation';
@@ -57,6 +50,7 @@ const StageEditor = (props: StageEditorProps) => {
   const { id = null, type, insertAtIndex } = props;
 
   const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
   useStageEditorKeyboard();
   const [, setLocation] = useLocation();
 
@@ -81,16 +75,16 @@ const StageEditor = (props: StageEditorProps) => {
     if (!stageMissing) {
       return;
     }
-    dispatch(
-      dialogActions.openDialog({
-        type: 'Notice',
-        title: 'Stage not found',
-        message:
-          'That stage no longer exists. It may have been deleted. Returning you to the protocol overview.',
-      }),
-    );
+    void openDialog({
+      type: 'acknowledge',
+      intent: 'info',
+      title: 'Stage not found',
+      description:
+        'That stage no longer exists. It may have been deleted. Returning you to the protocol overview.',
+      actions: { primary: { label: 'OK', value: true } },
+    });
     setLocation('/protocol');
-  }, [stageMissing, dispatch, setLocation]);
+  }, [stageMissing, openDialog, setLocation]);
 
   const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
   const interfaceType = (stage?.type || type || 'Information') as StageType;
@@ -212,39 +206,43 @@ const StageEditor = (props: StageEditorProps) => {
   );
 
   // Cancel handler with unsaved changes confirmation
-  const handleCancel = useCallback((): boolean => {
+  const handleCancel = useCallback(async (): Promise<boolean> => {
     if (!hasUnsavedChanges) {
       dispatch(resetDraft(null));
       setLocation('/protocol');
       return true;
     }
 
-    // Show confirmation dialog for unsaved changes
-    dispatch(
-      dialogActions.openDialog({
-        type: 'Warning',
-        title: 'Unsaved Changes',
-        message:
-          'You have unsaved changes. Are you sure you want to leave without saving?',
-        confirmLabel: 'Leave Without Saving',
-        onConfirm: () => {
-          dispatch(resetDraft(null));
-          setLocation('/protocol');
-        },
-      }),
-    );
+    const confirmed = await openDialog({
+      type: 'choice',
+      intent: 'warning',
+      title: 'Unsaved Changes',
+      description:
+        'You have unsaved changes. Are you sure you want to leave without saving?',
+      actions: {
+        primary: { label: 'Leave Without Saving', value: true },
+        cancel: { label: 'Cancel', value: false },
+      },
+    });
+
+    if (confirmed) {
+      dispatch(resetDraft(null));
+      setLocation('/protocol');
+      return true;
+    }
+
     return false;
-  }, [hasUnsavedChanges, setLocation, dispatch]);
+  }, [hasUnsavedChanges, openDialog, setLocation, dispatch]);
 
   const handlePreview = useCallback(async () => {
     if (!protocol || !formValues) {
-      dispatch(
-        dialogActions.openDialog({
-          type: 'Error',
-          title: 'Preview Error',
-          message: 'No protocol loaded',
-        }),
-      );
+      void openDialog({
+        type: 'acknowledge',
+        intent: 'destructive',
+        title: 'Preview Error',
+        description: 'No protocol loaded',
+        actions: { primary: { label: 'OK', value: true } },
+      });
       return;
     }
 
@@ -261,13 +259,13 @@ const StageEditor = (props: StageEditorProps) => {
 
     const validationResult = await validateProtocol(previewProtocol);
     if (!validationResult.success) {
-      dispatch(
-        dialogActions.openDialog({
-          type: 'Error',
-          title: 'Cannot Preview',
-          message: ensureError(validationResult.error).message,
-        }),
-      );
+      void openDialog({
+        type: 'acknowledge',
+        intent: 'destructive',
+        title: 'Cannot Preview',
+        description: ensureError(validationResult.error).message,
+        actions: { primary: { label: 'OK', value: true } },
+      });
       return;
     }
 
@@ -291,25 +289,25 @@ const StageEditor = (props: StageEditorProps) => {
         skipLogicBypassed,
       });
       if (result.kind === 'popup-blocked') {
-        dispatch(
-          dialogActions.openDialog({
-            type: 'Notice',
-            title: 'Preview popup blocked',
-            message:
-              'Your browser blocked the preview popup. Allow popups for this site, then click Preview again.',
-          }),
-        );
+        void openDialog({
+          type: 'acknowledge',
+          intent: 'info',
+          title: 'Preview popup blocked',
+          description:
+            'Your browser blocked the preview popup. Allow popups for this site, then click Preview again.',
+          actions: { primary: { label: 'OK', value: true } },
+        });
       }
     } catch (error) {
       reportError(error);
-      dispatch(
-        dialogActions.openDialog({
-          type: 'Error',
-          title: 'Preview Failed',
-          message:
-            error instanceof Error ? error.message : 'Failed to open preview',
-        }),
-      );
+      void openDialog({
+        type: 'acknowledge',
+        intent: 'destructive',
+        title: 'Preview Failed',
+        description:
+          error instanceof Error ? error.message : 'Failed to open preview',
+        actions: { primary: { label: 'OK', value: true } },
+      });
     } finally {
       setIsOpeningPreview(false);
     }
@@ -317,6 +315,7 @@ const StageEditor = (props: StageEditorProps) => {
     protocol,
     stageIndex,
     dispatch,
+    openDialog,
     formValues,
     id,
     insertAtIndex,
@@ -354,44 +353,27 @@ const StageEditor = (props: StageEditorProps) => {
   const totalStages = protocolStageCount + (isExistingStage ? 0 : 1);
   const previewLabel = isOpeningPreview ? 'Opening preview…' : 'Preview';
 
-  const previewOptions = (
-    <Popover>
-      <PopoverTrigger asChild>
-        <IconButton
-          variant="text"
-          icon={<Settings />}
-          aria-label="Preview options"
+  const previewOptionsContent = (
+    <div className="flex flex-col gap-3">
+      <label className="flex items-center gap-3">
+        <ToggleField
+          value={useSyntheticData}
+          onChange={(checked) =>
+            dispatch(setPreviewUseSyntheticData(!!checked))
+          }
         />
-      </PopoverTrigger>
-      <PopoverContent
-        side="top"
-        sideOffset={8}
-        className="bg-surface-accent text-surface-accent-contrast p-3"
-      >
-        <div className="flex flex-col gap-3">
-          <label className="flex items-center gap-3">
-            <Switch
-              checked={useSyntheticData}
-              onCheckedChange={(checked) =>
-                dispatch(setPreviewUseSyntheticData(checked))
-              }
-            />
-            <span className="text-sm">Start preview with example data</span>
-          </label>
-          <label className="flex items-center gap-3">
-            <Switch
-              checked={ignoreSkipLogic}
-              onCheckedChange={(checked) =>
-                dispatch(setPreviewIgnoreSkipLogic(checked))
-              }
-            />
-            <span className="text-sm">
-              Always show this stage in preview when skip logic would hide it
-            </span>
-          </label>
-        </div>
-      </PopoverContent>
-    </Popover>
+        <span className="text-sm">Start preview with example data</span>
+      </label>
+      <label className="flex items-center gap-3">
+        <ToggleField
+          value={ignoreSkipLogic}
+          onChange={(checked) => dispatch(setPreviewIgnoreSkipLogic(!!checked))}
+        />
+        <span className="text-sm">
+          Always show this stage in preview when skip logic would hide it
+        </span>
+      </label>
+    </div>
   );
 
   // While the stale-URL redirect effect runs, render nothing rather than the
@@ -408,7 +390,7 @@ const StageEditor = (props: StageEditorProps) => {
           onCancel={handleCancel}
           onPreview={handlePreview}
           previewLabel={previewLabel}
-          previewOptions={previewOptions}
+          previewOptionsContent={previewOptionsContent}
           isStageInvalid={isStageInvalid}
           isOpeningPreview={isOpeningPreview}
           hasUnsavedChanges={hasUnsavedChanges}

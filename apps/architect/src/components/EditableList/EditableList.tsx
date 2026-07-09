@@ -1,29 +1,32 @@
+import { Plus } from 'lucide-react';
 import type React from 'react';
-import type { ComponentType } from 'react';
 import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import type { Validator } from 'redux-form';
 import { formValueSelector } from 'redux-form';
 import { v4 } from 'uuid';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type { Validation } from '@codaco/protocol-validation';
 import ValidatedField from '~/components/Form/ValidatedField';
 import OrderedList, {
   type OrderedListProps,
 } from '~/components/OrderedList/OrderedList';
-import { Button } from '~/lib/legacy-ui/components';
 
 import { useFormContext } from '../Editor';
 import Layout from '../EditorLayout';
 import { MarkdownLabel } from '../Form/Fields';
 import Form from '../InlineEditScreen/Form';
-import Dialog from '../NewComponents/Dialog';
 import { useEditHandlers } from './useEditHandlers';
 
 const notEmpty = (value: unknown) =>
   value && Array.isArray(value) && value.length > 0
     ? undefined
     : 'You must create at least one item.';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 type EditableListProps = {
   label?: string;
@@ -34,14 +37,12 @@ type EditableListProps = {
   fieldName?: string;
   sortable?: boolean;
   children?: React.ReactNode;
-  // biome-ignore lint/suspicious/noExplicitAny: too complex to type for now
-  previewComponent: ComponentType<any>;
-  // biome-ignore lint/suspicious/noExplicitAny: too complex to type for now
-  editComponent: ComponentType<any>;
+  previewComponent: React.ElementType;
+  editComponent: React.ElementType;
   editProps?: Record<string, unknown>;
   validation?: Record<string, Validator> | Partial<Validation>;
   // Optional props for customizing hook behavior
-  onChange?: (value: unknown) => Promise<unknown> | unknown;
+  onChange?: (value: unknown) => unknown;
   normalize?: (value: unknown) => unknown;
   template?: () => Record<string, unknown>;
   itemSelector?: (
@@ -92,24 +93,20 @@ const EditableList = ({
     const editFieldPath = `${fieldName}[${editIndex}]`;
 
     if (itemSelector) {
-      return itemSelector(state, { form, editField: editFieldPath }) as Record<
-        string,
-        unknown
-      >;
+      return itemSelector(state, { form, editField: editFieldPath });
     }
 
     const selector = formValueSelector(form);
-    return selector(state, `${fieldName}[${editIndex}]`) as Record<
-      string,
-      unknown
-    >;
+    return selector(state, `${fieldName}[${editIndex}]`);
   });
 
   // Memoize template result to prevent form reinitialization
   // Note: a unique `id` is assigned to every new item unless the template
   // supplies a non-empty one; an empty-string id would collide across items.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: editIndex intentionally included to create unique ids on each new item
   const templateValues = useMemo(() => {
+    // Recompute whenever the edited item changes so each newly opened item gets
+    // a fresh id even when the template function is stable.
+    void editIndex;
     const customTemplate = template();
     const templateId = customTemplate.id;
     return {
@@ -117,7 +114,9 @@ const EditableList = ({
       id: typeof templateId === 'string' && templateId ? templateId : v4(),
     };
   }, [template, editIndex]);
-  const initialValuesForEdit = currentItemValues || templateValues;
+  const initialValuesForEdit = isRecord(currentItemValues)
+    ? currentItemValues
+    : templateValues;
 
   return (
     <div className="flex flex-col items-start gap-5">
@@ -138,31 +137,25 @@ const EditableList = ({
           editIndex: editIndex, // Pass editIndex so it can be used in layout ID
         }}
       />
-      <Button onClick={handleAddNew} icon="add" color="sea-green">
+      <Button onClick={handleAddNew} icon={<Plus />} color="primary">
         Create new
       </Button>
 
       <Dialog
         open={isOpen}
-        onOpenChange={handleCancelEdit}
+        closeDialog={handleCancelEdit}
         layoutId={`${fieldName}-edit-field-${editIndex}`}
-        /* This hack is needed to make sure Base-UI's dialog works with framer-motion's layoutId animations */
-        initial={{ opacity: 0.9999 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0.9999 }}
         title={title}
         footer={
           <>
-            <Dialog.Close
-              nativeButton={false}
-              render={<Button color="platinum">Cancel</Button>}
-            />
-            <Button type="submit" form={editFormName} color="sea-green">
+            <Button color="default" onClick={handleCancelEdit}>
+              Cancel
+            </Button>
+            <Button type="submit" form={editFormName} color="primary">
               Save
             </Button>
           </>
         }
-        className="bg-surface-2"
       >
         <Form
           form={editFormName}

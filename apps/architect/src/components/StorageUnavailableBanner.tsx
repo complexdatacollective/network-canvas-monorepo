@@ -1,10 +1,10 @@
 import { TriangleAlert } from 'lucide-react';
 
+import Button from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getStorageUnavailable } from '~/ducks/modules/app';
-import { generalErrorDialog } from '~/ducks/modules/userActions/dialogs';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
-import { Button } from '~/lib/legacy-ui/components';
 
 // Shown across the protocol editor when a protocol was opened from an in-memory
 // copy because the browser's storage is unavailable (e.g. private browsing).
@@ -12,6 +12,7 @@ import { Button } from '~/lib/legacy-ui/components';
 // keep a download action close at hand.
 const StorageUnavailableBanner = () => {
   const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
   const storageUnavailable = useAppSelector(getStorageUnavailable);
 
   if (!storageUnavailable) {
@@ -30,20 +31,37 @@ const StorageUnavailableBanner = () => {
         browsing. Download a copy to keep your work.
       </span>
       <Button
-        size="small"
-        color="sea-green"
+        size="sm"
+        color="primary"
         onClick={() => {
           // This is the one escape hatch for work that isn't being persisted,
           // so a failed download must surface rather than fail silently.
           void dispatch(exportNetcanvas())
             .unwrap()
+            .then(({ skippedAssets }) => {
+              if (skippedAssets.length === 0) return;
+              const assetList = skippedAssets
+                .map((asset) => asset.name)
+                .join(', ');
+              void openDialog({
+                type: 'acknowledge',
+                intent: 'warning',
+                title: 'Some assets could not be exported',
+                description:
+                  'Your protocol was downloaded, but these assets could not be ' +
+                  `included and are missing from the file: ${assetList}.`,
+                actions: { primary: { label: 'OK', value: true } },
+              });
+            })
             .catch(() => {
-              dispatch(
-                generalErrorDialog(
-                  'Download failed',
+              void openDialog({
+                type: 'acknowledge',
+                intent: 'destructive',
+                title: 'Download failed',
+                description:
                   "Your protocol couldn't be downloaded. Please try again.",
-                ),
-              );
+                actions: { primary: { label: 'OK', value: true } },
+              });
             });
         }}
       >

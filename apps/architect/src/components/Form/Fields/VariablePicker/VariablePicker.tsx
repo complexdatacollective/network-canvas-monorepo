@@ -1,9 +1,10 @@
 import { get, has } from 'es-toolkit/compat';
+import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
 import type { VariableType } from '@codaco/protocol-validation';
-import { Button } from '~/lib/legacy-ui/components';
 
 import EditableVariablePill, { SimpleVariablePill } from './VariablePill';
 import VariableSpotlight from './VariableSpotlight';
@@ -106,9 +107,9 @@ const VariablePicker = ({
           </div>
         )}
         <Button
-          icon="add"
+          icon={<Plus />}
           onClick={() => setShowPicker(true)}
-          color="sea-green"
+          color="primary"
         >
           {value ? 'Change Variable' : 'Select Variable'}
         </Button>

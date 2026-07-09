@@ -4,14 +4,14 @@ import type React from 'react';
 import { useCallback } from 'react';
 import { arrayRemove, type WrappedFieldProps } from 'redux-form';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAppDispatch } from '~/ducks/hooks';
-import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 
 import ListItem from './ListItem';
 
 // Only the unique props for OrderedList (excluding WrappedFieldProps)
 export type OrderedListProps = {
-  item: React.ComponentType<Record<string, unknown>>;
+  item: React.ElementType;
   onClickItem?: (index: number) => void;
   sortable?: boolean;
   editIndex?: number | null;
@@ -27,21 +27,22 @@ const OrderedList = (props: WrappedFieldProps & OrderedListProps) => {
   } = props;
 
   const dispatch = useAppDispatch();
+  const { confirm } = useDialog();
 
   const getDeleteHandler = useCallback(
     (index: number) => async () => {
-      dispatch(
-        dialogActions.openDialog({
-          type: 'Confirm',
-          title: 'Remove this item?',
-          confirmLabel: 'Remove item',
-          onConfirm: () => {
-            dispatch(arrayRemove(form, name, index));
-          },
-        }),
-      );
+      void confirm({
+        title: 'Remove this item?',
+        description: 'This item will be removed from the list.',
+        confirmLabel: 'Remove item',
+        cancelLabel: 'Cancel',
+        intent: 'destructive',
+        onConfirm: () => {
+          dispatch(arrayRemove(form, name, index));
+        },
+      });
     },
-    [dispatch, form, name],
+    [confirm, dispatch, form, name],
   );
 
   const handleReorder = (newOrder: unknown[]) => {

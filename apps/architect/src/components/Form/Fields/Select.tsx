@@ -1,8 +1,7 @@
 import { Select as BaseSelect } from '@base-ui/react/select';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, TriangleAlert } from 'lucide-react';
 import { useEffect, useId, useRef } from 'react';
 
-import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
 
 type SelectOption = {
@@ -146,7 +145,7 @@ const Select = ({
           id={errorId}
           className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5"
         >
-          <Icon name="warning" />
+          <TriangleAlert aria-hidden />
           {error}
         </div>
       )}

@@ -1,13 +1,14 @@
 import { createSelector } from '@reduxjs/toolkit';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { connect } from 'react-redux';
 import { Field } from 'redux-form';
 import { v4 as uuid } from 'uuid';
 
+import Button from '@codaco/fresco-ui/Button';
 import NewTypeDialog from '~/components/Dialog/NewTypeDialog';
 import CheckboxGroup from '~/components/Form/Fields/CheckboxGroup';
 import type { RootState } from '~/ducks/store';
-import Button from '~/lib/legacy-ui/components/Button';
 import { getEdgeTypes } from '~/selectors/codebook/index';
 import { asOptions } from '~/selectors/utils';
 
@@ -87,8 +88,8 @@ export const EdgeTypeMultiSelectInner = ({
         </p>
       )}
       <Button
-        icon="add"
-        color="sea-green"
+        icon={<Plus />}
+        color="primary"
         onClick={() => setShowNewTypeDialog(true)}
       >
         Create new edge type

@@ -2,15 +2,16 @@ import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { Section } from '~/components/EditorLayout';
 import SkipLogicFields from '~/components/sections/fields/SkipLogicFields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
-import { openDialog } from '~/ducks/modules/dialogs';
 import type { RootState } from '~/ducks/modules/root';
 
 const SkipLogicSection = (_props: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
+  const { confirm } = useDialog();
 
   const getFormValue = formValueSelector('edit-stage');
   const hasSkipLogic = useSelector((state: RootState) =>
@@ -25,24 +26,24 @@ const SkipLogicSection = (_props: StageEditorSectionProps) => {
       }
 
       // When turning skip logic off, confirm that the user wants to clear the skip logic
-      const confirm = await dispatch(
-        openDialog({
-          type: 'Warning',
-          title: 'This will clear your skip logic',
-          message:
-            'This will clear your skip logic, and delete any rules you have created. Do you want to continue?',
-          confirmLabel: 'Clear skip logic',
-        }),
-      ).unwrap();
+      const confirmed = await confirm({
+        title: 'This will clear your skip logic',
+        description:
+          'This will clear your skip logic, and delete any rules you have created. Do you want to continue?',
+        confirmLabel: 'Clear skip logic',
+        cancelLabel: 'Cancel',
+        intent: 'warning',
+        onConfirm: () => {},
+      });
 
-      if (confirm) {
+      if (confirmed) {
         dispatch(change('edit-stage', 'skipLogic', null));
         return true;
       }
 
       return false;
     },
-    [dispatch, hasSkipLogic],
+    [confirm, dispatch, hasSkipLogic],
   );
 
   return (
