@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { screen, userEvent } from 'storybook/test';
 
 import CaptureStory, {
   type CaptureParameters,
@@ -10,6 +9,7 @@ import {
   type StoryArgs,
   WithPartnerAndChildren,
 } from './FamilyPedigree.stories';
+import { clickDialogPrimary } from './familyPedigreeWizardHelpers';
 
 /**
  * Screenshot-capture story for the FamilyPedigree interface. Consumed by the
@@ -45,11 +45,6 @@ export const Capture: StoryObj<StoryArgs> = {
     await WithPartnerAndChildren.play?.(ctx);
     // Dismiss the post-wizard "Building the rest of your pedigree" hint so
     // the pedigree canvas itself is pictured.
-    const gotIt = await screen.findByRole(
-      'button',
-      { name: 'Got it' },
-      { timeout: 10_000 },
-    );
-    await userEvent.click(gotIt);
+    await clickDialogPrimary();
   },
 };

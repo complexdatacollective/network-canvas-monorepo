@@ -2,6 +2,7 @@ import { range } from 'es-toolkit';
 
 import Icon from '~/lib/legacy-ui/components/Icon';
 import { cx } from '~/utils/cva';
+import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
 type ColorOption = {
   label: string;
@@ -58,17 +59,19 @@ const ColorPicker = ({
       type="button"
       className={cx(
         'flex cursor-pointer items-center justify-center overflow-hidden',
-        'mr-(--space-sm) mb-(--space-sm) size-(--picker-size) rounded-(--picker-size)',
-        'transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)',
-        "after:m-(--picker-border-size) after:rounded-(--picker-size) after:content-['']",
-        'after:size-[calc(var(--picker-size)-var(--picker-border-size)*2)]',
+        'mr-2.5 mb-2.5 size-[60px] rounded-[60px]',
+        'transition-colors duration-300 ease-in-out',
+        "after:m-[4px] after:rounded-[60px] after:content-['']",
+        'after:size-[52px]',
         'after:border-2 after:border-transparent after:bg-(--color)',
-        'after:transition-colors after:duration-(--animation-duration-standard) after:ease-(--animation-easing)',
+        'after:transition-colors after:duration-300 after:ease-in-out',
         input.value === color.value && 'bg-selected after:border-surface-1',
       )}
       onClick={() => handleClick(color.value)}
       aria-label={`Select color ${color.label}`}
-      style={{ '--color': `hsl(var(--${color.value}))` } as React.CSSProperties}
+      style={
+        { '--color': resolveProtocolColor(color.value) } as React.CSSProperties
+      }
       key={color.value}
     >
       <div className="hidden">{color.label}</div>
@@ -81,20 +84,20 @@ const ColorPicker = ({
     <div className="m-0 [&>h4]:m-0">
       <div>
         {label && (
-          <div className="font-heading text-foreground mt-(--space-xl) mb-(--space-md) font-semibold">
+          <div className="font-heading text-text mt-10 mb-5 font-semibold">
             {label}
           </div>
         )}
         <div
           className={cx(
-            'bg-surface-1 text-input-foreground rounded-t-sm pt-(--space-sm) pl-(--space-sm)',
-            showError && 'border-error border-(length:--space-xs)',
+            'bg-surface-1 text-input-contrast rounded-t-sm pt-2.5 pl-2.5',
+            showError && 'border-destructive border-[0.3rem]',
           )}
         >
           <div className="flex flex-wrap">{colors.map(renderColor)}</div>
         </div>
         {showError && (
-          <div className="bg-error text-error-foreground flex items-center rounded-b-sm px-(--space-xs) py-(--space-xs) [&_svg]:max-h-(--space-md)">
+          <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-1 [&_svg]:max-h-5">
             <Icon name="warning" />
             {error}
           </div>

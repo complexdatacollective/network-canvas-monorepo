@@ -67,7 +67,7 @@ const GeoJSONTable = ({ assetId }: GeoJSONTableProps) => {
   return (
     <>
       {isTruncated && (
-        <p className="text-muted-foreground mb-2 text-sm">
+        <p className="text-muted mb-2 text-sm">
           Showing {ROW_LIMIT} of {totalRows.toLocaleString()} features
         </p>
       )}

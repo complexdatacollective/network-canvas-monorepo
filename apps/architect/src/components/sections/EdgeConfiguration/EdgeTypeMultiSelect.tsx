@@ -71,7 +71,7 @@ export const EdgeTypeMultiSelectInner = ({
   };
 
   return (
-    <div className="flex flex-col items-start gap-(--space-md)">
+    <div className="flex flex-col items-start gap-5">
       {edgeTypes.length > 0 ? (
         <CheckboxGroup
           options={edgeTypes}

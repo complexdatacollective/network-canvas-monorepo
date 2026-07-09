@@ -57,12 +57,12 @@ const Heading = ({
 
   return (
     <th
-      className="bg-surface-2 border-border m-0 border-b-2 px-(--space-md) py-(--space-md) text-left align-middle text-base font-black normal-case"
+      className="bg-surface-2 border-outline m-0 border-b-2 px-5 py-5 text-left align-middle text-base font-black normal-case"
       aria-sort={ariaSort}
     >
       <button
         type="button"
-        className="inline-flex cursor-pointer appearance-none items-center gap-(--space-xs) border-0 bg-transparent p-0 text-left font-[inherit]"
+        className="inline-flex cursor-pointer appearance-none items-center gap-1 border-0 bg-transparent p-0 text-left font-[inherit]"
         onClick={() =>
           onSort({ sortBy: name, sortDirection: newSortDirection })
         }
@@ -118,7 +118,7 @@ const Variables = ({
   };
 
   return (
-    <div className="border-border mt-(--space-lg) overflow-hidden rounded border">
+    <div className="border-outline mt-7 overflow-hidden rounded border">
       <table className="w-full border-collapse">
         <thead>
           <tr>
@@ -138,7 +138,7 @@ const Variables = ({
             </Heading>
             <th
               aria-label="Actions"
-              className="bg-surface-2 border-border w-px border-b-2"
+              className="bg-surface-2 border-outline w-px border-b-2"
             />
           </tr>
         </thead>
@@ -146,15 +146,15 @@ const Variables = ({
           {variables.map(({ id, inUse, usage }) => (
             <tr
               key={id}
-              className="border-border/40 hover:bg-surface-2/40 border-b last:border-b-0"
+              className="border-outline/40 hover:bg-surface-2/40 border-b last:border-b-0"
             >
-              <td className="m-0 px-(--space-md) py-(--space-sm) text-base">
+              <td className="m-0 px-5 py-2.5 text-base">
                 <EditableVariablePill uuid={id} width="25rem" />
               </td>
-              <td className="border-border/40 m-0 border-l px-(--space-md) py-(--space-sm) text-base">
+              <td className="border-outline/40 m-0 border-l px-5 py-2.5 text-base">
                 <UsageColumn inUse={inUse} usage={usage} />
               </td>
-              <td className="border-border/40 m-0 border-l px-(--space-md) py-(--space-sm) text-right text-base">
+              <td className="border-outline/40 m-0 border-l px-5 py-2.5 text-right text-base">
                 <ControlsColumn onDelete={onDelete} inUse={inUse} id={id} />
               </td>
             </tr>

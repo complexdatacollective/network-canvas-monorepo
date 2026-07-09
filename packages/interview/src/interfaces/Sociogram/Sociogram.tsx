@@ -2,7 +2,10 @@
 
 import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useSelector } from 'react-redux';
 
+import type { DragMetadata } from '@codaco/fresco-ui/dnd/types';
+import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import Node from '@codaco/fresco-ui/Node';
 import {
   entityAttributesProperty,
@@ -21,6 +24,7 @@ import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import useSortedNodeList from '~/hooks/useSortedNodeList';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { getEdges, getPlacedNodes, getUnplacedNodes } from '~/selectors/canvas';
+import { makeGetCodebookForNodeType } from '~/selectors/protocol';
 import {
   getNetworkNodesForType,
   getPromptSortOrder,
@@ -32,16 +36,22 @@ import {
 } from '~/store/modules/session';
 import { useAppDispatch } from '~/store/store';
 import type { StageProps } from '~/types';
+import { getNodeLabelAttribute } from '~/utils/getNodeLabelAttribute';
 
 import CollapsablePrompts from './CollapsablePrompts';
 import SimulationPanel from './SimulationPanel';
 
 type SociogramProps = StageProps<'Sociogram'>;
 
+// DnD item type registered while dragging an already-placed node, so the
+// unplaced-node drawer can accept it back.
+const PLACED_NODE_ITEM_TYPE = 'PLACED_NODE';
+
 const Sociogram = (stageProps: SociogramProps) => {
   const { stage } = stageProps;
   const { prompt } = usePrompts<(typeof stage.prompts)[number]>();
   const dispatch = useAppDispatch();
+  const { announce } = useAccessibilityAnnouncements();
 
   const interfaceRef = useRef<HTMLDivElement>(null);
 
@@ -263,6 +273,66 @@ const Sociogram = (stageProps: SociogramProps) => {
     [store, dispatch, layoutVariable, currentStep, layoutMode, track],
   );
 
+  const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
+
+  // Unplace a node: clearing the layout variable returns it to the drawer.
+  // Reached by dragging a placed node onto the drawer, or by pressing
+  // Delete/Backspace on a focused node.
+  const handleUnplaceNode = useCallback(
+    (nodeId: string) => {
+      const node = allNodes.find((n) => n[entityPrimaryKeyProperty] === nodeId);
+
+      // Resolve the node's visible label synchronously for the announcement.
+      // Non-string values (e.g. encrypted attributes) fall back to a nameless
+      // announcement rather than leaking or garbling the label.
+      let name: string | null = null;
+      if (node) {
+        const attributes = node[entityAttributesProperty];
+        const labelAttribute = getNodeLabelAttribute(
+          getCodebookForNodeType(node.type)?.variables,
+          attributes,
+        );
+        const rawLabel = labelAttribute ? attributes[labelAttribute] : null;
+        if (typeof rawLabel === 'string' || typeof rawLabel === 'number') {
+          name = String(rawLabel);
+        }
+      }
+
+      track('node_unplaced', { node_id: nodeId });
+      void dispatch(
+        updateNode({
+          nodeId,
+          newAttributeData: { [layoutVariable]: null },
+          currentStep,
+        }),
+      );
+      announce(
+        name ? `${name} returned to the drawer.` : 'Returned to the drawer.',
+      );
+    },
+    [
+      allNodes,
+      getCodebookForNodeType,
+      dispatch,
+      layoutVariable,
+      currentStep,
+      track,
+      announce,
+    ],
+  );
+
+  const drawerDropTarget = useMemo(
+    () => ({
+      accepts: [PLACED_NODE_ITEM_TYPE],
+      announcedName: 'Drawer',
+      onDrop: (metadata?: DragMetadata) => {
+        const nodeId = metadata?.nodeId;
+        if (typeof nodeId === 'string') handleUnplaceNode(nodeId);
+      },
+    }),
+    [handleUnplaceNode],
+  );
+
   const background = backgroundImage ? (
     <img
       src={backgroundImage}
@@ -301,9 +371,17 @@ const Sociogram = (stageProps: SociogramProps) => {
         onNodeDragEnd={handleNodeDragEnd}
         onDrop={handleDrop}
         simulation={simulationHandlers}
+        nodeDragItemType={
+          layoutMode === 'MANUAL' ? PLACED_NODE_ITEM_TYPE : undefined
+        }
+        onNodeRemove={layoutMode === 'MANUAL' ? handleUnplaceNode : null}
       />
       {layoutMode === 'MANUAL' && (
-        <NodeDrawer nodes={sortedUnplacedNodes} floating />
+        <NodeDrawer
+          nodes={sortedUnplacedNodes}
+          floating
+          dropTarget={drawerDropTarget}
+        />
       )}
       <CollapsablePrompts dragConstraints={interfaceRef}>
         {layoutMode === 'AUTOMATIC' && (

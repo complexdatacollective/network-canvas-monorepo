@@ -44,14 +44,14 @@ type DropzoneStateName =
   | 'disabled';
 
 const dropzoneVariants = cva({
-  base: 'bg-surface-accent relative isolate flex h-(--space-6xl) cursor-pointer items-center justify-center overflow-hidden rounded-(--space-lg) border-4 border-dashed border-transparent p-(--space-2xl) text-base leading-normal transition-[border-color,background-color] duration-(--animation-duration-slow) ease-(--animation-easing)',
+  base: 'bg-surface-accent relative isolate flex h-34 cursor-pointer items-center justify-center overflow-hidden rounded-[1.8rem] border-4 border-dashed border-transparent p-14 text-base leading-normal transition-[border-color,background-color] duration-500 ease-in-out',
   variants: {
     state: {
       idle: '',
       active: 'cursor-default',
-      hover: 'border-action bg-action/10 duration-(--animation-duration-fast)',
+      hover: 'border-action bg-action/10 duration-150',
       loading: 'cursor-wait',
-      error: 'border-warning duration-(--animation-duration-fast)',
+      error: 'border-warning duration-150',
       disabled: '',
     },
   },
@@ -61,12 +61,12 @@ const dropzoneVariants = cva({
 });
 
 const labelVariants = cva({
-  base: 'relative z-2 text-white transition-[opacity,color] duration-(--animation-duration-standard) ease-(--animation-easing)',
+  base: 'relative z-2 text-white transition-[opacity,color] duration-300 ease-in-out',
   variants: {
     state: {
       idle: 'opacity-100',
       active: 'opacity-50',
-      hover: 'text-foreground opacity-100',
+      hover: 'text-text opacity-100',
       loading: 'opacity-0',
       error: 'opacity-100',
       disabled: 'opacity-100',
@@ -78,7 +78,7 @@ const labelVariants = cva({
 });
 
 const loadingVariants = cva({
-  base: 'absolute inset-0 flex items-center justify-center transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing)',
+  base: 'absolute inset-0 flex items-center justify-center transition-opacity duration-300 ease-in-out',
   variants: {
     state: {
       idle: 'opacity-0',
@@ -214,7 +214,7 @@ const Dropzone = ({
         <input {...getInputProps()} />
         <div
           className={cx(
-            'absolute inset-0 z-1 bg-transparent transition-[background-color] duration-(--animation-duration-fast) ease-(--animation-easing)',
+            'absolute inset-0 z-1 bg-transparent transition-[background-color] duration-150 ease-in-out',
           )}
         />
         <div className={labelVariants({ state: dropzoneState })}>
@@ -229,7 +229,7 @@ const Dropzone = ({
         </div>
       </div>
       {state.error && (
-        <div className="bg-warning mt-(--space-xs) flex items-center overflow-hidden rounded-(--space-xs) px-(--space-lg) py-(--space-xs) opacity-100 transition-opacity duration-(--animation-duration-fast) [&_.icon]:mr-(--space-xs) [&_.icon]:h-[1.2rem] [&_.icon]:w-[1.2rem]">
+        <div className="bg-warning mt-1 flex items-center overflow-hidden rounded-[0.3rem] px-7 py-1 opacity-100 transition-opacity duration-150 [&_.icon]:mr-1 [&_.icon]:h-[1.2rem] [&_.icon]:w-[1.2rem]">
           <Icon name="warning" />
           {state.error}
         </div>

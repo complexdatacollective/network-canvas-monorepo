@@ -53,7 +53,7 @@ const deleteOption =
 // Layout for the side controls (drag handle + delete button). Both are 3rem wide
 // flex centers; the only difference is `cursor: grab` for the handle.
 const sideControlClasses =
-  'flex w-(--space-2xl) cursor-pointer items-center justify-center bg-transparent text-sortable-foreground [&_.icon]:size-(--space-md)';
+  'flex w-14 cursor-pointer items-center justify-center bg-transparent text-sortable-contrast [&_.icon]:size-5';
 
 const DeleteOption = (props: React.HTMLAttributes<HTMLDivElement>) => (
   <div
@@ -94,14 +94,14 @@ const Option = ({
   return (
     <Reorder.Item
       className={cx(
-        'text-sortable-foreground z-(--z-fx) flex rounded-xl transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)',
-        hasError ? 'bg-error' : 'bg-form-control',
+        'text-sortable-contrast z-1 flex rounded-xl transition-colors duration-300 ease-in-out',
+        hasError ? 'bg-destructive' : 'bg-form-control',
       )}
       value={internalItem}
       dragListener={false}
       dragControls={controls}
     >
-      <div className="flex grow-0 items-center p-(--space-md)">
+      <div className="flex grow-0 items-center p-5">
         <div
           className={cx(sideControlClasses, 'cursor-grab')}
           onPointerDown={(e) => controls.start(e)}
@@ -110,11 +110,11 @@ const Option = ({
         </div>
       </div>
       <div className="flex flex-1">
-        <div className="my-(--space-md) flex-1">
+        <div className="my-5 flex-1">
           <h4
             className={cx(
-              'mx-0 mt-0 mb-(--space-md) transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)',
-              hasError && 'text-primary-foreground',
+              'mx-0 mt-0 mb-5 transition-colors duration-300 ease-in-out',
+              hasError && 'text-primary-contrast',
             )}
           >
             Label
@@ -131,11 +131,11 @@ const Option = ({
             validation={{ required: true, uniqueArrayAttribute: true }}
           />
         </div>
-        <div className="my-(--space-md) ml-(--space-md) flex-1">
+        <div className="my-5 ml-5 flex-1">
           <h4
             className={cx(
-              'mx-0 mt-0 mb-(--space-md) transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)',
-              hasError && 'text-primary-foreground',
+              'mx-0 mt-0 mb-5 transition-colors duration-300 ease-in-out',
+              hasError && 'text-primary-contrast',
             )}
           >
             Value
@@ -161,7 +161,7 @@ const Option = ({
           />
         </div>
       </div>
-      <div className="flex grow-0 p-(--space-md)">
+      <div className="flex grow-0 p-5">
         <DeleteOption onClick={handleDelete} />
       </div>
     </Reorder.Item>

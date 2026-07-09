@@ -22,9 +22,9 @@ const Tag = ({
   disabled = false,
 }: TagProps) => {
   const componentClasses = cx(
-    'bg-foreground/15 inline-flex items-center justify-center gap-2 rounded-full border-2 border-transparent px-2 py-1 text-xs font-semibold tracking-widest text-white uppercase',
-    selected && 'bg-platinum text-surface-2-foreground',
-    light && 'bg-platinum text-surface-2-foreground',
+    'bg-text/15 inline-flex items-center justify-center gap-2 rounded-full border-2 border-transparent px-2 py-1 text-xs font-semibold tracking-widest text-white uppercase',
+    selected && 'bg-platinum text-surface-2-contrast',
+    light && 'bg-platinum text-surface-2-contrast',
     disabled && !!onClick && '',
     disabled && 'cursor-not-allowed opacity-50',
     onClick && !disabled && 'cursor-pointer',

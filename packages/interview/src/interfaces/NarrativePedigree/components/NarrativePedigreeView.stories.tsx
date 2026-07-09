@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Provider } from 'react-redux';
+import { expect, userEvent, within } from 'storybook/test';
 
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import {
@@ -245,4 +246,26 @@ type Story = StoryObj<typeof NarrativePedigreeView>;
 
 export const Default: Story = {
   args: { stage: narrativeStage },
+};
+
+export const Zoom: Story = {
+  args: { stage: narrativeStage },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const content = canvasElement.querySelector<HTMLElement>(
+      '[data-testid="np-zoom-content"]',
+    );
+
+    expect(content?.getAttribute('data-zoom-level')).toBe('1');
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Zoom in' }),
+    );
+    expect(Number(content?.getAttribute('data-zoom-level'))).toBeGreaterThan(1);
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Reset zoom' }),
+    );
+    expect(content?.getAttribute('data-zoom-level')).toBe('1');
+  },
 };

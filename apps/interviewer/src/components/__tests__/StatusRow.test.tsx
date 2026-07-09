@@ -25,6 +25,13 @@ vi.mock('~/lib/auth/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+const { mockIsRunningInstalled } = vi.hoisted(() => ({
+  mockIsRunningInstalled: vi.fn(() => false),
+}));
+vi.mock('~/lib/pwa/isRunningInstalled', () => ({
+  isRunningInstalled: mockIsRunningInstalled,
+}));
+
 // The version slot renders AppUpdatePill, which reads the app-wide
 // AppUpdateProvider context (service-worker registration + update state) that
 // isn't mounted in these unit tests. Stub it out — the update indicator has its
@@ -34,11 +41,14 @@ vi.mock('../AppUpdate/AppUpdatePill', () => ({
   default: () => <span>Interviewer test</span>,
 }));
 
+import { STORAGE_PERSISTED_EVENT } from '~/lib/storage';
+
 import { StatusRow } from '../StatusRow';
 
 afterEach(() => {
   vi.clearAllMocks();
   useAuthMock.mockReturnValue({ kind: 'unlocked', mode: 'pin' });
+  mockIsRunningInstalled.mockReturnValue(false);
 });
 
 describe('StatusRow', () => {
@@ -143,6 +153,41 @@ describe('StatusRow', () => {
     // grant when the event fires, without waiting for a reload.
     mockIsPersisted.mockResolvedValue(true);
     window.dispatchEvent(new Event('appinstalled'));
+
+    await waitFor(() =>
+      expect(screen.getByText(/storage persistent/i)).toBeInTheDocument(),
+    );
+  });
+
+  // An installed app's data is partitioned away from browsing data and exempt
+  // from routine cleanup, and there is no further user action that could flip
+  // the grant — so the alarming warning is replaced by a calm best-effort
+  // state (#886).
+  it('shows a calm best-effort state instead of the warning when installed', async () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(false);
+    mockIsRunningInstalled.mockReturnValue(true);
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    await waitFor(() =>
+      expect(screen.getByText(/storage best effort/i)).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText(/storage not persistent/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it('re-reads persistence when a late grant announces itself', async () => {
+    mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
+    mockIsPersisted.mockResolvedValue(false);
+    render(<StatusRow protocolCount={0} interviewCount={0} />);
+    await waitFor(() =>
+      expect(screen.getByText(/storage not persistent/i)).toBeInTheDocument(),
+    );
+
+    // requestPersistentStorage() dispatches this event on a fresh grant (e.g.
+    // the first-interaction retry succeeding) with no focus/visibility change.
+    mockIsPersisted.mockResolvedValue(true);
+    window.dispatchEvent(new Event(STORAGE_PERSISTED_EVENT));
 
     await waitFor(() =>
       expect(screen.getByText(/storage persistent/i)).toBeInTheDocument(),

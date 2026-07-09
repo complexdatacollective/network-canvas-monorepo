@@ -179,8 +179,8 @@ const ShapeVariableMapping = ({
   };
 
   return (
-    <div className="mt-(--space-md)">
-      <div className="border-surface-2 border-t py-(--space-sm)">
+    <div className="mt-5">
+      <div className="border-surface-2 border-t py-2.5">
         <label className="flex cursor-pointer items-center justify-between font-semibold">
           <span>Map variable to shape</span>
           <button
@@ -188,7 +188,7 @@ const ShapeVariableMapping = ({
             aria-label="Map variable to shape"
             className={cx(
               'relative h-6 w-11 cursor-pointer rounded-full border-0',
-              'transition-colors duration-(--animation-duration-standard) ease-(--animation-easing)',
+              'transition-colors duration-300 ease-in-out',
               enabled ? 'bg-active' : 'bg-surface-2',
             )}
             onClick={handleToggle}
@@ -197,19 +197,19 @@ const ShapeVariableMapping = ({
             <span
               className={cx(
                 'absolute top-0.75 left-0.75 h-4.5 w-4.5 rounded-full bg-white',
-                'transition-transform duration-(--animation-duration-standard) ease-(--animation-easing)',
+                'transition-transform duration-300 ease-in-out',
                 enabled && 'translate-x-5',
               )}
             />
           </button>
         </label>
-        <p className="text-muted-foreground mt-(--space-xs) text-sm">
+        <p className="text-muted mt-1 text-sm">
           Override the default shape based on the value of a node's attribute.
         </p>
       </div>
 
       {enabled && (
-        <div className="mt-(--space-md) flex flex-col gap-(--space-md)">
+        <div className="mt-5 flex flex-col gap-5">
           <VariablePicker
             label="Variable"
             options={variableOptions}
@@ -221,8 +221,8 @@ const ShapeVariableMapping = ({
           />
 
           {selectedVar && dynamic?.type === 'discrete' && (
-            <div className="flex flex-col gap-(--space-xs)">
-              <h4 className="text-muted-foreground mb-(--space-xs) block text-base text-sm font-semibold">
+            <div className="flex flex-col gap-1">
+              <h4 className="text-muted mb-1 block text-base text-sm font-semibold">
                 Shape for each value
               </h4>
               {getDiscreteOptions().map((option) => {
@@ -230,7 +230,7 @@ const ShapeVariableMapping = ({
                 return (
                   <div
                     key={String(option.value)}
-                    className="bg-surface-1 flex items-center gap-(--space-sm) px-(--space-sm) py-(--space-xs)"
+                    className="bg-surface-1 flex items-center gap-2.5 px-2.5 py-1"
                   >
                     <span className="flex-1 text-sm">{option.label}</span>
                     <ShapePicker
@@ -248,7 +248,7 @@ const ShapeVariableMapping = ({
               {getDiscreteOptions().some(
                 (opt) => !getShapeForValue(opt.value),
               ) && (
-                <p className="text-warning mt-(--space-xs) text-xs">
+                <p className="text-warning mt-1 text-xs">
                   Some values are unmapped and will use the default shape.
                 </p>
               )}
@@ -256,26 +256,22 @@ const ShapeVariableMapping = ({
           )}
 
           {selectedVar && dynamic?.type === 'breakpoints' && (
-            <div className="flex flex-col gap-(--space-xs)">
-              <h4 className="text-muted-foreground mb-(--space-xs) block text-sm">
-                Thresholds
-              </h4>
-              <div className="bg-surface-1 flex items-center gap-(--space-sm) px-(--space-sm) py-(--space-xs) opacity-60">
+            <div className="flex flex-col gap-1">
+              <h4 className="text-muted mb-1 block text-sm">Thresholds</h4>
+              <div className="bg-surface-1 flex items-center gap-2.5 px-2.5 py-1 opacity-60">
                 <span className="flex-1 text-sm">Below first threshold</span>
-                <span className="text-muted-foreground text-xs">
-                  uses default shape
-                </span>
+                <span className="text-muted text-xs">uses default shape</span>
               </div>
               {(dynamic.thresholds ?? []).map((threshold, index) => (
                 <div
                   key={`threshold-${threshold.value}`}
-                  className="bg-surface-1 flex items-center gap-(--space-sm) px-(--space-sm) py-(--space-xs)"
+                  className="bg-surface-1 flex items-center gap-2.5 px-2.5 py-1"
                 >
-                  <span className="text-muted-foreground text-sm">≥</span>
+                  <span className="text-muted text-sm">≥</span>
                   <input
                     type="number"
                     aria-label="Threshold value"
-                    className="bg-surface-2 border-surface-2 text-foreground w-17.5 rounded-xs border p-(--space-xs) text-center"
+                    className="bg-surface-2 border-surface-2 text-text w-17.5 rounded-xs border p-1 text-center"
                     value={threshold.value}
                     onChange={(e) =>
                       handleThresholdValueChange(
@@ -292,7 +288,7 @@ const ShapeVariableMapping = ({
                       );
                     }}
                   />
-                  <span className="text-muted-foreground text-sm">→</span>
+                  <span className="text-muted text-sm">→</span>
                   <ShapePicker
                     small
                     nodeColor={nodeColor}
@@ -305,7 +301,7 @@ const ShapeVariableMapping = ({
                   />
                   <button
                     type="button"
-                    className="text-muted-foreground hover:text-error cursor-pointer border-0 bg-transparent px-(--space-xs) text-xl leading-none"
+                    className="text-muted hover:text-destructive cursor-pointer border-0 bg-transparent px-1 text-xl leading-none"
                     onClick={() => handleRemoveThreshold(index)}
                     aria-label="Remove threshold"
                   >
@@ -316,7 +312,7 @@ const ShapeVariableMapping = ({
               {(dynamic.thresholds ?? []).length < 2 && (
                 <button
                   type="button"
-                  className="bg-surface-1 border-surface-2 text-muted-foreground hover:border-muted-foreground mt-(--space-xs) cursor-pointer border border-dashed p-(--space-xs) text-sm"
+                  className="bg-surface-1 border-surface-2 text-muted hover:border-muted mt-1 cursor-pointer border border-dashed p-1 text-sm"
                   onClick={handleAddThreshold}
                 >
                   + Add threshold

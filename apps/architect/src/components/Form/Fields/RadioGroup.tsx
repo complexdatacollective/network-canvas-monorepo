@@ -95,7 +95,7 @@ const RadioGroup = ({
       className={cx(
         'm-0 [&>h4]:m-0',
         orientation === 'horizontal' &&
-          'flex items-center gap-(--space-md) [&>h4]:flex-none',
+          'flex items-center gap-5 [&>h4]:flex-none',
       )}
     >
       {anyLabel && <MarkdownLabel label={anyLabel} />}
@@ -104,15 +104,15 @@ const RadioGroup = ({
           'form-field',
           orientation === 'vertical'
             ? 'flex flex-col'
-            : 'mb-0 flex w-auto flex-row items-center [&_label]:mr-(--space-md) [&_label]:mb-0',
-          hasError && 'border-error mb-0 rounded-b-none border-2',
+            : 'mb-0 flex w-auto flex-row items-center [&_label]:mr-5 [&_label]:mb-0',
+          hasError && 'border-destructive mb-0 rounded-b-none border-2',
           className,
         )}
       >
         {options.map(renderOption)}
       </div>
       {hasError && (
-        <div className="bg-error text-error-foreground flex items-center rounded-b-sm px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)">
+        <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5">
           <Icon name="warning" />
           {error}
         </div>

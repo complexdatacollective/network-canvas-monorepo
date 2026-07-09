@@ -108,7 +108,7 @@ const IconPicker = ({
           setQuery(inputValue);
         }}
       >
-        <Combobox.Trigger className="border-surface-2 bg-surface-1 text-foreground flex w-full cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-left text-sm">
+        <Combobox.Trigger className="border-surface-2 bg-surface-1 text-text flex w-full cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-left text-sm">
           {selectedEntry ? (
             <>
               <span className="flex h-6 w-6 shrink-0 items-center justify-center">
@@ -127,17 +127,13 @@ const IconPicker = ({
         </Combobox.Trigger>
 
         <Combobox.Portal>
-          <Combobox.Positioner
-            align="start"
-            sideOffset={4}
-            className="z-(--z-tooltip)"
-          >
+          <Combobox.Positioner align="start" sideOffset={4} className="z-3000">
             <Combobox.Popup className="border-surface-2 bg-surface-1 w-(--anchor-width) min-w-(--anchor-width) overflow-hidden rounded-sm border shadow-md">
               <div className="border-surface-2 flex items-center gap-2 border-b px-3 py-2">
                 <Search size={16} className="text-charcoal shrink-0" />
                 <Combobox.Input
                   placeholder="Search icons..."
-                  className="text-foreground placeholder:text-charcoal min-w-0 flex-1 bg-transparent text-sm outline-none"
+                  className="text-text placeholder:text-charcoal min-w-0 flex-1 bg-transparent text-sm outline-none"
                 />
               </div>
 
@@ -146,7 +142,7 @@ const IconPicker = ({
                   <Combobox.Item
                     key={entry.isCustom ? `custom-${entry.name}` : entry.name}
                     value={entry}
-                    className="text-foreground data-[highlighted]:bg-surface-2 flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none"
+                    className="text-text data-[highlighted]:bg-surface-2 flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none"
                   >
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center">
                       <IconPreview entry={entry} size={18} />
@@ -154,7 +150,7 @@ const IconPicker = ({
                     <span className="min-w-0 flex-1 truncate">
                       {entry.name}
                     </span>
-                    <Combobox.ItemIndicator className="text-foreground shrink-0">
+                    <Combobox.ItemIndicator className="text-text shrink-0">
                       ✓
                     </Combobox.ItemIndicator>
                   </Combobox.Item>
@@ -170,7 +166,7 @@ const IconPicker = ({
       </Combobox.Root>
 
       {showError && (
-        <div className="text-error mt-1 text-sm">
+        <div className="text-destructive mt-1 text-sm">
           <Icon name="warning" />
           {error}
         </div>

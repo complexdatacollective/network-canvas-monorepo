@@ -192,6 +192,7 @@ export default function EgoCellWizard({
       >
         <ActionButton
           aria-label="Build family pedigree"
+          data-testid="pedigree-get-started"
           iconName="Network"
           onClick={handleClick}
         />

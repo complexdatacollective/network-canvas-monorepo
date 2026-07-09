@@ -9,7 +9,7 @@ type EntityProps = {
 
 const Entity = ({ type, entity, variables }: EntityProps) => (
   <div
-    className="page-break-marker mb-(--space-2xl) break-before-page"
+    className="page-break-marker mb-14 break-before-page"
     id={entity === 'ego' ? 'ego' : `entity-${type ?? ''}`}
   >
     {entity !== 'ego' && type && entity && (
@@ -22,7 +22,7 @@ const Entity = ({ type, entity, variables }: EntityProps) => (
       </div>
     )}
 
-    <div className="mt-(--space-xl)">
+    <div className="mt-10">
       <Variables variables={variables} />
     </div>
   </div>

@@ -103,6 +103,7 @@ export function RadioItem({
               id={optionId}
               type="button"
               aria-label={label}
+              data-value={optionValue}
               className={radioIndicatorVariants({
                 size,
                 state: indicatorState,

@@ -130,6 +130,13 @@ export default function QuickAddField({
 
   const handleBlur = useCallback(
     (e: React.FocusEvent) => {
+      // The form disables its fields while a submission is in flight, and
+      // WebKit blurs a focused control the moment it becomes disabled. That
+      // blur is not the user leaving the field, so it must not close it —
+      // the submit-complete effect above restores focus once re-enabled.
+      if (e.target instanceof HTMLInputElement && e.target.disabled) {
+        return;
+      }
       if (buttonRef.current?.contains(e.relatedTarget)) {
         return;
       }

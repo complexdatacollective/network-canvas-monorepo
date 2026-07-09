@@ -104,8 +104,8 @@ const EntityType = ({
 
   return (
     <Section layout="vertical" required={false}>
-      <div className="flex items-center gap-(--space-md)">
-        <div className="flex shrink-0 basis-(--space-3xl) items-center justify-center">
+      <div className="flex items-center gap-5">
+        <div className="flex shrink-0 basis-19 items-center justify-center">
           <EntityIcon
             color={color}
             entity={entity}
@@ -117,7 +117,7 @@ const EntityType = ({
         <div className="flex-1">
           {!inUse && <Tag notUsed>not in use</Tag>}
           {inUse && (
-            <div className="flex flex-wrap items-center gap-(--space-xs)">
+            <div className="flex flex-wrap items-center gap-1">
               <span>used in:</span>
               {stages}
             </div>
@@ -139,7 +139,7 @@ const EntityType = ({
           </Button>
         </span>
       </div>
-      <div className="mt-(--space-md)">
+      <div className="mt-5">
         <div className="flex justify-end">
           <Button
             color="sea-green"

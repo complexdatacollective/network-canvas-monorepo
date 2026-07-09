@@ -2,6 +2,8 @@ import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import { useCallback, useEffect, useState } from 'react';
 
+import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
+import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
 import usePrevious from '@codaco/fresco-ui/hooks/usePrevious';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
@@ -17,6 +19,17 @@ type NodeDrawerProps = {
   onExpandedChange?: (expanded: boolean) => void;
   /** When true, drawer is absolutely positioned (for Sociogram canvas overlay). Defaults to false (inline flex). */
   floating?: boolean;
+  /**
+   * When provided, the drawer registers as a DnD drop target so dragged nodes
+   * can be returned to it (e.g. unplacing a placed sociogram node). Also makes
+   * the drawer manually expandable while empty, and auto-expands it whenever a
+   * compatible drag is in flight.
+   */
+  dropTarget?: {
+    accepts: string[];
+    announcedName: string;
+    onDrop: DropCallback;
+  };
 };
 
 const MotionChevron = motion.create(ChevronDown);
@@ -27,6 +40,7 @@ export default function NodeDrawer({
   expanded,
   onExpandedChange,
   floating = false,
+  dropTarget,
 }: NodeDrawerProps) {
   const [internalExpanded, setInternalExpanded] = useState(nodes.length > 0);
   const isExpanded = expanded ?? internalExpanded;
@@ -34,6 +48,20 @@ export default function NodeDrawer({
 
   const hasNodes = nodes.length > 0;
   const isEmpty = !hasNodes;
+  const canExpandWhenEmpty = !!dropTarget;
+
+  const { dropProps, isOver, willAccept } = useDropTarget({
+    id: 'node-drawer',
+    accepts: dropTarget?.accepts ?? [],
+    announcedName: dropTarget?.announcedName ?? 'Drawer',
+    onDrop: dropTarget?.onDrop,
+    disabled: !dropTarget,
+    focusBehaviorOnDrop: 'none',
+  });
+
+  // While a compatible drag is in flight, hold the drawer open so the drop
+  // area is visible — without mutating the participant's chosen state.
+  const isExpandedEffective = isExpanded || willAccept;
 
   // Collapse when emptied, expand when nodes arrive
   const prevHasNodes = usePrevious(hasNodes);
@@ -70,10 +98,13 @@ export default function NodeDrawer({
     setRemeasureKey((k) => k + 1);
   }, []);
 
+  const isToggleDisabled = isEmpty && !canExpandWhenEmpty;
+
   return (
     <LayoutGroup>
       <motion.div
         layout
+        {...(dropTarget ? dropProps : {})}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 28 }}
@@ -88,20 +119,22 @@ export default function NodeDrawer({
             layout="position"
             type="button"
             onClick={() => {
-              if (!isEmpty) setIsExpanded(!isExpanded);
+              if (!isToggleDisabled) setIsExpanded(!isExpanded);
             }}
-            disabled={isEmpty}
+            disabled={isToggleDisabled}
             className={cx(
               'bg-surface flex items-center gap-2 rounded-t-lg px-8 py-2 text-sm',
               headingVariants({ level: 'label' }),
-              isEmpty && 'cursor-not-allowed opacity-50',
+              isToggleDisabled && 'cursor-not-allowed opacity-50',
             )}
-            aria-label={isExpanded ? 'Collapse drawer' : 'Expand drawer'}
-            aria-expanded={isExpanded}
+            aria-label={
+              isExpandedEffective ? 'Collapse drawer' : 'Expand drawer'
+            }
+            aria-expanded={isExpandedEffective}
           >
             <MotionChevron
               className="size-[1em]"
-              animate={{ rotate: isExpanded ? 0 : 180 }}
+              animate={{ rotate: isExpandedEffective ? 0 : 180 }}
             />
             {nodes.length} unplaced
           </motion.button>
@@ -111,7 +144,7 @@ export default function NodeDrawer({
           layout
           initial={{ height: 0, opacity: 0 }}
           animate={
-            isExpanded
+            isExpandedEffective
               ? {
                   height: 'auto',
                   opacity: 1,
@@ -129,7 +162,11 @@ export default function NodeDrawer({
                   },
                 }
           }
-          className="bg-surface publish-colors overflow-hidden rounded"
+          className={cx(
+            'publish-colors overflow-hidden rounded transition-colors',
+            !willAccept && 'bg-surface',
+            willAccept && (isOver ? 'bg-drag-over' : 'bg-drag-valid'),
+          )}
         >
           <ScrollArea
             orientation="horizontal"
@@ -137,16 +174,24 @@ export default function NodeDrawer({
             remeasureKey={remeasureKey}
             viewportClassName="flex items-center gap-4 p-4"
           >
-            <AnimatePresence>
-              {nodes.map((node) => (
-                <DrawerNode
-                  key={node[entityPrimaryKeyProperty]}
-                  node={node}
-                  itemType={itemType}
-                  onLayoutAnimationComplete={handleLayoutAnimationComplete}
-                />
-              ))}
-            </AnimatePresence>
+            {isEmpty && canExpandWhenEmpty ? (
+              // Matches the height of a drawer node so the empty drawer
+              // expands to a full row.
+              <div className="flex min-h-24 w-full items-center justify-center px-8 text-sm opacity-70">
+                Drop here to remove
+              </div>
+            ) : (
+              <AnimatePresence>
+                {nodes.map((node) => (
+                  <DrawerNode
+                    key={node[entityPrimaryKeyProperty]}
+                    node={node}
+                    itemType={itemType}
+                    onLayoutAnimationComplete={handleLayoutAnimationComplete}
+                  />
+                ))}
+              </AnimatePresence>
+            )}
           </ScrollArea>
         </motion.div>
       </motion.div>

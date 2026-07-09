@@ -1,14 +1,16 @@
+import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
+
 type DiseasePreviewProps = {
   label?: string;
   color?: string;
 };
 
 const DiseasePreview = ({ label, color }: DiseasePreviewProps) => (
-  <div className="flex items-center gap-(--space-sm) py-(--space-sm)">
+  <div className="flex items-center gap-2.5 py-2.5">
     {color && (
       <span
         className="inline-block size-4 shrink-0 rounded-full"
-        style={{ background: `hsl(var(--${color}))` }}
+        style={{ background: resolveProtocolColor(color) }}
         aria-hidden="true"
       />
     )}

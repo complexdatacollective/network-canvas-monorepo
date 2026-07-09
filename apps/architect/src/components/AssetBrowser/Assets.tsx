@@ -72,7 +72,7 @@ const Assets = ({
   return (
     <div>
       {!type && (
-        <div className="mb-(--space-md)">
+        <div className="mb-5">
           <RadioGroup
             options={ASSET_TYPES}
             input={{

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, waitFor } from 'storybook/test';
+import { expect, userEvent, waitFor } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -448,4 +448,86 @@ const buildLongPrompt = () => {
 
 export const LongPrompt: Story = {
   render: () => <SociogramStoryWrapper buildFn={buildLongPrompt} />,
+};
+
+const buildAllPlaced = () => {
+  const { si, layoutVar } = createSociogramInterview(12);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('Sociogram', { initialNodes: { count: 4 } });
+  stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
+  for (let i = 0; i < 4; i++) {
+    si.setNodeAttribute(i, layoutVar.id, { x: 0.2 + i * 0.15, y: 0.35 });
+  }
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+  return si;
+};
+
+// With every node placed the drawer is empty, but it stays available: it can
+// be expanded to reveal the drop area, and a focused canvas node can be
+// returned to it with Delete/Backspace.
+export const UnplaceNodes: Story = {
+  render: () => <SociogramStoryWrapper buildFn={buildAllPlaced} />,
+  play: async ({ canvasElement }) => {
+    const tab = await waitFor(() => {
+      const el = canvasElement.querySelector<HTMLButtonElement>(
+        '[data-zone-id="node-drawer"] button',
+      );
+      expect(el).not.toBeNull();
+      expect(el!.textContent).toContain('0 unplaced');
+      return el!;
+    });
+
+    // The tab is clickable while empty and expands to reveal the drop area
+    expect(tab.disabled).toBe(false);
+    await userEvent.click(tab);
+    await waitFor(() => {
+      expect(tab.getAttribute('aria-expanded')).toBe('true');
+      expect(canvasElement.textContent).toContain('Drop here to remove');
+    });
+
+    // Delete on a focused canvas node unplaces it into the drawer
+    const node = canvasElement.querySelector<HTMLButtonElement>(
+      '[data-zone-id="sociogram-canvas"] button[aria-label]',
+    );
+    expect(node).not.toBeNull();
+    node!.focus();
+    await userEvent.keyboard('{Delete}');
+    await waitFor(() => {
+      expect(tab.textContent).toContain('1 unplaced');
+    });
+  },
+};
+
+// The floating prompt panel collapses behind its chevron tab so the prompt
+// text can be moved out of the way of the canvas.
+export const CollapsiblePromptPanel: Story = {
+  render: () => <SociogramStoryWrapper buildFn={buildDefault} />,
+  play: async ({ canvasElement }) => {
+    const toggle = await waitFor(() => {
+      const el = canvasElement.querySelector<HTMLButtonElement>(
+        '[data-testid="prompts-toggle"]',
+      );
+      expect(el).not.toBeNull();
+      return el!;
+    });
+    const content = canvasElement.querySelector<HTMLElement>(
+      `[id="${toggle.getAttribute('aria-controls')}"]`,
+    );
+    expect(content).not.toBeNull();
+
+    await userEvent.click(toggle);
+    await waitFor(() => {
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+      expect(content!.getBoundingClientRect().height).toBe(0);
+    });
+
+    await userEvent.click(toggle);
+    await waitFor(() => {
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      expect(content!.getBoundingClientRect().height).toBeGreaterThan(0);
+    });
+  },
 };

@@ -57,7 +57,7 @@ const EgoType = ({
     Variables as unknown as React.ComponentType<VariablesComponentProps>;
 
   return (
-    <div className="py-(--space-md)">
+    <div className="py-5">
       <div className="flex justify-end">
         <Button
           color="sea-green"
@@ -70,7 +70,7 @@ const EgoType = ({
       {filteredVariables.length > 0 ? (
         <VariablesTyped variables={filteredVariables} entity="ego" />
       ) : (
-        <p className="text-muted-foreground mt-(--space-md)">
+        <p className="text-muted mt-5">
           {variableArray.length === 0
             ? 'No ego variables yet.'
             : 'No ego variables match the current filter.'}

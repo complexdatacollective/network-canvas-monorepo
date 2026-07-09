@@ -237,7 +237,7 @@ export default function useWizardState({
           )
         )}
         <div className="phone-landscape:flex-row phone-landscape:justify-between flex flex-col gap-8">
-          <Button onClick={handleCancel}>
+          <Button onClick={handleCancel} data-testid="wizard-cancel">
             {dialog.cancelLabel ?? 'Cancel'}
           </Button>
 
@@ -246,6 +246,7 @@ export default function useWizardState({
               <Button
                 onClick={handleBack}
                 disabled={isFirstActive || !backEnabled}
+                data-testid="wizard-back"
               >
                 {currentStep.backLabel ?? 'Back'}
               </Button>
@@ -254,6 +255,7 @@ export default function useWizardState({
               color="primary"
               onClick={() => void handleNext()}
               disabled={!nextEnabled || isNextLoading}
+              data-testid="wizard-next"
             >
               {isNextLoading ? (
                 <Loader2 className="animate-spin" size={16} />

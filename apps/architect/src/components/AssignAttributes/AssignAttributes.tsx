@@ -66,9 +66,7 @@ const AssignAttributes = ({
         })}
       </div>
     )}
-    <div
-      className={cx(fields.length > 0 && 'mt-(--space-md)', '[&_button]:m-0')}
-    >
+    <div className={cx(fields.length > 0 && 'mt-5', '[&_button]:m-0')}>
       <Button color="sea-green" icon="add" onClick={handleAddNew}>
         Add new variable to assign
       </Button>

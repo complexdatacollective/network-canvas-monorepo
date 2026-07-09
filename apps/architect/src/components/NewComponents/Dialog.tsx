@@ -30,8 +30,8 @@ function DialogPopup({
     <BaseDialog.Popup
       className={cx(
         'w-3xl',
-        'fixed top-1/2 left-1/2 z-(--z-dialog) max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg',
-        'bg-surface-1 text-surface-1-foreground flex max-h-[80vh] flex-col',
+        'fixed top-1/2 left-1/2 z-1000 max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg',
+        'bg-surface-1 text-surface-1-contrast flex max-h-[80vh] flex-col',
         'shadow-xl',
         className,
       )}
@@ -59,17 +59,17 @@ function DialogPopup({
           {...props}
         >
           {header && (
-            <div className="bg-accent text-accent-foreground sticky top-0 px-(--space-lg) py-(--space-md)">
+            <div className="bg-accent text-accent-contrast sticky top-0 px-7 py-5">
               {header}
             </div>
           )}
-          <div className="flex-1 overflow-y-auto px-(--space-lg) py-(--space-md)">
+          <div className="flex-1 overflow-y-auto px-7 py-5">
             <SectionDepthContext.Provider value={0}>
               {children}
             </SectionDepthContext.Provider>
           </div>
           {footer && (
-            <div className="bg-accent text-accent-foreground sticky bottom-0 flex justify-end gap-(--space-sm) px-(--space-lg) py-(--space-md) [&>*:first-child:not(:only-child)]:mr-auto">
+            <div className="bg-accent text-accent-contrast sticky bottom-0 flex justify-end gap-2.5 px-7 py-5 [&>*:first-child:not(:only-child)]:mr-auto">
               {footer}
             </div>
           )}
@@ -82,7 +82,7 @@ function DialogPopup({
 function DialogDescription(props: BaseDialog.Description.Props) {
   return (
     <BaseDialog.Description
-      className="text-surface-2-foreground text-base"
+      className="text-surface-2-contrast text-base"
       {...props}
     />
   );

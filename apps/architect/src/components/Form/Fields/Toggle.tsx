@@ -57,7 +57,7 @@ const Toggle = ({
           and aria-labelledby gives the switch its accessible name. */}
       <label
         className={cx(
-          'flex flex-row items-center justify-start gap-(--space-md)',
+          'flex flex-row items-center justify-start gap-5',
           !disabled && 'cursor-pointer',
           className,
         )}
@@ -84,7 +84,7 @@ const Toggle = ({
         )}
       </label>
       {hasError && (
-        <div className="bg-error text-error-foreground flex items-center rounded-b-sm px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)">
+        <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5">
           <Icon name="warning" />
           {error}
         </div>

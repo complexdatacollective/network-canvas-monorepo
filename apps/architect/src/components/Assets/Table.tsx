@@ -48,10 +48,10 @@ const tableClasses = cx(
   'bg-table-row-tint max-h-[60vh] overflow-auto rounded',
   '[&_td]:min-w-32 [&_th]:min-w-32',
   '[&_th]:text-sm [&_th]:font-semibold [&_th]:tracking-wider [&_th]:break-keep [&_th]:whitespace-nowrap [&_th]:uppercase',
-  '[&_th]:px-(--space-md) [&_th]:py-(--space-sm) [&_th]:leading-(--space-xl)',
+  '[&_th]:px-5 [&_th]:py-2.5 [&_th]:leading-10',
   '[&_th_svg]:text-action [&_th_svg]:size-4',
   '[&_th:not(:last-child)]:border-r-[3px] [&_th:not(:last-child)]:border-r-white',
-  '[&_td]:p-(--space-md)',
+  '[&_td]:p-5',
   '[&_td:not(:last-child)]:border-r-[3px] [&_td:not(:last-child)]:border-r-white',
   '[&_tbody>tr:nth-child(odd)>td]:bg-table-row-tint',
 );
@@ -112,7 +112,7 @@ const Table = ({ data, columns }: TableProps) => {
               style={{ cursor: 'pointer' }}
               title="Toggle SortBy"
             >
-              <span className="inline-flex items-center gap-(--space-xs)">
+              <span className="inline-flex items-center gap-1">
                 {column.Header}
                 {getSortIcon(column, sort)}
               </span>

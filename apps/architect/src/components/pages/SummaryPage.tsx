@@ -52,7 +52,7 @@ const SummaryPage = () => {
         index,
       }}
     >
-      <Layout className="[--base-font-size:14px]">
+      <Layout>
         <div className="w-full print:hidden">
           <PageHeading
             title="Protocol Summary"

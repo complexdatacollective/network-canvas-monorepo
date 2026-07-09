@@ -68,13 +68,13 @@ const ProtocolInfoCard = () => {
       />
       <div className="from-rich-black/25 via-platinum/50 to-platinum absolute inset-0 size-full bg-linear-to-b via-20% to-45%" />
 
-      <div className="relative z-10 flex flex-col gap-(--space-md) p-(--space-lg)">
+      <div className="relative z-10 flex flex-col gap-5 p-7">
         {/* Top controls row — reserves space above the heading (pushing the
             dark title clear of the gradient's dark top) and houses the
             requires-internet pill, mirroring interviewer's DeckCard. */}
-        <div className="flex min-h-(--space-2xl) items-start justify-end">
+        <div className="flex min-h-14 items-start justify-end">
           {requiresInternet && (
-            <span className="text-neon-carrot border-neon-carrot bg-rich-black/60 font-monospace flex items-center gap-2 rounded-full border px-(--space-sm) py-(--space-xs) text-xs uppercase backdrop-blur-sm">
+            <span className="text-neon-carrot border-neon-carrot bg-rich-black/60 font-monospace flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs uppercase backdrop-blur-sm">
               <Globe className="size-4" />
               Requires Internet
             </span>

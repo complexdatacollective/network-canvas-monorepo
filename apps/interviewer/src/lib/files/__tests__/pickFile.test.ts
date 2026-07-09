@@ -39,4 +39,28 @@ describe('pickProtocolFile (browser input)', () => {
     input.oncancel?.(new Event('cancel'));
     await expect(pending).resolves.toBeNull();
   });
+
+  // Safari (notably installed/standalone PWAs) can suspend or GC a file input
+  // that is not in the document while the system picker is open, so change/
+  // cancel never fire (#886).
+  it('is attached to the document when clicked, and detached after selection', async () => {
+    let connectedAtClick = false;
+    vi.spyOn(input, 'click').mockImplementation(() => {
+      connectedAtClick = input.isConnected;
+    });
+    const file = new File([new Uint8Array()], 'study.netcanvas');
+    const pending = pickProtocolFile();
+    expect(connectedAtClick).toBe(true);
+    Object.defineProperty(input, 'files', { value: [file], writable: true });
+    input.onchange?.(new Event('change'));
+    await pending;
+    expect(input.isConnected).toBe(false);
+  });
+
+  it('detaches from the document after cancel', async () => {
+    const pending = pickProtocolFile();
+    input.oncancel?.(new Event('cancel'));
+    await pending;
+    expect(input.isConnected).toBe(false);
+  });
 });

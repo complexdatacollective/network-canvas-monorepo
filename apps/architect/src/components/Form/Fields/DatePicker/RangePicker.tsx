@@ -58,7 +58,7 @@ const pickerYear = 'overflow-x-hidden';
 // keeps a constrained height so that the items overflow into the outer
 // scroller — `getScrollToValue` + the useEffect below scroll the outer.
 const yearGrid =
-  'grid-cols-5 [grid-template-rows:minmax(auto,_var(--space-3xl))] py-(--space-md) [&>*]:max-h-(--space-3xl) [&>*]:py-(--space-md) [height:calc(100%_-_3rem)] [&>*:is(:nth-child(10n+1),:nth-child(10n+2),:nth-child(10n+3),:nth-child(10n+4),:nth-child(10n+5))]:bg-(--datepicker-row-tint)';
+  'grid-cols-5 [grid-template-rows:minmax(auto,_4.8rem)] py-5 [&>*]:max-h-19 [&>*]:py-5 [height:calc(100%_-_3rem)] [&>*:is(:nth-child(10n+1),:nth-child(10n+2),:nth-child(10n+3),:nth-child(10n+4),:nth-child(10n+5))]:bg-(--datepicker-row-tint)';
 const monthGrid =
   'grid-cols-3 [&>*:is(:nth-child(6n+1),:nth-child(6n+2),:nth-child(6n+3))]:bg-(--datepicker-row-tint)';
 const dayGrid =
@@ -67,7 +67,7 @@ const dayGrid =
 const itemBase = 'flex cursor-pointer items-center justify-center';
 
 const highlightBase =
-  'flex items-center justify-center box-border rounded-full px-(--space-md) py-(--space-sm) transition-colors duration-(--animation-duration-fast) ease-(--animation-easing)';
+  'flex items-center justify-center box-border rounded-full px-5 py-2.5 transition-colors duration-150 ease-in-out';
 
 const RangePicker = ({
   type = null,

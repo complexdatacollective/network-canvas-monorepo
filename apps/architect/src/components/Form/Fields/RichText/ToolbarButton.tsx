@@ -32,8 +32,8 @@ export const ToolbarButton = ({
     type="button"
     className={cx(
       'cursor-pointer rounded-full border-0 bg-transparent outline-none',
-      'm-(--space-xs) size-(--space-xl)',
-      'transition-[filter,background-color] duration-(--animation-duration-fast) ease-(--animation-easing)',
+      'm-1 size-10',
+      'transition-[filter,background-color] duration-150 ease-in-out',
       '[&_svg]:w-full [&_svg]:align-middle',
       isActive
         ? 'bg-primary'

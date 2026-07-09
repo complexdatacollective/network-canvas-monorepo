@@ -7,10 +7,10 @@ import DateComponent from './DatePicker/DateComponent';
 import { getMonthName } from './helpers';
 
 const previewBase =
-  'flex h-(--datepicker-preview-height) items-center rounded-t-sm border-b-2 border-transparent bg-background px-(--space-md) text-base transition-colors duration-(--animation-duration-fast) ease-(--animation-easing) focus:border-b-active';
+  'flex h-(--datepicker-preview-height) items-center rounded-t-sm border-b-2 border-transparent bg-background px-5 text-base transition-colors duration-150 ease-in-out focus:border-b-active';
 
 const partBase =
-  'inline-block cursor-pointer transition-colors duration-(--animation-duration-fast) ease-(--animation-easing)';
+  'inline-block cursor-pointer transition-colors duration-150 ease-in-out';
 
 type DatePreviewProps = {
   onClick?: (open?: boolean) => void;
@@ -72,7 +72,7 @@ const DatePreview = ({
           <motion.div
             className={cx(
               previewBase,
-              'text-input-placeholder cursor-pointer italic',
+              'text-input-contrast/50 cursor-pointer italic',
             )}
             onClick={handleClickPreview}
             onKeyDown={handlePreviewKeyDown}
@@ -81,7 +81,7 @@ const DatePreview = ({
             aria-label="Select date"
             ref={previewRef}
           >
-            <span className="text-input-placeholder italic">{placeholder}</span>
+            <span className="text-input-contrast/50 italic">{placeholder}</span>
           </motion.div>
         );
       }
@@ -90,7 +90,7 @@ const DatePreview = ({
         <motion.div
           className={cx(
             previewBase,
-            isEmpty && 'text-input-placeholder cursor-pointer italic',
+            isEmpty && 'text-input-contrast/50 cursor-pointer italic',
           )}
           onClick={handleClickPreview}
           onKeyDown={handlePreviewKeyDown}
@@ -104,8 +104,8 @@ const DatePreview = ({
             className={cx(
               partBase,
               date.year
-                ? 'text-input-foreground not-italic'
-                : 'text-input-placeholder italic',
+                ? 'text-input-contrast not-italic'
+                : 'text-input-contrast/50 italic',
             )}
             onClick={handleClickYear}
             aria-label="Clear year"
@@ -113,7 +113,7 @@ const DatePreview = ({
             {date.year || 'Year'}
           </button>
           {['full', 'month'].includes(type || '') && (
-            <div className="text-active px-(--space-sm)">/</div>
+            <div className="text-active px-2.5">/</div>
           )}
           {['full', 'month'].includes(type || '') && (
             <button
@@ -121,8 +121,8 @@ const DatePreview = ({
               className={cx(
                 partBase,
                 date.month
-                  ? 'text-input-foreground not-italic'
-                  : 'text-input-placeholder italic',
+                  ? 'text-input-contrast not-italic'
+                  : 'text-input-contrast/50 italic',
               )}
               onClick={handleClickMonth}
               aria-label="Clear month"
@@ -131,7 +131,7 @@ const DatePreview = ({
             </button>
           )}
           {['full'].includes(type || '') && (
-            <div className="text-active px-(--space-sm)">/</div>
+            <div className="text-active px-2.5">/</div>
           )}
           {['full'].includes(type || '') && (
             <button
@@ -139,8 +139,8 @@ const DatePreview = ({
               className={cx(
                 partBase,
                 date.day
-                  ? 'text-input-foreground not-italic'
-                  : 'text-input-placeholder italic',
+                  ? 'text-input-contrast not-italic'
+                  : 'text-input-contrast/50 italic',
               )}
               onClick={handleClickDay}
               aria-label="Clear day"
@@ -151,7 +151,7 @@ const DatePreview = ({
           <button
             type="button"
             className={cx(
-              'border-active ml-auto h-(--space-md) cursor-pointer border-b leading-(--space-md) transition-colors duration-(--animation-duration-fast) ease-(--animation-easing)',
+              'border-active ml-auto h-5 cursor-pointer border-b leading-5 transition-colors duration-150 ease-in-out',
               !isEmpty || isActive ? 'opacity-100' : 'opacity-0',
             )}
             onClick={handleClear}

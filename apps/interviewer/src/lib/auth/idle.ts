@@ -12,14 +12,12 @@ type IdleTimerOptions = {
   timeoutMs: number;
   enabled: boolean;
   onIdle: () => void;
-  lockOnBlurMs?: number | null;
 };
 
 export function useIdleTimer({
   timeoutMs,
   enabled,
   onIdle,
-  lockOnBlurMs,
 }: IdleTimerOptions): void {
   const onIdleRef = useRef(onIdle);
   onIdleRef.current = onIdle;
@@ -27,44 +25,37 @@ export function useIdleTimer({
   useEffect(() => {
     if (!enabled) return;
     let idleTimer: number | undefined;
-    let blurTimer: number | undefined;
+    let lastActivityAt = Date.now();
 
     const fireIdle = () => {
       onIdleRef.current();
     };
 
     const resetIdle = () => {
+      lastActivityAt = Date.now();
       if (idleTimer !== undefined) window.clearTimeout(idleTimer);
       idleTimer = window.setTimeout(fireIdle, timeoutMs);
     };
 
-    const handleBlur = () => {
-      if (lockOnBlurMs === null || lockOnBlurMs === undefined) return;
-      if (blurTimer !== undefined) window.clearTimeout(blurTimer);
-      blurTimer = window.setTimeout(fireIdle, lockOnBlurMs);
-    };
-
-    const handleFocus = () => {
-      if (blurTimer !== undefined) {
-        window.clearTimeout(blurTimer);
-        blurTimer = undefined;
-      }
-      resetIdle();
-    };
-
+    // Background tabs throttle or freeze timers, so the running idle timer can't
+    // be trusted while hidden. On return, reconcile against wall-clock elapsed
+    // time: lock if the idle window has already passed, otherwise re-arm for the
+    // time remaining — not a fresh window, so time spent away still counts.
     const handleVisibility = () => {
-      if (document.hidden) {
-        handleBlur();
-      } else {
-        handleFocus();
+      if (!document.hidden) {
+        const remaining = timeoutMs - (Date.now() - lastActivityAt);
+        if (idleTimer !== undefined) window.clearTimeout(idleTimer);
+        if (remaining <= 0) {
+          fireIdle();
+        } else {
+          idleTimer = window.setTimeout(fireIdle, remaining);
+        }
       }
     };
 
     for (const evt of DEFAULT_ACTIVITY_EVENTS) {
       window.addEventListener(evt, resetIdle, { passive: true });
     }
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibility);
 
     resetIdle();
@@ -73,11 +64,8 @@ export function useIdleTimer({
       for (const evt of DEFAULT_ACTIVITY_EVENTS) {
         window.removeEventListener(evt, resetIdle);
       }
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibility);
       if (idleTimer !== undefined) window.clearTimeout(idleTimer);
-      if (blurTimer !== undefined) window.clearTimeout(blurTimer);
     };
-  }, [enabled, timeoutMs, lockOnBlurMs]);
+  }, [enabled, timeoutMs]);
 }

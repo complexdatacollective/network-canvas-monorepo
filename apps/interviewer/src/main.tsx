@@ -9,7 +9,10 @@ import { initFileLaunchCapture } from './lib/pwa/fileLaunchQueue';
 import { initInstallPromptCapture } from './lib/pwa/installPrompt';
 import { removeLoadingScreen } from './lib/pwa/loadingScreen';
 import { initSwipeNavigationGuard } from './lib/pwa/swipeNavigationGuard';
-import { requestPersistentStorage } from './lib/storage';
+import {
+  requestPersistentStorage,
+  requestPersistentStorageOnFirstInteraction,
+} from './lib/storage';
 
 // The beforeinstallprompt event fires early and is one-shot; capture it before
 // React mounts so PwaInstallNudge can offer a real one-tap install.
@@ -22,6 +25,11 @@ initSwipeNavigationGuard();
 initFileLaunchCapture();
 
 void requestPersistentStorage();
+
+// The startup request above runs before any interaction, which WebKit and
+// Chromium routinely deny (their heuristics key on interaction history) — ask
+// once more on the user's first gesture.
+requestPersistentStorageOnFirstInteraction();
 
 // Installing the PWA newly qualifies the origin for persistent storage, but the
 // box is only made non-evictable on an actual persist() call — request it again

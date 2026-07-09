@@ -20,9 +20,9 @@ const ProtocolOpenElsewhereBanner = () => {
   return (
     <div
       role="status"
-      className="bg-warning/20 text-foreground flex items-center justify-between gap-(--space-md) px-(--space-lg) py-(--space-sm) text-sm"
+      className="bg-warning/20 text-text flex items-center justify-between gap-5 px-7 py-2.5 text-sm"
     >
-      <span className="flex items-center gap-(--space-sm)">
+      <span className="flex items-center gap-2.5">
         <Copy className="size-4 shrink-0" aria-hidden />
         This protocol is already open in another tab. To avoid conflicting
         edits, changes here won&apos;t be saved. Continue editing in the other

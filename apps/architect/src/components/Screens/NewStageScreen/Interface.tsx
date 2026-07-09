@@ -57,7 +57,7 @@ const InterfaceThumbnail = ({
   return (
     <motion.div
       ref={ref}
-      className={`border-divider flex-1 cursor-pointer border-b-2 py-4 ${highlighted ? 'bg-action' : ''}`}
+      className={`border-outline flex-1 cursor-pointer border-b-2 py-4 ${highlighted ? 'bg-action' : ''}`}
       onClick={handleSelect}
       onMouseEnter={setHighlighted}
       onMouseLeave={removeHighlighted}

@@ -107,7 +107,7 @@ const Anonymisation = ({
 
       {hasEncryptedVariables && (
         <>
-          <p className="mb-(--space-md)">
+          <p className="mb-5">
             The following variables will be encrypted using the participant's
             passphrase:
           </p>

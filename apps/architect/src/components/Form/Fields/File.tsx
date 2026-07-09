@@ -88,7 +88,7 @@ const FileInput = ({
       {label && <MarkdownLabel label={label} />}
       <div className="form-field relative">
         {invalid && touched && (
-          <div className="text-error flex items-center px-(--space-xs) py-(--space-sm) [&_.icon]:mr-(--space-sm) [&_.icon]:size-(--space-md)">
+          <div className="text-destructive flex items-center px-1 py-2.5 [&_.icon]:mr-2.5 [&_.icon]:size-5">
             <Icon name="warning" />
             {error}
           </div>
@@ -98,7 +98,7 @@ const FileInput = ({
         >
           {children?.(value)}
         </div>
-        <div className="mt-(--space-md)">
+        <div className="mt-5">
           <Button onClick={handleBrowseLibrary} color="sea-green">
             {!value ? 'Select resource' : 'Update resource'}
           </Button>

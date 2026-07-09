@@ -15,7 +15,7 @@ const InsertButton = ({ onClick, variants }: InsertButtonProps) => (
     variants={variants}
   >
     <div />
-    <div className="bg-timeline text-primary-foreground group-hover:bg-action flex h-10 w-10 scale-40 items-center justify-center rounded-full transition-all duration-300 ease-in-out group-hover:scale-110">
+    <div className="bg-timeline text-primary-contrast group-hover:bg-action flex h-10 w-10 scale-40 items-center justify-center rounded-full transition-all duration-300 ease-in-out group-hover:scale-110">
       <Plus
         className="h-6 w-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         strokeWidth={2.5}

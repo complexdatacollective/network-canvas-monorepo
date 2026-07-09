@@ -83,7 +83,7 @@ const Rules = ({
         <FieldError show={hasError} error={error || ''} />
       </div>
 
-      <div className="mt-(--space-md) [&_button]:mr-(--space-md)">
+      <div className="mt-5 [&_button]:mr-5">
         <Button
           type="button"
           color="sea-serpent"
@@ -110,7 +110,7 @@ const Rules = ({
       </div>
 
       {rules.length > 1 && (
-        <div className="mt-(--space-xl)">
+        <div className="mt-10">
           <h4>Must match</h4>
           <DetachedField
             component={

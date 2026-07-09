@@ -61,11 +61,11 @@ const HeadingInput = ({
         aria-describedby={hasError ? errorId : undefined}
         className={cx(
           'h1 my-0 w-full border-none bg-transparent p-0 outline-none placeholder:opacity-40',
-          hasError && 'text-error',
+          hasError && 'text-destructive',
         )}
       />
       {hasError && (
-        <div id={errorId} className="text-error mt-(--space-xs) text-sm">
+        <div id={errorId} className="text-destructive mt-1 text-sm">
           {meta.error}
         </div>
       )}
@@ -99,7 +99,7 @@ const StageHeading = ({
   const documentationLink = interfaceMeta.documentation;
 
   return (
-    <div className="w-full pt-(--space-lg) max-lg:flex max-lg:flex-col max-lg:gap-(--space-md) sm:pt-(--space-xl) lg:grid lg:grid-cols-[20rem_auto] lg:gap-8">
+    <div className="max-tablet-landscape:flex max-tablet-landscape:flex-col max-tablet-landscape:gap-5 tablet-portrait:pt-10 tablet-landscape:grid tablet-landscape:grid-cols-[20rem_auto] tablet-landscape:gap-8 w-full pt-7">
       <div className="flex items-center justify-center">
         {/*
          * Decorative timeline rail behind the stage thumbnail.
@@ -117,8 +117,8 @@ const StageHeading = ({
           />
         </div>
       </div>
-      <div className="flex min-w-0 flex-col justify-center gap-(--space-md)">
-        <p className="small-heading text-muted-foreground m-0">
+      <div className="flex min-w-0 flex-col justify-center gap-5">
+        <p className="small-heading text-muted m-0">
           Stage {stageNumber} of {totalStages}
         </p>
         <IssueAnchor fieldName="label" description="Stage name" />
@@ -131,7 +131,7 @@ const StageHeading = ({
           validation={{ required: true }}
           autoFocus={isNewStage}
         />
-        <div className="flex flex-wrap items-center gap-(--space-md) text-sm">
+        <div className="flex flex-wrap items-center gap-5 text-sm">
           <Badge color="neon-coral">{typeLabel}</Badge>
           {documentationLink && (
             <ExternalLink href={documentationLink}>Documentation</ExternalLink>

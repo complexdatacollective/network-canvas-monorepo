@@ -16,7 +16,7 @@ import ExternalLink from '../../../ExternalLink';
 import { SimpleVariablePill } from './VariablePill';
 
 const EMPTY_CLASSES =
-  'flex grow basis-full items-center rounded px-(--space-lg) py-(--space-md) [&_.icon]:mr-(--space-xs) [&_.icon]:shrink-0 [--info-fill-primary:var(--color-divider)] [--warning-body:var(--color-divider)]';
+  'flex grow basis-full items-center rounded px-7 py-5 [&_.icon]:mr-1 [&_.icon]:shrink-0 [--info-fill-primary:oklch(var(--platinum--dark))] [--warning-body:oklch(var(--platinum--dark))]';
 
 type ListItemProps = {
   disabled?: boolean;
@@ -27,14 +27,13 @@ type ListItemProps = {
   removeSelected?: () => void;
 };
 
-const LIST_ITEM_BASE =
-  'flex w-full items-center justify-between rounded-md px-(--space-md) py-(--space-sm)';
+const LIST_ITEM_BASE = 'flex w-full items-center justify-between px-5 py-2.5';
 
 // When `data-selected`, the row sets the foreground to white (so descendant
 // text reads on the primary background) and overrides the cascade variable
 // `--variable-pill-shadow-color` so any nested variable-pill grows a halo.
 const LIST_ITEM_SELECTED =
-  'data-selected:bg-primary data-selected:text-white data-selected:[--variable-pill-shadow-color:hsl(var(--sea-green-dark))]';
+  'data-selected:bg-primary data-selected:text-white data-selected:[--variable-pill-shadow-color:oklch(var(--sea-green--dark))]';
 
 const ListItem = ({
   disabled = false,
@@ -86,7 +85,7 @@ const ListItem = ({
         >
           {children}
           {selected && (
-            <kbd className="border-charcoal bg-surface-1 text-input-foreground ml-(--space-md) flex items-center justify-center rounded-sm border p-(--space-xs)">
+            <kbd className="border-charcoal bg-surface-1 text-input-contrast ml-5 flex items-center justify-center rounded-sm border p-1">
               Enter&nbsp;&#8629;
             </kbd>
           )}
@@ -113,13 +112,13 @@ type DividerProps = {
 };
 
 const Divider = ({ legend }: DividerProps) => (
-  <li className="px-(--space-md) pt-(--space-md) pb-(--space-xs) first:pt-(--space-xs)">
-    <span className="small-heading text-muted-foreground">{legend}</span>
+  <li className="px-5 pt-5 pb-1 first:pt-1">
+    <span className="small-heading text-muted">{legend}</span>
   </li>
 );
 
 const CREATE_NEW_CLASSES =
-  'flex items-center justify-center px-(--space-md) py-(--space-xs) font-medium text-current [&_.icon]:h-(--space-md) [&_.icon]:mr-(--space-md) [--warning-body:var(--color-warning)] [--warning-body-shadow:var(--color-warning)] [--warning-mark:var(--color-white)] [--warning-mark-shadow:var(--color-white)]';
+  'flex items-center justify-center px-5 py-1 font-medium text-current [&_.icon]:h-5 [&_.icon]:mr-5 [--warning-body:var(--warning)] [--warning-body-shadow:var(--warning)] [--warning-mark:oklch(var(--white))] [--warning-mark-shadow:oklch(var(--white))]';
 
 type VariableSpotlightProps = {
   open: boolean;
@@ -223,7 +222,7 @@ const VariableSpotlight = ({
 
   const renderResults = () => (
     <Scroller>
-      <ol className="m-0 flex list-none flex-col gap-(--space-xs) p-(--space-xs)">
+      <ol className="m-0 flex list-none flex-col gap-1 p-1">
         {filterTerm &&
           options.filter((item) => item.label === filterTerm).length !== 1 && (
             <>
@@ -420,7 +419,7 @@ const VariableSpotlight = ({
   return (
     <Modal open={open} onOpenChange={handleOpenChange} forceRender>
       <motion.div
-        className="bg-surface-1 text-surface-1-foreground fixed top-10 left-1/2 z-(--z-modal) w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 overflow-hidden rounded-lg"
+        className="bg-surface-1 text-surface-1-contrast fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 overflow-hidden rounded-lg"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -429,7 +428,7 @@ const VariableSpotlight = ({
           type: 'spring',
         }}
       >
-        <header className="shrink-0 grow-0 basis-(--space-2xl) px-(--space-lg) py-(--space-md) [&_.form-field]:mb-0">
+        <header className="shrink-0 grow-0 basis-14 px-7 py-5 [&_.form-field]:mb-0">
           <Search
             autoFocus
             placeholder={
@@ -445,7 +444,7 @@ const VariableSpotlight = ({
           />
         </header>
         <motion.main
-          className="max-h-[60vh] flex-auto flex-col overflow-hidden pb-(--space-xs)"
+          className="max-h-[60vh] flex-auto flex-col overflow-hidden pb-1"
           variants={resultsVariants}
           transition={{ duration: 0.2, ease: 'easeInOut' }}
         >

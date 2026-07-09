@@ -1,0 +1,251 @@
+/*
+ * Architect app theme — layered over @codaco/tailwind-config/fresco.css.
+ * Section 1 re-declares shared semantic variables with Architect's brand
+ * values (the extension mechanism sanctioned by themes/default.css).
+ * Sections 2-3 add Architect-only vocabulary.
+ */
+
+/* 1. Brand overrides (shared variable names, Architect values). */
+@layer theme {
+  :root {
+    --background: oklch(var(--platinum));
+    --text: oklch(var(--cyber-grape));
+    --primary: oklch(var(--cyber-grape));
+    --primary-contrast: oklch(var(--white));
+    --secondary: oklch(var(--neon-coral));
+    --secondary-contrast: oklch(var(--white));
+    --accent: oklch(var(--slate-blue));
+    --accent-contrast: oklch(var(--white));
+    --selected: oklch(var(--mustard));
+    --link: oklch(var(--neon-coral));
+    --destructive: oklch(var(--tomato));
+    --destructive-contrast: oklch(var(--white));
+    --warning: oklch(var(--neon-carrot));
+    --warning-contrast: oklch(var(--white));
+    --success: oklch(var(--kiwi));
+    --success-contrast: oklch(var(--white));
+    --info: oklch(var(--cerulean-blue));
+    --info-contrast: oklch(var(--white));
+    --surface-1: oklch(var(--white));
+    --surface-1-contrast: oklch(var(--navy-taupe));
+    --surface-2: oklch(var(--platinum));
+    --surface-2-contrast: oklch(var(--navy-taupe));
+    --surface-3: oklch(var(--platinum--dark));
+    --surface-3-contrast: oklch(var(--navy-taupe--dark));
+    --input: oklch(var(--white));
+    --input-contrast: oklch(var(--charcoal));
+    /* Focus rings stay mustard through the shared focus-styles machinery. */
+    --focus-color: oklch(var(--mustard));
+  }
+}
+
+/* 2. Architect-only semantic tokens (no shared concept). Split exactly like
+   the shared theme: bare runtime variables in :root, mapped through
+   @theme inline. The bare vars exist because the elevation plugin publishes
+   --scoped-bg for every bg-* utility by stripping the --color- prefix, so
+   each color token needs a bare runtime counterpart. The @theme block is
+   inline (never emitted at runtime) because root-level --color-* emission
+   would freeze var() indirection at :root and break re-resolution inside
+   themed regions — the documented reason the shared theme is @theme inline
+   (theme.css:12-26). Runtime code must read the bare vars, never
+   var(--color-*). */
+@layer theme {
+  :root {
+    --rules-type: oklch(var(--neon-coral));
+    --rules-assert: oklch(var(--sea-green));
+    --rules-control: oklch(var(--slate-blue));
+    --rules-delete: oklch(var(--tomato));
+    --rules-attribute: oklch(var(--mustard));
+    --rules-operator: oklch(var(--cyber-grape));
+    --rules-value: oklch(var(--sea-serpent));
+    --rule-type: var(--rules-type);
+    --rule-control: var(--rules-control);
+    --rule-delete: var(--rules-delete);
+    --rule-attribute: var(--rules-attribute);
+    --rule-operator: var(--rules-operator);
+    --rule-value: var(--rules-value);
+
+    --timeline: oklch(var(--neon-coral));
+    --timeline-contrast: oklch(var(--white));
+    --sortable-background: oklch(var(--slate-blue));
+    --sortable-contrast: oklch(var(--white));
+    --table-row-tint: rgb(58 106 117 / 5%);
+    --form-control: oklch(var(--sea-serpent));
+    --action: oklch(var(--sea-green));
+    --action-contrast: oklch(var(--white));
+    --muted: oklch(var(--cyber-grape) / 60%);
+    --hover: oklch(var(--sea-green--dark));
+    --focus: oklch(var(--sea-green));
+    --active: oklch(var(--sea-green));
+    --input-active: oklch(var(--sea-green));
+    --surface-accent: oklch(var(--navy-taupe));
+    --surface-accent-contrast: oklch(var(--white));
+    --fresco-purple: oklch(10% 0.4 290);
+    --fresco-purple-contrast: oklch(var(--white));
+  }
+}
+
+@theme inline {
+  --color-rules-type: var(--rules-type);
+  --color-rules-assert: var(--rules-assert);
+  --color-rules-control: var(--rules-control);
+  --color-rules-delete: var(--rules-delete);
+  --color-rules-attribute: var(--rules-attribute);
+  --color-rules-operator: var(--rules-operator);
+  --color-rules-value: var(--rules-value);
+  --color-rule-type: var(--rule-type);
+  --color-rule-control: var(--rule-control);
+  --color-rule-delete: var(--rule-delete);
+  --color-rule-attribute: var(--rule-attribute);
+  --color-rule-operator: var(--rule-operator);
+  --color-rule-value: var(--rule-value);
+
+  --color-timeline: var(--timeline);
+  --color-timeline-contrast: var(--timeline-contrast);
+  --color-sortable-background: var(--sortable-background);
+  --color-sortable-contrast: var(--sortable-contrast);
+  --color-table-row-tint: var(--table-row-tint);
+  --color-form-control: var(--form-control);
+  --color-action: var(--action);
+  --color-action-contrast: var(--action-contrast);
+  --color-muted: var(--muted);
+  --color-hover: var(--hover);
+  --color-focus: var(--focus);
+  --color-active: var(--active);
+  --color-input-active: var(--input-active);
+  --color-surface-accent: var(--surface-accent);
+  --color-surface-accent-contrast: var(--surface-accent-contrast);
+  --color-fresco-purple: var(--fresco-purple);
+  --color-fresco-purple-contrast: var(--fresco-purple-contrast);
+}
+
+/* 3. Ported utilities, variant, and base layer. Runtime var() values
+   inside utility bodies reference only variables that exist at runtime:
+   bare theme vars (--input, --primary, ...) and raw palette triplets
+   wrapped in oklch(). Never var(--color-*). */
+@custom-variant short (@media (max-height: 760px));
+
+@layer base {
+  html,
+  body {
+    @apply h-full w-full;
+  }
+  body {
+    @apply overflow-hidden;
+  }
+  strong {
+    @apply font-extrabold;
+  }
+  h1 {
+    @apply h1;
+  }
+  h2 {
+    @apply h2;
+  }
+  h3 {
+    @apply h3;
+  }
+  h4 {
+    @apply h4;
+  }
+  p {
+    @apply text-base;
+    margin: 1em 0;
+  }
+}
+
+@utility h1 {
+  @apply font-heading mx-0 my-6 text-3xl leading-tight font-bold;
+}
+@utility h2 {
+  @apply font-heading mx-0 my-6 text-2xl leading-tight font-bold;
+}
+@utility h3 {
+  @apply font-heading mx-0 my-2 text-xl leading-tight font-semibold;
+}
+@utility h4 {
+  @apply font-heading mx-0 my-2 text-lg leading-normal font-semibold;
+}
+@utility hero {
+  @apply font-heading leading-tight font-bold tracking-tight;
+  font-size: clamp(2.75rem, 8vh, 4.5rem);
+}
+@utility lead {
+  @apply text-muted text-lg leading-normal;
+}
+@utility hint {
+  @apply text-muted text-xs leading-normal;
+}
+@utility code {
+  @apply bg-text/5 font-monospace rounded-sm px-1 py-0.5 text-[0.9em];
+}
+@utility action-link {
+  @apply cursor-pointer font-bold underline decoration-2 underline-offset-4;
+  text-decoration-color: oklch(var(--sea-green));
+}
+@utility small-heading {
+  @apply text-sm;
+  font-family: var(--heading-font);
+  font-weight: 900;
+  line-height: 1.5;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+@utility scrollable {
+  @apply overflow-hidden overflow-y-auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+@utility form-field {
+  @apply border-outline w-full rounded-sm border;
+  background-color: var(--input);
+  color: var(--input-contrast);
+  padding: 0.6rem 1.2rem;
+  line-height: 1.5;
+
+  &:focus {
+    @apply ring-1 outline-none;
+    border-color: var(--primary);
+    --tw-ring-color: var(--primary);
+  }
+  &::placeholder {
+    color: color-mix(in oklab, var(--input-contrast) 50%, transparent);
+  }
+}
+@utility clickable {
+  box-shadow: 0 0.2rem 0.2rem rgba(17, 21, 27, 0.664);
+  transition:
+    transform 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:not(:disabled):hover {
+    text-decoration: none;
+    cursor: pointer;
+    transform: translateY(-0.2rem);
+    box-shadow: 0 0.4rem 0.2rem 0 rgba(0, 0, 0, 0.35);
+  }
+  &:not(:disabled):active {
+    box-shadow: unset;
+    transform: translateY(0.2rem);
+  }
+}
+/* Print surface: re-bases the fluid type scale via --theme-root-size.
+   Applied to a descendant element this re-scales type only — the theme's
+   root-computed spacing base is untouched. The print block in
+   protocol-summary.css re-bases the whole document by overriding the same
+   variable on <html> itself. (Replaces the old html-level base-font-size
+   re-base trick from the pre-migration theme.) */
+@utility protocol-summary-surface {
+  --page-size-height: 29.7cm;
+  --page-size-width: 21cm;
+  --theme-root-size: 12px;
+  font-size: var(--theme-root-size);
+
+  @media print {
+    color: #000;
+    font-family:
+      -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif,
+      'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+    -webkit-print-color-adjust: exact !important;
+  }
+}
