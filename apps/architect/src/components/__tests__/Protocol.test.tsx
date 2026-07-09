@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import type * as MotionReact from 'motion/react';
+import type { ElementType, ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -24,19 +25,22 @@ vi.mock('~/hooks/useProtocolLoader', () => ({
 }));
 
 // Mock motion/react to avoid animation issues in tests
+type MockMotionProps = Record<string, unknown> & { children?: ReactNode };
+
 vi.mock('motion/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('motion/react')>();
+  const actual = await importOriginal<typeof MotionReact>();
+  const renderMotionElement =
+    (Component: ElementType) =>
+    ({ children, ...props }: MockMotionProps) => (
+      <Component {...props}>{children}</Component>
+    );
+
   return {
     ...actual,
-    motion: {
-      ...actual.motion,
-      div: ({
-        children,
-        ...props
-      }: Record<string, unknown> & { children?: ReactNode }) => (
-        <div {...props}>{children}</div>
-      ),
-    },
+    motion: Object.assign({}, actual.motion, {
+      create: renderMotionElement,
+      div: renderMotionElement('div'),
+    }),
     useScroll: () => ({ scrollY: { onChange: vi.fn() } }),
     useReducedMotion: () => false,
   };

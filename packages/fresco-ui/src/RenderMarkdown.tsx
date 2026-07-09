@@ -17,7 +17,7 @@ import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 import { OrderedList, UnorderedList } from './typography/UnorderedList';
 
-const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong', 'ul', 'ol', 'li'];
+const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong', 'ul', 'ol', 'li', 'a'];
 export const ALLOWED_MARKDOWN_SECTION_TAGS = [
   ...ALLOWED_MARKDOWN_LABEL_TAGS,
   'h1',

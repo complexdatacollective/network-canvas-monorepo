@@ -7,8 +7,9 @@ import rehypeSanitize from 'rehype-sanitize';
 import remarkGemoji from 'remark-gemoji';
 
 import { Label as UILabel } from '../Label';
+import { NativeLink } from '../NativeLink';
 
-const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong', 'ul', 'ol', 'li'];
+const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong', 'ul', 'ol', 'li', 'a'];
 
 /**
  * Hack for `>` characters that already exist in some protocols
@@ -22,17 +23,30 @@ const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong', 'ul', 'ol', 'li'];
 const escapeAngleBracket = (value = '') =>
   value.replace(/>/g, '&gt;').replace(/<br&gt;/g, '<br>');
 
+const openExternal = (href: string) => (event: React.MouseEvent) => {
+  event.preventDefault();
+  window.open(href, '_blank', 'noopener,noreferrer');
+};
+
 const externalLinkRenderer = ({
   href,
   children,
 }: {
   href?: string;
   children?: React.ReactNode;
-}) => (
-  <a href={href} target="_blank" rel="noopener noreferrer">
-    {children}
-  </a>
-);
+}) =>
+  href ? (
+    <NativeLink
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={openExternal(href)}
+    >
+      {children}
+    </NativeLink>
+  ) : (
+    <>{children}</>
+  );
 
 const defaultMarkdownRenderers = {
   a: externalLinkRenderer,
