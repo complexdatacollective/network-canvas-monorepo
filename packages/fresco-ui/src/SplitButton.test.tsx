@@ -99,6 +99,35 @@ describe('SplitButton', () => {
     expect(await screen.findByText('More save options')).toBeInTheDocument();
   });
 
+  it('opens popover content by default when requested', () => {
+    render(
+      <SplitButton
+        defaultOpen
+        popover={{ content: <div>More save options</div> }}
+        segment={defaultSegment}
+      >
+        Save
+      </SplitButton>,
+    );
+
+    expect(screen.getByText('More save options')).toBeInTheDocument();
+  });
+
+  it('treats an empty segment label as missing content', async () => {
+    render(
+      <SplitButton
+        popover={{ content: <div>More save options</div> }}
+        segment={{ children: '', icon: <ChevronDown /> }}
+      >
+        Save
+      </SplitButton>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Open options' }));
+
+    expect(await screen.findByText('More save options')).toBeInTheDocument();
+  });
+
   it('disables both segments when the split button is disabled', async () => {
     render(
       <SplitButton

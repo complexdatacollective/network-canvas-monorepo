@@ -62,7 +62,23 @@ export type SplitButtonProps = Omit<ButtonProps, 'asChild' | 'popover'> &
   };
 
 function hasVisibleContent(children: React.ReactNode): boolean {
-  return children !== undefined && children !== null && children !== false;
+  if (
+    children === undefined ||
+    children === null ||
+    typeof children === 'boolean'
+  ) {
+    return false;
+  }
+
+  if (typeof children === 'string') {
+    return children.trim().length > 0;
+  }
+
+  if (Array.isArray(children)) {
+    return children.some(hasVisibleContent);
+  }
+
+  return true;
 }
 
 function getPopoverContentProps<T extends { content: React.ReactNode }>({
