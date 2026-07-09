@@ -170,9 +170,10 @@
   background: conic-gradient(
     from var(--variable-pill-border-angle),
     var(--surface-3),
+    var(--variable-pill-accent, var(--primary)),
     var(--selected),
-    var(--primary),
     var(--accent),
+    var(--variable-pill-accent, var(--primary)),
     var(--surface-3)
   );
 }

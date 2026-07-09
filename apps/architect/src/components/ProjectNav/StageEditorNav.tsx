@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { submit } from 'redux-form';
 
 import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
+import SplitButton from '@codaco/fresco-ui/SplitButton';
 import { useIssuesToolbarSegment } from '~/components/Issues';
 import { useAppDispatch } from '~/ducks/hooks';
 import { useScopedUndoRedo } from '~/hooks/useScopedUndoRedo';
@@ -74,10 +75,10 @@ const StageEditorNav = ({
         disabled: !canRedo,
         onClick: redo,
       },
-      { type: 'separator', id: 'history-preview-separator' },
     ];
 
     if (hasUnsavedChanges) {
+      items.push({ type: 'separator', id: 'history-save-separator' });
       items.push({
         type: 'button',
         id: 'finished-editing',
@@ -92,45 +93,15 @@ const StageEditorNav = ({
       });
     }
 
-    items.push({
-      type: 'button',
-      id: 'preview',
-      label: isOpeningPreview ? previewLabel : 'Preview',
-      icon: isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />,
-      showLabel: true,
-      className: 'bg-slate-blue text-white',
-      disabled: isOpeningPreview || isStageInvalid,
-      onClick: onPreview,
-    });
-
-    if (previewOptionsContent) {
-      items.push({
-        type: 'popover',
-        id: 'preview-options',
-        label: 'Preview options',
-        icon: <Settings />,
-        open: previewOptionsOpen,
-        onOpenChange: setPreviewOptionsOpen,
-        side: 'top',
-        children: previewOptionsContent,
-      });
-    }
-
     return items;
   }, [
     canRedo,
     canUndo,
     dispatch,
     hasUnsavedChanges,
-    isOpeningPreview,
-    isStageInvalid,
     issuesSegment,
     onCancel,
-    onPreview,
     openIssues,
-    previewLabel,
-    previewOptionsContent,
-    previewOptionsOpen,
     redo,
     undo,
   ]);
@@ -138,7 +109,32 @@ const StageEditorNav = ({
   return (
     <>
       <NavShell leading={<Breadcrumb items={breadcrumbItems} />} />
-      <ActionToolbar aria-label="Stage editor actions" items={toolbarItems} />
+      <ActionToolbar aria-label="Stage editor actions" items={toolbarItems}>
+        <SplitButton
+          className="bg-slate-blue text-white"
+          disabled={isOpeningPreview || isStageInvalid}
+          icon={
+            isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />
+          }
+          onClick={onPreview}
+          onOpenChange={setPreviewOptionsOpen}
+          open={previewOptionsOpen}
+          popover={{
+            content: previewOptionsContent,
+            side: 'top',
+            align: 'end',
+          }}
+          segment={{
+            'aria-label': 'Preview settings',
+            'className': 'bg-slate-blue text-white',
+            'disabled': !previewOptionsContent,
+            'icon': <Settings />,
+          }}
+          size="md"
+        >
+          {isOpeningPreview ? previewLabel : 'Preview'}
+        </SplitButton>
+      </ActionToolbar>
     </>
   );
 };

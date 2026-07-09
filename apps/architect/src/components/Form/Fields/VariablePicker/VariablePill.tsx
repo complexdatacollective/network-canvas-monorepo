@@ -3,6 +3,7 @@ import { Check, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useMemo, useRef, useState } from 'react';
 
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import {
   Tooltip,
   TooltipContent,
@@ -10,7 +11,7 @@ import {
 } from '@codaco/fresco-ui/Tooltip';
 import type { VariableType } from '@codaco/protocol-validation';
 import TextInput from '~/components/Form/Fields/Text';
-import { getIconForType } from '~/config/variables';
+import { getColorForType, getIconForType } from '~/config/variables';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableByUUID } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
@@ -30,35 +31,49 @@ type BaseVariablePillProps = {
   summary?: boolean;
 };
 
+type VariablePillStyle = React.CSSProperties & {
+  '--variable-pill-accent': string;
+  '--variable-pill-width'?: string;
+};
+
 const BaseVariablePill = React.forwardRef<
   HTMLDivElement,
   BaseVariablePillProps
 >(({ type, children, width, summary }, ref) => {
   const icon = useMemo(() => getIconForType(type), [type]);
+  const accentColor = getColorForType(type);
+  const style: VariablePillStyle = {
+    '--variable-pill-accent': `oklch(var(--${accentColor}))`,
+  };
+
+  if (width) {
+    style['--variable-pill-width'] = width;
+  }
 
   return (
     // `variable-pill` marker — hook for two remaining same-area cascades:
     // `VariablePicker.tsx` (mb on nested pills) and `PreviewRule.tsx` (zoom).
     <motion.div
       className={cx(
-        'variable-pill variable-pill-effect-border inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap rounded-full p-0.5 text-base font-(--font-monospace)',
+        'variable-pill variable-pill-effect-border font-monospace inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap rounded-full p-0.5 text-base',
         summary && 'm-2 max-w-[24rem] zoom-[0.8]',
       )}
-      style={
-        width
-          ? ({ '--variable-pill-width': width } as React.CSSProperties)
-          : undefined
-      }
+      style={style}
       ref={ref}
     >
-      <div className="bg-surface-1 text-surface-1-contrast flex h-full w-full overflow-hidden rounded-[inherit]">
-        <div className="bg-surface-2 text-surface-2-contrast border-surface-3 flex shrink-0 basis-12 items-center justify-center border-r [&_.icon]:w-5">
+      <Surface
+        noContainer
+        spacing="none"
+        shadow="none"
+        className="flex h-full w-full overflow-hidden rounded-[inherit]"
+      >
+        <div className="flex shrink-0 basis-12 items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
           <img className="icon opacity-80" src={icon} alt={type} />
         </div>
         <div className="flex w-[calc(100%-3rem)] flex-1 items-center justify-between">
           {children}
         </div>
-      </div>
+      </Surface>
     </motion.div>
   );
 });
