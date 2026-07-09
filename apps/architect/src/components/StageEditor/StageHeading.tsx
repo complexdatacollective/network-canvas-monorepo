@@ -111,7 +111,7 @@ const StageHeading = ({
           />
         </div>
       </div>
-      <div className="flex min-w-0 flex-col justify-center gap-5">
+      <div className="flex min-w-0 flex-col justify-center">
         <Paragraph
           className={headingVariants({
             level: 'label',
@@ -134,7 +134,7 @@ const StageHeading = ({
           validation={{ required: true }}
           autoFocus={isNewStage}
         />
-        <div className="flex flex-wrap items-center gap-5 text-sm">
+        <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
           <Badge color="neon-coral">{typeLabel}</Badge>
           {documentationLink && (
             <ExternalLink href={documentationLink}>Documentation</ExternalLink>

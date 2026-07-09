@@ -21,8 +21,8 @@ export const headingVariants = cva({
       'page-heading': 'text-4xl',
     },
     margin: {
-      default: 'mt-0 not-first:mt-[1em] mb-0 not-last:mb-[0.5em]',
-      none: 'm-0',
+      default: 'mt-0 mb-0 not-first:mt-[1em] not-last:mb-[0.5em]',
+      none: 'm-0!',
     },
   },
   defaultVariants: {
