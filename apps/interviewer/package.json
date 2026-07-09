@@ -45,7 +45,7 @@
     "posthog-js": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-dropzone": "^15.0.0",
+    "react-dropzone": "catalog:",
     "uuid": "catalog:",
     "workbox-window": "^7.4.1",
     "wouter": "^3.10.0",
