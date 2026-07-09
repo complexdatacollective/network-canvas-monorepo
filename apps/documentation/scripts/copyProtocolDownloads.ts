@@ -1,11 +1,14 @@
 import { cp, mkdir, rm } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
+
+const require = createRequire(import.meta.url);
 
 const documentationRoot = resolve(import.meta.dirname, '..');
-const sourceDir = resolve(
-  documentationRoot,
-  '../../packages/protocols/documentation/protocols',
+const protocolsPackageRoot = dirname(
+  require.resolve('@codaco/protocols/manifest.json'),
 );
+const sourceDir = resolve(protocolsPackageRoot, 'documentation/protocols');
 const targetDir = resolve(documentationRoot, 'public/protocols');
 
 await rm(targetDir, { recursive: true, force: true });
