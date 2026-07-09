@@ -2,10 +2,11 @@ import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { Toolbar } from '@base-ui/react/toolbar';
 import type { AnyExtension } from '@tiptap/core';
-import BulletList from '@tiptap/extension-bullet-list';
-import Heading from '@tiptap/extension-heading';
-import OrderedList from '@tiptap/extension-ordered-list';
-import Paragraph from '@tiptap/extension-paragraph';
+import { BulletList } from '@tiptap/extension-bullet-list';
+import { Heading } from '@tiptap/extension-heading';
+import { OrderedList } from '@tiptap/extension-ordered-list';
+import { Paragraph } from '@tiptap/extension-paragraph';
+import { Placeholder } from '@tiptap/extension-placeholder';
 import type { DOMOutputSpec } from '@tiptap/pm/model';
 import {
   EditorContent,
@@ -13,22 +14,27 @@ import {
   useEditor,
   useEditorState,
 } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
+import { StarterKit } from '@tiptap/starter-kit';
 import {
   Bold,
+  Check,
   Heading1,
   Heading2,
   Heading3,
   Heading4,
   Italic,
+  Link,
   List,
   ListOrdered,
+  Minus,
   Redo,
+  Trash2,
   Undo,
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { iconButtonVariants } from '../../Button';
+import Button, { iconButtonVariants } from '../../Button';
+import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
 import {
   controlVariants,
   inputControlVariants,
@@ -41,9 +47,14 @@ import { paragraphVariants } from '../../typography/Paragraph';
 import { compose, cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import InputField from './InputField';
+
+const ToolbarToggleButton = (props: Toolbar.Button.Props) => {
+  return <Toolbar.Button {...props} render={<Toggle />} />;
+};
 
 const ToolbarButton = (props: Toolbar.Button.Props) => {
-  return <Toolbar.Button {...props} render={<Toggle />} />;
+  return <Toolbar.Button {...props} />;
 };
 
 // Get the classes from the typography components
@@ -57,6 +68,9 @@ type ExtensionOptions = {
   headingLevels: (1 | 2 | 3 | 4)[];
   enableBulletList: boolean;
   enableOrderedList: boolean;
+  enableLinks: boolean;
+  enableThematicBreak: boolean;
+  placeholder?: string;
 };
 
 // Factory function to create custom extensions with typography classes
@@ -65,6 +79,9 @@ function createCustomExtensions({
   headingLevels,
   enableBulletList,
   enableOrderedList,
+  enableLinks,
+  enableThematicBreak,
+  placeholder,
 }: ExtensionOptions): AnyExtension[] {
   const CustomParagraph = Paragraph.extend({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
@@ -74,7 +91,7 @@ function createCustomExtensions({
 
   const CustomHeading = Heading.extend({
     renderHTML({ node, HTMLAttributes }): DOMOutputSpec {
-      const level = node.attrs.level as number;
+      const level = typeof node.attrs.level === 'number' ? node.attrs.level : 1;
       const classMap: Record<number, string> = {
         1: h1Classes,
         2: h2Classes,
@@ -111,10 +128,28 @@ function createCustomExtensions({
 
   const extensions: AnyExtension[] = [
     StarterKit.configure({
+      blockquote: false,
       paragraph: false,
       heading: false,
       bulletList: false,
       orderedList: false,
+      code: false,
+      codeBlock: false,
+      horizontalRule: enableThematicBreak
+        ? { HTMLAttributes: { class: 'my-4 border-current/30' } }
+        : false,
+      link: enableLinks
+        ? {
+            openOnClick: false,
+            HTMLAttributes: {
+              class: 'text-link underline underline-offset-4',
+              rel: 'noopener noreferrer',
+              target: '_blank',
+            },
+          }
+        : false,
+      strike: false,
+      underline: false,
     }),
     CustomParagraph,
   ];
@@ -133,6 +168,14 @@ function createCustomExtensions({
 
   if (enableOrderedList) {
     extensions.push(CustomOrderedList);
+  }
+
+  if (placeholder) {
+    extensions.push(
+      Placeholder.configure({
+        placeholder,
+      }),
+    );
   }
 
   return extensions;
@@ -157,6 +200,8 @@ const toolbarGroupStyles = cx('flex items-center');
 const toolbarButtonStyles = iconButtonVariants({
   size: 'sm',
   variant: 'text',
+  className:
+    'text-base data-pressed:bg-primary data-pressed:text-primary-contrast [&>.lucide]:h-[1.2em] [&>.lucide]:w-[1.2em] [&>.lucide]:[stroke-width:2.4]',
 });
 
 const toolbarSeparatorStyles = cx('mx-2 h-5 w-px shrink-0 bg-current/20');
@@ -178,19 +223,30 @@ const editorContentStyles = cx(
 type ToolbarOptions = {
   bold?: boolean;
   italic?: boolean;
+  links?: boolean;
   headings?:
     | boolean
     | { h1?: boolean; h2?: boolean; h3?: boolean; h4?: boolean };
   lists?: boolean | { bullet?: boolean; ordered?: boolean };
+  thematicBreak?: boolean;
   history?: boolean;
 };
 
 const defaultToolbarOptions: Required<ToolbarOptions> = {
   bold: true,
   italic: true,
+  links: false,
   headings: true,
   lists: true,
+  thematicBreak: false,
   history: true,
+};
+
+type ChangeMode = 'blur' | 'input';
+
+type EditorSelectionRange = {
+  from: number;
+  to: number;
 };
 
 type RichTextEditorFieldProps = CreateFormFieldProps<
@@ -198,6 +254,9 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
   'div',
   {
     'toolbarOptions'?: ToolbarOptions;
+    'changeMode'?: ChangeMode;
+    'autoFocus'?: boolean;
+    'placeholder'?: string;
     'id': string;
     'name': string;
     'aria-describedby': string;
@@ -228,6 +287,8 @@ function normalizeToolbarOptions(options?: ToolbarOptions) {
     italic: merged.italic ?? true,
     headings,
     lists,
+    links: merged.links ?? false,
+    thematicBreak: merged.thematicBreak ?? false,
     history: merged.history ?? true,
   };
 }
@@ -240,9 +301,38 @@ export default function RichTextEditorField({
   disabled,
   readOnly,
   toolbarOptions,
+  changeMode = 'blur',
+  autoFocus = false,
+  placeholder,
   ...props
 }: RichTextEditorFieldProps) {
+  const skipNextContentSyncRef = useRef(false);
+  const linkSelectionRef = useRef<EditorSelectionRange | null>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
+  const [linkHref, setLinkHref] = useState('');
+  const [linkValidationMessage, setLinkValidationMessage] = useState('');
+  const [isEditingExistingLink, setIsEditingExistingLink] = useState(false);
+  const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
   const options = normalizeToolbarOptions(toolbarOptions);
+  const editorId = id ?? name ?? 'rich-text-editor';
+  const editorName = name ?? editorId;
+  const linkInputId = `${editorId}-link-url`;
+  const linkErrorId = `${linkInputId}-error`;
+  const editorAttributes: Record<string, string> = {
+    'role': 'textbox',
+    'aria-label': editorName,
+    'name': editorName,
+    'id': editorId,
+  };
+
+  if (props['aria-describedby']) {
+    editorAttributes['aria-describedby'] = props['aria-describedby'];
+  }
+
+  if (placeholder) {
+    editorAttributes['aria-placeholder'] = placeholder;
+    editorAttributes['data-placeholder'] = placeholder;
+  }
 
   // Compute which heading levels are enabled
   const headingLevels = (
@@ -256,23 +346,30 @@ export default function RichTextEditorField({
 
   const editor = useEditor({
     editorProps: {
-      attributes: {
-        'role': 'textbox',
-        'aria-label': name,
-        'aria-describedby': props['aria-describedby'],
-        'name': name,
-        'id': id,
-      },
+      attributes: editorAttributes,
     },
     extensions: createCustomExtensions({
       headingLevels,
       enableBulletList: options.lists.bullet,
       enableOrderedList: options.lists.ordered,
+      enableLinks: options.links,
+      enableThematicBreak: options.thematicBreak,
+      placeholder,
     }),
     content: value,
     editable: !disabled && !readOnly,
+    autofocus: autoFocus ? 'end' : false,
+    onUpdate: ({ editor: updateEditor }) => {
+      if (changeMode === 'input') {
+        skipNextContentSyncRef.current = true;
+        onChange?.(updateEditor.getJSON());
+      }
+    },
     onBlur: ({ editor: blurEditor }) => {
-      onChange?.(blurEditor.getJSON());
+      if (changeMode === 'blur') {
+        skipNextContentSyncRef.current = true;
+        onChange?.(blurEditor.getJSON());
+      }
     },
   });
 
@@ -286,6 +383,7 @@ export default function RichTextEditorField({
       isH2: e?.isActive('heading', { level: 2 }) ?? false,
       isH3: e?.isActive('heading', { level: 3 }) ?? false,
       isH4: e?.isActive('heading', { level: 4 }) ?? false,
+      isLink: e?.isActive('link') ?? false,
       isBulletList: e?.isActive('bulletList') ?? false,
       isOrderedList: e?.isActive('orderedList') ?? false,
       canUndo: e?.can().undo() ?? false,
@@ -296,11 +394,16 @@ export default function RichTextEditorField({
   useEffect(() => {
     if (!editor || !value) return;
 
+    if (skipNextContentSyncRef.current) {
+      skipNextContentSyncRef.current = false;
+      return;
+    }
+
     const currentContent = JSON.stringify(editor.getJSON());
     const newContent = JSON.stringify(value);
 
     if (currentContent !== newContent) {
-      editor.commands.setContent(value);
+      editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [editor, value]);
 
@@ -337,9 +440,84 @@ export default function RichTextEditorField({
     return [];
   };
 
-  const showTextFormatting = options.bold || options.italic;
+  const setLinkPopoverOpen = (open: boolean) => {
+    if (open) {
+      const previousHref = editor.getAttributes('link').href;
+      const { from, to } = editor.state.selection;
+
+      linkSelectionRef.current = { from, to };
+      setLinkHref(typeof previousHref === 'string' ? previousHref : '');
+      setIsEditingExistingLink(typeof previousHref === 'string');
+      setLinkValidationMessage('');
+    }
+
+    if (!open) {
+      setLinkValidationMessage('');
+    }
+
+    setIsLinkPopoverOpen(open);
+  };
+
+  const restoreLinkSelection = ({
+    extendLinkRange = false,
+  }: { extendLinkRange?: boolean } = {}) => {
+    const selection = linkSelectionRef.current;
+    const chain = editor.chain().focus();
+
+    if (selection) {
+      chain.setTextSelection(selection);
+    }
+
+    if (extendLinkRange) {
+      return chain.extendMarkRange('link');
+    }
+
+    return chain;
+  };
+
+  const applyLink = () => {
+    const linkInput = linkInputRef.current;
+
+    if (linkInput && !linkInput.checkValidity()) {
+      setLinkValidationMessage(linkInput.validationMessage);
+      linkInput.reportValidity();
+      return;
+    }
+
+    const trimmedHref = (linkInputRef.current?.value ?? linkHref).trim();
+
+    restoreLinkSelection({
+      extendLinkRange: isEditingExistingLink,
+    })
+      .setLink({ href: trimmedHref })
+      .run();
+
+    setLinkValidationMessage('');
+    setIsLinkPopoverOpen(false);
+  };
+
+  const removeLink = () => {
+    restoreLinkSelection({ extendLinkRange: true }).unsetLink().run();
+    setLinkHref('');
+    setIsEditingExistingLink(false);
+    setIsLinkPopoverOpen(false);
+  };
+
+  const selectLinkForEditing = () => {
+    const previousHref = editor.getAttributes('link').href;
+
+    linkSelectionRef.current = {
+      from: editor.state.selection.from,
+      to: editor.state.selection.to,
+    };
+    setLinkHref(typeof previousHref === 'string' ? previousHref : '');
+    setIsEditingExistingLink(typeof previousHref === 'string');
+  };
+
+  const showTextFormatting = options.bold || options.italic || options.links;
   const showHeadings = headingLevels.length > 0;
   const showLists = options.lists.bullet || options.lists.ordered;
+  const showThematicBreak = options.thematicBreak;
   const showHistory = options.history;
 
   // Track which groups are visible for separator logic
@@ -347,6 +525,7 @@ export default function RichTextEditorField({
     showTextFormatting,
     showHeadings,
     showLists,
+    showThematicBreak,
     showHistory,
   ].filter(Boolean);
   const hasToolbar = visibleGroups.length > 0;
@@ -379,26 +558,122 @@ export default function RichTextEditorField({
                 multiple
               >
                 {options.bold && (
-                  <ToolbarButton
+                  <ToolbarToggleButton
                     className={toolbarButtonStyles}
                     disabled={isDisabled}
                     value="bold"
                     aria-label="Bold"
                   >
                     <Bold />
-                  </ToolbarButton>
+                  </ToolbarToggleButton>
                 )}
                 {options.italic && (
-                  <ToolbarButton
+                  <ToolbarToggleButton
                     className={toolbarButtonStyles}
                     disabled={isDisabled}
                     value="italic"
                     aria-label="Italic"
                   >
                     <Italic />
-                  </ToolbarButton>
+                  </ToolbarToggleButton>
                 )}
               </ToggleGroup>
+              {options.links && (
+                <Popover
+                  open={isLinkPopoverOpen}
+                  onOpenChange={setLinkPopoverOpen}
+                >
+                  <PopoverTrigger asChild>
+                    <ToolbarButton
+                      className={toolbarButtonStyles}
+                      disabled={isDisabled}
+                      aria-label={editorState.isLink ? 'Edit link' : 'Add link'}
+                      aria-pressed={editorState.isLink}
+                      data-pressed={editorState.isLink ? true : undefined}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        selectLinkForEditing();
+                      }}
+                    >
+                      <Link />
+                    </ToolbarButton>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" side="bottom" className="w-80">
+                    <form
+                      className="flex flex-col gap-3"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        applyLink();
+                      }}
+                    >
+                      <label
+                        className="font-heading text-sm font-bold"
+                        htmlFor={linkInputId}
+                      >
+                        Link URL
+                      </label>
+                      <InputField
+                        ref={linkInputRef}
+                        id={linkInputId}
+                        name={linkInputId}
+                        type="url"
+                        required
+                        value={linkHref}
+                        onChange={(nextHref) => {
+                          setLinkHref(nextHref ?? '');
+                          setLinkValidationMessage('');
+                        }}
+                        onInvalid={(event) => {
+                          setLinkValidationMessage(
+                            event.currentTarget.validationMessage,
+                          );
+                        }}
+                        placeholder="https://example.com"
+                        size="sm"
+                        autoFocus
+                        aria-invalid={Boolean(linkValidationMessage)}
+                        aria-describedby={
+                          linkValidationMessage ? linkErrorId : undefined
+                        }
+                      />
+                      <div
+                        id={linkErrorId}
+                        className="text-destructive min-h-5 text-sm leading-snug"
+                        aria-live="polite"
+                      >
+                        {linkValidationMessage}
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="text"
+                          color="destructive"
+                          icon={<Trash2 />}
+                          aria-label="Remove link"
+                          disabled={!isEditingExistingLink}
+                          onClick={removeLink}
+                        >
+                          Remove
+                        </Button>
+                        <Button
+                          type="submit"
+                          size="sm"
+                          color="primary"
+                          icon={<Check />}
+                          aria-label="Apply link"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            applyLink();
+                          }}
+                        >
+                          Apply
+                        </Button>
+                      </div>
+                    </form>
+                  </PopoverContent>
+                </Popover>
+              )}
             </Toolbar.Group>
           )}
 
@@ -435,44 +710,44 @@ export default function RichTextEditorField({
                 }}
               >
                 {options.headings.h1 && (
-                  <ToolbarButton
+                  <ToolbarToggleButton
                     className={toolbarButtonStyles}
                     disabled={isDisabled}
                     value="h1"
                     aria-label="Heading 1"
                   >
                     <Heading1 />
-                  </ToolbarButton>
+                  </ToolbarToggleButton>
                 )}
                 {options.headings.h2 && (
-                  <ToolbarButton
+                  <ToolbarToggleButton
                     className={toolbarButtonStyles}
                     disabled={isDisabled}
                     value="h2"
                     aria-label="Heading 2"
                   >
                     <Heading2 />
-                  </ToolbarButton>
+                  </ToolbarToggleButton>
                 )}
                 {options.headings.h3 && (
-                  <ToolbarButton
+                  <ToolbarToggleButton
                     className={toolbarButtonStyles}
                     disabled={isDisabled}
                     value="h3"
                     aria-label="Heading 3"
                   >
                     <Heading3 />
-                  </ToolbarButton>
+                  </ToolbarToggleButton>
                 )}
                 {options.headings.h4 && (
-                  <ToolbarButton
+                  <ToolbarToggleButton
                     className={toolbarButtonStyles}
                     disabled={isDisabled}
                     value="h4"
                     aria-label="Heading 4"
                   >
                     <Heading4 />
-                  </ToolbarButton>
+                  </ToolbarToggleButton>
                 )}
               </ToggleGroup>
             </Toolbar.Group>
@@ -506,33 +781,55 @@ export default function RichTextEditorField({
                   }
                 }}
               >
-                {options.lists.bullet && (
-                  <ToolbarButton
-                    className={toolbarButtonStyles}
-                    disabled={isDisabled}
-                    value="bullet"
-                    aria-label="Bullet list"
-                  >
-                    <List />
-                  </ToolbarButton>
-                )}
                 {options.lists.ordered && (
-                  <ToolbarButton
+                  <ToolbarToggleButton
                     className={toolbarButtonStyles}
                     disabled={isDisabled}
                     value="ordered"
                     aria-label="Numbered list"
                   >
                     <ListOrdered />
-                  </ToolbarButton>
+                  </ToolbarToggleButton>
+                )}
+                {options.lists.bullet && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="bullet"
+                    aria-label="Bullet list"
+                  >
+                    <List />
+                  </ToolbarToggleButton>
                 )}
               </ToggleGroup>
             </Toolbar.Group>
           )}
 
-          {(showTextFormatting || showHeadings || showLists) && showHistory && (
-            <Toolbar.Separator className={toolbarSeparatorStyles} />
+          {(showTextFormatting || showHeadings || showLists) &&
+            showThematicBreak && (
+              <Toolbar.Separator className={toolbarSeparatorStyles} />
+            )}
+
+          {showThematicBreak && (
+            <Toolbar.Group className={toolbarGroupStyles}>
+              <ToolbarButton
+                className={toolbarButtonStyles}
+                disabled={isDisabled}
+                aria-label="Thematic break"
+                onClick={() => editor.chain().focus().setHorizontalRule().run()}
+              >
+                <Minus />
+              </ToolbarButton>
+            </Toolbar.Group>
           )}
+
+          {(showTextFormatting ||
+            showHeadings ||
+            showLists ||
+            showThematicBreak) &&
+            showHistory && (
+              <Toolbar.Separator className={toolbarSeparatorStyles} />
+            )}
 
           {showHistory && (
             <Toolbar.Group className={toolbarGroupStyles}>

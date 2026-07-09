@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { NativeLink } from './NativeLink';
 import { headingVariants } from './typography/Heading';
 import { paragraphVariants } from './typography/Paragraph';
 
@@ -31,7 +32,13 @@ const listClasses = {
 };
 
 type TextMark = {
-  type: 'bold' | 'italic' | 'code' | 'strike' | 'underline';
+  type: 'bold' | 'italic' | 'code' | 'strike' | 'underline' | 'link';
+  attrs?: {
+    href?: string;
+    target?: string | null;
+    rel?: string | null;
+    title?: string | null;
+  };
 };
 
 type RichTextRendererProps = Omit<
@@ -63,6 +70,20 @@ function renderMarks(text: string, marks?: TextMark[]): ReactNode {
         return <s key={key}>{acc}</s>;
       case 'underline':
         return <u key={key}>{acc}</u>;
+      case 'link':
+        return mark.attrs?.href ? (
+          <NativeLink
+            key={key}
+            href={mark.attrs.href}
+            target={mark.attrs.target ?? '_blank'}
+            rel={mark.attrs.rel ?? 'noopener noreferrer'}
+            title={mark.attrs.title ?? undefined}
+          >
+            {acc}
+          </NativeLink>
+        ) : (
+          acc
+        );
       default:
         return acc;
     }
@@ -117,6 +138,9 @@ function renderNode(node: JSONContent, index: number): ReactNode {
           {node.content?.map((child, i) => renderNode(child, i))}
         </li>
       );
+
+    case 'horizontalRule':
+      return <hr key={key} className="my-4 border-current/30" />;
 
     case 'text':
       return (

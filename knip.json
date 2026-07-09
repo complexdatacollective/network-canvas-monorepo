@@ -64,6 +64,7 @@
       ],
       "ignoreDependencies": [
         "buffer", // npm Buffer polyfill — `import { Buffer } from 'buffer'` in filesystem.js + saveExport.js; knip treats 'buffer' as a Node built-in
+        "is-hotkey", // required by @codaco/ui's bundled RichText field; @codaco/ui does not declare it
         // knip's Capacitor plugin resolves @capacitor/android from
         // android/capacitor.settings.gradle, but only detects iOS via a CocoaPods
         // Podfile — this iOS project uses Swift Package Manager (CapApp-SPM), so

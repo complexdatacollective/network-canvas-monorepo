@@ -8,7 +8,7 @@ import remarkGemoji from 'remark-gemoji';
 
 import { Label as UILabel } from '../Label';
 
-const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong', 'ul', 'ol', 'li'];
+const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong', 'ul', 'ol', 'li', 'a'];
 
 /**
  * Hack for `>` characters that already exist in some protocols
