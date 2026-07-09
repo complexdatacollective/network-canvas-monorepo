@@ -336,6 +336,10 @@ const VariableSpotlight = ({
 
   return (
     <Modal open={open} onOpenChange={handleOpenChange}>
+      <div
+        aria-hidden
+        className="bg-overlay publish-colors pointer-events-none fixed inset-0 z-1900 backdrop-blur-xs"
+      />
       <ModalPopup
         key="variable-spotlight-popup"
         className="fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
@@ -345,7 +349,7 @@ const VariableSpotlight = ({
           noContainer
           spacing="none"
           shadow="none"
-          className="effect-shadow flex max-h-[calc(100vh-5rem)] flex-col overflow-hidden"
+          className="effect-shadow-xl flex max-h-[calc(100vh-5rem)] flex-col overflow-hidden"
         >
           <header className="shrink-0 grow-0 basis-14 px-7 py-5">
             <InputField
