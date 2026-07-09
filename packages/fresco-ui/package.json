@@ -80,6 +80,10 @@
       "types": "./dist/Button.d.ts",
       "default": "./dist/Button.js"
     },
+    "./SplitButton": {
+      "types": "./dist/SplitButton.d.ts",
+      "default": "./dist/SplitButton.js"
+    },
     "./CloseButton": {
       "types": "./dist/CloseButton.d.ts",
       "default": "./dist/CloseButton.js"
