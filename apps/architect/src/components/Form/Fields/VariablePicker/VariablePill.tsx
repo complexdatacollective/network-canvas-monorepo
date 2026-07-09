@@ -35,12 +35,19 @@ type VariablePillStyle = React.CSSProperties & {
   '--variable-pill-width'?: string;
 };
 
+const DARK_COLOR_SUFFIX = '-dark';
+
+const getRawColorToken = (color: string) =>
+  color.endsWith(DARK_COLOR_SUFFIX)
+    ? `${color.slice(0, -DARK_COLOR_SUFFIX.length)}--dark`
+    : color;
+
 const BaseVariablePill = React.forwardRef<
   HTMLDivElement,
   BaseVariablePillProps
 >(({ type, children, width, summary }, ref) => {
   const icon = useMemo(() => getIconForType(type), [type]);
-  const accentColor = getColorForType(type);
+  const accentColor = getRawColorToken(getColorForType(type));
   const style: VariablePillStyle = {
     '--variable-pill-accent': `oklch(var(--${accentColor}))`,
   };
