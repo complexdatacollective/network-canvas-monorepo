@@ -66,6 +66,14 @@ const entry = (html.match(/assets\/[^"']+\.js/) || [])[0];
 if (!entry) fail('no entry chunk referenced in dist/index.html');
 if (!precached.has(entry)) fail(`entry chunk excluded from precache: ${entry}`);
 
+if (!/url:"preview\/index\.html"/.test(sw)) {
+  fail('preview/index.html missing from precache manifest');
+}
+
+if (!/new URL\("preview\/index\.html",/.test(sw)) {
+  fail('missing /preview/ offline fallback in generated service worker');
+}
+
 // No globIgnores means every emitted chunk should be precached; an excluded one
 // exceeded the size limit and would 404 offline.
 const excluded = jsAssets.filter((u) => !precached.has(u));
