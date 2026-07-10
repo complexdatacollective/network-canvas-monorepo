@@ -3,6 +3,8 @@ import { render } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+
 import App from '../ViewManager/views/App';
 
 // Mock window.scrollTo
@@ -44,7 +46,9 @@ describe('<App />', () => {
   it('renders main app components', () => {
     const { getByTestId } = render(
       <Provider store={mockStore}>
-        <App />
+        <DialogProvider>
+          <App />
+        </DialogProvider>
       </Provider>,
     );
 

@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import type React from 'react';
 import type { ComponentType } from 'react';
 import { useMemo } from 'react';
@@ -6,18 +7,18 @@ import type { Validator } from 'redux-form';
 import { formValueSelector } from 'redux-form';
 import { v4 } from 'uuid';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type { Validation } from '@codaco/protocol-validation';
 import ValidatedField from '~/components/Form/ValidatedField';
 import OrderedList, {
   type OrderedListProps,
 } from '~/components/OrderedList/OrderedList';
-import { Button } from '~/lib/legacy-ui/components';
 
 import { useFormContext } from '../Editor';
 import Layout from '../EditorLayout';
 import { MarkdownLabel } from '../Form/Fields';
 import Form from '../InlineEditScreen/Form';
-import Dialog from '../NewComponents/Dialog';
 import { useEditHandlers } from './useEditHandlers';
 
 const notEmpty = (value: unknown) =>
@@ -138,31 +139,24 @@ const EditableList = ({
           editIndex: editIndex, // Pass editIndex so it can be used in layout ID
         }}
       />
-      <Button onClick={handleAddNew} icon="add" color="sea-green">
+      <Button onClick={handleAddNew} icon={<Plus />} color="primary">
         Create new
       </Button>
 
       <Dialog
         open={isOpen}
-        onOpenChange={handleCancelEdit}
+        closeDialog={handleCancelEdit}
         layoutId={`${fieldName}-edit-field-${editIndex}`}
-        /* This hack is needed to make sure Base-UI's dialog works with framer-motion's layoutId animations */
-        initial={{ opacity: 0.9999 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0.9999 }}
         title={title}
+        size="editor"
         footer={
           <>
-            <Dialog.Close
-              nativeButton={false}
-              render={<Button color="platinum">Cancel</Button>}
-            />
-            <Button type="submit" form={editFormName} color="sea-green">
+            <Button onClick={handleCancelEdit}>Cancel</Button>
+            <Button type="submit" form={editFormName} color="primary">
               Save
             </Button>
           </>
         }
-        className="bg-surface-2"
       >
         <Form
           form={editFormName}

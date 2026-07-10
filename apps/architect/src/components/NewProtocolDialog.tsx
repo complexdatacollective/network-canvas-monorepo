@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { Row, Section } from '~/components/EditorLayout';
 import Text from '~/components/Form/Fields/Text';
-import Dialog from '~/components/NewComponents/Dialog';
-import { Button } from '~/lib/legacy-ui/components';
 
 type NewProtocolDialogProps = {
   open: boolean;
@@ -51,20 +51,17 @@ const NewProtocolDialog = ({
   return (
     <Dialog
       open={open}
-      onOpenChange={handleOpenChange}
+      closeDialog={() => handleOpenChange(false)}
       title={title}
+      size="readable"
       footer={
         <>
-          <Dialog.Close
-            nativeButton={false}
-            render={<Button color="platinum">Cancel</Button>}
-          />
-          <Button onClick={handleConfirm} color="sea-green" disabled={!isValid}>
+          <Button onClick={() => handleOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleConfirm} color="primary" disabled={!isValid}>
             Create Protocol
           </Button>
         </>
       }
-      className="bg-surface-2"
     >
       <Section title="Protocol Name" layout="vertical">
         <Row>

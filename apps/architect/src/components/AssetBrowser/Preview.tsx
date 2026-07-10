@@ -2,6 +2,8 @@ import { compose } from '@reduxjs/toolkit';
 import { CopyIcon as ContentCopyIcon, DownloadIcon } from 'lucide-react';
 import { useCallback } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import APIKey from '~/components/Assets/APIKey';
 import Audio from '~/components/Assets/Audio';
 import BackgroundImage from '~/components/Assets/BackgroundImage';
@@ -10,8 +12,6 @@ import Network from '~/components/Assets/Network';
 import Video from '~/components/Assets/Video';
 import withAssetMeta from '~/components/Assets/withAssetMeta';
 import withAssetPath from '~/components/Assets/withAssetPath';
-import Dialog from '~/components/NewComponents/Dialog';
-import { Button } from '~/lib/legacy-ui/components';
 
 type AssetMeta = Record<string, unknown> & {
   type?: string;
@@ -73,19 +73,17 @@ const Preview = ({
   return (
     <Dialog
       open={show}
-      onOpenChange={(open) => !open && onClose()}
+      closeDialog={onClose}
       title={meta.name}
+      size="workspace"
       footer={
         <>
-          <Dialog.Close
-            nativeButton={false}
-            render={<Button color="platinum">Close preview</Button>}
-          />
+          <Button onClick={onClose}>Close preview</Button>
           {meta.type !== 'apikey' ? (
             <Button
               onClick={handleDownload}
               icon={<DownloadIcon />}
-              color="sea-green"
+              color="primary"
             >
               Download asset
             </Button>

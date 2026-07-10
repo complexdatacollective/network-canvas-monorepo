@@ -89,7 +89,7 @@ const Section = ({
           '[--input-background:var(--surface-1)] [--slider-color:oklch(var(--charcoal))]',
           'relative',
           surfaceClassesByLevel[surfaceLevel],
-          'w-full max-w-7xl',
+          'w-full max-w-7xl min-w-0',
           layout === 'horizontal' &&
             'max-tablet-landscape:mb-4 max-tablet-landscape:flex max-tablet-landscape:flex-col max-tablet-landscape:gap-5 max-tablet-landscape:rounded max-tablet-landscape:bg-(--current-surface) max-tablet-landscape:p-6 max-tablet-landscape:text-(--current-surface-contrast) max-tablet-landscape:shadow-md tablet-landscape:grid tablet-landscape:grid-cols-[20rem_auto] tablet-landscape:gap-8',
           layout === 'vertical' && 'mb-4 flex flex-col gap-5',
@@ -132,7 +132,7 @@ const Section = ({
             <div className="text-current/70">{summary}</div>
           </div>
         )}
-        <fieldset className={classes}>
+        <fieldset className={cx('min-w-0', classes)}>
           {disabled ? (
             layout === 'horizontal' ? (
               <div className="bg-outline/75 text-text/70 max-tablet-landscape:rounded max-tablet-landscape:p-8 max-tablet-landscape:text-center tablet-landscape:absolute tablet-landscape:inset-0 tablet-landscape:h-full tablet-landscape:w-full flex items-center justify-center font-semibold italic">

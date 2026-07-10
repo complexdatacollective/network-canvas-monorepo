@@ -10,10 +10,12 @@ import {
 import { DateTime } from 'luxon';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import Table from '~/components/Assets/Table';
 import Badge from '~/components/Badge';
 import ExternalLink from '~/components/ExternalLink';
-import Dialog from '~/components/NewComponents/Dialog';
 import {
   Popover,
   PopoverContent,
@@ -601,15 +603,16 @@ const LibraryPanel = ({
 
       <Dialog
         open={infoOpen}
-        onOpenChange={setInfoOpen}
+        closeDialog={() => setInfoOpen(false)}
         title={info?.title ?? ''}
-        cancelText="Close"
+        size="readable"
+        footer={<Button onClick={() => setInfoOpen(false)}>Close</Button>}
       >
         {info && (
           <div className="flex flex-col gap-5">
-            <p className="whitespace-pre-wrap">
+            <Paragraph className="whitespace-pre-wrap">
               {info.description?.trim() || 'This protocol has no description.'}
-            </p>
+            </Paragraph>
             <div className="flex flex-col overflow-hidden rounded">
               <Table
                 columns={[
