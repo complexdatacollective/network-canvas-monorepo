@@ -1,11 +1,11 @@
 import { get } from 'es-toolkit/compat';
 import { useContext } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import EntityIcon from '~/components/Codebook/EntityIcon';
 
 import DualLink from './DualLink';
 import SummaryContext from './SummaryContext';
-
 type EntityBadgeProps = {
   type: string;
   entity: string;
@@ -13,7 +13,6 @@ type EntityBadgeProps = {
   small?: boolean;
   tiny?: boolean;
 };
-
 const EntityBadge = ({
   type,
   entity,
@@ -24,14 +23,11 @@ const EntityBadge = ({
   const {
     protocol: { codebook },
   } = useContext(SummaryContext);
-
   const color = get(codebook, [entity, type, 'color']);
   const name = get(codebook, [entity, type, 'name']);
   const shape = get(codebook, [entity, type, 'shape', 'default']);
-
   const size = tiny ? 'tiny' : small ? 'small' : 'default';
-  const label = small || tiny ? name : <h2>{name}</h2>;
-
+  const label = small || tiny ? name : <Heading level="h2">{name}</Heading>;
   const badge = (
     <EntityIcon
       color={color}
@@ -41,12 +37,9 @@ const EntityBadge = ({
       size={size}
     />
   );
-
   if (!link) {
     return badge;
   }
-
   return <DualLink to={`#entity-${type}`}>{badge}</DualLink>;
 };
-
 export default EntityBadge;

@@ -4,11 +4,15 @@ import type { ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section, Subsection } from '~/components/EditorLayout';
-import NativeSelect from '~/components/Form/Fields/NativeSelect';
+import { FrescoReduxField } from '~/components/Form';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
 import ValidatedField from '~/components/Form/ValidatedField';
-import Switch from '~/components/NewComponents/Switch';
 import Options from '~/components/Options';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';
 import LockedOptions from '~/components/Options/LockedOptions';
@@ -26,23 +30,24 @@ import BooleanChoice from '../../BooleanChoice';
 import ExternalLink from '../../ExternalLink';
 import InputPreview from '../../Form/Fields/InputPreview';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
-import Tip from '../../Tip';
 import ValidationSection from '../ValidationSection';
 import { useFieldHandlers } from './withFieldsHandlers';
+
+const FrescoNativeSelectField = NativeSelectField as ComponentType<
+  Record<string, unknown>
+>;
 
 type PromptFieldsProps = {
   form: string;
   entity?: string | null;
   type?: string | null;
 };
-
 const PromptFields = ({
   form,
   entity = null,
   type = null,
 }: PromptFieldsProps) => {
   const dispatch = useAppDispatch();
-
   const {
     variable,
     variableType,
@@ -60,27 +65,24 @@ const PromptFields = ({
     entity: entity ?? '',
     type: type ?? '',
   });
-
   const showValidationHints = useSelector(
     (state: RootState) =>
       formValueSelector(form)(state, 'showValidationHints') as
         | boolean
         | undefined,
   );
-
   const lockedOptions = getLockedOptions(existingVariables, variable);
-
   return (
     <Section layout="vertical">
       <Subsection id={getFieldId('variable')} title="Variable">
         {variable && !isNewVariable && (
-          <Tip>
-            <p>
+          <Alert variant="info" className="my-7">
+            <AlertDescription>
               When selecting an existing variable, changes you make to the input
               control or validation options will also change other uses of this
               variable.
-            </p>
-          </Tip>
+            </AlertDescription>
+          </Alert>
         )}
         <ValidatedField
           name="variable"
@@ -100,18 +102,18 @@ const PromptFields = ({
         id={getFieldId('prompt')}
         title="Question"
         summary={
-          <p>
+          <Paragraph>
             Configure the question prompt and optional hints for the
             participant.
-          </p>
+          </Paragraph>
         }
       >
         <div>
-          <h4>Prompt Text</h4>
-          <p className="mb-2.5 text-sm text-current/70">
+          <Heading level="h4">Prompt Text</Heading>
+          <Paragraph className="mb-2.5 text-sm text-current/70">
             Enter the question to display to the participant. Supports markdown
             formatting.
-          </p>
+          </Paragraph>
           <ValidatedField
             name="prompt"
             component={RichText as ComponentType<Record<string, unknown>>}
@@ -123,11 +125,11 @@ const PromptFields = ({
           />
         </div>
         <div>
-          <h4>Hint Text</h4>
-          <p className="mb-2.5 text-sm text-current/70">
+          <Heading level="h4">Hint Text</Heading>
+          <Paragraph className="mb-2.5 text-sm text-current/70">
             Optionally display a markdown-formatted hint below the question to
             help participants understand how to answer.
-          </p>
+          </Paragraph>
           <Field
             name="hint"
             component={RichText as ComponentType<Record<string, unknown>>}
@@ -137,16 +139,16 @@ const PromptFields = ({
         </div>
         <div className="flex items-center justify-between gap-5">
           <div>
-            <h4>Show validation hints?</h4>
-            <p className="text-sm text-current/70">
+            <Heading level="h4">Show validation hints?</Heading>
+            <Paragraph className="text-sm text-current/70">
               Automatically display hints derived from this field&apos;s
               validation rules, helping participants understand input
               requirements.
-            </p>
+            </Paragraph>
           </div>
-          <Switch
-            checked={!!showValidationHints}
-            onCheckedChange={(checked) =>
+          <ToggleField
+            value={!!showValidationHints}
+            onChange={(checked) =>
               dispatch(
                 change(form, 'showValidationHints', checked) as UnknownAction,
               )
@@ -161,55 +163,59 @@ const PromptFields = ({
         title="Input Control"
         disabled={!variable}
         summary={
-          <p>
+          <Paragraph>
             Choose an input control that should be used to collect the answer.
             For detailed information about these options, see our{' '}
             <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/input-controls/">
               documentation
             </ExternalLink>
             .
-          </p>
+          </Paragraph>
         }
       >
         <ValidatedField
           name="component"
-          component={NativeSelect as ComponentType<Record<string, unknown>>}
+          label="Input control"
+          component={FrescoReduxField}
           validation={{ required: true }}
           componentProps={{
+            fieldComponent: FrescoNativeSelectField,
             placeholder: 'Select an input control',
-            options: componentOptions,
-            sortOptionsByLabel: !isNewVariable,
+            options: isNewVariable
+              ? componentOptions
+              : [...componentOptions].toSorted((a, b) =>
+                  a.label.localeCompare(b.label),
+                ),
             onChange: handleChangeComponent,
           }}
         />
         {isNewVariable && variableType && (
-          <Tip>
-            <p>
+          <Alert variant="info" className="my-7">
+            <AlertDescription>
               The selected input control will cause this variable to be defined
               as type <strong>{variableType}</strong>. Once set, this cannot be
               changed (although you may change the input control within this
               type).
-            </p>
-          </Tip>
+            </AlertDescription>
+          </Alert>
         )}
         {!isNewVariable && variableType && (
-          <Tip type="warning">
-            <div>
-              <p>
-                A pre-existing variable is currently selected. You cannot change
-                a variable type after it has been created, so only{' '}
-                <strong>{variableType}</strong> compatible input controls can be
-                selected above. If you would like to use a different input
-                control type, you will need to create a new variable.
-              </p>
-            </div>
-          </Tip>
+          <Alert variant="warning" className="my-7">
+            <AlertTitle>Variable type is locked</AlertTitle>
+            <AlertDescription>
+              A pre-existing variable is currently selected. You cannot change a
+              variable type after it has been created, so only{' '}
+              <strong>{variableType}</strong> compatible input controls can be
+              selected above. If you would like to use a different input control
+              type, you will need to create a new variable.
+            </AlertDescription>
+          </Alert>
         )}
         {variableType &&
           metaForType &&
           typeof metaForType.label === 'string' && (
             <div>
-              <h4>Preview</h4>
+              <Heading level="h4">Preview</Heading>
               <InputPreview
                 label={metaForType.label}
                 description={metaForType.description}
@@ -225,16 +231,16 @@ const PromptFields = ({
           title="Categorical/Ordinal options"
           summary={
             lockedOptions ? (
-              <p>
+              <Paragraph>
                 These options are automatically configured by the interface and
                 cannot be modified.
-              </p>
+              </Paragraph>
             ) : (
-              <p>
+              <Paragraph>
                 The input type you selected indicates that this is a categorical
                 or ordinal variable. Next, please create a minimum of two
                 possible values for the participant to choose between.
-              </p>
+              </Paragraph>
             )
           }
         >
@@ -276,5 +282,4 @@ const PromptFields = ({
     </Section>
   );
 };
-
 export default PromptFields;

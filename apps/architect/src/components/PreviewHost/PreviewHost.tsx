@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Button from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   createInitialNetwork,
   type InterviewPayload,
@@ -11,19 +14,15 @@ import {
 } from '@codaco/interview';
 import { generateNetwork } from '@codaco/protocol-utilities';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
-import Button from '~/lib/legacy-ui/components/Button';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
 import { useAssetResolver } from './useAssetResolver';
-
-const PAYLOAD_TIMEOUT_MS = 5_000;
-
+const PAYLOAD_TIMEOUT_MS = 5000;
 const noopSync = async () => {};
 const noopFinish = async () => {};
-
 function buildSession(payload: PreviewPayload): SessionPayload {
   const now = new Date().toISOString();
   const base: SessionPayload = {
@@ -34,11 +33,9 @@ function buildSession(payload: PreviewPayload): SessionPayload {
     lastUpdated: now,
     network: createInitialNetwork(),
   };
-
   if (!payload.useSyntheticData) {
     return base;
   }
-
   const generated = generateNetwork(
     payload.protocol.codebook,
     payload.protocol.stages,
@@ -49,7 +46,6 @@ function buildSession(payload: PreviewPayload): SessionPayload {
       inProgressStageIndex: payload.startStage,
     },
   );
-
   // Stages that record a finalized state (e.g. a FamilyPedigree's committed
   // network) do so via stageMetadata; without it they preview as never
   // finalized. Parse each entry independently so a single malformed entry is
@@ -66,14 +62,12 @@ function buildSession(payload: PreviewPayload): SessionPayload {
     }
     stageMetadata = validEntries;
   }
-
   return {
     ...base,
     network: generated.network,
     stageMetadata,
   };
 }
-
 export function PreviewHost() {
   const [interviewPayload, setInterviewPayload] =
     useState<InterviewPayload | null>(null);
@@ -90,22 +84,18 @@ export function PreviewHost() {
   const [skipLogicNoticeDismissed, setSkipLogicNoticeDismissed] =
     useState(false);
   const onRequestAsset = useAssetResolver(protocolId);
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce is the deliberate retrigger key
   useEffect(() => {
     const opener = window.opener as Window | null;
     if (!opener) return;
-
     const expectedOrigin = window.location.origin;
     let received = false;
-
     const onMessage = (event: MessageEvent) => {
       if (event.source !== opener) return;
       if (event.origin !== expectedOrigin) return;
       if (!isPreviewMessage(event.data)) return;
       if (event.data.type !== 'preview:payload') return;
       const previewPayload: PreviewPayload = event.data;
-
       // Hydrate this realm's in-memory store with any Safari-private fallback
       // assets ferried from the editor. getAssetById reads IndexedDB first, then
       // this map, so once hydrated the resolver finds them like any other asset.
@@ -118,7 +108,6 @@ export function PreviewHost() {
           data: asset.data,
         });
       }
-
       let nextPayload: InterviewPayload;
       try {
         // Build the payload before marking the handshake received: a throw here
@@ -134,7 +123,6 @@ export function PreviewHost() {
         setProcessingFailed(true);
         return;
       }
-
       received = true;
       setProcessingFailed(false);
       setInterviewPayload(nextPayload);
@@ -146,45 +134,44 @@ export function PreviewHost() {
       setSkipLogicNoticeDismissed(false);
       setTimedOut(false);
     };
-
     window.addEventListener('message', onMessage);
     opener.postMessage({ type: 'preview:ready' }, expectedOrigin);
-
     const timeoutId = setTimeout(() => {
       if (!received) setTimedOut(true);
     }, PAYLOAD_TIMEOUT_MS);
-
     return () => {
       window.removeEventListener('message', onMessage);
       clearTimeout(timeoutId);
     };
   }, [retryNonce]);
-
   if (!window.opener) {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-2xl font-semibold">This preview has ended</h1>
-        <p>Return to Architect and click Preview again to start a new one.</p>
-        <Button color="sea-green" onClick={() => window.close()}>
+        <Heading level="h1" margin="none" className="text-2xl font-semibold">
+          This preview has ended
+        </Heading>
+        <Paragraph margin="none">
+          Return to Architect and click Preview again to start a new one.
+        </Paragraph>
+        <Button color="primary" onClick={() => window.close()}>
           Close tab
         </Button>
       </div>
     );
   }
-
   if (!interviewPayload && timedOut) {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-2xl font-semibold">
+        <Heading level="h1" margin="none" className="text-2xl font-semibold">
           Couldn't reach the Architect tab
-        </h1>
-        <p>
+        </Heading>
+        <Paragraph margin="none">
           The preview couldn't be loaded. The Architect tab may be closed or no
           longer responding.
-        </p>
+        </Paragraph>
         <div className="flex gap-3">
           <Button
-            color="sea-green"
+            color="primary"
             onClick={() => {
               setTimedOut(false);
               setRetryNonce((n) => n + 1);
@@ -192,25 +179,26 @@ export function PreviewHost() {
           >
             Try again
           </Button>
-          <Button color="platinum" onClick={() => window.close()}>
+          <Button color="default" onClick={() => window.close()}>
             Close tab
           </Button>
         </div>
       </div>
     );
   }
-
   if (!interviewPayload && processingFailed) {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-2xl font-semibold">Couldn't build the preview</h1>
-        <p>
+        <Heading level="h1" margin="none" className="text-2xl font-semibold">
+          Couldn't build the preview
+        </Heading>
+        <Paragraph margin="none">
           Something went wrong preparing this protocol for preview. Return to
           Architect, check the protocol, and try again.
-        </p>
+        </Paragraph>
         <div className="flex gap-3">
           <Button
-            color="sea-green"
+            color="primary"
             onClick={() => {
               setProcessingFailed(false);
               setRetryNonce((n) => n + 1);
@@ -218,22 +206,20 @@ export function PreviewHost() {
           >
             Try again
           </Button>
-          <Button color="platinum" onClick={() => window.close()}>
+          <Button color="default" onClick={() => window.close()}>
             Close tab
           </Button>
         </div>
       </div>
     );
   }
-
   if (!interviewPayload) {
     return (
       <div className="flex h-dvh w-full items-center justify-center">
-        <p>Loading preview…</p>
+        <Paragraph>Loading preview…</Paragraph>
       </div>
     );
   }
-
   return (
     <div className="h-screen">
       {currentStep === bypassedStageIndex && !skipLogicNoticeDismissed && (

@@ -1,8 +1,8 @@
+import { TriangleAlert } from 'lucide-react';
 import type React from 'react';
 import { compose, withState } from 'react-recompose';
 
-import Button from '~/lib/legacy-ui/components/Button';
-import Icon from '~/lib/legacy-ui/components/Icon';
+import Button from '@codaco/fresco-ui/Button';
 import { cx } from '~/utils/cva';
 
 import AssetBrowserWindow from '../../AssetBrowser/AssetBrowserWindow';
@@ -89,7 +89,7 @@ const FileInput = ({
       <div className="form-field relative">
         {invalid && touched && (
           <div className="text-destructive flex items-center px-1 py-2.5 [&_.icon]:mr-2.5 [&_.icon]:size-5">
-            <Icon name="warning" />
+            <TriangleAlert aria-hidden />
             {error}
           </div>
         )}
@@ -99,7 +99,7 @@ const FileInput = ({
           {children?.(value)}
         </div>
         <div className="mt-5">
-          <Button onClick={handleBrowseLibrary} color="sea-green">
+          <Button onClick={handleBrowseLibrary} color="primary">
             {!value ? 'Select resource' : 'Update resource'}
           </Button>
         </div>

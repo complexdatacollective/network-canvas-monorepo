@@ -1,48 +1,81 @@
 'use client';
 
-import {
-  AlertCircle,
-  AlertTriangle,
-  Info,
-  type LucideIcon,
-  PartyPopper,
-} from 'lucide-react';
+import { type LucideIcon, PartyPopper } from 'lucide-react';
+import { motion, useAnimation, useReducedMotion } from 'motion/react';
 import * as React from 'react';
 
+import Icon from './Icon';
 import Surface from './layout/Surface';
 import Heading from './typography/Heading';
 import { paragraphVariants } from './typography/Paragraph';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const alertVariants = cva({
-  base: 'inset-surface my-6 flex w-full gap-3 rounded first:mt-0 last:mb-0',
+  base: 'inset-surface my-6 flex w-full items-start rounded first:mt-0 last:mb-0',
   variants: {
     variant: {
       default: '',
       // Override the --link primitive (not the --color-link @theme inline alias, which is
       // substituted away at compile time so consumers read var(--link) directly).
-      info: 'text-info-contrast [&>svg]:text-info-contrast bg-info [--link:var(--info-contrast)]',
+      info: 'text-info-contrast bg-info [--link:var(--info-contrast)]',
       destructive:
-        'text-destructive-contrast [&>svg]:text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]',
+        'text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]',
       success:
-        'text-success-contrast [&>svg]:text-success-contrast bg-success [--link:var(--success-contrast)]',
+        'text-success-contrast bg-success [--link:var(--success-contrast)]',
       warning:
-        'text-warning-contrast [&>svg]:text-warning-contrast bg-warning [--link:var(--warning-contrast)]',
+        'text-warning-contrast bg-warning [--link:var(--warning-contrast)]',
+    },
+    density: {
+      default: 'gap-4',
+      compact: 'gap-3',
     },
   },
   defaultVariants: {
     variant: 'default',
+    density: 'default',
   },
 });
 
 type Variant = NonNullable<VariantProps<typeof alertVariants>['variant']>;
+type Density = NonNullable<VariantProps<typeof alertVariants>['density']>;
+type AlertIcon =
+  | LucideIcon
+  | React.ComponentType<React.SVGProps<SVGSVGElement>>;
+type AlertIconStyle = React.CSSProperties & {
+  '--warning-icon-accent'?: string;
+  '--warning-icon-accent-dark'?: string;
+};
 
-const variantIcons: Record<Variant, LucideIcon | null> = {
+const InfoAlertIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <Icon {...props} name="info" />
+);
+
+const WarningAlertIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <Icon {...props} name="warning" />
+);
+
+const variantIcons: Record<Variant, AlertIcon | null> = {
   default: null,
-  info: Info,
-  destructive: AlertCircle,
+  info: InfoAlertIcon,
+  destructive: WarningAlertIcon,
   success: PartyPopper,
-  warning: AlertTriangle,
+  warning: WarningAlertIcon,
+};
+
+const variantIconStyles: Record<Variant, AlertIconStyle | undefined> = {
+  default: undefined,
+  info: undefined,
+  success: undefined,
+  warning: {
+    '--warning-icon-accent': 'var(--warning)',
+    '--warning-icon-accent-dark':
+      'color-mix(in oklab, var(--warning) 70%, black)',
+  },
+  destructive: {
+    '--warning-icon-accent': 'var(--destructive)',
+    '--warning-icon-accent-dark':
+      'color-mix(in oklab, var(--destructive) 70%, black)',
+  },
 };
 
 /**
@@ -74,40 +107,84 @@ const variantContextLabels: Record<Variant, string> = {
   destructive: 'Error',
 };
 
+const alertIconVariants = cva({
+  base: 'inline-flex shrink-0 origin-center items-center justify-center',
+  variants: {
+    density: {
+      default: 'size-14',
+      compact: 'size-7',
+    },
+  },
+  defaultVariants: {
+    density: 'default',
+  },
+});
+
+const alertIconGraphicVariants = cva({
+  variants: {
+    density: {
+      default: 'size-12',
+      compact: 'size-6',
+    },
+  },
+  defaultVariants: {
+    density: 'default',
+  },
+});
+
 type AlertProps = React.HTMLAttributes<HTMLDivElement> &
   VariantProps<typeof alertVariants> & {
-    icon?: LucideIcon | null | false;
+    icon?: AlertIcon | null | false;
   };
 
 const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
-  ({ className, variant = 'default', icon, children, ...props }, ref) => {
+  (
+    { className, variant = 'default', density, icon, children, ...props },
+    ref,
+  ) => {
+    const animation = useAnimation();
+    const shouldReduceMotion = useReducedMotion();
     const IconComponent =
       icon === false ? null : (icon ?? variantIcons[variant]);
+    const iconStyle = icon == null ? variantIconStyles[variant] : undefined;
+    const resolvedDensity: Density = density ?? 'default';
 
     return (
       <Surface
         ref={ref}
         role={variantRoles[variant]}
-        spacing="sm"
+        spacing={resolvedDensity === 'compact' ? 'xs' : 'sm'}
         shadow="sm"
-        className={cx(alertVariants({ variant }), className)}
+        className={cx(alertVariants({ variant, density }), className)}
         noContainer
         maxWidth="3xl"
         {...props}
       >
         {IconComponent && (
-          <span
+          <motion.span
             aria-hidden="true"
-            // `h-[1lh]` matches one line-height of the inherited text so the
-            // icon's slot is exactly one text line tall; `items-center` then
-            // centres it against the first line of whatever child renders
-            // first, working for both Heading and Paragraph leading children.
-            className="tablet-landscape:inline-flex hidden h-lh shrink-0 items-center"
+            animate={animation}
+            onViewportEnter={() => {
+              if (shouldReduceMotion) return;
+              void animation.start({
+                rotate: [-12, 8, -6, 3, 0],
+                scale: [1, 1.14, 1],
+                transition: {
+                  delay: 0.3,
+                  duration: 0.82,
+                  ease: [0.36, 0.07, 0.19, 0.97],
+                },
+              });
+            }}
+            className={alertIconVariants({ density: resolvedDensity })}
           >
-            <IconComponent className="size-4" />
-          </span>
+            <IconComponent
+              className={alertIconGraphicVariants({ density: resolvedDensity })}
+              style={iconStyle}
+            />
+          </motion.span>
         )}
-        <div>
+        <div className="min-w-0 flex-1">
           <span className="sr-only">{variantContextLabels[variant]}: </span>
           {children}
         </div>

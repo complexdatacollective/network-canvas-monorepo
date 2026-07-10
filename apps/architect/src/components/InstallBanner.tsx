@@ -1,7 +1,8 @@
-import { Download, MonitorDown, X } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 
-import Button from '~/lib/legacy-ui/components/Button';
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Button from '@codaco/fresco-ui/Button';
 import {
   getDeferredPrompt,
   getInstalled,
@@ -69,32 +70,35 @@ const InstallBanner = () => {
   };
 
   return (
-    <aside
+    <Alert
       aria-label="Install Architect"
-      className="border-outline bg-surface-1 text-surface-1-contrast flex w-full shrink-0 items-center gap-3 border-b px-6 py-2 text-sm"
+      variant="warning"
+      density="compact"
+      className="border-outline bg-surface-1! text-surface-1-contrast! my-0 shrink-0 rounded-none! border-x-0 border-t-0 border-b px-6 py-2 shadow-none!"
     >
-      <MonitorDown className="text-mustard-dark size-4 shrink-0" aria-hidden />
-      <p className="m-0 flex-1">{bannerMessage(deferredPrompt !== null)}</p>
-      {deferredPrompt !== null && (
-        <Button
-          color="sea-green"
-          size="small"
-          className="text-sm"
-          onClick={() => void promptInstall()}
+      <AlertDescription className="flex items-center gap-3 text-sm">
+        <span className="flex-1">{bannerMessage(deferredPrompt !== null)}</span>
+        {deferredPrompt !== null && (
+          <Button
+            color="primary"
+            size="sm"
+            className="text-sm"
+            onClick={() => void promptInstall()}
+          >
+            <Download />
+            Install
+          </Button>
+        )}
+        <button
+          type="button"
+          aria-label="Dismiss"
+          onClick={dismiss}
+          className="text-muted hover:text-surface-1-contrast inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-current/10"
         >
-          <Download />
-          Install
-        </Button>
-      )}
-      <button
-        type="button"
-        aria-label="Dismiss"
-        onClick={dismiss}
-        className="text-muted hover:text-surface-1-contrast inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-current/10"
-      >
-        <X className="size-4" />
-      </button>
-    </aside>
+          <X className="size-4" />
+        </button>
+      </AlertDescription>
+    </Alert>
   );
 };
 

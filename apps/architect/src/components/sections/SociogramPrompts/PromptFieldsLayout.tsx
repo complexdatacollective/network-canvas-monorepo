@@ -3,6 +3,8 @@ import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
 import withCreateVariableHandlers from '~/components/enhancers/withCreateVariableHandler';
@@ -13,20 +15,16 @@ import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
-import Tip from '../../Tip';
 import { getSortOrderOptionGetter } from '../CategoricalBinPrompts/optionGetters';
 import withCanCreateEdgesState from './withCanCreateEdgesState';
 import withLayoutOptions from './withLayoutOptions';
-
 type LayoutVariableOption = {
   isUsed?: boolean;
   label: string;
   type: string;
   value: string;
 };
-
 type VariableOption = VariableOptions[number];
-
 type PromptFieldsProps = {
   form: string;
   entity: string;
@@ -40,7 +38,6 @@ type PromptFieldsProps = {
   type: string;
   variableOptions: VariableOption[];
 };
-
 const PromptFields = ({
   form,
   entity,
@@ -55,20 +52,19 @@ const PromptFields = ({
   const hasSortOrder = useSelector((state: RootState) =>
     getFormValue(state, 'sortOrder'),
   );
-
   const handleToggleSortOrder = (nextState: boolean) => {
     if (!nextState) {
       dispatch(change(form, 'sortOrder', null));
     }
-
     return true;
   };
-
   return (
     <Section
       title="Layout"
       summary={
-        <p>This variable stores the position of nodes on the sociogram.</p>
+        <Paragraph>
+          This variable stores the position of nodes on the sociogram.
+        </Paragraph>
       }
       group
       layout="vertical"
@@ -78,13 +74,13 @@ const PromptFields = ({
           fieldName="layout.layoutVariable"
           description="Layout Variable"
         />
-        <Tip type="info">
-          <p>
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
             If you use the same layout variable across all prompts, the position
             of nodes will be automatically set as the participant moves between
             tasks.
-          </p>
-        </Tip>
+          </AlertDescription>
+        </Alert>
         <ValidatedField
           name="layout.layoutVariable"
           component={VariablePicker}
@@ -104,12 +100,12 @@ const PromptFields = ({
         toggleable
         title="Sort Unplaced Nodes"
         summary={
-          <p>
+          <Paragraph>
             Nodes are stacked in a bucket until your participant drags them into
             position. You can control the order of this stack, which will
             determine the order that your participant is able to position the
             nodes.
-          </p>
+          </Paragraph>
         }
         startExpanded={!!hasSortOrder}
         handleToggleChange={handleToggleSortOrder}
@@ -138,7 +134,6 @@ const PromptFields = ({
     </Section>
   );
 };
-
 export default compose<
   ComponentProps<typeof PromptFields>,
   typeof PromptFields

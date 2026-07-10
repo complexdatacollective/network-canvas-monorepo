@@ -1,35 +1,35 @@
 import { useMemo } from 'react';
 import { change, formValueSelector } from 'redux-form';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { cx } from '~/utils/cva';
 
 import ShapePicker from './ShapePicker';
-
 const DISCRETE_TYPES = new Set(['categorical', 'ordinal', 'boolean']);
 const BREAKPOINT_TYPES = new Set(['number', 'scalar']);
 const ELIGIBLE_TYPES = new Set([...DISCRETE_TYPES, ...BREAKPOINT_TYPES]);
-
 type Variable = {
   name: string;
   type: string;
-  options?: Array<{ label: string; value: string | number | boolean }>;
+  options?: Array<{
+    label: string;
+    value: string | number | boolean;
+  }>;
 };
-
 type ShapeVariableMappingProps = {
   form: string;
   nodeColor?: string;
 };
-
 const ShapeVariableMapping = ({
   form,
   nodeColor,
 }: ShapeVariableMappingProps) => {
   const dispatch = useAppDispatch();
   const formSelector = useMemo(() => formValueSelector(form), [form]);
-
   const variables = useAppSelector((state: RootState) =>
     formSelector(state, 'variables'),
   ) as Record<string, Variable> | undefined;
@@ -39,12 +39,17 @@ const ShapeVariableMapping = ({
     | {
         variable?: string;
         type?: string;
-        map?: Array<{ value: string | number | boolean; shape: string }>;
-        thresholds?: Array<{ value: number; shape: string }>;
+        map?: Array<{
+          value: string | number | boolean;
+          shape: string;
+        }>;
+        thresholds?: Array<{
+          value: number;
+          shape: string;
+        }>;
       }
     | undefined;
   const enabled = !!dynamic;
-
   const eligibleVariables = useMemo(() => {
     if (!variables) return [];
     return Object.entries(variables)
@@ -56,7 +61,6 @@ const ShapeVariableMapping = ({
         options: v.options,
       }));
   }, [variables]);
-
   const variableOptions = useMemo(() => {
     return eligibleVariables.map((v) => ({
       label: v.name,
@@ -64,11 +68,9 @@ const ShapeVariableMapping = ({
       type: v.type,
     }));
   }, [eligibleVariables]);
-
   const selectedVarId = dynamic?.variable;
   const selectedVar =
     selectedVarId && variables ? variables[selectedVarId] : undefined;
-
   const handleToggle = () => {
     if (enabled) {
       dispatch(change(form, 'shape.dynamic', undefined));
@@ -76,11 +78,9 @@ const ShapeVariableMapping = ({
       dispatch(change(form, 'shape.dynamic', {}));
     }
   };
-
   const handleVariableChange = (varId: string) => {
     const variable = variables?.[varId];
     if (!variable) return;
-
     const mappingType = DISCRETE_TYPES.has(variable.type)
       ? 'discrete'
       : 'breakpoints';
@@ -102,7 +102,6 @@ const ShapeVariableMapping = ({
       );
     }
   };
-
   const handleDiscreteShapeChange = (
     value: string | number | boolean,
     shape: string,
@@ -111,8 +110,10 @@ const ShapeVariableMapping = ({
     const existingIndex = currentMap.findIndex(
       (entry) => JSON.stringify(entry.value) === JSON.stringify(value),
     );
-
-    let newMap: Array<{ value: string | number | boolean; shape: string }>;
+    let newMap: Array<{
+      value: string | number | boolean;
+      shape: string;
+    }>;
     if (existingIndex >= 0) {
       newMap = currentMap.map((entry, i) =>
         i === existingIndex ? { ...entry, shape } : entry,
@@ -120,10 +121,8 @@ const ShapeVariableMapping = ({
     } else {
       newMap = [...currentMap, { value, shape }];
     }
-
     dispatch(change(form, 'shape.dynamic.map', newMap));
   };
-
   const handleThresholdValueChange = (index: number, value: number) => {
     const currentThresholds = dynamic?.thresholds ?? [];
     const newThresholds = currentThresholds.map((t, i) =>
@@ -132,7 +131,6 @@ const ShapeVariableMapping = ({
     newThresholds.sort((a, b) => a.value - b.value);
     dispatch(change(form, 'shape.dynamic.thresholds', newThresholds));
   };
-
   const handleThresholdShapeChange = (index: number, shape: string) => {
     const currentThresholds = dynamic?.thresholds ?? [];
     const newThresholds = currentThresholds.map((t, i) =>
@@ -140,20 +138,17 @@ const ShapeVariableMapping = ({
     );
     dispatch(change(form, 'shape.dynamic.thresholds', newThresholds));
   };
-
   const handleAddThreshold = () => {
     const currentThresholds = dynamic?.thresholds ?? [];
     if (currentThresholds.length >= 2) return;
     const newThresholds = [...currentThresholds, { value: 0, shape: 'square' }];
     dispatch(change(form, 'shape.dynamic.thresholds', newThresholds));
   };
-
   const handleRemoveThreshold = (index: number) => {
     const currentThresholds = dynamic?.thresholds ?? [];
     const newThresholds = currentThresholds.filter((_, i) => i !== index);
     dispatch(change(form, 'shape.dynamic.thresholds', newThresholds));
   };
-
   const getDiscreteOptions = (): Array<{
     label: string;
     value: string | number | boolean;
@@ -170,14 +165,12 @@ const ShapeVariableMapping = ({
     }
     return selectedVar.options ?? [];
   };
-
   const getShapeForValue = (value: string | number | boolean): string => {
     const entry = dynamic?.map?.find(
       (m) => JSON.stringify(m.value) === JSON.stringify(value),
     );
     return entry?.shape ?? '';
   };
-
   return (
     <div className="mt-5">
       <div className="border-surface-2 border-t py-2.5">
@@ -203,9 +196,9 @@ const ShapeVariableMapping = ({
             />
           </button>
         </label>
-        <p className="text-muted mt-1 text-sm">
+        <Paragraph className="text-muted mt-1 text-sm">
           Override the default shape based on the value of a node's attribute.
-        </p>
+        </Paragraph>
       </div>
 
       {enabled && (
@@ -222,9 +215,13 @@ const ShapeVariableMapping = ({
 
           {selectedVar && dynamic?.type === 'discrete' && (
             <div className="flex flex-col gap-1">
-              <h4 className="text-muted mb-1 block text-base text-sm font-semibold">
+              <Heading
+                level="h4"
+                margin="none"
+                className="text-muted mb-1 block text-sm font-semibold"
+              >
                 Shape for each value
-              </h4>
+              </Heading>
               {getDiscreteOptions().map((option) => {
                 const currentShape = getShapeForValue(option.value);
                 return (
@@ -248,16 +245,22 @@ const ShapeVariableMapping = ({
               {getDiscreteOptions().some(
                 (opt) => !getShapeForValue(opt.value),
               ) && (
-                <p className="text-warning mt-1 text-xs">
+                <Paragraph className="text-warning mt-1 text-xs">
                   Some values are unmapped and will use the default shape.
-                </p>
+                </Paragraph>
               )}
             </div>
           )}
 
           {selectedVar && dynamic?.type === 'breakpoints' && (
             <div className="flex flex-col gap-1">
-              <h4 className="text-muted mb-1 block text-sm">Thresholds</h4>
+              <Heading
+                level="h4"
+                margin="none"
+                className="text-muted mb-1 block text-sm"
+              >
+                Thresholds
+              </Heading>
               <div className="bg-surface-1 flex items-center gap-2.5 px-2.5 py-1 opacity-60">
                 <span className="flex-1 text-sm">Below first threshold</span>
                 <span className="text-muted text-xs">uses default shape</span>
@@ -325,5 +328,4 @@ const ShapeVariableMapping = ({
     </div>
   );
 };
-
 export default ShapeVariableMapping;

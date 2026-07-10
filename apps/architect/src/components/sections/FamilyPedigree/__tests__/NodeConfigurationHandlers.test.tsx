@@ -21,8 +21,8 @@ vi.mock('react-redux', () => {
   };
 });
 
-// redux-form selectors: report a node type so the Form Fields EditableList (and
-// thus its onChange -> handleChangeFields wiring) renders.
+// redux-form selectors report a node type so the Form Fields DialogArrayField
+// and its onBeforeSave -> handleChangeFields wiring render.
 vi.mock('redux-form', () => ({
   formValueSelector: () => () => 'person',
   getFormValues: () => () => ({}),
@@ -55,7 +55,20 @@ vi.mock('~/components/EditorLayout', () => ({
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   default: () => null,
 }));
-vi.mock('~/components/Form/ValidatedField', () => ({ default: () => null }));
+vi.mock('~/components/Form/ValidatedField', () => ({
+  default: ({
+    name,
+    component,
+    componentProps,
+  }: {
+    name: string;
+    component: React.ComponentType<Record<string, unknown>>;
+    componentProps?: Record<string, unknown>;
+  }) =>
+    name === 'nodeConfig.form'
+      ? createElement(component, componentProps)
+      : null,
+}));
 vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
 vi.mock('~/components/NewVariableWindow', () => ({
   default: () => null,
@@ -72,14 +85,17 @@ vi.mock('~/components/sections/Form/FieldFields', () => ({
 }));
 vi.mock('./NodeFormFieldPreview', () => ({ default: () => null }));
 
-// Expose the onChange handler (which calls handleChangeFields) as a button so
-// the test can invoke it with a synthetic field-edit payload.
-let capturedOnChange: ((value: unknown) => unknown) | undefined;
-vi.mock('~/components/EditableList', () => ({
-  formName: 'editable-list-form',
-  default: ({ onChange }: { onChange: (value: unknown) => unknown }) => {
-    capturedOnChange = onChange;
-    return <div data-testid="editable-list" />;
+// Capture the pre-save handler so the test can invoke it with a synthetic
+// field-edit payload.
+let capturedOnBeforeSave: ((value: unknown) => unknown) | undefined;
+vi.mock('~/components/Form/DialogArrayField', () => ({
+  default: ({
+    onBeforeSave,
+  }: {
+    onBeforeSave: (value: unknown) => unknown;
+  }) => {
+    capturedOnBeforeSave = onBeforeSave;
+    return <div data-testid="dialog-array-field" />;
   },
 }));
 
@@ -103,7 +119,7 @@ beforeEach(() => {
   createVariable.mockReset();
   getVariable.mockReset();
   changeForm.mockReset();
-  capturedOnChange = undefined;
+  capturedOnBeforeSave = undefined;
   Object.assign(stubProps, {
     updateVariable,
     createVariable,
@@ -131,9 +147,13 @@ describe('FamilyPedigree NodeConfiguration handleChangeFields', () => {
       encrypted: true,
     });
     renderSection();
-    expect(screen.getByTestId('editable-list')).toBeInTheDocument();
+    expect(screen.getByTestId('dialog-array-field')).toBeInTheDocument();
 
-    await capturedOnChange!({ variable: 'v1', component: 'Text', label: 'x' });
+    await capturedOnBeforeSave!({
+      variable: 'v1',
+      component: 'Text',
+      label: 'x',
+    });
 
     expect(updateVariable).toHaveBeenCalledTimes(1);
     const arg = updateVariable.mock.calls[0]![0];
@@ -151,7 +171,7 @@ describe('FamilyPedigree NodeConfiguration handleChangeFields', () => {
     let thrown: unknown;
     await waitFor(async () => {
       try {
-        await capturedOnChange!({
+        await capturedOnBeforeSave!({
           _createNewVariable: '...',
           component: 'Text',
         });

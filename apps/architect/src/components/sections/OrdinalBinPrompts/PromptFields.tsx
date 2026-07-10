@@ -1,6 +1,8 @@
 import type React from 'react';
 import { compose } from 'react-recompose';
 
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import { ValidatedField } from '~/components/Form';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
@@ -14,20 +16,17 @@ import { getSortOrderOptionGetter } from '~/components/sections/CategoricalBinPr
 import withVariableHandlers from '~/components/sections/CategoricalBinPrompts/withVariableHandlers';
 import withVariableOptions from '~/components/sections/CategoricalBinPrompts/withVariableOptions';
 import PromptText from '~/components/sections/PromptText';
-import Tip from '~/components/Tip';
 import { getFieldId } from '~/utils/issues';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
-
 type SelectOption = {
   label: string;
   value: string;
   type?: string;
   [key: string]: unknown;
 };
-
 type PromptFieldsProps = {
   variableOptions?: SelectOption[];
   entity: string;
@@ -37,7 +36,6 @@ type PromptFieldsProps = {
   variable?: string | null;
   optionsForVariableDraft?: SelectOption[];
 };
-
 const PromptFields = ({
   changeForm,
   entity,
@@ -52,35 +50,32 @@ const PromptFields = ({
     type,
     initialValues: { name: '', type: '' },
   };
-
   const handleCreatedNewVariable = (...args: unknown[]) => {
-    const [id, params] = args as [string, { field: string }];
+    const [id, params] = args as [
+      string,
+      {
+        field: string;
+      },
+    ];
     changeForm(form, params.field, id);
   };
-
   const [newVariableWindowProps, openNewVariableWindow] =
     useNewVariableWindowState(
       newVariableWindowInitialProps,
       handleCreatedNewVariable,
     );
-
   const handleNewVariable = (name: string) =>
     openNewVariableWindow(
       { initialValues: { name, type: 'ordinal' } },
       { field: 'variable' },
     );
-
   const ordinalVariableOptions = variableOptions.filter(
     ({ type: variableType }) => variableType === 'ordinal',
   );
-
   const getOptions = getSortOrderOptionGetter(variableOptions);
   const sortMaxItems = getOptions('property', undefined, []).length;
-
   const totalOptionsLength = optionsForVariableDraft?.length;
-
   const showVariableOptionsTip = totalOptionsLength > 5;
-
   return (
     <>
       <PromptText />
@@ -105,23 +100,24 @@ const PromptFields = ({
         <Section
           title="Variable Options"
           summary={
-            <p>
+            <Paragraph>
               Create <strong>up to 5</strong> options for this variable.
-            </p>
+            </Paragraph>
           }
           layout="vertical"
         >
           <Row>
             <div id={getFieldId('variableOptions')} />
             {showVariableOptionsTip && (
-              <Tip type="error">
-                <p>
+              <Alert variant="destructive" className="my-7">
+                <AlertTitle>Too many option values</AlertTitle>
+                <AlertDescription>
                   The ordinal bin interface is designed to use{' '}
-                  <strong>up to 5 option values </strong>. Using more will
-                  create a sub-optimal experience for participants, and might
-                  reduce data quality.
-                </p>
-              </Tip>
+                  <strong>up to 5 option values</strong>. Using more will create
+                  a sub-optimal experience for participants, and might reduce
+                  data quality.
+                </AlertDescription>
+              </Alert>
             )}
             <Options name="variableOptions" label="Options" />
           </Row>
@@ -130,10 +126,10 @@ const PromptFields = ({
       <Section
         title="Color"
         summary={
-          <p>
+          <Paragraph>
             Interviewer will render each option in your ordinal variable using a
             color gradient.
-          </p>
+          </Paragraph>
         }
         layout="vertical"
       >
@@ -170,7 +166,6 @@ const PromptFields = ({
     </>
   );
 };
-
 export default compose<PromptFieldsProps, Record<string, never>>(
   withVariableOptions,
   withVariableHandlers,

@@ -1,6 +1,9 @@
 import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import { ValidatedField } from '~/components/Form';
 import { Field as RichTextField } from '~/components/Form/Fields/RichText';
@@ -10,7 +13,6 @@ import NewVariableWindow, {
 } from '~/components/NewVariableWindow';
 import Options from '~/components/Options';
 import PromptText from '~/components/sections/PromptText';
-import Tip from '~/components/Tip';
 import { getFieldId } from '~/utils/issues';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -19,13 +21,11 @@ import BucketSortOrderSection from '../BucketSortOrderSection';
 import { getSortOrderOptionGetter } from './optionGetters';
 import withVariableHandlers from './withVariableHandlers';
 import withVariableOptions from './withVariableOptions';
-
 type VariableOption = {
   label: string;
   value: string;
   type: string;
 };
-
 type PromptFieldsProps = {
   changeForm: (form: string, field: string, value: unknown) => void;
   entity: string;
@@ -37,7 +37,6 @@ type PromptFieldsProps = {
   variable?: string;
   variableOptions?: VariableOption[];
 };
-
 const PromptFields = ({
   changeForm,
   entity,
@@ -54,51 +53,45 @@ const PromptFields = ({
     type,
     initialValues: { name: '', type: '' },
   };
-
   const handleCreatedNewVariable = (...args: unknown[]) => {
-    const [id, params] = args as [string, { field: string }];
+    const [id, params] = args as [
+      string,
+      {
+        field: string;
+      },
+    ];
     changeForm(form, params.field, id);
   };
-
   const handleToggleOtherVariable = (nextState: boolean) => {
     if (!nextState) {
       changeForm(form, 'otherVariable', null);
       changeForm(form, 'otherVariablePrompt', null);
       changeForm(form, 'otherOptionLabel', null);
     }
-
     return true;
   };
-
   const [newVariableWindowProps, openNewVariableWindow] =
     useNewVariableWindowState(
       newVariableWindowInitialProps,
       handleCreatedNewVariable,
     );
-
   const handleNewVariable = (name: string) =>
     openNewVariableWindow(
       { initialValues: { name, type: 'categorical' } },
       { field: 'variable' },
     );
-
   const categoricalVariableOptions = variableOptions.filter(
     ({ type: variableType }) => variableType === 'categorical',
   );
-
   const otherVariableOptions = variableOptions.filter(
     ({ type: variableType }) => variableType === 'text',
   );
-
   const getOptions = getSortOrderOptionGetter(variableOptions);
   const sortMaxItems = getOptions('property', undefined, []).length;
-
   const totalOptionsLength =
     optionsForVariableDraft &&
     optionsForVariableDraft.length + (otherVariable ? 1 : 0);
-
   const showVariableOptionsTip = totalOptionsLength > 8;
-
   return (
     <>
       <PromptText />
@@ -123,21 +116,24 @@ const PromptFields = ({
         </Row>
         {variable && (
           <Row>
-            <h4 id={getFieldId('options')}>Variable Options</h4>
-            <p>
+            <Heading level="h4" id={getFieldId('options')}>
+              Variable Options
+            </Heading>
+            <Paragraph>
               Create <strong>up to 8</strong> options for this variable.
-            </p>
+            </Paragraph>
             {showVariableOptionsTip && (
-              <Tip type="error">
-                <p>
+              <Alert variant="destructive" className="my-7">
+                <AlertTitle>Too many option values</AlertTitle>
+                <AlertDescription>
                   The categorical bin interface is designed to use{' '}
-                  <strong>up to 8 option values</strong> ( including an
+                  <strong>up to 8 option values</strong> (including an
                   &quot;other&quot; variable). Using more will create a
                   sub-optimal experience for participants, and might reduce data
                   quality. Consider grouping your variable options and capturing
                   further detail with follow-up questions.
-                </p>
-              </Tip>
+                </AlertDescription>
+              </Alert>
             )}
             <Options name="variableOptions" label="Options" />
           </Row>
@@ -147,13 +143,13 @@ const PromptFields = ({
         disabled={!variable}
         title='Follow-up "Other" Option'
         summary={
-          <p>
+          <Paragraph>
             You can optionally create an &quot;other&quot; option that triggers
             a follow-up dialog when nodes are dropped within it, and stores the
             value the participant enters in a designated variable. This feature
             may be useful in order to collect values you might not have listed
             above.
-          </p>
+          </Paragraph>
         }
         toggleable
         startExpanded={!!otherVariable}
@@ -221,7 +217,6 @@ const PromptFields = ({
     </>
   );
 };
-
 export default compose<PromptFieldsProps, Record<string, never>>(
   withVariableOptions,
   withVariableHandlers,

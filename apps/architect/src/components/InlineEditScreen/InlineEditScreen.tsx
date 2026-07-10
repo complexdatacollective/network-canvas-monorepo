@@ -1,10 +1,10 @@
 import { useCallback } from 'react';
 import { submit } from 'redux-form';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { Layout } from '~/components/EditorLayout';
-import Dialog from '~/components/NewComponents/Dialog';
 import { useAppDispatch } from '~/ducks/hooks';
-import { Button } from '~/lib/legacy-ui/components';
 
 import Form from './Form';
 
@@ -36,24 +36,19 @@ const InlineEditScreen = ({
   return (
     <Dialog
       open={show}
-      onOpenChange={(open) => {
-        if (!open) {
-          onCancel();
-        }
-      }}
+      closeDialog={onCancel}
       title={title ?? undefined}
+      size="editor"
       footer={
         <>
-          <Dialog.Close
-            nativeButton={false}
-            render={<Button color="platinum">Cancel</Button>}
-          />
-          <Button onClick={handleSubmit} color="sea-green">
+          <Button color="default" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} color="primary">
             Save and Close
           </Button>
         </>
       }
-      className="bg-surface-2"
     >
       <Layout>
         <Form form={form} onSubmit={onSubmit} initialValues={initialValues}>

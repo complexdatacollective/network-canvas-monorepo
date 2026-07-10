@@ -2,7 +2,7 @@ import { get } from 'es-toolkit/compat';
 import { useSelector } from 'react-redux';
 import { formValueSelector } from 'redux-form';
 
-import Badge from '~/components/Badge';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import { Markdown } from '~/components/Form/Fields';
 import { getColorForType } from '~/config/variables';
 import type { RootState } from '~/ducks/store';

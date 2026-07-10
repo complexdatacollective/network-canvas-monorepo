@@ -1,7 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render } from '@testing-library/react';
 import { noop } from 'es-toolkit/compat';
-import type React from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -14,12 +13,6 @@ vi.mock('../VariablePill', () => ({
   ),
   SimpleVariablePill: () => (
     <div data-testid="simple-variable-pill">SimpleVariablePill</div>
-  ),
-}));
-
-vi.mock('~/lib/legacy-ui/components', () => ({
-  Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
-    <button {...props}>{children}</button>
   ),
 }));
 

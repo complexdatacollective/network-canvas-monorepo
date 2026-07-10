@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import {
   GAMETE_ROLE_OPTIONS,
@@ -22,9 +23,7 @@ import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { optionsMatch } from '~/utils/variables';
-
 const edgeEntity: Entity = 'edge';
-
 // Variable pickers that reference the selected edge type's variables; they must
 // be cleared when the edge type changes so a saved stage never points at
 // variables belonging to the previous edge type.
@@ -34,23 +33,27 @@ const EDGE_DEPENDENT_VARIABLE_FIELDS = [
   'edgeConfig.isGestationalCarrierVariable',
   'edgeConfig.gameteRoleVariable',
 ];
-
 type VariableWindowInitialProps = {
   entity: Entity;
   type: string;
-  initialValues: { name: string; type: string };
+  initialValues: {
+    name: string;
+    type: string;
+  };
   lockedOptions: VariableOptions | null;
 };
-
 type VariableRowProps = {
   name: string;
   label: string;
   description: string;
-  options: { value: string; label: string; type?: string }[];
+  options: {
+    value: string;
+    label: string;
+    type?: string;
+  }[];
   onCreateOption: (name: string) => void;
   edgeType: string;
 };
-
 const VariableRow = ({
   name,
   label,
@@ -84,16 +87,13 @@ const VariableRow = ({
     </div>
   </div>
 );
-
 const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
   const formSelector = formValueSelector(form);
-
   const edgeType = useSelector(
     (state: RootState) =>
       formSelector(state, 'edgeConfig.type') as string | undefined,
   );
-
   // redux-form invokes a field's onChange prop as (event, newValue, previousValue).
   // A reselect of the current edge type must not clear the dependent variables.
   const handleResetDependentVariables = useCallback(
@@ -107,13 +107,11 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
     },
     [dispatch, form],
   );
-
   const edgeVariableOptions = useSelector((state: RootState) =>
     edgeType
       ? getVariableOptionsForSubject(state, { entity: 'edge', type: edgeType })
       : [],
   );
-
   const relationshipTypeCompatible = edgeVariableOptions.filter(
     (v) =>
       v.type === 'categorical' &&
@@ -131,24 +129,25 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
     (v) =>
       v.type === 'categorical' && optionsMatch(v.options, GAMETE_ROLE_OPTIONS),
   );
-
   const handleCreatedVariable = (...args: unknown[]) => {
-    const [id, params] = args as [string, { field: string }];
+    const [id, params] = args as [
+      string,
+      {
+        field: string;
+      },
+    ];
     dispatch(change(form, params.field, id));
   };
-
   const initialWindowProps: VariableWindowInitialProps = {
     entity: edgeEntity,
     type: edgeType ?? '',
     initialValues: { name: '', type: '' },
     lockedOptions: null,
   };
-
   const [variableWindowProps, openVariableWindow] = useNewVariableWindowState(
     initialWindowProps,
     handleCreatedVariable,
   );
-
   const handleNewRelationshipTypeVariable = (name: string) =>
     openVariableWindow(
       {
@@ -157,19 +156,16 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
       },
       { field: 'edgeConfig.relationshipTypeVariable' },
     );
-
   const handleNewIsActiveVariable = (name: string) =>
     openVariableWindow(
       { initialValues: { name, type: 'boolean' }, lockedOptions: null },
       { field: 'edgeConfig.isActiveVariable' },
     );
-
   const handleNewGestationalCarrierVariable = (name: string) =>
     openVariableWindow(
       { initialValues: { name, type: 'boolean' }, lockedOptions: null },
       { field: 'edgeConfig.isGestationalCarrierVariable' },
     );
-
   const handleNewGameteRoleVariable = (name: string) =>
     openVariableWindow(
       {
@@ -181,25 +177,24 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
       },
       { field: 'edgeConfig.gameteRoleVariable' },
     );
-
   return (
     <>
       <Section
         title="Edge Configuration"
         summary={
           <>
-            <p>
+            <Paragraph>
               The family pedigree is stored as a network: each family member is
               a node, and every parent or partner connection between two people
               is an edge. This interface needs an edge type so that it can
               record those connections in your codebook — including the
               parentage it infers automatically — and so that the structure of
               the pedigree appears in your exported data.
-            </p>
-            <p>
+            </Paragraph>
+            <Paragraph>
               Select the edge type to use, along with the variables that store
               the details of each relationship.
-            </p>
+            </Paragraph>
           </>
         }
       >
@@ -256,5 +251,4 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
     </>
   );
 };
-
 export default EdgeConfiguration;

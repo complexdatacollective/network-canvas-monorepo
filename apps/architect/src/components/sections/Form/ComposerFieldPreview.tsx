@@ -1,7 +1,7 @@
 import { get } from 'es-toolkit/compat';
 import { useSelector } from 'react-redux';
 
-import Badge from '~/components/Badge';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import { getColorForType } from '~/config/variables';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';

@@ -1,16 +1,22 @@
+import { ArrowRight } from 'lucide-react';
+import type { ComponentType } from 'react';
 import { useCallback } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import Assets from '~/components/AssetBrowser/Assets';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { Layout, Section } from '~/components/EditorLayout';
-import { Text } from '~/components/Form/Fields';
+import { FrescoReduxField } from '~/components/Form';
 import ValidatedField from '~/components/Form/ValidatedField';
-import Dialog from '~/components/NewComponents/Dialog';
 import { useAppDispatch } from '~/ducks/hooks';
-import Button from '~/lib/legacy-ui/components/Button';
 
 import { addApiKeyAsset } from '../../../../ducks/modules/protocol/assetManifest';
 import BasicForm from '../../../BasicForm';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
 
 type APIKeyBrowserProps = {
   show?: boolean;
@@ -20,7 +26,6 @@ type APIKeyBrowserProps = {
   onCancel?: () => void;
   close: () => void;
 };
-
 const APIKeyBrowser = ({
   show = true,
   close,
@@ -30,7 +35,6 @@ const APIKeyBrowser = ({
   const formName = 'create-api-key';
   const dispatch = useAppDispatch();
   const [preview, handleShowPreview] = useExternalDataPreview();
-
   const handleSelectAsset = useCallback(
     (assetId: string) => {
       onSelect(assetId);
@@ -38,7 +42,6 @@ const APIKeyBrowser = ({
     },
     [onSelect, close],
   );
-
   const handleSubmit = useCallback(
     (formValues: Record<string, unknown>) => {
       const { keyName, keyValue } = formValues as {
@@ -49,46 +52,47 @@ const APIKeyBrowser = ({
     },
     [dispatch],
   );
-
   return (
     <Dialog
       open={show}
-      onOpenChange={(open) => !open && close()}
+      closeDialog={close}
       title="API Key Browser"
+      size="workspace"
       footer={
-        <Dialog.Close
-          nativeButton={false}
-          render={<Button color="platinum">Cancel</Button>}
-        />
+        <Button color="default" onClick={close}>
+          Cancel
+        </Button>
       }
     >
       <BasicForm form={formName} onSubmit={handleSubmit}>
         <Layout>
           <Section title="Create New API Key" layout="vertical">
-            <p className="text-sm text-current/70">
+            <Paragraph className="text-sm text-current/70">
               This key is saved inside your protocol and is included, in plain
               text, in any exported <code>.netcanvas</code> file. Anyone you
               share the exported protocol with can read it, so only use a key
               you are comfortable distributing.
-            </p>
+            </Paragraph>
             <div data-name="API Key Name" />
             <ValidatedField
-              component={Text}
+              label="API Key Name"
+              component={FrescoReduxField}
               name="keyName"
               validation={{ required: true }}
               componentProps={{
-                label: 'API Key Name',
+                fieldComponent: FrescoInputField,
                 type: 'text',
                 placeholder: 'Name this key',
               }}
             />
             <div data-name="API Key Value" />
             <ValidatedField
-              component={Text}
+              label="API Key"
+              component={FrescoReduxField}
               name="keyValue"
               validation={{ required: true }}
               componentProps={{
-                label: 'API Key',
+                fieldComponent: FrescoInputField,
                 type: 'text',
                 placeholder: 'Enter an API Key...',
               }}
@@ -98,8 +102,8 @@ const APIKeyBrowser = ({
                 key="save"
                 type="submit"
                 iconPosition="right"
-                icon="arrow-right"
-                color="sea-green"
+                icon={<ArrowRight />}
+                color="primary"
               >
                 Create Key
               </Button>
@@ -120,5 +124,4 @@ const APIKeyBrowser = ({
     </Dialog>
   );
 };
-
 export default APIKeyBrowser;

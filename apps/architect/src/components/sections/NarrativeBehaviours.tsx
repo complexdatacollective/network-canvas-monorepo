@@ -1,11 +1,11 @@
 import { Field, FormSection } from 'redux-form';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import { Row, Section } from '~/components/EditorLayout';
 import { Toggle } from '~/components/Form/Fields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
 import IssueAnchor from '../IssueAnchor';
-
 const NarrativeBehaviours = (_props: StageEditorSectionProps) => (
   <Section title="Narrative Behaviours">
     <FormSection name="behaviours">
@@ -14,7 +14,7 @@ const NarrativeBehaviours = (_props: StageEditorSectionProps) => (
           fieldName="automaticLayout"
           description="Automatic layout"
         />
-        <h4>Automatic layout</h4>
+        <Heading level="h4">Automatic layout</Heading>
         <Field
           name="automaticLayout"
           label="Position nodes automatically using a force-directed layout"
@@ -23,7 +23,7 @@ const NarrativeBehaviours = (_props: StageEditorSectionProps) => (
       </Row>
       <Row>
         <IssueAnchor fieldName="freeDraw" description="Free draw" />
-        <h4>Free-draw</h4>
+        <Heading level="h4">Free-draw</Heading>
         <Field
           name="freeDraw"
           label="Allow drawing on the canvas"
@@ -35,7 +35,7 @@ const NarrativeBehaviours = (_props: StageEditorSectionProps) => (
           fieldName="allowRepositioning"
           description="Allow repositioning"
         />
-        <h4>Allow repositioning</h4>
+        <Heading level="h4">Allow repositioning</Heading>
         <Field
           name="allowRepositioning"
           label="Allow nodes to be repositioned"
@@ -45,5 +45,4 @@ const NarrativeBehaviours = (_props: StageEditorSectionProps) => (
     </FormSection>
   </Section>
 );
-
 export default NarrativeBehaviours;

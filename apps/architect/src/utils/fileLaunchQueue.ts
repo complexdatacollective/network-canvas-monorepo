@@ -6,27 +6,25 @@
 // Safari and Firefox never define window.launchQueue; everything here is a
 // silent no-op there.
 
-import { generalErrorDialog } from '~/ducks/modules/userActions/dialogs';
-import { store } from '~/ducks/store';
-
 let pendingFiles: File[] = [];
+let pendingReadFailures: number[] = [];
 let pendingLaunchReads = 0;
 const listeners = new Set<() => void>();
+const readFailureListeners = new Set<() => void>();
 let initialized = false;
 
 const emit = () => {
   for (const listener of listeners) listener();
 };
 
+const emitReadFailure = () => {
+  for (const listener of readFailureListeners) listener();
+};
+
 // Surface a user-facing error when the OS hands us handles we can't read.
 const reportLaunchReadFailure = (failedCount: number): void => {
-  const noun = failedCount === 1 ? 'file' : 'files';
-  void store.dispatch(
-    generalErrorDialog(
-      'Could not open file',
-      `${failedCount} launched ${noun} could not be read. The ${noun} may have been moved, deleted, or become unavailable since ${failedCount === 1 ? 'it was' : 'they were'} opened.`,
-    ),
-  );
+  pendingReadFailures = [...pendingReadFailures, failedCount];
+  emitReadFailure();
 };
 
 export const initFileLaunchCapture = (): void => {
@@ -84,6 +82,15 @@ export const subscribeLaunchFiles = (listener: () => void): (() => void) => {
   };
 };
 
+export const subscribeLaunchReadFailures = (
+  listener: () => void,
+): (() => void) => {
+  readFailureListeners.add(listener);
+  return () => {
+    readFailureListeners.delete(listener);
+  };
+};
+
 // Stable snapshot for useSyncExternalStore: the array identity only changes
 // when the contents change.
 export const getLaunchFiles = (): File[] => pendingFiles;
@@ -97,5 +104,13 @@ export const takeLaunchFiles = (): File[] => {
   if (taken.length === 0) return taken;
   pendingFiles = [];
   emit();
+  return taken;
+};
+
+export const takeLaunchReadFailures = (): number[] => {
+  const taken = pendingReadFailures;
+  if (taken.length === 0) return taken;
+  pendingReadFailures = [];
+  emitReadFailure();
   return taken;
 };

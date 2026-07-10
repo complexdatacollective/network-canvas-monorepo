@@ -6,6 +6,7 @@ import { REMEMBER_REHYDRATED } from 'redux-remember';
 
 import { getProtocol } from '~/selectors/protocol';
 import { assetDb } from '~/utils/assetDB';
+import { reportAutosaveFailure } from '~/utils/autosaveFailureQueue';
 import { getStoredProtocol, putStoredProtocol } from '~/utils/protocolLibrary';
 
 import { reconcileRehydratedActiveProtocol } from '../activeProtocolPersistence';
@@ -21,7 +22,6 @@ import {
   setActiveProtocolId,
 } from '../modules/app';
 import type { RootState } from '../modules/root';
-import { generalErrorDialog } from '../modules/userActions/dialogs';
 import type { AppDispatch } from '../store';
 
 const DEBOUNCE_MS = 600;
@@ -54,7 +54,7 @@ const writeLocks = new Map<string, Promise<void>>();
 // Persist a snapshot. A silent autosave failure would let the user keep editing
 // while their work isn't being saved, so surface it to them (throttled) and log
 // the details rather than dropping the promise.
-const flush = (snapshot: ProtocolSnapshot, dispatch: AppDispatch): void => {
+const flush = (snapshot: ProtocolSnapshot): void => {
   const { protocol } = snapshot;
   if (!protocol) {
     return;
@@ -92,14 +92,7 @@ const flush = (snapshot: ProtocolSnapshot, dispatch: AppDispatch): void => {
       console.error('Autosave to protocol library failed', error);
       if (!autosaveErrorNotified) {
         autosaveErrorNotified = true;
-        void dispatch(
-          generalErrorDialog(
-            'Autosave failed',
-            "Your recent changes could not be saved to this browser's " +
-              'storage, which can happen if it is full or unavailable. To ' +
-              'avoid losing work, download a copy of your protocol.',
-          ),
-        );
+        reportAutosaveFailure();
       }
     }
   })();
@@ -176,7 +169,6 @@ startAppListening({
     );
   },
   effect: (_action, listenerApi) => {
-    const { dispatch } = listenerApi;
     const state = listenerApi.getState();
     const protocol = getProtocol(state);
     const id = getActiveProtocolId(state);
@@ -199,13 +191,13 @@ startAppListening({
       // The active protocol changed mid-window: flush the previous edits now so
       // they aren't discarded when we re-debounce for the new protocol.
       if (pending.snapshot.id !== snapshot.id) {
-        flush(pending.snapshot, dispatch);
+        flush(pending.snapshot);
       }
     }
 
     const timer = setTimeout(() => {
       pending = null;
-      flush(snapshot, dispatch);
+      flush(snapshot);
     }, DEBOUNCE_MS);
 
     pending = { timer, snapshot };

@@ -23,10 +23,12 @@ vi.mock('~/components/IssueAnchor', () => ({
 vi.mock('~/components/Form/ValidatedField', () => ({
   default: ({
     name,
+    label,
     componentProps,
     validation,
   }: {
     name: string;
+    label?: string;
     componentProps?: { label?: string };
     validation?: Record<string, unknown>;
   }) => (
@@ -34,7 +36,7 @@ vi.mock('~/components/Form/ValidatedField', () => ({
       data-testid={`field-${name}`}
       data-required={validation?.required ? 'true' : 'false'}
     >
-      {componentProps?.label}
+      {label ?? componentProps?.label}
     </div>
   ),
 }));

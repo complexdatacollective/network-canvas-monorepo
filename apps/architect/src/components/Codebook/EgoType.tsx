@@ -2,18 +2,17 @@ import { useState } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 
+import Button from '@codaco/fresco-ui/Button';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import type { RootState } from '~/ducks/store';
-import { Button } from '~/lib/legacy-ui/components';
 
 import { getEntityProperties } from './helpers';
 import Variables from './Variables';
-
 type UsageItem = {
   label: string;
   id?: string;
 };
-
 type Variable = {
   id: string;
   name: string;
@@ -22,25 +21,21 @@ type Variable = {
   usage: UsageItem[];
   usageString?: string;
 };
-
 type VariablesComponentProps = {
   variables: Variable[];
   entity: string;
 };
-
 type EgoTypeProps = {
   variables?: Record<string, Variable>;
   search?: string;
   unusedOnly?: boolean;
 };
-
 const EgoType = ({
   variables = {},
   search = '',
   unusedOnly = false,
 }: EgoTypeProps) => {
   const [showAddVariable, setShowAddVariable] = useState(false);
-
   const variableArray = Object.values(variables);
   const term = search.trim().toLowerCase();
   const filteredVariables = variableArray.filter((variable) => {
@@ -52,16 +47,14 @@ const EgoType = ({
     }
     return true;
   });
-
   const VariablesTyped =
     Variables as unknown as React.ComponentType<VariablesComponentProps>;
-
   return (
     <div className="py-5">
       <div className="flex justify-end">
         <Button
-          color="sea-green"
-          size="small"
+          color="primary"
+          size="sm"
           onClick={() => setShowAddVariable(true)}
         >
           Add variable
@@ -70,11 +63,11 @@ const EgoType = ({
       {filteredVariables.length > 0 ? (
         <VariablesTyped variables={filteredVariables} entity="ego" />
       ) : (
-        <p className="text-muted mt-5">
+        <Paragraph className="text-muted mt-5">
           {variableArray.length === 0
             ? 'No ego variables yet.'
             : 'No ego variables match the current filter.'}
-        </p>
+        </Paragraph>
       )}
       <NewVariableWindow
         show={showAddVariable}
@@ -86,18 +79,15 @@ const EgoType = ({
     </div>
   );
 };
-
 const mapStateToProps = (state: RootState) => {
   const entityProperties = getEntityProperties(state, { entity: 'ego' });
   return entityProperties;
 };
-
 // Props passed in by the parent; `variables` is injected by `connect`.
 type EgoOwnProps = {
   search?: string;
   unusedOnly?: boolean;
 };
-
 export default compose<EgoTypeProps, EgoOwnProps>(connect(mapStateToProps))(
   EgoType,
 );

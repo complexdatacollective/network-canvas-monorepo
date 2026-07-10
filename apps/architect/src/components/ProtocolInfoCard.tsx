@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
 import { Pattern } from '@codaco/art';
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { TextArea } from '~/components/Form/Fields';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -87,7 +88,13 @@ const ProtocolInfoCard = () => {
             newline, and newlines are stripped so the name stays single-line. */}
         <textarea
           rows={1}
-          className="font-heading text-navy-taupe placeholder:text-navy-taupe/50 focus-visible:ring-sea-green field-sizing-content w-full resize-none overflow-hidden rounded-sm border-none bg-transparent p-0 text-4xl leading-tight font-black outline-none focus-visible:ring-2 focus-visible:outline-none"
+          className={headingVariants({
+            level: 'h1',
+            variant: 'page-heading',
+            margin: 'none',
+            className:
+              'text-navy-taupe placeholder:text-navy-taupe/50 focus-visible:ring-sea-green field-sizing-content w-full resize-none overflow-hidden rounded-sm border-none bg-transparent p-0 font-black outline-none focus-visible:ring-2 focus-visible:outline-none',
+          })}
           value={localName}
           onChange={(e) => setLocalName(e.target.value.replace(/\n/g, ' '))}
           onKeyDown={(e) => {

@@ -67,8 +67,6 @@ describe('VariableSpotlight', () => {
       '[data-testid="spotlight-list-item"]',
     );
 
-    // The "Existing Variables" divider is a section header, not a selectable row.
-    expect(baseElement).toHaveTextContent('Existing Variables');
     // Rows are sorted by label: "Just a number" before "Name".
     expect(items[0]).toHaveTextContent('Just a number');
     expect(items[0]?.querySelector('.icon')).toBeInTheDocument();

@@ -1,8 +1,8 @@
+import { TriangleAlert } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
-import Spinner from '~/components/Spinner';
-import { Icon } from '~/lib/legacy-ui/components';
+import Spinner from '@codaco/fresco-ui/Spinner';
 import { cva, cx } from '~/utils/cva';
 
 import { acceptsFiles, getRejectedExtensions } from './helpers';
@@ -230,7 +230,7 @@ const Dropzone = ({
       </div>
       {state.error && (
         <div className="bg-warning mt-1 flex items-center overflow-hidden rounded-[0.3rem] px-7 py-1 opacity-100 transition-opacity duration-150 [&_.icon]:mr-1 [&_.icon]:h-[1.2rem] [&_.icon]:w-[1.2rem]">
-          <Icon name="warning" />
+          <TriangleAlert aria-hidden />
           {state.error}
         </div>
       )}

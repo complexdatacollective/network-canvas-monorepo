@@ -15,17 +15,7 @@ vi.mock('~/utils/bundleProtocol', () => ({
     downloadProtocolAsNetcanvasMock(...args),
 }));
 
-const openDialogMock = vi.fn((config: unknown) => {
-  const thunk = () => ({ unwrap: () => Promise.resolve(true) });
-  return Object.assign(thunk, {
-    type: 'dialogs/openDialog',
-    payload: config,
-  });
-});
-
-vi.mock('~/ducks/modules/dialogs', () => ({
-  openDialog: (config: unknown) => openDialogMock(config),
-}));
+const openDialogMock = globalThis.__architectDialogMocks.openDialog;
 
 vi.mock('~/ducks/modules/userActions/userActions', () => ({
   deleteLibraryProtocol: vi.fn(() => ({
@@ -107,10 +97,12 @@ describe('<LibraryPanel /> download', () => {
     });
 
     const warningCall = openDialogMock.mock.calls.find(
-      ([config]) => (config as { type?: string }).type === 'Warning',
+      ([config]) =>
+        (config as { type?: string; intent?: string }).type === 'acknowledge' &&
+        (config as { type?: string; intent?: string }).intent === 'warning',
     );
     expect(warningCall).toBeDefined();
-    expect((warningCall![0] as { message: string }).message).toContain(
+    expect((warningCall![0] as { description: string }).description).toContain(
       'missing-image.png',
     );
   });
@@ -129,7 +121,9 @@ describe('<LibraryPanel /> download', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     const warningCall = openDialogMock.mock.calls.find(
-      ([config]) => (config as { type?: string }).type === 'Warning',
+      ([config]) =>
+        (config as { type?: string; intent?: string }).type === 'acknowledge' &&
+        (config as { type?: string; intent?: string }).intent === 'warning',
     );
     expect(warningCall).toBeUndefined();
   });

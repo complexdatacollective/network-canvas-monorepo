@@ -1,25 +1,26 @@
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import MultiSelect from '~/components/Form/MultiSelect';
 import { useAppDispatch } from '~/ducks/hooks';
-
 type BinSortOrderSectionProps = {
   form: string;
   disabled?: boolean;
   maxItems?: number;
-  optionGetter: () => Array<{ label: string; value: string }>;
+  optionGetter: () => Array<{
+    label: string;
+    value: string;
+  }>;
   summary?: React.ReactNode;
 };
-
 const getDefaultSummary = () => (
-  <p>
+  <Paragraph>
     You may also configure one or more sort rules that determine the order that
     nodes are listed after they have been placed into a bin.
-  </p>
+  </Paragraph>
 );
-
 const BinSortOrderSection = ({
   form,
   disabled = false,
@@ -32,15 +33,12 @@ const BinSortOrderSection = ({
   const hasBinSortOrder = useSelector((state: Record<string, unknown>) =>
     getFormValue(state, 'binSortOrder'),
   );
-
   const handleToggleChange = (nextState: boolean) => {
     if (!nextState) {
       dispatch(change(form, 'binSortOrder', null));
     }
-
     return true;
   };
-
   return (
     <Section
       title="Bin Sort Order"
@@ -62,5 +60,4 @@ const BinSortOrderSection = ({
     </Section>
   );
 };
-
 export default BinSortOrderSection;

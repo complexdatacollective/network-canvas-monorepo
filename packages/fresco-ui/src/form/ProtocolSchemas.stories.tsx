@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { JSONContent } from '@tiptap/core';
-import { GripVertical, PencilIcon, X } from 'lucide-react';
+import { PencilIcon, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { action } from 'storybook/actions';
@@ -19,6 +19,7 @@ import { cx } from '../utils/cva';
 import Field from './Field/Field';
 import UnconnectedField from './Field/UnconnectedField';
 import ArrayField, {
+  ArrayFieldDragHandle,
   type ArrayFieldEditorProps,
   type ArrayFieldItemProps,
 } from './fields/ArrayField/ArrayField';
@@ -79,6 +80,10 @@ function NameGeneratorPromptItem({
   onEdit,
   onDelete,
   dragControls,
+  index,
+  itemCount,
+  onMove,
+  disabled,
 }: ArrayFieldItemProps<NameGeneratorPrompt>) {
   // Hide item when when it's a new draft
   if (item._draft) {
@@ -92,22 +97,25 @@ function NameGeneratorPromptItem({
       layout
     >
       {isSortable && (
-        <motion.div
-          layout
-          onPointerDown={(e) => dragControls.start(e)}
-          className="touch-none"
-        >
-          <GripVertical className="w-8 cursor-grab" />
-        </motion.div>
+        <ArrayFieldDragHandle
+          dragControls={dragControls}
+          index={index}
+          itemCount={itemCount}
+          onMove={onMove}
+          disabled={disabled}
+        />
       )}
       <motion.div layout="position" className="flex-1">
         <RichTextRenderer content={item.text} />
         {item.additionalAttributes && item.additionalAttributes.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {item.additionalAttributes.map(
-              (attr: { variable: string; value: boolean }, index: number) => (
+              (
+                attr: { variable: string; value: boolean },
+                attributeIndex: number,
+              ) => (
                 <span
-                  key={`${attr.variable}-${index}`}
+                  key={`${attr.variable}-${attributeIndex}`}
                   className={cx(
                     'rounded p-2 text-xs',
                     attr.value
@@ -273,6 +281,10 @@ function AdditionalAttributeItem({
   onEdit,
   onDelete,
   dragControls,
+  index,
+  itemCount,
+  onMove,
+  disabled,
 }: ArrayFieldItemProps<AdditionalAttribute>) {
   // Local state for inline editing
   const [variable, setVariable] = useState(item?.variable);
@@ -354,13 +366,13 @@ function AdditionalAttributeItem({
             exit={{ opacity: 0 }}
           >
             {isSortable && (
-              <motion.div
-                layout
-                onPointerDown={(e) => dragControls.start(e)}
-                className="touch-none"
-              >
-                <GripVertical className="size-4 cursor-grab" />
-              </motion.div>
+              <ArrayFieldDragHandle
+                dragControls={dragControls}
+                index={index}
+                itemCount={itemCount}
+                onMove={onMove}
+                disabled={disabled}
+              />
             )}
             <motion.div layout className="flex flex-1 items-center gap-3">
               <code className="bg-input-contrast/10 rounded px-2 py-0.5 text-sm">

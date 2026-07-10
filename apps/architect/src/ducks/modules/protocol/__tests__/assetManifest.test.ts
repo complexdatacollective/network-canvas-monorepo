@@ -6,7 +6,6 @@ import appReducer, {
   getStorageUnavailable,
   setStorageUnavailable,
 } from '~/ducks/modules/app';
-import dialogsReducer from '~/ducks/modules/dialogs';
 
 import reducer, { importAssetAsync, test } from '../assetManifest';
 
@@ -32,7 +31,6 @@ const createTestStore = () =>
     reducer: {
       app: appReducer,
       assetManifest: reducer,
-      dialogs: dialogsReducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
@@ -117,28 +115,22 @@ describe('protocol/assetManifest', () => {
       expect(getStorageUnavailable(store.getState())).toBe(false);
     });
 
-    it('dispatches duplicate rows warning dialog when duplicateCount > 0', async () => {
+    it('returns duplicate row metadata when duplicateCount > 0', async () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 3 });
 
       const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
-      await store.dispatch(importAssetAsync(file));
+      const result = await store.dispatch(importAssetAsync(file)).unwrap();
 
-      const dialogs = store.getState().dialogs.dialogs;
-      expect(dialogs).toHaveLength(1);
-      expect(dialogs[0]).toMatchObject({
-        type: 'Warning',
-        title: 'Warning: roster.csv contains duplicate rows',
-      });
+      expect(result.duplicateCount).toBe(3);
     });
 
-    it('does not dispatch duplicate rows warning dialog when duplicateCount is 0', async () => {
+    it('returns zero duplicate rows when duplicateCount is 0', async () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
 
       const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
-      await store.dispatch(importAssetAsync(file));
+      const result = await store.dispatch(importAssetAsync(file)).unwrap();
 
-      const dialogs = store.getState().dialogs.dialogs;
-      expect(dialogs).toHaveLength(0);
+      expect(result.duplicateCount).toBe(0);
     });
   });
 

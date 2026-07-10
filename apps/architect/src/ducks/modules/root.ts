@@ -6,7 +6,6 @@ import { reducer as formReducer } from 'redux-form';
 import createTimeline from '../middleware/timeline';
 import activeProtocol from './activeProtocol';
 import app from './app';
-import dialogs from './dialogs';
 import protocols from './protocols';
 import protocolValidation from './protocolValidation';
 import stageEditorDraft from './stageEditorDraft';
@@ -33,7 +32,6 @@ const timelineOptions = {
 
 export const rootReducer = combineReducers({
   app,
-  dialogs,
   form: formReducer,
   activeProtocol: createTimeline(activeProtocol, timelineOptions),
   protocols,

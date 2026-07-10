@@ -174,9 +174,6 @@ describe('protocol.stages', () => {
 
         await store.dispatch(actionCreators.deleteStage('fp'));
 
-        expect(
-          dispatched.some((a) => a.type.startsWith('dialogs/openDialog')),
-        ).toBe(true);
         expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
           false,
         );

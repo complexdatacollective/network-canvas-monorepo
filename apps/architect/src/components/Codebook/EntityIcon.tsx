@@ -1,8 +1,8 @@
+import Icon from '@codaco/fresco-ui/Icon';
 import Node, {
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
-import { Icon } from '~/lib/legacy-ui/components';
 import { cva } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
@@ -20,6 +20,12 @@ const nodeSizeMap: Record<EntityIconSize, 'xxs' | 'xs' | 'sm'> = {
   default: 'sm',
   small: 'xs',
   tiny: 'xxs',
+};
+
+const edgeSizeMap: Record<EntityIconSize, string> = {
+  default: 'size-24',
+  small: 'size-16',
+  tiny: 'size-8',
 };
 
 const graphicVariants = cva({
@@ -56,6 +62,7 @@ const renderIcon = (
       return (
         <Icon
           name="links"
+          className={edgeSizeMap[size]}
           style={
             color
               ? ({

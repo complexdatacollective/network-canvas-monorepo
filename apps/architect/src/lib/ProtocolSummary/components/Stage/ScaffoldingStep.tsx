@@ -1,22 +1,20 @@
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import Markdown from '~/components/Form/Fields/Markdown';
 
 import MiniTable from '../MiniTable';
-
 type ScaffoldingStepProps = {
   scaffoldingStep?: {
     text: string;
     showQuickStartModal: boolean;
   } | null;
 };
-
 const ScaffoldingStep = ({ scaffoldingStep = null }: ScaffoldingStepProps) => {
   if (!scaffoldingStep) {
     return null;
   }
-
   return (
     <>
-      <h4>Scaffolding Step Instructions</h4>
+      <Heading level="h4">Scaffolding Step Instructions</Heading>
       <Markdown label={scaffoldingStep.text} />
       <MiniTable
         rotated
@@ -30,5 +28,4 @@ const ScaffoldingStep = ({ scaffoldingStep = null }: ScaffoldingStepProps) => {
     </>
   );
 };
-
 export default ScaffoldingStep;

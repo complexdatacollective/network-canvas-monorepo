@@ -2,29 +2,30 @@ import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import MultiSelect from '~/components/Form/MultiSelect';
-import Tip from '~/components/Tip';
 import { useAppDispatch } from '~/ducks/hooks';
-
 type BucketSortOrderSectionProps = {
   form: string;
   disabled?: boolean;
   maxItems?: number;
-  optionGetter: () => Array<{ label: string; value: string }>;
+  optionGetter: () => Array<{
+    label: string;
+    value: string;
+  }>;
   summary?: React.ReactNode;
 };
-
 const getDefaultSummary = () => (
-  <p>
+  <Paragraph>
     Nodes are stacked in the bucket before they are placed by the participant.
     You may optionally configure a list of rules to determine how nodes are
     sorted in the bucket when the task starts, which will determine the order
     that your participant places them into bins. Interviewer will default to
     using the order in which nodes were named.
-  </p>
+  </Paragraph>
 );
-
 const BucketSortOrderSection = ({
   form,
   disabled = false,
@@ -37,15 +38,12 @@ const BucketSortOrderSection = ({
   const hasBucketSortOrder = useSelector((state: Record<string, unknown>) =>
     formSelector(state, 'bucketSortOrder'),
   );
-
   const handleToggleChange = (nextState: boolean) => {
     if (!nextState) {
       dispatch(change(form, 'bucketSortOrder', null));
     }
-
     return true;
   };
-
   return (
     <Section
       title="Bucket Sort Order"
@@ -56,12 +54,12 @@ const BucketSortOrderSection = ({
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
-      <Tip>
-        <p>
+      <Alert variant="info" className="my-7">
+        <AlertDescription>
           Use the asterisk property to sort by the order that nodes were
           created.
-        </p>
-      </Tip>
+        </AlertDescription>
+      </Alert>
       <MultiSelect
         name="bucketSortOrder"
         properties={[{ fieldName: 'property' }, { fieldName: 'direction' }]}
@@ -71,5 +69,4 @@ const BucketSortOrderSection = ({
     </Section>
   );
 };
-
 export default BucketSortOrderSection;

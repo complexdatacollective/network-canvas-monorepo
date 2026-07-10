@@ -8,7 +8,7 @@ import StorageUnavailableBanner from '~/components/StorageUnavailableBanner';
 import { cx } from '~/utils/cva';
 import { getScrollPosition, setScrollPosition } from '~/utils/scrollPositions';
 
-import PrintProtocolAction from './PrintProtocolAction';
+import { usePrintProtocolAction } from './PrintProtocolAction';
 import ProjectActions from './ProjectActions';
 
 type ProjectLayoutProps = {
@@ -34,6 +34,7 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
   };
 
   const isSummary = location === '/protocol/summary';
+  const printAction = usePrintProtocolAction();
 
   return (
     <div
@@ -50,7 +51,7 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       {children}
       <ProjectActions
         readOnly={isSummary}
-        additionalActions={isSummary ? <PrintProtocolAction /> : null}
+        additionalItems={isSummary ? [printAction] : undefined}
       />
     </div>
   );

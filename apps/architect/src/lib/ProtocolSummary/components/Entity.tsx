@@ -1,12 +1,12 @@
+import Heading from '@codaco/fresco-ui/typography/Heading';
+
 import EntityBadge from './EntityBadge';
 import Variables from './Variables';
-
 type EntityProps = {
   type?: string;
   entity?: string;
   variables?: Record<string, unknown>;
 };
-
 const Entity = ({ type, entity, variables }: EntityProps) => (
   <div
     className="page-break-marker mb-14 break-before-page"
@@ -18,7 +18,7 @@ const Entity = ({ type, entity, variables }: EntityProps) => (
 
     {entity === 'ego' && (
       <div>
-        <h1>Ego</h1>
+        <Heading level="h1">Ego</Heading>
       </div>
     )}
 
@@ -27,5 +27,4 @@ const Entity = ({ type, entity, variables }: EntityProps) => (
     </div>
   </div>
 );
-
 export default Entity;

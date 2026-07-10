@@ -137,7 +137,7 @@ export default function ModalPopup({
           className={className}
           {...props}
           {...animation}
-          style={{ borderRadius: 28, ...style }}
+          style={style}
         />
       }
     >

@@ -1,11 +1,11 @@
 import { DateTime } from 'luxon';
 import { useContext } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import networkCanvasLogo from '~/images/NC-Mark.svg';
 
 import ProtocolCard from './ProtocolCard';
 import SummaryContext from './SummaryContext';
-
 const Cover = () => {
   const { protocol, protocolName } = useContext(SummaryContext);
 
@@ -18,14 +18,14 @@ const Cover = () => {
   return (
     <div className="relative flex h-(--page-size-height) flex-col items-center justify-center print:h-screen">
       <div className="border-platinum absolute top-0 left-0 flex w-full items-center justify-between border-b-2">
-        <h2>Protocol Summary Document</h2>
+        <Heading level="h2">Protocol Summary Document</Heading>
         <div className="flex items-center justify-end">
           <img
             className="size-19"
             src={networkCanvasLogo}
             alt="A Network Canvas project"
           />
-          <h2>Network Canvas</h2>
+          <Heading level="h2">Network Canvas</Heading>
         </div>
       </div>
       <ProtocolCard
@@ -37,9 +37,13 @@ const Cover = () => {
       <br />
       <br />
       <br />
-      <h2 className="text-xs font-semibold tracking-widest uppercase">
+      <Heading
+        level="label"
+        variant="all-caps"
+        className="text-xs font-semibold"
+      >
         Document Created: {now}
-      </h2>
+      </Heading>
     </div>
   );
 };

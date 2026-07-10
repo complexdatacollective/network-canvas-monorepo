@@ -1,5 +1,7 @@
 import { compose } from 'react-recompose';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
@@ -8,16 +10,13 @@ import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequ
 import withSubject from '../../enhancers/withSubject';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import ValidatedField from '../../Form/ValidatedField';
-import Tip from '../../Tip';
 import withOptions from './withOptions';
 import withQuickAddVariable from './withQuickAddVariable';
-
 type VariableOption = {
   label: string;
   value: string;
   type?: string;
 };
-
 type QuickAddProps = StageEditorSectionProps & {
   disabled?: boolean;
   entity: string;
@@ -30,7 +29,6 @@ type QuickAddProps = StageEditorSectionProps & {
   type?: string | null;
   quickAdd?: string | null;
 };
-
 const QuickAdd = ({
   disabled = false,
   entity,
@@ -42,14 +40,12 @@ const QuickAdd = ({
   if (!type) {
     return null;
   }
-
-  // The Tip nudges the user to store the quick-add value in a variable named
+  // The alert nudges the user to store the quick-add value in a variable named
   // "name". Once they've done so, the recommendation is satisfied — hide it.
   const selectedOption = options.find(
     (option) => option.value === quickAdd || option.label === quickAdd,
   );
   const hasNameVariable = selectedOption?.label.toLowerCase() === 'name';
-
   return (
     <Section
       disabled={disabled}
@@ -57,19 +53,19 @@ const QuickAdd = ({
       title="Quick Add Variable"
       id="issue-form"
       summary={
-        <p>
+        <Paragraph>
           Choose which variable to use to store the value of the quick add form.
-        </p>
+        </Paragraph>
       }
     >
       {!hasNameVariable && (
-        <Tip type="info">
-          <p>
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
             Use a variable called &quot;name&quot; here, unless you have a good
             reason not to. Interviewer will then automatically use this variable
             as the label for the node in the interview.
-          </p>
-        </Tip>
+          </AlertDescription>
+        </Alert>
       )}
       <ValidatedField
         name="quickAdd"
@@ -87,7 +83,6 @@ const QuickAdd = ({
     </Section>
   );
 };
-
 export default compose<QuickAddProps, StageEditorSectionProps>(
   withSubject,
   withDisabledSubjectRequired,

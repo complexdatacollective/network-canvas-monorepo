@@ -31,10 +31,8 @@ export const getCodebookProperties = (
   );
 
 export const normalizeField = (field: Record<string, unknown>) =>
-  // Keep `id` so the list item retains a stable, unique React key: it is the
-  // key for OrderedList's motion Reorder/AnimatePresence, so stripping it makes
-  // keys fall back to shifting positional indices and breaks drag/animation on
-  // reorder + delete of a non-last field.
+  // Keep `id` so DialogArrayField can retain the item's stable identity across
+  // edits, reorders, and deletes.
   omit(field, ['_createNewVariable', ...CODEBOOK_PROPERTIES]);
 
 // Merge item with variable info from codebook

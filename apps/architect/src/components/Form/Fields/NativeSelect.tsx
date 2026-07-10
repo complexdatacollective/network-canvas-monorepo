@@ -1,41 +1,37 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
 import { sortBy } from 'es-toolkit/compat';
+import { TriangleAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useMemo, useState } from 'react';
 import { untouch } from 'redux-form';
 
-import { Text } from '~/components/Form/Fields';
-import { useAppDispatch } from '~/ducks/hooks';
-import { Button } from '~/lib/legacy-ui/components';
-import Icon from '~/lib/legacy-ui/components/Icon';
-import { cx } from '~/utils/cva';
-import { getValidator } from '~/utils/validations';
-
+import Button from '@codaco/fresco-ui/Button';
 // Inline data-URI chevron preserved from native-select.css. Lives in a constant
 // to keep the JSX readable.
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import { Text } from '~/components/Form/Fields';
+import { useAppDispatch } from '~/ducks/hooks';
+import { cx } from '~/utils/cva';
+import { getValidator } from '~/utils/validations';
 const CHEVRON_BACKGROUND_IMAGE =
   'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236D6F76%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")';
-
 type Option = {
   label: string;
   value: string;
   disabled?: boolean;
 };
-
 type InputProps = {
   onChange: (value: string | null) => void;
   onBlur?: () => void;
   value?: string | null;
   name: string;
 };
-
 type MetaProps = {
   invalid?: boolean;
   error?: string | null;
   touched?: boolean;
   form: string;
 };
-
 type NativeSelectProps = {
   className?: string;
   label?: string | null;
@@ -55,7 +51,6 @@ type NativeSelectProps = {
   meta?: MetaProps;
   entity?: string;
 };
-
 const NativeSelect: React.FC<NativeSelectProps> = ({
   label = null,
   options = [],
@@ -85,16 +80,12 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
   const [newOptionValue, setNewOptionValue] = useState<string | null>(null);
   const [newOptionError, setNewOptionError] = useState<string | false>(false);
   const dispatch = useAppDispatch();
-
   const { onBlur, ...inputProps } = input;
   const { invalid = false, error = null, touched = false, form } = meta;
-
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
-
     if (value === '_create') {
       inputProps.onChange(null);
-
       // Setting input to null above will 'touch' the select, triggering validation
       // which we don't want yet. We 'un-touch' the input to resolve this.
       dispatch(untouch(form, inputProps.name) as UnknownAction);
@@ -102,76 +93,60 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
         onCreateNew();
         return;
       }
-
       setShowCreateOptionForm(true);
       return;
     }
-
     if (value === '_placeholder') {
       inputProps.onChange(null);
       return;
     }
-
     inputProps.onChange(value);
   };
-
   const resetForm = () => {
     setShowCreateOptionForm(false);
     setNewOptionValue(null);
     setNewOptionError(false);
   };
-
   const handleCreateOption = () => {
     if (!onCreateOption || !newOptionValue) return;
-
     const newValue = newOptionValue;
     resetForm();
     return onCreateOption(newValue);
   };
-
   const isValidCreateOption = useCallback(
     (value?: string | null): boolean => {
       if (!value) return true;
-
       const validationErrors = getValidator(validation || {})(value);
-
       if (validationErrors) {
         setNewOptionError(validationErrors);
         return false;
       }
-
       // True if option matches the label prop of the supplied object
       const matchLabel = ({ label: variableLabel }: Option) =>
         variableLabel &&
         value &&
         variableLabel.toLowerCase() === value.toLowerCase();
-
       const alreadyExists = options.some(matchLabel);
       const isReserved = reserved.some(matchLabel);
-
       if (alreadyExists || isReserved) {
         setNewOptionError(
           `Variable name "${value}" is already defined on entity type ${entity}`,
         );
         return false;
       }
-
       setNewOptionError(false);
       return true;
     },
     [validation, options, reserved, entity],
   );
-
   // Do we have a value in the create new Text field that is not submitted?
   const valueButNotSubmitted = newOptionValue !== null && showCreateOptionForm;
-
   const notSubmittedError = useMemo(
     () =>
       valueButNotSubmitted &&
       'You must click "create" to finish creating this variable.',
     [valueButNotSubmitted],
   );
-
   /**
    * This passes through validation errors from the select to the Text field for
    * creating new options. It also has to handle when the create new option form
@@ -190,7 +165,6 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
    *   - newOptionError: error message from Text field variable validation
    *   - error: parent select error message. Will usually be "Required"
    */
-
   const calculateMeta = useMemo(() => {
     const localInvalid = !isValidCreateOption(newOptionValue);
     return {
@@ -214,20 +188,16 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
     notSubmittedError,
     isValidCreateOption,
   ]);
-
   const sortedOptions = useMemo(
     () => (sortOptionsByLabel ? sortBy(options, 'label') : options),
     [options, sortOptionsByLabel],
   );
-
   const variants = {
     show: { opacity: 1 },
     hide: { opacity: 0 },
     transition: { duration: 0.5 },
   };
-
   const hasError = !!(invalid && touched && error);
-
   return (
     <motion.div
       className={cx('flex-1', disabled && 'cursor-not-allowed', className)}
@@ -262,7 +232,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
             />
             <div className="flex items-center justify-end [&_button]:mr-2.5 [&_button]:min-w-40 [&_button:last-of-type]:mr-0">
               <Button
-                color="platinum"
+                color="default"
                 onClick={() => setShowCreateOptionForm(false)}
               >
                 Cancel
@@ -283,7 +253,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
             exit="hide"
             animate="show"
           >
-            {label && <h4>{label}</h4>}
+            {label && <Heading level="h4">{label}</Heading>}
             <select
               className={cx(
                 'm-0 block min-h-5 w-full max-w-full px-5 py-2.5',
@@ -325,7 +295,7 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
             </select>
             {hasError && (
               <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-1 [&_svg]:max-h-5">
-                <Icon name="warning" />
+                <TriangleAlert aria-hidden />
                 {error}
               </div>
             )}
@@ -335,5 +305,4 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
     </motion.div>
   );
 };
-
 export default NativeSelect;

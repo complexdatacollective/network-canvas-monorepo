@@ -1,13 +1,12 @@
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import AssignAttributes from '~/components/AssignAttributes';
 import { Row, Section } from '~/components/EditorLayout';
 import PromptText from '~/components/sections/PromptText';
-
 type PromptFieldsProps = {
   form: string;
   entity: string | null;
   type: string | null;
 };
-
 const PromptFields = ({
   form,
   entity = null,
@@ -19,11 +18,11 @@ const PromptFields = ({
       <Section
         title="Assign Additional Variables"
         summary={
-          <p>
+          <Paragraph>
             This feature allows you to assign a variable and associated value to
             any nodes created on this prompt. You could then use this variable
             in your skip logic or stage filtering rules.
-          </p>
+          </Paragraph>
         }
         layout="vertical"
       >
@@ -41,5 +40,4 @@ const PromptFields = ({
     </>
   );
 };
-
 export default PromptFields;

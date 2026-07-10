@@ -1,6 +1,7 @@
 import { range } from 'es-toolkit';
+import { TriangleAlert } from 'lucide-react';
 
-import Icon from '~/lib/legacy-ui/components/Icon';
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
@@ -84,7 +85,13 @@ const ColorPicker = ({
     <div className="m-0 [&>h4]:m-0">
       <div>
         {label && (
-          <div className="font-heading text-text mt-10 mb-5 font-semibold">
+          <div
+            className={headingVariants({
+              level: 'h4',
+              margin: 'none',
+              className: 'text-text mt-10 mb-5 font-semibold',
+            })}
+          >
             {label}
           </div>
         )}
@@ -98,7 +105,7 @@ const ColorPicker = ({
         </div>
         {showError && (
           <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-1 [&_svg]:max-h-5">
-            <Icon name="warning" />
+            <TriangleAlert aria-hidden />
             {error}
           </div>
         )}

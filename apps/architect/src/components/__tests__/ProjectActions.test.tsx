@@ -19,28 +19,7 @@ vi.mock('wouter', async () => {
   };
 });
 
-const openDialogMock = vi.fn((config: unknown) => ({
-  type: 'dialogs/openDialog',
-  payload: config,
-}));
-
-vi.mock('~/ducks/modules/dialogs', () => ({
-  actionCreators: {
-    openDialog: (config: unknown) => {
-      const thunk = () => {
-        openDialogMock(config);
-        const result = Promise.resolve({
-          type: 'dialogs/openDialog/fulfilled',
-          payload: true,
-        });
-        return Object.assign(result, {
-          unwrap: () => Promise.resolve(true),
-        });
-      };
-      return thunk;
-    },
-  },
-}));
+const openDialogMock = globalThis.__architectDialogMocks.openDialog;
 
 const undoMock = vi.fn(() => ({ type: 'activeProtocol/undo' }));
 const redoMock = vi.fn(() => ({ type: 'activeProtocol/redo' }));
@@ -152,12 +131,12 @@ describe('<ProjectActions />', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockLocation.mockReturnValue('/protocol');
-    openDialogMock.mockClear();
     undoMock.mockClear();
     redoMock.mockClear();
     clearActiveProtocolMock.mockClear();
     exportNetcanvasMock.mockClear();
     exportUnwrap.mockReset();
+    openDialogMock.mockClear();
     sourceAuthoringMock.enabled = false;
     sourceAuthoringMock.saveProtocolSource.mockReset();
     protocolLibraryMock.getStoredProtocol.mockReset();
@@ -184,8 +163,14 @@ describe('<ProjectActions />', () => {
     const store = createTestStore({ canUndo: false, canRedo: false });
     render(<ProjectActions />, { wrapper: wrap(store) });
 
-    expect(screen.getByRole('button', { name: /undo/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /redo/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /undo/i })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: /redo/i })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it('hides undo/redo when readOnly is set', () => {
@@ -196,11 +181,18 @@ describe('<ProjectActions />', () => {
     expect(screen.queryByRole('button', { name: /redo/i })).toBeNull();
   });
 
-  it('renders additionalActions between Return-to-start and Undo/Redo', () => {
+  it('renders additional items between Return-to-start and Undo/Redo', () => {
     const store = createTestStore();
     render(
       <ProjectActions
-        additionalActions={<button type="button">Print</button>}
+        additionalItems={[
+          {
+            type: 'button',
+            id: 'print',
+            label: 'Print',
+            onClick: vi.fn(),
+          },
+        ]}
       />,
       { wrapper: wrap(store) },
     );
@@ -210,7 +202,7 @@ describe('<ProjectActions />', () => {
 
   it('transitions Download → Downloading... → Downloaded during export flow', async () => {
     const store = createTestStore();
-    exportUnwrap.mockResolvedValueOnce(undefined);
+    exportUnwrap.mockResolvedValueOnce({ skippedAssets: [] });
 
     render(<ProjectActions />, { wrapper: wrap(store) });
 
@@ -280,9 +272,12 @@ describe('<ProjectActions />', () => {
       });
     });
 
-    const noticeCall = openDialogMock.mock.calls.find(
-      ([config]) => (config as { type?: string }).type === 'Notice',
+    const successCall = openDialogMock.mock.calls.find(
+      ([config]) =>
+        (config as { type?: string; title?: string }).type === 'acknowledge' &&
+        (config as { type?: string; title?: string }).title ===
+          'Protocol source saved',
     );
-    expect(noticeCall).toBeDefined();
+    expect(successCall).toBeDefined();
   });
 });

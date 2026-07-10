@@ -14,9 +14,6 @@ beforeAll(() => {
 vi.mock('~/components/Routes', () => ({
   default: () => <div data-testid="routes" />,
 }));
-vi.mock('~/components/DialogManager', () => ({
-  default: () => <div data-testid="dialog-manager" />,
-}));
 
 const mockStore = configureStore({
   reducer: {
@@ -36,7 +33,6 @@ const mockStore = configureStore({
       ui: { initialValues: null, restoring: false },
       history: { past: [], present: null, future: [] },
     }),
-    dialogs: () => ({ dialogs: [] }),
   },
 });
 
@@ -49,6 +45,5 @@ describe('<App />', () => {
     );
 
     expect(getByTestId('routes')).toBeInTheDocument();
-    expect(getByTestId('dialog-manager')).toBeInTheDocument();
   });
 });

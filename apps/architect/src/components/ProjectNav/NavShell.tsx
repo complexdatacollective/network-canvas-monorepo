@@ -9,15 +9,15 @@ import type React from 'react';
 import { useCallback, useId, useState } from 'react';
 import { useLocation } from 'wouter';
 
+import { IconButton } from '@codaco/fresco-ui/Button';
+import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Brand from '~/components/Brand';
-import Modal from '~/components/NewComponents/Modal';
 import { useRunOnce } from '~/hooks/useRunOnce';
-import { IconButton } from '~/lib/legacy-ui/components/Button';
 import { cx } from '~/utils/cva';
 
-export const NAV_SURFACE =
-  'pointer-events-auto bg-fresco-purple text-fresco-purple-contrast shadow-lg';
+const NAV_SURFACE =
+  'effect-shadow-md pointer-events-auto bg-fresco-purple text-fresco-purple-contrast';
 
 const containerVariants: Variants = {
   hidden: {
@@ -56,6 +56,15 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
   const [location, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const closeMenuFromLinkEvent = useCallback(
+    (target: EventTarget | null) => {
+      if (!(target instanceof Element)) return;
+      if (target.closest('a')) {
+        closeMenu();
+      }
+    },
+    [closeMenu],
+  );
   const inlineLayoutId = useId();
   const drawerLayoutId = useId();
 
@@ -70,7 +79,7 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
       <motion.div
         className={cx(
           NAV_SURFACE,
-          'phone-landscape:pr-10 phone-landscape:pl-4 mx-auto flex max-w-7xl flex-wrap items-center gap-5 rounded-full py-3 pr-6 pl-3',
+          'phone-landscape:pr-10 phone-landscape:pl-6 mx-auto flex max-w-7xl flex-wrap items-center gap-5 rounded-full py-3 pr-6 pl-6',
         )}
         variants={containerVariants}
         initial={animate ? 'hidden' : false}
@@ -122,9 +131,13 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
                   </div>
                   <LayoutGroup id={drawerLayoutId}>
                     <div
-                      onClick={(e) => {
-                        if ((e.target as HTMLElement).closest('a')) {
-                          closeMenu();
+                      role="presentation"
+                      onClick={(event) => {
+                        closeMenuFromLinkEvent(event.target);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          closeMenuFromLinkEvent(event.target);
                         }
                       }}
                       className="[&_a]:focusable [&_a]:hover:bg-surface-1-contrast/10 [&_a[aria-current=page]]:bg-sea-green/20 [&_a[aria-current=page]]:text-sea-green flex flex-1 flex-col items-start gap-1 p-4 [&_a]:flex [&_a]:min-h-11 [&_a]:w-full [&_a]:items-center [&_a]:gap-3 [&_a]:rounded-lg [&_a]:px-4 [&_a]:py-3 [&_a]:text-lg [&_a]:font-semibold [&_a]:no-underline [&_a]:transition-colors [&_a>[aria-hidden]]:hidden"

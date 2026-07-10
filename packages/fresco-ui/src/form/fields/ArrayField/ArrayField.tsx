@@ -1,4 +1,4 @@
-import { PlusIcon } from 'lucide-react';
+import { GripVerticalIcon, PlusIcon } from 'lucide-react';
 import {
   AnimatePresence,
   type DragControls,
@@ -10,6 +10,7 @@ import {
 import {
   type ComponentType,
   forwardRef,
+  type KeyboardEvent,
   type Ref,
   useCallback,
   useEffect,
@@ -18,8 +19,9 @@ import {
   useRef,
 } from 'react';
 
-import { MotionButton } from '../../../Button';
+import { IconButton, MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
+import { useAccessibilityAnnouncements } from '../../../dnd/useAccessibilityAnnouncements';
 import Surface from '../../../layout/Surface';
 import {
   controlVariants,
@@ -72,6 +74,8 @@ const getItemAnimationProps = {
  */
 export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
   item: Partial<WithItemProperties<T>>;
+  index: number;
+  itemCount: number;
   isNewItem: boolean;
   /** Save and exit editing mode. Use for inline editing pattern. */
   onChange: (value: T) => void;
@@ -80,13 +84,17 @@ export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
   onCancel: () => void;
   onDelete: () => void;
   onEdit: () => void;
+  onMove: (targetIndex: number) => void;
   isSortable: boolean;
   isBeingEdited: boolean;
+  disabled: boolean;
+  readOnly: boolean;
   dragControls: DragControls;
 };
 
 export type ArrayFieldEditorProps<T extends Record<string, unknown>> = {
   item: WithItemProperties<T> | undefined; // Undefined when no item is being edited
+  index: number | null;
   isNewItem: boolean;
   // Editors get onSave to reflect the fact that this should be called once
   // the user is done editing, rather than onChange which implies continuous updates.
@@ -99,6 +107,7 @@ export type ArrayFieldEditorProps<T extends Record<string, unknown>> = {
  */
 type ArrayFieldCustomProps<T extends Record<string, unknown>> = {
   sortable?: boolean;
+  maxItems?: number;
   itemClasses?:
     | string
     | ((item: WithItemProperties<T>, isBeingEdited: boolean) => string);
@@ -156,14 +165,64 @@ type ArrayFieldCustomProps<T extends Record<string, unknown>> = {
   immediateAdd?: boolean;
 };
 
-type ArrayFieldProps<T extends Record<string, unknown>> = CreateFormFieldProps<
-  T[],
-  'ul',
-  ArrayFieldCustomProps<T>
->;
+export type ArrayFieldProps<T extends Record<string, unknown>> =
+  CreateFormFieldProps<T[], 'ul', ArrayFieldCustomProps<T>>;
+
+export type ArrayFieldDragHandleProps = {
+  dragControls: DragControls;
+  index: number;
+  itemCount: number;
+  onMove: (targetIndex: number) => void;
+  disabled?: boolean;
+  label?: string;
+  className?: string;
+};
+
+/**
+ * Pointer drag handle with an arrow-key equivalent for sortable ArrayFields.
+ */
+export function ArrayFieldDragHandle({
+  dragControls,
+  index,
+  itemCount,
+  onMove,
+  disabled = false,
+  label = `Reorder item ${index + 1} of ${itemCount}`,
+  className,
+}: ArrayFieldDragHandleProps) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    onMove(index + (event.key === 'ArrowUp' ? -1 : 1));
+  };
+
+  return (
+    <IconButton
+      icon={<GripVerticalIcon />}
+      aria-label={label}
+      aria-keyshortcuts="ArrowUp ArrowDown"
+      title="Drag to reorder. Use the up and down arrow keys with the handle focused."
+      size="sm"
+      variant="text"
+      color="dynamic"
+      disabled={disabled}
+      className={cx('cursor-grab touch-none active:cursor-grabbing', className)}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={handleKeyDown}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        dragControls.start(event);
+      }}
+    />
+  );
+}
 
 type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   item: WithItemProperties<T>;
+  index: number;
+  itemCount: number;
   isSortable: boolean;
   isBeingEdited: boolean;
   isNewItem: boolean;
@@ -173,7 +232,10 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   onUpdateItem: (internalId: string, value: Partial<T>) => void;
   onDeleteItem: (internalId: string) => void;
   onEditItem: (internalId: string) => void;
+  onMoveItem: (internalId: string, targetIndex: number) => void;
   ItemComponent: ComponentType<ArrayFieldItemProps<T>>;
+  disabled: boolean;
+  readOnly: boolean;
   itemClasses?:
     | string
     | ((item: WithItemProperties<T>, isBeingEdited: boolean) => string);
@@ -186,17 +248,22 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
 function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   {
     item,
+    index,
+    itemCount,
     isSortable,
     isBeingEdited,
     isNewItem,
     hasMounted,
     onDeleteItem,
     onEditItem,
+    onMoveItem,
     onCancel,
     onChange,
     onUpdateItem,
     ItemComponent,
     itemClasses,
+    disabled,
+    readOnly,
   }: ArrayFieldItemWrapperProps<T>,
   ref: Ref<HTMLLIElement>,
 ) {
@@ -222,6 +289,11 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     [onEditItem, item._internalId],
   );
 
+  const onMove = useCallback(
+    (targetIndex: number) => onMoveItem(item._internalId, targetIndex),
+    [onMoveItem, item._internalId],
+  );
+
   return (
     <Surface
       as={Reorder.Item}
@@ -243,6 +315,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     >
       <ItemComponent
         item={item}
+        index={index}
+        itemCount={itemCount}
         isSortable={isSortable}
         isBeingEdited={isBeingEdited}
         onCancel={onCancel}
@@ -251,6 +325,9 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
         isNewItem={isNewItem}
         onDelete={onDelete}
         onEdit={onEdit}
+        onMove={onMove}
+        disabled={disabled}
+        readOnly={readOnly}
         dragControls={dragControls}
       />
     </Surface>
@@ -268,6 +345,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
   value = EMPTY_ARRAY as T[],
   onChange,
   sortable = false,
+  maxItems,
   getId,
   itemComponent: ItemComponent,
   editorComponent: EditorComponent,
@@ -293,6 +371,8 @@ export default function ArrayField<T extends Record<string, unknown>>({
   }, []);
 
   const { confirm } = useDialog();
+  const { announce } = useAccessibilityAnnouncements();
+  const isInteractionDisabled = (disabled ?? false) || (readOnly ?? false);
 
   const {
     items,
@@ -309,9 +389,33 @@ export default function ArrayField<T extends Record<string, unknown>>({
     isDraft,
   } = useArrayFieldItems(value, onChange, { getId });
 
+  const moveItem = useCallback(
+    (internalId: string, targetIndex: number) => {
+      if (isInteractionDisabled) return;
+
+      const currentIndex = items.findIndex(
+        (item) => item._internalId === internalId,
+      );
+      const boundedIndex = Math.max(0, Math.min(targetIndex, items.length - 1));
+      if (currentIndex === -1 || currentIndex === boundedIndex) return;
+
+      const reorderedItems = [...items];
+      const [movedItem] = reorderedItems.splice(currentIndex, 1);
+      if (!movedItem) return;
+      reorderedItems.splice(boundedIndex, 0, movedItem);
+      setItems(reorderedItems);
+      announce(
+        `Moved item ${currentIndex + 1} to position ${boundedIndex + 1} of ${items.length}.`,
+      );
+    },
+    [announce, isInteractionDisabled, items, setItems],
+  );
+
   // Handle delete with optional confirmation for non-draft items
   const requestDelete = useCallback(
     async (internalId: string) => {
+      if (isInteractionDisabled) return;
+
       // Always delete drafts immediately without confirmation
       if (isDraft(internalId)) {
         removeItem(internalId);
@@ -327,7 +431,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
         removeItem(internalId);
       }
     },
-    [confirmDelete, confirm, removeItem, isDraft],
+    [confirmDelete, confirm, removeItem, isDraft, isInteractionDisabled],
   );
 
   // When using an external editor, filter out draft items from the list
@@ -338,6 +442,13 @@ export default function ArrayField<T extends Record<string, unknown>>({
   );
 
   const id = useId();
+  const editingIndex = editingItem
+    ? items.findIndex((item) => item._internalId === editingItem._internalId)
+    : null;
+  const confirmedItemCount = items.filter((item) => !item._draft).length;
+  const isAtCapacity =
+    maxItems !== undefined && confirmedItemCount >= Math.max(0, maxItems);
+  const effectiveSortable = sortable && !isInteractionDisabled;
 
   // Extract conflicting event handlers and ref before spreading to motion component
   /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -367,7 +478,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
         <Reorder.Group
           axis="y"
           values={items}
-          onReorder={setItems}
+          onReorder={(reorderedItems) => {
+            if (effectiveSortable) setItems(reorderedItems);
+          }}
           className={arrayFieldVariants({
             state: getInputState(inputStateProps),
           })}
@@ -391,47 +504,65 @@ export default function ArrayField<T extends Record<string, unknown>>({
                 {emptyStateMessage}
               </motion.li>
             )}
-            {renderableItems.map((item) => (
-              <ArrayFieldItemWrapper
-                key={item._internalId}
-                item={item}
-                isSortable={sortable}
-                hasMounted={hasMountedRef.current}
-                onDeleteItem={requestDelete}
-                onEditItem={startEditing}
-                onChange={saveEditing}
-                onUpdateItem={updateItem}
-                isNewItem={!!item._draft}
-                isBeingEdited={editingItem?._internalId === item._internalId}
-                onCancel={cancelEditing}
-                ItemComponent={ItemComponent}
-                itemClasses={itemClasses}
-              />
-            ))}
+            {renderableItems.map((item) => {
+              const index = items.findIndex(
+                (candidate) => candidate._internalId === item._internalId,
+              );
+
+              return (
+                <ArrayFieldItemWrapper
+                  key={item._internalId}
+                  item={item}
+                  index={index}
+                  itemCount={items.length}
+                  isSortable={effectiveSortable}
+                  hasMounted={hasMountedRef.current}
+                  onDeleteItem={
+                    isInteractionDisabled ? () => undefined : requestDelete
+                  }
+                  onEditItem={
+                    isInteractionDisabled ? () => undefined : startEditing
+                  }
+                  onMoveItem={moveItem}
+                  onChange={
+                    isInteractionDisabled ? () => undefined : saveEditing
+                  }
+                  onUpdateItem={
+                    isInteractionDisabled ? () => undefined : updateItem
+                  }
+                  isNewItem={!!item._draft}
+                  isBeingEdited={editingItem?._internalId === item._internalId}
+                  onCancel={cancelEditing}
+                  ItemComponent={ItemComponent}
+                  itemClasses={itemClasses}
+                  disabled={disabled ?? false}
+                  readOnly={readOnly ?? false}
+                />
+              );
+            })}
           </AnimatePresence>
         </Reorder.Group>
-        <MotionButton
-          layout
-          key="add-button"
-          onClick={() =>
-            immediateAdd
-              ? addItem(itemTemplate() as T)
-              : startAdding(itemTemplate() as T)
-          }
-          icon={<PlusIcon />}
-          disabled={
-            (disabled ?? false) ||
-            (readOnly ?? false) ||
-            (!immediateAdd && !!editingItem)
-          }
-        >
-          {addButtonLabel}
-        </MotionButton>
+        {!isAtCapacity && (
+          <MotionButton
+            layout
+            key="add-button"
+            onClick={() =>
+              immediateAdd
+                ? addItem(itemTemplate() as T)
+                : startAdding(itemTemplate() as T)
+            }
+            icon={<PlusIcon />}
+            disabled={isInteractionDisabled || (!immediateAdd && !!editingItem)}
+          >
+            {addButtonLabel}
+          </MotionButton>
+        )}
         {EditorComponent && (
           <EditorComponent
             item={editingItem}
+            index={editingIndex}
             isNewItem={isAddingNew}
-            onSave={saveEditing}
+            onSave={isInteractionDisabled ? () => undefined : saveEditing}
             onCancel={cancelEditing}
           />
         )}

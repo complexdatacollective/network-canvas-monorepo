@@ -116,13 +116,33 @@ export type PopoverSegment = {
   children: React.ReactNode;
 } & SegmentContent;
 
+export type SegmentSize = 'sm' | 'md' | 'lg';
+export type ToolbarOrientation = 'horizontal' | 'vertical';
+
+export type ComponentSegmentRenderProps = {
+  size: SegmentSize;
+  orientation: ToolbarOrientation;
+};
+
+/**
+ * Renders a caller-supplied component as a segment inside the toolbar surface.
+ * Use this for composite controls whose interaction model is larger than a
+ * single toolbar button, such as a split button with its own popover trigger.
+ */
+export type ComponentSegment = {
+  type: 'component';
+  id: string;
+  component: React.ComponentType<ComponentSegmentRenderProps>;
+};
+
 export type ToolbarSegment =
   | ButtonSegment
   | ToggleSegment
   | GroupSegment
   | SeparatorSegment
   | MenuSegment
-  | PopoverSegment;
+  | PopoverSegment
+  | ComponentSegment;
 
 export type Position = { x: number; y: number };
 
@@ -131,9 +151,9 @@ export type SegmentedToolbarProps = {
   label: string;
   items: ToolbarSegment[];
   /** @default 'horizontal' */
-  orientation?: 'horizontal' | 'vertical';
+  orientation?: ToolbarOrientation;
   /** @default 'md' */
-  size?: 'sm' | 'md' | 'lg';
+  size?: SegmentSize;
   className?: string;
   /** @default false */
   draggable?: boolean;
@@ -150,9 +170,10 @@ export type SegmentedToolbarProps = {
   dragHandleLabel?: string;
 };
 
-// Layout only — the pill's surface colour, contrast, and shadow come from `Surface`.
+// Layout only — the pill's surface colour and contrast come from `Surface`.
+// A medium effect shadow keeps floating chrome elevated without a heavy halo.
 const rootLayoutVariants = cva({
-  base: 'flex w-fit items-center gap-1 rounded-full p-1.5',
+  base: 'effect-shadow-md flex w-fit items-center gap-1 rounded-full p-1.5',
   variants: {
     orientation: {
       horizontal: 'flex-row',
@@ -161,8 +182,6 @@ const rootLayoutVariants = cva({
   },
   defaultVariants: { orientation: 'horizontal' },
 });
-
-type SegmentSize = 'sm' | 'md' | 'lg';
 
 /** Whether a segment's text should be visible (vs icon-only). */
 function isLabelVisible(content: SegmentContent): boolean {
@@ -202,9 +221,7 @@ function segmentButton(
 // On a vertical toolbar, tooltips/menus/popovers open to the right (into the
 // canvas) rather than overlapping the stacked buttons. Horizontal toolbars keep
 // each overlay's own default side (tooltip top, menu/popover bottom).
-function overlaySide(
-  orientation: 'horizontal' | 'vertical',
-): 'right' | undefined {
+function overlaySide(orientation: ToolbarOrientation): 'right' | undefined {
   return orientation === 'vertical' ? 'right' : undefined;
 }
 
@@ -231,7 +248,7 @@ function ToolbarButtonSegment({
 }: {
   segment: ButtonSegment;
   size: SegmentSize;
-  orientation: 'horizontal' | 'vertical';
+  orientation: ToolbarOrientation;
 }) {
   const styledButton = segmentButton(segment, size);
   // When a caller hosts the segment in their own element (e.g. a Popover
@@ -263,7 +280,7 @@ function ToolbarToggleSegment({
 }: {
   segment: ToggleSegment;
   size: SegmentSize;
-  orientation: 'horizontal' | 'vertical';
+  orientation: ToolbarOrientation;
 }) {
   const toggle = (
     <Toolbar.Button
@@ -293,7 +310,7 @@ function ToolbarGroupSegment({
 }: {
   segment: GroupSegment;
   size: SegmentSize;
-  orientation: 'horizontal' | 'vertical';
+  orientation: ToolbarOrientation;
 }) {
   return (
     <ToggleGroup
@@ -345,7 +362,7 @@ function ToolbarMenuSegment({
 }: {
   segment: MenuSegment;
   size: SegmentSize;
-  orientation: 'horizontal' | 'vertical';
+  orientation: ToolbarOrientation;
 }) {
   // A consumer-supplied className (e.g. a named theme colour) takes precedence
   // over the default pressed highlight, so an active selection can be coloured
@@ -404,7 +421,7 @@ function ToolbarPopoverSegment({
 }: {
   segment: PopoverSegment;
   size: SegmentSize;
-  orientation: 'horizontal' | 'vertical';
+  orientation: ToolbarOrientation;
 }) {
   // As with menu segments, a consumer-supplied className takes precedence over
   // the default pressed highlight, so an active state can be coloured by its
@@ -443,6 +460,19 @@ function ToolbarPopoverSegment({
       </PopoverContent>
     </Popover>
   );
+}
+
+function ToolbarComponentSegment({
+  segment,
+  size,
+  orientation,
+}: {
+  segment: ComponentSegment;
+  size: SegmentSize;
+  orientation: ToolbarOrientation;
+}) {
+  const Component = segment.component;
+  return <Component size={size} orientation={orientation} />;
 }
 
 const segmentSpring = { type: 'spring' as const, duration: 0.4, bounce: 0.2 };
@@ -498,7 +528,7 @@ function DragHandle({
   onNudge,
 }: {
   label: string;
-  orientation: 'horizontal' | 'vertical';
+  orientation: ToolbarOrientation;
   size: SegmentSize;
   onPointerDown: (event: React.PointerEvent) => void;
   onNudge: (delta: Position) => void;
@@ -538,7 +568,7 @@ function DragHandle({
 function renderSegment(
   segment: ToolbarSegment,
   size: SegmentSize,
-  orientation: 'horizontal' | 'vertical',
+  orientation: ToolbarOrientation,
   reduce: boolean,
 ) {
   const inner = (() => {
@@ -590,6 +620,14 @@ function renderSegment(
       case 'button':
         return (
           <ToolbarButtonSegment
+            segment={segment}
+            size={size}
+            orientation={orientation}
+          />
+        );
+      case 'component':
+        return (
+          <ToolbarComponentSegment
             segment={segment}
             size={size}
             orientation={orientation}
@@ -689,7 +727,7 @@ export function SegmentedToolbar({
       <LayoutGroup>
         <MotionSurface
           floating
-          shadow="md"
+          shadow="none"
           spacing="none"
           noContainer
           layout
@@ -707,7 +745,7 @@ export function SegmentedToolbar({
     <LayoutGroup>
       <MotionSurface
         floating
-        shadow="md"
+        shadow="none"
         spacing="none"
         noContainer
         layout

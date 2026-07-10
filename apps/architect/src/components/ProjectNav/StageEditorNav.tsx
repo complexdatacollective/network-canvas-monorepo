@@ -1,25 +1,29 @@
-import { Check, Eye, Loader2, Redo, Undo, X } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { type ReactNode, useRef } from 'react';
+import { Check, Eye, Loader2, Redo, Settings, Undo, X } from 'lucide-react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { submit } from 'redux-form';
 
-import Issues, { type IssuesHandle } from '~/components/Issues';
-import Tooltip from '~/components/NewComponents/Tooltip';
+import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
+import SplitButton from '@codaco/fresco-ui/SplitButton';
+import { useIssuesToolbarSegment } from '~/components/Issues';
+import { useAppDispatch } from '~/ducks/hooks';
 import { useScopedUndoRedo } from '~/hooks/useScopedUndoRedo';
-import { Button } from '~/lib/legacy-ui/components';
-import { IconButton } from '~/lib/legacy-ui/components/Button';
 import { getProtocolName } from '~/selectors/protocol';
 
+import { formName } from '../StageEditor/configuration';
 import ActionToolbar from './ActionToolbar';
 import Breadcrumb, { type BreadcrumbItem } from './Breadcrumb';
 import NavShell from './NavShell';
+
+const previewButtonClassName =
+  'bg-slate-blue! text-white! hover:enabled:bg-slate-blue! hover:enabled:text-white!';
 
 type StageEditorNavProps = {
   stageName: string;
   onCancel: () => void;
   onPreview: () => void;
   previewLabel: string;
-  previewOptions?: ReactNode;
+  previewOptionsContent?: ReactNode;
   isStageInvalid: boolean;
   isOpeningPreview: boolean;
   hasUnsavedChanges: boolean;
@@ -30,93 +34,126 @@ const StageEditorNav = ({
   onCancel,
   onPreview,
   previewLabel,
-  previewOptions,
+  previewOptionsContent,
   isStageInvalid,
   isOpeningPreview,
   hasUnsavedChanges,
 }: StageEditorNavProps) => {
+  const dispatch = useAppDispatch();
   const protocolName = useSelector(getProtocolName);
   const { canUndo, canRedo, undo, redo } = useScopedUndoRedo();
-  const issuesRef = useRef<IssuesHandle>(null);
-  const shouldReduceMotion = useReducedMotion();
-  const layout = !shouldReduceMotion;
+  const { segment: issuesSegment, openIssues } = useIssuesToolbarSegment();
+  const [previewOptionsOpen, setPreviewOptionsOpen] = useState(false);
 
   const breadcrumbItems: BreadcrumbItem[] = [
     { label: protocolName ?? 'Untitled protocol', onClick: onCancel },
     { label: stageName },
   ];
 
-  const previewTooltip = isStageInvalid
-    ? 'Previewing requires valid stage configuration. Fix the errors on this stage to enable previewing.'
-    : isOpeningPreview
-      ? previewLabel
-      : 'Open this stage in a new tab to preview how it will appear to participants.';
+  const toolbarItems = useMemo<ToolbarSegment[]>(() => {
+    const items: ToolbarSegment[] = [
+      ...(issuesSegment ? [issuesSegment] : []),
+      {
+        type: 'button',
+        id: 'cancel',
+        label: 'Cancel',
+        icon: <X />,
+        showLabel: true,
+        onClick: onCancel,
+      },
+      { type: 'separator', id: 'cancel-history-separator' },
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo />,
+        disabled: !canUndo,
+        onClick: undo,
+      },
+      {
+        type: 'button',
+        id: 'redo',
+        label: 'Redo',
+        icon: <Redo />,
+        disabled: !canRedo,
+        onClick: redo,
+      },
+    ];
+
+    if (hasUnsavedChanges) {
+      items.push({ type: 'separator', id: 'history-save-separator' });
+      items.push({
+        type: 'button',
+        id: 'finished-editing',
+        label: 'Finished Editing',
+        icon: <Check />,
+        showLabel: true,
+        className: 'bg-sea-green text-white',
+        onClick: () => {
+          openIssues();
+          dispatch(submit(formName));
+        },
+      });
+    }
+
+    items.push({ type: 'separator', id: 'preview-separator' });
+    items.push({
+      type: 'component',
+      id: 'preview',
+      component: function PreviewSplitButton({ size }) {
+        return (
+          <SplitButton
+            className={previewButtonClassName}
+            disabled={isOpeningPreview || isStageInvalid}
+            icon={
+              isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />
+            }
+            onClick={onPreview}
+            onOpenChange={setPreviewOptionsOpen}
+            open={previewOptionsOpen}
+            popover={{
+              content: previewOptionsContent,
+              side: 'top',
+              align: 'end',
+            }}
+            segment={{
+              'aria-label': 'Preview settings',
+              'className': previewButtonClassName,
+              'disabled': !previewOptionsContent,
+              'icon': <Settings />,
+            }}
+            size={size}
+            variant="text"
+          >
+            {isOpeningPreview ? previewLabel : 'Preview'}
+          </SplitButton>
+        );
+      },
+    });
+
+    return items;
+  }, [
+    canRedo,
+    canUndo,
+    dispatch,
+    hasUnsavedChanges,
+    isOpeningPreview,
+    isStageInvalid,
+    issuesSegment,
+    onCancel,
+    onPreview,
+    openIssues,
+    previewLabel,
+    previewOptionsContent,
+    previewOptionsOpen,
+    redo,
+    undo,
+  ]);
 
   return (
     <>
       <NavShell leading={<Breadcrumb items={breadcrumbItems} />} />
-      <ActionToolbar aria-label="Stage editor actions">
-        <motion.div layout={layout} className="flex items-center gap-2.5">
-          <Issues ref={issuesRef} />
-          <Button onClick={onCancel} color="platinum" icon={<X />}>
-            Cancel
-          </Button>
-          <IconButton
-            variant="text"
-            icon={<Undo />}
-            onClick={undo}
-            disabled={!canUndo}
-            aria-label="Undo"
-          />
-          <IconButton
-            variant="text"
-            icon={<Redo />}
-            onClick={redo}
-            disabled={!canRedo}
-            aria-label="Redo"
-          />
-          <AnimatePresence initial={false}>
-            {hasUnsavedChanges && (
-              <motion.div
-                key="finished-editing"
-                layout={layout}
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.85 }}
-                transition={{ duration: 0.18 }}
-              >
-                <Button
-                  type="submit"
-                  color="sea-green"
-                  icon={<Check />}
-                  onClick={() => issuesRef.current?.open()}
-                >
-                  Finished Editing
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-        <motion.div layout={layout} className="ml-5 flex items-center gap-2.5">
-          <Tooltip content={previewTooltip}>
-            <Button
-              onClick={onPreview}
-              color="neon-coral"
-              icon={
-                isOpeningPreview ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Eye />
-                )
-              }
-              disabled={isOpeningPreview || isStageInvalid}
-            >
-              Preview
-            </Button>
-          </Tooltip>
-          {previewOptions}
-        </motion.div>
-      </ActionToolbar>
+      <ActionToolbar aria-label="Stage editor actions" items={toolbarItems} />
     </>
   );
 };

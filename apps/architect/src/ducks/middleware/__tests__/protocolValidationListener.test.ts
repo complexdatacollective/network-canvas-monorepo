@@ -52,50 +52,27 @@ const activeProtocolReducer = createReducer<ActiveProtocolState>(
   },
 );
 
-const dialogAdded = createAction<{ id: string; onConfirm?: () => void }>(
-  'dialogs/addDialog',
-);
-const dialogClosed = createAction<string>('dialogs/closeDialog');
-
-type DialogsState = { dialogs: { id: string; onConfirm?: () => void }[] };
-const dialogsReducer = createReducer<DialogsState>(
-  { dialogs: [] },
-  (builder) => {
-    builder
-      .addCase(dialogAdded, (state, action) => {
-        state.dialogs.push({
-          id: action.payload.id,
-          onConfirm: action.payload.onConfirm,
-        });
-      })
-      .addCase(dialogClosed, (state, action) => {
-        state.dialogs = state.dialogs.filter((d) => d.id !== action.payload);
-      });
-  },
-);
-
 const buildStore = async () => {
   // Fresh module state (lastValidLocusId / revalidatePending / invalidDialogId)
   // per test.
   vi.resetModules();
   const { protocolValidationListenerMiddleware } =
     await import('../protocolValidationListener');
+  const { takeProtocolValidationDialogEvents } =
+    await import('~/utils/protocolValidationDialogQueue');
 
   const rootReducer = combineReducers({
     activeProtocol: activeProtocolReducer,
     protocolValidation: protocolValidationReducer,
-    dialogs: dialogsReducer,
   });
 
-  return configureStore({
+  const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefault) =>
-      // onConfirm callbacks are captured in the mocked dialog state for the
-      // revert test; disable the serializable check so they don't trip warnings.
-      getDefault({ serializableCheck: false }).prepend(
-        protocolValidationListenerMiddleware.middleware,
-      ),
+      getDefault().prepend(protocolValidationListenerMiddleware.middleware),
   });
+
+  return { store, takeProtocolValidationDialogEvents };
 };
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -118,7 +95,7 @@ describe('protocolValidationListener', () => {
       .mockRejectedValueOnce(new Error('internal validator error'))
       .mockResolvedValueOnce({ success: true });
 
-    const store = await buildStore();
+    const { store } = await buildStore();
 
     // Edit 1 kicks off validation.
     store.dispatch(setPresent({ present: { name: 'p1' }, locusId: 'L1' }));
@@ -145,7 +122,7 @@ describe('protocolValidationListener', () => {
       .mockResolvedValueOnce({ success: false, error: 'bad' }) // L1 invalid
       .mockResolvedValueOnce({ success: true }); // L2 valid
 
-    const store = await buildStore();
+    const { store, takeProtocolValidationDialogEvents } = await buildStore();
 
     store.dispatch(setPresent({ present: { name: 'p0' }, locusId: 'L0' }));
     await flush();
@@ -165,8 +142,10 @@ describe('protocolValidationListener', () => {
     expect(validateProtocol).toHaveBeenCalledTimes(3);
 
     // The stale invalid-protocol dialog must have been dismissed by L2's
-    // success, so no dialog remains open.
-    expect(store.getState().dialogs.dialogs).toHaveLength(0);
+    // success, so the middleware emits a close for the open dialog.
+    const dialogEvents = takeProtocolValidationDialogEvents();
+    expect(dialogEvents.map((event) => event.type)).toEqual(['open', 'close']);
+    expect(dialogEvents[1]?.id).toBe(dialogEvents[0]?.id);
 
     // The valid newer edit L2 must still be the timeline head (not reverted).
     const { timeline } = store.getState().activeProtocol;
@@ -182,7 +161,7 @@ describe('protocolValidationListener', () => {
       .mockResolvedValueOnce({ success: false, error: 'bad1' }) // L1 invalid
       .mockResolvedValueOnce({ success: false, error: 'bad2' }); // L2 invalid
 
-    const store = await buildStore();
+    const { store, takeProtocolValidationDialogEvents } = await buildStore();
 
     store.dispatch(setPresent({ present: { name: 'p0' }, locusId: 'L0' }));
     await flush();
@@ -199,14 +178,15 @@ describe('protocolValidationListener', () => {
     await flush();
 
     // One dialog (opened for L1) is present; L2 is the current head.
-    const openDialogs = store.getState().dialogs.dialogs;
-    expect(openDialogs).toHaveLength(1);
+    const dialogEvents = takeProtocolValidationDialogEvents();
+    const openEvents = dialogEvents.filter((event) => event.type === 'open');
+    expect(openEvents).toHaveLength(1);
     const before = store.getState().activeProtocol.timeline;
     expect(before[before.length - 1]?.id).toBe('L2');
 
     // Confirm the revert: it must jump back to the last valid locus (L0), not
     // no-op because the current locus (L2) differs from the first failure (L1).
-    openDialogs[0]?.onConfirm?.();
+    openEvents[0]?.onConfirm();
 
     const after = store.getState().activeProtocol.timeline;
     expect(after[after.length - 1]?.id).toBe('L0');

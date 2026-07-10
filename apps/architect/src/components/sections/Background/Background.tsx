@@ -1,93 +1,81 @@
+import type { ComponentType } from 'react';
 import { PureComponent } from 'react';
 import { compose } from 'react-recompose';
 import { Field } from 'redux-form';
 
-import type { StageType } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
-import {
-  BooleanField,
-  Number as NumberField,
-  Toggle,
-} from '~/components/Form/Fields';
-import IssueAnchor from '~/components/IssueAnchor';
-import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-
-import DetachedField from '../../DetachedField';
-import Image from '../../Form/Fields/Image';
-import ValidatedField from '../../Form/ValidatedField';
-import withBackgroundChangeHandler from './withBackgroundChangeHandler';
-
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 /**
  * The Narrative stage schema forbids a background image (its background is a
  * strict object of only concentricCircles/skewedTowardCenter). The shared
  * Background section must not offer the image option for Narrative stages.
  */
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { StageType } from '@codaco/protocol-validation';
+import { Row, Section } from '~/components/EditorLayout';
+import { FrescoReduxField, reduxNumberValue } from '~/components/Form';
+import { Toggle } from '~/components/Form/Fields';
+import IssueAnchor from '~/components/IssueAnchor';
+import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+
+import Image from '../../Form/Fields/Image';
+import ValidatedField from '../../Form/ValidatedField';
+import withBackgroundChangeHandler from './withBackgroundChangeHandler';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
+const backgroundTypeOptions = [
+  {
+    value: 'concentric-circles',
+    label: 'Concentric Circles',
+    description:
+      'Use the conventional concentric circles sociogram background.',
+  },
+  {
+    value: 'image',
+    label: 'Image',
+    description: 'Use a custom image of your choosing as the background.',
+  },
+];
+
 export const allowsBackgroundImage = (interfaceType: StageType): boolean =>
   interfaceType !== 'Narrative';
-
 type BackgroundProps = StageEditorSectionProps & {
   handleChooseBackgroundType: (value: boolean) => void;
   useImage: boolean;
 };
-
 class Background extends PureComponent<BackgroundProps> {
   render() {
     const { handleChooseBackgroundType, useImage, interfaceType } = this.props;
     const imageAllowed = allowsBackgroundImage(interfaceType);
     const showImage = imageAllowed && useImage;
-
     return (
       <Section
         title="Background"
         summary={
-          <p>
+          <Paragraph>
             This section determines the graphical background for this prompt.
             {imageAllowed
               ? ' You can choose between a conventional series of concentric circles, or provide your own background image.'
               : ' This stage uses the conventional series of concentric circles.'}
-          </p>
+          </Paragraph>
         }
       >
         {imageAllowed && (
           <Row>
-            <h4>Choose a background type</h4>
-            <DetachedField
-              component={
-                BooleanField as React.ComponentType<Record<string, unknown>>
-              }
-              value={useImage}
-              options={[
-                {
-                  value: false,
-                  label: () => (
-                    <div>
-                      <h4>Concentric Circles</h4>
-                      <p>
-                        Use the conventional concentric circles sociogram
-                        background.
-                      </p>
-                    </div>
-                  ),
-                },
-                {
-                  value: true,
-                  label: () => (
-                    <div>
-                      <h4>Image</h4>
-                      <p>
-                        Use a custom image of your choosing as the background.
-                      </p>
-                    </div>
-                  ),
-                },
-              ]}
-              onChange={(
-                _event: unknown,
-                nextValue: unknown,
-                _currentValue: unknown,
-                _name: string | null,
-              ) => handleChooseBackgroundType(nextValue as boolean)}
-              noReset
+            <Heading level="h4">Choose a background type</Heading>
+            <RichSelectGroupField
+              aria-label="Choose a background type"
+              value={useImage ? 'image' : 'concentric-circles'}
+              options={backgroundTypeOptions}
+              orientation="horizontal"
+              onChange={(value) => {
+                const nextUseImage = value === 'image';
+                if (nextUseImage !== useImage) {
+                  handleChooseBackgroundType(nextUseImage);
+                }
+              }}
             />
           </Row>
         )}
@@ -100,12 +88,14 @@ class Background extends PureComponent<BackgroundProps> {
               />
               <ValidatedField
                 name="background.concentricCircles"
-                component={NumberField}
+                component={FrescoReduxField}
                 normalize={(value) => Number.parseInt(value, 10) || value}
                 validation={{ required: true, positiveNumber: true }}
+                label="Number of concentric circles to use:"
                 componentProps={{
-                  label: 'Number of concentric circles to use:',
+                  fieldComponent: FrescoInputField,
                   type: 'number',
+                  ...reduxNumberValue,
                 }}
               />
             </Row>
@@ -138,7 +128,6 @@ class Background extends PureComponent<BackgroundProps> {
     );
   }
 }
-
 export default compose<BackgroundProps, StageEditorSectionProps>(
   withBackgroundChangeHandler,
 )(Background);

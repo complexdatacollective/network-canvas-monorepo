@@ -1,158 +1,118 @@
 import { toNumber } from 'es-toolkit/compat';
-import { GripVertical } from 'lucide-react';
-import { Reorder, useDragControls } from 'motion/react';
-import type React from 'react';
-import { compose, withHandlers } from 'react-recompose';
-import { connect } from 'react-redux';
+import { Trash2 } from 'lucide-react';
+import type { ComponentType } from 'react';
 
-import RichTextField from '~/components/Form/Fields/RichText';
-import TextField from '~/components/Form/Fields/Text';
+import { IconButton } from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import {
+  markdownToRichTextContent,
+  richTextContentToMarkdown,
+  type RichTextContent,
+} from '~/components/Form/Fields/RichText/markdownAdapter';
+import type { FrescoReduxArrayFieldItemProps } from '~/components/Form/FrescoReduxArrayField';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
-import { actionCreators as dialogsActions } from '~/ducks/modules/dialogs';
-import { Icon } from '~/lib/legacy-ui/components';
 import { cx } from '~/utils/cva';
 
 import type { OptionValue } from './Options';
-
 const isNumberLike = (value: string) =>
   Number.parseInt(value, 10).toString() === value; // eslint-disable-line
 
-type InternalItem<T> = {
-  _internalId: string;
-  data: T;
-};
+export const parseOptionValue = (value: string) =>
+  isNumberLike(value) ? toNumber(value) : value;
 
-const deleteOption =
-  ({
-    fields,
-    openDialog,
-    index,
-  }: {
-    fields: { remove: (index: number) => void };
-    openDialog: (options: {
-      type: string;
-      title: string;
-      message: string;
-      onConfirm: () => void;
-      confirmLabel: string;
-    }) => void;
-    index: number;
-  }) =>
-  () => {
-    openDialog({
-      type: 'Warning',
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+const FrescoRichTextEditorField = RichTextEditorField as ComponentType<
+  Record<string, unknown>
+>;
+const optionLabelFromRedux = (value: unknown) =>
+  markdownToRichTextContent(typeof value === 'string' ? value : '', true);
+const optionLabelToRedux = (value: unknown) =>
+  richTextContentToMarkdown(value as RichTextContent | undefined, true);
+
+type OptionProps = FrescoReduxArrayFieldItemProps<OptionValue>;
+
+const Option = ({
+  fieldName,
+  index,
+  itemCount,
+  isSortable,
+  dragControls,
+  onMove,
+  onDelete,
+  disabled,
+  readOnly,
+  showErrors,
+}: OptionProps) => {
+  const { confirm } = useDialog();
+  const interactionDisabled = disabled || readOnly;
+  const handleDelete = () => {
+    void confirm({
       title: 'Remove option',
-      message: 'Are you sure you want to remove this option?',
-      onConfirm: () => {
-        fields.remove(index);
-      },
+      description: 'Are you sure you want to remove this option?',
       confirmLabel: 'Remove option',
+      cancelLabel: 'Cancel',
+      intent: 'destructive',
+      onConfirm: onDelete,
     });
   };
 
-// Layout for the side controls (drag handle + delete button). Both are 3rem wide
-// flex centers; the only difference is `cursor: grab` for the handle.
-const sideControlClasses =
-  'flex w-14 cursor-pointer items-center justify-center bg-transparent text-sortable-contrast [&_.icon]:size-5';
-
-const DeleteOption = (props: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={sideControlClasses}
-    // eslint-disable-next-line react/jsx-props-no-spreading
-    {...props}
-  >
-    <Icon name="delete" />
-  </div>
-);
-
-// Props passed from parent
-type OptionBaseProps = {
-  field: string;
-  internalItem: InternalItem<OptionValue>;
-  index: number;
-  fields: {
-    remove: (index: number) => void;
-  };
-  hasError?: boolean;
-};
-
-// Props injected by HOCs
-type OptionInjectedProps = {
-  handleDelete: () => void;
-};
-
-type OptionProps = OptionBaseProps & OptionInjectedProps;
-
-const Option = ({
-  field,
-  handleDelete,
-  internalItem,
-  hasError = false,
-}: OptionProps) => {
-  const controls = useDragControls();
-
   return (
-    <Reorder.Item
+    <div
       className={cx(
-        'text-sortable-contrast z-1 flex rounded-xl transition-colors duration-300 ease-in-out',
-        hasError ? 'bg-destructive' : 'bg-form-control',
+        'text-sortable-contrast z-1 flex w-full rounded-xl transition-colors duration-300 ease-in-out',
+        showErrors ? 'bg-destructive' : 'bg-form-control',
       )}
-      value={internalItem}
-      dragListener={false}
-      dragControls={controls}
     >
-      <div className="flex grow-0 items-center p-5">
-        <div
-          className={cx(sideControlClasses, 'cursor-grab')}
-          onPointerDown={(e) => controls.start(e)}
-        >
-          <GripVertical className="cursor-grab" />
+      {isSortable && (
+        <div className="flex grow-0 items-center p-5">
+          <ArrayFieldDragHandle
+            dragControls={dragControls}
+            index={index}
+            itemCount={itemCount}
+            onMove={onMove}
+            disabled={interactionDisabled}
+            label={`Reorder option ${index + 1} of ${itemCount}`}
+            className="text-sortable-contrast"
+          />
         </div>
-      </div>
+      )}
       <div className="flex flex-1">
         <div className="my-5 flex-1">
-          <h4
-            className={cx(
-              'mx-0 mt-0 mb-5 transition-colors duration-300 ease-in-out',
-              hasError && 'text-primary-contrast',
-            )}
-          >
-            Label
-          </h4>
-          <ValidatedField<{ inline?: boolean; placeholder?: string }>
-            component={
-              RichTextField as React.ComponentType<Record<string, unknown>>
-            }
+          <ValidatedField
+            component={FrescoReduxField}
             componentProps={{
-              inline: true,
+              fieldComponent: FrescoRichTextEditorField,
+              label: 'Label',
               placeholder: 'Enter a label...',
+              changeMode: 'input',
+              toolbarOptions: {
+                headings: false,
+                history: true,
+                links: false,
+                lists: false,
+                thematicBreak: false,
+              },
+              fromReduxValue: optionLabelFromRedux,
+              toReduxValue: optionLabelToRedux,
             }}
-            name={`${field}.label`}
+            name={`${fieldName}.label`}
             validation={{ required: true, uniqueArrayAttribute: true }}
           />
         </div>
         <div className="my-5 ml-5 flex-1">
-          <h4
-            className={cx(
-              'mx-0 mt-0 mb-5 transition-colors duration-300 ease-in-out',
-              hasError && 'text-primary-contrast',
-            )}
-          >
-            Value
-          </h4>
-          <ValidatedField<{
-            parse?: (value: string) => string | number;
-            placeholder?: string;
-          }>
-            component={
-              TextField as React.ComponentType<Record<string, unknown>>
-            }
+          <ValidatedField
+            component={FrescoReduxField}
             componentProps={{
-              parse: (value: string) =>
-                isNumberLike(value) ? toNumber(value) : value,
+              fieldComponent: FrescoInputField,
+              label: 'Value',
               placeholder: 'Enter a value...',
+              toReduxValue: parseOptionValue,
             }}
-            name={`${field}.value`}
+            name={`${fieldName}.value`}
             validation={{
               required: true,
               uniqueArrayAttribute: true,
@@ -162,23 +122,17 @@ const Option = ({
         </div>
       </div>
       <div className="flex grow-0 p-5">
-        <DeleteOption onClick={handleDelete} />
+        <IconButton
+          icon={<Trash2 />}
+          aria-label="Remove option"
+          size="sm"
+          variant="text"
+          color="destructive"
+          disabled={interactionDisabled}
+          onClick={handleDelete}
+        />
       </div>
-    </Reorder.Item>
+    </div>
   );
 };
-
-const mapDispatchToItemProps = {
-  openDialog: dialogsActions.openDialog,
-};
-
-type ConnectedProps = OptionBaseProps & {
-  openDialog: typeof dialogsActions.openDialog;
-};
-
-export default compose<OptionProps, OptionBaseProps>(
-  connect(null, mapDispatchToItemProps),
-  withHandlers<ConnectedProps, { handleDelete: () => void }>({
-    handleDelete: deleteOption as (props: ConnectedProps) => () => void,
-  }),
-)(Option);
+export default Option;

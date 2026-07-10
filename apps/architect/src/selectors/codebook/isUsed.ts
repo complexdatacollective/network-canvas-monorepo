@@ -1,9 +1,7 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { get } from 'es-toolkit/compat';
-import { getFormNames, getFormValues } from 'redux-form';
+import { getFormValues } from 'redux-form';
 
-import { formName as EditableListFormName } from '~/components/EditableList';
-import { formName as StageEditorFormName } from '~/components/StageEditor/configuration';
 import type { RootState } from '~/ducks/store';
 
 import { getVariableIndex } from '../indexes';
@@ -40,14 +38,13 @@ const getFormsSelector = (formNames: string[]) =>
 const getAllFormsSelector = createSelector(
   [(state: RootState) => state],
   (state) => {
-    const allFormNames = getFormNames(
-      state as unknown as Parameters<typeof getFormNames>[0],
-    );
-    // Ensure allFormNames is an array
-    const formNamesArray = Array.isArray(allFormNames) ? allFormNames : [];
+    const formState = (state.form ?? {}) as Record<
+      string,
+      { values?: unknown } | undefined
+    >;
     const forms: Record<string, unknown> = {};
-    formNamesArray.forEach((formName) => {
-      forms[formName] = getFormValues(formName)(state);
+    Object.entries(formState).forEach(([formName, value]) => {
+      forms[formName] = value?.values;
     });
     return forms;
   },
@@ -67,7 +64,7 @@ const getAllFormsSelector = createSelector(
  * @returns selector function that returns a key value object describing which variables are in use
  */
 export const makeGetIsUsed = (options: GetIsUsedOptions = {}) => {
-  const { formNames = [StageEditorFormName, EditableListFormName] } = options;
+  const { formNames = [] } = options;
 
   // Create the forms selector based on whether we have specific form names or not
   const formsSelector =

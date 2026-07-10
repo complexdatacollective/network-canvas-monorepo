@@ -1,13 +1,14 @@
 import { get, has } from 'es-toolkit/compat';
+import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
-import { Button } from '~/lib/legacy-ui/components';
 
 import EditableVariablePill, { SimpleVariablePill } from './VariablePill';
 import VariableSpotlight from './VariableSpotlight';
-
 type VariablePickerProps = {
   disallowCreation?: boolean;
   entity?: string;
@@ -29,7 +30,6 @@ type VariablePickerProps = {
   };
   onCreateOption?: (value: string) => void;
 };
-
 const VariablePicker = ({
   options = [],
   entity,
@@ -41,51 +41,40 @@ const VariablePicker = ({
   input = {},
 }: VariablePickerProps) => {
   const [showPicker, setShowPicker] = useState(false);
-
   const { error, invalid, touched } = meta;
   const { value, onChange } = input;
-
   const handleSelectVariable = (variable: string) => {
     onChange?.(variable);
     setShowPicker(false);
   };
-
   const handleCreateOption = (variable: string) => {
     onChange?.('');
     setShowPicker(false);
     onCreateOption(variable);
   };
-
   const hideModal = () => setShowPicker(false);
-
   // New variables have no 'type' property
   const variablePillComponent = () => {
     const found = options.find(
       ({ label: variableLabel, value: variableValue }) =>
         value === variableValue || value === variableLabel,
     );
-
     if (!found) {
       return null;
     }
-
     if (has(found, 'type') && found?.type) {
       return <EditableVariablePill uuid={found?.value ?? ''} />;
     }
-
     const selectedLabel = get(found, 'label', null);
     const selectedValue = get(found, 'value', null);
-
     const finalLabel = selectedLabel || selectedValue || '';
     const variableType = (found.type ?? 'text') as VariableType;
-
     return (
       <SimpleVariablePill label={finalLabel} type={variableType}>
         <span />
       </SimpleVariablePill>
     );
   };
-
   return (
     <>
       <fieldset className="border-outline rounded border-2 border-dashed p-5 [&_.variable-pill]:mb-5 [&>legend]:px-5">
@@ -106,13 +95,15 @@ const VariablePicker = ({
           </div>
         )}
         <Button
-          icon="add"
+          icon={<Plus />}
           onClick={() => setShowPicker(true)}
-          color="sea-green"
+          color="primary"
         >
           {value ? 'Change Variable' : 'Select Variable'}
         </Button>
-        {invalid && touched && <p className="text-destructive mb-0">{error}</p>}
+        {invalid && touched && (
+          <Paragraph className="text-destructive mb-0">{error}</Paragraph>
+        )}
       </fieldset>
       <VariableSpotlight
         open={showPicker}
@@ -128,5 +119,4 @@ const VariablePicker = ({
     </>
   );
 };
-
 export default VariablePicker;

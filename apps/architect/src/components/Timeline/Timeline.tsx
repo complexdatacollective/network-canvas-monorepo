@@ -4,23 +4,23 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
+import Button from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
-  type DialogConfig,
-  actionCreators as dialogsActions,
-} from '~/ducks/modules/dialogs';
-import { actionCreators as stageActions } from '~/ducks/modules/protocol/stages';
+  actionCreators as stageActions,
+  getFamilyPedigreeDependentStages,
+} from '~/ducks/modules/protocol/stages';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
-import { Button } from '~/lib/legacy-ui/components';
 import { getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
 import NewStageScreen from '../Screens/NewStageScreen';
 import StageTypeImage from '../StageTypeImage';
 import InsertButton from './InsertButton';
-
 const timelineContainerVariants: Variants = {
   hidden: {},
   visible: {
@@ -51,6 +51,7 @@ const timelineInsertVariants: Variants = {
 const Timeline = () => {
   const stages = useSelector(getStageList);
   const dispatch = useAppDispatch();
+  const { confirm, openDialog } = useDialog();
   const pointerStart = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
   const shouldReduceMotion = useReducedMotion();
@@ -74,13 +75,6 @@ const Timeline = () => {
     [dispatch],
   );
 
-  const openDialog = useCallback(
-    (config: DialogConfig) => {
-      dispatch(dialogsActions.openDialog(config));
-    },
-    [dispatch],
-  );
-
   const [, setLocation] = useLocation();
   const [showNewStageDialog, setShowNewStageDialog] = useState(false);
   const [insertAtIndex, setInsertAtIndex] = useState<number | undefined>(
@@ -94,16 +88,35 @@ const Timeline = () => {
 
   const handleDeleteStage = useCallback(
     (stageId: string) => {
-      openDialog({
-        type: 'Warning',
+      const stage = stages.find((candidate) => candidate.id === stageId);
+      if (stage?.type === 'FamilyPedigree') {
+        const dependents = getFamilyPedigreeDependentStages(stages, stageId);
+        if (dependents.length > 0) {
+          const names = dependents
+            .map((dependent) => `"${dependent.label || 'Untitled'}"`)
+            .join(', ');
+          void openDialog({
+            type: 'acknowledge',
+            intent: 'warning',
+            title: 'Cannot delete stage',
+            description: `This Family Pedigree stage is used by the following Narrative Pedigree stage(s): ${names}. Remove or repoint those stage(s) before deleting it.`,
+            actions: { primary: { label: 'OK', value: true } },
+          });
+          return;
+        }
+      }
+
+      void confirm({
         title: 'Delete stage',
-        message:
+        description:
           'Are you sure you want to delete this stage from your protocol? This action cannot be undone!',
-        onConfirm: () => deleteStage(stageId),
         confirmLabel: 'Delete stage',
+        cancelLabel: 'Cancel',
+        intent: 'destructive',
+        onConfirm: () => deleteStage(stageId),
       });
     },
-    [openDialog, deleteStage],
+    [confirm, deleteStage, openDialog, stages],
   );
 
   const handleEditStage = useCallback(
@@ -135,9 +148,9 @@ const Timeline = () => {
 
   const itemClasses = cx(
     'group relative grid w-2xl cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-10 p-4',
-    'hover:bg-timeline/10 transition-colors duration-300 ease-in-out',
+    'hover:bg-selected/20 focus-visible:bg-selected/20 transition-colors duration-300 ease-in-out',
     // Focus state for accessibility
-    'focus:ring-timeline focus:ring-2 focus:ring-offset-2 focus:outline-none',
+    'focus:ring-selected focus:ring-2 focus:ring-offset-2 focus:outline-none',
   );
 
   return (
@@ -214,9 +227,13 @@ const Timeline = () => {
                   {index + 1}
                 </div>
                 <div className="justify-self-start">
-                  <h4 className="transition-all group-hover:font-bold">
+                  <Heading
+                    level="h4"
+                    margin="none"
+                    className="my-2 transition-all group-hover:font-bold"
+                  >
                     {stage.label || '\u00A0'}
-                  </h4>
+                  </Heading>
                   {(stage.hasFilter || stage.hasSkipLogic) && (
                     <div className="mt-1 flex items-center gap-1">
                       {stage.hasFilter && (
@@ -244,7 +261,7 @@ const Timeline = () => {
                       e.stopPropagation();
                       handleDeleteStage(stage.id);
                     }}
-                    color="neon-coral"
+                    color="destructive"
                   >
                     Delete stage
                   </Button>

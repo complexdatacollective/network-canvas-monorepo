@@ -1,27 +1,30 @@
 import { compose } from 'react-recompose';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
+import DialogArrayField from '~/components/Form/DialogArrayField';
+import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
-import EditableList from '../../EditableList';
 import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequired';
 import withSubject from '../../enhancers/withSubject';
 import { itemSelector } from './helpers';
 import PromptFields from './PromptFields';
 import PromptPreview from './PromptPreview';
 import withPromptChangeHandler from './withPromptChangeHandler';
-
+const notEmpty = (value: unknown) =>
+  value && Array.isArray(value) && value.length > 0
+    ? undefined
+    : 'You must create at least one item.';
 type TieStrengthCensusPromptsProps = StageEditorSectionProps & {
-  handleChangePrompt: (prompts: unknown[]) => void;
+  handleChangePrompt: (prompt: unknown) => unknown;
   entity?: string;
   type?: string;
   disabled?: boolean;
   disabledMessage?: string;
 };
-
 const TieStrengthCensusPrompts = ({
   handleChangePrompt,
-  form,
   entity,
   type,
   disabled,
@@ -31,33 +34,33 @@ const TieStrengthCensusPrompts = ({
     disabled={disabled}
     disabledMessage={disabledMessage}
     summary={
-      <p>
+      <Paragraph>
         Add one or more prompts below to frame the task for the user. You can
         reorder the prompts using the draggable handles on the left hand side.
-      </p>
+      </Paragraph>
     }
     title="Prompts"
   >
-    <EditableList
-      previewComponent={PromptPreview}
-      editComponent={
-        PromptFields as unknown as React.ComponentType<Record<string, unknown>>
-      }
-      title="Edit Prompt"
-      fieldName="prompts"
-      itemSelector={
-        itemSelector() as (
-          state: Record<string, unknown>,
-          params: { form: string; editField: string },
-        ) => unknown
-      }
-      onChange={(prompts: unknown) => handleChangePrompt(prompts as unknown[])}
-      form={form}
-      editProps={{ entity, type }}
+    <ValidatedField
+      name="prompts"
+      label="Prompts"
+      component={DialogArrayField}
+      validation={{ notEmpty }}
+      componentProps={{
+        addTitle: 'Edit Prompt',
+        previewComponent: PromptPreview,
+        editorFieldsComponent: PromptFields,
+        editorTitle: 'Edit Prompt',
+        itemLabel: 'prompt',
+        itemSelector: itemSelector(),
+        onBeforeSave: handleChangePrompt,
+        editorProps: { entity, type },
+        requestedEditFormName: 'editable-list-form',
+        sortable: true,
+      }}
     />
   </Section>
 );
-
 export default compose<TieStrengthCensusPromptsProps, StageEditorSectionProps>(
   withSubject,
   withDisabledSubjectRequired,

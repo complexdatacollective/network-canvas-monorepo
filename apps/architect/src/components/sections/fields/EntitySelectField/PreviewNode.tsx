@@ -21,7 +21,7 @@ const PreviewNode = ({
   label,
   color = 'node-color-seq-1',
   shape = 'circle',
-  size = 'md',
+  size = 'sm',
   onClick,
   selected = false,
 }: PreviewNodeProps) => {

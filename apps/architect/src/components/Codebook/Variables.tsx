@@ -1,83 +1,22 @@
-import { get, isString } from 'es-toolkit/compat';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { ComponentProps } from 'react';
 import {
-  compose,
-  withHandlers,
-  withProps,
-  withStateHandlers,
-} from 'react-recompose';
-import { connect } from 'react-redux';
+  getCoreRowModel,
+  getSortedRowModel,
+  type ColumnDef,
+  type SortingFn,
+  type SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
+import { useCallback, useMemo, useState } from 'react';
 
-import { actionCreators as dialogActionCreators } from '~/ducks/modules/dialogs';
+import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
+import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useAppDispatch } from '~/ducks/hooks';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
 
 import EditableVariablePill from '../Form/Fields/VariablePicker/VariablePill';
 import ControlsColumn from './ControlsColumn';
 import UsageColumn from './UsageColumn';
-
-const SortDirection = {
-  ASC: Symbol('ASC'),
-  DESC: Symbol('DESC'),
-};
-
-type SortDirectionType = typeof SortDirection.ASC;
-
-const reverseSort = (direction: SortDirectionType) =>
-  direction === SortDirection.ASC ? SortDirection.DESC : SortDirection.ASC;
-
-type HeadingProps = {
-  children: React.ReactNode;
-  name: string;
-  sortBy: string;
-  sortDirection: SortDirectionType;
-  onSort: (options: {
-    sortBy: string;
-    sortDirection: SortDirectionType;
-  }) => void;
-};
-
-const Heading = ({
-  children,
-  name,
-  sortBy,
-  sortDirection,
-  onSort,
-}: HeadingProps) => {
-  const isSorted = name === sortBy;
-  const newSortDirection = !isSorted
-    ? SortDirection.ASC
-    : reverseSort(sortDirection);
-
-  const ariaSort = !isSorted
-    ? 'none'
-    : sortDirection === SortDirection.ASC
-      ? 'ascending'
-      : 'descending';
-
-  return (
-    <th
-      className="bg-surface-2 border-outline m-0 border-b-2 px-5 py-5 text-left align-middle text-base font-black normal-case"
-      aria-sort={ariaSort}
-    >
-      <button
-        type="button"
-        className="inline-flex cursor-pointer appearance-none items-center gap-1 border-0 bg-transparent p-0 text-left font-[inherit]"
-        onClick={() =>
-          onSort({ sortBy: name, sortDirection: newSortDirection })
-        }
-      >
-        {children}
-        {isSorted &&
-          (sortDirection === SortDirection.ASC ? (
-            <ChevronDown size={16} className="text-action" />
-          ) : (
-            <ChevronUp size={16} className="text-action" />
-          ))}
-      </button>
-    </th>
-  );
-};
 
 type UsageItem = {
   label: string;
@@ -93,197 +32,111 @@ type Variable = {
   usageString?: string;
 };
 
+type Entity = 'node' | 'edge' | 'ego';
+
 type VariablesProps = {
-  entity: string;
-  onDelete?: (id: string) => void;
-  sort: (options: { sortBy: string; sortDirection: SortDirectionType }) => void;
-  sortBy: string;
-  sortDirection: SortDirectionType;
+  entity: Entity;
   type?: string;
   variables?: Variable[];
 };
 
-const Variables = ({
-  variables = [],
-  onDelete = () => {},
-  sortBy,
-  sortDirection,
-  sort,
-  type: _type,
-}: VariablesProps) => {
-  const headingProps = {
-    sortBy,
-    sortDirection,
-    onSort: sort,
-  };
+const Variables = ({ variables = [], entity, type }: VariablesProps) => {
+  const dispatch = useAppDispatch();
+  const { confirm } = useDialog();
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'name', desc: false },
+  ]);
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      const variable = variables.find((v: Variable) => v.id === id);
+      const { name } = variable || { name: 'Unknown' };
+
+      void confirm({
+        title: `Delete ${name}`,
+        description: `Are you sure you want to delete the variable called ${name}? This cannot be undone.`,
+        confirmLabel: `Delete ${name}`,
+        cancelLabel: 'Cancel',
+        intent: 'destructive',
+        onConfirm: () => {
+          void dispatch(deleteVariableAsync({ entity, type, variable: id }));
+        },
+      });
+    },
+    [confirm, dispatch, entity, type, variables],
+  );
+
+  const columns = useMemo<ColumnDef<Variable>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column, table }) => (
+          <DataTableColumnHeader column={column} table={table} title="Name" />
+        ),
+        sortingFn: caseInsensitiveSort,
+        cell: ({ row }) => (
+          <EditableVariablePill uuid={row.original.id} width="25rem" />
+        ),
+      },
+      {
+        accessorKey: 'usageString',
+        header: ({ column, table }) => (
+          <DataTableColumnHeader
+            column={column}
+            table={table}
+            title="Used In"
+          />
+        ),
+        sortingFn: caseInsensitiveSort,
+        cell: ({ row }) => (
+          <UsageColumn inUse={row.original.inUse} usage={row.original.usage} />
+        ),
+      },
+      {
+        id: 'actions',
+        header: () => <span className="sr-only">Actions</span>,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <ControlsColumn
+              onDelete={handleDelete}
+              inUse={row.original.inUse}
+              id={row.original.id}
+            />
+          </div>
+        ),
+      },
+    ],
+    [handleDelete],
+  );
+
+  const table = useReactTable({
+    data: variables,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    enableSortingRemoval: false,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   return (
-    <div className="border-outline mt-7 overflow-hidden rounded border">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr>
-            <Heading
-              name="name"
-              // eslint-disable-next-line react/jsx-props-no-spreading
-              {...headingProps}
-            >
-              Name
-            </Heading>
-            <Heading
-              name="usageString"
-              // eslint-disable-next-line react/jsx-props-no-spreading
-              {...headingProps}
-            >
-              Used In
-            </Heading>
-            <th
-              aria-label="Actions"
-              className="bg-surface-2 border-outline w-px border-b-2"
-            />
-          </tr>
-        </thead>
-        <tbody>
-          {variables.map(({ id, inUse, usage }) => (
-            <tr
-              key={id}
-              className="border-outline/40 hover:bg-surface-2/40 border-b last:border-b-0"
-            >
-              <td className="m-0 px-5 py-2.5 text-base">
-                <EditableVariablePill uuid={id} width="25rem" />
-              </td>
-              <td className="border-outline/40 m-0 border-l px-5 py-2.5 text-base">
-                <UsageColumn inUse={inUse} usage={usage} />
-              </td>
-              <td className="border-outline/40 m-0 border-l px-5 py-2.5 text-right text-base">
-                <ControlsColumn onDelete={onDelete} inUse={inUse} id={id} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="mt-7">
+      <DataTable
+        table={table}
+        showPagination={false}
+        emptyText="No variables."
+      />
     </div>
   );
 };
 
-type WithVariableHandlersProps = {
-  deleteVariable: (params: {
-    entity: string;
-    type?: string;
-    variable: string;
-  }) => void;
-  openDialog: (dialog: unknown) => void;
-  entity: string;
-  type?: string;
-  variables: Variable[];
-};
+const normalizeSortValue = (value: unknown) =>
+  typeof value === 'string' ? value.toUpperCase() : String(value ?? '');
 
-const withVariableHandlers = compose(
-  connect(null, {
-    openDialog: dialogActionCreators.openDialog,
-    deleteVariable: deleteVariableAsync,
-  }),
-  withHandlers<WithVariableHandlersProps, { onDelete: (id: string) => void }>({
-    onDelete:
-      ({
-        deleteVariable,
-        openDialog,
-        entity,
-        type,
-        variables,
-      }: WithVariableHandlersProps) =>
-      (id: string) => {
-        const variable = variables.find((v: Variable) => v.id === id);
-        const { name } = variable || { name: 'Unknown' };
+const caseInsensitiveSort: SortingFn<Variable> = (rowA, rowB, columnId) =>
+  normalizeSortValue(rowA.getValue(columnId)).localeCompare(
+    normalizeSortValue(rowB.getValue(columnId)),
+  );
 
-        openDialog({
-          type: 'Warning',
-          title: `Delete ${name}`,
-          message: (
-            <p>
-              Are you sure you want to delete the variable called {name}? This
-              cannot be undone.
-            </p>
-          ),
-          onConfirm: () => deleteVariable({ entity, type, variable: id }),
-          confirmLabel: `Delete ${name}`,
-        });
-      },
-  }),
-);
-
-const homogenizedProp = (item: Variable, prop: string) => {
-  const v = get(item, prop, '');
-  if (!isString(v)) {
-    return v;
-  }
-  return v.toUpperCase();
-};
-
-const sortByProp = (sortBy: string) => (a: Variable, b: Variable) => {
-  const sortPropA = homogenizedProp(a, sortBy);
-  const sortPropB = homogenizedProp(b, sortBy);
-  if (sortPropA < sortPropB) {
-    return -1;
-  }
-  if (sortPropA > sortPropB) {
-    return 1;
-  }
-  return 0;
-};
-
-const sort = (sortBy: string) => (list: Variable[]) =>
-  list.sort(sortByProp(sortBy));
-
-const reverse =
-  (sortDirection: SortDirectionType = SortDirection.ASC) =>
-  (list: Variable[]) =>
-    sortDirection === SortDirection.DESC ? [...list].toReversed() : list;
-
-type WithSortProps = {
-  sortBy: string;
-  sortDirection: SortDirectionType;
-  variables: Variable[];
-};
-
-type WithSortOutput = {
-  variables: Variable[];
-};
-
-const withSort = compose(
-  withStateHandlers(
-    {
-      sortBy: 'name',
-      sortDirection: SortDirection.ASC,
-    },
-    {
-      sort:
-        () =>
-        ({
-          sortBy,
-          sortDirection,
-        }: {
-          sortBy: string;
-          sortDirection: SortDirectionType;
-        }) => ({
-          sortBy,
-          sortDirection,
-        }),
-    },
-  ),
-  withProps<WithSortOutput, WithSortProps>(
-    ({ sortBy, sortDirection, variables }: WithSortProps) => {
-      const sorted = sort(sortBy)(variables);
-      const reversed = reverse(sortDirection)(sorted);
-      return {
-        variables: reversed,
-      };
-    },
-  ),
-);
-
-export { Heading, SortDirection, withSort };
-
-export default compose<ComponentProps<typeof Variables>, typeof Variables>(
-  withVariableHandlers,
-  withSort,
-)(Variables);
+export default Variables;

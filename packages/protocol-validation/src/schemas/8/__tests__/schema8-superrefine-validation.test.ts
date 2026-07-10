@@ -2521,13 +2521,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       name: 'Test Protocol',
       schemaVersion: 8 as const,
       codebook: {
-        ego: { variables: { isEgo: { name: 'IsEgo', type: 'boolean' } } },
         node: {
           person: {
             name: 'Person',
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
+              isEgo: { name: 'IsEgo', type: 'boolean' },
               label: { name: 'Label', type: 'text' },
               rel: { name: 'Rel', type: 'text' },
               bioSex: {

@@ -1,5 +1,5 @@
 import { Pattern } from '@codaco/art';
-
+import Heading from '@codaco/fresco-ui/typography/Heading';
 type ProtocolCardProps = {
   name: string;
   description?: string | null;
@@ -36,7 +36,13 @@ const ProtocolCard = ({
           wraps instead of overflowing the overflow-hidden card and being
           clipped; hyphens-auto adds nicer breaks where the browser supports
           it. The timeline card sidesteps this via a soft-wrapping textarea. */}
-      <h2 className="m-0 wrap-break-word hyphens-auto">{name}</h2>
+      <Heading
+        level="h2"
+        margin="none"
+        className="wrap-break-word hyphens-auto"
+      >
+        {name}
+      </Heading>
 
       {description && (
         <div className="text-sm wrap-break-word">{description}</div>

@@ -10,30 +10,21 @@
   :root {
     --background: oklch(var(--platinum));
     --text: oklch(var(--cyber-grape));
-    --primary: oklch(var(--cyber-grape));
-    --primary-contrast: oklch(var(--white));
+    --primary: oklch(var(--sea-green));
+    --neutral: oklch(var(--platinum));
+    --neutral-contrast: oklch(var(--cyber-grape));
     --secondary: oklch(var(--neon-coral));
-    --secondary-contrast: oklch(var(--white));
     --accent: oklch(var(--slate-blue));
-    --accent-contrast: oklch(var(--white));
     --selected: oklch(var(--mustard));
     --link: oklch(var(--neon-coral));
-    --destructive: oklch(var(--tomato));
-    --destructive-contrast: oklch(var(--white));
     --warning: oklch(var(--neon-carrot));
-    --warning-contrast: oklch(var(--white));
-    --success: oklch(var(--kiwi));
-    --success-contrast: oklch(var(--white));
     --info: oklch(var(--cerulean-blue));
-    --info-contrast: oklch(var(--white));
-    --surface-1: oklch(var(--white));
+    --surface-1: oklch(var(--platinum));
     --surface-1-contrast: oklch(var(--navy-taupe));
-    --surface-2: oklch(var(--platinum));
+    --surface-2: oklch(0 0 0 / 0.05);
     --surface-2-contrast: oklch(var(--navy-taupe));
-    --surface-3: oklch(var(--platinum--dark));
-    --surface-3-contrast: oklch(var(--navy-taupe--dark));
-    --input: oklch(var(--white));
-    --input-contrast: oklch(var(--charcoal));
+    --surface-3: oklch(var(--slate-blue));
+    --surface-3-contrast: oklch(var(--white));
     /* Focus rings stay mustard through the shared focus-styles machinery. */
     --focus-color: oklch(var(--mustard));
   }
@@ -136,43 +127,8 @@
   strong {
     @apply font-extrabold;
   }
-  h1 {
-    @apply h1;
-  }
-  h2 {
-    @apply h2;
-  }
-  h3 {
-    @apply h3;
-  }
-  h4 {
-    @apply h4;
-  }
-  p {
-    @apply text-base;
-    margin: 1em 0;
-  }
 }
 
-@utility h1 {
-  @apply font-heading mx-0 my-6 text-3xl leading-tight font-bold;
-}
-@utility h2 {
-  @apply font-heading mx-0 my-6 text-2xl leading-tight font-bold;
-}
-@utility h3 {
-  @apply font-heading mx-0 my-2 text-xl leading-tight font-semibold;
-}
-@utility h4 {
-  @apply font-heading mx-0 my-2 text-lg leading-normal font-semibold;
-}
-@utility hero {
-  @apply font-heading leading-tight font-bold tracking-tight;
-  font-size: clamp(2.75rem, 8vh, 4.5rem);
-}
-@utility lead {
-  @apply text-muted text-lg leading-normal;
-}
 @utility hint {
   @apply text-muted text-xs leading-normal;
 }
@@ -183,18 +139,40 @@
   @apply cursor-pointer font-bold underline decoration-2 underline-offset-4;
   text-decoration-color: oklch(var(--sea-green));
 }
-@utility small-heading {
-  @apply text-sm;
-  font-family: var(--heading-font);
-  font-weight: 900;
-  line-height: 1.5;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+@utility variable-pill-effect-border {
+  --variable-pill-border-angle: 0deg;
+  background: conic-gradient(
+    from var(--variable-pill-border-angle),
+    var(--surface-3),
+    var(--variable-pill-accent, var(--primary)),
+    var(--selected),
+    var(--accent),
+    var(--variable-pill-accent, var(--primary)),
+    var(--surface-3)
+  );
 }
 @utility scrollable {
   @apply overflow-hidden overflow-y-auto;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+}
+
+@property --variable-pill-border-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes variable-pill-border-orbit {
+  to {
+    --variable-pill-border-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .variable-pill-effect-border {
+    animation: variable-pill-border-orbit 3.5s linear infinite;
+  }
 }
 @utility form-field {
   @apply border-outline w-full rounded-sm border;

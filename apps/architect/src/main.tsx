@@ -10,7 +10,6 @@ import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 
 import { AppErrorBoundary } from './components/Errors';
 import AppView from './components/ViewManager/views/App';
-import { openLocalNetcanvas } from './ducks/modules/userActions/userActions';
 import { store } from './ducks/store';
 import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
@@ -18,8 +17,6 @@ import { isCriticalOperationInProgress } from './utils/criticalOperation';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
-  subscribeLaunchFiles,
-  takeLaunchFiles,
 } from './utils/fileLaunchQueue';
 import { initInstallPromptCapture } from './utils/installPrompt';
 import { isRunningAsInstalledPwa, requestPersistentStorage } from './utils/pwa';
@@ -29,14 +26,9 @@ import { isRunningAsInstalledPwa, requestPersistentStorage } from './utils/pwa';
 initInstallPromptCapture();
 
 // OS-launched .netcanvas files (installed-PWA file handler, Chromium desktop):
-// Architect opens the file for editing through the same thunk as Home's
-// drag-and-drop. Only the first file of a launch batch opens — the editor
-// holds a single active protocol.
+// capture before React mounts so early launches are queued until App consumes
+// them inside the fresco dialog provider.
 initFileLaunchCapture();
-subscribeLaunchFiles(() => {
-  const [first] = takeLaunchFiles();
-  if (first) void store.dispatch(openLocalNetcanvas(first));
-});
 
 // During idle time, fetch stage thumbnails so they are already cached when the
 // timeline or stage editor first renders. When running as an installed PWA, also

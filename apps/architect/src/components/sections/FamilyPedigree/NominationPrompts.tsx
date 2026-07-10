@@ -2,90 +2,90 @@ import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
-import EditableList from '~/components/EditableList';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
+import DialogArrayField from '~/components/Form/DialogArrayField';
+import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
-import { openDialog } from '~/ducks/modules/dialogs';
 import type { RootState } from '~/ducks/store';
 
 import NominationPromptFields from './NominationPromptFields';
 import NominationPromptPreview from './NominationPromptPreview';
-
+const notEmpty = (value: unknown) =>
+  value && Array.isArray(value) && value.length > 0
+    ? undefined
+    : 'You must create at least one item.';
 const NominationPrompts = ({ form }: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
+  const { confirm } = useDialog();
   const getFormValue = formValueSelector(form);
-
   const nodeType = useSelector(
     (state: RootState) =>
       getFormValue(state, 'nodeConfig.type') as string | undefined,
   );
-
   const hasNominationPrompts = useSelector(
     (state: RootState) =>
       getFormValue(state, 'nominationPrompts') as unknown[] | undefined,
   );
-
   const isDisabled = !nodeType;
-
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
       if (!hasNominationPrompts?.length || newState) {
         return true;
       }
-
-      const confirm = await dispatch(
-        openDialog({
-          type: 'Warning',
-          title: 'This will clear your nomination prompts',
-          message:
-            'This will clear your nomination prompts and delete any prompts you have created. Do you want to continue?',
-          confirmLabel: 'Clear prompts',
-        }),
-      ).unwrap();
-
-      if (confirm) {
+      const confirmed = await confirm({
+        title: 'This will clear your nomination prompts',
+        description:
+          'This will clear your nomination prompts and delete any prompts you have created. Do you want to continue?',
+        confirmLabel: 'Clear prompts',
+        cancelLabel: 'Cancel',
+        intent: 'warning',
+        onConfirm: () => {},
+      });
+      if (confirmed) {
         dispatch(change(form, 'nominationPrompts', null));
         return true;
       }
-
       return false;
     },
-    [dispatch, form, hasNominationPrompts],
+    [confirm, dispatch, form, hasNominationPrompts],
   );
-
   return (
     <Section
       disabled={isDisabled}
       summary={
-        <p>
+        <Paragraph>
           Optionally add prompts to collect attribute information about family
           members. Each prompt should ask about a specific condition or trait
           and will store the response in the selected boolean variable.
-        </p>
+        </Paragraph>
       }
       title="Nomination Prompts"
       toggleable
       startExpanded={!!hasNominationPrompts?.length}
       handleToggleChange={handleToggleChange}
     >
-      <EditableList
-        previewComponent={NominationPromptPreview}
-        editComponent={NominationPromptFields}
-        title="Edit Prompt"
-        fieldName="nominationPrompts"
-        form={form}
-        editProps={{ nodeType }}
-      >
-        {!hasNominationPrompts?.length && (
-          <p className="text-current/70 italic">
-            No nomination prompts have been created yet. Click &ldquo;Create
-            new&rdquo; to add your first prompt.
-          </p>
-        )}
-      </EditableList>
+      <ValidatedField
+        name="nominationPrompts"
+        label="Nomination prompts"
+        component={DialogArrayField}
+        validation={{ notEmpty }}
+        componentProps={{
+          addTitle: 'Edit Prompt',
+          previewComponent: NominationPromptPreview,
+          editorFieldsComponent: NominationPromptFields,
+          editorTitle: 'Edit Prompt',
+          editorProps: { nodeType },
+          itemLabel: 'prompt',
+          sortable: true,
+          requestedEditFormName: 'editable-list-form',
+          emptyStateMessage:
+            'No nomination prompts have been created yet. Click "Create new" to add your first prompt.',
+        }}
+      />
     </Section>
   );
 };
-
 export default NominationPrompts;

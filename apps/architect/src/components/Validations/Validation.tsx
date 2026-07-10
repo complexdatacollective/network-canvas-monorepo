@@ -2,10 +2,10 @@ import { map } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import type { Variable } from '@codaco/protocol-validation';
-import NumberField from '~/components/Form/Fields/Number';
 
-import NativeSelect from '../Form/Fields/NativeSelect';
 import {
   MULTI_SELECT_CONTROL_CLASSES,
   MULTI_SELECT_OPTION_CLASSES,
@@ -36,6 +36,20 @@ type ValidationProps = {
 };
 
 const noop = () => {};
+
+const parseNumberInput = (value: unknown) => {
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+
+  return Number.isNaN(parsed) ? null : parsed;
+};
 
 const Validation = ({
   onDelete = noop,
@@ -93,28 +107,39 @@ const Validation = ({
     <div className={`group ${MULTI_SELECT_RULE_CLASSES}`}>
       <div className={MULTI_SELECT_OPTIONS_CLASSES}>
         <div className={MULTI_SELECT_OPTION_CLASSES}>
-          <NativeSelect
+          <NativeSelectField
             options={options}
-            input={keyInputProps}
-            validation={{ required: true }}
+            name={keyInputProps.name}
+            value={keyInputProps.value ?? undefined}
+            onChange={(value) =>
+              keyInputProps.onChange(typeof value === 'string' ? value : null)
+            }
             placeholder="Select validation rule"
           />
         </div>
         {itemKey && isValidationWithNumberValue(itemKey) && (
           <div className={MULTI_SELECT_OPTION_CLASSES}>
-            <NumberField
-              input={numberValueInputProps}
-              validation={{ required: true }}
-              variant="embedded"
+            <InputField
+              name={numberValueInputProps.name}
+              value={numberValueInputProps.value?.toString() ?? undefined}
+              onChange={(value: unknown) =>
+                numberValueInputProps.onChange(parseNumberInput(value))
+              }
+              type="number"
             />
           </div>
         )}
         {itemKey && isValidationWithListValue(itemKey) && (
           <div className={MULTI_SELECT_OPTION_CLASSES}>
-            <NativeSelect
+            <NativeSelectField
               options={existingVariableOptions}
-              input={listValueInputProps}
-              validation={{ required: true }}
+              name={listValueInputProps.name}
+              value={listValueInputProps.value ?? undefined}
+              onChange={(value) =>
+                listValueInputProps.onChange(
+                  typeof value === 'string' ? value : null,
+                )
+              }
               placeholder="Select comparison variable"
             />
           </div>

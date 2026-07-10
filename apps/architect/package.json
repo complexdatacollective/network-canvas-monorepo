@@ -26,6 +26,7 @@
     "@codaco/tsconfig": "workspace:*",
     "@reduxjs/toolkit": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-table": "catalog:",
     "@types/redux-logger": "^3.0.13",
     "csvtojson": "catalog:",
     "cva": "1.0.0-beta.4",

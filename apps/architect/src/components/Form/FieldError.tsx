@@ -1,4 +1,5 @@
-import Icon from '~/lib/legacy-ui/components/Icon';
+import { TriangleAlert } from 'lucide-react';
+
 import { cx } from '~/utils/cva';
 
 type FieldErrorProps = {
@@ -24,7 +25,7 @@ const FieldError = ({
       className,
     )}
   >
-    <Icon name="warning" /> {error}
+    <TriangleAlert aria-hidden /> {error}
   </div>
 );
 

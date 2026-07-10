@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { GripVertical, PencilIcon, X } from 'lucide-react';
+import { PencilIcon, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { action } from 'storybook/actions';
@@ -14,6 +14,7 @@ import FormStoreProvider from '../../store/formStoreProvider';
 import SubmitButton from '../../SubmitButton';
 import InputField from '../InputField';
 import ArrayField, {
+  ArrayFieldDragHandle,
   type ArrayFieldEditorProps,
   type ArrayFieldItemProps,
 } from './ArrayField';
@@ -35,6 +36,10 @@ function SimpleInlineItem({
   onEdit,
   onDelete,
   dragControls,
+  index,
+  itemCount,
+  onMove,
+  disabled,
 }: ArrayFieldItemProps<SimpleItemBase>) {
   const [label, setLabel] = useState(item?.label ?? '');
 
@@ -88,12 +93,13 @@ function SimpleInlineItem({
   return (
     <div className="flex w-full items-center gap-2">
       {isSortable && (
-        <div
-          onPointerDown={(e) => dragControls.start(e)}
-          className="touch-none"
-        >
-          <GripVertical className="size-4 cursor-grab" />
-        </div>
+        <ArrayFieldDragHandle
+          dragControls={dragControls}
+          index={index}
+          itemCount={itemCount}
+          onMove={onMove}
+          disabled={disabled}
+        />
       )}
       <div className="flex-1">{item.label}</div>
       <div className="ml-auto flex items-center gap-1">
@@ -148,7 +154,9 @@ ArrayField manages arrays of items with support for:
 - **Inline editing**: Item component handles both display and edit modes
 - **Dialog editing**: Separate editorComponent for complex forms in dialogs
 - **Drag-and-drop reordering**: Enable with \`sortable\` prop
+- **Keyboard reordering**: Use \`ArrayFieldDragHandle\` for arrow-key movement
 - **Draft items**: New items are drafts until saved
+- **Item limits**: Set \`maxItems\` to prevent additional items at a fixed cap
 
 ## Three Editing Patterns
 
@@ -175,6 +183,10 @@ immediately upon creation.
       control: 'boolean',
       description: 'Enable drag-and-drop reordering of items',
       table: { defaultValue: { summary: 'false' } },
+    },
+    'maxItems': {
+      control: 'number',
+      description: 'Hide the add action after this many items are present',
     },
     'confirmDelete': {
       control: 'boolean',
@@ -277,6 +289,31 @@ export const WithInitialItems: Story = {
   },
 };
 
+/**
+ * The add action is removed once the configured item limit is reached.
+ */
+export const MaximumItems: Story = {
+  args: {
+    value: sampleItems.slice(0, 2),
+    maxItems: 2,
+    itemTemplate: () => ({ id: crypto.randomUUID(), label: '' }),
+    itemComponent: SimpleInlineItem,
+  },
+  render: function Render(args) {
+    const [, updateArgs] = useArgs();
+
+    return (
+      <ArrayField
+        {...args}
+        onChange={(newValue) => {
+          updateArgs({ value: newValue });
+          action('onChange')(newValue);
+        }}
+      />
+    );
+  },
+};
+
 // ============================================================================
 // Inline Editing Pattern
 // ============================================================================
@@ -309,6 +346,10 @@ function TagInlineItem({
   onEdit,
   onDelete,
   dragControls,
+  index,
+  itemCount,
+  onMove,
+  disabled,
 }: ArrayFieldItemProps<TagItem>) {
   const [label, setLabel] = useState(item?.label ?? '');
   const [color, setColor] = useState<TagItem['color']>(item?.color ?? 'node-1');
@@ -384,13 +425,13 @@ function TagInlineItem({
       className="flex w-full items-center gap-2"
     >
       {isSortable && (
-        <motion.div
-          layout
-          onPointerDown={(e) => dragControls.start(e)}
-          className="touch-none"
-        >
-          <GripVertical className="size-4 cursor-grab" />
-        </motion.div>
+        <ArrayFieldDragHandle
+          dragControls={dragControls}
+          index={index}
+          itemCount={itemCount}
+          onMove={onMove}
+          disabled={disabled}
+        />
       )}
       <motion.div layout className="flex-1">
         {item.label}
@@ -508,6 +549,10 @@ function ContactDisplayItem({
   onEdit,
   onDelete,
   dragControls,
+  index,
+  itemCount,
+  onMove,
+  disabled,
 }: ArrayFieldItemProps<ContactItem>) {
   // Hide when being edited (dialog takes over) or when it's a new draft
   if (isBeingEdited || item._draft) {
@@ -520,12 +565,13 @@ function ContactDisplayItem({
       className="border-b-input-contrast/10 flex w-full items-center gap-3 border-b p-2 last:border-b-0"
     >
       {isSortable && (
-        <div
-          onPointerDown={(e) => dragControls.start(e)}
-          className="touch-none"
-        >
-          <GripVertical className="size-4 cursor-grab" />
-        </div>
+        <ArrayFieldDragHandle
+          dragControls={dragControls}
+          index={index}
+          itemCount={itemCount}
+          onMove={onMove}
+          disabled={disabled}
+        />
       )}
       <div className="flex flex-1 flex-col">
         <span className="font-medium">{item.name}</span>
@@ -746,16 +792,21 @@ function DisplayOnlyItem({
   isSortable,
   onDelete,
   dragControls,
+  index,
+  itemCount,
+  onMove,
+  disabled,
 }: ArrayFieldItemProps<SimpleItemType>) {
   return (
     <div className="border-b-input-contrast/10 flex w-full items-center gap-2 border-b px-2 py-1 last:border-b-0">
       {isSortable && (
-        <div
-          onPointerDown={(e) => dragControls.start(e)}
-          className="touch-none"
-        >
-          <GripVertical className="size-4 cursor-grab" />
-        </div>
+        <ArrayFieldDragHandle
+          dragControls={dragControls}
+          index={index}
+          itemCount={itemCount}
+          onMove={onMove}
+          disabled={disabled}
+        />
       )}
       <div className="flex-1">{item.label}</div>
       <IconButton
@@ -836,16 +887,21 @@ function AlwaysEditingItem({
   onDelete,
   onUpdate,
   dragControls,
+  index,
+  itemCount,
+  onMove,
+  disabled,
 }: ArrayFieldItemProps<ConfigItem>) {
   return (
     <div className="flex items-center gap-2">
       {isSortable && (
-        <div
-          onPointerDown={(e) => dragControls.start(e)}
-          className="touch-none"
-        >
-          <GripVertical className="size-4 cursor-grab" />
-        </div>
+        <ArrayFieldDragHandle
+          dragControls={dragControls}
+          index={index}
+          itemCount={itemCount}
+          onMove={onMove}
+          disabled={disabled}
+        />
       )}
       <InputField
         value={item.label ?? ''}
