@@ -119,6 +119,64 @@ export default defineConfig(({ mode }) => {
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
           runtimeCaching: [
             {
+              // Preview is a separate HTML entry. With directoryIndex disabled
+              // for fresh root launches, keep /preview/ explicitly mapped to
+              // its own precached shell for fully offline preview starts.
+              urlPattern: ({ request, sameOrigin, url }) =>
+                sameOrigin &&
+                request.mode === 'navigate' &&
+                url.pathname.startsWith('/preview/'),
+              handler: async ({ request }) => {
+                let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+                try {
+                  const networkTimeout = new Promise<Response>((_, reject) => {
+                    timeoutId = setTimeout(
+                      () => reject(new Error('Preview request timed out')),
+                      3_000,
+                    );
+                  });
+
+                  return await Promise.race([fetch(request), networkTimeout]);
+                } catch (error) {
+                  const cacheStorage: unknown = Reflect.get(
+                    globalThis,
+                    'caches',
+                  );
+                  const serviceWorkerLocation: unknown = Reflect.get(
+                    globalThis,
+                    'location',
+                  );
+                  const cacheMatch: unknown =
+                    typeof cacheStorage === 'object' && cacheStorage !== null
+                      ? Reflect.get(cacheStorage, 'match')
+                      : undefined;
+                  const locationHref: unknown =
+                    typeof serviceWorkerLocation === 'object' &&
+                    serviceWorkerLocation !== null
+                      ? Reflect.get(serviceWorkerLocation, 'href')
+                      : undefined;
+
+                  if (
+                    typeof cacheMatch !== 'function' ||
+                    typeof locationHref !== 'string'
+                  ) {
+                    throw error;
+                  }
+
+                  const fallback: unknown = await cacheMatch.call(
+                    cacheStorage,
+                    new URL('preview/index.html', locationHref).href,
+                    { ignoreSearch: true },
+                  );
+                  if (fallback instanceof Response) return fallback;
+                  throw error;
+                } finally {
+                  if (timeoutId !== undefined) clearTimeout(timeoutId);
+                }
+              },
+            },
+            {
               // The app shell must be fresh when the app is launched online:
               // a cache-first navigation fallback would render the old HTML
               // first, then refresh once the service-worker update finished.
