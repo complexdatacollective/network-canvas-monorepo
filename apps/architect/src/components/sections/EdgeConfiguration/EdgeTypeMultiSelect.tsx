@@ -37,8 +37,8 @@ export const EdgeTypeMultiSelectInner = ({
 }: EdgeTypeMultiSelectInnerProps) => {
   const [showNewTypeDialog, setShowNewTypeDialog] = useState(false);
   const checkedTypes = value.map((entry) => entry.subject.type);
-  const handleChange = (newCheckedTypes: unknown[]) => {
-    const typedCheckedTypes = newCheckedTypes as string[];
+  const handleChange = (newCheckedTypes: (string | number)[] | undefined) => {
+    const typedCheckedTypes = (newCheckedTypes ?? []).map(String);
     const nextEntries = typedCheckedTypes.map((type) => {
       const existing = value.find((entry) => entry.subject.type === type);
       if (existing) {

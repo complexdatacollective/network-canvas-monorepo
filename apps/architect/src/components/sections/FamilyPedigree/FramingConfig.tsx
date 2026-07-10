@@ -46,8 +46,8 @@ const FramingConfig = ({ form }: StageEditorSectionProps) => {
       dispatch(change(form, 'framing', { mode: 'fixed', value: 'gamete' }));
     }
   };
-  const handleValueChange = (value: string | null) => {
-    if (value) {
+  const handleValueChange = (value: string | number | undefined) => {
+    if (typeof value === 'string') {
       dispatch(change(form, 'framing.value', value));
     }
   };

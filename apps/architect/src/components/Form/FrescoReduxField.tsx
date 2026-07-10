@@ -80,7 +80,7 @@ export const reduxNumberValue = {
   toReduxValue: parseIntegerValue,
 };
 
-const FrescoReduxField = ({
+const FrescoReduxFieldBase = ({
   input,
   meta,
   fieldComponent,
@@ -93,9 +93,12 @@ const FrescoReduxField = ({
   toReduxValue,
   ...fieldProps
 }: FrescoReduxFieldProps) => {
-  const rawError = meta.error ?? meta.submitError;
+  const metaRecord = meta as unknown as Record<string, unknown>;
+  const rawError = meta.error ?? metaRecord.submitError;
   const errors = getFieldErrors(rawError);
-  const showErrors = Boolean((meta.touched || meta.submitFailed) && rawError);
+  const showErrors = Boolean(
+    (meta.touched || metaRecord.submitFailed) && rawError,
+  );
   const value = fromReduxValue ? fromReduxValue(input.value) : input.value;
   const normalizedFieldProps = normalizeFieldProps(fieldProps);
 
@@ -127,5 +130,9 @@ const FrescoReduxField = ({
     />
   );
 };
+
+const FrescoReduxField =
+  FrescoReduxFieldBase as ComponentType<WrappedFieldProps> &
+    ComponentType<Record<string, unknown>>;
 
 export default FrescoReduxField;

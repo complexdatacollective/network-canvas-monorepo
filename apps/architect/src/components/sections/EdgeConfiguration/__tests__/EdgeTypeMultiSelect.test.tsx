@@ -49,7 +49,7 @@ describe('EdgeTypeMultiSelectInner', () => {
       onChange,
     });
 
-    fireEvent.click(screen.getByLabelText('Knows'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Knows' }));
 
     expect(onChange).toHaveBeenCalledOnce();
     expect(onChange).toHaveBeenCalledWith([
@@ -80,7 +80,7 @@ describe('EdgeTypeMultiSelectInner', () => {
       onChange,
     });
 
-    fireEvent.click(screen.getByLabelText('Likes'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Likes' }));
 
     expect(onChange).toHaveBeenCalledOnce();
     expect(onChange).toHaveBeenCalledWith([
@@ -100,7 +100,7 @@ describe('EdgeTypeMultiSelectInner', () => {
       onChange,
     });
 
-    fireEvent.click(screen.getByLabelText('Knows'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Knows' }));
 
     // Clicking on a checked item should deselect (remove), not re-add
     expect(onChange).toHaveBeenCalledOnce();
@@ -189,7 +189,7 @@ describe('EdgeTypeMultiSelectInner', () => {
       onChange,
     });
 
-    fireEvent.click(screen.getByLabelText('Likes'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Likes' }));
 
     const [result] = onChange.mock.calls[0] as [EdgeEntry[]];
     const knowsEntry = result.find((e) => e.subject.type === 'knows');
@@ -213,6 +213,6 @@ describe('EdgeTypeMultiSelectControl', () => {
       ),
     ).not.toThrow();
 
-    expect(screen.getByLabelText('Knows')).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Knows' })).not.toBeChecked();
   });
 });

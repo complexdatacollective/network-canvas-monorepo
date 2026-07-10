@@ -70,21 +70,23 @@ vi.mock('~/components/Form/ValidatedField', () => ({
   ),
 }));
 
-vi.mock('~/components/Form/Fields/RadioGroup', () => ({
+vi.mock('@codaco/fresco-ui/form/fields/RadioGroup', () => ({
   default: ({
     options,
-    input,
+    value,
+    onChange,
   }: {
     options: { value: string; label: string }[];
-    input: { value: string; name: string; onChange: (v: unknown) => void };
+    value: string;
+    onChange: (v: string) => void;
   }) => (
     <div data-testid="radio-group">
       {options.map((opt) => (
         <button
           key={opt.value}
           data-testid={`radio-${opt.value}`}
-          aria-pressed={input.value === opt.value}
-          onClick={() => input.onChange(opt.value)}
+          aria-pressed={value === opt.value}
+          onClick={() => onChange(opt.value)}
         >
           {opt.label}
         </button>
@@ -93,22 +95,20 @@ vi.mock('~/components/Form/Fields/RadioGroup', () => ({
   ),
 }));
 
-vi.mock('~/components/Form/Fields/NativeSelect', () => ({
+vi.mock('@codaco/fresco-ui/form/fields/Select/Native', () => ({
   default: ({
     options,
-    input,
+    value,
+    onChange,
   }: {
     options: { value: string; label: string }[];
-    input: {
-      value: string;
-      name: string;
-      onChange: (v: string | null) => void;
-    };
+    value: string;
+    onChange: (v: string) => void;
   }) => (
     <select
       data-testid="native-select"
-      value={input.value}
-      onChange={(e) => input.onChange(e.target.value)}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>

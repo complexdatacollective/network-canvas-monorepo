@@ -35,7 +35,6 @@ vi.mock('~/components/Form/ValidatedField', () => ({
   default: () => <div data-testid="validated-field" />,
 }));
 vi.mock('~/components/Form/Fields', () => ({ Text: () => null }));
-vi.mock('~/components/Form/Fields/Select', () => ({ default: () => null }));
 vi.mock('~/components/Options', () => ({ default: () => null }));
 vi.mock('~/components/Options/LockedOptions', () => ({ default: () => null }));
 vi.mock('~/selectors/codebook', () => ({ getVariablesForSubject: () => ({}) }));
