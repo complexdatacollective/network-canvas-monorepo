@@ -7,6 +7,7 @@ import {
   reducer as formReducer,
   reduxForm,
   type InjectedFormProps,
+  type WrappedFieldProps,
 } from 'redux-form';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -46,6 +47,14 @@ const ItemRow = ({
 
 const rowMounted = vi.fn();
 
+const NestedInput = ({ input }: WrappedFieldProps) => (
+  <input aria-label="Nested label" {...input} />
+);
+
+const NestedItemRow = ({ fieldName }: FrescoReduxArrayFieldItemProps<Item>) => (
+  <Field name={`${fieldName}.label`} component={NestedInput} />
+);
+
 const Harness = (_props: InjectedFormProps) => (
   <Field
     name="items"
@@ -59,6 +68,20 @@ const Harness = (_props: InjectedFormProps) => (
 );
 
 const ReduxHarness = reduxForm({ form: 'array-adapter-test' })(Harness);
+
+const NestedHarness = (_props: InjectedFormProps) => (
+  <Field
+    name="items"
+    component={FrescoReduxArrayField}
+    itemComponent={NestedItemRow}
+    itemTemplate={() => ({ label: '' })}
+    confirmDelete={false}
+  />
+);
+
+const NestedReduxHarness = reduxForm({ form: 'nested-array-adapter-test' })(
+  NestedHarness,
+);
 
 const setup = (initialItems: Item[] | null | undefined) => {
   const store = configureStore({
@@ -116,5 +139,30 @@ describe('FrescoReduxArrayField', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(getItems()).toEqual([]);
+  });
+
+  it('lets indexed child fields own focus and blur metadata', () => {
+    const store = configureStore({
+      reducer: { form: formReducer },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({ serializableCheck: false }),
+    });
+
+    render(
+      <Provider store={store}>
+        <DialogProvider>
+          <NestedReduxHarness
+            initialValues={{ items: [{ label: 'Nested value' }] }}
+          />
+        </DialogProvider>
+      </Provider>,
+    );
+
+    const input = screen.getByRole('textbox', { name: 'Nested label' });
+    expect(() => {
+      fireEvent.focus(input);
+      fireEvent.blur(input);
+    }).not.toThrow();
+    expect(input).toHaveValue('Nested value');
   });
 });

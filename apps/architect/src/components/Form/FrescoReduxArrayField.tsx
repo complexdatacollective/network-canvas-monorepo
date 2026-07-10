@@ -124,6 +124,8 @@ export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
     showErrors,
   };
 
+  // Indexed child fields own focus state. Forwarding their bubbling focus and
+  // blur events makes Redux Form store conflicting metadata shapes at one path.
   return (
     <RendererContext.Provider value={rendererContext}>
       <UnconnectedField
@@ -136,8 +138,6 @@ export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
         readOnly={readOnly}
         value={value}
         onChange={(nextValue) => input.onChange(nextValue ?? [])}
-        onBlur={() => input.onBlur?.(input.value)}
-        onFocus={input.onFocus}
         errors={errors}
         showErrors={showErrors}
         aria-invalid={showErrors}

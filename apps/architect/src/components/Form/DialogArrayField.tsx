@@ -12,7 +12,7 @@ import type { RootState } from '~/ducks/modules/root';
 
 import Layout from '../EditorLayout';
 import Form from '../InlineEditScreen/Form';
-import FrescoReduxArrayField, {
+import {
   FrescoReduxArrayFieldBase,
   type FrescoReduxArrayFieldEditorProps,
   type FrescoReduxArrayFieldItemProps,
@@ -233,7 +233,7 @@ type DialogArrayFieldOwnProps<T extends ArrayItem> = Omit<
 export type DialogArrayFieldProps<T extends ArrayItem> =
   DialogArrayFieldOwnProps<T>;
 
-export function DialogArrayFieldBase<T extends ArrayItem>({
+function DialogArrayFieldBase<T extends ArrayItem>({
   addTitle,
   editorFieldsComponent,
   editorProps,
@@ -304,5 +304,4 @@ const DialogArrayField =
   DialogArrayFieldBase as ComponentType<WrappedFieldProps> &
     ComponentType<Record<string, unknown>>;
 
-export { FrescoReduxArrayField };
 export default DialogArrayField;

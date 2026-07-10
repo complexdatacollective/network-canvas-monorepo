@@ -15,7 +15,7 @@ import type { RootState } from '~/ducks/modules/root';
 import IssueAnchor from '../../IssueAnchor';
 import NodePanel, { type NodePanelValue } from './NodePanel';
 
-export const createNodePanel = (): NodePanelValue => ({
+const createNodePanel = (): NodePanelValue => ({
   id: uuid(),
   title: null,
   dataSource: 'existing',
