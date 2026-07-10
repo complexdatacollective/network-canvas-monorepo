@@ -14,8 +14,8 @@ import {
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
-import EditableList from '~/components/EditableList';
 import { Row, Section } from '~/components/EditorLayout';
+import DialogArrayField from '~/components/Form/DialogArrayField';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import ValidatedField from '~/components/Form/ValidatedField';
 import IssueAnchor from '~/components/IssueAnchor';
@@ -283,29 +283,26 @@ const NodeConfigurationInner = ({
               layout="vertical"
               className="bg-surface-2 text-surface-2-contrast p-5"
             >
-              <EditableList
-                editComponent={FieldFields}
-                editProps={{ type: nodeType, entity: 'node' }}
-                previewComponent={NodeFormFieldPreview}
-                fieldName="nodeConfig.form"
-                title="Edit Field"
+              <ValidatedField
+                name="nodeConfig.form"
+                label="Form fields"
+                component={DialogArrayField}
                 validation={{}}
-                onChange={(value: unknown) =>
-                  handleChangeFields(value as Record<string, unknown>)
-                }
-                normalize={(value: unknown) =>
-                  normalizeField(value as Record<string, unknown>)
-                }
-                itemSelector={
-                  itemSelector('node', nodeType) as (
-                    state: Record<string, unknown>,
-                    params: {
-                      form: string;
-                      editField: string;
-                    },
-                  ) => unknown
-                }
-                form={form}
+                componentProps={{
+                  addTitle: 'Edit Field',
+                  editorFieldsComponent: FieldFields,
+                  editorProps: { type: nodeType, entity: 'node' },
+                  previewComponent: NodeFormFieldPreview,
+                  editorTitle: 'Edit Field',
+                  itemLabel: 'field',
+                  sortable: true,
+                  onBeforeSave: (value: unknown) =>
+                    handleChangeFields(value as Record<string, unknown>),
+                  normalizeItem: (value: unknown) =>
+                    normalizeField(value as Record<string, unknown>),
+                  itemSelector: itemSelector('node', nodeType),
+                  requestedEditFormName: 'editable-list-form',
+                }}
               />
             </Section>
           </>

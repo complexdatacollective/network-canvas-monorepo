@@ -3,8 +3,9 @@ import { formValueSelector } from 'redux-form';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Stage } from '@codaco/protocol-validation';
-import EditableList from '~/components/EditableList';
 import { Section } from '~/components/EditorLayout';
+import DialogArrayField from '~/components/Form/DialogArrayField';
+import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import type { RootState } from '~/ducks/store';
 import { getStage } from '~/selectors/protocol';
@@ -17,13 +18,16 @@ type DiseaseRow = {
   variable: string;
   inheritancePattern: string;
 };
-// EditableList assigns a unique `id` to each new item.
 const diseaseTemplate = (): DiseaseRow => ({
   label: '',
   color: '',
   variable: '',
   inheritancePattern: '',
 });
+const notEmpty = (value: unknown) =>
+  value && Array.isArray(value) && value.length > 0
+    ? undefined
+    : 'You must create at least one item.';
 type FamilyPedigreeStage = Extract<
   Stage,
   {
@@ -52,16 +56,22 @@ const Diseases = ({ form }: StageEditorSectionProps) => {
         </Paragraph>
       }
     >
-      <EditableList
-        previewComponent={
-          DiseasePreview as React.ComponentType<Record<string, unknown>>
-        }
-        editComponent={DiseaseFields}
-        title="Edit Disease"
-        fieldName="diseases"
-        template={diseaseTemplate}
-        form={form}
-        editProps={{ nodeType }}
+      <ValidatedField
+        name="diseases"
+        label="Diseases"
+        component={DialogArrayField}
+        validation={{ notEmpty }}
+        componentProps={{
+          addTitle: 'Edit Disease',
+          editorFieldsComponent: DiseaseFields,
+          editorProps: { nodeType },
+          editorTitle: 'Edit Disease',
+          itemLabel: 'disease',
+          itemTemplate: diseaseTemplate,
+          previewComponent: DiseasePreview,
+          requestedEditFormName: 'editable-list-form',
+          sortable: true,
+        }}
       />
     </Section>
   );

@@ -1,10 +1,11 @@
 import { compose } from 'react-recompose';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import EditableList from '~/components/EditableList';
 import { Section } from '~/components/EditorLayout';
 import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
 import withSubject from '~/components/enhancers/withSubject';
+import DialogArrayField from '~/components/Form/DialogArrayField';
+import ValidatedField from '~/components/Form/ValidatedField';
 import { itemSelector } from '~/components/sections/CategoricalBinPrompts/helpers';
 import withPromptChangeHandler from '~/components/sections/CategoricalBinPrompts/withPromptChangeHandler';
 import { PromptPreview } from '~/components/sections/NameGeneratorPrompts';
@@ -12,6 +13,10 @@ import type { StageEditorSectionProps } from '~/components/StageEditor/Interface
 
 import PromptFields from './PromptFields';
 const template = () => ({ color: 'ord-color-seq-1' });
+const notEmpty = (value: unknown) =>
+  value && Array.isArray(value) && value.length > 0
+    ? undefined
+    : 'You must create at least one item.';
 type OrdinalBinPromptsProps = StageEditorSectionProps & {
   handleChangePrompt: (data: unknown) => void;
   entity?: string | null;
@@ -23,7 +28,6 @@ const OrdinalBinPrompts = ({
   handleChangePrompt,
   entity = null,
   type = null,
-  form,
   disabled,
   disabledMessage,
 }: OrdinalBinPromptsProps) => (
@@ -38,25 +42,24 @@ const OrdinalBinPrompts = ({
     }
     title="Prompts"
   >
-    <EditableList
-      previewComponent={
-        PromptPreview as React.ComponentType<Record<string, unknown>>
-      }
-      editComponent={PromptFields}
-      title="Edit Prompt"
-      template={template}
-      onChange={handleChangePrompt}
-      itemSelector={
-        itemSelector(entity, type) as (
-          state: Record<string, unknown>,
-          params: {
-            form: string;
-            editField: string;
-          },
-        ) => unknown
-      }
-      editProps={{ entity, type }}
-      form={form}
+    <ValidatedField
+      name="prompts"
+      label="Prompts"
+      component={DialogArrayField}
+      validation={{ notEmpty }}
+      componentProps={{
+        addTitle: 'Edit Prompt',
+        previewComponent: PromptPreview,
+        editorFieldsComponent: PromptFields,
+        editorTitle: 'Edit Prompt',
+        itemLabel: 'prompt',
+        itemTemplate: template,
+        onBeforeSave: handleChangePrompt,
+        itemSelector: itemSelector(entity, type),
+        editorProps: { entity, type },
+        requestedEditFormName: 'editable-list-form',
+        sortable: true,
+      }}
     />
   </Section>
 );

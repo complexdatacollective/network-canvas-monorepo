@@ -2,15 +2,20 @@ import { compose } from 'react-recompose';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
+import DialogArrayField from '~/components/Form/DialogArrayField';
+import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
-import EditableList from '../../EditableList';
 import withDisabledAssetRequired from '../../enhancers/withDisabledAssetRequired';
 import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequired';
 import withMapFormToProps from '../../enhancers/withMapFormToProps';
 import withSubject from '../../enhancers/withSubject';
 import { PromptPreview } from '../NameGeneratorPrompts';
 import PromptFields from '../NameGeneratorPrompts/PromptFields';
+const notEmpty = (value: unknown) =>
+  value && Array.isArray(value) && value.length > 0
+    ? undefined
+    : 'You must create at least one item.';
 type NameGeneratorRosterPromptsProps = StageEditorSectionProps & {
   entity?: string;
   type?: string;
@@ -19,7 +24,6 @@ type NameGeneratorRosterPromptsProps = StageEditorSectionProps & {
   dataSource?: string;
 };
 const NameGeneratorRosterPrompts = ({
-  form,
   entity,
   type,
   disabled,
@@ -37,12 +41,21 @@ const NameGeneratorRosterPrompts = ({
     }
     title="Prompts"
   >
-    <EditableList
-      editComponent={PromptFields}
-      previewComponent={PromptPreview}
-      title="Edit Prompt"
-      form={form}
-      editProps={{ entity, type, dataSource }}
+    <ValidatedField
+      name="prompts"
+      label="Prompts"
+      component={DialogArrayField}
+      validation={{ notEmpty }}
+      componentProps={{
+        addTitle: 'Edit Prompt',
+        editorFieldsComponent: PromptFields,
+        previewComponent: PromptPreview,
+        editorTitle: 'Edit Prompt',
+        itemLabel: 'prompt',
+        editorProps: { entity, type, dataSource },
+        requestedEditFormName: 'editable-list-form',
+        sortable: true,
+      }}
     />
   </Section>
 );

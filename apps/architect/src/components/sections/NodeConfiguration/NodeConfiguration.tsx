@@ -53,7 +53,7 @@ export type NodeConfigurationProps = {
     variableType: string,
     fieldName: string,
   ) => void;
-  handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
+  handleChangeFields: (field: Record<string, unknown>) => unknown;
   layoutVariablesForSubject: LayoutVariableOption[];
   categoricalVariablesForSubject: CategoricalVariableOption[];
   quickAddOptionsForSubject: TextVariableOption[];

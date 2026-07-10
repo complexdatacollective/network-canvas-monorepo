@@ -3,14 +3,19 @@ import { compose } from 'react-recompose';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
+import DialogArrayField from '~/components/Form/DialogArrayField';
+import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
-import EditableList from '../../EditableList';
 import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequired';
 import withSubject from '../../enhancers/withSubject';
 import PromptFields from './PromptFields';
 import PromptPreview from './PromptPreview';
 import withFormUsedVariableIndex from './withFormUsedVariableIndex';
+const notEmpty = (value: unknown) =>
+  value && Array.isArray(value) && value.length > 0
+    ? undefined
+    : 'You must create at least one item.';
 type SociogramPromptsProps = StageEditorSectionProps & {
   entity?: string;
   type?: string;
@@ -19,7 +24,6 @@ type SociogramPromptsProps = StageEditorSectionProps & {
   usedVariableIndex?: Record<string, unknown>;
 };
 const SociogramPrompts = ({
-  form,
   entity,
   type,
   disabled,
@@ -37,12 +41,21 @@ const SociogramPrompts = ({
     }
     title="Prompts"
   >
-    <EditableList
-      title="Edit Prompt"
-      previewComponent={PromptPreview}
-      editComponent={PromptFields}
-      form={form}
-      editProps={{ entity, type, usedVariableIndex }}
+    <ValidatedField
+      name="prompts"
+      label="Prompts"
+      component={DialogArrayField}
+      validation={{ notEmpty }}
+      componentProps={{
+        addTitle: 'Edit Prompt',
+        previewComponent: PromptPreview,
+        editorFieldsComponent: PromptFields,
+        editorTitle: 'Edit Prompt',
+        itemLabel: 'prompt',
+        editorProps: { entity, type, usedVariableIndex },
+        requestedEditFormName: 'editable-list-form',
+        sortable: true,
+      }}
     />
   </Section>
 );

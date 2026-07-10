@@ -154,11 +154,11 @@ describe('makeGetIsUsed', () => {
     };
 
     describe('returns true when a variable is present in redux forms', () => {
-      it('returns from default form names only without parameters', () => {
+      it('returns variables from every active form without parameters', () => {
         const result = makeGetIsUsed()(asState(stateWithFormUse));
 
         expect(result).toEqual({
-          [variable1]: false,
+          [variable1]: true,
           [variable2]: true,
           [variable3]: true,
           [variable4]: false,

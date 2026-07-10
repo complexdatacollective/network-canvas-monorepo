@@ -3,11 +3,11 @@ import { compose } from 'react-recompose';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import EditableList from '~/components/EditableList';
 import { Section } from '~/components/EditorLayout';
 import withDisabledFormTitle from '~/components/enhancers/withDisabledFormTitle';
 import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
 import withSubject from '~/components/enhancers/withSubject';
+import DialogArrayField from '~/components/Form/DialogArrayField';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -18,9 +18,13 @@ import { itemSelector, normalizeField } from './helpers';
 import withFormHandlers from './withFormHandlers';
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+const notEmpty = (value: unknown) =>
+  value && Array.isArray(value) && value.length > 0
+    ? undefined
+    : 'You must create at least one item.';
 
 type FormProps = StageEditorSectionProps & {
-  handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
+  handleChangeFields: (field: Record<string, unknown>) => unknown;
   disabled?: boolean;
   disabledMessage?: string;
   disableFormTitle?: boolean;
@@ -29,7 +33,6 @@ type FormProps = StageEditorSectionProps & {
 };
 const Form = ({
   handleChangeFields,
-  form,
   disabled = false,
   disabledMessage,
   type = null,
@@ -61,32 +64,26 @@ const Form = ({
         }}
       />
     )}
-    <EditableList
+    <ValidatedField
+      name="form.fields"
       label={disableFormTitle ? undefined : 'Form Fields'}
-      editComponent={FieldFields}
-      editProps={{
-        type,
-        entity,
+      component={DialogArrayField}
+      validation={{ notEmpty }}
+      componentProps={{
+        addTitle: 'Edit Field',
+        editorFieldsComponent: FieldFields,
+        editorProps: { type, entity },
+        editorTitle: 'Edit Field',
+        itemLabel: 'field',
+        itemSelector: itemSelector(entity, type),
+        normalizeItem: (value: unknown) =>
+          normalizeField(value as Record<string, unknown>),
+        onBeforeSave: (value: unknown) =>
+          handleChangeFields(value as Record<string, unknown>),
+        previewComponent: FieldPreview,
+        requestedEditFormName: 'editable-list-form',
+        sortable: true,
       }}
-      previewComponent={FieldPreview}
-      fieldName="form.fields"
-      title="Edit Field"
-      onChange={(value: unknown) =>
-        handleChangeFields(value as Array<Record<string, unknown>>)
-      }
-      normalize={(value: unknown) =>
-        normalizeField(value as Record<string, unknown>)
-      }
-      itemSelector={
-        itemSelector(entity, type) as (
-          state: Record<string, unknown>,
-          params: {
-            form: string;
-            editField: string;
-          },
-        ) => unknown
-      }
-      form={form}
     />
   </Section>
 );

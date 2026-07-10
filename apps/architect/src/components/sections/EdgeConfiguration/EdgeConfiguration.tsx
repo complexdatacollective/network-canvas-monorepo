@@ -45,7 +45,7 @@ type EdgeAttributeBlockInnerProps = {
   fieldName: string;
   editFormName: string;
   title: string;
-  handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
+  handleChangeFields: (field: Record<string, unknown>) => unknown;
 };
 const EdgeAttributeBlockInner = ({
   entity,
