@@ -79,7 +79,7 @@ const NavigationButton = ({
         ref={buttonRef}
         color="dynamic"
         variant="text"
-        className={cx('[&>.lucide]:h-[2em] [&>.lucide]:w-[1.2em]', className)}
+        className={cx('[&>.lucide]:h-[2em]', className)}
         disabled={disabled}
         {...props}
         size="xl"

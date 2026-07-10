@@ -144,9 +144,9 @@ export const heightVariants = cva({
   },
 });
 
-// Set child SVG icon height slightly above 1em while preserving consumer width overrides
+// Set child SVG icons slightly above 1em to match text height.
 export const proportionalLucideIconVariants = cva({
-  base: '[&>.lucide]:h-[1.2em] [&>.lucide]:max-h-full [&>.lucide]:shrink-0 [&>.lucide]:stroke-[2.5]',
+  base: '[&>.lucide]:h-[1.2em] [&>.lucide]:max-h-full [&>.lucide]:w-[1.2em] [&>.lucide]:shrink-0 [&>.lucide]:stroke-[2.5]',
 });
 
 // adds background and border styles for input-like controls

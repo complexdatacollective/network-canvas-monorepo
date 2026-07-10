@@ -1,5 +1,5 @@
 ---
-'@codaco/interview': patch
+'@codaco/fresco-ui': patch
 ---
 
-Restore interview navigation icon sizing to match the established visual layout.
+Restore proportional Lucide icon width for shared controls so interview navigation and map controls match established visual snapshots.
