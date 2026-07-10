@@ -49,7 +49,7 @@ const MapView = ({
     : '';
 
   const mapRef = useRef<MapboxMap | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [mapContainer, setMapContainer] = useState<HTMLDivElement | null>(null);
 
   const [center, setCenter] = useState<[number, number]>(
     (mapOptions.center as [number, number]) || [0, 0],
@@ -68,18 +68,18 @@ const MapView = ({
     center !== mapOptions.center || zoom !== mapOptions.initialZoom;
 
   useEffect(() => {
-    if (!mapboxAPIKey || !mapContainerRef.current || mapRef.current) {
+    if (!mapboxAPIKey || !mapContainer || mapRef.current) {
       return;
     }
 
     let map: MapboxMap | null = null;
     const frame = window.requestAnimationFrame(() => {
-      if (!mapContainerRef.current || mapRef.current) {
+      if (mapRef.current) {
         return;
       }
 
       map = new mapboxgl.Map({
-        container: mapContainerRef.current,
+        container: mapContainer,
         style: style || 'mapbox://styles/mapbox/streets-v12',
         center: (mapOptions.center as [number, number]) || [0, 0],
         zoom: mapOptions.initialZoom || 0,
@@ -106,7 +106,13 @@ const MapView = ({
       map?.remove();
       mapRef.current = null;
     };
-  }, [mapboxAPIKey, style, mapOptions.center, mapOptions.initialZoom]);
+  }, [
+    mapContainer,
+    mapboxAPIKey,
+    style,
+    mapOptions.center,
+    mapOptions.initialZoom,
+  ]);
 
   return (
     <Dialog
@@ -146,7 +152,7 @@ const MapView = ({
           }
           layout="vertical"
         >
-          <div ref={mapContainerRef} className="h-[50vh] w-full" />
+          <div ref={setMapContainer} className="h-[50vh] w-full" />
         </Section>
       </Layout>
     </Dialog>
