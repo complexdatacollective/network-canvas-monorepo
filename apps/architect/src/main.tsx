@@ -16,6 +16,7 @@ import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
 import { isCriticalOperationInProgress } from './utils/criticalOperation';
 import {
+  hasPendingLaunchFiles,
   initFileLaunchCapture,
   subscribeLaunchFiles,
   takeLaunchFiles,
@@ -53,7 +54,8 @@ const warmCaches = () => {
 async function startApp(): Promise<void> {
   if (
     await applyFreshLoadServiceWorkerUpdate({
-      shouldSkip: isCriticalOperationInProgress,
+      shouldSkip: () =>
+        isCriticalOperationInProgress() || hasPendingLaunchFiles(),
     })
   ) {
     return;

@@ -149,6 +149,7 @@ export async function applyFreshLoadServiceWorkerUpdate({
   waitingWorker.postMessage(SKIP_WAITING_MESSAGE);
 
   if (!(await controllerChange)) return false;
+  if (shouldSkip()) return false;
 
   reload();
   return true;

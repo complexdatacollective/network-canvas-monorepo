@@ -7,7 +7,10 @@ import { createRoot } from 'react-dom/client';
 import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
 
 import App from './App';
-import { initFileLaunchCapture } from './lib/pwa/fileLaunchQueue';
+import {
+  hasPendingLaunchFiles,
+  initFileLaunchCapture,
+} from './lib/pwa/fileLaunchQueue';
 import { initInstallPromptCapture } from './lib/pwa/installPrompt';
 import { removeLoadingScreen } from './lib/pwa/loadingScreen';
 import { initSwipeNavigationGuard } from './lib/pwa/swipeNavigationGuard';
@@ -29,7 +32,9 @@ initFileLaunchCapture();
 async function startApp(): Promise<void> {
   if (
     await applyFreshLoadServiceWorkerUpdate({
-      shouldSkip: () => window.location.pathname.startsWith('/interview/'),
+      shouldSkip: () =>
+        window.location.pathname.startsWith('/interview/') ||
+        hasPendingLaunchFiles(),
     })
   ) {
     return;

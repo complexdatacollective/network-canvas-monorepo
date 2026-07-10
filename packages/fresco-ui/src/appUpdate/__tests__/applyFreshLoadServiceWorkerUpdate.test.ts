@@ -223,4 +223,36 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     expect(waiting.postMessage).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
   });
+
+  it('checks the skip predicate again after activation before reloading', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+    const reload = vi.fn();
+    const shouldSkip = vi
+      .fn<() => boolean>()
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+
+    const result = applyFreshLoadServiceWorkerUpdate({
+      serviceWorker,
+      reload,
+      shouldSkip,
+      updateCheckTimeoutMs: 50,
+      activationTimeoutMs: 50,
+    });
+
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 0);
+    });
+    expect(waiting.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    serviceWorker.dispatchControllerChange();
+
+    await expect(result).resolves.toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
 });

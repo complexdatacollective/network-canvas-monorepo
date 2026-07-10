@@ -108,8 +108,12 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html}'],
           // vite-plugin-pwa defaults this to index.html; disable it so it
-          // cannot shadow the NetworkFirst navigation route below.
+          // cannot shadow the runtime navigation route below.
           navigateFallback: undefined,
+          // Without this, precacheAndRoute maps root launches (`/`) to the
+          // cached index.html before the runtime navigation route can fetch
+          // the newest shell.
+          directoryIndex: null,
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
@@ -118,18 +122,61 @@ export default defineConfig(({ mode }) => {
               // The app shell must be fresh when the app is launched online:
               // a cache-first navigation fallback would render the old HTML
               // first, then refresh once the service-worker update finished.
-              // NetworkFirst keeps offline launch via the precached fallback
-              // while letting a first load use the newest deployed shell.
+              // The handler keeps offline launch via the precached fallback
+              // while preventing a still-old service worker from caching new
+              // HTML whose matching hashed chunks it has not precached.
               urlPattern: ({ request, sameOrigin, url }) =>
                 sameOrigin &&
                 request.mode === 'navigate' &&
                 !url.pathname.startsWith('/preview/'),
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: `architect-navigation-${version}`,
-                networkTimeoutSeconds: 3,
-                precacheFallback: { fallbackURL: 'index.html' },
-                cacheableResponse: { statuses: [200] },
+              handler: async ({ request }) => {
+                let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+                try {
+                  const networkTimeout = new Promise<Response>((_, reject) => {
+                    timeoutId = setTimeout(
+                      () => reject(new Error('Navigation request timed out')),
+                      3_000,
+                    );
+                  });
+
+                  return await Promise.race([fetch(request), networkTimeout]);
+                } catch (error) {
+                  const cacheStorage: unknown = Reflect.get(
+                    globalThis,
+                    'caches',
+                  );
+                  const serviceWorkerLocation: unknown = Reflect.get(
+                    globalThis,
+                    'location',
+                  );
+                  const cacheMatch: unknown =
+                    typeof cacheStorage === 'object' && cacheStorage !== null
+                      ? Reflect.get(cacheStorage, 'match')
+                      : undefined;
+                  const locationHref: unknown =
+                    typeof serviceWorkerLocation === 'object' &&
+                    serviceWorkerLocation !== null
+                      ? Reflect.get(serviceWorkerLocation, 'href')
+                      : undefined;
+
+                  if (
+                    typeof cacheMatch !== 'function' ||
+                    typeof locationHref !== 'string'
+                  ) {
+                    throw error;
+                  }
+
+                  const fallback: unknown = await cacheMatch.call(
+                    cacheStorage,
+                    new URL('index.html', locationHref).href,
+                    { ignoreSearch: true },
+                  );
+                  if (fallback instanceof Response) return fallback;
+                  throw error;
+                } finally {
+                  if (timeoutId !== undefined) clearTimeout(timeoutId);
+                }
               },
             },
             {
