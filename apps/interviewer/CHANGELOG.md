@@ -1,5 +1,15 @@
 # @codaco/interviewer
 
+## 8.0.0-beta.6
+
+### Patch Changes
+
+- Improved the animated background on Interviewer screens so lights drift in and wrap smoothly without leaving long empty gaps.
+- Improve the Interviewer start screen on narrow displays by compacting the header
+  brand and footer status indicators.
+- Interviewer now lets users view and copy protocol validation errors when an import fails, making it easier to request support with the relevant details.
+- Fix protocol import in Safari installed apps by moving Interviewer's import card onto a mounted `react-dropzone` file input, matching Architect's working file-picker pattern. The import card still supports click, keyboard activation, and drag-and-drop, but no longer relies on an ephemeral input created only when the card is clicked.
+
 ## 8.0.0-beta.5
 
 ### Minor Changes
