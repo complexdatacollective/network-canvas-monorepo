@@ -126,7 +126,7 @@ type DialogEditorProps = FrescoReduxArrayFieldEditorProps<ArrayItem> & {
   editorTitle: string;
   itemSelector?: ItemSelector;
   normalizeItem: (value: unknown) => unknown;
-  onBeforeSave?: (value: unknown) => Promise<unknown> | unknown;
+  onBeforeSave?: (value: unknown) => unknown;
   requestedEditFormName?: string;
 };
 
@@ -224,7 +224,7 @@ type DialogArrayFieldOwnProps<T extends ArrayItem> = Omit<
   itemSelector?: ItemSelector;
   itemTemplate?: () => Partial<T>;
   normalizeItem?: (value: unknown) => unknown;
-  onBeforeSave?: (value: unknown) => Promise<unknown> | unknown;
+  onBeforeSave?: (value: unknown) => unknown;
   previewComponent: Renderer;
   previewProps?: Record<string, unknown>;
   requestedEditFormName?: string;
@@ -240,7 +240,7 @@ export function DialogArrayFieldBase<T extends ArrayItem>({
   editorTitle,
   itemLabel = 'item',
   itemSelector,
-  itemTemplate = () => ({ id: uuid() }) as unknown as Partial<T>,
+  itemTemplate = () => ({}),
   normalizeItem = (value) => value,
   onBeforeSave,
   previewComponent,
@@ -252,12 +252,20 @@ export function DialogArrayFieldBase<T extends ArrayItem>({
   itemClasses,
   ...fieldProps
 }: DialogArrayFieldProps<T>) {
+  const createItem = () => {
+    const item = itemTemplate();
+    return {
+      ...item,
+      id: typeof item.id === 'string' && item.id.length > 0 ? item.id : uuid(),
+    } as Partial<T>;
+  };
+
   return (
     <FrescoReduxArrayFieldBase<T>
       {...fieldProps}
       addButtonLabel={addButtonLabel}
       emptyStateMessage={emptyStateMessage}
-      itemTemplate={itemTemplate}
+      itemTemplate={createItem}
       getId={
         getId ??
         ((candidate) =>
