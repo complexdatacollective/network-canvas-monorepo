@@ -8,6 +8,7 @@
 
 let pendingFiles: File[] = [];
 let pendingReadFailures: number[] = [];
+let pendingLaunchReads = 0;
 const listeners = new Set<() => void>();
 const readFailureListeners = new Set<() => void>();
 let initialized = false;
@@ -32,6 +33,8 @@ export const initFileLaunchCapture = (): void => {
   const queue = window.launchQueue;
   if (!queue) return;
   queue.setConsumer((params) => {
+    pendingLaunchReads += 1;
+    emit();
     void (async () => {
       // allSettled so one unreadable handle (file moved/deleted, volume
       // unmounted between the OS launch and consumption) doesn't drop the whole
@@ -61,9 +64,14 @@ export const initFileLaunchCapture = (): void => {
       if (netcanvas.length === 0) return;
       pendingFiles = [...pendingFiles, ...netcanvas];
       emit();
-    })().catch((error: unknown) => {
-      console.error('Failed to handle launched files', error);
-    });
+    })()
+      .catch((error: unknown) => {
+        console.error('Failed to handle launched files', error);
+      })
+      .finally(() => {
+        pendingLaunchReads -= 1;
+        emit();
+      });
   });
 };
 
@@ -86,6 +94,9 @@ export const subscribeLaunchReadFailures = (
 // Stable snapshot for useSyncExternalStore: the array identity only changes
 // when the contents change.
 export const getLaunchFiles = (): File[] => pendingFiles;
+
+export const hasPendingLaunchFiles = (): boolean =>
+  pendingLaunchReads > 0 || pendingFiles.length > 0;
 
 // Hand the pending files to a consumer exactly once.
 export const takeLaunchFiles = (): File[] => {

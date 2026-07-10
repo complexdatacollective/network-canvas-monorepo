@@ -4,8 +4,13 @@ import './styles/globals.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
+
 import App from './App';
-import { initFileLaunchCapture } from './lib/pwa/fileLaunchQueue';
+import {
+  hasPendingLaunchFiles,
+  initFileLaunchCapture,
+} from './lib/pwa/fileLaunchQueue';
 import { initInstallPromptCapture } from './lib/pwa/installPrompt';
 import { removeLoadingScreen } from './lib/pwa/loadingScreen';
 import { initSwipeNavigationGuard } from './lib/pwa/swipeNavigationGuard';
@@ -24,35 +29,52 @@ initSwipeNavigationGuard();
 // React mounts; capture them for Home to import after unlock.
 initFileLaunchCapture();
 
-void requestPersistentStorage();
+async function startApp(): Promise<void> {
+  if (
+    await applyFreshLoadServiceWorkerUpdate({
+      shouldSkip: () =>
+        window.location.pathname.startsWith('/interview/') ||
+        hasPendingLaunchFiles(),
+    })
+  ) {
+    return;
+  }
 
-// The startup request above runs before any interaction, which WebKit and
-// Chromium routinely deny (their heuristics key on interaction history) — ask
-// once more on the user's first gesture.
-requestPersistentStorageOnFirstInteraction();
+  void requestPersistentStorage();
 
-// Installing the PWA newly qualifies the origin for persistent storage, but the
-// box is only made non-evictable on an actual persist() call — request it again
-// when the install completes rather than leaving storage evictable until the
-// next reload re-runs the startup request above.
-window.addEventListener('appinstalled', () => void requestPersistentStorage());
+  // The startup request above runs before any interaction, which WebKit and
+  // Chromium routinely deny (their heuristics key on interaction history) — ask
+  // once more on the user's first gesture.
+  requestPersistentStorageOnFirstInteraction();
 
-const container = document.getElementById('root');
-if (!container) {
-  throw new Error('Root container #root not found');
+  // Installing the PWA newly qualifies the origin for persistent storage, but
+  // the box is only made non-evictable on an actual persist() call — request it
+  // again when the install completes rather than leaving storage evictable until
+  // the next reload re-runs the startup request above.
+  window.addEventListener(
+    'appinstalled',
+    () => void requestPersistentStorage(),
+  );
+
+  const container = document.getElementById('root');
+  if (!container) {
+    throw new Error('Root container #root not found');
+  }
+
+  const root = createRoot(container);
+  root.render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+
+  // Hand off from the static first-paint loader (index.html's #app-loading) to
+  // React. Deferred to after the first commit paints so there's no flash of
+  // blank between the loader disappearing and React's own content (AuthGate's
+  // Spinner, then App's fade-in) painting — the loader cross-fades into the app.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(removeLoadingScreen);
+  });
 }
 
-const root = createRoot(container);
-root.render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
-
-// Hand off from the static first-paint loader (index.html's #app-loading) to
-// React. Deferred to after the first commit paints so there's no flash of blank
-// between the loader disappearing and React's own content (AuthGate's Spinner,
-// then App's fade-in) painting — the loader cross-fades into the app.
-requestAnimationFrame(() => {
-  requestAnimationFrame(removeLoadingScreen);
-});
+void startApp();

@@ -32,7 +32,7 @@ const loadModule = async () => {
     consumer?.({ files: handles });
     await settle();
   };
-  return { mod, launch, launchHandles };
+  return { mod, launch, launchHandles, settle };
 };
 
 afterEach(() => {
@@ -75,10 +75,37 @@ describe('fileLaunchQueue', () => {
     const { mod, launch } = await loadModule();
     await launch('a.netcanvas', 'b.netcanvas');
 
+    expect(mod.hasPendingLaunchFiles()).toBe(true);
     const taken = mod.takeLaunchFiles();
     expect(taken.map((f) => f.name)).toEqual(['a.netcanvas', 'b.netcanvas']);
     expect(mod.getLaunchFiles()).toEqual([]);
+    expect(mod.hasPendingLaunchFiles()).toBe(false);
     expect(mod.takeLaunchFiles()).toEqual([]);
+  });
+
+  it('reports pending launch files while OS handles are still being read', async () => {
+    const { mod, launchHandles, settle } = await loadModule();
+    let resolveFile: (file: File) => void = () => {};
+
+    await launchHandles({
+      getFile: () =>
+        new Promise<File>((resolve) => {
+          resolveFile = resolve;
+        }),
+    });
+
+    expect(mod.hasPendingLaunchFiles()).toBe(true);
+
+    resolveFile(new File(['zip'], 'pending.netcanvas'));
+    await settle();
+
+    expect(mod.getLaunchFiles().map((f) => f.name)).toEqual([
+      'pending.netcanvas',
+    ]);
+    expect(mod.hasPendingLaunchFiles()).toBe(true);
+
+    mod.takeLaunchFiles();
+    expect(mod.hasPendingLaunchFiles()).toBe(false);
   });
 
   it('keeps the snapshot identity stable between changes', async () => {

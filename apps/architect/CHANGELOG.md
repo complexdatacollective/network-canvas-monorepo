@@ -1,5 +1,12 @@
 # @codaco/architect
 
+## 8.0.0-beta.7
+
+### Minor Changes
+
+- Add a developer authoring mode for source-linked template protocols, including a toolbar action that saves edited template, sample, and development protocols back to the canonical protocol source package.
+- Use the shared rich text editor for protocol text fields and add support for inserting hyperlinks.
+
 ## 8.0.0-beta.6
 
 ### Minor Changes
