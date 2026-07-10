@@ -4,7 +4,7 @@ const DEFAULT_ACTIVATION_TIMEOUT_MS = 20_000;
 
 type ServiceWorkerContainerLike = Pick<
   ServiceWorkerContainer,
-  'addEventListener' | 'controller' | 'getRegistration' | 'removeEventListener'
+  'addEventListener' | 'controller' | 'getRegistration'
 >;
 
 type FreshLoadServiceWorkerUpdateOptions = {
@@ -101,10 +101,6 @@ function waitForControllerChange(
   return withTimeout(
     new Promise<boolean>((resolve) => {
       const onControllerChange = () => {
-        serviceWorker.removeEventListener(
-          'controllerchange',
-          onControllerChange,
-        );
         resolve(true);
       };
 

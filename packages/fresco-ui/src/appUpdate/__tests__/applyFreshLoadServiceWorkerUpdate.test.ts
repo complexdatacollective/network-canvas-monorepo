@@ -200,6 +200,28 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     resolveUpdate(registration);
   });
 
+  it('continues startup when the controller change times out', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+    const reload = vi.fn();
+
+    await expect(
+      applyFreshLoadServiceWorkerUpdate({
+        serviceWorker,
+        reload,
+        shouldSkip: () => false,
+        updateCheckTimeoutMs: 50,
+        activationTimeoutMs: 1,
+      }),
+    ).resolves.toBe(false);
+
+    expect(waiting.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   it('checks the skip predicate again before activating a found update', async () => {
     const waiting = createWorker('installed');
     const registration = createRegistration({ waiting: waiting.worker });
