@@ -6,12 +6,12 @@ import { change, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
+import LikertScaleField from '@codaco/fresco-ui/form/fields/LikertScale';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import withDisabledAssetRequired from '~/components/enhancers/withDisabledAssetRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
 import { FrescoReduxField } from '~/components/Form';
-import { LikertScale } from '~/components/Form/Fields';
 import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -19,6 +19,9 @@ import type { RootState } from '~/ducks/modules/root';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
 
 const FrescoCheckboxGroupField = CheckboxGroupField as ComponentType<
+  Record<string, unknown>
+>;
+const FrescoLikertScaleField = LikertScaleField as ComponentType<
   Record<string, unknown>
 >;
 
@@ -105,12 +108,11 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
         </Alert>
         <ValidatedField
           name="searchOptions.fuzziness"
-          component={
-            LikertScale as React.ComponentType<Record<string, unknown>>
-          }
+          component={FrescoReduxField}
           validation={{ requiredAcceptsZero: true }}
           componentProps={{
-            type: 'ordinal',
+            fieldComponent: FrescoLikertScaleField,
+            label: '',
             options: [
               { value: 0.75, label: 'Low accuracy' },
               { value: 0.5, label: 'Medium accuracy' },
