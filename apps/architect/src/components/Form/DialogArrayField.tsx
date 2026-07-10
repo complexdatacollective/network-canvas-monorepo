@@ -155,8 +155,6 @@ const DialogEditor = ({
     return itemSelector(state, { form, editField: fieldName });
   }, shallowEqual);
 
-  if (!item) return null;
-
   const editFormName =
     requestedEditFormName ??
     `${form}-${arrayName.replaceAll(/[^a-zA-Z0-9]+/g, '-')}-item-editor`;
@@ -176,9 +174,9 @@ const DialogEditor = ({
 
   return (
     <Dialog
-      open
+      open={!!item}
       closeDialog={onCancel}
-      layoutId={isNewItem ? undefined : item._internalId}
+      layoutId={!isNewItem && item ? item._internalId : undefined}
       style={{ borderRadius: 'var(--radius)' }}
       title={isNewItem ? addTitle : editorTitle}
       size="editor"

@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { Provider } from 'react-redux';
 import {
   Field,
@@ -9,9 +10,25 @@ import {
   type InjectedFormProps,
   type WrappedFieldProps,
 } from 'redux-form';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+
+const dialogRenderSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('@codaco/fresco-ui/dialogs/Dialog', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@codaco/fresco-ui/dialogs/Dialog')>();
+  const Dialog = actual.default;
+
+  return {
+    ...actual,
+    default: (props: ComponentProps<typeof Dialog>) => {
+      dialogRenderSpy({ open: props.open, title: props.title });
+      return <Dialog {...props} />;
+    },
+  };
+});
 
 import DialogArrayField from '../DialogArrayField';
 
@@ -91,6 +108,10 @@ const setup = ({
 };
 
 describe('DialogArrayField', () => {
+  beforeEach(() => {
+    dialogRenderSpy.mockClear();
+  });
+
   it('adds a UUID-backed item only after the editor is saved', async () => {
     const { getItems } = setup();
 
@@ -143,6 +164,26 @@ describe('DialogArrayField', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(screen.getByText('Before')).toBeInTheDocument();
+  });
+
+  it('closes the mounted dialog so its layout ID can animate back', () => {
+    setup({
+      initialItems: [{ id: 'item-1', label: 'Before' }],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+    expect(dialogRenderSpy).toHaveBeenCalledWith({
+      open: true,
+      title: 'Edit item',
+    });
+
+    dialogRenderSpy.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(dialogRenderSpy).toHaveBeenCalledWith({
+      open: false,
+      title: 'Edit item',
+    });
   });
 
   it('discards a cancelled draft', () => {
