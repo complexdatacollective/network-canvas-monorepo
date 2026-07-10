@@ -73,14 +73,60 @@ export default defineConfig(() =>
           maximumFileSizeToCacheInBytes: MAX_PRECACHE_BYTES,
           runtimeCaching: [
             {
+              // Active interviews deliberately skip update activation to avoid
+              // interrupting participants. Keep those navigations on the
+              // active worker's precached shell so its HTML and hashed chunks
+              // stay from the same deploy, including after a controlled reload
+              // or deep link under /interview/.
+              urlPattern: ({ request, sameOrigin, url }) =>
+                sameOrigin &&
+                request.mode === 'navigate' &&
+                url.pathname.startsWith('/interview/'),
+              handler: async () => {
+                const cacheStorage: unknown = Reflect.get(globalThis, 'caches');
+                const serviceWorkerLocation: unknown = Reflect.get(
+                  globalThis,
+                  'location',
+                );
+                const cacheMatch: unknown =
+                  typeof cacheStorage === 'object' && cacheStorage !== null
+                    ? Reflect.get(cacheStorage, 'match')
+                    : undefined;
+                const locationHref: unknown =
+                  typeof serviceWorkerLocation === 'object' &&
+                  serviceWorkerLocation !== null
+                    ? Reflect.get(serviceWorkerLocation, 'href')
+                    : undefined;
+
+                if (
+                  typeof cacheMatch !== 'function' ||
+                  typeof locationHref !== 'string'
+                ) {
+                  throw new Error('Unable to read precached interview shell');
+                }
+
+                const fallback: unknown = await cacheMatch.call(
+                  cacheStorage,
+                  new URL('index.html', locationHref).href,
+                  { ignoreSearch: true },
+                );
+                if (fallback instanceof Response) return fallback;
+                throw new Error('Missing precached interview shell');
+              },
+            },
+            {
               // The app shell must be fresh when the app is launched online:
               // a cache-first navigation fallback would render the old HTML
               // first, then refresh once the service-worker update finished.
               // The handler keeps offline launch via the precached fallback
               // while preventing a still-old service worker from caching new
-              // HTML whose matching hashed chunks it has not precached.
-              urlPattern: ({ request, sameOrigin }) =>
-                sameOrigin && request.mode === 'navigate',
+              // HTML whose matching hashed chunks it has not precached. The
+              // /interview/ route above is intentionally excluded because it
+              // cannot activate an update without interrupting an interview.
+              urlPattern: ({ request, sameOrigin, url }) =>
+                sameOrigin &&
+                request.mode === 'navigate' &&
+                !url.pathname.startsWith('/interview/'),
               handler: async ({ request }) => {
                 let timeoutId: ReturnType<typeof setTimeout> | undefined;
 

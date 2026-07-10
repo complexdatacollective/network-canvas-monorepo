@@ -71,6 +71,40 @@ if (excluded.length > 0) {
   fail(`critical chunk(s) excluded from precache: ${excluded.join(', ')}`);
 }
 
+const interviewRouteMatches = [
+  ...sw.matchAll(/!?[$\w]+\.pathname\.startsWith\("\/interview\/"\)/g),
+];
+const interviewCacheRoute = interviewRouteMatches.find(
+  (match) => !match[0].startsWith('!'),
+);
+const freshShellRoute = interviewRouteMatches.find((match) =>
+  match[0].startsWith('!'),
+);
+if (!interviewCacheRoute) {
+  fail('missing /interview/ precached-shell navigation route');
+}
+if (!freshShellRoute) {
+  fail('fresh-shell navigation route does not exclude /interview/');
+}
+if (
+  interviewCacheRoute.index === undefined ||
+  freshShellRoute.index === undefined ||
+  interviewCacheRoute.index > freshShellRoute.index
+) {
+  fail('/interview/ navigation route must run before fresh-shell route');
+}
+
+const interviewFallbackIndex = sw.indexOf(
+  'new URL("index.html"',
+  interviewCacheRoute.index,
+);
+if (
+  interviewFallbackIndex === -1 ||
+  interviewFallbackIndex > freshShellRoute.index
+) {
+  fail('/interview/ navigation route must fall back to precached index.html');
+}
+
 console.log(
   `PWA build ok: sw.js + manifest + icons emitted; ${critical.length} critical chunk(s) precached`,
 );
