@@ -3,6 +3,8 @@ import type { WrappedFieldProps } from 'redux-form';
 
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 
+import { getReduxFieldErrorState } from './reduxFieldMeta';
+
 type FrescoFieldComponent = ComponentType<Record<string, unknown>>;
 
 type FrescoReduxFieldProps = WrappedFieldProps & {
@@ -15,11 +17,6 @@ type FrescoReduxFieldProps = WrappedFieldProps & {
   fromReduxValue?: (value: unknown) => unknown;
   toReduxValue?: (value: unknown) => unknown;
   [key: string]: unknown;
-};
-
-const getFieldErrors = (error: unknown): string[] => {
-  if (!error) return [];
-  return Array.isArray(error) ? error.map(String) : [String(error)];
 };
 
 const normalizeOption = (option: unknown): unknown => {
@@ -93,12 +90,7 @@ const FrescoReduxFieldBase = ({
   toReduxValue,
   ...fieldProps
 }: FrescoReduxFieldProps) => {
-  const metaRecord = meta as unknown as Record<string, unknown>;
-  const rawError = meta.error ?? metaRecord.submitError;
-  const errors = getFieldErrors(rawError);
-  const showErrors = Boolean(
-    (meta.touched || metaRecord.submitFailed) && rawError,
-  );
+  const { errors, showErrors } = getReduxFieldErrorState(meta);
   const value = fromReduxValue ? fromReduxValue(input.value) : input.value;
   const normalizedFieldProps = normalizeFieldProps(fieldProps);
 
