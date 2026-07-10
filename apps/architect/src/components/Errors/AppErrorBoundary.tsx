@@ -65,6 +65,7 @@ class AppErrorBoundary extends Component<
           open
           closeDialog={this.resetError}
           title="Something went wrong."
+          size="editor"
           footer={
             <>
               <CopyButton value={error.stack ?? error.message} />

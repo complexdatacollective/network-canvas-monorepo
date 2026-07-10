@@ -24,7 +24,7 @@ export const showProtocolOpenResultDialog = async ({
       type: 'choice',
       intent: 'warning',
       title: 'Upgrade to continue',
-      className: '!w-4xl',
+      size: 'editor',
       children: (
         <>
           <Paragraph>

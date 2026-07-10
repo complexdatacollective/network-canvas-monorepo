@@ -59,6 +59,7 @@ const NewProtocolDialog = ({
         open={open}
         closeDialog={() => handleOpenChange(false)}
         title={title}
+        size="readable"
         footer={
           <>
             <Button color="default" onClick={() => handleOpenChange(false)}>

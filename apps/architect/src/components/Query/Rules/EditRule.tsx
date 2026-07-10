@@ -39,6 +39,7 @@ class EditRule extends Component<EditRuleProps> {
         open={!!rule}
         closeDialog={onCancel}
         title="Construct a Rule"
+        size="editor"
         footer={
           <>
             <Button color="default" onClick={onCancel}>

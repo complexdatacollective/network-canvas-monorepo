@@ -52,6 +52,7 @@ describe('promptLeaveEditor', () => {
     expect(captured?.type).toBe('choice');
     if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
     expect(captured.intent).toBe('warning');
+    expect(captured.size).toBe('readable');
     expect(captured.description).not.toMatch(/saved automatically/i);
     expect(captured.description).toMatch(/unsaved changes/i);
 
@@ -73,6 +74,7 @@ describe('promptLeaveEditor', () => {
     expect(captured?.type).toBe('choice');
     if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
     expect(captured.intent).toBe('default');
+    expect(captured.size).toBe('readable');
     expect(captured.description).toMatch(/saved automatically/i);
 
     // No draft-reset thunk for a pristine editor.

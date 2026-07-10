@@ -78,6 +78,7 @@ export const promptLeaveEditor = async (
       title: dialogConfig.title,
       description: dialogConfig.description,
       intent: dialogConfig.intent,
+      size: 'readable',
       actions: {
         primary: {
           label: dialogConfig.confirmLabel,
@@ -125,6 +126,7 @@ const promptDiscardDraft = async (
       description:
         'You have unsaved changes. Are you sure you want to leave without saving?',
       intent: 'warning',
+      size: 'readable',
       actions: {
         primary: {
           label: 'Leave Without Saving',

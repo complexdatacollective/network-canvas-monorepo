@@ -57,6 +57,7 @@ const APIKeyBrowser = ({
       open={show}
       closeDialog={close}
       title="API Key Browser"
+      size="workspace"
       footer={
         <Button color="default" onClick={close}>
           Cancel

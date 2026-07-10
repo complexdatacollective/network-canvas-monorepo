@@ -694,6 +694,7 @@ const LibraryPanel = ({
         open={infoOpen}
         closeDialog={() => setInfoOpen(false)}
         title={info?.title ?? ''}
+        size="readable"
         footer={<Button onClick={() => setInfoOpen(false)}>Close</Button>}
       >
         {info && (

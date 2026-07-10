@@ -252,14 +252,8 @@ const NewStageScreen = ({
       open={open}
       closeDialog={() => onOpenChange(false)}
       title="Select an Interface Type"
-      footer={
-        <Button color="default" onClick={() => onOpenChange(false)}>
-          Cancel
-        </Button>
-      }
-      className="h-[calc(100vh-4rem)] max-h-[64rem] w-[calc(100vw-4rem)] max-w-[100rem]"
-    >
-      <div className="flex min-h-0 flex-col gap-4">
+      size="fullscreen"
+      header={
         <div className="flex flex-col gap-4">
           <div className="w-full">
             <Search
@@ -273,16 +267,14 @@ const NewStageScreen = ({
             />
           </div>
           <div className="flex items-center gap-4">
-            <div className="shrink-0 text-white">
-              <Heading
-                level="h4"
-                margin="none"
-                className="text-sm font-semibold"
-              >
-                Filter by capabilities:
-              </Heading>
-            </div>
-            <div className="text-navy-taupe flex flex-wrap gap-1">
+            <Heading
+              level="h4"
+              margin="none"
+              className="shrink-0 text-sm font-semibold"
+            >
+              Filter by capabilities:
+            </Heading>
+            <div className="flex flex-wrap gap-1">
               {tags.map(({ value, selected, disabled }) => (
                 <Tag
                   key={value}
@@ -298,15 +290,21 @@ const NewStageScreen = ({
             </div>
           </div>
         </div>
-        <InterfaceList
-          items={filteredInterfaces}
-          onSelect={handleSelectInterface}
-          highlightedIndex={cursorActive ? cursor : undefined}
-          handleClearSearchAndFilter={handleClearSearchAndFilter}
-          setHighlighted={handleSetHighlight}
-          removeHighlighted={handleRemoveHighlight}
-        />
-      </div>
+      }
+      footer={
+        <Button color="default" onClick={() => onOpenChange(false)}>
+          Cancel
+        </Button>
+      }
+    >
+      <InterfaceList
+        items={filteredInterfaces}
+        onSelect={handleSelectInterface}
+        highlightedIndex={cursorActive ? cursor : undefined}
+        handleClearSearchAndFilter={handleClearSearchAndFilter}
+        setHighlighted={handleSetHighlight}
+        removeHighlighted={handleRemoveHighlight}
+      />
     </Dialog>
   );
 };

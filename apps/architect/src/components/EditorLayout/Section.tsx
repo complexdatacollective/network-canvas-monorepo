@@ -139,7 +139,7 @@ const Section = ({
         data-name={typeof title === 'string' ? title : undefined}
         className={cx(
           '[--input-background:var(--surface-1)] [--slider-color:oklch(var(--charcoal))]',
-          'relative w-full max-w-7xl',
+          'relative w-full max-w-7xl min-w-0',
           'max-tablet-landscape:mb-4 max-tablet-landscape:flex max-tablet-landscape:flex-col max-tablet-landscape:gap-5 tablet-landscape:grid tablet-landscape:grid-cols-[20rem_minmax(0,1fr)] tablet-landscape:gap-8',
           className,
         )}
@@ -151,9 +151,7 @@ const Section = ({
           shadow="sm"
           className="relative overflow-visible!"
         >
-          <fieldset className="tablet-landscape:min-w-2xl relative">
-            {fieldsetContent}
-          </fieldset>
+          <fieldset className="relative min-w-0">{fieldsetContent}</fieldset>
         </Surface>
       </section>
     );
@@ -168,12 +166,12 @@ const Section = ({
       id={id ?? undefined}
       data-name={typeof title === 'string' ? title : undefined}
       className={cx(
-        'relative mb-4 flex w-full max-w-7xl min-w-[min(100%,42rem)] flex-col gap-5 overflow-visible! p-6',
+        'relative mb-4 flex w-full max-w-7xl min-w-0 flex-col gap-5 overflow-visible! p-6',
         className,
       )}
     >
       {sectionHeader}
-      <fieldset className="relative">{fieldsetContent}</fieldset>
+      <fieldset className="relative min-w-0">{fieldsetContent}</fieldset>
     </Surface>
   );
 };

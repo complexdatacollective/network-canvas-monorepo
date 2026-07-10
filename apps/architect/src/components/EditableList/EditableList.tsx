@@ -139,6 +139,7 @@ const EditableList = ({
         closeDialog={handleCancelEdit}
         layoutId={`${fieldName}-edit-field-${editIndex}`}
         title={title}
+        size="editor"
         footer={
           <>
             <Button color="default" onClick={handleCancelEdit}>

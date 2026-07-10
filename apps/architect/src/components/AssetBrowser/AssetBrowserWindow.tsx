@@ -24,6 +24,7 @@ const AssetBrowserWindow = ({
       open={show}
       closeDialog={onCancel}
       title="Resource Browser"
+      size="workspace"
       footer={
         <Button color="default" onClick={onCancel}>
           Cancel

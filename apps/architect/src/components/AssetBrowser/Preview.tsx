@@ -68,6 +68,7 @@ const Preview = ({
       open={show}
       closeDialog={onClose}
       title={meta.name}
+      size="workspace"
       footer={
         <>
           <Button color="default" onClick={onClose}>

@@ -38,6 +38,7 @@ const InlineEditScreen = ({
       open={show}
       closeDialog={onCancel}
       title={title ?? undefined}
+      size="editor"
       footer={
         <>
           <Button color="default" onClick={onCancel}>

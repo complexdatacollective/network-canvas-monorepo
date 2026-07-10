@@ -20,32 +20,16 @@ type HomeModalProps = {
   scroll?: boolean;
 };
 
-// ModalPopup spreads consumer props before applying its own inline style for borderRadius,
-// which replaces any consumer style. Express the width as Tailwind arbitrary classes so it
-// survives via the className path (arbitrary values must be static strings so Tailwind can
-// see them at build time — never interpolate the pixel value at runtime).
-//
-// DialogPopup itself applies `tablet-portrait:w-auto w-[calc(100%-var(--spacing-base)*8)]
-// max-w-2xl`. At <tablet-portrait our base `w-[calc]` overrides the popup's base width; at
-// ≥tablet-portrait the popup switches to `tablet-portrait:w-auto`, so we must re-assert the
-// fill width AT the same breakpoint (Tailwind emits responsive variants after base utilities,
-// so a bare `w-[…]` here would lose to `tablet-portrait:w-auto` in source order). The result:
-// the dialog fills the viewport minus small (4×base = 16px) side margins at every width —
-// avoiding max-w-2xl's cramped column on iPad portrait — capped by the max-width on large
-// screens.
-const WIDTH_FILL =
-  'w-[calc(100%-var(--spacing-base)*4)] tablet-portrait:w-[calc(100%-var(--spacing-base)*4)]';
-
 function widthClass(maxWidth: number): string {
   switch (maxWidth) {
     case 1100:
-      return `${WIDTH_FILL} max-w-[1100px]`;
+      return 'max-w-[1100px]';
     case 1080:
-      return `${WIDTH_FILL} max-w-[1080px]`;
+      return 'max-w-[1080px]';
     case 1000:
-      return `${WIDTH_FILL} max-w-[1000px]`;
+      return 'max-w-[1000px]';
     default:
-      return `${WIDTH_FILL} max-w-[880px]`;
+      return 'max-w-[880px]';
   }
 }
 
