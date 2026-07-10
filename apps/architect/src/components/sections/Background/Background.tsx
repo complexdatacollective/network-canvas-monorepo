@@ -3,8 +3,8 @@ import { PureComponent } from 'react';
 import { compose } from 'react-recompose';
 import { Field } from 'redux-form';
 
-import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 /**
  * The Narrative stage schema forbids a background image (its background is a
  * strict object of only concentricCircles/skewedTowardCenter). The shared
@@ -24,6 +24,20 @@ import ValidatedField from '../../Form/ValidatedField';
 import withBackgroundChangeHandler from './withBackgroundChangeHandler';
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
+const backgroundTypeOptions = [
+  {
+    value: 'concentric-circles',
+    label: 'Concentric Circles',
+    description:
+      'Use the conventional concentric circles sociogram background.',
+  },
+  {
+    value: 'image',
+    label: 'Image',
+    description: 'Use a custom image of your choosing as the background.',
+  },
+];
 
 export const allowsBackgroundImage = (interfaceType: StageType): boolean =>
   interfaceType !== 'Narrative';
@@ -51,22 +65,17 @@ class Background extends PureComponent<BackgroundProps> {
         {imageAllowed && (
           <Row>
             <Heading level="h4">Choose a background type</Heading>
-            <FrescoBooleanField
-              value={useImage}
-              options={[
-                {
-                  value: false,
-                  label:
-                    '**Concentric Circles**\n\nUse the conventional concentric circles sociogram background.',
-                },
-                {
-                  value: true,
-                  label:
-                    '**Image**\n\nUse a custom image of your choosing as the background.',
-                },
-              ]}
-              onChange={(value) => handleChooseBackgroundType(!!value)}
-              noReset
+            <RichSelectGroupField
+              aria-label="Choose a background type"
+              value={useImage ? 'image' : 'concentric-circles'}
+              options={backgroundTypeOptions}
+              orientation="horizontal"
+              onChange={(value) => {
+                const nextUseImage = value === 'image';
+                if (nextUseImage !== useImage) {
+                  handleChooseBackgroundType(nextUseImage);
+                }
+              }}
             />
           </Row>
         )}
