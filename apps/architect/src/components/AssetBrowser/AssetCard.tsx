@@ -22,7 +22,6 @@ import { Badge, type BadgeColor } from '@codaco/fresco-ui/Badge';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { getBundledAssetUrl } from '~/templates/bundled-asset-url';
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
 import { cx } from '~/utils/cva';
@@ -323,16 +322,14 @@ const AssetCard = ({
 
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <div className="min-w-0">
-          <Heading level="h4" margin="none" className="truncate text-lg">
+          <Heading
+            level="h4"
+            margin="none"
+            className="line-clamp-2 text-lg leading-tight wrap-anywhere"
+            title={name}
+          >
             {name}
           </Heading>
-          <Paragraph
-            margin="none"
-            className="text-muted mt-1 truncate text-sm"
-            title={source}
-          >
-            {source ?? typeLabel}
-          </Paragraph>
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3">
