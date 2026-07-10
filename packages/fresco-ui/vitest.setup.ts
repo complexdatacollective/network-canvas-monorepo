@@ -139,6 +139,10 @@ const { motionMockModule } = vi.hoisted(() => {
   const AnimatePresence = ({ children }: { children: unknown }) => children;
   const LayoutGroup = ({ children }: { children: unknown }) => children;
   const MotionConfig = ({ children }: { children: unknown }) => children;
+  const Reorder = {
+    Group: createMotionComponent('ul'),
+    Item: createMotionComponent('li'),
+  };
 
   // Context shape must match motion's `MotionConfigContext` — consumers of
   // `useContext(MotionConfigContext)` rely on `skipAnimations` being readable.
@@ -155,6 +159,7 @@ const { motionMockModule } = vi.hoisted(() => {
     LayoutGroup,
     MotionConfig,
     MotionConfigContext,
+    Reorder,
     useAnimation,
     useAnimationControls: useAnimation,
     useAnimate,

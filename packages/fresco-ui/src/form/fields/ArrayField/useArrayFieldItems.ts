@@ -129,9 +129,9 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
   // WeakMap ties internal ID lifespan to the original object for GC
   const idMapRef = useRef<WeakMap<T, string>>(new WeakMap());
 
-  // Helper to get or create an internal ID for an item
-  const getInternalId = useCallback(
-    (item: T): string => {
+  // Resolve an ID already associated with an item without creating one.
+  const getKnownInternalId = useCallback(
+    (item: T): string | undefined => {
       // If getId is provided and returns a value, use it directly
       if (config?.getId) {
         const existingId = config.getId(item);
@@ -139,15 +139,23 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
           return existingId;
         }
       }
-      // Otherwise, get or generate an internal id from the WeakMap
-      let internalId = idMapRef.current.get(item);
-      if (!internalId) {
-        internalId = crypto.randomUUID();
-        idMapRef.current.set(item, internalId);
-      }
-      return internalId;
+
+      return idMapRef.current.get(item);
     },
     [config],
+  );
+
+  // Helper to get or create an internal ID for an item
+  const getInternalId = useCallback(
+    (item: T): string => {
+      const knownId = getKnownInternalId(item);
+      if (knownId) return knownId;
+
+      const internalId = crypto.randomUUID();
+      idMapRef.current.set(item, internalId);
+      return internalId;
+    },
+    [getKnownInternalId],
   );
 
   // Combined state for atomic updates (prevents animation flickering)
@@ -172,11 +180,25 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
     // Get current draft to preserve it
     const currentDraft = items.find((item) => item._draft === true);
 
-    // Map incoming items with internal IDs
-    const newConfirmed: WithItemProperties<T>[] = value.map((item) => ({
-      ...item,
-      _internalId: getInternalId(item),
-    }));
+    const previousConfirmed = items.filter((item) => !item._draft);
+
+    // Immutable form stores replace the object containing a changed nested
+    // field. Reuse the item at the same position when neither an explicit ID
+    // nor an object-reference mapping is available, so a keystroke does not
+    // remount the row and interrupt focus.
+    const newConfirmed: WithItemProperties<T>[] = value.map((item, index) => {
+      const internalId =
+        getKnownInternalId(item) ??
+        previousConfirmed[index]?._internalId ??
+        crypto.randomUUID();
+
+      idMapRef.current.set(item, internalId);
+
+      return {
+        ...item,
+        _internalId: internalId,
+      };
+    });
 
     // Merge: confirmed items from value + draft (if any)
     setState((prev) => {
