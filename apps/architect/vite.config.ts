@@ -107,12 +107,31 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html}'],
-          navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/^\/preview\//],
+          // vite-plugin-pwa defaults this to index.html; disable it so it
+          // cannot shadow the NetworkFirst navigation route below.
+          navigateFallback: undefined,
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
           runtimeCaching: [
+            {
+              // The app shell must be fresh when the app is launched online:
+              // a cache-first navigation fallback would render the old HTML
+              // first, then refresh once the service-worker update finished.
+              // NetworkFirst keeps offline launch via the precached fallback
+              // while letting a first load use the newest deployed shell.
+              urlPattern: ({ request, sameOrigin, url }) =>
+                sameOrigin &&
+                request.mode === 'navigate' &&
+                !url.pathname.startsWith('/preview/'),
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: `architect-navigation-${version}`,
+                networkTimeoutSeconds: 3,
+                precacheFallback: { fallbackURL: 'index.html' },
+                cacheableResponse: { statuses: [200] },
+              },
+            },
             {
               urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif)$/i,
               handler: 'CacheFirst',

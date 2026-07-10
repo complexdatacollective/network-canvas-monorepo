@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, mergeConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { version } from './package.json';
 import { createRendererConfig } from './vite.renderer.config';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -61,11 +62,29 @@ export default defineConfig(() =>
           // generateSW hard-fail the build (not just skip the file) unless
           // it's excluded from the precache glob outright.
           globIgnores: ['**/assets/bundledDevelopmentProtocol-*.js'],
-          navigateFallback: 'index.html',
+          // vite-plugin-pwa defaults this to index.html; disable it so it
+          // cannot shadow the NetworkFirst navigation route below.
+          navigateFallback: undefined,
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           maximumFileSizeToCacheInBytes: MAX_PRECACHE_BYTES,
           runtimeCaching: [
+            {
+              // The app shell must be fresh when the app is launched online:
+              // a cache-first navigation fallback would render the old HTML
+              // first, then refresh once the service-worker update finished.
+              // NetworkFirst keeps offline launch via the precached fallback
+              // while letting a first load use the newest deployed shell.
+              urlPattern: ({ request, sameOrigin }) =>
+                sameOrigin && request.mode === 'navigate',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: `interviewer-navigation-${version}`,
+                networkTimeoutSeconds: 3,
+                precacheFallback: { fallbackURL: 'index.html' },
+                cacheableResponse: { statuses: [200] },
+              },
+            },
             {
               urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif)$/i,
               handler: 'CacheFirst',
