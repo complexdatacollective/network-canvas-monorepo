@@ -1,22 +1,21 @@
-import type { Dispatch } from '@reduxjs/toolkit';
-import { GripVertical, Plus, Trash2 } from 'lucide-react';
-import { motion, Reorder, useDragControls } from 'motion/react';
-import { useRef } from 'react';
-import { connect } from 'react-redux';
+import { Trash2 } from 'lucide-react';
+import { useSelector } from 'react-redux';
 import type { UnknownAction } from 'redux';
-import type { WrappedFieldArrayProps } from 'redux-form';
-import { change, FieldArray, formValueSelector } from 'redux-form';
+import { change, Field, formValueSelector } from 'redux-form';
 
-import Button from '@codaco/fresco-ui/Button';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 // Row background reads `--rule-bg` so callers (e.g. Validations error state)
 // can flip it without re-defining the row layout.
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { FrescoReduxField } from '~/components/Form';
+import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 
+import FrescoReduxArrayField, {
+  type FrescoReduxArrayFieldItemProps,
+} from './FrescoReduxArrayField';
+import FrescoReduxField from './FrescoReduxField';
 import ValidatedField from './ValidatedField';
 
 const FrescoNativeSelectField = NativeSelectField as React.ComponentType<
@@ -36,71 +35,45 @@ type PropertyField = {
 type ItemValue = {
   [key: string]: unknown;
 };
-type InternalItem<T> = {
-  _internalId: string;
-  data: T;
+
+type OptionGetter = (
+  fieldName: string,
+  rowValues: unknown,
+  allValues: unknown,
+) => Array<Record<string, unknown>>;
+
+type ItemComponentProps = FrescoReduxArrayFieldItemProps<ItemValue> & {
+  properties: PropertyField[];
+  options: OptionGetter;
 };
-const AddItem = (props: React.ComponentProps<typeof Button>) => (
-  <Button
-    color="primary"
-    icon={<Plus />}
-    // eslint-disable-next-line react/jsx-props-no-spreading
-    {...props}
-  >
-    Add new
-  </Button>
-);
-type ItemOwnProps = {
-  field: string;
-  fields: WrappedFieldArrayProps<ItemValue>['fields'];
-  meta: {
-    form: string;
-  };
-};
-const mapStateToItemProps = (
-  state: RootState,
-  { field, fields: { name: fieldsName }, meta: { form } }: ItemOwnProps,
-) => ({
-  rowValues: formValueSelector(form)(state, field) as ItemValue | undefined,
-  allValues: formValueSelector(form)(state, fieldsName) as
-    | ItemValue[]
-    | undefined,
-  form,
-});
-const mapDispatchToItemProps = (
-  dispatch: Dispatch,
-  { meta: { form } }: ItemOwnProps,
-) => ({
-  resetField: (fieldName: string) =>
-    dispatch(change(form, fieldName, null) as UnknownAction),
-});
-type ItemHandlerProps = ItemOwnProps &
-  ReturnType<typeof mapStateToItemProps> &
-  ReturnType<typeof mapDispatchToItemProps> & {
-    index: number;
-    properties: PropertyField[];
-    options: (
-      fieldName: string,
-      rowValues: ItemValue | undefined,
-      allValues: ItemValue[] | undefined,
-    ) => Array<Record<string, unknown>>;
-  };
-type ItemComponentProps = ItemHandlerProps & {
-  internalItem: InternalItem<ItemValue>;
-};
+
 const ItemComponent: React.FC<ItemComponentProps> = ({
-  field,
-  fields,
+  arrayName,
+  fieldName: rowFieldName,
+  form,
   properties,
   options,
-  rowValues,
-  allValues,
-  internalItem,
   index,
-  resetField,
+  itemCount,
+  isSortable,
+  dragControls,
+  onMove,
+  onDelete,
+  disabled,
+  readOnly,
 }) => {
-  const controls = useDragControls();
+  const dispatch = useAppDispatch();
   const { confirm } = useDialog();
+  const interactionDisabled = disabled || readOnly;
+  const rowValues = useSelector(
+    (state: RootState) =>
+      formValueSelector(form)(state, rowFieldName) as ItemValue | undefined,
+  );
+  const allValues = useSelector(
+    (state: RootState) =>
+      formValueSelector(form)(state, arrayName) as ItemValue[] | undefined,
+  );
+
   const handleDelete = () => {
     void confirm({
       title: 'Remove item',
@@ -108,218 +81,101 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
       confirmLabel: 'Remove item',
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: () => {
-        fields.remove(index);
-      },
+      onConfirm: onDelete,
     });
   };
+
   const handleChange = (changedIndex: number) => {
     // Reset any fields after this one in the property index
     for (const { fieldName: propertyFieldName } of properties.slice(
       changedIndex + 1,
     )) {
-      resetField(`${field}.${propertyFieldName}`);
+      dispatch(
+        change(
+          form,
+          `${rowFieldName}.${propertyFieldName}`,
+          null,
+        ) as UnknownAction,
+      );
     }
   };
+
   return (
-    <Reorder.Item
-      className={`group ${MULTI_SELECT_RULE_CLASSES}`}
-      value={internalItem}
-      dragListener={false}
-      dragControls={controls}
-    >
-      <div className={MULTI_SELECT_CONTROL_CLASSES}>
-        <div
-          className="text-sortable-contrast flex h-[1.8rem] w-[1.8rem] cursor-grab items-center justify-center bg-transparent"
-          onPointerDown={(e) => controls.start(e)}
-        >
-          <GripVertical className="cursor-grab" />
+    <div className={`group ${MULTI_SELECT_RULE_CLASSES}`}>
+      {isSortable && (
+        <div className={MULTI_SELECT_CONTROL_CLASSES}>
+          <ArrayFieldDragHandle
+            dragControls={dragControls}
+            index={index}
+            itemCount={itemCount}
+            onMove={onMove}
+            disabled={interactionDisabled}
+            label={`Reorder item ${index + 1} of ${itemCount}`}
+            className="text-sortable-contrast"
+          />
         </div>
-      </div>
+      )}
 
       <div className={MULTI_SELECT_OPTIONS_CLASSES}>
-        {properties.map(({ fieldName, component, ...rest }, propertyIndex) => {
-          const selectOptions = options(fieldName, rowValues, allValues);
-          const FieldComponent = component ?? FrescoReduxField;
-          const componentProps = component
-            ? rest
-            : {
-                fieldComponent: FrescoNativeSelectField,
-                options: selectOptions,
-                ...rest,
-              };
-          return (
-            <div className={MULTI_SELECT_OPTION_CLASSES} key={fieldName}>
-              <ValidatedField
-                component={
-                  FieldComponent as React.ComponentType<Record<string, unknown>>
-                }
-                name={`${field}.${fieldName}`}
-                componentProps={componentProps}
-                validation={{ required: true }}
-                onChange={() => handleChange(propertyIndex)}
-              />
-            </div>
-          );
-        })}
+        {properties.map(
+          (
+            { fieldName: propertyFieldName, component, ...rest },
+            propertyIndex,
+          ) => {
+            const selectOptions = options(
+              propertyFieldName,
+              rowValues,
+              allValues,
+            );
+            const FieldComponent = component ?? FrescoReduxField;
+            const componentProps = component
+              ? rest
+              : {
+                  fieldComponent: FrescoNativeSelectField,
+                  options: selectOptions,
+                  ...rest,
+                };
+            return (
+              <div
+                className={MULTI_SELECT_OPTION_CLASSES}
+                key={propertyFieldName}
+              >
+                <ValidatedField
+                  component={
+                    FieldComponent as React.ComponentType<
+                      Record<string, unknown>
+                    >
+                  }
+                  name={`${rowFieldName}.${propertyFieldName}`}
+                  componentProps={componentProps}
+                  validation={{ required: true }}
+                  onChange={() => handleChange(propertyIndex)}
+                />
+              </div>
+            );
+          },
+        )}
       </div>
       <div className={MULTI_SELECT_CONTROL_CLASSES}>
-        <motion.div
-          layout
-          className="hover:bg-tomato aspect-square h-10 shrink-0 grow-0 cursor-pointer rounded-full p-2 opacity-0 transition-all duration-200 group-hover:opacity-100"
-        >
-          <Trash2
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete();
-            }}
-          />
-        </motion.div>
+        <IconButton
+          icon={<Trash2 />}
+          aria-label="Remove item"
+          size="sm"
+          variant="text"
+          color="destructive"
+          disabled={interactionDisabled}
+          className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+          onClick={handleDelete}
+        />
       </div>
-    </Reorder.Item>
+    </div>
   );
 };
-type ItemExportProps = ItemOwnProps & {
-  index: number;
-  properties: PropertyField[];
-  options: (
-    fieldName: string,
-    rowValues: ItemValue | undefined,
-    allValues: ItemValue[] | undefined,
-  ) => Array<Record<string, unknown>>;
-  internalItem: InternalItem<ItemValue>;
-};
-const Item = connect(
-  mapStateToItemProps,
-  mapDispatchToItemProps,
-)(ItemComponent) as unknown as React.ComponentType<ItemExportProps>;
-type ItemsOwnProps = {
-  meta: {
-    form: string;
-  };
-  fields: WrappedFieldArrayProps<ItemValue>['fields'];
-};
-type ItemsProps = ItemsOwnProps & {
-  maxItems?: number | null;
-  properties: PropertyField[];
-  options: (
-    fieldName: string,
-    rowValues: ItemValue | undefined,
-    allValues: ItemValue[] | undefined,
-  ) => Array<Record<string, unknown>>;
-};
-type ItemsComponentProps = WrappedFieldArrayProps<ItemValue> & ItemsProps;
-const ItemsComponent: React.FC<ItemsComponentProps> = ({
-  fields,
-  maxItems = null,
-  ...rest
-}) => {
-  const hasSpace = maxItems === null || fields.length < (maxItems ?? 0);
-  const showAdd = hasSpace;
-  const items = (fields.getAll() as ItemValue[]) || [];
-  // Track stable wrapper objects - Reorder.Group needs stable references to track items
-  // Pattern from Options.tsx
-  const internalItemsRef = useRef<InternalItem<ItemValue>[]>([]);
-  // Sync internalItemsRef with current items, maintaining stable references
-  // Handle additions - add new wrappers for new items
-  while (internalItemsRef.current.length < items.length) {
-    internalItemsRef.current.push({
-      _internalId: crypto.randomUUID(),
-      data: {} as ItemValue,
-    });
-  }
-  // Handle deletions - find which specific item was removed
-  if (internalItemsRef.current.length > items.length) {
-    const currentDataSet = new Set(items);
-    const indexToRemove = internalItemsRef.current.findIndex(
-      (wrapper) => !currentDataSet.has(wrapper.data),
-    );
-    if (indexToRemove !== -1) {
-      internalItemsRef.current.splice(indexToRemove, 1);
-    } else {
-      // Fallback: truncate from end if we can't find the removed item
-      internalItemsRef.current.length = items.length;
-    }
-  }
-  // Update data references (stable wrapper objects, fresh data)
-  for (let i = 0; i < items.length; i++) {
-    const wrapper = internalItemsRef.current[i];
-    const item = items[i];
-    if (wrapper && item) {
-      wrapper.data = item;
-    }
-  }
-  // Use the stable reference array
-  const internalItems = internalItemsRef.current;
-  const handleReorder = (newOrder: InternalItem<ItemValue>[]) => {
-    for (let i = 0; i < newOrder.length; i++) {
-      const newItem = newOrder[i];
-      const currentItem = internalItems[i];
-      if (
-        newItem &&
-        currentItem &&
-        newItem._internalId !== currentItem._internalId
-      ) {
-        const oldIndex = internalItems.findIndex(
-          (item) => item._internalId === newItem._internalId,
-        );
-        if (oldIndex !== -1 && oldIndex !== i) {
-          // Reorder internalItemsRef to match the new visual order BEFORE calling fields.move
-          const [movedItem] = internalItemsRef.current.splice(oldIndex, 1);
-          if (movedItem) {
-            internalItemsRef.current.splice(i, 0, movedItem);
-          }
-          fields.move(oldIndex, i);
-          break;
-        }
-      }
-    }
-  };
-  return (
-    <>
-      <Reorder.Group
-        className="flex flex-col gap-5"
-        onReorder={handleReorder}
-        values={internalItems}
-        axis="y"
-      >
-        {internalItems.map((internalItem, index) => {
-          const field = `${fields.name}[${index}]`;
-          return (
-            <Item
-              index={index}
-              key={internalItem._internalId}
-              field={field}
-              fields={fields}
-              internalItem={internalItem}
-              // eslint-disable-next-line react/jsx-props-no-spreading
-              {...rest}
-            />
-          );
-        })}
-      </Reorder.Group>
 
-      {showAdd && <AddItem onClick={() => fields.push({})} />}
-
-      {!showAdd && fields.length === 0 && (
-        <Paragraph>
-          <em>No properties available.</em>
-        </Paragraph>
-      )}
-    </>
-  );
-};
-const Items = ItemsComponent as unknown as React.ComponentType<
-  WrappedFieldArrayProps<ItemValue> & ItemsProps
->;
 type MultiSelectProps = {
   name: string;
-  properties: Array<Record<string, unknown>>;
-  options: (
-    fieldName: string,
-    rowValues: unknown,
-    allValues: unknown,
-  ) => Array<Record<string, unknown>>;
+  properties: PropertyField[];
+  options: OptionGetter;
   label?: string;
   maxItems?: number | null;
 };
@@ -328,21 +184,23 @@ const MultiSelect = ({
   properties,
   options,
   label = '',
-  ...rest
+  maxItems = null,
 }: MultiSelectProps) => (
   <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
-    {label && <Heading level="h4">{label}</Heading>}
-    <FieldArray
+    <Field
       name={name}
-      component={
-        Items as unknown as React.ComponentType<
-          WrappedFieldArrayProps<ItemValue> & Record<string, unknown>
-        >
-      }
-      properties={properties}
-      options={options}
-      // eslint-disable-next-line react/jsx-props-no-spreading
-      {...rest}
+      component={FrescoReduxArrayField}
+      label={label}
+      itemComponent={ItemComponent}
+      itemComponentProps={{ properties, options }}
+      itemTemplate={() => ({})}
+      itemClasses="p-0! shadow-none"
+      addButtonLabel="Add new"
+      emptyStateMessage="No properties available."
+      immediateAdd
+      sortable
+      confirmDelete={false}
+      maxItems={maxItems ?? undefined}
     />
   </div>
 );

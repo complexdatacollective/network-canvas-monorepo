@@ -1,80 +1,81 @@
-import { Plus } from 'lucide-react';
-import type { FieldArrayFieldsProps } from 'redux-form';
+import { connect } from 'react-redux';
+import { Field, formValueSelector } from 'redux-form';
 
-import Button from '@codaco/fresco-ui/Button';
-import { cx } from '~/utils/cva';
+import FrescoReduxArrayField from '~/components/Form/FrescoReduxArrayField';
+import type { RootState } from '~/ducks/modules/root';
+import { getVariableOptionsForSubject } from '~/selectors/codebook';
 
-import Attribute from './Attribute';
-import withAssignAttributesHandlers from './withAssignAttributesHandlers';
+import Attribute, { type AttributeValue } from './Attribute';
 
-type VariableOption = {
+const ALLOWED_TYPES = ['boolean'];
+
+export type VariableOption = {
   disabled?: boolean;
   isUsed?: boolean;
   label: string;
-  type: string;
+  type?: string;
   value: string;
 };
 
+export const getAssignableVariableOptions = (
+  variableOptions: VariableOption[],
+  usedVariables: Array<string | null | undefined>,
+) =>
+  variableOptions
+    .filter(
+      ({ type: optionType }) =>
+        optionType && ALLOWED_TYPES.includes(optionType),
+    )
+    .map(({ value, ...rest }) => ({
+      ...rest,
+      value,
+      disabled: usedVariables.includes(value),
+    }));
+
 type AssignAttributesProps = {
-  variableOptions: VariableOption[];
-  fields: FieldArrayFieldsProps<{ variable: string; value: boolean }>;
-  type: string;
-  entity: string;
-  handleAddNew: () => void;
-  handleDelete: (index: number) => void;
-  handleCreateNewVariable: (value: string) => void;
+  entity: 'node' | 'edge' | 'ego';
   form: string;
+  name: string;
+  type: string;
+  variableOptions: VariableOption[];
 };
 
 const AssignAttributes = ({
   variableOptions,
-  fields,
   type,
   entity,
-  handleAddNew,
-  handleCreateNewVariable,
-  handleDelete,
-  form,
+  name,
 }: AssignAttributesProps) => (
-  <div>
-    {fields.length > 0 && (
-      <div>
-        {fields.map((field, index) => {
-          const AttributeComponent =
-            Attribute as unknown as React.ComponentType<{
-              index: number;
-              entity: string;
-              type: string;
-              form: string;
-              field: string;
-              variableOptions: VariableOption[];
-              onCreateNew: (value: string) => void;
-              onDelete: (index: number) => void;
-            }>;
-          return (
-            <AttributeComponent
-              key={field}
-              index={index}
-              entity={entity}
-              type={type}
-              form={form}
-              field={field}
-              variableOptions={variableOptions}
-              onCreateNew={handleCreateNewVariable}
-              onDelete={handleDelete}
-            />
-          );
-        })}
-      </div>
-    )}
-    <div className={cx(fields.length > 0 && 'mt-5', '[&_button]:m-0')}>
-      <Button color="primary" icon={<Plus />} onClick={handleAddNew}>
-        Add new variable to assign
-      </Button>
-    </div>
-  </div>
+  <Field
+    name={name}
+    component={FrescoReduxArrayField}
+    label=""
+    itemComponent={Attribute}
+    itemComponentProps={{ entity, type, variableOptions }}
+    itemTemplate={() => ({}) satisfies Partial<AttributeValue>}
+    itemClasses="p-0! shadow-none"
+    addButtonLabel="Add new variable to assign"
+    emptyStateMessage="No additional variables assigned."
+    immediateAdd
+    confirmDelete={false}
+  />
 );
 
-export default withAssignAttributesHandlers(
-  AssignAttributes as React.ComponentType<unknown>,
-);
+const mapStateToProps = (
+  state: RootState,
+  { entity, type, form, name }: Omit<AssignAttributesProps, 'variableOptions'>,
+) => {
+  const usedVariables = (
+    (formValueSelector(form)(state, name) as AttributeValue[] | undefined) || []
+  ).map(({ variable }) => variable);
+  const variableOptions = getVariableOptionsForSubject(state, { entity, type });
+
+  return {
+    variableOptions: getAssignableVariableOptions(
+      variableOptions,
+      usedVariables,
+    ),
+  };
+};
+
+export default connect(mapStateToProps)(AssignAttributes);

@@ -1,54 +1,40 @@
 import { toNumber } from 'es-toolkit/compat';
-import { GripVertical, Trash2 } from 'lucide-react';
-import { Reorder, useDragControls } from 'motion/react';
+import { Trash2 } from 'lucide-react';
 import type React from 'react';
 
+import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import RichTextField from '~/components/Form/Fields/RichText';
 import TextField from '~/components/Form/Fields/Text';
+import type { FrescoReduxArrayFieldItemProps } from '~/components/Form/FrescoReduxArrayField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import { cx } from '~/utils/cva';
 
 import type { OptionValue } from './Options';
 const isNumberLike = (value: string) =>
   Number.parseInt(value, 10).toString() === value; // eslint-disable-line
-type InternalItem<T> = {
-  _internalId: string;
-  data: T;
-};
-// Layout for the side controls (drag handle + delete button). Both are 3rem wide
-// flex centers; the only difference is `cursor: grab` for the handle.
-const sideControlClasses =
-  'flex w-14 cursor-pointer items-center justify-center bg-transparent text-sortable-contrast [&_.icon]:size-5';
-const DeleteOption = (props: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={sideControlClasses}
-    // eslint-disable-next-line react/jsx-props-no-spreading
-    {...props}
-  >
-    <Trash2 aria-hidden />
-  </div>
-);
-// Props passed from parent
-type OptionBaseProps = {
-  field: string;
-  internalItem: InternalItem<OptionValue>;
-  index: number;
-  fields: {
-    remove: (index: number) => void;
-  };
-  hasError?: boolean;
-};
+
+export const parseOptionValue = (value: string) =>
+  isNumberLike(value) ? toNumber(value) : value;
+
+type OptionProps = FrescoReduxArrayFieldItemProps<OptionValue>;
+
 const Option = ({
-  field,
-  internalItem,
+  fieldName,
   index,
-  fields,
-  hasError = false,
-}: OptionBaseProps) => {
-  const controls = useDragControls();
+  itemCount,
+  isSortable,
+  dragControls,
+  onMove,
+  onDelete,
+  disabled,
+  readOnly,
+  showErrors,
+}: OptionProps) => {
   const { confirm } = useDialog();
+  const interactionDisabled = disabled || readOnly;
   const handleDelete = () => {
     void confirm({
       title: 'Remove option',
@@ -56,36 +42,37 @@ const Option = ({
       confirmLabel: 'Remove option',
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: () => {
-        fields.remove(index);
-      },
+      onConfirm: onDelete,
     });
   };
+
   return (
-    <Reorder.Item
+    <div
       className={cx(
-        'text-sortable-contrast z-1 flex rounded-xl transition-colors duration-300 ease-in-out',
-        hasError ? 'bg-destructive' : 'bg-form-control',
+        'text-sortable-contrast z-1 flex w-full rounded-xl transition-colors duration-300 ease-in-out',
+        showErrors ? 'bg-destructive' : 'bg-form-control',
       )}
-      value={internalItem}
-      dragListener={false}
-      dragControls={controls}
     >
-      <div className="flex grow-0 items-center p-5">
-        <div
-          className={cx(sideControlClasses, 'cursor-grab')}
-          onPointerDown={(e) => controls.start(e)}
-        >
-          <GripVertical className="cursor-grab" />
+      {isSortable && (
+        <div className="flex grow-0 items-center p-5">
+          <ArrayFieldDragHandle
+            dragControls={dragControls}
+            index={index}
+            itemCount={itemCount}
+            onMove={onMove}
+            disabled={interactionDisabled}
+            label={`Reorder option ${index + 1} of ${itemCount}`}
+            className="text-sortable-contrast"
+          />
         </div>
-      </div>
+      )}
       <div className="flex flex-1">
         <div className="my-5 flex-1">
           <Heading
             level="h4"
             className={cx(
               'mx-0 mt-0 mb-5 transition-colors duration-300 ease-in-out',
-              hasError && 'text-primary-contrast',
+              showErrors && 'text-primary-contrast',
             )}
           >
             Label
@@ -101,7 +88,7 @@ const Option = ({
               inline: true,
               placeholder: 'Enter a label...',
             }}
-            name={`${field}.label`}
+            name={`${fieldName}.label`}
             validation={{ required: true, uniqueArrayAttribute: true }}
           />
         </div>
@@ -110,7 +97,7 @@ const Option = ({
             level="h4"
             className={cx(
               'mx-0 mt-0 mb-5 transition-colors duration-300 ease-in-out',
-              hasError && 'text-primary-contrast',
+              showErrors && 'text-primary-contrast',
             )}
           >
             Value
@@ -123,11 +110,10 @@ const Option = ({
               TextField as React.ComponentType<Record<string, unknown>>
             }
             componentProps={{
-              parse: (value: string) =>
-                isNumberLike(value) ? toNumber(value) : value,
+              parse: parseOptionValue,
               placeholder: 'Enter a value...',
             }}
-            name={`${field}.value`}
+            name={`${fieldName}.value`}
             validation={{
               required: true,
               uniqueArrayAttribute: true,
@@ -137,9 +123,17 @@ const Option = ({
         </div>
       </div>
       <div className="flex grow-0 p-5">
-        <DeleteOption onClick={handleDelete} />
+        <IconButton
+          icon={<Trash2 />}
+          aria-label="Remove option"
+          size="sm"
+          variant="text"
+          color="destructive"
+          disabled={interactionDisabled}
+          onClick={handleDelete}
+        />
       </div>
-    </Reorder.Item>
+    </div>
   );
 };
 export default Option;
