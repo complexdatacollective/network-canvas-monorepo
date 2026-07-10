@@ -128,6 +128,23 @@ describe('DialogArrayField', () => {
     });
   });
 
+  it('hands the edited item layout over to a rounded dialog', () => {
+    setup({
+      initialItems: [{ id: 'item-1', label: 'Before' }],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+
+    expect(screen.queryByText('Before')).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toHaveStyle({
+      borderRadius: 'var(--radius)',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByText('Before')).toBeInTheDocument();
+  });
+
   it('discards a cancelled draft', () => {
     const { getItems } = setup();
 

@@ -33,6 +33,7 @@ export type DialogProps = {
   /** Supplementary controls rendered below the title in the fixed header. */
   header?: ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   layoutId?: string;
   /**
    * Semantic sizing based on dialog use cases. Use `className` only when a

@@ -8,7 +8,6 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import withDisabledAssetRequired from '~/components/enhancers/withDisabledAssetRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
-import { Text } from '~/components/Form/Fields';
 import MultiSelect from '~/components/Form/MultiSelect';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -90,9 +89,9 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
             { fieldName: 'variable' },
             {
               fieldName: 'label',
-              component: Text,
+              control: 'input',
+              label: 'Label',
               placeholder: 'Label',
-              variant: 'embedded',
             },
           ]}
           options={(

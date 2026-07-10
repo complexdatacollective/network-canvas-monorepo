@@ -1,3 +1,4 @@
+import { startCase } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { UnknownAction } from 'redux';
@@ -6,6 +7,7 @@ import { change, Field, formValueSelector } from 'redux-form';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 // Row background reads `--rule-bg` so callers (e.g. Validations error state)
 // can flip it without re-defining the row layout.
@@ -21,6 +23,9 @@ import ValidatedField from './ValidatedField';
 const FrescoNativeSelectField = NativeSelectField as React.ComponentType<
   Record<string, unknown>
 >;
+const FrescoInputField = InputField as React.ComponentType<
+  Record<string, unknown>
+>;
 
 export const MULTI_SELECT_RULE_CLASSES =
   'flex items-center py-5 bg-(--rule-bg) text-sortable-contrast rounded-[0.3rem] z-1 transition-colors duration-300 ease-in-out';
@@ -30,6 +35,8 @@ export const MULTI_SELECT_OPTION_CLASSES =
   'flex flex-1 items-start ml-5 first:ml-0';
 type PropertyField = {
   fieldName: string;
+  control?: 'input' | 'select';
+  label?: string;
   [key: string]: unknown;
 };
 type ItemValue = {
@@ -119,33 +126,34 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
       <div className={MULTI_SELECT_OPTIONS_CLASSES}>
         {properties.map(
           (
-            { fieldName: propertyFieldName, component, ...rest },
+            {
+              fieldName: propertyFieldName,
+              control = 'select',
+              label = startCase(propertyFieldName),
+              ...rest
+            },
             propertyIndex,
           ) => {
-            const selectOptions = options(
-              propertyFieldName,
-              rowValues,
-              allValues,
-            );
-            const FieldComponent = component ?? FrescoReduxField;
-            const componentProps = component
-              ? rest
-              : {
-                  fieldComponent: FrescoNativeSelectField,
-                  options: selectOptions,
-                  ...rest,
-                };
+            const componentProps = {
+              ...rest,
+              label,
+              fieldComponent:
+                control === 'input'
+                  ? FrescoInputField
+                  : FrescoNativeSelectField,
+              ...(control === 'select'
+                ? {
+                    options: options(propertyFieldName, rowValues, allValues),
+                  }
+                : {}),
+            };
             return (
               <div
                 className={MULTI_SELECT_OPTION_CLASSES}
                 key={propertyFieldName}
               >
                 <ValidatedField
-                  component={
-                    FieldComponent as React.ComponentType<
-                      Record<string, unknown>
-                    >
-                  }
+                  component={FrescoReduxField}
                   name={`${rowFieldName}.${propertyFieldName}`}
                   componentProps={componentProps}
                   validation={{ required: true }}

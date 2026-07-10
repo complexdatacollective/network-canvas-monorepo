@@ -1,14 +1,19 @@
 import { toNumber } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
-import type React from 'react';
+import type { ComponentType } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import RichTextField from '~/components/Form/Fields/RichText';
-import TextField from '~/components/Form/Fields/Text';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import {
+  markdownToRichTextContent,
+  richTextContentToMarkdown,
+  type RichTextContent,
+} from '~/components/Form/Fields/RichText/markdownAdapter';
 import type { FrescoReduxArrayFieldItemProps } from '~/components/Form/FrescoReduxArrayField';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import { cx } from '~/utils/cva';
 
@@ -18,6 +23,15 @@ const isNumberLike = (value: string) =>
 
 export const parseOptionValue = (value: string) =>
   isNumberLike(value) ? toNumber(value) : value;
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+const FrescoRichTextEditorField = RichTextEditorField as ComponentType<
+  Record<string, unknown>
+>;
+const optionLabelFromRedux = (value: unknown) =>
+  markdownToRichTextContent(typeof value === 'string' ? value : '', true);
+const optionLabelToRedux = (value: unknown) =>
+  richTextContentToMarkdown(value as RichTextContent | undefined, true);
 
 type OptionProps = FrescoReduxArrayFieldItemProps<OptionValue>;
 
@@ -68,50 +82,35 @@ const Option = ({
       )}
       <div className="flex flex-1">
         <div className="my-5 flex-1">
-          <Heading
-            level="h4"
-            className={cx(
-              'mx-0 mt-0 mb-5 transition-colors duration-300 ease-in-out',
-              showErrors && 'text-primary-contrast',
-            )}
-          >
-            Label
-          </Heading>
-          <ValidatedField<{
-            inline?: boolean;
-            placeholder?: string;
-          }>
-            component={
-              RichTextField as React.ComponentType<Record<string, unknown>>
-            }
+          <ValidatedField
+            component={FrescoReduxField}
             componentProps={{
-              inline: true,
+              fieldComponent: FrescoRichTextEditorField,
+              label: 'Label',
               placeholder: 'Enter a label...',
+              changeMode: 'input',
+              toolbarOptions: {
+                headings: false,
+                history: true,
+                links: false,
+                lists: false,
+                thematicBreak: false,
+              },
+              fromReduxValue: optionLabelFromRedux,
+              toReduxValue: optionLabelToRedux,
             }}
             name={`${fieldName}.label`}
             validation={{ required: true, uniqueArrayAttribute: true }}
           />
         </div>
         <div className="my-5 ml-5 flex-1">
-          <Heading
-            level="h4"
-            className={cx(
-              'mx-0 mt-0 mb-5 transition-colors duration-300 ease-in-out',
-              showErrors && 'text-primary-contrast',
-            )}
-          >
-            Value
-          </Heading>
-          <ValidatedField<{
-            parse?: (value: string) => string | number;
-            placeholder?: string;
-          }>
-            component={
-              TextField as React.ComponentType<Record<string, unknown>>
-            }
+          <ValidatedField
+            component={FrescoReduxField}
             componentProps={{
-              parse: parseOptionValue,
+              fieldComponent: FrescoInputField,
+              label: 'Value',
               placeholder: 'Enter a value...',
+              toReduxValue: parseOptionValue,
             }}
             name={`${fieldName}.value`}
             validation={{

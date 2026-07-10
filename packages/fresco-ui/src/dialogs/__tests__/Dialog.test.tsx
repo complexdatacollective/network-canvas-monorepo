@@ -54,4 +54,19 @@ describe('Dialog', () => {
     expect(screen.getByRole('dialog')).toHaveClass('max-w-5xl');
     expect(screen.getByRole('dialog')).not.toHaveClass('max-w-4xl');
   });
+
+  it('forwards inline geometry for shared-layout animations', () => {
+    render(
+      <Dialog
+        open
+        title="Animated dialog"
+        layoutId="animated-dialog"
+        style={{ borderRadius: 28 }}
+      >
+        Content
+      </Dialog>,
+    );
+
+    expect(screen.getByRole('dialog')).toHaveStyle({ borderRadius: '28px' });
+  });
 });

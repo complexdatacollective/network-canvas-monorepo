@@ -49,6 +49,7 @@ const DialogItem = ({
   index,
   itemCount,
   isSortable,
+  isBeingEdited,
   dragControls,
   onMove,
   onEdit,
@@ -75,6 +76,8 @@ const DialogItem = ({
       onConfirm: () => onDelete(),
     });
   };
+
+  if (isBeingEdited || item._draft) return null;
 
   return (
     <div className="flex w-full items-center gap-3">
@@ -175,7 +178,8 @@ const DialogEditor = ({
     <Dialog
       open
       closeDialog={onCancel}
-      layoutId={item._internalId}
+      layoutId={isNewItem ? undefined : item._internalId}
+      style={{ borderRadius: 'var(--radius)' }}
       title={isNewItem ? addTitle : editorTitle}
       size="editor"
       footer={

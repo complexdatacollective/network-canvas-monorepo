@@ -11,8 +11,21 @@ import { describe, expect, it, vi } from 'vitest';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
 vi.mock('../ValidatedField', () => ({
-  default: ({ name, onChange }: { name: string; onChange?: () => void }) => (
-    <button type="button" onClick={onChange}>
+  default: ({
+    name,
+    onChange,
+    componentProps = {},
+  }: {
+    name: string;
+    onChange?: () => void;
+    componentProps?: Record<string, unknown>;
+  }) => (
+    <button
+      type="button"
+      aria-label={String(componentProps.label ?? name)}
+      data-has-options={String(Array.isArray(componentProps.options))}
+      onClick={onChange}
+    >
       {name}
     </button>
   ),
@@ -30,13 +43,22 @@ type OptionGetter = (
 type OwnProps = {
   maxItems?: number | null;
   options: OptionGetter;
+  properties?: Array<{
+    fieldName: string;
+    control?: 'input' | 'select';
+    label?: string;
+  }>;
 };
 type HarnessProps = InjectedFormProps<FormValues, OwnProps> & OwnProps;
 
-const Harness = ({ maxItems, options }: HarnessProps) => (
+const Harness = ({
+  maxItems,
+  options,
+  properties = [{ fieldName: 'first' }, { fieldName: 'second' }],
+}: HarnessProps) => (
   <MultiSelect
     name="items"
-    properties={[{ fieldName: 'first' }, { fieldName: 'second' }]}
+    properties={properties}
     options={options}
     maxItems={maxItems}
   />
@@ -48,7 +70,7 @@ const ReduxHarness = reduxForm<FormValues, OwnProps>({
 
 const setup = (
   initialItems: ItemValue[],
-  { maxItems, options = vi.fn(() => []) }: Partial<OwnProps> = {},
+  { maxItems, options = vi.fn(() => []), properties }: Partial<OwnProps> = {},
 ) => {
   const store = configureStore({
     reducer: { form: formReducer },
@@ -63,6 +85,7 @@ const setup = (
           initialValues={{ items: initialItems }}
           options={options}
           maxItems={maxItems}
+          properties={properties}
         />
       </DialogProvider>
     </Provider>,
@@ -91,8 +114,39 @@ describe('MultiSelect', () => {
       initialItems,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'items[0].first' }));
+    fireEvent.click(screen.getByRole('button', { name: 'First' }));
     expect(getItems()).toEqual([{ first: 'a', second: null }]);
+  });
+
+  it('uses semantic labels and a Fresco input for free-text properties', () => {
+    const options = vi.fn(() => []);
+
+    setup([{ first: 'a', label: 'Visible label' }], {
+      options,
+      properties: [
+        { fieldName: 'first' },
+        { fieldName: 'label', control: 'input' },
+      ],
+    });
+
+    expect(screen.getByRole('button', { name: 'First' })).toHaveAttribute(
+      'data-has-options',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Label' })).toHaveAttribute(
+      'data-has-options',
+      'false',
+    );
+    expect(options).not.toHaveBeenCalledWith(
+      'label',
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(
+      screen.queryByRole('button', {
+        name: 'items[0].first',
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('reorders the Redux array with the keyboard drag handle', () => {
