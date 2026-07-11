@@ -28,6 +28,20 @@ Pull requests still get a preview deploy (`deploy-architect-preview`), aliased
 `pr-<number>` and posted as a comment. Production is no longer deployed on every
 push to `main` — only on a Release apps PR merge.
 
+## Developer site
+
+The separate `.dev` Netlify site is intentionally linked to this repository and
+deploys every push to `main`. It lets developers review the current state of
+`main` before approving an app release; it is independent of the changeset-driven
+production release above.
+
+Netlify uses `apps/architect` as the package directory and keeps the repository
+root as the build base. Its versioned build settings live in `netlify.toml` in
+this directory. The developer build uses the same dependency build and
+`build:web` PWA assertion as CI. It also gives Node a larger heap because shared
+package declaration bundling can exceed Node's default heap during a clean
+build.
+
 ## How CI builds
 
 Both the preview and release jobs build with `pnpm --filter @codaco/architect
