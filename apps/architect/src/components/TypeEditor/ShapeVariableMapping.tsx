@@ -1,14 +1,18 @@
+import { Plus, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { change, formValueSelector } from 'redux-form';
 
+import Button, { IconButton } from '@codaco/fresco-ui/Button';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
-import { cx } from '~/utils/cva';
 
-import ShapePicker from './ShapePicker';
+import { ShapePickerControl } from './ShapePicker';
 const DISCRETE_TYPES = new Set(['categorical', 'ordinal', 'boolean']);
 const BREAKPOINT_TYPES = new Set(['number', 'scalar']);
 const ELIGIBLE_TYPES = new Set([...DISCRETE_TYPES, ...BREAKPOINT_TYPES]);
@@ -128,7 +132,6 @@ const ShapeVariableMapping = ({
     const newThresholds = currentThresholds.map((t, i) =>
       i === index ? { ...t, value } : t,
     );
-    newThresholds.sort((a, b) => a.value - b.value);
     dispatch(change(form, 'shape.dynamic.thresholds', newThresholds));
   };
   const handleThresholdShapeChange = (index: number, shape: string) => {
@@ -174,28 +177,14 @@ const ShapeVariableMapping = ({
   return (
     <div className="mt-5">
       <div className="border-surface-2 border-t py-2.5">
-        <label className="flex cursor-pointer items-center justify-between font-semibold">
+        <div className="flex items-center justify-between font-semibold">
           <span>Map variable to shape</span>
-          <button
-            type="button"
+          <ToggleField
             aria-label="Map variable to shape"
-            className={cx(
-              'relative h-6 w-11 cursor-pointer rounded-full border-0',
-              'transition-colors duration-300 ease-in-out',
-              enabled ? 'bg-active' : 'bg-surface-2',
-            )}
-            onClick={handleToggle}
-            aria-pressed={enabled}
-          >
-            <span
-              className={cx(
-                'absolute top-0.75 left-0.75 h-4.5 w-4.5 rounded-full bg-white',
-                'transition-transform duration-300 ease-in-out',
-                enabled && 'translate-x-5',
-              )}
-            />
-          </button>
-        </label>
+            value={enabled}
+            onChange={handleToggle}
+          />
+        </div>
         <Paragraph className="text-muted mt-1 text-sm">
           Override the default shape based on the value of a node's attribute.
         </Paragraph>
@@ -203,14 +192,14 @@ const ShapeVariableMapping = ({
 
       {enabled && (
         <div className="mt-5 flex flex-col gap-5">
-          <VariablePicker
+          <UnconnectedField
+            name="shape.dynamic.variable"
             label="Variable"
+            component={VariablePickerControl}
+            value={selectedVarId}
+            onChange={handleVariableChange}
             options={variableOptions}
             disallowCreation
-            input={{
-              value: selectedVarId,
-              onChange: handleVariableChange,
-            }}
           />
 
           {selectedVar && dynamic?.type === 'discrete' && (
@@ -230,14 +219,13 @@ const ShapeVariableMapping = ({
                     className="bg-surface-1 flex items-center gap-2.5 px-2.5 py-1"
                   >
                     <span className="flex-1 text-sm">{option.label}</span>
-                    <ShapePicker
+                    <ShapePickerControl
                       small
-                      input={{
-                        value: currentShape,
-                        onChange: (shape: string) =>
-                          handleDiscreteShapeChange(option.value, shape),
-                      }}
-                      meta={{}}
+                      aria-label={`Shape for ${option.label}`}
+                      value={currentShape}
+                      onChange={(shape) =>
+                        handleDiscreteShapeChange(option.value, shape)
+                      }
                     />
                   </div>
                 );
@@ -261,27 +249,29 @@ const ShapeVariableMapping = ({
               >
                 Thresholds
               </Heading>
-              <div className="bg-surface-1 flex items-center gap-2.5 px-2.5 py-1 opacity-60">
+              <div className="bg-surface-1 flex items-center gap-2.5 rounded px-2.5 py-1 opacity-60">
                 <span className="flex-1 text-sm">Below first threshold</span>
                 <span className="text-muted text-xs">uses default shape</span>
               </div>
               {(dynamic.thresholds ?? []).map((threshold, index) => (
                 <div
-                  key={`threshold-${threshold.value}`}
-                  className="bg-surface-1 flex items-center gap-2.5 px-2.5 py-1"
+                  key={`threshold-${index}`}
+                  className="bg-surface-1 flex items-center gap-2.5 rounded px-2.5 py-1"
                 >
                   <span className="text-muted text-sm">≥</span>
-                  <input
+                  <InputField
                     type="number"
-                    aria-label="Threshold value"
-                    className="bg-surface-2 border-surface-2 text-text w-17.5 rounded-xs border p-1 text-center"
-                    value={threshold.value}
-                    onChange={(e) =>
-                      handleThresholdValueChange(
-                        index,
-                        Number.parseFloat(e.target.value) || 0,
-                      )
-                    }
+                    step="any"
+                    size="sm"
+                    aria-label={`Threshold ${index + 1} value`}
+                    className="w-28"
+                    value={String(threshold.value)}
+                    onChange={(nextValue) => {
+                      const parsed = Number(nextValue);
+                      if (nextValue !== '' && Number.isFinite(parsed)) {
+                        handleThresholdValueChange(index, parsed);
+                      }
+                    }}
                     onBlur={() => {
                       const sorted = [...(dynamic.thresholds ?? [])].toSorted(
                         (a, b) => a.value - b.value,
@@ -292,34 +282,35 @@ const ShapeVariableMapping = ({
                     }}
                   />
                   <span className="text-muted text-sm">→</span>
-                  <ShapePicker
+                  <ShapePickerControl
                     small
                     nodeColor={nodeColor}
-                    input={{
-                      value: threshold.shape,
-                      onChange: (shape: string) =>
-                        handleThresholdShapeChange(index, shape),
-                    }}
-                    meta={{}}
+                    aria-label={`Shape at threshold ${threshold.value}`}
+                    value={threshold.shape}
+                    onChange={(shape) =>
+                      handleThresholdShapeChange(index, shape)
+                    }
                   />
-                  <button
-                    type="button"
-                    className="text-muted hover:text-destructive cursor-pointer border-0 bg-transparent px-1 text-xl leading-none"
+                  <IconButton
+                    icon={<Trash2 />}
+                    size="sm"
+                    color="destructive"
+                    variant="text"
                     onClick={() => handleRemoveThreshold(index)}
-                    aria-label="Remove threshold"
-                  >
-                    ×
-                  </button>
+                    aria-label={`Remove threshold ${index + 1}`}
+                  />
                 </div>
               ))}
               {(dynamic.thresholds ?? []).length < 2 && (
-                <button
-                  type="button"
-                  className="bg-surface-1 border-surface-2 text-muted hover:border-muted mt-1 cursor-pointer border border-dashed p-1 text-sm"
+                <Button
+                  icon={<Plus />}
+                  variant="dashed"
+                  size="sm"
+                  className="mt-1 self-start"
                   onClick={handleAddThreshold}
                 >
-                  + Add threshold
-                </button>
+                  Add threshold
+                </Button>
               )}
             </div>
           )}

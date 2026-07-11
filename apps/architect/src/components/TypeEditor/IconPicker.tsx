@@ -1,14 +1,29 @@
 import { Combobox } from '@base-ui/react/combobox';
 import type { LucideProps } from 'lucide-react';
 import {
-  ChevronDown,
+  Check,
+  ChevronsUpDown,
   icons as lucideIconMap,
   Search,
-  TriangleAlert,
 } from 'lucide-react';
-import { type ComponentType, useMemo, useState } from 'react';
+import {
+  type ComponentPropsWithRef,
+  type ComponentType,
+  type FocusEventHandler,
+  useMemo,
+  useState,
+} from 'react';
+import type { WrappedFieldProps } from 'redux-form';
 
+import { comboboxTriggerVariants } from '@codaco/fresco-ui/form/fields/Combobox/shared';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
+import Surface from '@codaco/fresco-ui/layout/Surface';
+import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import { dropdownItemVariants } from '@codaco/fresco-ui/styles/controlVariants';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
+import { cx } from '~/utils/cva';
 
 const CUSTOM_ICONS = [
   'add-a-person',
@@ -34,6 +49,8 @@ const allIcons: IconEntry[] = [
   ),
 ];
 
+const MAX_VISIBLE_ITEMS = 200;
+
 function IconPreview({
   entry,
   size = 20,
@@ -42,33 +59,18 @@ function IconPreview({
   size?: number;
 }) {
   if (entry.isCustom) {
-    return <Icon name={entry.name} style={{ width: size, height: size }} />;
+    return (
+      <Icon
+        name={entry.name}
+        style={{ width: size, height: size }}
+        aria-hidden
+      />
+    );
   }
 
-  const LucideIcon = lucideIconMap[
-    entry.name as keyof typeof lucideIconMap
-  ] as ComponentType<LucideProps>;
-  if (!LucideIcon) return null;
-  return <LucideIcon size={size} />;
+  const LucideIcon = lucideIconMap[entry.name] as ComponentType<LucideProps>;
+  return LucideIcon ? <LucideIcon size={size} /> : null;
 }
-
-type InputProps = {
-  value: string;
-  onChange: (value: string) => void;
-};
-
-type MetaProps = {
-  error?: string;
-  invalid?: boolean;
-  touched?: boolean;
-};
-
-type IconPickerProps = {
-  input: InputProps;
-  meta: MetaProps;
-};
-
-const MAX_VISIBLE_ITEMS = 200;
 
 function isCustomIconName(
   value: string,
@@ -82,26 +84,61 @@ function isLucideIconName(value: string): value is keyof typeof lucideIconMap {
 
 function findEntryByValue(value: string): IconEntry | null {
   if (!value) return null;
-
-  if (isCustomIconName(value)) {
-    return { name: value, isCustom: true };
-  }
-
-  if (isLucideIconName(value)) {
-    return { name: value, isCustom: false };
-  }
-
+  if (isCustomIconName(value)) return { name: value, isCustom: true };
+  if (isLucideIconName(value)) return { name: value, isCustom: false };
   return null;
 }
 
-const IconPicker = ({
-  input,
-  meta: { error, invalid, touched },
-}: IconPickerProps) => {
+type IconPickerControlProps = {
+  'id'?: string;
+  'name'?: string;
+  'value'?: string;
+  'onChange'?: (value: string) => void;
+  'onBlur'?: FocusEventHandler;
+  'onFocus'?: FocusEventHandler;
+  'disabled'?: boolean;
+  'readOnly'?: boolean;
+  'required'?: boolean;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean;
+  'aria-labelledby'?: string;
+  'aria-required'?: boolean;
+};
+
+const IconPickerControl = ({
+  id,
+  name,
+  value = '',
+  onChange,
+  onBlur,
+  onFocus,
+  disabled = false,
+  readOnly = false,
+  required = false,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-required': ariaRequired,
+}: IconPickerControlProps) => {
   const [query, setQuery] = useState('');
+  const portalContainer = usePortalContainer();
+  const selectedEntry = useMemo(
+    () => findEntryByValue(value) ?? undefined,
+    [value],
+  );
 
   const filteredIcons = useMemo(() => {
-    if (!query) return allIcons.slice(0, MAX_VISIBLE_ITEMS);
+    if (!query) {
+      const visibleIcons = allIcons.slice(0, MAX_VISIBLE_ITEMS);
+      if (
+        !selectedEntry ||
+        visibleIcons.some((entry) => entry.name === selectedEntry.name)
+      ) {
+        return visibleIcons;
+      }
+
+      return [selectedEntry, ...visibleIcons.slice(0, MAX_VISIBLE_ITEMS - 1)];
+    }
 
     const lowerQuery = query.toLowerCase();
     const matches: IconEntry[] = [];
@@ -112,94 +149,158 @@ const IconPicker = ({
       }
     }
     return matches;
-  }, [query]);
-
-  const selectedEntry = useMemo(
-    () => findEntryByValue(input.value) ?? undefined,
-    [input.value],
-  );
-
-  const showError = invalid && touched && error;
+  }, [query, selectedEntry]);
+  const state = ariaInvalid
+    ? 'invalid'
+    : disabled
+      ? 'disabled'
+      : readOnly
+        ? 'readOnly'
+        : 'normal';
 
   return (
-    <div className="m-0 [&>h4]:m-0">
-      <Combobox.Root<IconEntry>
-        value={selectedEntry}
-        filteredItems={filteredIcons}
-        onValueChange={(val) => {
-          if (val) {
-            input.onChange(val.name);
-          }
-        }}
-        onInputValueChange={(inputValue) => {
-          setQuery(inputValue);
-        }}
+    <Combobox.Root<IconEntry>
+      value={selectedEntry}
+      filteredItems={filteredIcons}
+      isItemEqualToValue={(item, selectedValue) =>
+        item.name === selectedValue.name
+      }
+      itemToStringLabel={(item) => item.name}
+      itemToStringValue={(item) => item.name}
+      inputValue={query}
+      onValueChange={(nextValue) => {
+        if (nextValue && !disabled && !readOnly) onChange?.(nextValue.name);
+      }}
+      onInputValueChange={setQuery}
+      onOpenChange={(open) => {
+        if (!open) setQuery('');
+      }}
+      disabled={disabled || readOnly}
+      name={name}
+    >
+      <Combobox.Trigger
+        id={id}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid || undefined}
+        aria-required={ariaRequired || required || undefined}
+        aria-disabled={disabled || undefined}
+        aria-readonly={readOnly || undefined}
+        className={comboboxTriggerVariants({
+          state,
+          className: 'w-full',
+        })}
       >
-        <Combobox.Trigger className="border-surface-2 bg-surface-1 text-text flex w-full cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-left text-sm">
-          {selectedEntry ? (
-            <>
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center">
-                <IconPreview entry={selectedEntry} size={24} />
-              </span>
-              <span className="min-w-0 flex-1 truncate">
-                {selectedEntry.name}
-              </span>
-            </>
-          ) : (
-            <span className="text-charcoal min-w-0 flex-1 truncate">
-              Select an icon...
+        {selectedEntry ? (
+          <>
+            <span className="flex size-6 shrink-0 items-center justify-center">
+              <IconPreview entry={selectedEntry} size={24} />
             </span>
-          )}
-          <ChevronDown size={16} className="text-charcoal shrink-0" />
-        </Combobox.Trigger>
+            <span className="min-w-0 flex-1 truncate text-left">
+              {selectedEntry.name}
+            </span>
+          </>
+        ) : (
+          <span className="text-input-contrast/50 min-w-0 flex-1 truncate text-left italic">
+            Select an icon…
+          </span>
+        )}
+        <ChevronsUpDown className="h-[1.2em] w-[1.2em] shrink-0" />
+      </Combobox.Trigger>
 
-        <Combobox.Portal>
-          <Combobox.Positioner align="start" sideOffset={4} className="z-3000">
-            <Combobox.Popup className="border-surface-2 bg-surface-1 w-(--anchor-width) min-w-(--anchor-width) overflow-hidden rounded-sm border shadow-md">
-              <div className="border-surface-2 flex items-center gap-2 border-b px-3 py-2">
-                <Search size={16} className="text-charcoal shrink-0" />
-                <Combobox.Input
-                  placeholder="Search icons..."
-                  className="text-text placeholder:text-charcoal min-w-0 flex-1 bg-transparent text-sm outline-none"
-                />
-              </div>
-
-              <Combobox.List className="max-h-72 overflow-y-auto p-1">
-                {filteredIcons.map((entry) => (
-                  <Combobox.Item
-                    key={entry.isCustom ? `custom-${entry.name}` : entry.name}
-                    value={entry}
-                    className="text-text data-[highlighted]:bg-surface-2 flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none"
+      <Combobox.Portal container={portalContainer ?? undefined}>
+        <Combobox.Positioner align="start" sideOffset={10} className="z-3000">
+          <Combobox.Popup
+            render={
+              <Surface
+                floating
+                spacing="xs"
+                shadow="lg"
+                noContainer
+                className="flex min-w-(--anchor-width) flex-col gap-4"
+              />
+            }
+          >
+            <Combobox.Input
+              placeholder="Search icons…"
+              render={({ onChange: renderOnChange, ...renderProps }) => {
+                const inputFieldProps =
+                  renderProps as unknown as ComponentPropsWithRef<
+                    typeof InputField
+                  >;
+                return (
+                  <InputField
+                    {...inputFieldProps}
+                    size="sm"
+                    prefixComponent={<Search />}
+                    className="w-full"
+                    onChange={(nextQuery) => setQuery(nextQuery ?? '')}
+                    nativeOnChange={renderOnChange}
+                  />
+                );
+              }}
+            />
+            <Combobox.Empty className="text-center text-sm text-current/50 italic empty:hidden">
+              No icons found
+            </Combobox.Empty>
+            <Combobox.List
+              className="max-h-72 overflow-hidden has-data-empty:hidden"
+              render={
+                <ScrollArea viewportClassName="flex flex-col gap-1 px-2" />
+              }
+            >
+              {filteredIcons.map((entry) => (
+                <Combobox.Item
+                  key={entry.isCustom ? `custom-${entry.name}` : entry.name}
+                  value={entry}
+                  className={dropdownItemVariants()}
+                >
+                  <span className="flex size-5 shrink-0 items-center justify-center">
+                    <IconPreview entry={entry} size={18} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{entry.name}</span>
+                  <Combobox.ItemIndicator
+                    className={cx(
+                      'flex size-4 shrink-0 items-center justify-center',
+                    )}
                   >
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-                      <IconPreview entry={entry} size={18} />
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">
-                      {entry.name}
-                    </span>
-                    <Combobox.ItemIndicator className="text-text shrink-0">
-                      ✓
-                    </Combobox.ItemIndicator>
-                  </Combobox.Item>
-                ))}
-              </Combobox.List>
-
-              <Combobox.Empty className="text-charcoal p-4 text-center text-sm empty:hidden">
-                No icons found
-              </Combobox.Empty>
-            </Combobox.Popup>
-          </Combobox.Positioner>
-        </Combobox.Portal>
-      </Combobox.Root>
-
-      {showError && (
-        <div className="text-destructive mt-1 text-sm">
-          <TriangleAlert aria-hidden />
-          {error}
-        </div>
-      )}
-    </div>
+                    <Check />
+                  </Combobox.ItemIndicator>
+                </Combobox.Item>
+              ))}
+            </Combobox.List>
+          </Combobox.Popup>
+        </Combobox.Positioner>
+      </Combobox.Portal>
+    </Combobox.Root>
   );
 };
+
+type IconPickerProps = WrappedFieldProps & {
+  label?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+};
+
+const FrescoIconPickerControl = IconPickerControl as ComponentType<
+  Record<string, unknown>
+>;
+const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
+  Record<string, unknown>
+>;
+
+const IconPickerBase = ({ label = 'Icon', ...props }: IconPickerProps) => (
+  <ReduxFieldAdapter
+    {...props}
+    label={label}
+    fieldComponent={FrescoIconPickerControl}
+  />
+);
+
+const IconPicker = IconPickerBase as unknown as ComponentType<
+  Record<string, unknown>
+>;
 
 export default IconPicker;

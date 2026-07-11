@@ -1,7 +1,7 @@
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
 import ItemEditor from './ItemEditor';
@@ -24,7 +24,7 @@ const ContentGrid = (_props: StageEditorSectionProps) => (
     }
   >
     <Row>
-      <ValidatedField
+      <ValidatedFieldArray
         name="items"
         label="Content items"
         component={DialogArrayField}

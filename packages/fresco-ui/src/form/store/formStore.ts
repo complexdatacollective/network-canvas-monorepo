@@ -1,5 +1,4 @@
 import { enableMapSet } from 'immer';
-import { z } from 'zod/mini';
 import { immer } from 'zustand/middleware/immer';
 import { createStore, type Mutate, type StoreApi } from 'zustand/vanilla';
 
@@ -81,6 +80,15 @@ export type FormStoreApi = Mutate<
 >;
 
 export const createFormStore = (): FormStoreApi => {
+  // Async validations may resolve out of order. A monotonically increasing
+  // generation per field ensures only the newest request can update state.
+  const fieldValidationGenerations = new Map<string, number>();
+  const nextFieldValidationGeneration = (fieldName: string) => {
+    const generation = (fieldValidationGenerations.get(fieldName) ?? 0) + 1;
+    fieldValidationGenerations.set(fieldName, generation);
+    return generation;
+  };
+
   return createStore<FormStore>()(
     immer((set, get, _store) => ({
       fields: new Map(),
@@ -103,6 +111,7 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       reset: () => {
+        fieldValidationGenerations.clear();
         set((state) => {
           state.fields.clear();
           state.dormantValues.clear();
@@ -117,6 +126,7 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       registerField: (config) => {
+        nextFieldValidationGeneration(config.name);
         set((state) => {
           const dormant = state.dormantValues.get(config.name);
           const hasDormantValue = dormant !== undefined;
@@ -152,6 +162,7 @@ export const createFormStore = (): FormStoreApi => {
         // Check if field exists before updating to avoid unnecessary renders
         const currentState = get();
         if (currentState.fields.has(fieldName)) {
+          nextFieldValidationGeneration(fieldName);
           set((state) => {
             const field = state.fields.get(fieldName);
             if (field) {
@@ -194,13 +205,37 @@ export const createFormStore = (): FormStoreApi => {
       setErrors: (errors) => {
         if (errors === null) {
           set((state) => {
+            // setErrors marks fields named by server errors invalid. Clearing
+            // those errors after a successful submission must also clear that
+            // server-owned invalid state; fields without client validation are
+            // otherwise never revalidated and can leave the form invalid.
+            Object.keys(state.errors.fieldErrors).forEach((fieldName) => {
+              const field = state.fields.get(fieldName);
+              if (field) field.meta.isValid = true;
+            });
             state.errors = { formErrors: [], fieldErrors: {} };
+            state.isValid = calculateFormValidity(state.fields, []);
           });
           return;
         }
 
         set((state) => {
           state.errors = errors;
+          Object.entries(errors.fieldErrors).forEach(
+            ([fieldName, fieldErrors]) => {
+              if (!fieldErrors || fieldErrors.length === 0) return;
+              const field = state.fields.get(fieldName);
+              if (!field) return;
+              field.meta.isValid = false;
+              field.meta.isTouched = true;
+              field.meta.isBlurred = true;
+              field.meta.isDirty = true;
+            },
+          );
+          state.isValid = calculateFormValidity(
+            state.fields,
+            errors.formErrors,
+          );
         });
       },
 
@@ -280,6 +315,9 @@ export const createFormStore = (): FormStoreApi => {
         const state = get();
         const field = state.fields.get(fieldName);
         if (!field?.validation) return;
+        const validationGeneration = nextFieldValidationGeneration(fieldName);
+        const isCurrentValidation = () =>
+          fieldValidationGenerations.get(fieldName) === validationGeneration;
 
         set((draft) => {
           const form = draft;
@@ -294,6 +332,8 @@ export const createFormStore = (): FormStoreApi => {
             field.validation,
             state.getFormValues(),
           );
+
+          if (!isCurrentValidation()) return;
 
           if (!result.success) {
             set((draft) => {
@@ -350,6 +390,7 @@ export const createFormStore = (): FormStoreApi => {
             });
           }
         } catch {
+          if (!isCurrentValidation()) return;
           set((draft) => {
             const form = draft;
             if (form?.fields.get(fieldName)) {
@@ -405,16 +446,17 @@ export const createFormStore = (): FormStoreApi => {
 
         // Process validation results and collect errors and meta updates
         fieldResults.forEach(({ fieldName, result }) => {
-          if (result && !result.success) {
-            // Field has validation errors - flatten and collect
-            const flattened = z.flattenError(result.error) as FlattenedErrors;
-
-            // Errors can be in formErrors (no path) or fieldErrors (with nested paths)
-            // Combine them for this field
-            const combinedErrors = [
-              ...flattened.formErrors,
-              ...(flattened.fieldErrors[fieldName] ?? []),
-            ] as string[];
+          if (!result) {
+            // A field without client validation is intrinsically valid at this
+            // stage. This also clears any invalid flag previously owned by a
+            // server response before a subsequent successful submission.
+            fieldMetaUpdates.set(fieldName, { isValid: true });
+          } else if (!result.success) {
+            // Each result is already scoped to one registered field. Preserve
+            // every issue regardless of its nested object/array path.
+            const combinedErrors = result.error.issues.map(
+              (issue) => issue.message,
+            );
 
             if (combinedErrors.length > 0) {
               fieldErrors[fieldName] = combinedErrors;
@@ -425,7 +467,7 @@ export const createFormStore = (): FormStoreApi => {
               isValid: false,
               markAsTouched: true,
             });
-          } else if (result?.success) {
+          } else {
             // Field is valid
             fieldMetaUpdates.set(fieldName, { isValid: true });
           }

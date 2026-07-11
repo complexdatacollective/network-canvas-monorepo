@@ -227,10 +227,12 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
     if (!autoFocus) return;
     const selectedIndex = options.findIndex(
       (opt) =>
-        !isSpacer(opt) && !(disabled ?? opt.disabled) && isSelected(opt.value),
+        !isSpacer(opt) &&
+        !(Boolean(disabled) || Boolean(opt.disabled)) &&
+        isSelected(opt.value),
     );
     const firstEnabledIndex = options.findIndex(
-      (opt) => !isSpacer(opt) && !(disabled ?? opt.disabled),
+      (opt) => !isSpacer(opt) && !(Boolean(disabled) || Boolean(opt.disabled)),
     );
     const targetIndex = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex;
     if (targetIndex >= 0) {
@@ -266,7 +268,10 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
 
       const enabledIndices = options
         .map((opt, i) => ({ opt, i }))
-        .filter(({ opt }) => !isSpacer(opt) && !(disabled ?? opt.disabled))
+        .filter(
+          ({ opt }) =>
+            !isSpacer(opt) && !(Boolean(disabled) || Boolean(opt.disabled)),
+        )
         .map(({ i }) => i);
 
       const currentEnabledIndex = enabledIndices.indexOf(index);
@@ -317,7 +322,11 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
           aria-labelledby={fieldsetProps['aria-labelledby']}
           aria-describedby={fieldsetProps['aria-describedby']}
           aria-invalid={fieldsetProps['aria-invalid'] ?? undefined}
+          aria-required={fieldsetProps['aria-required']}
           aria-disabled={disabled ? true : undefined}
+          aria-readonly={readOnly || undefined}
+          onBlur={fieldsetProps.onBlur}
+          onFocus={fieldsetProps.onFocus}
           data-readonly={readOnly ? 'true' : undefined}
         >
           {renderOptions()}
@@ -337,6 +346,8 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
           aria-labelledby={fieldsetProps['aria-labelledby']}
           aria-describedby={fieldsetProps['aria-describedby']}
           aria-invalid={fieldsetProps['aria-invalid'] ?? undefined}
+          aria-required={fieldsetProps['aria-required']}
+          aria-readonly={readOnly || undefined}
           data-readonly={readOnly ? 'true' : undefined}
         >
           {renderOptions()}
@@ -346,7 +357,16 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
   );
 
   function renderOptions() {
-    const firstOptionIndex = options.findIndex((item) => !isSpacer(item));
+    const firstEnabledOptionIndex = options.findIndex(
+      (item) =>
+        !isSpacer(item) && !(Boolean(disabled) || Boolean(item.disabled)),
+    );
+    const hasSelectedEnabledOption = options.some(
+      (item) =>
+        !isSpacer(item) &&
+        !(Boolean(disabled) || Boolean(item.disabled)) &&
+        isSelected(item.value),
+    );
     return options.map((item, index) => {
       if (isSpacer(item)) {
         return (
@@ -364,7 +384,7 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
       }
 
       const option = item;
-      const isOptionDisabled = disabled ?? option.disabled;
+      const isOptionDisabled = Boolean(disabled) || Boolean(option.disabled);
       const optionSelected = isSelected(option.value);
       const optionState = isOptionDisabled
         ? 'disabled'
@@ -379,7 +399,8 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
             'role': 'option' as const,
             'aria-selected': optionSelected,
             'tabIndex':
-              optionSelected || (!currentValue && index === firstOptionIndex)
+              (optionSelected && !isOptionDisabled) ||
+              (!hasSelectedEnabledOption && index === firstEnabledOptionIndex)
                 ? 0
                 : -1,
           }

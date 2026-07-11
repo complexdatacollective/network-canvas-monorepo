@@ -1,9 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { Provider } from 'react-redux';
 import {
   Field,
+  FieldArray,
   reducer as formReducer,
   reduxForm,
   SubmissionError,
@@ -56,7 +63,7 @@ type HarnessProps = InjectedFormProps<Record<string, unknown>, OwnProps> &
   OwnProps;
 
 const Harness = ({ normalizeItem, onBeforeSave }: HarnessProps) => (
-  <Field
+  <FieldArray
     name="items"
     component={DialogArrayField}
     previewComponent={Preview}
@@ -67,11 +74,13 @@ const Harness = ({ normalizeItem, onBeforeSave }: HarnessProps) => (
     itemTemplate={() => ({ label: '' })}
     normalizeItem={normalizeItem}
     onBeforeSave={onBeforeSave}
+    rerenderOnEveryChange
   />
 );
 
 const ReduxHarness = reduxForm<Record<string, unknown>, OwnProps>({
   form: 'dialog-array-test',
+  touchOnChange: true,
 })(Harness);
 
 const setup = ({
@@ -89,7 +98,7 @@ const setup = ({
       getDefaultMiddleware({ serializableCheck: false }),
   });
 
-  render(
+  const view = render(
     <Provider store={store}>
       <DialogProvider>
         <ReduxHarness
@@ -104,7 +113,7 @@ const setup = ({
   const getItems = () =>
     store.getState().form['dialog-array-test']?.values?.items as Item[];
 
-  return { getItems };
+  return { getItems, unmount: view.unmount };
 };
 
 describe('DialogArrayField', () => {
@@ -242,5 +251,67 @@ describe('DialogArrayField', () => {
     });
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(getItems()).toEqual([]);
+  });
+
+  it('prevents duplicate saves and dismissal while pre-save work is pending', async () => {
+    let resolvePreSave: ((value: undefined) => void) | undefined;
+    const onBeforeSave = vi.fn(
+      () =>
+        new Promise<undefined>((resolve) => {
+          resolvePreSave = resolve;
+        }),
+    );
+    const { getItems } = setup({ onBeforeSave });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Item label' }), {
+      target: { value: 'Only once' },
+    });
+    const addButton = screen.getByRole('button', { name: 'Add' });
+    fireEvent.click(addButton);
+    fireEvent.click(addButton);
+
+    await waitFor(() => {
+      expect(onBeforeSave).toHaveBeenCalledOnce();
+      expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    });
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(getItems()).toEqual([]);
+
+    resolvePreSave?.(undefined);
+    await waitFor(() => {
+      expect(getItems()).toEqual([
+        expect.objectContaining({ label: 'Only once' }),
+      ]);
+    });
+    expect(onBeforeSave).toHaveBeenCalledOnce();
+  });
+
+  it('ignores an async completion after the array editor unmounts', async () => {
+    let resolvePreSave: ((value: undefined) => void) | undefined;
+    const pendingSave = new Promise<undefined>((resolve) => {
+      resolvePreSave = resolve;
+    });
+    const onBeforeSave = vi.fn(() => pendingSave);
+    const { getItems, unmount } = setup({ onBeforeSave });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Item label' }), {
+      target: { value: 'Stale completion' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(onBeforeSave).toHaveBeenCalledOnce());
+
+    unmount();
+    await act(async () => {
+      resolvePreSave?.(undefined);
+      await pendingSave;
+    });
+
+    expect(getItems() ?? []).toEqual([]);
   });
 });

@@ -14,6 +14,25 @@ type ManagedProperties = {
 export type WithItemProperties<T> = T & ManagedProperties;
 
 /**
+ * Describes one committed mutation to an ArrayField value.
+ *
+ * Consumers backed by an array-aware form store can use this descriptor to
+ * preserve index-based field metadata when an item is inserted, removed,
+ * moved, or replaced.
+ */
+export type ArrayFieldOperation<T> =
+  | { type: 'insert'; index: number; item: T }
+  | { type: 'remove'; index: number }
+  | { type: 'move'; from: number; to: number }
+  | { type: 'replace'; index: number; item: T };
+
+type PendingArrayFieldOperation =
+  | { type: 'insert'; index: number }
+  | { type: 'remove'; index: number }
+  | { type: 'move'; from: number; to: number }
+  | { type: 'replace'; index: number };
+
+/**
  * Configuration for the useArrayFieldItems hook.
  */
 type UseArrayFieldItemsConfig<T> = {
@@ -28,8 +47,11 @@ type UseArrayFieldItemsReturn<T extends Record<string, unknown>> = {
   // ─── Items ───────────────────────────────────────────────────────────────
   /** All items (both confirmed and draft) with managed properties. */
   items: WithItemProperties<T>[];
-  /** Update items - only triggers onChange for non-draft changes. */
-  setItems: (items: WithItemProperties<T>[]) => void;
+  /** Preview a reordered list locally, or commit it with an operation. */
+  setItems: (
+    items: WithItemProperties<T>[],
+    operation?: PendingArrayFieldOperation,
+  ) => void;
 
   // ─── Editing State ───────────────────────────────────────────────────────
   /** The item currently being edited, or undefined if none. */
@@ -123,7 +145,7 @@ type UseArrayFieldItemsReturn<T extends Record<string, unknown>> = {
  */
 export function useArrayFieldItems<T extends Record<string, unknown>>(
   value: T[],
-  onChange?: (items: T[]) => void,
+  onChange?: (items: T[], operation: ArrayFieldOperation<T>) => void,
   config?: UseArrayFieldItemsConfig<T>,
 ): UseArrayFieldItemsReturn<T> {
   // WeakMap ties internal ID lifespan to the original object for GC
@@ -169,6 +191,11 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
     })),
     editingId: null,
   }));
+  const stateRef = useRef(state);
+  const replaceState = useCallback((nextState: typeof state) => {
+    stateRef.current = nextState;
+    setState(nextState);
+  }, []);
 
   const { items, editingId } = state;
 
@@ -178,9 +205,12 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
     prevValueRef.current = value;
 
     // Get current draft to preserve it
-    const currentDraft = items.find((item) => item._draft === true);
+    const currentState = stateRef.current;
+    const currentDraft = currentState.items.find(
+      (item) => item._draft === true,
+    );
 
-    const previousConfirmed = items.filter((item) => !item._draft);
+    const previousConfirmed = currentState.items.filter((item) => !item._draft);
 
     // Immutable form stores replace the object containing a changed nested
     // field. Reuse the item at the same position when neither an explicit ID
@@ -201,20 +231,18 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
     });
 
     // Merge: confirmed items from value + draft (if any)
-    setState((prev) => {
-      const newItems = currentDraft
-        ? [...newConfirmed, currentDraft]
-        : newConfirmed;
+    const newItems = currentDraft
+      ? [...newConfirmed, currentDraft]
+      : newConfirmed;
 
-      // Clear editingId if the edited item no longer exists
-      const editingStillExists =
-        prev.editingId === null ||
-        newItems.some((item) => item._internalId === prev.editingId);
+    // Clear editingId if the edited item no longer exists
+    const editingStillExists =
+      currentState.editingId === null ||
+      newItems.some((item) => item._internalId === currentState.editingId);
 
-      return {
-        items: newItems,
-        editingId: editingStillExists ? prev.editingId : null,
-      };
+    replaceState({
+      items: newItems,
+      editingId: editingStillExists ? currentState.editingId : null,
     });
   }
 
@@ -236,7 +264,10 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
 
   // Notify parent of non-draft items (strips managed properties, preserves ID mapping)
   const notifyChange = useCallback(
-    (allItems: WithItemProperties<T>[]) => {
+    (
+      allItems: WithItemProperties<T>[],
+      operation: PendingArrayFieldOperation,
+    ) => {
       const confirmedItems = allItems
         .filter((item) => !item._draft)
         .map(({ _internalId, _draft, ...rest }) => {
@@ -245,26 +276,41 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
           idMapRef.current.set(stripped, _internalId);
           return stripped;
         });
-      onChange?.(confirmedItems);
+
+      if (operation.type === 'insert' || operation.type === 'replace') {
+        const item = confirmedItems[operation.index];
+        if (!item) return;
+        onChange?.(confirmedItems, { ...operation, item });
+        return;
+      }
+
+      onChange?.(confirmedItems, operation);
     },
     [onChange],
   );
 
   // Start adding a new item (creates draft and sets editing state)
-  const startAdding = useCallback((template: T): void => {
-    const internalId = crypto.randomUUID();
-    const draftItem: WithItemProperties<T> = {
-      ...template,
-      _internalId: internalId,
-      _draft: true,
-    };
+  const startAdding = useCallback(
+    (template: T): void => {
+      const internalId = crypto.randomUUID();
+      const draftItem: WithItemProperties<T> = {
+        ...template,
+        _internalId: internalId,
+        _draft: true,
+      };
+      const currentState = stateRef.current;
 
-    // Remove any existing draft, add the new one, and set editing ID atomically
-    setState((prev) => ({
-      items: [...prev.items.filter((item) => !item._draft), draftItem],
-      editingId: internalId,
-    }));
-  }, []);
+      // Remove any existing draft, add the new one, and set editing ID atomically
+      replaceState({
+        items: [
+          ...currentState.items.filter((item) => !item._draft),
+          draftItem,
+        ],
+        editingId: internalId,
+      });
+    },
+    [replaceState],
+  );
 
   // Add a confirmed item directly without entering editing mode
   const addItem = useCallback(
@@ -275,154 +321,175 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
         _internalId: internalId,
       };
 
-      setState((prev) => {
-        const newItems = [...prev.items, newItem];
-        notifyChange(newItems);
-        return { ...prev, items: newItems };
-      });
+      const currentState = stateRef.current;
+      const newItems = [...currentState.items, newItem];
+      const index = currentState.items.filter(
+        (candidate) => !candidate._draft,
+      ).length;
+
+      replaceState({ ...currentState, items: newItems });
+      notifyChange(newItems, { type: 'insert', index });
     },
-    [notifyChange],
+    [notifyChange, replaceState],
   );
 
   // Start editing an existing item (sets editing ID, no draft flag)
-  const startEditing = useCallback((internalId: string): void => {
-    setState((prev) => {
+  const startEditing = useCallback(
+    (internalId: string): void => {
+      const currentState = stateRef.current;
       // Skip if already editing this item
-      if (prev.editingId === internalId) return prev;
+      if (currentState.editingId === internalId) return;
 
-      const targetItem = prev.items.find(
+      const targetItem = currentState.items.find(
         (item) => item._internalId === internalId,
       );
       // Skip if target doesn't exist
-      if (!targetItem) return prev;
+      if (!targetItem) return;
 
       // Check if there's a draft to remove
-      const hasDraft = prev.items.some((item) => item._draft);
+      const hasDraft = currentState.items.some((item) => item._draft);
 
-      return {
+      replaceState({
         // Only filter if there's actually a draft to remove
         items: hasDraft
-          ? prev.items.filter((item) => !item._draft)
-          : prev.items,
+          ? currentState.items.filter((item) => !item._draft)
+          : currentState.items,
         editingId: internalId,
-      };
-    });
-  }, []);
+      });
+    },
+    [replaceState],
+  );
 
   // Cancel the current edit (removes draft items if any, clears editing state)
   const cancelEditing = useCallback((): void => {
-    setState((prev) => {
-      // Skip if not currently editing
-      if (prev.editingId === null) return prev;
+    const currentState = stateRef.current;
+    // Skip if not currently editing
+    if (currentState.editingId === null) return;
 
-      // Check if there's a draft to remove
-      const hasDraft = prev.items.some((item) => item._draft);
+    // Check if there's a draft to remove
+    const hasDraft = currentState.items.some((item) => item._draft);
 
-      return {
-        // Only filter if there's actually a draft to remove
-        items: hasDraft
-          ? prev.items.filter((item) => !item._draft)
-          : prev.items,
-        editingId: null,
-      };
+    replaceState({
+      // Only filter if there's actually a draft to remove
+      items: hasDraft
+        ? currentState.items.filter((item) => !item._draft)
+        : currentState.items,
+      editingId: null,
     });
-  }, []);
+  }, [replaceState]);
 
   // Save the current edit (confirms drafts, updates existing items)
   const saveEditing = useCallback(
     (data: T): void => {
-      if (!editingId) return;
+      const currentState = stateRef.current;
+      if (!currentState.editingId) return;
 
-      setState((prev) => {
-        const editingIdx = prev.items.findIndex(
-          (item) => item._internalId === editingId,
-        );
-        if (editingIdx === -1) return prev;
+      const editingIdx = currentState.items.findIndex(
+        (item) => item._internalId === currentState.editingId,
+      );
+      if (editingIdx === -1) return;
 
-        const editingItemRef = prev.items[editingIdx]!;
+      const editingItemRef = currentState.items[editingIdx]!;
 
-        const newItems = prev.items.map((item, idx) => {
-          if (idx !== editingIdx) return item;
+      const newItems = currentState.items.map((item, idx) => {
+        if (idx !== editingIdx) return item;
 
-          // Update the item with new data, removing _draft flag if present
-          return {
-            ...data,
-            _internalId: editingItemRef._internalId,
-          } as WithItemProperties<T>;
-        });
+        // Update the item with new data, removing _draft flag if present
+        return {
+          ...data,
+          _internalId: editingItemRef._internalId,
+        } as WithItemProperties<T>;
+      });
 
-        // Notify parent with all non-draft items
-        notifyChange(newItems);
+      const confirmedIndex = currentState.items
+        .slice(0, editingIdx)
+        .filter((item) => !item._draft).length;
 
-        return { items: newItems, editingId: null };
+      replaceState({ items: newItems, editingId: null });
+      notifyChange(newItems, {
+        type: editingItemRef._draft ? 'insert' : 'replace',
+        index: confirmedIndex,
       });
     },
-    [editingId, notifyChange],
+    [notifyChange, replaceState],
   );
 
   // Remove an item
   const removeItem = useCallback(
     (internalId: string): void => {
-      setState((prev) => {
-        const item = prev.items.find((i) => i._internalId === internalId);
-        const itemIsDraft = item?._draft ?? false;
-        const newItems = prev.items.filter((i) => i._internalId !== internalId);
+      const currentState = stateRef.current;
+      const itemIndex = currentState.items.findIndex(
+        (item) => item._internalId === internalId,
+      );
+      if (itemIndex === -1) return;
 
-        // Only notify if removing a non-draft item
-        if (!itemIsDraft) {
-          notifyChange(newItems);
-        }
+      const item = currentState.items[itemIndex];
+      const itemIsDraft = item?._draft ?? false;
+      const newItems = currentState.items.filter(
+        (candidate) => candidate._internalId !== internalId,
+      );
 
-        return { ...prev, items: newItems };
-      });
+      replaceState({ ...currentState, items: newItems });
+
+      // Only notify if removing a non-draft item
+      if (!itemIsDraft) {
+        const confirmedIndex = currentState.items
+          .slice(0, itemIndex)
+          .filter((candidate) => !candidate._draft).length;
+        notifyChange(newItems, { type: 'remove', index: confirmedIndex });
+      }
     },
-    [notifyChange],
+    [notifyChange, replaceState],
   );
 
   // Update a specific item without affecting editing state
   const updateItem = useCallback(
     (internalId: string, data: Partial<T>): void => {
-      setState((prev) => {
-        const itemIndex = prev.items.findIndex(
-          (i) => i._internalId === internalId,
-        );
-        if (itemIndex === -1) return prev;
+      const currentState = stateRef.current;
+      const itemIndex = currentState.items.findIndex(
+        (item) => item._internalId === internalId,
+      );
+      if (itemIndex === -1) return;
 
-        const existingItem = prev.items[itemIndex]!;
-        const updatedItem: WithItemProperties<T> = {
-          ...existingItem,
-          ...data,
-          _internalId: existingItem._internalId,
-          _draft: existingItem._draft,
-        };
+      const existingItem = currentState.items[itemIndex]!;
+      const updatedItem: WithItemProperties<T> = {
+        ...existingItem,
+        ...data,
+        _internalId: existingItem._internalId,
+        _draft: existingItem._draft,
+      };
 
-        const newItems = prev.items.map((item, idx) =>
-          idx === itemIndex ? updatedItem : item,
-        );
+      const newItems = currentState.items.map((item, index) =>
+        index === itemIndex ? updatedItem : item,
+      );
 
-        // Only notify if updating a non-draft item
-        if (!existingItem._draft) {
-          notifyChange(newItems);
-        }
+      replaceState({ ...currentState, items: newItems });
 
-        return { ...prev, items: newItems };
-      });
+      // Only notify if updating a non-draft item
+      if (!existingItem._draft) {
+        const confirmedIndex = currentState.items
+          .slice(0, itemIndex)
+          .filter((candidate) => !candidate._draft).length;
+        notifyChange(newItems, {
+          type: 'replace',
+          index: confirmedIndex,
+        });
+      }
     },
-    [notifyChange],
+    [notifyChange, replaceState],
   );
 
   // Set items - handles both draft and non-draft updates
   const setItems = useCallback(
-    (newItems: WithItemProperties<T>[]): void => {
-      const hasNonDraftChanges = newItems.some((item) => !item._draft);
+    (
+      newItems: WithItemProperties<T>[],
+      operation?: PendingArrayFieldOperation,
+    ): void => {
+      replaceState({ ...stateRef.current, items: newItems });
 
-      setState((prev) => ({ ...prev, items: newItems }));
-
-      if (hasNonDraftChanges) {
-        notifyChange(newItems);
-      }
+      if (operation) notifyChange(newItems, operation);
     },
-    [notifyChange],
+    [notifyChange, replaceState],
   );
 
   return {

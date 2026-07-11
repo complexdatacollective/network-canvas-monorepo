@@ -50,12 +50,20 @@ const getAutoValue = (
   return null;
 };
 
-const getUpdatedValue = (
+export const getUpdatedValue = (
   previousValue: Record<string, ValidationValue>,
   key: string,
   value: ValidationValue,
   oldKey: string | null = null,
 ): Record<string, ValidationValue> => {
+  // A disabled option should make this unreachable in the UI, but keep the
+  // update lossless if a stale/programmatic event still requests a key that
+  // belongs to another row. The old behavior overwrote the existing rule and
+  // then removed the edited one.
+  if (oldKey && key !== oldKey && Object.hasOwn(previousValue, key)) {
+    return previousValue;
+  }
+
   const autoValue = getAutoValue(key, oldKey, value);
 
   if (!oldKey) {

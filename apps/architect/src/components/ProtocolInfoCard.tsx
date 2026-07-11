@@ -5,8 +5,8 @@ import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
 import { Pattern } from '@codaco/art';
+import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
-import { TextArea } from '~/components/Form/Fields';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   updateProtocolDescription,
@@ -116,21 +116,20 @@ const ProtocolInfoCard = () => {
         />
 
         <div className="border-platinum-dark/60 focus-within:border-primary overflow-hidden rounded-sm border bg-white/45 backdrop-blur-sm transition-colors">
-          <TextArea
+          <TextAreaField
+            aria-label="Protocol description"
             className="[&>textarea]:field-sizing-content [&>textarea]:max-h-52 [&>textarea]:min-h-24 [&>textarea]:rounded-none [&>textarea]:border-0 [&>textarea]:bg-transparent [&>textarea]:focus:border-0 [&>textarea]:focus:ring-0"
             placeholder="Enter a description for your protocol..."
-            input={{
-              value: localDescription,
-              onChange: (event) => setLocalDescription(event.target.value),
-              onBlur: () => {
-                if (localDescription !== description) {
-                  dispatch(
-                    updateProtocolDescription({
-                      description: localDescription,
-                    }),
-                  );
-                }
-              },
+            value={localDescription}
+            onChange={(value) => setLocalDescription(value ?? '')}
+            onBlur={() => {
+              if (localDescription !== description) {
+                dispatch(
+                  updateProtocolDescription({
+                    description: localDescription,
+                  }),
+                );
+              }
             }}
           />
         </div>

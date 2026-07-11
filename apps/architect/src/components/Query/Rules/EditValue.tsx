@@ -34,6 +34,7 @@ const INPUT_TYPES = {
     props: {
       fieldComponent: FrescoInputField,
       type: 'number',
+      step: 'any',
       ...reduxNumberValue,
     },
   },

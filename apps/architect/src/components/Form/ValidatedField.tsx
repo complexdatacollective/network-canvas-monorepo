@@ -1,11 +1,6 @@
 import { startCase } from 'es-toolkit/compat';
-import type { ComponentType, InputHTMLAttributes } from 'react';
-import {
-  type BaseFieldProps,
-  Field,
-  type Validator,
-  type WrappedFieldProps,
-} from 'redux-form';
+import type { ComponentType, ElementType, InputHTMLAttributes } from 'react';
+import { type BaseFieldProps, Field, type WrappedFieldProps } from 'redux-form';
 
 import useValidate from '~/hooks/useValidate';
 
@@ -16,9 +11,8 @@ type ValidatedFieldProps<T = Record<string, never>> = Omit<
   BaseFieldProps,
   'validate' | 'component' | 'props'
 > & {
-  validation: Record<string, Validator | boolean | string | string[] | unknown>;
-  // biome-ignore lint/suspicious/noExplicitAny: redux-form Field component accepts any component with WrappedFieldProps
-  component: ComponentType<WrappedFieldProps & T> | ComponentType<any>;
+  validation: Record<string, unknown>;
+  component: ElementType;
   componentProps?: T;
   label?: string;
   fieldLabel?: string;
@@ -38,14 +32,26 @@ function ValidatedField<T = Record<string, never>>({
   ...fieldProps
 }: ValidatedFieldProps<T>) {
   const validations = useValidate(validation);
+  const requiredValidation = validation.required;
+  const validationRequiresValue =
+    typeof requiredValidation === 'object' && requiredValidation !== null
+      ? 'value' in requiredValidation && Boolean(requiredValidation.value)
+      : typeof requiredValidation === 'string' || Boolean(requiredValidation);
+  const required = fieldProps.required ?? validationRequiresValue;
+  // redux-form injects WrappedFieldProps at runtime. ElementType keeps this
+  // boundary compatible with connected legacy fields whose inferred props are
+  // wider than their rendered component's props.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const reduxFieldComponent = component as ComponentType<WrappedFieldProps & T>;
 
   return (
     <>
       <Field
         {...fieldProps}
         {...componentProps}
+        required={required}
         validate={validations}
-        component={component}
+        component={reduxFieldComponent}
       />
       <IssueAnchor
         fieldName={`${fieldProps.name}._error`}

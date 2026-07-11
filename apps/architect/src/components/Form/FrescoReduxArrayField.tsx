@@ -5,16 +5,15 @@ import {
   type ReactNode,
   useContext,
 } from 'react';
-import type { WrappedFieldProps } from 'redux-form';
+import type { WrappedFieldArrayProps } from 'redux-form';
 
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ArrayField, {
   type ArrayFieldEditorProps,
   type ArrayFieldItemProps,
+  type ArrayFieldOperation,
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-
-import { getReduxFieldErrorState } from './reduxFieldMeta';
 
 type ArrayItem = Record<string, unknown>;
 type Renderer = ComponentType<Record<string, unknown>>;
@@ -86,7 +85,7 @@ const EditorRenderer = (props: ArrayFieldEditorProps<ArrayItem>) => {
 
 type FrescoReduxArrayFieldOwnProps<T extends ArrayItem> = Omit<
   ArrayFieldProps<T>,
-  'value' | 'onChange' | 'itemComponent' | 'editorComponent'
+  'value' | 'onChange' | 'onOperation' | 'itemComponent' | 'editorComponent'
 > & {
   editorComponent?: ComponentType<FrescoReduxArrayFieldEditorProps<T>>;
   editorComponentProps?: Record<string, unknown>;
@@ -97,10 +96,23 @@ type FrescoReduxArrayFieldOwnProps<T extends ArrayItem> = Omit<
 };
 
 export type FrescoReduxArrayFieldProps<T extends ArrayItem> =
-  WrappedFieldProps & FrescoReduxArrayFieldOwnProps<T>;
+  WrappedFieldArrayProps<T> & FrescoReduxArrayFieldOwnProps<T>;
+
+const getArrayErrors = (error: unknown): string[] => {
+  if (typeof error === 'string' || typeof error === 'number') {
+    return [String(error)];
+  }
+  if (error && typeof error === 'object' && '_error' in error) {
+    const arrayError = error._error;
+    return typeof arrayError === 'string' || typeof arrayError === 'number'
+      ? [String(arrayError)]
+      : [];
+  }
+  return [];
+};
 
 export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
-  input,
+  fields,
   meta,
   itemComponent,
   itemComponentProps,
@@ -112,16 +124,35 @@ export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
   readOnly,
   ...arrayFieldProps
 }: FrescoReduxArrayFieldProps<T>) {
-  const { errors, showErrors } = getReduxFieldErrorState(meta);
-  const value = Array.isArray(input.value) ? (input.value as T[]) : [];
+  const errors = getArrayErrors(meta.error);
+  const showErrors = (meta.dirty || meta.submitFailed) && errors.length > 0;
+  const fieldValues = fields.getAll();
+  const value = Array.isArray(fieldValues) ? fieldValues : [];
   const rendererContext: RendererContextValue = {
-    arrayName: input.name,
+    arrayName: fields.name,
     editorComponent: editorComponent as unknown as Renderer | undefined,
     editorComponentProps,
     form: meta.form,
     itemComponent: itemComponent as unknown as Renderer,
     itemComponentProps,
     showErrors,
+  };
+
+  const handleOperation = (operation: ArrayFieldOperation<T>) => {
+    switch (operation.type) {
+      case 'insert':
+        fields.insert(operation.index, operation.item);
+        break;
+      case 'remove':
+        fields.remove(operation.index);
+        break;
+      case 'move':
+        fields.move(operation.from, operation.to);
+        break;
+      case 'replace':
+        fields.splice(operation.index, 1, operation.item);
+        break;
+    }
   };
 
   // Indexed child fields own focus state. Forwarding their bubbling focus and
@@ -131,13 +162,13 @@ export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
       <UnconnectedField
         {...arrayFieldProps}
         component={ArrayField<T>}
-        name={input.name}
-        label={label ?? input.name}
+        name={fields.name}
+        label={label ?? fields.name}
         hint={hint}
         disabled={disabled}
         readOnly={readOnly}
         value={value}
-        onChange={(nextValue) => input.onChange(nextValue ?? [])}
+        onOperation={handleOperation}
         errors={errors}
         showErrors={showErrors}
         aria-invalid={showErrors}
@@ -153,7 +184,7 @@ export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
 }
 
 const FrescoReduxArrayField =
-  FrescoReduxArrayFieldBase as ComponentType<WrappedFieldProps> &
+  FrescoReduxArrayFieldBase as ComponentType<WrappedFieldArrayProps> &
     ComponentType<Record<string, unknown>>;
 
 export default FrescoReduxArrayField;

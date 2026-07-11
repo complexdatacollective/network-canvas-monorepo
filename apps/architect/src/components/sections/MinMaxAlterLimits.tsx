@@ -9,7 +9,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import { FrescoReduxField, reduxNumberValue } from '~/components/Form';
+import { FrescoReduxField, reduxIntegerValue } from '~/components/Form';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
@@ -141,7 +141,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
               fieldComponent: FrescoInputField,
               placeholder: '0',
               type: 'number',
-              ...reduxNumberValue,
+              ...reduxIntegerValue,
             }}
           />
         </Row>
@@ -165,7 +165,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
               fieldComponent: FrescoInputField,
               placeholder: 'Infinity',
               type: 'number',
-              ...reduxNumberValue,
+              ...reduxIntegerValue,
             }}
           />
         </Row>

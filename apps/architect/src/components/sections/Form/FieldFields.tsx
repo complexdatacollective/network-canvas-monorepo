@@ -120,6 +120,7 @@ const PromptFields = ({
             validation={{ required: true }}
             componentProps={{
               inline: true,
+              label: 'Prompt text',
               placeholder: "What is this person's name?",
             }}
           />
@@ -134,6 +135,7 @@ const PromptFields = ({
             name="hint"
             component={RichText as ComponentType<Record<string, unknown>>}
             inline
+            label="Hint text"
             placeholder="e.g. Select all that apply..."
           />
         </div>

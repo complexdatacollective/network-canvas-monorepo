@@ -3,13 +3,14 @@ import { Check, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useMemo, useRef, useState } from 'react';
 
+import { IconButton } from '@codaco/fresco-ui/Button';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@codaco/fresco-ui/Tooltip';
 import type { VariableType } from '@codaco/protocol-validation';
-import TextInput from '~/components/Form/Fields/Text';
 import { getColorForType, getIconForType } from '~/config/variables';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableByUUID } from '~/ducks/modules/protocol/codebook';
@@ -136,7 +137,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 
   const onEditComplete = () => {
     const action = updateVariableByUUID(uuid, { name: newName }, true);
-    dispatch(action);
+    void dispatch(action);
     setValidation(null);
     setIsEditing(false);
   };
@@ -160,17 +161,15 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
     [existingVariables, uuid],
   );
 
-  const handleUpdateName = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const {
-      target: { value },
-    } = event;
-    setNewName(value);
+  const handleUpdateName = (value: string | undefined) => {
+    const nextValue = value ?? '';
+    setNewName(nextValue);
 
     const required = validations.required('You must enter a variable name')(
-      value,
+      nextValue,
     );
-    const unique = validations.uniqueByList(existingVariableNames)(value);
-    const allowed = validations.allowedVariableName()(value);
+    const unique = validations.uniqueByList(existingVariableNames)(nextValue);
+    const allowed = validations.allowedVariableName()(nextValue);
 
     const validationResult = required || unique || allowed || null;
     setValidation(validationResult);
@@ -206,46 +205,48 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
               <TooltipTrigger
                 render={
                   <div className="w-full flex-auto">
-                    <TextInput
+                    <InputField
                       autoFocus
                       placeholder="Enter a new variable name..."
-                      input={{
-                        value: newName,
-                        onChange: handleUpdateName,
-                        onBlur: handleBlur,
-                        onKeyDown: handleKeyDown,
-                      }}
-                      adornmentRight={
-                        <motion.div className="relative right-5 flex shrink-0 grow-0">
+                      value={newName}
+                      onChange={handleUpdateName}
+                      onBlur={handleBlur}
+                      onKeyDown={handleKeyDown}
+                      suffixComponent={
+                        <motion.div className="flex shrink-0 grow-0">
                           <motion.div
-                            title="Finished"
                             aria-label="Finished"
                             initial={{ x: '100%', opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
                             transition={{ delay: 0.4 }}
-                            role="button"
-                            tabIndex={0} // Needed to allow focus
-                            id={EDIT_COMPLETE_BUTTON_ID}
-                            onClick={onEditComplete}
-                            className={cx(
-                              'cursor-pointer [&_svg]:size-5',
-                              !canSubmit && 'cursor-not-allowed grayscale',
-                            )}
                           >
-                            <Check aria-hidden className="text-success" />
+                            <IconButton
+                              id={EDIT_COMPLETE_BUTTON_ID}
+                              aria-label="Finished"
+                              title="Finished"
+                              size="sm"
+                              variant="text"
+                              color="success"
+                              disabled={!canSubmit}
+                              onClick={onEditComplete}
+                              icon={<Check aria-hidden />}
+                            />
                           </motion.div>
                           <motion.div
-                            title="Cancel"
-                            aria-label="Cancel"
                             initial={{ x: '100%', opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
                             transition={{ delay: 0.6 }}
-                            role="button"
-                            tabIndex={0} // Needed to allow focus
-                            onClick={handleCancel}
-                            className="ml-2.5 cursor-pointer [&_svg]:size-5"
+                            className="ml-2.5"
                           >
-                            <X aria-hidden className="text-destructive" />
+                            <IconButton
+                              aria-label="Cancel"
+                              title="Cancel"
+                              size="sm"
+                              variant="text"
+                              color="destructive"
+                              onClick={handleCancel}
+                              icon={<X aria-hidden />}
+                            />
                           </motion.div>
                         </motion.div>
                       }
@@ -262,17 +263,19 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
             </Tooltip>
           </motion.div>
         ) : (
-          <motion.span
+          <motion.button
+            type="button"
             key="label"
-            className="m-0 w-full shrink-0 grow cursor-text overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
+            className="focusable m-0 w-full shrink-0 grow cursor-text overflow-hidden border-0 bg-transparent px-6 text-left break-keep text-ellipsis whitespace-nowrap"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsEditing(true)}
             title="Click to rename this variable..."
+            aria-label={`Rename variable ${name ?? ''}`}
           >
             {name}
-          </motion.span>
+          </motion.button>
         )}
       </AnimatePresence>
     </BaseVariablePill>

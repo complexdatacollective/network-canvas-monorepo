@@ -1,120 +1,155 @@
-import { TriangleAlert } from 'lucide-react';
-import type React from 'react';
-import { compose, withState } from 'react-recompose';
+import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
+import type { WrappedFieldProps } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
 import { cx } from '~/utils/cva';
 
 import AssetBrowserWindow from '../../AssetBrowser/AssetBrowserWindow';
-import MarkdownLabel from './MarkdownLabel';
+import FrescoReduxField from '../FrescoReduxField';
 
-type InputProps = {
-  value: string;
-  onChange: (value: string) => void;
+type ResourcePickerControlProps = {
+  'id'?: string;
+  'name'?: string;
+  'value'?: string;
+  'onChange'?: (value: string) => void;
+  'onBlur'?: React.FocusEventHandler;
+  'onFocus'?: React.FocusEventHandler;
+  'showBrowser'?: boolean;
+  'onCloseBrowser'?: () => void;
+  'type'?: string;
+  'selected'?: string;
+  'className'?: string;
+  'children'?: (id: string) => ReactNode;
+  'disabled'?: boolean;
+  'readOnly'?: boolean;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean;
+  'aria-labelledby'?: string;
 };
 
-type MetaProps = {
-  error?: string;
-  invalid?: boolean;
-  touched?: boolean;
+const ResourcePickerControl = ({
+  id,
+  name,
+  value = '',
+  onChange,
+  onBlur,
+  onFocus,
+  showBrowser,
+  onCloseBrowser,
+  type,
+  selected,
+  className,
+  children,
+  disabled = false,
+  readOnly = false,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-labelledby': ariaLabelledBy,
+}: ResourcePickerControlProps) => {
+  const [browserOpen, setBrowserOpen] = useState(Boolean(showBrowser));
+
+  useEffect(() => {
+    if (showBrowser !== undefined) setBrowserOpen(showBrowser);
+  }, [showBrowser]);
+
+  const closeBrowser = () => {
+    setBrowserOpen(false);
+    onCloseBrowser?.();
+  };
+
+  const handleSelectAsset = (assetId: string) => {
+    setBrowserOpen(false);
+    onChange?.(assetId);
+    onCloseBrowser?.();
+  };
+
+  return (
+    <fieldset
+      id={id}
+      aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
+      aria-describedby={ariaDescribedBy}
+      aria-disabled={readOnly || undefined}
+      disabled={disabled}
+      onBlur={onBlur}
+      onFocus={onFocus}
+      className={cx(
+        'bg-input text-input-contrast flex w-full flex-col gap-4 rounded border-2 border-transparent p-4',
+        ariaInvalid && 'border-destructive',
+        disabled && 'opacity-50',
+        readOnly && 'opacity-70',
+        className,
+      )}
+      data-name={name}
+    >
+      {value && (
+        <div className="relative overflow-hidden">{children?.(value)}</div>
+      )}
+      <Button
+        type="button"
+        onClick={() => setBrowserOpen(true)}
+        color="primary"
+        disabled={disabled || readOnly}
+        className="self-start"
+      >
+        {!value ? 'Select resource' : 'Update resource'}
+      </Button>
+      <AssetBrowserWindow
+        show={browserOpen}
+        type={type}
+        selected={selected ?? value}
+        onSelect={handleSelectAsset}
+        onCancel={closeBrowser}
+      />
+    </fieldset>
+  );
 };
 
-// Props injected by withState HOC
-type InjectedStateProps = {
-  showBrowser: boolean;
-  setShowBrowser: (show: boolean) => void;
-};
-
-// Props that the user passes to the component
-export type FileInputPropsWithoutHOC = {
-  input: InputProps;
-  meta: MetaProps;
+export type FileInputPropsWithoutHOC = WrappedFieldProps & {
   showBrowser?: boolean;
   onCloseBrowser?: () => void;
   label?: string;
   type?: string;
   selected?: string;
   className?: string;
-  children?: (id: string) => React.ReactNode;
+  children?: (id: string) => ReactNode;
+  disabled?: boolean;
+  readOnly?: boolean;
+  required?: boolean;
 };
 
-// Full props that the internal component receives (original + injected)
-export type FileInputProps = FileInputPropsWithoutHOC & InjectedStateProps;
+export type FileInputProps = FileInputPropsWithoutHOC;
 
-const withShowBrowser = withState<
-  FileInputPropsWithoutHOC,
-  boolean,
-  'showBrowser',
-  'setShowBrowser'
->('showBrowser', 'setShowBrowser', ({ showBrowser }) => !!showBrowser);
+const FrescoResourcePickerControl = ResourcePickerControl as ComponentType<
+  Record<string, unknown>
+>;
+const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
+  Record<string, unknown>
+>;
 
-const FileInput = ({
-  setShowBrowser,
-  input: { value, onChange },
-  meta: { error, invalid, touched },
-  showBrowser,
-  onCloseBrowser,
-  label,
-  type,
-  selected,
-  className,
-  children,
-}: FileInputProps) => {
-  const closeBrowser = () => {
-    setShowBrowser(false);
-    onCloseBrowser?.();
-  };
-
-  const openBrowser = () => {
-    setShowBrowser(true);
-  };
-
-  const handleBrowseLibrary = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    openBrowser();
-  };
-
-  const handleBlurBrowser = () => {
-    closeBrowser();
-  };
-
-  const handleSelectAsset = (assetId: string) => {
-    closeBrowser();
-    onChange(assetId);
-  };
-
-  return (
-    <div className={cx('m-0 block [&>h4]:m-0', className)}>
-      {label && <MarkdownLabel label={label} />}
-      <div className="form-field relative">
-        {invalid && touched && (
-          <div className="text-destructive flex items-center px-1 py-2.5 [&_.icon]:mr-2.5 [&_.icon]:size-5">
-            <TriangleAlert aria-hidden />
-            {error}
-          </div>
-        )}
-        <div
-          className={cx('relative overflow-hidden', value ? 'block' : 'hidden')}
-        >
-          {children?.(value)}
-        </div>
-        <div className="mt-5">
-          <Button onClick={handleBrowseLibrary} color="primary">
-            {!value ? 'Select resource' : 'Update resource'}
-          </Button>
-        </div>
-      </div>
-      <AssetBrowserWindow
-        show={showBrowser}
-        type={type}
-        selected={selected}
-        onSelect={handleSelectAsset}
-        onCancel={handleBlurBrowser}
-      />
-    </div>
-  );
+const getDefaultLabel = (type?: string) => {
+  switch (type) {
+    case 'audio':
+      return 'Audio resource';
+    case 'geojson':
+      return 'Geospatial data file';
+    case 'image':
+      return 'Image resource';
+    case 'network':
+      return 'Network data file';
+    case 'video':
+      return 'Video resource';
+    default:
+      return 'Resource';
+  }
 };
 
-export default compose<FileInputProps, FileInputPropsWithoutHOC>(
-  withShowBrowser,
-)(FileInput);
+const FileInput = ({ label, type, ...props }: FileInputPropsWithoutHOC) => (
+  <ReduxFieldAdapter
+    {...props}
+    type={type}
+    label={label ?? getDefaultLabel(type)}
+    fieldComponent={FrescoResourcePickerControl}
+  />
+);
+
+export default FileInput;

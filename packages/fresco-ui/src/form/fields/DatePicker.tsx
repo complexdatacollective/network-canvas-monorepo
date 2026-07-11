@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
@@ -86,6 +86,18 @@ const months: SelectOption[] = [
   { value: '12', label: 'December' },
 ];
 
+const getMonthParts = (value: unknown) => {
+  if (typeof value !== 'string') {
+    return { year: undefined, month: undefined };
+  }
+
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  return {
+    year: match?.[1],
+    month: match?.[2],
+  };
+};
+
 export default function DatePickerField(props: DatePickerFieldProps) {
   const {
     type: resolutionType = 'full',
@@ -97,6 +109,9 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     size = 'md',
     placeholder,
     className,
+    id,
+    onBlur,
+    onFocus,
     disabled,
     readOnly,
     ...rest
@@ -111,19 +126,42 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     [max],
   );
 
-  const [selectedYear, setSelectedYear] = useState<string | undefined>();
-  const [selectedMonth, setSelectedMonth] = useState<string | undefined>();
+  const initialMonthParts = getMonthParts(value);
+  const [selectedYear, setSelectedYear] = useState<string | undefined>(
+    initialMonthParts.year,
+  );
+  const [selectedMonth, setSelectedMonth] = useState<string | undefined>(
+    initialMonthParts.month,
+  );
+  const pendingIncompletePartsRef = useRef<{
+    year?: string;
+    month?: string;
+  } | null>(null);
 
   useEffect(() => {
-    if (
-      resolutionType === 'month' &&
-      typeof value === 'string' &&
-      value.includes('-')
-    ) {
-      const [year, month] = value.split('-');
-      setSelectedYear(year);
-      setSelectedMonth(month);
+    if (resolutionType !== 'month') {
+      pendingIncompletePartsRef.current = null;
+      setSelectedYear(undefined);
+      setSelectedMonth(undefined);
+      return;
     }
+
+    const parts = getMonthParts(value);
+    if (
+      (value === undefined || value === null || value === '') &&
+      parts.year === undefined &&
+      parts.month === undefined &&
+      pendingIncompletePartsRef.current
+    ) {
+      const pendingParts = pendingIncompletePartsRef.current;
+      setSelectedYear(pendingParts.year);
+      setSelectedMonth(pendingParts.month);
+      return;
+    }
+
+    pendingIncompletePartsRef.current = null;
+    setSelectedYear(parts.year);
+    setSelectedMonth(parts.month);
   }, [value, resolutionType]);
 
   const years = useMemo(() => {
@@ -134,9 +172,9 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     return arr;
   }, [minYmd.year, maxYmd.year]);
 
-  const availableMonths = useMemo(() => {
-    if (!selectedYear) return months;
-    const year = Number.parseInt(selectedYear, 10);
+  const getAvailableMonths = (yearValue?: string) => {
+    if (!yearValue) return months;
+    const year = Number.parseInt(yearValue, 10);
     let startMonth = 1;
     let endMonth = 12;
     if (year === minYmd.year) startMonth = minYmd.month;
@@ -145,45 +183,107 @@ export default function DatePickerField(props: DatePickerFieldProps) {
       const monthNum = Number.parseInt(String(m.value), 10);
       return monthNum >= startMonth && monthNum <= endMonth;
     });
+  };
+
+  const availableMonths = useMemo(() => {
+    return getAvailableMonths(selectedYear);
+    // getAvailableMonths is a pure calculation over the listed date bounds.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear, minYmd, maxYmd]);
 
   const handleChange = (year?: string, month?: string) => {
-    const newYear = year ?? selectedYear;
-    const newMonth = month ?? selectedMonth;
+    const newYear = year === '' ? undefined : (year ?? selectedYear);
+    let newMonth = month === '' ? undefined : (month ?? selectedMonth);
+
+    if (
+      year !== undefined &&
+      newMonth !== undefined &&
+      !getAvailableMonths(newYear).some(
+        (option) => String(option.value) === newMonth,
+      )
+    ) {
+      newMonth = undefined;
+    }
+
     setSelectedYear(newYear);
     setSelectedMonth(newMonth);
-    if (newYear && newMonth && onChange && name) {
-      onChange(`${newYear}-${newMonth}`);
-    }
+    // A month-resolution value is only valid when both controls are complete.
+    // Emit `undefined` for every incomplete combination, including when moving
+    // to a boundary year invalidates the previously selected month. Otherwise
+    // a controlled parent can retain a stale complete value that is no longer
+    // represented by the two visible controls.
+    const nextValue =
+      newYear && newMonth ? `${newYear}-${newMonth}` : undefined;
+    pendingIncompletePartsRef.current =
+      nextValue === undefined && onChange
+        ? { year: newYear, month: newMonth }
+        : null;
+    onChange?.(nextValue);
+  };
+
+  const interactionDisabled = Boolean(disabled) || Boolean(readOnly);
+  const yearPartLabelId = id ? `${id}-year-part` : undefined;
+  const monthPartLabelId = id ? `${id}-month-part` : undefined;
+  const labelledBy = rest['aria-labelledby'];
+  const yearLabelledBy = [labelledBy, yearPartLabelId]
+    .filter(Boolean)
+    .join(' ');
+  const monthLabelledBy = [labelledBy, monthPartLabelId]
+    .filter(Boolean)
+    .join(' ');
+  const controlAriaProps = {
+    'aria-invalid': rest['aria-invalid'],
+    'aria-describedby': rest['aria-describedby'],
+    'aria-required': rest['aria-required'],
+    'aria-disabled': rest['aria-disabled'] || disabled || undefined,
+    'aria-readonly': rest['aria-readonly'] || readOnly || undefined,
   };
 
   if (resolutionType === 'month') {
     return (
-      <div className="flex gap-2">
+      <div className={cx('flex gap-2', className)}>
+        {yearPartLabelId && (
+          <span id={yearPartLabelId} className="sr-only">
+            Year
+          </span>
+        )}
+        {monthPartLabelId && (
+          <span id={monthPartLabelId} className="sr-only">
+            Month
+          </span>
+        )}
         <SelectField
-          size="md"
-          name={`${name ?? 'date'}-year`}
+          id={id}
+          size={size}
+          name={name ? `${name}-year` : undefined}
           options={years}
           placeholder="Year"
           value={selectedYear}
           onChange={(selectValue) =>
             handleChange(String(selectValue), undefined)
           }
-          disabled={disabled ?? readOnly}
-          aria-invalid={rest['aria-invalid']}
+          disabled={interactionDisabled}
+          onBlur={onBlur}
+          onFocus={onFocus}
+          {...controlAriaProps}
+          aria-labelledby={yearLabelledBy || undefined}
           className="w-fit"
         />
         <SelectField
-          size="md"
-          name={`${name ?? 'date'}-month`}
+          id={id ? `${id}-month` : undefined}
+          size={size}
+          name={name ? `${name}-month` : undefined}
           options={availableMonths}
           placeholder="Month"
           value={selectedMonth}
           onChange={(selectValue) =>
             handleChange(undefined, String(selectValue))
           }
-          disabled={disabled ?? readOnly ?? !selectedYear}
-          aria-invalid={rest['aria-invalid']}
+          disabled={interactionDisabled || !selectedYear}
+          onBlur={onBlur}
+          onFocus={onFocus}
+          {...controlAriaProps}
+          aria-labelledby={monthLabelledBy || undefined}
           className="w-fit"
         />
       </div>
@@ -193,28 +293,39 @@ export default function DatePickerField(props: DatePickerFieldProps) {
   if (resolutionType === 'year') {
     return (
       <SelectField
-        size="md"
+        id={id}
+        size={size}
         options={years}
         placeholder="Year"
         value={value}
-        onChange={(v) => onChange?.(String(v))}
-        name={name ?? 'year'}
-        disabled={disabled ?? readOnly}
-        aria-invalid={rest['aria-invalid']}
-        className="w-fit"
+        onChange={(v) =>
+          onChange?.(v === undefined || v === '' ? undefined : String(v))
+        }
+        name={name}
+        disabled={interactionDisabled}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        {...controlAriaProps}
+        aria-label={rest['aria-label']}
+        aria-labelledby={labelledBy}
+        className={cx('w-fit', className)}
       />
     );
   }
 
   return (
     <InputField
+      {...rest}
+      id={id}
       type="date"
       size={size}
       min={min}
       max={max}
       value={value}
-      onChange={(v) => onChange?.(String(v))}
-      name={name ?? ''}
+      onChange={(v) => onChange?.(v === undefined || v === '' ? undefined : v)}
+      name={name}
+      onBlur={onBlur}
+      onFocus={onFocus}
       placeholder={placeholder}
       className={cx(
         'outline-input-contrast',
@@ -223,9 +334,6 @@ export default function DatePickerField(props: DatePickerFieldProps) {
       )}
       disabled={disabled}
       readOnly={readOnly}
-      aria-invalid={rest['aria-invalid']}
-      aria-describedby={rest['aria-describedby']}
-      aria-required={rest['aria-required']}
     />
   );
 }

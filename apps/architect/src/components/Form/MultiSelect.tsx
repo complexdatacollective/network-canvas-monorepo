@@ -2,7 +2,7 @@ import { startCase } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { UnknownAction } from 'redux';
-import { change, Field, formValueSelector } from 'redux-form';
+import { change, FieldArray, formValueSelector } from 'redux-form';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -195,7 +195,7 @@ const MultiSelect = ({
   maxItems = null,
 }: MultiSelectProps) => (
   <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
-    <Field
+    <FieldArray
       name={name}
       component={FrescoReduxArrayField}
       label={label}
@@ -208,6 +208,7 @@ const MultiSelect = ({
       immediateAdd
       sortable
       confirmDelete={false}
+      rerenderOnEveryChange
       maxItems={maxItems ?? undefined}
     />
   </div>

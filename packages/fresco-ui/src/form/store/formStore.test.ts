@@ -426,6 +426,48 @@ describe('FormStore', () => {
       const errors = store.getState().getFormErrors();
       expect(errors).toBeNull();
     });
+
+    it('marks fields returned by the server as visible and invalid', () => {
+      store.getState().setErrors({
+        formErrors: [],
+        fieldErrors: { 'user.name': ['Already exists'] },
+      });
+
+      const field = store.getState().getFieldState('user.name');
+      expect(field?.meta).toMatchObject({
+        isValid: false,
+        isTouched: true,
+        isBlurred: true,
+        isDirty: true,
+      });
+      expect(store.getState().isValid).toBe(false);
+    });
+
+    it('restores an unvalidated field after server errors clear on successful validation', async () => {
+      // This regression is intentionally scoped to a single field without a
+      // client schema; the surrounding getter tests register other fields.
+      store.getState().reset();
+      store.getState().registerField({
+        name: 'username',
+        initialValue: 'existing',
+      });
+      store.getState().setErrors({
+        formErrors: [],
+        fieldErrors: { username: ['Already exists'] },
+      });
+
+      expect(store.getState().getFieldState('username')?.meta.isValid).toBe(
+        false,
+      );
+
+      expect(await store.getState().validateForm()).toBe(true);
+      store.getState().setErrors(null);
+
+      expect(store.getState().getFieldState('username')?.meta.isValid).toBe(
+        true,
+      );
+      expect(store.getState().isValid).toBe(true);
+    });
   });
 
   describe('Field validation', () => {
@@ -488,6 +530,41 @@ describe('FormStore', () => {
       expect(field?.meta.isValidating).toBe(false);
       expect(field?.meta.isValid).toBe(false);
       expect(fieldErrors).toEqual(['Something went wrong during validation']);
+    });
+
+    it('ignores a stale async result that resolves after a newer validation', async () => {
+      type ValidationResult = Awaited<ReturnType<typeof validateFieldValue>>;
+      let resolveOld!: (result: ValidationResult) => void;
+      let resolveNew!: (result: ValidationResult) => void;
+      const oldValidation = new Promise<ValidationResult>((resolve) => {
+        resolveOld = resolve;
+      });
+      const newValidation = new Promise<ValidationResult>((resolve) => {
+        resolveNew = resolve;
+      });
+      mockValidateFieldValue
+        .mockReturnValueOnce(oldValidation)
+        .mockReturnValueOnce(newValidation);
+
+      const oldRequest = store.getState().validateField('email');
+      store.getState().setFieldValue('email', 'new@example.com');
+      const newRequest = store.getState().validateField('email');
+
+      resolveNew({ success: true, data: 'new@example.com' });
+      await newRequest;
+      resolveOld({
+        success: false,
+        error: new z.core.$ZodError([
+          { code: 'custom', message: 'Stale error', path: [] },
+        ]),
+      });
+      await oldRequest;
+
+      expect(store.getState().getFieldErrors('email')).toBeNull();
+      expect(store.getState().getFieldState('email')?.meta.isValid).toBe(true);
+      expect(store.getState().getFieldState('email')?.meta.isValidating).toBe(
+        false,
+      );
     });
 
     it('should not validate non-existent field', async () => {
@@ -572,6 +649,26 @@ describe('FormStore', () => {
       const field1Errors = state.getFieldErrors('field1');
       expect(field1Errors).toEqual(['Field1 is required']);
       expect(field1?.meta.isValid).toBe(false);
+    });
+
+    it('collects nested custom-schema issues under the registered field', async () => {
+      const nestedError = new z.core.$ZodError([
+        {
+          code: 'custom',
+          message: 'Nested label is required',
+          path: ['details', 'label'],
+        },
+      ]);
+      mockValidateFieldValue
+        .mockResolvedValueOnce({ success: false, error: nestedError })
+        .mockResolvedValueOnce({ success: true, data: 'value2' });
+
+      const result = await store.getState().validateForm();
+
+      expect(result).toBe(false);
+      expect(store.getState().getFieldErrors('field1')).toEqual([
+        'Nested label is required',
+      ]);
     });
 
     it('should preserve form-level errors when validating fields', async () => {

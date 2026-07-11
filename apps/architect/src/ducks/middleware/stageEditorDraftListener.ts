@@ -33,6 +33,7 @@ const ARRAY_ACTIONS = new Set([
   '@@redux-form/ARRAY_INSERT',
   '@@redux-form/ARRAY_SWAP',
   '@@redux-form/ARRAY_MOVE',
+  '@@redux-form/ARRAY_SPLICE',
 ]);
 
 // Shape of the redux-form actions we care about.

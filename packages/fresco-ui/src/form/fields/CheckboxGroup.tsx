@@ -95,7 +95,8 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
         disabled={disabled}
       >
         {options.map((option) => {
-          const isOptionDisabled = disabled ?? option.disabled;
+          const isOptionDisabled =
+            Boolean(disabled) || Boolean(option.disabled);
           const isChecked = currentValues.includes(option.value);
           const optionId = `${optionIdPrefix}-${option.value}`;
 
@@ -116,6 +117,7 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
                   : { defaultChecked: isChecked })}
                 disabled={isOptionDisabled}
                 readOnly={readOnly}
+                aria-readonly={readOnly || undefined}
                 onCheckedChange={(checked) => {
                   if (!isOptionDisabled && !readOnly) {
                     handleChange(option.value, checked);

@@ -81,6 +81,11 @@ export function BaseField({
           <FieldLabel id={`${id}-label`} htmlFor={id} required={required}>
             {label}
           </FieldLabel>
+          {required && (
+            <span id={`${id}-required`} className="sr-only">
+              Required
+            </span>
+          )}
           {(hint ?? validationSummary) && (
             <Hint id={`${id}-hint`}>
               {hint}

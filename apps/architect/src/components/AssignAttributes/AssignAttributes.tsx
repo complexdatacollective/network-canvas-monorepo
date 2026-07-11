@@ -1,5 +1,5 @@
 import { connect } from 'react-redux';
-import { Field, formValueSelector } from 'redux-form';
+import { FieldArray, formValueSelector } from 'redux-form';
 
 import FrescoReduxArrayField from '~/components/Form/FrescoReduxArrayField';
 import type { RootState } from '~/ducks/modules/root';
@@ -46,7 +46,7 @@ const AssignAttributes = ({
   entity,
   name,
 }: AssignAttributesProps) => (
-  <Field
+  <FieldArray
     name={name}
     component={FrescoReduxArrayField}
     label=""
@@ -58,6 +58,7 @@ const AssignAttributes = ({
     emptyStateMessage="No additional variables assigned."
     immediateAdd
     confirmDelete={false}
+    rerenderOnEveryChange
   />
 );
 
