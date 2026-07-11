@@ -1,5 +1,3 @@
-import { isEmpty } from 'es-toolkit/compat';
-
 import { nativeSelectVariants } from '../../../styles/controlVariants';
 import { cx, type VariantProps } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
@@ -35,10 +33,13 @@ export default function SelectField(props: SelectProps) {
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = event.target.value;
-    onChange?.(selectedValue);
+    const selectedOption = options.find(
+      (option) => String(option.value) === selectedValue,
+    );
+    onChange?.(selectedOption?.value ?? selectedValue);
   };
 
-  const hasValue = !isEmpty(value);
+  const hasValue = value !== undefined && value !== null && value !== '';
 
   return (
     <div
@@ -53,7 +54,8 @@ export default function SelectField(props: SelectProps) {
         {...rest}
         name={name}
         value={normalizedValue}
-        disabled={disabled ?? readOnly}
+        disabled={Boolean(disabled) || Boolean(readOnly)}
+        aria-readonly={readOnly || rest['aria-readonly'] || undefined}
         onChange={handleChange}
         className={cx(
           'w-full',
@@ -63,7 +65,11 @@ export default function SelectField(props: SelectProps) {
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option
+            key={option.value}
+            value={option.value}
+            disabled={option.disabled}
+          >
             {option.label}
           </option>
         ))}

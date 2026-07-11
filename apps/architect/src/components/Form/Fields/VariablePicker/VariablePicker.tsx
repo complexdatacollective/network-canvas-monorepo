@@ -1,117 +1,149 @@
 import { get, has } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useState } from 'react';
+import { useState, type ComponentType, type FocusEventHandler } from 'react';
+import type { WrappedFieldProps } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
+import { cx } from '~/utils/cva';
 
+import FrescoReduxField from '../../FrescoReduxField';
 import EditableVariablePill, { SimpleVariablePill } from './VariablePill';
 import VariableSpotlight from './VariableSpotlight';
-type VariablePickerProps = {
-  disallowCreation?: boolean;
-  entity?: string;
+
+export type VariableOption = {
+  label: string;
+  value: string;
   type?: string;
-  label?: string;
-  options?: Array<{
-    label: string;
-    value: string;
-    type?: string;
-  }>;
-  meta?: {
-    error?: string;
-    invalid?: boolean;
-    touched?: boolean;
-  };
-  input?: {
-    value?: string | undefined;
-    onChange?: (value: string) => void;
-  };
-  onCreateOption?: (value: string) => void;
 };
-const VariablePicker = ({
+
+type VariablePickerControlProps = {
+  'id'?: string;
+  'name'?: string;
+  'value'?: string;
+  'onChange'?: (value: string) => void;
+  'onBlur'?: FocusEventHandler;
+  'onFocus'?: FocusEventHandler;
+  'disallowCreation'?: boolean;
+  'entity'?: string | null;
+  'type'?: string | null;
+  'options'?: VariableOption[];
+  'onCreateOption'?: (value: string) => void;
+  'disabled'?: boolean;
+  'readOnly'?: boolean;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean;
+  'aria-labelledby'?: string;
+};
+
+export const VariablePickerControl = ({
+  id,
+  name,
+  value,
+  onChange,
+  onBlur,
+  onFocus,
   options = [],
   entity,
   type,
-  label = 'Create or Select a Variable',
   onCreateOption = () => {},
   disallowCreation = false,
-  meta = {},
-  input = {},
-}: VariablePickerProps) => {
+  disabled = false,
+  readOnly = false,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-labelledby': ariaLabelledBy,
+}: VariablePickerControlProps) => {
   const [showPicker, setShowPicker] = useState(false);
-  const { error, invalid, touched } = meta;
-  const { value, onChange } = input;
+
   const handleSelectVariable = (variable: string) => {
+    if (disabled || readOnly) return;
     onChange?.(variable);
     setShowPicker(false);
   };
+
   const handleCreateOption = (variable: string) => {
+    if (disabled || readOnly) return;
     onChange?.('');
     setShowPicker(false);
     onCreateOption(variable);
   };
-  const hideModal = () => setShowPicker(false);
-  // New variables have no 'type' property
-  const variablePillComponent = () => {
-    const found = options.find(
-      ({ label: variableLabel, value: variableValue }) =>
-        value === variableValue || value === variableLabel,
-    );
-    if (!found) {
-      return null;
+
+  const selectedOption = options.find(
+    ({ label: variableLabel, value: variableValue }) =>
+      value === variableValue || value === variableLabel,
+  );
+
+  const variablePill = () => {
+    if (!selectedOption) return null;
+
+    if (has(selectedOption, 'type') && selectedOption.type) {
+      return <EditableVariablePill uuid={selectedOption.value} />;
     }
-    if (has(found, 'type') && found?.type) {
-      return <EditableVariablePill uuid={found?.value ?? ''} />;
-    }
-    const selectedLabel = get(found, 'label', null);
-    const selectedValue = get(found, 'value', null);
+
+    const selectedLabel = get(selectedOption, 'label', null);
+    const selectedValue = get(selectedOption, 'value', null);
     const finalLabel = selectedLabel || selectedValue || '';
-    const variableType = (found.type ?? 'text') as VariableType;
+    const variableType = (selectedOption.type ?? 'text') as VariableType;
+
     return (
       <SimpleVariablePill label={finalLabel} type={variableType}>
         <span />
       </SimpleVariablePill>
     );
   };
+
   return (
     <>
-      <fieldset className="border-outline rounded border-2 border-dashed p-5 [&_.variable-pill]:mb-5 [&>legend]:px-5">
-        {label && <legend>{label}</legend>}
-
+      <fieldset
+        id={id}
+        aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
+        aria-describedby={ariaDescribedBy}
+        aria-disabled={readOnly || undefined}
+        disabled={disabled}
+        data-name={name}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        className={cx(
+          'bg-input text-input-contrast flex w-full flex-col items-start gap-4 rounded border-2 border-transparent p-4',
+          ariaInvalid && 'border-destructive',
+          disabled && 'opacity-50',
+          readOnly && 'opacity-70',
+          '[&_.variable-pill]:mb-0',
+        )}
+      >
         {value && (
-          <div>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                key={value}
-              >
-                {variablePillComponent()}
-              </motion.div>
-            </AnimatePresence>
-          </div>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              key={value}
+            >
+              {variablePill()}
+            </motion.div>
+          </AnimatePresence>
         )}
         <Button
+          type="button"
           icon={<Plus />}
           onClick={() => setShowPicker(true)}
           color="primary"
+          disabled={disabled || readOnly}
         >
-          {value ? 'Change Variable' : 'Select Variable'}
+          {value ? 'Change variable' : 'Select variable'}
         </Button>
-        {invalid && touched && (
-          <Paragraph className="text-destructive mb-0">{error}</Paragraph>
-        )}
       </fieldset>
       <VariableSpotlight
         open={showPicker}
-        onOpenChange={setShowPicker}
-        entity={entity}
-        type={type}
+        onOpenChange={(open) => {
+          if (!disabled && !readOnly) setShowPicker(open);
+        }}
+        entity={entity ?? undefined}
+        type={type ?? undefined}
         onSelect={handleSelectVariable}
-        onCancel={hideModal}
+        onCancel={() => setShowPicker(false)}
         options={options}
         onCreateOption={handleCreateOption}
         disallowCreation={disallowCreation}
@@ -119,4 +151,38 @@ const VariablePicker = ({
     </>
   );
 };
+
+type VariablePickerProps = WrappedFieldProps & {
+  disallowCreation?: boolean;
+  entity?: string | null;
+  type?: string | null;
+  label?: string;
+  options?: VariableOption[];
+  onCreateOption?: (value: string) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+};
+
+const FrescoVariablePickerControl = VariablePickerControl as ComponentType<
+  Record<string, unknown>
+>;
+const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
+  Record<string, unknown>
+>;
+
+const VariablePickerBase = ({
+  label = 'Create or select a variable',
+  ...props
+}: VariablePickerProps) => (
+  <ReduxFieldAdapter
+    {...props}
+    label={label}
+    fieldComponent={FrescoVariablePickerControl}
+  />
+);
+
+const VariablePicker = VariablePickerBase as unknown as ComponentType<
+  Record<string, unknown>
+>;
+
 export default VariablePicker;

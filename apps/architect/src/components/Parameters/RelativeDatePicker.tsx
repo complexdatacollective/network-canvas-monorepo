@@ -8,7 +8,7 @@ import { change, Field, formValueSelector } from 'redux-form';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { FrescoReduxField, reduxNumberValue } from '~/components/Form';
+import { FrescoReduxField, reduxIntegerValue } from '~/components/Form';
 import { DatePicker } from '~/components/Form/Fields';
 import { DATE_FORMATS } from '~/components/Form/Fields/DatePicker';
 import Toggle from '~/components/Form/Fields/Toggle';
@@ -78,7 +78,7 @@ const RelativeDatePickerParameters = ({
         placeholder="180"
         fieldComponent={FrescoInputField}
         type="number"
-        {...reduxNumberValue}
+        {...reduxIntegerValue}
       />
       <Heading level="h4">Days After</Heading>
       <Paragraph>
@@ -92,7 +92,7 @@ const RelativeDatePickerParameters = ({
         placeholder="0"
         fieldComponent={FrescoInputField}
         type="number"
-        {...reduxNumberValue}
+        {...reduxIntegerValue}
       />
     </>
   );

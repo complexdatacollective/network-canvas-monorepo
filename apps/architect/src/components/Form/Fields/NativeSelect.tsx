@@ -1,37 +1,27 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
 import { sortBy } from 'es-toolkit/compat';
-import { TriangleAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import type { ComponentType } from 'react';
 import { useCallback, useMemo, useState } from 'react';
+import type { WrappedFieldInputProps, WrappedFieldMetaProps } from 'redux-form';
 import { untouch } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
-// Inline data-URI chevron preserved from native-select.css. Lives in a constant
-// to keep the JSX readable.
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import { Text } from '~/components/Form/Fields';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { useAppDispatch } from '~/ducks/hooks';
 import { cx } from '~/utils/cva';
 import { getValidator } from '~/utils/validations';
-const CHEVRON_BACKGROUND_IMAGE =
-  'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236D6F76%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")';
+
+import { getReduxFieldErrorState } from '../reduxFieldMeta';
+
 type Option = {
   label: string;
   value: string;
   disabled?: boolean;
 };
-type InputProps = {
-  onChange: (value: string | null) => void;
-  onBlur?: () => void;
-  value?: string | null;
-  name: string;
-};
-type MetaProps = {
-  invalid?: boolean;
-  error?: string | null;
-  touched?: boolean;
-  form: string;
-};
+
 type NativeSelectProps = {
   className?: string;
   label?: string | null;
@@ -46,18 +36,37 @@ type NativeSelectProps = {
   sortOptionsByLabel?: boolean;
   reserved?: Option[];
   validation?: Record<string, unknown> | null;
+  required?: boolean;
   disabled?: boolean;
-  input: InputProps;
-  meta?: MetaProps;
+  input: WrappedFieldInputProps;
+  meta?: Partial<WrappedFieldMetaProps> & { form?: string };
   entity?: string;
 };
-const NativeSelect: React.FC<NativeSelectProps> = ({
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+const FrescoNativeSelectField = NativeSelectField as ComponentType<
+  Record<string, unknown>
+>;
+
+const variants = {
+  show: { opacity: 1 },
+  hide: { opacity: 0 },
+  transition: { duration: 0.5 },
+};
+
+const asStringValue = (value: unknown) => {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  return '';
+};
+
+const NativeSelect = ({
   label = null,
   options = [],
   placeholder = 'Select an option',
   className = '',
-  onCreateOption = null,
-  onCreateNew = null,
+  onCreateOption,
+  onCreateNew,
   createLabelText = '✨ Create new ✨',
   createInputLabel = 'New variable name',
   createInputPlaceholder = 'Enter a variable name...',
@@ -65,139 +74,142 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
   sortOptionsByLabel = true,
   reserved = [],
   validation = null,
+  required = false,
   disabled = false,
   input,
-  meta = {
-    invalid: false,
-    error: null,
-    touched: false,
-    form: '',
-  },
+  meta = {},
   entity,
-  ...rest
-}) => {
+}: NativeSelectProps) => {
   const [showCreateOptionForm, setShowCreateOptionForm] = useState(false);
   const [newOptionValue, setNewOptionValue] = useState<string | null>(null);
-  const [newOptionError, setNewOptionError] = useState<string | false>(false);
+  const [createRequestError, setCreateRequestError] = useState<string | false>(
+    false,
+  );
+  const [isCreating, setIsCreating] = useState(false);
   const dispatch = useAppDispatch();
-  const { onBlur, ...inputProps } = input;
-  const { invalid = false, error = null, touched = false, form } = meta;
-  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value;
+  const { errors: parentErrors, showErrors: showParentErrors } =
+    getReduxFieldErrorState(meta as WrappedFieldMetaProps);
+
+  const untouchParent = useCallback(() => {
+    if (!meta.form) return;
+    dispatch(untouch(meta.form, input.name) as UnknownAction);
+  }, [dispatch, input.name, meta.form]);
+
+  const resetForm = useCallback(() => {
+    setShowCreateOptionForm(false);
+    setNewOptionValue(null);
+    setCreateRequestError(false);
+    setIsCreating(false);
+  }, []);
+
+  const handleSelectChange = (nextValue: unknown) => {
+    const value = asStringValue(nextValue);
+
     if (value === '_create') {
-      inputProps.onChange(null);
-      // Setting input to null above will 'touch' the select, triggering validation
-      // which we don't want yet. We 'un-touch' the input to resolve this.
-      dispatch(untouch(form, inputProps.name) as UnknownAction);
+      input.onChange(null);
+      // Clearing the select touches the Redux field. Creation starts a separate
+      // interaction, so keep the parent pristine until the user submits it.
+      untouchParent();
+
       if (onCreateNew) {
         onCreateNew();
         return;
       }
+
+      setNewOptionValue(null);
       setShowCreateOptionForm(true);
       return;
     }
-    if (value === '_placeholder') {
-      inputProps.onChange(null);
+
+    input.onChange(value === '' ? null : value);
+  };
+
+  const getCreateOptionError = useCallback(
+    (value: string | null): string | false => {
+      if (!value) return false;
+
+      const validationError = getValidator(validation ?? {})(value);
+      if (validationError) return validationError;
+
+      const matchesLabel = ({ label: optionLabel }: Option) =>
+        optionLabel.toLowerCase() === value.toLowerCase();
+
+      if (options.some(matchesLabel) || reserved.some(matchesLabel)) {
+        return `An option named "${value}" is already defined${entity ? ` on entity type ${entity}` : ''}`;
+      }
+
+      return false;
+    },
+    [entity, options, reserved, validation],
+  );
+
+  const createOptionError = useMemo(
+    () => getCreateOptionError(newOptionValue),
+    [getCreateOptionError, newOptionValue],
+  );
+  const valueButNotSubmitted = newOptionValue !== null;
+  const notSubmittedError = valueButNotSubmitted
+    ? 'You must click "create" to finish creating this option.'
+    : false;
+  const createError =
+    createOptionError ||
+    createRequestError ||
+    notSubmittedError ||
+    parentErrors[0] ||
+    false;
+  const showCreateError = Boolean(
+    createOptionError ||
+    createRequestError ||
+    ((meta.touched || meta.submitFailed) && createError),
+  );
+
+  const handleCreateOption = async () => {
+    if (!onCreateOption || !newOptionValue || createOptionError || isCreating) {
       return;
     }
-    inputProps.onChange(value);
+
+    setIsCreating(true);
+    setCreateRequestError(false);
+    try {
+      await onCreateOption(newOptionValue);
+      resetForm();
+    } catch (error) {
+      setCreateRequestError(
+        error instanceof Error && error.message
+          ? error.message
+          : 'Unable to create this option.',
+      );
+      setIsCreating(false);
+    }
   };
-  const resetForm = () => {
-    setShowCreateOptionForm(false);
-    setNewOptionValue(null);
-    setNewOptionError(false);
-  };
-  const handleCreateOption = () => {
-    if (!onCreateOption || !newOptionValue) return;
-    const newValue = newOptionValue;
-    resetForm();
-    return onCreateOption(newValue);
-  };
-  const isValidCreateOption = useCallback(
-    (value?: string | null): boolean => {
-      if (!value) return true;
-      const validationErrors = getValidator(validation || {})(value);
-      if (validationErrors) {
-        setNewOptionError(validationErrors);
-        return false;
-      }
-      // True if option matches the label prop of the supplied object
-      const matchLabel = ({ label: variableLabel }: Option) =>
-        variableLabel &&
-        value &&
-        variableLabel.toLowerCase() === value.toLowerCase();
-      const alreadyExists = options.some(matchLabel);
-      const isReserved = reserved.some(matchLabel);
-      if (alreadyExists || isReserved) {
-        setNewOptionError(
-          `Variable name "${value}" is already defined on entity type ${entity}`,
-        );
-        return false;
-      }
-      setNewOptionError(false);
-      return true;
-    },
-    [validation, options, reserved, entity],
-  );
-  // Do we have a value in the create new Text field that is not submitted?
-  const valueButNotSubmitted = newOptionValue !== null && showCreateOptionForm;
-  const notSubmittedError = useMemo(
-    () =>
-      valueButNotSubmitted &&
-      'You must click "create" to finish creating this variable.',
-    [valueButNotSubmitted],
-  );
-  /**
-   * This passes through validation errors from the select to the Text field for
-   * creating new options. It also has to handle when the create new option form
-   * hasn't been shown
-   *
-   * touched:
-   *   - touched: controlled by parent input, and triggered/reset from child as needed
-   *   - new option isn't null (prevents "required" immediately showing) AND new option
-   *     isn't valid. Combined this allows the correct error to be shown.
-   * invalid:
-   *   - !isValidCreateOption: validate the new variable Text field value
-   *   - valueButNotSubmitted: true if value entered in Text field but not submitted
-   *   - invalid: parent select invalid prop. Will be set to true when validation is
-   *     triggered and we have no value set
-   * error:
-   *   - newOptionError: error message from Text field variable validation
-   *   - error: parent select error message. Will usually be "Required"
-   */
-  const calculateMeta = useMemo(() => {
-    const localInvalid = !isValidCreateOption(newOptionValue);
-    return {
-      touched:
-        touched ||
-        (newOptionValue !== null && !isValidCreateOption(newOptionValue)),
-      invalid:
-        !isValidCreateOption(newOptionValue) ||
-        valueButNotSubmitted ||
-        (newOptionValue === null && invalid),
-      localInvalid,
-      error: newOptionError || notSubmittedError || error,
-    };
-  }, [
-    touched,
-    invalid,
-    error,
-    newOptionValue,
-    newOptionError,
-    valueButNotSubmitted,
-    notSubmittedError,
-    isValidCreateOption,
-  ]);
+
   const sortedOptions = useMemo(
     () => (sortOptionsByLabel ? sortBy(options, 'label') : options),
     [options, sortOptionsByLabel],
   );
-  const variants = {
-    show: { opacity: 1 },
-    hide: { opacity: 0 },
-    transition: { duration: 0.5 },
-  };
-  const hasError = !!(invalid && touched && error);
+
+  const selectOptions = useMemo<Option[]>(
+    () => [
+      {
+        value: '',
+        label: `-- ${placeholder} --`,
+        disabled: !allowPlaceholderSelect,
+      },
+      ...(onCreateOption || onCreateNew
+        ? [{ value: '_create', label: createLabelText }]
+        : []),
+      ...sortedOptions,
+    ],
+    [
+      allowPlaceholderSelect,
+      createLabelText,
+      onCreateNew,
+      onCreateOption,
+      placeholder,
+      sortedOptions,
+    ],
+  );
+
   return (
     <motion.div
       className={cx('flex-1', disabled && 'cursor-not-allowed', className)}
@@ -212,36 +224,34 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
             exit="hide"
             animate="show"
           >
-            <Text
+            <UnconnectedField
+              component={FrescoInputField}
+              name={`${input.name}-create`}
               label={createInputLabel}
               autoFocus
-              input={{
-                // Make interaction with this input also touch the parent so we can control
-                // validation better.
-                onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-                  dispatch(untouch(form, inputProps.name) as UnknownAction);
-                  setNewOptionValue(event.target.value);
-                },
-              }}
+              required
               placeholder={createInputPlaceholder}
-              meta={{
-                touched: calculateMeta.touched,
-                invalid: calculateMeta.invalid,
-                error: calculateMeta.error ?? undefined,
+              value={newOptionValue ?? ''}
+              onChange={(value: unknown) => {
+                untouchParent();
+                setCreateRequestError(false);
+                setNewOptionValue(asStringValue(value));
               }}
+              errors={createError ? [createError] : []}
+              showErrors={showCreateError}
+              aria-invalid={showCreateError}
             />
-            <div className="flex items-center justify-end [&_button]:mr-2.5 [&_button]:min-w-40 [&_button:last-of-type]:mr-0">
-              <Button
-                color="default"
-                onClick={() => setShowCreateOptionForm(false)}
-              >
+            <div className="flex items-center justify-end gap-2.5 [&_button]:min-w-40">
+              <Button color="default" onClick={resetForm}>
                 Cancel
               </Button>
               <Button
-                onClick={handleCreateOption}
-                disabled={calculateMeta.localInvalid}
+                onClick={() => void handleCreateOption()}
+                disabled={
+                  !newOptionValue || Boolean(createOptionError) || isCreating
+                }
               >
-                Create
+                {isCreating ? 'Creating…' : 'Create'}
               </Button>
             </div>
           </motion.div>
@@ -253,56 +263,26 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
             exit="hide"
             animate="show"
           >
-            {label && <Heading level="h4">{label}</Heading>}
-            <select
-              className={cx(
-                'm-0 block min-h-5 w-full max-w-full px-5 py-2.5',
-                'border-outline appearance-none rounded-sm border shadow-none',
-                'text-input-contrast bg-surface-1 text-base font-normal',
-                'focus:border-primary focus:shadow-none focus:outline-none',
-                'disabled:cursor-not-allowed',
-                '[&_option:disabled]:text-surface-2-contrast [&_option:disabled]:italic',
-                hasError &&
-                  'border-destructive mb-0 rounded-b-none border-2 border-solid',
-              )}
-              style={{
-                backgroundImage: CHEVRON_BACKGROUND_IMAGE,
-                backgroundRepeat: 'no-repeat, repeat',
-                backgroundPosition: 'right 2.4rem top 50%, 0 0',
-                backgroundSize: '0.9rem auto, 100%',
-              }}
-              {...inputProps}
-              value={inputProps.value || '_placeholder'}
-              onChange={handleChange}
+            <UnconnectedField
+              component={FrescoNativeSelectField}
+              name={input.name}
+              label={label ?? input.name}
+              options={selectOptions}
+              value={input.value ?? ''}
+              onChange={handleSelectChange}
+              onBlur={() => input.onBlur(input.value)}
+              onFocus={input.onFocus}
               disabled={disabled}
-              {...rest}
-            >
-              <option disabled={!allowPlaceholderSelect} value="_placeholder">
-                -- {placeholder} --
-              </option>
-              {(onCreateOption || onCreateNew) && (
-                <option value="_create">{createLabelText}</option>
-              )}
-              {sortedOptions.map((option) => (
-                <option
-                  key={`${option.label}_${option.value}`}
-                  value={option.value}
-                  disabled={!!option.disabled}
-                >
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {hasError && (
-              <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-1 [&_svg]:max-h-5">
-                <TriangleAlert aria-hidden />
-                {error}
-              </div>
-            )}
+              required={required || Boolean(validation?.required)}
+              errors={parentErrors}
+              showErrors={showParentErrors}
+              aria-invalid={showParentErrors}
+            />
           </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
   );
 };
+
 export default NativeSelect;

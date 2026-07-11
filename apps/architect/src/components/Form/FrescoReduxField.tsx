@@ -72,7 +72,25 @@ const parseIntegerValue = (value: unknown) => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
+const parseNumberValue = (value: unknown) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 export const reduxNumberValue = {
+  fromReduxValue: formatNumberValue,
+  toReduxValue: parseNumberValue,
+};
+
+export const reduxIntegerValue = {
   fromReduxValue: formatNumberValue,
   toReduxValue: parseIntegerValue,
 };

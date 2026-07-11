@@ -78,7 +78,7 @@ const DateTimeParameters = ({
         name={`${name}.min`}
         validation={{ ISODate: dateFormat }}
         componentProps={{
-          label: '',
+          label: 'Start range',
           placeholder: 'Select a start range date...',
           parameters: {
             type: useDateFormat,
@@ -105,7 +105,7 @@ const DateTimeParameters = ({
           },
         }}
         componentProps={{
-          label: '',
+          label: 'End range',
           placeholder:
             'Select an end range date, or leave empty to use interview date...',
           parameters: {

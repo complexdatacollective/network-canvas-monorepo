@@ -11,6 +11,16 @@ vi.mock('../validation/helpers', () => ({
 }));
 
 const mockValidateFieldValue = vi.mocked(validateFieldValue);
+type ValidationResult = Awaited<ReturnType<typeof validateFieldValue>>;
+
+const createDeferredValidation = () => {
+  let resolve!: (result: ValidationResult) => void;
+  const promise = new Promise<ValidationResult>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+
+  return { promise, resolve };
+};
 
 describe('FormStore', () => {
   let store: ReturnType<typeof createFormStore>;
@@ -426,6 +436,48 @@ describe('FormStore', () => {
       const errors = store.getState().getFormErrors();
       expect(errors).toBeNull();
     });
+
+    it('marks fields returned by the server as visible and invalid', () => {
+      store.getState().setErrors({
+        formErrors: [],
+        fieldErrors: { 'user.name': ['Already exists'] },
+      });
+
+      const field = store.getState().getFieldState('user.name');
+      expect(field?.meta).toMatchObject({
+        isValid: false,
+        isTouched: true,
+        isBlurred: true,
+        isDirty: true,
+      });
+      expect(store.getState().isValid).toBe(false);
+    });
+
+    it('restores an unvalidated field after server errors clear on successful validation', async () => {
+      // This regression is intentionally scoped to a single field without a
+      // client schema; the surrounding getter tests register other fields.
+      store.getState().reset();
+      store.getState().registerField({
+        name: 'username',
+        initialValue: 'existing',
+      });
+      store.getState().setErrors({
+        formErrors: [],
+        fieldErrors: { username: ['Already exists'] },
+      });
+
+      expect(store.getState().getFieldState('username')?.meta.isValid).toBe(
+        false,
+      );
+
+      expect(await store.getState().validateForm()).toBe(true);
+      store.getState().setErrors(null);
+
+      expect(store.getState().getFieldState('username')?.meta.isValid).toBe(
+        true,
+      );
+      expect(store.getState().isValid).toBe(true);
+    });
   });
 
   describe('Field validation', () => {
@@ -490,6 +542,158 @@ describe('FormStore', () => {
       expect(fieldErrors).toEqual(['Something went wrong during validation']);
     });
 
+    it('ignores a stale async result that resolves after a newer validation', async () => {
+      const oldValidation = createDeferredValidation();
+      const newValidation = createDeferredValidation();
+      mockValidateFieldValue
+        .mockReturnValueOnce(oldValidation.promise)
+        .mockReturnValueOnce(newValidation.promise);
+
+      const oldRequest = store.getState().validateField('email');
+      store.getState().setFieldValue('email', 'new@example.com');
+      const newRequest = store.getState().validateField('email');
+
+      newValidation.resolve({ success: true, data: 'new@example.com' });
+      await newRequest;
+      oldValidation.resolve({
+        success: false,
+        error: new z.core.$ZodError([
+          { code: 'custom', message: 'Stale error', path: [] },
+        ]),
+      });
+      await oldRequest;
+
+      expect(store.getState().getFieldErrors('email')).toBeNull();
+      expect(store.getState().getFieldState('email')?.meta.isValid).toBe(true);
+      expect(store.getState().getFieldState('email')?.meta.isValidating).toBe(
+        false,
+      );
+    });
+
+    it('ignores a pending result when the value changes before debounced validation restarts', async () => {
+      const validation = createDeferredValidation();
+      mockValidateFieldValue.mockReturnValueOnce(validation.promise);
+
+      const request = store.getState().validateField('email');
+      expect(store.getState().getFieldState('email')?.meta.isValidating).toBe(
+        true,
+      );
+
+      store.getState().setFieldValue('email', 'new@example.com');
+
+      expect(store.getState().getFieldState('email')?.meta.isValidating).toBe(
+        false,
+      );
+      validation.resolve({
+        success: false,
+        error: new z.core.$ZodError([
+          { code: 'custom', message: 'Error for old value', path: [] },
+        ]),
+      });
+      await request;
+
+      expect(store.getState().getFieldState('email')?.value).toBe(
+        'new@example.com',
+      );
+      expect(store.getState().getFieldErrors('email')).toBeNull();
+      expect(store.getState().getFieldState('email')?.meta.isValidating).toBe(
+        false,
+      );
+    });
+
+    it('does not restore an error after a field is reset during validation', async () => {
+      store.getState().setFieldValue('email', 'changed@example.com');
+      const validation = createDeferredValidation();
+      mockValidateFieldValue.mockReturnValueOnce(validation.promise);
+
+      const request = store.getState().validateField('email');
+      store.getState().resetField('email');
+      validation.resolve({
+        success: false,
+        error: new z.core.$ZodError([
+          { code: 'custom', message: 'Stale reset error', path: [] },
+        ]),
+      });
+      await request;
+
+      const field = store.getState().getFieldState('email');
+      expect(field?.value).toBe('test@example.com');
+      expect(field?.meta).toMatchObject({
+        isValidating: false,
+        isTouched: false,
+        isDirty: false,
+        isValid: false,
+      });
+      expect(store.getState().getFieldErrors('email')).toBeNull();
+    });
+
+    it('preserves a newer server error when an older validation succeeds', async () => {
+      const validation = createDeferredValidation();
+      mockValidateFieldValue.mockReturnValueOnce(validation.promise);
+
+      const request = store.getState().validateField('email');
+      store.getState().setErrors({
+        formErrors: [],
+        fieldErrors: { email: ['Email is already registered'] },
+      });
+      validation.resolve({ success: true, data: 'test@example.com' });
+      await request;
+
+      expect(store.getState().getFieldErrors('email')).toEqual([
+        'Email is already registered',
+      ]);
+      expect(store.getState().getFieldState('email')?.meta).toMatchObject({
+        isValidating: false,
+        isValid: false,
+      });
+    });
+
+    it('does not reuse a pending validation token after reset and re-registration', async () => {
+      const oldValidation = createDeferredValidation();
+      const newValidation = createDeferredValidation();
+      mockValidateFieldValue
+        .mockReturnValueOnce(oldValidation.promise)
+        .mockReturnValueOnce(newValidation.promise);
+
+      const oldRequest = store.getState().validateField('email');
+      store.getState().unregisterField('email');
+      store.getState().reset();
+      store.getState().registerField({
+        name: 'email',
+        initialValue: 'replacement@example.com',
+        validation: z.string().check(z.minLength(1, 'Email is required')),
+      });
+      const newRequest = store.getState().validateField('email');
+
+      oldValidation.resolve({
+        success: false,
+        error: new z.core.$ZodError([
+          { code: 'custom', message: 'Error from old registration', path: [] },
+        ]),
+      });
+      await oldRequest;
+
+      expect(store.getState().getFieldErrors('email')).toBeNull();
+      expect(store.getState().getFieldState('email')?.meta.isValidating).toBe(
+        true,
+      );
+
+      newValidation.resolve({
+        success: true,
+        data: 'replacement@example.com',
+      });
+      await newRequest;
+
+      expect(store.getState().getFieldState('email')?.value).toBe(
+        'replacement@example.com',
+      );
+      expect(store.getState().getFieldErrors('email')).toBeNull();
+      expect(store.getState().getFieldState('email')?.meta).toMatchObject({
+        isValidating: false,
+        isValid: true,
+      });
+    });
+
     it('should not validate non-existent field', async () => {
       await expect(
         store.getState().validateField('nonexistent'),
@@ -544,6 +748,106 @@ describe('FormStore', () => {
       expect(mockValidateFieldValue).toHaveBeenCalledTimes(2);
     });
 
+    it('supersedes a pending field validation with form validation', async () => {
+      const oldFieldValidation = createDeferredValidation();
+      const formField1Validation = createDeferredValidation();
+      const formField2Validation = createDeferredValidation();
+      mockValidateFieldValue
+        .mockReturnValueOnce(oldFieldValidation.promise)
+        .mockReturnValueOnce(formField1Validation.promise)
+        .mockReturnValueOnce(formField2Validation.promise);
+
+      const oldFieldRequest = store.getState().validateField('field1');
+      const formRequest = store.getState().validateForm();
+
+      expect(store.getState().isValidating).toBe(true);
+      expect(store.getState().getFieldState('field1')?.meta.isValidating).toBe(
+        false,
+      );
+
+      oldFieldValidation.resolve({
+        success: false,
+        error: new z.core.$ZodError([
+          { code: 'custom', message: 'Stale field error', path: [] },
+        ]),
+      });
+      await oldFieldRequest;
+
+      expect(store.getState().getFieldErrors('field1')).toBeNull();
+      expect(store.getState().isValidating).toBe(true);
+
+      formField1Validation.resolve({ success: true, data: 'value1' });
+      formField2Validation.resolve({ success: true, data: 'value2' });
+
+      await expect(formRequest).resolves.toBe(true);
+      expect(store.getState().getFieldErrors('field1')).toBeNull();
+      expect(store.getState().isValidating).toBe(false);
+    });
+
+    it('does not let delayed field validation cancel form validation', async () => {
+      const formField1Validation = createDeferredValidation();
+      const formField2Validation = createDeferredValidation();
+      mockValidateFieldValue
+        .mockReturnValueOnce(formField1Validation.promise)
+        .mockReturnValueOnce(formField2Validation.promise);
+
+      const formRequest = store.getState().validateForm();
+      expect(store.getState().isValidating).toBe(true);
+
+      await store.getState().validateField('field1');
+
+      expect(mockValidateFieldValue).toHaveBeenCalledTimes(2);
+      expect(store.getState().isValidating).toBe(true);
+
+      formField1Validation.resolve({ success: true, data: 'value1' });
+      formField2Validation.resolve({ success: true, data: 'value2' });
+
+      await expect(formRequest).resolves.toBe(true);
+      expect(store.getState().isValidating).toBe(false);
+      expect(store.getState().isValid).toBe(true);
+    });
+
+    it('does not let stale form validation clear newer server errors', async () => {
+      const field1Validation = createDeferredValidation();
+      const field2Validation = createDeferredValidation();
+      mockValidateFieldValue
+        .mockReturnValueOnce(field1Validation.promise)
+        .mockReturnValueOnce(field2Validation.promise);
+
+      const request = store.getState().validateForm();
+      expect(store.getState().isValidating).toBe(true);
+
+      store.getState().setErrors({
+        formErrors: ['The server rejected this form'],
+        fieldErrors: { field1: ['This value already exists'] },
+      });
+      expect(store.getState().isValidating).toBe(false);
+
+      field1Validation.resolve({ success: true, data: 'value1' });
+      field2Validation.resolve({ success: true, data: 'value2' });
+
+      await expect(request).resolves.toBe(false);
+      expect(store.getState().errors).toEqual({
+        formErrors: ['The server rejected this form'],
+        fieldErrors: { field1: ['This value already exists'] },
+      });
+      expect(store.getState().getFieldState('field1')?.meta.isValid).toBe(
+        false,
+      );
+    });
+
+    it('clears form validation state when current validation throws', async () => {
+      mockValidateFieldValue
+        .mockRejectedValueOnce(new Error('Validation failed'))
+        .mockResolvedValueOnce({ success: true, data: 'value2' });
+
+      await expect(store.getState().validateForm()).rejects.toThrow(
+        'Validation failed',
+      );
+
+      expect(store.getState().isValidating).toBe(false);
+    });
+
     it('should handle validation failures', async () => {
       const mockError = new z.core.$ZodError([
         {
@@ -572,6 +876,26 @@ describe('FormStore', () => {
       const field1Errors = state.getFieldErrors('field1');
       expect(field1Errors).toEqual(['Field1 is required']);
       expect(field1?.meta.isValid).toBe(false);
+    });
+
+    it('collects nested custom-schema issues under the registered field', async () => {
+      const nestedError = new z.core.$ZodError([
+        {
+          code: 'custom',
+          message: 'Nested label is required',
+          path: ['details', 'label'],
+        },
+      ]);
+      mockValidateFieldValue
+        .mockResolvedValueOnce({ success: false, error: nestedError })
+        .mockResolvedValueOnce({ success: true, data: 'value2' });
+
+      const result = await store.getState().validateForm();
+
+      expect(result).toBe(false);
+      expect(store.getState().getFieldErrors('field1')).toEqual([
+        'Nested label is required',
+      ]);
     });
 
     it('should preserve form-level errors when validating fields', async () => {

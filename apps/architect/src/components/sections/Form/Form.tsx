@@ -10,6 +10,7 @@ import withSubject from '~/components/enhancers/withSubject';
 import DialogArrayField from '~/components/Form/DialogArrayField';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
+import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
 import FieldFields from './FieldFields';
@@ -64,7 +65,7 @@ const Form = ({
         }}
       />
     )}
-    <ValidatedField
+    <ValidatedFieldArray
       name="form.fields"
       label={disableFormTitle ? undefined : 'Form Fields'}
       component={DialogArrayField}

@@ -16,7 +16,9 @@ import ColorPicker from '../Form/Fields/ColorPicker';
 import GeoAPIKey from '../Form/Fields/Geospatial/GeoAPIKey';
 import GeoDataSource from '../Form/Fields/Geospatial/GeoDataSource';
 import { mapboxStyleOptions } from '../Form/Fields/Geospatial/mapboxConstants';
-import MapSelection from '../Form/Fields/Geospatial/MapSelection';
+import MapSelection, {
+  requiredMapView,
+} from '../Form/Fields/Geospatial/MapSelection';
 import Toggle from '../Form/Fields/Toggle';
 import ValidatedField from '../Form/ValidatedField';
 
@@ -184,7 +186,7 @@ const MapOptions = ({
         <ValidatedField
           name="mapOptions"
           component={MapSelection as React.ComponentType}
-          validation={{ required: true }}
+          validation={{ required: requiredMapView }}
           componentProps={{
             label: 'Initial Map View',
           }}

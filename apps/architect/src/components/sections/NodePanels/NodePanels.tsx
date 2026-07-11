@@ -2,7 +2,7 @@ import { has } from 'es-toolkit/compat';
 import { useCallback } from 'react';
 import { connect } from 'react-redux';
 import type { FormAction } from 'redux-form';
-import { change, Field, formValueSelector } from 'redux-form';
+import { change, FieldArray, formValueSelector } from 'redux-form';
 import { v4 as uuid } from 'uuid';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -86,7 +86,7 @@ export const NodePanels = ({
     >
       <div>
         <IssueAnchor fieldName="panels" description="Panel Configuration" />
-        <Field
+        <FieldArray
           name="panels"
           component={FrescoReduxArrayField}
           label=""
@@ -99,6 +99,7 @@ export const NodePanels = ({
           immediateAdd
           sortable
           maxItems={2}
+          rerenderOnEveryChange
           confirmDelete={false}
           disabled={disabled}
         />

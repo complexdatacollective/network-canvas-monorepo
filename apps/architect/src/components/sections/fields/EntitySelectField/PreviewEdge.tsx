@@ -1,13 +1,15 @@
-import type { CSSProperties } from 'react';
+import type { ButtonHTMLAttributes, CSSProperties } from 'react';
 
 import Icon from '@codaco/fresco-ui/Icon';
 import { cx } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
-type PreviewEdgeProps = {
+type PreviewEdgeProps = Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'color'
+> & {
   label: string;
   color: string;
-  onClick?: (() => void) | null;
   selected?: boolean;
   surface?: 1 | 2;
 };
@@ -15,9 +17,11 @@ type PreviewEdgeProps = {
 const PreviewEdge = ({
   label,
   color,
-  onClick = null,
+  onClick,
   selected = false,
   surface = 1,
+  className,
+  ...buttonProps
 }: PreviewEdgeProps) => {
   const wrapperStyle = {
     '--edge-color': resolveProtocolColor(color),
@@ -38,16 +42,23 @@ const PreviewEdge = ({
       : 'bg-surface-1 text-surface-1-contrast';
 
   const baseClasses =
-    'relative flex flex-row items-center rounded-full border-4 border-transparent px-5 py-2.5 transition-[border-color] duration-300 ease-in-out';
+    'focusable relative flex flex-row items-center rounded-full border-4 border-transparent px-5 py-2.5 transition-[border-color] duration-300 ease-in-out';
 
-  if (onClick && !selected) {
+  if (onClick) {
     return (
       <button
+        {...buttonProps}
         type="button"
-        className={cx(baseClasses, surfaceClasses, 'clickable')}
+        className={cx(
+          baseClasses,
+          surfaceClasses,
+          'clickable',
+          selected && 'border-(--edge-color)',
+          className,
+        )}
         style={wrapperStyle}
         onClick={onClick}
-        aria-label={`Select edge ${label}`}
+        aria-label={buttonProps['aria-label'] ?? `Select edge ${label}`}
       >
         {content}
       </button>
@@ -60,6 +71,7 @@ const PreviewEdge = ({
         baseClasses,
         surfaceClasses,
         selected && 'pointer-events-none border-(--edge-color)',
+        className,
       )}
       style={wrapperStyle}
     >

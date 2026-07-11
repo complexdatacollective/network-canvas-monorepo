@@ -112,6 +112,56 @@ describe('ArrayField', () => {
     expect(onChange).toHaveBeenCalledWith([{ label: 'new' }]);
   });
 
+  it('emits an insert descriptor instead of a whole-value change when requested', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onOperation = vi.fn();
+    renderField({ onChange, onOperation });
+
+    await user.click(screen.getByRole('button', { name: 'Add Item' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onOperation).toHaveBeenCalledWith({
+      type: 'insert',
+      index: 0,
+      item: { label: 'new' },
+    });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Added item at position 1 of 1.',
+    );
+  });
+
+  it('emits replace and remove descriptors with confirmed array indices', async () => {
+    const user = userEvent.setup();
+    const onOperation = vi.fn();
+    renderField({
+      value: [
+        { id: 'one', label: 'one' },
+        { id: 'two', label: 'two' },
+      ],
+      getId: (item) => item.id,
+      onOperation,
+    });
+
+    await user.click(screen.getAllByRole('button', { name: 'Edit' })[1]!);
+    await user.click(screen.getAllByRole('button', { name: 'Save' })[1]!);
+    expect(onOperation).toHaveBeenLastCalledWith({
+      type: 'replace',
+      index: 1,
+      item: { id: 'two', label: 'two' },
+    });
+
+    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0]!);
+    expect(onOperation).toHaveBeenLastCalledWith({
+      type: 'remove',
+      index: 0,
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Removed item 1. 1 items remaining.',
+    );
+  });
+
   it('removes a cancelled draft without changing the external value', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -234,6 +284,31 @@ describe('ArrayField', () => {
 
     fireEvent.keyDown(secondHandle, { key: 'ArrowUp' });
     expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('commits one move descriptor for one keyboard reorder', () => {
+    const onOperation = vi.fn();
+    renderField({
+      sortable: true,
+      value: [
+        { id: 'one', label: 'one' },
+        { id: 'two', label: 'two' },
+      ],
+      getId: (item) => item.id,
+      onOperation,
+    });
+
+    const secondHandle = screen.getByRole('button', {
+      name: 'Reorder item 2 of 2',
+    });
+    fireEvent.keyDown(secondHandle, { key: 'ArrowUp' });
+
+    expect(onOperation).toHaveBeenCalledOnce();
+    expect(onOperation).toHaveBeenCalledWith({
+      type: 'move',
+      from: 1,
+      to: 0,
+    });
   });
 
   it('hides the add action at maxItems', () => {

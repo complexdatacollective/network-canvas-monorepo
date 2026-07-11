@@ -73,6 +73,7 @@ const toReduxDateValue = (value: unknown) =>
   typeof value === 'string' && value.length > 0 ? value : null;
 
 const DatePicker = ({
+  input,
   parameters = {},
   label = null,
   fieldLabel = null,
@@ -88,8 +89,9 @@ const DatePicker = ({
   return (
     <FrescoReduxFieldComponent
       {...props}
+      input={input}
       fieldComponent={FrescoDatePickerField}
-      label={fieldLabel ?? label ?? ''}
+      label={fieldLabel ?? label ?? input.name ?? 'Date'}
       placeholder={placeholder ?? undefined}
       type={getDatePickerType(parameters.type)}
       min={getOptionalString(parameters.min)}

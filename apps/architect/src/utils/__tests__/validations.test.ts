@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { getValidations, validations } from '../validations';
+import { getValidations, getValidator, validations } from '../validations';
 
 const {
   greaterThan,
+  ISODate,
+  allowedVariableName,
   maxLength,
   maxSelected,
   maxValue,
@@ -11,6 +13,8 @@ const {
   minSelected,
   minValue,
   required,
+  uniqueArrayAttribute,
+  uniqueByList,
 } = validations;
 
 describe('Validations', () => {
@@ -197,13 +201,112 @@ describe('Validations', () => {
     });
   });
 
-  it.todo('uniqueArrayAttribute()');
+  describe('uniqueArrayAttribute()', () => {
+    const subject = uniqueArrayAttribute(undefined, undefined);
 
-  it.todo('uniqueByList()');
+    it('compares values case-insensitively within the named array', () => {
+      const values = {
+        options: [{ value: 'Alpha' }, { value: 'alpha' }],
+      };
 
-  it.todo('ISODate()');
+      expect(subject('alpha', values, undefined, 'options[1].value')).toBe(
+        'Values must be unique',
+      );
+    });
 
-  it.todo('allowedVariableName()');
+    it('passes for a unique or empty value', () => {
+      const values = {
+        options: [{ value: 'Alpha' }, { value: 'Beta' }],
+      };
+
+      expect(
+        subject('Beta', values, undefined, 'options[1].value'),
+      ).toBeUndefined();
+      expect(
+        subject('', values, undefined, 'options[1].value'),
+      ).toBeUndefined();
+    });
+
+    it('uses a custom message', () => {
+      const customSubject = uniqueArrayAttribute(undefined, 'Already used');
+      expect(
+        customSubject(
+          'same',
+          { options: [{ value: 'same' }, { value: 'same' }] },
+          undefined,
+          'options[1].value',
+        ),
+      ).toBe('Already used');
+    });
+  });
+
+  describe('uniqueByList()', () => {
+    const subject = uniqueByList(['Alpha', 2, { id: 'item' }]);
+
+    it('rejects case-insensitive string and deeply-equal values', () => {
+      expect(subject('alpha')).toBe('"alpha" is already in use');
+      expect(subject(2)).toBe('"2" is already in use');
+      expect(subject({ id: 'item' })).toBe(
+        '"[object Object]" is already in use',
+      );
+    });
+
+    it('passes for unique and empty values', () => {
+      expect(subject('Beta')).toBeUndefined();
+      expect(subject('')).toBeUndefined();
+      expect(subject(null)).toBeUndefined();
+    });
+  });
+
+  describe('ISODate()', () => {
+    it.each([
+      ['2024-02-29', 'yyyy-MM-dd'],
+      ['2024-02', 'yyyy-MM'],
+      ['2024', 'yyyy'],
+    ])('accepts %s for %s', (value, format) => {
+      expect(ISODate(format, undefined)(value)).toBeUndefined();
+    });
+
+    it.each([
+      ['2023-02-29', 'yyyy-MM-dd'],
+      ['2024-13', 'yyyy-MM'],
+      ['2024-01', 'yyyy-MM-dd'],
+      ['2024-01-01', 'yyyy'],
+    ])('rejects %s for %s', (value, format) => {
+      expect(ISODate(format, undefined)(value)).toBe(
+        `Date is not valid (${format.toUpperCase()})`,
+      );
+    });
+
+    it('allows an empty optional value', () => {
+      expect(ISODate('yyyy-MM-dd', undefined)('')).toBeUndefined();
+      expect(ISODate('yyyy-MM-dd', undefined)(null)).toBeUndefined();
+    });
+  });
+
+  describe('allowedVariableName()', () => {
+    it.each(['name', 'name.with-dashes_and:punctuation', '123'])(
+      'accepts %s',
+      (value) => {
+        expect(allowedVariableName()(value)).toBeUndefined();
+      },
+    );
+
+    it.each(['contains spaces', 'slash/name', 'emoji-🚀', ''])(
+      'rejects %s',
+      (value) => {
+        expect(allowedVariableName()(value)).toBe(
+          'Not a valid variable name. Only letters, numbers and the symbols ._-: are supported',
+        );
+      },
+    );
+
+    it('uses the supplied name in its error', () => {
+      expect(allowedVariableName('option value')('not valid')).toContain(
+        'Not a valid option value',
+      );
+    });
+  });
 
   describe('greaterThan()', () => {
     const errorMessage = 'Must be greater than the other field';
@@ -307,6 +410,16 @@ describe('Validations', () => {
       });
       expect(validators[0]?.('alice')).toBe('Name taken');
       expect(validators[0]?.('charlie')).toBe(undefined);
+    });
+  });
+
+  describe('getValidator()', () => {
+    it('evaluates each validator at most once', () => {
+      const validator = vi.fn(() => undefined);
+      const validate = getValidator({ custom: validator });
+
+      expect(validate('value')).toBeUndefined();
+      expect(validator).toHaveBeenCalledOnce();
     });
   });
 });

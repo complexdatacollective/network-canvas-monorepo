@@ -1,11 +1,11 @@
 import { keys as getKeys, isNull, toPairs } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
-import type React from 'react';
+import { useId, type ReactNode, type ComponentProps } from 'react';
 import { Field } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
+import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import type { Variable } from '@codaco/protocol-validation';
-import FieldError from '~/components/Form/FieldError';
 import { cx } from '~/utils/cva';
 
 import Validation from './Validation';
@@ -41,7 +41,7 @@ const getOptionsWithUsedDisabled = (
     return { ...option, disabled: true };
   });
 
-const AddItem = (props: React.ComponentProps<typeof Button>) => (
+const AddItem = (props: ComponentProps<typeof Button>) => (
   <Button
     color="primary"
     icon={<Plus />}
@@ -69,7 +69,7 @@ type ValidationsFieldProps = {
     submitFailed: boolean;
     error?: string;
   };
-  children?: React.ReactNode;
+  children?: ReactNode;
   onUpdate?: (key: string, value: unknown, itemKey: string) => void;
   onDelete?: (itemKey: string) => void;
 };
@@ -83,6 +83,7 @@ const ValidationsField = ({
   ...rest
 }: ValidationsFieldProps) => {
   const hasError = !!(submitFailed && error);
+  const errorId = useId();
 
   return (
     <div className={cx(hasError && '[--rule-bg:var(--destructive)]')}>
@@ -100,11 +101,7 @@ const ValidationsField = ({
         ))}
         {children}
       </div>
-      <FieldError
-        show={hasError}
-        error={error}
-        className={hasError ? 'my-1 rounded-[0.3rem]' : undefined}
-      />
+      <FieldErrors id={errorId} errors={error ? [error] : []} show={hasError} />
     </div>
   );
 };

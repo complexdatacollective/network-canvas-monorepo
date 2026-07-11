@@ -1,7 +1,7 @@
 import { map } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
-import { motion } from 'motion/react';
 
+import { IconButton } from '@codaco/fresco-ui/Button';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import type { Variable } from '@codaco/protocol-validation';
@@ -46,7 +46,7 @@ const parseNumberInput = (value: unknown) => {
     return null;
   }
 
-  const parsed = Number.parseInt(value, 10);
+  const parsed = Number(value);
 
   return Number.isNaN(parsed) ? null : parsed;
 };
@@ -96,13 +96,6 @@ const Validation = ({
       value: variableKey,
     }),
   );
-  const handleDeleteKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onDelete(itemKey || '');
-    }
-  };
-
   return (
     <div className={`group ${MULTI_SELECT_RULE_CLASSES}`}>
       <div className={MULTI_SELECT_OPTIONS_CLASSES}>
@@ -126,6 +119,7 @@ const Validation = ({
                 numberValueInputProps.onChange(parseNumberInput(value))
               }
               type="number"
+              step="any"
             />
           </div>
         )}
@@ -146,17 +140,15 @@ const Validation = ({
         )}
       </div>
       <div className={MULTI_SELECT_CONTROL_CLASSES}>
-        <motion.div
-          layout
-          className="hover:bg-tomato aspect-square h-10 shrink-0 grow-0 cursor-pointer rounded-full p-2 opacity-0 transition-all duration-200 group-hover:opacity-100"
-          onClick={() => onDelete(itemKey || '')}
-          onKeyDown={handleDeleteKeyDown}
-          role="button"
-          tabIndex={0}
+        <IconButton
+          icon={<Trash2 />}
           aria-label="Delete validation rule"
-        >
-          <Trash2 />
-        </motion.div>
+          size="sm"
+          variant="text"
+          color="destructive"
+          className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+          onClick={() => onDelete(itemKey || '')}
+        />
       </div>
     </div>
   );
