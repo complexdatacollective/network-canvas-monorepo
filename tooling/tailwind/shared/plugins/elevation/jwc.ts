@@ -1,4 +1,4 @@
-import { clamp, getValuesForBezierCurve, normalize, roundTo } from './utils';
+import { clamp, getValuesForBezierCurve, normalize, roundTo } from './utils.js';
 
 export type Elevation = 'low' | 'medium' | 'high';
 

@@ -166,15 +166,9 @@ VitePWA({
   registerType: 'prompt',
   strategies: 'generateSW',
   devOptions: { enabled: false },
-  includeAssets: [
-    /* favicon, apple-touch-icon, etc. */
-  ],
-  manifest: {
-    /* see §2 */
-  },
-  workbox: {
-    /* see §3 */
-  },
+  includeAssets: [/* favicon, apple-touch-icon, etc. */],
+  manifest: {/* see §2 */},
+  workbox: {/* see §3 */},
 });
 ```
 
@@ -218,9 +212,7 @@ Manifest:
   "scope": "/",
   "theme_color": "<brand>", // sea-green accent
   "background_color": "<app bg>", // app dark background for splash
-  "icons": [
-    /* generated set */
-  ],
+  "icons": [/* generated set */],
 }
 ```
 

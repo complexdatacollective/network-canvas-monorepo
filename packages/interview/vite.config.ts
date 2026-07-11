@@ -105,7 +105,7 @@ export default defineConfig({
           'src/**/*.stories.tsx',
         ],
         compilerOptions: { rootDir: resolve(__dirname, 'src') },
-        bundleTypes: true,
+        insertTypesEntry: true,
       }),
     cssCopyPlugin(),
   ],

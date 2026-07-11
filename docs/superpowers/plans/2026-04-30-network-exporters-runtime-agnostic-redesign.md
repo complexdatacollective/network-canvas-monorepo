@@ -416,8 +416,7 @@ export type ExportFailure =
     };
 
 export type ExportResult =
-  | ExportSuccess
-  | { readonly success: false; readonly failure: ExportFailure };
+  ExportSuccess | { readonly success: false; readonly failure: ExportFailure };
 
 export type ExportReturn = {
   readonly status: 'success' | 'partial';
