@@ -111,9 +111,8 @@ export default defineConfig({
       },
     },
     optimizeDeps: {
-      // Pre-bundle the CommonJS protocol-validation sub-paths used by the
-      // renderer so Vite resolves their CJS->ESM interop without a mid-session
-      // re-optimize/reload.
+      // Pre-bundle the legacy protocol-validation compatibility sub-paths used
+      // by the renderer so Vite avoids a mid-session re-optimize/reload.
       include: [
         'protocol-validation/migrations/getMigrationNotes',
         'protocol-validation/validation/validateExternalData',

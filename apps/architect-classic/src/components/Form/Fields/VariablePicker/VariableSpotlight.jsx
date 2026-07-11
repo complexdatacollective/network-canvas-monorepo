@@ -25,7 +25,7 @@ const ListItem = ({
   const ref = useRef(null);
 
   useEffect(() => {
-    if (selected) {
+    if (selected && ref.current) {
       // Move element into view when it is selected
       ref.current.scrollIntoView({ block: 'nearest' });
     }
@@ -38,9 +38,26 @@ const ListItem = ({
     { 'spotlight-list-item--disabled': disabled },
   );
 
+  if (onSelect) {
+    return (
+      <li ref={ref}>
+        <button
+          type="button"
+          className={classes}
+          onClick={onSelect}
+          onMouseEnter={setSelected}
+          onMouseLeave={removeSelected}
+        >
+          {children}
+          {selected && <kbd>Enter&nbsp;&#8629;</kbd>}
+        </button>
+      </li>
+    );
+  }
+
   return (
-    <li onMouseEnter={setSelected} onMouseLeave={removeSelected} ref={ref}>
-      <div className={classes} onClick={onSelect}>
+    <li ref={ref}>
+      <div className={classes}>
         {children}
         {selected && <kbd>Enter&nbsp;&#8629;</kbd>}
       </div>

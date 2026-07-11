@@ -72,7 +72,7 @@
     "postcss": "^8.5.15",
     "postcss-preset-env": "^9.6.0",
     "prop-types": "^15.8.1",
-    "protocol-validation": "github:complexdatacollective/protocol-validation#6f5967ffa8ce8b5d3fa411f4c9553565403dfd24",
+    "protocol-validation": "workspace:*",
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
     "react-flip-toolkit": "^6.6.9",

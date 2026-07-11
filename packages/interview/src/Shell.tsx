@@ -52,6 +52,10 @@ const variants = {
  */
 export type NavigationOrientation = 'horizontal' | 'vertical';
 
+type NavigationClassnames = {
+  [Orientation in NavigationOrientation]?: string;
+};
+
 function Interview({
   onExit,
   hideNavigation = false,
@@ -62,7 +66,7 @@ function Interview({
   onExit?: () => void;
   hideNavigation?: boolean;
   navigationOrientation?: NavigationOrientation;
-  navigationClassnames?: Partial<Record<NavigationOrientation, string>>;
+  navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
 }) {
   const {
@@ -231,7 +235,7 @@ type ShellProps = {
    * omitted, the orientation responds to the aspect ratio automatically.
    */
   navigationOrientation?: NavigationOrientation;
-  navigationClassnames?: Partial<Record<NavigationOrientation, string>>;
+  navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
 };
 

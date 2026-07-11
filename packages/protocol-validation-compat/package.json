@@ -1,0 +1,18 @@
+{
+  "name": "protocol-validation",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./migrations/canUpgrade": "./migrations/canUpgrade.js",
+    "./migrations/getMigrationNotes": "./migrations/getMigrationNotes.js",
+    "./migrations/migrateProtocol": "./migrations/migrateProtocol.js",
+    "./validation": "./validation/index.js",
+    "./validation/helpers": "./validation/helpers.js",
+    "./validation/validateExternalData": "./validation/validateExternalData.js"
+  },
+  "dependencies": {
+    "@codaco/protocol-validation": "workspace:*"
+  }
+}

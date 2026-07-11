@@ -818,8 +818,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         network: session.network,
         currentStep: currentStepRef.current,
         stageMetadata: session.stageMetadata as
-          | Record<string, unknown>
-          | undefined,
+          Record<string, unknown> | undefined,
         finishedAt: session.finishTime,
       });
     },

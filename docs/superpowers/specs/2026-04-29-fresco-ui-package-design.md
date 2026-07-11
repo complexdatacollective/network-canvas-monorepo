@@ -246,9 +246,7 @@ export default defineConfig({
   "type": "module",
   "sideEffects": ["**/*.css"],
   "files": ["dist"],
-  "exports": {
-    /* generated */
-  },
+  "exports": {/* generated */},
   "scripts": {
     "build": "node scripts/build-exports.mjs && vite build",
     "dev": "vite build --watch",

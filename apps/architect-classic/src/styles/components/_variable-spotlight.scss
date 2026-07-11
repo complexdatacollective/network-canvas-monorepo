@@ -77,10 +77,17 @@
 }
 
 .spotlight-list-item {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
   display: flex;
+  font: inherit;
   justify-content: space-between;
   padding: units.unit(1) units.unit(4);
   align-items: center;
+  text-align: left;
+  width: 100%;
 
   .variable-pill {
     flex: 1 auto;
