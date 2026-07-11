@@ -88,6 +88,28 @@ const interfaceImagesNoInlinePlugin = (): Plugin => ({
 // Vitest sets VITEST=true.
 const isLibraryBuild = !process.env.STORYBOOK && !process.env.VITEST;
 
+const relativeDeclarationSpecifier =
+  /\b(from\s+['"]|import\s+['"])(\.[^'"]+)(['"])/g;
+const relativeDynamicDeclarationSpecifier =
+  /\b(import\(\s*['"])(\.[^'"]+)(['"]\s*\))/g;
+const runtimeDeclarationExtension = /\.(?:cjs|css|js|json|mjs)$/;
+
+const appendJsExtension = (specifier: string) =>
+  runtimeDeclarationExtension.test(specifier) ? specifier : `${specifier}.js`;
+
+const addJsExtensionsToDeclarationSpecifiers = (content: string) =>
+  content
+    .replace(
+      relativeDeclarationSpecifier,
+      (_match, prefix: string, specifier: string, suffix: string) =>
+        `${prefix}${appendJsExtension(specifier)}${suffix}`,
+    )
+    .replace(
+      relativeDynamicDeclarationSpecifier,
+      (_match, prefix: string, specifier: string, suffix: string) =>
+        `${prefix}${appendJsExtension(specifier)}${suffix}`,
+    );
+
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
@@ -106,6 +128,9 @@ export default defineConfig({
         ],
         compilerOptions: { rootDir: resolve(__dirname, 'src') },
         insertTypesEntry: true,
+        beforeWriteFile: (_filePath, content) => ({
+          content: addJsExtensionsToDeclarationSpecifiers(content),
+        }),
       }),
     cssCopyPlugin(),
   ],

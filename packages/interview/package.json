@@ -70,6 +70,7 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:",
+    "@codaco/fresco-ui": "workspace:*",
     "@codaco/interface-images": "workspace:*",
     "@codaco/protocol-utilities": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
