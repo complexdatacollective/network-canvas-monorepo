@@ -16,8 +16,7 @@ All commands run from this directory unless noted. The monorepo-wide `pnpm lint`
 
 ```bash
 pnpm dev              # Vite dev server (self-routes through turbo for workspace deps)
-pnpm build             # production build (turbo-wrapped)
-pnpm build:web         # vite build + scripts/assert-pwa-build.mjs (what CI runs)
+pnpm build            # production build + PWA integrity check (turbo-wrapped)
 pnpm preview           # preview the production build locally
 pnpm typecheck         # tsc --build --noEmit
 pnpm test              # vitest run --project=unit
@@ -26,7 +25,7 @@ pnpm test:storybook    # vitest run --project=storybook
 pnpm storybook         # Storybook dev server on :6006
 ```
 
-`build:web` is the one CI actually deploys with — it fails the build if the service worker, manifest, or icons are missing from `dist/`, or if a critical JS chunk (interview engine, entry point) got silently dropped from the workbox precache manifest. Treat an `assert-pwa-build.mjs` failure as a real bug, not noise.
+`build` is the command CI deploys with. It runs Vite and then fails if the service worker, manifest, or icons are missing from `dist/`, or if a critical JS chunk (interview engine, entry point) got silently dropped from the workbox precache manifest. Treat an `assert-pwa-build.mjs` failure as a real bug, not noise.
 
 ## Source Surface
 

@@ -1018,8 +1018,7 @@ apps-release:
     - if: needs.apps-release-detect.outputs.interviewer_released == 'true'
       name: Build & deploy interviewer-v8 to production
       run: |
-        pnpm exec turbo run build --filter=@codaco/interviewer-v8^...
-        pnpm --filter=@codaco/interviewer-v8 build:web
+        pnpm exec turbo run build --filter=@codaco/interviewer-v8
         npx --yes netlify-cli@22 deploy --no-build --prod \
           --filter=@codaco/interviewer-v8 \
           --dir=apps/interviewer-v8/dist \
@@ -1183,8 +1182,8 @@ lane handles it instead.
    consumed changesets, and opens/updates a summary PR. This PR is the release
    gate.
 3. **Merge to release.** Merging bumps `package.json`; the `apps-release-detect`
-   job sees the version change and `apps-release` builds (`build:web`, which runs
-   the PWA precache assertion), deploys to Netlify **production**, and creates the
+   job sees the version change and `apps-release` builds (including the PWA
+   precache assertion), deploys to Netlify **production**, and creates the
    GitHub release `@codaco/interviewer-v8@<version>`.
 
 The base `8.0.0` is fixed; the bump type in a changeset only categorises the

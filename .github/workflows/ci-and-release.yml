@@ -444,8 +444,7 @@ jobs:
       - id: deploy
         name: Build and deploy architect preview
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect^...
-          pnpm --filter=@codaco/architect build:web
+          pnpm exec turbo run build --filter=@codaco/architect
           json=$(npx --yes netlify-cli@22 deploy --no-build \
                    --filter=@codaco/architect \
                    --dir=apps/architect/dist \
@@ -455,12 +454,9 @@ jobs:
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
-  # interviewer is a vite-plugin-pwa PWA, same shape as architect, but
-  # its own `build` script is a plain `vite build` (no turbo task override) so
-  # `turbo run build --filter=...` skips the post-build PWA assertion. Build
-  # workspace deps via turbo (fresco-ui, interview, etc.) then run the app's
-  # own `build:web` (vite build + assert-pwa-build.mjs) directly so a broken
-  # service-worker precache manifest fails the deploy instead of shipping.
+  # Interviewer is a vite-plugin-pwa PWA, the same shape as architect. Its
+  # canonical build includes the post-build PWA assertion, so a broken service
+  # worker or precache manifest fails the deploy instead of shipping.
   #
   # NOTE(human-setup-required): needs its own Netlify site, created manually,
   # with its site ID stored in the NETLIFY_SITE_ID_INTERVIEWER secret —
@@ -488,8 +484,7 @@ jobs:
       - id: deploy
         name: Build and deploy interviewer preview
         run: |
-          pnpm exec turbo run build --filter=@codaco/interviewer^...
-          pnpm --filter=@codaco/interviewer build:web
+          pnpm exec turbo run build --filter=@codaco/interviewer
           json=$(npx --yes netlify-cli@22 deploy --no-build \
                    --filter=@codaco/interviewer \
                    --dir=apps/interviewer/dist \
@@ -990,8 +985,7 @@ jobs:
       - name: Build & deploy architect to production
         if: steps.guard.outputs.skip != 'true'
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect^...
-          pnpm --filter=@codaco/architect build:web
+          pnpm exec turbo run build --filter=@codaco/architect
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/architect \
             --dir=apps/architect/dist \
@@ -1061,8 +1055,7 @@ jobs:
       - name: Build & deploy interviewer to production
         if: steps.guard.outputs.skip != 'true'
         run: |
-          pnpm exec turbo run build --filter=@codaco/interviewer^...
-          pnpm --filter=@codaco/interviewer build:web
+          pnpm exec turbo run build --filter=@codaco/interviewer
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/interviewer \
             --dir=apps/interviewer/dist \
