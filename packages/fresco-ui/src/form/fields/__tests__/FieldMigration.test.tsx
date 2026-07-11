@@ -55,6 +55,25 @@ describe('Select migration contracts', () => {
     expect(select).not.toHaveClass('text-current/50');
   });
 
+  it.each([undefined, null, ''])(
+    'keeps placeholder styling for an empty %s value',
+    (value) => {
+      render(
+        <NativeSelectField
+          name="choice"
+          options={[{ value: 0, label: 'Zero' }]}
+          placeholder="Choose a value"
+          value={value as never}
+          onChange={() => undefined}
+        />,
+      );
+
+      const select = screen.getByRole('combobox');
+      expect(select).toHaveValue('');
+      expect(select).toHaveClass('italic', 'text-current/50');
+    },
+  );
+
   it('keeps numeric values typed and forwards field ARIA to the styled trigger', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

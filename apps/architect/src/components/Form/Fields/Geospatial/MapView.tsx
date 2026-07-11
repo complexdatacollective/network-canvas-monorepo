@@ -31,22 +31,20 @@ type MapViewProps = {
 
 const defaultCenter: [number, number] = [0, 0];
 
-const resolveCenter = (center?: number[]): [number, number] => {
-  const longitude = center?.[0];
-  const latitude = center?.[1];
+const isValidCenter = (center?: number[]): center is [number, number] =>
+  Array.isArray(center) &&
+  center.length === 2 &&
+  center.every(
+    (coordinate) =>
+      typeof coordinate === 'number' && Number.isFinite(coordinate),
+  );
 
-  if (
-    !Array.isArray(center) ||
-    center.length < 2 ||
-    typeof longitude !== 'number' ||
-    !Number.isFinite(longitude) ||
-    typeof latitude !== 'number' ||
-    !Number.isFinite(latitude)
-  ) {
+const resolveCenter = (center?: number[]): [number, number] => {
+  if (!isValidCenter(center)) {
     return defaultCenter;
   }
 
-  return [longitude, latitude];
+  return [center[0], center[1]];
 };
 
 const resolveZoom = (zoom?: number) =>
@@ -57,6 +55,10 @@ export const hasMapViewChanged = (
   zoom: number,
   initialOptions: MapOptions,
 ) => {
+  if (!isValidCenter(initialOptions.center)) {
+    return true;
+  }
+
   const initialCenter = resolveCenter(initialOptions.center);
   const initialZoom = resolveZoom(initialOptions.initialZoom);
 

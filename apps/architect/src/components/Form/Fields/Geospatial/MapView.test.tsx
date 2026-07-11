@@ -105,6 +105,80 @@ describe('MapView', () => {
     expect(hasMapViewChanged([12, 34], 6, mapOptions)).toBe(false);
     expect(hasMapViewChanged([13, 34], 6, mapOptions)).toBe(true);
     expect(hasMapViewChanged([12, 34], 7, mapOptions)).toBe(true);
+    expect(
+      hasMapViewChanged([0, 0], 0, { center: [0, 0], initialZoom: 0 }),
+    ).toBe(false);
+    expect(hasMapViewChanged([0, 0], 0, { initialZoom: 0 })).toBe(true);
+    expect(
+      hasMapViewChanged([0, 0], 0, {
+        center: [Number.NaN, 0],
+        initialZoom: 0,
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['invalid', [Number.NaN, 0]],
+  ])(
+    'lets the loaded default view be saved when the persisted center is %s',
+    async (_description, initialCenter) => {
+      const onChange = vi.fn();
+      const close = vi.fn();
+      const partialMapOptions: MapOptions = {
+        tokenAssetId: 'token-asset',
+        initialZoom: 0,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        ...(initialCenter ? { center: initialCenter } : {}),
+      };
+
+      render(
+        <MapView
+          mapOptions={partialMapOptions}
+          onChange={onChange}
+          close={close}
+        />,
+      );
+
+      expect(
+        screen.queryByRole('button', { name: 'Save Changes' }),
+      ).not.toBeInTheDocument();
+
+      await waitFor(() => expect(animationFrames.length).toBeGreaterThan(0));
+      flushAnimationFrames();
+      act(() => getMapHandler('load')());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+      expect(onChange).toHaveBeenCalledWith({
+        ...partialMapOptions,
+        center: [0, 0],
+        initialZoom: 0,
+      });
+      expect(close).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('does not offer to save an unchanged configured zero-valued view', async () => {
+    render(
+      <MapView
+        mapOptions={{
+          center: [0, 0],
+          initialZoom: 0,
+          tokenAssetId: 'token-asset',
+        }}
+        onChange={vi.fn()}
+        close={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(animationFrames.length).toBeGreaterThan(0));
+    flushAnimationFrames();
+    act(() => getMapHandler('load')());
+
+    expect(
+      screen.queryByRole('button', { name: 'Save Changes' }),
+    ).not.toBeInTheDocument();
   });
 
   it('saves a changed, loaded view and closes the editor', async () => {

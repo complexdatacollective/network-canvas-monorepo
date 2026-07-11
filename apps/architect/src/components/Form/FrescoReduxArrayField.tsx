@@ -5,7 +5,7 @@ import {
   type ReactNode,
   useContext,
 } from 'react';
-import type { WrappedFieldArrayProps } from 'redux-form';
+import { change, type WrappedFieldArrayProps } from 'redux-form';
 
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ArrayField, {
@@ -14,6 +14,7 @@ import ArrayField, {
   type ArrayFieldOperation,
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import { useAppDispatch } from '~/ducks/hooks';
 
 type ArrayItem = Record<string, unknown>;
 type Renderer = ComponentType<Record<string, unknown>>;
@@ -124,6 +125,7 @@ export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
   readOnly,
   ...arrayFieldProps
 }: FrescoReduxArrayFieldProps<T>) {
+  const dispatch = useAppDispatch();
   const errors = getArrayErrors(meta.error);
   const showErrors = (meta.dirty || meta.submitFailed) && errors.length > 0;
   const fieldValues = fields.getAll();
@@ -150,7 +152,15 @@ export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
         fields.move(operation.from, operation.to);
         break;
       case 'replace':
-        fields.splice(operation.index, 1, operation.item);
+        dispatch(
+          change(
+            meta.form,
+            `${fields.name}[${operation.index}]`,
+            operation.item,
+            false,
+            false,
+          ),
+        );
         break;
     }
   };

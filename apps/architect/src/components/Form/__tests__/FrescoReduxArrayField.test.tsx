@@ -197,7 +197,7 @@ describe('FrescoReduxArrayField', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Update' }));
 
     expect(getItems()).toEqual([{ label: 'updated' }]);
-    expect(actions).toContain('@@redux-form/ARRAY_SPLICE');
+    expect(actions).toContain('@@redux-form/CHANGE');
     expect(screen.getByText('items[0]')).toBeInTheDocument();
     expect(rowMounted).toHaveBeenCalledTimes(1);
 
@@ -208,6 +208,69 @@ describe('FrescoReduxArrayField', () => {
       'Cannot update a component',
     );
     consoleError.mockRestore();
+  });
+
+  it('replaces an item without shifting sibling indexed metadata', () => {
+    const { actions, getItems, store } = setup([
+      { label: 'first' },
+      { label: 'second' },
+      { label: 'third' },
+    ]);
+    act(() => {
+      store.dispatch(
+        touch(
+          'array-adapter-test',
+          'items[0].label',
+          'items[1].label',
+          'items[2].label',
+        ) as unknown as UnknownAction,
+      );
+      store.dispatch(
+        stopSubmit('array-adapter-test', {
+          items: [
+            { label: 'first submit' },
+            { label: 'second submit' },
+            { label: 'third submit' },
+          ],
+        }) as unknown as UnknownAction,
+      );
+      store.dispatch(
+        stopAsyncValidation('array-adapter-test', {
+          items: [
+            { label: 'first async' },
+            { label: 'second async' },
+            { label: 'third async' },
+          ],
+        }) as unknown as UnknownAction,
+      );
+    });
+
+    expect(rowMounted).toHaveBeenCalledTimes(3);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Update' })[1]!);
+
+    expect(getItems()).toEqual([
+      { label: 'first' },
+      { label: 'updated' },
+      { label: 'third' },
+    ]);
+    expect(actions).toContain('@@redux-form/CHANGE');
+    expect(actions).not.toContain('@@redux-form/ARRAY_SPLICE');
+    expect(rowMounted).toHaveBeenCalledTimes(3);
+
+    const formState = store.getState().form['array-adapter-test'];
+    expect(formState?.fields?.items).toEqual([
+      { label: { touched: true } },
+      { label: { touched: true } },
+      { label: { touched: true } },
+    ]);
+    expect(formState?.submitErrors).toEqual({
+      items: [{ label: 'first submit' }, undefined, { label: 'third submit' }],
+    });
+    expect(
+      (formState as unknown as Record<string, unknown>).asyncErrors,
+    ).toEqual({
+      items: [{ label: 'first async' }, undefined, { label: 'third async' }],
+    });
   });
 
   it('moves indexed metadata with keyboard reordering', () => {
