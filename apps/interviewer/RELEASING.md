@@ -41,25 +41,22 @@ production release above.
 
 Netlify uses `apps/interviewer` as the package directory and keeps the repository
 root as the build base. Its versioned build settings live in `netlify.toml` in
-this directory. The developer build uses the same dependency build and
-`build:web` PWA assertion as CI. It also gives Node a larger heap because
-`@codaco/interview` declaration bundling can exceed Node's default heap during a
-clean build.
+this directory. The developer build uses the same canonical `build` command and
+PWA assertion as CI. It also gives Node a larger heap because `@codaco/interview`
+declaration bundling can exceed Node's default heap during a clean build.
 
 ## How CI builds
 
 ```bash
-pnpm exec turbo run build --filter=@codaco/interviewer^...   # workspace deps
-pnpm --filter=@codaco/interviewer build:web                   # vite build + PWA assertion
+pnpm exec turbo run build --filter=@codaco/interviewer
 ```
 
-`build:web` (not the plain `build` script) is what CI runs — it chains
-`scripts/assert-pwa-build.mjs`, which fails the build if the service worker,
-manifest, or icons are missing from `dist/`, or if a critical JS chunk (the
-interview engine, mapbox-gl, the entry point) got silently dropped from the
-workbox precache manifest. A deploy that passes this assertion is one that
-will actually boot offline; treat an assertion failure as a hard release
-blocker, not a warning to route around.
+The app's `build` command runs Vite and then `scripts/assert-pwa-build.mjs`, which
+fails the build if the service worker, manifest, or icons are missing from
+`dist/`, or if a critical JS chunk (the interview engine, mapbox-gl, the entry
+point) got silently dropped from the workbox precache manifest. A deploy that
+passes this assertion is one that will actually boot offline; treat an assertion
+failure as a hard release blocker, not a warning to route around.
 
 ## Manual setup required (one-time)
 

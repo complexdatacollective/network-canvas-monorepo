@@ -1,5 +1,5 @@
 [build]
-command = "pnpm exec turbo run build --filter=@codaco/interviewer^... && pnpm --filter=@codaco/interviewer build:web"
+command = "pnpm exec turbo run build --filter=@codaco/interviewer"
 publish = "apps/interviewer/dist"
 
 [build.environment]

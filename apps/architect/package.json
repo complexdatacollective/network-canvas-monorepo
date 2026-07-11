@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "node ../../scripts/with-turbo.mjs --with-deps vite",
     "dev:protocols": "VITE_PROTOCOL_SOURCE_AUTHORING=true npm_lifecycle_event=dev node ../../scripts/with-turbo.mjs --with-deps vite",
-    "build": "node ../../scripts/with-turbo.mjs vite build",
-    "build:web": "vite build && node scripts/assert-pwa-build.mjs",
+    "build": "node ../../scripts/with-turbo.mjs node scripts/build.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --build --noEmit"

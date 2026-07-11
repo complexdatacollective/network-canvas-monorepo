@@ -37,18 +37,17 @@ production release above.
 
 Netlify uses `apps/architect` as the package directory and keeps the repository
 root as the build base. Its versioned build settings live in `netlify.toml` in
-this directory. The developer build uses the same dependency build and
-`build:web` PWA assertion as CI. It also gives Node a larger heap because shared
-package declaration bundling can exceed Node's default heap during a clean
-build.
+this directory. The developer build uses the same canonical `build` command and
+PWA assertion as CI. It also gives Node a larger heap because shared package
+declaration bundling can exceed Node's default heap during a clean build.
 
 ## How CI builds
 
-Both the preview and release jobs build with `pnpm --filter @codaco/architect
-build:web` (not the plain `build`), which chains `scripts/assert-pwa-build.mjs`.
-That assertion fails the build if `dist/` is missing the service worker, manifest,
-or icons, or if any emitted JS chunk was dropped from the workbox precache
-manifest (e.g. for exceeding the size limit) — which would 404 offline and break
-the offline boot. Treat an assertion failure as a hard release blocker. (Sibling
-of interviewer's `build:web`; architect asserts that _every_ chunk is precached
-because it uses no `globIgnores`.)
+Both the preview and release jobs run `pnpm exec turbo run build
+--filter=@codaco/architect`. The app's `build` command runs Vite and then
+`scripts/assert-pwa-build.mjs`. That assertion fails the build if `dist/` is
+missing the service worker, manifest, or icons, or if any emitted JS chunk was
+dropped from the workbox precache manifest (e.g. for exceeding the size limit) —
+which would 404 offline and break the offline boot. Treat an assertion failure as
+a hard release blocker. Architect asserts that _every_ chunk is precached because
+it uses no `globIgnores`.

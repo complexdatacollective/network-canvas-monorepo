@@ -195,7 +195,8 @@ git add apps/interviewer-v8/pwa-assets.config.ts apps/interviewer-v8/public/inte
 
 - Modify: `apps/interviewer-v8/vite.config.ts`
 - Create: `apps/interviewer-v8/scripts/assert-pwa-build.mjs`
-- Modify: `apps/interviewer-v8/package.json` (add a `build:web` wrapper that runs the assertion after `vite build`)
+- Create: `apps/interviewer-v8/scripts/build.mjs`
+- Modify: `apps/interviewer-v8/package.json` (make `build` run the assertion after `vite build`)
 
 **Interfaces:**
 
@@ -406,10 +407,13 @@ console.log(
 );
 ```
 
-In `apps/interviewer-v8/package.json`, add a script that runs the assertion after the build (leaves the existing `build` — which self-routes through turbo — intact; `build:web` is the one CI/Netlify runs to get the guarantee):
+Add a small `scripts/build.mjs` driver that awaits Vite's programmatic `build`
+API and then dynamically imports `assert-pwa-build.mjs`. In
+`apps/interviewer-v8/package.json`, make the canonical build invoke that driver
+while retaining its Turbo self-routing:
 
 ```jsonc
-    "build:web": "vite build && node scripts/assert-pwa-build.mjs",
+    "build": "node ../../scripts/with-turbo.mjs node scripts/build.mjs",
 ```
 
 - [ ] **Step 4: Run it, expect pass**
@@ -1084,7 +1088,7 @@ git add apps/interviewer-v8/src/components/PwaUpdateBanner.tsx apps/interviewer-
 - Consumes: nothing
 - Produces: correct cache-control on the built SW/registration/index/manifest/icons and `immutable` on hashed `/assets/*`.
 
-**Host note (explicit):** interviewer-v8 has **no web deploy job in CI yet** — `.github/workflows/ci-and-release.yml` deploys architect-web and the docs/website to **Netlify**, and `interviewer-v8-build-test.yml` only builds the Electron target (removed in Workstream A). This task adds the `_headers` file in the **Netlify convention** the sibling web app (architect-web) already uses, so it takes effect the moment a Netlify web deploy for interviewer-v8 is wired. Wiring that CI job (a `deploy-interviewer-preview`/`-prod` pair running `netlify-cli deploy --dir=apps/interviewer-v8/dist` after `build:web`) is **out of scope for this phase** and must be added when the app is promoted from alpha; without it, `_headers` is emitted into `dist/` but not served. If the eventual host is **not** Netlify, this file must be translated to that host's mechanism (Cloudflare Pages also reads `public/_headers`; Vercel would need `vercel.json` `headers`).
+**Host note (explicit):** interviewer-v8 has **no web deploy job in CI yet** — `.github/workflows/ci-and-release.yml` deploys architect-web and the docs/website to **Netlify**, and `interviewer-v8-build-test.yml` only builds the Electron target (removed in Workstream A). This task adds the `_headers` file in the **Netlify convention** the sibling web app (architect-web) already uses, so it takes effect the moment a Netlify web deploy for interviewer-v8 is wired. Wiring that CI job (a `deploy-interviewer-preview`/`-prod` pair running `netlify-cli deploy --dir=apps/interviewer-v8/dist` after `build`) is **out of scope for this phase** and must be added when the app is promoted from alpha; without it, `_headers` is emitted into `dist/` but not served. If the eventual host is **not** Netlify, this file must be translated to that host's mechanism (Cloudflare Pages also reads `public/_headers`; Vercel would need `vercel.json` `headers`).
 
 Vite copies `public/*` into `dist/` at build, so `public/_headers` lands at `dist/_headers` where Netlify reads it.
 
@@ -1630,7 +1634,7 @@ pnpm --filter @codaco/interviewer-v8 typecheck \
 
 - [ ] **Step 2: Run it, expect fail**
       Run: the command above.
-      Expected: FAIL if any of: a ported component references a symbol removed in Workstream A; `knip` flags `initInstallPromptCapture`/`isStoragePersisted`/`assert-pwa-build.mjs`/the `build:web` script as unused (they are used by `main.tsx` / StatusRow + SettingsDialog / CI respectively — if flagged, they are genuinely unwired and must be wired, not ignored); or the precache assertion trips because a critical chunk exceeded `MAX_PRECACHE_BYTES` (raise the limit or refine `manualChunks`).
+      Expected: FAIL if any of: a ported component references a symbol removed in Workstream A; `knip` flags `initInstallPromptCapture`/`isStoragePersisted`/`assert-pwa-build.mjs`/the `build` script as unused (they are used by `main.tsx` / StatusRow + SettingsDialog / CI respectively — if flagged, they are genuinely unwired and must be wired, not ignored); or the precache assertion trips because a critical chunk exceeded `MAX_PRECACHE_BYTES` (raise the limit or refine `manualChunks`).
 - [ ] **Step 3: Implement**
       Fix-forward only within this phase's files:
 - If `knip` reports the new PWA symbols as unused, confirm the F9 wiring landed (`main.tsx` imports `initInstallPromptCapture`; `App.tsx` imports both PWA components) rather than adding a knip ignore.

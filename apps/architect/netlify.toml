@@ -1,5 +1,5 @@
 [build]
-command = "pnpm exec turbo run build --filter=@codaco/architect^... && pnpm --filter=@codaco/architect build:web"
+command = "pnpm exec turbo run build --filter=@codaco/architect"
 publish = "apps/architect/dist"
 
 [build.environment]
