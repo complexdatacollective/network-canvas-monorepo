@@ -15,9 +15,10 @@ selector.
 This work includes:
 
 - English and Spanish versions of every page and all user-facing copy.
-- Locale-prefixed static routes at `/en`, `/es`, `/en/download`, and
-  `/es/download`.
-- Browser-language redirects from `/` at the Netlify CDN edge.
+- Locale-prefixed static routes at `/en`, `/es`, `/en/get-started`, and
+  `/es/get-started`.
+- Browser-language redirects from `/` and unprefixed `/get-started` at the
+  Netlify CDN edge, plus permanent legacy download redirects.
 - A locale selector in the desktop navigation, mobile navigation, and footer.
 - Build-time CSV content for Latest News, Recent Publications, Grants, and Core
   Team.
@@ -28,26 +29,46 @@ This work includes:
 This work does not redesign sections, alter their animations, or change their
 display order or layout.
 
+The localized Get Started page also preserves the refined compatibility
+hierarchy exactly: the Classic compatibility warning uses the
+`@codaco/fresco-ui/Alert` warning variant, appears immediately after the Design
+path description and before its app cards, and is absent from the Collect path.
+Fresco retains its slate-tinted surface with backdrop blur. The English source
+status is exactly **Large Teams · Remote Administration · Recommended** and
+receives a complete Spanish translation. At tablet-landscape widths,
+Interviewer and Fresco remain equal-width cards on the first Collect row using
+`tablet-landscape:col-span-6`; Interviewer Classic is full-width on the following
+row using `tablet-landscape:col-span-12` with no column-start offset. Mobile
+order remains Interviewer, Fresco, then Interviewer Classic.
+
 ## Routing and Static Rendering
 
 All content pages use an explicit locale prefix:
 
-| Content  | English        | Spanish        |
-| -------- | -------------- | -------------- |
-| Home     | `/en`          | `/es`          |
-| Download | `/en/download` | `/es/download` |
+| Content     | English           | Spanish           |
+| ----------- | ----------------- | ----------------- |
+| Home        | `/en`             | `/es`             |
+| Get Started | `/en/get-started` | `/es/get-started` |
 
 The Next.js app continues to use `output: 'export'`. Both locales and both pages
 are generated during `next build`; no Next.js middleware, server function,
 runtime content request, or browser-only translation layer is introduced.
 
-The root `/` route has two redirect mechanisms:
+The root `/` and unprefixed `/get-started` routes have two redirect mechanisms:
 
 1. `apps/networkcanvas.com/netlify.toml` contains ordered, forced CDN redirects.
-   A Spanish `Accept-Language` preference receives a temporary redirect to
-   `/es`. Every other request receives a temporary redirect to `/en`.
-2. A statically generated root fallback redirects to `/en` for local development
-   and deployments that do not process Netlify rules.
+   A Spanish `Accept-Language` preference receives a temporary redirect to the
+   Spanish equivalent (`/es` or `/es/get-started`). Every other request receives
+   a temporary redirect to the English equivalent (`/en` or
+   `/en/get-started`).
+2. Statically generated fallbacks redirect to the English equivalents for local
+   development and deployments that do not process Netlify rules.
+
+The legacy `/download`, `/en/download`, and `/es/download` routes remain only as
+permanent redirects. The localized legacy routes retain their locale, while the
+unprefixed route uses browser language at Netlify and defaults to
+`/en/get-started` in the static fallback. No download route renders page content
+or declares canonical metadata.
 
 Temporary redirects are required because browser language preferences can
 change. The language selector provides an explicit user override and switches
@@ -78,7 +99,9 @@ including:
 - headings, paragraphs, buttons, and calls to action;
 - Latest News and carousel accessibility labels;
 - mailing-list form labels, placeholders, errors, and success states;
-- download-page copy;
+- Get Started pathway cards, workflow headings, app descriptions and guidance,
+  status badges, action and platform labels, schema compatibility warning, and
+  accessible names;
 - metadata and Open Graph copy; and
 - image alternative text that is not supplied by CSV content.
 
@@ -108,8 +131,8 @@ page:
 
 - `/en` switches to `/es`;
 - `/es` switches to `/en`;
-- `/en/download` switches to `/es/download`; and
-- `/es/download` switches to `/en/download`.
+- `/en/get-started` switches to `/es/get-started`; and
+- `/es/get-started` switches to `/en/get-started`.
 
 ## CSV Content Model
 
@@ -226,7 +249,18 @@ failing before production changes.
 
 - Latest News, Publications, Grants, and Core Team render passed localized
   records rather than importing hardcoded data;
-- translated interactive labels remain accessible; and
+- translated interactive labels remain accessible;
+- Get Started pathway cards, app actions, status badges, platform controls, and
+  schema compatibility guidance are complete in both locales;
+- the compatibility warning retains its Fresco UI warning status, follows the
+  Design description before the Design cards, and is absent from Collect;
+- Fresco retains both its slate tint and backdrop blur, including when its
+  translated status is **Large Teams · Remote Administration · Recommended**
+  in English;
+- Interviewer and Fresco retain equal
+  `tablet-landscape:col-span-6` widths, Interviewer Classic is full-width on the
+  following row with `tablet-landscape:col-span-12` and no column-start offset,
+  and mobile order remains Interviewer, Fresco, Interviewer Classic; and
 - existing behavior and presentation contracts remain intact.
 
 ### Locale integration tests
@@ -247,12 +281,16 @@ failing before production changes.
 - all touched files pass the project formatter;
 - `pnpm knip` passes;
 - the production static build passes; and
-- export output contains `/en`, `/es`, `/en/download`, and `/es/download`.
+- export output contains `/en`, `/es`, `/en/get-started`, and
+  `/es/get-started`, while download paths contain redirects only.
 
 ## Accessibility and Compatibility
 
 The language selector is fully keyboard operable, has visible focus treatment,
-and uses localized accessible names. Translated labels are allowed to expand
+and uses localized accessible names. The Get Started pathway links and Classic
+platform controls also use localized accessible names that identify their
+destination or target app. Status badges supplement translated app guidance
+rather than carrying meaning alone. Translated labels are allowed to expand
 without fixed dimensions that clip content. Existing reduced-motion behavior is
 preserved. The final implementation is verified at representative desktop and
 mobile sizes in both locales without redesigning the page.

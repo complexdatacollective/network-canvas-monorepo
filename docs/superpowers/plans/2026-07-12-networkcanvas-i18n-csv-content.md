@@ -24,7 +24,8 @@ Turbo, oxlint, and oxfmt.
 
 - Keep `output: 'export'`; do not add middleware, functions, runtime content
   fetching, or browser-only translations.
-- Generate exactly `/en`, `/es`, `/en/download`, and `/es/download`.
+- Generate localized content at `/en`, `/es`, `/en/get-started`, and
+  `/es/get-started`; download paths exist only as redirects.
 - Use `en` as the source and default locale; use neutral international Spanish.
 - Preserve the current page structure, section markup, animation behavior,
   styling, CSV row order, and the first-four publication limit.
@@ -41,6 +42,16 @@ Turbo, oxlint, and oxfmt.
   sentence fragments.
 - Preserve keyboard operation, focus treatment, accessible names, and reduced
   motion.
+- Keep the compatibility warning as a `@codaco/fresco-ui/Alert` warning status
+  immediately after the Design description and before the Design cards; never
+  render it after or within Collect.
+- Keep Fresco's `bg-slate-blue/10` treatment together with `backdrop-blur-md`,
+  and preserve the exact English status **Large Teams · Remote Administration ·
+  Recommended**.
+- Keep Interviewer and Fresco equal width with
+  `tablet-landscape:col-span-6`; keep Interviewer Classic full-width on the
+  following row with `tablet-landscape:col-span-12` and no column-start offset.
+  Preserve mobile order as Interviewer, Fresco, Interviewer Classic.
 - Do not introduce `any`, TypeScript assertions, ignore rules, barrel files, or
   convenience re-exports.
 - Run oxlint with `--fix` and oxfmt on every touched code/config/content file.
@@ -56,8 +67,10 @@ Turbo, oxlint, and oxfmt.
   messages, renders locale-aware metadata and the document shell.
 - `apps/networkcanvas.com/app/[locale]/page.tsx` — statically renders localized
   home content and supplies CSV records.
-- `apps/networkcanvas.com/app/[locale]/download/page.tsx` — localized download
-  page and metadata.
+- `apps/networkcanvas.com/app/[locale]/get-started/page.tsx` — localized
+  purpose-first Get Started page and metadata.
+- `apps/networkcanvas.com/app/[locale]/download/page.tsx` — locale-preserving
+  legacy redirect to Get Started.
 - `apps/networkcanvas.com/lib/i18n/locales.ts` — supported locale constants,
   type, and static params.
 - `apps/networkcanvas.com/lib/i18n/routing.ts` — `next-intl` routing settings.
@@ -84,12 +97,17 @@ Turbo, oxlint, and oxfmt.
   — locale switch, current state, and preference persistence tests.
 - `apps/networkcanvas.com/test/renderWithIntl.tsx` — shared test renderer with a
   real `NextIntlClientProvider`.
-- `apps/networkcanvas.com/netlify.toml` — ordered Spanish and English root
+- `apps/networkcanvas.com/netlify.toml` — ordered locale-selection and legacy
   redirects.
 
-### Removed paths
+### Redirect-only paths
 
-- `apps/networkcanvas.com/app/download/page.tsx` — replaced by the locale route.
+- `apps/networkcanvas.com/app/get-started/page.tsx` — replaced with a static
+  English redirect fallback after its content moves under `[locale]`.
+- `apps/networkcanvas.com/app/download/page.tsx` — retained only as a static
+  English legacy redirect fallback.
+- `apps/networkcanvas.com/app/[locale]/download/page.tsx` — emits localized
+  legacy redirects without page content or canonical metadata.
 - The current home implementation in `apps/networkcanvas.com/app/page.tsx` —
   replaced with a static English redirect fallback.
 
@@ -102,6 +120,12 @@ Turbo, oxlint, and oxfmt.
   the four dynamic arrays and rendered labels leave this file.
 - `Header.tsx`, `ProjectsMenu.tsx`, `Footer.tsx`, `ButtonLink.tsx`, and
   `PillLink.tsx` use localized copy/navigation.
+- `GetStartedIntro.tsx`, `WorkflowPath.tsx`, `AppChoiceCard.tsx`, and
+  `CompatibilityNotice.tsx` consume the `GetStarted` namespace without changing
+  the approved purpose-first hierarchy, warning placement, Collect card spans
+  and order, Fresco treatment, or motion.
+- `lib/getStarted.ts` retains locale-neutral app IDs, names, URLs, versions,
+  treatments, and ordering; rendered guidance and labels move to messages.
 - `HeroIntro.tsx`, `Hero.tsx`, `NewsTicker.tsx`, `Tools.tsx`,
   `VideoSection.tsx`, `DesignPrinciples.tsx`, `Grants.tsx`,
   `Publications.tsx`, `CoreTeam.tsx`, `Contractors.tsx`, `Institutions.tsx`,
@@ -125,8 +149,11 @@ Turbo, oxlint, and oxfmt.
 - Create: `apps/networkcanvas.com/messages/es.json`
 - Create: `apps/networkcanvas.com/app/[locale]/layout.tsx`
 - Create: `apps/networkcanvas.com/app/[locale]/page.tsx`
-- Move: `apps/networkcanvas.com/app/download/page.tsx` to
-  `apps/networkcanvas.com/app/[locale]/download/page.tsx`
+- Move: `apps/networkcanvas.com/app/get-started/page.tsx` to
+  `apps/networkcanvas.com/app/[locale]/get-started/page.tsx`
+- Modify: `apps/networkcanvas.com/app/get-started/page.tsx`
+- Modify: `apps/networkcanvas.com/app/download/page.tsx`
+- Create: `apps/networkcanvas.com/app/[locale]/download/page.tsx`
 - Modify: `apps/networkcanvas.com/app/layout.tsx`
 - Modify: `apps/networkcanvas.com/app/page.tsx`
 - Modify: `apps/networkcanvas.com/next.config.ts`
@@ -135,6 +162,7 @@ Turbo, oxlint, and oxfmt.
 - Modify: `pnpm-lock.yaml`
 - Test: `apps/networkcanvas.com/lib/__tests__/messages.test.ts`
 - Test: `apps/networkcanvas.com/app/__tests__/localeRouting.test.ts`
+- Test: `apps/networkcanvas.com/app/__tests__/legacyRedirects.test.ts`
 
 **Interfaces:**
 
@@ -215,12 +243,17 @@ describe('message catalogs', () => {
 });
 ```
 
+In `legacyRedirects.test.ts`, mock `permanentRedirect` and assert the static
+fallbacks send `/get-started` and `/download` to `/en/get-started`. Invoke the
+localized legacy redirect page for `en` and `es` and assert it preserves the
+locale at `/en/get-started` and `/es/get-started`.
+
 - [ ] **Step 2: Run the focused tests and verify RED**
 
 Run:
 
 ```bash
-pnpm --filter networkcanvas.com test -- lib/__tests__/messages.test.ts app/__tests__/localeRouting.test.ts
+pnpm --filter networkcanvas.com test -- lib/__tests__/messages.test.ts app/__tests__/localeRouting.test.ts app/__tests__/legacyRedirects.test.ts
 ```
 
 Expected: FAIL because the locale modules and message catalogs do not exist.
@@ -291,8 +324,8 @@ Create both catalogs with identical namespaces and localized values:
   "Metadata": {
     "siteTitle": "Network Canvas",
     "siteDescription": "Network Canvas provides free and open-source software for surveying networks, designed around the needs of both researchers and their participants.",
-    "downloadTitle": "Download",
-    "downloadDescription": "Download links for the current Network Canvas software."
+    "getStartedTitle": "Get Started",
+    "getStartedDescription": "Choose the right Network Canvas app for designing a protocol or collecting network data."
   },
   "LanguageSelector": {
     "label": "Language",
@@ -302,7 +335,7 @@ Create both catalogs with identical namespaces and localized values:
 }
 ```
 
-Spanish uses `Idioma`, `Inglés`, `Español`, `Descargar`, and a faithful Spanish
+Spanish uses `Idioma`, `Inglés`, `Español`, `Comenzar`, and a faithful Spanish
 translation of both descriptions. Augment `next-intl` in `types.d.ts`:
 
 ```ts
@@ -342,15 +375,18 @@ canonical `https://networkcanvas.com/${locale}` and language alternates for
 
 Move the current home component body unchanged to `[locale]/page.tsx`, await
 `params`, call `setRequestLocale(locale)`, and retain every current section. Move
-the current download page unchanged to `[locale]/download/page.tsx`; Task 6
-localizes it.
+the current Get Started page unchanged to `[locale]/get-started/page.tsx`; Task 6
+localizes it. Replace unprefixed `/get-started` with a static fallback redirect
+to `/en/get-started`. Keep `/download` as a permanent fallback redirect to
+`/en/get-started`, and add `[locale]/download/page.tsx` so `/en/download` and
+`/es/download` permanently redirect to their same-locale Get Started route.
 
 - [ ] **Step 6: Run tests, typecheck, lint, and format**
 
 Run:
 
 ```bash
-pnpm --filter networkcanvas.com test -- lib/__tests__/messages.test.ts app/__tests__/localeRouting.test.ts
+pnpm --filter networkcanvas.com test -- lib/__tests__/messages.test.ts app/__tests__/localeRouting.test.ts app/__tests__/legacyRedirects.test.ts
 pnpm --filter networkcanvas.com typecheck
 pnpm exec oxlint --fix apps/networkcanvas.com
 pnpm exec oxfmt apps/networkcanvas.com
@@ -658,7 +694,7 @@ git commit -m "refactor(website): render sections from CSV content"
 - Message namespaces are exactly: `Metadata`, `LanguageSelector`, `Navigation`,
   `Hero`, `News`, `Tools`, `Video`, `Principles`, `Grants`, `Publications`,
   `Team`, `Contractors`, `Institutions`, `WhatNext`, `MailingList`, `Footer`, and
-  `Download`.
+  `GetStarted`.
 - `lib/content.ts` retains IDs, product/proper names, links, colors, images, and
   variants; descriptions, labels, notes, periods, and body copy move to messages.
 
@@ -720,7 +756,7 @@ Use the exact namespace responsibilities below:
 
 | Namespace      | Required nested keys                                                                                                             |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `Hero`         | `headline`, `description` rich text, `download`, `keepScrolling`                                                                 |
+| `Hero`         | `headline`, `description` rich text, `getStarted`, `keepScrolling`                                                               |
 | `News`         | `label`, `fullStory`                                                                                                             |
 | `Tools`        | `heading`, `introduction`, and `architect/interviewer/fresco.{description,action,screenshotAlt}`                                 |
 | `Video`        | `heading`, `description` rich text, `channel`, `title`, `watchLabel`                                                             |
@@ -836,11 +872,11 @@ git commit -m "feat(website): translate home page content"
 
 - [ ] **Step 1: Write failing selector and localized header tests**
 
-Mock `usePathname` to `/download` and `useRouter().replace`. Render in Spanish,
-click English, and assert:
+Mock `usePathname` to `/get-started` and `useRouter().replace`. Render in
+Spanish, click English, and assert:
 
 ```ts
-expect(router.replace).toHaveBeenCalledWith('/download', { locale: 'en' });
+expect(router.replace).toHaveBeenCalledWith('/get-started', { locale: 'en' });
 expect(document.cookie).toContain('nf_lang=en');
 expect(onNavigate).toHaveBeenCalledOnce();
 ```
@@ -878,14 +914,14 @@ existing `focusable` utility. Do not use a select that hides both language names
 - [ ] **Step 4: Localize and preserve navigation**
 
 Add `Navigation` keys for `home`, `community`, `documentation`, `projects`,
-`download`, `toggleMenu`, `openMenu`, `closeMenu`, and each project description
-and action. Add `Footer` keys for `terms`, `privacy`, `copyright`, and social
-labels. English values match the current UI; Spanish uses `Inicio`, `Comunidad`,
-`Documentación`, `Proyectos`, `Descargar`, `Términos de uso`, and `Política de
-privacidad` with complete translated descriptions and menu labels.
+`getStarted`, `toggleMenu`, `openMenu`, `closeMenu`, and each project
+description and action. Add `Footer` keys for `terms`, `privacy`, `copyright`,
+and social labels. English values match the current UI; Spanish uses `Inicio`,
+`Comunidad`, `Documentación`, `Proyectos`, `Comenzar`, `Términos de uso`, and
+`Política de privacidad` with complete translated descriptions and menu labels.
 
 Change config arrays to carry IDs and shared hrefs. Use the locale-aware Link for
-home and download, ordinary anchors for external destinations, and translated
+home and Get Started, ordinary anchors for external destinations, and translated
 labels for keys and display. Add LanguageSelector to desktop nav, mobile nav
 with `onNavigate={() => setOpen(false)}`, and footer. Replace the current single
 toggle label with locale-specific open/close labels based on state.
@@ -904,8 +940,8 @@ pnpm exec oxlint --fix apps/networkcanvas.com/components/layout apps/networkcanv
 pnpm exec oxfmt apps/networkcanvas.com/components/layout apps/networkcanvas.com/components/ui apps/networkcanvas.com/lib/content.ts apps/networkcanvas.com/messages
 ```
 
-Expected: layout tests PASS, hero internal download link retains locale behavior,
-typecheck PASS, lint PASS, formatter PASS.
+Expected: layout tests PASS, the hero's internal Get Started link retains locale
+behavior, typecheck PASS, lint PASS, formatter PASS.
 
 - [ ] **Step 6: Commit Task 5**
 
@@ -916,110 +952,182 @@ git commit -m "feat(website): add locale-aware navigation"
 
 ---
 
-### Task 6: Internationalise the Download Page and Page Metadata
+### Task 6: Internationalise the Get Started Page and Page Metadata
 
 **Files:**
 
-- Modify: `apps/networkcanvas.com/app/[locale]/download/page.tsx`
-- Create: `apps/networkcanvas.com/app/[locale]/download/__tests__/page.test.tsx`
+- Modify: `apps/networkcanvas.com/app/[locale]/get-started/page.tsx`
+- Create:
+  `apps/networkcanvas.com/app/[locale]/get-started/__tests__/page.test.tsx`
+- Modify: `apps/networkcanvas.com/components/get-started/GetStartedIntro.tsx`
+- Modify: `apps/networkcanvas.com/components/get-started/WorkflowPath.tsx`
+- Modify: `apps/networkcanvas.com/components/get-started/AppChoiceCard.tsx`
+- Modify:
+  `apps/networkcanvas.com/components/get-started/CompatibilityNotice.tsx`
+- Modify: focused tests under
+  `apps/networkcanvas.com/components/get-started/__tests__/`
+- Modify: `apps/networkcanvas.com/lib/getStarted.ts`
 - Modify: `apps/networkcanvas.com/app/[locale]/layout.tsx`
 - Modify: `apps/networkcanvas.com/messages/en.json`
 - Modify: `apps/networkcanvas.com/messages/es.json`
 
 **Interfaces:**
 
-- `generateMetadata({params})` emits localized download title, description,
-  canonical URL, and `en`/`es` alternates.
-- Download binary URLs, icons, platform names, product names, pills, and card
-  order remain unchanged.
+- `generateMetadata({params})` emits the localized Get Started title,
+  description, canonical URL, and `en`/`es` alternates.
+- The `GetStarted` namespace covers every pathway card, workflow heading, app
+  description, best-use item, action label, status badge, platform label,
+  composite accessible name, and schema compatibility warning.
+- `CompatibilityNotice` remains a `@codaco/fresco-ui/Alert` warning status,
+  rendered immediately after the Design description and before its cards; the
+  Collect path contains no compatibility warning.
+- Fresco retains both `bg-slate-blue/10` and `backdrop-blur-md`. Its English
+  status remains exactly **Large Teams · Remote Administration · Recommended**.
+- Interviewer and Fresco remain equal-width
+  `tablet-landscape:col-span-6` cards on the first Collect row. Interviewer
+  Classic is full-width on the following row with
+  `tablet-landscape:col-span-12` and no column-start offset, with mobile order
+  Interviewer, Fresco, Interviewer Classic.
+- Product names, app and release URLs, version 6.6.0, workflow/app/platform IDs,
+  visual treatments, card order, and platform order remain locale-neutral and
+  unchanged.
 
-- [ ] **Step 1: Write failing Spanish download tests**
+- [ ] **Step 1: Write failing Spanish Get Started tests**
 
-Render the page with a Spanish provider and assert:
+Render the page with a Spanish provider and assert representative content from
+every responsibility in the namespace:
 
 ```ts
 expect(
-  screen.getByRole('heading', { name: 'Descargar Network Canvas' }),
+  screen.getByRole('heading', { name: '¿Qué le gustaría hacer?' }),
 ).toBeInTheDocument();
 expect(
-  screen.getByText(
-    'A continuación encontrará enlaces para descargar nuestro software actual.',
-  ),
+  screen.getByRole('link', {
+    name: 'Diseñar o crear un protocolo de entrevista',
+  }),
+).toHaveAttribute('href', '#design');
+expect(
+  screen.getByRole('link', {
+    name: 'Recopilar datos con Network Canvas',
+  }),
+).toHaveAttribute('href', '#collect');
+expect(
+  screen.getByText('Recomendado para estudios nuevos'),
 ).toBeInTheDocument();
 expect(
-  screen.getByRole('heading', { name: 'Más información' }),
+  screen.getByRole('link', {
+    name: 'Apple Silicon para Architect Classic',
+  }),
 ).toBeInTheDocument();
 expect(
-  screen.getByRole('button', { name: 'Requisitos del sistema' }),
+  screen.getByText('La compatibilidad con Classic es unidireccional.'),
 ).toBeInTheDocument();
 expect(
-  screen.getByRole('link', { name: 'Obtener en Google Play' }),
-).toHaveAttribute('href', expect.stringContaining('play.google.com'));
+  screen.getByText(/los protocolos de esquema 8 no se pueden abrir/i),
+).toBeInTheDocument();
 ```
 
-Call `generateMetadata` for `es` and assert canonical
-`https://networkcanvas.com/es/download`, Spanish title/description, and both
+Also assert translated path labels, workflow descriptions, the `Best for` and
+version labels, every app's status and guidance, all app action labels, all four
+platform labels for each Classic app, and localized accessible names for both
+pathway and platform links. In English, assert Fresco's exact status
+**Large Teams · Remote Administration · Recommended**. Assert the localized
+compatibility warning has status semantics, follows the Design description,
+precedes the Design cards, and is absent from Collect. Assert the Fresco card
+retains both `bg-slate-blue/10` and `backdrop-blur-md`. Assert Interviewer and
+Fresco wrappers both use `tablet-landscape:col-span-6`, Interviewer Classic uses
+`tablet-landscape:col-span-12` on the following row without a column-start
+offset, and DOM/mobile order is Interviewer, Fresco, Interviewer Classic. Call
+`generateMetadata` for `es` and assert canonical
+`https://networkcanvas.com/es/get-started`, Spanish title/description, and both
 language alternates.
 
-- [ ] **Step 2: Run the page test and verify RED**
+- [ ] **Step 2: Run the page tests and verify RED**
 
 Run:
 
 ```bash
-pnpm --filter networkcanvas.com test -- app/'[locale]'/download/__tests__/page.test.tsx
+pnpm --filter networkcanvas.com test -- app/'[locale]'/get-started components/get-started
 ```
 
-Expected: FAIL because the page and metadata still contain English literals.
+Expected: FAIL because the page, structured content, metadata, status badges,
+and accessible names still contain English literals.
 
-- [ ] **Step 3: Complete the Download namespace**
+- [ ] **Step 3: Complete the GetStarted namespace**
 
-Add keys for metadata, page heading/introduction, Interviewer and Architect
-descriptions, Google Play label, Server heading and both paragraphs, More
-Information heading, System Requirements heading/body/link, Apple App Store
-heading/body/link, and platform labels. English values are copied verbatim from
-the current page. Spanish uses the exact tested headings above and complete
-neutral translations; software/platform names and URLs remain unchanged.
+Add nested keys for:
+
+- metadata title and description;
+- opening eyebrow, heading, and introduction;
+- both pathway-card labels, titles, and accessible names;
+- both numbered workflow labels, headings, and descriptions;
+- the shared `Best for` label and version-download label;
+- Architect, Interviewer, Fresco, Architect Classic, and Interviewer Classic
+  status badges, descriptions, complete best-use lists, and action labels;
+- Apple Silicon, Apple Intel, Windows, and Linux platform labels plus the
+  app-specific platform-link accessible-name message; and
+- the one-way Classic compatibility heading and complete schema 7/schema 8
+  warning.
+
+English values are copied verbatim from the approved Get Started implementation.
+Fresco's English status is exactly **Large Teams · Remote Administration ·
+Recommended**. Spanish uses complete neutral translations. Product names,
+schema numbers, version 6.6.0, and URLs remain unchanged. Preserve placeholders
+such as `{version}`, `{platform}`, and `{app}` identically in both catalogs, and
+do not construct translated sentences from fragments.
 
 - [ ] **Step 4: Replace literals and generate localized metadata**
 
 Await and validate `params.locale`, call `setRequestLocale`, and use
-`getTranslations({locale, namespace: 'Download'})`. Use `t.rich` for both
-documentation paragraphs so link placement can vary. Keep the Accordion,
-download data, classes, card order, and external link behavior unchanged.
+`getTranslations({locale, namespace: 'GetStarted'})` for the page metadata. Use
+`useTranslations('GetStarted')` in Get Started components. Reduce
+`lib/getStarted.ts` to locale-neutral IDs, names, destinations, version,
+treatments, and ordering; resolve status, description, best-use, action, and
+platform-label keys in the components.
 
-Generate:
+Keep the purpose-first hierarchy, `#design` and `#collect` anchors, semantic
+heading order, existing classes, app/card order, external link behavior,
+coordinated motion, and reduced-motion behavior unchanged. In particular, keep
+`CompatibilityNotice` built from `@codaco/fresco-ui/Alert`, placed directly
+after the Design description before the Design cards, and absent from Collect.
+Keep both `bg-slate-blue/10` and `backdrop-blur-md` on the Fresco card. Keep
+Interviewer and Fresco at `tablet-landscape:col-span-6` on the first Collect row,
+with Interviewer Classic full-width on the following row using
+`tablet-landscape:col-span-12` and no column-start offset. Do not change the
+mobile order of Interviewer, Fresco, Interviewer Classic. Generate:
 
 ```ts
 alternates: {
-  canonical: `https://networkcanvas.com/${locale}/download`,
+  canonical: `https://networkcanvas.com/${locale}/get-started`,
   languages: {
-    en: 'https://networkcanvas.com/en/download',
-    es: 'https://networkcanvas.com/es/download',
+    en: 'https://networkcanvas.com/en/get-started',
+    es: 'https://networkcanvas.com/es/get-started',
   },
 }
 ```
 
 - [ ] **Step 5: Verify GREEN and quality checks**
 
-Run the focused test, message parity test, complete website suite, typecheck,
-oxlint `--fix`, and oxfmt.
+Run the focused Get Started tests, message parity test, complete website suite,
+typecheck, oxlint `--fix`, and oxfmt.
 
-Expected: all PASS with no warnings or missing-message errors.
+Expected: all PASS with no warnings, missing-message errors, untranslated
+accessible names, or changes to the approved Get Started visual hierarchy.
 
 - [ ] **Step 6: Commit Task 6**
 
 ```bash
-git add apps/networkcanvas.com/app/'[locale]'/download apps/networkcanvas.com/app/'[locale]'/layout.tsx apps/networkcanvas.com/messages
-git commit -m "feat(website): translate download page"
+git add apps/networkcanvas.com/app/'[locale]'/get-started apps/networkcanvas.com/app/'[locale]'/layout.tsx apps/networkcanvas.com/components/get-started apps/networkcanvas.com/lib/getStarted.ts apps/networkcanvas.com/messages
+git commit -m "feat(website): translate get started flow"
 ```
 
 ---
 
-### Task 7: Add CDN Redirects, Cache Inputs, and Static Export Verification
+### Task 7: Add Localized CDN Redirects, Cache Inputs, and Static Export Verification
 
 **Files:**
 
-- Create: `apps/networkcanvas.com/netlify.toml`
+- Modify: `apps/networkcanvas.com/netlify.toml`
 - Create: `apps/networkcanvas.com/lib/__tests__/redirectConfig.test.ts`
 - Modify: `turbo.json`
 - Modify: any tests that reveal final integration gaps
@@ -1028,16 +1136,25 @@ git commit -m "feat(website): translate download page"
 
 - Spanish browser language at `/` receives `302 /es`.
 - Every other root request receives `302 /en`.
-- `content/**`, `messages/**`, and `netlify.toml` invalidate website build and
-  typecheck cache entries.
+- Spanish browser language at `/get-started` receives
+  `302 /es/get-started`; every other request receives
+  `302 /en/get-started`.
+- `/en/download` and `/es/download` permanently redirect to the same-locale Get
+  Started route.
+- The unprefixed legacy `/download` route permanently redirects according to
+  browser language at Netlify and defaults to `/en/get-started` elsewhere.
+- `content/**` and `messages/**` invalidate website build and typecheck cache
+  entries; `netlify.toml` additionally invalidates the website build cache.
 
 - [ ] **Step 1: Write a failing ordered redirect-config test**
 
-Read `netlify.toml` as text and assert the Spanish rule appears before the
-fallback, both use status 302 and force, only the Spanish rule has a Language
-condition, and destinations are `/es` then `/en`. Also read `turbo.json` and
-assert both website input arrays include `content/**` and `messages/**`, while
-the build inputs also include `netlify.toml`.
+Read `netlify.toml` as text and assert that each browser-language rule appears
+before its fallback. Root and unprefixed Get Started redirects use status 302;
+all download redirects use status 301. Every rule is forced, only unprefixed
+Spanish-selection rules have a Language condition, and localized download paths
+retain their locale. Also read `turbo.json` and assert both website input arrays
+include `content/**` and `messages/**`, while the build inputs also include
+`netlify.toml`.
 
 - [ ] **Step 2: Run the config test and verify RED**
 
@@ -1047,11 +1164,12 @@ Run:
 pnpm --filter networkcanvas.com test -- lib/__tests__/redirectConfig.test.ts
 ```
 
-Expected: FAIL because the redirect file and cache inputs do not exist.
+Expected: FAIL because the existing redirect file does not yet cover locale
+routing and the cache inputs do not exist.
 
 - [ ] **Step 3: Add exact Netlify redirect rules**
 
-Create:
+Replace the existing single download redirect with:
 
 ```toml
 [[redirects]]
@@ -1066,10 +1184,49 @@ from = "/"
 to = "/en"
 status = 302
 force = true
+
+[[redirects]]
+from = "/get-started"
+to = "/es/get-started"
+status = 302
+force = true
+conditions = {Language = ["es"]}
+
+[[redirects]]
+from = "/get-started"
+to = "/en/get-started"
+status = 302
+force = true
+
+[[redirects]]
+from = "/en/download"
+to = "/en/get-started"
+status = 301
+force = true
+
+[[redirects]]
+from = "/es/download"
+to = "/es/get-started"
+status = 301
+force = true
+
+[[redirects]]
+from = "/download"
+to = "/es/get-started"
+status = 301
+force = true
+conditions = {Language = ["es"]}
+
+[[redirects]]
+from = "/download"
+to = "/en/get-started"
+status = 301
+force = true
 ```
 
-Keep the conditional rule first. The fallback root page remains `/en` for local
-development; Netlify's forced rules override generated `out/index.html`.
+Keep each conditional rule before its unconditioned fallback. Static fallbacks
+remain English for local development; localized download fallback pages retain
+their locale. Netlify's forced rules override the generated fallback HTML.
 
 - [ ] **Step 4: Add Turbo inputs**
 
@@ -1094,25 +1251,40 @@ git diff --check
 Inspect export routes and HTML:
 
 ```bash
-find apps/networkcanvas.com/out -maxdepth 3 -type f -name '*.html' | sort
-rg -n '<html lang="(en|es)"' apps/networkcanvas.com/out/en.html apps/networkcanvas.com/out/es.html apps/networkcanvas.com/out/en/download.html apps/networkcanvas.com/out/es/download.html
+find apps/networkcanvas.com/out -maxdepth 4 -type f -name '*.html' | sort
+rg -n '<html lang="(en|es)"' apps/networkcanvas.com/out/en.html apps/networkcanvas.com/out/es.html apps/networkcanvas.com/out/en/get-started.html apps/networkcanvas.com/out/es/get-started.html
 ```
 
 Expected: all tests/typecheck/lint/format/knip/build checks PASS; output contains
-English and Spanish home/download HTML with matching `lang` attributes.
+English and Spanish home/Get Started HTML with matching `lang` attributes.
+Inspect `out/get-started.html`, `out/download.html`,
+`out/en/download.html`, and `out/es/download.html` to confirm they contain only
+the intended redirect fallbacks and no legacy page content.
 
 - [ ] **Step 6: Perform browser verification without redesigning**
 
-Keep the existing dev server open. Verify `/en`, `/es`, `/en/download`, and
-`/es/download` at desktop and mobile widths. Confirm:
+Keep the existing dev server open. Verify `/en`, `/es`, `/en/get-started`, and
+`/es/get-started` at desktop and mobile widths. Confirm:
 
-- every visible string and interactive accessible name uses the active locale;
+- every home-page string and interactive accessible name uses the active locale;
 - Latest News, Publications, Grants, and Core Team match CSV order;
-- locale switching preserves home versus download;
+- locale switching preserves home versus Get Started;
+- every pathway label, app description, best-use item, status badge, platform
+  label, schema warning, and interactive accessible name uses the active locale;
+- the Get Started purpose hierarchy, app order, motion, and reduced-motion
+  behavior remain unchanged;
+- the compatibility warning is a Fresco UI warning status directly after the
+  Design description and before its cards, with no warning in Collect;
+- Fresco retains its slate tint and backdrop blur, and the English status reads
+  exactly **Large Teams · Remote Administration · Recommended**;
+- Interviewer and Fresco remain equal-width
+  `tablet-landscape:col-span-6` cards, Interviewer Classic is full-width on the
+  following row with `tablet-landscape:col-span-12` and no column-start offset,
+  and mobile order is Interviewer, Fresco, Interviewer Classic;
 - the selector appears in desktop header, mobile menu, and footer;
 - keyboard focus is visible and the mobile menu closes after switching;
-- the current layout, entrance animation, carousel, video, and reduced-motion
-  behavior remain unchanged; and
+- the current home layout, entrance animation, carousel, video, and
+  reduced-motion behavior remain unchanged; and
 - there are no console errors or hydration warnings.
 
 - [ ] **Step 7: Commit Task 7**
@@ -1134,5 +1306,5 @@ git commit -m "feat(website): add static language redirects"
 - [ ] Decide changeset status with the `creating-a-changeset` skill; record that
       this private website app does not need one unless a library package changed.
 - [ ] Push the existing feature branch and update the existing pull request.
-- [ ] Leave the local development server running and provide the `/en` and `/es`
-      review URLs.
+- [ ] Leave the local development server running and provide the `/en`, `/es`,
+      `/en/get-started`, and `/es/get-started` review URLs.
