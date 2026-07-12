@@ -25,7 +25,24 @@ describe('Header', () => {
   it('keeps the mobile projects menu without linking to a removed section', () => {
     render(<Header />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }));
+    const openMenu = screen.getByRole('button', { name: 'Open menu' });
+
+    expect(openMenu).toHaveAttribute('aria-expanded', 'false');
+    expect(openMenu).toHaveClass('aspect-square', 'p-0!');
+    expect(openMenu.querySelector('.lucide-menu')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+
+    fireEvent.click(openMenu);
+
+    const closeMenu = screen.getByRole('button', { name: 'Close menu' });
+
+    expect(closeMenu).toHaveAttribute('aria-expanded', 'true');
+    expect(closeMenu.querySelector('.lucide-x')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
 
     expect(screen.getByText('Projects')).toBeInTheDocument();
     expect(
@@ -33,6 +50,13 @@ describe('Header', () => {
     ).not.toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Get Started' })).toHaveLength(
       2,
+    );
+
+    fireEvent.click(closeMenu);
+
+    expect(screen.getByRole('button', { name: 'Open menu' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
     );
   });
 });

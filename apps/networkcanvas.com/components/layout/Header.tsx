@@ -6,6 +6,7 @@ import type { Variants } from 'motion/react';
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { IconButton } from '@codaco/fresco-ui/Button';
 import { ProjectsMenu } from '~/components/layout/ProjectsMenu';
 import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
@@ -95,15 +96,22 @@ export function Header({ entranceVariants }: { entranceVariants?: Variants }) {
           </ButtonLink>
         </nav>
 
-        <button
-          type="button"
-          aria-label="Toggle menu"
+        <IconButton
+          icon={
+            open ? (
+              <X aria-hidden className="size-7" />
+            ) : (
+              <Menu aria-hidden className="size-7" />
+            )
+          }
+          aria-label={open ? 'Close menu' : 'Open menu'}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="focusable text-cyber-grape tablet-landscape:hidden rounded-full p-2"
-        >
-          {open ? <X className="size-7" /> : <Menu className="size-7" />}
-        </button>
+          variant="text"
+          color="dynamic"
+          size="sm"
+          className="text-cyber-grape tablet-landscape:hidden size-11 border-transparent"
+        />
       </Container>
 
       <AnimatePresence>

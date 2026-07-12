@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 
+import { IconButton } from '@codaco/fresco-ui/Button';
 import { Container } from '~/components/ui/Container';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { cn } from '~/lib/cn';
@@ -26,9 +27,11 @@ export function Grants() {
       </SectionHeading>
 
       <div className="tablet-landscape:gap-6 mx-auto mt-14 flex max-w-3xl items-center gap-3">
-        <CarouselButton label="Previous grant" onClick={() => paginate(-1)}>
-          <ChevronLeft className="size-6" />
-        </CarouselButton>
+        <CarouselButton
+          label="Previous grant"
+          onClick={() => paginate(-1)}
+          icon={<ChevronLeft aria-hidden className="size-6" />}
+        />
 
         <div className="relative min-h-[22rem] flex-1">
           <div className="absolute -inset-8 overflow-hidden p-8">
@@ -64,9 +67,11 @@ export function Grants() {
           </div>
         </div>
 
-        <CarouselButton label="Next grant" onClick={() => paginate(1)}>
-          <ChevronRight className="size-6" />
-        </CarouselButton>
+        <CarouselButton
+          label="Next grant"
+          onClick={() => paginate(1)}
+          icon={<ChevronRight aria-hidden className="size-6" />}
+        />
       </div>
 
       <div className="mt-8 flex justify-center gap-2.5">
@@ -92,22 +97,22 @@ export function Grants() {
 }
 
 function CarouselButton({
-  children,
+  icon,
   label,
   onClick,
 }: {
-  children: ReactNode;
+  icon: ReactNode;
   label: string;
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <IconButton
+      icon={icon}
       aria-label={label}
       onClick={onClick}
-      className="focusable bg-surface text-cyber-grape hover:bg-cyber-grape flex size-11 shrink-0 items-center justify-center rounded-full shadow-lg transition-colors hover:text-white"
-    >
-      {children}
-    </button>
+      color="dynamic"
+      size="sm"
+      className="bg-surface text-cyber-grape hover:bg-cyber-grape size-11 border-transparent shadow-lg transition-colors hover:text-white"
+    />
   );
 }
