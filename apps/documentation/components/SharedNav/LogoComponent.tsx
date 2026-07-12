@@ -2,7 +2,7 @@ import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import Link from 'next/link';
 
-import { cn } from '~/lib/utils';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 type LogoComponentProps = {
   invisible?: boolean;
@@ -17,7 +17,7 @@ const LogoComponent = ({
   return (
     <Link
       href="/"
-      className={cn(
+      className={cx(
         className,
         invisible ? 'invisible' : 'visible',
         'focusable shrink-0 transition-transform duration-1000',

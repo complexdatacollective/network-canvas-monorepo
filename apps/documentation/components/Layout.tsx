@@ -5,9 +5,9 @@ import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
 
 import { BackgroundBlobs } from '@codaco/art';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { Sidebar } from '~/components/Sidebar';
 import WorkflowNav from '~/components/WorkflowNav';
-import { cn } from '~/lib/utils';
 
 import SharedNav from './SharedNav/SharedNav';
 
@@ -27,7 +27,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
         // smaller screens the nav stays sticky, so it pins just below it.
         <WorkflowNav
           variant="collapsed"
-          className="dark:bg-background sticky top-16 z-40 w-full bg-[#ffffff7d] px-4 py-2 backdrop-blur-sm lg:top-0"
+          className="bg-background/50 sticky top-16 z-40 w-full px-4 py-2 backdrop-blur-sm lg:top-0"
         />
       )}
       <motion.div
@@ -49,7 +49,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
         />
       </motion.div>
       <main
-        className={cn(
+        className={cx(
           'flex h-full w-full flex-auto justify-center',
           // Space content away from the nav on content pages; the margin scales
           // down on smaller viewports.

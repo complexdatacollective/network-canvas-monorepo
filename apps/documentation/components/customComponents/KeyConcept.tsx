@@ -1,8 +1,12 @@
-import Image from 'next/image';
+'use client';
+
+// Client component: the Lightbulb icon component is passed to the client-only
+// Alert, so it must not cross a Server→Client boundary as a function prop.
+
+import { Lightbulb } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import PopoutBox from '~/components/PopoutBox';
-import { cn } from '~/lib/utils';
+import { Alert, AlertTitle } from '@codaco/fresco-ui/Alert';
 
 type KeyConceptProps = {
   title: string;
@@ -11,24 +15,10 @@ type KeyConceptProps = {
 
 const KeyConcept = ({ children, title }: KeyConceptProps) => {
   return (
-    <PopoutBox
-      title={title}
-      className={cn(
-        'bg-accent/10 [--link:var(--accent)]',
-        '!bg-[color-mix(in_oklab,hsl(var(--background))_80%,hsl(var(--accent)))]',
-      )}
-      iconClassName="bg-white"
-      icon={
-        <Image
-          src="/images/key-concept.svg"
-          width={32}
-          height={32}
-          alt={title}
-        />
-      }
-    >
+    <Alert icon={Lightbulb} className="bg-accent/10 [--link:var(--accent)]">
+      <AlertTitle>{title}</AlertTitle>
       {children}
-    </PopoutBox>
+    </Alert>
   );
 };
 

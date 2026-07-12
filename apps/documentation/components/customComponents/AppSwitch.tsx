@@ -1,14 +1,13 @@
 'use client';
 
-import { Tabs } from '@base-ui/react/tabs';
 import { Globe, Monitor } from 'lucide-react';
 import { Children, isValidElement, type ReactNode } from 'react';
 
+import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
 import {
   type AppAxis,
   useSelectedApp,
 } from '~/components/customComponents/useSelectedApp';
-import { cn } from '~/lib/utils';
 
 const ICONS = {
   globe: Globe,
@@ -51,43 +50,23 @@ export const AppSwitch = ({
       : firstOption.label;
 
   return (
-    <Tabs.Root
+    <Tabs
+      aria-label="Select application"
+      layout="top"
       value={activeLabel}
-      onValueChange={(value) => {
-        if (typeof value === 'string') {
-          selectApp(value);
-        }
-      }}
+      onValueChange={selectApp}
       className="py-8"
+      tabs={options.map((option) => ({
+        value: option.label,
+        label: option.label,
+        icon: option.icon ? ICONS[option.icon] : undefined,
+      }))}
     >
-      <Tabs.List className="border-accent/15 bg-accent/10 inline-grid w-full auto-cols-fr grid-flow-col gap-1 rounded-xl border p-1">
-        {options.map((option, index) => {
-          const Icon = option.icon ? ICONS[option.icon] : null;
-          return (
-            <Tabs.Tab
-              key={`${option.label}-${index}`}
-              value={option.label}
-              className={cn(
-                'focusable text-foreground/70 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors',
-                'hover:text-foreground hover:bg-accent/20',
-                'data-active:bg-accent data-active:text-accent-foreground data-active:hover:bg-accent data-active:shadow-sm',
-              )}
-            >
-              {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden />}
-              {option.label}
-            </Tabs.Tab>
-          );
-        })}
-      </Tabs.List>
-      {options.map((option, index) => (
-        <Tabs.Panel
-          key={`${option.label}-${index}`}
-          value={option.label}
-          className="mt-6"
-        >
+      {options.map((option) => (
+        <TabsPanel key={option.label} value={option.label}>
           {option.children}
-        </Tabs.Panel>
+        </TabsPanel>
       ))}
-    </Tabs.Root>
+    </Tabs>
   );
 };

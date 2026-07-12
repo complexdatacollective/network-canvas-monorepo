@@ -2,8 +2,8 @@
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import WorkInProgress from '~/components/customComponents/WorkInProgress';
-import Heading from '~/components/ui/typography/Heading';
 import type { HeadingNode } from '~/lib/tableOfContents';
 import { usePathname } from '~/navigation';
 
@@ -38,10 +38,15 @@ export default function Article({
     <>
       <article className="@container/article mx-4 mb-5 w-full max-w-[75ch] flex-1 overflow-y-hidden lg:mx-8 xl:mx-10 2xl:mx-20">
         <header>
-          <Heading variant="h4-all-caps" margin="none" className="text-accent">
+          <Heading
+            level="h4"
+            variant="all-caps"
+            margin="none"
+            className="text-accent"
+          >
             {sectionLabel} {subsection && <>🠖 {subsection}</>}
           </Heading>
-          <FancyHeading variant="h1" className="!mt-0">
+          <FancyHeading level="h1" className="!mt-0">
             {title}
           </FancyHeading>
         </header>

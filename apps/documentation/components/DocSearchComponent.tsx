@@ -5,10 +5,10 @@ import '@docsearch/css';
 import { Search } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { inputVariants } from '~/components/ui/inputVariants';
 import { env } from '~/env';
 import { getSectionColorClass } from '~/lib/sections';
-import { cn } from '~/lib/utils';
 import { usePathname } from '~/navigation';
 
 // Pulls the workflow-section slug out of a result's URL. Sections are the first
@@ -118,7 +118,7 @@ const DocSearchComponent = ({
     <>
       <button
         type="button"
-        className={cn(
+        className={cx(
           inputVariants({ size: large ? '2xl' : 'default' }),
           'pointer-events-auto flex w-full items-center justify-between px-4',
           className,
@@ -128,7 +128,7 @@ const DocSearchComponent = ({
       >
         <span className="flex items-center">
           <Search
-            className={cn(
+            className={cx(
               'adornment-left mr-2 md:mr-0 lg:mr-2',
               large && '!mr-4',
             )}
@@ -140,8 +140,8 @@ const DocSearchComponent = ({
         </span>
 
         <kbd
-          className={cn(
-            'bg-muted text-muted-foreground pointer-events-none ml-4 hidden h-5 items-center gap-1 rounded border px-1.5 font-mono text-xs font-medium opacity-100 select-none',
+          className={cx(
+            'pointer-events-none ml-4 hidden h-5 items-center gap-1 rounded border bg-current/5 px-1.5 font-mono text-xs font-medium text-current/70 opacity-100 select-none',
             'sm:inline-flex',
             large && '!h-6',
           )}
@@ -178,7 +178,7 @@ const DocSearchComponent = ({
               <a href={hit.url}>
                 {slug && colorClass ? (
                   <span
-                    className={cn(
+                    className={cx(
                       'mr-2 shrink-0 self-center rounded-full px-2 py-0.5 text-[0.625rem] font-semibold tracking-wide text-white uppercase',
                       colorClass,
                     )}

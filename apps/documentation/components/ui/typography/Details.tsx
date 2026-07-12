@@ -3,9 +3,7 @@
 import { ChevronRight } from 'lucide-react';
 import { forwardRef, type ReactNode } from 'react';
 
-import { cn } from '~/lib/utils';
-
-import { paragraphVariants } from './Paragraph';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 export const Details = forwardRef<
   HTMLDetailsElement,
@@ -17,9 +15,9 @@ export const Details = forwardRef<
   return (
     <details
       ref={ref}
-      className={cn(
-        paragraphVariants({ margin: 'forced' }),
-        'border-border my-5 rounded-xl border-2 px-5 [&_svg]:open:rotate-90',
+      className={cx(
+        'mt-5',
+        'border-outline my-5 rounded-xl border-2 px-5 [&_svg]:open:rotate-90',
         className,
       )}
       {...props}
@@ -46,7 +44,7 @@ export const Summary = forwardRef<
   return (
     <summary
       ref={ref}
-      className={cn(
+      className={cx(
         'flex cursor-pointer list-none items-center gap-2 select-none',
         className,
       )}

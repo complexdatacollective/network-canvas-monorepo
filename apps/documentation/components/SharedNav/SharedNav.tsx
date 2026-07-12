@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 
-import { cn } from '~/lib/utils';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import MobileNavBar from '../MobileNavBar';
 import LogoComponent from './LogoComponent';
@@ -13,15 +13,15 @@ export default function SharedNav({
 }) {
   return (
     <motion.nav
-      className={cn(
-        'border-border sticky top-0 z-50 mx-auto flex w-full flex-auto grow-0 items-center justify-between gap-4 border-b px-4 py-2 backdrop-blur-sm',
+      className={cx(
+        'border-outline sticky top-0 z-50 mx-auto flex w-full flex-auto grow-0 items-center justify-between gap-4 border-b px-4 py-2 backdrop-blur-sm',
         'lg:relative lg:flex lg:px-6 lg:py-4',
         // The homepage keeps a translucent nav that floats over the hero; every
-        // other page gets a solid bar to separate it from page content — white in
-        // light mode, the dark background token in dark mode.
+        // other page gets a solid bar to separate it from page content. The
+        // background token auto-swaps: near-white in light mode, dark in dark.
         isHomePage
           ? 'bg-background/50 lg:backdrop-blur-0 lg:border-none lg:bg-transparent'
-          : 'dark:bg-background bg-white',
+          : 'bg-background',
       )}
       initial={{ y: -100 }}
       animate={{ y: 0 }}

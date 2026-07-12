@@ -19,10 +19,10 @@ export function Hero() {
     >
       <div className="flex w-full flex-col-reverse items-center justify-center text-center md:flex-row md:justify-start md:text-left">
         <div className="flex flex-col items-center justify-center md:items-start">
-          <FancyHeading variant="h1" className="text-4xl">
+          <FancyHeading level="h1" className="text-4xl">
             {t('Hero.title')}
           </FancyHeading>
-          <FancyParagraph variant="lead">{t('Hero.tagline')}</FancyParagraph>
+          <FancyParagraph intent="lead">{t('Hero.tagline')}</FancyParagraph>
           <DocSearchComponent
             className="mt-4 hidden !w-full max-w-2xl rounded-3xl text-base lg:inline-flex"
             large

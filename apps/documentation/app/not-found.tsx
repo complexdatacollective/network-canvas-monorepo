@@ -1,11 +1,12 @@
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
 import Link from '~/components/Link';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import { Divider } from '~/components/ui/Divider';
-import Heading from '~/components/ui/typography/Heading';
-import { ListItem, UnorderedList } from '~/components/ui/typography/Lists';
-import Paragraph from '~/components/ui/typography/Paragraph';
+import { ListItem } from '~/components/ui/typography/ListItem';
 
 export default function NotFound() {
   return (
@@ -18,11 +19,9 @@ export default function NotFound() {
       >
         <body className="flex h-screen items-center justify-center">
           <div className="max-w-lg p-3 sm:p-0">
-            <Heading variant="h1">404 - Not found</Heading>
+            <Heading level="h1">404 - Not found</Heading>
             <Divider />
-            <Heading variant="h2">
-              The requested page could not be found.
-            </Heading>
+            <Heading level="h2">The requested page could not be found.</Heading>
             <Paragraph>
               This is most likely to have happened because the page has been
               moved or deleted. We apologize for any inconvenience this has

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import type {
   Locale,
   Section,
@@ -18,7 +19,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '~/components/ui/collapsible';
-import { cn } from '~/lib/utils';
 
 const PATH_SEPARATOR_REGEX = /[\\/]/;
 
@@ -176,10 +176,10 @@ const SidebarFolder = ({
         if (alwaysOpen) return;
         setIsOpen(!isOpen);
       }}
-      className={cn('my-4 flex flex-col')}
+      className={cx('my-4 flex flex-col')}
     >
       <CollapsibleTrigger
-        className={cn(
+        className={cx(
           'focusable my-1 flex flex-1 items-center justify-between text-base font-semibold text-balance capitalize',
           !alwaysOpen && 'cursor-pointer',
         )}
@@ -233,8 +233,8 @@ const SidebarLink = ({
     <Link
       ref={ref}
       href={href}
-      className={cn(
-        'focusable border-foreground/5 flex flex-1 border-l-2 py-2 pl-4 text-sm transition-colors',
+      className={cx(
+        'focusable border-text/5 flex flex-1 border-l-2 py-2 pl-4 text-sm transition-colors',
         'hover:border-accent/100 hover:text-accent',
         isActive && 'border-accent/100 text-accent font-semibold',
       )}
@@ -303,7 +303,7 @@ export function Sidebar({ className }: { className?: string }) {
 
   if (!sidebarData) {
     return (
-      <nav className={cn('flex w-full grow flex-col', className)}>
+      <nav className={cx('flex w-full grow flex-col', className)}>
         <DocSearchComponent className="hidden lg:flex" />
         <div className="flex-1 p-2">Loading...</div>
       </nav>
@@ -318,7 +318,7 @@ export function Sidebar({ className }: { className?: string }) {
   );
 
   return (
-    <nav className={cn('flex w-full grow flex-col', className)}>
+    <nav className={cx('flex w-full grow flex-col', className)}>
       <DocSearchComponent className="hidden lg:flex" />
 
       <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">

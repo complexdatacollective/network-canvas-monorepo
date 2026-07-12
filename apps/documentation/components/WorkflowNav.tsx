@@ -7,13 +7,13 @@ import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { Fragment, type ReactNode } from 'react';
 
-import Paragraph from '~/components/ui/typography/Paragraph';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   SECTIONS,
   type SectionConfig,
   sectionColorClasses,
 } from '~/lib/sections';
-import { cn } from '~/lib/utils';
 import { Link, usePathname, useRouter } from '~/navigation';
 
 import FancyHeading from './FancyHeading';
@@ -36,7 +36,7 @@ function SectionIcon({
             alt=""
             width={28}
             height={28}
-            className={cn(dual ? 'h-6 w-6' : 'h-7 w-7')}
+            className={cx(dual ? 'h-6 w-6' : 'h-7 w-7')}
           />
         ))}
       </span>
@@ -45,7 +45,7 @@ function SectionIcon({
 
   return (
     <ChartNetwork
-      className={cn('h-7 w-7', onColor ? 'text-white' : 'text-cerulean-blue')}
+      className={cx('h-7 w-7', onColor ? 'text-white' : 'text-cerulean-blue')}
     />
   );
 }
@@ -66,7 +66,7 @@ function CollapsedNav({ className }: { className?: string }) {
           router.push(`/${value}`);
         }
       }}
-      className={cn('flex items-center justify-center', className)}
+      className={cx('flex items-center justify-center', className)}
     >
       <Tabs.List
         aria-label={tNav('workflowLabel')}
@@ -80,16 +80,14 @@ function CollapsedNav({ className }: { className?: string }) {
               {index > 0 && (
                 <ChevronRight
                   aria-hidden
-                  className="text-muted-foreground/40 dark:text-foreground/30 h-5 w-5 shrink-0"
+                  className="h-5 w-5 shrink-0 text-current/30"
                 />
               )}
               <Tabs.Tab
                 value={section.key}
-                className={cn(
+                className={cx(
                   'focusable relative flex shrink-0 cursor-pointer items-center gap-2 rounded-xl py-2 pr-5 pl-3 text-base font-semibold transition-colors duration-200',
-                  isActive
-                    ? 'text-white'
-                    : 'text-muted-foreground hover:text-foreground dark:text-foreground/60 dark:hover:text-foreground',
+                  isActive ? 'text-white' : 'hover:text-text text-current/70',
                 )}
               >
                 {isActive && (
@@ -98,14 +96,14 @@ function CollapsedNav({ className }: { className?: string }) {
                     layoutId="workflowNavIndicator"
                     transition={{ type: 'spring', duration: 0.35, bounce: 0 }}
                     style={{ borderRadius: 12 }}
-                    className={cn(
+                    className={cx(
                       'absolute inset-0 shadow-sm',
                       sectionColorClasses[section.color],
                     )}
                   />
                 )}
                 <span
-                  className={cn(
+                  className={cx(
                     'relative z-10 flex h-9 shrink-0 items-center justify-center',
                     dualIcon ? 'w-auto px-1' : 'w-9',
                     isActive && 'rounded-lg bg-white/20',
@@ -130,7 +128,7 @@ function WorkflowCard({ section }: { section: SectionConfig }) {
   return (
     <Link
       href={`/${section.key}`}
-      className={cn(
+      className={cx(
         'group focusable flex flex-1 flex-col gap-6 rounded-3xl p-6 text-white shadow-lg transition-transform hover:-translate-y-1 hover:shadow-xl xl:min-h-56',
         sectionColorClasses[section.color],
       )}
@@ -139,7 +137,7 @@ function WorkflowCard({ section }: { section: SectionConfig }) {
         <SectionIcon section={section} onColor />
       </span>
       <div className="mt-auto flex flex-col gap-2">
-        <FancyHeading variant="h2" margin="none" className="text-xl text-white">
+        <FancyHeading level="h2" margin="none" className="text-xl text-white">
           {t(`${section.key}.label`)}
         </FancyHeading>
         <Paragraph className="text-base text-white/85">
@@ -153,7 +151,7 @@ function WorkflowCard({ section }: { section: SectionConfig }) {
 function FullCards({ className }: { className?: string }) {
   return (
     <div
-      className={cn(
+      className={cx(
         'grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:flex xl:flex-row xl:items-stretch xl:gap-3',
         className,
       )}
@@ -164,7 +162,7 @@ function FullCards({ className }: { className?: string }) {
             <ChevronRight
               aria-hidden
               strokeWidth={3}
-              className="text-foreground hidden h-8 w-8 shrink-0 self-center xl:block"
+              className="text-text hidden h-8 w-8 shrink-0 self-center xl:block"
             />
           )}
           <WorkflowCard section={section} />

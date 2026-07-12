@@ -16,7 +16,7 @@ import {
   type HTMLAttributes,
 } from 'react';
 
-import { cn } from '~/lib/utils';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 const Sheet = Root;
 
@@ -27,7 +27,7 @@ const SheetOverlay = forwardRef<
   ComponentPropsWithoutRef<typeof Overlay>
 >(({ className, ...props }, ref) => (
   <Overlay
-    className={cn(
+    className={cx(
       'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-40 bg-black/5 backdrop-blur-lg',
       className,
     )}
@@ -68,7 +68,7 @@ const SheetContent = forwardRef<
     <SheetOverlay />
     <Content
       ref={ref}
-      className={cn(sheetVariants({ side }), className)}
+      className={cx(sheetVariants({ side }), className)}
       {...props}
     >
       {children}
@@ -82,7 +82,7 @@ const SheetHeader = ({
   ...props
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn(
+    className={cx(
       'flex flex-col space-y-2 text-center sm:text-left',
       className,
     )}
@@ -96,7 +96,7 @@ const SheetFooter = ({
   ...props
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn(
+    className={cx(
       'flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2',
       className,
     )}
@@ -111,7 +111,7 @@ const SheetTitle = forwardRef<
 >(({ className, ...props }, ref) => (
   <Title
     ref={ref}
-    className={cn('text-foreground text-lg font-semibold', className)}
+    className={cx('text-text text-lg font-semibold', className)}
     {...props}
   />
 ));
@@ -123,7 +123,7 @@ const SheetDescription = forwardRef<
 >(({ className, ...props }, ref) => (
   <Description
     ref={ref}
-    className={cn('text-muted-foreground text-sm', className)}
+    className={cx('text-sm text-current/70', className)}
     {...props}
   />
 ));
