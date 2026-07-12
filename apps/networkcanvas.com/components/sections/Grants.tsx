@@ -30,36 +30,38 @@ export function Grants() {
           <ChevronLeft className="size-6" />
         </CarouselButton>
 
-        <div className="relative min-h-[22rem] flex-1 overflow-hidden">
-          <AnimatePresence custom={direction} initial={false} mode="wait">
-            <motion.a
-              key={index}
-              href={active.href}
-              target="_blank"
-              rel="noreferrer"
-              custom={direction}
-              initial={{ opacity: 0, x: direction >= 0 ? 60 : -60 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: direction >= 0 ? -60 : 60 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="focusable bg-surface tablet-landscape:p-10 flex h-full flex-col rounded-[1.75rem] p-8 shadow-xl"
-            >
-              <h3 className="font-heading text-cyber-grape text-xl font-bold">
-                {active.title}
-              </h3>
-              <p className="text-text/55 mt-3 text-sm font-bold">
-                {active.pis}
-              </p>
-              <p className="text-text/80 mt-4 text-base leading-relaxed">
-                {active.description}
-              </p>
-              <img
-                src={active.logo}
-                alt={active.logoAlt}
-                className="mt-auto h-12 w-auto self-start pt-6"
-              />
-            </motion.a>
-          </AnimatePresence>
+        <div className="relative min-h-[22rem] flex-1">
+          <div className="absolute -inset-8 overflow-hidden p-8">
+            <AnimatePresence custom={direction} initial={false} mode="wait">
+              <motion.a
+                key={index}
+                href={active.href}
+                target="_blank"
+                rel="noreferrer"
+                custom={direction}
+                initial={{ opacity: 0, x: direction >= 0 ? 60 : -60 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: direction >= 0 ? -60 : 60 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="focusable bg-surface tablet-landscape:p-10 flex h-full flex-col rounded-[1.75rem] p-8 shadow-xl"
+              >
+                <h3 className="font-heading text-cyber-grape text-xl font-bold">
+                  {active.title}
+                </h3>
+                <p className="text-text/55 mt-3 text-sm font-bold">
+                  {active.pis}
+                </p>
+                <p className="text-text/80 mt-4 text-base leading-relaxed">
+                  {active.description}
+                </p>
+                <img
+                  src={active.logo}
+                  alt={active.logoAlt}
+                  className="mt-auto h-12 w-auto self-start pt-6"
+                />
+              </motion.a>
+            </AnimatePresence>
+          </div>
         </div>
 
         <CarouselButton label="Next grant" onClick={() => paginate(1)}>

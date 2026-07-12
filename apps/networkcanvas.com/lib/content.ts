@@ -25,6 +25,9 @@ export const externalLinks = {
   terms:
     'https://assets.networkcanvas.com/public/files/Website/terms-and-conditions.txt',
   privacy: 'https://assets.networkcanvas.com/public/files/Website/privacy.txt',
+  architectApp: 'https://architect.networkcanvas.com/',
+  interviewerApp: 'https://interviewer.networkcanvas.com/',
+  frescoApp: 'https://fresco-sandbox.networkcanvas.com/',
 } as const;
 
 export const navLinks = [
@@ -57,7 +60,7 @@ export const tools: Tool[] = [
     name: 'Architect',
     description:
       'A desktop (macOS, Windows, Linux) tool for visually designing Network Canvas interviews. Architect allows subject experts to focus on the design and implementation of their study, without needing to learn complex new technology.',
-    cta: { label: 'Download Architect', href: '/download' },
+    cta: { label: 'Open Architect', href: externalLinks.architectApp },
     color: 'sea-green',
     variant: 'architect',
   },
@@ -65,7 +68,7 @@ export const tools: Tool[] = [
     name: 'Interviewer',
     description:
       'A desktop/tablet app for administering Network Canvas interviews in the field. Interviewer provides minimalist, participant-centric interfaces for all the data collection tasks associated with personal network interviewing.',
-    cta: { label: 'Download Interviewer', href: '/download' },
+    cta: { label: 'Open Interviewer', href: externalLinks.interviewerApp },
     color: 'neon-coral',
     variant: 'interviewer',
   },
@@ -73,7 +76,7 @@ export const tools: Tool[] = [
     name: 'Fresco',
     description:
       'Bringing Network Canvas interviews to the web! Fresco is a pilot project that allows researchers to conduct Network Canvas interviews in a web browser.',
-    cta: { label: 'Learn More', href: externalLinks.fresco },
+    cta: { label: 'Open Fresco', href: externalLinks.frescoApp },
     color: 'slate-blue',
     variant: 'fresco',
   },

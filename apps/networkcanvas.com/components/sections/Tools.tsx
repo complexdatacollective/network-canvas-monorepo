@@ -6,13 +6,22 @@ import { SectionHeading } from '~/components/ui/SectionHeading';
 import { tools } from '~/lib/content';
 
 const accents = {
-  'sea-green': { text: 'text-sea-green', tone: 'sea-green' as const },
-  'neon-coral': { text: 'text-neon-coral', tone: 'neon-coral' as const },
+  'sea-green': {
+    text: 'text-sea-green',
+    tone: 'sea-green' as const,
+  },
+  'neon-coral': {
+    text: 'text-neon-coral',
+    tone: 'neon-coral' as const,
+  },
   'cerulean-blue': {
     text: 'text-cerulean-blue',
     tone: 'cerulean-blue' as const,
   },
-  'slate-blue': { text: 'text-slate-blue', tone: 'slate-blue' as const },
+  'slate-blue': {
+    text: 'text-slate-blue',
+    tone: 'slate-blue' as const,
+  },
 };
 
 export function Tools() {
@@ -52,7 +61,14 @@ export function Tools() {
                 </PillLink>
               </div>
               <div className="tablet-landscape:order-2 order-1">
-                <DeviceMockup variant={tool.variant} />
+                <a
+                  href={tool.cta.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="focusable block rounded-[1.75rem]"
+                >
+                  <DeviceMockup variant={tool.variant} />
+                </a>
               </div>
             </Reveal>
           );
