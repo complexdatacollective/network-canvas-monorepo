@@ -18,14 +18,14 @@
 }
 
 .DocSearch-Button {
-  --docsearch-primary-color: hsl(var(--primary));
-  --docsearch-text-color: hsl(var(--foreground));
+  --docsearch-primary-color: var(--primary);
+  --docsearch-text-color: var(--text);
   --docsearch-spacing: 2.5rem;
   --docsearch-icon-stroke-width: 2px;
   --docsearch-highlight-color: var(--docsearch-primary-color);
   --docsearch-muted-color: rgb(150, 159, 175);
-  --docsearch-container-background: hsl(var(--background));
-  --docsearch-logo-color: hsl(var(--primary));
+  --docsearch-container-background: var(--background);
+  --docsearch-logo-color: var(--primary);
 
   /* modal */
   --docsearch-modal-width: 560px;
@@ -36,8 +36,8 @@
 
   /* searchbox */
   --docsearch-searchbox-height: 2.5rem;
-  --docsearch-searchbox-background: hsl(var(--input));
-  --docsearch-searchbox-focus-background: hsl(var(--input));
+  --docsearch-searchbox-background: var(--input);
+  --docsearch-searchbox-focus-background: var(--input);
   --docsearch-searchbox-shadow: none;
 
   /* hit */
@@ -68,7 +68,7 @@
   @apply bg-input! m-0! h-10! w-full! rounded-sm! px-2!;
   @apply focusable!;
 
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--outline);
   font-weight: inherit;
   color: inherit;
 
