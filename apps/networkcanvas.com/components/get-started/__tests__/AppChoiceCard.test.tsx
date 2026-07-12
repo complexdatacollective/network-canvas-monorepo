@@ -12,8 +12,11 @@ const fresco = webApps.find((app) => app.id === 'fresco');
 const architectClassic = classicApps.find(
   (app) => app.id === 'architect-classic',
 );
+const interviewerClassic = classicApps.find(
+  (app) => app.id === 'interviewer-classic',
+);
 
-if (!architect || !fresco || !architectClassic) {
+if (!architect || !fresco || !architectClassic || !interviewerClassic) {
   throw new Error('Expected Get Started app test data is missing.');
 }
 
@@ -62,5 +65,28 @@ describe('AppChoiceCard', () => {
     expect(
       screen.getByRole('link', { name: 'Linux for Architect Classic' }),
     ).toBeInTheDocument();
+  });
+
+  it('shows a decorative icon for each Classic platform', () => {
+    const platformIcons = [
+      ['Apple Silicon', 'lucide-apple'],
+      ['Apple Intel', 'lucide-apple'],
+      ['Windows', 'lucide-monitor'],
+      ['Linux', 'lucide-terminal'],
+    ];
+
+    for (const app of [architectClassic, interviewerClassic]) {
+      render(<AppChoiceCard app={app} />);
+
+      for (const [platform, iconClass] of platformIcons) {
+        const link = screen.getByRole('link', {
+          name: `${platform} for ${app.name}`,
+        });
+        const icon = link.querySelector(`.${iconClass}`);
+
+        expect(icon).toBeInTheDocument();
+        expect(icon).toHaveAttribute('aria-hidden', 'true');
+      }
+    }
   });
 });

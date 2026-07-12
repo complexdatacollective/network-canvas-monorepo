@@ -1,8 +1,19 @@
-import { Check, ExternalLink } from 'lucide-react';
+import {
+  Apple,
+  Check,
+  ExternalLink,
+  type LucideIcon,
+  Monitor,
+  Terminal,
+} from 'lucide-react';
 
 import { PillLink } from '~/components/ui/PillLink';
 import { cn } from '~/lib/cn';
-import { type classicApps, type webApps } from '~/lib/getStarted';
+import {
+  type classicApps,
+  type PlatformId,
+  type webApps,
+} from '~/lib/getStarted';
 
 type AppRecord = (typeof webApps)[number] | (typeof classicApps)[number];
 
@@ -11,6 +22,13 @@ const treatmentClasses = {
   fresco: 'bg-slate-blue/10 text-cyber-grape backdrop-blur-md elevation-low',
   classic: 'bg-white/55 text-cyber-grape backdrop-blur-md elevation-low',
 };
+
+const platformIcons = {
+  'apple-silicon': Apple,
+  'apple-intel': Apple,
+  'windows': Monitor,
+  'linux': Terminal,
+} satisfies Record<PlatformId, LucideIcon>;
 
 function AppActions({ app }: { app: (typeof webApps)[number] }) {
   return (
@@ -37,19 +55,24 @@ function PlatformActions({ app }: { app: (typeof classicApps)[number] }) {
         Download version {app.version}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        {app.platforms.map((platform) => (
-          <a
-            key={platform.id}
-            href={platform.href}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`${platform.label} for ${app.name}`}
-            className="focusable border-cyber-grape/20 font-heading inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-sm font-bold transition-transform hover:-translate-y-0.5 hover:bg-white focus-visible:-translate-y-0.5 motion-reduce:transform-none"
-          >
-            {platform.label}
-            <ExternalLink aria-hidden className="size-3.5" />
-          </a>
-        ))}
+        {app.platforms.map((platform) => {
+          const PlatformIcon = platformIcons[platform.id];
+
+          return (
+            <a
+              key={platform.id}
+              href={platform.href}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`${platform.label} for ${app.name}`}
+              className="focusable border-cyber-grape/20 font-heading inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-sm font-bold transition-transform hover:-translate-y-0.5 hover:bg-white focus-visible:-translate-y-0.5 motion-reduce:transform-none"
+            >
+              <PlatformIcon aria-hidden className="size-4" />
+              {platform.label}
+              <ExternalLink aria-hidden className="size-3.5" />
+            </a>
+          );
+        })}
       </div>
     </div>
   );
