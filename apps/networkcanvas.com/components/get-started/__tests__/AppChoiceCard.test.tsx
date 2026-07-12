@@ -30,6 +30,31 @@ describe('AppChoiceCard', () => {
     );
   });
 
+  it('uses Fresco typography and Badge for the featured app', () => {
+    render(<AppChoiceCard app={architect} />);
+
+    const heading = screen.getByRole('heading', {
+      level: 3,
+      name: architect.name,
+    });
+    const description = screen.getByText(architect.description);
+    const status = screen.getByText(architect.status);
+
+    expect(heading).toHaveClass('scroll-m-20', 'm-0!', 'text-3xl');
+    expect(description).toHaveClass('font-body', 'mt-5');
+    expect(description).not.toHaveClass('not-last:mb-[1em]');
+    expect(status.tagName).toBe('DIV');
+    expect(status).toHaveClass(
+      'inline-flex',
+      'border-0',
+      'px-3',
+      'py-1.5',
+      'bg-white/15',
+      'text-white',
+    );
+    expect(status).toHaveTextContent(architect.status);
+  });
+
   it('uses the Classic treatment declared by Classic app data', () => {
     render(<AppChoiceCard app={architectClassic} />);
 
@@ -45,6 +70,11 @@ describe('AppChoiceCard', () => {
     expect(screen.getByRole('article')).toHaveClass(
       'bg-slate-blue/10',
       'backdrop-blur-md',
+    );
+
+    expect(screen.getByText(fresco.status)).toHaveClass(
+      'bg-cyber-grape/10',
+      'text-cyber-grape',
     );
   });
 

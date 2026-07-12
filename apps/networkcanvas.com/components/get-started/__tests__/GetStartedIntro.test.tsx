@@ -101,6 +101,24 @@ describe('GetStartedIntro', () => {
     ).toHaveClass('focusable');
   });
 
+  it('uses Fresco typography without changing the intro spacing', () => {
+    render(<GetStartedIntro />);
+
+    const heading = screen.getByRole('heading', {
+      level: 1,
+      name: 'What would you like to do?',
+    });
+    const eyebrow = screen.getByText('Choose your workflow');
+    const description = screen.getByText(
+      'Start with your research task, then choose the Network Canvas app that fits your study.',
+    );
+
+    expect(heading).toHaveClass('scroll-m-20', 'mt-5!', 'text-4xl');
+    expect(eyebrow).toHaveClass('text-pretty', 'opacity-100', 'font-heading');
+    expect(description).toHaveClass('font-body', 'mt-6', 'text-lg');
+    expect(description).not.toHaveClass('not-last:mb-[1em]');
+  });
+
   it('keeps reduced-motion content visible without scheduling an entrance', () => {
     motionPreference.reduced = true;
     const { container } = render(<GetStartedIntro />);

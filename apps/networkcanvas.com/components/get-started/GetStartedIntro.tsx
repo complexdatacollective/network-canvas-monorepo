@@ -4,6 +4,8 @@ import { ArrowDownRight } from 'lucide-react';
 import { motion, useAnimationControls, useReducedMotion } from 'motion/react';
 import { useLayoutEffect, useRef } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
 import { createHeroEntrance } from '~/lib/heroEntrance';
@@ -57,16 +59,27 @@ export function GetStartedIntro() {
             variants={entrance.itemVariants}
             className="mx-auto max-w-4xl px-6 text-center"
           >
-            <p className="font-heading text-neon-coral text-sm font-bold tracking-[0.16em] uppercase">
+            <Paragraph
+              margin="none"
+              className="font-heading text-neon-coral text-sm font-bold tracking-[0.16em] uppercase"
+            >
               Choose your workflow
-            </p>
-            <h1 className="font-heading text-cyber-grape mt-5 text-4xl font-black tracking-tight text-balance">
+            </Paragraph>
+            <Heading
+              level="h1"
+              margin="none"
+              className="font-heading text-cyber-grape mt-5! text-4xl font-black tracking-tight text-balance"
+            >
               What would you like to do?
-            </h1>
-            <p className="text-text/75 mx-auto mt-6 max-w-2xl text-lg text-pretty">
+            </Heading>
+            <Paragraph
+              intent="lead"
+              margin="none"
+              className="text-text/75 mx-auto mt-6 max-w-2xl text-lg text-pretty"
+            >
               Start with your research task, then choose the Network Canvas app
               that fits your study.
-            </p>
+            </Paragraph>
           </motion.div>
 
           <Container className="tablet-portrait:grid-cols-2 mt-14 grid gap-6">

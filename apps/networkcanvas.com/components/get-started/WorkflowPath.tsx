@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { AppChoiceCard } from '~/components/get-started/AppChoiceCard';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
@@ -47,15 +49,26 @@ export function WorkflowPath({
       className="tablet-portrait:py-24 scroll-mt-8 py-16"
     >
       <Reveal className="max-w-3xl">
-        <p className="font-heading text-neon-coral text-sm font-bold tracking-[0.14em] uppercase">
+        <Paragraph
+          margin="none"
+          className="font-heading text-neon-coral text-sm font-bold tracking-[0.14em] uppercase"
+        >
           {content.label}
-        </p>
-        <h2 className="font-heading text-cyber-grape mt-4 text-4xl font-black tracking-tight text-balance">
+        </Paragraph>
+        <Heading
+          level="h2"
+          margin="none"
+          className="font-heading text-cyber-grape mt-4! text-4xl font-black tracking-tight text-balance"
+        >
           {content.heading}
-        </h2>
-        <p className="text-text/75 mt-5 text-lg text-pretty">
+        </Heading>
+        <Paragraph
+          intent="lead"
+          margin="none"
+          className="text-text/75 mt-5 text-lg text-pretty"
+        >
           {content.description}
-        </p>
+        </Paragraph>
         {compatibilityNotice}
       </Reveal>
 

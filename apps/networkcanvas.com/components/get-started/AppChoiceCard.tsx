@@ -7,6 +7,9 @@ import {
   Terminal,
 } from 'lucide-react';
 
+import { Badge } from '@codaco/fresco-ui/Badge';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { PillLink } from '~/components/ui/PillLink';
 import { cn } from '~/lib/cn';
 import {
@@ -51,9 +54,12 @@ function AppActions({ app }: { app: (typeof webApps)[number] }) {
 function PlatformActions({ app }: { app: (typeof classicApps)[number] }) {
   return (
     <div className="mt-8">
-      <p className="font-heading text-xs font-bold tracking-[0.12em] uppercase">
+      <Paragraph
+        margin="none"
+        className="font-heading text-xs font-bold tracking-[0.12em] uppercase"
+      >
         Download version {app.version}
-      </p>
+      </Paragraph>
       <div className="mt-3 flex flex-wrap gap-2">
         {app.platforms.map((platform) => {
           const PlatformIcon = platformIcons[platform.id];
@@ -89,33 +95,42 @@ export function AppChoiceCard({ app }: { app: AppRecord }) {
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <h3 className="font-heading text-3xl font-black tracking-tight">
+        <Heading
+          level="h3"
+          margin="none"
+          className="font-heading text-3xl font-black tracking-tight"
+        >
           {app.name}
-        </h3>
-        <span
+        </Heading>
+        <Badge
+          variant="outline"
           className={cn(
-            'rounded-full px-3 py-1.5 text-xs font-bold tracking-wide',
+            'rounded-full border-0 px-3 py-1.5 text-xs font-bold tracking-wide',
             featured
               ? 'bg-white/15 text-white'
               : 'bg-cyber-grape/10 text-cyber-grape',
           )}
         >
           {app.status}
-        </span>
+        </Badge>
       </div>
 
-      <p
+      <Paragraph
+        margin="none"
         className={cn(
           'mt-5 text-base',
           featured ? 'text-white/85' : 'text-text/80',
         )}
       >
         {app.description}
-      </p>
+      </Paragraph>
 
-      <p className="font-heading mt-7 text-xs font-bold tracking-[0.12em] uppercase">
+      <Paragraph
+        margin="none"
+        className="font-heading mt-7 text-xs font-bold tracking-[0.12em] uppercase"
+      >
         Best for
-      </p>
+      </Paragraph>
       <ul className="mt-3 space-y-2.5">
         {app.bestFor.map((item) => (
           <li key={item} className="flex gap-3 text-sm leading-relaxed">

@@ -1,4 +1,5 @@
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { type compatibilityWarning } from '~/lib/getStarted';
 
 type CompatibilityNoticeProps = {
@@ -8,11 +9,9 @@ type CompatibilityNoticeProps = {
 export function CompatibilityNotice({ notice }: CompatibilityNoticeProps) {
   return (
     <Alert variant="warning">
+      <AlertTitle>{notice.title}</AlertTitle>
       <AlertDescription>
-        <p>
-          <strong>{notice.title}</strong>
-        </p>
-        <p>{notice.description}</p>
+        <Paragraph margin="none">{notice.description}</Paragraph>
       </AlertDescription>
     </Alert>
   );
