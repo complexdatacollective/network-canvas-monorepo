@@ -44,7 +44,8 @@ e2e/
 
 `playwright.config.ts`'s `webServer` runs `vite preview` on port **4180**
 against `dist/`, which `test:e2e` (via `run.sh`) and `test:e2e:headed` both
-build first with `build:web`. The dev server isn't usable here: it has no
+build first with `turbo run build` (the app's `build` also runs the PWA
+integrity check). The dev server isn't usable here: it has no
 service worker, and Vite's dev-time `optimizeDeps` re-bundle can wipe app
 state mid-test. Each test gets a fresh browser context (Playwright default),
 so IndexedDB (`interviewer`) and `localStorage` are isolated per test with no

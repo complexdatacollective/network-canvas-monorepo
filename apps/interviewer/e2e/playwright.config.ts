@@ -44,9 +44,10 @@ export default defineConfig({
 
   webServer: {
     // Serve the built PWA (not the dev server): the SW only exists in the
-    // build, assert-pwa-build gates this exact output, and the dev server's
-    // optimizeDeps re-bundle wipes app state mid-test. build:web runs upstream
-    // in run.sh / test:e2e:headed, so this assumes dist/ exists.
+    // build, the app's build runs a PWA-integrity check on this exact output,
+    // and the dev server's optimizeDeps re-bundle wipes app state mid-test. The
+    // build runs upstream in run.sh / test:e2e:headed, so this assumes dist/
+    // exists.
     command:
       'pnpm --filter @codaco/interviewer exec vite preview --port 4180 --strictPort',
     port: 4180,
