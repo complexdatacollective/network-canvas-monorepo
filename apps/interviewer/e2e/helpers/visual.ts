@@ -43,24 +43,39 @@ export function makeCapture(page: Page): CaptureFn {
     await page.evaluate(async () => {
       const raf = () =>
         new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      // Sample from #root (the app mount) — the interviewer app has NO <main>
+      // landmark (only the embedded interview engine does), so a 'main *'
+      // selector would match nothing on plain routes like /data and let the
+      // loop exit in one frame without waiting for e.g. DataView's spring-
+      // physics table entrance. Base UI dialogs portal OUTSIDE #root, so keep
+      // the explicit [role="dialog"] clause. Cap generously (#root spans the
+      // whole app) so a deep, still-animating element isn't sampled off the end.
       const sample = () =>
-        Array.from(document.querySelectorAll('main *, [role="dialog"] *'))
-          .slice(0, 600)
+        Array.from(document.querySelectorAll('#root *, [role="dialog"] *'))
+          .slice(0, 1500)
           .map((el) => {
             const r = el.getBoundingClientRect();
             return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
           })
           .join('|');
-      // Wait for two consecutive frames with identical (whole-pixel) geometry:
-      // that is spring rest. Cap at ~120 frames (~2s) so the low-stiffness deck
-      // fan has time to fully settle, while a perpetually-moving element still
-      // can't hang the capture — toHaveScreenshot's own frame-matching guards
-      // the fallback.
+      // Wait until geometry is identical (whole-pixel) across several
+      // CONSECUTIVE frames — that is spring rest. Requiring more than one
+      // stable pair guards against a janky/dropped frame under CPU load
+      // briefly matching mid-animation. Cap at ~150 frames (~2.5s) so a
+      // perpetually-moving element can't hang the capture; toHaveScreenshot's
+      // own frame-matching guards the fallback.
+      const REQUIRED_STABLE = 4;
       let prev = '';
-      for (let i = 0; i < 120; i++) {
+      let stable = 0;
+      for (let i = 0; i < 150; i++) {
         await raf();
         const cur = sample();
-        if (cur === prev) return;
+        if (cur === prev) {
+          stable += 1;
+          if (stable >= REQUIRED_STABLE) return;
+        } else {
+          stable = 0;
+        }
         prev = cur;
       }
     });
