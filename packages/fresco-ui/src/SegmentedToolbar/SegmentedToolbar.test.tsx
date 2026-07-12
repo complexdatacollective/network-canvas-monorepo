@@ -244,21 +244,24 @@ describe('SegmentedToolbar — hosted (render) button', () => {
 });
 
 describe('SegmentedToolbar — colour', () => {
-  it('forwards a segment className (e.g. named theme colours) to the control', () => {
+  it('uses the supplied variant without a text-button hover override', () => {
     const items: ToolbarSegment[] = [
       {
         type: 'button',
         id: 'delete',
         label: 'Delete',
         icon: <Trash2 />,
+        variant: 'default',
         className: 'bg-tomato text-white',
         onClick: vi.fn(),
       },
     ];
     render(<SegmentedToolbar label="Tools" items={items} />);
+
     const button = screen.getByRole('button', { name: 'Delete' });
     expect(button).toHaveClass('bg-tomato');
     expect(button).toHaveClass('text-white');
+    expect(button).not.toHaveClass('hover:enabled:bg-(--component-text)');
   });
 });
 
