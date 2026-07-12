@@ -17,6 +17,7 @@ test.describe('settings', () => {
     await page.getByRole('tab', { name: 'Data export' }).click();
     const csv = page.getByRole('switch', { name: 'Export CSV' });
     const before = await csv.getAttribute('aria-checked');
+    expect(before).not.toBeNull();
     await csv.click();
     await expect(csv).not.toHaveAttribute('aria-checked', before ?? 'true');
     await capture('settings-data-export');
@@ -35,16 +36,26 @@ test.describe('settings', () => {
   }) => {
     await openSettings(page);
     await page.getByRole('tab', { name: 'Data export' }).click();
-    await page
-      .getByRole('switch', {
-        name: 'Export node positions as screen-coordinate pixels',
-      })
-      .click();
+    const screenLayoutToggle = page.getByRole('switch', {
+      name: 'Export node positions as screen-coordinate pixels',
+    });
+    const before = await screenLayoutToggle.getAttribute('aria-checked');
+    expect(before).not.toBeNull();
+    await screenLayoutToggle.click();
+    await expect(screenLayoutToggle).not.toHaveAttribute(
+      'aria-checked',
+      before ?? 'true',
+    );
     const width = page.getByRole('spinbutton', { name: 'Screen layout width' });
     await width.fill('800');
     await page.reload();
     await openSettings(page);
     await page.getByRole('tab', { name: 'Data export' }).click();
+    await expect(
+      page.getByRole('switch', {
+        name: 'Export node positions as screen-coordinate pixels',
+      }),
+    ).not.toHaveAttribute('aria-checked', before ?? 'true');
     await expect(
       page.getByRole('spinbutton', { name: 'Screen layout width' }),
     ).toHaveValue('800');
@@ -55,6 +66,7 @@ test.describe('settings', () => {
     await page.getByRole('tab', { name: 'Interview' }).click();
     const toggle = page.getByRole('switch', { name: 'Allow stage navigation' });
     const before = await toggle.getAttribute('aria-checked');
+    expect(before).not.toBeNull();
     await toggle.click();
     await page.reload();
     await openSettings(page);
@@ -76,14 +88,36 @@ test.describe('settings', () => {
     await capture('settings-about');
   });
 
-  test('Security section is hidden in none mode (settings gated on a vault)', async ({
+  test('Security tab renders step-up controls before a vault is configured', async ({
     page,
   }) => {
-    // In `none` mode the Security tab's controls require an enrolled vault;
-    // confirm the step-up flags are only reachable once a mode is set. Here we
-    // assert the About/Data export tabs render, documenting the none-mode shape.
+    // NAV_ITEMS always includes the Security tab (it's not conditionally
+    // rendered), and SettingsDialog only gates SecurityBehaviorControls (the
+    // step-up toggles + auto-lock timeout) behind `auth.mode !== 'none'`.
+    // A fresh browser tab reaches Home without ever enrolling a vault, so
+    // `auth.mode` is `undefined` there — not the literal string `'none'` —
+    // and `undefined !== 'none'` is true, so the gate does NOT hide these
+    // controls pre-setup. (ManageAuthenticator reports "Mode: unknown" in
+    // this state, distinct from an explicitly-enrolled `mode: 'none'` vault,
+    // which is the one case that *would* hide them.) Assert the real DOM
+    // shape rather than the "hidden pre-setup" assumption the test title
+    // used to make.
     await openSettings(page);
-    await expect(page.getByRole('tab', { name: 'About' })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Data export' })).toBeVisible();
+    await page.getByRole('tab', { name: 'Security' }).click();
+    await expect(
+      page.getByRole('switch', {
+        name: 'Require unlock when entering an interview',
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('switch', {
+        name: 'Require unlock when exiting an interview',
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('switch', {
+        name: 'Require unlock before exporting data',
+      }),
+    ).toBeVisible();
   });
 });
