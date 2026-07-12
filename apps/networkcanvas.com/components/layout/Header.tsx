@@ -7,11 +7,11 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import { ProjectsMenu } from '~/components/layout/ProjectsMenu';
+import { SoftwareMenu } from '~/components/layout/SoftwareMenu';
 import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { Logo } from '~/components/ui/Logo';
-import { navLinks, projects } from '~/lib/content';
+import { navLinks, tools } from '~/lib/content';
 import { GET_STARTED_PATH } from '~/lib/getStarted';
 
 const linkClasses =
@@ -55,18 +55,18 @@ function MobileLinks({ onNavigate }: { onNavigate: () => void }) {
 
       <div className="flex flex-col gap-3">
         <span className="font-heading text-cyber-grape/60 text-xs font-bold tracking-[0.12em] uppercase">
-          Projects
+          Software
         </span>
-        {projects.map((project) => (
+        {tools.map((tool) => (
           <a
-            key={project.name}
-            href={project.href}
+            key={tool.name}
+            href={tool.cta.href}
             target="_blank"
             rel="noreferrer"
             onClick={onNavigate}
             className={`${linkClasses} pl-3`}
           >
-            {project.name}
+            {tool.name}
           </a>
         ))}
       </div>
@@ -86,7 +86,7 @@ export function Header({ entranceVariants }: { entranceVariants?: Variants }) {
 
         <nav className="tablet-landscape:flex hidden items-center gap-9">
           <DesktopLinks />
-          <ProjectsMenu />
+          <SoftwareMenu />
           <ButtonLink
             href={GET_STARTED_PATH}
             color="primary"

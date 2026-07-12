@@ -14,10 +14,6 @@ export const externalLinks = {
   twitter: 'https://twitter.com/networkcanvas?lang=en',
   youtube: 'https://www.youtube.com/@complexdatacollective2923',
   youtubeChannel: 'https://www.youtube.com/channel/UC3uFCh2HlR8iqiYhRNomUqQ',
-  fresco: 'https://documentation.networkcanvas.com/en/fresco',
-  partnerServices: 'https://partnerservices.networkcanvas.com',
-  studio:
-    'https://community.networkcanvas.com/t/introducing-network-canvas-studio-an-exciting-new-direction/95',
   publications: 'https://networkcanvas.com/publications/',
   shareYourWork:
     'https://community.networkcanvas.com/t/share-your-work-using-network-canvas/149',
@@ -135,41 +131,6 @@ export const principles: Principle[] = [
       'We have implemented a community driven development program, and are eager to encourage feature development or other contributions from any interested third parties.',
     ],
     href: 'https://documentation.networkcanvas.com/en/desktop/project-information/project-overview#open-source-development',
-  },
-];
-
-export type Project = {
-  name: string;
-  description: string;
-  href: string;
-  illustration: string;
-  color: 'slate-blue' | 'cerulean-blue' | 'neon-coral';
-};
-
-export const projects: Project[] = [
-  {
-    name: 'Partner Services',
-    description:
-      'A project to map the needs of Partner Services, and evaluate the utility of Network Canvas as a public health tool to aid disease investigation and increase data quality.',
-    href: externalLinks.partnerServices,
-    illustration: '/images/illustrations/partner-services.svg',
-    color: 'slate-blue',
-  },
-  {
-    name: 'Fresco',
-    description:
-      'Bringing Network Canvas interviews to the web! Fresco is a pilot project that allows researchers to conduct Network Canvas interviews in a web browser.',
-    href: externalLinks.fresco,
-    illustration: '/images/illustrations/fresco.svg',
-    color: 'cerulean-blue',
-  },
-  {
-    name: 'Studio',
-    description:
-      'Taking Network Canvas to the cloud for the first time, Studio will enable remote interview deployment and collaborative protocol building in a browser, while also providing a data analysis API.',
-    href: externalLinks.studio,
-    illustration: '/images/illustrations/studio.svg',
-    color: 'neon-coral',
   },
 ];
 

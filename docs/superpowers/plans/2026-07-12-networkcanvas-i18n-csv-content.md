@@ -118,7 +118,7 @@ Turbo, oxlint, and oxfmt.
   and `turbo.json`.
 - `apps/networkcanvas.com/lib/content.ts` becomes locale-neutral configuration;
   the four dynamic arrays and rendered labels leave this file.
-- `Header.tsx`, `ProjectsMenu.tsx`, `Footer.tsx`, `ButtonLink.tsx`, and
+- `Header.tsx`, `SoftwareMenu.tsx`, `Footer.tsx`, `ButtonLink.tsx`, and
   `PillLink.tsx` use localized copy/navigation.
 - `GetStartedIntro.tsx`, `WorkflowPath.tsx`, `AppChoiceCard.tsx`, and
   `CompatibilityNotice.tsx` consume the `GetStarted` namespace without changing
@@ -853,9 +853,9 @@ git commit -m "feat(website): translate home page content"
 - Create: `apps/networkcanvas.com/components/layout/LanguageSelector.tsx`
 - Create: `apps/networkcanvas.com/components/layout/__tests__/LanguageSelector.test.tsx`
 - Modify: `apps/networkcanvas.com/components/layout/Header.tsx`
-- Modify: `apps/networkcanvas.com/components/layout/ProjectsMenu.tsx`
+- Modify: `apps/networkcanvas.com/components/layout/SoftwareMenu.tsx`
 - Modify: `apps/networkcanvas.com/components/layout/Footer.tsx`
-- Modify: `apps/networkcanvas.com/components/layout/__tests__/Header.test.tsx`
+- Create: `apps/networkcanvas.com/components/layout/__tests__/Header.test.tsx`
 - Modify: `apps/networkcanvas.com/components/ui/ButtonLink.tsx`
 - Modify: `apps/networkcanvas.com/components/ui/PillLink.tsx`
 - Modify: `apps/networkcanvas.com/messages/en.json`
@@ -913,12 +913,13 @@ existing `focusable` utility. Do not use a select that hides both language names
 
 - [ ] **Step 4: Localize and preserve navigation**
 
-Add `Navigation` keys for `home`, `community`, `documentation`, `projects`,
-`getStarted`, `toggleMenu`, `openMenu`, `closeMenu`, and each project
-description and action. Add `Footer` keys for `terms`, `privacy`, `copyright`,
-and social labels. English values match the current UI; Spanish uses `Inicio`,
-`Comunidad`, `Documentación`, `Proyectos`, `Comenzar`, `Términos de uso`, and
-`Política de privacidad` with complete translated descriptions and menu labels.
+Add `Navigation` keys for `home`, `community`, `documentation`, `software`,
+`getStarted`, `toggleMenu`, `openMenu`, and `closeMenu`. The localized software
+menu uses the Architect, Interviewer, and Fresco tool labels, descriptions, and
+actions. Add `Footer` keys for `terms`, `privacy`, `copyright`, and social labels.
+English values match the current UI; Spanish uses `Inicio`, `Comunidad`,
+`Documentación`, `Software`, `Comenzar`, `Términos de uso`, and `Política de
+privacidad` with complete translated descriptions and menu labels.
 
 Change config arrays to carry IDs and shared hrefs. Use the locale-aware Link for
 home and Get Started, ordinary anchors for external destinations, and translated

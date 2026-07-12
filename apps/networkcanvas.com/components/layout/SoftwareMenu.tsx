@@ -6,16 +6,18 @@ import { motion } from 'motion/react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { DeviceMockup } from '~/components/ui/DeviceMockup';
 import { cn } from '~/lib/cn';
-import type { Project } from '~/lib/content';
-import { projects } from '~/lib/content';
+import type { Tool } from '~/lib/content';
+import { tools } from '~/lib/content';
 
 const MotionParagraph = motion.create(Paragraph);
 
-const gradients: Record<Project['color'], string> = {
+const gradients: Record<Tool['color'], string> = {
+  'sea-green': 'from-sea-green to-cerulean-blue',
+  'neon-coral': 'from-neon-coral to-purple-pizazz',
   'slate-blue': 'from-slate-blue to-cyber-grape',
   'cerulean-blue': 'from-cerulean-blue to-slate-blue',
-  'neon-coral': 'from-neon-coral to-purple-pizazz',
 };
 
 const cardVariants = {
@@ -33,10 +35,10 @@ const descriptionVariants = {
   hover: { opacity: 1, height: 'auto', marginTop: 10 },
 };
 
-function ProjectCard({ project }: { project: Project }) {
+function SoftwareCard({ tool }: { tool: Tool }) {
   return (
     <NavigationMenu.Link
-      href={project.href}
+      href={tool.cta.href}
       target="_blank"
       rel="noreferrer"
       closeOnClick
@@ -58,17 +60,16 @@ function ProjectCard({ project }: { project: Project }) {
         transition={{ type: 'spring', stiffness: 320, damping: 26 }}
         className={cn(
           'relative flex h-72 w-56 flex-col justify-end overflow-hidden rounded-[1.75rem] bg-linear-to-br p-6 text-white shadow-lg',
-          gradients[project.color],
+          gradients[tool.color],
         )}
       >
-        <motion.img
-          src={project.illustration}
-          alt=""
-          aria-hidden
+        <motion.div
           variants={imageVariants}
           transition={{ type: 'spring', stiffness: 220, damping: 20 }}
-          className="pointer-events-none absolute inset-x-0 top-5 mx-auto size-32 drop-shadow-xl select-none"
-        />
+          className="pointer-events-none absolute inset-x-5 top-5 select-none"
+        >
+          <DeviceMockup variant={tool.variant} />
+        </motion.div>
 
         {/* Scrim keeps the title and description legible over the artwork. */}
         <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/30 via-black/5 to-transparent" />
@@ -79,7 +80,7 @@ function ProjectCard({ project }: { project: Project }) {
             margin="none"
             className="font-heading text-2xl font-bold"
           >
-            {project.name}
+            {tool.name}
           </Heading>
           <MotionParagraph
             margin="none"
@@ -87,10 +88,10 @@ function ProjectCard({ project }: { project: Project }) {
             transition={{ duration: 0.28, ease: 'easeOut' }}
             className="[display:-webkit-box] overflow-hidden text-sm leading-relaxed text-white/90 [-webkit-box-orient:vertical] [-webkit-line-clamp:4]"
           >
-            {project.description}
+            {tool.description}
           </MotionParagraph>
           <span className="font-heading mt-3 inline-flex items-center gap-1 text-xs font-bold tracking-[0.12em] uppercase">
-            Learn more
+            {tool.cta.label}
             <ChevronDown className="size-3.5 -rotate-90" />
           </span>
         </div>
@@ -100,14 +101,14 @@ function ProjectCard({ project }: { project: Project }) {
 }
 
 /**
- * The desktop "Projects" navigation entry. Hovering (or focusing) the trigger
- * reveals a popover of project cards built on Base UI's Navigation Menu, with
+ * The desktop "Software" navigation entry. Hovering (or focusing) the trigger
+ * reveals a popover of software cards built on Base UI's Navigation Menu, with
  * Framer Motion driving the per-card hover reveal of each description.
  *
  * Rendered as a `<div>` rather than its default `<nav>` so it can be embedded
  * inside the header's existing `<nav>` without nesting landmark regions.
  */
-export function ProjectsMenu() {
+export function SoftwareMenu() {
   return (
     <NavigationMenu.Root
       delay={100}
@@ -118,14 +119,14 @@ export function ProjectsMenu() {
       <NavigationMenu.List className="flex">
         <NavigationMenu.Item>
           <NavigationMenu.Trigger className="focusable font-heading text-cyber-grape hover:text-neon-coral data-[popup-open]:text-neon-coral group flex items-center gap-1 text-sm font-bold tracking-[0.12em] uppercase transition-colors">
-            Projects
+            Software
             <ChevronDown className="size-4 transition-transform duration-200 group-data-[popup-open]:rotate-180" />
           </NavigationMenu.Trigger>
           <NavigationMenu.Content className="transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
             <ul className="flex gap-4 p-2">
-              {projects.map((project) => (
-                <li key={project.name}>
-                  <ProjectCard project={project} />
+              {tools.map((tool) => (
+                <li key={tool.name}>
+                  <SoftwareCard tool={tool} />
                 </li>
               ))}
             </ul>
