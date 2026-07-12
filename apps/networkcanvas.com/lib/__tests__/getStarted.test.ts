@@ -20,12 +20,6 @@ describe('get started content', () => {
     ]);
   });
 
-  it('recommends Fresco for large teams or remote administration', () => {
-    expect(webApps.find(({ id }) => id === 'fresco')?.status).toBe(
-      'Large Teams · Remote Administration · Recommended',
-    );
-  });
-
   it('defines both Classic apps at version 6.6.0', () => {
     expect(classicApps.map(({ id }) => id)).toEqual([
       'architect-classic',

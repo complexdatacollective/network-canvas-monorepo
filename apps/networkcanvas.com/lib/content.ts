@@ -60,7 +60,7 @@ export const tools: Tool[] = [
   {
     name: 'Architect',
     description:
-      'A desktop (macOS, Windows, Linux) tool for visually designing Network Canvas interviews. Architect allows subject experts to focus on the design and implementation of their study, without needing to learn complex new technology.',
+      'Turn your research ideas into engaging Network Canvas interviews. Architect gives your team a visual, approachable design workspace that runs entirely in the browser, with nothing to install.',
     cta: { label: 'Open Architect', href: externalLinks.architectApp },
     color: 'sea-green',
     variant: 'architect',
@@ -68,7 +68,7 @@ export const tools: Tool[] = [
   {
     name: 'Interviewer',
     description:
-      'A desktop/tablet app for administering Network Canvas interviews in the field. Interviewer provides minimalist, participant-centric interfaces for all the data collection tasks associated with personal network interviewing.',
+      'Run polished, interviewer-led Network Canvas sessions on a desktop or tablet. Interviewer keeps the experience focused, responsive, and ready for fieldwork, even when connectivity is limited.',
     cta: { label: 'Open Interviewer', href: externalLinks.interviewerApp },
     color: 'neon-coral',
     variant: 'interviewer',
@@ -76,7 +76,7 @@ export const tools: Tool[] = [
   {
     name: 'Fresco',
     description:
-      'Bringing Network Canvas interviews to the web! Fresco is a pilot project that allows researchers to conduct Network Canvas interviews in a web browser.',
+      'Take Network Canvas studies beyond the lab. Fresco lets participants complete interviews remotely while your team manages studies, participants, and data from one centralized web dashboard.',
     cta: { label: 'Open Fresco', href: externalLinks.frescoApp },
     color: 'slate-blue',
     variant: 'fresco',
