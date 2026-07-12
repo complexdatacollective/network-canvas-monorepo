@@ -40,6 +40,7 @@ const DyadCensusPrompts = ({
     <ValidatedFieldArray
       name="prompts"
       label="Prompts"
+      labelHidden
       component={DialogArrayField}
       validation={{ notEmpty }}
       componentProps={{

@@ -63,6 +63,7 @@ const InterfaceThumbnail = ({
       onMouseEnter={setHighlighted}
       onMouseLeave={removeHighlighted}
       onFocus={setHighlighted}
+      onBlur={removeHighlighted}
     >
       <div className="mx-6 flex items-center gap-10">
         <div className="shrink-0">

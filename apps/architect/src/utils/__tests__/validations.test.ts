@@ -13,6 +13,8 @@ const {
   minSelected,
   minValue,
   required,
+  requiredAcceptsNull,
+  requiredAcceptsZero,
   uniqueArrayAttribute,
   uniqueByList,
 } = validations;
@@ -38,6 +40,70 @@ describe('Validations', () => {
 
     it('fails for an empty string', () => {
       expect(subject('')).toEqual(errorMessage);
+    });
+  });
+
+  describe('requiredAcceptsZero()', () => {
+    describe('when required', () => {
+      const subject = requiredAcceptsZero(true, 'Required');
+
+      it('passes for zero', () => {
+        expect(subject(0)).toBeUndefined();
+      });
+
+      it('passes for a filled value', () => {
+        expect(subject(5)).toBeUndefined();
+      });
+
+      it('fails for null or undefined', () => {
+        expect(subject(null)).toBe('Required');
+        expect(subject(undefined)).toBe('Required');
+      });
+    });
+
+    describe('when not required', () => {
+      const subject = requiredAcceptsZero(false, 'Required');
+
+      it('passes for empty values', () => {
+        expect(subject(null)).toBeUndefined();
+        expect(subject(undefined)).toBeUndefined();
+      });
+
+      it('passes for filled values', () => {
+        expect(subject(0)).toBeUndefined();
+        expect(subject(5)).toBeUndefined();
+      });
+    });
+  });
+
+  describe('requiredAcceptsNull()', () => {
+    describe('when required', () => {
+      const subject = requiredAcceptsNull(true, 'Required');
+
+      it('passes for null', () => {
+        expect(subject(null)).toBeUndefined();
+      });
+
+      it('passes for a filled value', () => {
+        expect(subject(5)).toBeUndefined();
+      });
+
+      it('fails for undefined', () => {
+        expect(subject(undefined)).toBe('Required');
+      });
+    });
+
+    describe('when not required', () => {
+      const subject = requiredAcceptsNull(false, 'Required');
+
+      it('passes for empty values', () => {
+        expect(subject(undefined)).toBeUndefined();
+        expect(subject(null)).toBeUndefined();
+      });
+
+      it('passes for filled values', () => {
+        expect(subject(5)).toBeUndefined();
+      });
     });
   });
 
@@ -169,6 +235,20 @@ describe('Validations', () => {
     it('passes for a larger array', () => {
       expect(subject([1, 2, 3])).toBe(undefined);
     });
+
+    it('counts an array of option objects by element', () => {
+      expect(subject([{ value: 'a' }, { value: 'b' }])).toBe(undefined);
+      expect(subject([{ value: 'a' }])).toBe(errorMessage);
+    });
+
+    it('coerces a non-array object to its values without throwing', () => {
+      expect(subject({ a: 1 })).toBe(errorMessage);
+      expect(subject({ a: 1, b: 2 })).toBe(undefined);
+    });
+
+    it('treats a string as an empty selection', () => {
+      expect(subject('ab')).toBe(errorMessage);
+    });
   });
 
   describe('maxSelected()', () => {
@@ -198,6 +278,18 @@ describe('Validations', () => {
 
     it('fails for a larger array', () => {
       expect(subject([1, 2, 3])).toBe(errorMessage);
+    });
+
+    it('counts an array of option objects by element', () => {
+      expect(subject([{ value: 'a' }, { value: 'b' }])).toBe(undefined);
+      expect(subject([{ value: 'a' }, { value: 'b' }, { value: 'c' }])).toBe(
+        errorMessage,
+      );
+    });
+
+    it('coerces a non-array object to its values without throwing', () => {
+      expect(subject({ a: 1, b: 2 })).toBe(undefined);
+      expect(subject({ a: 1, b: 2, c: 3 })).toBe(errorMessage);
     });
   });
 

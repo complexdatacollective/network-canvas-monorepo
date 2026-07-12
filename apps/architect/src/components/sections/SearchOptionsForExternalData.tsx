@@ -11,7 +11,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import withDisabledAssetRequired from '~/components/enhancers/withDisabledAssetRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
-import { FrescoReduxField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -112,7 +112,8 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
           validation={{ requiredAcceptsZero: true }}
           componentProps={{
             fieldComponent: FrescoLikertScaleField,
-            label: '',
+            label: 'Search accuracy',
+            labelHidden: true,
             options: [
               { value: 0.75, label: 'Low accuracy' },
               { value: 0.5, label: 'Medium accuracy' },

@@ -58,6 +58,8 @@ const NodeType = (props: NodeTypeProps) => {
         <ValidatedField
           name="subject"
           entityType="node"
+          label="Node type"
+          labelHidden
           promptBeforeChange="You attempted to change the node type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
           component={EntitySelectField}
           onChange={handleResetStage}

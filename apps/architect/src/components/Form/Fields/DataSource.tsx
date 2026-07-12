@@ -1,5 +1,4 @@
-import type { ComponentProps } from 'react';
-import { compose, withState } from 'react-recompose';
+import { useState } from 'react';
 import type { WrappedFieldProps } from 'redux-form';
 
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
@@ -8,36 +7,23 @@ import NetworkThumbnail from '~/components/Thumbnail/Network';
 import type { FileInputPropsWithoutHOC } from './File';
 import File from './File';
 
-type BaseDataSourceProps = WrappedFieldProps & {
+type DataSourceProps = WrappedFieldProps & {
   canUseExisting?: boolean;
   disabled?: boolean;
   readOnly?: boolean;
   required?: boolean;
 };
 
-type DataSourcePropsWithState = BaseDataSourceProps & {
-  setSelectNetworkAsset: (value: boolean) => void;
-  selectNetworkAsset: boolean;
-};
-
-const withSelectNetworkAsset = withState<
-  BaseDataSourceProps,
-  boolean,
-  'selectNetworkAsset',
-  'setSelectNetworkAsset'
->('selectNetworkAsset', 'setSelectNetworkAsset', false);
-
-const DataSource = (props: DataSourcePropsWithState) => {
+const DataSource = (props: DataSourceProps) => {
   const {
     input,
-    setSelectNetworkAsset,
     canUseExisting = false,
-    selectNetworkAsset,
     meta,
     disabled = false,
     readOnly = false,
     required = false,
   } = props;
+  const [selectNetworkAsset, setSelectNetworkAsset] = useState(false);
 
   const handleDataSourceChange = (value: string | number | undefined) => {
     if (disabled || readOnly) return;
@@ -115,6 +101,4 @@ const DataSource = (props: DataSourcePropsWithState) => {
   );
 };
 
-export default compose<ComponentProps<typeof DataSource>, typeof DataSource>(
-  withSelectNetworkAsset,
-)(DataSource);
+export default DataSource;

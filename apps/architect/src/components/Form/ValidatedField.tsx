@@ -15,6 +15,12 @@ type ValidatedFieldProps<T = Record<string, never>> = Omit<
   component: ElementType;
   componentProps?: T;
   label?: string;
+  /**
+   * Visually hide the field's label while keeping it as the control's
+   * accessible name. Forwarded to the field component. Use when a surrounding
+   * Section heading already names the field.
+   */
+  labelHidden?: boolean;
   fieldLabel?: string;
   inline?: boolean;
   entityType?: string;
@@ -46,16 +52,16 @@ function ValidatedField<T = Record<string, never>>({
 
   return (
     <>
+      <IssueAnchor
+        fieldName={`${fieldProps.name}._error`}
+        description={startCase(fieldProps.name)}
+      />
       <Field
         {...fieldProps}
         {...componentProps}
         required={required}
         validate={validations}
         component={reduxFieldComponent}
-      />
-      <IssueAnchor
-        fieldName={`${fieldProps.name}._error`}
-        description={startCase(fieldProps.name)}
       />
     </>
   );

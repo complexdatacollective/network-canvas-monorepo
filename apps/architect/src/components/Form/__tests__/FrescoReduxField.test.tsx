@@ -11,7 +11,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
-import FrescoReduxField, { reduxNumberValue } from '../FrescoReduxField';
+import FrescoReduxField, {
+  reduxIntegerValue,
+  reduxNumberValue,
+} from '../FrescoReduxField';
 import ValidatedField from '../ValidatedField';
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
@@ -107,5 +110,72 @@ describe('FrescoReduxField', () => {
 
     fireEvent.change(quantity, { target: { value: '' } });
     expect(getValues().quantity).toBeNull();
+  });
+
+  it('keeps a cleared number field null when blurred', () => {
+    const { getValues, store } = setup({ quantity: 4 });
+    const quantity = screen.getByRole('spinbutton', { name: 'Quantity' });
+
+    fireEvent.change(quantity, { target: { value: '' } });
+    expect(getValues().quantity).toBeNull();
+
+    fireEvent.blur(quantity);
+
+    expect(getValues().quantity).toBeNull();
+    expect(
+      store.getState().form['fresco-redux-field-test']?.fields?.quantity
+        ?.touched,
+    ).toBe(true);
+  });
+});
+
+describe('reduxIntegerValue.toReduxValue', () => {
+  const parse = reduxIntegerValue.toReduxValue;
+
+  it('accepts exponent notation as its integer value', () => {
+    expect(parse('1e3')).toBe(1000);
+  });
+
+  it('rejects mid-keystroke decimals rather than truncating', () => {
+    expect(parse('12.7')).toBeNull();
+  });
+
+  it('rejects trailing non-numeric characters rather than truncating', () => {
+    expect(parse('12px')).toBeNull();
+  });
+
+  it('accepts negative integers from strings and numbers', () => {
+    expect(parse('-5')).toBe(-5);
+    expect(parse(-5)).toBe(-5);
+  });
+
+  it('rejects non-integer and non-finite numbers on the fast path', () => {
+    expect(parse(12.7)).toBeNull();
+    expect(parse(Number.NaN)).toBeNull();
+    expect(parse(Number.POSITIVE_INFINITY)).toBeNull();
+  });
+
+  it('treats empty and whitespace-only strings as cleared', () => {
+    expect(parse('')).toBeNull();
+    expect(parse('   ')).toBeNull();
+  });
+});
+
+describe('reduxNumberValue.toReduxValue', () => {
+  const parse = reduxNumberValue.toReduxValue;
+
+  it('preserves decimals and exponent notation', () => {
+    expect(parse('12.7')).toBe(12.7);
+    expect(parse('1e3')).toBe(1000);
+  });
+
+  it('rejects NaN and non-finite numbers on the fast path', () => {
+    expect(parse(Number.NaN)).toBeNull();
+    expect(parse(Number.POSITIVE_INFINITY)).toBeNull();
+  });
+
+  it('treats empty and whitespace-only strings as cleared', () => {
+    expect(parse('')).toBeNull();
+    expect(parse('   ')).toBeNull();
   });
 });

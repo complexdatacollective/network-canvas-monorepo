@@ -1,5 +1,5 @@
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Markdown from '~/components/Form/Fields/Markdown';
+import Markdown from '~/components/Markdown';
 
 import MiniTable from '../MiniTable';
 type ScaffoldingStepProps = {

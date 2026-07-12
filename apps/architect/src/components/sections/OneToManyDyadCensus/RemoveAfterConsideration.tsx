@@ -4,7 +4,7 @@ import { Field, FormSection } from 'redux-form';
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import { FrescoReduxField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 
 const FrescoBooleanControl = FrescoBooleanField as ComponentType<
   Record<string, unknown>
@@ -29,6 +29,7 @@ const RemoveAfterConsideration = () => (
           component={FrescoReduxField}
           fieldComponent={FrescoBooleanControl}
           label="Remove after consideration"
+          labelHidden
           options={[
             {
               value: true,

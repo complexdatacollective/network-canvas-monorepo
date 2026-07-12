@@ -6,10 +6,12 @@ import type { WrappedFieldProps } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
 import type { VariableType } from '@codaco/protocol-validation';
+import EditableVariablePill, {
+  SimpleVariablePill,
+} from '~/components/VariablePill';
 import { cx } from '~/utils/cva';
 
 import FrescoReduxField from '../../FrescoReduxField';
-import EditableVariablePill, { SimpleVariablePill } from './VariablePill';
 import VariableSpotlight from './VariableSpotlight';
 
 export type VariableOption = {

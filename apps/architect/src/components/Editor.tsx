@@ -1,4 +1,3 @@
-import { merge } from 'es-toolkit/compat';
 import { createContext, type ReactNode, useContext } from 'react';
 import {
   type ConfigProps,
@@ -15,9 +14,7 @@ type EditorOwnProps = Partial<
 };
 
 type EditorProps = EditorOwnProps &
-  InjectedFormProps<Record<string, unknown>, EditorOwnProps> & {
-    values?: Record<string, unknown>;
-  };
+  InjectedFormProps<Record<string, unknown>, EditorOwnProps>;
 
 // Form context type
 type FormContextType = {
@@ -27,7 +24,6 @@ type FormContextType = {
   pristine?: boolean;
   valid?: boolean;
   initialValues?: Record<string, unknown>;
-  values: Record<string, unknown>;
   error?: string;
   warning?: string;
 };
@@ -60,7 +56,6 @@ const Editor = (props: EditorProps) => {
     warning,
     form,
     children,
-    values,
   } = props;
 
   // Create context value with useful form information
@@ -71,7 +66,6 @@ const Editor = (props: EditorProps) => {
     pristine,
     valid,
     initialValues,
-    values: merge(values || {}, initialValues || {}),
     error,
     warning,
   };

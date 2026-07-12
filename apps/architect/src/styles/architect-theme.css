@@ -42,33 +42,16 @@
    var(--color-*). */
 @layer theme {
   :root {
-    --rules-type: oklch(var(--neon-coral));
     --rules-assert: oklch(var(--sea-green));
-    --rules-control: oklch(var(--slate-blue));
-    --rules-delete: oklch(var(--tomato));
-    --rules-attribute: oklch(var(--mustard));
-    --rules-operator: oklch(var(--cyber-grape));
-    --rules-value: oklch(var(--sea-serpent));
-    --rule-type: var(--rules-type);
-    --rule-control: var(--rules-control);
-    --rule-delete: var(--rules-delete);
-    --rule-attribute: var(--rules-attribute);
-    --rule-operator: var(--rules-operator);
-    --rule-value: var(--rules-value);
 
     --timeline: oklch(var(--neon-coral));
     --timeline-contrast: oklch(var(--white));
-    --sortable-background: oklch(var(--slate-blue));
     --sortable-contrast: oklch(var(--white));
-    --table-row-tint: rgb(58 106 117 / 5%);
+    --table-row-tint: oklch(var(--sea-serpent) / 5%);
     --form-control: oklch(var(--sea-serpent));
     --action: oklch(var(--sea-green));
-    --action-contrast: oklch(var(--white));
     --muted: oklch(var(--cyber-grape) / 60%);
-    --hover: oklch(var(--sea-green--dark));
-    --focus: oklch(var(--sea-green));
     --active: oklch(var(--sea-green));
-    --input-active: oklch(var(--sea-green));
     --surface-accent: oklch(var(--navy-taupe));
     --surface-accent-contrast: oklch(var(--white));
     --fresco-purple: oklch(10% 0.4 290);
@@ -77,33 +60,16 @@
 }
 
 @theme inline {
-  --color-rules-type: var(--rules-type);
   --color-rules-assert: var(--rules-assert);
-  --color-rules-control: var(--rules-control);
-  --color-rules-delete: var(--rules-delete);
-  --color-rules-attribute: var(--rules-attribute);
-  --color-rules-operator: var(--rules-operator);
-  --color-rules-value: var(--rules-value);
-  --color-rule-type: var(--rule-type);
-  --color-rule-control: var(--rule-control);
-  --color-rule-delete: var(--rule-delete);
-  --color-rule-attribute: var(--rule-attribute);
-  --color-rule-operator: var(--rule-operator);
-  --color-rule-value: var(--rule-value);
 
   --color-timeline: var(--timeline);
   --color-timeline-contrast: var(--timeline-contrast);
-  --color-sortable-background: var(--sortable-background);
   --color-sortable-contrast: var(--sortable-contrast);
   --color-table-row-tint: var(--table-row-tint);
   --color-form-control: var(--form-control);
   --color-action: var(--action);
-  --color-action-contrast: var(--action-contrast);
   --color-muted: var(--muted);
-  --color-hover: var(--hover);
-  --color-focus: var(--focus);
   --color-active: var(--active);
-  --color-input-active: var(--input-active);
   --color-surface-accent: var(--surface-accent);
   --color-surface-accent-contrast: var(--surface-accent-contrast);
   --color-fresco-purple: var(--fresco-purple);
@@ -174,24 +140,8 @@
     animation: variable-pill-border-orbit 3.5s linear infinite;
   }
 }
-@utility form-field {
-  @apply border-outline w-full rounded-sm border;
-  background-color: var(--input);
-  color: var(--input-contrast);
-  padding: 0.6rem 1.2rem;
-  line-height: 1.5;
-
-  &:focus {
-    @apply ring-1 outline-none;
-    border-color: var(--primary);
-    --tw-ring-color: var(--primary);
-  }
-  &::placeholder {
-    color: color-mix(in oklab, var(--input-contrast) 50%, transparent);
-  }
-}
 @utility clickable {
-  box-shadow: 0 0.2rem 0.2rem rgba(17, 21, 27, 0.664);
+  box-shadow: var(--effect-shadow-sm);
   transition:
     transform 150ms cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -200,7 +150,7 @@
     text-decoration: none;
     cursor: pointer;
     transform: translateY(-0.2rem);
-    box-shadow: 0 0.4rem 0.2rem 0 rgba(0, 0, 0, 0.35);
+    box-shadow: var(--effect-shadow-md);
   }
   &:not(:disabled):active {
     box-shadow: unset;

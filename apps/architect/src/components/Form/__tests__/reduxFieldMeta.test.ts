@@ -35,4 +35,20 @@ describe('getReduxFieldErrorState', () => {
       showErrors: false,
     });
   });
+
+  it('treats an empty error string as no error', () => {
+    expect(getReduxFieldErrorState(createMeta(''))).toEqual({
+      errors: [],
+      showErrors: false,
+    });
+  });
+
+  it('ignores an empty array-level error', () => {
+    const error = Object.assign([], { _error: '' });
+
+    expect(getReduxFieldErrorState(createMeta(error))).toEqual({
+      errors: [],
+      showErrors: false,
+    });
+  });
 });

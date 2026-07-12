@@ -27,6 +27,7 @@ const ContentGrid = (_props: StageEditorSectionProps) => (
       <ValidatedFieldArray
         name="items"
         label="Content items"
+        labelHidden
         component={DialogArrayField}
         validation={{ notEmpty }}
         componentProps={{

@@ -68,7 +68,7 @@ const BaseVariablePill = React.forwardRef<
       style={style}
       ref={ref}
     >
-      <div className="text-text flex h-full w-full overflow-hidden rounded-[inherit] bg-white">
+      <div className="text-text bg-surface flex h-full w-full overflow-hidden rounded-[inherit]">
         <div className="flex shrink-0 basis-12 items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
           <img className="icon opacity-80" src={icon} alt={type} />
         </div>

@@ -1,3 +1,4 @@
+import { startCase } from 'es-toolkit/compat';
 import {
   createContext,
   createElement,
@@ -59,11 +60,16 @@ const useRendererContext = () => {
 
 const ItemRenderer = (props: ArrayFieldItemProps<ArrayItem>) => {
   const context = useRendererContext();
+  // Bind to the committed position, not the live (possibly mid-drag-preview)
+  // index, so nested Redux Form fields stay attached to the right item while a
+  // pointer reorder is being previewed. Falls back to the live index for drafts
+  // that are not yet part of the committed value.
+  const fieldIndex = props.committedIndex ?? props.index;
   return createElement(context.itemComponent, {
     ...context.itemComponentProps,
     ...props,
     arrayName: context.arrayName,
-    fieldName: `${context.arrayName}[${props.index}]`,
+    fieldName: `${context.arrayName}[${fieldIndex}]`,
     form: context.form,
     showErrors: context.showErrors,
   });
@@ -99,18 +105,27 @@ type FrescoReduxArrayFieldOwnProps<T extends ArrayItem> = Omit<
 export type FrescoReduxArrayFieldProps<T extends ArrayItem> =
   WrappedFieldArrayProps<T> & FrescoReduxArrayFieldOwnProps<T>;
 
+// An empty string is not a usable message, so reject it rather than surfacing a
+// blank error row.
+const isArrayErrorMessage = (value: unknown): value is string | number =>
+  (typeof value === 'string' && value.length > 0) || typeof value === 'number';
+
 const getArrayErrors = (error: unknown): string[] => {
-  if (typeof error === 'string' || typeof error === 'number') {
+  if (isArrayErrorMessage(error)) {
     return [String(error)];
   }
   if (error && typeof error === 'object' && '_error' in error) {
     const arrayError = error._error;
-    return typeof arrayError === 'string' || typeof arrayError === 'number'
-      ? [String(arrayError)]
-      : [];
+    return isArrayErrorMessage(arrayError) ? [String(arrayError)] : [];
   }
   return [];
 };
+
+// Redux Form field paths like "form.fields" or "content" are storage keys, not
+// labels. When no explicit label is supplied, present the final path segment as
+// a human-readable heading (e.g. "form.fields" -> "Fields").
+const humanizeFieldName = (name: string): string =>
+  startCase(name.split('.').pop() ?? name);
 
 export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
   fields,
@@ -173,7 +188,7 @@ export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
         {...arrayFieldProps}
         component={ArrayField<T>}
         name={fields.name}
-        label={label ?? fields.name}
+        label={label ?? humanizeFieldName(fields.name)}
         hint={hint}
         disabled={disabled}
         readOnly={readOnly}

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import type { CSSProperties, ReactNode } from 'react';
+import { type CSSProperties, type ReactNode, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '../../../dialogs/DialogProvider';
@@ -133,5 +133,76 @@ describe('ArrayField pointer reordering', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'Moved item 1 to position 3 of 3.',
     );
+  });
+
+  it('keeps committed indices stable during a preview and updates them on commit', () => {
+    const seen = new Map<string, { index: number; committedIndex?: number }>();
+    const RecordingItem = ({
+      item,
+      index,
+      committedIndex,
+    }: ArrayFieldItemProps<Item>) => {
+      const { label } = item;
+      if (label !== undefined) {
+        seen.set(label, { index, committedIndex });
+      }
+      return <span>{label}</span>;
+    };
+
+    const Controlled = () => {
+      const [value, setValue] = useState<Item[]>([
+        { id: 'one', label: 'one' },
+        { id: 'two', label: 'two' },
+        { id: 'three', label: 'three' },
+      ]);
+
+      return (
+        <ArrayField<Item>
+          value={value}
+          sortable
+          getId={(item) => item.id}
+          itemTemplate={() => ({ id: 'new', label: 'new' })}
+          itemComponent={RecordingItem}
+          confirmDelete={false}
+          onOperation={(operation) => {
+            if (operation.type !== 'move') return;
+            setValue((prev) => {
+              const next = [...prev];
+              const [moved] = next.splice(operation.from, 1);
+              next.splice(operation.to, 0, moved!);
+              return next;
+            });
+          }}
+        />
+      );
+    };
+
+    render(
+      <DialogProvider>
+        <Controlled />
+      </DialogProvider>,
+    );
+
+    // At rest, the live and committed indices agree.
+    expect(seen.get('one')).toEqual({ index: 0, committedIndex: 0 });
+    expect(seen.get('three')).toEqual({ index: 2, committedIndex: 2 });
+
+    const firstItem = document.querySelector('[data-item-id="one"]');
+    fireEvent.dragStart(firstItem!);
+
+    const [one, two, three] = reorderHarness.values;
+    act(() => reorderHarness.reorder?.([two, three, one]));
+
+    // Mid-preview: the moved item shows a new live position but its committed
+    // index is unchanged, so an adapter binds field paths to the right item.
+    expect(seen.get('one')).toEqual({ index: 2, committedIndex: 0 });
+    expect(seen.get('two')).toEqual({ index: 0, committedIndex: 1 });
+
+    const movedItem = document.querySelector('[data-item-id="one"]');
+    fireEvent.dragEnd(movedItem!);
+
+    // Once the parent commits the reorder, committed indices catch up.
+    expect(seen.get('one')).toEqual({ index: 2, committedIndex: 2 });
+    expect(seen.get('two')).toEqual({ index: 0, committedIndex: 0 });
   });
 });

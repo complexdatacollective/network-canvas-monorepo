@@ -13,7 +13,7 @@ import {
 } from '~/ducks/modules/protocol/assetManifest';
 import { documentationLinks } from '~/utils/documentationLinks';
 
-import Dropzone from './Dropzone';
+import Dropzone from './Dropzone/Dropzone';
 type AutoFileDropProps = {
   type?: string;
   onDrop: (ids: string[]) => void;

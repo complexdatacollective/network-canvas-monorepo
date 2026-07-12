@@ -1,10 +1,8 @@
-import type { ComponentType } from 'react';
-
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ExternalLink from '~/components/ExternalLink';
-import { Markdown } from '~/components/Form/Fields';
+import Markdown from '~/components/Markdown';
 import type { ProtocolOpenResult } from '~/ducks/modules/userActions/userActions';
 import { documentationLinks } from '~/utils/documentationLinks';
 type ShowProtocolOpenResultDialogArgs = {
@@ -49,12 +47,7 @@ export const showProtocolOpenResultDialog = async ({
                     <Heading level="h4">
                       Migrating to schema Version {version} will:
                     </Heading>
-                    <Markdown
-                      label={notes}
-                      markdownRenderers={{
-                        a: ExternalLink as ComponentType<unknown>,
-                      }}
-                    />
+                    <Markdown label={notes} />
                   </div>
                 ))}
               </div>

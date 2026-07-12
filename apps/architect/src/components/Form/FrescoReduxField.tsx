@@ -10,6 +10,7 @@ type FrescoFieldComponent = ComponentType<Record<string, unknown>>;
 type FrescoReduxFieldProps = WrappedFieldProps & {
   fieldComponent: FrescoFieldComponent;
   label?: string;
+  labelHidden?: boolean;
   hint?: ReactNode;
   inline?: boolean;
   disabled?: boolean;
@@ -60,16 +61,16 @@ const formatNumberValue = (value: unknown) => {
 
 const parseIntegerValue = (value: unknown) => {
   if (typeof value === 'number') {
-    return value;
+    return Number.isInteger(value) ? value : null;
   }
 
   if (typeof value !== 'string' || value.trim() === '') {
     return null;
   }
 
-  const parsed = Number.parseInt(value, 10);
+  const parsed = Number(value);
 
-  return Number.isNaN(parsed) ? null : parsed;
+  return Number.isInteger(parsed) ? parsed : null;
 };
 
 const parseNumberValue = (value: unknown) => {
@@ -100,6 +101,7 @@ const FrescoReduxFieldBase = ({
   meta,
   fieldComponent,
   label,
+  labelHidden,
   hint,
   inline,
   disabled,
@@ -116,8 +118,11 @@ const FrescoReduxFieldBase = ({
     input.onChange(toReduxValue ? toReduxValue(nextValue) : nextValue);
   };
 
+  // Blur with an undefined payload so Redux Form only marks the field
+  // touched/inactive. Passing input.value would write its formatted form (a
+  // cleared value formats to '') back over the parsed Redux value.
   const handleBlur = () => {
-    input.onBlur?.(input.value);
+    input.onBlur?.(undefined);
   };
 
   return (
@@ -126,6 +131,7 @@ const FrescoReduxFieldBase = ({
       component={fieldComponent}
       name={input.name ?? undefined}
       label={label ?? input.name ?? ''}
+      labelHidden={labelHidden}
       hint={hint}
       inline={inline}
       disabled={disabled}
