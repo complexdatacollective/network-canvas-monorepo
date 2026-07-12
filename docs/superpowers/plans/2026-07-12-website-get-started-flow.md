@@ -388,6 +388,42 @@ git commit -m "refine(website): clarify classic compatibility"
 
 ---
 
+### Task 5: Equalize Current Collection App Emphasis
+
+**Files:**
+
+- Modify: `apps/networkcanvas.com/components/get-started/WorkflowPath.tsx`
+- Modify: `apps/networkcanvas.com/lib/getStarted.ts`
+- Modify: focused Get Started tests
+
+**Requirements:**
+
+- Change Fresco's status to exactly **Large Teams · Remote Administration ·
+  Recommended**.
+- At tablet-landscape and wider, Interviewer and Fresco each occupy six columns
+  in the 12-column Collect grid so their cards have equal width.
+- Keep Interviewer Classic visually secondary on the following row.
+- Preserve the existing single-column document order on narrower screens.
+
+- [ ] **Step 1: Change tests and verify RED**
+
+Assert exact Fresco status copy and equal `tablet-landscape:col-span-6` classes
+for the first two Collect app wrappers. Run the focused Get Started tests and
+confirm failure against the current 7/5 split and old copy.
+
+- [ ] **Step 2: Implement, verify, and commit**
+
+Use workflow/index-aware grid classes in `WorkflowPath` without changing data
+order. Run focused/full website tests, typecheck, targeted oxlint `--fix`, oxfmt,
+and diff-check.
+
+```bash
+git add apps/networkcanvas.com
+git commit -m "refine(website): balance collection app cards"
+```
+
+---
+
 ## Final Review and Delivery
 
 - [ ] Generate a review package for every task and require both spec-compliance
