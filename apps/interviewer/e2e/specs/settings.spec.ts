@@ -126,15 +126,21 @@ test.describe('settings', () => {
         name: 'Require unlock before exporting data',
       }),
     ).toHaveCount(0);
-    // The Security tab itself still renders real content — authenticator
-    // management (reporting "unknown" mode pre-setup) and the device-reset
-    // control — so the tab isn't just empty.
+    // The Security tab itself still renders real content, so it isn't empty.
+    // With no vault, the authenticator section reads "Device lock" (the
+    // no-lock variant — the same copy as an enrolled 'none' vault, since an
+    // unconfigured tab has no authenticator to manage), and the device-reset
+    // control reads "Reset device" (not "Revoke device lock" — there is no
+    // lock to revoke).
     await expect(
-      page.getByRole('heading', { name: 'Authenticator' }),
+      page.getByRole('heading', { name: 'Device lock' }),
     ).toBeVisible();
     await expect(
-      page.getByRole('button', { name: /reset device|revoke/i }),
+      page.getByRole('button', { name: 'Reset device' }),
     ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Revoke', exact: true }),
+    ).toHaveCount(0);
   });
 
   test('Synthetic data tab sees a protocol imported just before Settings opened', async ({

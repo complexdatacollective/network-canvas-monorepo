@@ -150,33 +150,64 @@ describe('SettingsDialog Security tab — step-up controls gating', () => {
   // `mode: undefined`) and an enrolled-but-unsecured vault
   // (`kind: 'unlocked'`, `mode: 'none'`) must both hide the controls; only a
   // secured, unlocked vault (`kind: 'unlocked'`, `mode: 'pin'`) shows them.
+  //
+  // Also pins the ManageAuthenticator/ResetDeviceRow copy fix: unconfigured
+  // and enrolled 'none' both mean "no device lock", so both show the "Device
+  // lock" heading and "Reset device" control; only a real secured lock shows
+  // "Authenticator" and "Revoke".
   it.each<{
     kind: AuthStateKind;
     mode: AuthMode | undefined;
     visible: boolean;
+    heading: string;
+    resetLabel: string;
   }>([
-    { kind: 'unconfigured', mode: undefined, visible: false },
-    { kind: 'unlocked', mode: 'none', visible: false },
-    { kind: 'unlocked', mode: 'pin', visible: true },
+    {
+      kind: 'unconfigured',
+      mode: undefined,
+      visible: false,
+      heading: 'Device lock',
+      resetLabel: 'Reset device',
+    },
+    {
+      kind: 'unlocked',
+      mode: 'none',
+      visible: false,
+      heading: 'Device lock',
+      resetLabel: 'Reset device',
+    },
+    {
+      kind: 'unlocked',
+      mode: 'pin',
+      visible: true,
+      heading: 'Authenticator',
+      resetLabel: 'Revoke',
+    },
   ])(
-    'kind=$kind mode=$mode -> step-up controls visible=$visible',
-    async ({ kind, mode, visible }) => {
+    'kind=$kind mode=$mode -> step-up visible=$visible, heading=$heading',
+    async ({ kind, mode, visible, heading, resetLabel }) => {
       mockAuth(kind, mode);
       const user = userEvent.setup();
       render(<SettingsDialog open onClose={vi.fn()} />);
 
       await user.click(screen.getByRole('tab', { name: 'Security' }));
 
+      // ResetDeviceRow always renders; its label distinguishes no-lock from
+      // secured and doubles as a settle point before asserting switch absence.
+      expect(
+        await screen.findByRole('button', { name: resetLabel }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: heading }),
+      ).toBeInTheDocument();
+
       if (visible) {
         expect(
-          await screen.findByRole('switch', {
+          screen.getByRole('switch', {
             name: 'Require unlock when entering an interview',
           }),
         ).toBeInTheDocument();
       } else {
-        // Give the tab content a chance to settle before asserting absence —
-        // ResetDeviceRow always renders, regardless of auth state.
-        await screen.findByRole('button', { name: /reset device|revoke/i });
         expect(
           screen.queryByRole('switch', {
             name: 'Require unlock when entering an interview',
