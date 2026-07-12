@@ -60,10 +60,25 @@ describe('locale routing', () => {
     expect(response.headers.get('location')).toBe(destination);
   });
 
-  it('matches page routes while excluding framework and asset requests', () => {
-    expect(config.matcher).toBe('/((?!api|trpc|_next|_vercel|.*\\..*).*)');
+  it('normalizes the cited legacy download.html route before negotiation', () => {
+    const response = localeProxy(
+      new NextRequest('http://localhost/download.html', {
+        headers: { 'accept-language': 'es-ES,es;q=0.9' },
+      }),
+    );
 
-    const matcher = new RegExp(`^${config.matcher}$`);
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/es/download',
+    );
+  });
+
+  it('matches page routes while excluding framework and asset requests', () => {
+    expect(config.matcher).toEqual([
+      '/download.html',
+      '/((?!api|trpc|_next|_vercel|.*\\..*).*)',
+    ]);
+
+    const matcher = new RegExp(`^${config.matcher[1]}$`);
     expect(
       ['/', '/download', '/get-started'].every((pathname) =>
         matcher.test(pathname),
