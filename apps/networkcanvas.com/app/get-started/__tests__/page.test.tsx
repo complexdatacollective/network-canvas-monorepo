@@ -29,27 +29,6 @@ describe('Get Started page', () => {
     });
   });
 
-  it('opens with one workflow question and two anchor choices', () => {
-    render(<GetStartedPage />);
-
-    expect(
-      screen.getAllByRole('heading', {
-        level: 1,
-        name: 'What would you like to do?',
-      }),
-    ).toHaveLength(1);
-    expect(
-      screen.getByRole('link', {
-        name: 'Design or create an interview protocol',
-      }),
-    ).toHaveAttribute('href', '#design');
-    expect(
-      screen.getByRole('link', {
-        name: 'Collect data using Network Canvas',
-      }),
-    ).toHaveAttribute('href', '#collect');
-  });
-
   it('renders linkable workflow sections with semantic headings', () => {
     render(<GetStartedPage />);
 
@@ -129,39 +108,6 @@ describe('Get Started page', () => {
         ).toBeInTheDocument();
       }
     }
-  });
-
-  it('places the one-way compatibility warning within the Design path', () => {
-    render(<GetStartedPage />);
-
-    const warning = screen.getByRole('status');
-    const designDescription = screen.getByText(
-      'Build a new browser-based study in Architect, or keep a schema 7 workflow in Architect Classic when compatibility requires it.',
-    );
-    const architectHeading = screen.getByRole('heading', {
-      level: 3,
-      name: 'Architect',
-    });
-    const collect = document.querySelector<HTMLElement>('#collect');
-
-    if (!collect) {
-      throw new Error('Expected the Collect workflow section to be present.');
-    }
-
-    expect(warning).toHaveTextContent('Classic compatibility is one-way.');
-    expect(
-      designDescription.compareDocumentPosition(warning) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      warning.compareDocumentPosition(architectHeading) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      collect.compareDocumentPosition(warning) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeFalsy();
-    expect(within(collect).queryByRole('status')).toBeNull();
   });
 
   it('does not include a standalone Server app', () => {

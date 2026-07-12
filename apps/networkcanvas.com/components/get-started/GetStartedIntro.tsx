@@ -10,15 +10,15 @@ import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
 import { createHeroEntrance } from '~/lib/heroEntrance';
 
-const workflowPaths = [
+const researchStages = [
   {
-    label: 'Design pathway',
+    label: 'Design stage',
     title: 'Design or create an interview protocol',
     href: '#design',
     accent: 'bg-neon-coral',
   },
   {
-    label: 'Collection pathway',
+    label: 'Data collection stage',
     title: 'Collect data using Network Canvas',
     href: '#collect',
     accent: 'bg-cerulean-blue',
@@ -63,45 +63,45 @@ export function GetStartedIntro() {
               margin="none"
               className="font-heading text-neon-coral text-sm font-bold tracking-[0.16em] uppercase"
             >
-              Choose your workflow
+              Choose your research stage
             </Paragraph>
             <Heading
               level="h1"
               margin="none"
               className="font-heading text-cyber-grape mt-5! text-4xl font-black tracking-tight text-balance"
             >
-              What would you like to do?
+              Where are you in your research?
             </Heading>
             <Paragraph
               intent="lead"
               margin="none"
               className="text-text/75 mx-auto mt-6 max-w-2xl text-lg text-pretty"
             >
-              Start with your research task, then choose the Network Canvas app
-              that fits your study.
+              Choose the stage your research has reached, then select the
+              Network Canvas app that fits your study.
             </Paragraph>
           </motion.div>
 
           <Container className="tablet-portrait:grid-cols-2 mt-14 grid gap-6">
-            {workflowPaths.map((path) => (
+            {researchStages.map((stage) => (
               <motion.a
-                key={path.href}
-                href={path.href}
-                aria-label={path.title}
+                key={stage.href}
+                href={stage.href}
+                aria-label={stage.title}
                 variants={entrance.itemVariants}
                 whileHover={reduceMotion ? undefined : { y: -5 }}
                 whileFocus={reduceMotion ? undefined : { y: -5 }}
                 className="focusable elevation-medium group tablet-portrait:p-10 flex min-h-64 flex-col justify-between rounded-[2rem] bg-white/55 p-8 backdrop-blur-md"
               >
                 <span className="font-heading text-cyber-grape/65 text-xs font-bold tracking-[0.14em] uppercase">
-                  {path.label}
+                  {stage.label}
                 </span>
                 <span className="mt-12 flex items-end justify-between gap-6">
                   <span className="font-heading text-cyber-grape tablet-portrait:text-3xl max-w-lg text-2xl font-black tracking-tight text-balance">
-                    {path.title}
+                    {stage.title}
                   </span>
                   <span
-                    className={`${path.accent} flex size-12 shrink-0 items-center justify-center rounded-full text-white transition-transform group-hover:translate-x-1 group-hover:translate-y-1 group-focus-visible:translate-x-1 group-focus-visible:translate-y-1 motion-reduce:transform-none`}
+                    className={`${stage.accent} flex size-12 shrink-0 items-center justify-center rounded-full text-white transition-transform group-hover:translate-x-1 group-hover:translate-y-1 group-focus-visible:translate-x-1 group-focus-visible:translate-y-1 motion-reduce:transform-none`}
                   >
                     <ArrowDownRight aria-hidden className="size-6" />
                   </span>

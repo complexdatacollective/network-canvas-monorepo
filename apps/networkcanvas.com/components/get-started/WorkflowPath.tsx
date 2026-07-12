@@ -13,18 +13,18 @@ import {
 
 type AppRecord = (typeof webApps)[number] | (typeof classicApps)[number];
 
-const pathContent = {
+const stageContent = {
   design: {
-    label: 'Path 01 · Design',
+    label: 'Design stage',
     heading: 'Design or create a protocol',
     description:
-      'Build a new browser-based study in Architect, or keep a schema 7 workflow in Architect Classic when compatibility requires it.',
+      'Design a new browser-based study in Architect, or continue an existing study in Architect Classic.',
   },
   collect: {
-    label: 'Path 02 · Collect',
+    label: 'Data collection stage',
     heading: 'Collect data',
     description:
-      'Choose an in-person, remote, or established Classic workflow for gathering network data.',
+      'Choose Interviewer, Fresco, or Interviewer Classic based on how and where you plan to collect data.',
   },
 } satisfies Record<
   Workflow,
@@ -40,7 +40,7 @@ export function WorkflowPath({
   apps: readonly AppRecord[];
   compatibilityNotice?: ReactNode;
 }) {
-  const content = pathContent[workflow];
+  const content = stageContent[workflow];
 
   return (
     <Container
@@ -58,7 +58,7 @@ export function WorkflowPath({
         <Heading
           level="h2"
           margin="none"
-          className="font-heading text-cyber-grape mt-4! text-4xl font-black tracking-tight text-balance"
+          className="font-heading text-cyber-grape text-4xl font-black tracking-tight text-balance"
         >
           {content.heading}
         </Heading>
