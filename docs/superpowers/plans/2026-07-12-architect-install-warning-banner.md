@@ -35,8 +35,8 @@ Add a test that renders the Chromium banner and verifies that the status
 element does not contain the `bg-surface-1!` or `text-surface-1-contrast!`
 overrides. Query the warning SVG by its `Warning` title, verify that it retains
 `fill-platinum` and `fill-platinum-dark` shapes, and verify that its custom
-properties are `var(--color-neon-coral)` and
-`var(--color-neon-coral-dark)`.
+properties are `oklch(var(--neon-coral))` and
+`oklch(var(--neon-coral--dark))`.
 
 ```tsx
 it('uses warning styling and the Architect warning illustration palette', () => {
@@ -52,8 +52,8 @@ it('uses warning styling and the Architect warning illustration palette', () => 
   expect(warningIcon?.querySelector('.fill-platinum')).toBeInTheDocument();
   expect(warningIcon?.querySelector('.fill-platinum-dark')).toBeInTheDocument();
   expect(warningIcon).toHaveStyle({
-    '--warning-icon-accent': 'var(--color-neon-coral)',
-    '--warning-icon-accent-dark': 'var(--color-neon-coral-dark)',
+    '--warning-icon-accent': 'oklch(var(--neon-coral))',
+    '--warning-icon-accent-dark': 'oklch(var(--neon-coral--dark))',
   });
 });
 ```
@@ -73,8 +73,8 @@ still derives its exclamation colors from the generic warning palette.
 
 In `InstallBanner.tsx`, define a local warning-icon component using the shared
 `Icon` component and typed CSS custom properties. Set
-`--warning-icon-accent` to `var(--color-neon-coral)` and
-`--warning-icon-accent-dark` to `var(--color-neon-coral-dark)`, then pass that
+`--warning-icon-accent` to `oklch(var(--neon-coral))` and
+`--warning-icon-accent-dark` to `oklch(var(--neon-coral--dark))`, then pass that
 component through the alert's `icon` prop. Remove the surface/text overrides
 from the alert and use warning-contrast utilities for the dismiss button.
 
@@ -97,8 +97,8 @@ from the alert and use warning-contrast utilities for the dismiss button.
 +};
 +
 +const installWarningIconStyle: InstallWarningIconStyle = {
-+  '--warning-icon-accent': 'var(--color-neon-coral)',
-+  '--warning-icon-accent-dark': 'var(--color-neon-coral-dark)',
++  '--warning-icon-accent': 'oklch(var(--neon-coral))',
++  '--warning-icon-accent-dark': 'oklch(var(--neon-coral--dark))',
 +};
 +
 +const InstallWarningIcon = ({

@@ -67,6 +67,11 @@ describe('<Home />', () => {
     });
 
     expect(createButton).toHaveClass('h-12', 'text-base');
+    expect(createButton).toHaveClass(
+      '[--component-bg:var(--primary-contrast)]',
+      '[--component-text:var(--primary)]',
+      'focus:outline-primary',
+    );
     expect(openButton).toHaveClass('h-12', 'text-base');
     expect(openButton).toHaveClass(
       '[--component-bg:var(--accent-contrast)]',

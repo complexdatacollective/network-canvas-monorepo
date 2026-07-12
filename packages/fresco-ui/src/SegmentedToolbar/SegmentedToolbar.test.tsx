@@ -244,6 +244,23 @@ describe('SegmentedToolbar — hosted (render) button', () => {
 });
 
 describe('SegmentedToolbar — colour', () => {
+  it('retains the text variant hover behavior when variant is omitted', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'edit',
+        label: 'Edit',
+        icon: <Pencil />,
+        onClick: vi.fn(),
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
+      'hover:enabled:bg-(--component-text)',
+    );
+  });
+
   it('uses the supplied variant without a text-button hover override', () => {
     const items: ToolbarSegment[] = [
       {
