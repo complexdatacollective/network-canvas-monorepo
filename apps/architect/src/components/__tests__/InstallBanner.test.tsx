@@ -60,7 +60,6 @@ const stubBrowser = ({
   touchPoints?: number;
 }) => {
   vi.stubGlobal('navigator', {
-    ...navigator,
     platform,
     maxTouchPoints: touchPoints,
     userAgent: firefox
@@ -78,6 +77,26 @@ afterEach(() => {
 });
 
 describe('InstallBanner', () => {
+  it('uses warning styling and the Architect warning illustration palette', () => {
+    stubBrowser({ chromium: true });
+    mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
+    render(<InstallBanner />);
+
+    const banner = screen.getByRole('status', { name: 'Install Architect' });
+    expect(banner).not.toHaveClass('bg-surface-1!');
+    expect(banner).not.toHaveClass('text-surface-1-contrast!');
+
+    const warningIcon = screen.getByTitle('Warning').parentElement;
+    expect(warningIcon?.querySelector('.fill-platinum')).toBeInTheDocument();
+    expect(
+      warningIcon?.querySelector('.fill-platinum-dark'),
+    ).toBeInTheDocument();
+    expect(warningIcon).toHaveStyle({
+      '--warning-icon-accent': 'var(--color-neon-coral)',
+      '--warning-icon-accent-dark': 'var(--color-neon-coral-dark)',
+    });
+  });
+
   it('Chromium with a prompt: generic eviction copy and a one-tap Install', () => {
     stubBrowser({ chromium: true });
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
