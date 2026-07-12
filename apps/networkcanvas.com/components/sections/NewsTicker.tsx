@@ -27,9 +27,9 @@ const Badge = () => (
 
 export function NewsTicker() {
   return (
-    <div className="border-cerulean-blue/30 bg-cerulean-blue/5 tablet-landscape:rounded-full rounded-[1.5rem] border">
+    <div className="border-cerulean-blue/30 bg-cerulean-blue/5 tablet-portrait:rounded-full rounded-[1.5rem] border">
       {/* Desktop: single-line marquee */}
-      <div className="tablet-landscape:flex hidden items-center gap-5 px-6 py-3">
+      <div className="tablet-portrait:flex hidden items-center gap-5 px-6 py-3">
         <Badge />
         <div className="relative flex-1 overflow-hidden mask-[linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
           <div className="animate-marquee flex w-max gap-12">
@@ -44,7 +44,7 @@ export function NewsTicker() {
       </div>
 
       {/* Mobile: stacked card */}
-      <div className="tablet-landscape:hidden flex flex-col gap-3 p-6">
+      <div className="tablet-portrait:hidden flex flex-col gap-3 p-6">
         <Badge />
         {newsItems.map((item) => (
           <p key={item.title} className="text-base-sm text-text/80">

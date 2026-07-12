@@ -4,7 +4,7 @@
 
 **Goal:** Make the navbar, headline, media and marketing copy, news ticker, and download call to action form one viewport-height tablet/desktop hero while preserving a natural mobile flow.
 
-**Architecture:** Extend the existing `HeroIntro` shell into a responsive flex column and make the existing `Hero` container a tablet/desktop grid with three rows. Reuse the current components and entrance variants; only responsive layout classes and tests change.
+**Architecture:** Extend the existing `HeroIntro` shell into a responsive flex column and make the existing `Hero` container a tablet/desktop grid with four rows. Reuse the current components and entrance variants; only responsive layout classes and tests change.
 
 **Tech Stack:** Next.js, React, TypeScript, Tailwind CSS, `motion/react`, Vitest, Testing Library.
 
@@ -80,7 +80,7 @@ Run the Task 1 test command again. Expected: all `HeroIntro` tests PASS.
 **Interfaces:**
 
 - Consumes: the flexible space provided by `HeroIntro`.
-- Produces: headline row, tablet two-column media row, and ticker/CTA bottom rail while preserving four separate motion items.
+- Produces: a vertically centered headline row, tablet two-column media row, full-width ticker row, and centered CTA row while preserving four separate motion items.
 
 - [ ] **Step 1: Write the failing layout test**
 
@@ -91,13 +91,24 @@ expect(root).toHaveClass('tablet-portrait:flex', 'tablet-portrait:flex-1');
 expect(heroContainer).toHaveClass(
   'tablet-portrait:grid',
   'tablet-portrait:flex-1',
-  'tablet-portrait:grid-cols-[minmax(0,1fr)_auto]',
-  'tablet-portrait:grid-rows-[auto_minmax(0,1fr)_auto]',
+  'tablet-portrait:grid-cols-1',
+  'tablet-portrait:grid-rows-[minmax(auto,20svh)_auto_auto_auto]',
+  'tablet-portrait:gap-y-10',
+  'tablet-portrait:content-center',
+);
+expect(heading).toHaveClass(
+  'tablet-portrait:row-start-1',
+  'tablet-portrait:self-center',
 );
 expect(mediaRow).toHaveClass(
-  'tablet-portrait:col-span-2',
+  'tablet-portrait:row-start-2',
   'tablet-portrait:grid-cols-[1.1fr_0.9fr]',
   'tablet-portrait:mt-0',
+);
+expect(mediaSizer).toHaveClass(
+  'w-full',
+  'tablet-portrait:max-w-[min(100%,48svh)]',
+  'tablet-portrait:justify-self-center',
 );
 expect(newsWrapper).toHaveClass(
   'tablet-portrait:col-start-1',
@@ -105,8 +116,8 @@ expect(newsWrapper).toHaveClass(
   'tablet-portrait:mt-0',
 );
 expect(ctaWrapper).toHaveClass(
-  'tablet-portrait:col-start-2',
-  'tablet-portrait:row-start-3',
+  'tablet-portrait:col-start-1',
+  'tablet-portrait:row-start-4',
   'tablet-portrait:mt-0',
 );
 ```
@@ -121,7 +132,7 @@ pnpm --filter networkcanvas.com exec vitest run components/sections/__tests__/He
 
 Expected: FAIL because `Hero` still uses independent vertical margins and the media row changes at tablet landscape.
 
-- [ ] **Step 3: Implement the three-row grid**
+- [ ] **Step 3: Implement the four-row grid**
 
 Apply these responsive responsibilities:
 
@@ -130,10 +141,15 @@ Apply these responsive responsibilities:
   variants={containerVariants}
   className="tablet-portrait:flex tablet-portrait:flex-1"
 >
-  <Container className="tablet-portrait:grid tablet-portrait:flex-1 tablet-portrait:grid-cols-[minmax(0,1fr)_auto] tablet-portrait:grid-rows-[auto_minmax(0,1fr)_auto] tablet-portrait:items-center tablet-portrait:gap-x-8 tablet-portrait:gap-y-6 tablet-portrait:pt-4 tablet-portrait:pb-8 pt-6 pb-20">
+  <Container className="tablet-portrait:grid tablet-portrait:flex-1 tablet-portrait:grid-cols-1 tablet-portrait:grid-rows-[minmax(auto,20svh)_auto_auto_auto] tablet-portrait:items-center tablet-portrait:content-center tablet-portrait:gap-y-10 tablet-portrait:pt-4 tablet-portrait:pb-6 pt-6 pb-20">
 ```
 
-Add `tablet-portrait:col-span-2` to the headline and media row. Move the media breakpoint classes from `tablet-landscape` to `tablet-portrait`, retaining the larger landscape gap. Place the news wrapper in grid column 1, row 3, and the CTA wrapper in column 2, row 3. Keep their existing mobile `mt-12` and cancel it with `tablet-portrait:mt-0`.
+Vertically center the headline in grid row 1 and place the media row in row 2.
+Move the media breakpoint classes from `tablet-landscape` to
+`tablet-portrait`, retaining the larger landscape gap. Wrap `HeroVideo` in a
+full-width sizer capped at `min(100%,48svh)` and center it in its grid column.
+Place the news wrapper in row 3 and the CTA wrapper in row 4. Keep their existing
+mobile `mt-12` and cancel it with `tablet-portrait:mt-0`.
 
 - [ ] **Step 4: Run the test and verify it passes**
 
@@ -222,9 +238,10 @@ Expected: all commands exit 0.
 
 At 390px width, confirm the hero remains naturally stacked and no content clips.
 At the 958×1148 review viewport, confirm the hero bottom is at or above 1148px,
-the media row is two-column, and the ticker is single-line. At 1440×900, confirm
-the hero fills the viewport and all content remains visible. Restore the user's
-preview to its original viewport and scroll position.
+the headline is vertically centered in its flexible row, the media row is
+two-column, and the ticker and CTA occupy separate lines. At 1440×900, confirm
+the height-capped 4:3 media allows the hero to fill the viewport with all content
+visible. Restore the user's preview to its original viewport and scroll position.
 
 - [ ] **Step 4: Commit and push**
 

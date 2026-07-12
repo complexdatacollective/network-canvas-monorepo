@@ -24,9 +24,9 @@ export function HeroIntro() {
   }, [controls, reduceMotion]);
 
   return (
-    <div className="relative isolate overflow-hidden">
+    <div className="tablet-portrait:min-h-svh relative isolate overflow-hidden">
       <motion.div
-        className="relative z-10"
+        className="tablet-portrait:flex tablet-portrait:min-h-svh tablet-portrait:flex-col relative z-10"
         variants={entrance.pageVariants}
         initial={false}
         animate={controls}

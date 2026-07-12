@@ -96,10 +96,19 @@ describe('HeroIntro', () => {
   it('renders the header and hero without owning the page background', () => {
     motionPreference.reduced = false;
     render(<HeroIntro />);
+    const shell =
+      screen.getByText('Header content').parentElement?.parentElement;
+    const motionRoot = shell?.firstElementChild;
 
     expect(screen.getByText('Header content')).toBeInTheDocument();
     expect(screen.getByText('Hero content')).toBeInTheDocument();
     expect(backgroundProps).not.toHaveBeenCalled();
+    expect(shell).toHaveClass('tablet-portrait:min-h-svh');
+    expect(motionRoot).toHaveClass(
+      'tablet-portrait:flex',
+      'tablet-portrait:min-h-svh',
+      'tablet-portrait:flex-col',
+    );
   });
 
   it('renders visible static server markup before the motion preference resolves', () => {

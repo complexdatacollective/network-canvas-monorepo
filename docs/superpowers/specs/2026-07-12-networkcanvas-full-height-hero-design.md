@@ -13,16 +13,23 @@ existing motion root will become a vertical flex layout so the navbar keeps its
 natural height and `Hero` fills the remaining space.
 
 `Hero` will retain the existing content and entrance sequence while distributing
-it across three rows:
+it across four rows:
 
-1. the centered headline;
+1. a first row capped at 20% of the viewport height that vertically centers the
+   headline;
 2. a two-column media row containing the 4:3 video and marketing copy; and
-3. a bottom rail containing the compact news ticker and download call to action.
+3. a full-width compact news ticker; and
+4. a centered download call to action.
+
+Tablet and desktop rows will use 2.5rem gaps so the media, ticker, and call to
+action read as distinct elements. The complete grid will be centered within the
+hero's available height so unused space is not assigned solely to the headline.
 
 The media row will switch to two columns at the tablet-portrait breakpoint. This
 is important at intermediate desktop widths, where the current stacked 4:3 video
-is taller than the available above-the-fold area. The bottom rail will use a
-flexible ticker column and a content-sized call-to-action column.
+is taller than the available above-the-fold area. The media frame will also cap
+its width at 48% of viewport height on larger, shorter screens, preserving its
+4:3 ratio while leaving room for the ticker and call to action on separate lines.
 
 ## Responsive Behavior
 
@@ -48,9 +55,10 @@ unchanged.
 
 ## Testing and Verification
 
-Component tests will verify the viewport-height shell, the flexible hero layout,
-the tablet two-column media row, the combined bottom rail, and the ticker's new
-responsive breakpoint. Existing hydration and motion tests will remain intact.
+Component tests will verify the viewport-height shell, the vertically centered
+headline, the tablet two-column media row, the separate ticker and call-to-action
+rows, and the ticker's new responsive breakpoint. Existing hydration and motion
+tests will remain intact.
 
 Verification will include the website test suite, typecheck, formatting, lint,
 `knip`, production build, and browser measurements at mobile, intermediate
