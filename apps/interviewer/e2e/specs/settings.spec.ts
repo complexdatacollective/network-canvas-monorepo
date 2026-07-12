@@ -1,4 +1,8 @@
 import { expect, test } from '../fixtures/test.js';
+import {
+  LEAN_E2E_PROTOCOL_NAME,
+  LEAN_E2E_PROTOCOL_PATH,
+} from '../helpers/protocol-paths.js';
 import { settingsAboutMasks } from '../helpers/visual.js';
 
 async function openSettings(
@@ -89,36 +93,72 @@ test.describe('settings', () => {
     await capture('settings-about', { mask: settingsAboutMasks(page) });
   });
 
-  test('Security tab renders step-up controls before a vault is configured', async ({
+  test('Security tab hides step-up controls when no vault is configured', async ({
     page,
   }) => {
     // NAV_ITEMS always includes the Security tab (it's not conditionally
-    // rendered), and SettingsDialog only gates SecurityBehaviorControls (the
-    // step-up toggles + auto-lock timeout) behind `auth.mode !== 'none'`.
-    // A fresh browser tab reaches Home without ever enrolling a vault, so
-    // `auth.mode` is `undefined` there — not the literal string `'none'` —
-    // and `undefined !== 'none'` is true, so the gate does NOT hide these
-    // controls pre-setup. (ManageAuthenticator reports "Mode: unknown" in
-    // this state, distinct from an explicitly-enrolled `mode: 'none'` vault,
-    // which is the one case that *would* hide them.) Assert the real DOM
-    // shape rather than the "hidden pre-setup" assumption the test title
-    // used to make.
+    // rendered). SettingsDialog gates SecurityBehaviorControls (the step-up
+    // toggles + auto-lock timeout) behind
+    // `auth.kind === 'unlocked' && auth.mode !== 'none'`. A fresh browser tab
+    // reaches Home without ever enrolling a vault, so `auth.kind` is
+    // `'unconfigured'` there, not `'unlocked'` — the gate correctly hides
+    // these controls. Showing them pre-setup would be dead UI:
+    // `requireFreshUnlock` short-circuits with no vault, and the idle timer
+    // never arms until a mode other than `'none'` is enrolled and unlocked,
+    // so any value the researcher set here would just be discarded/
+    // overwritten the moment they actually enrol. (An enrolled `mode:'none'`
+    // vault is ALSO `kind:'unlocked'`, which is why the gate keeps the
+    // `mode !== 'none'` clause — that case must stay hidden too.)
     await openSettings(page);
     await page.getByRole('tab', { name: 'Security' }).click();
     await expect(
       page.getByRole('switch', {
         name: 'Require unlock when entering an interview',
       }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       page.getByRole('switch', {
         name: 'Require unlock when exiting an interview',
       }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       page.getByRole('switch', {
         name: 'Require unlock before exporting data',
       }),
+    ).toHaveCount(0);
+    // The Security tab itself still renders real content — authenticator
+    // management (reporting "unknown" mode pre-setup) and the device-reset
+    // control — so the tab isn't just empty.
+    await expect(
+      page.getByRole('heading', { name: 'Authenticator' }),
     ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /reset device|revoke/i }),
+    ).toBeVisible();
+  });
+
+  test('Synthetic data tab sees a protocol imported just before Settings opened', async ({
+    page,
+    protocol,
+  }) => {
+    // Regression test for the import→Settings race: SettingsDialog used to
+    // query the protocol list only on the dialog's open false→true
+    // transition, never again when the Synthetic tab was later selected. A
+    // protocol imported shortly before Settings opened — its DB write lands
+    // after the deck already shows its pending name — left the synthetic
+    // Protocol selector empty and Generate disabled until the dialog was
+    // closed and reopened. The fix re-queries on tab selection, so this is
+    // deterministic rather than timing-dependent.
+    await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+    await page.getByTestId('settings-trigger').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByRole('tab', { name: 'Synthetic data' }).click();
+
+    const protocolSelect = page.getByRole('combobox', { name: 'Protocol' });
+    await expect(protocolSelect.locator('option')).toHaveCount(1);
+    await expect(protocolSelect.locator('option')).toHaveText(
+      LEAN_E2E_PROTOCOL_NAME,
+    );
+    await expect(page.getByTestId('synthetic-generate')).toBeEnabled();
   });
 });

@@ -158,6 +158,14 @@ export function SettingsDialog({
     void reloadSynthetic();
   }, [open, reload, reloadSynthetic]);
 
+  // Re-query protocols whenever the Synthetic tab is (re)selected, so a protocol
+  // imported moments before Settings opened — its DB write lands ~0.6-2.1s after
+  // the deck shows its pending name — becomes selectable without reopening.
+  useEffect(() => {
+    if (!open || section !== 'synthetic') return;
+    void reloadSynthetic();
+  }, [open, section, reloadSynthetic]);
+
   const persist = useCallback(
     async (patch: Partial<Omit<StoredSettings, 'id'>>) => {
       const next = await updateSettings(patch);
@@ -521,7 +529,7 @@ export function SettingsDialog({
             {settings ? (
               <>
                 <ManageAuthenticator />
-                {auth.mode !== 'none' ? (
+                {auth.kind === 'unlocked' && auth.mode !== 'none' ? (
                   <>
                     <Alert variant="info">
                       Use the lock button in the top bar to lock immediately.
