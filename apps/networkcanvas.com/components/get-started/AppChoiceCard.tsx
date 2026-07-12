@@ -10,6 +10,7 @@ import {
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { ButtonLink } from '~/components/ui/ButtonLink';
 import { PillLink } from '~/components/ui/PillLink';
 import { cn } from '~/lib/cn';
 import {
@@ -65,18 +66,19 @@ function PlatformActions({ app }: { app: (typeof classicApps)[number] }) {
           const PlatformIcon = platformIcons[platform.id];
 
           return (
-            <a
+            <ButtonLink
               key={platform.id}
               href={platform.href}
-              target="_blank"
-              rel="noreferrer"
+              external
+              variant="outline"
+              color="dynamic"
               aria-label={`${platform.label} for ${app.name}`}
-              className="focusable border-cyber-grape/20 font-heading inline-flex items-center gap-2 rounded-full border bg-white/70 px-4 py-2 text-sm font-bold transition-transform hover:-translate-y-0.5 hover:bg-white focus-visible:-translate-y-0.5 motion-reduce:transform-none"
+              className="rounded-full bg-white/70 hover:bg-white"
             >
               <PlatformIcon aria-hidden className="size-4" />
               {platform.label}
               <ExternalLink aria-hidden className="size-3.5" />
-            </a>
+            </ButtonLink>
           );
         })}
       </div>
