@@ -1519,7 +1519,7 @@ git commit -m "feat(interview): use ThemedRegion in Storybook preview"
 
 In `packages/interview/README.md`:
 
-1. Find the line at ~65 mentioning `data-theme-interview` on `<html>` and update it to describe the Shell-internal scoping. Read lines 55–75 first to see context, then replace whatever wording references the host setting `<html>` with: *"Shell renders `<main data-theme-interview>` with a portal container so dialogs/popovers stay inside the themed subtree — no host-side setup required. See *Theming & DOM scope* below."*
+1. Find the line at ~65 mentioning `data-theme-interview` on `<html>` and update it to describe the Shell-internal scoping. Read lines 55–75 first to see context, then replace whatever wording references the host setting `<html>` with: _"Shell renders `<main data-theme-interview>` with a portal container so dialogs/popovers stay inside the themed subtree — no host-side setup required. See *Theming & DOM scope* below."_
 
 2. Replace the entire "Theming & DOM scope" section (lines ~383–417, between the surrounding `---` separators) with the markdown shown below. The outer fence in this plan uses four backticks so the inner triple-backtick `tsx` block is preserved verbatim — write the inner ` ```tsx … ``` ` block as a normal triple-backtick fenced code block in the README.
 

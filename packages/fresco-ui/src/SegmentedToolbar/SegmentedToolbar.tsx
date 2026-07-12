@@ -14,7 +14,7 @@ import {
 } from 'motion/react';
 import * as React from 'react';
 
-import { Button } from '../Button';
+import { Button, type ButtonProps } from '../Button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +37,8 @@ export type SegmentContent = {
    * Default: false when an icon is present (icon-only + tooltip), true when no icon.
    */
   showLabel?: boolean;
+  /** Fresco Button variant. @default 'text' */
+  variant?: ButtonProps['variant'];
   /**
    * Tailwind classes forwarded to the underlying control — e.g. to colour a
    * segment with named theme colours: `className="bg-tomato text-white"`.
@@ -202,7 +204,7 @@ function segmentButton(
   const labelVisible = isLabelVisible(content);
   return (
     <Button
-      variant="text"
+      variant={content.variant ?? 'text'}
       size={size}
       icon={content.icon}
       aria-label={labelVisible ? undefined : content.label}
