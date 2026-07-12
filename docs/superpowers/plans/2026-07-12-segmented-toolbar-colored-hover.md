@@ -130,7 +130,8 @@ Run:
 pnpm --filter @codaco/fresco-ui exec vitest run src/SegmentedToolbar/SegmentedToolbar.test.tsx --reporter=verbose
 ```
 
-Expected: 20 tests pass, including the strengthened color regression.
+Expected: 21 tests pass, including the fallback-variant coverage and the
+strengthened color regression.
 
 - [ ] **Step 6: Format and lint the task files**
 
