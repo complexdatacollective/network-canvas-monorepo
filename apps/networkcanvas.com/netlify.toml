@@ -1,0 +1,5 @@
+[[redirects]]
+from = "/download"
+to = "/get-started"
+status = 301
+force = true

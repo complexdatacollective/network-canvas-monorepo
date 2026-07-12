@@ -1,9 +1,23 @@
-import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { Hero } from '../Hero';
 
+afterEach(cleanup);
+
 describe('Hero', () => {
+  it('links the primary action to Get Started', () => {
+    render(<Hero />);
+
+    expect(screen.getByRole('link', { name: 'Get Started' })).toHaveAttribute(
+      'href',
+      '/get-started',
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Download Now' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('uses the large desktop headline scale and cyber-grape body copy', () => {
     render(<Hero />);
 
@@ -35,7 +49,7 @@ describe('Hero', () => {
     const [newsBadge] = view.getAllByText('Latest News:');
     const newsWrapper = newsBadge?.parentElement?.parentElement?.parentElement;
     const ctaWrapper = view.getByRole('link', {
-      name: 'Download Now',
+      name: 'Get Started',
     }).parentElement;
 
     expect(root).toHaveClass('tablet-portrait:flex', 'tablet-portrait:flex-1');

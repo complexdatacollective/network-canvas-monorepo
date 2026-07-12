@@ -5,6 +5,7 @@
  */
 
 import type { Variant } from '~/components/ui/DeviceMockup';
+import { GET_STARTED_PATH, webDestinations } from '~/lib/getStarted';
 
 export const externalLinks = {
   community: 'https://community.networkcanvas.com/',
@@ -25,15 +26,15 @@ export const externalLinks = {
   terms:
     'https://assets.networkcanvas.com/public/files/Website/terms-and-conditions.txt',
   privacy: 'https://assets.networkcanvas.com/public/files/Website/privacy.txt',
-  architectApp: 'https://architect.networkcanvas.com/',
-  interviewerApp: 'https://interviewer.networkcanvas.com/',
-  frescoApp: 'https://fresco-sandbox.networkcanvas.com/',
+  architectApp: webDestinations.architect,
+  interviewerApp: webDestinations.interviewer,
+  frescoApp: webDestinations.frescoSandbox,
 } as const;
 
 export const navLinks = [
   { label: 'Community', href: externalLinks.community, external: true },
   { label: 'Documentation', href: externalLinks.documentation, external: true },
-  { label: 'Download', href: '/download', external: false },
+  { label: 'Get Started', href: GET_STARTED_PATH, external: false },
 ] as const;
 
 export const newsItems = [

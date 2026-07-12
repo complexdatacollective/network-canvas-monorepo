@@ -7,6 +7,7 @@ import { NewsTicker } from '~/components/sections/NewsTicker';
 import { Container } from '~/components/ui/Container';
 import { HeroVideo } from '~/components/ui/HeroVideo';
 import { PillLink } from '~/components/ui/PillLink';
+import { GET_STARTED_PATH } from '~/lib/getStarted';
 
 export function Hero({
   containerVariants,
@@ -54,8 +55,8 @@ export function Hero({
           variants={itemVariants}
           className="tablet-portrait:col-start-1 tablet-portrait:row-start-4 tablet-portrait:mt-0 mt-12 flex flex-col items-center gap-3"
         >
-          <PillLink href="/download" tone="neon-coral" size="lg">
-            Download Now
+          <PillLink href={GET_STARTED_PATH} tone="neon-coral" size="lg">
+            Get Started
           </PillLink>
           <p className="text-base-sm text-text/60">
             or keep scrolling to learn more

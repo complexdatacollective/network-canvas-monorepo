@@ -11,11 +11,12 @@ import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { Logo } from '~/components/ui/Logo';
 import { navLinks, projects } from '~/lib/content';
+import { GET_STARTED_PATH } from '~/lib/getStarted';
 
 const linkClasses =
   'font-heading text-cyber-grape hover:text-neon-coral text-sm font-bold tracking-[0.12em] uppercase transition-colors';
 
-const topLevelLinks = navLinks.filter((link) => link.href !== '/download');
+const topLevelLinks = navLinks.filter((link) => link.href !== GET_STARTED_PATH);
 
 function DesktopLinks() {
   return (
@@ -85,8 +86,12 @@ export function Header({ entranceVariants }: { entranceVariants?: Variants }) {
         <nav className="tablet-landscape:flex hidden items-center gap-9">
           <DesktopLinks />
           <ProjectsMenu />
-          <ButtonLink href="/download" color="primary" className="rounded-full">
-            Download
+          <ButtonLink
+            href={GET_STARTED_PATH}
+            color="primary"
+            className="rounded-full"
+          >
+            Get Started
           </ButtonLink>
         </nav>
 
@@ -113,12 +118,12 @@ export function Header({ entranceVariants }: { entranceVariants?: Variants }) {
             <nav className="flex flex-col gap-5">
               <MobileLinks onNavigate={() => setOpen(false)} />
               <ButtonLink
-                href="/download"
+                href={GET_STARTED_PATH}
                 color="primary"
                 className="rounded-full"
                 onClick={() => setOpen(false)}
               >
-                Download
+                Get Started
               </ButtonLink>
             </nav>
           </motion.div>
