@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { AppChoiceCard } from '~/components/get-started/AppChoiceCard';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
-import { cn } from '~/lib/cn';
 import {
   type classicApps,
   type Workflow,
@@ -65,16 +64,15 @@ export function WorkflowPath({
           <Reveal
             key={app.id}
             delay={index * 0.08}
-            className={cn(
-              workflow === 'collect' && index < 2
-                ? 'tablet-landscape:col-span-6'
+            className={
+              workflow === 'collect'
+                ? index < 2
+                  ? 'tablet-landscape:col-span-6'
+                  : 'tablet-landscape:col-span-12'
                 : app.treatment === 'featured'
                   ? 'tablet-landscape:col-span-7'
-                  : 'tablet-landscape:col-span-5',
-              workflow === 'collect' && index === 2
-                ? 'tablet-landscape:col-start-8'
-                : undefined,
-            )}
+                  : 'tablet-landscape:col-span-5'
+            }
           >
             <AppChoiceCard app={app} />
           </Reveal>

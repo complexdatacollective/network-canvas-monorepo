@@ -84,7 +84,7 @@ describe('Get Started page', () => {
     expect(screen.getByText('Classic · Existing studies')).toBeInTheDocument();
   });
 
-  it('gives Interviewer and Fresco equal emphasis in the Collect grid', () => {
+  it('lays out current and Classic Collect apps in workflow order', () => {
     render(<GetStartedPage />);
 
     const collect = document.querySelector<HTMLElement>('#collect');
@@ -93,13 +93,27 @@ describe('Get Started page', () => {
       throw new Error('Expected the Collect workflow section to be present.');
     }
 
-    for (const appName of ['Interviewer', 'Fresco']) {
-      const card = within(collect)
+    const appNames = ['Interviewer', 'Fresco', 'Interviewer Classic'];
+    const cards = appNames.map((appName) =>
+      within(collect)
         .getByRole('heading', { level: 3, name: appName })
-        .closest('article');
+        .closest('article'),
+    );
 
+    expect(
+      within(collect)
+        .getAllByRole('heading', { level: 3 })
+        .map(({ textContent }) => textContent),
+    ).toEqual(appNames);
+
+    for (const card of cards.slice(0, 2)) {
       expect(card?.parentElement).toHaveClass('tablet-landscape:col-span-6');
     }
+
+    expect(cards[2]?.parentElement).toHaveClass('tablet-landscape:col-span-12');
+    expect(cards[2]?.parentElement).not.toHaveClass(
+      'tablet-landscape:col-start-8',
+    );
   });
 
   it('links Fresco actions and all four platforms for each Classic app', () => {
