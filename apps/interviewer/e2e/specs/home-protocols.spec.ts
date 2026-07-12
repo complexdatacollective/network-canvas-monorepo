@@ -5,7 +5,6 @@ import {
   LEAN_E2E_PROTOCOL_NAME,
   LEAN_E2E_PROTOCOL_PATH,
 } from '../helpers/protocol-paths.js';
-import { statusMasks } from '../helpers/visual.js';
 
 const MALFORMED = path.resolve(
   import.meta.dirname,
@@ -16,13 +15,17 @@ test.describe('protocol import & delete', () => {
   test('imports a .netcanvas and shows its deck card', async ({
     protocol,
     page,
-    capture,
   }) => {
     await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
     await expect(
       page.getByRole('heading', { name: LEAN_E2E_PROTOCOL_NAME }),
     ).toBeVisible();
-    await capture('home-with-protocol', { mask: statusMasks(page) });
+    // No visual snapshot here: the protocol deck is a spring-physics fan whose
+    // cards settle to a frame-timing-dependent sub-pixel rest position, so a
+    // full-page baseline is irreducibly flaky (~13k px antialiasing diff even
+    // fully settled). The deck-with-protocol state is still covered visually by
+    // the delete-confirm-dialog snapshot (deck behind the modal backdrop), and
+    // this test's functional assertions cover the import itself.
   });
 
   test('re-importing the same protocol does not create a duplicate card', async ({

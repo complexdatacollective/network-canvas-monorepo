@@ -6,7 +6,7 @@ import {
   LEAN_E2E_PROTOCOL_NAME,
   LEAN_E2E_PROTOCOL_PATH,
 } from '../helpers/protocol-paths.js';
-import { statusMasks } from '../helpers/visual.js';
+import { dataRowMasks, statusMasks } from '../helpers/visual.js';
 
 // Import + seed once per test (fresh context). Synthetic sessions carry real
 // generated networks (complete + dropped-out mix), so they populate the table
@@ -67,7 +67,9 @@ test.describe('interview data management', () => {
     await expect(page.getByRole('button', { name: /^All ·/ })).toBeVisible();
     await page.getByRole('button', { name: /^Complete ·/ }).click();
     await expect(page).toHaveURL(/status=complete/);
-    await capture('data-populated', { mask: statusMasks(page) });
+    await capture('data-populated', {
+      mask: [...statusMasks(page), ...dataRowMasks(page)],
+    });
   });
 
   test('search narrows rows by case id', async ({ protocol, seed, page }) => {

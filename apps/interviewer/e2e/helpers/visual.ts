@@ -4,6 +4,11 @@ import { expect, type Locator, type Page } from '@playwright/test';
 // or which element last held focus. Mirrors the interview suite's VISUAL_STYLES.
 export const VISUAL_STYLES = `
   [data-testid="background-blobs"] { visibility: hidden !important; }
+  /* The app's ambient BackgroundLights (App.tsx) drifts via requestAnimationFrame
+     with Math.random() seed positions — doubly non-deterministic and immune to
+     reducedMotion / animations:'disabled'. Hide it so app-chrome snapshots are
+     stable. (The interview route doesn't render it.) */
+  [data-testid="background-lights"] { visibility: hidden !important; }
   *:focus-visible, *:has(:focus-visible) { outline: none !important; }
   *:focus-visible { box-shadow: none !important; }
 `;
@@ -26,10 +31,60 @@ export function makeCapture(page: Page): CaptureFn {
     // page.reload()/second goto() drops the injected <style>, which would
     // silently un-hide blobs/focus-rings for a later capture() in the same test.
     await page.addStyleTag({ content: VISUAL_STYLES });
-    await expect(page).toHaveScreenshot(`${name}.png`, {
-      fullPage: options.fullPage ?? false,
-      mask: options.mask,
+    // Wait for motion to reach REST before sampling. Two problems otherwise:
+    // (1) entrance fades sit at their opacity:0 initial variant until a
+    // useEffect commits, so toHaveScreenshot can stabilise on two identical
+    // PRE-entrance frames; (2) the protocol deck is a spring-physics fan whose
+    // cards drift for several frames after mount and, mid-transient, land at
+    // frame-timing-dependent sub-pixel positions. A spring's EQUILIBRIUM is
+    // deterministic, so we poll element geometry (rounded to whole px) until it
+    // stops changing across consecutive animation frames — that is rest.
+    // reducedMotion/animations:'disabled' do NOT stop these JS-rAF springs.
+    await page.evaluate(async () => {
+      const raf = () =>
+        new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const sample = () =>
+        Array.from(document.querySelectorAll('main *, [role="dialog"] *'))
+          .slice(0, 600)
+          .map((el) => {
+            const r = el.getBoundingClientRect();
+            return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
+          })
+          .join('|');
+      // Wait for two consecutive frames with identical (whole-pixel) geometry:
+      // that is spring rest. Cap at ~120 frames (~2s) so the low-stiffness deck
+      // fan has time to fully settle, while a perpetually-moving element still
+      // can't hang the capture — toHaveScreenshot's own frame-matching guards
+      // the fallback.
+      let prev = '';
+      for (let i = 0; i < 120; i++) {
+        await raf();
+        const cur = sample();
+        if (cur === prev) return;
+        prev = cur;
+      }
     });
+    // Hide toasts for the screenshot only. Transient toasts (e.g. the "Protocol
+    // imported" toast still entering/exiting when a post-import capture fires)
+    // are time-dependent. A plain `mask` of the viewport box MISSES them —
+    // Base UI translates a toast (translateY 150%) outside that box while it
+    // animates. visibility:hidden ignores transform position and covers the
+    // transformed descendants; removing the tag afterwards restores the toast
+    // so post-capture getByText(...).toBeVisible() assertions still pass.
+    const toastHide = await page.addStyleTag({
+      content:
+        '[data-testid="toast-viewport"], [data-testid="toast-viewport"] * { visibility: hidden !important; }',
+    });
+    try {
+      await expect(page).toHaveScreenshot(`${name}.png`, {
+        fullPage: options.fullPage ?? false,
+        mask: options.mask,
+      });
+    } finally {
+      await toastHide.evaluate((el) => {
+        el.parentNode?.removeChild(el);
+      });
+    }
   };
 }
 
@@ -39,5 +94,38 @@ export function statusMasks(page: Page): Locator[] {
   return [
     page.getByTestId('encryption-status-trigger'),
     page.getByTestId('storage-status-trigger'),
+  ];
+}
+
+// The /data table's <tbody> holds synthetic sessions seeded with random case
+// ids, timestamps, and progress on every seed — mask the whole body so the
+// toolbar, status chips, and column headers stay asserted.
+export function dataRowMasks(page: Page): Locator[] {
+  return [page.locator('tbody')];
+}
+
+// Settings → About's storage estimate (the "Storage usage" progress bar and
+// its "X of Y (Z%)" desc text) and per-device installation id vary by
+// environment/browser profile — mask both so the row labels ("Storage",
+// "Installation ID") and the stable App version row stay asserted.
+export function settingsAboutMasks(page: Page): Locator[] {
+  const storageHeading = page.getByRole('heading', {
+    level: 4,
+    name: 'Storage',
+    exact: true,
+  });
+  const installationHeading = page.getByRole('heading', {
+    level: 4,
+    name: 'Installation ID',
+    exact: true,
+  });
+  return [
+    page.getByRole('progressbar', { name: 'Storage usage' }),
+    // SettingsRow renders the desc text as the heading's next sibling, inside
+    // their shared title/desc column.
+    storageHeading.locator('xpath=following-sibling::div[1]'),
+    // The control column (here, the id span) is a sibling of the title/desc
+    // column two levels above the heading — see SettingsRow.tsx.
+    installationHeading.locator('xpath=../..').locator('> div').last(),
   ];
 }

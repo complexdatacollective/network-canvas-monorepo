@@ -52,6 +52,7 @@ export default function App() {
               {showBackgroundLights && (
                 <motion.div
                   key="background-lights"
+                  data-testid="background-lights"
                   className="fixed inset-0 -z-10"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 0.8 }}

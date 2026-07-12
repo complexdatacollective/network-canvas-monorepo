@@ -216,6 +216,7 @@ export function Toaster() {
   return (
     <Toast.Portal container={portalContainer ?? undefined}>
       <Toast.Viewport
+        data-testid="toast-viewport"
         className={cx(
           'phone-landscape:max-w-sm fixed top-auto bottom-2 mx-auto flex w-full',
           'tablet-portrait:right-8 tablet-portrait:bottom-8 z-10',

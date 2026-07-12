@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/test.js';
+import { settingsAboutMasks } from '../helpers/visual.js';
 
 async function openSettings(
   page: import('@playwright/test').Page,
@@ -85,7 +86,7 @@ test.describe('settings', () => {
     await expect(
       page.getByRole('progressbar', { name: 'Storage usage' }),
     ).toBeVisible();
-    await capture('settings-about');
+    await capture('settings-about', { mask: settingsAboutMasks(page) });
   });
 
   test('Security tab renders step-up controls before a vault is configured', async ({
