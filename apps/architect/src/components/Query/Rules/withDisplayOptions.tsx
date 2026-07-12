@@ -39,12 +39,14 @@ type InputProps = {
 const withDisplayOptions = withProps<{ options: unknown }, InputProps>(
   ({ type, options, codebook }: InputProps) => {
     const entityType = type === 'node' ? 'node' : 'edge';
+    const fallbackColor =
+      entityType === 'node' ? 'node-color-seq-1' : 'edge-color-seq-1';
     const typeLabel = options.type
       ? get(codebook, [entityType, options.type, 'name'], options.type)
       : options.type; // noop for ego
     const typeColor = options.type
-      ? get(codebook, [entityType, options.type, 'color'], '#000')
-      : '#000'; // noop for ego
+      ? get(codebook, [entityType, options.type, 'color'], fallbackColor)
+      : fallbackColor; // noop for ego
     const typeShape =
       type === 'node' && options.type
         ? (get(

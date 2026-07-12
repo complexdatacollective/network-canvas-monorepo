@@ -73,6 +73,7 @@ const BasicForm = ({
     return (
       <form
         data-basic-form={form}
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -85,7 +86,7 @@ const BasicForm = ({
   }
 
   return (
-    <form data-basic-form={form} onSubmit={onSubmit}>
+    <form data-basic-form={form} noValidate onSubmit={onSubmit}>
       {children}
     </form>
   );

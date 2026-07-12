@@ -7,7 +7,7 @@ import { change, Field, formValueSelector } from 'redux-form';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { FrescoReduxField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';

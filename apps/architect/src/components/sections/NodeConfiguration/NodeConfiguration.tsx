@@ -10,7 +10,7 @@ import { Row, Section, Subsection } from '~/components/EditorLayout';
 import withCreateVariableHandlers from '~/components/enhancers/withCreateVariableHandler';
 import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
 import withSubject from '~/components/enhancers/withSubject';
-import { ValidatedField } from '~/components/Form';
+import ValidatedField from '~/components/Form/ValidatedField';
 import IssueAnchor from '~/components/IssueAnchor';
 import NewVariableWindow, {
   type Entity,

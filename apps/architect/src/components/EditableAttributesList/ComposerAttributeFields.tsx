@@ -6,7 +6,7 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section, Subsection } from '~/components/EditorLayout';
-import { FrescoReduxField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Options from '~/components/Options';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';

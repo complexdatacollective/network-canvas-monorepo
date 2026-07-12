@@ -3,8 +3,8 @@ import type { ComponentProps, ComponentType } from 'react';
 
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { Row, Section } from '~/components/EditorLayout';
-import { FrescoReduxField } from '~/components/Form';
-import { Field as RichText } from '~/components/Form/Fields/RichText';
+import RichText from '~/components/Form/Fields/RichText/Field';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import IssueAnchor from '~/components/IssueAnchor';
 
 import Audio from '../../Form/Fields/Audio';

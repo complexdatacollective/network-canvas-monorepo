@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import { FrescoReduxField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 

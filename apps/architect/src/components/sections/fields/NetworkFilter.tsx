@@ -70,8 +70,7 @@ const NetworkFilter = ({
   const contrastProps =
     variant === 'contrast'
       ? {
-          className:
-            'bg-slate-blue-dark p-4 rounded-sm text-white [--text-dark:white]',
+          className: 'bg-surface-3 text-surface-3-contrast p-4 rounded-sm',
           layout: 'vertical' as 'vertical' | 'horizontal',
         }
       : {};

@@ -7,7 +7,7 @@ import { change, Field } from 'redux-form';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import { FrescoReduxField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';

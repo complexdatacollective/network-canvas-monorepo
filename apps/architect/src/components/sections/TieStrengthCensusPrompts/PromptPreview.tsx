@@ -1,4 +1,4 @@
-import { Markdown } from '~/components/Form/Fields';
+import Markdown from '~/components/Markdown';
 
 type PromptPreviewProps = {
   text: string;

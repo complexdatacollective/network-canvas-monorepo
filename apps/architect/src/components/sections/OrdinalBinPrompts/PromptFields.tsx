@@ -4,8 +4,8 @@ import { compose } from 'react-recompose';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import { ValidatedField } from '~/components/Form';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
+import ValidatedField from '~/components/Form/ValidatedField';
 import IssueAnchor from '~/components/IssueAnchor';
 import NewVariableWindow, {
   type Entity,

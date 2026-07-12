@@ -2,8 +2,8 @@ import type { ComponentType } from 'react';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-
-import { FrescoReduxField, ValidatedField } from '../Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
+import ValidatedField from '~/components/Form/ValidatedField';
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
 

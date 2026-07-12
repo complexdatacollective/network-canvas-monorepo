@@ -46,16 +46,16 @@ function ValidatedField<T = Record<string, never>>({
 
   return (
     <>
+      <IssueAnchor
+        fieldName={`${fieldProps.name}._error`}
+        description={startCase(fieldProps.name)}
+      />
       <Field
         {...fieldProps}
         {...componentProps}
         required={required}
         validate={validations}
         component={reduxFieldComponent}
-      />
-      <IssueAnchor
-        fieldName={`${fieldProps.name}._error`}
-        description={startCase(fieldProps.name)}
       />
     </>
   );

@@ -47,16 +47,16 @@ function ValidatedFieldArray<
 
   return (
     <>
+      <IssueAnchor
+        fieldName={`${fieldProps.name}._error`}
+        description={startCase(fieldProps.name)}
+      />
       <FieldArray<T, FieldValue>
         {...fieldProps}
         {...componentProps}
         validate={validations}
         component={ArrayComponent}
         rerenderOnEveryChange
-      />
-      <IssueAnchor
-        fieldName={`${fieldProps.name}._error`}
-        description={startCase(fieldProps.name)}
       />
     </>
   );

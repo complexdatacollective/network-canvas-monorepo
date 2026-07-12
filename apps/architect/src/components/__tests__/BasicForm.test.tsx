@@ -25,6 +25,13 @@ const TestField = ({
   </div>
 );
 
+const createStore = () =>
+  configureStore({
+    reducer: { form: formReducer },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({ serializableCheck: false }),
+  });
+
 describe('BasicForm', () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -40,12 +47,36 @@ describe('BasicForm', () => {
     vi.unstubAllGlobals();
   });
 
+  it('disables native validation on the onSubmit-handler form', () => {
+    const { container } = render(
+      <Provider store={createStore()}>
+        <BasicForm form="basic-form-novalidate" onSubmit={vi.fn()}>
+          <button type="submit">Save</button>
+        </BasicForm>
+      </Provider>,
+    );
+
+    expect(
+      container.querySelector('form[data-basic-form="basic-form-novalidate"]'),
+    ).toHaveAttribute('novalidate');
+  });
+
+  it('disables native validation on the dispatch-submit form', () => {
+    const { container } = render(
+      <Provider store={createStore()}>
+        <BasicForm form="basic-form-dispatch">
+          <button type="submit">Save</button>
+        </BasicForm>
+      </Provider>,
+    );
+
+    expect(
+      container.querySelector('form[data-basic-form="basic-form-dispatch"]'),
+    ).toHaveAttribute('novalidate');
+  });
+
   it('focuses the first invalid control in the submitted form', async () => {
-    const store = configureStore({
-      reducer: { form: formReducer },
-      middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware({ serializableCheck: false }),
-    });
+    const store = createStore();
     const onSubmit = vi.fn();
 
     render(

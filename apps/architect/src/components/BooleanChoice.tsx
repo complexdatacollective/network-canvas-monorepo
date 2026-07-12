@@ -6,7 +6,7 @@ import { change, Field, formValueSelector } from 'redux-form';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import RichText from '~/components/Form/Fields/RichText';
+import RichText from '~/components/Form/Fields/RichText/Field';
 import Toggle from '~/components/Form/Fields/Toggle';
 
 import ValidatedField from './Form/ValidatedField';

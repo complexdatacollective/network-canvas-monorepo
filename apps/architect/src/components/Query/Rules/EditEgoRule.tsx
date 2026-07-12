@@ -3,8 +3,6 @@ import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import DetachedField from '~/components/DetachedField';
-import { FrescoReduxField } from '~/components/Form';
 
 import Section from '../../EditorLayout/Section';
 import EditValue from './EditValue';
@@ -13,6 +11,7 @@ import {
   operatorsWithRegExp,
   operatorsWithValue,
 } from './options';
+import RuleField from './RuleField';
 import withOptions from './withOptions';
 import withRuleChangeHandler from './withRuleChangeHandler';
 
@@ -82,9 +81,8 @@ const EditEgoRule = ({
   return (
     <>
       <Section title="Ego Variable" layout="vertical">
-        <DetachedField
-          component={FrescoReduxField}
-          fieldComponent={FrescoNativeSelectField}
+        <RuleField
+          component={FrescoNativeSelectField}
           label="Ego variable"
           name="attribute"
           options={variablesAsOptions}
@@ -95,9 +93,8 @@ const EditEgoRule = ({
       </Section>
       {optionsWithDefaults.attribute && (
         <Section title="Operator" layout="vertical">
-          <DetachedField
-            component={FrescoReduxField}
-            fieldComponent={FrescoNativeSelectField}
+          <RuleField
+            component={FrescoNativeSelectField}
             label="Operator"
             name="operator"
             options={operatorOptions}

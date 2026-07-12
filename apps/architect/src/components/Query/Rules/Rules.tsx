@@ -8,11 +8,10 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import DetachedField from '~/components/DetachedField';
-import { FrescoReduxField } from '~/components/Form';
 
 import EditRule from './EditRule';
 import PreviewRules from './PreviewRules';
+import RuleField from './RuleField';
 import validateRule, { type Rule } from './validateRule';
 import withDraftRule from './withDraftRule';
 const FrescoRadioGroupField = RadioGroupField as ComponentType<
@@ -185,9 +184,8 @@ const Rules = ({
       {rules.length > 1 && (
         <div className="mt-10">
           <Heading level="h4">Must match</Heading>
-          <DetachedField
-            component={FrescoReduxField}
-            fieldComponent={FrescoRadioGroupField}
+          <RuleField
+            component={FrescoRadioGroupField}
             label="Rule matching"
             options={[
               { label: 'All rules', value: 'AND' },

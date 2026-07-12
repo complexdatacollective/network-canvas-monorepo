@@ -4,9 +4,13 @@ import { withProps } from 'react-recompose';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
-import DetachedField from '~/components/DetachedField';
-import { FrescoReduxField, reduxNumberValue } from '~/components/Form';
-import { Toggle } from '~/components/Form/Fields';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import {
+  reduxIntegerValue,
+  reduxNumberValue,
+} from '~/components/Form/FrescoReduxField';
+
+import RuleField from './RuleField';
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
 const FrescoCheckboxGroupField = CheckboxGroupField as ComponentType<
@@ -15,10 +19,26 @@ const FrescoCheckboxGroupField = CheckboxGroupField as ComponentType<
 const FrescoRadioGroupField = RadioGroupField as ComponentType<
   Record<string, unknown>
 >;
+const FrescoToggleField = ToggleField as ComponentType<Record<string, unknown>>;
 
-const reduxArrayValue = {
-  fromReduxValue: (value: unknown) => (Array.isArray(value) ? value : []),
-  toReduxValue: (value: unknown) => (Array.isArray(value) ? value : []),
+const numberValue = {
+  fromValue: reduxNumberValue.fromReduxValue,
+  toValue: reduxNumberValue.toReduxValue,
+};
+
+const integerValue = {
+  fromValue: reduxIntegerValue.fromReduxValue,
+  toValue: reduxIntegerValue.toReduxValue,
+};
+
+const arrayValue = {
+  fromValue: (value: unknown) => (Array.isArray(value) ? value : []),
+  toValue: (value: unknown) => (Array.isArray(value) ? value : []),
+};
+
+const booleanValue = {
+  fromValue: (value: unknown) => Boolean(value),
+  toValue: (value: unknown) => Boolean(value),
 };
 
 // Categorical attributes are stored as arrays of selected option values, so
@@ -26,32 +46,42 @@ const reduxArrayValue = {
 // scalar value (RadioGroup).
 const INPUT_TYPES = {
   string: {
-    component: FrescoReduxField as ComponentType<Record<string, unknown>>,
-    props: { fieldComponent: FrescoInputField },
+    component: FrescoInputField,
+    props: {},
   },
   number: {
-    component: FrescoReduxField as ComponentType<Record<string, unknown>>,
+    component: FrescoInputField,
     props: {
-      fieldComponent: FrescoInputField,
       type: 'number',
       step: 'any',
-      ...reduxNumberValue,
+      ...numberValue,
+    },
+  },
+  count: {
+    component: FrescoInputField,
+    props: {
+      type: 'number',
+      step: 1,
+      min: 0,
+      ...integerValue,
     },
   },
   boolean: {
-    component: Toggle as ComponentType<Record<string, unknown>>,
-    props: {},
+    component: FrescoToggleField,
+    props: {
+      inline: true,
+      ...booleanValue,
+    },
   },
   categorical: {
-    component: FrescoReduxField as ComponentType<Record<string, unknown>>,
+    component: FrescoCheckboxGroupField,
     props: {
-      fieldComponent: FrescoCheckboxGroupField,
-      ...reduxArrayValue,
+      ...arrayValue,
     },
   },
   ordinal: {
-    component: FrescoReduxField as ComponentType<Record<string, unknown>>,
-    props: { fieldComponent: FrescoRadioGroupField },
+    component: FrescoRadioGroupField,
+    props: {},
   },
 };
 
@@ -79,7 +109,6 @@ type EditValueProps = {
     oldValue: unknown,
     name: string | null,
   ) => void;
-  fieldComponent?: ComponentType<Record<string, unknown>>;
   variableType?: string;
   placeholder?: string;
   validation?: Record<string, unknown>;
@@ -95,7 +124,7 @@ const EditValue = ({
 }: EditValueProps & {
   fieldConfig: FieldConfig;
 }) => (
-  <DetachedField
+  <RuleField
     component={fieldConfig.component}
     label={getLabel(variableType, value) ?? 'Attribute value'}
     name="value"

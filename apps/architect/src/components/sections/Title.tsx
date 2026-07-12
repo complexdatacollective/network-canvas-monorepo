@@ -3,9 +3,10 @@ import type { ComponentType } from 'react';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
+import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
-import { FrescoReduxField, ValidatedField } from '../Form';
 import IssueAnchor from '../IssueAnchor';
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;

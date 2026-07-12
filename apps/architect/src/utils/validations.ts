@@ -37,17 +37,11 @@ const messageWithDefault = (
 // Return an array of values given either a collection, an array,
 // or a single value
 const coerceArray = (value: ValidationValue): unknown[] => {
-  if (value instanceof Object && !Array.isArray(value)) {
-    return (value as { value: unknown }[]).reduce(
-      (acc: unknown[], individual: { value: unknown }) => {
-        acc.push(individual.value);
-        return acc;
-      },
-      [],
-    );
-  }
   if (Array.isArray(value)) {
     return value;
+  }
+  if (value instanceof Object) {
+    return Object.values(value);
   }
   return [];
 };
@@ -92,17 +86,23 @@ const required =
 
 const requiredAcceptsZero =
   (isRequired: boolean, message: ValidationMessage): Validator =>
-  (value) =>
-    !isNil(value) && isRequired
-      ? undefined
-      : messageWithDefault(message, 'Required');
+  (value) => {
+    if (!isRequired) {
+      return undefined;
+    }
+    return isNil(value) ? messageWithDefault(message, 'Required') : undefined;
+  };
 
 const requiredAcceptsNull =
   (isRequired: boolean, message: ValidationMessage): Validator =>
-  (value) =>
-    !isUndefined(value) && isRequired
-      ? undefined
-      : messageWithDefault(message, 'Required');
+  (value) => {
+    if (!isRequired) {
+      return undefined;
+    }
+    return isUndefined(value)
+      ? messageWithDefault(message, 'Required')
+      : undefined;
+  };
 
 const positiveNumber =
   (_: unknown, message: ValidationMessage): Validator =>

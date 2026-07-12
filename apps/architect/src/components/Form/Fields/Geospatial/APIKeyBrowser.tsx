@@ -9,7 +9,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import Assets from '~/components/AssetBrowser/Assets';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { Layout, Section } from '~/components/EditorLayout';
-import { FrescoReduxField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import { useAppDispatch } from '~/ducks/hooks';
 

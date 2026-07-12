@@ -12,7 +12,7 @@ import {
   type ImportAssetErrorInfo,
 } from '~/ducks/modules/protocol/assetManifest';
 
-import Dropzone from './Dropzone';
+import Dropzone from './Dropzone/Dropzone';
 type AutoFileDropProps = {
   type?: string;
   onDrop: (ids: string[]) => void;

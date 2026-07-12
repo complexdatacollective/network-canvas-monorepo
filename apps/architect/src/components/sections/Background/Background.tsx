@@ -14,8 +14,10 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
-import { FrescoReduxField, reduxIntegerValue } from '~/components/Form';
-import { Toggle } from '~/components/Form/Fields';
+import Toggle from '~/components/Form/Fields/Toggle';
+import FrescoReduxField, {
+  reduxIntegerValue,
+} from '~/components/Form/FrescoReduxField';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 

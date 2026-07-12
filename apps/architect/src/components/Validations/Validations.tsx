@@ -86,7 +86,12 @@ const ValidationsField = ({
   const errorId = useId();
 
   return (
-    <div className={cx(hasError && '[--rule-bg:var(--destructive)]')}>
+    <div
+      className={cx(
+        'rounded-xl border-2 border-transparent transition-colors',
+        hasError && 'border-destructive',
+      )}
+    >
       <div className="flex flex-col gap-5">
         {input.value.map(([key, value]) => (
           <Validation

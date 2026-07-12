@@ -3,12 +3,11 @@ import type { WrappedFieldInputProps, WrappedFieldMetaProps } from 'redux-form';
 
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
-
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
   type RichTextContent,
-} from './markdownAdapter';
+} from '~/utils/markdownAdapter';
 
 type RichTextFieldProps = {
   input: WrappedFieldInputProps;

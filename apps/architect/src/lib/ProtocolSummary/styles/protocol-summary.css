@@ -67,6 +67,6 @@
        --radius-xs has no runtime variable; --radius-base is the runtime knob
        it derives from. */
     border-radius: calc(var(--radius-base) * 0.25);
-    box-shadow: 0 4px 5px rgb(75 75 75 / 20%);
+    box-shadow: var(--effect-shadow-sm);
   }
 }
