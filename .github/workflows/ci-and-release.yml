@@ -773,19 +773,9 @@ jobs:
     if: ${{ !cancelled() && needs.detect.outputs.interviewer == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    outputs:
-      slug: ${{ steps.meta.outputs.slug }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - uses: ./.github/actions/turbo-ci-setup
-      - id: meta
-        env:
-          REF: ${{ github.head_ref || github.ref_name }}
-        run: |
-          SLUG=$(printf '%s' "$REF" | tr '/' '-' | tr '[:upper:]' '[:lower:]')
-          SLUG=$(printf '%s' "$SLUG" | tr -c '[:alnum:]-_.' '-')
-          SLUG=${SLUG:-unknown}
-          printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
       - name: Run E2E tests
         run: ./apps/interviewer/e2e/scripts/run.sh
       - name: Reclaim artifact ownership
