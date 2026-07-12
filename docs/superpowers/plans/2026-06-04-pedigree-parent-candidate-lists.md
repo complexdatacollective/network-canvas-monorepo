@@ -710,8 +710,7 @@ export function buildParentageBatch(
   batch.edges.push(...edges);
 
   const additionalParents = values['additional-parent'] as
-    | Record<string, unknown>[]
-    | undefined;
+    Record<string, unknown>[] | undefined;
   if (values.hasOtherParents === true && Array.isArray(additionalParents)) {
     for (let i = 0; i < additionalParents.length; i++) {
       const ap = additionalParents[i];

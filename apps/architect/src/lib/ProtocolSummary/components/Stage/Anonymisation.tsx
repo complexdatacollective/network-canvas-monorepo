@@ -2,7 +2,7 @@ import { useContext } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import Markdown from '~/components/Form/Fields/Markdown';
+import Markdown from '~/components/Markdown';
 
 import DualLink from '../DualLink';
 import EntityBadge from '../EntityBadge';

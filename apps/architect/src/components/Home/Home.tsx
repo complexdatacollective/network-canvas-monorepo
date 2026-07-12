@@ -34,6 +34,7 @@ import {
   type ProtocolSourceRef,
 } from '~/templates';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
+import { documentationLinks } from '~/utils/documentationLinks';
 import { reportError } from '~/utils/reportError';
 
 import LibraryPanel from './LibraryPanel';
@@ -42,7 +43,7 @@ import { TIMELINE_SCRIPT } from './timelineScript';
 import TransitMap from './TransitMap';
 const NAV_LINKS = [
   {
-    href: 'https://documentation.networkcanvas.com',
+    href: documentationLinks.home,
     label: 'Docs',
     Icon: BookOpen,
   },
@@ -297,14 +298,18 @@ const Home = () => {
 
                 <div className="flex w-full flex-col items-start gap-3 @min-[40rem]:flex-row @min-[40rem]:flex-nowrap">
                   <Button
-                    size="lg"
+                    size="md"
                     color="primary"
                     onClick={() => setShowNewDialog(true)}
                   >
                     <FilePlus />
                     Create a new protocol
                   </Button>
-                  <Button size="lg" color="secondary" onClick={openFileDialog}>
+                  <Button
+                    size="md"
+                    className="focus:outline-accent [--component-bg:var(--accent-contrast)] [--component-text:var(--accent)]"
+                    onClick={openFileDialog}
+                  >
                     <FolderOpen />
                     Open existing protocol
                   </Button>

@@ -26,6 +26,13 @@
   "sortTailwindcss": {
     "functions": ["cva", "cx", "cn", "clsx"]
   },
+  "overrides": [
+    {
+      "comment": "Markdown/MDX docs are parsed as CommonMark (remark), so a custom component tag is only recognized as an HTML block when its whole opening tag stays on a single line. Leave embedded JSX exactly as authored so the formatter never splits a long tag across lines and breaks rendering; prose is still formatted.",
+      "files": ["**/*.md", "**/*.mdx"],
+      "options": { "embeddedLanguageFormatting": "off" }
+    }
+  ],
   "ignorePatterns": [
     "**/node_modules/**",
     "**/dist/**",

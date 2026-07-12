@@ -28,7 +28,7 @@ type SelectOption = {
 type PromptFieldsProps = {
   form: string;
   changeForm: (form: string, field: string, value: unknown) => void;
-  edgesForSubject?: string[];
+  edgesForSubject?: SelectOption[];
   handleCreateEdge: (option: string) => string;
   handleChangeCreateEdge: (value: string) => void;
   createEdge: string;
@@ -167,6 +167,10 @@ const PromptFields = ({
                 createLabelText: '✨ Create new edge type ✨',
                 createInputLabel: 'New edge type name',
                 createInputPlaceholder: 'Enter an edge type...',
+                validation: {
+                  required: true,
+                  allowedNMToken: 'edge type name',
+                },
               }}
             />
           </Row>

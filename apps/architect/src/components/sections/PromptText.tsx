@@ -1,6 +1,6 @@
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import { Field as RichText } from '~/components/Form/Fields/RichText';
+import RichText from '~/components/Form/Fields/RichText/Field';
 import ValidatedField from '~/components/Form/ValidatedField';
 import { getFieldId } from '~/utils/issues';
 type PromptTextProps = {
@@ -24,7 +24,8 @@ const PromptText = ({ name = 'text' }: PromptTextProps) => {
           name={name}
           component={RichText}
           inline
-          label=""
+          label="Prompt text"
+          labelHidden
           placeholder="Enter text for the prompt here..."
           validation={{ required: true }}
         />

@@ -57,6 +57,15 @@ export default function VisualAnalogScaleField(
     maxLabel,
     disabled,
     readOnly,
+    id,
+    name,
+    onBlur,
+    onFocus,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
+    'aria-describedby': ariaDescribedBy,
+    'aria-invalid': ariaInvalid,
+    'aria-required': ariaRequired,
     ...rest
   } = props;
 
@@ -108,18 +117,29 @@ export default function VisualAnalogScaleField(
             handleKeyDown(event);
             active.onKeyDown(event);
           }}
-          onBlur={active.onBlur}
+          onBlur={(event) => {
+            active.onBlur();
+            onBlur?.(event);
+          }}
+          onFocus={onFocus}
           disabled={disabled}
+          name={name}
           min={min}
           max={max}
           step={step}
-          aria-invalid={rest['aria-invalid']}
+          aria-invalid={ariaInvalid}
+          aria-required={ariaRequired}
+          aria-readonly={readOnly || undefined}
+          aria-labelledby={ariaLabelledBy}
           className={sliderRootVariants({ state })}
         >
           <Slider.Control className={sliderControlVariants()}>
             <Slider.Track className={sliderTrackVariants({ state })}>
               <Slider.Thumb
                 ref={setThumbEl}
+                inputRef={(input) => {
+                  if (input && id) input.id = id;
+                }}
                 render={
                   <motion.div
                     // base-ui's nested <input type="range"> is the focusable
@@ -136,7 +156,16 @@ export default function VisualAnalogScaleField(
                   />
                 }
                 className={sliderThumbVariants({ state: thumbState })}
-                aria-label="Visual analog scale value"
+                aria-label={
+                  ariaLabelledBy
+                    ? undefined
+                    : (ariaLabel ?? 'Visual analog scale value')
+                }
+                aria-labelledby={ariaLabelledBy}
+                aria-describedby={ariaDescribedBy}
+                getAriaValueText={(_, currentValue) =>
+                  formatVasValue(currentValue, min, max)
+                }
               />
             </Slider.Track>
           </Slider.Control>

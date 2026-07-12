@@ -107,9 +107,7 @@ describe('BioTriadStep egg/sperm mutual exclusion', () => {
 
     // Choose Linda (the current egg parent) in the sperm selector. The egg
     // section renders first, so the second "Linda" radio is the sperm one.
-    const lindaRadios = radios.filter(
-      (r) => r.getAttribute('aria-label') === 'Linda',
-    );
+    const lindaRadios = screen.getAllByRole('radio', { name: 'Linda' });
     expect(lindaRadios).toHaveLength(2);
     fireEvent.click(lindaRadios[1]!);
 

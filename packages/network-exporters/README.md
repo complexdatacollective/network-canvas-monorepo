@@ -449,10 +449,10 @@ This package lives in the `network-canvas-monorepo` and follows the standard scr
 
 ```bash
 # from monorepo root
-pnpm --filter @codaco/network-exporters build       # tsgo --noEmit && vite build
+pnpm --filter @codaco/network-exporters build       # tsc --noEmit && vite build
 pnpm --filter @codaco/network-exporters test        # vitest --run
 pnpm --filter @codaco/network-exporters test:watch
-pnpm --filter @codaco/network-exporters typecheck   # tsgo --noEmit
+pnpm --filter @codaco/network-exporters typecheck   # tsc --noEmit
 pnpm --filter @codaco/network-exporters dev         # vite build --watch
 ```
 

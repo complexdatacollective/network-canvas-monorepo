@@ -14,7 +14,7 @@ import {
 import {
   createFolderEntry,
   createPageEntry,
-  createProjectEntry,
+  createSectionEntry,
   getMetaDataForDirectory,
   getNestedPath,
   relativePathToDocs,
@@ -54,13 +54,13 @@ function generateSidebarData() {
       const metadata = getMetaDataForDirectory(join(parentPath, file.name));
       const currentLocales = Object.keys(sidebarData);
 
-      if (metadata.type === 'project') {
+      if (metadata.type === 'section') {
         for (const l of currentLocales) {
           const locale = l as Locale;
 
           sidebarData[locale] = {
             ...sidebarData[locale],
-            [file.name]: createProjectEntry(file, locale, metadata, parentPath),
+            [file.name]: createSectionEntry(file, locale, metadata, parentPath),
           };
         }
 

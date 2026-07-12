@@ -8,10 +8,12 @@ import { change, Field, formValueSelector } from 'redux-form';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { FrescoReduxField, reduxNumberValue } from '~/components/Form';
-import { DatePicker } from '~/components/Form/Fields';
+import DatePicker from '~/components/Form/Fields/DatePicker';
 import { DATE_FORMATS } from '~/components/Form/Fields/DatePicker';
 import Toggle from '~/components/Form/Fields/Toggle';
+import FrescoReduxField, {
+  reduxIntegerValue,
+} from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import type { RootState } from '~/ducks/modules/root';
 
@@ -72,13 +74,13 @@ const RelativeDatePickerParameters = ({
         selected from. Defaults to 180 days if left blank.
       </Paragraph>
       <Field
-        label=""
+        label="Days before"
         component={FrescoReduxField}
         name={`${name}.before`}
         placeholder="180"
         fieldComponent={FrescoInputField}
         type="number"
-        {...reduxNumberValue}
+        {...reduxIntegerValue}
       />
       <Heading level="h4">Days After</Heading>
       <Paragraph>
@@ -86,13 +88,13 @@ const RelativeDatePickerParameters = ({
         selected from. Defaults to 0 days if left blank.
       </Paragraph>
       <Field
-        label=""
+        label="Days after"
         component={FrescoReduxField}
         name={`${name}.after`}
         placeholder="0"
         fieldComponent={FrescoInputField}
         type="number"
-        {...reduxNumberValue}
+        {...reduxIntegerValue}
       />
     </>
   );

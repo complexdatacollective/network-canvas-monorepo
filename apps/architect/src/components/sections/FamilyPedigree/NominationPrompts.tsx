@@ -6,7 +6,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
@@ -67,9 +67,10 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
       startExpanded={!!hasNominationPrompts?.length}
       handleToggleChange={handleToggleChange}
     >
-      <ValidatedField
+      <ValidatedFieldArray
         name="nominationPrompts"
         label="Nomination prompts"
+        labelHidden
         component={DialogArrayField}
         validation={{ notEmpty }}
         componentProps={{

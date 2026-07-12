@@ -9,7 +9,7 @@ import type {
   MetadataFile,
   SidebarFolder,
   SidebarPage,
-  SidebarProject,
+  SidebarSection,
 } from '~/app/types';
 import { MetadataFileSchema } from '~/app/types';
 
@@ -107,26 +107,26 @@ export const getMetaDataForDirectory = (directoryPath: string) => {
 };
 
 /**
- * Given a file, a locale, and metadata, create a project entry for the sidebar.
+ * Given a file, a locale, and metadata, create a section entry for the sidebar.
  *
  * @param file {fs.Dirent}
  * @param locale {Locales}
  * @param metadata {MetadataFile}
- * @returns {SidebarProject}
+ * @returns {SidebarSection}
  */
-export const createProjectEntry = (
+export const createSectionEntry = (
   file: fs.Dirent,
   locale: Locale,
   metadata: MetadataFile,
   parentPath: string,
-): SidebarProject => {
+): SidebarSection => {
   const localeIndexFile = metadata.localeIndexFiles?.[locale];
   const sourceFile = localeIndexFile
     ? join(parentPath, file.name, localeIndexFile).replace(process.cwd(), '')
     : undefined;
 
   return {
-    type: 'project',
+    type: 'section',
     sourceFile,
     label: metadata.localeLabels?.[locale] ?? file.name,
     children: {},

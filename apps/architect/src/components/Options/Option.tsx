@@ -7,15 +7,15 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
-import {
-  markdownToRichTextContent,
-  richTextContentToMarkdown,
-  type RichTextContent,
-} from '~/components/Form/Fields/RichText/markdownAdapter';
 import type { FrescoReduxArrayFieldItemProps } from '~/components/Form/FrescoReduxArrayField';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import { cx } from '~/utils/cva';
+import {
+  markdownToRichTextContent,
+  richTextContentToMarkdown,
+  type RichTextContent,
+} from '~/utils/markdownAdapter';
 
 import type { OptionValue } from './Options';
 const isNumberLike = (value: string) =>
@@ -63,8 +63,8 @@ const Option = ({
   return (
     <div
       className={cx(
-        'text-sortable-contrast z-1 flex w-full rounded-xl transition-colors duration-300 ease-in-out',
-        showErrors ? 'bg-destructive' : 'bg-form-control',
+        'text-sortable-contrast bg-form-control z-1 flex w-full rounded-xl border-2 border-transparent transition-colors duration-300 ease-in-out',
+        showErrors && 'border-destructive',
       )}
     >
       {isSortable && (

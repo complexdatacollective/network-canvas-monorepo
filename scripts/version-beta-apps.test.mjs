@@ -20,11 +20,24 @@ function workspace() {
   const cwd = mkdtempSync(join(tmpdir(), 'vba-'));
   mkdirSync(join(cwd, '.changeset'));
   mkdirSync(join(cwd, 'apps/architect'), { recursive: true });
+  mkdirSync(join(cwd, 'apps/documentation'), { recursive: true });
   mkdirSync(join(cwd, 'apps/interviewer'), { recursive: true });
   writeFileSync(
     join(cwd, 'apps/architect/package.json'),
     JSON.stringify(
       { name: '@codaco/architect', version: '8.0.0-beta.0', private: true },
+      null,
+      2,
+    ),
+  );
+  writeFileSync(
+    join(cwd, 'apps/documentation/package.json'),
+    JSON.stringify(
+      {
+        name: '@codaco/documentation',
+        version: '0.1.0',
+        private: true,
+      },
       null,
       2,
     ),
@@ -89,6 +102,27 @@ test('renderPrBody summarises the plans', () => {
     /\| `@codaco\/architect` \| 8\.0\.0-beta\.0 \| 8\.0\.0-beta\.1 \|/,
   );
   assert.match(body, /Add search/);
+});
+
+test('creates a normal semver documentation release and changelog', () => {
+  const cwd = workspace();
+  writeFileSync(
+    join(cwd, '.changeset/docs.md'),
+    `---\n"@codaco/documentation": minor\n---\n\nPublish the reorganised documentation.`,
+  );
+
+  const { plans, consumed } = planAppReleases(cwd);
+  applyAppReleases(cwd, plans, consumed);
+
+  const documentation = JSON.parse(
+    readFileSync(join(cwd, 'apps/documentation/package.json'), 'utf8'),
+  );
+  assert.equal(documentation.version, '0.2.0');
+  assert.match(
+    readFileSync(join(cwd, 'apps/documentation/CHANGELOG.md'), 'utf8'),
+    /## 0\.2\.0[\s\S]*Publish the reorganised documentation\./,
+  );
+  assert.equal(existsSync(join(cwd, '.changeset/docs.md')), false);
 });
 
 test('no pending app changesets → empty plan, no writes', () => {

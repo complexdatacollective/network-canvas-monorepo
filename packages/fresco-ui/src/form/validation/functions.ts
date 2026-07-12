@@ -37,6 +37,10 @@ export type ValidationFunction<T extends ValidationParameter> = (
  * - categorical: not null, empty array is not permitted
  */
 export const required = (parameter?: boolean | string) => () => {
+  if (parameter === false) {
+    return z.unknown();
+  }
+
   const message =
     typeof parameter === 'string'
       ? parameter

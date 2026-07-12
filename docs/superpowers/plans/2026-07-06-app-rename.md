@@ -207,7 +207,7 @@ git commit -m "ci: rename app references and jobs for renamed apps"
 - [ ] **Step 1: architect (was architect-web) display + comments**
 
 - `apps/architect/index.html`: `<title>Architect Web</title>` → `<title>Architect</title>`.
-- `apps/architect/README.md`, `apps/architect/RELEASING.md`: `replace_all` `@codaco/architect-web`→`@codaco/architect`; RELEASING heading `# Releasing Architect (web)`→`# Releasing Architect`; the "architect-web is on a `8.0.0-beta.N` line" and "Sibling of interviewer-v8's `build:web`" prose → drop `-web`/`-v8` (→ "Architect" / "interviewer"). Leave `NETLIFY_SITE_ID_ARCHITECT` and `deploy-architect-preview`.
+- `apps/architect/README.md`, `apps/architect/RELEASING.md`: `replace_all` `@codaco/architect-web`→`@codaco/architect`; RELEASING heading `# Releasing Architect (web)`→`# Releasing Architect`; the "architect-web is on a `8.0.0-beta.N` line" and "Sibling of interviewer-v8's `build`" prose → drop `-web`/`-v8` (→ "Architect" / "interviewer"). Leave `NETLIFY_SITE_ID_ARCHITECT` and `deploy-architect-preview`.
 - Comments: `reportError.ts` `error-reporting entry point for architect-web.` → `… for Architect.`; `BackgroundLights.tsx` `used elsewhere in architect-web` → `used elsewhere in Architect`; `testing-token.test.ts` fixture `'architect-web'` → `'architect'`.
 
 - [ ] **Step 2: interviewer (was interviewer-v8) display text**
@@ -362,8 +362,8 @@ Run:
 
 ```bash
 pnpm exec turbo run build --filter=@codaco/architect --filter=@codaco/interviewer
-pnpm --filter @codaco/architect build:web
-pnpm --filter @codaco/interviewer build:web
+pnpm --filter @codaco/architect build
+pnpm --filter @codaco/interviewer build
 pnpm exec turbo run build --filter=@codaco/architect-classic
 ```
 

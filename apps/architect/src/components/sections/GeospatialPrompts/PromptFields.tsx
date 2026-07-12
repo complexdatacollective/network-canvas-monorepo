@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import { compose } from 'react-recompose';
 
 import { Row, Section } from '~/components/EditorLayout';
-import { ValidatedField } from '~/components/Form';
+import ValidatedField from '~/components/Form/ValidatedField';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
@@ -11,13 +11,15 @@ import withVariableHandlers from '~/components/sections/CategoricalBinPrompts/wi
 import withVariableOptions from '~/components/sections/CategoricalBinPrompts/withVariableOptions';
 import PromptText from '~/components/sections/PromptText';
 
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
+import VariablePicker, {
+  type VariableOption,
+} from '../../Form/Fields/VariablePicker/VariablePicker';
 
 const VARIABLE_TYPE = 'location';
 
 type PromptFieldsProps = {
   variable?: string;
-  variableOptions: Array<{ type: string }>;
+  variableOptions: VariableOption[];
   entity?: string;
   type?: string;
   changeForm?: (form: string, field: string, value: unknown) => void;

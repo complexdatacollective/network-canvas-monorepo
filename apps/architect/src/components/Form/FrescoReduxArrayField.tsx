@@ -1,3 +1,4 @@
+import { startCase } from 'es-toolkit/compat';
 import {
   createContext,
   createElement,
@@ -5,16 +6,16 @@ import {
   type ReactNode,
   useContext,
 } from 'react';
-import type { WrappedFieldProps } from 'redux-form';
+import { change, type WrappedFieldArrayProps } from 'redux-form';
 
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ArrayField, {
   type ArrayFieldEditorProps,
   type ArrayFieldItemProps,
+  type ArrayFieldOperation,
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-
-import { getReduxFieldErrorState } from './reduxFieldMeta';
+import { useAppDispatch } from '~/ducks/hooks';
 
 type ArrayItem = Record<string, unknown>;
 type Renderer = ComponentType<Record<string, unknown>>;
@@ -59,11 +60,16 @@ const useRendererContext = () => {
 
 const ItemRenderer = (props: ArrayFieldItemProps<ArrayItem>) => {
   const context = useRendererContext();
+  // Bind to the committed position, not the live (possibly mid-drag-preview)
+  // index, so nested Redux Form fields stay attached to the right item while a
+  // pointer reorder is being previewed. Falls back to the live index for drafts
+  // that are not yet part of the committed value.
+  const fieldIndex = props.committedIndex ?? props.index;
   return createElement(context.itemComponent, {
     ...context.itemComponentProps,
     ...props,
     arrayName: context.arrayName,
-    fieldName: `${context.arrayName}[${props.index}]`,
+    fieldName: `${context.arrayName}[${fieldIndex}]`,
     form: context.form,
     showErrors: context.showErrors,
   });
@@ -86,7 +92,7 @@ const EditorRenderer = (props: ArrayFieldEditorProps<ArrayItem>) => {
 
 type FrescoReduxArrayFieldOwnProps<T extends ArrayItem> = Omit<
   ArrayFieldProps<T>,
-  'value' | 'onChange' | 'itemComponent' | 'editorComponent'
+  'value' | 'onChange' | 'onOperation' | 'itemComponent' | 'editorComponent'
 > & {
   editorComponent?: ComponentType<FrescoReduxArrayFieldEditorProps<T>>;
   editorComponentProps?: Record<string, unknown>;
@@ -97,10 +103,32 @@ type FrescoReduxArrayFieldOwnProps<T extends ArrayItem> = Omit<
 };
 
 export type FrescoReduxArrayFieldProps<T extends ArrayItem> =
-  WrappedFieldProps & FrescoReduxArrayFieldOwnProps<T>;
+  WrappedFieldArrayProps<T> & FrescoReduxArrayFieldOwnProps<T>;
+
+// An empty string is not a usable message, so reject it rather than surfacing a
+// blank error row.
+const isArrayErrorMessage = (value: unknown): value is string | number =>
+  (typeof value === 'string' && value.length > 0) || typeof value === 'number';
+
+const getArrayErrors = (error: unknown): string[] => {
+  if (isArrayErrorMessage(error)) {
+    return [String(error)];
+  }
+  if (error && typeof error === 'object' && '_error' in error) {
+    const arrayError = error._error;
+    return isArrayErrorMessage(arrayError) ? [String(arrayError)] : [];
+  }
+  return [];
+};
+
+// Redux Form field paths like "form.fields" or "content" are storage keys, not
+// labels. When no explicit label is supplied, present the final path segment as
+// a human-readable heading (e.g. "form.fields" -> "Fields").
+const humanizeFieldName = (name: string): string =>
+  startCase(name.split('.').pop() ?? name);
 
 export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
-  input,
+  fields,
   meta,
   itemComponent,
   itemComponentProps,
@@ -112,16 +140,44 @@ export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
   readOnly,
   ...arrayFieldProps
 }: FrescoReduxArrayFieldProps<T>) {
-  const { errors, showErrors } = getReduxFieldErrorState(meta);
-  const value = Array.isArray(input.value) ? (input.value as T[]) : [];
+  const dispatch = useAppDispatch();
+  const errors = getArrayErrors(meta.error);
+  const showErrors = (meta.dirty || meta.submitFailed) && errors.length > 0;
+  const fieldValues = fields.getAll();
+  const value = Array.isArray(fieldValues) ? fieldValues : [];
   const rendererContext: RendererContextValue = {
-    arrayName: input.name,
+    arrayName: fields.name,
     editorComponent: editorComponent as unknown as Renderer | undefined,
     editorComponentProps,
     form: meta.form,
     itemComponent: itemComponent as unknown as Renderer,
     itemComponentProps,
     showErrors,
+  };
+
+  const handleOperation = (operation: ArrayFieldOperation<T>) => {
+    switch (operation.type) {
+      case 'insert':
+        fields.insert(operation.index, operation.item);
+        break;
+      case 'remove':
+        fields.remove(operation.index);
+        break;
+      case 'move':
+        fields.move(operation.from, operation.to);
+        break;
+      case 'replace':
+        dispatch(
+          change(
+            meta.form,
+            `${fields.name}[${operation.index}]`,
+            operation.item,
+            false,
+            false,
+          ),
+        );
+        break;
+    }
   };
 
   // Indexed child fields own focus state. Forwarding their bubbling focus and
@@ -131,13 +187,13 @@ export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
       <UnconnectedField
         {...arrayFieldProps}
         component={ArrayField<T>}
-        name={input.name}
-        label={label ?? input.name}
+        name={fields.name}
+        label={label ?? humanizeFieldName(fields.name)}
         hint={hint}
         disabled={disabled}
         readOnly={readOnly}
         value={value}
-        onChange={(nextValue) => input.onChange(nextValue ?? [])}
+        onOperation={handleOperation}
         errors={errors}
         showErrors={showErrors}
         aria-invalid={showErrors}
@@ -153,7 +209,7 @@ export function FrescoReduxArrayFieldBase<T extends ArrayItem>({
 }
 
 const FrescoReduxArrayField =
-  FrescoReduxArrayFieldBase as ComponentType<WrappedFieldProps> &
+  FrescoReduxArrayFieldBase as ComponentType<WrappedFieldArrayProps> &
     ComponentType<Record<string, unknown>>;
 
 export default FrescoReduxArrayField;

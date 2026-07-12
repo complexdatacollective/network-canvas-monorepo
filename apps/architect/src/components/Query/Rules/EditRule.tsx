@@ -3,6 +3,7 @@ import { Component } from 'react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { documentationLinks } from '~/utils/documentationLinks';
 
 import ExternalLink from '../../ExternalLink';
 import EditEgoRule from './EditEgoRule';
@@ -54,11 +55,11 @@ class EditRule extends Component<EditRuleProps> {
         <div>
           <Paragraph>
             For help with constructing rules, see our documentation articles on{' '}
-            <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/skip-logic/">
+            <ExternalLink href={documentationLinks.skipLogic}>
               skip logic
             </ExternalLink>{' '}
             and{' '}
-            <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/network-filtering/">
+            <ExternalLink href={documentationLinks.networkFiltering}>
               network filtering
             </ExternalLink>
             .

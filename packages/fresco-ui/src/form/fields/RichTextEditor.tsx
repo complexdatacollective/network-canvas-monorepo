@@ -305,6 +305,9 @@ export default function RichTextEditorField({
   changeMode = 'blur',
   autoFocus = false,
   placeholder,
+  className,
+  onFocus,
+  onBlur,
   ...props
 }: RichTextEditorFieldProps) {
   const skipNextContentSyncRef = useRef(false);
@@ -323,6 +326,9 @@ export default function RichTextEditorField({
   const linkErrorId = `${linkInputId}-error`;
   const ariaDescribedBy = props['aria-describedby'];
   const ariaInvalid = props['aria-invalid'];
+  const ariaLabel = props['aria-label'];
+  const ariaLabelledBy = props['aria-labelledby'];
+  const ariaRequired = props['aria-required'];
 
   onChangeRef.current = onChange;
   changeModeRef.current = changeMode;
@@ -335,10 +341,16 @@ export default function RichTextEditorField({
   const editorAttributes = useMemo<Record<string, string>>(() => {
     const attributes: Record<string, string> = {
       'role': 'textbox',
-      'aria-label': editorName,
+      'aria-multiline': 'true',
       'name': editorName,
       'id': editorId,
     };
+
+    if (ariaLabelledBy) {
+      attributes['aria-labelledby'] = ariaLabelledBy;
+    } else {
+      attributes['aria-label'] = ariaLabel ?? editorName;
+    }
 
     if (ariaDescribedBy) {
       attributes['aria-describedby'] = ariaDescribedBy;
@@ -346,6 +358,18 @@ export default function RichTextEditorField({
 
     if (ariaInvalid || inputState === 'invalid') {
       attributes['aria-invalid'] = 'true';
+    }
+
+    if (ariaRequired) {
+      attributes['aria-required'] = 'true';
+    }
+
+    if (disabled) {
+      attributes['aria-disabled'] = 'true';
+    }
+
+    if (readOnly) {
+      attributes['aria-readonly'] = 'true';
     }
 
     if (placeholder) {
@@ -357,10 +381,15 @@ export default function RichTextEditorField({
   }, [
     ariaDescribedBy,
     ariaInvalid,
+    ariaLabel,
+    ariaLabelledBy,
+    ariaRequired,
+    disabled,
     editorId,
     editorName,
     inputState,
     placeholder,
+    readOnly,
   ]);
 
   // Compute which heading levels are enabled
@@ -445,17 +474,21 @@ export default function RichTextEditorField({
   });
 
   useEffect(() => {
-    if (!editor || !value) return;
+    if (!editor) return;
+
+    const currentContent = JSON.stringify(editor.getJSON());
+    const newContent = value === undefined ? undefined : JSON.stringify(value);
 
     if (skipNextContentSyncRef.current) {
       skipNextContentSyncRef.current = false;
-      return;
+      if (newContent === currentContent) return;
     }
 
-    const currentContent = JSON.stringify(editor.getJSON());
-    const newContent = JSON.stringify(value);
-
-    if (currentContent !== newContent) {
+    if (value === undefined) {
+      if (!editor.isEmpty) {
+        editor.commands.clearContent(false);
+      }
+    } else if (currentContent !== newContent) {
       editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [editor, value]);
@@ -480,7 +513,7 @@ export default function RichTextEditorField({
     return null;
   }
 
-  const isDisabled = disabled ?? readOnly ?? false;
+  const isDisabled = Boolean(disabled) || Boolean(readOnly);
 
   const getActiveFormattingValues = () => {
     const values: string[] = [];
@@ -594,7 +627,15 @@ export default function RichTextEditorField({
     <div
       className={editorContainerVariants({
         state: inputState,
+        className,
       })}
+      onFocus={onFocus}
+      onBlur={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          return;
+        }
+        onBlur?.(event);
+      }}
     >
       <EditorContent editor={editor} className={editorContentStyles} />
       {hasToolbar && (

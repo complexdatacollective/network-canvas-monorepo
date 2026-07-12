@@ -375,43 +375,8 @@ jobs:
           json=$(npx --yes netlify-cli@22 deploy --no-build \
                    --filter=@codaco/documentation \
                    --dir=apps/documentation/out \
-                   --site="${{ secrets.NETLIFY_SITE_ID_DOCS }}" \
+                   --site="${{ secrets.NETLIFY_DOCUMENTATION_SITE_ID }}" \
                    --alias="pr-${{ github.event.number }}" --json)
-          echo "$json" | jq .
-          url=$(echo "$json" | jq -r '.deploy_url')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-  deploy-docs-prod:
-    needs: [detect]
-    if: |
-      always() &&
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      needs.detect.outputs.docs == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
-      NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
-      NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
-      NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
-      NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: ./.github/actions/turbo-ci-setup
-      - id: deploy
-        name: Build and deploy docs production
-        run: |
-          pnpm exec turbo run build --filter=@codaco/documentation
-          cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
-          json=$(npx --yes netlify-cli@22 deploy --no-build --prod \
-                   --filter=@codaco/documentation \
-                   --dir=apps/documentation/out \
-                   --site="${{ secrets.NETLIFY_SITE_ID_DOCS }}" --json)
           echo "$json" | jq .
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"
@@ -444,8 +409,7 @@ jobs:
       - id: deploy
         name: Build and deploy architect preview
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect^...
-          pnpm --filter=@codaco/architect build:web
+          pnpm exec turbo run build --filter=@codaco/architect
           json=$(npx --yes netlify-cli@22 deploy --no-build \
                    --filter=@codaco/architect \
                    --dir=apps/architect/dist \
@@ -455,12 +419,9 @@ jobs:
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
-  # interviewer is a vite-plugin-pwa PWA, same shape as architect, but
-  # its own `build` script is a plain `vite build` (no turbo task override) so
-  # `turbo run build --filter=...` skips the post-build PWA assertion. Build
-  # workspace deps via turbo (fresco-ui, interview, etc.) then run the app's
-  # own `build:web` (vite build + assert-pwa-build.mjs) directly so a broken
-  # service-worker precache manifest fails the deploy instead of shipping.
+  # Interviewer is a vite-plugin-pwa PWA, the same shape as architect. Its
+  # canonical build includes the post-build PWA assertion, so a broken service
+  # worker or precache manifest fails the deploy instead of shipping.
   #
   # NOTE(human-setup-required): needs its own Netlify site, created manually,
   # with its site ID stored in the NETLIFY_SITE_ID_INTERVIEWER secret —
@@ -488,8 +449,7 @@ jobs:
       - id: deploy
         name: Build and deploy interviewer preview
         run: |
-          pnpm exec turbo run build --filter=@codaco/interviewer^...
-          pnpm --filter=@codaco/interviewer build:web
+          pnpm exec turbo run build --filter=@codaco/interviewer
           json=$(npx --yes netlify-cli@22 deploy --no-build \
                    --filter=@codaco/interviewer \
                    --dir=apps/interviewer/dist \
@@ -895,11 +855,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
-  # Maintains a "Release apps" PR (sibling of the library "Version Packages" PR).
+  # Maintains a gated product-release PR (sibling of the library "Version Packages" PR).
   # On every push to main it re-runs the app version step on a fresh branch and
   # opens/updates/closes the PR. Merging the PR is the release gate (see the
-  # apps-release-architect / apps-release-interviewer jobs below). App changesets
-  # are ignored by the library release, so
+  # product deploy jobs below). Product changesets are ignored by the library release, so
   # they persist in .changeset/ until this job consumes them.
   apps-release-pr:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -920,16 +879,16 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Guard against mixed changesets
         run: pnpm check:changesets
-      - name: Compute app version bumps
+      - name: Compute product version bumps
         run: node scripts/version-beta-apps.mjs --out "${RUNNER_TEMP}/apps-release-body.md"
-      - name: Open/update the Release apps PR
+      - name: Open/update the Release apps and documentation PR
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           branch: changeset-release/apps
           base: main
           delete-branch: true
-          title: 'Release apps (beta)'
-          commit-message: 'chore(release): version beta apps'
+          title: 'Release apps & documentation'
+          commit-message: 'chore(release): version apps and documentation'
           body-path: ${{ runner.temp }}/apps-release-body.md
 
   # On a push to main that changes an app version (i.e. the Release apps PR just
@@ -942,6 +901,8 @@ jobs:
     outputs:
       architect_released: ${{ steps.architect.outputs.released }}
       architect_version: ${{ steps.architect.outputs.version }}
+      documentation_released: ${{ steps.documentation.outputs.released }}
+      documentation_version: ${{ steps.documentation.outputs.version }}
       interviewer_released: ${{ steps.interviewer.outputs.released }}
       interviewer_version: ${{ steps.interviewer.outputs.version }}
     steps:
@@ -957,6 +918,12 @@ jobs:
         env:
           PKG_JSON: apps/architect/package.json
           PKG_NAME: '@codaco/architect'
+        run: bash .github/scripts/detect-app-release.sh
+      - id: documentation
+        env:
+          PKG_JSON: apps/documentation/package.json
+          PKG_NAME: '@codaco/documentation'
+          RELEASE_CHANNEL: stable
         run: bash .github/scripts/detect-app-release.sh
       - id: interviewer
         env:
@@ -1015,8 +982,7 @@ jobs:
       - name: Build & deploy architect to production
         if: steps.guard.outputs.skip != 'true'
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect^...
-          pnpm --filter=@codaco/architect build:web
+          pnpm exec turbo run build --filter=@codaco/architect
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/architect \
             --dir=apps/architect/dist \
@@ -1086,8 +1052,7 @@ jobs:
       - name: Build & deploy interviewer to production
         if: steps.guard.outputs.skip != 'true'
         run: |
-          pnpm exec turbo run build --filter=@codaco/interviewer^...
-          pnpm --filter=@codaco/interviewer build:web
+          pnpm exec turbo run build --filter=@codaco/interviewer
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/interviewer \
             --dir=apps/interviewer/dist \
@@ -1110,6 +1075,66 @@ jobs:
           body_path: ${{ runner.temp }}/interviewer-notes.md
           prerelease: true
           make_latest: 'false'
+
+  # Documentation follows the same generated-release-PR gate as the PWA apps,
+  # but uses normal semver and produces only a Netlify deployment + git tag.
+  apps-release-documentation:
+    needs: apps-release-detect
+    if: needs.apps-release-detect.outputs.documentation_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: apps-release-@codaco/documentation@${{ needs.apps-release-detect.outputs.documentation_version }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
+      NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
+      NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
+      NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
+      NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-tags: true
+          persist-credentials: false
+      - name: Skip if this version was already deployed
+        id: guard
+        env:
+          TAG: '@codaco/documentation@${{ needs.apps-release-detect.outputs.documentation_version }}'
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG already deployed — nothing to do"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: ./.github/actions/turbo-ci-setup
+      - name: Build and deploy documentation to production
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          pnpm exec turbo run build --filter=@codaco/documentation
+          cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
+          npx --yes netlify-cli@22 deploy --no-build --prod \
+            --filter=@codaco/documentation \
+            --dir=apps/documentation/out \
+            --site="${{ secrets.NETLIFY_DOCUMENTATION_SITE_ID }}"
+      - name: Tag deployed documentation version
+        if: steps.guard.outputs.skip != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          TAG: '@codaco/documentation@${{ needs.apps-release-detect.outputs.documentation_version }}'
+        with:
+          script: |
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${process.env.TAG}`,
+              sha: context.sha,
+            });
 
   # Decide whether to (re)release the legacy desktop apps. A release fires when:
   #   * a workflow_dispatch selected the app (forced release at the current

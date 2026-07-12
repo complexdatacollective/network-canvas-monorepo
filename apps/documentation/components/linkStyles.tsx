@@ -18,7 +18,7 @@ export function linkRootClass(className?: string) {
 // The label whose underline grows from the left on hover.
 export function LinkLabel({ children }: { children: ReactNode }) {
   return (
-    <span className="from-link to-link bg-linear-to-r bg-size-[0%_2px] bg-left-bottom bg-no-repeat pb-0.5 transition-[background-size] duration-200 ease-out group-hover:bg-size-[100%_2px]">
+    <span className="from-link to-link bg-linear-to-r bg-size-[0%_2px] bg-bottom-left bg-no-repeat pb-0.5 transition-[background-size] duration-200 ease-out group-hover:bg-size-[100%_2px]">
       {children}
     </span>
   );

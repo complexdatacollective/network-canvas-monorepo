@@ -95,7 +95,9 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>(
       <BaseCheckbox.Root
         ref={ref}
         onCheckedChange={handleCheckedChange}
-        disabled={disabled ?? readOnly}
+        disabled={disabled}
+        aria-readonly={readOnly || undefined}
+        aria-invalid={ariaInvalid || undefined}
         indeterminate={indeterminate}
         {...(isControlled
           ? { checked: controlledChecked }

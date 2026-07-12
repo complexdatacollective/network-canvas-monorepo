@@ -33,6 +33,5 @@ docker run --rm \
   sh -c "set -e \
     && corepack enable \
     && pnpm install --filter '@codaco/interviewer...' --frozen-lockfile \
-    && pnpm turbo run build --filter='@codaco/interviewer^...' \
-    && pnpm --filter @codaco/interviewer build:web \
+    && pnpm turbo run build --filter=@codaco/interviewer \
     && pnpm --filter @codaco/interviewer exec playwright test --config=e2e/playwright.config.ts $*"

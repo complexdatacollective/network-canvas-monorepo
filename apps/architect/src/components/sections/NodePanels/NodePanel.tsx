@@ -80,6 +80,7 @@ const NodePanel = ({
           <ValidatedField
             name={`${fieldName}.title`}
             label="Panel title"
+            labelHidden
             component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{

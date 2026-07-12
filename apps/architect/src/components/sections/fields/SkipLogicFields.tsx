@@ -2,7 +2,7 @@ import type { ComponentType } from 'react';
 
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { Row } from '~/components/EditorLayout';
-import { FrescoReduxField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import {
   Query,
@@ -11,7 +11,6 @@ import {
   withStoreConnector,
 } from '~/components/Query';
 
-import { getFieldId } from '../../../utils/issues';
 import IssueAnchor from '../../IssueAnchor';
 
 const FrescoRadioGroupField = RadioGroupField as ComponentType<
@@ -32,7 +31,7 @@ const SkipLogicFields = () => (
   <>
     <Row>
       <IssueAnchor
-        fieldName={getFieldId('skipLogic.action')}
+        fieldName="skipLogic.action"
         description="Skip Logic Action"
       />
       <ValidatedField
@@ -51,7 +50,7 @@ const SkipLogicFields = () => (
     </Row>
     <Row>
       <IssueAnchor
-        fieldName={getFieldId('skipLogic.filter')}
+        fieldName="skipLogic.filter"
         description="Skip Logic Rules"
       />
       <ValidatedField

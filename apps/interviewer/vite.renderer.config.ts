@@ -57,8 +57,9 @@ const appVersion = JSON.parse(
 // mapbox-gl fetches styles/tiles/glyphs from api.mapbox.com and posts telemetry
 // to events.mapbox.com (Geospatial stages), analytics posts to the PostHog
 // relay, and the app-update indicator fetches release notes from
-// api.github.com. Everything else stays 'self'.
-const CSP_DIRECTIVES = [
+// api.github.com. Protocol roster assets use blob: object URLs. Everything
+// else stays 'self'.
+export const CSP_DIRECTIVES = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
@@ -67,7 +68,7 @@ const CSP_DIRECTIVES = [
   // URLs, so media needs blob: (default-src 'self' would otherwise block it).
   "media-src 'self' blob:",
   "font-src 'self' data:",
-  `connect-src 'self' https://api.github.com https://api.mapbox.com https://events.mapbox.com ${POSTHOG_RELAY_ORIGIN}`,
+  `connect-src 'self' https://api.github.com https://api.mapbox.com https://events.mapbox.com ${POSTHOG_RELAY_ORIGIN} blob:`,
   "worker-src 'self' blob:",
   "base-uri 'none'",
   "object-src 'none'",

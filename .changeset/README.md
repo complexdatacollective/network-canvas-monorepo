@@ -7,9 +7,10 @@ find the full documentation for it [in our repository](https://github.com/change
 We have a quick list of common questions to get you started engaging with this project in
 [our documentation](https://github.com/changesets/changesets/blob/main/docs/common-questions.md)
 
-## App changesets (architect / interviewer)
+## Gated product changesets (architect / interviewer / documentation)
 
-These two apps are `private` and in the `ignore` list, so `changeset version`
-preserves their changesets. They release on a `-beta.N` line via the separate
-"Release apps (beta)" PR — see the `creating-a-changeset` skill. Do not combine an
-app and a library in one changeset (`pnpm check:changesets` rejects it).
+These private workspaces are in the `ignore` list, so `changeset version`
+preserves their changesets. Architect and Interviewer release on `-beta.N`;
+Documentation releases with normal semver. The generated "Release apps &
+documentation" PR is the production deployment gate. Do not combine a gated
+product and a library in one changeset (`pnpm check:changesets` rejects it).

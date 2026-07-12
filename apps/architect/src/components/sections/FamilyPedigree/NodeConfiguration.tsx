@@ -18,6 +18,7 @@ import { Row, Section } from '~/components/EditorLayout';
 import DialogArrayField from '~/components/Form/DialogArrayField';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import ValidatedField from '~/components/Form/ValidatedField';
+import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { Entity } from '~/components/NewVariableWindow';
 import NewVariableWindow, {
@@ -283,9 +284,10 @@ const NodeConfigurationInner = ({
               layout="vertical"
               className="bg-surface-2 text-surface-2-contrast p-5"
             >
-              <ValidatedField
+              <ValidatedFieldArray
                 name="nodeConfig.form"
                 label="Form fields"
+                labelHidden
                 component={DialogArrayField}
                 validation={{}}
                 componentProps={{

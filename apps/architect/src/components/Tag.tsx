@@ -27,7 +27,7 @@ const Tag = ({
     light && 'bg-platinum text-surface-2-contrast',
     disabled && !!onClick && '',
     disabled && 'cursor-not-allowed opacity-50',
-    onClick && !disabled && 'cursor-pointer',
+    onClick && !disabled && 'focusable cursor-pointer',
   );
 
   const dotClasses = cx(
@@ -66,8 +66,9 @@ const Tag = ({
         className={componentClasses}
         onClick={handleClick}
         disabled={disabled}
+        aria-pressed={selected}
       >
-        <div className={dotClasses} />
+        <div className={dotClasses} aria-hidden />
         {children}
       </button>
     );
@@ -75,7 +76,7 @@ const Tag = ({
 
   return (
     <div className={componentClasses}>
-      <div className={dotClasses} />
+      <div className={dotClasses} aria-hidden />
       {children}
     </div>
   );

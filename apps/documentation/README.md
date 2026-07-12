@@ -25,6 +25,28 @@ To run the app locally:
 
 Effortlessly find the information you need with the top-level search bar. Instantly locate relevant documentation, making navigation and discovery a breeze.
 
+Search is powered by Algolia DocSearch (`@docsearch/react`) in `components/DocSearchComponent.tsx`, configured via the `NEXT_PUBLIC_ALGOLIA_*` env vars in `env.js`. Results are made section-aware in two ways:
+
+- **Section badge** — each result shows a coloured pill naming its workflow section (Get Started, Design Protocols, …), matching the homepage colours. The section slug is derived purely client-side from the hit's URL (the first path segment after the locale), so no Algolia-side data is required for the badge. Colours and labels come from `lib/sections.ts` and the `SectionSwitcher` translation namespace.
+- **Current-section boost** — results from the section the reader is currently in are boosted (via Algolia `optionalFilters`) so same-section pages rank higher, while every section still appears.
+
+#### Algolia `section` attribute (crawler-side, not in this repo)
+
+The current-section boost filters on a `section` attribute on each Algolia record. This attribute is **not** produced by anything in this repo — it is populated by the hosted Algolia DocSearch **crawler**, whose config lives in the Algolia dashboard (app `QJYMR8V9ES`, index `networkcanvas`), not here. The setup is:
+
+1. **Crawler `recordExtractor`** derives the slug from the page URL and attaches it to every record:
+
+   ```js
+   recordExtractor: ({ helpers, url }) => {
+     const section = url.pathname.split("/").filter(Boolean)[1]; // /en/<section>/...
+     return helpers.docsearch({ /* … */ }).map((record) => ({ ...record, section }));
+   }
+   ```
+
+2. **`section` is facetable** (`filterOnly(section)`). This must be set in **two** places: the crawler's `initialIndexSettings.networkcanvas.attributesForFaceting` _and_ the live index's _Attributes for faceting_ (Configuration → Facets). The crawler's `initialIndexSettings` only applies when the index is first created, so the live index must be configured directly for an existing index.
+
+Because the slug is the first path segment after the locale, records only carry the correct workflow-section values once the reorganised `/en/<section>/…` routes are deployed and the crawler re-crawls them. `optionalFilters` against a facetable attribute with no matching values simply boosts nothing, so the client code is safe to deploy ahead of a crawl.
+
 ### 3. Table of Contents
 
 For in-depth articles, utilize the convenient Table of Contents component located on the right side of the page. Jump directly to the sections you need, enhancing your reading experience.

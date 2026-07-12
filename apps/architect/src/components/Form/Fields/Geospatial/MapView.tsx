@@ -7,12 +7,14 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Layout, Section } from '~/components/EditorLayout';
 import { getAssetManifest } from '~/selectors/protocol';
-type MapOptions = {
+
+export type MapOptions = {
   center?: number[];
   tokenAssetId?: string;
   initialZoom?: number;
@@ -26,6 +28,54 @@ type MapViewProps = {
   onChange: (options: MapOptions) => void;
   close: () => void;
 };
+
+const defaultCenter: [number, number] = [0, 0];
+
+const isValidCenter = (center?: number[]): center is [number, number] =>
+  Array.isArray(center) &&
+  center.length === 2 &&
+  center.every(
+    (coordinate) =>
+      typeof coordinate === 'number' && Number.isFinite(coordinate),
+  );
+
+const resolveCenter = (center?: number[]): [number, number] => {
+  if (!isValidCenter(center)) {
+    return defaultCenter;
+  }
+
+  return [center[0], center[1]];
+};
+
+const resolveZoom = (zoom?: number) =>
+  typeof zoom === 'number' && Number.isFinite(zoom) ? zoom : 0;
+
+export const hasMapViewChanged = (
+  center: [number, number],
+  zoom: number,
+  initialOptions: MapOptions,
+) => {
+  if (!isValidCenter(initialOptions.center)) {
+    return true;
+  }
+
+  const initialCenter = resolveCenter(initialOptions.center);
+  const initialZoom = resolveZoom(initialOptions.initialZoom);
+
+  return (
+    center[0] !== initialCenter[0] ||
+    center[1] !== initialCenter[1] ||
+    zoom !== initialZoom
+  );
+};
+
+type MapStatus = 'loading' | 'ready' | 'error';
+
+const unavailableKeyMessage =
+  'The map preview could not be loaded because its API key is unavailable. Select an API key and try again.';
+const mapLoadErrorMessage =
+  'The map preview could not be loaded. Check the API key and map style, then try again.';
+
 const MapView = ({
   mapOptions = {
     center: [0, 0],
@@ -45,11 +95,13 @@ const MapView = ({
     ? get(assetManifest, [tokenAssetId, 'value'], '')
     : '';
   const mapRef = useRef<MapboxMap | null>(null);
-  const [mapContainer, setMapContainer] = useState<HTMLDivElement | null>(null);
-  const [center, setCenter] = useState<[number, number]>(
-    (mapOptions.center as [number, number]) || [0, 0],
+  const [mapContainer, setMapContainer] = useState<HTMLElement | null>(null);
+  const [center, setCenter] = useState<[number, number]>(() =>
+    resolveCenter(mapOptions.center),
   );
-  const [zoom, setZoom] = useState(mapOptions.initialZoom || 0);
+  const [zoom, setZoom] = useState(() => resolveZoom(mapOptions.initialZoom));
+  const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
+  const [mapError, setMapError] = useState<string | null>(null);
   const saveMapSelection = (newCenter: [number, number], newZoom: number) => {
     onChange({
       ...mapOptions,
@@ -57,41 +109,74 @@ const MapView = ({
       initialZoom: newZoom,
     });
   };
-  const isMapChanged =
-    center !== mapOptions.center || zoom !== mapOptions.initialZoom;
+  const isMapChanged = hasMapViewChanged(center, zoom, mapOptions);
+
   useEffect(() => {
-    if (!mapboxAPIKey || !mapContainer || mapRef.current) {
-      return;
+    if (!mapContainer || mapRef.current) {
+      return undefined;
     }
+
+    if (!mapboxAPIKey) {
+      setMapError(unavailableKeyMessage);
+      setMapStatus('error');
+      return undefined;
+    }
+
+    setMapError(null);
+    setMapStatus('loading');
+
+    let disposed = false;
     let map: MapboxMap | null = null;
     const frame = window.requestAnimationFrame(() => {
-      if (mapRef.current) {
+      if (disposed || mapRef.current) {
         return;
       }
-      map = new mapboxgl.Map({
-        container: mapContainer,
-        style: style || 'mapbox://styles/mapbox/streets-v12',
-        center: (mapOptions.center as [number, number]) || [0, 0],
-        zoom: mapOptions.initialZoom || 0,
-        accessToken: mapboxAPIKey,
-      });
-      mapRef.current = map;
-      map.addControl(
-        new mapboxgl.NavigationControl({
-          showCompass: false,
-        }),
-      );
-      map.on('move', () => {
-        if (!map) {
-          return;
+
+      try {
+        map = new mapboxgl.Map({
+          container: mapContainer,
+          style: style || 'mapbox://styles/mapbox/streets-v12',
+          center: resolveCenter(mapOptions.center),
+          zoom: resolveZoom(mapOptions.initialZoom),
+          accessToken: mapboxAPIKey,
+        });
+        mapRef.current = map;
+        map.addControl(
+          new mapboxgl.NavigationControl({
+            showCompass: false,
+          }),
+        );
+        map.on('load', () => {
+          if (disposed) return;
+          setMapStatus((status) => (status === 'error' ? status : 'ready'));
+        });
+        map.on('error', () => {
+          if (disposed) return;
+          setMapError(mapLoadErrorMessage);
+          setMapStatus('error');
+        });
+        map.on('move', () => {
+          if (!map || disposed) {
+            return;
+          }
+          const mapCenter = map.getCenter();
+          const mapZoom = map.getZoom();
+          setCenter([mapCenter.lng, mapCenter.lat]);
+          setZoom(mapZoom);
+        });
+      } catch {
+        map?.remove();
+        map = null;
+        mapRef.current = null;
+        if (!disposed) {
+          setMapError(mapLoadErrorMessage);
+          setMapStatus('error');
         }
-        const mapCenter = map.getCenter();
-        const mapZoom = map.getZoom();
-        setCenter([mapCenter.lng, mapCenter.lat]);
-        setZoom(mapZoom);
-      });
+      }
     });
+
     return () => {
+      disposed = true;
       window.cancelAnimationFrame(frame);
       map?.remove();
       mapRef.current = null;
@@ -114,7 +199,7 @@ const MapView = ({
           <Button color="default" onClick={close}>
             Cancel
           </Button>
-          {isMapChanged && (
+          {isMapChanged && mapStatus === 'ready' && (
             <Button
               color="primary"
               onClick={() => {
@@ -143,7 +228,20 @@ const MapView = ({
           }
           layout="vertical"
         >
-          <div ref={setMapContainer} className="h-[50vh] w-full" />
+          {mapStatus === 'loading' && (
+            <output className="sr-only">Loading map preview.</output>
+          )}
+          {mapError && (
+            <Alert variant="destructive" density="compact">
+              <AlertDescription>{mapError}</AlertDescription>
+            </Alert>
+          )}
+          <section
+            ref={setMapContainer}
+            aria-label="Interactive map preview"
+            aria-busy={mapStatus === 'loading'}
+            className="h-[50vh] w-full"
+          />
         </Section>
       </Layout>
     </Dialog>

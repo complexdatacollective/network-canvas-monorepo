@@ -105,10 +105,7 @@ type SeparatorSegment = {
 };
 
 type ToolbarSegment =
-  | ButtonSegment
-  | ToggleSegment
-  | GroupSegment
-  | SeparatorSegment;
+  ButtonSegment | ToggleSegment | GroupSegment | SeparatorSegment;
 
 type Position = { x: number; y: number };
 

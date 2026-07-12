@@ -1,0 +1,105 @@
+---
+title: Narrative Pedigree
+---
+
+<InterfaceSummary type="NarrativePedigree">
+
+<InterfaceMeta type="Data Visualisation" creates="Nothing — it visualises the family pedigree built in another stage" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+The Narrative Pedigree is a companion to the [Family Pedigree](/en/design-protocols/interface-documentation/family-pedigree). It takes a family pedigree the participant has already built and draws it using standard pedigree notation, overlaying inheritance information for one or more conditions. It does not create or change any data — it only reads and displays the pedigree from its source stage.
+
+Use it to show, at a glance, who in the family is affected by a condition, who must carry it, and (optionally) who may be at risk — with the drawing rules following the standard clinical conventions described in Bennett et al. (2022).
+
+## Choosing the source stage
+
+The Narrative Pedigree always reads from an earlier **Family Pedigree** stage in the same protocol. Select that stage as the source. The Narrative Pedigree then shows exactly the people that stage recorded — it will not pick up unrelated people added in later stages, even if they share the same node type.
+
+<TipBox>
+
+Place the Narrative Pedigree **after** the Family Pedigree that feeds it, and after any step where participants nominate who is affected by each condition.
+
+</TipBox>
+
+## Configuring conditions
+
+Add one or more conditions to display. For each condition you set:
+
+- **Label** — the condition's name, shown in the key.
+- **Colour** — the colour used to draw that condition's status on the pedigree.
+- **Node variable** — a **boolean** variable that records whether each person is affected. This is normally collected in the Family Pedigree disease-nomination step. Only boolean variables can be selected, because "affected" is a yes/no value.
+- **Inheritance pattern** — how the condition is passed down. This drives every inference the interface makes, so it must be correct.
+
+Supported inheritance patterns are: autosomal dominant, autosomal recessive, X-linked dominant, X-linked recessive, Y-linked, mitochondrial, multifactorial, and unknown. For **multifactorial** and **unknown**, only the people explicitly nominated as affected are shown — no carrier or at-risk inference is made.
+
+## How statuses are shown
+
+Each person is drawn with a shape for their **biological sex** (square for male, circle for female, and a diamond where the sex is not known), and a fill or marker for their **status** with respect to each condition.
+
+<KeyConcept title="Certain vs. possible statuses">
+
+The interface distinguishes what is **certain** from the family structure (a person is affected, or must carry or develop the condition) from what is only **possible** (a person _may_ carry or develop it). Certain statuses are always shown. Possible ("at-risk") statuses are only shown when you turn them on — see below.
+
+</KeyConcept>
+
+Certain statuses include _affected_, _will develop it_ (an obligate/presymptomatic case), and _carrier_. These are drawn using the standard nomenclature symbols and explained in the on-screen key.
+
+## Possible (at-risk) statuses
+
+There is a **Show possible (at-risk) statuses** option, which is **off by default**. When it is off, the pedigree shows only certain statuses. When it is on, it also shows _may develop_ and _may carry_ — drawn as the usual symbol with a question mark added.
+
+At-risk statuses are **inferred, not observed**. They are a strong visual signal that can be misread as established fact, so they are intended for **clinician-directed use**, where a professional interprets them in context. Standard pedigree nomenclature deliberately does not encode probabilistic risk.
+
+<TipBox danger>
+
+The Narrative Pedigree is a visualisation aid, not a diagnostic tool. Leave the at-risk option off unless a clinician is guiding interpretation, and never present inferred risk to a participant as a diagnosis.
+
+</TipBox>
+
+## How inheritance is inferred
+
+When at-risk statuses are shown, the interface works out possible statuses from the family structure and each condition's inheritance pattern. A few rules are worth knowing, because they shape what researchers and clinicians will see:
+
+- **Only biological connections transmit.** Only _biological_ and _donor_ relationships pass a condition on. Social, adoptive, surrogate, and partner relationships never do, so risk is never inferred across them.
+- **Unknown sex stays uncertain.** Sex-linked inheritance (X-linked, Y-linked, mitochondrial) depends on biological sex. Where a person's sex was not recorded, the interface leaves inheritance through that person uncertain rather than guessing. This is why capturing sex recorded at birth in the Family Pedigree matters.
+- **X-linked risk follows the maternal line.** For X-linked recessive conditions, risk travels down the mother's X chromosome. Relatives connected only through an unaffected father — for example, a mother's half-sibling who shares only her father — carry none of that X and are correctly **not** marked at risk.
+- **Mitochondrial inheritance follows the egg.** A condition carried in mitochondrial DNA is traced down the maternal (egg) line. Where a child was conceived using a donor egg, the mitochondrial line follows that donor egg — so a child conceived through mitochondrial donation does not inherit the birth mother's mitochondrial condition, even though they inherit her nuclear genome.
+
+<KeyConcept title="A filled symbol always means affected">
+
+A solid, filled symbol always means the person is **affected** — it is never used for someone who is only _at risk_, however that risk arises. This follows standard pedigree nomenclature (Bennett et al.), which reserves shading for people who actually have the condition and never encodes a probability in the shape itself.
+
+So a relative who might have inherited a recessive condition from two carrier parents is shown with an ordinary at-risk symbol — _may develop_ where both parents are established carriers (a genuine one-in-four chance), or _may carry_ where their own carrier status is itself only possible — never a filled, affected-looking symbol. Reserving the fill for affected people keeps the strongest visual signal honest: it only ever marks a condition someone actually has.
+
+</KeyConcept>
+
+Throughout, the interface assumes conditions are fully penetrant (everyone who has the genotype shows the condition) and treats inference as a guide to _where to look_, not a substitute for clinical assessment.
+
+## Focusing on one person
+
+Selecting a condition from the key switches the pedigree to that condition's view. From there, focusing on a person highlights the relatives who contribute to _their_ inheritance of the selected condition, following the true source line for that pattern (for example, up the maternal line for an X-linked condition). A printable snapshot of the current view can be exported.
+
+## Best practices
+
+<GoodPractice>
+
+Record who is affected using a **boolean** variable per condition (via the Family Pedigree disease-nomination step), and set each condition's inheritance pattern carefully — every inference depends on it.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Capture **sex recorded at birth** for each person in the Family Pedigree. Sex-linked conditions cannot be traced without it, and missing sex is treated as uncertainty.
+
+</GoodPractice>
+
+## Try to avoid
+
+<BadPractice>
+
+Don't enable at-risk statuses for participant-facing use without a clinician. Inferred "may develop" or "may carry" symbols can be mistaken for a diagnosis.
+
+</BadPractice>

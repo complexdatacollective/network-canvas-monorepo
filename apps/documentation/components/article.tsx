@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import WorkInProgress from '~/components/customComponents/WorkInProgress';
@@ -23,17 +24,22 @@ export default function Article({
   wip?: boolean;
 }) {
   const pathname = usePathname();
+  const t = useTranslations('SectionSwitcher');
 
   // Todo: nextjs has hooks specifically for this: useSelectedLayoutSegment
-  const project = pathname.split('/')[1];
-  const section = pathname.split('/')[2]?.replace(/-/g, ' '); // replace hyphens with spaces
+  const sectionSlug = pathname.split('/')[1];
+  const sectionLabel =
+    sectionSlug && t.has(`${sectionSlug}.label`)
+      ? t(`${sectionSlug}.label`)
+      : sectionSlug?.replace(/-/g, ' ');
+  const subsection = pathname.split('/')[2]?.replace(/-/g, ' '); // replace hyphens with spaces
 
   return (
     <>
       <article className="@container/article mx-4 mb-5 w-full max-w-[75ch] flex-1 overflow-y-hidden lg:mx-8 xl:mx-10 2xl:mx-20">
         <header>
           <Heading variant="h4-all-caps" margin="none" className="text-accent">
-            {project} {section && <>🠖 {section}</>}
+            {sectionLabel} {subsection && <>🠖 {subsection}</>}
           </Heading>
           <FancyHeading variant="h1" className="!mt-0">
             {title}

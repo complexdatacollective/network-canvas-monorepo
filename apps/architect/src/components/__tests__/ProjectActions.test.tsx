@@ -200,6 +200,18 @@ describe('<ProjectActions />', () => {
     expect(screen.getByRole('button', { name: /print/i })).toBeInTheDocument();
   });
 
+  it('keeps the Download action filled on hover', () => {
+    const store = createTestStore();
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    const downloadButton = screen.getByRole('button', { name: /^download$/i });
+    expect(downloadButton).toHaveClass('bg-sea-green');
+    expect(downloadButton).toHaveClass('text-white');
+    expect(downloadButton).not.toHaveClass(
+      'hover:enabled:bg-(--component-text)',
+    );
+  });
+
   it('transitions Download → Downloading... → Downloaded during export flow', async () => {
     const store = createTestStore();
     exportUnwrap.mockResolvedValueOnce({ skippedAssets: [] });

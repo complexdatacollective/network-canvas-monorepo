@@ -27,8 +27,7 @@ All commands run from this directory unless noted. The monorepo root `pnpm typec
 
 ```bash
 pnpm dev              # Vite dev server
-pnpm build             # production build
-pnpm build:web         # production build + PWA integrity check (what CI deploys)
+pnpm build            # production build + PWA integrity check (what CI deploys)
 pnpm preview           # preview the production build locally
 pnpm typecheck
 pnpm test              # vitest, unit project

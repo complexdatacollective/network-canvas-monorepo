@@ -88,6 +88,35 @@ const interfaceImagesNoInlinePlugin = (): Plugin => ({
 // Vitest sets VITEST=true.
 const isLibraryBuild = !process.env.STORYBOOK && !process.env.VITEST;
 
+const relativeDeclarationSpecifier =
+  /\b(from\s+['"]|import\s+['"])(\.{1,2}(?:\/[^'"]*)?)(['"])/g;
+const relativeDynamicDeclarationSpecifier =
+  /\b(import\(\s*['"])(\.{1,2}(?:\/[^'"]*)?)(['"]\s*\))/g;
+const runtimeDeclarationExtension = /\.(?:cjs|css|js|json|mjs)$/;
+const directoryDeclarationSpecifier = /^(?:\.{1,2}\/)*\.{1,2}$/;
+
+const appendJsExtension = (specifier: string) => {
+  if (directoryDeclarationSpecifier.test(specifier)) {
+    return `${specifier}/index.js`;
+  }
+  return runtimeDeclarationExtension.test(specifier)
+    ? specifier
+    : `${specifier}.js`;
+};
+
+const addJsExtensionsToDeclarationSpecifiers = (content: string) =>
+  content
+    .replace(
+      relativeDeclarationSpecifier,
+      (_match, prefix: string, specifier: string, suffix: string) =>
+        `${prefix}${appendJsExtension(specifier)}${suffix}`,
+    )
+    .replace(
+      relativeDynamicDeclarationSpecifier,
+      (_match, prefix: string, specifier: string, suffix: string) =>
+        `${prefix}${appendJsExtension(specifier)}${suffix}`,
+    );
+
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
@@ -105,7 +134,10 @@ export default defineConfig({
           'src/**/*.stories.tsx',
         ],
         compilerOptions: { rootDir: resolve(__dirname, 'src') },
-        bundleTypes: true,
+        insertTypesEntry: true,
+        beforeWriteFile: (_filePath, content) => ({
+          content: addJsExtensionsToDeclarationSpecifiers(content),
+        }),
       }),
     cssCopyPlugin(),
   ],

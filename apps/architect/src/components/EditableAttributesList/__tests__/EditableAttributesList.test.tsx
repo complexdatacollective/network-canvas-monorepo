@@ -13,7 +13,7 @@ vi.mock('~/components/Form/DialogArrayField', () => ({
   ),
 }));
 
-vi.mock('~/components/Form/ValidatedField', () => ({
+vi.mock('~/components/Form/ValidatedFieldArray', () => ({
   default: ({
     name,
     component: Component,

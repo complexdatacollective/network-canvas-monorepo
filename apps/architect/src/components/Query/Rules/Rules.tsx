@@ -1,18 +1,17 @@
 import { get } from 'es-toolkit/compat';
-import { useCallback, type ComponentType } from 'react';
+import { useCallback, useId, type ComponentType } from 'react';
 import { compose } from 'react-recompose';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import DetachedField from '~/components/DetachedField';
-import { FrescoReduxField } from '~/components/Form';
-import FieldError from '~/components/Form/FieldError';
 
 import EditRule from './EditRule';
 import PreviewRules from './PreviewRules';
+import RuleField from './RuleField';
 import validateRule, { type Rule } from './validateRule';
 import withDraftRule from './withDraftRule';
 const FrescoRadioGroupField = RadioGroupField as ComponentType<
@@ -53,6 +52,7 @@ const Rules = ({
   onChange = () => {},
 }: RulesProps) => {
   const { confirm, openDialog } = useDialog();
+  const errorId = useId();
   // Default to true as may not be defined if used without redux-form
   const isTouched = get(meta, 'touched', true) as boolean;
   const hasError = isTouched && !!error;
@@ -156,7 +156,11 @@ const Rules = ({
           codebook={codebook}
           hasError={hasError}
         />
-        <FieldError show={hasError} error={error || ''} />
+        <FieldErrors
+          id={errorId}
+          errors={error ? [error] : []}
+          show={hasError}
+        />
       </div>
 
       <div className="mt-5 [&_button]:mr-5">
@@ -180,9 +184,8 @@ const Rules = ({
       {rules.length > 1 && (
         <div className="mt-10">
           <Heading level="h4">Must match</Heading>
-          <DetachedField
-            component={FrescoReduxField}
-            fieldComponent={FrescoRadioGroupField}
+          <RuleField
+            component={FrescoRadioGroupField}
             label="Rule matching"
             options={[
               { label: 'All rules', value: 'AND' },
