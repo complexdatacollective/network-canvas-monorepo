@@ -194,7 +194,7 @@ Move verbatim. None of them import outside `synthetic/` today, so the move is me
    export { generateNetwork } from './synthetic/generateNetwork';
    ```
 3. **`packages/interview/src/interfaces/**/\*.stories.tsx`** — 16 files. Replace each occurrence of
-`import { SyntheticInterview } from '~/synthetic/SyntheticInterview';`with`import { SyntheticInterview } from '@codaco/protocol-utilities';`.
+   `import { SyntheticInterview } from '~/synthetic/SyntheticInterview';` with `import { SyntheticInterview } from '@codaco/protocol-utilities';`.
    Mechanical per-file edit.
 4. **`packages/interview/package.json`** — add `"@codaco/protocol-utilities": "workspace:^"` to `devDependencies`. Stories and stories' Vitest run consume it; the runtime bundle does not.
 5. **`apps/architect-web/src/components/PreviewHost/PreviewHost.tsx`** — split the existing `from '@codaco/interview'` import: `generateNetwork` moves to a new `from '@codaco/protocol-utilities'` import; the other named imports stay on `@codaco/interview`.

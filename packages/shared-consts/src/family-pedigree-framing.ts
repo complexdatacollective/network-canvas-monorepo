@@ -8,7 +8,11 @@
 export const FRAMING_IDS = ['gamete', 'gendered'] as const;
 export type FramingId = (typeof FRAMING_IDS)[number];
 
-export const FRAMING_AUTHOR_LABELS: Record<FramingId, string> = {
+type FramingLookup<Value> = {
+  [Id in FramingId]: Value;
+};
+
+export const FRAMING_AUTHOR_LABELS: FramingLookup<string> = {
   gamete: 'Gamete-based',
   gendered: 'Gendered',
 };
@@ -41,7 +45,7 @@ export type FramingTerms = {
   unknownSpermParent: string;
 };
 
-export const FRAMING_TERMS: Record<FramingId, FramingTerms> = {
+export const FRAMING_TERMS: FramingLookup<FramingTerms> = {
   gamete: {
     eggParent: 'Egg Parent',
     spermParent: 'Sperm Parent',

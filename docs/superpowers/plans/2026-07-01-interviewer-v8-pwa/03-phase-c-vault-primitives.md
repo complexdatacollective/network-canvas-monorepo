@@ -1238,8 +1238,7 @@ import {
 import { enrollBiometric, readPrf } from './webauthn';
 
 export type UnlockResult =
-  | { ok: true; dek: CryptoKey }
-  | { ok: false; message: string };
+  { ok: true; dek: CryptoKey } | { ok: false; message: string };
 export type EnrolResult = { ok: boolean; message?: string };
 
 const PIN_LENGTH = 8;

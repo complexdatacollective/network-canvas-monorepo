@@ -11,7 +11,7 @@
     "copyProtocolDownloads": "tsx ./scripts/copyProtocolDownloads.ts",
     "writeSidebarJson": "tsx ./lib/writeSidebarJson.ts",
     "start": "pnpm next start",
-    "typecheck": "tsgo --noEmit",
+    "typecheck": "tsc --noEmit",
     "validate-redirects": "tsx ./scripts/validate-redirects.ts",
     "test-redirects": "tsx ./scripts/test-redirects.ts"
   },

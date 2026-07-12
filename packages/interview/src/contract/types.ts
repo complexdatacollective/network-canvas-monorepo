@@ -1,6 +1,5 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-
-import type { SessionState } from '../store/modules/session';
+import type { NcNetwork, StageMetadata } from '@codaco/shared-consts';
 
 /**
  * Package-internal asset representation. Has only the fields the interviewer
@@ -37,10 +36,20 @@ export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
 };
 
 /**
- * Session payload. Matches the shape of SessionState (already used by the
- * reducer) — re-exported from a stable public name.
+ * Session payload. Matches the persisted session state used by the reducer,
+ * but is kept explicit so the public contract does not expose Redux internals.
  */
-export type SessionPayload = SessionState;
+export type SessionPayload = {
+  id: string;
+  startTime: string;
+  finishTime: string | null;
+  exportTime: string | null;
+  lastUpdated: string;
+  network: NcNetwork;
+  promptIndex?: number;
+  stageMetadata?: StageMetadata;
+  stageRequiresEncryption?: boolean;
+};
 
 export type InterviewPayload = {
   session: SessionPayload;
