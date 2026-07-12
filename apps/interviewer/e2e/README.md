@@ -30,7 +30,7 @@ e2e/
 │   └── test.ts            Base test/expect, extended by later fixtures
 ├── helpers/
 │   ├── protocol-paths.ts  Path + name of the lean e2e protocol fixture
-│   └── visual.ts          VISUAL_STYLES, makeCapture(page), statusMasks(page)
+│   └── visual.ts          makeCapture(page), statusMasks(page)
 ├── scripts/
 │   ├── build-e2e-protocol.mjs  Builds the lean e2e .netcanvas fixture
 │   └── run.sh              Docker entry for test:e2e

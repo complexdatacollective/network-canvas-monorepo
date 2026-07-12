@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 // Hide non-deterministic chrome so snapshots don't depend on blob animation
 // or which element last held focus. Mirrors the interview suite's VISUAL_STYLES.
-export const VISUAL_STYLES = `
+const VISUAL_STYLES = `
   [data-testid="background-blobs"] { visibility: hidden !important; }
   /* The app's ambient BackgroundLights (App.tsx) drifts via requestAnimationFrame
      with Math.random() seed positions — doubly non-deterministic and immune to

@@ -768,6 +768,41 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  interviewer-e2e:
+    needs: [quality, detect]
+    if: ${{ !cancelled() && needs.detect.outputs.interviewer == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      slug: ${{ steps.meta.outputs.slug }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: ./.github/actions/turbo-ci-setup
+      - id: meta
+        env:
+          REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          SLUG=$(printf '%s' "$REF" | tr '/' '-' | tr '[:upper:]' '[:lower:]')
+          SLUG=$(printf '%s' "$SLUG" | tr -c '[:alnum:]-_.' '-')
+          SLUG=${SLUG:-unknown}
+          printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
+      - name: Run E2E tests
+        run: ./apps/interviewer/e2e/scripts/run.sh
+      - name: Reclaim artifact ownership
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" \
+            apps/interviewer/e2e/playwright-report \
+            apps/interviewer/e2e/test-results 2>/dev/null || true
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: interviewer-playwright-report
+          path: apps/interviewer/e2e/playwright-report/
+          if-no-files-found: warn
+          retention-days: 14
+
   # Publishes the Playwright report to GitHub Pages and comments the E2E result
   # on the PR. Purely informational: whether the report PUBLISHED says nothing
   # about whether the code is sound — the actual verdict is the interview-e2e job
@@ -1407,6 +1442,7 @@ jobs:
       - chromatic-fresco-ui
       - chromatic-interview
       - interview-e2e
+      - interviewer-e2e
       - docs-preview-checks
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -1432,6 +1468,7 @@ jobs:
           FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
           FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
           FLAG_INTERVIEW_E2E: ${{ needs.detect.outputs.interview_e2e }}
+          FLAG_INTERVIEWER_E2E: ${{ needs.detect.outputs.interviewer }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         with:
@@ -1444,6 +1481,7 @@ jobs:
               FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
               FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
               FLAG_INTERVIEW_E2E: ["interview-e2e"],
+              FLAG_INTERVIEWER_E2E: ["interviewer-e2e"],
             };
 
             // Only consider jobs the current run didn't execute (flag false).
