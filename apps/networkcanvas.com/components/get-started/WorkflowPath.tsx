@@ -66,9 +66,11 @@ export function WorkflowPath({
             key={app.id}
             delay={index * 0.08}
             className={cn(
-              app.treatment === 'featured'
-                ? 'tablet-landscape:col-span-7'
-                : 'tablet-landscape:col-span-5',
+              workflow === 'collect' && index < 2
+                ? 'tablet-landscape:col-span-6'
+                : app.treatment === 'featured'
+                  ? 'tablet-landscape:col-span-7'
+                  : 'tablet-landscape:col-span-5',
               workflow === 'collect' && index === 2
                 ? 'tablet-landscape:col-start-8'
                 : undefined,

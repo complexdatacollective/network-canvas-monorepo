@@ -22,7 +22,7 @@ describe('get started content', () => {
 
   it('recommends Fresco for large teams or remote administration', () => {
     expect(webApps.find(({ id }) => id === 'fresco')?.status).toBe(
-      'Recommended for large teams or remote administration',
+      'Large Teams · Remote Administration · Recommended',
     );
   });
 

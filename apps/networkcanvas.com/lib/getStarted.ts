@@ -95,7 +95,7 @@ export const webApps = [
     id: 'fresco',
     workflow: 'collect',
     name: 'Fresco',
-    status: 'Recommended for large teams or remote administration',
+    status: 'Large Teams · Remote Administration · Recommended',
     description:
       'For participants completing interviews remotely in their own browser, with centralized study and data management. The sandbox is a public demonstration environment, not a place to run a real study.',
     bestFor: [

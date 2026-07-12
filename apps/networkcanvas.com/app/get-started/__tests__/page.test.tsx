@@ -78,10 +78,28 @@ describe('Get Started page', () => {
     expect(screen.getByText('Recommended for new studies')).toBeInTheDocument();
     expect(screen.getByText('In person · Recommended')).toBeInTheDocument();
     expect(
-      screen.getByText('Recommended for large teams or remote administration'),
+      screen.getByText('Large Teams · Remote Administration · Recommended'),
     ).toBeInTheDocument();
     expect(screen.getByText('Classic · Maintenance mode')).toBeInTheDocument();
     expect(screen.getByText('Classic · Existing studies')).toBeInTheDocument();
+  });
+
+  it('gives Interviewer and Fresco equal emphasis in the Collect grid', () => {
+    render(<GetStartedPage />);
+
+    const collect = document.querySelector<HTMLElement>('#collect');
+
+    if (!collect) {
+      throw new Error('Expected the Collect workflow section to be present.');
+    }
+
+    for (const appName of ['Interviewer', 'Fresco']) {
+      const card = within(collect)
+        .getByRole('heading', { level: 3, name: appName })
+        .closest('article');
+
+      expect(card?.parentElement).toHaveClass('tablet-landscape:col-span-6');
+    }
   });
 
   it('links Fresco actions and all four platforms for each Classic app', () => {
