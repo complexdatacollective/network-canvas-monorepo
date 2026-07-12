@@ -5,8 +5,8 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import { ValidatedField } from '~/components/Form';
-import { Field as RichTextField } from '~/components/Form/Fields/RichText';
+import RichTextField from '~/components/Form/Fields/RichText/Field';
+import ValidatedField from '~/components/Form/ValidatedField';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,

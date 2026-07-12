@@ -1,4 +1,4 @@
-import Markdown from '~/components/Form/Fields/Markdown';
+import Markdown from '~/components/Markdown';
 
 import SectionFrame from './SectionFrame';
 

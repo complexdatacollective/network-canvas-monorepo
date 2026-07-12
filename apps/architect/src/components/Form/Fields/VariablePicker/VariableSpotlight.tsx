@@ -18,6 +18,7 @@ import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
+import { SimpleVariablePill } from '~/components/VariablePill';
 import type { RootState } from '~/ducks/store';
 import { cx } from '~/utils/cva';
 import { validations } from '~/utils/validations';
@@ -25,7 +26,6 @@ import { validations } from '~/utils/validations';
 import { getVariablesForSubject } from '../../../../selectors/codebook';
 import { sortByLabel } from '../../../Codebook/helpers';
 import ExternalLink from '../../../ExternalLink';
-import { SimpleVariablePill } from './VariablePill';
 
 const EMPTY_CLASSES =
   'flex grow basis-full items-start rounded px-7 py-5 text-current/80 [&_svg]:mr-3 [&_svg]:mt-1 [&_svg]:shrink-0';

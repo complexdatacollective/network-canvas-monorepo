@@ -5,12 +5,10 @@ import { compose } from 'react-recompose';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import DetachedField from '~/components/DetachedField';
-import { FrescoReduxField } from '~/components/Form';
 
 import Section from '../../EditorLayout/Section';
 import IssueAnchor from '../../IssueAnchor';
-import EntitySelectField from '../../sections/fields/EntitySelectField/EntitySelectField';
+import { EntitySelectControl } from '../../sections/fields/EntitySelectField/EntitySelectField';
 import { makeGetOptionsWithDefaults } from './defaultRule';
 import EditValue from './EditValue';
 import {
@@ -18,6 +16,7 @@ import {
   operatorsWithRegExp,
   operatorsWithValue,
 } from './options';
+import RuleField from './RuleField';
 import {
   entityRuleTypeOptions,
   entityRuleTypes,
@@ -32,6 +31,32 @@ const FrescoNativeSelectField = NativeSelectField as ComponentType<
 const FrescoRadioGroupField = RadioGroupField as ComponentType<
   Record<string, unknown>
 >;
+const FrescoEntitySelectControl = EntitySelectControl as ComponentType<
+  Record<string, unknown>
+>;
+
+// Categorical operands are arrays of selected option values, so they must reach
+// EditValue intact rather than being coerced to a scalar (which would drop the
+// saved selections on save/reopen). Scalars pass through; anything else defaults
+// to an empty string.
+export const toEditValue = (
+  value: unknown,
+): string | number | boolean | (string | number)[] => {
+  if (Array.isArray(value)) {
+    return value.filter(
+      (item): item is string | number =>
+        typeof item === 'string' || typeof item === 'number',
+    );
+  }
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
+    return value;
+  }
+  return '';
+};
 
 type OptionItem = {
   value: string | number;
@@ -115,11 +140,11 @@ const EditEntityRule = ({
         layout="vertical"
       >
         <IssueAnchor fieldName="type" description={`${entityType} Type`} />
-        <DetachedField
-          component={
-            EntitySelectField as React.ComponentType<Record<string, unknown>>
-          }
+        <RuleField
+          component={FrescoEntitySelectControl}
           entityType={entityType === 'node' ? 'node' : 'edge'}
+          label={`${entityType === 'node' ? 'Node' : 'Edge'} type`}
+          labelHidden
           name="type"
           options={typeOptions}
           onChange={handleRuleChange}
@@ -132,10 +157,10 @@ const EditEntityRule = ({
         disabled={!optionsWithDefaults.type}
         layout="vertical"
       >
-        <DetachedField
-          component={FrescoReduxField}
-          fieldComponent={FrescoRadioGroupField}
+        <RuleField
+          component={FrescoRadioGroupField}
           label="Rule type"
+          labelHidden
           options={entityRuleTypeOptions(entityType)}
           value={entityRuleType}
           onChange={(_event, value) =>
@@ -145,10 +170,10 @@ const EditEntityRule = ({
       </Section>
       {isTypeRule && optionsWithDefaults.type && (
         <Section title="Operator" layout="vertical">
-          <DetachedField
-            component={FrescoReduxField}
-            fieldComponent={FrescoRadioGroupField}
+          <RuleField
+            component={FrescoRadioGroupField}
             label="Operator"
+            labelHidden
             name="operator"
             options={operatorOptions}
             onChange={handleRuleChange}
@@ -163,10 +188,10 @@ const EditEntityRule = ({
           summary={<Paragraph>Select a variable to query.</Paragraph>}
           layout="vertical"
         >
-          <DetachedField
-            component={FrescoReduxField}
-            fieldComponent={FrescoNativeSelectField}
+          <RuleField
+            component={FrescoNativeSelectField}
             label="Variable"
+            labelHidden
             name="attribute"
             options={variablesAsOptions}
             onChange={handleRuleChange}
@@ -177,10 +202,10 @@ const EditEntityRule = ({
       )}
       {isVariableRule && optionsWithDefaults.attribute && (
         <Section title="Operator" layout="vertical">
-          <DetachedField
-            component={FrescoReduxField}
-            fieldComponent={FrescoNativeSelectField}
+          <RuleField
+            component={FrescoNativeSelectField}
             label="Operator"
+            labelHidden
             name="operator"
             options={operatorOptions}
             onChange={handleRuleChange}
@@ -195,15 +220,10 @@ const EditEntityRule = ({
             variableType={variableType}
             placeholder="Enter a value..."
             onChange={handleRuleChange}
-            value={
-              typeof optionsWithDefaults.value === 'string' ||
-              typeof optionsWithDefaults.value === 'number' ||
-              typeof optionsWithDefaults.value === 'boolean'
-                ? optionsWithDefaults.value
-                : ''
-            }
+            value={toEditValue(optionsWithDefaults.value)}
             options={variableOptions}
             validation={{ required: true }}
+            labelHidden
           />
         </Section>
       )}
@@ -213,22 +233,17 @@ const EditEntityRule = ({
             variableType={variableType}
             placeholder="Enter a regular expression..."
             onChange={handleRuleChange}
-            value={
-              typeof optionsWithDefaults.value === 'string' ||
-              typeof optionsWithDefaults.value === 'number' ||
-              typeof optionsWithDefaults.value === 'boolean'
-                ? optionsWithDefaults.value
-                : ''
-            }
+            value={toEditValue(optionsWithDefaults.value)}
             options={variableOptions}
             validation={{ required: true, validRegExp: true }}
+            labelHidden
           />
         </Section>
       )}
       {isVariableRule && operatorNeedsOptionCount && (
         <Section title="Selected Option Count" layout="vertical">
           <EditValue
-            variableType="number"
+            variableType="count"
             placeholder="Enter a value..."
             onChange={handleRuleChange}
             value={

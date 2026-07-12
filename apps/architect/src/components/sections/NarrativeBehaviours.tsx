@@ -2,7 +2,7 @@ import { Field, FormSection } from 'redux-form';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { Row, Section } from '~/components/EditorLayout';
-import { Toggle } from '~/components/Form/Fields';
+import Toggle from '~/components/Form/Fields/Toggle';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
 import IssueAnchor from '../IssueAnchor';

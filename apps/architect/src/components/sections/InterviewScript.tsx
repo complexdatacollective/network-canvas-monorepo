@@ -5,7 +5,7 @@ import { change, Field, formValueSelector } from 'redux-form';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import { Field as RichText } from '~/components/Form/Fields/RichText';
+import RichText from '~/components/Form/Fields/RichText/Field';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
@@ -56,6 +56,7 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
         name="interviewScript"
         component={RichText}
         label="Interviewer script text"
+        labelHidden
         placeholder="Enter text for the interviewer here."
       />
     </Section>

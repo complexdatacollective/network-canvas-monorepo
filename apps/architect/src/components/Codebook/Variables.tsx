@@ -11,10 +11,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import EditableVariablePill from '~/components/VariablePill';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
 
-import EditableVariablePill from '../Form/Fields/VariablePicker/VariablePill';
 import ControlsColumn from './ControlsColumn';
 import UsageColumn from './UsageColumn';
 

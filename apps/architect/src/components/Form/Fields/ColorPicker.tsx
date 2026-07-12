@@ -102,10 +102,14 @@ const ColorPickerControl = ({
               type="button"
               aria-label={color.label}
               className={cx(
-                'focusable relative size-12 shrink-0 rounded-full border-4 border-transparent',
-                'bg-(--color) transition-colors',
-                'hover:border-input-contrast/40',
-                state.checked && 'border-primary',
+                'focusable relative size-12 shrink-0 rounded-full',
+                // The selection ring is the design-system focus outline in the
+                // swatch's own colour (not a generic primary border), so the cue
+                // reads as "this colour". Hover previews it at a tighter offset.
+                'bg-(--color) outline-(--color) transition-all',
+                state.checked
+                  ? 'outline-2 outline-offset-3'
+                  : 'hover:outline-2 hover:outline-offset-2',
                 readOnly && 'pointer-events-none',
               )}
               style={

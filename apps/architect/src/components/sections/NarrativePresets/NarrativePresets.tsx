@@ -75,6 +75,7 @@ const NarrativePresets = ({
     <ValidatedFieldArray
       name="presets"
       label="Narrative presets"
+      labelHidden
       component={DialogArrayField}
       validation={{ notEmpty }}
       componentProps={{

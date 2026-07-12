@@ -3,8 +3,8 @@ import type { ComponentProps, ComponentType } from 'react';
 
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { Row, Section } from '~/components/EditorLayout';
-import { FrescoReduxField } from '~/components/Form';
-import { Field as RichText } from '~/components/Form/Fields/RichText';
+import RichText from '~/components/Form/Fields/RichText/Field';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import IssueAnchor from '~/components/IssueAnchor';
 
 import Audio from '../../Form/Fields/Audio';
@@ -51,6 +51,7 @@ const ItemEditor = ({ type, allowSize, handleChangeType }: ItemEditorProps) => (
           componentProps={{
             fieldComponent: FrescoRadioGroupField,
             label: 'Content type',
+            labelHidden: true,
             options: typeOptions,
           }}
           onChange={
@@ -68,6 +69,8 @@ const ItemEditor = ({ type, allowSize, handleChangeType }: ItemEditorProps) => (
           <ValidatedField
             name="content"
             component={getInputComponent(type)}
+            label="Content"
+            labelHidden
             validation={{ required: true }}
           />
         </Row>
@@ -89,6 +92,7 @@ const ItemEditor = ({ type, allowSize, handleChangeType }: ItemEditorProps) => (
             componentProps={{
               fieldComponent: FrescoRadioGroupField,
               label: 'Display size',
+              labelHidden: true,
               options: sizeOptions,
               orientation: 'horizontal',
             }}

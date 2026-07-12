@@ -6,8 +6,9 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import withDisabledAPIKeyRequired from '~/components/enhancers/withDisabledAPIKeyRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
-import { FrescoReduxField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { mapboxStyleOptions } from '~/config/mapboxConstants';
 
 import useVariablesFromExternalData from '../../hooks/useVariablesFromExternalData';
 import { Row, Section } from '../EditorLayout';
@@ -15,7 +16,6 @@ import ExternalLink from '../ExternalLink';
 import ColorPicker from '../Form/Fields/ColorPicker';
 import GeoAPIKey from '../Form/Fields/Geospatial/GeoAPIKey';
 import GeoDataSource from '../Form/Fields/Geospatial/GeoDataSource';
-import { mapboxStyleOptions } from '../Form/Fields/Geospatial/mapboxConstants';
 import MapSelection, {
   requiredMapView,
 } from '../Form/Fields/Geospatial/MapSelection';
@@ -188,7 +188,7 @@ const MapOptions = ({
           component={MapSelection as React.ComponentType}
           validation={{ required: requiredMapView }}
           componentProps={{
-            label: 'Initial Map View',
+            label: 'Map center and zoom',
           }}
         />
       </Section>

@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import { compose } from 'react-recompose';
 
 import { Row, Section } from '~/components/EditorLayout';
-import { ValidatedField } from '~/components/Form';
+import ValidatedField from '~/components/Form/ValidatedField';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,

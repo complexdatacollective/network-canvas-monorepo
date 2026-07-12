@@ -10,7 +10,7 @@ import Node, {
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import { cx } from '~/utils/cva';
 
-const SHAPES: Array<{ value: NodeShape; label: string }> = [
+export const SHAPES: Array<{ value: NodeShape; label: string }> = [
   { value: 'circle', label: 'Circle' },
   { value: 'square', label: 'Square' },
   { value: 'diamond', label: 'Diamond' },
@@ -53,7 +53,7 @@ export const ShapePickerControl = ({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: ShapePickerControlProps) => {
-  const nodeSize = small ? 'xxs' : 'xs';
+  const nodeSize = small ? 'xs' : 'sm';
 
   return (
     <RadioGroup
@@ -98,7 +98,16 @@ export const ShapePickerControl = ({
               shape={shape.value}
               color={nodeColor as NodeColorSequence}
               size={nodeSize}
-              selected={state.checked}
+              // Selection reads as the design-system focus ring in the node's
+              // own colour (Node's colour variant sets `outline-node-N`), rather
+              // than the generic `--selected` highlight. Unselected shapes sit at
+              // reduced opacity and come forward on hover.
+              className={cx(
+                'transition-[opacity,outline] duration-150',
+                state.checked
+                  ? 'outline-2 outline-offset-3'
+                  : 'opacity-70 hover:opacity-100',
+              )}
             />
           )}
         />

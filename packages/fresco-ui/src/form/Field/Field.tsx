@@ -21,6 +21,7 @@ import type { FieldProps, ValidFieldComponent } from './types';
 export default function Field<C extends ValidFieldComponent>({
   name,
   label,
+  labelHidden,
   hint,
   inline,
   initialValue,
@@ -72,6 +73,7 @@ export default function Field<C extends ValidFieldComponent>({
       id={id}
       name={name}
       label={label}
+      labelHidden={labelHidden}
       hint={hint}
       inline={inline}
       validationSummary={validationSummary}

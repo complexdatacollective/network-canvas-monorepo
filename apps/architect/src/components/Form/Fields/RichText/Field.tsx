@@ -3,17 +3,17 @@ import type { WrappedFieldInputProps, WrappedFieldMetaProps } from 'redux-form';
 
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
-
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
   type RichTextContent,
-} from './markdownAdapter';
+} from '~/utils/markdownAdapter';
 
 type RichTextFieldProps = {
   input: WrappedFieldInputProps;
   meta?: Partial<WrappedFieldMetaProps>;
   label?: string | null;
+  labelHidden?: boolean;
   placeholder?: string;
   autoFocus?: boolean;
   inline?: boolean;
@@ -40,6 +40,7 @@ const RichTextField = ({
   input,
   meta = {},
   label = null,
+  labelHidden = false,
   placeholder,
   autoFocus = false,
   inline = false,
@@ -65,6 +66,7 @@ const RichTextField = ({
       meta={meta}
       fieldComponent={FrescoRichTextEditorField}
       label={label ?? input.name ?? ''}
+      labelHidden={labelHidden}
       placeholder={placeholder}
       autoFocus={autoFocus}
       className={className ?? undefined}

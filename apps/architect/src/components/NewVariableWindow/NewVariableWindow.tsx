@@ -9,7 +9,7 @@ import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Variable, VariableOptions } from '@codaco/protocol-validation';
 import { Section, Subsection } from '~/components/EditorLayout';
-import { FrescoReduxField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import InlineEditScreen from '~/components/InlineEditScreen';
 import Options from '~/components/Options';
@@ -159,6 +159,7 @@ export default function NewVariableWindow({
           <Field
             name="name"
             label="Variable name"
+            labelHidden
             component={FrescoReduxField}
             placeholder="e.g. Nickname"
             fieldComponent={FrescoInputField}
@@ -174,6 +175,7 @@ export default function NewVariableWindow({
           <ValidatedField
             name="type"
             label="Variable type"
+            labelHidden
             component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{

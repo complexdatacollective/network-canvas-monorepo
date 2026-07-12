@@ -95,8 +95,8 @@ const StageHeading = ({
   totalStages,
   isNewStage,
 }: StageHeadingProps) => {
-  const { values } = useFormContext();
-  const type = get(values, 'type') as string | undefined;
+  const { initialValues } = useFormContext();
+  const type = get(initialValues, 'type') as string | undefined;
   const { onLabelBlur } = useAutoStageName(isNewStage);
   if (!type) {
     return null;
