@@ -24,6 +24,7 @@ import {
 } from '~/config/variables';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
+import { documentationLinks } from '~/utils/documentationLinks';
 import { getFieldId } from '~/utils/issues';
 
 import BooleanChoice from '../../BooleanChoice';
@@ -170,7 +171,7 @@ const PromptFields = ({
           <Paragraph>
             Choose an input control that should be used to collect the answer.
             For detailed information about these options, see our{' '}
-            <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/input-controls/">
+            <ExternalLink href={documentationLinks.inputControls}>
               documentation
             </ExternalLink>
             .

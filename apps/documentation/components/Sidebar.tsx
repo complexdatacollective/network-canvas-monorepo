@@ -8,7 +8,7 @@ import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   Locale,
-  Project,
+  Section,
   SidebarPage,
   TSideBar,
   SidebarFolder as TSidebarFolder,
@@ -23,7 +23,6 @@ import { cn } from '~/lib/utils';
 const PATH_SEPARATOR_REGEX = /[\\/]/;
 
 import DocSearchComponent from './DocSearchComponent';
-import ProjectSwitcher from './ProjectSwitcher';
 
 const MotionCollapsibleContent = motion.create(CollapsibleContent);
 const MotionChevron = motion.create(ChevronRight);
@@ -158,8 +157,8 @@ const SidebarFolder = ({
   const memoizedIsOpen = useMemo(() => {
     if (alwaysOpen) return true;
     if (defaultOpen) return true;
-    return (children as React.ReactElement<{ href?: string }>[]).some(
-      (child) => child.props.href === pathname,
+    return (children as (React.ReactElement<{ href?: string }> | null)[]).some(
+      (child) => child?.props.href === pathname,
     );
   }, [alwaysOpen, defaultOpen, children, pathname]);
 
@@ -286,8 +285,9 @@ const renderSidebarItem = (
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const locale = useLocale() as Locale;
+  const segments = pathname.split('/');
   // biome-ignore lint/style/noNonNullAssertion: path structure is known
-  const project = pathname.split('/')[2]! as Project;
+  const section = segments[2]! as Section;
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [sidebarData, setSidebarData] = useState<TSideBar | null>(null);
 
@@ -305,13 +305,14 @@ export function Sidebar({ className }: { className?: string }) {
     return (
       <nav className={cn('flex w-full grow flex-col', className)}>
         <DocSearchComponent className="hidden lg:flex" />
-        <ProjectSwitcher />
         <div className="flex-1 p-2">Loading...</div>
       </nav>
     );
   }
 
-  const formattedSidebarData = sidebarData[locale][project].children;
+  const sectionData = sidebarData[locale][section];
+  const formattedSidebarData = sectionData.children;
+
   const sortedSidebarItems = sortSidebarItems(
     Object.values(formattedSidebarData),
   );
@@ -319,7 +320,6 @@ export function Sidebar({ className }: { className?: string }) {
   return (
     <nav className={cn('flex w-full grow flex-col', className)}>
       <DocSearchComponent className="hidden lg:flex" />
-      <ProjectSwitcher />
 
       <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
         {sortedSidebarItems.map((item) =>

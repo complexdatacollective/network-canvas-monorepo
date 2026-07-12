@@ -1,0 +1,10 @@
+{
+  "type": "folder",
+  "localeLabels": {
+    "en": "Key concepts",
+    "ru": "Ключевые идеи"
+  },
+  "isExpanded": false,
+  "navOrder": 8,
+  "slug": "key-concepts"
+}

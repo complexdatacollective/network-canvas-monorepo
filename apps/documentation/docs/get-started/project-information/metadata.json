@@ -1,0 +1,12 @@
+{
+  "type": "folder",
+  "navOrder": 4,
+  "localeLabels": {
+    "en": "Project Information"
+  },
+  "localeIndexFiles": {
+    "en": "project-overview.en.mdx"
+  },
+  "isExpanded": true,
+  "slug": "project-information"
+}

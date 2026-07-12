@@ -21,6 +21,7 @@ import type { VariableType } from '@codaco/protocol-validation';
 import { SimpleVariablePill } from '~/components/VariablePill';
 import type { RootState } from '~/ducks/store';
 import { cx } from '~/utils/cva';
+import { documentationLinks } from '~/utils/documentationLinks';
 import { validations } from '~/utils/validations';
 
 import { getVariablesForSubject } from '../../../../selectors/codebook';
@@ -376,7 +377,7 @@ const VariableSpotlight = ({
                   <Paragraph margin="none">
                     To create your first variable of this type, type a name
                     above and press enter. See our&nbsp;
-                    <ExternalLink href="https://documentation.networkcanvas.com/reference/variable-naming/">
+                    <ExternalLink href={documentationLinks.variableNaming}>
                       documentation on variable naming
                     </ExternalLink>
                     &nbsp;for more information.

@@ -17,7 +17,7 @@ import { useState } from 'react';
 import { buttonVariants } from '~/components/ui/Button';
 import Heading, { headingVariants } from '~/components/ui/typography/Heading';
 import Paragraph from '~/components/ui/typography/Paragraph';
-import { cn } from '~/lib/utils';
+import { cn, externalLinkProps } from '~/lib/utils';
 
 type BaseMenu = {
   translationKey: string;
@@ -77,6 +77,10 @@ const links: MenuItem[] = [
     ],
   },
   {
+    translationKey: 'protocolGallery',
+    href: 'https://protocolgallery.networkcanvas.com',
+  },
+  {
     translationKey: 'download',
     style: 'button',
     href: 'https://networkcanvas.com/download',
@@ -117,6 +121,7 @@ export const NavigationMenuDemo = () => {
                                 'focusable',
                               )}
                               href={subLink.href}
+                              {...externalLinkProps(subLink.href)}
                             >
                               <Heading variant="label">
                                 {t(subLink.titleTranslationKey)}
@@ -143,6 +148,7 @@ export const NavigationMenuDemo = () => {
                       variant: 'default',
                       size: 'sm',
                     })}
+                    {...externalLinkProps(link.href)}
                   >
                     {t(link.translationKey)}
                   </NavigationMenuLink>
@@ -152,7 +158,11 @@ export const NavigationMenuDemo = () => {
 
             return (
               <Item key={link.translationKey}>
-                <NavigationMenuLink className={linkClasses} href={link.href}>
+                <NavigationMenuLink
+                  className={linkClasses}
+                  href={link.href}
+                  {...externalLinkProps(link.href)}
+                >
                   {t(link.translationKey)}
                 </NavigationMenuLink>
               </Item>
@@ -190,6 +200,7 @@ export const NavigationMenuMobile = () => {
                     size: 'sm',
                   })}
                   href={link.href}
+                  {...externalLinkProps(link.href)}
                 >
                   {t(link.translationKey)}
                 </Link>
@@ -213,7 +224,11 @@ export const NavigationMenuMobile = () => {
 
           return (
             <li key={link.translationKey}>
-              <Link className={linkClasses} href={link.href}>
+              <Link
+                className={linkClasses}
+                href={link.href}
+                {...externalLinkProps(link.href)}
+              >
                 {t(link.translationKey)}
               </Link>
             </li>
@@ -227,7 +242,11 @@ export const NavigationMenuMobile = () => {
     <ul className={'flex flex-col items-center justify-center gap-4'}>
       {submenu.map((subLink, _i) => (
         <li key={subLink.titleTranslationKey}>
-          <Link className={linkClasses} href={subLink.href}>
+          <Link
+            className={linkClasses}
+            href={subLink.href}
+            {...externalLinkProps(subLink.href)}
+          >
             {t(subLink.titleTranslationKey)}
           </Link>
         </li>
