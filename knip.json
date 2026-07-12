@@ -8,6 +8,9 @@
   "ignoreBinaries": ["electron-builder", "xcrun"],
   "tags": ["-public"],
   "workspaces": {
+    "apps/networkcanvas.com": {
+      "entry": ["lib/i18n/request.ts"]
+    },
     "apps/documentation": {
       "ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
     },

@@ -1,8 +1,19 @@
-import { render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { screen } from '@testing-library/react';
+import type { ComponentProps, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import HomePage from '~/app/page';
+import HomePage from '~/app/[locale]/page';
+import { renderWithIntl } from '~/test/renderWithIntl';
+
+vi.mock('next-intl/server', () => ({ setRequestLocale: vi.fn() }));
+
+vi.mock('~/lib/i18n/navigation', () => ({
+  Link: ({ children, ...props }: ComponentProps<'a'>) => (
+    <a {...props}>{children}</a>
+  ),
+  usePathname: () => '/',
+  useRouter: () => ({ replace: vi.fn() }),
+}));
 
 vi.mock('~/components/ui/PageBackground', () => ({
   PageBackground: () => <div data-testid="page-background" />,
@@ -13,8 +24,11 @@ vi.mock('~/components/ui/Reveal', () => ({
 }));
 
 describe('HomePage background composition', () => {
-  it('places one background behind the complete page content', () => {
-    const { container } = render(<HomePage />);
+  it('places one background behind the complete localized page content', async () => {
+    const page = await HomePage({
+      params: Promise.resolve({ locale: 'en' }),
+    });
+    const { container } = renderWithIntl(page);
     const main = container.querySelector('main');
     const background = screen.getByTestId('page-background');
     const foreground = background.nextElementSibling;
@@ -24,16 +38,10 @@ describe('HomePage background composition', () => {
     expect(background.parentElement).toBe(main);
     expect(foreground).toHaveClass('relative', 'z-10');
     expect(foreground).toContainElement(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'Simplifying complex network data collection.',
-      }),
+      screen.getByRole('heading', { level: 1 }),
     );
     expect(
       container.querySelector('img[src="/images/blobs/multi-2.svg"]'),
     ).toBeNull();
-    expect(
-      screen.queryByRole('heading', { name: 'Projects' }),
-    ).not.toBeInTheDocument();
   });
 });

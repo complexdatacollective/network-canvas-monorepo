@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -13,24 +14,6 @@ import {
 
 type AppRecord = (typeof webApps)[number] | (typeof classicApps)[number];
 
-const stageContent = {
-  design: {
-    label: 'Design stage',
-    heading: 'Design or create a protocol',
-    description:
-      'Design a new browser-based study in Architect, or continue an existing study in Architect Classic.',
-  },
-  collect: {
-    label: 'Data collection stage',
-    heading: 'Collect data',
-    description:
-      'Choose Interviewer, Fresco, or Interviewer Classic based on how and where you plan to collect data.',
-  },
-} satisfies Record<
-  Workflow,
-  { label: string; heading: string; description: string }
->;
-
 export function WorkflowPath({
   workflow,
   apps,
@@ -40,7 +23,7 @@ export function WorkflowPath({
   apps: readonly AppRecord[];
   compatibilityNotice?: ReactNode;
 }) {
-  const content = stageContent[workflow];
+  const t = useTranslations('GetStarted');
 
   return (
     <Container
@@ -53,21 +36,21 @@ export function WorkflowPath({
           margin="none"
           className="font-heading text-neon-coral text-sm font-bold tracking-[0.14em] uppercase"
         >
-          {content.label}
+          {t(`sections.${workflow}.label`)}
         </Paragraph>
         <Heading
           level="h2"
           margin="none"
           className="font-heading text-cyber-grape text-4xl font-black tracking-tight text-balance"
         >
-          {content.heading}
+          {t(`sections.${workflow}.heading`)}
         </Heading>
         <Paragraph
           intent="lead"
           margin="none"
           className="text-text/75 mt-5 text-lg text-pretty"
         >
-          {content.description}
+          {t(`sections.${workflow}.description`)}
         </Paragraph>
         {compatibilityNotice}
       </Reveal>

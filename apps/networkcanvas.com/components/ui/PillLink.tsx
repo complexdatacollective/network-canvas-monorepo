@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { cn } from '~/lib/cn';
+import { Link } from '~/lib/i18n/navigation';
 
 export type PillTone =
   | 'neon-coral'

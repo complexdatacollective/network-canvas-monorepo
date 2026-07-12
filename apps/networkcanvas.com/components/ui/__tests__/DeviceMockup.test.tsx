@@ -1,7 +1,11 @@
-import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { DeviceMockup, type Variant } from '../DeviceMockup';
+
+afterEach(cleanup);
 
 vi.mock('next/image', () => ({
   default: ({
@@ -35,13 +39,13 @@ const cases: Array<{ variant: Variant; alt: string; src: string }> = [
 
 describe('DeviceMockup', () => {
   it.each(cases)('renders the $variant screenshot', ({ variant, alt, src }) => {
-    render(<DeviceMockup variant={variant} />);
+    renderWithIntl(<DeviceMockup variant={variant} />);
 
     expect(screen.getByRole('img', { name: alt })).toHaveAttribute('src', src);
   });
 
   it('keeps the screenshot viewport at 4:3 without cropping', () => {
-    const { container } = render(<DeviceMockup />);
+    const { container } = renderWithIntl(<DeviceMockup />);
 
     const image = within(container).getByRole('img', {
       name: 'Interviewer home screen showing available Network Canvas protocols',
@@ -50,5 +54,15 @@ describe('DeviceMockup', () => {
     expect(image).toHaveClass('object-contain');
     expect(image.parentElement).toHaveClass('aspect-4/3', 'w-full');
     expect(image.parentElement?.parentElement).not.toHaveClass('aspect-4/3');
+  });
+
+  it('localizes descriptive screenshot alternative text', () => {
+    renderWithIntl(<DeviceMockup variant="architect" />, 'es');
+
+    expect(
+      screen.getByAltText(
+        'Editor de protocolos de Architect que muestra el diseño de una entrevista',
+      ),
+    ).toBeInTheDocument();
   });
 });

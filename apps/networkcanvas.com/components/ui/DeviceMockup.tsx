@@ -1,21 +1,19 @@
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 
 import { cn } from '~/lib/cn';
 
 export type Variant = 'interviewer' | 'architect' | 'fresco';
 
-const screenshots: Record<Variant, { src: string; alt: string }> = {
+const screenshots: Record<Variant, { src: string }> = {
   architect: {
     src: '/images/screenshots/architect.png',
-    alt: 'Architect protocol editor showing an interview design',
   },
   interviewer: {
     src: '/images/screenshots/interviewer.png',
-    alt: 'Interviewer home screen showing available Network Canvas protocols',
   },
   fresco: {
     src: '/images/screenshots/fresco.png',
-    alt: 'Fresco dashboard showing protocol, participant, and interview totals',
   },
 };
 
@@ -26,6 +24,7 @@ export function DeviceMockup({
   variant?: Variant;
   className?: string;
 }) {
+  const t = useTranslations('Tools');
   const screenshot = screenshots[variant];
 
   return (
@@ -39,7 +38,7 @@ export function DeviceMockup({
         <Image
           fill
           src={screenshot.src}
-          alt={screenshot.alt}
+          alt={t(`${variant}.screenshotAlt`)}
           sizes="(min-width: 1024px) 50vw, 100vw"
           className="object-contain"
         />

@@ -1,6 +1,8 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, screen } from '@testing-library/react';
 import type { ComponentProps, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { GetStartedIntro } from '../GetStartedIntro';
 
@@ -87,7 +89,7 @@ describe('GetStartedIntro', () => {
   afterEach(cleanup);
 
   it('renders both focusable workflow paths', () => {
-    render(<GetStartedIntro />);
+    renderWithIntl(<GetStartedIntro />);
 
     expect(
       screen.getByRole('link', {
@@ -103,7 +105,7 @@ describe('GetStartedIntro', () => {
 
   it('keeps reduced-motion content visible without scheduling an entrance', () => {
     motionPreference.reduced = true;
-    const { container } = render(<GetStartedIntro />);
+    const { container } = renderWithIntl(<GetStartedIntro />);
 
     expect(container.firstElementChild?.firstElementChild).toHaveAttribute(
       'data-initial',
@@ -115,12 +117,27 @@ describe('GetStartedIntro', () => {
 
   it('starts the coordinated entrance after normal-motion hydration', () => {
     motionPreference.reduced = false;
-    render(<GetStartedIntro />);
+    renderWithIntl(<GetStartedIntro />);
 
     expect(animationControls.set).toHaveBeenCalledWith('hidden');
     expect(animationControls.start).toHaveBeenCalledWith('visible');
     expect(animationControls.set).toHaveBeenCalledBefore(
       animationControls.start,
     );
+  });
+
+  it('localizes the stage choices', () => {
+    renderWithIntl(<GetStartedIntro />, 'es');
+
+    expect(
+      screen.getByRole('heading', {
+        name: '¿En qué etapa de su investigación se encuentra?',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', {
+        name: 'Diseñar o crear un protocolo de entrevista',
+      }),
+    ).toHaveAttribute('href', '#design');
   });
 });

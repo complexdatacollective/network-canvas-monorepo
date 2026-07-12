@@ -1,3 +1,5 @@
+import { useTranslations } from 'next-intl';
+
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
@@ -27,21 +29,18 @@ const accents = {
 };
 
 export function Tools() {
+  const t = useTranslations('Tools');
+
   return (
     <Container className="tablet-landscape:py-28 py-20">
-      <SectionHeading title="A selection of tools to facilitate your research">
-        We provide a complete end-to-end workflow for networks research, with an
-        app for survey design and for interviewing. Using these tools,
-        researchers can easily design, capture, and export network data.
-      </SectionHeading>
+      <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
       <div className="tablet-landscape:gap-24 mt-16 flex flex-col gap-16">
         {tools.map((tool) => {
           const accent = accents[tool.color];
-          const isExternal = tool.cta.href.startsWith('http');
           return (
             <Reveal
-              key={tool.name}
+              key={tool.id}
               className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 grid items-center gap-8 rounded-[2rem] bg-white/55 p-6 shadow-xl backdrop-blur-md"
             >
               <div className="tablet-landscape:order-1 order-2">
@@ -56,20 +55,20 @@ export function Tools() {
                   margin="none"
                   className="text-cyber-grape tablet-landscape:text-lg mt-4 text-base leading-relaxed"
                 >
-                  {tool.description}
+                  {t(`${tool.id}.description`)}
                 </Paragraph>
                 <PillLink
-                  href={tool.cta.href}
-                  external={isExternal}
+                  href={tool.href}
+                  external
                   tone={accent.tone}
                   className="mt-6"
                 >
-                  {tool.cta.label}
+                  {t(`${tool.id}.action`)}
                 </PillLink>
               </div>
               <div className="tablet-landscape:order-2 order-1">
                 <a
-                  href={tool.cta.href}
+                  href={tool.href}
                   target="_blank"
                   rel="noreferrer"
                   className="focusable block rounded-[1.75rem]"

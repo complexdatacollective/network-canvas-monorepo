@@ -6,6 +6,7 @@ import {
   Monitor,
   Terminal,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -35,6 +36,8 @@ const platformIcons = {
 } satisfies Record<PlatformId, LucideIcon>;
 
 function AppActions({ app }: { app: (typeof webApps)[number] }) {
+  const t = useTranslations('GetStarted');
+
   return (
     <div className="mt-8 flex flex-wrap gap-3">
       {app.actions.map((action) => (
@@ -44,7 +47,7 @@ function AppActions({ app }: { app: (typeof webApps)[number] }) {
           external
           tone={app.treatment === 'fresco' ? 'slate-blue' : 'neon-coral'}
         >
-          {action.label}
+          {t(action.labelKey)}
           <ExternalLink aria-hidden className="size-4" />
         </PillLink>
       ))}
@@ -53,17 +56,20 @@ function AppActions({ app }: { app: (typeof webApps)[number] }) {
 }
 
 function PlatformActions({ app }: { app: (typeof classicApps)[number] }) {
+  const t = useTranslations('GetStarted');
+
   return (
     <div className="mt-8">
       <Paragraph
         margin="none"
         className="font-heading text-xs font-bold tracking-[0.12em] uppercase"
       >
-        Download version {app.version}
+        {t('shared.downloadVersion', { version: app.version })}
       </Paragraph>
       <div className="mt-3 flex flex-wrap gap-2">
         {app.platforms.map((platform) => {
           const PlatformIcon = platformIcons[platform.id];
+          const label = t(platform.labelKey);
 
           return (
             <ButtonLink
@@ -72,11 +78,14 @@ function PlatformActions({ app }: { app: (typeof classicApps)[number] }) {
               external
               variant="outline"
               color="dynamic"
-              aria-label={`${platform.label} for ${app.name}`}
+              aria-label={t('shared.platformAccessibleName', {
+                platform: label,
+                app: app.name,
+              })}
               className="rounded-full bg-white/70 hover:bg-white"
             >
               <PlatformIcon aria-hidden className="size-4" />
-              {platform.label}
+              {label}
               <ExternalLink aria-hidden className="size-3.5" />
             </ButtonLink>
           );
@@ -87,6 +96,7 @@ function PlatformActions({ app }: { app: (typeof classicApps)[number] }) {
 }
 
 export function AppChoiceCard({ app }: { app: AppRecord }) {
+  const t = useTranslations('GetStarted');
   const featured = app.treatment === 'featured';
 
   return (
@@ -113,7 +123,7 @@ export function AppChoiceCard({ app }: { app: AppRecord }) {
               : 'bg-cyber-grape/10 text-cyber-grape',
           )}
         >
-          {app.status}
+          {t(`apps.${app.messageKey}.status`)}
         </Badge>
       </div>
 
@@ -124,20 +134,20 @@ export function AppChoiceCard({ app }: { app: AppRecord }) {
           featured ? 'text-white/85' : 'text-text/80',
         )}
       >
-        {app.description}
+        {t(`apps.${app.messageKey}.description`)}
       </Paragraph>
 
       <Paragraph
         margin="none"
         className="font-heading mt-7 text-xs font-bold tracking-[0.12em] uppercase"
       >
-        Best for
+        {t('shared.bestFor')}
       </Paragraph>
       <ul className="mt-3 space-y-2.5">
-        {app.bestFor.map((item) => (
-          <li key={item} className="flex gap-3 text-sm leading-relaxed">
+        {app.bestFor.map((itemKey) => (
+          <li key={itemKey} className="flex gap-3 text-sm leading-relaxed">
             <Check aria-hidden className="mt-1 size-4 shrink-0" />
-            <span>{item}</span>
+            <span>{t(itemKey)}</span>
           </li>
         ))}
       </ul>

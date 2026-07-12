@@ -1,10 +1,13 @@
 import { Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import Pill from '@codaco/fresco-ui/Pill';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { newsItems } from '~/lib/content';
+import type { NewsItem as NewsItemRecord } from '~/lib/siteContent';
 
 function NewsItem({ title, href }: { title: string; href: string }) {
+  const t = useTranslations('News');
+
   return (
     <span className="text-base-sm text-text/80 inline-flex shrink-0 items-center gap-2 whitespace-nowrap">
       {title}
@@ -14,7 +17,7 @@ function NewsItem({ title, href }: { title: string; href: string }) {
         rel="noreferrer"
         className="text-cerulean-blue font-bold hover:underline"
       >
-        [Full story]
+        {t('fullStory')}
       </a>
     </span>
   );
@@ -22,14 +25,20 @@ function NewsItem({ title, href }: { title: string; href: string }) {
 
 const NewsLabel = () => (
   <Pill
-    icon={<Sparkles className="text-mustard size-5" />}
+    icon={<Sparkles aria-hidden className="text-mustard size-5" />}
     className="font-heading text-base-sm text-cyber-grape inline-flex shrink-0 items-center gap-2 p-0 font-bold tracking-[0.12em] uppercase"
   >
-    Latest News:
+    {useTranslations('News')('label')}
   </Pill>
 );
 
-export function NewsTicker() {
+export function NewsTicker({
+  newsItems,
+}: {
+  newsItems: readonly NewsItemRecord[];
+}) {
+  const t = useTranslations('News');
+
   return (
     <div className="border-cerulean-blue/30 bg-cerulean-blue/5 tablet-portrait:rounded-full rounded-[1.5rem] border">
       {/* Desktop: single-line marquee */}
@@ -37,11 +46,11 @@ export function NewsTicker() {
         <NewsLabel />
         <div className="relative flex-1 overflow-hidden mask-[linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
           <div className="animate-marquee flex w-max gap-12">
-            {newsItems.map((item, i) => (
-              <NewsItem key={`first-${i}`} {...item} />
+            {newsItems.map((item) => (
+              <NewsItem key={`first-${item.id}`} {...item} />
             ))}
-            {newsItems.map((item, i) => (
-              <NewsItem key={`second-${i}`} {...item} />
+            {newsItems.map((item) => (
+              <NewsItem key={`second-${item.id}`} {...item} />
             ))}
           </div>
         </div>
@@ -53,7 +62,7 @@ export function NewsTicker() {
         {newsItems.map((item) => (
           <Paragraph
             margin="none"
-            key={item.title}
+            key={item.id}
             className="text-base-sm text-text/80"
           >
             {item.title}{' '}
@@ -63,7 +72,7 @@ export function NewsTicker() {
               rel="noreferrer"
               className="text-cerulean-blue font-bold hover:underline"
             >
-              [Full story]
+              {t('fullStory')}
             </a>
           </Paragraph>
         ))}

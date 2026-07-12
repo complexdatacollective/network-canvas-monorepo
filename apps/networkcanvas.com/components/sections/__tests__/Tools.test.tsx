@@ -1,6 +1,8 @@
-import { render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, screen } from '@testing-library/react';
+import type { ComponentPropsWithoutRef, ReactNode } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { Tools } from '../Tools';
 
@@ -20,9 +22,19 @@ vi.mock('~/components/ui/Reveal', () => ({
   }) => <section className={className}>{children}</section>,
 }));
 
+vi.mock('~/lib/i18n/navigation', () => ({
+  Link: ({ children, href, ...props }: ComponentPropsWithoutRef<'a'>) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
+afterEach(cleanup);
+
 describe('Tools', () => {
   it('links each app panel to its live application', () => {
-    const { container } = render(<Tools />);
+    const { container } = renderWithIntl(<Tools />);
     const panels = container.querySelectorAll('section.backdrop-blur-md');
     const apps = [
       {
@@ -68,5 +80,21 @@ describe('Tools', () => {
     expect(screen.getByRole('link', { name: 'Open Fresco' })).toHaveClass(
       'bg-slate-blue',
     );
+  });
+
+  it('renders translated tool copy in Spanish', () => {
+    renderWithIntl(<Tools />, 'es');
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Una selección de herramientas para facilitar su investigación',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Abrir Architect' }),
+    ).toHaveAttribute('href', 'https://architect.networkcanvas.com/');
+    expect(
+      screen.getByText(/especialistas en la materia se concentren/),
+    ).toBeInTheDocument();
   });
 });

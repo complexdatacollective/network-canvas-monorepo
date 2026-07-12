@@ -6,8 +6,9 @@ import { useLayoutEffect, useRef } from 'react';
 import { Header } from '~/components/layout/Header';
 import { Hero } from '~/components/sections/Hero';
 import { createHeroEntrance } from '~/lib/heroEntrance';
+import type { NewsItem } from '~/lib/siteContent';
 
-export function HeroIntro() {
+export function HeroIntro({ newsItems }: { newsItems: readonly NewsItem[] }) {
   const reduceMotion = useReducedMotion();
   const entrance = createHeroEntrance(reduceMotion ?? true);
   const controls = useAnimationControls();
@@ -35,6 +36,7 @@ export function HeroIntro() {
         <Hero
           containerVariants={entrance.heroVariants}
           itemVariants={entrance.itemVariants}
+          newsItems={newsItems}
         />
       </motion.div>
     </div>

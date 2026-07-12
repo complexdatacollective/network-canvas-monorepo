@@ -1,21 +1,22 @@
+import { useTranslations } from 'next-intl';
+
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
 import { SectionHeading } from '~/components/ui/SectionHeading';
-import { coreTeam } from '~/lib/content';
+import type { TeamMember } from '~/lib/siteContent';
 
-export function CoreTeam() {
+export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
+  const t = useTranslations('Team');
+
   return (
     <Container className="tablet-landscape:py-28 py-20">
-      <SectionHeading title="Core Team">
-        Our project team comprises individuals across a variety of disciplines
-        and specializations.
-      </SectionHeading>
+      <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
       <div className="tablet-portrait:grid-cols-3 tablet-landscape:grid-cols-4 mt-14 grid grid-cols-2 gap-x-6 gap-y-12">
-        {coreTeam.map((member, i) => (
+        {members.map((member, i) => (
           <Reveal
-            key={member.name}
+            key={member.id}
             delay={(i % 4) * 0.05}
             className="flex flex-col items-center text-center"
           >

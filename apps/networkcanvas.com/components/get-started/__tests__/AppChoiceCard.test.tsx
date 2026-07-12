@@ -1,9 +1,19 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, screen } from '@testing-library/react';
+import type { ComponentProps } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { classicApps, webApps } from '~/lib/getStarted';
+import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { AppChoiceCard } from '../AppChoiceCard';
+
+vi.mock('~/lib/i18n/navigation', () => ({
+  Link: ({ children, href, ...props }: ComponentProps<'a'>) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
 
 afterEach(cleanup);
 
@@ -22,7 +32,7 @@ if (!architect || !fresco || !architectClassic || !interviewerClassic) {
 
 describe('AppChoiceCard', () => {
   it('uses the featured treatment declared by current app data', () => {
-    render(<AppChoiceCard app={architect} />);
+    renderWithIntl(<AppChoiceCard app={architect} />);
 
     expect(screen.getByRole('article')).toHaveClass(
       'bg-cyber-grape',
@@ -31,14 +41,16 @@ describe('AppChoiceCard', () => {
   });
 
   it('uses Fresco typography and Badge for the featured app', () => {
-    render(<AppChoiceCard app={architect} />);
+    renderWithIntl(<AppChoiceCard app={architect} />);
 
     const heading = screen.getByRole('heading', {
       level: 3,
       name: architect.name,
     });
-    const description = screen.getByText(architect.description);
-    const status = screen.getByText(architect.status);
+    const description = screen.getByText(
+      'Design schema 8 protocols in your browser, with nothing to install. Use these protocols in Interviewer or Fresco.',
+    );
+    const status = screen.getByText('Recommended for new studies');
 
     expect(heading).toHaveClass('scroll-m-20', 'm-0!', 'text-3xl');
     expect(description).toHaveClass('font-body', 'mt-5');
@@ -52,11 +64,11 @@ describe('AppChoiceCard', () => {
       'bg-white/15',
       'text-white',
     );
-    expect(status).toHaveTextContent(architect.status);
+    expect(status).toHaveTextContent('Recommended for new studies');
   });
 
   it('uses the Classic treatment declared by Classic app data', () => {
-    render(<AppChoiceCard app={architectClassic} />);
+    renderWithIntl(<AppChoiceCard app={architectClassic} />);
 
     expect(screen.getByRole('article')).toHaveClass(
       'bg-white/55',
@@ -65,21 +77,20 @@ describe('AppChoiceCard', () => {
   });
 
   it('uses the restrained Fresco treatment declared by app data', () => {
-    render(<AppChoiceCard app={fresco} />);
+    renderWithIntl(<AppChoiceCard app={fresco} />);
 
     expect(screen.getByRole('article')).toHaveClass(
       'bg-slate-blue/10',
       'backdrop-blur-md',
     );
 
-    expect(screen.getByText(fresco.status)).toHaveClass(
-      'bg-cyber-grape/10',
-      'text-cyber-grape',
-    );
+    expect(
+      screen.getByText('Large Teams · Remote Administration · Recommended'),
+    ).toHaveClass('bg-cyber-grape/10', 'text-cyber-grape');
   });
 
   it('gives each Classic platform link an app-specific accessible name', () => {
-    render(<AppChoiceCard app={architectClassic} />);
+    renderWithIntl(<AppChoiceCard app={architectClassic} />);
 
     expect(
       screen.getByRole('link', {
@@ -106,7 +117,7 @@ describe('AppChoiceCard', () => {
     ];
 
     for (const app of [architectClassic, interviewerClassic]) {
-      render(<AppChoiceCard app={app} />);
+      renderWithIntl(<AppChoiceCard app={app} />);
 
       for (const [platform, iconClass] of platformIcons) {
         const link = screen.getByRole('link', {
@@ -118,5 +129,16 @@ describe('AppChoiceCard', () => {
         expect(icon).toHaveAttribute('aria-hidden', 'true');
       }
     }
+  });
+
+  it('localizes guidance and platform accessible names', () => {
+    renderWithIntl(<AppChoiceCard app={architectClassic} />, 'es');
+
+    expect(screen.getByText('Ideal para')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', {
+        name: 'Apple Silicon para Architect Classic',
+      }),
+    ).toBeInTheDocument();
   });
 });

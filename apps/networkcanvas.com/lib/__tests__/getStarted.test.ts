@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  classicApps,
-  compatibilityWarning,
-  GET_STARTED_PATH,
-  webApps,
-} from '../getStarted';
+import { classicApps, GET_STARTED_PATH, webApps } from '../getStarted';
 
 describe('get started content', () => {
   it('uses the Get Started route', () => {
@@ -39,9 +34,7 @@ describe('get started content', () => {
   });
 
   it('does not include the retired Server app', () => {
-    expect(
-      JSON.stringify({ webApps, classicApps, compatibilityWarning }),
-    ).not.toMatch(
+    expect(JSON.stringify({ webApps, classicApps })).not.toMatch(
       /Network Canvas Server|Network-Canvas-Server|\/Server\/releases/i,
     );
   });

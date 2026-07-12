@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 
@@ -11,26 +12,26 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { cn } from '~/lib/cn';
-import { grants } from '~/lib/content';
+import type { Grant } from '~/lib/siteContent';
 
-export function Grants() {
+export function Grants({ grants }: { grants: readonly Grant[] }) {
+  const t = useTranslations('Grants');
   const [[index, direction], setState] = useState<[number, number]>([0, 0]);
   const count = grants.length;
-  const active = grants[((index % count) + count) % count]!;
+  const activeIndex = count === 0 ? 0 : ((index % count) + count) % count;
+  const active = grants[activeIndex];
+
+  if (!active) return null;
 
   const paginate = (dir: number) => setState([index + dir, dir]);
 
   return (
     <Container className="tablet-landscape:py-28 py-20">
-      <SectionHeading title="Grants Using Network Canvas">
-        We are proud to say Network Canvas is being actively used in a number of
-        federally funded grants in the United States, across a diverse set of
-        research contexts, institutions, and funding bodies.
-      </SectionHeading>
+      <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
       <div className="tablet-landscape:gap-6 mx-auto mt-14 flex max-w-3xl items-center gap-3">
         <CarouselButton
-          label="Previous grant"
+          label={t('previous')}
           onClick={() => paginate(-1)}
           icon={<ChevronLeft aria-hidden className="size-6" />}
         />
@@ -80,7 +81,7 @@ export function Grants() {
         </div>
 
         <CarouselButton
-          label="Next grant"
+          label={t('next')}
           onClick={() => paginate(1)}
           icon={<ChevronRight aria-hidden className="size-6" />}
         />
@@ -92,9 +93,9 @@ export function Grants() {
           const isActive = current === i;
           return (
             <button
-              key={grant.title}
+              key={grant.id}
               type="button"
-              aria-label={`Show grant ${i + 1}`}
+              aria-label={t('show', { number: i + 1 })}
               onClick={() => setState([i, i > current ? 1 : -1])}
               className={cn(
                 'h-2.5 rounded-full transition-all',

@@ -1,3 +1,5 @@
+import { useTranslations } from 'next-intl';
+
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
@@ -5,6 +7,8 @@ import { Reveal } from '~/components/ui/Reveal';
 import { principles } from '~/lib/content';
 
 export function DesignPrinciples() {
+  const t = useTranslations('Principles');
+
   return (
     <Container className="tablet-landscape:py-28 py-20">
       <div className="tablet-landscape:grid-cols-[0.85fr_1.15fr] tablet-landscape:gap-16 grid gap-12">
@@ -14,23 +18,20 @@ export function DesignPrinciples() {
             margin="none"
             className="font-heading text-cyber-grape tablet-landscape:text-4xl text-3xl font-bold"
           >
-            Design Principles
+            {t('heading')}
           </Heading>
           <Paragraph
             margin="none"
             className="text-text/80 tablet-landscape:text-lg mt-5 text-base leading-relaxed"
           >
-            Underpinning all Network Canvas software is a set of five design
-            principles. These principles are derived from our observations and
-            experiences regarding the problems facing researchers wishing to
-            design and conduct personal networks research.
+            {t('introduction')}
           </Paragraph>
         </div>
 
         <div className="flex flex-col gap-6">
           {principles.map((principle, i) => (
             <Reveal
-              key={principle.title}
+              key={principle.id}
               delay={i * 0.04}
               className="bg-surface tablet-landscape:p-10 rounded-[1.75rem] p-8 shadow-lg"
             >
@@ -45,15 +46,16 @@ export function DesignPrinciples() {
                   rel="noreferrer"
                   className="hover:text-neon-coral"
                 >
-                  {principle.title}
+                  {t(`${principle.id}.title`)}
                 </a>
               </Heading>
               <div className="text-text/80 mt-4 flex flex-col gap-3 text-base leading-relaxed">
-                {principle.body.map((paragraph, j) => (
-                  <Paragraph margin="none" key={j}>
-                    {paragraph}
-                  </Paragraph>
-                ))}
+                <Paragraph margin="none">
+                  {t(`${principle.id}.paragraph1`)}
+                </Paragraph>
+                <Paragraph margin="none">
+                  {t(`${principle.id}.paragraph2`)}
+                </Paragraph>
               </div>
             </Reveal>
           ))}

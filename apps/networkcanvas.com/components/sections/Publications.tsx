@@ -1,45 +1,61 @@
+import { useTranslations } from 'next-intl';
+import type { ReactNode } from 'react';
+
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
 import { SectionHeading } from '~/components/ui/SectionHeading';
-import { externalLinks, publications } from '~/lib/content';
+import { externalLinks } from '~/lib/content';
+import type { Publication } from '~/lib/siteContent';
 
-export function Publications() {
+function renderArticleLink(chunks: ReactNode) {
+  return (
+    <a
+      href={externalLinks.publications}
+      target="_blank"
+      rel="noreferrer"
+      className="text-link font-bold hover:underline"
+    >
+      {chunks}
+    </a>
+  );
+}
+
+function renderThreadLink(chunks: ReactNode) {
+  return (
+    <a
+      href={externalLinks.shareYourWork}
+      target="_blank"
+      rel="noreferrer"
+      className="text-link font-bold hover:underline"
+    >
+      {chunks}
+    </a>
+  );
+}
+
+export function Publications({
+  publications,
+}: {
+  publications: readonly Publication[];
+}) {
+  const t = useTranslations('Publications');
+
   return (
     <Container className="tablet-landscape:py-28 py-20">
-      <SectionHeading title="Recent Publications Using Network Canvas">
+      <SectionHeading title={t('heading')}>
         <Paragraph margin="none">
-          The following are the four most recent publications utilizing Network
-          Canvas. For a full list of publications, see our{' '}
-          <a
-            href={externalLinks.publications}
-            target="_blank"
-            rel="noreferrer"
-            className="text-link font-bold hover:underline"
-          >
-            documentation article
-          </a>
-          .
+          {t.rich('introduction', { article: renderArticleLink })}
         </Paragraph>
         <Paragraph margin="none" className="mt-3">
-          If you would like to feature your publication, please let us know by
-          posting in our community site{' '}
-          <a
-            href={externalLinks.shareYourWork}
-            target="_blank"
-            rel="noreferrer"
-            className="text-link font-bold hover:underline"
-          >
-            thread
-          </a>
-          .
+          {t.rich('submission', { thread: renderThreadLink })}
         </Paragraph>
       </SectionHeading>
 
       <div className="tablet-landscape:grid-cols-2 mt-14 grid gap-6">
         {publications.map((pub, i) => (
-          <Reveal key={pub.title} delay={(i % 2) * 0.06}>
+          <Reveal key={pub.id} delay={(i % 2) * 0.06}>
             <a
               href={pub.href}
               target="_blank"

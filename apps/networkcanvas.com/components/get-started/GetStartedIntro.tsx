@@ -2,6 +2,7 @@
 
 import { ArrowDownRight } from 'lucide-react';
 import { motion, useAnimationControls, useReducedMotion } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import { useLayoutEffect, useRef } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -10,22 +11,27 @@ import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
 import { createHeroEntrance } from '~/lib/heroEntrance';
 
-const researchStages = [
+type ResearchStage = {
+  id: 'design' | 'collect';
+  href: '#design' | '#collect';
+  accent: 'bg-neon-coral' | 'bg-cerulean-blue';
+};
+
+const researchStages: readonly ResearchStage[] = [
   {
-    label: 'Design stage',
-    title: 'Design or create an interview protocol',
+    id: 'design',
     href: '#design',
     accent: 'bg-neon-coral',
   },
   {
-    label: 'Data collection stage',
-    title: 'Collect data using Network Canvas',
+    id: 'collect',
     href: '#collect',
     accent: 'bg-cerulean-blue',
   },
 ];
 
 export function GetStartedIntro() {
+  const t = useTranslations('GetStarted');
   const reduceMotion = useReducedMotion();
   const entrance = createHeroEntrance(reduceMotion ?? true);
   const controls = useAnimationControls();
@@ -63,22 +69,21 @@ export function GetStartedIntro() {
               margin="none"
               className="font-heading text-neon-coral text-sm font-bold tracking-[0.16em] uppercase"
             >
-              Choose your research stage
+              {t('intro.eyebrow')}
             </Paragraph>
             <Heading
               level="h1"
               margin="none"
               className="font-heading text-cyber-grape mt-5! text-4xl font-black tracking-tight text-balance"
             >
-              Where are you in your research?
+              {t('intro.heading')}
             </Heading>
             <Paragraph
               intent="lead"
               margin="none"
               className="text-text/75 mx-auto mt-6 max-w-2xl text-lg text-pretty"
             >
-              Choose the stage your research has reached, then select the
-              Network Canvas app that fits your study.
+              {t('intro.introduction')}
             </Paragraph>
           </motion.div>
 
@@ -87,18 +92,18 @@ export function GetStartedIntro() {
               <motion.a
                 key={stage.href}
                 href={stage.href}
-                aria-label={stage.title}
+                aria-label={t(`intro.stages.${stage.id}.accessibleName`)}
                 variants={entrance.itemVariants}
                 whileHover={reduceMotion ? undefined : { y: -5 }}
                 whileFocus={reduceMotion ? undefined : { y: -5 }}
                 className="focusable elevation-medium group tablet-portrait:p-10 flex min-h-64 flex-col justify-between rounded-[2rem] bg-white/55 p-8 backdrop-blur-md"
               >
                 <span className="font-heading text-cyber-grape/65 text-xs font-bold tracking-[0.14em] uppercase">
-                  {stage.label}
+                  {t(`intro.stages.${stage.id}.label`)}
                 </span>
                 <span className="mt-12 flex items-end justify-between gap-6">
                   <span className="font-heading text-cyber-grape tablet-portrait:text-3xl max-w-lg text-2xl font-black tracking-tight text-balance">
-                    {stage.title}
+                    {t(`intro.stages.${stage.id}.title`)}
                   </span>
                   <span
                     className={`${stage.accent} flex size-12 shrink-0 items-center justify-center rounded-full text-white transition-transform group-hover:translate-x-1 group-hover:translate-y-1 group-focus-visible:translate-x-1 group-focus-visible:translate-y-1 motion-reduce:transform-none`}

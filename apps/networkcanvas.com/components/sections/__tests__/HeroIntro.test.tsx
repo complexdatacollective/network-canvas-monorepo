@@ -4,7 +4,17 @@ import { hydrateRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { NewsItem } from '~/lib/siteContent';
+
 import { HeroIntro } from '../HeroIntro';
+
+const newsItems: NewsItem[] = [
+  {
+    id: 'fixture-news',
+    title: 'Fixture-only intro news',
+    href: 'https://example.com/news',
+  },
+];
 
 const backgroundProps = vi.hoisted(() => vi.fn());
 const motionPreference = vi.hoisted<{ reduced: boolean | null }>(() => ({
@@ -72,15 +82,17 @@ vi.mock('~/components/sections/Hero', () => ({
   Hero: ({
     containerVariants,
     itemVariants,
+    newsItems: heroNewsItems,
   }: {
     containerVariants?: unknown;
     itemVariants?: unknown;
+    newsItems: readonly NewsItem[];
   }) => (
     <div
       data-hero-container-variants={containerVariants ? 'active' : 'none'}
       data-hero-item-variants={itemVariants ? 'active' : 'none'}
     >
-      Hero content
+      Hero content: {heroNewsItems[0]?.title}
     </div>
   ),
 }));
@@ -95,13 +107,18 @@ describe('HeroIntro', () => {
 
   it('renders the header and hero without owning the page background', () => {
     motionPreference.reduced = false;
-    render(<HeroIntro />);
+    render(<HeroIntro newsItems={newsItems} />);
     const shell =
       screen.getByText('Header content').parentElement?.parentElement;
     const motionRoot = shell?.firstElementChild;
 
     expect(screen.getByText('Header content')).toBeInTheDocument();
-    expect(screen.getByText('Hero content')).toBeInTheDocument();
+    expect(
+      screen.getByText('Hero content: Fixture-only intro news'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Network Canvas wins INSNA Award'),
+    ).not.toBeInTheDocument();
     expect(backgroundProps).not.toHaveBeenCalled();
     expect(shell).toHaveClass('tablet-portrait:min-h-svh');
     expect(motionRoot).toHaveClass(
@@ -112,7 +129,7 @@ describe('HeroIntro', () => {
   });
 
   it('renders visible static server markup before the motion preference resolves', () => {
-    const serverMarkup = renderToString(<HeroIntro />);
+    const serverMarkup = renderToString(<HeroIntro newsItems={newsItems} />);
     const container = document.createElement('div');
     container.innerHTML = serverMarkup;
 
@@ -142,13 +159,13 @@ describe('HeroIntro', () => {
 
   it('hydrates reduced-motion users without activating entrance motion', async () => {
     const container = document.createElement('div');
-    container.innerHTML = renderToString(<HeroIntro />);
+    container.innerHTML = renderToString(<HeroIntro newsItems={newsItems} />);
     const serverMotionRoot = container.querySelector('[data-motion-root]');
     document.body.append(container);
     motionPreference.reduced = true;
     const recoverableError = vi.fn();
 
-    const root = hydrateRoot(container, <HeroIntro />, {
+    const root = hydrateRoot(container, <HeroIntro newsItems={newsItems} />, {
       onRecoverableError: recoverableError,
     });
     await act(async () => {});
@@ -184,13 +201,13 @@ describe('HeroIntro', () => {
 
   it('activates the coordinated entrance only after normal-motion hydration', async () => {
     const container = document.createElement('div');
-    container.innerHTML = renderToString(<HeroIntro />);
+    container.innerHTML = renderToString(<HeroIntro newsItems={newsItems} />);
     const serverMotionRoot = container.querySelector('[data-motion-root]');
     document.body.append(container);
     motionPreference.reduced = false;
     const recoverableError = vi.fn();
 
-    const root = hydrateRoot(container, <HeroIntro />, {
+    const root = hydrateRoot(container, <HeroIntro newsItems={newsItems} />, {
       onRecoverableError: recoverableError,
     });
     await act(async () => {});

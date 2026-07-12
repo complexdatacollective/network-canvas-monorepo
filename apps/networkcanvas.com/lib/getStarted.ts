@@ -4,34 +4,59 @@ export type ClassicAppId = 'architect-classic' | 'interviewer-classic';
 export type PlatformId = 'apple-silicon' | 'apple-intel' | 'windows' | 'linux';
 
 type AppAction = {
-  label: string;
+  labelKey:
+    | 'apps.architect.actions.open'
+    | 'apps.interviewer.actions.open'
+    | 'apps.fresco.actions.sandbox'
+    | 'apps.fresco.actions.deployment';
   href: string;
 };
 
+type BestForKey =
+  | 'apps.architect.bestFor.newStudy'
+  | 'apps.architect.bestFor.schema8Protocol'
+  | 'apps.architect.bestFor.interviewerOrFresco'
+  | 'apps.architect.bestFor.upgradeClassic'
+  | 'apps.interviewer.bestFor.inPerson'
+  | 'apps.interviewer.bestFor.guided'
+  | 'apps.interviewer.bestFor.researcherDevice'
+  | 'apps.interviewer.bestFor.schema8Protocol'
+  | 'apps.fresco.bestFor.remoteBrowser'
+  | 'apps.fresco.bestFor.centralManagement'
+  | 'apps.fresco.bestFor.sharedDashboard'
+  | 'apps.fresco.bestFor.selfHosted'
+  | 'apps.architectClassic.bestFor.classicCompatibility'
+  | 'apps.architectClassic.bestFor.editWithoutMigration'
+  | 'apps.interviewerClassic.bestFor.schema7Study'
+  | 'apps.interviewerClassic.bestFor.desktopTablet'
+  | 'apps.interviewerClassic.bestFor.offlineCollection';
+
 type WebApp = {
   id: WebAppId;
+  messageKey: 'architect' | 'interviewer' | 'fresco';
   workflow: Workflow;
   name: string;
-  status: string;
-  description: string;
-  bestFor: readonly string[];
+  bestFor: readonly BestForKey[];
   actions: readonly AppAction[];
   treatment: 'featured' | 'fresco';
 };
 
 type PlatformLink = {
   id: PlatformId;
-  label: string;
+  labelKey:
+    | 'platforms.appleSilicon'
+    | 'platforms.appleIntel'
+    | 'platforms.windows'
+    | 'platforms.linux';
   href: string;
 };
 
 type ClassicApp = {
   id: ClassicAppId;
+  messageKey: 'architectClassic' | 'interviewerClassic';
   workflow: Workflow;
   name: string;
-  status: string;
-  description: string;
-  bestFor: readonly string[];
+  bestFor: readonly BestForKey[];
   version: '6.6.0';
   platforms: readonly PlatformLink[];
   treatment: 'classic';
@@ -61,56 +86,60 @@ const classicDestinations = {
 export const webApps = [
   {
     id: 'architect',
+    messageKey: 'architect',
     workflow: 'design',
     name: 'Architect',
-    status: 'Recommended for new studies',
-    description:
-      'Design schema 8 protocols in your browser, with nothing to install. Use these protocols in Interviewer or Fresco.',
     bestFor: [
-      'Starting a new study',
-      'Designing a schema 8 protocol',
-      'Collecting with the new Interviewer or Fresco',
-      'Upgrading a schema 7 protocol created in Architect Classic',
+      'apps.architect.bestFor.newStudy',
+      'apps.architect.bestFor.schema8Protocol',
+      'apps.architect.bestFor.interviewerOrFresco',
+      'apps.architect.bestFor.upgradeClassic',
     ],
-    actions: [{ label: 'Open Architect', href: webDestinations.architect }],
+    actions: [
+      {
+        labelKey: 'apps.architect.actions.open',
+        href: webDestinations.architect,
+      },
+    ],
     treatment: 'featured',
   },
   {
     id: 'interviewer',
+    messageKey: 'interviewer',
     workflow: 'collect',
     name: 'Interviewer',
-    status: 'In person · Recommended',
-    description:
-      'For interviewer-assisted data collection on a device you control. Open it in the browser and run schema 8 protocols.',
     bestFor: [
-      'Interviews conducted in person',
-      'A trained interviewer guiding the participant',
-      'Data collection on a researcher-controlled device',
-      'Studies using a schema 8 protocol',
+      'apps.interviewer.bestFor.inPerson',
+      'apps.interviewer.bestFor.guided',
+      'apps.interviewer.bestFor.researcherDevice',
+      'apps.interviewer.bestFor.schema8Protocol',
     ],
-    actions: [{ label: 'Open Interviewer', href: webDestinations.interviewer }],
+    actions: [
+      {
+        labelKey: 'apps.interviewer.actions.open',
+        href: webDestinations.interviewer,
+      },
+    ],
     treatment: 'featured',
   },
   {
     id: 'fresco',
+    messageKey: 'fresco',
     workflow: 'collect',
     name: 'Fresco',
-    status: 'Large Teams · Remote Administration · Recommended',
-    description:
-      'For participants completing interviews remotely in their own browser, with centralized study and data management. The sandbox is a public demonstration environment, not a place to run a real study.',
     bestFor: [
-      'Participants completing interviews remotely in their own browser',
-      'Centralized study and participant management',
-      'Managing and exporting data from a shared dashboard',
-      'Teams that can deploy and host a Fresco instance',
+      'apps.fresco.bestFor.remoteBrowser',
+      'apps.fresco.bestFor.centralManagement',
+      'apps.fresco.bestFor.sharedDashboard',
+      'apps.fresco.bestFor.selfHosted',
     ],
     actions: [
       {
-        label: 'Try the Fresco Sandbox',
+        labelKey: 'apps.fresco.actions.sandbox',
         href: webDestinations.frescoSandbox,
       },
       {
-        label: 'Deployment Guide',
+        labelKey: 'apps.fresco.actions.deployment',
         href: webDestinations.frescoDeployment,
       },
     ],
@@ -121,35 +150,33 @@ export const webApps = [
 export const classicApps = [
   {
     id: 'architect-classic',
+    messageKey: 'architectClassic',
     workflow: 'design',
     name: 'Architect Classic',
-    status: 'Classic · Maintenance mode',
-    description:
-      'Use only when your study must remain compatible with Interviewer Classic and schema 7.',
     bestFor: [
-      'An existing study that must remain compatible with Interviewer Classic',
-      'A schema 7 protocol that must continue to be edited without migration',
+      'apps.architectClassic.bestFor.classicCompatibility',
+      'apps.architectClassic.bestFor.editWithoutMigration',
     ],
     version: '6.6.0',
     platforms: [
       {
         id: 'apple-silicon',
-        label: 'Apple Silicon',
+        labelKey: 'platforms.appleSilicon',
         href: `${classicDestinations.architectDownload}/Network%20Canvas%20Architect-6.6.0-mac-arm64.dmg`,
       },
       {
         id: 'apple-intel',
-        label: 'Apple Intel',
+        labelKey: 'platforms.appleIntel',
         href: `${classicDestinations.architectDownload}/Network%20Canvas%20Architect-6.6.0-mac-x64.dmg`,
       },
       {
         id: 'windows',
-        label: 'Windows',
+        labelKey: 'platforms.windows',
         href: `${classicDestinations.architectDownload}/Network%20Canvas%20Architect-6.6.0-win-x64.exe`,
       },
       {
         id: 'linux',
-        label: 'Linux',
+        labelKey: 'platforms.linux',
         href: classicDestinations.architectRelease,
       },
     ],
@@ -157,45 +184,37 @@ export const classicApps = [
   },
   {
     id: 'interviewer-classic',
+    messageKey: 'interviewerClassic',
     workflow: 'collect',
     name: 'Interviewer Classic',
-    status: 'Classic · Existing studies',
-    description:
-      'For established schema 7 studies and offline desktop or tablet workflows. Maintained for compatibility and bug fixes.',
     bestFor: [
-      'An established study that depends on schema 7',
-      'Preserving an existing desktop or tablet workflow',
-      'Studies requiring the older offline collection workflow',
+      'apps.interviewerClassic.bestFor.schema7Study',
+      'apps.interviewerClassic.bestFor.desktopTablet',
+      'apps.interviewerClassic.bestFor.offlineCollection',
     ],
     version: '6.6.0',
     platforms: [
       {
         id: 'apple-silicon',
-        label: 'Apple Silicon',
+        labelKey: 'platforms.appleSilicon',
         href: `${classicDestinations.interviewerDownload}/Network%20Canvas%20Interviewer-6.6.0-arm64.dmg`,
       },
       {
         id: 'apple-intel',
-        label: 'Apple Intel',
+        labelKey: 'platforms.appleIntel',
         href: `${classicDestinations.interviewerDownload}/Network%20Canvas%20Interviewer-6.6.0.dmg`,
       },
       {
         id: 'windows',
-        label: 'Windows',
+        labelKey: 'platforms.windows',
         href: `${classicDestinations.interviewerDownload}/Network%20Canvas%20Interviewer%20Setup%206.6.0.exe`,
       },
       {
         id: 'linux',
-        label: 'Linux',
+        labelKey: 'platforms.linux',
         href: classicDestinations.interviewerRelease,
       },
     ],
     treatment: 'classic',
   },
 ] satisfies readonly ClassicApp[];
-
-export const compatibilityWarning = {
-  title: 'Classic compatibility is one-way.',
-  description:
-    'Architect can upgrade a schema 7 protocol to schema 8, but schema 8 protocols cannot be opened in Classic apps. Keep the original file if your study still depends on Classic.',
-} as const;

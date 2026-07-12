@@ -105,8 +105,12 @@
       "inputs": [
         "app/**",
         "components/**",
+        "content/**",
+        "font-modules.d.ts",
         "lib/**",
+        "messages/**",
         "public/**",
+        "proxy.ts",
         "types.d.ts",
         "next.config.*",
         "postcss.config.*",
@@ -114,14 +118,18 @@
         "package.json"
       ],
       "env": ["NODE_ENV"],
-      "outputs": ["out/**", ".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**"]
     },
     "networkcanvas.com#typecheck": {
       "dependsOn": ["^build"],
       "inputs": [
         "app/**",
         "components/**",
+        "content/**",
+        "font-modules.d.ts",
         "lib/**",
+        "messages/**",
+        "proxy.ts",
         "types.d.ts",
         "next.config.*",
         "tsconfig*.json",

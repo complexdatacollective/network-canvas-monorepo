@@ -1,0 +1,261 @@
+{
+  "Metadata": {
+    "siteTitle": "Network Canvas",
+    "siteDescription": "Network Canvas provides free and open-source software for surveying networks, designed around the needs of both researchers and their participants.",
+    "getStartedTitle": "Get Started",
+    "getStartedDescription": "Choose the right Network Canvas app for designing a protocol or collecting network data."
+  },
+  "LanguageSelector": {
+    "label": "Language",
+    "english": "English",
+    "spanish": "Español"
+  },
+  "Navigation": {
+    "home": "Network Canvas home",
+    "community": "Community",
+    "documentation": "Documentation",
+    "software": "Software",
+    "getStarted": "Get Started",
+    "toggleMenu": "Toggle menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "Hero": {
+    "headline": "Simplifying complex network data collection.",
+    "description": "Network Canvas provides <strong>free and open-source</strong> software for surveying networks, designed around the needs of both researchers and their participants.",
+    "getStarted": "Get Started",
+    "keepScrolling": "or keep scrolling to learn more"
+  },
+  "News": {
+    "label": "Latest News:",
+    "fullStory": "[Full story]"
+  },
+  "Tools": {
+    "heading": "A selection of tools to facilitate your research",
+    "introduction": "We provide a complete end-to-end workflow for networks research, with an app for survey design and for interviewing. Using these tools, researchers can easily design, capture, and export network data.",
+    "architect": {
+      "description": "A browser-based tool for visually designing Network Canvas interviews. Architect allows subject experts to focus on the design and implementation of their study, without needing to learn complex new technology.",
+      "action": "Open Architect",
+      "screenshotAlt": "Architect protocol editor showing an interview design"
+    },
+    "interviewer": {
+      "description": "A browser-based app for administering Network Canvas interviews in the field. Interviewer provides minimalist, participant-centric interfaces for all the data collection tasks associated with personal network interviewing.",
+      "action": "Open Interviewer",
+      "screenshotAlt": "Interviewer home screen showing available Network Canvas protocols"
+    },
+    "fresco": {
+      "description": "Bringing Network Canvas interviews to the web! Fresco is a pilot project that allows researchers to conduct Network Canvas interviews in a web browser.",
+      "action": "Open Fresco",
+      "screenshotAlt": "Fresco dashboard showing protocol, participant, and interview totals"
+    }
+  },
+  "Video": {
+    "heading": "Learn more",
+    "description": "Our goal is to build a suite of tools for the research community that is high quality, free, safe for research, and built to last. Watch our project video to learn more about why we created Network Canvas, and visit our <channel>YouTube channel</channel> for more videos.",
+    "channel": "YouTube channel",
+    "title": "What is Network Canvas?",
+    "watchLabel": "Watch: What is Network Canvas?"
+  },
+  "Principles": {
+    "heading": "Design Principles",
+    "introduction": "Underpinning all Network Canvas software is a set of five design principles. These principles are derived from our observations and experiences regarding the problems facing researchers wishing to design and conduct personal networks research.",
+    "ontologicalFlexibility": {
+      "title": "Ontological flexibility",
+      "paragraph1": "The software is designed with fundamental ontological flexibility. Simply put, this means that we do not presuppose anything about the nature of your interview.",
+      "paragraph2": "Researchers are free to define the nodes and edges of their interviews, their attributes, the sequence of data collection tasks, as well as the way these tasks are explained to the participant."
+    },
+    "interviewerAssisted": {
+      "title": "In-person and interviewer-assisted",
+      "paragraph1": "We believe that the presence of a trained interviewer who can facilitate the data collection task enables the collection of higher quality data.",
+      "paragraph2": "The Network Canvas tools are therefore designed on the assumption that interviews occur in the presence of an interviewer, on an interviewer-controlled machine, and with the interviewer having been specifically trained in guiding the interview process."
+    },
+    "emphasisOnDesign": {
+      "title": "An emphasis on design",
+      "paragraph1": "Our software has been designed from the ground up to be as visually engaging and low burden as possible for participants.",
+      "paragraph2": "We take design extremely seriously, and have drawn on HCI literature, as well as papers from the network analysis community, to create an interview experience that is simple for participants to understand, with clear, consistent, and tactile interactions guiding the data collection."
+    },
+    "endToEndWorkflow": {
+      "title": "End-to-end workflow",
+      "paragraph1": "Simplifying the process of collecting complex structural data requires not just an interview tool, but also a tool for designing these interviews. Together, these tools provide an end-to-end workflow which lowers the costs (both material and technical) of collecting network data.",
+      "paragraph2": "Importantly, our tools do not require a high degree of technical knowledge to operate. Rather, they allow researchers to focus on using their subject expertise to design an effective interview experience."
+    },
+    "openSourceCommunity": {
+      "title": "Open-source community driven development",
+      "paragraph1": "Key to sustaining this effort is input and collaboration with the community, both inside and outside of academia. For this reason, the network canvas tools are free to use and completely open-source (licensed under the GPL version 3).",
+      "paragraph2": "We have implemented a community driven development program, and are eager to encourage feature development or other contributions from any interested third parties."
+    }
+  },
+  "Grants": {
+    "heading": "Grants Using Network Canvas",
+    "introduction": "We are proud to say Network Canvas is being actively used in a number of federally funded grants in the United States, across a diverse set of research contexts, institutions, and funding bodies.",
+    "previous": "Previous grant",
+    "next": "Next grant",
+    "show": "Show grant {number}"
+  },
+  "Publications": {
+    "heading": "Recent Publications Using Network Canvas",
+    "introduction": "The following are the four most recent publications utilizing Network Canvas. For a full list of publications, see our <article>documentation article</article>.",
+    "submission": "If you would like to feature your publication, please let us know by posting in our community site <thread>thread</thread>.",
+    "article": "documentation article",
+    "thread": "thread"
+  },
+  "Team": {
+    "heading": "Core Team",
+    "introduction": "Our project team comprises individuals across a variety of disciplines and specializations."
+  },
+  "ScientificAdvisors": {
+    "heading": "Scientific Advisors"
+  },
+  "Institutions": {
+    "heading": "Institutions",
+    "paragraph1": "The software is being developed by a team of researchers and developers based at Northwestern University and the University of Oxford, as well as several external contracted developers. We are grateful for the <prior>prior</prior> and <ongoing>ongoing</ongoing> funding from the National Institutes of Health that make this work possible.",
+    "paragraph2": "The intellectual property and copyright associated with the software is controlled by a registered not-for-profit, the Complex Data Collective, comprising the core project staff.",
+    "prior": "prior",
+    "ongoing": "ongoing"
+  },
+  "WhatNext": {
+    "heading": "What next?",
+    "documentation": {
+      "title": "Want to learn more?",
+      "body": "We have created extensive documentation, covering all aspects of creating, deploying, and managing a study using Network Canvas.",
+      "action": "Visit Documentation Site"
+    },
+    "community": {
+      "title": "Looking for help?",
+      "body": "We have also recently launched a community website, where you can ask questions, report bugs, share your work, and get help from other researchers.",
+      "action": "Visit Community Website"
+    },
+    "keepInTouch": {
+      "title": "Keep in touch",
+      "body": "If you would like to stay in touch with the project, and find out about events and releases as soon as they happen, we encourage you to join our mailing list, and to follow us on Twitter. We are considerate email partners, and will only ever use this list for important announcements."
+    },
+    "collaboration": {
+      "title": "Want to collaborate?",
+      "body": "If you are interested in a formal academic or consultancy-based collaboration, please see our documentation article on the subject. Unfortunately, we're unable to offer unpaid consultancies due to limited bandwidth of a small team.",
+      "action": "Explore Collaboration Options"
+    }
+  },
+  "MailingList": {
+    "placeholder": "email@networkcanvas.com",
+    "emailLabel": "Email address",
+    "submit": "Join List",
+    "success": "Thanks! We'll be in touch."
+  },
+  "Footer": {
+    "terms": "Terms of Use",
+    "privacy": "Privacy Policy",
+    "copyright": "Copyright Complex Data Collective 2016-{year}",
+    "youtube": "YouTube",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "GetStarted": {
+    "metadata": {
+      "title": "Get Started",
+      "description": "Choose the right Network Canvas app for designing a protocol or collecting network data."
+    },
+    "intro": {
+      "eyebrow": "Choose your research stage",
+      "heading": "Where are you in your research?",
+      "introduction": "Choose the stage your research has reached, then select the Network Canvas app that fits your study.",
+      "stages": {
+        "design": {
+          "label": "Design stage",
+          "title": "Design or create an interview protocol",
+          "accessibleName": "Design or create an interview protocol"
+        },
+        "collect": {
+          "label": "Data collection stage",
+          "title": "Collect data using Network Canvas",
+          "accessibleName": "Collect data using Network Canvas"
+        }
+      }
+    },
+    "sections": {
+      "design": {
+        "label": "Design stage",
+        "heading": "Design or create a protocol",
+        "description": "Design a new browser-based study in Architect, or continue an existing study in Architect Classic."
+      },
+      "collect": {
+        "label": "Data collection stage",
+        "heading": "Collect data",
+        "description": "Choose Interviewer, Fresco, or Interviewer Classic based on how and where you plan to collect data."
+      }
+    },
+    "shared": {
+      "bestFor": "Best for",
+      "downloadVersion": "Download version {version}",
+      "platformAccessibleName": "{platform} for {app}"
+    },
+    "platforms": {
+      "appleSilicon": "Apple Silicon",
+      "appleIntel": "Apple Intel",
+      "windows": "Windows",
+      "linux": "Linux"
+    },
+    "apps": {
+      "architect": {
+        "status": "Recommended for new studies",
+        "description": "Design schema 8 protocols in your browser, with nothing to install. Use these protocols in Interviewer or Fresco.",
+        "bestFor": {
+          "newStudy": "Starting a new study",
+          "schema8Protocol": "Designing a schema 8 protocol",
+          "interviewerOrFresco": "Collecting with the new Interviewer or Fresco",
+          "upgradeClassic": "Upgrading a schema 7 protocol created in Architect Classic"
+        },
+        "actions": {
+          "open": "Open Architect"
+        }
+      },
+      "interviewer": {
+        "status": "In person · Recommended",
+        "description": "For interviewer-assisted data collection on a device you control. Open it in the browser and run schema 8 protocols.",
+        "bestFor": {
+          "inPerson": "Interviews conducted in person",
+          "guided": "A trained interviewer guiding the participant",
+          "researcherDevice": "Data collection on a researcher-controlled device",
+          "schema8Protocol": "Studies using a schema 8 protocol"
+        },
+        "actions": {
+          "open": "Open Interviewer"
+        }
+      },
+      "fresco": {
+        "status": "Large Teams · Remote Administration · Recommended",
+        "description": "For participants completing interviews remotely in their own browser, with centralized study and data management. The sandbox is a public demonstration environment, not a place to run a real study.",
+        "bestFor": {
+          "remoteBrowser": "Participants completing interviews remotely in their own browser",
+          "centralManagement": "Centralized study and participant management",
+          "sharedDashboard": "Managing and exporting data from a shared dashboard",
+          "selfHosted": "Teams that can deploy and host a Fresco instance"
+        },
+        "actions": {
+          "sandbox": "Try the Fresco Sandbox",
+          "deployment": "Deployment Guide"
+        }
+      },
+      "architectClassic": {
+        "status": "Classic · Maintenance mode",
+        "description": "Use only when your study must remain compatible with Interviewer Classic and schema 7.",
+        "bestFor": {
+          "classicCompatibility": "An existing study that must remain compatible with Interviewer Classic",
+          "editWithoutMigration": "A schema 7 protocol that must continue to be edited without migration"
+        }
+      },
+      "interviewerClassic": {
+        "status": "Classic · Existing studies",
+        "description": "For established schema 7 studies and offline desktop or tablet workflows. Maintained for compatibility and bug fixes.",
+        "bestFor": {
+          "schema7Study": "An established study that depends on schema 7",
+          "desktopTablet": "Preserving an existing desktop or tablet workflow",
+          "offlineCollection": "Studies requiring the older offline collection workflow"
+        }
+      }
+    },
+    "compatibility": {
+      "title": "Classic compatibility is one-way.",
+      "description": "Architect can upgrade a schema 7 protocol to schema 8, but schema 8 protocols cannot be opened in Classic apps. Keep the original file if your study still depends on Classic."
+    }
+  }
+}

@@ -1,10 +1,32 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, screen } from '@testing-library/react';
 import type { ComponentPropsWithoutRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { grants } from '~/lib/content';
+import type { Grant } from '~/lib/siteContent';
+import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { Grants } from '../Grants';
+
+const grants: Grant[] = [
+  {
+    id: 'fixture-grant-one',
+    title: 'Fixture-only community research grant',
+    pis: 'PI: Example Researcher',
+    description: 'Fixture-only grant description.',
+    logo: '/images/logos/uchicago.png',
+    logoAlt: 'Example university',
+    href: 'https://example.com/grants/one',
+  },
+  {
+    id: 'fixture-grant-two',
+    title: 'Fixture-only public health grant',
+    pis: 'PI: Second Researcher',
+    description: 'Second fixture-only grant description.',
+    logo: '/images/logos/kentucky.png',
+    logoAlt: 'Second example university',
+    href: 'https://example.com/grants/two',
+  },
+];
 
 vi.mock('@codaco/fresco-ui/typography/Heading', () => ({
   default: ({
@@ -38,7 +60,7 @@ afterEach(cleanup);
 
 describe('Grants', () => {
   it('renders grant card copy with Fresco semantic typography', () => {
-    render(<Grants />);
+    renderWithIntl(<Grants grants={grants} />);
 
     const heading = screen.getByRole('heading', {
       level: 3,
@@ -70,10 +92,13 @@ describe('Grants', () => {
       'text-base',
       'leading-relaxed',
     );
+    expect(
+      screen.queryByText('Justice Community Opioid Innovation Network (JCOIN)'),
+    ).not.toBeInTheDocument();
   });
 
   it('uses Fresco icon controls to paginate grants', () => {
-    render(<Grants />);
+    renderWithIntl(<Grants grants={grants} />);
 
     const previous = screen.getByRole('button', { name: 'Previous grant' });
     const next = screen.getByRole('button', { name: 'Next grant' });
@@ -106,23 +131,23 @@ describe('Grants', () => {
   });
 
   it('keeps pagination dots as compact native buttons', () => {
-    render(<Grants />);
+    renderWithIntl(<Grants grants={grants} />);
 
-    const thirdGrant = screen.getByRole('button', { name: 'Show grant 3' });
+    const secondGrant = screen.getByRole('button', { name: 'Show grant 2' });
 
-    expect(thirdGrant).toHaveClass('h-2.5', 'w-2.5');
-    expect(thirdGrant).not.toHaveClass('aspect-square', 'elevation-low');
+    expect(secondGrant).toHaveClass('h-2.5', 'w-2.5');
+    expect(secondGrant).not.toHaveClass('aspect-square', 'elevation-low');
 
-    fireEvent.click(thirdGrant);
+    fireEvent.click(secondGrant);
 
-    expect(thirdGrant).toHaveClass('w-7');
+    expect(secondGrant).toHaveClass('w-7');
     expect(screen.getByRole('button', { name: 'Show grant 1' })).toHaveClass(
       'w-2.5',
     );
   });
 
   it('keeps the slide clipped while leaving room for the card shadow', () => {
-    render(<Grants />);
+    renderWithIntl(<Grants grants={grants} />);
 
     const card = screen
       .getByRole('heading', { name: grants[0]?.title })
@@ -138,5 +163,21 @@ describe('Grants', () => {
       'overflow-hidden',
       'p-8',
     );
+  });
+
+  it('translates grant controls and section copy into Spanish', () => {
+    renderWithIntl(<Grants grants={grants} />, 'es');
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Subvenciones que utilizan Network Canvas',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Subvención anterior' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Mostrar subvención 2' }),
+    ).toBeInTheDocument();
   });
 });

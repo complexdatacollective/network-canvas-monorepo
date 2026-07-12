@@ -1,17 +1,28 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import type { NewsItem } from '~/lib/siteContent';
+import { renderWithIntl } from '~/test/renderWithIntl';
+
 import { Hero } from '../Hero';
+
+const newsItems: NewsItem[] = [
+  {
+    id: 'fixture-news',
+    title: 'Fixture-only hero news',
+    href: 'https://example.com/news',
+  },
+];
 
 afterEach(cleanup);
 
 describe('Hero', () => {
   it('links the primary action to Get Started', () => {
-    render(<Hero />);
+    renderWithIntl(<Hero newsItems={newsItems} />);
 
     expect(screen.getByRole('link', { name: 'Get Started' })).toHaveAttribute(
       'href',
-      '/get-started',
+      '/en/get-started',
     );
     expect(
       screen.queryByRole('link', { name: 'Download Now' }),
@@ -19,7 +30,7 @@ describe('Hero', () => {
   });
 
   it('uses the large desktop headline scale and cyber-grape body copy', () => {
-    render(<Hero />);
+    renderWithIntl(<Hero newsItems={newsItems} />);
 
     expect(
       screen.getByRole('heading', {
@@ -33,10 +44,14 @@ describe('Hero', () => {
     expect(screen.getByText(/Network Canvas provides/)).toHaveClass(
       'text-cyber-grape',
     );
+    expect(screen.getAllByText('Fixture-only hero news')).toHaveLength(3);
+    expect(
+      screen.queryByText('Network Canvas wins INSNA Award'),
+    ).not.toBeInTheDocument();
   });
 
   it('distributes tablet and desktop content across the available height', () => {
-    const { container } = render(<Hero />);
+    const { container } = renderWithIntl(<Hero newsItems={newsItems} />);
     const root = container.firstElementChild;
     const view = within(container);
     const heading = view.getByRole('heading', {
@@ -84,6 +99,21 @@ describe('Hero', () => {
       'tablet-portrait:col-start-1',
       'tablet-portrait:row-start-4',
       'tablet-portrait:mt-0',
+    );
+  });
+
+  it('renders Spanish hero copy', () => {
+    renderWithIntl(<Hero newsItems={newsItems} />, 'es');
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Simplificando la recopilación de datos de redes complejas.',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Últimas noticias:')).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'Comenzar' })).toHaveAttribute(
+      'href',
+      '/es/get-started',
     );
   });
 });

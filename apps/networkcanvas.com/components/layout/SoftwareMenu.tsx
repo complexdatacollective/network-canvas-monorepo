@@ -4,6 +4,7 @@ import { NavigationMenu } from '@base-ui/react/navigation-menu';
 import { ChevronDown } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { Transition } from 'motion/react';
+import { useTranslations } from 'next-intl';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -35,6 +36,7 @@ const panelVariants = {
 };
 
 function SoftwareCard({ tool }: { tool: Tool }) {
+  const t = useTranslations('Tools');
   const shouldReduceMotion = useReducedMotion();
   const activeCardVariants = shouldReduceMotion
     ? { rest: { y: 0 }, hover: { y: 0 } }
@@ -54,7 +56,7 @@ function SoftwareCard({ tool }: { tool: Tool }) {
 
   return (
     <NavigationMenu.Link
-      href={tool.cta.href}
+      href={tool.href}
       target="_blank"
       rel="noreferrer"
       closeOnClick
@@ -108,11 +110,11 @@ function SoftwareCard({ tool }: { tool: Tool }) {
             transition={revealTransition}
             className="text-cyber-grape/80 [display:-webkit-box] overflow-hidden text-sm leading-relaxed [-webkit-box-orient:vertical] [-webkit-line-clamp:4]"
           >
-            {tool.description}
+            {t(`${tool.id}.description`)}
           </MotionParagraph>
           <span className="font-heading mt-3 inline-flex items-center gap-1 text-xs font-bold tracking-[0.12em] uppercase">
-            {tool.cta.label}
-            <ChevronDown className="size-3.5 -rotate-90" />
+            {t(`${tool.id}.action`)}
+            <ChevronDown aria-hidden className="size-3.5 -rotate-90" />
           </span>
         </div>
       </motion.div>
@@ -129,6 +131,8 @@ function SoftwareCard({ tool }: { tool: Tool }) {
  * inside the header's existing `<nav>` without nesting landmark regions.
  */
 export function SoftwareMenu() {
+  const t = useTranslations('Navigation');
+
   return (
     <NavigationMenu.Root
       delay={100}
@@ -139,13 +143,16 @@ export function SoftwareMenu() {
       <NavigationMenu.List className="flex">
         <NavigationMenu.Item>
           <NavigationMenu.Trigger className="focusable font-heading text-cyber-grape hover:text-neon-coral data-[popup-open]:text-neon-coral group flex items-center gap-1 text-sm font-bold tracking-[0.12em] uppercase transition-colors">
-            Software
-            <ChevronDown className="size-4 transition-transform duration-200 group-data-[popup-open]:rotate-180" />
+            {t('software')}
+            <ChevronDown
+              aria-hidden
+              className="size-4 transition-transform duration-200 group-data-[popup-open]:rotate-180"
+            />
           </NavigationMenu.Trigger>
           <NavigationMenu.Content className="transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
             <ul className="flex gap-4 p-2">
               {tools.map((tool) => (
-                <li key={tool.name}>
+                <li key={tool.id}>
                   <SoftwareCard tool={tool} />
                 </li>
               ))}
