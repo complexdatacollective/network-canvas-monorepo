@@ -30,7 +30,6 @@ export const externalLinks = {
 export const navLinks = [
   { label: 'Community', href: externalLinks.community, external: true },
   { label: 'Documentation', href: externalLinks.documentation, external: true },
-  { label: 'Projects', href: '/#projects', external: false },
   { label: 'Download', href: '/download', external: false },
 ] as const;
 

@@ -8,11 +8,6 @@ import { cn } from '~/lib/cn';
 import type { Project } from '~/lib/content';
 import { projects } from '~/lib/content';
 
-/**
- * Brand gradients for each project card. Keyed by the project's accent colour
- * so the cards echo the colours used by the on-page Projects section while
- * adding depth for the popover treatment.
- */
 const gradients: Record<Project['color'], string> = {
   'slate-blue': 'from-slate-blue to-cyber-grape',
   'cerulean-blue': 'from-cerulean-blue to-slate-blue',

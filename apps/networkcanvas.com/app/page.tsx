@@ -5,7 +5,6 @@ import { DesignPrinciples } from '~/components/sections/DesignPrinciples';
 import { Grants } from '~/components/sections/Grants';
 import { HeroIntro } from '~/components/sections/HeroIntro';
 import { Institutions } from '~/components/sections/Institutions';
-import { Projects } from '~/components/sections/Projects';
 import { Publications } from '~/components/sections/Publications';
 import { Tools } from '~/components/sections/Tools';
 import { VideoSection } from '~/components/sections/VideoSection';
@@ -24,7 +23,6 @@ export default function HomePage() {
 
         <DesignPrinciples />
 
-        <Projects />
         <Grants />
         <Publications />
         <CoreTeam />

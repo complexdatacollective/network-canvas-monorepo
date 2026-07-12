@@ -32,5 +32,8 @@ describe('HomePage background composition', () => {
     expect(
       container.querySelector('img[src="/images/blobs/multi-2.svg"]'),
     ).toBeNull();
+    expect(
+      screen.queryByRole('heading', { name: 'Projects' }),
+    ).not.toBeInTheDocument();
   });
 });

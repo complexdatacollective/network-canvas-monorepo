@@ -15,10 +15,7 @@ import { navLinks, projects } from '~/lib/content';
 const linkClasses =
   'font-heading text-cyber-grape hover:text-neon-coral text-sm font-bold tracking-[0.12em] uppercase transition-colors';
 
-/** Top-level nav links, excluding the Projects dropdown and the Download CTA. */
-const topLevelLinks = navLinks.filter(
-  (link) => link.href !== '/download' && link.href !== '/#projects',
-);
+const topLevelLinks = navLinks.filter((link) => link.href !== '/download');
 
 function DesktopLinks() {
   return (
@@ -55,13 +52,9 @@ function MobileLinks({ onNavigate }: { onNavigate: () => void }) {
       ))}
 
       <div className="flex flex-col gap-3">
-        <Link
-          href="/#projects"
-          onClick={onNavigate}
-          className="font-heading text-cyber-grape/60 hover:text-neon-coral text-xs font-bold tracking-[0.12em] uppercase transition-colors"
-        >
+        <span className="font-heading text-cyber-grape/60 text-xs font-bold tracking-[0.12em] uppercase">
           Projects
-        </Link>
+        </span>
         {projects.map((project) => (
           <a
             key={project.name}
