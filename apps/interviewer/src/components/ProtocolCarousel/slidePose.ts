@@ -8,6 +8,14 @@ export const SLOT_TO_CARD_RATIO = 0.7;
 // With perspective 1800px, translateZ(-400) projects a card to
 // (1800/2200) ≈ 82% of its size — cards further from active naturally
 // appear behind via real 3D depth, not z-index.
+//
+// Neighbours keep pointer-events (tapping a peeking card selects it), and the
+// 0.7 stride means the next card's *projected* 2D bounding box overlaps the
+// active card's top-right controls (delete/dismiss). Depth-correct: the active
+// card is nearest in z at every overlapping pixel, so real clicks land on the
+// active control — but Playwright's axis-aligned elementFromPoint probe reads
+// the overlap as a cover, which is why the e2e uses .click({ force: true }) on
+// the delete control (safe: verified real clicks land; see protocol-fixture.ts).
 export const DECK_PERSPECTIVE_PX = 1800;
 const FAN_Z_STEP = 400;
 const FAN_ROTATE_DEG = 3;
