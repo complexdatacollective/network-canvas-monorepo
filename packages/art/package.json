@@ -5,7 +5,8 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./NetworkWeaveBackground": "./src/NetworkWeaveBackground/NetworkWeaveBackground.tsx"
   },
   "scripts": {
     "build-storybook": "node ../../scripts/with-turbo.mjs storybook build",
