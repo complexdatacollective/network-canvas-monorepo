@@ -329,6 +329,65 @@ git commit -m "docs: align i18n plan with get started flow"
 
 ---
 
+### Task 4: Refine Compatibility and Fresco Presentation
+
+**Files:**
+
+- Modify: `apps/networkcanvas.com/app/get-started/page.tsx`
+- Modify: `apps/networkcanvas.com/components/get-started/WorkflowPath.tsx`
+- Modify: `apps/networkcanvas.com/components/get-started/CompatibilityNotice.tsx`
+- Modify: `apps/networkcanvas.com/components/get-started/AppChoiceCard.tsx`
+- Modify: `apps/networkcanvas.com/lib/getStarted.ts`
+- Modify: focused Get Started tests
+
+**Requirements:**
+
+- Render the compatibility notice with `Alert` and `AlertDescription` imported
+  directly from `@codaco/fresco-ui/Alert`.
+- Place the notice immediately beneath the Design path description, before the
+  Architect/Architect Classic card grid.
+- Remove the former standalone notice below both workflow sections.
+- Preserve the exact compatibility title and description.
+- Add `backdrop-blur-md` to the Fresco card treatment while retaining its
+  slate-blue tint.
+- Change Fresco's status to **Recommended for large teams or remote
+  administration**.
+
+- [ ] **Step 1: Change focused tests and verify RED**
+
+Assert the warning has `role="status"`, appears after the Design description but
+before the Architect heading, and no warning follows the Collect section. Assert
+the Fresco article has both `bg-slate-blue/10` and `backdrop-blur-md`, and its
+status uses the exact new wording. Run:
+
+```bash
+pnpm --filter networkcanvas.com test -- app/get-started components/get-started lib/__tests__/getStarted.test.ts
+```
+
+Expected: FAIL on the old notice placement/custom markup, missing Fresco blur,
+and old Fresco status.
+
+- [ ] **Step 2: Implement the minimal refinement**
+
+Make `CompatibilityNotice` return the fresco-ui warning Alert without its own
+Container. Keep the title as strong paragraph text inside AlertDescription so it
+does not introduce an out-of-order heading. Allow `WorkflowPath` to receive an
+optional compatibility notice and render it immediately after the Design
+description inside the heading Reveal. Pass it only to the Design path from the
+page. Update the Fresco treatment class and status data.
+
+- [ ] **Step 3: Verify and commit**
+
+Run focused/full website tests, website typecheck, targeted oxlint `--fix`,
+targeted oxfmt, and `git diff --check`.
+
+```bash
+git add apps/networkcanvas.com
+git commit -m "refine(website): clarify classic compatibility"
+```
+
+---
+
 ## Final Review and Delivery
 
 - [ ] Generate a review package for every task and require both spec-compliance
