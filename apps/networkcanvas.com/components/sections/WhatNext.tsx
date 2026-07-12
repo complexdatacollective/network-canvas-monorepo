@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { MailingListForm } from '~/components/sections/MailingListForm';
 import { Container } from '~/components/ui/Container';
 import { PillLink } from '~/components/ui/PillLink';
@@ -78,12 +80,19 @@ export function WhatNext() {
             className="bg-surface tablet-landscape:gap-10 tablet-landscape:p-10 flex items-center gap-6 rounded-[1.75rem] p-8 shadow-lg"
           >
             <div className="flex-1">
-              <h3 className="font-heading text-cyber-grape text-2xl font-bold">
+              <Heading
+                level="h3"
+                margin="none"
+                className="font-heading text-cyber-grape text-2xl font-bold"
+              >
                 {card.title}
-              </h3>
-              <p className="text-text/80 mt-3 max-w-xl text-base leading-relaxed">
+              </Heading>
+              <Paragraph
+                margin="none"
+                className="text-text/80 mt-3 max-w-xl text-base leading-relaxed"
+              >
                 {card.body}
-              </p>
+              </Paragraph>
               {card.action}
             </div>
             <img
@@ -101,8 +110,12 @@ export function WhatNext() {
 
 function SectionTitle() {
   return (
-    <h2 className="font-heading text-cyber-grape tablet-landscape:text-4xl text-center text-3xl font-bold">
+    <Heading
+      level="h2"
+      margin="none"
+      className="font-heading text-cyber-grape tablet-landscape:text-4xl text-center text-3xl font-bold"
+    >
       What next?
-    </h2>
+    </Heading>
   );
 }

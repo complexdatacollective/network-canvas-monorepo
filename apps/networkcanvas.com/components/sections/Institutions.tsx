@@ -1,3 +1,4 @@
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { institutions } from '~/lib/content';
@@ -6,7 +7,7 @@ export function Institutions() {
   return (
     <Container className="tablet-landscape:py-24 py-20">
       <SectionHeading title="Institutions">
-        <p>
+        <Paragraph margin="none">
           The software is being developed by a team of researchers and
           developers based at Northwestern University and the University of
           Oxford, as well as several external contracted developers. We are
@@ -30,12 +31,12 @@ export function Institutions() {
           </a>{' '}
           funding from the National Institutes of Health that make this work
           possible.
-        </p>
-        <p className="mt-3">
+        </Paragraph>
+        <Paragraph margin="none" className="mt-3">
           The intellectual property and copyright associated with the software
           is controlled by a registered not-for-profit, the Complex Data
           Collective, comprising the core project staff.
-        </p>
+        </Paragraph>
       </SectionHeading>
 
       <div className="mt-14 flex flex-wrap items-center justify-center gap-x-16 gap-y-10">

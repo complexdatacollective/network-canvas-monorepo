@@ -1,3 +1,5 @@
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { DeviceMockup } from '~/components/ui/DeviceMockup';
 import { PillLink } from '~/components/ui/PillLink';
@@ -43,14 +45,19 @@ export function Tools() {
               className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 grid items-center gap-8 rounded-[2rem] bg-white/55 p-6 shadow-xl backdrop-blur-md"
             >
               <div className="tablet-landscape:order-1 order-2">
-                <h3
+                <Heading
+                  level="h3"
+                  margin="none"
                   className={`font-heading tablet-landscape:text-3xl text-2xl font-bold ${accent.text}`}
                 >
                   {tool.name}
-                </h3>
-                <p className="text-cyber-grape tablet-landscape:text-lg mt-4 text-base leading-relaxed">
+                </Heading>
+                <Paragraph
+                  margin="none"
+                  className="text-cyber-grape tablet-landscape:text-lg mt-4 text-base leading-relaxed"
+                >
                   {tool.description}
-                </p>
+                </Paragraph>
                 <PillLink
                   href={tool.cta.href}
                   external={isExternal}

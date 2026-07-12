@@ -1,3 +1,4 @@
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
 import { SectionHeading } from '~/components/ui/SectionHeading';
@@ -23,12 +24,15 @@ export function CoreTeam() {
               alt={member.name}
               className="tablet-landscape:size-36 size-28 rounded-full object-cover shadow-lg"
             />
-            <p className="font-heading text-cyber-grape mt-5 text-lg font-bold">
+            <Paragraph
+              margin="none"
+              className="font-heading text-cyber-grape mt-5 text-lg font-bold"
+            >
               {member.name}
-            </p>
-            <p className="text-base-sm text-text/65 mt-1">
+            </Paragraph>
+            <Paragraph margin="none" className="text-base-sm text-text/65 mt-1">
               {member.institution}
-            </p>
+            </Paragraph>
           </Reveal>
         ))}
       </div>

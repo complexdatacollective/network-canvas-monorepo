@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cn } from '~/lib/cn';
 
 type SectionHeadingProps = {
@@ -17,12 +18,14 @@ export function SectionHeading({
 }: SectionHeadingProps) {
   return (
     <div className={cn('mx-auto max-w-2xl text-center', className)}>
-      <h2
+      <Heading
+        level="h2"
+        margin="none"
         id={id}
         className="font-heading text-cyber-grape tablet-landscape:text-4xl text-3xl font-bold"
       >
         {title}
-      </h2>
+      </Heading>
       {children ? (
         <div className="text-text/80 tablet-landscape:text-lg mt-5 text-base">
           {children}

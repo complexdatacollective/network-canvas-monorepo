@@ -1,5 +1,7 @@
 import { Sparkles } from 'lucide-react';
 
+import Pill from '@codaco/fresco-ui/Pill';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { newsItems } from '~/lib/content';
 
 function NewsItem({ title, href }: { title: string; href: string }) {
@@ -18,11 +20,13 @@ function NewsItem({ title, href }: { title: string; href: string }) {
   );
 }
 
-const Badge = () => (
-  <span className="font-heading text-base-sm text-cyber-grape inline-flex shrink-0 items-center gap-2 font-bold tracking-[0.12em] uppercase">
-    <Sparkles className="text-mustard size-5" />
+const NewsLabel = () => (
+  <Pill
+    icon={<Sparkles className="text-mustard size-5" />}
+    className="font-heading text-base-sm text-cyber-grape inline-flex shrink-0 items-center gap-2 p-0 font-bold tracking-[0.12em] uppercase"
+  >
     Latest News:
-  </span>
+  </Pill>
 );
 
 export function NewsTicker() {
@@ -30,7 +34,7 @@ export function NewsTicker() {
     <div className="border-cerulean-blue/30 bg-cerulean-blue/5 tablet-portrait:rounded-full rounded-[1.5rem] border">
       {/* Desktop: single-line marquee */}
       <div className="tablet-portrait:flex hidden items-center gap-5 px-6 py-3">
-        <Badge />
+        <NewsLabel />
         <div className="relative flex-1 overflow-hidden mask-[linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
           <div className="animate-marquee flex w-max gap-12">
             {newsItems.map((item, i) => (
@@ -45,9 +49,13 @@ export function NewsTicker() {
 
       {/* Mobile: stacked card */}
       <div className="tablet-portrait:hidden flex flex-col gap-3 p-6">
-        <Badge />
+        <NewsLabel />
         {newsItems.map((item) => (
-          <p key={item.title} className="text-base-sm text-text/80">
+          <Paragraph
+            margin="none"
+            key={item.title}
+            className="text-base-sm text-text/80"
+          >
             {item.title}{' '}
             <a
               href={item.href}
@@ -57,7 +65,7 @@ export function NewsTicker() {
             >
               [Full story]
             </a>
-          </p>
+          </Paragraph>
         ))}
       </div>
     </div>

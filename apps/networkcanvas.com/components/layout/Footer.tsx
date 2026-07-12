@@ -1,5 +1,6 @@
 import type { SVGProps } from 'react';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { Logo } from '~/components/ui/Logo';
 import { externalLinks, footerLinks } from '~/lib/content';
@@ -56,9 +57,9 @@ export function Footer() {
                 </a>
               ))}
             </div>
-            <p className="text-text/70 text-base">
+            <Paragraph margin="none" className="text-text/70 text-base">
               Copyright Complex Data Collective 2016-{new Date().getFullYear()}
-            </p>
+            </Paragraph>
             <div className="flex gap-5">
               {socials.map(({ label, href, Icon }) => (
                 <a

@@ -4,9 +4,13 @@ import { NavigationMenu } from '@base-ui/react/navigation-menu';
 import { ChevronDown } from 'lucide-react';
 import { motion } from 'motion/react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cn } from '~/lib/cn';
 import type { Project } from '~/lib/content';
 import { projects } from '~/lib/content';
+
+const MotionParagraph = motion.create(Paragraph);
 
 const gradients: Record<Project['color'], string> = {
   'slate-blue': 'from-slate-blue to-cyber-grape',
@@ -70,14 +74,21 @@ function ProjectCard({ project }: { project: Project }) {
         <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/30 via-black/5 to-transparent" />
 
         <div className="relative">
-          <h3 className="font-heading text-2xl font-bold">{project.name}</h3>
-          <motion.p
+          <Heading
+            level="h3"
+            margin="none"
+            className="font-heading text-2xl font-bold"
+          >
+            {project.name}
+          </Heading>
+          <MotionParagraph
+            margin="none"
             variants={descriptionVariants}
             transition={{ duration: 0.28, ease: 'easeOut' }}
             className="[display:-webkit-box] overflow-hidden text-sm leading-relaxed text-white/90 [-webkit-box-orient:vertical] [-webkit-line-clamp:4]"
           >
             {project.description}
-          </motion.p>
+          </MotionParagraph>
           <span className="font-heading mt-3 inline-flex items-center gap-1 text-xs font-bold tracking-[0.12em] uppercase">
             Learn more
             <ChevronDown className="size-3.5 -rotate-90" />
