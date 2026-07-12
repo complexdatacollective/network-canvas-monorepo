@@ -5,6 +5,7 @@ import { DownloadFixture } from './download-fixture.js';
 import { InterviewNav } from './interview-nav.js';
 import { ProtocolFixture } from './protocol-fixture.js';
 import { SeedFixture } from './seed-fixture.js';
+import { VaultFixture } from './vault-fixture.js';
 
 type BaseFixtures = {
   capture: CaptureFn;
@@ -12,6 +13,7 @@ type BaseFixtures = {
   seed: SeedFixture;
   download: DownloadFixture;
   interviewNav: InterviewNav;
+  vault: VaultFixture;
 };
 
 export const test = base.extend<BaseFixtures>({
@@ -31,6 +33,9 @@ export const test = base.extend<BaseFixtures>({
   },
   interviewNav: async ({ page }, use) => {
     await use(new InterviewNav(page));
+  },
+  vault: async ({ page }, use) => {
+    await use(new VaultFixture(page));
   },
 });
 

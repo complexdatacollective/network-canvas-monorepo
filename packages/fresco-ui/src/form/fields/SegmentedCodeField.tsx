@@ -112,12 +112,13 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
     className,
     id,
     autoFocus,
-    name: _name,
+    name,
     ...rest
   } = props;
 
-  // name is destructured to prevent it from being spread onto individual inputs
-  void _name;
+  // `name` is destructured out (rather than left in `...rest`) so it isn't
+  // spread onto every individual input — it's only used below to scope the
+  // fieldset's test id.
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const { pattern, inputMode } = CHARACTER_SETS[characterSet];
@@ -262,6 +263,7 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
     <fieldset
       className={cx(segmentGroupVariants({ size }), className)}
       aria-label={rest['aria-describedby'] ? undefined : 'Code input'}
+      data-testid={`segmented-code-${name}`}
     >
       {Array.from({ length: segments }, (_, i) => (
         <span key={i} className="contents">
