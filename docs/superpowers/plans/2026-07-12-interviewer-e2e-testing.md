@@ -6,7 +6,7 @@
 
 **Architecture:** A standalone `apps/interviewer/e2e/` Playwright project mirroring the conventions of `packages/interview/e2e/` (Docker-pinned runner, `getByRole`-first locators, CI-gated visual captures) but not sharing its code. Tests drive the **built** PWA served by `vite preview`. Functional specs run in the app's default `none` (unencrypted) mode; PIN/passphrase get dedicated lifecycle specs that enrol through the real setup wizard. A purpose-built lean `.netcanvas` fixture in `packages/protocols/e2e/` drives the import, interview, and export facets.
 
-**Tech Stack:** Playwright (`@playwright/test`), Vite 8 `vite preview`, `fflate` (unzip export archives), Docker (Playwright image, visual baselines), the `@codaco/protocol-validation` CLI (fixture validation).
+**Tech Stack:** Playwright (`@playwright/test`), Vite 8 `vite preview`, `jszip` (zip the fixture + unzip export archives — already an `apps/interviewer` dep via `catalog:`; `fflate` is **not** an app dep, do not use it), Docker (Playwright image, visual baselines), the `@codaco/protocol-validation` CLI (fixture validation).
 
 ## Global Constraints
 
@@ -210,12 +210,13 @@ Create `apps/interviewer/e2e/scripts/build-e2e-protocol.mjs`:
 ```js
 // Regenerate interviewer-e2e.netcanvas from protocol.json.
 // A .netcanvas is a plain zip with protocol.json at the archive root.
-// Run: node apps/interviewer/e2e/scripts/build-e2e-protocol.mjs
+// Uses jszip (already an apps/interviewer dep). Run:
+//   node apps/interviewer/e2e/scripts/build-e2e-protocol.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { zipSync, strToU8 } from 'fflate';
+import JSZip from 'jszip';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(
@@ -224,8 +225,10 @@ const srcDir = resolve(
 );
 const json = readFileSync(resolve(srcDir, 'protocol.json'), 'utf8');
 
-const zipped = zipSync({ 'protocol.json': strToU8(json) });
-writeFileSync(resolve(srcDir, 'interviewer-e2e.netcanvas'), zipped);
+const zip = new JSZip();
+zip.file('protocol.json', json);
+const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+writeFileSync(resolve(srcDir, 'interviewer-e2e.netcanvas'), buffer);
 console.log('Wrote interviewer-e2e.netcanvas');
 ```
 
@@ -800,7 +803,7 @@ git commit -m "test(interviewer): protocol import & delete e2e (facet 1)"
 **Interfaces:**
 
 - Consumes: `protocol` fixture (Task 3), `LEAN_E2E_PROTOCOL_*` (Task 1).
-- Produces: `seed` fixture — `{ synthetic(count: number): Promise<void> }`; `download` fixture — `{ captureExport(trigger: () => Promise<void>): Promise<{ files: Record<string, Uint8Array> }> }`; `graphmlNodeCount(text: string): number` from `export-archive.ts`.
+- Produces: `seed` fixture — `{ synthetic(count: number): Promise<void> }`; `download` fixture — `{ captureExport(trigger: () => Promise<void>): Promise<{ fileName: string; files: Record<string, string> }> }`; `graphmlNodeCount(text: string): number` and `readEntry(files, suffix)` from `export-archive.ts`.
 
 - [ ] **Step 1: Add testids to the DataView toolbar and columns**
 
@@ -858,11 +861,11 @@ Create `apps/interviewer/e2e/fixtures/download-fixture.ts`:
 
 ```ts
 import type { Download, Page } from '@playwright/test';
-import { unzipSync } from 'fflate';
+import JSZip from 'jszip';
 
 // Forces saveBlob's object-URL <a download> branch (deletes the File System
 // Access + Web Share entry points) so page.waitForEvent('download') fires, then
-// captures + unzips the exported archive.
+// captures + unzips the exported archive into decoded text entries.
 export class DownloadFixture {
   constructor(private page: Page) {}
 
@@ -878,10 +881,10 @@ export class DownloadFixture {
   }
 
   // Runs `trigger` (which must click Export then Save export), captures the
-  // download, and returns the unzipped archive entries.
+  // download, and returns each archive entry decoded as text.
   async captureExport(
     trigger: () => Promise<void>,
-  ): Promise<{ fileName: string; files: Record<string, Uint8Array> }> {
+  ): Promise<{ fileName: string; files: Record<string, string> }> {
     const downloadPromise: Promise<Download> =
       this.page.waitForEvent('download');
     await trigger();
@@ -889,8 +892,14 @@ export class DownloadFixture {
     const stream = await download.createReadStream();
     const chunks: Buffer[] = [];
     for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-    const buffer = new Uint8Array(Buffer.concat(chunks));
-    return { fileName: download.suggestedFilename(), files: unzipSync(buffer) };
+    const zip = await JSZip.loadAsync(Buffer.concat(chunks));
+    const files: Record<string, string> = {};
+    await Promise.all(
+      Object.values(zip.files).map(async (entry) => {
+        if (!entry.dir) files[entry.name] = await entry.async('string');
+      }),
+    );
+    return { fileName: download.suggestedFilename(), files };
   }
 }
 ```
@@ -900,20 +909,19 @@ export class DownloadFixture {
 Create `apps/interviewer/e2e/helpers/export-archive.ts`:
 
 ```ts
-import { strFromU8 } from 'fflate';
-
 // Count <node> elements inside the GraphML <graph>. Robust to attribute order.
 export function graphmlNodeCount(graphml: string): number {
   const matches = graphml.match(/<node[\s>]/g);
   return matches ? matches.length : 0;
 }
 
+// Find an entry whose filename ends with the given suffix; return its text.
 export function readEntry(
-  files: Record<string, Uint8Array>,
+  files: Record<string, string>,
   suffix: string,
 ): string | undefined {
   const key = Object.keys(files).find((k) => k.endsWith(suffix));
-  return key ? strFromU8(files[key]) : undefined;
+  return key ? files[key] : undefined;
 }
 ```
 
@@ -1796,7 +1804,25 @@ pnpm knip
 pnpm --filter @codaco/interviewer test:e2e   # Docker, full suite + visual baselines
 ```
 
-Expected: all green. If `pnpm knip` flags the new `apps/interviewer/e2e/` files (unused fixtures/helpers, or `@playwright/test`/`fflate` as unused deps), mirror how the interview suite is handled: check `knip.json`/`knip.ts` (root and `packages/interview`) for the e2e `entry`/`project` patterns and `ignoreDependencies`, and add equivalent entries scoped to `apps/interviewer/e2e` (the specs are the entry points; fixtures/helpers are reached from them). Then follow the `shipping-a-pull-request` skill to open the PR.
+Expected: all green. `pnpm knip` **will** flag the new suite unless `knip.json` is updated: the root `knip.json` `apps/interviewer` workspace (currently `"entry": ["index.html!", "vite.renderer.config.ts"]`, `"project": ["src/**/*.{ts,tsx}"]`) does not include `e2e/`, so `@playwright/test` reads as unused and the specs' imports go unseen. Update that workspace block to add the e2e entry points and project glob (mirroring the `packages/interview` block):
+
+```jsonc
+"apps/interviewer": {
+  "entry": [
+    "index.html!",
+    "vite.renderer.config.ts",
+    "e2e/specs/**/*.ts",
+    "e2e/playwright.config.ts",
+    "e2e/scripts/*.{ts,mjs}"
+  ],
+  "vite": true,
+  "project": ["src/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}"],
+  "paths": { "~/*": ["./src/*"] },
+  "ignore": ["src/**/*.d.ts"]
+}
+```
+
+Then follow the `shipping-a-pull-request` skill to open the PR.
 
 ---
 
