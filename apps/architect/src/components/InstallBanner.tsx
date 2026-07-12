@@ -1,8 +1,14 @@
 import { Download, X } from 'lucide-react';
-import { useState, useSyncExternalStore } from 'react';
+import {
+  type CSSProperties,
+  type SVGProps,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
+import Icon from '@codaco/fresco-ui/Icon';
 import {
   getDeferredPrompt,
   getInstalled,
@@ -10,6 +16,24 @@ import {
   subscribeInstalled,
   subscribeInstallPrompt,
 } from '~/utils/installPrompt';
+
+type InstallWarningIconStyle = CSSProperties & {
+  '--warning-icon-accent': string;
+  '--warning-icon-accent-dark': string;
+};
+
+const installWarningIconStyle: InstallWarningIconStyle = {
+  '--warning-icon-accent': 'oklch(var(--neon-coral))',
+  '--warning-icon-accent-dark': 'oklch(var(--neon-coral--dark))',
+};
+
+const InstallWarningIcon = ({ style, ...props }: SVGProps<SVGSVGElement>) => (
+  <Icon
+    {...props}
+    name="warning"
+    style={{ ...installWarningIconStyle, ...style }}
+  />
+);
 
 const SESSION_DISMISS_KEY = 'architect:install-banner-dismissed';
 
@@ -73,8 +97,9 @@ const InstallBanner = () => {
     <Alert
       aria-label="Install Architect"
       variant="warning"
+      icon={InstallWarningIcon}
       density="compact"
-      className="border-outline bg-surface-1! text-surface-1-contrast! my-0 shrink-0 rounded-none! border-x-0 border-t-0 border-b px-6 py-2 shadow-none!"
+      className="border-outline my-0 shrink-0 rounded-none! border-x-0 border-t-0 border-b px-6 py-2 shadow-none!"
     >
       <AlertDescription className="flex items-center gap-3 text-sm">
         <span className="flex-1">{bannerMessage(deferredPrompt !== null)}</span>
@@ -93,7 +118,7 @@ const InstallBanner = () => {
           type="button"
           aria-label="Dismiss"
           onClick={dismiss}
-          className="text-muted hover:text-surface-1-contrast inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-current/10"
+          className="text-warning-contrast/70 hover:text-warning-contrast hover:bg-warning-contrast/10 inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors"
         >
           <X className="size-4" />
         </button>
