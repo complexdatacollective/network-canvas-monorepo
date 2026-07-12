@@ -2,6 +2,7 @@
 
 import { Menu, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import type { Variants } from 'motion/react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -78,11 +79,11 @@ function MobileLinks({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
-export function Header() {
+export function Header({ entranceVariants }: { entranceVariants?: Variants }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="relative z-50">
+    <motion.header variants={entranceVariants} className="relative z-50">
       <Container className="flex items-center justify-between py-6">
         <Link href="/" aria-label="Network Canvas home">
           <Logo />
@@ -130,6 +131,6 @@ export function Header() {
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </header>
+    </motion.header>
   );
 }
