@@ -124,8 +124,6 @@ from the alert and use warning-contrast utilities for the dismiss button.
 +          className="text-warning-contrast/70 hover:text-warning-contrast hover:bg-warning-contrast/10 inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors"
 ```
 
-````
-
 - [ ] **Step 4: Format and verify green**
 
 Run:
@@ -136,7 +134,7 @@ pnpm --filter @codaco/architect test -- src/components/__tests__/InstallBanner.t
 pnpm exec oxlint --fix apps/architect/src/components/InstallBanner.tsx apps/architect/src/components/__tests__/InstallBanner.test.tsx
 pnpm --filter @codaco/architect typecheck
 pnpm knip
-````
+```
 
 Expected: every command exits successfully with no new warnings or errors.
 
