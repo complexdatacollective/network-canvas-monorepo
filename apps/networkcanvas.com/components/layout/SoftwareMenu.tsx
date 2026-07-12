@@ -2,7 +2,8 @@
 
 import { NavigationMenu } from '@base-ui/react/navigation-menu';
 import { ChevronDown } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
+import type { Transition } from 'motion/react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -12,13 +13,6 @@ import type { Tool } from '~/lib/content';
 import { tools } from '~/lib/content';
 
 const MotionParagraph = motion.create(Paragraph);
-
-const gradients: Record<Tool['color'], string> = {
-  'sea-green': 'from-sea-green to-cerulean-blue',
-  'neon-coral': 'from-neon-coral to-purple-pizazz',
-  'slate-blue': 'from-slate-blue to-cyber-grape',
-  'cerulean-blue': 'from-cerulean-blue to-slate-blue',
-};
 
 const cardVariants = {
   rest: { y: 0 },
@@ -35,14 +29,36 @@ const descriptionVariants = {
   hover: { opacity: 1, height: 'auto', marginTop: 10 },
 };
 
+const panelVariants = {
+  rest: { height: '7.25rem' },
+  hover: { height: '100%' },
+};
+
 function SoftwareCard({ tool }: { tool: Tool }) {
+  const shouldReduceMotion = useReducedMotion();
+  const activeCardVariants = shouldReduceMotion
+    ? { rest: { y: 0 }, hover: { y: 0 } }
+    : cardVariants;
+  const activeImageVariants = shouldReduceMotion
+    ? { rest: { y: 0, scale: 1 }, hover: { y: 0, scale: 1 } }
+    : imageVariants;
+  const cardTransition: Transition = shouldReduceMotion
+    ? { duration: 0 }
+    : { type: 'spring', stiffness: 320, damping: 26 };
+  const imageTransition: Transition = shouldReduceMotion
+    ? { duration: 0 }
+    : { type: 'spring', stiffness: 220, damping: 20 };
+  const revealTransition: Transition = shouldReduceMotion
+    ? { duration: 0 }
+    : { duration: 0.28, ease: 'easeOut' };
+
   return (
     <NavigationMenu.Link
       href={tool.cta.href}
       target="_blank"
       rel="noreferrer"
       closeOnClick
-      className="focusable block rounded-[1.75rem]"
+      className="focusable group block rounded-[1.75rem]"
       // Drive the animation from the focusable element (the link) itself, so
       // keyboard focus triggers the same reveal as pointer hover. Framer Motion
       // propagates the active variant down to the motion children below.
@@ -56,25 +72,29 @@ function SoftwareCard({ tool }: { tool: Tool }) {
       }
     >
       <motion.div
-        variants={cardVariants}
-        transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-        className={cn(
-          'relative flex h-72 w-56 flex-col justify-end overflow-hidden rounded-[1.75rem] bg-linear-to-br p-6 text-white shadow-lg',
-          gradients[tool.color],
-        )}
+        variants={activeCardVariants}
+        transition={cardTransition}
+        className="bg-platinum text-cyber-grape relative flex h-72 w-56 flex-col justify-end overflow-hidden rounded-[1.75rem] p-6 shadow-lg"
       >
         <motion.div
-          variants={imageVariants}
-          transition={{ type: 'spring', stiffness: 220, damping: 20 }}
-          className="pointer-events-none absolute inset-x-5 top-5 select-none"
+          variants={activeImageVariants}
+          transition={imageTransition}
+          className="pointer-events-none absolute inset-x-0 top-0 select-none"
         >
-          <DeviceMockup variant={tool.variant} />
+          <DeviceMockup
+            variant={tool.variant}
+            className="tablet-landscape:p-0 rounded-none bg-transparent p-0 shadow-none [&_img]:object-cover [&>div]:rounded-none [&>div]:bg-transparent"
+          />
         </motion.div>
 
-        {/* Scrim keeps the title and description legible over the artwork. */}
-        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/30 via-black/5 to-transparent" />
+        <motion.div
+          aria-hidden
+          variants={panelVariants}
+          transition={revealTransition}
+          className="bg-platinum pointer-events-none absolute inset-x-0 bottom-0"
+        />
 
-        <div className="relative">
+        <div className="relative z-10">
           <Heading
             level="h3"
             margin="none"
@@ -85,8 +105,8 @@ function SoftwareCard({ tool }: { tool: Tool }) {
           <MotionParagraph
             margin="none"
             variants={descriptionVariants}
-            transition={{ duration: 0.28, ease: 'easeOut' }}
-            className="[display:-webkit-box] overflow-hidden text-sm leading-relaxed text-white/90 [-webkit-box-orient:vertical] [-webkit-line-clamp:4]"
+            transition={revealTransition}
+            className="text-cyber-grape/80 [display:-webkit-box] overflow-hidden text-sm leading-relaxed [-webkit-box-orient:vertical] [-webkit-line-clamp:4]"
           >
             {tool.description}
           </MotionParagraph>

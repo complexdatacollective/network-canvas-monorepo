@@ -56,7 +56,7 @@ export const tools: Tool[] = [
   {
     name: 'Architect',
     description:
-      'Turn your research ideas into engaging Network Canvas interviews. Architect gives your team a visual, approachable design workspace that runs entirely in the browser, with nothing to install.',
+      'A browser-based tool for visually designing Network Canvas interviews. Architect allows subject experts to focus on the design and implementation of their study, without needing to learn complex new technology.',
     cta: { label: 'Open Architect', href: externalLinks.architectApp },
     color: 'sea-green',
     variant: 'architect',
@@ -64,7 +64,7 @@ export const tools: Tool[] = [
   {
     name: 'Interviewer',
     description:
-      'Run polished, interviewer-led Network Canvas sessions on a desktop or tablet. Interviewer keeps the experience focused, responsive, and ready for fieldwork, even when connectivity is limited.',
+      'A browser-based app for administering Network Canvas interviews in the field. Interviewer provides minimalist, participant-centric interfaces for all the data collection tasks associated with personal network interviewing.',
     cta: { label: 'Open Interviewer', href: externalLinks.interviewerApp },
     color: 'neon-coral',
     variant: 'interviewer',
@@ -72,7 +72,7 @@ export const tools: Tool[] = [
   {
     name: 'Fresco',
     description:
-      'Take Network Canvas studies beyond the lab. Fresco lets participants complete interviews remotely while your team manages studies, participants, and data from one centralized web dashboard.',
+      'Bringing Network Canvas interviews to the web! Fresco is a pilot project that allows researchers to conduct Network Canvas interviews in a web browser.',
     cta: { label: 'Open Fresco', href: externalLinks.frescoApp },
     color: 'slate-blue',
     variant: 'fresco',
@@ -272,41 +272,6 @@ export const coreTeam: TeamMember[] = [
   },
 ];
 
-export const previousContractors = [
-  {
-    name: 'Mirfayz Karimoff',
-    note: 'Worked with the team during the Fresco and Studio projects.',
-  },
-  {
-    name: 'Jabulani Mpofu',
-    note: 'Worked with the team during the start of the Fresco and Studio projects.',
-  },
-  {
-    name: 'Jamie Chung',
-    note: 'Played an important role in bootstrapping the project, and establishing our styling system.',
-  },
-  {
-    name: 'Sunjay Kumar',
-    note: 'Implemented several features within Interviewer.',
-  },
-  {
-    name: 'Bryan Fox',
-    note: 'Made significant technical contributions across all aspects of our software.',
-  },
-  {
-    name: 'Rebecca Madsen',
-    note: 'A key long-term collaborator and expert in finding and fixing quality issues within the software.',
-  },
-  {
-    name: 'Steve Mckellar',
-    note: 'Senior developer and key long-term collaborator who played a vital role in designing and implementing Architect, as well as implementing testing strategies.',
-  },
-  {
-    name: 'Matt Meshulam',
-    note: 'Established our dev-ops workflow for deploying and managing our infrastructure.',
-  },
-];
-
 export const scientificAdvisors = [
   'jimi adams',
   "Rich D'Aquilla",
@@ -315,22 +280,6 @@ export const scientificAdvisors = [
   'Abel Kho',
   'Carl Latkin',
   'Brian Mustanski',
-];
-
-export const interns = [
-  {
-    name: 'Xiaowei Chen',
-    period: "Summer '22 Intern",
-    photo: '/images/team/xiaowei-chen.jpg',
-    note: 'Xiaowei (a Computer Science undergraduate at Northwestern) helped our team to explore enhancements to the user experience of Architect.',
-  },
-  {
-    name: 'Anika Wilsnack',
-    period: "Summer '23 Intern",
-    photo: '/images/team/anika-wilsnack.jpg',
-    note: 'Anika used her knowledge of psychology and music production to develop interaction sounds for the Interviewer app. She also helped create content for the Studio project website.',
-    href: 'https://linkedin.com/in/anikawilsnack',
-  },
 ];
 
 export const institutions = [

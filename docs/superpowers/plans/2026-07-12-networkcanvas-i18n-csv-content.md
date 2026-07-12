@@ -128,7 +128,7 @@ Turbo, oxlint, and oxfmt.
   treatments, and ordering; rendered guidance and labels move to messages.
 - `HeroIntro.tsx`, `Hero.tsx`, `NewsTicker.tsx`, `Tools.tsx`,
   `VideoSection.tsx`, `DesignPrinciples.tsx`, `Grants.tsx`,
-  `Publications.tsx`, `CoreTeam.tsx`, `Contractors.tsx`, `Institutions.tsx`,
+  `Publications.tsx`, `CoreTeam.tsx`, `ScientificAdvisors.tsx`, `Institutions.tsx`,
   `WhatNext.tsx`, and `MailingListForm.tsx` consume messages and/or CSV props.
 - `DeviceMockup.tsx` localizes the three descriptive screenshot alternatives
   without changing screenshot paths or framing.
@@ -693,7 +693,7 @@ git commit -m "refactor(website): render sections from CSV content"
   `NextIntlClientProvider`.
 - Message namespaces are exactly: `Metadata`, `LanguageSelector`, `Navigation`,
   `Hero`, `News`, `Tools`, `Video`, `Principles`, `Grants`, `Publications`,
-  `Team`, `Contractors`, `Institutions`, `WhatNext`, `MailingList`, `Footer`, and
+  `Team`, `ScientificAdvisors`, `Institutions`, `WhatNext`, `MailingList`, `Footer`, and
   `GetStarted`.
 - `lib/content.ts` retains IDs, product/proper names, links, colors, images, and
   variants; descriptions, labels, notes, periods, and body copy move to messages.
@@ -754,20 +754,20 @@ complete catalogs exist.
 
 Use the exact namespace responsibilities below:
 
-| Namespace      | Required nested keys                                                                                                             |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `Hero`         | `headline`, `description` rich text, `getStarted`, `keepScrolling`                                                               |
-| `News`         | `label`, `fullStory`                                                                                                             |
-| `Tools`        | `heading`, `introduction`, and `architect/interviewer/fresco.{description,action,screenshotAlt}`                                 |
-| `Video`        | `heading`, `description` rich text, `channel`, `title`, `watchLabel`                                                             |
-| `Principles`   | `heading`, `introduction`, and five IDs each with `title`, `paragraph1`, `paragraph2`                                            |
-| `Grants`       | `heading`, `introduction`, `previous`, `next`, `show` with `{number}`                                                            |
-| `Publications` | `heading`, `introduction` rich text, `submission` rich text, `article`, `thread`                                                 |
-| `Team`         | `heading`, `introduction`                                                                                                        |
-| `Contractors`  | section copy, previous heading, eight contractor notes, advisors heading, interns heading/introduction, two intern periods/notes |
-| `Institutions` | `heading`, two rich paragraphs, `prior`, `ongoing`                                                                               |
-| `WhatNext`     | `heading`, four card IDs each with `title`, `body`, and action where present                                                     |
-| `MailingList`  | `placeholder`, `emailLabel`, `submit`, `success`                                                                                 |
+| Namespace            | Required nested keys                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| `Hero`               | `headline`, `description` rich text, `getStarted`, `keepScrolling`                               |
+| `News`               | `label`, `fullStory`                                                                             |
+| `Tools`              | `heading`, `introduction`, and `architect/interviewer/fresco.{description,action,screenshotAlt}` |
+| `Video`              | `heading`, `description` rich text, `channel`, `title`, `watchLabel`                             |
+| `Principles`         | `heading`, `introduction`, and five IDs each with `title`, `paragraph1`, `paragraph2`            |
+| `Grants`             | `heading`, `introduction`, `previous`, `next`, `show` with `{number}`                            |
+| `Publications`       | `heading`, `introduction` rich text, `submission` rich text, `article`, `thread`                 |
+| `Team`               | `heading`, `introduction`                                                                        |
+| `ScientificAdvisors` | section heading; advisor names remain locale-neutral content                                     |
+| `Institutions`       | `heading`, two rich paragraphs, `prior`, `ongoing`                                               |
+| `WhatNext`           | `heading`, four card IDs each with `title`, `body`, and action where present                     |
+| `MailingList`        | `placeholder`, `emailLabel`, `submit`, `success`                                                 |
 
 Copy English values verbatim from the components and the corresponding rendered
 fields in `lib/content.ts`. Provide complete neutral Spanish translations. Keep

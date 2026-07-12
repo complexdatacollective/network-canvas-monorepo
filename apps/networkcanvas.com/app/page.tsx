@@ -1,11 +1,11 @@
 import { Footer } from '~/components/layout/Footer';
-import { Contractors } from '~/components/sections/Contractors';
 import { CoreTeam } from '~/components/sections/CoreTeam';
 import { DesignPrinciples } from '~/components/sections/DesignPrinciples';
 import { Grants } from '~/components/sections/Grants';
 import { HeroIntro } from '~/components/sections/HeroIntro';
 import { Institutions } from '~/components/sections/Institutions';
 import { Publications } from '~/components/sections/Publications';
+import { ScientificAdvisors } from '~/components/sections/ScientificAdvisors';
 import { Tools } from '~/components/sections/Tools';
 import { VideoSection } from '~/components/sections/VideoSection';
 import { WhatNext } from '~/components/sections/WhatNext';
@@ -26,7 +26,7 @@ export default function HomePage() {
         <Grants />
         <Publications />
         <CoreTeam />
-        <Contractors />
+        <ScientificAdvisors />
         <Institutions />
         <WhatNext />
 
