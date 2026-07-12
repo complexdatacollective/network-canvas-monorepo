@@ -19,6 +19,9 @@ pnpm --filter @codaco/interviewer test:e2e:update-snapshots
 pnpm --filter @codaco/interviewer test:e2e:headed
 ```
 
+`test:e2e:headed` may need a local Chromium binary installed once first:
+`pnpm --filter @codaco/interviewer exec playwright install chromium`.
+
 ## Layout
 
 ```

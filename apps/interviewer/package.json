@@ -24,7 +24,7 @@
     "chromatic": "chromatic --exit-once-uploaded",
     "test:e2e": "./e2e/scripts/run.sh",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --update-snapshots",
-    "test:e2e:headed": "pnpm build:web && playwright test --config e2e/playwright.config.ts --headed"
+    "test:e2e:headed": "pnpm turbo run build --filter=@codaco/interviewer^... && pnpm build:web && playwright test --config e2e/playwright.config.ts --headed"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",

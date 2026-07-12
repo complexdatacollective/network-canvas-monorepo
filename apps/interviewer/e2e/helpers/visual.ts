@@ -19,14 +19,13 @@ export type CaptureFn = (
 // against the committed Docker-generated baselines.
 export function makeCapture(page: Page): CaptureFn {
   const isCI = !!process.env.CI;
-  let stylesInjected = false;
 
   return async (name, options = {}) => {
     if (!isCI) return;
-    if (!stylesInjected) {
-      await page.addStyleTag({ content: VISUAL_STYLES });
-      stylesInjected = true;
-    }
+    // Re-inject on every capture, not just once per page instance: a
+    // page.reload()/second goto() drops the injected <style>, which would
+    // silently un-hide blobs/focus-rings for a later capture() in the same test.
+    await page.addStyleTag({ content: VISUAL_STYLES });
     await expect(page).toHaveScreenshot(`${name}.png`, {
       fullPage: options.fullPage ?? false,
       mask: options.mask,

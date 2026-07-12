@@ -33,6 +33,9 @@ export default defineConfig({
     actionTimeout: 10_000,
     navigationTimeout: 15_000,
     viewport: { width: 1920, height: 1080 },
+    // reducedMotion lives under contextOptions (not top-level, unlike its `use`
+    // siblings above) to work around a @playwright/test@1.61.1 TS2769 overload
+    // resolution bug — don't "simplify" this back, it reintroduces the type error.
     contextOptions: { reducedMotion: 'reduce' },
     // Block the service worker: deterministic tests, page.route works, no
     // SW-cache bleed between contexts. SW/offline behaviour is out of scope.
