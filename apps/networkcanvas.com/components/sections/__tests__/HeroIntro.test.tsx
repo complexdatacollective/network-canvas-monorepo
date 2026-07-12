@@ -93,25 +93,13 @@ describe('HeroIntro', () => {
     motionPreference.reduced = null;
   });
 
-  it('renders the header, hero, and token-colored background lights', () => {
+  it('renders the header and hero without owning the page background', () => {
     motionPreference.reduced = false;
     render(<HeroIntro />);
 
     expect(screen.getByText('Header content')).toBeInTheDocument();
     expect(screen.getByText('Hero content')).toBeInTheDocument();
-    expect(backgroundProps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        large: 1,
-        medium: 3,
-        small: 0,
-        colors: [
-          'oklch(var(--neon-coral))',
-          'oklch(var(--sea-green))',
-          'oklch(var(--cerulean-blue))',
-          'oklch(var(--mustard))',
-        ],
-      }),
-    );
+    expect(backgroundProps).not.toHaveBeenCalled();
   });
 
   it('renders visible static server markup before the motion preference resolves', () => {

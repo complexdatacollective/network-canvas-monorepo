@@ -49,7 +49,7 @@ export type Tool = {
   name: string;
   description: string;
   cta: { label: string; href: string };
-  color: 'sea-green' | 'neon-coral' | 'cerulean-blue';
+  color: 'sea-green' | 'neon-coral' | 'cerulean-blue' | 'slate-blue';
   variant: Variant;
 };
 
@@ -75,7 +75,7 @@ export const tools: Tool[] = [
     description:
       'Bringing Network Canvas interviews to the web! Fresco is a pilot project that allows researchers to conduct Network Canvas interviews in a web browser.',
     cta: { label: 'Learn More', href: externalLinks.fresco },
-    color: 'cerulean-blue',
+    color: 'slate-blue',
     variant: 'fresco',
   },
 ];

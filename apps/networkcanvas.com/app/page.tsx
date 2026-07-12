@@ -10,33 +10,30 @@ import { Publications } from '~/components/sections/Publications';
 import { Tools } from '~/components/sections/Tools';
 import { VideoSection } from '~/components/sections/VideoSection';
 import { WhatNext } from '~/components/sections/WhatNext';
-import { Blob } from '~/components/ui/Blob';
+import { PageBackground } from '~/components/ui/PageBackground';
 
 export default function HomePage() {
   return (
-    <main>
-      <HeroIntro />
+    <main className="homepage-body relative isolate">
+      <PageBackground />
+      <div className="relative z-10">
+        <HeroIntro />
 
-      <Tools />
-      <VideoSection />
+        <Tools />
+        <VideoSection />
 
-      <div className="relative overflow-hidden">
-        <Blob
-          src="/images/blobs/multi-2.svg"
-          className="top-20 -left-24 w-[26rem]"
-        />
         <DesignPrinciples />
+
+        <Projects />
+        <Grants />
+        <Publications />
+        <CoreTeam />
+        <Contractors />
+        <Institutions />
+        <WhatNext />
+
+        <Footer />
       </div>
-
-      <Projects />
-      <Grants />
-      <Publications />
-      <CoreTeam />
-      <Contractors />
-      <Institutions />
-      <WhatNext />
-
-      <Footer />
     </main>
   );
 }

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the hero-scoped lights with a subtle fixed background that uses animated `BackgroundBlobs` for normal motion and a static fallback for reduced motion.
+**Goal:** Replace the hero-scoped lights with a subtle fixed background that fades in animated `BackgroundBlobs` for normal motion without flashing a different fallback treatment.
 
 **Architecture:** A new client `PageBackground` component owns the hydration-safe motion branch and fixed decorative layer. `HomePage` composes it once behind one foreground wrapper, while `HeroIntro` retains only entrance sequencing.
 
@@ -14,7 +14,7 @@
 - Use a fixed viewport layer behind the entire page at 10% opacity.
 - Use existing theme colors only.
 - The background must be pointer-inert and hidden from assistive technology.
-- Reduced-motion and initial hydration must render a visible static fallback and no animated blob canvas.
+- Reduced-motion and initial hydration must render a transparent decorative layer and no animated blob canvas.
 - Do not modify `@codaco/art` or add a library changeset.
 
 ---
@@ -25,9 +25,12 @@
 
 - Create: `apps/networkcanvas.com/components/ui/PageBackground.tsx`
 - Create: `apps/networkcanvas.com/components/ui/__tests__/PageBackground.test.tsx`
+- Create: `apps/networkcanvas.com/components/ui/__tests__/PageBackgroundPlacement.test.tsx`
 - Modify: `apps/networkcanvas.com/components/sections/HeroIntro.tsx`
 - Modify: `apps/networkcanvas.com/components/sections/__tests__/HeroIntro.test.tsx`
 - Modify: `apps/networkcanvas.com/app/page.tsx`
+- Delete: `apps/networkcanvas.com/components/ui/Blob.tsx`
+- Delete: `apps/networkcanvas.com/public/images/blobs/multi-2.svg`
 
 **Interfaces:**
 
@@ -57,8 +60,8 @@ expect(backgroundBlobsProps).toHaveBeenCalledWith(
 );
 ```
 
-The reduced-motion test must assert that the static fallback remains and the
-mocked `BackgroundBlobs` is not rendered.
+The reduced-motion test must assert that neither a fallback nor the mocked
+`BackgroundBlobs` is rendered.
 
 - [ ] **Step 2: Verify the new test fails**
 
@@ -77,10 +80,10 @@ Create a client component that:
 - uses `useReducedMotion()` and a mount flag;
 - renders a fixed `aria-hidden` wrapper with `opacity-10`;
 - renders `BackgroundBlobs` only when mounted and normal motion is explicit;
-- passes a palette composed from `--neon-coral`, `--mustard`, `--sea-green`,
-  and `--cerulean-blue`;
-- otherwise renders a full-size static radial-gradient fallback using the same
-  tokens.
+- resolves `--neon-coral`, `--mustard`, `--sea-green`, and `--cerulean-blue`
+  into concrete colors before passing them to the canvas-based component;
+- fades the blob canvas in once the palette is ready and otherwise leaves the
+  layer transparent.
 
 - [ ] **Step 4: Remove the hero-scoped background**
 
@@ -100,7 +103,8 @@ In `app/page.tsx`, render:
 </main>
 ```
 
-Keep the existing `multi-2.svg` decoration around `DesignPrinciples`.
+Render `DesignPrinciples` directly and delete the mistaken legacy
+`multi-2.svg` decoration, its now-unused wrapper component, and the asset.
 
 - [ ] **Step 6: Verify tests and quality gates**
 
@@ -109,8 +113,8 @@ Run:
 ```bash
 pnpm --filter networkcanvas.com test
 pnpm --filter networkcanvas.com typecheck
-pnpm exec oxlint --fix apps/networkcanvas.com/components/ui/PageBackground.tsx apps/networkcanvas.com/components/ui/__tests__/PageBackground.test.tsx apps/networkcanvas.com/components/sections/HeroIntro.tsx apps/networkcanvas.com/components/sections/__tests__/HeroIntro.test.tsx apps/networkcanvas.com/app/page.tsx
-pnpm exec oxfmt apps/networkcanvas.com/components/ui/PageBackground.tsx apps/networkcanvas.com/components/ui/__tests__/PageBackground.test.tsx apps/networkcanvas.com/components/sections/HeroIntro.tsx apps/networkcanvas.com/components/sections/__tests__/HeroIntro.test.tsx apps/networkcanvas.com/app/page.tsx
+pnpm exec oxlint --fix apps/networkcanvas.com/components/ui/PageBackground.tsx apps/networkcanvas.com/components/ui/__tests__/PageBackground.test.tsx apps/networkcanvas.com/components/ui/__tests__/PageBackgroundPlacement.test.tsx apps/networkcanvas.com/components/sections/HeroIntro.tsx apps/networkcanvas.com/components/sections/__tests__/HeroIntro.test.tsx apps/networkcanvas.com/app/page.tsx
+pnpm exec oxfmt apps/networkcanvas.com/components/ui/PageBackground.tsx apps/networkcanvas.com/components/ui/__tests__/PageBackground.test.tsx apps/networkcanvas.com/components/ui/__tests__/PageBackgroundPlacement.test.tsx apps/networkcanvas.com/components/sections/HeroIntro.tsx apps/networkcanvas.com/components/sections/__tests__/HeroIntro.test.tsx apps/networkcanvas.com/app/page.tsx docs/superpowers/specs/2026-07-12-networkcanvas-pagewide-background-blobs-design.md docs/superpowers/plans/2026-07-12-networkcanvas-pagewide-background-blobs.md
 pnpm knip
 pnpm --filter networkcanvas.com build
 ```
@@ -127,6 +131,6 @@ errors or hydration warnings.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/networkcanvas.com/components/ui/PageBackground.tsx apps/networkcanvas.com/components/ui/__tests__/PageBackground.test.tsx apps/networkcanvas.com/components/sections/HeroIntro.tsx apps/networkcanvas.com/components/sections/__tests__/HeroIntro.test.tsx apps/networkcanvas.com/app/page.tsx docs/superpowers/specs/2026-07-12-networkcanvas-pagewide-background-blobs-design.md docs/superpowers/plans/2026-07-12-networkcanvas-pagewide-background-blobs.md
+git add apps/networkcanvas.com/components/ui/Blob.tsx apps/networkcanvas.com/components/ui/PageBackground.tsx apps/networkcanvas.com/components/ui/__tests__/PageBackground.test.tsx apps/networkcanvas.com/components/ui/__tests__/PageBackgroundPlacement.test.tsx apps/networkcanvas.com/components/sections/HeroIntro.tsx apps/networkcanvas.com/components/sections/__tests__/HeroIntro.test.tsx apps/networkcanvas.com/app/page.tsx apps/networkcanvas.com/public/images/blobs/multi-2.svg docs/superpowers/specs/2026-07-12-networkcanvas-pagewide-background-blobs-design.md docs/superpowers/plans/2026-07-12-networkcanvas-pagewide-background-blobs.md
 git commit -m "feat(website): add page-wide background blobs"
 ```

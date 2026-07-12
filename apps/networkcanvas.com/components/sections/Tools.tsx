@@ -12,6 +12,7 @@ const accents = {
     text: 'text-cerulean-blue',
     tone: 'cerulean-blue' as const,
   },
+  'slate-blue': { text: 'text-slate-blue', tone: 'slate-blue' as const },
 };
 
 export function Tools() {
@@ -30,7 +31,7 @@ export function Tools() {
           return (
             <Reveal
               key={tool.name}
-              className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 grid items-center gap-8"
+              className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 grid items-center gap-8 rounded-[2rem] bg-white/55 p-6 shadow-xl backdrop-blur-md"
             >
               <div className="tablet-landscape:order-1 order-2">
                 <h3
@@ -38,7 +39,7 @@ export function Tools() {
                 >
                   {tool.name}
                 </h3>
-                <p className="text-text/85 tablet-landscape:text-lg mt-4 text-base leading-relaxed">
+                <p className="text-cyber-grape tablet-landscape:text-lg mt-4 text-base leading-relaxed">
                   {tool.description}
                 </p>
                 <PillLink

@@ -20,7 +20,7 @@ export function Hero({
       <Container className="tablet-landscape:pb-28 pt-6 pb-20">
         <motion.h1
           variants={itemVariants}
-          className="font-heading text-cyber-grape tablet-landscape:text-[3.5rem] tablet-landscape:leading-[1.08] mx-auto max-w-4xl text-center text-4xl font-black"
+          className="font-heading text-cyber-grape tablet-portrait:text-[4rem] tablet-portrait:leading-[1.04] tablet-landscape:text-[4.5rem] tablet-landscape:leading-[1.02] desktop:text-[5rem] mx-auto max-w-5xl text-center text-4xl font-black"
         >
           Simplifying complex network data collection.
         </motion.h1>
@@ -30,7 +30,7 @@ export function Hero({
           className="tablet-landscape:mt-16 tablet-landscape:grid-cols-[1.1fr_0.9fr] tablet-landscape:gap-16 mt-12 grid items-center gap-10"
         >
           <HeroVideo />
-          <p className="text-text/85 tablet-landscape:text-left tablet-landscape:text-xl text-center text-lg leading-relaxed">
+          <p className="text-cyber-grape tablet-landscape:text-left tablet-landscape:text-xl text-center text-lg leading-relaxed">
             Network Canvas provides{' '}
             <strong className="text-cyber-grape">free and open-source</strong>{' '}
             software for surveying networks, designed around the needs of both

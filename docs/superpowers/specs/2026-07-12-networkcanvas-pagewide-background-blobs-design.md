@@ -16,8 +16,8 @@ hidden from assistive technology.
 
 `HeroIntro` will continue to own the entrance sequence, but it will no longer
 render a background component. The homepage will otherwise retain its existing
-section order, copy, and the separate `multi-2.svg` decoration around the
-Design Principles section.
+section order and copy. The mistaken legacy `multi-2.svg` decoration around the
+Design Principles section will be removed along with the asset.
 
 ## Appearance
 
@@ -27,15 +27,22 @@ with existing Network Canvas theme colors. The containing layer will use about
 fill the viewport and remain fixed during scrolling so the long homepage has
 consistent coverage without repeating the component per section.
 
+The page will remain transparent until the blob palette is ready, then the blob
+canvas will fade in. It will not use the radial-gradient light fallback. Product
+sections will use translucent, backdrop-blurred panels; Fresco will use the
+slate-blue accent. Homepage body copy will resolve from cyber-grape, and the hero
+headline will use larger tablet and desktop sizes matching the original visual
+weight.
+
 ## Accessibility and Motion
 
 The layer will use `aria-hidden`, disable pointer events, and remain behind all
 interactive content. `BackgroundBlobs` does not currently stop its canvas loop
 for reduced motion, so the page-level component will render the blob canvas only
 after normal motion is explicitly confirmed. Server rendering, the first client
-render, and reduced-motion mode will use a static token-colored radial-gradient
-fallback at the same opacity. This keeps hydration stable and the decorative
-background visible without adding a shared-library release change.
+render, and reduced-motion mode will keep the decorative layer transparent. This
+keeps hydration stable, avoids a flash of a different background treatment, and
+does not require a shared-library release change.
 
 ## Testing and Verification
 
