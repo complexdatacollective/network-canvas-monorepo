@@ -1,7 +1,19 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { DeviceMockup, type Variant } from '../DeviceMockup';
+
+vi.mock('next/image', () => ({
+  default: ({
+    alt,
+    className,
+    src,
+  }: {
+    alt: string;
+    className?: string;
+    src: string;
+  }) => <img src={src} alt={alt} className={className} />,
+}));
 
 const cases: Array<{ variant: Variant; alt: string; src: string }> = [
   {
@@ -26,5 +38,17 @@ describe('DeviceMockup', () => {
     render(<DeviceMockup variant={variant} />);
 
     expect(screen.getByRole('img', { name: alt })).toHaveAttribute('src', src);
+  });
+
+  it('keeps the screenshot viewport at 4:3 without cropping', () => {
+    const { container } = render(<DeviceMockup />);
+
+    const image = within(container).getByRole('img', {
+      name: 'Interviewer home screen showing available Network Canvas protocols',
+    });
+
+    expect(image).toHaveClass('object-contain');
+    expect(image.parentElement).toHaveClass('aspect-4/3', 'w-full');
+    expect(image.parentElement?.parentElement).not.toHaveClass('aspect-4/3');
   });
 });

@@ -1,9 +1,57 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, type ReactNode } from 'react';
+import { hydrateRoot } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HeroIntro } from '../HeroIntro';
 
 const backgroundProps = vi.hoisted(() => vi.fn());
+const motionPreference = vi.hoisted<{ reduced: boolean | null }>(() => ({
+  reduced: null,
+}));
+const animationControls = vi.hoisted(() => ({
+  set: vi.fn(),
+  start: vi.fn(() => Promise.resolve()),
+}));
+
+type MotionDivProps = {
+  animate?: unknown;
+  children: ReactNode;
+  className?: string;
+  initial?: boolean | string;
+  variants?: unknown;
+};
+
+function formatInitial(initial: boolean | string | undefined) {
+  return initial === false ? 'false' : (initial ?? 'none');
+}
+
+function MotionDiv({
+  animate,
+  children,
+  className,
+  initial,
+  variants,
+}: MotionDivProps) {
+  return (
+    <div
+      className={className}
+      data-animate={animate === animationControls ? 'controls' : 'none'}
+      data-initial={formatInitial(initial)}
+      data-motion-root
+      data-variants={variants ? 'active' : 'none'}
+    >
+      {children}
+    </div>
+  );
+}
+
+vi.mock('motion/react', () => ({
+  motion: { div: MotionDiv },
+  useAnimationControls: () => animationControls,
+  useReducedMotion: () => motionPreference.reduced,
+}));
 
 vi.mock('@codaco/art', () => ({
   BackgroundLights: (props: unknown) => {
@@ -13,15 +61,40 @@ vi.mock('@codaco/art', () => ({
 }));
 
 vi.mock('~/components/layout/Header', () => ({
-  Header: () => <div>Header content</div>,
+  Header: ({ entranceVariants }: { entranceVariants?: unknown }) => (
+    <div data-header-variants={entranceVariants ? 'active' : 'none'}>
+      Header content
+    </div>
+  ),
 }));
 
 vi.mock('~/components/sections/Hero', () => ({
-  Hero: () => <div>Hero content</div>,
+  Hero: ({
+    containerVariants,
+    itemVariants,
+  }: {
+    containerVariants?: unknown;
+    itemVariants?: unknown;
+  }) => (
+    <div
+      data-hero-container-variants={containerVariants ? 'active' : 'none'}
+      data-hero-item-variants={itemVariants ? 'active' : 'none'}
+    >
+      Hero content
+    </div>
+  ),
 }));
 
 describe('HeroIntro', () => {
+  beforeEach(() => {
+    animationControls.set.mockClear();
+    animationControls.start.mockClear();
+    backgroundProps.mockClear();
+    motionPreference.reduced = null;
+  });
+
   it('renders the header, hero, and token-colored background lights', () => {
+    motionPreference.reduced = false;
     render(<HeroIntro />);
 
     expect(screen.getByText('Header content')).toBeInTheDocument();
@@ -39,5 +112,123 @@ describe('HeroIntro', () => {
         ],
       }),
     );
+  });
+
+  it('renders visible static server markup before the motion preference resolves', () => {
+    const serverMarkup = renderToString(<HeroIntro />);
+    const container = document.createElement('div');
+    container.innerHTML = serverMarkup;
+
+    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
+      'data-initial',
+      'false',
+    );
+    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
+      'data-animate',
+      'controls',
+    );
+    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
+      'data-variants',
+      'active',
+    );
+    expect(container.querySelector('[data-header-variants]')).toHaveAttribute(
+      'data-header-variants',
+      'active',
+    );
+    expect(
+      container.querySelector('[data-hero-container-variants]'),
+    ).toHaveAttribute('data-hero-container-variants', 'active');
+    expect(
+      container.querySelector('[data-hero-item-variants]'),
+    ).toHaveAttribute('data-hero-item-variants', 'active');
+  });
+
+  it('hydrates reduced-motion users without activating entrance motion', async () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<HeroIntro />);
+    const serverMotionRoot = container.querySelector('[data-motion-root]');
+    document.body.append(container);
+    motionPreference.reduced = true;
+    const recoverableError = vi.fn();
+
+    const root = hydrateRoot(container, <HeroIntro />, {
+      onRecoverableError: recoverableError,
+    });
+    await act(async () => {});
+
+    expect(recoverableError).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-motion-root]')).toBe(
+      serverMotionRoot,
+    );
+    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
+      'data-animate',
+      'controls',
+    );
+    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
+      'data-variants',
+      'active',
+    );
+    expect(container.querySelector('[data-header-variants]')).toHaveAttribute(
+      'data-header-variants',
+      'active',
+    );
+    expect(
+      container.querySelector('[data-hero-container-variants]'),
+    ).toHaveAttribute('data-hero-container-variants', 'active');
+    expect(
+      container.querySelector('[data-hero-item-variants]'),
+    ).toHaveAttribute('data-hero-item-variants', 'active');
+    expect(animationControls.set).not.toHaveBeenCalled();
+    expect(animationControls.start).not.toHaveBeenCalled();
+
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it('activates the coordinated entrance only after normal-motion hydration', async () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<HeroIntro />);
+    const serverMotionRoot = container.querySelector('[data-motion-root]');
+    document.body.append(container);
+    motionPreference.reduced = false;
+    const recoverableError = vi.fn();
+
+    const root = hydrateRoot(container, <HeroIntro />, {
+      onRecoverableError: recoverableError,
+    });
+    await act(async () => {});
+
+    expect(recoverableError).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-motion-root]')).toBe(
+      serverMotionRoot,
+    );
+    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
+      'data-animate',
+      'controls',
+    );
+    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
+      'data-variants',
+      'active',
+    );
+    expect(container.querySelector('[data-header-variants]')).toHaveAttribute(
+      'data-header-variants',
+      'active',
+    );
+    expect(
+      container.querySelector('[data-hero-container-variants]'),
+    ).toHaveAttribute('data-hero-container-variants', 'active');
+    expect(
+      container.querySelector('[data-hero-item-variants]'),
+    ).toHaveAttribute('data-hero-item-variants', 'active');
+    expect(animationControls.set).toHaveBeenCalledOnce();
+    expect(animationControls.set).toHaveBeenCalledWith('hidden');
+    expect(animationControls.start).toHaveBeenCalledOnce();
+    expect(animationControls.start).toHaveBeenCalledWith('visible');
+    expect(animationControls.set).toHaveBeenCalledBefore(
+      animationControls.start,
+    );
+
+    await act(async () => root.unmount());
+    container.remove();
   });
 });

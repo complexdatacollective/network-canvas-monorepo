@@ -31,17 +31,17 @@ export function DeviceMockup({
   return (
     <div
       className={cn(
-        'bg-cyber-grape tablet-landscape:p-4 aspect-4/3 w-full rounded-[1.75rem] p-3 shadow-2xl',
+        'bg-cyber-grape tablet-landscape:p-4 w-full rounded-[1.75rem] p-3 shadow-2xl',
         className,
       )}
     >
-      <div className="relative h-full overflow-hidden rounded-[1.25rem] bg-black/10">
+      <div className="relative aspect-4/3 w-full overflow-hidden rounded-[1.25rem] bg-black/10">
         <Image
           fill
           src={screenshot.src}
           alt={screenshot.alt}
           sizes="(min-width: 1024px) 50vw, 100vw"
-          className="object-cover"
+          className="object-contain"
         />
       </div>
     </div>
