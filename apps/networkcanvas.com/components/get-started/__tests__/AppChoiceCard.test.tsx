@@ -39,7 +39,10 @@ describe('AppChoiceCard', () => {
   it('uses the restrained Fresco treatment declared by app data', () => {
     render(<AppChoiceCard app={fresco} />);
 
-    expect(screen.getByRole('article')).toHaveClass('bg-slate-blue/10');
+    expect(screen.getByRole('article')).toHaveClass(
+      'bg-slate-blue/10',
+      'backdrop-blur-md',
+    );
   });
 
   it('gives each Classic platform link an app-specific accessible name', () => {

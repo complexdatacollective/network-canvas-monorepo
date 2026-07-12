@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { AppChoiceCard } from '~/components/get-started/AppChoiceCard';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
@@ -31,9 +33,11 @@ const pathContent = {
 export function WorkflowPath({
   workflow,
   apps,
+  compatibilityNotice,
 }: {
   workflow: Workflow;
   apps: readonly AppRecord[];
+  compatibilityNotice?: ReactNode;
 }) {
   const content = pathContent[workflow];
 
@@ -53,6 +57,7 @@ export function WorkflowPath({
         <p className="text-text/75 mt-5 text-lg text-pretty">
           {content.description}
         </p>
+        {compatibilityNotice}
       </Reveal>
 
       <div className="tablet-landscape:grid-cols-12 mt-12 grid grid-cols-1 gap-6">

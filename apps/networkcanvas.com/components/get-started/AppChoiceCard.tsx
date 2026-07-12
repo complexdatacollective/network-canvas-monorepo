@@ -8,7 +8,7 @@ type AppRecord = (typeof webApps)[number] | (typeof classicApps)[number];
 
 const treatmentClasses = {
   featured: 'bg-cyber-grape text-white elevation-high',
-  fresco: 'bg-slate-blue/10 text-cyber-grape elevation-low',
+  fresco: 'bg-slate-blue/10 text-cyber-grape backdrop-blur-md elevation-low',
   classic: 'bg-white/55 text-cyber-grape backdrop-blur-md elevation-low',
 };
 

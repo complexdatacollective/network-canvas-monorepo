@@ -28,9 +28,14 @@ export default function GetStartedPage() {
       <PageBackground />
       <div className="relative z-10">
         <GetStartedIntro />
-        <WorkflowPath workflow="design" apps={designApps} />
+        <WorkflowPath
+          workflow="design"
+          apps={designApps}
+          compatibilityNotice={
+            <CompatibilityNotice notice={compatibilityWarning} />
+          }
+        />
         <WorkflowPath workflow="collect" apps={collectApps} />
-        <CompatibilityNotice notice={compatibilityWarning} />
         <Footer />
       </div>
     </main>

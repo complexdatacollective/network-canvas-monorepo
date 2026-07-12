@@ -8,12 +8,14 @@ import { CompatibilityNotice } from '../CompatibilityNotice';
 afterEach(cleanup);
 
 describe('CompatibilityNotice', () => {
-  it('renders the approved informational warning copy', () => {
+  it('renders the approved copy as a polite warning status', () => {
     render(<CompatibilityNotice notice={compatibilityWarning} />);
 
-    expect(screen.getByText(compatibilityWarning.title)).toBeInTheDocument();
-    expect(
-      screen.getByText(compatibilityWarning.description),
-    ).toBeInTheDocument();
+    const warning = screen.getByRole('status');
+
+    expect(warning).toHaveTextContent('Classic compatibility is one-way.');
+    expect(warning).toHaveTextContent(
+      'Architect can upgrade a schema 7 protocol to schema 8, but schema 8 protocols cannot be opened in Classic apps. Keep the original file if your study still depends on Classic.',
+    );
   });
 });

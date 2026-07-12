@@ -77,6 +77,9 @@ describe('Get Started page', () => {
 
     expect(screen.getByText('Recommended for new studies')).toBeInTheDocument();
     expect(screen.getByText('In person · Recommended')).toBeInTheDocument();
+    expect(
+      screen.getByText('Recommended for large teams or remote administration'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Classic · Maintenance mode')).toBeInTheDocument();
     expect(screen.getByText('Classic · Existing studies')).toBeInTheDocument();
   });
@@ -108,15 +111,42 @@ describe('Get Started page', () => {
     }
   });
 
-  it('includes the one-way compatibility warning and no standalone Server app', () => {
+  it('places the one-way compatibility warning within the Design path', () => {
     render(<GetStartedPage />);
 
+    const warning = screen.getByRole('status');
+    const designDescription = screen.getByText(
+      'Build a new browser-based study in Architect, or keep a schema 7 workflow in Architect Classic when compatibility requires it.',
+    );
+    const architectHeading = screen.getByRole('heading', {
+      level: 3,
+      name: 'Architect',
+    });
+    const collect = document.querySelector<HTMLElement>('#collect');
+
+    if (!collect) {
+      throw new Error('Expected the Collect workflow section to be present.');
+    }
+
+    expect(warning).toHaveTextContent('Classic compatibility is one-way.');
     expect(
-      screen.getByText('Classic compatibility is one-way.'),
-    ).toBeInTheDocument();
+      designDescription.compareDocumentPosition(warning) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(
-      screen.getByText(/schema 8 protocols cannot be opened in Classic apps/i),
-    ).toBeInTheDocument();
+      warning.compareDocumentPosition(architectHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      collect.compareDocumentPosition(warning) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeFalsy();
+    expect(within(collect).queryByRole('status')).toBeNull();
+  });
+
+  it('does not include a standalone Server app', () => {
+    render(<GetStartedPage />);
+
     expect(
       screen.queryByRole('heading', { name: /server/i }),
     ).not.toBeInTheDocument();
