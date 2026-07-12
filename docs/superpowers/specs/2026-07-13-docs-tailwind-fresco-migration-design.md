@@ -22,7 +22,7 @@ Resolved with the maintainer 2026-07-13:
 
 1. **Visual intent — full adoption.** Adopt the shared theme wholesale: Inclusive Sans + Nunito fonts, oklch palette, shared dark mode. No local theme fork, no brand-override layer. Visible change to fonts and dark mode is accepted and intended (design-system consistency).
 2. **Dark mode — author canonical dark in the shared package.** Rewrite the broken `[data-theme='dark']` block in `tooling/tailwind/fresco/themes/default.css` into a real, oklch-derived dark variant, built the way the light theme is (from `--brand`/`--base-hue`). The docs site's current dark palette is the visual quality bar. This benefits the whole system; docs is its first consumer.
-3. **Delivery — single PR.** One PR carries both the shared dark-theme change and the docs migration. `@codaco/documentation` is `private: true` and needs no changeset; only `@codaco/tailwind-config` (published, v1.0.2) needs one → a single **minor** library changeset. No app+library changeset conflict because the app side needs no changeset at all. Internal ordering: (1) shared dark theme → (2) docs foundation swap → (3) component migration.
+3. **Delivery — single PR.** One PR carries both the shared dark-theme change and the docs migration, with **two separate changeset files**: `@codaco/tailwind-config` **minor** (library) and `@codaco/documentation` **minor** (gated product — in the changeset `ignore` list but releases with normal semver via the "Release apps & documentation" PR). The lanes must not be combined in one file (`check:changesets` rejects mixed changesets), but two single-lane files in one PR is allowed. Internal ordering: (1) shared dark theme → (2) docs foundation swap → (3) component migration.
 4. **Component reuse — replace where a genuine equivalent exists, keep docs-unique machinery.** Local generic primitives (`components/ui/*`) are replaced by fresco-ui at call sites; docs-flavoured callouts keep their MDX-author-facing API but are rebuilt on fresco-ui primitives; genuinely unique machinery (the MDX renderer, sidebar/TOC/search, workflow/app-switch nav, syntax-highlighted code blocks, `@codaco/art` blobs) stays local and is only re-themed to fresco tokens.
 
 ## Architecture
@@ -167,7 +167,7 @@ Executed via the multi-agent Workflow tool; the orchestrator stays lean and dele
 
 ## Delivery
 
-Single branch (`claude/docs-tailwind-fresco-migration-2beadc`), single PR. One **minor** changeset for `@codaco/tailwind-config` (library lane — adds the canonical dark theme). No changeset for `@codaco/documentation` (private). Shipped via the repo's PR conventions (`shipping-a-pull-request`) after all gates pass.
+Single branch (`claude/docs-tailwind-fresco-migration-2beadc`), single PR, **two** changeset files (never mixed in one file — `check:changesets` rejects that): `@codaco/tailwind-config` **minor** (library lane — adds the canonical dark theme) and `@codaco/documentation` **minor** (gated-product lane — `documentation` is in the changeset `ignore` list but **does** release with normal semver via the "Release apps & documentation" PR, so it takes a real-semver changeset). Shipped via the repo's PR conventions (`shipping-a-pull-request`) after all gates pass.
 
 ## Risks and accepted changes
 

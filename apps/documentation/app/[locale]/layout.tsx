@@ -1,4 +1,5 @@
-import '@fontsource-variable/quicksand';
+import '@codaco/tailwind-config/fonts/inclusive-sans.css';
+import '@codaco/tailwind-config/fonts/nunito.css';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import type { Metadata } from 'next';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
@@ -75,7 +76,7 @@ export default async function MainLayout(props: MainLayoutProps) {
           <ThemeProvider
             enableSystem
             enableColorScheme
-            attribute="class"
+            attribute="data-theme"
             storageKey="nc-docs-site"
           >
             <NextIntlClientProvider

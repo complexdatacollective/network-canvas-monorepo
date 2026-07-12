@@ -676,6 +676,9 @@ importers:
       '@codaco/art':
         specifier: workspace:*
         version: link:../../packages/art
+      '@codaco/fresco-ui':
+        specifier: workspace:*
+        version: link:../../packages/fresco-ui
       '@codaco/interface-images':
         specifier: workspace:*
         version: link:../../packages/interface-images
@@ -685,15 +688,15 @@ importers:
       '@codaco/sample-protocol':
         specifier: workspace:*
         version: link:../../packages/sample-protocol
+      '@codaco/tailwind-config':
+        specifier: workspace:*
+        version: link:../../tooling/tailwind
       '@docsearch/css':
         specifier: ^4.6.3
         version: 4.6.3
       '@docsearch/react':
         specifier: ^4.6.3
         version: 4.6.3(@algolia/client-search@5.40.1)(@types/react@19.2.17)(algoliasearch@5.40.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(search-insights@2.17.3)
-      '@fontsource-variable/quicksand':
-        specifier: ^5.2.10
-        version: 5.2.10
       '@next/bundle-analyzer':
         specifier: 'catalog:'
         version: 16.2.10
@@ -3917,9 +3920,6 @@ packages:
 
   '@fontsource-variable/nunito@5.2.7':
     resolution: {integrity: sha512-2N8QhatkyKgSUbAGZO2FYLioxA32+RyI1EplVLawbpkGjUeui9Qg9VMrpkCaik1ydjFjfLV+kzQ0cGEsMrMenQ==}
-
-  '@fontsource-variable/quicksand@5.2.10':
-    resolution: {integrity: sha512-1uzkzGDwWgtFnxquAXuD7fZV9wHkALb49UPzRXxGTVeeLsNrGnIU0O/pcz6m1U7RDtpHz2qx77JhCpKaq7FrUg==}
 
   '@formatjs/fast-memoize@3.1.5':
     resolution: {integrity: sha512-KLi3fan6WnCHmigd9pmEEN8Hid0v4wiFBW576M/d07KMWYecf1CvyMI3n34vCmHT4AoVqG2n702kiHbXjzZX2A==}
@@ -16769,8 +16769,6 @@ snapshots:
   '@fontsource-variable/inclusive-sans@5.2.8': {}
 
   '@fontsource-variable/nunito@5.2.7': {}
-
-  '@fontsource-variable/quicksand@5.2.10': {}
 
   '@formatjs/fast-memoize@3.1.5': {}
 

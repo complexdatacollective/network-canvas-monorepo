@@ -1,4 +1,5 @@
-import '@fontsource-variable/quicksand';
+import '@codaco/tailwind-config/fonts/inclusive-sans.css';
+import '@codaco/tailwind-config/fonts/nunito.css';
 import Link from '~/components/Link';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import { Divider } from '~/components/ui/Divider';
@@ -10,7 +11,7 @@ export default function NotFound() {
   return (
     <html lang="en" className="font-sans antialiased">
       <ThemeProvider
-        attribute="class"
+        attribute="data-theme"
         enableSystem
         enableColorScheme
         storageKey="nc-docs-site"
