@@ -23,8 +23,8 @@ type InstallWarningIconStyle = CSSProperties & {
 };
 
 const installWarningIconStyle: InstallWarningIconStyle = {
-  '--warning-icon-accent': 'var(--color-neon-coral)',
-  '--warning-icon-accent-dark': 'var(--color-neon-coral-dark)',
+  '--warning-icon-accent': 'oklch(var(--neon-coral))',
+  '--warning-icon-accent-dark': 'oklch(var(--neon-coral--dark))',
 };
 
 const InstallWarningIcon = ({ style, ...props }: SVGProps<SVGSVGElement>) => (

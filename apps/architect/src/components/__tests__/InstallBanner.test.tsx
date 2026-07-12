@@ -92,8 +92,8 @@ describe('InstallBanner', () => {
       warningIcon?.querySelector('.fill-platinum-dark'),
     ).toBeInTheDocument();
     expect(warningIcon).toHaveStyle({
-      '--warning-icon-accent': 'var(--color-neon-coral)',
-      '--warning-icon-accent-dark': 'var(--color-neon-coral-dark)',
+      '--warning-icon-accent': 'oklch(var(--neon-coral))',
+      '--warning-icon-accent-dark': 'oklch(var(--neon-coral--dark))',
     });
   });
 
