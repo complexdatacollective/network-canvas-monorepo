@@ -1,11 +1,11 @@
 import { isEmpty } from 'es-toolkit/compat';
-import { compose, withHandlers } from 'react-recompose';
-import { connect, type ConnectedProps } from 'react-redux';
+import { useCallback, type ComponentType, type KeyboardEvent } from 'react';
 import { change } from 'redux-form';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { VariableType } from '@codaco/protocol-validation';
 
-import { openDialog } from '../../ducks/modules/dialogs';
+import { useAppDispatch } from '../../ducks/hooks';
 import {
   createVariableAsync,
   deleteVariableAsync,
@@ -13,27 +13,13 @@ import {
 import { ensureError } from '../../utils/ensureError';
 import safeName from '../../utils/safeName';
 
-const mapDispatchToProps = {
-  createVariable: createVariableAsync,
-  deleteVariable: deleteVariableAsync,
-  changeField: change,
-  showDialog: openDialog,
-};
-
-const connector = connect(null, mapDispatchToProps);
-
-const normalizeKeyDown = (event: React.KeyboardEvent) => {
+const normalizeKeyDown = (event: KeyboardEvent) => {
   const check = safeName(event.key);
 
   if (isEmpty(check)) {
     event.preventDefault();
   }
 };
-
-// ConnectedProps resolves the object-form thunk creators to their dispatched
-// form — functions returning the thunk promise (with `.unwrap()`) — matching
-// react-redux's runtime binding.
-type ConnectedDispatchProps = ConnectedProps<typeof connector>;
 
 type OwnProps = {
   type: string;
@@ -43,84 +29,100 @@ type OwnProps = {
 
 type Entity = 'node' | 'edge' | 'ego';
 
-type HandlerProps = ConnectedDispatchProps & OwnProps;
-
-const createVariableHandler = {
-  handleCreateVariable:
-    ({
-      changeField,
-      createVariable,
-      showDialog,
-      type,
-      entity,
-      form,
-    }: HandlerProps) =>
-    async (
-      variableName: string,
-      variableType?: VariableType,
-      field?: string,
-    ) => {
-      const withType = variableType ? { type: variableType } : {};
-
-      const configuration = {
-        name: variableName,
-        ...withType,
-      };
-
-      let variable: string;
-      try {
-        // createVariableAsync rejects on duplicate/invalid names; unwrap()
-        // re-throws that error instead of resolving to a rejected action whose
-        // payload is undefined.
-        ({ variable } = await createVariable({
-          entity: entity as Entity,
-          type,
-          configuration,
-        }).unwrap());
-      } catch (e) {
-        // unwrap() can reject with a serialized error object (a plain object
-        // carrying a string `message`) rather than an Error instance, which
-        // ensureError would stringify instead of surface. Prefer that message.
-        const message =
-          typeof e === 'object' &&
-          e !== null &&
-          'message' in e &&
-          typeof e.message === 'string'
-            ? e.message
-            : ensureError(e).message;
-        void showDialog({
-          type: 'Notice',
-          title: 'Could not create variable',
-          message,
-        });
-        return undefined;
-      }
-
-      // If we supplied a field, update it with the result of the variable creation
-      if (field) {
-        changeField(form, field, variable);
-      }
-
-      return variable;
-    },
-  handleDeleteVariable:
-    ({ deleteVariable, type, entity }: HandlerProps) =>
-    (variableId: string) =>
-      deleteVariable({ entity: entity as Entity, type, variable: variableId }),
-  normalizeKeyDown: () => normalizeKeyDown,
+type InjectedProps = {
+  handleCreateVariable: (
+    variableName: string,
+    variableType?: VariableType,
+    field?: string,
+  ) => Promise<string | undefined>;
+  handleDeleteVariable: (variableId: string) => void;
+  normalizeKeyDown: typeof normalizeKeyDown;
 };
 
-/**
- * usage:
- * withCreateVariableHandler(MyComponent)
- *
- * MyComponent = (handleCreateVariable) => (
- *   <div handler={() => handleCreateVariable(value, type)} />
- * )
- */
-const withCreateVariableHandler = compose(
-  connector,
-  withHandlers<HandlerProps, object>(createVariableHandler),
-);
+const withCreateVariableHandler =
+  <P extends OwnProps>(WrappedComponent: ComponentType<P & InjectedProps>) =>
+  (props: P) => {
+    const dispatch = useAppDispatch();
+    const { openDialog } = useDialog();
+    const { type, entity, form } = props;
+
+    const handleCreateVariable = useCallback(
+      async (
+        variableName: string,
+        variableType?: VariableType,
+        field?: string,
+      ) => {
+        const withType = variableType ? { type: variableType } : {};
+
+        const configuration = {
+          name: variableName,
+          ...withType,
+        };
+
+        let variable: string;
+        try {
+          // createVariableAsync rejects on duplicate/invalid names; unwrap()
+          // re-throws that error instead of resolving to a rejected action whose
+          // payload is undefined.
+          ({ variable } = await dispatch(
+            createVariableAsync({
+              entity: entity as Entity,
+              type,
+              configuration,
+            }),
+          ).unwrap());
+        } catch (e) {
+          // unwrap() can reject with a serialized error object (a plain object
+          // carrying a string `message`) rather than an Error instance, which
+          // ensureError would stringify instead of surface. Prefer that message.
+          const message =
+            typeof e === 'object' &&
+            e !== null &&
+            'message' in e &&
+            typeof e.message === 'string'
+              ? e.message
+              : ensureError(e).message;
+          void openDialog({
+            type: 'acknowledge',
+            intent: 'warning',
+            title: 'Could not create variable',
+            description: message,
+            actions: { primary: { label: 'OK', value: true } },
+          });
+          return undefined;
+        }
+
+        // If we supplied a field, update it with the result of the variable creation
+        if (field) {
+          dispatch(change(form, field, variable));
+        }
+
+        return variable;
+      },
+      [dispatch, entity, form, openDialog, type],
+    );
+
+    const handleDeleteVariable = useCallback(
+      (variableId: string) => {
+        void dispatch(
+          deleteVariableAsync({
+            entity: entity as Entity,
+            type,
+            variable: variableId,
+          }),
+        );
+      },
+      [dispatch, entity, type],
+    );
+
+    return (
+      <WrappedComponent
+        {...props}
+        handleCreateVariable={handleCreateVariable}
+        handleDeleteVariable={handleDeleteVariable}
+        normalizeKeyDown={normalizeKeyDown}
+      />
+    );
+  };
 
 export default withCreateVariableHandler;

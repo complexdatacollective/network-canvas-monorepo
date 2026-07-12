@@ -80,6 +80,7 @@ describe('launchPreview', () => {
         startStage: 2,
         useSyntheticData: true,
         skipLogicBypassed: false,
+        memoryAssets: [],
       },
       window.location.origin,
     );

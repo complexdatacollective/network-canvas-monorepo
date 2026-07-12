@@ -2,7 +2,11 @@ import { render } from '@testing-library/react';
 import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
 import { PedigreeSnapshotDocument } from '../PedigreeSnapshotDocument';
@@ -21,7 +25,14 @@ const variableConfig: VariableConfig = {
 };
 
 const nodes = new Map<string, NcNode>([
-  ['ego', { _uid: 'ego', type: 'person', attributes: { isEgo: true } }],
+  [
+    'ego',
+    {
+      _uid: 'ego',
+      type: 'person',
+      [entityAttributesProperty]: { isEgo: true },
+    },
+  ],
 ]);
 
 const renderNode = (node: NcNode & { id: string }) => (

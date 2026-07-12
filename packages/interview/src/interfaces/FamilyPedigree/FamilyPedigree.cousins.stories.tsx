@@ -6,6 +6,19 @@ import SuperJSON from 'superjson';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
 
+import {
+  clickDialogPrimary,
+  clickGetStarted,
+  clickMenuItem,
+  clickNext,
+  getMenuItem,
+  openNodeContextMenu,
+  selectEgoSex,
+  setFieldInput,
+  setPartnership,
+  WIZARD_TIMEOUT,
+} from './familyPedigreeWizardHelpers';
+
 /**
  * Shared protocol setup: mirrors the structure in FamilyPedigree.stories.tsx so
  * the pedigree interface can resolve all required stage variables.
@@ -276,110 +289,6 @@ export const FirstCousinRepresentation: Story = {
 //   7. Assert Emma appears on the pedigree canvas.
 // ---------------------------------------------------------------------------
 
-const WIZARD_TIMEOUT = { timeout: 8000 };
-
-async function clickGetStarted() {
-  const btn = await screen.findByRole('button', {
-    name: 'Build family pedigree',
-  });
-  await userEvent.click(btn);
-  await screen.findByRole('dialog', {}, WIZARD_TIMEOUT);
-}
-
-async function findContinueButton() {
-  const buttons = await screen.findAllByRole('button', {});
-  const btn = buttons.find(
-    (b) => b.textContent === 'Finish' || b.textContent === 'Continue',
-  );
-  if (!btn) throw new Error('No Finish or Continue button found');
-  return btn;
-}
-
-async function clickContinue() {
-  await userEvent.click(await findContinueButton());
-}
-
-async function getDialog() {
-  return screen.findByRole('dialog', {}, WIZARD_TIMEOUT);
-}
-
-async function setFieldInput(fieldName: string, value: boolean | string) {
-  const dialog = await getDialog();
-  const container = dialog.querySelector(
-    `[data-field-name="${CSS.escape(fieldName)}"]`,
-  );
-  if (!container)
-    throw new Error(`No field found with data-field-name="${fieldName}"`);
-
-  if (typeof value === 'boolean') {
-    const toggle = container.querySelector('[role="switch"]');
-    if (toggle) {
-      const isChecked = toggle.getAttribute('aria-checked') === 'true';
-      if (isChecked !== value) await userEvent.click(toggle);
-      return;
-    }
-    const radios = within(container as HTMLElement).getAllByRole('radio');
-    const target = value ? radios[0] : radios[1];
-    if (!target)
-      throw new Error(`No radio for value=${String(value)} in "${fieldName}"`);
-    await userEvent.click(target);
-    return;
-  }
-
-  // String value — RadioGroup or text input
-  const radios = (container as HTMLElement).querySelectorAll('[role="radio"]');
-  if (radios.length > 0) {
-    const target = Array.from(radios).find(
-      (r) => r.getAttribute('aria-label') === value,
-    );
-    if (target) {
-      await userEvent.click(target);
-      return;
-    }
-    const byValue = Array.from(radios).find((r) => {
-      const input = r.querySelector('input[type="radio"]');
-      return input?.getAttribute('value') === value;
-    });
-    if (byValue) {
-      await userEvent.click(byValue);
-      return;
-    }
-    throw new Error(`No radio option matching "${value}" in "${fieldName}"`);
-  }
-
-  const input = within(container as HTMLElement).getByRole('textbox');
-  await userEvent.clear(input);
-  await userEvent.type(input, value);
-}
-
-async function setPartnership(
-  focalId: string,
-  partnerLabel: string,
-  optionLabel: string,
-) {
-  const dialog = await getDialog();
-  const matrix = dialog.querySelector(
-    `[data-field-name="${CSS.escape(`partnerships.${focalId}`)}"]`,
-  );
-  if (!matrix) throw new Error(`No partnership matrix for focal "${focalId}"`);
-  const group = within(matrix as HTMLElement).getByRole('radiogroup', {
-    name: partnerLabel,
-  });
-  await userEvent.click(
-    within(group).getByRole('radio', { name: optionLabel }),
-  );
-}
-
-async function openNodeContextMenu(nodeName: string) {
-  const nodeBtn = await screen.findByRole(
-    'button',
-    { name: nodeName },
-    WIZARD_TIMEOUT,
-  );
-  await userEvent.click(nodeBtn);
-  await screen.findByRole('menu', {}, WIZARD_TIMEOUT);
-}
-
 export const FirstCousinCreationViaWizard: Story = {
   render: () => {
     const buildFn = () => {
@@ -438,62 +347,49 @@ export const FirstCousinCreationViaWizard: Story = {
   play: async () => {
     // -----------------------------------------------------------------------
     // Step 1: Quick-start wizard — ego with parents Linda (egg) and Robert.
-    // Fixed gamete framing means the wizard opens directly on EggParentStep
-    // (no leading IntroStep, FramingSelectionStep, or BioParentsIntroStep).
+    // Fixed gamete framing means the wizard opens on the "About you"
+    // (EgoSexStep) step first (no leading IntroStep or FramingSelectionStep),
+    // then EggParentStep.
     // -----------------------------------------------------------------------
     await clickGetStarted();
+
+    await selectEgoSex();
 
     await setFieldInput('egg-parent.is-donor', false);
     await setFieldInput('egg-parent.name', 'Linda');
     await setFieldInput('egg-parent.gestationalCarrier', true);
-    await setFieldInput('egg-parent.gender_identity', 'Woman/girl');
-    await clickContinue();
+    await setFieldInput('egg-parent.gender_identity', 'woman');
+    await clickNext();
 
     await setFieldInput('sperm-parent.is-donor', false);
     await setFieldInput('sperm-parent.name', 'Robert');
-    await setFieldInput('sperm-parent.gender_identity', 'Man/boy');
-    await clickContinue();
+    await setFieldInput('sperm-parent.gender_identity', 'man');
+    await clickNext();
 
     await setFieldInput('hasOtherParents', false);
-    await clickContinue();
+    await clickNext();
 
-    await setPartnership('egg-parent', 'Robert', 'Current partner');
-    await clickContinue();
+    await setPartnership('egg-parent', 'Robert', 'current');
+    await clickNext();
 
     await setFieldInput('hasPartner', false);
-    await clickContinue();
+    await clickNext();
 
     // Dismiss the post-wizard "Building the rest of your pedigree" hint.
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Got it' }, WIZARD_TIMEOUT),
-    );
+    await clickDialogPrimary();
 
     // -----------------------------------------------------------------------
     // Step 2: Assert "Add sibling" is DISABLED on Robert (no parents yet).
     // This is the Feature #2 "before" state.
     // -----------------------------------------------------------------------
     await openNodeContextMenu('Robert');
-    const menuBeforeGrandparents = await screen.findByRole(
-      'menu',
-      {},
-      WIZARD_TIMEOUT,
-    );
+    const addSiblingBefore = getMenuItem('sibling');
 
-    // Inline hint "Add a parent first" is visible.
+    // The menuitem carries aria-disabled="true" and shows the inline hint.
+    expect(addSiblingBefore).toHaveAttribute('aria-disabled', 'true');
     expect(
-      within(menuBeforeGrandparents).getByText(/add a parent first/i),
+      within(addSiblingBefore).getByText(/add a parent first/i),
     ).toBeInTheDocument();
-
-    // The menuitem itself carries aria-disabled="true".
-    const addSiblingBeforeText = within(menuBeforeGrandparents).getByText(
-      'Add sibling',
-    );
-    const addSiblingMenuItemBefore =
-      addSiblingBeforeText.closest('[role="menuitem"]');
-    expect(addSiblingMenuItemBefore).toBeTruthy();
-    expect(addSiblingMenuItemBefore?.getAttribute('aria-disabled')).toBe(
-      'true',
-    );
 
     await userEvent.keyboard('{Escape}');
 
@@ -505,31 +401,25 @@ export const FirstCousinCreationViaWizard: Story = {
     // mark them as current partners.
     // -----------------------------------------------------------------------
     await openNodeContextMenu('Robert');
-    await userEvent.click(
-      await screen.findByText('Add parent', {}, WIZARD_TIMEOUT),
-    );
+    await clickMenuItem('parent');
 
     // DefineParentsWizard opens on BioTriadStep. Robert has no existing parents,
     // so the egg-/sperm-source selectors auto-resolve to "new" (rendered hidden)
     // and we fill the new-person fields. is-donor defaults false and
     // egg-parent-carried defaults true, so those are left at their defaults.
     await setFieldInput('new-egg-source.name', 'Helen');
-    await setFieldInput('new-egg-source.gender_identity', 'Woman/girl');
+    await setFieldInput('new-egg-source.gender_identity', 'woman');
     await setFieldInput('new-sperm-source.name', 'George');
-    await setFieldInput('new-sperm-source.gender_identity', 'Man/boy');
-    await clickContinue(); // BioTriadStep → Other parents
+    await setFieldInput('new-sperm-source.gender_identity', 'man');
+    await clickNext(); // BioTriadStep → Other parents
 
     await setFieldInput('hasOtherParents', false);
-    await clickContinue(); // Other parents → Parent partnerships
+    await clickNext(); // Other parents → Parent partnerships
 
     // Helen and George are both newly created, so one partnership question
-    // appears ("Are Helen and George partners?"). The radio options are matched
-    // by their visible label. Mark them current partners.
-    await setFieldInput(
-      'partnership-egg-source-sperm-source',
-      'Current partners',
-    );
-    await clickContinue(); // partnerships → done
+    // appears ("Are Helen and George partners?"). Mark them current partners.
+    await setFieldInput('partnership-egg-source-sperm-source', 'current');
+    await clickNext(); // partnerships → done
 
     await screen.findByRole('button', { name: 'George' }, WIZARD_TIMEOUT);
     await screen.findByRole('button', { name: 'Helen' }, WIZARD_TIMEOUT);
@@ -539,44 +429,33 @@ export const FirstCousinCreationViaWizard: Story = {
     // This is the Feature #2 "after" state — the key regression test.
     // -----------------------------------------------------------------------
     await openNodeContextMenu('Robert');
-    const menuAfterGrandparents = await screen.findByRole(
-      'menu',
-      {},
-      WIZARD_TIMEOUT,
-    );
+    const addSiblingAfter = getMenuItem('sibling');
 
-    // Hint is gone.
+    // Hint is gone and the item is enabled (aria-disabled absent or 'false').
     expect(
-      within(menuAfterGrandparents).queryByText(/add a parent first/i),
+      within(addSiblingAfter).queryByText(/add a parent first/i),
     ).toBeNull();
-
-    // The menuitem is enabled (aria-disabled absent or 'false').
-    const addSiblingAfterText = within(menuAfterGrandparents).getByText(
-      'Add sibling',
-    );
-    const addSiblingMenuItemAfter =
-      addSiblingAfterText.closest('[role="menuitem"]');
-    expect(addSiblingMenuItemAfter).toBeTruthy();
-    const disabledAttr = addSiblingMenuItemAfter?.getAttribute('aria-disabled');
+    const disabledAttr = addSiblingAfter.getAttribute('aria-disabled');
     expect(disabledAttr === null || disabledAttr === 'false').toBe(true);
 
     // -----------------------------------------------------------------------
     // Step 5: "Add sibling" on Robert → AddSiblingWizard → create Carol.
     // -----------------------------------------------------------------------
-    await userEvent.click(addSiblingAfterText);
+    await userEvent.click(addSiblingAfter);
 
     await setFieldInput('sibling.name', 'Carol');
-    await setFieldInput('sibling.gender_identity', 'Woman/girl');
-    await clickContinue(); // Sibling details → BioTriadStep
+    await setFieldInput('sibling.biologicalSex', 'female');
+    await setFieldInput('sibling.gender_identity', 'woman');
+    await clickNext(); // Sibling details → BioTriadStep
 
     // George and Helen are pre-offered as Carol's parents; accept the defaults.
-    await clickContinue(); // BioTriadStep → Other parents
+    await clickNext(); // BioTriadStep → Other parents
 
     await setFieldInput('hasOtherParents', false);
     // Both of Carol's parents already exist (neither is new), so the partnership
     // step is skipped (shouldSkipNewParentPartnerships) — this continue finalises
     // the wizard.
-    await clickContinue(); // Other parents → done
+    await clickNext(); // Other parents → done
 
     await screen.findByRole('button', { name: 'Carol' }, WIZARD_TIMEOUT);
 
@@ -584,29 +463,25 @@ export const FirstCousinCreationViaWizard: Story = {
     // Step 6: "Add child" on Carol → AddChildWizard → create Emma (cousin).
     // -----------------------------------------------------------------------
     await openNodeContextMenu('Carol');
-    await userEvent.click(
-      await screen.findByText('Add child', {}, WIZARD_TIMEOUT),
-    );
+    await clickMenuItem('child');
 
     await setFieldInput('child.name', 'Emma');
-    await setFieldInput('child.gender_identity', 'Woman/girl');
-    await clickContinue(); // Child details → BioTriadStep
+    await setFieldInput('child.biologicalSex', 'female');
+    await setFieldInput('child.gender_identity', 'woman');
+    await clickNext(); // Child details → BioTriadStep
 
     // Carol is preselected as the egg source. She has no recorded partner, so
     // the sperm source is unset and required — create a new (unknown) person for
     // Emma's other parent so the step can advance.
-    await setFieldInput('sperm-source', 'Create a new person');
-    await clickContinue(); // BioTriadStep → Other parents
+    await setFieldInput('sperm-source', 'new');
+    await clickNext(); // BioTriadStep → Other parents
 
     await setFieldInput('hasOtherParents', false);
-    await clickContinue(); // Other parents → Parent partnerships
+    await clickNext(); // Other parents → Parent partnerships
 
     // Carol and the new (unknown) sperm parent form a partnership pair.
-    await setFieldInput(
-      'partnership-egg-source-sperm-source',
-      'Never partners',
-    );
-    await clickContinue(); // done
+    await setFieldInput('partnership-egg-source-sperm-source', 'none');
+    await clickNext(); // done
 
     // -----------------------------------------------------------------------
     // Step 7: Emma (the first cousin) appears on the pedigree.

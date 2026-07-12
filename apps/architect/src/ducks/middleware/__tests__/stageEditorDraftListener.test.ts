@@ -5,6 +5,7 @@ import {
 } from '@reduxjs/toolkit';
 import {
   arrayPush,
+  arraySplice,
   blur,
   change,
   initialize,
@@ -117,6 +118,22 @@ describe('stageEditorDraftListenerMiddleware', () => {
 
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0]).toMatchObject({ prompts: [{ id: 'p1' }] });
+  });
+
+  it('snapshots an item replacement immediately on ARRAY_SPLICE', () => {
+    const { store, snapshots } = makeStore();
+    store.dispatch(
+      initialize(FORM_NAME, { label: 'Initial', prompts: [{ id: 'p1' }] }),
+    );
+
+    store.dispatch(
+      arraySplice(FORM_NAME, 'prompts', 0, 1, { id: 'p1', text: 'Updated' }),
+    );
+
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]).toMatchObject({
+      prompts: [{ id: 'p1', text: 'Updated' }],
+    });
   });
 
   it('flushes a pending debounce on BLUR and does not double-snapshot', () => {

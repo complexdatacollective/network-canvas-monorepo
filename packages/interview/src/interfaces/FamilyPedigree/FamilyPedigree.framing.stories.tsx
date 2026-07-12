@@ -1,10 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
+
+import {
+  clickGetStarted,
+  clickNext,
+  selectEgoSex,
+  selectFraming,
+  setFieldInput,
+} from './familyPedigreeWizardHelpers';
 
 function buildFramingInterview({
   withIntroScreen = false,
@@ -266,76 +274,40 @@ type Story = StoryObj;
 
 const STEP_TIMEOUT = { timeout: 5000 };
 
-async function clickGetStarted() {
-  const btn = await screen.findByRole('button', {
-    name: 'Build family pedigree',
-  });
-  await userEvent.click(btn);
-  await screen.findByRole('dialog', {});
-}
-
-async function clickContinue() {
-  const dialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-  const buttons = within(dialog).getAllByRole('button');
-  const continueBtn = buttons.find(
-    (b) => b.textContent === 'Finish' || b.textContent === 'Continue',
-  );
-  if (!continueBtn) throw new Error('No Finish or Continue button found');
-  await userEvent.click(continueBtn);
-}
-
 /**
  * Complete the minimal quick-start wizard: fill in egg and sperm parents
  * (minimal required fields), skip other parents, skip partnerships (no
  * partner), and finish.
  *
  * buildBoundaryInterview uses fixed gamete framing with no introScreen, so the
- * wizard opens directly on EggParentStep (no leading IntroStep,
- * FramingSelectionStep, or BioParentsIntroStep).
+ * wizard opens directly on the "About you" (EgoSexStep) step (no leading
+ * IntroStep or FramingSelectionStep), then EggParentStep.
  */
 async function completeMinimalQuickStart() {
   await clickGetStarted();
 
-  // EggParentStep — is-donor required (BooleanField: first radio = true, second = false)
-  const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-  const eggRadios = within(eggDialog).getAllByRole('radio');
-  // "is-donor" false: select second radio in the field
-  const isDonorFalse = eggRadios[1];
-  if (isDonorFalse) await userEvent.click(isDonorFalse);
-  // gestationalCarrier true: select first radio
-  // Find the gestational carrier radios after setting is-donor
-  const eggDialog2 = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-  const allEggRadios = within(eggDialog2).getAllByRole('radio');
-  // There are two BooleanFields: is-donor (2 radios) + gestationalCarrier (2 radios)
-  // gestationalCarrier first radio = true
-  const gestCarrierTrue = allEggRadios[2];
-  if (gestCarrierTrue) await userEvent.click(gestCarrierTrue);
-  await clickContinue();
+  // About you (EgoSexStep) — biological sex required.
+  await selectEgoSex();
 
-  // SpermParentStep — is-donor required (BooleanField: first = true, second = false)
-  const spermDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-  const spermRadios = within(spermDialog).getAllByRole('radio');
-  const spermIsDonorFalse = spermRadios[1];
-  if (spermIsDonorFalse) await userEvent.click(spermIsDonorFalse);
-  await clickContinue();
+  // Egg parent: not a donor, is the gestational carrier.
+  await setFieldInput('egg-parent.is-donor', false);
+  await setFieldInput('egg-parent.gestationalCarrier', true);
+  await clickNext();
 
-  // OtherParentsStep — hasOtherParents: false (second radio)
-  const otherDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-  const otherRadios = within(otherDialog).getAllByRole('radio');
-  const noOtherParents = otherRadios[1];
-  if (noOtherParents) await userEvent.click(noOtherParents);
-  await clickContinue();
+  // Sperm parent: not a donor.
+  await setFieldInput('sperm-parent.is-donor', false);
+  await clickNext();
 
-  // ParentPartnershipsStep — no changes needed, continue
-  await clickContinue();
+  // No other parents.
+  await setFieldInput('hasOtherParents', false);
+  await clickNext();
 
-  // PartnerAndChildrenStep — hasPartner: false (second radio)
-  const partnerDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-  const partnerRadios = within(partnerDialog).getAllByRole('radio');
-  const noPartner = partnerRadios[1];
-  if (noPartner) await userEvent.click(noPartner);
-  // Finish the wizard
-  await clickContinue();
+  // Parent partnerships — nothing to change.
+  await clickNext();
+
+  // No partner.
+  await setFieldInput('hasPartner', false);
+  await clickNext();
 }
 
 /**
@@ -348,13 +320,12 @@ export const ParticipantChoiceSelectsGendered: Story = {
   play: async () => {
     await clickGetStarted();
 
-    // Framing selection step: choose "Gendered"
-    const dialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-    const genderedOption = within(dialog).getByRole('radio', {
-      name: /gendered/i,
-    });
-    await userEvent.click(genderedOption);
-    await clickContinue();
+    // Framing selection step: choose the gendered ("Mother & father") option.
+    await selectFraming('gendered');
+    await clickNext();
+
+    // About you (EgoSexStep) — answer before the parent steps.
+    await selectEgoSex();
 
     // EggParentStep is now open and titled "Mother"; multiple elements may
     // match the text so assert there is at least one.
@@ -376,18 +347,17 @@ export const WithIntroScreenThenFramingSelection: Story = {
   play: async () => {
     await clickGetStarted();
 
-    // IntroStep: custom title and text are shown
-    await screen.findByText('Before we begin', {}, STEP_TIMEOUT);
+    // IntroStep: the custom intro-screen text is shown.
     await screen.findByText(/family health history/i, {}, STEP_TIMEOUT);
-    await clickContinue();
+    await clickNext();
 
-    // Framing selection step: choose "Gamete-based"
-    const dialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
-    const gameteOption = within(dialog).getByRole('radio', {
-      name: /gamete.based/i,
-    });
-    await userEvent.click(gameteOption);
-    await clickContinue();
+    // Framing selection step: choose the gamete ("Egg parent & sperm parent")
+    // option.
+    await selectFraming('gamete');
+    await clickNext();
+
+    // About you (EgoSexStep) — answer before the parent steps.
+    await selectEgoSex();
 
     // EggParentStep is now open; "egg parent" appears in its body copy.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
@@ -409,11 +379,13 @@ export const FixedGameteQuickStart: Story = {
   play: async () => {
     await clickGetStarted();
 
-    // Assert "Gendered" radio does NOT exist — the framing-selection step is skipped
-    expect(screen.queryByRole('radio', { name: /gendered/i })).toBeNull();
+    // The framing-selection step is skipped for fixed framing, so no framing
+    // options appear — the wizard opens on the "About you" (EgoSexStep) step.
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+    await selectEgoSex();
 
-    // EggParentStep is the first step; multiple elements may contain "Egg
-    // Parent" (title + labels) — assert at least one is present.
+    // EggParentStep is now open; multiple elements may contain "Egg Parent"
+    // (title + labels) — assert at least one is present.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
     expect(
       within(eggDialog).getAllByText(/egg parent/i).length,
@@ -435,11 +407,13 @@ export const FixedGenderedQuickStart: Story = {
   play: async () => {
     await clickGetStarted();
 
-    // Assert "Gamete-based" radio does NOT exist — selection step is skipped
-    expect(screen.queryByRole('radio', { name: /gamete.based/i })).toBeNull();
+    // The framing-selection step is skipped for fixed framing, so no framing
+    // options appear — the wizard opens on the "About you" (EgoSexStep) step.
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+    await selectEgoSex();
 
-    // EggParentStep is the first step and titled "Mother"; multiple elements
-    // may contain that text (dialog title + labels) — assert at least one.
+    // EggParentStep is now open and titled "Mother"; multiple elements may
+    // contain that text (dialog title + labels) — assert at least one.
     const eggDialog = await screen.findByRole('dialog', {}, STEP_TIMEOUT);
     expect(within(eggDialog).getAllByText(/mother/i).length).toBeGreaterThan(0);
   },
@@ -459,30 +433,19 @@ export const RequiredBoundaryGrandparentsBlocked: Story = {
     await completeMinimalQuickStart();
 
     // After the wizard finishes, the pedigree canvas is shown. The checklist
-    // widget should appear once the network has nodes (ego + two parents).
-    const checklist = await screen.findByText(
-      'Pedigree Checklist',
-      {},
-      { timeout: 8000 },
-    );
-    expect(checklist).toBeTruthy();
+    // widget appears once the network has nodes (ego + two parents).
+    await screen.findByTestId('pedigree-checklist', {}, { timeout: 8000 });
 
-    // The boundary-grandparents blocker item should be present and required (*)
-    const blocker = await screen.findByText(
-      /record each parent.s two parents/i,
+    // The boundary-grandparents item is present and marked required.
+    const blocker = await screen.findByTestId(
+      'pedigree-checklist-item-boundary-grandparents',
       {},
       STEP_TIMEOUT,
     );
-    expect(blocker).toBeTruthy();
+    expect(blocker).toHaveAttribute('data-required', 'true');
 
-    // The required marker (*) must be visible
-    const checklist$El = blocker.closest('[class]')?.parentElement;
-    expect(checklist$El?.querySelector('.text-destructive')).not.toBeNull();
-
-    // The finalize button must NOT be shown (allDone is false)
-    expect(
-      screen.queryByRole('button', { name: /finalize family pedigree/i }),
-    ).toBeNull();
+    // The finalize button must NOT be shown (allDone is false).
+    expect(screen.queryByTestId('pedigree-checklist-finalize')).toBeNull();
   },
 };
 
@@ -510,26 +473,19 @@ export const RecommendedBoundaryGrandparentsNudge: Story = {
   play: async () => {
     await completeMinimalQuickStart();
 
-    // Wait for checklist
-    await screen.findByText('Pedigree Checklist', {}, { timeout: 8000 });
+    await screen.findByTestId('pedigree-checklist', {}, { timeout: 8000 });
 
-    // The grandparents nudge item should be present
-    const nudge = await screen.findByText(
-      /record each parent.s two parents/i,
+    // The grandparents nudge item is present but WITHOUT the required marker —
+    // this is what distinguishes 'recommended' from 'required' in the checklist.
+    const nudge = await screen.findByTestId(
+      'pedigree-checklist-item-boundary-grandparents',
       {},
       STEP_TIMEOUT,
     );
-    expect(nudge).toBeTruthy();
-
-    // The nudge item must NOT carry a required (*) marker — this is what
-    // distinguishes 'recommended' from 'required' in the checklist.
-    const nudgeParent = nudge.closest('[class]')?.parentElement;
-    expect(nudgeParent?.querySelector('.text-destructive')).toBeNull();
+    expect(nudge).toHaveAttribute('data-required', 'false');
 
     // The finalize button is gated on allDone (all tasks checked), not on
     // boundary severity, so it is absent here — same as the required case.
-    expect(
-      screen.queryByRole('button', { name: /finalize family pedigree/i }),
-    ).toBeNull();
+    expect(screen.queryByTestId('pedigree-checklist-finalize')).toBeNull();
   },
 };

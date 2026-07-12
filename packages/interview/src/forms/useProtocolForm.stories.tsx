@@ -85,6 +85,7 @@ import {
   asEntityAttributeReference,
   type Form as TForm,
 } from '@codaco/protocol-validation';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import useProtocolForm from './useProtocolForm';
 
@@ -324,7 +325,7 @@ const createMockStore = () => {
         {
           _uid: 'existing-node-1',
           type: 'person',
-          attributes: {
+          [entityAttributesProperty]: {
             name: 'John',
             nickname: 'Johnny',
             email: 'john@example.com',
@@ -333,7 +334,7 @@ const createMockStore = () => {
         {
           _uid: 'existing-node-2',
           type: 'person',
-          attributes: {
+          [entityAttributesProperty]: {
             name: 'Jane',
             nickname: 'JaneD',
             email: 'jane@example.com',
@@ -343,7 +344,7 @@ const createMockStore = () => {
       edges: [],
       ego: {
         _uid: 'ego',
-        attributes: {},
+        [entityAttributesProperty]: {},
       },
     },
   };

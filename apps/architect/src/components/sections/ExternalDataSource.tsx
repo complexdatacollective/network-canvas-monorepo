@@ -2,6 +2,7 @@ import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 import { change } from 'redux-form';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
@@ -10,28 +11,24 @@ import withSubject from '../enhancers/withSubject';
 import DataSource from '../Form/Fields/DataSource';
 import ValidatedField from '../Form/ValidatedField';
 import IssueAnchor from '../IssueAnchor';
-
 const withChangeDataSourceHandler = connect(null, { changeForm: change });
-
 type ExternalDataSourceProps = StageEditorSectionProps & {
   changeForm: (form: string, field: string, value: unknown) => void;
 };
-
 const ExternalDataSource = (props: ExternalDataSourceProps) => {
   const handleChangeDataSource = () => {
     props.changeForm('edit-stage', 'cardOptions', {});
     props.changeForm('edit-stage', 'sortOptions', {});
     props.changeForm('edit-stage', 'searchOptions', {});
   };
-
   return (
     <Section
       title="Data source for Roster"
       summary={
-        <p>
+        <Paragraph>
           This stage needs a source of nodes to populate the roster. Select a
           network data file to use.
-        </p>
+        </Paragraph>
       }
       // eslint-disable-next-line react/jsx-props-no-spreading
       {...props}
@@ -49,7 +46,6 @@ const ExternalDataSource = (props: ExternalDataSourceProps) => {
     </Section>
   );
 };
-
 export default compose<ExternalDataSourceProps, StageEditorSectionProps>(
   withChangeDataSourceHandler,
   withSubject,

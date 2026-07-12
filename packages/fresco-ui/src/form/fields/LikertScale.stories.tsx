@@ -497,10 +497,7 @@ export const KeyboardNavigatesToMaximum: Story = {
       await userEvent.keyboard('{ArrowLeft}');
     }
     await expect(valueDisplay).toHaveTextContent('1');
-    await expect(slider).toHaveAttribute(
-      'aria-label',
-      'Select value on scale: Strongly Disagree',
-    );
+    await expect(slider).toHaveAttribute('aria-valuetext', 'Strongly Disagree');
 
     // Step right exactly once per remaining option. Every keypress must
     // advance the value (regression guard for a Firefox-only failure where the
@@ -509,10 +506,7 @@ export const KeyboardNavigatesToMaximum: Story = {
       await userEvent.keyboard('{ArrowRight}');
     }
     await expect(valueDisplay).toHaveTextContent('5');
-    await expect(slider).toHaveAttribute(
-      'aria-label',
-      'Select value on scale: Strongly Agree',
-    );
+    await expect(slider).toHaveAttribute('aria-valuetext', 'Strongly Agree');
   },
 };
 

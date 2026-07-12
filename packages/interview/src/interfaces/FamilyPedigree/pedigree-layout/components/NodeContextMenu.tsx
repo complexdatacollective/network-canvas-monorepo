@@ -56,24 +56,28 @@ export default function NodeContextMenu({
       <DropdownMenuContent>
         <DropdownMenuItem
           className={menuItemClass}
+          data-testid="pedigree-menu-parent"
           onClick={() => onAction('parent')}
         >
           Add parent
         </DropdownMenuItem>
         <DropdownMenuItem
           className={menuItemClass}
+          data-testid="pedigree-menu-child"
           onClick={() => onAction('child')}
         >
           Add child
         </DropdownMenuItem>
         <DropdownMenuItem
           className={menuItemClass}
+          data-testid="pedigree-menu-partner"
           onClick={() => onAction('partner')}
         >
           Add partner
         </DropdownMenuItem>
         <DropdownMenuItem
           className={menuItemClass}
+          data-testid="pedigree-menu-sibling"
           disabled={!canAddSibling}
           onClick={() => onAction('sibling')}
         >
@@ -89,12 +93,14 @@ export default function NodeContextMenu({
             <DropdownMenuSeparator className="my-1 h-px bg-current/20" />
             <DropdownMenuItem
               className={menuItemClass}
+              data-testid="pedigree-menu-edit"
               onClick={() => onAction('edit')}
             >
               Edit
             </DropdownMenuItem>
             <DropdownMenuItem
               className={destructiveMenuItemClass}
+              data-testid="pedigree-menu-delete"
               onClick={() => onAction('delete')}
             >
               Delete

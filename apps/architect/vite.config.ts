@@ -3,13 +3,15 @@ import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react-swc';
-import type { Plugin } from 'vite';
+import { loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
 import { version } from './package.json';
+import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-authoring';
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(rootDir, '../..');
 
 // The Content-Security-Policy directives a <meta http-equiv> can express — i.e.
 // everything except frame-ancestors, which is header-only and stays in
@@ -22,11 +24,11 @@ const rootDir = dirname(fileURLToPath(import.meta.url));
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' data: https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
   "img-src 'self' data: blob:",
   "media-src 'self' blob:",
-  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://fonts.googleapis.com https://fonts.gstatic.com",
+  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com",
   "worker-src 'self' blob:",
   "frame-src 'self'",
   "base-uri 'none'",
@@ -57,124 +59,255 @@ const injectCspMeta = (): Plugin => ({
 });
 
 // https://vite.dev/config/
-export default defineConfig({
-  define: {
-    __APP_VERSION__: JSON.stringify(version),
-  },
-  resolve: {
-    tsconfigPaths: true,
-  },
-  plugins: [
-    injectCspMeta(),
-    react({}),
-    tailwindcss(),
-    VitePWA({
-      registerType: 'prompt',
-      injectRegister: false,
-      strategies: 'generateSW',
-      devOptions: { enabled: false },
-      pwaAssets: { config: true },
-      manifest: {
-        name: 'Network Canvas Architect',
-        short_name: 'Architect',
-        description: 'Design Network Canvas interview protocols.',
-        theme_color: '#00b38f',
-        background_color: '#edf2f8',
-        display: 'standalone',
-        start_url: '/',
-        scope: '/',
-        // Register the installed app as a .netcanvas opener/editor (Chromium
-        // desktop File Handling API; Safari has no equivalent, and the web
-        // manifest has no viewer/editor role field — the role is functional:
-        // Architect opens the file for editing). Launched files arrive via
-        // window.launchQueue — see src/utils/fileLaunchQueue.ts.
-        launch_handler: { client_mode: 'focus-existing' },
-        file_handlers: [
-          {
-            action: '/',
-            accept: { 'application/octet-stream': ['.netcanvas'] },
-          },
-        ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html}'],
-        navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/preview\//],
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        runtimeCaching: [
-          {
-            urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif)$/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'architect-images',
-              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, rootDir, '');
+
+  return {
+    define: {
+      __APP_VERSION__: JSON.stringify(version),
+    },
+    resolve: {
+      tsconfigPaths: true,
+    },
+    plugins: [
+      injectCspMeta(),
+      createProtocolSourceAuthoringPlugin({
+        repoRoot,
+        enabled: env.VITE_PROTOCOL_SOURCE_AUTHORING === 'true',
+      }),
+      react({}),
+      tailwindcss(),
+      VitePWA({
+        registerType: 'prompt',
+        injectRegister: false,
+        strategies: 'generateSW',
+        devOptions: { enabled: false },
+        pwaAssets: { config: true },
+        manifest: {
+          name: 'Network Canvas Architect',
+          short_name: 'Architect',
+          description: 'Design Network Canvas interview protocols.',
+          theme_color: '#00b38f',
+          background_color: '#edf2f8',
+          display: 'standalone',
+          start_url: '/',
+          scope: '/',
+          // Register the installed app as a .netcanvas opener/editor (Chromium
+          // desktop File Handling API; Safari has no equivalent, and the web
+          // manifest has no viewer/editor role field — the role is functional:
+          // Architect opens the file for editing). Launched files arrive via
+          // window.launchQueue — see src/utils/fileLaunchQueue.ts.
+          launch_handler: { client_mode: 'focus-existing' },
+          file_handlers: [
+            {
+              action: '/',
+              accept: { 'application/octet-stream': ['.netcanvas'] },
             },
-          },
-          {
-            // Bundled non-image assets (template / Sample protocol media: video,
-            // GeoJSON, CSV, etc.). Content-hashed and same-origin; the JS/CSS in
-            // /assets are already precached and served from there first, and
-            // Architect has no backend, so caching all of /assets is safe.
-            urlPattern: ({ url, sameOrigin }) =>
-              sameOrigin && url.pathname.startsWith('/assets/'),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'architect-bundled-assets',
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] },
+          ],
+        },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html}'],
+          // vite-plugin-pwa defaults this to index.html; disable it so it
+          // cannot shadow the runtime navigation route below.
+          navigateFallback: undefined,
+          // Without this, precacheAndRoute maps root launches (`/`) to the
+          // cached index.html before the runtime navigation route can fetch
+          // the newest shell.
+          directoryIndex: null,
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+          runtimeCaching: [
+            {
+              // Preview is a separate HTML entry. With directoryIndex disabled
+              // for fresh root launches, keep /preview/ explicitly mapped to
+              // its own precached shell for fully offline preview starts.
+              urlPattern: ({ request, sameOrigin, url }) =>
+                sameOrigin &&
+                request.mode === 'navigate' &&
+                url.pathname.startsWith('/preview/'),
+              handler: async ({ request }) => {
+                let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+                try {
+                  const networkTimeout = new Promise<Response>((_, reject) => {
+                    timeoutId = setTimeout(
+                      () => reject(new Error('Preview request timed out')),
+                      3_000,
+                    );
+                  });
+
+                  return await Promise.race([fetch(request), networkTimeout]);
+                } catch (error) {
+                  const cacheStorage: unknown = Reflect.get(
+                    globalThis,
+                    'caches',
+                  );
+                  const serviceWorkerLocation: unknown = Reflect.get(
+                    globalThis,
+                    'location',
+                  );
+                  const cacheMatch: unknown =
+                    typeof cacheStorage === 'object' && cacheStorage !== null
+                      ? Reflect.get(cacheStorage, 'match')
+                      : undefined;
+                  const locationHref: unknown =
+                    typeof serviceWorkerLocation === 'object' &&
+                    serviceWorkerLocation !== null
+                      ? Reflect.get(serviceWorkerLocation, 'href')
+                      : undefined;
+
+                  if (
+                    typeof cacheMatch !== 'function' ||
+                    typeof locationHref !== 'string'
+                  ) {
+                    throw error;
+                  }
+
+                  const fallback: unknown = await cacheMatch.call(
+                    cacheStorage,
+                    new URL('preview/index.html', locationHref).href,
+                    { ignoreSearch: true },
+                  );
+                  if (fallback instanceof Response) return fallback;
+                  throw error;
+                } finally {
+                  if (timeoutId !== undefined) clearTimeout(timeoutId);
+                }
+              },
             },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'StaleWhileRevalidate',
-            options: { cacheName: 'google-fonts-stylesheets' },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-webfonts',
-              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
+            {
+              // The app shell must be fresh when the app is launched online:
+              // a cache-first navigation fallback would render the old HTML
+              // first, then refresh once the service-worker update finished.
+              // The handler keeps offline launch via the precached fallback
+              // while preventing a still-old service worker from caching new
+              // HTML whose matching hashed chunks it has not precached.
+              urlPattern: ({ request, sameOrigin, url }) =>
+                sameOrigin &&
+                request.mode === 'navigate' &&
+                !url.pathname.startsWith('/preview/'),
+              handler: async ({ request }) => {
+                let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+                try {
+                  const networkTimeout = new Promise<Response>((_, reject) => {
+                    timeoutId = setTimeout(
+                      () => reject(new Error('Navigation request timed out')),
+                      3_000,
+                    );
+                  });
+
+                  return await Promise.race([fetch(request), networkTimeout]);
+                } catch (error) {
+                  const cacheStorage: unknown = Reflect.get(
+                    globalThis,
+                    'caches',
+                  );
+                  const serviceWorkerLocation: unknown = Reflect.get(
+                    globalThis,
+                    'location',
+                  );
+                  const cacheMatch: unknown =
+                    typeof cacheStorage === 'object' && cacheStorage !== null
+                      ? Reflect.get(cacheStorage, 'match')
+                      : undefined;
+                  const locationHref: unknown =
+                    typeof serviceWorkerLocation === 'object' &&
+                    serviceWorkerLocation !== null
+                      ? Reflect.get(serviceWorkerLocation, 'href')
+                      : undefined;
+
+                  if (
+                    typeof cacheMatch !== 'function' ||
+                    typeof locationHref !== 'string'
+                  ) {
+                    throw error;
+                  }
+
+                  const fallback: unknown = await cacheMatch.call(
+                    cacheStorage,
+                    new URL('index.html', locationHref).href,
+                    { ignoreSearch: true },
+                  );
+                  if (fallback instanceof Response) return fallback;
+                  throw error;
+                } finally {
+                  if (timeoutId !== undefined) clearTimeout(timeoutId);
+                }
+              },
             },
-          },
-        ],
-      },
-    }),
-  ],
-  css: {
-    preprocessorOptions: {
-      scss: {
-        quietDeps: true,
-        silenceDeprecations: [
-          'mixed-decls',
-          'import',
-          'color-functions',
-          'global-builtin',
-        ],
-        verbose: false,
+            {
+              urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif)$/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'architect-images',
+                expiration: {
+                  maxEntries: 400,
+                  maxAgeSeconds: 60 * 60 * 24 * 30,
+                },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Self-hosted fonts (bundled via @codaco/tailwind-config). Matched
+              // before the /assets/ catch-all below so font files get the long
+              // one-year expiry.
+              urlPattern: /\.(?:woff2?|ttf|otf|eot)$/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'architect-fonts',
+                expiration: {
+                  maxEntries: 30,
+                  maxAgeSeconds: 60 * 60 * 24 * 365,
+                },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Bundled non-image assets (template / Sample protocol media: video,
+              // GeoJSON, CSV, etc.). Content-hashed and same-origin; the JS/CSS in
+              // /assets are already precached and served from there first, and
+              // Architect has no backend, so caching all of /assets is safe.
+              urlPattern: ({ url, sameOrigin }) =>
+                sameOrigin && url.pathname.startsWith('/assets/'),
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'architect-bundled-assets',
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 60 * 60 * 24 * 30,
+                },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+          ],
+        },
+      }),
+    ],
+    build: {
+      rollupOptions: {
+        input: {
+          main: resolve(rootDir, 'index.html'),
+          preview: resolve(rootDir, 'preview/index.html'),
+        },
       },
     },
-  },
-  build: {
-    rollupOptions: {
-      input: {
-        main: resolve(rootDir, 'index.html'),
-        preview: resolve(rootDir, 'preview/index.html'),
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      // Parallelised with the rest of the workspace's tests in the CI quality
+      // job; a borderline jsdom test can be starved past the 5s default under
+      // peak runner load, so give generous headroom.
+      testTimeout: 20_000,
+      setupFiles: ['./src/test-setup.ts'],
+      exclude: ['**/node_modules/**', '**/dist/**'],
+      // Honour the app's own analytics gate (analytics.ts) so PostHog doesn't
+      // init a real client (in debug mode) against the production host during
+      // unit tests, spamming stderr with config dumps and $pageview payloads.
+      env: {
+        VITE_DISABLE_ANALYTICS: 'true',
       },
     },
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    // Parallelised with the rest of the workspace's tests in the CI quality
-    // job; a borderline jsdom test can be starved past the 5s default under
-    // peak runner load, so give generous headroom.
-    testTimeout: 20_000,
-    setupFiles: ['./src/test-setup.ts'],
-    exclude: ['**/node_modules/**', '**/dist/**'],
-  },
+  };
 });

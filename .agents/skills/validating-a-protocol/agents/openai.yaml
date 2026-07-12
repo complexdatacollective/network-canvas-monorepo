@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Validating a Protocol'
+  short_description: 'Validate Network Canvas protocol files'
+  default_prompt: 'Use $validating-a-protocol to check this Network Canvas protocol file.'

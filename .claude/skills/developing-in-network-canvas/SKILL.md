@@ -69,6 +69,21 @@ Apply the Step 1 ladder to components: new UI is **assembled from `@codaco/fresc
 
 If you must build a new component, it is **founded on a Base-UI primitive** and mirrors the closest fresco-ui component's patterns (prop shape, variants, token usage) — never raw `div`s + click handlers.
 
+### Building a new shared component
+
+When the reuse ladder bottoms out and you add a new `@codaco/fresco-ui` component:
+
+- **Mirror the existing export style.** Compound components are **named exports from one file** (see `DropdownMenu`), named after the underlying Base-UI parts (`Tabs`, `TabsList`, `TabsTab`, `TabsPanel`, `TabsIndicator`) — not a barrel, not a `.`-namespace. Add the subpath to `packages/fresco-ui/package.json` `exports`, and rebuild the package (`pnpm --filter @codaco/fresco-ui build`) before a consuming app's typecheck will see it — apps resolve fresco-ui from `dist`, not `src`.
+- **Size with container queries, never viewport breakpoints.** A shared component doesn't know the viewport, only its container — key responsive layout off `@container` + `@min-[…]`, and make the component (or the relevant part) an `@container` so its own descendants can query it. Give size-flexible parts a floor **and** a cap that _both_ step up across breakpoints, so the part gains presence as its container grows and only wraps/clips once content exceeds the cap (e.g. a rail that is `w-fit` between a per-breakpoint `min-w`/`max-w`).
+- **Never fix a height/size that clips content.** Let content flow; a fixed `h-*`/`max-w` that cuts off items or wraps a label unexpectedly is a bug, not a constraint.
+
+**Write a Storybook story that documents, not just renders** (co-located `*.stories.tsx`, `tags: ['autodocs']`):
+
+- **Render the component bare.** No decorative wrapper (card, padding, background, fixed frame) that isn't part of the component — it misrepresents the API and hides real behaviour. Drive size/context through the component's own props (`style`, `className`), not an outer `<div>`.
+- **Document composition and props, not just appearance.** Put a real composition example (imports + the full nesting) and a per-part props list in `parameters.docs.description.component`; expose the meaningful variations as **controls** (`argTypes`) — toggle icons, swap label length, vary width — so the reader learns how to _use_ it.
+- **Cover the edge cases as preset stories** — long/overflowing labels, the narrowest and widest sizes, the icon-less variant. If it can wrap or clip, show it doing so.
+- Keep helpers **un-exported** — a non-story export from a `*.stories.tsx` becomes a broken auto-story.
+
 ### Accessibility
 
 Two hard requirements for every interactive component, no exceptions: it is **fully keyboard operable**, and it **announces state changes to screen readers**. The library makes both the path of least resistance — use it rather than reinventing.
@@ -103,16 +118,18 @@ Two hard requirements for every interactive component, no exceptions: it is **fu
 
 ## Common mistakes
 
-| Mistake                                                        | Do instead                                                                             |
-| -------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Writing a new util/component without checking what exists      | Walk the reuse ladder; search the relevant `packages/*` first.                         |
-| Wrapping `Field`/`Paragraph` in `flex-col gap-*` / `space-y-*` | They carry their own bottom margin — you'll double the spacing. Let them flow.         |
-| Hand-rolling a confirm/alert modal                             | `useDialog().confirm({ title, description, confirmLabel, onConfirm })`.                |
-| Building a widget from raw `div`s + `onClick`                  | Found it on the matching Base-UI primitive — keyboard handling and ARIA come for free. |
-| Hardcoded colours / shadows / font px                          | Token utilities (`bg-*`, `text-*`, `elevation-*`, `text-lg`).                          |
-| Showing "node"/"alter"/"stage" to participants                 | Protocol label or plain word.                                                          |
-| Drag with no keyboard equivalent                               | Add arrow-key/Enter-Space handling + an `aria-live` announcement.                      |
-| Concatenating sentence fragments for a message                 | Keep whole, externalisable strings so it can localise later.                           |
+| Mistake                                                                               | Do instead                                                                                                           |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Writing a new util/component without checking what exists                             | Walk the reuse ladder; search the relevant `packages/*` first.                                                       |
+| Wrapping `Field`/`Paragraph` in `flex-col gap-*` / `space-y-*`                        | They carry their own bottom margin — you'll double the spacing. Let them flow.                                       |
+| Hand-rolling a confirm/alert modal                                                    | `useDialog().confirm({ title, description, confirmLabel, onConfirm })`.                                              |
+| Building a widget from raw `div`s + `onClick`                                         | Found it on the matching Base-UI primitive — keyboard handling and ARIA come for free.                               |
+| Hardcoded colours / shadows / font px                                                 | Token utilities (`bg-*`, `text-*`, `elevation-*`, `text-lg`).                                                        |
+| Showing "node"/"alter"/"stage" to participants                                        | Protocol label or plain word.                                                                                        |
+| Drag with no keyboard equivalent                                                      | Add arrow-key/Enter-Space handling + an `aria-live` announcement.                                                    |
+| Concatenating sentence fragments for a message                                        | Keep whole, externalisable strings so it can localise later.                                                         |
+| A Storybook story that only renders (bespoke card wrapper, no props/composition docs) | Render bare + `autodocs`: a composition example, a per-part props list, and controls for the meaningful variations.  |
+| Sizing a shared component with viewport breakpoints (`tablet-portrait:` …)            | Container queries (`@container` + `@min-[…]`) with a floor+cap that scale up together — it doesn't own the viewport. |
 
 ## Quick reference
 

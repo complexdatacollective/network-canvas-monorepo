@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import {
@@ -10,7 +11,7 @@ import {
 const node = (uid: string, type: string): NcNode => ({
   _uid: uid,
   type,
-  attributes: {},
+  [entityAttributesProperty]: {},
 });
 
 const edge = (uid: string, type: string, from: string, to: string): NcEdge => ({
@@ -18,7 +19,7 @@ const edge = (uid: string, type: string, from: string, to: string): NcEdge => ({
   type,
   from,
   to,
-  attributes: {},
+  [entityAttributesProperty]: {},
 });
 
 describe('override-path network filtering (issue #664)', () => {

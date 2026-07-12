@@ -198,8 +198,8 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
             'py-2',
             // Layout
             isHorizontal
-              ? 'min-w-0 flex-auto overflow-x-auto overflow-y-hidden overscroll-contain'
-              : 'min-h-0 flex-1 overflow-auto overscroll-contain',
+              ? 'min-w-0 flex-auto overflow-x-auto overflow-y-hidden'
+              : 'min-h-0 flex-1 overflow-auto',
             // Gradient fade effect
             fade &&
               (isHorizontal

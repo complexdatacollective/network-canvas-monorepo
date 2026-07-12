@@ -1,3 +1,4 @@
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode, RelationshipType } from '@codaco/shared-consts';
 import type {
   FamilyEdge,
@@ -26,7 +27,7 @@ export function nominatedGameteRoles(
   const roles = new Map<string, GameteRole>();
   for (const edge of edges.values()) {
     const role = readGameteRole(
-      edge.attributes[variableConfig.gameteRoleVariable],
+      edge[entityAttributesProperty][variableConfig.gameteRoleVariable],
     );
     if (role) {
       roles.set(edge.from, role);

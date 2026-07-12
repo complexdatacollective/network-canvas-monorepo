@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen } from '@testing-library/react';
+import { createElement, type ComponentType } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -73,33 +74,36 @@ vi.mock('~/components/IssueAnchor', () => ({
   default: () => null,
 }));
 
-vi.mock('~/components/Form/ValidatedField', () => ({
+vi.mock('~/components/Form/ValidatedFieldArray', () => ({
   default: ({
     name,
+    component,
     componentProps,
+    label,
   }: {
     name: string;
-    componentProps?: { label?: string };
-  }) => <div data-testid={`field-${name}`}>{componentProps?.label}</div>,
+    component: ComponentType<Record<string, unknown>>;
+    componentProps?: Record<string, unknown>;
+    label?: string;
+  }) => createElement(component, { ...componentProps, label, name }),
 }));
 
-vi.mock('~/components/Form/Fields/Text', () => ({
-  default: () => <div data-testid="text-field" />,
-}));
+let capturedArrayFieldProps: Record<string, unknown> | undefined;
 
-vi.mock('~/components/EditableList', () => ({
-  default: ({
-    fieldName,
-    children,
-  }: {
-    fieldName: string;
-    children?: React.ReactNode;
-  }) => (
-    <div data-testid={`editable-list-${fieldName}`}>
-      {children}
-      <button>Create new</button>
-    </div>
-  ),
+vi.mock('~/components/Form/DialogArrayField', () => ({
+  default: (props: Record<string, unknown>) => {
+    capturedArrayFieldProps = props;
+    const items = (
+      mockIntroScreenValue as { items?: unknown[] } | null | undefined
+    )?.items;
+
+    return (
+      <div data-testid={`dialog-array-field-${String(props.name)}`}>
+        {!items?.length && String(props.emptyStateMessage)}
+        <button>Create new</button>
+      </div>
+    );
+  },
 }));
 
 vi.mock('~/components/sections/ContentGrid/ItemEditor', () => ({
@@ -147,7 +151,26 @@ describe('IntroScreen', () => {
   it('shows the content-item list when enabled', () => {
     mockIntroScreenValue = { items: [] };
     renderSection();
-    expect(screen.getByTestId('editable-list-introScreen.items')).toBeDefined();
+    expect(
+      screen.getByTestId('dialog-array-field-introScreen.items'),
+    ).toBeDefined();
+  });
+
+  it('configures content items for dialog editing', () => {
+    mockIntroScreenValue = { items: [] };
+    renderSection();
+
+    expect(capturedArrayFieldProps).toMatchObject({
+      name: 'introScreen.items',
+      label: 'Content sections',
+      addTitle: 'Edit Section',
+      editorTitle: 'Edit Section',
+      itemLabel: 'content section',
+      requestedEditFormName: 'editable-list-form',
+      sortable: true,
+    });
+    expect(capturedArrayFieldProps?.normalizeItem).toBeTypeOf('function');
+    expect(capturedArrayFieldProps?.itemSelector).toBeTypeOf('function');
   });
 
   it('shows an empty-state message when there are no items', () => {

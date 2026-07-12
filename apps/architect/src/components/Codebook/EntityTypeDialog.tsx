@@ -2,12 +2,12 @@ import { get } from 'es-toolkit/compat';
 import { useCallback, useMemo } from 'react';
 import { isDirty, isInvalid } from 'redux-form';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import InlineEditScreen from '~/components/InlineEditScreen/InlineEditScreen';
 import { format, parse } from '~/components/TypeEditor/convert';
 import getNewTypeTemplate from '~/components/TypeEditor/getNewTypeTemplate';
 import TypeEditor from '~/components/TypeEditor/TypeEditor';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
-import { actionCreators as dialogActions } from '~/ducks/modules/dialogs';
 import {
   createTypeAsync,
   updateTypeAsync,
@@ -32,6 +32,7 @@ const EntityTypeDialog = ({
   onClose,
 }: EntityTypeDialogProps) => {
   const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
   const protocol = useAppSelector((state: RootState) => getProtocol(state));
   const hasUnsavedChanges = useAppSelector((state: RootState) =>
     isDirty(formName)(state),
@@ -116,19 +117,19 @@ const EntityTypeDialog = ({
         // Keep the dialog open so the user can retry, and tell them the save
         // failed rather than leaving the submit looking like a no-op.
         const normalizedError = reportError(error);
-        dispatch(
-          dialogActions.openDialog({
-            type: 'Error',
-            title: isNew ? 'Could not create type' : 'Could not update type',
-            message: normalizedError.message,
-          }),
-        );
+        void openDialog({
+          type: 'acknowledge',
+          intent: 'destructive',
+          title: isNew ? 'Could not create type' : 'Could not update type',
+          description: normalizedError.message,
+          actions: { primary: { label: 'OK', value: true } },
+        });
       }
     },
-    [createType, updateType, onClose, entity, type, isNew, invalid, dispatch],
+    [createType, updateType, onClose, entity, type, isNew, invalid, openDialog],
   );
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = useCallback(async () => {
     // An untouched form loses nothing, so close immediately. Once the author has
     // started filling it in, confirm before discarding — including brand-new
     // types, so an accidental backdrop/outside click can't drop a
@@ -138,20 +139,22 @@ const EntityTypeDialog = ({
       return;
     }
 
-    // Show confirmation dialog for unsaved changes
-    void dispatch(
-      dialogActions.openDialog({
-        type: 'Warning',
-        title: 'Unsaved Changes',
-        message:
-          'You have unsaved changes. Are you sure you want to close without saving?',
-        confirmLabel: 'Close Without Saving',
-        onConfirm: () => {
-          onClose();
-        },
-      }),
-    ).unwrap();
-  }, [isNew, hasUnsavedChanges, onClose, dispatch]);
+    const confirmed = await openDialog({
+      type: 'choice',
+      intent: 'warning',
+      title: 'Unsaved Changes',
+      description:
+        'You have unsaved changes. Are you sure you want to close without saving?',
+      actions: {
+        primary: { label: 'Close Without Saving', value: true },
+        cancel: { label: 'Cancel', value: false },
+      },
+    });
+
+    if (confirmed) {
+      onClose();
+    }
+  }, [hasUnsavedChanges, onClose, openDialog]);
 
   if (!entity) {
     return null;

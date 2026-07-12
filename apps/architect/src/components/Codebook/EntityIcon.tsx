@@ -1,9 +1,10 @@
+import Icon from '@codaco/fresco-ui/Icon';
 import Node, {
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
-import { Icon } from '~/lib/legacy-ui/components';
 import { cva } from '~/utils/cva';
+import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
 type EntityIconSize = 'default' | 'small' | 'tiny';
 
@@ -21,13 +22,19 @@ const nodeSizeMap: Record<EntityIconSize, 'xxs' | 'xs' | 'sm'> = {
   tiny: 'xxs',
 };
 
+const edgeSizeMap: Record<EntityIconSize, string> = {
+  default: 'size-24',
+  small: 'size-16',
+  tiny: 'size-8',
+};
+
 const graphicVariants = cva({
   base: 'flex items-center justify-center',
   variants: {
     size: {
-      default: 'mr-(--space-md)',
-      small: 'mr-(--space-sm)',
-      tiny: 'mr-(--space-xs)',
+      default: 'mr-5',
+      small: 'mr-2.5',
+      tiny: 'mr-1',
     },
   },
   defaultVariants: { size: 'default' },
@@ -55,11 +62,14 @@ const renderIcon = (
       return (
         <Icon
           name="links"
+          className={edgeSizeMap[size]}
           style={
             color
               ? ({
-                  '--icon-tone-primary': `hsl(var(--${color}-dark))`,
-                  '--icon-tone-secondary': `hsl(var(--${color}))`,
+                  '--icon-tone-primary': resolveProtocolColor(color, {
+                    dark: true,
+                  }),
+                  '--icon-tone-secondary': resolveProtocolColor(color),
                 } as React.CSSProperties)
               : undefined
           }
@@ -69,7 +79,7 @@ const renderIcon = (
       return (
         <Icon
           name="menu-sociogram"
-          className="[--icon-tone-primary:var(--color-cerulean-blue-dark)] [--icon-tone-secondary:var(--color-cerulean-blue)]"
+          className="[--icon-tone-primary:oklch(var(--cerulean-blue--dark))] [--icon-tone-secondary:oklch(var(--cerulean-blue))]"
         />
       );
     default:

@@ -188,14 +188,17 @@ export default function BooleanField(props: BooleanFieldProps) {
   const groupState = getInputState(props);
 
   return (
-    <div className={cx('flex w-full flex-col gap-2', className)}>
+    <div className={cx('@container flex w-full flex-col gap-2', className)}>
       <fieldset
         id={id}
         {...rest}
-        className="flex w-full items-stretch gap-2 border-0 p-0 *:flex-1"
+        role="radiogroup"
+        className="flex w-full flex-col items-stretch gap-2 border-0 p-0 *:flex-1 @xs:flex-row"
         disabled={disabled}
         aria-label={label ?? rest['aria-label']}
+        aria-labelledby={rest['aria-labelledby']}
         aria-invalid={rest['aria-invalid'] ?? undefined}
+        aria-readonly={readOnly || undefined}
         data-readonly={readOnly ? 'true' : undefined}
       >
         {label && <legend className="sr-only">{label}</legend>}
@@ -218,6 +221,7 @@ export default function BooleanField(props: BooleanFieldProps) {
               type="button"
               role="radio"
               aria-checked={isSelected}
+              data-value={String(option.value)}
               tabIndex={
                 isSelected || (value === undefined && index === 0) ? 0 : -1
               }
@@ -251,7 +255,7 @@ export default function BooleanField(props: BooleanFieldProps) {
           type="button"
           className="text-sm text-current/60 underline hover:text-current/80"
           onClick={() => onChange?.(undefined)}
-          disabled={disabled ?? readOnly}
+          disabled={Boolean(disabled) || Boolean(readOnly)}
         >
           Reset answer
         </button>

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
   Bold,
+  Eye,
   Grid3x3,
   Italic,
   List,
@@ -10,6 +11,7 @@ import {
   Pencil,
   Plus,
   Redo2,
+  Settings,
   Snowflake,
   Sparkles,
   Spline,
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import SplitButton from '../SplitButton';
 import { SegmentedToolbar, type ToolbarSegment } from './SegmentedToolbar';
 
 const meta = {
@@ -77,6 +80,7 @@ const sampleItems: ToolbarSegment[] = [
     id: 'delete',
     label: 'Delete',
     icon: <Trash2 />,
+    variant: 'default',
     className: 'bg-tomato text-white',
     onClick: noop,
   },
@@ -242,6 +246,55 @@ export const PopoverInput: Story = {
   },
 };
 
+/**
+ * A `component` segment renders a caller-supplied component inside the toolbar
+ * surface. Use it for composite controls such as `SplitButton`, where one
+ * logical toolbar slot contains more than one button.
+ */
+export const ComponentSegment: Story = {
+  args: { label: 'Stage actions', items: [] },
+  render: function ComponentSegmentRender(args) {
+    const [open, setOpen] = useState(false);
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo2 />,
+        onClick: noop,
+      },
+      { type: 'separator', id: 'sep' },
+      {
+        type: 'component',
+        id: 'preview',
+        component: ({ size }) => (
+          <SplitButton
+            className="bg-slate-blue text-white"
+            icon={<Eye />}
+            onClick={noop}
+            onOpenChange={setOpen}
+            open={open}
+            popover={{
+              content: <div className="w-48">Preview settings</div>,
+              side: 'top',
+            }}
+            segment={{
+              'aria-label': 'Preview settings',
+              'className': 'bg-slate-blue text-white',
+              'icon': <Settings />,
+            }}
+            size={size}
+            variant="text"
+          >
+            Preview
+          </SplitButton>
+        ),
+      },
+    ];
+    return <SegmentedToolbar {...args} items={items} />;
+  },
+};
+
 /** Per-button colours use named theme palette colours for background and foreground. */
 export const Colours: Story = {
   args: {
@@ -252,6 +305,7 @@ export const Colours: Story = {
         id: 'urgent',
         label: 'Urgent',
         showLabel: true,
+        variant: 'default',
         className: 'bg-tomato text-white',
         onClick: noop,
       },
@@ -260,6 +314,7 @@ export const Colours: Story = {
         id: 'review',
         label: 'Review',
         showLabel: true,
+        variant: 'default',
         className: 'bg-mustard text-charcoal',
         onClick: noop,
       },
@@ -268,6 +323,7 @@ export const Colours: Story = {
         id: 'done',
         label: 'Done',
         showLabel: true,
+        variant: 'default',
         className: 'bg-sea-green text-white',
         onClick: noop,
       },
@@ -276,6 +332,7 @@ export const Colours: Story = {
         id: 'idea',
         label: 'Idea',
         showLabel: true,
+        variant: 'default',
         className: 'bg-cerulean-blue text-white',
         onClick: noop,
       },

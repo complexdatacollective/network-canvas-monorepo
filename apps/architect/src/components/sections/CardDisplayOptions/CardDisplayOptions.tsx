@@ -3,24 +3,23 @@ import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import withDisabledAssetRequired from '~/components/enhancers/withDisabledAssetRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
-import { Text } from '~/components/Form/Fields';
 import MultiSelect from '~/components/Form/MultiSelect';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
 
-import Tip from '../../Tip';
 import getVariableOptionsGetter from '../SortOptionsForExternalData/getVariableOptionsGetter';
-
 type CardDisplayOptionsProps = StageEditorSectionProps & {
   dataSource: string;
   disabled: boolean;
 };
-
 const CardDisplayOptions = ({
   dataSource,
   disabled,
@@ -31,13 +30,11 @@ const CardDisplayOptions = ({
   );
   const variableOptionsGetter = getVariableOptionsGetter(variableOptions);
   const maxVariableOptions = variableOptions.length;
-
   const dispatch = useAppDispatch();
   const getFormValue = formValueSelector('edit-stage');
   const hasCardDisplayOptions = useSelector((state: RootState) =>
     getFormValue(state, 'cardOptions.additionalProperties'),
   );
-
   const handleToggleCardDisplayOptions = (nextState: boolean) => {
     if (!nextState) {
       dispatch(
@@ -48,18 +45,16 @@ const CardDisplayOptions = ({
         ) as unknown as UnknownAction,
       );
     }
-
     return true;
   };
-
   return (
     <Section
       title="Card Display Options"
       summary={
-        <p>
+        <Paragraph>
           This section controls how the cards (which represent each item in your
           roster data file) are displayed to the participant.
-        </p>
+        </Paragraph>
       }
       toggleable
       startExpanded={!!hasCardDisplayOptions}
@@ -67,26 +62,26 @@ const CardDisplayOptions = ({
       disabled={disabled}
     >
       <Row>
-        <Tip>
-          <p>
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
             Cards will use the <strong>name</strong> attribute from your
             external data as the main card title.
-          </p>
-        </Tip>
+          </AlertDescription>
+        </Alert>
       </Row>
       <Row>
-        <h4>Additional Display Properties</h4>
-        <p>
+        <Heading level="h4">Additional Display Properties</Heading>
+        <Paragraph>
           Would you like to display any other attributes to help the participant
           recognize a roster alter?
-        </p>
+        </Paragraph>
         {maxVariableOptions === 0 && (
-          <p>
+          <Paragraph>
             <em>
               Your external data does not seem to contain any usable attributes.
               Is it correctly formatted?
             </em>
-          </p>
+          </Paragraph>
         )}
         {maxVariableOptions > 0 && (
           <MultiSelect
@@ -98,9 +93,9 @@ const CardDisplayOptions = ({
               },
               {
                 fieldName: 'label',
-                component: Text,
+                control: 'input',
+                label: 'Label',
                 placeholder: 'Label',
-                variant: 'embedded',
               },
             ]}
             options={(
@@ -120,7 +115,6 @@ const CardDisplayOptions = ({
     </Section>
   );
 };
-
 export default compose<CardDisplayOptionsProps, StageEditorSectionProps>(
   withMapFormToProps('dataSource'),
   withDisabledAssetRequired,

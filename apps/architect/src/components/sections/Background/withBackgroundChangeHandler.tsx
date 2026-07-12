@@ -39,7 +39,7 @@ const withBackgroundChangeHandlerEnabled = withState<
   boolean,
   'useImage',
   'setUseImage'
->('useImage', 'setUseImage', ({ useImage }) => !!useImage);
+>('useImage', 'setUseImage', ({ useImage }) => useImage);
 
 const withBackgroundChangeHandlers = withHandlers<
   WithStateProps,

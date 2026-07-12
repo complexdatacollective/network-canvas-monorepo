@@ -2,6 +2,7 @@ import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
 import { formValueSelector } from 'redux-form';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import EditableAttributesList from '~/components/EditableAttributesList/EditableAttributesList';
 import { Section, Subsection } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -10,16 +11,16 @@ import { getCodebook } from '~/selectors/protocol';
 
 import withComposerFormHandlers from '../Form/withComposerFormHandlers';
 import EdgeTypeMultiSelect from './EdgeTypeMultiSelect';
-
 type EdgeEntry = {
   id: string;
-  subject: { entity: 'edge'; type: string };
+  subject: {
+    entity: 'edge';
+    type: string;
+  };
   form?: Record<string, unknown>;
 };
-
 const hasStringProp = (value: object, key: string): boolean =>
   typeof Reflect.get(value, key) === 'string';
-
 const isEdgeEntry = (value: unknown): value is EdgeEntry => {
   if (typeof value !== 'object' || value === null) {
     return false;
@@ -35,10 +36,8 @@ const isEdgeEntry = (value: unknown): value is EdgeEntry => {
     hasStringProp(subject, 'type')
   );
 };
-
 const toEdgeEntries = (value: unknown): EdgeEntry[] =>
   Array.isArray(value) ? value.filter(isEdgeEntry) : [];
-
 type EdgeAttributeBlockInnerProps = {
   entity: 'edge';
   type: string;
@@ -46,9 +45,8 @@ type EdgeAttributeBlockInnerProps = {
   fieldName: string;
   editFormName: string;
   title: string;
-  handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
+  handleChangeFields: (field: Record<string, unknown>) => unknown;
 };
-
 const EdgeAttributeBlockInner = ({
   entity,
   type,
@@ -74,7 +72,6 @@ const EdgeAttributeBlockInner = ({
     </Subsection>
   </Section>
 );
-
 type EdgeAttributeBlockOwnProps = {
   entity: 'edge';
   type: string;
@@ -83,7 +80,6 @@ type EdgeAttributeBlockOwnProps = {
   editFormName: string;
   title: string;
 };
-
 // `withComposerFormHandlers` reads props.entity/props.type/props.form to build a
 // handler scoped to THAT edge type's codebook entry. Composing it here — with
 // entity="edge" and type=<edge type> — yields a correctly edge-scoped
@@ -93,29 +89,25 @@ const EdgeAttributeBlock = compose<
   EdgeAttributeBlockInnerProps,
   EdgeAttributeBlockOwnProps
 >(withComposerFormHandlers)(EdgeAttributeBlockInner);
-
 type EdgeConfigurationProps = StageEditorSectionProps;
-
 const resolveEdgeLabel = (
   codebook: ReturnType<typeof getCodebook>,
   type: string,
 ) => codebook?.edge?.[type]?.name ?? type;
-
 const EdgeConfigurationInner = ({ form }: EdgeConfigurationProps) => {
   const codebook = useSelector(getCodebook);
   const edges = useSelector((state: RootState) =>
     toEdgeEntries(formValueSelector(form)(state, 'edges')),
   );
-
   return (
     <>
       <Section
         title="Edge Configuration"
         summary={
-          <p>
+          <Paragraph>
             Define the types of connection participants can draw between nodes,
             and the attributes collected for each connection type.
-          </p>
+          </Paragraph>
         }
         layout="horizontal"
         required={false}
@@ -141,7 +133,6 @@ const EdgeConfigurationInner = ({ form }: EdgeConfigurationProps) => {
     </>
   );
 };
-
 export default compose<EdgeConfigurationProps, StageEditorSectionProps>()(
   EdgeConfigurationInner,
 );

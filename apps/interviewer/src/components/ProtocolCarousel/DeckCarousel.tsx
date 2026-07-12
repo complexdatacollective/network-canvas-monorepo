@@ -347,16 +347,16 @@ function DeckSlide({
       onTap={handleTap}
       aria-hidden={hidden || undefined}
       inert={hidden}
-      className="absolute inset-0 m-auto origin-[center_bottom] will-change-transform"
+      className={`absolute inset-0 m-auto origin-[center_bottom] will-change-transform ${
+        slide.backdropBlur ? 'backdrop-blur-md' : ''
+      }`}
     >
       <motion.div
         initial={SLIDE_ENTER}
         animate={SLIDE_REST}
         exit={SLIDE_EXIT}
         transition={SLIDE_ENTER_SPRING}
-        className={`h-full w-full ${slide.backdropBlur ? 'backdrop-blur-md' : ''} ${
-          isPresent ? '' : 'pointer-events-none'
-        }`}
+        className={`h-full w-full ${isPresent ? '' : 'pointer-events-none'}`}
       >
         {slide.render(isActive, activate)}
       </motion.div>

@@ -1,8 +1,8 @@
 import { Printer } from 'lucide-react';
+import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
-import Tooltip from '~/components/NewComponents/Tooltip';
-import { Button } from '~/lib/legacy-ui/components';
+import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
 import { getProtocolName } from '~/selectors/protocol';
 
 const dateWithSafeChars = (date: string, replaceWith = '-') =>
@@ -13,10 +13,10 @@ const dateWithSafeChars = (date: string, replaceWith = '-') =>
 const fileNameWithSafeChars = (name: string) =>
   name.replace(/[/\\:*?"<>|]/g, '-').trim();
 
-const PrintProtocolAction = () => {
+export function usePrintProtocolAction(): ToolbarSegment {
   const protocolName = useSelector(getProtocolName);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!protocolName) return;
     const now = new Date();
     const dateString = `${dateWithSafeChars(now.toLocaleDateString(), '-')} ${dateWithSafeChars(now.toLocaleTimeString(), '.')}`;
@@ -28,15 +28,17 @@ const PrintProtocolAction = () => {
     } finally {
       window.document.title = previousTitle;
     }
-  };
+  }, [protocolName]);
 
-  return (
-    <Tooltip content="Print protocol summary">
-      <Button onClick={handlePrint} color="neon-coral" icon={<Printer />}>
-        Print
-      </Button>
-    </Tooltip>
+  return useMemo<ToolbarSegment>(
+    () => ({
+      type: 'button',
+      id: 'print',
+      label: 'Print',
+      icon: <Printer />,
+      showLabel: true,
+      onClick: handlePrint,
+    }),
+    [handlePrint],
   );
-};
-
-export default PrintProtocolAction;
+}

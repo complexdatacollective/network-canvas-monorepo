@@ -854,6 +854,7 @@ describe('PedigreeEdgeSvg — twin and duplicate-arc dimming', () => {
 // PedigreeLayout integration — highlightedEdgeKeys threads through
 // ---------------------------------------------------------------------------
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
@@ -882,7 +883,9 @@ function makeNodes(
     map.set(id, {
       _uid: id,
       type: 'person',
-      attributes: { [variableConfig.egoVariable]: isEgo ?? false },
+      [entityAttributesProperty]: {
+        [variableConfig.egoVariable]: isEgo ?? false,
+      },
     });
   }
   return map;
@@ -903,7 +906,7 @@ function makeEdges(
       type: 'family',
       from: e.from,
       to: e.to,
-      attributes: {
+      [entityAttributesProperty]: {
         [variableConfig.relationshipTypeVariable]: [e.relationshipType],
         [variableConfig.isActiveVariable]: e.isActive,
       },

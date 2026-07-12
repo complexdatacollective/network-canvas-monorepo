@@ -8,11 +8,6 @@ import { v4 as uuid } from 'uuid';
 
 import type { ExtractedAsset } from '@codaco/protocol-validation';
 import { setStorageUnavailable } from '~/ducks/modules/app';
-import {
-  duplicateRowsWarningDialog,
-  importAssetErrorDialog,
-  invalidAssetErrorDialog,
-} from '~/ducks/modules/protocol/utils/dialogs';
 import { saveAssetWithFallback } from '~/utils/assetUtils';
 import { validateAsset } from '~/utils/protocols/assetTools';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
@@ -35,6 +30,7 @@ type ImportAssetCompletePayload = {
   filename: string;
   name: string;
   assetType: AssetType;
+  duplicateCount: number;
 };
 
 type ImportAssetFailedPayload = {
@@ -48,6 +44,28 @@ type AddApiKeyAssetPayload = {
   value: string;
 };
 
+export type ImportAssetErrorInfo = {
+  filename: string;
+  message: string;
+  code?: string;
+};
+
+const getImportAssetErrorInfo = (
+  error: unknown,
+  filename: string,
+): ImportAssetErrorInfo => {
+  const normalized =
+    error instanceof Error
+      ? error
+      : new Error('The file could not be imported.');
+  const codedError = normalized as Error & { code?: string };
+  return {
+    filename,
+    message: normalized.message,
+    code: codedError.code,
+  };
+};
+
 // Async thunks
 export const importAssetAsync = createAsyncThunk(
   'assetManifest/importAssetAsync',
@@ -57,16 +75,7 @@ export const importAssetAsync = createAsyncThunk(
 
     try {
       // Validate asset
-      const validationResult = await validateAsset(file).catch((error) => {
-        dispatch(invalidAssetErrorDialog(error, name));
-        throw error;
-      });
-
-      if (validationResult.duplicateCount > 0) {
-        dispatch(
-          duplicateRowsWarningDialog(name, validationResult.duplicateCount),
-        );
-      }
+      const validationResult = await validateAsset(file);
 
       // Convert File to Blob and create ExtractedAsset
       const blob = new Blob([file], { type: file.type });
@@ -98,6 +107,7 @@ export const importAssetAsync = createAsyncThunk(
         filename: file.name, // Used as source in manifest
         name,
         assetType,
+        duplicateCount: validationResult.duplicateCount,
       };
 
       dispatch(assetManifestSlice.actions.importAssetComplete(importPayload));
@@ -109,12 +119,7 @@ export const importAssetAsync = createAsyncThunk(
           error: error as Error,
         }),
       );
-      // Only show generic import error if it wasn't already handled by validation
-      // Validation errors have a `code` property (e.g., "COLUMN_MISMATCHED", "VARIABLE_NAME")
-      if (!(error as Error & { code?: string }).code) {
-        dispatch(importAssetErrorDialog(error as Error, name));
-      }
-      return rejectWithValue((error as Error).message);
+      return rejectWithValue(getImportAssetErrorInfo(error, name));
     }
   },
 );
@@ -183,6 +188,7 @@ export const test = {
       filename,
       name,
       assetType,
+      duplicateCount: 0,
     });
   },
   deleteAsset: (id: string) => assetManifestSlice.actions.deleteAsset(id),

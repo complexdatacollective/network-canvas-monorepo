@@ -16,6 +16,7 @@ import SubmitButton from '../form/SubmitButton';
 import Paragraph from '../typography/Paragraph';
 import { generatePublicId } from '../utils/generatePublicId';
 import Dialog from './Dialog';
+import type { DialogSize } from './DialogPopup';
 import useWizardState from './useWizardState';
 
 type BaseDialog = {
@@ -25,6 +26,7 @@ type BaseDialog = {
   intent?: 'default' | 'destructive' | 'success' | 'info' | 'warning';
   children?: React.ReactNode;
   className?: string;
+  size?: DialogSize;
 };
 
 export type AcknowledgeDialog = BaseDialog & {
@@ -140,6 +142,7 @@ type ConfirmOptions = {
   confirmLabel: string;
   cancelLabel?: string;
   intent?: 'default' | 'destructive' | 'warning';
+  size?: DialogSize;
 };
 
 export type DialogContextType = {
@@ -214,6 +217,7 @@ function WizardDialogContent({
       open={dialog.open}
       footer={wizardProps.footer}
       className={dialog.className}
+      size={dialog.size ?? 'editor'}
     >
       {wizardProps.children}
     </Dialog>
@@ -446,6 +450,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         title: options.title ?? 'Are you sure?',
         description: options.description ?? 'This action cannot be undone.',
         intent: options.intent ?? 'destructive',
+        size: options.size,
         actions: {
           primary: { label: options.confirmLabel, value: true },
           cancel: {
@@ -477,6 +482,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         <Button
           color="primary"
           onClick={() => closeDialog(dialog.id, dialog.actions.primary.value)}
+          data-testid="dialog-primary"
         >
           {dialog.actions.primary.label}
         </Button>
@@ -514,6 +520,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
                 closeDialog(dialog.id, dialog.actions.cancel.value)
               }
               autoFocus={autoFocusButton === 'cancel'}
+              data-testid="dialog-cancel"
             >
               {dialog.actions.cancel.label}
             </Button>
@@ -523,6 +530,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
               onClick={() =>
                 closeDialog(dialog.id, dialog.actions.secondary!.value)
               }
+              data-testid="dialog-secondary"
             >
               {dialog.actions.secondary.label}
             </Button>
@@ -533,6 +541,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             autoFocus={autoFocusButton === 'primary'}
             disabled={isLoading}
             icon={isLoading ? <Loader2 className="animate-spin" /> : undefined}
+            data-testid="dialog-primary"
           >
             {isLoading ? 'Please wait...' : dialog.actions.primary.label}
           </Button>
@@ -567,15 +576,19 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             open={dialog.open}
             footer={
               <>
-                <Button onClick={() => closeDialog(dialog.id, null)}>
+                <Button
+                  onClick={() => closeDialog(dialog.id, null)}
+                  data-testid="dialog-cancel"
+                >
                   {dialog.cancelLabel ?? 'Cancel'}
                 </Button>
-                <SubmitButton form={formId}>
+                <SubmitButton form={formId} data-testid="dialog-submit">
                   {dialog.submitLabel ?? 'Submit'}
                 </SubmitButton>
               </>
             }
             className={dialog.className}
+            size={dialog.size ?? 'editor'}
           >
             <FormWithoutProvider
               id={formId}
@@ -604,6 +617,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         open={dialog.open}
         footer={footer}
         className={dialog.className}
+        size={dialog.size}
       >
         {dialog.children}
       </Dialog>

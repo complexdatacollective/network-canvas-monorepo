@@ -144,7 +144,7 @@ const getUniqueAttributeKeys = (
       protocolCodebook,
       stageSubject,
     );
-    const variables = Object.keys(node.attributes);
+    const variables = Object.keys(node[entityAttributesProperty]);
     const nonCodebookVariables = variables.filter(
       (attributeKey) => !get(codebookDefinition, `variables[${attributeKey}]`),
     );
@@ -166,7 +166,7 @@ const getNodeListUsingTypes = (
       stageSubject,
     );
     const attributes: NcNode[EntityAttributesProperty] = Object.entries(
-      node.attributes,
+      node[entityAttributesProperty],
     ).reduce<NcNode[EntityAttributesProperty]>(
       (consolidatedAttributes, [attributeKey, attributeValue]) => {
         if (

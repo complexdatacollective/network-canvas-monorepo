@@ -44,6 +44,35 @@ describe('sessionStorageDriver', () => {
     expect(driver.getItem('key')).toBe('value');
   });
 
+  it('invokes onStorageError when a setItem write fails and falls back to memory', () => {
+    const onStorageError = vi.fn();
+    const driver = createSessionStorageDriver(onStorageError);
+
+    const error = new DOMException('quota', 'QuotaExceededError');
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw error;
+    });
+
+    driver.setItem('key', 'value');
+
+    expect(onStorageError).toHaveBeenCalledTimes(1);
+    expect(onStorageError).toHaveBeenCalledWith(error);
+  });
+
+  it('invokes onStorageError at most once even across repeated failing writes', () => {
+    const onStorageError = vi.fn();
+    const driver = createSessionStorageDriver(onStorageError);
+
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('quota', 'QuotaExceededError');
+    });
+
+    driver.setItem('key', 'value');
+    driver.setItem('key', 'value2');
+
+    expect(onStorageError).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps two driver instances independent (models two tabs)', () => {
     // Each tab has its own sessionStorage; the in-memory fallback must also be
     // per-instance so a storage-unavailable tab never leaks into another.

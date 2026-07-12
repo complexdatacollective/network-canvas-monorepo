@@ -1,6 +1,7 @@
 import { isEmpty, sortBy } from 'es-toolkit/compat';
 import React, { useContext } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '~/components/StageTypeImage';
 
 import DualLink from '../DualLink';
@@ -27,15 +28,19 @@ import QuickAdd from './QuickAdd';
 import ScaffoldingStep from './ScaffoldingStep';
 import SectionFrame from './SectionFrame';
 import SkipLogic from './SkipLogic';
-
 type FormFieldType = {
   prompt: string;
   variable: string;
   [key: string]: unknown;
 };
-
 const variablesOnStage =
-  (index: Array<{ id: string; name: string; stages: string[] }>) =>
+  (
+    index: Array<{
+      id: string;
+      name: string;
+      stages: string[];
+    }>,
+  ) =>
   (stageId: string) =>
     index.reduce<Array<[string, string]>>((memo, variable) => {
       if (!variable.stages.includes(stageId)) {
@@ -44,7 +49,6 @@ const variablesOnStage =
       memo.push([variable.id, variable.name]);
       return memo;
     }, []);
-
 type StageProps = {
   configuration: Record<string, unknown>;
   id: string;
@@ -52,32 +56,42 @@ type StageProps = {
   stageNumber: number;
   type: string;
 };
-
 const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
   const { index } = useContext(SummaryContext);
-
   const stageVariables = sortBy(variablesOnStage(index)(id), [
     (variable) => variable[1].toLowerCase(),
   ]);
-
   const subject = configuration.subject as
-    | { type: string; entity: string }
+    | {
+        type: string;
+        entity: string;
+      }
     | undefined;
   const filter = configuration.filter as Record<string, unknown> | undefined;
   const skipLogic = configuration.skipLogic as
     | Record<string, unknown>
     | undefined;
   const introductionPanel = configuration.introductionPanel as
-    | { title: string; text: string }
+    | {
+        title: string;
+        text: string;
+      }
     | undefined;
   const dataSource = configuration.dataSource as string | undefined;
   const quickAdd = configuration.quickAdd as string | undefined;
   const panels = configuration.panels as
-    | { id: string; title: string; dataSource: string }[]
+    | {
+        id: string;
+        title: string;
+        dataSource: string;
+      }[]
     | undefined;
   const prompts = configuration.prompts as PromptType[] | undefined;
   const form = configuration.form as
-    | { title?: string; fields?: FormFieldType[] }
+    | {
+        title?: string;
+        fields?: FormFieldType[];
+      }
     | undefined;
   const behaviours = configuration.behaviours as
     | Record<string, unknown>
@@ -87,19 +101,28 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         label: string;
         layoutVariable?: string;
         groupVariable?: string;
-        edges?: { display?: string[] };
+        edges?: {
+          display?: string[];
+        };
         highlight?: string[];
       }[]
     | undefined;
   const title = configuration.title as string | undefined;
   const items = configuration.items as
-    | { id?: string; type?: string; content?: string; size?: string }[]
+    | {
+        id?: string;
+        type?: string;
+        content?: string;
+        size?: string;
+      }[]
     | undefined;
   const interviewScript = configuration.interviewScript as string | undefined;
-
   // Legacy FamilyTreeCensus fields (kept for backward compatibility with old protocols)
   const edgeType = configuration.edgeType as
-    | { type: string; entity: string }
+    | {
+        type: string;
+        entity: string;
+      }
     | undefined;
   const relationshipTypeVariable = configuration.relationshipTypeVariable as
     | string
@@ -113,23 +136,41 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | string
     | undefined;
   const scaffoldingStep = configuration.scaffoldingStep as
-    | { text: string; showQuickStartModal: boolean }
+    | {
+        text: string;
+        showQuickStartModal: boolean;
+      }
     | undefined;
   const nameGenerationStep = configuration.nameGenerationStep as
     | {
         text: string;
-        form: { fields?: Array<{ variable: string; prompt: string }> };
+        form: {
+          fields?: Array<{
+            variable: string;
+            prompt: string;
+          }>;
+        };
       }
     | undefined;
   const diseaseNominationStep = configuration.diseaseNominationStep as
-    | Array<{ id: string; text: string; variable: string }>
+    | Array<{
+        id: string;
+        text: string;
+        variable: string;
+      }>
     | undefined;
   // Anonymisation
   const explanationText = configuration.explanationText as
-    | { title: string; body: string }
+    | {
+        title: string;
+        body: string;
+      }
     | undefined;
   const validation = configuration.validation as
-    | { minLength?: number; maxLength?: number }
+    | {
+        minLength?: number;
+        maxLength?: number;
+      }
     | undefined;
   // Geospatial
   const mapOptions = configuration.mapOptions as
@@ -143,17 +184,16 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         targetFeatureProperty?: string;
       }
     | undefined;
-
   return (
     <div className="page-break-marker break-before-page" id={`stage-${id}`}>
       <div className="overflow-hidden">
-        <div className="flex items-center pb-(--space-xl)">
-          <div className="me-(--space-md) flex-1">
+        <div className="flex items-center pb-10">
+          <div className="me-5 flex-1">
             <div
-              className="before:bg-cyber-grape flex items-center text-2xl font-bold before:me-(--space-md) before:flex before:size-(--space-3xl) before:flex-none before:items-center before:justify-center before:rounded-full before:[font-family:var(--heading-font-family)] before:text-white before:content-[attr(data-number)]"
+              className="before:bg-cyber-grape flex items-center text-2xl font-bold before:me-5 before:flex before:size-19 before:flex-none before:items-center before:justify-center before:rounded-full before:[font-family:var(--heading-font)] before:text-white before:content-[attr(data-number)]"
               data-number={stageNumber}
             >
-              <h1>{label}</h1>
+              <Heading level="h1">{label}</Heading>
             </div>
             {(subject || edgeType || !isEmpty(stageVariables)) && (
               <MiniTable
@@ -211,7 +251,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
           <div className="relative flex flex-[0_0_5cm] items-center">
             <div className="flex-1 [&_img]:w-full [&_img]:rounded">
               {/* eager: the summary is rendered for print, where lazy
-                  images may never load before the print snapshot. */}
+            images may never load before the print snapshot. */}
               <StageTypeImage
                 type={type}
                 ratio="4:3"
@@ -270,5 +310,4 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     </div>
   );
 };
-
 export default Stage;

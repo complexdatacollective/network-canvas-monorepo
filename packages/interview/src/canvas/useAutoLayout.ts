@@ -152,7 +152,7 @@ export function useAutoLayout({
     () =>
       nodes
         .map((n) => n[entityPrimaryKeyProperty])
-        .toSorted((a, b) => String(a).localeCompare(String(b)))
+        .toSorted((a, b) => a.localeCompare(b))
         .join(','),
     [nodes],
   );

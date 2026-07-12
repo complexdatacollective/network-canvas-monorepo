@@ -1,33 +1,40 @@
-import type React from 'react';
-import { useRef } from 'react';
-import { v4 as uuid } from 'uuid';
+import type { ComponentType } from 'react';
+import type { WrappedFieldInputProps, WrappedFieldMetaProps } from 'redux-form';
 
-import MarkdownLabel from '~/components/Form/Fields/MarkdownLabel';
-import Icon from '~/lib/legacy-ui/components/Icon';
-import { cx } from '~/utils/cva';
+import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 
-import RichText from './RichText';
+import {
+  markdownToRichTextContent,
+  richTextContentToMarkdown,
+  type RichTextContent,
+} from './markdownAdapter';
 
 type RichTextFieldProps = {
-  input: {
-    value: string;
-    onChange: (value: string) => void;
-    onFocus?: React.FocusEventHandler;
-    onBlur?: React.FocusEventHandler;
-  };
-  meta?: {
-    error?: string;
-    active?: boolean;
-    invalid?: boolean;
-    touched?: boolean;
-  };
+  input: WrappedFieldInputProps;
+  meta?: Partial<WrappedFieldMetaProps>;
   label?: string | null;
   placeholder?: string;
   autoFocus?: boolean;
   inline?: boolean;
   disallowedTypes?: string[];
   className?: string | null;
+  disabled?: boolean;
+  readOnly?: boolean;
+  required?: boolean;
 };
+
+const FrescoRichTextEditorField = RichTextEditorField as ComponentType<
+  Record<string, unknown>
+>;
+const ReduxFieldAdapter = FrescoReduxField as ComponentType<
+  Record<string, unknown>
+>;
+
+const asRichTextContent = (value: unknown): RichTextContent | undefined =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as RichTextContent)
+    : undefined;
 
 const RichTextField = ({
   input,
@@ -38,37 +45,44 @@ const RichTextField = ({
   inline = false,
   disallowedTypes = [],
   className = null,
+  disabled = false,
+  readOnly = false,
+  required = false,
 }: RichTextFieldProps) => {
-  const _id = useRef(uuid());
-
-  const anyLabel = label;
-  const hasError = !!(meta.invalid && meta.touched && meta.error);
+  const toolbarOptions = {
+    bold: !disallowedTypes.includes('bold'),
+    italic: !disallowedTypes.includes('italic'),
+    links: !inline,
+    headings: !inline && !disallowedTypes.includes('headings'),
+    lists: !inline && !disallowedTypes.includes('lists'),
+    thematicBreak: !inline && !disallowedTypes.includes('thematic_break'),
+    history: !disallowedTypes.includes('history'),
+  };
 
   return (
-    <div className="m-0 w-full [&>h4]:m-0">
-      {anyLabel && (
-        <h4>
-          <MarkdownLabel label={anyLabel} />
-        </h4>
-      )}
-      <div className={cx(className)}>
-        <RichText
-          value={input.value}
-          onChange={input.onChange}
-          placeholder={placeholder}
-          autoFocus={autoFocus}
-          inline={inline}
-          disallowedTypes={disallowedTypes}
-          hasError={hasError}
-        />
-        {hasError && (
-          <div className="bg-error text-error-foreground flex items-center rounded-b-sm px-(--space-xs) py-(--space-sm) [&_svg]:max-h-(--space-md)">
-            <Icon name="warning" />
-            {meta.error}
-          </div>
-        )}
-      </div>
-    </div>
+    <ReduxFieldAdapter
+      input={input}
+      meta={meta}
+      fieldComponent={FrescoRichTextEditorField}
+      label={label ?? input.name ?? ''}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      className={className ?? undefined}
+      disabled={disabled}
+      readOnly={readOnly}
+      required={required}
+      changeMode="input"
+      toolbarOptions={toolbarOptions}
+      fromReduxValue={(value: unknown) =>
+        markdownToRichTextContent(
+          typeof value === 'string' ? value : null,
+          inline,
+        )
+      }
+      toReduxValue={(value: unknown) =>
+        richTextContentToMarkdown(asRichTextContent(value), inline)
+      }
+    />
   );
 };
 

@@ -12,6 +12,10 @@ import {
 } from 'react';
 
 import { MotionSurface } from './layout/Surface';
+import {
+  POPOVER_ARROW_CLASS_NAME,
+  POPOVER_ARROW_PADDING,
+} from './popoverArrow';
 import { usePortalContainer } from './PortalContainer';
 import { cx } from './utils/cva';
 
@@ -56,24 +60,30 @@ type PopoverProps = ComponentProps<typeof BasePopover.Root> & {
   children: ReactNode;
 };
 
-function Popover({ children, ...props }: PopoverProps) {
-  const [mounted, setMounted] = useState(false);
+function Popover({
+  children,
+  defaultOpen = false,
+  onOpenChange,
+  open,
+  ...props
+}: PopoverProps) {
+  const [mounted, setMounted] = useState(defaultOpen);
 
-  const controlled = props.open !== undefined;
+  const controlled = open !== undefined;
 
   const handleOpenChange = (
     nextOpen: boolean,
     event: BasePopover.Root.ChangeEventDetails,
   ) => {
     setMounted(nextOpen);
-    props.onOpenChange?.(nextOpen, event);
+    onOpenChange?.(nextOpen, event);
   };
 
   // When open is controlled externally, sync mounted state so
   // PopoverContent renders. base-ui only fires onOpenChange for
   // internal state changes, not when the open prop changes.
-  const effectiveOpen = controlled ? props.open : mounted;
-  const effectiveMounted = controlled ? !!props.open : mounted;
+  const effectiveOpen = controlled ? open : mounted;
+  const effectiveMounted = effectiveOpen;
 
   return (
     <PopoverContext.Provider value={{ mounted: effectiveMounted, setMounted }}>
@@ -185,6 +195,7 @@ function PopoverContent({
         {mounted && (
           <BasePopover.Positioner
             sideOffset={sideOffset}
+            arrowPadding={POPOVER_ARROW_PADDING}
             align={align}
             {...(side ? { side } : {})}
             {...(anchor ? { anchor } : {})}
@@ -199,7 +210,7 @@ function PopoverContent({
               {...props}
             >
               {showArrow && (
-                <BasePopover.Arrow className="data-[side=bottom]:top-[-15px] data-[side=left]:right-[-20px] data-[side=left]:rotate-90 data-[side=right]:left-[-20px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-15px] data-[side=top]:rotate-180">
+                <BasePopover.Arrow className={POPOVER_ARROW_CLASS_NAME}>
                   <ArrowSvg />
                 </BasePopover.Arrow>
               )}

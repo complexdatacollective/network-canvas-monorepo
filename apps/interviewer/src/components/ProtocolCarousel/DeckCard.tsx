@@ -15,6 +15,7 @@ import { Link } from 'wouter';
 import { Pattern } from '@codaco/art';
 import { buttonVariants, IconButton } from '@codaco/fresco-ui/Button';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { Skeleton } from '@codaco/fresco-ui/Skeleton';
 import { proportionalLucideIconVariants } from '@codaco/fresco-ui/styles/controlVariants';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
@@ -79,45 +80,256 @@ function withUnderscoreBreaks(name: string): ReactNode[] {
 // so Tailwind's scanner emits them. Names are identifiers (machine-style
 // names often differ only at the END), so shrinking is preferred over
 // truncation; the fitted line clamp below is only a backstop for
-// pathological lengths.
+// pathological lengths. Each tier carries a pixel floor so the name stays
+// legible on the smallest cards — when text stops shrinking, the budget
+// hook trades description lines away instead.
 function headingSizeClass(name: string): string {
-  if (name.length <= 24) return 'text-[8cqi]';
-  if (name.length <= 48) return 'text-[6.5cqi]';
-  return 'text-[5cqi]';
+  if (name.length <= 24) return 'text-[max(20px,8cqi)]';
+  if (name.length <= 48) return 'text-[max(18px,6.5cqi)]';
+  return 'text-[max(16px,5cqi)]';
 }
 
-// Clamp the heading to however many whole lines fit its flexed region. The
-// region is the column's only flexible row (flex-1 + min-h-0), so this is
-// what guarantees a pathological name can never grow the column past the
-// card edge and evict the footer — and the whole-line count means the
-// backstop never clips text mid-line. A fixed line-clamp can't do this:
-// the budget depends on which siblings (controls row, description,
-// metadata, footer) are present.
-function useFittedHeadingClamp(name: string | undefined) {
-  const regionRef = useRef<HTMLDivElement | null>(null);
+// Ceiling on the description even when space allows — beyond this it trails
+// off with an ellipsis so a long abstract can't dominate the card.
+const DESCRIPTION_MAX_LINES = 6;
+
+// The description's line height as a fraction of the card width —
+// text-[max(12px,3.5cqi)] × leading-tight (1.25) on the span below. Used
+// only until the span has been measured once (a card born too small to
+// ever show the description), so the budget can still tell when enough
+// room has returned for it to re-enter. Approximate below the 12px floor,
+// where the real line height stops scaling with the card — a ±1-line
+// error in when the description re-enters, nothing more.
+const DESCRIPTION_FALLBACK_LINE_HEIGHT_RATIO = 0.035 * 1.25;
+
+type CardTextBudget = {
+  headingLines: number | null;
+  descriptionLines: number | null;
+  footerMaxHeight: number | null;
+};
+
+// Divide the card column's height between its rows, name first (#888).
+// Fixed rows (controls, metadata, divider) and the footer's NATURAL height
+// are reserved up front; the heading then takes as many whole lines as its
+// name needs and its budget allows (never fewer than one); the description
+// gets whatever remains, hiding entirely (0 lines) when even one line
+// doesn't fit; and the footer is capped at the leftover so an oversized
+// footer (the case-ID form on a small card) scrolls inside the card
+// instead of pushing its submit button past the clipped card edge.
+//
+// A plain flex layout can't express this priority order: making any one
+// row the flexible one sacrifices it to the others (the previous layout
+// flexed the heading, so an active card's footer squeezed the title to a
+// clipped single line).
+//
+// Stability: no output feeds back into its own inputs. Budgets are derived
+// from the column height, the fixed rows' natural sizes, and arithmetic
+// gap terms — never from the heading's, description's, or footer's
+// ALLOCATED boxes — so applying the clamps can't re-trigger different
+// clamps and oscillate.
+function useCardTextBudget({
+  name,
+  description,
+  loading,
+  hideControls,
+  hideMetadata,
+  hideDescription,
+  footerKey,
+}: {
+  name: string | undefined;
+  description: string | undefined;
+  loading: boolean;
+  hideControls: boolean;
+  hideMetadata: boolean;
+  hideDescription: boolean;
+  footerKey: string | null;
+}) {
+  const columnRef = useRef<HTMLDivElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
-  const [lines, setLines] = useState<number | null>(null);
+  const descriptionRef = useRef<HTMLSpanElement | null>(null);
+  const descriptionLineHeightRatio = useRef<number | null>(null);
+  const [budget, setBudget] = useState<CardTextBudget>({
+    headingLines: null,
+    descriptionLines: null,
+    footerMaxHeight: null,
+  });
 
   useLayoutEffect(() => {
-    const region = regionRef.current;
-    const heading = headingRef.current;
-    if (!region || !heading) return;
+    const column = columnRef.current;
+    if (!column) return undefined;
+
     const measure = () => {
-      const lineHeight = parseFloat(getComputedStyle(heading).lineHeight);
-      if (!Number.isFinite(lineHeight) || lineHeight <= 0) return;
-      const fit = Math.max(1, Math.floor(region.clientHeight / lineHeight));
-      setLines((previous) => (previous === fit ? previous : fit));
+      const columnStyle = getComputedStyle(column);
+      const contentHeight =
+        column.clientHeight -
+        parseFloat(columnStyle.paddingTop) -
+        parseFloat(columnStyle.paddingBottom);
+      const columnWidth = column.clientWidth;
+      // jsdom (and a display:none card) reports zero dimensions — keep the
+      // unclamped defaults rather than clamping everything to nothing.
+      if (contentHeight <= 0 || columnWidth <= 0) return;
+      const gap = parseFloat(columnStyle.rowGap) || 0;
+
+      const rows = Array.from(column.children).filter(
+        (el): el is HTMLElement =>
+          el instanceof HTMLElement &&
+          // popLayout pops exiting rows out of the flow (position:absolute)
+          // at exit start — they no longer take space.
+          getComputedStyle(el).position !== 'absolute',
+      );
+      const footerRow = rows.find((el) => el.dataset.deckRow === 'footer');
+      const others = rows.filter((el) => el.dataset.deckRow === undefined);
+      // The footer's natural (uncapped) content height: the ScrollArea
+      // viewport's scrollHeight, which keeps reporting the full content
+      // once the cap is applied. Resolved from the IN-FLOW row (not a ref)
+      // because two footers coexist during a swap — the exiting one is out
+      // of the flow but still mounted, and a shared ref could point at it.
+      const footerViewport = footerRow?.querySelector('section');
+      const footerNaturalHeight = footerRow
+        ? Math.max(footerRow.offsetHeight, footerViewport?.scrollHeight ?? 0)
+        : 0;
+      const fixedHeight =
+        others.reduce((sum, el) => sum + el.offsetHeight, 0) +
+        footerNaturalHeight;
+      const fixedRowCount = others.length + (footerRow ? 1 : 0);
+
+      let headingLines: CardTextBudget['headingLines'] = null;
+      let headingHeight = 0;
+      const heading = headingRef.current;
+      if (heading) {
+        const lineHeight = parseFloat(getComputedStyle(heading).lineHeight);
+        if (Number.isFinite(lineHeight) && lineHeight > 0) {
+          const naturalLines = Math.max(
+            1,
+            Math.round(heading.scrollHeight / lineHeight),
+          );
+          // Gaps: the fixed rows plus the heading row itself.
+          const headingBudget =
+            contentHeight - fixedHeight - gap * fixedRowCount;
+          headingLines = Math.min(
+            naturalLines,
+            Math.max(1, Math.floor(headingBudget / lineHeight)),
+          );
+          headingHeight = headingLines * lineHeight;
+        }
+      } else {
+        // Loading: the heading row shows skeletons at a fixed size.
+        const headingRow = rows.find((el) => el.dataset.deckRow === 'heading');
+        headingHeight = headingRow?.offsetHeight ?? 0;
+      }
+
+      const descriptionEl = descriptionRef.current;
+      if (descriptionEl) {
+        const lineHeight = parseFloat(
+          getComputedStyle(descriptionEl).lineHeight,
+        );
+        if (Number.isFinite(lineHeight) && lineHeight > 0) {
+          descriptionLineHeightRatio.current = lineHeight / columnWidth;
+        }
+      }
+      const descriptionLineHeight =
+        (descriptionLineHeightRatio.current ??
+          DESCRIPTION_FALLBACK_LINE_HEIGHT_RATIO) * columnWidth;
+      const descriptionBudget =
+        contentHeight - fixedHeight - headingHeight - gap * (fixedRowCount + 1);
+      const descriptionLines =
+        descriptionLineHeight > 0
+          ? Math.max(
+              0,
+              Math.min(
+                DESCRIPTION_MAX_LINES,
+                Math.floor(descriptionBudget / descriptionLineHeight),
+              ),
+            )
+          : 0;
+
+      // null = the footer fits; it then renders as a plain (overflow
+      // visible) region so nothing clips its buttons' shadows and no
+      // scroll container exists to grow a scrollbar. A number = genuine
+      // overflow; the footer is capped there and scrolls.
+      let footerMaxHeight: CardTextBudget['footerMaxHeight'] = null;
+      if (footerRow) {
+        // The description skeletons (no real text yet) count as a fixed row;
+        // the real span occupies exactly its clamped lines. Presence comes
+        // from the IN-FLOW row scan, not descriptionRef — during a footer
+        // swap the exiting description is popped out of the flow but its
+        // ref is still live, and counting it would cap the incoming footer
+        // (the case-ID form) a description's height too short.
+        const descriptionShown =
+          descriptionLines > 0 &&
+          rows.some((el) => el.dataset.deckRow === 'description');
+        const descriptionHeight = descriptionShown
+          ? descriptionLines * descriptionLineHeight
+          : 0;
+        const footerAvailable =
+          contentHeight -
+          (fixedHeight - footerNaturalHeight) -
+          headingHeight -
+          descriptionHeight -
+          gap * (fixedRowCount + (descriptionShown ? 1 : 0));
+        // 2px tolerance: the natural height is a rounded-up integer
+        // (scrollHeight) compared against a fractional budget, so a
+        // sub-pixel discrepancy must not flip the footer into scroll mode
+        // — a couple of pixels absorbed by the column beats a scrollbar
+        // that scrolls one pixel.
+        footerMaxHeight =
+          footerNaturalHeight <= footerAvailable + 2
+            ? null
+            : Math.max(48, Math.floor(footerAvailable));
+      }
+
+      setBudget((previous) =>
+        previous.headingLines === headingLines &&
+        previous.descriptionLines === descriptionLines &&
+        previous.footerMaxHeight === footerMaxHeight
+          ? previous
+          : { headingLines, descriptionLines, footerMaxHeight },
+      );
     };
+
     measure();
     const observer = new ResizeObserver(measure);
-    // The region resizes when siblings come and go; the heading resizes
-    // when a card-width change alters the computed line height.
-    observer.observe(region);
-    observer.observe(heading);
-    return () => observer.disconnect();
-  }, [name]);
+    observer.observe(column);
+    // Rows come and go with the effect deps below; heights also move on
+    // their own (the metadata row wraps, the pill appears), so observe each.
+    for (const el of column.children) {
+      if (el instanceof HTMLElement) observer.observe(el);
+    }
+    // The footer's cap freezes its row box, so content growth inside the
+    // scroll viewport (a validation error appearing) is only visible on the
+    // viewport's child. Observe every mounted footer's content — during a
+    // swap both the entering and exiting footers exist.
+    for (const content of column.querySelectorAll(
+      '[data-deck-row="footer"] section > *',
+    )) {
+      if (content instanceof HTMLElement) observer.observe(content);
+    }
+    // An exiting row leaving the DOM (its pop-fade finishing) changes no
+    // observed box — the row was already out of the flow — but it can shift
+    // what the budget should count (a measure taken mid-exit sticks
+    // otherwise). Re-measure on any child list change.
+    const mutations = new MutationObserver(measure);
+    mutations.observe(column, { childList: true });
+    return () => {
+      observer.disconnect();
+      mutations.disconnect();
+    };
+  }, [
+    name,
+    description,
+    loading,
+    hideControls,
+    hideMetadata,
+    hideDescription,
+    footerKey,
+  ]);
 
-  return { regionRef, headingRef, lines };
+  return {
+    columnRef,
+    headingRef,
+    descriptionRef,
+    ...budget,
+  };
 }
 
 // The subset of protocol fields the card renders. In the loading state any
@@ -216,11 +428,7 @@ export function DeckCard(props: DeckCardProps) {
 
   const id = useId();
 
-  const showDescription =
-    !hideDescription && Boolean(protocol.description ?? loading);
   const showMetadata = !hideMetadata;
-
-  const headingClamp = useFittedHeadingClamp(protocol.name);
 
   // The footer group's identity, taken from the consumer's key on the
   // footer element (e.g. "start-interview" → "new-session"). A change
@@ -232,6 +440,25 @@ export function DeckCard(props: DeckCardProps) {
   // no delay.
   const footerKey = isValidElement(footer) ? (footer.key ?? 'footer') : null;
   const renderedFooterKey = isActive && footer != null ? footerKey : null;
+
+  const budget = useCardTextBudget({
+    name: protocol.name,
+    description: protocol.description,
+    loading,
+    hideControls,
+    hideMetadata,
+    hideDescription,
+    footerKey: renderedFooterKey,
+  });
+
+  const showDescription =
+    !hideDescription &&
+    Boolean(protocol.description ?? loading) &&
+    // The budget hides a real description outright when not even one line
+    // fits; skeletons (no text yet) always show.
+    (protocol.description == null ||
+      budget.descriptionLines === null ||
+      budget.descriptionLines > 0);
   const committedFooterKeyRef = useRef<string | null>(renderedFooterKey);
   const isFooterSwap =
     renderedFooterKey !== null &&
@@ -252,7 +479,10 @@ export function DeckCard(props: DeckCardProps) {
         // style={{ borderColor: seedToPatternPalette(protocol.name).backgroundTop }}
         className={cx(
           cardBase(),
-          'min-h-[300px] min-w-[325px]',
+          // No minimum size of its own: the card always fills the box it's
+          // given (the text budget degrades content gracefully), so it can
+          // never overflow its carousel slot or a story frame. The deck's
+          // readability floor lives in ProtocolDeck's card-size computation.
           'text-navy-taupe bg-platinum publish-colors',
           'effect-shadow-xl @container relative h-full w-full overflow-clip rounded',
           isActive && 'spring-medium effect-shadow-2xl',
@@ -272,7 +502,10 @@ export function DeckCard(props: DeckCardProps) {
 
           <div
             key="content"
-            className="relative z-10 flex size-full flex-col justify-between gap-6 p-[6cqi]"
+            ref={budget.columnRef}
+            // Gap scales with the card (24px at the 720px maximum) so small
+            // cards spend their height on content, not fixed 24px seams.
+            className="relative z-10 flex size-full flex-col justify-between gap-[max(12px,3.3cqi)] p-[6cqi]"
           >
             {/* The whole controls row (pill + delete) leaves while the
                 case-ID form is up — its reserved height goes to the
@@ -291,7 +524,7 @@ export function DeckCard(props: DeckCardProps) {
                   // min-h reserves the delete control's height, so the
                   // control fading in or out (e.g. a pending card becoming
                   // deletable) never reflows the content below the row.
-                  className="flex min-h-[max(40px,10cqi)] items-center justify-end gap-4"
+                  className="flex min-h-[max(40px,10cqi)] shrink-0 items-center justify-end gap-4"
                 >
                   {requiresInternetConnection && (
                     <Pill icon={<Globe />} intent="warning">
@@ -330,18 +563,19 @@ export function DeckCard(props: DeckCardProps) {
                 </motion.div>
               )}
             </AnimatePresence>
-            {/* min-h-0 lets the heading region shrink to the column's real
-                leftover budget (a flex item's implicit min-height: auto
-                would otherwise force the column past the card edge and
-                evict the footer). The fitted clamp keeps the truncation on
-                whole-line boundaries. */}
+            {/* flex-1 makes the heading row the column's spare-space
+                absorber (content stays anchored to the card's top and
+                bottom edges); min-h-fit stops flex from ever squeezing it
+                below the clamped name — the budget hook already sized the
+                clamp so the fixed rows and footer fit, so the NAME is the
+                one row that can't be crushed (#888). */}
             <div
-              ref={headingClamp.regionRef}
-              className="flex min-h-0 flex-1 items-center justify-start overflow-hidden"
+              data-deck-row="heading"
+              className="flex min-h-fit flex-1 items-center justify-start overflow-hidden"
             >
               {protocol.name ? (
                 <MotionHeading
-                  ref={headingClamp.headingRef}
+                  ref={budget.headingRef}
                   level="h2"
                   title={protocol.name}
                   className={cx(
@@ -353,12 +587,12 @@ export function DeckCard(props: DeckCardProps) {
                   // class here silently has no effect.
                   style={{
                     lineHeight: 1.05,
-                    ...(headingClamp.lines === null
+                    ...(budget.headingLines === null
                       ? undefined
                       : {
                           display: '-webkit-box',
                           WebkitBoxOrient: 'vertical',
-                          WebkitLineClamp: headingClamp.lines,
+                          WebkitLineClamp: budget.headingLines,
                           overflow: 'hidden',
                         }),
                   }}
@@ -382,14 +616,15 @@ export function DeckCard(props: DeckCardProps) {
                 with the fade instead of waiting for the unmount. */}
             <AnimatePresence mode="popLayout" initial={false}>
               {showDescription && (
-                // Description shows up to six lines, then trails off.
-                // line-clamp must be a static utility class so Tailwind's
-                // scanner emits it — a dynamic `line-clamp-${n}` would never
-                // be generated. The inner span carries the clamp (line-clamp
-                // makes it a `-webkit-box`); the wrapper is a normal block
-                // flex item pinned with `shrink-0` so the column — whose
-                // heading claims `flex-1` — can't squeeze the description
-                // below its six lines.
+                // The description takes whatever whole lines the budget hook
+                // left after the heading (capped at DESCRIPTION_MAX_LINES),
+                // and unmounts entirely when not even one fits — the NAME
+                // outranks it (#888). The inner span carries the clamp
+                // (line-clamp makes it a `-webkit-box`); the wrapper is a
+                // normal block flex item pinned with `shrink-0`. The
+                // data-deck-row tag marks the row as budget-managed only
+                // when it holds real text — the loading skeletons are a
+                // fixed row like any other.
                 // layout="position" (not full layout) on the swappable text
                 // regions: full layout animations interpolate size with a
                 // scale transform, which visibly stretches text when a
@@ -399,6 +634,9 @@ export function DeckCard(props: DeckCardProps) {
                 <motion.div
                   key="description"
                   layout="position"
+                  data-deck-row={
+                    protocol.description ? 'description' : undefined
+                  }
                   initial={PRESENCE_INITIAL}
                   animate={PRESENCE_ENTER}
                   exit={PRESENCE_EXIT}
@@ -406,7 +644,17 @@ export function DeckCard(props: DeckCardProps) {
                   className="shrink-0 text-left"
                 >
                   {protocol.description ? (
-                    <span className="line-clamp-6 text-[3.5cqi] leading-tight text-current/80">
+                    <span
+                      ref={budget.descriptionRef}
+                      className="text-[max(12px,3.5cqi)] leading-tight text-current/80"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitBoxOrient: 'vertical',
+                        WebkitLineClamp:
+                          budget.descriptionLines ?? DESCRIPTION_MAX_LINES,
+                        overflow: 'hidden',
+                      }}
+                    >
                       {protocol.description}
                     </span>
                   ) : (
@@ -433,7 +681,7 @@ export function DeckCard(props: DeckCardProps) {
                   animate={PRESENCE_ENTER}
                   exit={PRESENCE_EXIT}
                   transition={REGION_TRANSITION}
-                  className="font-monospace flex items-center justify-between gap-4 text-[2.5cqi]"
+                  className="font-monospace flex shrink-0 items-center justify-between gap-4 text-[2.5cqi]"
                 >
                   {protocol.importedAt ? (
                     <span className="flex items-center gap-2">
@@ -484,13 +732,14 @@ export function DeckCard(props: DeckCardProps) {
                   animate={PRESENCE_ENTER}
                   exit={PRESENCE_EXIT}
                   transition={REGION_TRANSITION}
-                  className="my-0"
+                  className="my-0 shrink-0"
                 />
               )}
               {isActive && footer != null && (
                 <motion.div
                   key={footerKey}
                   layout="position"
+                  data-deck-row="footer"
                   initial={PRESENCE_INITIAL}
                   animate={{
                     ...PRESENCE_ENTER,
@@ -503,9 +752,34 @@ export function DeckCard(props: DeckCardProps) {
                   }}
                   exit={PRESENCE_EXIT}
                   transition={REGION_TRANSITION}
-                  className="flex flex-col"
+                  // Capped at the budget's leftover: a footer taller than the
+                  // card can hold (the case-ID form on a small card) scrolls
+                  // inside the ScrollArea — with its edge fade as the "there's
+                  // more" hint — instead of pushing the submit button past the
+                  // clipped card edge (#888). While the footer FITS
+                  // (footerMaxHeight null) the viewport is overflow-visible
+                  // with the fade machinery off: a scroll container would
+                  // clip ink overflow (the submit button's shadow) and turn
+                  // rounding noise into a one-pixel scrollbar. Scroll mode
+                  // keeps ScrollArea's own vertical padding so the shadow
+                  // has room at the scroll edges.
+                  style={{ maxHeight: budget.footerMaxHeight ?? undefined }}
+                  className="flex shrink-0 flex-col"
                 >
-                  {footer}
+                  <ScrollArea
+                    // The footer's own controls are the tab stops; the
+                    // viewport scrolls them into view on focus, so it needs
+                    // no tab stop of its own.
+                    tabIndex={-1}
+                    fade={budget.footerMaxHeight !== null}
+                    viewportClassName={
+                      budget.footerMaxHeight === null
+                        ? 'overflow-visible py-0'
+                        : undefined
+                    }
+                  >
+                    {footer}
+                  </ScrollArea>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -546,7 +820,7 @@ export function DeckCardFooterButton({
       onClick={onClick}
       className={cx(
         buttonVariants({ color }),
-        'flex h-auto items-center justify-center gap-[1.5cqi] border-b-[1.25cqi] p-[2.5cqi] text-[3cqi] font-extrabold tracking-widest uppercase',
+        'flex h-auto items-center justify-center gap-[1.5cqi] border-b-[1.25cqi] p-[max(10px,2.5cqi)] text-[max(12px,3cqi)] font-extrabold tracking-widest uppercase',
         // 3D bottom edge: the translucent black border paints over the
         // button's own background (border-box clipping), darkening whatever
         // the color resolves to in the active theme.
@@ -582,7 +856,7 @@ export function DeckCardProgressFooter({
         label={message ?? 'Loading protocol'}
         className="h-[2cqi] min-h-2"
       />
-      <div className="font-monospace flex min-h-lh items-center justify-between text-[2.8cqi]">
+      <div className="font-monospace flex min-h-lh items-center justify-between text-[max(11px,2.8cqi)]">
         <span>{message}</span>
         {progress !== undefined && (
           <span>{Math.round(Math.min(1, Math.max(0, progress)) * 100)}%</span>

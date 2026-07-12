@@ -422,17 +422,17 @@ describe('NarrativePedigreeView — within Provider smoke', () => {
   });
 });
 
-// --- Cousin-union pedigree fixture for at-risk-homozygous threading ---
+// --- Cousin-union pedigree fixture for the at-risk display gate ---
 //
 // Topology (AR disease seeded on GGP):
 //   ggp (affected) + ggpPartner → childA, childB
 //   childA + partnerA → cousin1
 //   childB + partnerB → cousin2
-//   cousin1 + cousin2 → sharedChild   ← the at-risk-homozygous node
+//   cousin1 + cousin2 → sharedChild
 //
-// AR engine marks childA/childB as obligateCarrier, cousin1/cousin2 as
-// atRiskCarrier (1 carrier parent each). sharedChild has 2 atRiskCarrier
-// parents → computeAtRiskHomozygous flags it true.
+// AR engine marks childA/childB as obligateCarrier and cousin1/cousin2 as
+// atRiskCarrier (1 carrier parent each), so the fixture exercises the at-risk
+// display gate (whether the probabilistic "?" markers are drawn).
 const AR_DISEASE_VAR = 'arDisease';
 const AR_DISEASE_ID = 'ar';
 
@@ -473,7 +473,6 @@ const cousinNodes: NcNode[] = [
   makeCNode('cousin1', { [BIO_SEX_VAR]: 'male', [EGO_VAR]: true }),
   makeCNode('cousin2', { [BIO_SEX_VAR]: 'female' }),
   makeCNode('sharedChild', { [BIO_SEX_VAR]: 'male' }),
-  makeCNode('unrelated', { [BIO_SEX_VAR]: 'female' }),
 ];
 
 const cousinEdges: NcEdge[] = [
@@ -557,75 +556,41 @@ function renderCousinView(showAtRiskStatuses = true) {
   return render(<NarrativePedigreeView stage={stage} />, { wrapper: Wrapper });
 }
 
-describe('NarrativePedigreeView — at-risk-homozygous threading (single-condition mode)', () => {
-  it('shows the at-risk-homozygous marker on the flagged shared child and not on an unflagged node', async () => {
-    renderCousinView();
-
-    // The single-condition node only appears once a condition is explicitly
-    // selected; the default view is stickers (all conditions).
-    await selectCondition('AR Disease');
-
-    await waitFor(() =>
-      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
-    );
-
-    const sharedChildMember = document.querySelector(
-      '[data-node-id="sharedChild"]',
-    );
-    expect(sharedChildMember).toBeTruthy();
-    expect(
-      sharedChildMember?.querySelector('[data-status="atRiskHomozygous"]'),
-    ).toBeTruthy();
-
-    const unrelatedMember = document.querySelector(
-      '[data-node-id="unrelated"]',
-    );
-    expect(unrelatedMember).toBeTruthy();
-    expect(
-      unrelatedMember?.querySelector('[data-status="atRiskHomozygous"]'),
-    ).toBeNull();
-  });
-});
-
 // ---------------------------------------------------------------------------
 // At-risk display gate (stage.showAtRiskStatuses).
 //
-// The genetics engine always emits the at-risk statuses + homozygous flag; the
-// stage option decides whether they are drawn on the selected condition. When
-// off (the default), no "?" glyphs appear (the homozygous override included) and
-// the key panel drops the at-risk rows; when on, both reappear.
+// The genetics engine always emits the at-risk statuses; the stage option
+// decides whether they are drawn on the selected condition. When off (the
+// default), no "?" glyphs appear and the key panel drops the at-risk rows; when
+// on, both reappear.
 // ---------------------------------------------------------------------------
 describe('NarrativePedigreeView — at-risk display gate', () => {
-  it('hides the at-risk-homozygous glyph when showAtRiskStatuses is off', async () => {
+  it('hides the at-risk "?" glyphs when showAtRiskStatuses is off', async () => {
     renderCousinView(false);
     await selectCondition('AR Disease');
     await waitFor(() =>
       expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
-    const sharedChildMember = document.querySelector(
-      '[data-node-id="sharedChild"]',
-    );
-    expect(sharedChildMember).toBeTruthy();
-    // Engine flags sharedChild atRiskHomozygous, but with the option off the
-    // override glyph must not be drawn.
+    // cousin1 is atRiskCarrier per the engine, but with the option off its
+    // status collapses to unknown, so no "?"-bearing marker is drawn.
+    const cousin1Member = document.querySelector('[data-node-id="cousin1"]');
+    expect(cousin1Member).toBeTruthy();
     expect(
-      sharedChildMember?.querySelector('[data-status="atRiskHomozygous"]'),
+      cousin1Member?.querySelector('[data-notation-status="atRiskCarrier"]'),
     ).toBeNull();
   });
 
-  it('shows the at-risk-homozygous glyph when showAtRiskStatuses is on', async () => {
+  it('shows the at-risk "?" glyphs when showAtRiskStatuses is on', async () => {
     renderCousinView(true);
     await selectCondition('AR Disease');
     await waitFor(() =>
       expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
-    const sharedChildMember = document.querySelector(
-      '[data-node-id="sharedChild"]',
-    );
+    const cousin1Member = document.querySelector('[data-node-id="cousin1"]');
     expect(
-      sharedChildMember?.querySelector('[data-status="atRiskHomozygous"]'),
+      cousin1Member?.querySelector('[data-notation-status="atRiskCarrier"]'),
     ).toBeTruthy();
   });
 
@@ -638,9 +603,6 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
 
     expect(screen.queryByText('May develop this condition')).toBeNull();
     expect(screen.queryByText('May carry this condition')).toBeNull();
-    expect(
-      screen.queryByText(/More seriously affected|two copies/i),
-    ).toBeNull();
   });
 
   it('lists the at-risk rows in the key panel when showAtRiskStatuses is on', async () => {
@@ -652,7 +614,6 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
 
     expect(screen.getByText('May develop this condition')).toBeTruthy();
     expect(screen.getByText('May carry this condition')).toBeTruthy();
-    expect(screen.getByText(/two copies/i)).toBeTruthy();
   });
 
   it('omits the at-risk status from the accessible description when off', async () => {
@@ -664,13 +625,10 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
     );
 
     // cousin1 is atRiskCarrier per the engine; with the option off it must be
-    // announced as status-unknown, never "At risk", and never homozygous.
+    // announced as status-unknown, never "At risk".
     const cousin1 = focalMember('cousin1');
     expect(cousin1).toHaveAccessibleDescription(/Status unknown/);
     expect(cousin1).not.toHaveAccessibleDescription(/At risk/i);
-
-    const sharedChild = focalMember('sharedChild');
-    expect(sharedChild).not.toHaveAccessibleDescription(/homozygous/i);
   });
 });
 
@@ -759,77 +717,47 @@ describe('NarrativePedigreeView — per-node status summary (a11y)', () => {
   });
 });
 
-describe('NarrativePedigreeView — at-risk-homozygous reaches the description (a11y)', () => {
-  it("includes the at-risk-homozygous note in the flagged member's accessible description", async () => {
-    renderCousinView();
+// ---------------------------------------------------------------------------
+// No-focal dimming. When no focal node is selected, NOTHING should be dimmed —
+// including a couple connector where one partner is a SOCIAL/gestational parent
+// (no genetic edge). Before the fix, the couple-bar splitter ran in the
+// "everything highlighted" state and dimmed that partner's half of the bar.
+// The view now passes no highlight sets when there is no focal node.
+// ---------------------------------------------------------------------------
+describe('NarrativePedigreeView — no dimming without a focal node', () => {
+  const SRC_SOCIAL = 'source-fp-social';
 
-    // Select the condition to enter classic single-disease mode.
-    await selectCondition('AR Disease');
-
-    await waitFor(() =>
-      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
-    );
-
-    const sharedChild = focalMember('sharedChild');
-    expect(sharedChild).toHaveAccessibleDescription(
-      /At risk of being affected \(homozygous\)/,
-    );
-
-    const unrelated = focalMember('unrelated');
-    expect(unrelated).not.toHaveAccessibleDescription(
-      /At risk of being affected \(homozygous\)/,
-    );
-  });
-});
-
-// An affected recessive individual trivially has two carrier parents, so
-// computeAtRiskHomozygous flags them too. The visual still draws the homozygous
-// override glyph, but the spoken summary must not say "Affected, at risk of
-// being affected".
-describe('NarrativePedigreeView — affected nodes omit the contradictory homozygous note (a11y)', () => {
-  const AR2_VAR = 'ar2';
-  const SRC_TRIO = 'source-fp-trio';
-
-  function renderAffectedTrioView() {
-    const trioSource = { ...sourceStage, id: SRC_TRIO };
-    const trioNodes: NcNode[] = [
-      makeNode('p1', { [NAME_VAR]: 'Pat', [BIO_SEX_VAR]: 'female' }),
-      makeNode('p2', { [NAME_VAR]: 'Sam', [BIO_SEX_VAR]: 'male' }),
+  it('does not dim a social parent’s couple connector when nothing is focused', async () => {
+    const socialSource = { ...sourceStage, id: SRC_SOCIAL };
+    // Social mother + biological father → child. The mother's link to the child
+    // is a non-genetic `social` edge, so she has no genetic parent→child edge.
+    const socialNodes: NcNode[] = [
+      makeNode('socialMum', { [NAME_VAR]: 'Mum', [BIO_SEX_VAR]: 'female' }),
+      makeNode('bioDad', { [NAME_VAR]: 'Dad', [BIO_SEX_VAR]: 'male' }),
       makeNode('kid', {
-        [NAME_VAR]: 'Kit',
+        [NAME_VAR]: 'Kid',
+        [EGO_VAR]: true,
         [BIO_SEX_VAR]: 'male',
-        [AR2_VAR]: true,
       }),
     ];
-    const trioEdges: NcEdge[] = [
-      makeEdge('p1', 'kid'),
-      makeEdge('p2', 'kid'),
-      {
-        [entityPrimaryKeyProperty]: 'p1-p2',
-        type: EDGE_TYPE,
-        from: 'p1',
-        to: 'p2',
-        [entityAttributesProperty]: {
-          [REL_TYPE_VAR]: ['partner'],
-          [IS_ACTIVE_VAR]: true,
-        },
-      },
+    const socialEdges: NcEdge[] = [
+      makeCEdge('socialMum', 'kid', ['social']),
+      makeCEdge('bioDad', 'kid', ['biological']),
+      makeCEdge('socialMum', 'bioDad', ['partner']),
     ];
     const stage: NarrativeStage = {
-      id: 'np-trio',
+      id: 'np-social',
       type: 'NarrativePedigree',
-      label: 'Recessive Trio Pedigree',
-      sourceStageId: SRC_TRIO,
-      // The override glyph is only drawn when at-risk display is on; this test
-      // exercises the a11y guard against the glyph + a contradictory spoken note.
-      showAtRiskStatuses: true,
+      label: 'Social Parent Pedigree',
+      sourceStageId: SRC_SOCIAL,
+      showAtRiskStatuses: false,
       diseases: [
         {
-          id: 'ar2',
-          label: 'Recessive Disease',
+          id: 'da',
+          label: 'Disease A',
           color: '#ff0000',
-          variable: asEntityAttributeReference(AR2_VAR),
-          inheritancePattern: 'autosomalRecessive',
+          variable: asEntityAttributeReference(DISEASE_A_VAR),
+          inheritancePattern: 'autosomalDominant',
         },
       ],
     };
@@ -838,14 +766,14 @@ describe('NarrativePedigreeView — affected nodes omit the contradictory homozy
       preloadedState: {
         protocol: {
           codebook,
-          stages: [trioSource, stage],
+          stages: [socialSource, stage],
           assets: [],
         } as never,
         session: {
-          id: 'trio-session',
+          id: 'social-session',
           network: {
-            nodes: trioNodes,
-            edges: trioEdges,
+            nodes: socialNodes,
+            edges: socialEdges,
             ego: { [entityAttributesProperty]: {} },
           },
           stageMetadata: {},
@@ -862,30 +790,14 @@ describe('NarrativePedigreeView — affected nodes omit the contradictory homozy
         </Provider>
       );
     }
-    return render(<NarrativePedigreeView stage={stage} />, {
-      wrapper: Wrapper,
-    });
-  }
-
-  it('does not append the homozygous note to an already-affected member', async () => {
-    renderAffectedTrioView();
+    render(<NarrativePedigreeView stage={stage} />, { wrapper: Wrapper });
 
     await waitFor(() =>
-      expect(document.querySelector('[data-node-id="kid"]')).toBeTruthy(),
+      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
     );
 
-    // The single-condition node only renders once a condition is selected.
-    await selectCondition('Recessive Disease');
-    await waitFor(() =>
-      expect(viewMarker('[data-notation-status]')).toBeTruthy(),
-    );
-
-    const kid = focalMember('kid');
-    // The homozygous flag IS set (the override glyph renders) — without it this
-    // test would not exercise the guard.
-    expect(kid.querySelector('[data-status="atRiskHomozygous"]')).toBeTruthy();
-    // ...but the spoken summary must stay coherent: affected, full stop.
-    expect(kid).toHaveAccessibleDescription('Recessive Disease: Affected');
-    expect(kid).not.toHaveAccessibleDescription(/homozygous/i);
+    // No focal node is selected → no edge anywhere may be dimmed.
+    const view = document.querySelector('[data-narrative-pedigree-view]');
+    expect(view?.querySelectorAll('[data-edge-dimmed]').length).toBe(0);
   });
 });

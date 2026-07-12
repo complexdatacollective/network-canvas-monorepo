@@ -46,6 +46,15 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
     options = [],
     disabled,
     readOnly,
+    id,
+    name,
+    onBlur,
+    onFocus,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
+    'aria-describedby': ariaDescribedBy,
+    'aria-invalid': ariaInvalid,
+    'aria-required': ariaRequired,
     ...rest
   } = props;
 
@@ -131,12 +140,20 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
             active.onKeyDown(event);
           }}
           onPointerDown={readOnly ? undefined : active.onPointerDown}
-          onBlur={active.onBlur}
+          onBlur={(event) => {
+            active.onBlur();
+            onBlur?.(event);
+          }}
+          onFocus={onFocus}
           disabled={disabled}
+          name={name}
           min={0}
           max={Math.max(0, options.length - 1)}
           step={1}
-          aria-invalid={rest['aria-invalid']}
+          aria-invalid={ariaInvalid}
+          aria-required={ariaRequired}
+          aria-readonly={readOnly || undefined}
+          aria-labelledby={ariaLabelledBy}
           className={sliderRootVariants({ state })}
         >
           <Slider.Control className={sliderControlVariants()}>
@@ -165,6 +182,9 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
               )}
               <Slider.Thumb
                 ref={setThumbEl}
+                inputRef={(input) => {
+                  if (input && id) input.id = id;
+                }}
                 render={
                   <motion.div
                     // base-ui's nested <input type="range"> is the focusable
@@ -181,7 +201,14 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                   />
                 }
                 className={sliderThumbVariants({ state: thumbState })}
-                aria-label={`Select value on scale: ${currentOption?.label ?? 'No selection'}`}
+                aria-label={
+                  ariaLabelledBy
+                    ? undefined
+                    : (ariaLabel ?? 'Select value on scale')
+                }
+                aria-labelledby={ariaLabelledBy}
+                aria-describedby={ariaDescribedBy}
+                getAriaValueText={() => currentOption?.label ?? 'No selection'}
               />
             </Slider.Track>
           </Slider.Control>

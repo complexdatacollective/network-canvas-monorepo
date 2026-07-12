@@ -20,11 +20,10 @@ type HomeModalProps = {
   scroll?: boolean;
 };
 
-// ModalPopup spreads consumer props before applying its own inline style for borderRadius,
-// which replaces any consumer style. Express maxWidth as a Tailwind arbitrary class so it
-// survives via the className path. Map the discrete values used by callers.
-function maxWidthClass(maxWidth: number): string {
+function widthClass(maxWidth: number): string {
   switch (maxWidth) {
+    case 1100:
+      return 'max-w-[1100px]';
     case 1080:
       return 'max-w-[1080px]';
     case 1000:
@@ -50,7 +49,7 @@ export function HomeModal({
         if (!nextOpen) onClose();
       }}
     >
-      <DialogPopup className={maxWidthClass(maxWidth)}>
+      <DialogPopup className={widthClass(maxWidth)}>
         <div className="flex shrink-0 items-center justify-between gap-4 px-8 pt-6">
           <BaseDialog.Title
             render={<div className="flex min-w-0 items-center gap-3.5" />}

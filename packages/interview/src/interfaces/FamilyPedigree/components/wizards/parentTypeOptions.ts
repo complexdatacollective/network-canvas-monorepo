@@ -1,3 +1,4 @@
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, RelationshipType } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
@@ -37,7 +38,9 @@ function hasGestationalCarrier(
   for (const edge of edges.values()) {
     if (
       edge.to === nodeId &&
-      edge.attributes[variableConfig.isGestationalCarrierVariable] === true
+      edge[entityAttributesProperty][
+        variableConfig.isGestationalCarrierVariable
+      ] === true
     ) {
       return true;
     }

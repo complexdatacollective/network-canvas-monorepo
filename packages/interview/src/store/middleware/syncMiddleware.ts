@@ -26,9 +26,13 @@ export const createSyncMiddleware = ({
     if (!sessionChanged(session, lastSyncedState)) return;
 
     isSyncing = true;
-    lastSyncedState = session;
 
     onSync(session.id, session)
+      .then(() => {
+        // Only advance the high-water mark once the write actually resolves,
+        // so a failed autosave is not treated as synced and re-tried below.
+        lastSyncedState = session;
+      })
       .catch((e) => {
         const error = ensureError(e);
         // eslint-disable-next-line no-console
@@ -36,6 +40,9 @@ export const createSyncMiddleware = ({
       })
       .finally(() => {
         isSyncing = false;
+        // A rejected sync leaves lastSyncedState unchanged, so this diff still
+        // holds and the failed snapshot is retried on the debounce window even
+        // when no further state changes have been made.
         if (
           storeRef &&
           sessionChanged(storeRef.getState().session, lastSyncedState)

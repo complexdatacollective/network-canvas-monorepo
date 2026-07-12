@@ -1,8 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { NCBlob } from '../BackgroundBlobs/NCBlob';
+import {
+  MAX_INITIAL_OFFSCREEN_LEAD_SECONDS,
+  NCBlob,
+} from '../BackgroundBlobs/NCBlob';
 
 const palette = [['#ff0000', '#00ff00']] as const;
+
+const mockRandomSequence = (values: number[]) => {
+  const spy = vi.spyOn(Math, 'random');
+  spy.mockReset();
+  values.forEach((value) => {
+    spy.mockReturnValueOnce(value);
+  });
+  spy.mockReturnValue(0);
+};
 
 describe('NCBlob', () => {
   beforeEach(() => {
@@ -48,6 +60,7 @@ describe('NCBlob', () => {
       expect(blob.positionX).toBe(0);
       expect(blob.positionY).toBe(0);
       expect(blob.size).toBe(0);
+      expect(blob.hasEntered).toBe(false);
     });
 
     it('derives velocity from speed and angle', () => {
@@ -137,8 +150,9 @@ describe('NCBlob', () => {
       blob.positionX = 1001;
       blob.velocityX = 0;
       blob.velocityY = 0;
+      blob.hasEntered = true;
       blob.updatePosition(1000);
-      expect(blob.positionX).toBe(-100);
+      expect(blob.positionX).toBe(-50);
     });
 
     it('wraps past left edge to right', () => {
@@ -148,8 +162,9 @@ describe('NCBlob', () => {
       blob.positionX = -101;
       blob.velocityX = 0;
       blob.velocityY = 0;
+      blob.hasEntered = true;
       blob.updatePosition(1000);
-      expect(blob.positionX).toBe(1100);
+      expect(blob.positionX).toBe(950);
     });
 
     it('wraps past bottom edge to top', () => {
@@ -159,8 +174,9 @@ describe('NCBlob', () => {
       blob.positionY = 801;
       blob.velocityX = 0;
       blob.velocityY = 0;
+      blob.hasEntered = true;
       blob.updatePosition(1000);
-      expect(blob.positionY).toBe(-100);
+      expect(blob.positionY).toBe(-50);
     });
 
     it('wraps past top edge to bottom', () => {
@@ -170,8 +186,126 @@ describe('NCBlob', () => {
       blob.positionY = -101;
       blob.velocityX = 0;
       blob.velocityY = 0;
+      blob.hasEntered = true;
       blob.updatePosition(1000);
-      expect(blob.positionY).toBe(900);
+      expect(blob.positionY).toBe(750);
+    });
+
+    it('lets an initially offscreen blob enter before wrapping normally', () => {
+      const blob = new NCBlob(1, 1, palette);
+      blob.canvasWidth = 1000;
+      blob.canvasHeight = 800;
+      blob.size = 100;
+      blob.positionX = -105;
+      blob.positionY = 100;
+      blob.velocityX = 300;
+      blob.velocityY = 0;
+      blob.hasEntered = false;
+
+      blob.updatePosition(0);
+      blob.updatePosition(1000);
+
+      expect(blob.positionX).toBeGreaterThanOrEqual(-100);
+      expect(blob.hasEntered).toBe(true);
+    });
+  });
+
+  describe('placeInitialPosition', () => {
+    it('can place a blob immediately inside the viewport density band', () => {
+      const blob = new NCBlob(1, 1, palette);
+      blob.canvasWidth = 1000;
+      blob.canvasHeight = 800;
+      blob.size = 200;
+      blob.velocityX = 10;
+      blob.velocityY = 0;
+      mockRandomSequence([0.75, 0.4, 0.5]);
+
+      blob.placeInitialPosition();
+
+      expect(blob.positionX).toBe(300);
+      expect(blob.positionY).toBe(300);
+      expect(blob.hasEntered).toBe(true);
+    });
+
+    it('places a left-side offscreen blob on a path that enters the canvas', () => {
+      const blob = new NCBlob(1, 1, palette);
+      blob.canvasWidth = 1000;
+      blob.canvasHeight = 700;
+      blob.size = 200;
+      blob.velocityX = 10;
+      blob.velocityY = 5;
+      mockRandomSequence([0.25, 0, 0.25, 4 / 9]);
+
+      blob.placeInitialPosition();
+
+      expect(blob.positionX).toBe(-230);
+      expect(blob.positionY).toBe(185);
+      expect(blob.hasEntered).toBe(false);
+
+      const secondsUntilVisible =
+        (-blob.size - blob.positionX) / blob.velocityX;
+      blob.positionX += blob.velocityX * secondsUntilVisible;
+      blob.positionY += blob.velocityY * secondsUntilVisible;
+
+      expect(secondsUntilVisible).toBe(3);
+      expect(blob.isWithinWrapBounds()).toBe(true);
+    });
+
+    it('places a bottom-side offscreen blob on a path that enters the canvas', () => {
+      const blob = new NCBlob(1, 1, palette);
+      blob.canvasWidth = 1000;
+      blob.canvasHeight = 700;
+      blob.size = 200;
+      blob.velocityX = 0;
+      blob.velocityY = -20;
+      mockRandomSequence([0.25, 0, 1 / 6, 5 / 12]);
+
+      blob.placeInitialPosition();
+
+      expect(blob.positionX).toBe(300);
+      expect(blob.positionY).toBe(740);
+      expect(blob.hasEntered).toBe(false);
+
+      const secondsUntilVisible =
+        (blob.positionY - blob.canvasHeight) / Math.abs(blob.velocityY);
+      blob.positionX += blob.velocityX * secondsUntilVisible;
+      blob.positionY += blob.velocityY * secondsUntilVisible;
+
+      expect(secondsUntilVisible).toBe(2);
+      expect(blob.isWithinWrapBounds()).toBe(true);
+    });
+
+    it('caps the offscreen distance by the maximum initial lead time', () => {
+      const blob = new NCBlob(1, 1, palette);
+      blob.canvasWidth = 1000;
+      blob.canvasHeight = 700;
+      blob.size = 200;
+      blob.velocityX = 10;
+      blob.velocityY = 0;
+      mockRandomSequence([0.25, 0, 1, 0.5]);
+
+      blob.placeInitialPosition();
+
+      const secondsUntilVisible =
+        (-blob.size - blob.positionX) / blob.velocityX;
+
+      expect(secondsUntilVisible).toBe(MAX_INITIAL_OFFSCREEN_LEAD_SECONDS);
+    });
+
+    it('falls back to visible placement when velocity cannot carry an offscreen blob in', () => {
+      const blob = new NCBlob(1, 1, palette);
+      blob.canvasWidth = 1000;
+      blob.canvasHeight = 800;
+      blob.size = 200;
+      blob.velocityX = 0;
+      blob.velocityY = 0;
+      mockRandomSequence([0.4, 0.5]);
+
+      blob.placeInitialPosition();
+
+      expect(blob.positionX).toBe(300);
+      expect(blob.positionY).toBe(300);
+      expect(blob.hasEntered).toBe(true);
     });
   });
 

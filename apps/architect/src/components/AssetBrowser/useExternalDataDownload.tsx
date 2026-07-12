@@ -2,8 +2,7 @@ import { get } from 'es-toolkit/compat';
 import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 
-import { useAppDispatch } from '~/ducks/hooks';
-import { openDialog } from '~/ducks/modules/dialogs';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { getAssetManifest } from '~/selectors/protocol';
 import { getAssetById } from '~/utils/assetUtils';
 import { reportError } from '~/utils/reportError';
@@ -13,7 +12,7 @@ const defaultMeta = {
 };
 
 const useExternalDataDownload = () => {
-  const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
   const assetManifest = useSelector(getAssetManifest);
 
   const getAssetInfo = useCallback(
@@ -57,17 +56,16 @@ const useExternalDataDownload = () => {
         URL.revokeObjectURL(url);
       } catch (error) {
         reportError(error);
-        void dispatch(
-          openDialog({
-            type: 'Error',
-            title: 'Download failed',
-            message: `"${meta.name}" could not be downloaded.`,
-            error: error instanceof Error ? error : String(error),
-          }),
-        );
+        void openDialog({
+          type: 'acknowledge',
+          intent: 'destructive',
+          title: 'Download failed',
+          description: `"${meta.name}" could not be downloaded.`,
+          actions: { primary: { label: 'OK', value: true } },
+        });
       }
     },
-    [getAssetInfo, dispatch],
+    [getAssetInfo, openDialog],
   );
 
   return handleDownload;

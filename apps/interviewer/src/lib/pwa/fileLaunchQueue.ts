@@ -9,6 +9,8 @@
 // silent no-op there.
 
 let pendingFiles: File[] = [];
+let pendingFailureCount = 0;
+let pendingLaunchReads = 0;
 const listeners = new Set<() => void>();
 let initialized = false;
 
@@ -22,22 +24,49 @@ export const initFileLaunchCapture = (): void => {
   const queue = window.launchQueue;
   if (!queue) return;
   queue.setConsumer((params) => {
+    pendingLaunchReads += 1;
+    emit();
     void (async () => {
-      const files = await Promise.all(
+      // allSettled so one unreadable handle (file moved/deleted, volume
+      // unmounted between the OS launch and consumption) doesn't drop the
+      // whole batch — read what we can and surface the rest as a
+      // user-facing failure count.
+      const results = await Promise.allSettled(
         params.files.map((handle) => handle.getFile()),
       );
+
+      const files = results
+        .filter(
+          (result): result is PromiseFulfilledResult<File> =>
+            result.status === 'fulfilled',
+        )
+        .map((result) => result.value);
+      const failures = results.filter((result) => result.status === 'rejected');
+
+      if (failures.length > 0) {
+        for (const failure of failures) {
+          console.error('Failed to read launched file', failure.reason);
+        }
+        pendingFailureCount += failures.length;
+      }
+
       const netcanvas = files.filter((file) =>
         file.name.toLowerCase().endsWith('.netcanvas'),
       );
-      if (netcanvas.length === 0) return;
+      if (netcanvas.length === 0) {
+        if (failures.length > 0) emit();
+        return;
+      }
       pendingFiles = [...pendingFiles, ...netcanvas];
       emit();
-    })().catch((error: unknown) => {
-      // A handle.getFile() can reject (file moved/deleted, volume unmounted
-      // between the OS launch and consumption). Nothing user-facing exists
-      // this early, but don't let it vanish as an unhandled rejection.
-      console.error('Failed to read launched file', error);
-    });
+    })()
+      .catch((error: unknown) => {
+        console.error('Failed to handle launched files', error);
+      })
+      .finally(() => {
+        pendingLaunchReads -= 1;
+        emit();
+      });
   });
 };
 
@@ -52,11 +81,29 @@ export const subscribeLaunchFiles = (listener: () => void): (() => void) => {
 // when the contents change.
 export const getLaunchFiles = (): File[] => pendingFiles;
 
+export const hasPendingLaunchFiles = (): boolean =>
+  pendingLaunchReads > 0 || pendingFiles.length > 0;
+
 // Hand the pending files to a consumer exactly once.
 export const takeLaunchFiles = (): File[] => {
   const taken = pendingFiles;
   if (taken.length === 0) return taken;
   pendingFiles = [];
+  emit();
+  return taken;
+};
+
+// Count of launched handles that failed to read since the last take. Shares
+// the same subscription as the file queue so a single subscriber (Home,
+// behind the auth gate) is notified of both.
+export const getLaunchFailureCount = (): number => pendingFailureCount;
+
+// Hand the pending failure count to a consumer exactly once, so a toast is
+// shown for it only once.
+export const takeLaunchFailureCount = (): number => {
+  const taken = pendingFailureCount;
+  if (taken === 0) return taken;
+  pendingFailureCount = 0;
   emit();
   return taken;
 };

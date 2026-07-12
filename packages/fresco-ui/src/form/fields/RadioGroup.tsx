@@ -102,7 +102,7 @@ export function RadioItem({
               {...renderProps}
               id={optionId}
               type="button"
-              aria-label={label}
+              data-value={optionValue}
               className={radioIndicatorVariants({
                 size,
                 state: indicatorState,
@@ -234,8 +234,11 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
           className,
         })}
         aria-label={rest['aria-label']}
+        aria-labelledby={rest['aria-labelledby']}
         aria-describedby={rest['aria-describedby']}
         aria-invalid={rest['aria-invalid'] ?? undefined}
+        aria-required={rest['aria-required']}
+        aria-readonly={readOnly || undefined}
       >
         {options.map((option) => (
           <RadioItem

@@ -20,8 +20,8 @@ type ConditionPanelProps = {
   onSelect: (id: string | null) => void;
   // Whether the at-risk (probabilistic) notation is shown. Mirrors the
   // NarrativePedigree stage option; the key panel must list only the markers
-  // actually drawn on the pedigree, so the two at-risk rows and the homozygous
-  // row are omitted when this is false.
+  // actually drawn on the pedigree, so the two at-risk rows are omitted when this
+  // is false.
   showAtRiskStatuses: boolean;
   // Captures the current pedigree as an image (the footer action).
   onSnapshot: () => void;

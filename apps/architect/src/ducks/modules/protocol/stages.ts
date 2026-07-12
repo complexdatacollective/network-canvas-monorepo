@@ -1,15 +1,10 @@
-import {
-  createAsyncThunk,
-  createSlice,
-  type PayloadAction,
-} from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 import { compact, omit } from 'es-toolkit/compat';
 import { v1 as uuid } from 'uuid';
 
 import type { Stage } from '@codaco/protocol-validation';
-import { openDialog } from '~/ducks/modules/dialogs';
-import type { RootState } from '~/ducks/modules/root';
+import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { getNodeTypes } from '~/selectors/codebook';
 import { getProtocol, getStage } from '~/selectors/protocol';
 import prune from '~/utils/prune';
@@ -47,8 +42,24 @@ const initialStage = {
   label: '',
 };
 
+type StageDependencyCandidate = Pick<Stage, 'id' | 'label' | 'type'> & {
+  sourceStageId?: string;
+};
+
+export const getFamilyPedigreeDependentStages = <
+  T extends StageDependencyCandidate,
+>(
+  stages: T[],
+  stageId: string,
+) =>
+  stages.filter(
+    (candidate): candidate is T & { sourceStageId: string } =>
+      candidate.type === 'NarrativePedigree' &&
+      candidate.sourceStageId === stageId,
+  );
+
 // Async thunks
-const createStageAsync = createAsyncThunk(
+const createStageAsync = createAppAsyncThunk(
   'stages/createStageAsync',
   async (
     { options, index }: { options: Partial<Stage>; index?: number },
@@ -62,34 +73,19 @@ const createStageAsync = createAsyncThunk(
   },
 );
 
-const deleteStageAsync = createAsyncThunk(
+const deleteStageAsync = createAppAsyncThunk(
   'stages/deleteStageAsync',
   async (stageId: string, { dispatch, getState }) => {
-    const state = getState() as RootState;
+    const state = getState();
     const stage = getStage(state, stageId);
 
     // A NarrativePedigree renders a FamilyPedigree's finalised network via
     // sourceStageId; deleting that source leaves the dependent stage invalid.
     if (stage?.type === 'FamilyPedigree') {
       const allStages = getProtocol(state)?.stages ?? [];
-      const dependents = allStages.filter(
-        (candidate): candidate is Stage & { sourceStageId: string } =>
-          candidate.type === 'NarrativePedigree' &&
-          'sourceStageId' in candidate &&
-          candidate.sourceStageId === stageId,
-      );
+      const dependents = getFamilyPedigreeDependentStages(allStages, stageId);
 
       if (dependents.length > 0) {
-        const names = dependents
-          .map((dependent) => `"${dependent.label || 'Untitled'}"`)
-          .join(', ');
-        void dispatch(
-          openDialog({
-            type: 'Notice',
-            title: 'Cannot delete stage',
-            message: `This Family Pedigree stage is used by the following Narrative Pedigree stage(s): ${names}. Remove or repoint those stage(s) before deleting it.`,
-          }),
-        );
         return stageId;
       }
     }

@@ -53,4 +53,30 @@ describe('bundled sample protocol', () => {
     expect(throwingFetch).not.toHaveBeenCalled();
     expect(phases).toContain('saving');
   });
+
+  it('returns schema issue details when validation fails', async () => {
+    const result = await importBundledProtocol({
+      name: 'Invalid Protocol',
+      assets: [],
+      document: {
+        schemaVersion: 8,
+        name: 'Invalid Protocol',
+        codebook: {},
+        stages: 'not an array',
+      },
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe('validation-failed');
+      expect(result.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: 'stages',
+          }),
+        ]),
+      );
+    }
+    expect(saveProtocol).not.toHaveBeenCalled();
+  });
 });

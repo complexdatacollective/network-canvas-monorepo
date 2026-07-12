@@ -1,6 +1,8 @@
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
+
 import { DatabaseError } from '../../errors';
 import type { InterviewExportInput, ProtocolExportInput } from '../../input';
 import type { ExportOptions } from '../../options';
@@ -16,7 +18,11 @@ const mkSession = (
   participantIdentifier: `p-${id}`,
   startTime: new Date('2025-01-01'),
   finishTime: new Date('2025-01-01'),
-  network: { nodes: [], edges: [], ego: { _uid: ego, attributes: {} } },
+  network: {
+    nodes: [],
+    edges: [],
+    ego: { _uid: ego, [entityAttributesProperty]: {} },
+  },
   protocolHash: hash,
 });
 

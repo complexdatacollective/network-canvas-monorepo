@@ -1,3 +1,4 @@
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import type { VariableConfig } from '../store';
@@ -32,9 +33,10 @@ function readEdge(edge: NcEdge, config: VariableConfig) {
     relationshipType:
       getEdgeRelationshipType(edge, config.relationshipTypeVariable) ??
       'biological',
-    isActive: edge.attributes[config.isActiveVariable] !== false,
+    isActive: edge[entityAttributesProperty][config.isActiveVariable] !== false,
     isGestationalCarrier:
-      edge.attributes[config.isGestationalCarrierVariable] === true,
+      edge[entityAttributesProperty][config.isGestationalCarrierVariable] ===
+      true,
   };
 }
 

@@ -1,10 +1,11 @@
 import { keys as getKeys, isNull, toPairs } from 'es-toolkit/compat';
-import type React from 'react';
+import { Plus } from 'lucide-react';
+import { useId, type ReactNode, type ComponentProps } from 'react';
 import { Field } from 'redux-form';
 
+import Button from '@codaco/fresco-ui/Button';
+import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import type { Variable } from '@codaco/protocol-validation';
-import FieldError from '~/components/Form/FieldError';
-import { Button } from '~/lib/legacy-ui/components';
 import { cx } from '~/utils/cva';
 
 import Validation from './Validation';
@@ -40,10 +41,10 @@ const getOptionsWithUsedDisabled = (
     return { ...option, disabled: true };
   });
 
-const AddItem = (props: React.ComponentProps<typeof Button>) => (
+const AddItem = (props: ComponentProps<typeof Button>) => (
   <Button
-    color="sea-green"
-    icon="add"
+    color="primary"
+    icon={<Plus />}
     className="self-start"
     // eslint-disable-next-line react/jsx-props-no-spreading
     {...props}
@@ -68,7 +69,7 @@ type ValidationsFieldProps = {
     submitFailed: boolean;
     error?: string;
   };
-  children?: React.ReactNode;
+  children?: ReactNode;
   onUpdate?: (key: string, value: unknown, itemKey: string) => void;
   onDelete?: (itemKey: string) => void;
 };
@@ -82,10 +83,11 @@ const ValidationsField = ({
   ...rest
 }: ValidationsFieldProps) => {
   const hasError = !!(submitFailed && error);
+  const errorId = useId();
 
   return (
-    <div className={cx(hasError && '[--rule-bg:var(--color-error)]')}>
-      <div className="flex flex-col gap-(--space-md)">
+    <div className={cx(hasError && '[--rule-bg:var(--destructive)]')}>
+      <div className="flex flex-col gap-5">
         {input.value.map(([key, value]) => (
           <Validation
             key={key}
@@ -99,13 +101,7 @@ const ValidationsField = ({
         ))}
         {children}
       </div>
-      <FieldError
-        show={hasError}
-        error={error}
-        className={
-          hasError ? 'my-(--space-xs) rounded-(--space-xs)' : undefined
-        }
-      />
+      <FieldErrors id={errorId} errors={error ? [error] : []} show={hasError} />
     </div>
   );
 };
@@ -141,7 +137,7 @@ const Validations = ({
   const isFull = usedOptions.length === availableOptions.length;
 
   return (
-    <div className="flex w-full flex-col gap-(--space-md) [--rule-bg:var(--color-sortable-background)] [&_button]:m-0">
+    <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
       <Field
         name={name}
         component={ValidationsField}

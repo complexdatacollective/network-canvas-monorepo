@@ -21,6 +21,7 @@ import {
 } from '~/utils/criticalOperation';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
+const OPEN_DIALOG_SELECTOR = '[role="dialog"]';
 
 type AppUpdateContextValue = UseAppUpdateResult & { hasUnsavedWork: boolean };
 
@@ -36,6 +37,25 @@ export function useAppUpdateContext(): AppUpdateContextValue {
   return value;
 }
 
+const subscribeOpenDialogPresence = (listener: () => void): (() => void) => {
+  if (typeof document === 'undefined') return () => {};
+
+  const observer = new MutationObserver(listener);
+  observer.observe(document.body, {
+    attributes: true,
+    attributeFilter: ['aria-hidden', 'hidden', 'role', 'style'],
+    childList: true,
+    subtree: true,
+  });
+
+  return () => observer.disconnect();
+};
+
+const hasOpenDialog = (): boolean => {
+  if (typeof document === 'undefined') return false;
+  return document.querySelector(OPEN_DIALOG_SELECTOR) !== null;
+};
+
 // Owns service-worker registration (so the app stays installable) and the
 // update state, exposing it to the version pill via context. Replaces the old
 // PwaUpdateBanner.
@@ -47,8 +67,10 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   // A reload discards an unsaved stage-editor draft, any open dialog, and any
   // in-flight import/export; gate auto-apply on these being clear.
   const draftDirty = useAppSelector(getStageDraftDirty);
-  const hasOpenDialog = useAppSelector(
-    (state) => state.dialogs.dialogs.length > 0,
+  const dialogOpen = useSyncExternalStore(
+    subscribeOpenDialogPresence,
+    hasOpenDialog,
+    () => false,
   );
   const criticalOperationInProgress = useSyncExternalStore(
     subscribeCriticalOperation,
@@ -56,7 +78,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
     () => false,
   );
   const hasUnsavedWork =
-    draftDirty || hasOpenDialog || criticalOperationInProgress;
+    draftDirty || dialogOpen || criticalOperationInProgress;
 
   const {
     needRefresh: [needRefresh],

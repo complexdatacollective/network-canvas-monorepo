@@ -12,6 +12,7 @@
     "no-process-env": "error",
     "no-unreachable": "error",
     "no-shadow": "error",
+    "no-underscore-dangle": "off",
 
     "typescript/consistent-type-definitions": ["error", "type"],
     "typescript/consistent-type-imports": [
@@ -41,10 +42,12 @@
     "typescript/no-explicit-any": "warn",
     "typescript/no-non-null-assertion": "off",
     "typescript/no-unnecessary-type-assertion": "off",
+    "typescript/no-unsafe-type-assertion": "warn",
     "typescript/no-useless-empty-export": "off",
     "typescript/switch-exhaustiveness-check": "warn",
     "typescript/no-misused-promises": ["error", { "checksVoidReturn": false }],
     "typescript/no-inferrable-types": "error",
+    "typescript/no-unnecessary-type-conversion": "error",
     "typescript/no-floating-promises": "warn",
     "typescript/no-redundant-type-constituents": "warn",
     "typescript/await-thenable": "warn",
@@ -55,11 +58,13 @@
     "typescript/no-implied-eval": "warn",
     "typescript/no-base-to-string": "warn",
     "unicorn/no-thenable": "warn",
+    "unicorn/require-post-message-target-origin": "off",
 
     "import/no-cycle": "warn",
     "import/no-duplicates": "warn",
     "import/no-anonymous-default-export": "off",
-    "import/default": "warn",
+    "import/no-unassigned-import": "off",
+    "import/default": "off",
 
     "promise/no-callback-in-promise": "warn"
   },
@@ -99,8 +104,42 @@
       "rules": {
         "no-process-env": "off",
         "no-console": "off",
-        "react/rules-of-hooks": "off"
+        "react/rules-of-hooks": "off",
+        "typescript/no-floating-promises": "off"
       }
+    },
+    {
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.test.js",
+        "**/*.test.jsx",
+        "**/*.stories.ts",
+        "**/*.stories.tsx",
+        "**/*.stories.js",
+        "**/*.stories.jsx",
+        "**/__tests__/**",
+        "**/__mocks__/**",
+        "**/e2e/**",
+        "**/.storybook/**"
+      ],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off",
+        "unicorn/consistent-function-scoping": "off",
+        "import/no-named-as-default-member": "off",
+        "no-console": "off"
+      }
+    },
+    {
+      "files": [
+        "**/*.stories.ts",
+        "**/*.stories.tsx",
+        "**/*.stories.js",
+        "**/*.stories.jsx",
+        "**/.storybook/**",
+        "**/e2e/**"
+      ],
+      "rules": { "typescript/no-floating-promises": "off" }
     }
   ],
   "ignorePatterns": [

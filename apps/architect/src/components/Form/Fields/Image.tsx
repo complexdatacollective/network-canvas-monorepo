@@ -11,7 +11,7 @@ const ImageInput = (props: ImageInputProps) => (
     {...props}
   >
     {(id: string) => (
-      <div className="bg-rich-black w-full rounded-(--radius) p-(--space-md)">
+      <div className="bg-rich-black w-full rounded p-5">
         <BackgroundImage
           id={id}
           className="h-[30vh] w-full bg-contain bg-center bg-no-repeat"

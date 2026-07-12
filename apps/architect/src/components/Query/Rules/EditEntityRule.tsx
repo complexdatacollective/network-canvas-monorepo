@@ -1,9 +1,12 @@
 import { isArray, isNil } from 'es-toolkit/compat';
+import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import DetachedField from '~/components/DetachedField';
-import NativeSelect from '~/components/Form/Fields/NativeSelect';
-import RadioGroup from '~/components/Form/Fields/RadioGroup';
+import { FrescoReduxField } from '~/components/Form';
 
 import Section from '../../EditorLayout/Section';
 import IssueAnchor from '../../IssueAnchor';
@@ -23,11 +26,17 @@ import {
 import withOptions from './withOptions';
 import withRuleChangeHandler from './withRuleChangeHandler';
 
+const FrescoNativeSelectField = NativeSelectField as ComponentType<
+  Record<string, unknown>
+>;
+const FrescoRadioGroupField = RadioGroupField as ComponentType<
+  Record<string, unknown>
+>;
+
 type OptionItem = {
   value: string | number;
   label: string;
 };
-
 type EditEntityRuleProps = {
   entityRuleType?: string;
   handleChangeEntityRuleType: (value: string) => void;
@@ -49,7 +58,6 @@ type EditEntityRuleProps = {
   codebook?: Record<string, unknown>;
   onChange?: (value: Record<string, unknown>) => void;
 };
-
 const EditEntityRule = ({
   entityRuleType,
   handleChangeEntityRuleType,
@@ -94,16 +102,15 @@ const EditEntityRule = ({
     ...optionsWithDefaults,
     value: isArray(optionsWithDefaults.value) ? '' : countFriendlyValue,
   };
-
   return (
     <>
       <Section
         title={`${entityType} Type`}
         summary={
-          <p>
+          <Paragraph>
             Choose an {entityType} type to base your rule on. Remember you can
             add multiple rules if you need to cover different types.
-          </p>
+          </Paragraph>
         }
         layout="vertical"
       >
@@ -126,7 +133,9 @@ const EditEntityRule = ({
         layout="vertical"
       >
         <DetachedField
-          component={RadioGroup as React.ComponentType<Record<string, unknown>>}
+          component={FrescoReduxField}
+          fieldComponent={FrescoRadioGroupField}
+          label="Rule type"
           options={entityRuleTypeOptions(entityType)}
           value={entityRuleType}
           onChange={(_event, value) =>
@@ -137,9 +146,9 @@ const EditEntityRule = ({
       {isTypeRule && optionsWithDefaults.type && (
         <Section title="Operator" layout="vertical">
           <DetachedField
-            component={
-              RadioGroup as React.ComponentType<Record<string, unknown>>
-            }
+            component={FrescoReduxField}
+            fieldComponent={FrescoRadioGroupField}
+            label="Operator"
             name="operator"
             options={operatorOptions}
             onChange={handleRuleChange}
@@ -151,13 +160,13 @@ const EditEntityRule = ({
       {isVariableRule && optionsWithDefaults.type && (
         <Section
           title="Variable"
-          summary={<p>Select a variable to query.</p>}
+          summary={<Paragraph>Select a variable to query.</Paragraph>}
           layout="vertical"
         >
           <DetachedField
-            component={
-              NativeSelect as React.ComponentType<Record<string, unknown>>
-            }
+            component={FrescoReduxField}
+            fieldComponent={FrescoNativeSelectField}
+            label="Variable"
             name="attribute"
             options={variablesAsOptions}
             onChange={handleRuleChange}
@@ -169,9 +178,9 @@ const EditEntityRule = ({
       {isVariableRule && optionsWithDefaults.attribute && (
         <Section title="Operator" layout="vertical">
           <DetachedField
-            component={
-              NativeSelect as React.ComponentType<Record<string, unknown>>
-            }
+            component={FrescoReduxField}
+            fieldComponent={FrescoNativeSelectField}
+            label="Operator"
             name="operator"
             options={operatorOptions}
             onChange={handleRuleChange}
@@ -236,11 +245,13 @@ const EditEntityRule = ({
     </>
   );
 };
-
 export default compose<
   EditEntityRuleProps,
   {
-    rule?: { options?: Record<string, unknown>; type?: string };
+    rule?: {
+      options?: Record<string, unknown>;
+      type?: string;
+    };
     codebook?: Record<string, unknown>;
     onChange?: (value: Record<string, unknown>) => void;
   }

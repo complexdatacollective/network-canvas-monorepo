@@ -1,18 +1,35 @@
+import { useCallback, useMemo } from 'react';
 import { compose } from 'react-recompose';
 
-import { RadioGroup } from '~/components/Form/Fields';
+import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
+import { GridLayout } from '@codaco/fresco-ui/collection/layout/GridLayout';
+import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
+import SegmentedSwitcher, {
+  type SegmentedOption,
+} from '@codaco/fresco-ui/SegmentedSwitcher';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import Asset from './Asset';
+import AssetCard from './AssetCard';
 import withAssets from './withAssets';
 
-const ASSET_TYPES = [
-  { label: 'All Types', value: null },
+type AssetTypeValue =
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'network'
+  | 'apikey'
+  | 'geojson';
+
+type AssetFilterValue = 'all' | AssetTypeValue;
+
+const ASSET_TYPES: SegmentedOption<AssetFilterValue>[] = [
+  { label: 'All', value: 'all' },
   { label: 'Image', value: 'image' },
   { label: 'Video', value: 'video' },
   { label: 'Audio', value: 'audio' },
   { label: 'Network', value: 'network' },
   { label: 'GeoJSON', value: 'geojson' },
-  { label: 'API Key', value: 'apikey' },
+  { label: 'API key', value: 'apikey' },
 ];
 
 type AssetType = {
@@ -20,7 +37,7 @@ type AssetType = {
   isUsed: boolean;
   name: string;
   source?: string;
-  type: 'image' | 'video' | 'audio' | 'network' | 'apikey' | 'geojson';
+  type: AssetTypeValue;
 };
 
 type AssetsProps = {
@@ -46,49 +63,91 @@ const Assets = ({
   onDownload,
   onPreview,
   disableDelete = false,
-  selected: _selected = null,
+  selected = null,
 }: AssetsProps) => {
   const handleDelete = disableDelete ? null : onDelete;
+  const selectedAssetType = (assetType ?? 'all') as AssetFilterValue;
 
-  const renderedAssets = assets.map(({ id, type: thumbnailType, isUsed }) => {
-    // disable download for apikey type
-    const handleDownload = thumbnailType === 'apikey' ? null : onDownload;
+  const layout = useMemo(
+    () => new GridLayout<AssetType>({ minItemWidth: 280, gap: 5 }),
+    [],
+  );
 
-    return (
-      <div key={id}>
-        <Asset
-          id={id}
-          type={thumbnailType}
-          isUsed={isUsed}
-          onClick={onSelect}
-          onPreview={onPreview}
-          onDownload={handleDownload}
-          onDelete={handleDelete}
-        />
-      </div>
-    );
-  });
+  const handleAssetTypeChange = useCallback(
+    (value: AssetFilterValue) => {
+      onUpdateAssetFilter(value === 'all' ? null : value);
+    },
+    [onUpdateAssetFilter],
+  );
+
+  const handleSelectionChange = useCallback(
+    (keys: Set<Key>) => {
+      const [selectedKey] = [...keys];
+      if (typeof selectedKey !== 'string') return;
+
+      if (onSelect) {
+        onSelect(selectedKey);
+        return;
+      }
+
+      onPreview?.(selectedKey);
+    },
+    [onPreview, onSelect],
+  );
+
+  const renderItem = useCallback(
+    (asset: AssetType, itemProps: ItemProps) => (
+      <AssetCard
+        id={asset.id}
+        isCurrent={asset.id === selected}
+        name={asset.name}
+        source={asset.source}
+        type={asset.type}
+        isUsed={asset.isUsed}
+        itemProps={itemProps}
+        onPreview={onPreview}
+        onDownload={asset.type === 'apikey' ? null : onDownload}
+        onDelete={handleDelete}
+      />
+    ),
+    [handleDelete, onDownload, onPreview, selected],
+  );
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-col gap-5">
       {!type && (
-        <div className="mb-(--space-md)">
-          <RadioGroup
-            options={ASSET_TYPES}
-            input={{
-              name: 'assetType',
-              onChange: (value: unknown) =>
-                onUpdateAssetFilter(value as string | null),
-              value: assetType,
-            }}
-            label="Show types:"
-            orientation="horizontal"
-          />
-        </div>
+        <SegmentedSwitcher
+          aria-label="Filter resources by type"
+          options={ASSET_TYPES}
+          value={selectedAssetType}
+          onValueChange={handleAssetTypeChange}
+          size="md"
+          className="w-fit max-w-full"
+        />
       )}
-      <div className="grid grid-cols-3 gap-5">
-        {assets.length > 0 ? renderedAssets : <em>No resources to display.</em>}
-      </div>
+      <Collection
+        aria-label="Resource library"
+        items={assets}
+        keyExtractor={(asset) => asset.id}
+        textValueExtractor={(asset) => asset.name}
+        layout={layout}
+        renderItem={renderItem}
+        selectionMode="single"
+        selectedKeys={[]}
+        onSelectionChange={handleSelectionChange}
+        animate
+        animationKey={selectedAssetType}
+        className="!flex-none"
+        viewportClassName="pr-3"
+        emptyState={
+          <Paragraph margin="none" className="text-muted py-10">
+            No resources to display.
+          </Paragraph>
+        }
+        fade
+      >
+        {(CollectionElements) => CollectionElements}
+      </Collection>
     </div>
   );
 };

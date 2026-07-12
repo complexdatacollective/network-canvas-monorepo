@@ -22,6 +22,7 @@ import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import { useStageSelector } from '~/hooks/useStageSelector';
 
 import { buildPedigreeDialog } from '../buildPedigreeDialog';
@@ -75,7 +76,7 @@ export default function PedigreeChecklist({
 
   const egoId = useMemo(() => {
     for (const [id, node] of nodes) {
-      if (node.attributes[egoVariable] === true) return id;
+      if (node[entityAttributesProperty][egoVariable] === true) return id;
     }
     return null;
   }, [nodes, egoVariable]);
@@ -224,7 +225,8 @@ export default function PedigreeChecklist({
     const list: ChecklistItem[] = [];
 
     for (const parentId of egoParentIds) {
-      const rawName = nodes.get(parentId)?.attributes[nodeLabelVariable];
+      const rawName =
+        nodes.get(parentId)?.[entityAttributesProperty][nodeLabelVariable];
       if (typeof rawName !== 'string' || rawName.length === 0) continue;
 
       // Only nudge for a parent's own parents when that parent is a genetic
@@ -262,7 +264,8 @@ export default function PedigreeChecklist({
       edges,
       relationshipTypeVariable,
     )) {
-      const rawName = nodes.get(partnerId)?.attributes[nodeLabelVariable];
+      const rawName =
+        nodes.get(partnerId)?.[entityAttributesProperty][nodeLabelVariable];
       if (typeof rawName !== 'string' || rawName.length === 0) continue;
 
       list.push(
@@ -388,6 +391,7 @@ export default function PedigreeChecklist({
       {!dismissed && (
         <MotionSurface
           key="pedigree-checklist"
+          data-testid="pedigree-checklist"
           className="bg-surface/80 absolute bottom-4 left-4 z-20 w-80 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
           layout
           drag
@@ -416,6 +420,9 @@ export default function PedigreeChecklist({
                 {sortedItems.map((item) => (
                   <motion.li
                     key={item.id}
+                    data-testid={`pedigree-checklist-item-${item.id}`}
+                    data-required={item.required}
+                    data-done={item.done}
                     layout
                     transition={{
                       layout: {
@@ -467,7 +474,11 @@ export default function PedigreeChecklist({
             className="mt-4 flex flex-col justify-between gap-2"
           >
             {allDone && (
-              <Button color="primary" onClick={onFinalize}>
+              <Button
+                color="primary"
+                data-testid="pedigree-checklist-finalize"
+                onClick={onFinalize}
+              >
                 Finalize family pedigree
               </Button>
             )}

@@ -17,7 +17,11 @@ import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import type { Codebook } from '@codaco/protocol-validation';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import PedigreeLayout from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeLayout';
@@ -36,21 +40,14 @@ import type { StageProps } from '~/types';
 
 import { PedigreeSnapshotDocument } from '../export/PedigreeSnapshotDocument';
 import { exportSnapshot } from '../export/snapshot';
-import {
-  computeAtRiskHomozygous,
-  computeStatuses,
-} from '../genetics/computeStatuses';
+import { computeStatuses } from '../genetics/computeStatuses';
 import { buildGeneticGraph } from '../genetics/geneticGraph';
 import { resolveSex } from '../genetics/resolveSex';
-import {
-  affectedSet,
-  AT_RISK_HOMOZYGOUS_LABEL,
-  STATUS_LABELS,
-  type Status,
-} from '../genetics/status';
+import { affectedSet, STATUS_LABELS, type Status } from '../genetics/status';
 import { computeContributors } from '../highlight';
 import ConditionPanel from './ConditionPanel';
 import { Sticker } from './Sticker';
+import ZoomableViewport from './ZoomableViewport';
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 type Disease = NarrativeStage['diseases'][number];
@@ -150,7 +147,6 @@ export default function NarrativePedigreeView({
   // be captured to a PNG (see the capture effect below).
   const [isCapturing, setIsCapturing] = useState(false);
 
-  const viewRef = useRef<HTMLDivElement>(null);
   const snapshotRef = useRef<HTMLDivElement>(null);
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
     component: <Node size="sm" />,
@@ -195,6 +191,7 @@ export default function NarrativePedigreeView({
       pedigreeEdges,
       {
         relationshipTypeVariable: sourceConfig.config.relationshipTypeVariable,
+        gameteRoleVariable: sourceConfig.config.gameteRoleVariable,
       },
       resolveSexFn,
     );
@@ -203,7 +200,9 @@ export default function NarrativePedigreeView({
   const egoId = useMemo(() => {
     if (!sourceConfig) return undefined;
     const { egoVariable } = sourceConfig.config;
-    return pedigreeNodes.find((n) => n.attributes[egoVariable] === true)?._uid;
+    return pedigreeNodes.find(
+      (n) => n[entityAttributesProperty][egoVariable] === true,
+    )?._uid;
   }, [pedigreeNodes, sourceConfig]);
 
   // When a disease is selected, show only that disease; otherwise show all.
@@ -231,33 +230,15 @@ export default function NarrativePedigreeView({
     return map;
   }, [graph, shownDiseases, pedigreeNodes, resolveSexFn]);
 
-  // diseaseId → (nodeId → atRiskHomozygous) for every shown disease.
-  const statusesByDiseaseHomozygous = useMemo(() => {
-    const map = new Map<string, Map<string, boolean>>();
-    if (!graph) return map;
-    for (const disease of shownDiseases) {
-      map.set(
-        disease.id,
-        computeAtRiskHomozygous(
-          graph,
-          statusesByDisease.get(disease.id) ?? new Map<string, Status>(),
-          disease.inheritancePattern,
-          resolveSexFn,
-        ),
-      );
-    }
-    return map;
-  }, [graph, shownDiseases, resolveSexFn, statusesByDisease]);
-
   // Display gate for the at-risk (probabilistic) notation. The genetics engine
-  // always emits the at-risk statuses + homozygous flag; this transform decides
-  // whether they are shown. When the researcher leaves the option off (default),
-  // the two at-risk statuses collapse to `unknown` and the homozygous flag is
-  // forced false, so no "?" glyphs are drawn anywhere — and because every
-  // downstream consumer (stickers, single-condition node, screen-reader summary,
-  // aria-live) reads from these displayed maps, the spoken summary never
-  // announces a status the participant cannot see. The engine output is left
-  // untouched (it still feeds the inheritance-aware focal highlighting below).
+  // always emits the at-risk statuses; this transform decides whether they are
+  // shown. When the researcher leaves the option off (default), the two at-risk
+  // statuses collapse to `unknown`, so no "?" glyphs are drawn anywhere — and
+  // because every downstream consumer (stickers, single-condition node,
+  // screen-reader summary, aria-live) reads from these displayed maps, the spoken
+  // summary never announces a status the participant cannot see. The engine
+  // output is left untouched (it still feeds the inheritance-aware focal
+  // highlighting below).
   const showAtRiskStatuses = stage.showAtRiskStatuses ?? false;
 
   const displayedStatusesByDisease = useMemo(() => {
@@ -277,11 +258,6 @@ export default function NarrativePedigreeView({
     }
     return map;
   }, [showAtRiskStatuses, statusesByDisease]);
-
-  const displayedHomozygousByDisease = useMemo(() => {
-    if (showAtRiskStatuses) return statusesByDiseaseHomozygous;
-    return new Map<string, Map<string, boolean>>();
-  }, [showAtRiskStatuses, statusesByDiseaseHomozygous]);
 
   // Focal highlighting (which relatives contribute to a person's inheritance)
   // is an analytical relationship, not a displayed status — keep it driven by
@@ -329,7 +305,10 @@ export default function NarrativePedigreeView({
 
   const resolveShape = (node: NcNode): NodeShape => {
     if (!sourceConfig?.shapeDefinition) return 'square';
-    return resolveNodeShape(sourceConfig.shapeDefinition, node.attributes);
+    return resolveNodeShape(
+      sourceConfig.shapeDefinition,
+      node[entityAttributesProperty],
+    );
   };
 
   const labelFor = (node: RenderableNode): string => {
@@ -350,18 +329,8 @@ export default function NarrativePedigreeView({
     const parts = shownDiseases.map((disease) => {
       const status =
         displayedStatusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
-      const atRiskHomozygous =
-        displayedHomozygousByDisease.get(disease.id)?.get(node.id) ?? false;
       const statusText = STATUS_LABELS[status];
-      // An affected recessive individual trivially has two carrier parents, so
-      // the homozygous flag is set for them too — but announcing "Affected, at
-      // risk of being affected" is contradictory. Drop the note once the person
-      // is already affected so the spoken summary stays coherent.
-      const alreadyAffected =
-        status === 'affected' || status === 'obligateAffected';
-      return atRiskHomozygous && !alreadyAffected
-        ? `${disease.label}: ${statusText}, ${AT_RISK_HOMOZYGOUS_LABEL}`
-        : `${disease.label}: ${statusText}`;
+      return `${disease.label}: ${statusText}`;
     });
     return parts.join('. ');
   };
@@ -471,8 +440,6 @@ export default function NarrativePedigreeView({
   ): ReactNode => {
     const status =
       displayedStatusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
-    const atRiskHomozygous =
-      displayedHomozygousByDisease.get(disease.id)?.get(node.id) ?? false;
     const color = dimmed ? dimColor(disease.color) : disease.color;
     // The symbol is drawn smaller than the layout cell (which is sized for a
     // plain node) so it reads in proportion with the plain-node view. It centres
@@ -499,7 +466,6 @@ export default function NarrativePedigreeView({
             color={color}
             shape={shape}
             size="100%"
-            atRiskHomozygous={atRiskHomozygous}
             surfaceColor={dimmed ? dimColor('white') : undefined}
             nodeMode="single"
           />
@@ -605,8 +571,8 @@ export default function NarrativePedigreeView({
           nodeWidth={nodeWidth}
           nodeHeight={nodeHeight}
           renderNode={renderNode}
-          highlightedNodeIds={highlight.nodes}
-          highlightedEdgeKeys={highlight.edges}
+          highlightedNodeIds={focalId !== null ? highlight.nodes : undefined}
+          highlightedEdgeKeys={focalId !== null ? highlight.edges : undefined}
           glyphColour={snapshotGlyphColour}
           keyShape="circle"
           showAtRiskStatuses={showAtRiskStatuses}
@@ -664,17 +630,10 @@ export default function NarrativePedigreeView({
             click / Escape clears the focal person; the Clear-focus control floats
             over it when one is set. */}
         <div className="relative flex min-h-0 min-w-0 grow flex-col overflow-hidden">
-          <div
-            ref={viewRef}
-            data-narrative-pedigree-view
-            role="presentation"
-            className="relative flex min-h-0 w-full min-w-0 grow items-start justify-center-safe overflow-auto pt-6"
-            onClick={() => setFocalId(null)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                setFocalId(null);
-              }
-            }}
+          <ZoomableViewport
+            toolbarLabel="Zoom controls"
+            onBackgroundClick={() => setFocalId(null)}
+            onEscape={() => setFocalId(null)}
           >
             <PedigreeLayout
               nodes={nodesMap}
@@ -683,10 +642,14 @@ export default function NarrativePedigreeView({
               nodeWidth={nodeWidth}
               nodeHeight={nodeHeight}
               renderNode={renderNode}
-              highlightedNodeIds={highlight.nodes}
-              highlightedEdgeKeys={highlight.edges}
+              highlightedNodeIds={
+                focalId !== null ? highlight.nodes : undefined
+              }
+              highlightedEdgeKeys={
+                focalId !== null ? highlight.edges : undefined
+              }
             />
-          </div>
+          </ZoomableViewport>
           {focalId !== null && (
             <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
               <Button

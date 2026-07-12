@@ -1,13 +1,14 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
 import type React from 'react';
 import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { FilterRule } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
 import { useAppDispatch } from '~/ducks/hooks';
-import { openDialog } from '~/ducks/modules/dialogs';
 import type { RootState } from '~/ducks/modules/root';
 
 import IssueAnchor from '../IssueAnchor';
@@ -17,9 +18,7 @@ import {
   withFieldConnector,
   withStoreConnector,
 } from '../Query';
-import Tip from '../Tip';
 import getEdgeFilteringWarning from './SociogramPrompts/utils';
-
 const FilterField = (
   withFieldConnector as unknown as (
     c: React.ComponentType,
@@ -29,30 +28,36 @@ const FilterField = (
     FilterQuery as unknown as React.ComponentType,
   ) as unknown as React.ComponentType,
 );
-
 export const handleFilterDeactivate = async (
   openDialogFn: () => Promise<boolean>,
 ) => {
   const result = await openDialogFn();
   return result;
 };
-
 const Filter = () => {
   const getFormValue = formValueSelector('edit-stage');
   const dispatch = useAppDispatch();
+  const { confirm } = useDialog();
   const currentValue = useSelector(
     (state: RootState) =>
-      getFormValue(state, 'filter') as { rules?: unknown[] } | undefined,
+      getFormValue(state, 'filter') as
+        | {
+            rules?: unknown[];
+          }
+        | undefined,
   );
-
   // get edge creation and display values for edges across all prompts
   const prompts = useSelector(
     (state: RootState) =>
       getFormValue(state, 'prompts') as
-        | Array<{ edges?: { create?: string; display?: string[] } }>
+        | Array<{
+            edges?: {
+              create?: string;
+              display?: string[];
+            };
+          }>
         | undefined,
   );
-
   const { edgeCreationValues, edgeDisplayValues } = useMemo(() => {
     if (!prompts) return { edgeCreationValues: [], edgeDisplayValues: [] };
     const creationValues: string[] = [];
@@ -75,62 +80,57 @@ const Filter = () => {
     }
     return false;
   }, [currentValue, edgeCreationValues, edgeDisplayValues]);
-
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
       if (!currentValue || newState) {
         return true;
       }
-
-      const confirm = await handleFilterDeactivate(
-        () =>
-          dispatch(
-            openDialog({
-              type: 'Warning',
-              title: 'This will clear your filter',
-              message:
-                'This will clear your filter, and delete any rules you have created. Do you want to continue?',
-              confirmLabel: 'Clear filter',
-            }) as unknown as UnknownAction,
-          ) as unknown as Promise<boolean>,
+      const confirmed = await handleFilterDeactivate(
+        async () =>
+          (await confirm({
+            title: 'This will clear your filter',
+            description:
+              'This will clear your filter, and delete any rules you have created. Do you want to continue?',
+            confirmLabel: 'Clear filter',
+            cancelLabel: 'Cancel',
+            intent: 'warning',
+            onConfirm: () => {},
+          })) === true,
       );
-
-      if (confirm) {
+      if (confirmed) {
         dispatch(change('edit-stage', 'filter', null));
         return true;
       }
-
       return false;
     },
-    [dispatch, currentValue],
+    [confirm, dispatch, currentValue],
   );
-
   return (
     <Section
       title="Filter"
       toggleable
       summary={
-        <p>
+        <Paragraph>
           You can optionally filter which nodes or edges are shown on this
           stage, by creating one or more rules using the options below.
-        </p>
+        </Paragraph>
       }
       startExpanded={!!currentValue}
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
       {shouldShowWarning && (
-        <Tip type="warning">
-          <p>
+        <Alert variant="warning" className="my-7">
+          <AlertTitle>Filter rules hide configured values</AlertTitle>
+          <AlertDescription>
             This stage has edge creation or display values that will not be
             shown based on the current filter rules.
-          </p>
-        </Tip>
+          </AlertDescription>
+        </Alert>
       )}
       <IssueAnchor fieldName="filter" description="Filter text" />
       <Field name="filter" component={FilterField} validate={ruleValidator} />
     </Section>
   );
 };
-
 export default Filter;

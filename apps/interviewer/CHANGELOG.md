@@ -1,5 +1,53 @@
 # @codaco/interviewer
 
+## 8.0.0-beta.6
+
+### Patch Changes
+
+- Improved the animated background on Interviewer screens so lights drift in and wrap smoothly without leaving long empty gaps.
+- Improve the Interviewer start screen on narrow displays by compacting the header
+  brand and footer status indicators.
+- Interviewer now lets users view and copy protocol validation errors when an import fails, making it easier to request support with the relevant details.
+- Fix protocol import in Safari installed apps by moving Interviewer's import card onto a mounted `react-dropzone` file input, matching Architect's working file-picker pattern. The import card still supports click, keyboard activation, and drag-and-drop, but no longer relies on an ephemeral input created only when the card is clicked.
+
+## 8.0.0-beta.5
+
+### Minor Changes
+
+- Saving an export no longer asks you to confirm that the file downloaded. On desktop Chrome and Edge, "Save export" now opens the standard Save-As dialog and the app knows the file was written; on iOS, Android, and Safari the share sheet is used as before; other browsers download the archive directly. Interviews are marked as exported automatically from the save outcome.
+- Refine the start and data screens on tablet, especially in portrait:
+  - Harmonise the top-bar view switcher, settings and lock buttons, and the protocol deck's navigation into one consistent translucent "glass" style.
+  - Fix the "resume last interview" pill overlapping the view switcher and the protocol cards in portrait.
+  - Reduce the page margins on smaller tablets in portrait so content has more room.
+  - Widen the settings dialog and let its sections reflow responsively; the settings navigation now uses a tabbed layout.
+  - Stop the data table's rubber-band overscroll, and give the data search field and status filter the same glass treatment.
+  - Fix a Chrome-only issue where the import-protocol card's background blur did not render.
+
+### Patch Changes
+
+- Protocol cards on the start screen no longer condense or clip the study name when a card is selected. The name now always renders in full, and the description shrinks (or hides entirely) when the card is short on space — previously it was the other way around, so selecting a card could squeeze a long study name into a single clipped line. Card text also no longer scales below a legible minimum size on small windows. On small windows the "enter a case ID" step now scrolls inside the card instead of pushing the Start interview button out of view.
+- Switching to another tab or app and back no longer locks the app on its own. Locking is now governed solely by the "Auto-lock after" inactivity timer in Security settings: the app locks only once it has been left unattended for the period you configure. Time spent with the app in the background still counts toward that timer, so an idle session locks on schedule even if it was hidden the whole time.
+- Fix data export failing with "Permission denied" on desktop Chrome. When the browser reports that file sharing is available but the system share sheet then refuses the file, the export now falls back to a normal file download instead of failing.
+- Fix the band of empty background around the screen edges when Interviewer is installed to the home screen (as a PWA) on iPad. In standalone display mode the app was sizing to an area that stopped short of the screen (leaving the backdrop showing below the interface) and reserved the top safe area app-wide (leaving a band above the interview navigation). The app now fills the full visible viewport and renders edge-to-edge, so backgrounds reach every edge while on-screen controls stay clear of the status bar and home indicator.
+- Fixed protocol import on Safari: selecting a `.netcanvas` file from the file picker now imports correctly, including when Interviewer is installed as an app (Add to Dock). Previously the picker could silently fail because Safari discards a file input that isn't part of the page while the picker is open.
+- Improved the storage-durability indicator for Safari. The app now re-requests persistent storage on your first interaction — Safari grants the request silently based on interaction history, so asking only at startup was routinely denied — and the indicator updates immediately when a grant lands. When running as an installed app, an ungranted request now shows as a calm "Storage best effort" note instead of a warning: installed-app data is kept separate from browsing data and is not subject to the browser's routine cleanup, and there is no further install action to take.
+- Replace the encryption and storage status hints on the start screen with proper tooltips, so they're reachable with the keyboard and readable by screen readers, not just on mouse hover.
+
+## 8.0.0-beta.4
+
+### Minor Changes
+
+- Replace the update toast with a version indicator that shows when an update is available or has just been applied, and displays the release changelog. Updates now apply automatically on a fresh load when no work is in progress.
+
+### Patch Changes
+
+- Close data-loss and setup gaps surfaced by the pre-release audit follow-up:
+  - **Export marking:** on browsers that can't report whether a file download completed (the object-URL fallback), the app now confirms the archive was saved before marking sessions as exported — a cancelled or blocked Save-As can no longer falsely mark a session "exported" (which fed the filter-to-exported → bulk-delete data-loss path).
+  - **Setup wizard:** a failed same-method re-enrolment (e.g. cancelling the biometric prompt after the old vault was revoked) can no longer finish the wizard claiming a lock mode the vault doesn't actually hold.
+  - **Lock screen:** a destructive "reset app data" confirmation opened while locked is now dismissed when the app unlocks, so it can't survive the lock boundary and fire over Home.
+
+- Fixed an issue where double-clicking multiple .netcanvas files at once (with the installed app set as the file handler) could silently drop every file if even one of them had been moved or deleted since being opened. Readable files are now imported as normal, and a notification now appears if any of the files couldn't be read.
+
 ## 8.0.0-beta.3
 
 ### Patch Changes

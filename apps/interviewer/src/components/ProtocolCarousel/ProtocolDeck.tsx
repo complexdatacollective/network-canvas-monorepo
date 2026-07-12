@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type {
@@ -10,7 +11,6 @@ import type {
 } from '~/lib/db/types';
 import type { PendingImport } from '~/lib/protocol/useProtocolImport';
 
-import { GLASS_PILL } from '../TopActionBar';
 import {
   DeckCarousel,
   type DeckCarouselHandle,
@@ -23,6 +23,12 @@ import { useDeckKeyboard } from './useDeckKeyboard';
 
 // Cards are square; height is measured from the section, width follows.
 const CARD_ASPECT = 1 / 1;
+// Readability floor: below this the card's container-query type becomes too
+// small to read, so the deck stops shrinking and lets the section clip
+// symmetrically instead. Lives here (not on DeckCard) so the slides and the
+// card always agree on size — a card bigger than its slot broke the deck
+// geometry and clipped card content (#888).
+const MIN_CARD_EDGE_PX = 300;
 // Top/bottom inset so the deck sits below the header instead of hugging it,
 // and so the card's drop shadow has room to render. Scaled with section
 // height: short viewports (Electron default 1280×800 leaves ~470px) get a
@@ -31,6 +37,7 @@ const CARD_ASPECT = 1 / 1;
 const SECTION_PADDING_RATIO = 0.12;
 const MIN_SECTION_PADDING = 24;
 const MAX_SECTION_PADDING = 100;
+const NETCANVAS_ACCEPT = { 'application/x-netcanvas': ['.netcanvas'] };
 
 function computeSectionPadding(sectionHeight: number): number {
   return Math.min(
@@ -44,13 +51,15 @@ type ProtocolDeckProps = {
   sessions: StoredSessionLite[];
   initialProtocolHash?: string;
   showSampleCard?: boolean;
+  // Dev-only teaser slot for the bundled Development protocol.
+  showDevelopmentCard?: boolean;
   pendingImports?: PendingImport[];
-  onImport: () => void;
   onImportFile: (file: File) => void;
   onStartInterview: (protocolHash: string) => void;
   onDeleteProtocol: (hash: string) => void;
   onInstallSample?: () => void;
   onDismissSample?: () => void;
+  onInstallDevelopment?: () => void;
   // When set, the matching card is rendered in its "new session" state: the
   // case-ID form replaces the description, metadata, and Start button in the
   // card footer, and swipe/keyboard navigation is locked.
@@ -98,13 +107,14 @@ export function ProtocolDeck({
   sessions,
   initialProtocolHash,
   showSampleCard = false,
+  showDevelopmentCard = false,
   pendingImports = [],
-  onImport,
   onImportFile,
   onStartInterview,
   onDeleteProtocol,
   onInstallSample = () => {},
   onDismissSample = () => {},
+  onInstallDevelopment = () => {},
   newSessionProtocolHash,
   onCancelNewSession,
   onSessionCreated,
@@ -114,10 +124,35 @@ export function ProtocolDeck({
   const carouselRef = useRef<DeckCarouselHandle | null>(null);
   const didInitialScroll = useRef(false);
   const [sectionHeight, setSectionHeight] = useState(0);
+  const handleDrop = useCallback(
+    (files: File[]) => {
+      const file = files[0];
+      if (file) onImportFile(file);
+    },
+    [onImportFile],
+  );
+  const {
+    getRootProps: getImportRootProps,
+    getInputProps: getImportInputProps,
+    isDragActive: isImportDragActive,
+    open: openImportDialog,
+  } = useDropzone({
+    onDrop: handleDrop,
+    accept: NETCANVAS_ACCEPT,
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+  });
 
   const deck = useMemo(
-    () => buildDeck({ protocols, showSampleCard, pendingImports }),
-    [protocols, showSampleCard, pendingImports],
+    () =>
+      buildDeck({
+        protocols,
+        showSampleCard,
+        showDevelopmentCard,
+        pendingImports,
+      }),
+    [protocols, showSampleCard, showDevelopmentCard, pendingImports],
   );
 
   // Per-protocol session count, hoisted here so DeckCard doesn't take the
@@ -139,11 +174,13 @@ export function ProtocolDeck({
             key: entryKey(entry),
             entry,
             backdropBlur: true,
-            onActivate: onImport,
+            onActivate: openImportDialog,
             render: (_isActive: boolean, activate: () => void) => (
               <ImportTriggerCard
                 onActivate={activate}
-                onImportFile={onImportFile}
+                getRootProps={getImportRootProps}
+                getInputProps={getImportInputProps}
+                isDragActive={isImportDragActive}
               />
             ),
           };
@@ -164,7 +201,9 @@ export function ProtocolDeck({
               ? () => onStartInterview(entry.protocol.hash)
               : entry.kind === 'sample'
                 ? onInstallSample
-                : undefined,
+                : entry.kind === 'development'
+                  ? onInstallDevelopment
+                  : undefined,
           render: (isActive: boolean, activate: () => void) => (
             <DeckSlotCard
               entry={entry}
@@ -178,6 +217,7 @@ export function ProtocolDeck({
               onDeleteProtocol={onDeleteProtocol}
               onDismissSample={onDismissSample}
               onInstallSample={onInstallSample}
+              onInstallDevelopment={onInstallDevelopment}
               newSession={newSession}
             />
           ),
@@ -187,11 +227,14 @@ export function ProtocolDeck({
       deck,
       sessionCounts,
       newSessionProtocolHash,
-      onImport,
-      onImportFile,
+      getImportRootProps,
+      getImportInputProps,
+      isImportDragActive,
+      openImportDialog,
       onStartInterview,
       onInstallSample,
       onDismissSample,
+      onInstallDevelopment,
       onDeleteProtocol,
       onCancelNewSession,
       onSessionCreated,
@@ -311,7 +354,10 @@ export function ProtocolDeck({
   const { cardWidth, cardHeight } = useMemo(() => {
     const padding = computeSectionPadding(sectionHeight);
     const innerHeight = Math.max(0, sectionHeight - padding * 2);
-    const ch = Math.round(innerHeight);
+    // The floor applies only once the section has been measured at all —
+    // cardHeight 0 still means "don't render the carousel yet".
+    const ch =
+      innerHeight > 0 ? Math.round(Math.max(innerHeight, MIN_CARD_EDGE_PX)) : 0;
     const cw = Math.round(ch * CARD_ASPECT);
     return { cardHeight: ch, cardWidth: cw };
   }, [sectionHeight]);
@@ -384,12 +430,12 @@ export function ProtocolDeck({
         >
           <IconButton
             size="xl"
-            variant="text"
+            variant="glass"
             icon={<ChevronLeft strokeWidth={2.8} aria-hidden />}
             aria-label="Previous protocol"
             onClick={() => setActiveIndex(Math.max(0, activeIndex - 1))}
             disabled={atStart}
-            className={GLASS_PILL}
+            className="border-outline"
           />
           <div className="flex items-center gap-2.5">
             {slides.map((slide, i) => (
@@ -407,14 +453,14 @@ export function ProtocolDeck({
           </div>
           <IconButton
             size="xl"
-            variant="text"
+            variant="glass"
             icon={<ChevronRight strokeWidth={2.8} aria-hidden />}
             aria-label="Next protocol"
             onClick={() =>
               setActiveIndex(Math.min(slides.length - 1, activeIndex + 1))
             }
             disabled={atEnd}
-            className={GLASS_PILL}
+            className="border-outline"
           />
         </motion.div>
       )}

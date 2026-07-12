@@ -31,7 +31,9 @@ export const getCodebookProperties = (
   );
 
 export const normalizeField = (field: Record<string, unknown>) =>
-  omit(field, ['id', '_createNewVariable', ...CODEBOOK_PROPERTIES]);
+  // Keep `id` so DialogArrayField can retain the item's stable identity across
+  // edits, reorders, and deletes.
+  omit(field, ['_createNewVariable', ...CODEBOOK_PROPERTIES]);
 
 // Merge item with variable info from codebook
 export const itemSelector =

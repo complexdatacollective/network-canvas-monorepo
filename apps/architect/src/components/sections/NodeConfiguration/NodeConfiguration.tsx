@@ -3,6 +3,8 @@ import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import EditableAttributesList from '~/components/EditableAttributesList/EditableAttributesList';
 import { Row, Section, Subsection } from '~/components/EditorLayout';
 import withCreateVariableHandlers from '~/components/enhancers/withCreateVariableHandler';
@@ -10,7 +12,6 @@ import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubj
 import withSubject from '~/components/enhancers/withSubject';
 import { ValidatedField } from '~/components/Form';
 import IssueAnchor from '~/components/IssueAnchor';
-import Switch from '~/components/NewComponents/Switch';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
@@ -23,28 +24,24 @@ import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import withComposerFormHandlers from '../Form/withComposerFormHandlers';
 import { getLayoutVariablesForSubject } from '../SociogramPrompts/selectors';
-
 type LayoutVariableOption = {
   isUsed?: boolean;
   label: string;
   type: string;
   value: string;
 };
-
 type CategoricalVariableOption = {
   isUsed?: boolean;
   label: string;
   type?: string;
   value: string;
 };
-
 type TextVariableOption = {
   isUsed?: boolean;
   label: string;
   type?: string;
   value: string;
 };
-
 export type NodeConfigurationProps = {
   entity: 'node' | 'edge' | 'ego';
   type: string | null;
@@ -56,12 +53,11 @@ export type NodeConfigurationProps = {
     variableType: string,
     fieldName: string,
   ) => void;
-  handleChangeFields: (fields: Array<Record<string, unknown>>) => void;
+  handleChangeFields: (field: Record<string, unknown>) => unknown;
   layoutVariablesForSubject: LayoutVariableOption[];
   categoricalVariablesForSubject: CategoricalVariableOption[];
   quickAddOptionsForSubject: TextVariableOption[];
 };
-
 export const NodeConfigurationComponent = ({
   entity,
   type,
@@ -75,13 +71,11 @@ export const NodeConfigurationComponent = ({
   quickAddOptionsForSubject,
 }: NodeConfigurationProps) => {
   const dispatch = useAppDispatch();
-
   const rawAutomaticLayout = useAppSelector((state) =>
     formValueSelector(form)(state, 'behaviours.automaticLayout'),
   );
   const automaticLayout =
     typeof rawAutomaticLayout === 'boolean' ? rawAutomaticLayout : true;
-
   // Selecting a node type resets subject-dependent fields, setting `behaviours`
   // to null (NodeType.handleResetStage) — and redux-form's formValueSelector
   // returns `null` (not undefined) for a path under a null parent. Re-seed the
@@ -92,13 +86,11 @@ export const NodeConfigurationComponent = ({
       dispatch(change(form, 'behaviours.automaticLayout', true));
     }
   }, [rawAutomaticLayout, dispatch, form]);
-
   const newVariableWindowInitialProps = {
     entity: (entity === 'ego' ? 'node' : entity) as Entity,
     type: type ?? '',
     initialValues: { name: '', type: 'categorical' },
   };
-
   const handleCreatedGroupVariable = (...args: unknown[]) => {
     const [id] = args;
     if (typeof id !== 'string') {
@@ -106,21 +98,19 @@ export const NodeConfigurationComponent = ({
     }
     dispatch(change(form, 'convexHullVariable', id));
   };
-
   const [newVariableWindowProps, openNewVariableWindow] =
     useNewVariableWindowState(
       newVariableWindowInitialProps,
       handleCreatedGroupVariable,
     );
-
   return (
     <Section
       title="Node Configuration"
       summary={
-        <p>
+        <Paragraph>
           Configure the variable mappings, layout behaviour, group hulls, and
           the attributes collected for each node.
-        </p>
+        </Paragraph>
       }
       disabled={disabled}
       disabledMessage={disabledMessage}
@@ -182,15 +172,16 @@ export const NodeConfigurationComponent = ({
             fieldName="behaviours.automaticLayout"
             description="Default automatic layout"
           />
-          <label className="flex cursor-pointer flex-row items-center gap-(--space-md)">
-            <Switch
-              checked={automaticLayout}
-              onCheckedChange={(checked) =>
+          <div className="flex flex-row items-center gap-5">
+            <ToggleField
+              title="Start with automatic layout switched on"
+              value={automaticLayout}
+              onChange={(checked) =>
                 dispatch(change(form, 'behaviours.automaticLayout', checked))
               }
             />
             <span>Start with automatic layout switched on</span>
-          </label>
+          </div>
         </Row>
       </Subsection>
 
@@ -244,13 +235,11 @@ export const NodeConfigurationComponent = ({
     </Section>
   );
 };
-
 type OwnProps = {
   entity: 'node' | 'edge' | 'ego';
   type: string | null;
   form: string;
 };
-
 const withLayoutOptions = connect(
   (state: RootState, { entity, type }: OwnProps) => ({
     layoutVariablesForSubject: type
@@ -258,7 +247,6 @@ const withLayoutOptions = connect(
       : [],
   }),
 );
-
 const withCategoricalOptions = connect(
   (state: RootState, { entity, type }: OwnProps) => ({
     categoricalVariablesForSubject: type
@@ -268,7 +256,6 @@ const withCategoricalOptions = connect(
       : [],
   }),
 );
-
 const withQuickAddOptions = connect(
   (state: RootState, { entity, type }: OwnProps) => ({
     quickAddOptionsForSubject: type
@@ -278,7 +265,6 @@ const withQuickAddOptions = connect(
       : [],
   }),
 );
-
 export default compose<NodeConfigurationProps, StageEditorSectionProps>(
   withSubject,
   withCreateVariableHandlers,

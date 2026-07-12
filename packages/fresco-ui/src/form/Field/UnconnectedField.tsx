@@ -84,7 +84,11 @@ export default function UnconnectedField<C extends ValidFieldComponent>({
   const id = useId();
   const required = Boolean(componentProps.required);
 
-  const describedBy = [hint && `${id}-hint`, errors?.length && `${id}-error`]
+  const describedBy = [
+    required && `${id}-required`,
+    hint && `${id}-hint`,
+    errors?.length && `${id}-error`,
+  ]
     .filter(Boolean)
     .join(' ');
 
@@ -97,6 +101,7 @@ export default function UnconnectedField<C extends ValidFieldComponent>({
     ...componentProps,
     id,
     'aria-required': required,
+    'aria-labelledby': componentProps['aria-labelledby'] ?? `${id}-label`,
     'aria-describedby': describedBy || undefined,
   } as React.ComponentProps<C>;
 

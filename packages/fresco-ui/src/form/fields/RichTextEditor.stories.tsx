@@ -186,6 +186,60 @@ export const WithAllElements: Story = {
   ),
 };
 
+export const ArchitectToolbar: Story = {
+  render: (args) => (
+    <div className="w-[600px]">
+      <RichTextEditorField
+        {...args}
+        toolbarOptions={{ links: true, thematicBreak: true }}
+        value={{
+          type: 'doc',
+          content: [
+            {
+              type: 'heading',
+              attrs: { level: 2 },
+              content: [{ type: 'text', text: 'Architect toolbar' }],
+            },
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: 'This mode matches Architect and adds ' },
+                {
+                  type: 'text',
+                  marks: [
+                    {
+                      type: 'link',
+                      attrs: { href: 'https://networkcanvas.com' },
+                    },
+                  ],
+                  text: 'hyperlinks',
+                },
+                { type: 'text', text: '.' },
+              ],
+            },
+            { type: 'horizontalRule' },
+            {
+              type: 'bulletList',
+              content: [
+                {
+                  type: 'listItem',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Bulleted item' }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }}
+        onChange={action('onChange')}
+      />
+    </div>
+  ),
+};
+
 export const Disabled: Story = {
   render: (args) => (
     <div className="w-[600px]">

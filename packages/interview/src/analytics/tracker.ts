@@ -2,7 +2,9 @@ import type { PostHog } from 'posthog-js';
 
 import type { SuperProperties } from './PROPERTY_KEYS';
 
-export type EventProps = Record<string, unknown>;
+export type EventProps = {
+  [key: string]: unknown;
+};
 
 export type Tracker = {
   track: (eventName: string, props?: EventProps) => void;

@@ -1,7 +1,7 @@
 import { get } from 'es-toolkit/compat';
 import { useSelector } from 'react-redux';
 
-import Badge from '~/components/Badge';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import withSubject from '~/components/enhancers/withSubject';
 import { Markdown } from '~/components/Form/Fields';
 import { getColorForType } from '~/config/variables';
@@ -33,7 +33,7 @@ const FieldPreview = ({
   };
 
   return (
-    <div className="m-(--space-md) flex flex-col gap-(--space-sm)">
+    <div className="m-5 flex flex-col gap-2.5">
       <Markdown label={prompt} className="[&>p]:m-0" />
       <div>
         <Badge color={getColorForType(codebookVariable.type)}>

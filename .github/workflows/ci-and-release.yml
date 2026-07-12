@@ -73,32 +73,42 @@ jobs:
           # Manual runs may set force_run=true to bypass detection and run
           # every conditional job (replaces the old per-workflow rerun buttons).
           FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.force_run == true }}
+          EVENT_ACTION: ${{ github.event.action }}
         run: |
-          # Determine the comparison base — the commit immediately before the
-          # one we're checking. We DON'T use turbo-ignore because it includes
-          # global config (turbo.json, lockfile, root configs) in its hash, so
-          # any unrelated workflow tweak invalidates every package's hash.
+          # Determine the comparison base — the commit range whose diff decides
+          # which conditional jobs run. We DON'T use turbo-ignore because it
+          # includes global config (turbo.json, lockfile, root configs) in its
+          # hash, so any unrelated workflow tweak invalidates every package's
+          # hash.
           #
-          # For PRs we want push-to-push semantics: only RE-RUN jobs whose
-          # packages changed between the prior PR commit and the new tip. The
-          # first push on a PR is a degenerate case — HEAD^2^1 resolves to
-          # the base branch HEAD, so the push diff IS the cumulative PR diff
-          # at that point and every relevant job fires at least once.
-          # Subsequent pushes only re-trigger impacted jobs; jobs that
-          # already ran on earlier PR commits keep their prior status (see
-          # the carry-forward job below) instead of being re-executed.
+          # PR semantics depend on the event action:
+          #   - opened / reopened: no prior verdicts exist on this PR (or, for
+          #     reopened, they may describe a stale base), so judge the
+          #     CUMULATIVE PR diff — merge-base with the base branch to the PR
+          #     tip. The tip's parent is NOT a safe stand-in: it only equals
+          #     the base HEAD for single-commit branches, and a branch pushed
+          #     with its commits already stacked would be judged on its tip
+          #     commit alone (PR #890: a changeset-only tip skipped the
+          #     architect preview on an architect-wide PR).
+          #   - synchronize (subsequent pushes): push-to-push — diff only the
+          #     latest push (prior branch commit → new tip) so only impacted
+          #     jobs re-run; jobs that already ran keep their prior status via
+          #     the carry-forward job below.
           #
           # GH Actions checks out a synthetic merge commit on PRs; HEAD^2 is
-          # the actual PR tip, HEAD^2^1 is the prior commit on the source
-          # branch (or the base branch HEAD on the first PR push).
+          # the actual PR tip.
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
             CURR=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD)
-            PREV=$(git rev-parse "${CURR}^1" 2>/dev/null || true)
+            if [[ "$EVENT_ACTION" == "synchronize" ]]; then
+              PREV=$(git rev-parse "${CURR}^1" 2>/dev/null || true)
+            else
+              PREV=$(git merge-base "$CURR" "origin/${GITHUB_BASE_REF}" 2>/dev/null || true)
+            fi
           else
             CURR=$(git rev-parse HEAD)
             PREV=$(git rev-parse HEAD^1 2>/dev/null || true)
           fi
-          echo "comparing $PREV..$CURR"
+          echo "comparing $PREV..$CURR (event action: ${EVENT_ACTION:-n/a})"
 
           # A change to this CI workflow itself can alter how any conditional job
           # behaves or whether it passes, so a prior run's verdict no longer
@@ -338,6 +348,7 @@ jobs:
     if: |
       always() &&
       github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.detect.outputs.docs == 'true' &&
       needs.quality.result != 'cancelled'
     runs-on: ubuntu-latest
@@ -412,6 +423,7 @@ jobs:
     needs: detect
     if: |
       github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.detect.outputs.architect == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -432,8 +444,7 @@ jobs:
       - id: deploy
         name: Build and deploy architect preview
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect^...
-          pnpm --filter=@codaco/architect build:web
+          pnpm exec turbo run build --filter=@codaco/architect
           json=$(npx --yes netlify-cli@22 deploy --no-build \
                    --filter=@codaco/architect \
                    --dir=apps/architect/dist \
@@ -443,12 +454,9 @@ jobs:
           url=$(echo "$json" | jq -r '.deploy_url')
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
-  # interviewer is a vite-plugin-pwa PWA, same shape as architect, but
-  # its own `build` script is a plain `vite build` (no turbo task override) so
-  # `turbo run build --filter=...` skips the post-build PWA assertion. Build
-  # workspace deps via turbo (fresco-ui, interview, etc.) then run the app's
-  # own `build:web` (vite build + assert-pwa-build.mjs) directly so a broken
-  # service-worker precache manifest fails the deploy instead of shipping.
+  # Interviewer is a vite-plugin-pwa PWA, the same shape as architect. Its
+  # canonical build includes the post-build PWA assertion, so a broken service
+  # worker or precache manifest fails the deploy instead of shipping.
   #
   # NOTE(human-setup-required): needs its own Netlify site, created manually,
   # with its site ID stored in the NETLIFY_SITE_ID_INTERVIEWER secret —
@@ -460,6 +468,7 @@ jobs:
     needs: detect
     if: |
       github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.detect.outputs.interviewer == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -475,8 +484,7 @@ jobs:
       - id: deploy
         name: Build and deploy interviewer preview
         run: |
-          pnpm exec turbo run build --filter=@codaco/interviewer^...
-          pnpm --filter=@codaco/interviewer build:web
+          pnpm exec turbo run build --filter=@codaco/interviewer
           json=$(npx --yes netlify-cli@22 deploy --no-build \
                    --filter=@codaco/interviewer \
                    --dir=apps/interviewer/dist \
@@ -493,6 +501,7 @@ jobs:
     if: |
       always() &&
       github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.detect.outputs.website == 'true' &&
       needs.quality.result != 'cancelled'
     runs-on: ubuntu-latest
@@ -661,7 +670,7 @@ jobs:
     # does NOT consume quality's result. `!cancelled()` opts out of the
     # implicit needs-success gate so an unrelated quality failure can't
     # cascade-skip a flagged run, while a superseded (cancelled) run still skips.
-    if: ${{ !cancelled() && needs.detect.outputs.fresco_ui_storybook == 'true' }}
+    if: ${{ !cancelled() && github.event.pull_request.user.login != 'dependabot[bot]' && needs.detect.outputs.fresco_ui_storybook == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -688,7 +697,7 @@ jobs:
     needs: [quality, detect]
     # See chromatic-fresco-ui: `quality` orders this job for cache reuse only;
     # `!cancelled()` keeps a quality failure from cascade-skipping a flagged run.
-    if: ${{ !cancelled() && needs.detect.outputs.interview_storybook == 'true' }}
+    if: ${{ !cancelled() && github.event.pull_request.user.login != 'dependabot[bot]' && needs.detect.outputs.interview_storybook == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -976,8 +985,7 @@ jobs:
       - name: Build & deploy architect to production
         if: steps.guard.outputs.skip != 'true'
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect^...
-          pnpm --filter=@codaco/architect build:web
+          pnpm exec turbo run build --filter=@codaco/architect
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/architect \
             --dir=apps/architect/dist \
@@ -1047,8 +1055,7 @@ jobs:
       - name: Build & deploy interviewer to production
         if: steps.guard.outputs.skip != 'true'
         run: |
-          pnpm exec turbo run build --filter=@codaco/interviewer^...
-          pnpm --filter=@codaco/interviewer build:web
+          pnpm exec turbo run build --filter=@codaco/interviewer
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/interviewer \
             --dir=apps/interviewer/dist \

@@ -197,7 +197,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
     () =>
       nodesWithLayout
         .map((node) => node[entityPrimaryKeyProperty])
-        .toSorted((a, b) => String(a).localeCompare(String(b)))
+        .toSorted((a, b) => a.localeCompare(b))
         .join(','),
     [nodesWithLayout],
   );

@@ -1,53 +1,84 @@
-import type { ComponentProps } from 'react';
-import { compose } from 'react-recompose';
+import { Trash2 } from 'lucide-react';
+import type { ComponentType, KeyboardEvent } from 'react';
+import { useSelector } from 'react-redux';
+import { formValueSelector } from 'redux-form';
 
-import { BooleanField } from '~/components/Form/Fields';
+import { IconButton } from '@codaco/fresco-ui/Button';
+import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
+import type { VariableType } from '@codaco/protocol-validation';
+import type { FrescoReduxArrayFieldItemProps } from '~/components/Form/FrescoReduxArrayField';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
-import Icon from '~/lib/legacy-ui/components/Icon';
+import type { RootState } from '~/ducks/modules/root';
 
 import withCreateVariableHandler from '../enhancers/withCreateVariableHandler';
 import VariablePicker from '../Form/Fields/VariablePicker/VariablePicker';
-import withAttributeHandlers from './withAttributeHandlers';
+
+const FrescoBooleanControl = FrescoBooleanField as ComponentType<
+  Record<string, unknown>
+>;
 
 type VariableOption = {
   disabled?: boolean;
   isUsed?: boolean;
   label: string;
-  type: string;
+  type?: string;
   value: string;
 };
 
-type AttributeProps = {
-  field: string;
+export type AttributeValue = {
   variable?: string | null;
+  value?: boolean | null;
+};
+
+type AttributeOwnProps = FrescoReduxArrayFieldItemProps<AttributeValue> & {
   variableOptions: VariableOption[];
-  handleCreateVariable: (value: string, type: string, field: string) => void;
-  handleDelete: () => void;
   entity: string;
   type: string;
 };
 
+type CreateVariableHandlerProps = {
+  handleCreateVariable: (
+    variableName: string,
+    variableType?: VariableType,
+    field?: string,
+  ) => Promise<string | undefined>;
+  handleDeleteVariable: (variableId: string) => void;
+  normalizeKeyDown: (event: KeyboardEvent) => void;
+};
+
+type AttributeProps = AttributeOwnProps & CreateVariableHandlerProps;
+
 const Attribute = ({
-  field,
-  variable = null,
+  fieldName,
+  form,
   variableOptions,
   handleCreateVariable,
-  handleDelete,
+  onDelete,
+  disabled,
+  readOnly,
   entity,
   type,
 }: AttributeProps) => {
+  const variable = useSelector(
+    (state: RootState) =>
+      formValueSelector(form)(state, `${fieldName}.variable`) as
+        | string
+        | undefined,
+  );
+
   return (
-    <div className="[&_.form-field]:bg-surface-2 my-(--space-md) flex rounded-(--radius) p-(--space-md) [&_.form-field]:mb-0">
+    <div className="[&_.form-field]:bg-surface-2 my-5 flex rounded p-5 [&_.form-field]:mb-0">
       <div className="flex shrink-0 grow basis-auto flex-col">
         <div className="shrink-0 grow basis-auto">
           <ValidatedField
-            name={`${field}.variable`}
+            name={`${fieldName}.variable`}
             component={VariablePicker}
             validation={{ required: true }}
             componentProps={{
               options: variableOptions,
               onCreateOption: (value: string) =>
-                handleCreateVariable(value, 'boolean', `${field}.variable`),
+                handleCreateVariable(value, 'boolean', `${fieldName}.variable`),
               entity,
               type,
               variable,
@@ -55,16 +86,18 @@ const Attribute = ({
           />
         </div>
         {variable && (
-          <fieldset className="border-border shrink-0 grow basis-auto rounded-(--radius) border-2 border-dashed p-(--space-md) [&>legend]:px-(--space-md)">
+          <fieldset className="border-outline shrink-0 grow basis-auto rounded border-2 border-dashed p-5 [&>legend]:px-5">
             <legend>Set value of variable to:</legend>
             <ValidatedField
-              name={`${field}.value`}
-              component={BooleanField}
+              name={`${fieldName}.value`}
+              component={FrescoReduxField}
               validation={{ required: true }}
               componentProps={{
+                fieldComponent: FrescoBooleanControl,
+                label: 'Value',
                 options: [
                   { label: 'True', value: true },
-                  { label: 'False', value: false, negative: true },
+                  { label: 'False', value: false },
                 ],
                 noReset: true,
               }}
@@ -72,19 +105,18 @@ const Attribute = ({
           </fieldset>
         )}
       </div>
-      <button
-        type="button"
-        className="flex shrink-0 grow-0 basis-(--space-3xl) cursor-pointer items-center justify-center pl-(--space-md) [&_.icon]:h-(--space-md) [&_.icon]:cursor-pointer"
-        onClick={handleDelete}
+      <IconButton
+        icon={<Trash2 />}
         aria-label="Delete attribute"
-      >
-        <Icon name="delete" />
-      </button>
+        size="sm"
+        variant="text"
+        color="destructive"
+        disabled={disabled || readOnly}
+        className="ml-5 self-center"
+        onClick={onDelete}
+      />
     </div>
   );
 };
 
-export default compose<ComponentProps<typeof Attribute>, typeof Attribute>(
-  withAttributeHandlers,
-  withCreateVariableHandler,
-)(Attribute);
+export default withCreateVariableHandler<AttributeOwnProps>(Attribute);

@@ -1,11 +1,13 @@
 import { capitalize, toPairs } from 'es-toolkit/compat';
+import type { ComponentType } from 'react';
 import { useEffect, useMemo } from 'react';
 import { connect } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Layout, Section } from '~/components/EditorLayout';
-import { ValidatedField } from '~/components/Form';
-import { Text } from '~/components/Form/Fields';
+import { FrescoReduxField, ValidatedField } from '~/components/Form';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getCodebook } from '~/selectors/protocol';
@@ -17,13 +19,14 @@ import IconPicker from './IconPicker';
 import ShapePicker from './ShapePicker';
 import ShapeVariableMapping from './ShapeVariableMapping';
 
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
 type TypeEditorProps = {
   form: string;
   entity: string;
   type?: string | null;
   existingTypes: string[];
 };
-
 const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
   const dispatch = useAppDispatch();
   const formSelector = useMemo(() => formValueSelector(form), [form]);
@@ -36,41 +39,38 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
   const formColor = useAppSelector((state: RootState) =>
     formSelector(state, 'color'),
   ) as string | undefined;
-
   // Provide a default icon
   useEffect(() => {
     if (entity === 'node' && !formIcon) {
       dispatch(change(form, 'icon', 'add-a-person'));
     }
   }, [entity, form, formIcon, dispatch]);
-
   // Provide a default shape
   useEffect(() => {
     if (entity === 'node' && !formShapeDefault) {
       dispatch(change(form, 'shape.default', 'circle'));
     }
   }, [entity, form, formShapeDefault, dispatch]);
-
   const { name: paletteName, size: paletteSize } = getPalette(entity);
-
   return (
     <Layout>
       <Section
         title={`${capitalize(entity)} Type`}
         layout="vertical"
         summary={
-          <p>
+          <Paragraph>
             Name this {entity} type. This name will be used to identify this
             type in the codebook, and in your data exports.
             {entity === 'node' &&
               ' Some examples might be "Person", "Place", or "Organization".'}
             {entity === 'edge' &&
               ' Some examples might be "Friends" or "Works With".'}
-          </p>
+          </Paragraph>
         }
       >
         <ValidatedField
-          component={Text}
+          label={`${capitalize(entity)} type name`}
+          component={FrescoReduxField}
           name="name"
           validation={{
             required: true,
@@ -78,6 +78,7 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
             uniqueByList: existingTypes,
           }}
           componentProps={{
+            fieldComponent: FrescoInputField,
             placeholder: `Enter a name for this ${entity} type...`,
           }}
         />
@@ -85,7 +86,7 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
       <Section
         title="Color"
         id={getFieldId('color')}
-        summary={<p>Choose a color for this {entity} type.</p>}
+        summary={<Paragraph>Choose a color for this {entity} type.</Paragraph>}
         layout="vertical"
       >
         <ValidatedField
@@ -99,7 +100,9 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
         <Section
           title="Shape"
           id={getFieldId('shape')}
-          summary={<p>Choose a default shape for this node type.</p>}
+          summary={
+            <Paragraph>Choose a default shape for this node type.</Paragraph>
+          }
           layout="vertical"
         >
           <ValidatedField
@@ -116,9 +119,9 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
           title="Icon"
           id={getFieldId('icon')}
           summary={
-            <p>
+            <Paragraph>
               Choose an icon to display on interfaces that create this {entity}.
-            </p>
+            </Paragraph>
           }
           layout="vertical"
         >
@@ -132,15 +135,26 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
     </Layout>
   );
 };
-
 const mapStateToProps = (
   state: RootState,
-  { type, isNew }: { type?: string | null; isNew?: boolean },
+  {
+    type,
+    isNew,
+  }: {
+    type?: string | null;
+    isNew?: boolean;
+  },
 ) => {
   const codebook = getCodebook(state);
-
   const getNames = (
-    codebookTypeDefinitions: Record<string, { name: string }> | undefined,
+    codebookTypeDefinitions:
+      | Record<
+          string,
+          {
+            name: string;
+          }
+        >
+      | undefined,
     excludeType?: string | false | null,
   ): string[] => {
     if (!codebookTypeDefinitions) return [];
@@ -153,15 +167,11 @@ const mapStateToProps = (
     });
     return names;
   };
-
   const nodes = codebook ? getNames(codebook.node, !isNew && type) : [];
   const edges = codebook ? getNames(codebook.edge, !isNew && type) : [];
-
   const existingTypes = nodes.concat(edges);
-
   return {
     existingTypes,
   };
 };
-
 export default connect(mapStateToProps)(TypeEditor);

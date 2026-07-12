@@ -52,15 +52,21 @@ const variants = {
  */
 export type NavigationOrientation = 'horizontal' | 'vertical';
 
+type NavigationClassnames = {
+  [Orientation in NavigationOrientation]?: string;
+};
+
 function Interview({
   onExit,
   hideNavigation = false,
   navigationOrientation: orientationProp,
+  navigationClassnames,
   allowStageNavigation,
 }: {
   onExit?: () => void;
   hideNavigation?: boolean;
   navigationOrientation?: NavigationOrientation;
+  navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
 }) {
   const {
@@ -173,6 +179,7 @@ function Interview({
               pulseNext={pulseNext}
               progress={progress}
               orientation={navigationOrientation}
+              className={navigationClassnames?.[navigationOrientation]}
               forwardButtonRef={forwardButtonRef}
               backButtonRef={backButtonRef}
               onExit={onExit}
@@ -228,6 +235,7 @@ type ShellProps = {
    * omitted, the orientation responds to the aspect ratio automatically.
    */
   navigationOrientation?: NavigationOrientation;
+  navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
 };
 
@@ -245,6 +253,7 @@ const Shell = ({
   onExit,
   hideNavigation,
   navigationOrientation,
+  navigationClassnames,
   allowStageNavigation,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
@@ -322,6 +331,7 @@ const Shell = ({
               onExit={onExit}
               hideNavigation={hideNavigation}
               navigationOrientation={navigationOrientation}
+              navigationClassnames={navigationClassnames}
               allowStageNavigation={
                 allowStageNavigation &&
                 (currentStep === undefined || onStepChange !== undefined)

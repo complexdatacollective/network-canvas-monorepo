@@ -1,19 +1,17 @@
-import SectionFrame from './SectionFrame';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 
+import SectionFrame from './SectionFrame';
 type PageHeadingProps = {
   heading?: string | null;
 };
-
 const PageHeading = ({ heading = null }: PageHeadingProps) => {
   if (!heading) {
     return null;
   }
-
   return (
     <SectionFrame title="Page Heading">
-      <h2>{heading}</h2>
+      <Heading level="h2">{heading}</Heading>
     </SectionFrame>
   );
 };
-
 export default PageHeading;

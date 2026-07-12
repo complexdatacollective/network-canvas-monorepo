@@ -10,6 +10,7 @@ import {
   extractProtocol,
   hashProtocol,
 } from '@codaco/protocol-validation';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type {
   ProtocolPayload,
@@ -238,7 +239,7 @@ export class ProtocolFixture {
 
     while (Date.now() - startTime < timeout) {
       const state = await this.getNetworkState(interviewId);
-      const actualValue = state?.ego.attributes[attributeId];
+      const actualValue = state?.ego[entityAttributesProperty][attributeId];
       if (JSON.stringify(actualValue) === expectedJson) return;
       await new Promise((resolve) => setTimeout(resolve, interval));
     }
@@ -246,7 +247,7 @@ export class ProtocolFixture {
     const finalState = await this.getNetworkState(interviewId);
     throw new Error(
       `Timeout waiting for ego attribute ${attributeId} to be ${expectedJson}. ` +
-        `Actual value: ${JSON.stringify(finalState?.ego.attributes[attributeId])} after ${timeout}ms`,
+        `Actual value: ${JSON.stringify(finalState?.ego[entityAttributesProperty][attributeId])} after ${timeout}ms`,
     );
   }
 
@@ -264,7 +265,9 @@ export class ProtocolFixture {
     while (Date.now() - startTime < timeout) {
       const state = await this.getNetworkState(interviewId);
       if (
-        state?.nodes.some((n) => Object.values(n.attributes).includes(nodeName))
+        state?.nodes.some((n) =>
+          Object.values(n[entityAttributesProperty]).includes(nodeName),
+        )
       )
         return;
       await new Promise((resolve) => setTimeout(resolve, interval));
@@ -290,19 +293,19 @@ export class ProtocolFixture {
     while (Date.now() - startTime < timeout) {
       const state = await this.getNetworkState(interviewId);
       const node = state?.nodes.find((n) =>
-        Object.values(n.attributes).includes(nodeName),
+        Object.values(n[entityAttributesProperty]).includes(nodeName),
       );
-      if (node?.attributes[attributeId] != null) return;
+      if (node?.[entityAttributesProperty][attributeId] != null) return;
       await new Promise((resolve) => setTimeout(resolve, interval));
     }
 
     const finalState = await this.getNetworkState(interviewId);
     const node = finalState?.nodes.find((n) =>
-      Object.values(n.attributes).includes(nodeName),
+      Object.values(n[entityAttributesProperty]).includes(nodeName),
     );
     throw new Error(
       `Timeout waiting for node "${nodeName}" attribute ${attributeId} to be set. ` +
-        `Node found: ${!!node}, attribute value: ${JSON.stringify(node?.attributes[attributeId])} after ${timeout}ms`,
+        `Node found: ${!!node}, attribute value: ${JSON.stringify(node?.[entityAttributesProperty][attributeId])} after ${timeout}ms`,
     );
   }
 

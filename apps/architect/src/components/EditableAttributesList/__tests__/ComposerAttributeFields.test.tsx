@@ -46,9 +46,6 @@ vi.mock('~/components/Parameters', () => ({
 vi.mock('~/components/BooleanChoice', () => ({
   default: () => <div data-testid="boolean-choice" />,
 }));
-vi.mock('~/components/Tip', () => ({
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
 vi.mock('~/components/ExternalLink', () => ({
   default: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));

@@ -8,7 +8,7 @@ const meta: Meta<typeof BooleanField> = {
   title: 'Systems/Form/Fields/BooleanField',
   component: BooleanField,
   parameters: {
-    layout: 'centered',
+    layout: 'padded',
   },
   tags: ['autodocs'],
   argTypes: {
@@ -183,6 +183,29 @@ export const Invalid: Story = {
 
     return (
       <div className="w-full max-w-2xl">
+        <BooleanField
+          {...args}
+          value={value}
+          onChange={(newValue) => {
+            setValue(newValue);
+            args.onChange?.(newValue);
+          }}
+        />
+      </div>
+    );
+  },
+};
+
+export const NarrowContainer: Story = {
+  render: (args) => {
+    const [value, setValue] = useState<boolean | undefined>(args.value);
+
+    useEffect(() => {
+      setValue(args.value);
+    }, [args.value]);
+
+    return (
+      <div className="w-56">
         <BooleanField
           {...args}
           value={value}

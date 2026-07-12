@@ -2,7 +2,7 @@ import { get } from 'es-toolkit/compat';
 import { useSelector } from 'react-redux';
 import { formValueSelector } from 'redux-form';
 
-import Badge from '~/components/Badge';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import { Markdown } from '~/components/Form/Fields';
 import { getColorForType } from '~/config/variables';
 import type { RootState } from '~/ducks/store';
@@ -33,7 +33,7 @@ const NominationPromptPreview = ({
   };
 
   return (
-    <div className="m-(--space-md) flex flex-col gap-(--space-sm)">
+    <div className="m-5 flex flex-col gap-2.5">
       <Markdown label={text} className="[&>p]:m-0" />
       <div>
         <Badge color={getColorForType(codebookVariable.type)}>

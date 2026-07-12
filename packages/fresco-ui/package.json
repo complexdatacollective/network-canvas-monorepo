@@ -80,6 +80,10 @@
       "types": "./dist/Button.d.ts",
       "default": "./dist/Button.js"
     },
+    "./SplitButton": {
+      "types": "./dist/SplitButton.d.ts",
+      "default": "./dist/SplitButton.js"
+    },
     "./CloseButton": {
       "types": "./dist/CloseButton.d.ts",
       "default": "./dist/CloseButton.js"
@@ -131,6 +135,10 @@
     "./Table": {
       "types": "./dist/Table.d.ts",
       "default": "./dist/Table.js"
+    },
+    "./Tabs": {
+      "types": "./dist/Tabs/Tabs.d.ts",
+      "default": "./dist/Tabs/Tabs.js"
     },
     "./Label": {
       "types": "./dist/Label.d.ts",
@@ -545,6 +553,10 @@
       "types": "./dist/appUpdate/useAppUpdate.d.ts",
       "default": "./dist/appUpdate/useAppUpdate.js"
     },
+    "./appUpdate/applyFreshLoadServiceWorkerUpdate": {
+      "types": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.d.ts",
+      "default": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.js"
+    },
     "./appUpdate/AppUpdateIndicator": {
       "types": "./dist/appUpdate/AppUpdateIndicator.d.ts",
       "default": "./dist/appUpdate/AppUpdateIndicator.js"
@@ -573,8 +585,9 @@
     "@tiptap/extension-heading": "^3.24.0",
     "@tiptap/extension-ordered-list": "^3.24.0",
     "@tiptap/extension-paragraph": "^3.24.0",
+    "@tiptap/extension-placeholder": "^3.24.0",
     "@tiptap/pm": "^3.24.0",
-    "@tiptap/react": "^3.24.0",
+    "@tiptap/react": "^3.27.3",
     "@tiptap/starter-kit": "^3.24.0",
     "comlink": "^4.4.2",
     "cva": "1.0.0-beta.4",
@@ -582,7 +595,7 @@
     "fuse.js": "^7.4.0",
     "immer": "^11.1.8",
     "lucide-react": "catalog:",
-    "nanoid": "^5.1.11",
+    "nanoid": "^5.1.16",
     "react-aria-components": "^1.18.0",
     "react-best-merge-refs": "^1.0.2",
     "react-markdown": "^10.1.0",
@@ -626,8 +639,8 @@
   },
   "peerDependencies": {
     "@base-ui/react": "^1.4.0",
-    "@codaco/shared-consts": "workspace:^",
-    "@codaco/tailwind-config": "workspace:^",
+    "@codaco/shared-consts": "workspace:*",
+    "@codaco/tailwind-config": "workspace:*",
     "@tanstack/react-table": "catalog:",
     "motion": "catalog:",
     "react": "catalog:",

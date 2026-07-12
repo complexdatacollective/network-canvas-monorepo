@@ -1,3 +1,4 @@
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import architectIcon from '~/images/architect-icon.png';
 import { cx } from '~/utils/cva';
 
@@ -8,8 +9,8 @@ type BrandProps = {
 };
 
 const PILL_CHROME =
-  'py-2 pl-2 sm:pl-3 pr-4 sm:pr-8 rounded-full bg-surface-1 text-surface-1-foreground shadow-sm';
-const ROW = 'flex items-center gap-3 sm:gap-4 shrink-0';
+  'py-2 pl-2 tablet-portrait:pl-3 pr-4 tablet-portrait:pr-8 rounded-full bg-surface-1 text-surface-1-contrast shadow-sm';
+const ROW = 'flex items-center gap-3 tablet-portrait:gap-4 shrink-0';
 const INTERACTIVE =
   'cursor-pointer border-none hover:opacity-90 transition-opacity';
 
@@ -47,7 +48,15 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
   const content = (
     <>
       {iconImg}
-      <p className="h3 m-0">Architect</p>
+      <span
+        className={headingVariants({
+          level: 'h3',
+          margin: 'none',
+          className: 'font-semibold',
+        })}
+      >
+        Architect
+      </span>
     </>
   );
 

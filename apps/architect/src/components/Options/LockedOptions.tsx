@@ -20,7 +20,7 @@ const LockedOptions = ({ options }: LockedOptionsProps) => (
         {options.map((option) => (
           <tr key={String(option.value)}>
             <td className="py-1">{option.label}</td>
-            <td className="py-1 font-mono">{String(option.value)}</td>
+            <td className="font-monospace py-1">{String(option.value)}</td>
           </tr>
         ))}
       </tbody>

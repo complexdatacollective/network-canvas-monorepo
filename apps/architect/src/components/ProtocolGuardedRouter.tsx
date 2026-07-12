@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { Router } from 'wouter';
 import type { AroundNavHandler } from 'wouter';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   guardState,
@@ -22,6 +23,7 @@ type ProtocolGuardedRouterProps = {
 
 const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
   const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
 
   const aroundNav = useCallback<AroundNavHandler>(
     (nav, to, opts) => {
@@ -33,9 +35,9 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
         return;
       }
 
-      void promptLeaveEditor(dispatch, () => nav(to, opts));
+      void promptLeaveEditor(dispatch, openDialog, () => nav(to, opts));
     },
-    [dispatch],
+    [dispatch, openDialog],
   );
 
   return (

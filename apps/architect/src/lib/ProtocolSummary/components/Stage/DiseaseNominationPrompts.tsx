@@ -23,9 +23,9 @@ const DiseaseNominationPrompts = ({
 
   return (
     <SectionFrame title="Disease Nomination Prompts">
-      <ol className="m-0 ps-(--space-xl)">
+      <ol className="m-0 ps-10">
         {diseaseNominationStep.map((prompt) => (
-          <li className="my-(--space-md) pl-(--space-md)" key={prompt.id}>
+          <li className="my-5 pl-5" key={prompt.id}>
             <div className="break-inside-avoid">
               <Markdown label={prompt.text} />
               <MiniTable

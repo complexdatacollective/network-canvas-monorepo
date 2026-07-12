@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge } from '@codaco/shared-consts';
 
 import {
@@ -13,7 +14,13 @@ function edge(from: string, to: string, rel: string): [string, NcEdge] {
   const id = `${from}->${to}:${rel}`;
   return [
     id,
-    { _uid: id, type: 'family', from, to, attributes: { [REL]: [rel] } },
+    {
+      _uid: id,
+      type: 'family',
+      from,
+      to,
+      [entityAttributesProperty]: { [REL]: [rel] },
+    },
   ];
 }
 

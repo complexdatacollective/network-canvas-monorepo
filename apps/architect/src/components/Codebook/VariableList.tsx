@@ -1,58 +1,60 @@
-import { compose } from 'react-recompose';
+import {
+  getCoreRowModel,
+  getSortedRowModel,
+  type ColumnDef,
+  type SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
+import { useMemo, useState } from 'react';
 
-import { Heading, type SortDirection, withSort } from './Variables';
-
-type SortDirectionType = typeof SortDirection.ASC;
+import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
+import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 
 type VariableListProps = {
   variables?: string[];
-  onDelete?: () => void;
-  sortBy: string;
-  sortDirection: SortDirectionType;
-  sort: (options: { sortBy: string; sortDirection: SortDirectionType }) => void;
 };
 
-const Variables = ({
-  variables = [],
-  sortBy,
-  sortDirection,
-  sort,
-  onDelete: _onDelete = () => {},
-}: VariableListProps) => {
-  const headingProps = {
-    sortBy,
-    sortDirection,
-    onSort: sort,
-  };
+type VariableListRow = {
+  name: string;
+};
+
+const Variables = ({ variables = [] }: VariableListProps) => {
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'name', desc: false },
+  ]);
+  const data = useMemo(() => variables.map((name) => ({ name })), [variables]);
+  const columns = useMemo<ColumnDef<VariableListRow>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column, table }) => (
+          <DataTableColumnHeader column={column} table={table} title="Name" />
+        ),
+        cell: ({ row }) => row.original.name,
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    enableSortingRemoval: false,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   return (
-    <div>
-      <table className="mt-(--space-lg) w-full">
-        <thead>
-          <tr>
-            <Heading
-              name="name"
-              // eslint-disable-next-line react/jsx-props-no-spreading
-              {...headingProps}
-            >
-              Name
-            </Heading>
-          </tr>
-        </thead>
-        <tbody>
-          {variables.map((name) => (
-            <tr key={name}>
-              <td className="m-0 px-(--space-sm) py-(--space-sm) text-base">
-                {name}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="mt-7">
+      <DataTable
+        table={table}
+        showPagination={false}
+        emptyText="No variables."
+      />
     </div>
   );
 };
 
-export default compose<VariableListProps, { variables?: string[] }>(withSort)(
-  Variables,
-);
+export default Variables;

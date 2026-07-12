@@ -1,63 +1,52 @@
-import { compose, withHandlers } from 'react-recompose';
+import { Trash2 } from 'lucide-react';
+import { compose } from 'react-recompose';
 
-import { Icon } from '~/lib/legacy-ui/components';
+import Button, { IconButton } from '@codaco/fresco-ui/Button';
 
 import RuleText, { Join } from './PreviewText';
 import withDisplayOptions from './withDisplayOptions';
-
-const withDeleteHandler = withHandlers({
-  handleDelete: (props: { onDelete: () => void }) => (e: React.MouseEvent) => {
-    e.stopPropagation();
-
-    props.onDelete();
-  },
-});
 
 type PreviewRuleProps = {
   type: string;
   options: Record<string, unknown>;
   join?: string | null;
   onClick: () => void;
-  handleDelete: () => void;
   onDelete?: () => void;
   codebook?: Record<string, unknown>;
 };
 
-const PreviewRule = ({
+export const PreviewRule = ({
   type,
   options,
   join = null,
   onClick,
-  handleDelete,
+  onDelete,
 }: PreviewRuleProps) => {
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      if (e.key === ' ') e.preventDefault();
-      onClick();
-    }
-  };
-
   return (
     <>
-      {/* biome-ignore lint/a11y/useSemanticElements: a real <button> would nest with the inner delete <button> */}
-      <div
-        role="button"
-        tabIndex={0}
-        className="group text-surface-1-foreground hover:bg-surface-accent hover:text-primary-foreground mx-auto flex min-h-(--space-3xl) w-[95%] cursor-pointer items-center rounded-(--radius) px-(--space-md) py-(--space-sm)"
-        onClick={onClick}
-        onKeyDown={handleKeyDown}
-        aria-label="Edit rule"
-      >
-        <div className="flex w-full flex-1 items-center *:mx-(--space-sm) *:max-w-[24rem] [&_.variable-pill]:zoom-[0.8]">
-          <RuleText type={type} options={options} />
-        </div>
-        <button
+      <div className="group text-surface-1-contrast mx-auto flex min-h-19 w-[95%] items-center gap-2">
+        <Button
           type="button"
-          className="bg-error text-error-foreground ml-(--space-sm) flex size-(--space-lg) shrink-0 grow-0 cursor-pointer items-center justify-center overflow-hidden rounded-(--space-lg) border-0 opacity-0 transition-opacity duration-(--animation-duration-fast) ease-(--animation-easing) group-hover:opacity-100 [&_.icon]:size-(--space-md)"
-          onClick={handleDelete}
+          variant="text"
+          color="dynamic"
+          className="hover:bg-surface-accent hover:text-primary-contrast min-h-19 min-w-0 flex-1 justify-start rounded px-5 py-2.5 text-wrap"
+          onClick={onClick}
+          aria-label="Edit rule"
         >
-          <Icon name="delete" />
-        </button>
+          <span className="flex w-full min-w-0 items-center *:mx-2.5 *:max-w-[24rem] [&_.variable-pill]:zoom-[0.8]">
+            <RuleText type={type} options={options} />
+          </span>
+        </Button>
+        <IconButton
+          type="button"
+          icon={<Trash2 />}
+          aria-label="Delete rule"
+          size="sm"
+          variant="text"
+          color="destructive"
+          className="shrink-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+          onClick={onDelete}
+        />
       </div>
       {join && <Join value={join} />}
     </>
@@ -65,6 +54,5 @@ const PreviewRule = ({
 };
 
 export default compose<PreviewRuleProps, Partial<PreviewRuleProps>>(
-  withDeleteHandler,
   withDisplayOptions,
 )(PreviewRule);

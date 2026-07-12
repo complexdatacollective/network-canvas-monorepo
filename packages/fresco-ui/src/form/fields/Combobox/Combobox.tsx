@@ -59,6 +59,15 @@ function ComboboxField(props: ComboboxFieldProps) {
     name,
     disabled,
     readOnly,
+    onBlur,
+    onFocus,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
+    'aria-describedby': ariaDescribedBy,
+    'aria-invalid': ariaInvalid,
+    'aria-required': ariaRequired,
+    'aria-disabled': ariaDisabled,
+    'aria-readonly': ariaReadOnly,
     ...rest
   } = props;
 
@@ -74,6 +83,7 @@ function ComboboxField(props: ComboboxFieldProps) {
     newValue: unknown[] | null,
     _event: Combobox.Root.ChangeEventDetails,
   ) => {
+    if (readOnly) return;
     if (newValue === null) {
       onChange?.([]);
     } else {
@@ -97,11 +107,13 @@ function ComboboxField(props: ComboboxFieldProps) {
   };
 
   const handleSelectAll = () => {
+    if (readOnly) return;
     const enabledOptions = options.filter((opt) => !opt.disabled);
     onChange?.(enabledOptions.map((opt) => opt.value));
   };
 
   const handleDeselectAll = () => {
+    if (readOnly) return;
     onChange?.([]);
   };
 
@@ -136,10 +148,19 @@ function ComboboxField(props: ComboboxFieldProps) {
       onOpenChange={(open) => {
         if (!open) setInputValue('');
       }}
-      disabled={disabled ?? readOnly}
+      disabled={Boolean(disabled) || Boolean(readOnly)}
       name={name}
     >
       <Combobox.Trigger
+        onBlur={onBlur}
+        onFocus={onFocus}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid || undefined}
+        aria-required={ariaRequired}
+        aria-disabled={ariaDisabled || disabled || undefined}
+        aria-readonly={ariaReadOnly || readOnly || undefined}
         className={comboboxTriggerVariants({
           size,
           className: cx('w-full', className),
@@ -232,12 +253,20 @@ function ComboboxField(props: ComboboxFieldProps) {
             {(showSelectAll || showDeselectAll) && (
               <div className="flex gap-2">
                 {showSelectAll && (
-                  <Button onClick={handleSelectAll} size="sm">
+                  <Button
+                    onClick={handleSelectAll}
+                    size="sm"
+                    disabled={Boolean(disabled) || Boolean(readOnly)}
+                  >
                     Select All
                   </Button>
                 )}
                 {showDeselectAll && (
-                  <Button onClick={handleDeselectAll} size="sm">
+                  <Button
+                    onClick={handleDeselectAll}
+                    size="sm"
+                    disabled={Boolean(disabled) || Boolean(readOnly)}
+                  >
                     Deselect All
                   </Button>
                 )}

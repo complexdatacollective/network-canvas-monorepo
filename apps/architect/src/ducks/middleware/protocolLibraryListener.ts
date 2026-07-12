@@ -2,12 +2,16 @@ import {
   createListenerMiddleware,
   type TypedStartListening,
 } from '@reduxjs/toolkit';
+import { REMEMBER_REHYDRATED } from 'redux-remember';
 
 import { getProtocol } from '~/selectors/protocol';
 import { assetDb } from '~/utils/assetDB';
+import { reportAutosaveFailure } from '~/utils/autosaveFailureQueue';
 import { getStoredProtocol, putStoredProtocol } from '~/utils/protocolLibrary';
 
+import { reconcileRehydratedActiveProtocol } from '../activeProtocolPersistence';
 import {
+  clearActiveProtocol,
   setActiveProtocol,
   updateLastModified,
 } from '../modules/activeProtocol';
@@ -15,9 +19,9 @@ import {
   getActiveProtocolId,
   getProtocolOpenElsewhere,
   getStorageUnavailable,
+  setActiveProtocolId,
 } from '../modules/app';
 import type { RootState } from '../modules/root';
-import { generalErrorDialog } from '../modules/userActions/dialogs';
 import type { AppDispatch } from '../store';
 
 const DEBOUNCE_MS = 600;
@@ -50,7 +54,7 @@ const writeLocks = new Map<string, Promise<void>>();
 // Persist a snapshot. A silent autosave failure would let the user keep editing
 // while their work isn't being saved, so surface it to them (throttled) and log
 // the details rather than dropping the promise.
-const flush = (snapshot: ProtocolSnapshot, dispatch: AppDispatch): void => {
+const flush = (snapshot: ProtocolSnapshot): void => {
   const { protocol } = snapshot;
   if (!protocol) {
     return;
@@ -63,31 +67,32 @@ const flush = (snapshot: ProtocolSnapshot, dispatch: AppDispatch): void => {
       // A pending timer can fire after the protocol was deleted. The existence
       // check and the put run in one transaction on `protocols` so a delete
       // (which locks `protocols`) can't land between them and resurrect the row.
-      await assetDb.transaction('rw', assetDb.protocols, async () => {
-        const existing = await getStoredProtocol(snapshot.id);
-        if (!existing) {
-          return;
-        }
-        await putStoredProtocol({
-          id: snapshot.id,
-          protocol,
-          name: snapshot.name,
-          description: snapshot.description,
-        });
-      });
+      // `assets` is in scope too because putStoredProtocol GCs orphaned blobs
+      // from that table; omitting it makes Dexie throw NotFoundError, which the
+      // best-effort GC swallows and leaves the orphan undeleted.
+      await assetDb.transaction(
+        'rw',
+        assetDb.protocols,
+        assetDb.assets,
+        async () => {
+          const existing = await getStoredProtocol(snapshot.id);
+          if (!existing) {
+            return;
+          }
+          await putStoredProtocol({
+            id: snapshot.id,
+            protocol,
+            name: snapshot.name,
+            description: snapshot.description,
+          });
+        },
+      );
       autosaveErrorNotified = false;
     } catch (error: unknown) {
       console.error('Autosave to protocol library failed', error);
       if (!autosaveErrorNotified) {
         autosaveErrorNotified = true;
-        void dispatch(
-          generalErrorDialog(
-            'Autosave failed',
-            "Your recent changes could not be saved to this browser's " +
-              'storage, which can happen if it is full or unavailable. To ' +
-              'avoid losing work, download a copy of your protocol.',
-          ),
-        );
+        reportAutosaveFailure();
       }
     }
   })();
@@ -100,9 +105,38 @@ const flush = (snapshot: ProtocolSnapshot, dispatch: AppDispatch): void => {
   });
 };
 
+// Reconcile a rehydrated protocol on reload. redux-remember persists the `app`
+// (which holds `activeProtocolId`) and `activeProtocol` keys non-atomically, so a
+// reload catching a partial intra-tab write can rehydrate a NEW id paired with
+// the PREVIOUS protocol's present. Autosaving that pair would flush the old
+// content into the new library row, so validate the stamped owner id against the
+// rehydrated `app.activeProtocolId` and discard the suspect present (and the
+// stale id) before any autosave runs. This listener is registered before the
+// autosave listener so it corrects the state first for the same rehydrate action.
+startAppListening({
+  predicate: (action) => action.type === REMEMBER_REHYDRATED,
+  effect: (_action, listenerApi) => {
+    const state = listenerApi.getState();
+    const { clearActiveProtocolId } = reconcileRehydratedActiveProtocol(
+      state.activeProtocol,
+      getActiveProtocolId(state),
+    );
+
+    if (clearActiveProtocolId) {
+      listenerApi.dispatch(clearActiveProtocol());
+      listenerApi.dispatch(setActiveProtocolId(null));
+    }
+  },
+});
+
 // Autosave: debounce a write of the active protocol into its library row.
 startAppListening({
   predicate: (action, currentState, previousState) => {
+    // Rehydration on reload is not a user edit; the id/present reconcile above
+    // owns it, and autosaving here could flush a suspect rehydrated present.
+    if (action.type === REMEMBER_REHYDRATED) {
+      return false;
+    }
     // lastModified bumps produce a new `present` but aren't user edits.
     if (updateLastModified.match(action)) {
       return false;
@@ -135,7 +169,6 @@ startAppListening({
     );
   },
   effect: (_action, listenerApi) => {
-    const { dispatch } = listenerApi;
     const state = listenerApi.getState();
     const protocol = getProtocol(state);
     const id = getActiveProtocolId(state);
@@ -158,13 +191,13 @@ startAppListening({
       // The active protocol changed mid-window: flush the previous edits now so
       // they aren't discarded when we re-debounce for the new protocol.
       if (pending.snapshot.id !== snapshot.id) {
-        flush(pending.snapshot, dispatch);
+        flush(pending.snapshot);
       }
     }
 
     const timer = setTimeout(() => {
       pending = null;
-      flush(snapshot, dispatch);
+      flush(snapshot);
     }, DEBOUNCE_MS);
 
     pending = { timer, snapshot };

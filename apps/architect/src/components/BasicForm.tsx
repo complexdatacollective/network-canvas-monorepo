@@ -1,17 +1,55 @@
-import { compose } from '@reduxjs/toolkit';
 import type React from 'react';
 import { useCallback } from 'react';
 import { connect } from 'react-redux';
 import { type InjectedFormProps, reduxForm, submit } from 'redux-form';
 
-type BasicFormProps = {
+type BasicFormOwnProps = {
   children: React.ReactNode;
   form: string;
-  submit: (form: string) => void;
   onSubmit?: (values: Record<string, unknown>) => void;
 };
 
-type InjectedProps = InjectedFormProps<Record<string, unknown>, BasicFormProps>;
+type DispatchProps = {
+  submit: (form: string) => void;
+};
+
+type InjectedProps = InjectedFormProps<
+  Record<string, unknown>,
+  BasicFormOwnProps
+>;
+
+const focusableControlSelector = [
+  'button:not([disabled])',
+  'input:not([type="hidden"]):not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
+const focusFirstInvalidField = (formName: string) => {
+  window.requestAnimationFrame(() => {
+    const form = Array.from(
+      document.querySelectorAll<HTMLFormElement>('form[data-basic-form]'),
+    ).find((candidate) => candidate.dataset.basicForm === formName);
+
+    if (!form) return;
+
+    const invalidFields = form.querySelectorAll<HTMLElement>(
+      '[aria-invalid="true"]',
+    );
+
+    for (const invalidField of invalidFields) {
+      const focusTarget = invalidField.matches(focusableControlSelector)
+        ? invalidField
+        : invalidField.querySelector<HTMLElement>(focusableControlSelector);
+
+      if (focusTarget) {
+        focusTarget.focus();
+        return;
+      }
+    }
+  });
+};
 
 const BasicForm = ({
   children,
@@ -19,7 +57,7 @@ const BasicForm = ({
   submit: submitForm,
   onSubmit: onSubmitProp,
   handleSubmit,
-}: BasicFormProps & InjectedProps) => {
+}: BasicFormOwnProps & DispatchProps & InjectedProps) => {
   // Custom submit handler to prevent propagation to any parent redux-form forms.
   const onSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -34,6 +72,7 @@ const BasicForm = ({
   if (onSubmitProp) {
     return (
       <form
+        data-basic-form={form}
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -45,15 +84,17 @@ const BasicForm = ({
     );
   }
 
-  return <form onSubmit={onSubmit}>{children}</form>;
+  return (
+    <form data-basic-form={form} onSubmit={onSubmit}>
+      {children}
+    </form>
+  );
 };
 
-export default compose(
-  reduxForm({}),
-  connect(null, { submit }),
-)(BasicForm) as React.ComponentType<
-  Omit<BasicFormProps, 'submit'> & {
-    form: string;
-    onSubmit?: (values: Record<string, unknown>) => void;
-  }
->;
+const ConnectedBasicForm = connect(null, { submit })(BasicForm);
+
+export default reduxForm<Record<string, unknown>, BasicFormOwnProps>({
+  onSubmitFail: (_errors, _dispatch, _submitError, props) => {
+    focusFirstInvalidField(props.form);
+  },
+})(ConnectedBasicForm);

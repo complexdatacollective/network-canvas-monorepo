@@ -72,7 +72,7 @@ function ResizableFrame({
 }
 
 type StoryArgs = {
-  kind: 'protocol' | 'sample' | 'pending';
+  kind: 'protocol' | 'sample' | 'development' | 'pending';
   isActive: boolean;
   sessionCount: number;
   size: number;
@@ -88,6 +88,8 @@ function entryForKind(
       return { kind: 'protocol', protocol: makeProtocol() };
     case 'sample':
       return { kind: 'sample' };
+    case 'development':
+      return { kind: 'development' };
     case 'pending':
       return {
         kind: 'pending',
@@ -124,7 +126,7 @@ const meta: Meta<StoryArgs> = {
   argTypes: {
     kind: {
       control: 'inline-radio',
-      options: ['protocol', 'sample', 'pending'],
+      options: ['protocol', 'sample', 'development', 'pending'],
       description: 'Which DeckEntry kind fills this slot',
     },
     isActive: {
@@ -148,6 +150,7 @@ const meta: Meta<StoryArgs> = {
         onDeleteProtocol={() => {}}
         onDismissSample={() => {}}
         onInstallSample={() => {}}
+        onInstallDevelopment={() => {}}
       />
     </ResizableFrame>
   ),
@@ -165,6 +168,15 @@ export const Default: Story = {};
 
 export const SampleTeaser: Story = {
   args: { kind: 'sample' },
+};
+
+/**
+ * The dev-only Development-protocol teaser: same ghost presentation as the
+ * sample card (loading style, install footer) but with no dismiss control —
+ * it only ever renders in development builds.
+ */
+export const DevelopmentTeaser: Story = {
+  args: { kind: 'development' },
 };
 
 export const PendingImport: Story = {

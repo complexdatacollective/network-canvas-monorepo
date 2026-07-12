@@ -30,9 +30,6 @@ const NOTATION_KEY_ENTRIES: NotationKeyEntry[] = [
   { status: 'unknown', label: 'Not known' },
 ];
 
-const AT_RISK_HOMOZYGOUS_KEY_LABEL =
-  'May be more seriously affected (two copies of this condition)';
-
 type NotationKeyProps = {
   // Colour of the glyph symbols. When a single condition is shown this is that
   // condition's colour so the key matches the pedigree; otherwise a neutral
@@ -40,7 +37,7 @@ type NotationKeyProps = {
   glyphColour: string;
   shape: NodeShape;
   // Whether the at-risk (probabilistic) markers are drawn on the pedigree; when
-  // false the two at-risk rows and the homozygous row are omitted from the key.
+  // false the two at-risk rows are omitted from the key.
   showAtRiskStatuses: boolean;
 };
 
@@ -69,19 +66,6 @@ export function NotationKey({
           {entry.label}
         </div>
       ))}
-      {showAtRiskStatuses && (
-        <div className="flex items-center gap-4 text-base">
-          <span aria-hidden className="flex shrink-0">
-            <Sticker
-              status="atRiskCarrier"
-              color={glyphColour}
-              shape={shape}
-              atRiskHomozygous
-            />
-          </span>
-          {AT_RISK_HOMOZYGOUS_KEY_LABEL}
-        </div>
-      )}
     </>
   );
 }

@@ -67,7 +67,7 @@ export function ResumePillView({
       exit="exit"
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
-      className="border-outline text-text bg-surface/50 effect-shadow-md pointer-events-auto relative inline-flex h-20 cursor-pointer items-center overflow-hidden rounded-full border backdrop-blur-md"
+      className="control-glass border-outline text-text pointer-events-auto relative inline-flex h-20 cursor-pointer items-center overflow-hidden rounded-full"
     >
       {/* Always-visible circle, sized to match the pill height so the
           collapsed state is a true circle. */}

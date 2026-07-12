@@ -12,14 +12,30 @@
    shell can size to the full screen on tablet + desktop without scrolling
    the body.
 
-   `height: 100%` (not `100dvh`/`min-h-dvh`) is load-bearing: the body is
-   padded by env(safe-area-inset-top) below, so its content box is
-   `viewport - inset`. #root inherits that exact height, and full-screen
-   surfaces fill it with `h-full`. Sizing #root (or any surface) to the raw
-   viewport (`dvh`) instead would overflow the inset by the safe-area amount
-   and scroll the whole page — the iPad-portrait overflow bug. */
+   <html> and <body> are sized with `100vh`, NOT `height: 100%` or `100dvh`.
+   In an installed PWA (standalone display) with viewport-fit=cover and a
+   black-translucent status bar, `height: 100%` resolves against an initial
+   containing block that stops short of the screen by the bottom safe-area
+   inset, and `100dvh` is mis-initialised on a cold start — it only reports the
+   real height after a device rotation. Either way the app ends short of the
+   bottom edge and a strip of the fixed backdrop shows through: the "gap at the
+   bottom" on iPad. `100vh` (the large/static viewport) reports the full screen
+   height correctly from the first paint, so the app reaches the real bottom.
+
+   #root inherits the viewport with `height: 100%`, and full-screen surfaces
+   fill it with `h-full`. The app renders edge-to-edge — there is no body-level
+   safe-area padding; edge-anchored surfaces (e.g. the interview navigation)
+   own their own safe-area insets instead (see below). */
 html,
-body,
+body {
+  height: 100vh;
+  /* The shell is fixed-height and never scrolls the page itself (scrolling
+     lives in internal scroll areas), so clamp any sub-pixel overflow rather
+     than let it produce a scrollable strip — part of the standalone-PWA
+     recipe that keeps `100vh` filling exactly. */
+  overflow: hidden;
+}
+
 #root {
   height: 100%;
 }
@@ -37,12 +53,6 @@ body {
   overscroll-behavior: none;
   -webkit-user-select: none;
   user-select: none;
-  /* iPadOS 26's window controls occupy the top safe area; inset the app so its
-     top content isn't under them. The dark/app background fills the inset, so
-     the controls blend in. env() insets are 0 on desktop/web, so this is a
-     no-op there. */
-  box-sizing: border-box;
-  padding-top: env(safe-area-inset-top);
 }
 
 /* Indeterminate-progress sweep used by the in-flight import ghost card

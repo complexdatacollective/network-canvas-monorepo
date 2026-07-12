@@ -1,8 +1,12 @@
 import type { ComponentType } from 'react';
 
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section, Subsection } from '~/components/EditorLayout';
-import NativeSelect from '~/components/Form/Fields/NativeSelect';
-import Text from '~/components/Form/Fields/Text';
+import { FrescoReduxField } from '~/components/Form';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Options from '~/components/Options';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';
@@ -20,14 +24,17 @@ import ExternalLink from '../ExternalLink';
 import InputPreview from '../Form/Fields/InputPreview';
 import VariablePicker from '../Form/Fields/VariablePicker/VariablePicker';
 import { useFieldHandlers } from '../sections/Form/withFieldsHandlers';
-import Tip from '../Tip';
+
+const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+const FrescoNativeSelectField = NativeSelectField as ComponentType<
+  Record<string, unknown>
+>;
 
 type ComposerAttributeFieldsProps = {
   form: string;
   entity?: string | null;
   type?: string | null;
 };
-
 const ComposerAttributeFields = ({
   form,
   entity = null,
@@ -50,20 +57,18 @@ const ComposerAttributeFields = ({
     entity: entity ?? '',
     type: type ?? '',
   });
-
   const lockedOptions = getLockedOptions(existingVariables, variable);
-
   return (
     <Section layout="vertical">
       <Subsection id={getFieldId('variable')} title="Variable">
         {variable && !isNewVariable && (
-          <Tip>
-            <p>
+          <Alert variant="info" className="my-7">
+            <AlertDescription>
               When selecting an existing variable, changes you make to the input
               control or validation options will also change other uses of this
               variable.
-            </p>
-          </Tip>
+            </AlertDescription>
+          </Alert>
         )}
         <ValidatedField
           name="variable"
@@ -84,17 +89,19 @@ const ComposerAttributeFields = ({
         title="Label"
         disabled={!variable}
         summary={
-          <p>
+          <Paragraph>
             Optionally caption this attribute in the side panel. When left
             empty, the variable&apos;s name is shown instead.
-          </p>
+          </Paragraph>
         }
       >
         <ValidatedField
           name="label"
-          component={Text as ComponentType<Record<string, unknown>>}
+          label="Label"
+          component={FrescoReduxField}
           validation={{}}
           componentProps={{
+            fieldComponent: FrescoInputField,
             placeholder: 'Defaults to the variable name',
           }}
         />
@@ -105,56 +112,59 @@ const ComposerAttributeFields = ({
         title="Input Control"
         disabled={!variable}
         summary={
-          <p>
+          <Paragraph>
             Choose an input control that should be used to collect the answer.
             For detailed information about these options, see our{' '}
             <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/input-controls/">
               documentation
             </ExternalLink>
             .
-          </p>
+          </Paragraph>
         }
       >
         <ValidatedField
           name="component"
-          component={NativeSelect as ComponentType<Record<string, unknown>>}
+          label="Input control"
+          component={FrescoReduxField}
           validation={{ required: true }}
           componentProps={{
+            fieldComponent: FrescoNativeSelectField,
             placeholder: 'Select an input control',
-            options: componentOptions,
-            sortOptionsByLabel: !isNewVariable,
+            options: isNewVariable
+              ? componentOptions
+              : [...componentOptions].toSorted((a, b) =>
+                  a.label.localeCompare(b.label),
+                ),
             onChange: handleChangeComponent,
           }}
         />
         {isNewVariable && variableType && (
-          <Tip>
-            <p>
+          <Alert variant="info" className="my-7">
+            <AlertDescription>
               The selected input control will cause this variable to be defined
-              as type <strong>{String(variableType)}</strong>. Once set, this
-              cannot be changed (although you may change the input control
-              within this type).
-            </p>
-          </Tip>
+              as type <strong>{variableType}</strong>. Once set, this cannot be
+              changed (although you may change the input control within this
+              type).
+            </AlertDescription>
+          </Alert>
         )}
         {!isNewVariable && variableType && (
-          <Tip type="warning">
-            <div>
-              <p>
-                A pre-existing variable is currently selected. You cannot change
-                a variable type after it has been created, so only{' '}
-                <strong>{String(variableType)}</strong> compatible input
-                controls can be selected above. If you would like to use a
-                different input control type, you will need to create a new
-                variable.
-              </p>
-            </div>
-          </Tip>
+          <Alert variant="warning" className="my-7">
+            <AlertTitle>Variable type is locked</AlertTitle>
+            <AlertDescription>
+              A pre-existing variable is currently selected. You cannot change a
+              variable type after it has been created, so only{' '}
+              <strong>{variableType}</strong> compatible input controls can be
+              selected above. If you would like to use a different input control
+              type, you will need to create a new variable.
+            </AlertDescription>
+          </Alert>
         )}
         {variableType &&
           metaForType &&
           typeof metaForType.label === 'string' && (
             <div>
-              <h4>Preview</h4>
+              <Heading level="h4">Preview</Heading>
               <InputPreview
                 label={metaForType.label}
                 description={metaForType.description}
@@ -170,16 +180,16 @@ const ComposerAttributeFields = ({
           title="Categorical/Ordinal options"
           summary={
             lockedOptions ? (
-              <p>
+              <Paragraph>
                 These options are automatically configured by the interface and
                 cannot be modified.
-              </p>
+              </Paragraph>
             ) : (
-              <p>
+              <Paragraph>
                 The input type you selected indicates that this is a categorical
                 or ordinal variable. Next, please create a minimum of two
                 possible values for the participant to choose between.
-              </p>
+              </Paragraph>
             )
           }
         >
@@ -201,7 +211,7 @@ const ComposerAttributeFields = ({
       {isVariableTypeWithParameters(variableType) && (
         <Subsection id={getFieldId('parameters')} title="Input Options">
           <Parameters
-            type={String(variableType)}
+            type={variableType}
             component={component ?? ''}
             name="parameters"
             form={form}
@@ -211,5 +221,4 @@ const ComposerAttributeFields = ({
     </Section>
   );
 };
-
 export default ComposerAttributeFields;

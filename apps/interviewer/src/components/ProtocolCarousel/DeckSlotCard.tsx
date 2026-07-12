@@ -1,6 +1,7 @@
 import { Download } from 'lucide-react';
 
 import type { StoredSession } from '~/lib/db/types';
+import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import type { ImportPhase } from '~/lib/protocol/importProtocol';
 import { protocolRequiresInternet } from '~/lib/protocol/protocolRequiresInternet';
 import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
@@ -31,6 +32,7 @@ type DeckSlotCardProps = {
   onDeleteProtocol: (hash: string) => void;
   onDismissSample: () => void;
   onInstallSample: () => void;
+  onInstallDevelopment: () => void;
   // When set, the case-ID form replaces the protocol card's footer.
   newSession?: {
     onCancel: () => void;
@@ -46,6 +48,7 @@ function slotCardProps({
   onDeleteProtocol,
   onDismissSample,
   onInstallSample,
+  onInstallDevelopment,
   newSession,
 }: DeckSlotCardProps): DeckCardProps {
   if (entry.kind === 'protocol') {
@@ -105,6 +108,37 @@ function slotCardProps({
             onClick={onInstallSample}
           >
             Install sample protocol
+          </DeckCardFooterButton>
+        </DeckCardFooter>
+      ) : undefined,
+    };
+  }
+  if (entry.kind === 'development') {
+    // Dev-only teaser (never in the deck in production builds — see Home's
+    // showDevelopmentCard). No dismiss control: it exists for developers,
+    // and installing it replaces the slot anyway.
+    return {
+      loading: true,
+      protocol: {
+        name: DEVELOPMENT_PROTOCOL.name,
+        description: DEVELOPMENT_PROTOCOL.description,
+      },
+      isActive,
+      hideMetadata: true,
+      onActivate: activate,
+      footer: isActive ? (
+        <DeckCardFooter key="install-development">
+          <DeckCardFooterButton
+            color="primary"
+            icon={
+              <Download
+                aria-hidden
+                className="size-[max(14px,3.5cqi)] shrink-0"
+              />
+            }
+            onClick={onInstallDevelopment}
+          >
+            Install development protocol
           </DeckCardFooterButton>
         </DeckCardFooter>
       ) : undefined,

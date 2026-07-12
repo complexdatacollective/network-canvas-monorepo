@@ -14,7 +14,7 @@ import {
   type ExportProgress,
   runExport,
 } from '~/lib/export/exportSessions';
-import { shareOrDownloadBlob } from '~/lib/files/download';
+import { saveBlob } from '~/lib/files/download';
 
 const noopExportEvent = (_event: ExportProgress) => {};
 
@@ -39,10 +39,10 @@ export function useSessionMutations({
   const { requireFreshUnlock } = useStepUpAuth();
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  // Archive built by handleExport, awaiting a fresh user gesture to
-  // share/download it — see handleShareReady. sessionIds are the sessions
-  // whose export generation succeeded; they are marked exportedAt only once
-  // the file is confirmed saved, never on the in-memory build.
+  // Archive built by handleExport, awaiting a fresh user gesture to save it —
+  // see handleShareReady. sessionIds are the sessions whose export generation
+  // succeeded; they are marked exportedAt only once the file is saved, never
+  // on the in-memory build.
   const [pendingShare, setPendingShare] = useState<{
     blob: Blob;
     fileName: string;
@@ -128,8 +128,8 @@ export function useSessionMutations({
   ]);
 
   // Runs in the "Save export" button's own click — a gesture the long-running
-  // archive build in handleExport would otherwise have consumed — so
-  // navigator.share stays gesture-fresh on iOS Safari.
+  // archive build in handleExport would otherwise have consumed — so the
+  // Save-As picker / navigator.share stays gesture-fresh.
   const shareInFlightRef = useRef(false);
   const handleShareReady = useCallback(async () => {
     // A double-tap on Save export would otherwise start two save flows and
@@ -145,7 +145,7 @@ export function useSessionMutations({
       failedCount,
     } = pendingShare;
     try {
-      const outcome = await shareOrDownloadBlob(blob, fileName);
+      const outcome = await saveBlob(blob, fileName);
       if (!outcome.saved) {
         // pendingShare is retained so the Save export button stays available
         // for a retry; sessions are NOT marked exported until a genuine save.

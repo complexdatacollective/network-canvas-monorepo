@@ -1,10 +1,8 @@
 import Rules from './Rules';
-
-type Rule = Record<string, unknown>;
+import type { Rule } from './Rules/validateRule';
 
 type QueryProps = {
   onChange: (value: unknown) => void;
-  openDialog: (dialog: unknown) => void;
   rules?: Rule[];
   codebook: Record<string, unknown>;
   join?: string;
@@ -17,7 +15,6 @@ const Query = ({
   join,
   codebook,
   onChange,
-  openDialog,
   error,
   meta = {},
 }: QueryProps) => (
@@ -26,7 +23,6 @@ const Query = ({
     rules={rules}
     join={join}
     onChange={onChange}
-    openDialog={openDialog}
     codebook={codebook}
     type="query"
     error={error}

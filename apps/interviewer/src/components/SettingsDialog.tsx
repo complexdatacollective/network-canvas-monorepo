@@ -20,6 +20,7 @@ import SelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -67,9 +68,6 @@ type Section =
   | 'privacy'
   | 'security'
   | 'synthetic';
-
-const NAV_BUTTON_BASE =
-  'flex w-full items-center gap-3 px-4 py-3 border-0 rounded-[var(--radius-pill)] font-heading font-extrabold text-sm text-left cursor-pointer';
 
 function StorageProgress({ value }: { value: number }) {
   const clamped = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
@@ -292,7 +290,7 @@ export function SettingsDialog({
     <HomeModal
       open={open}
       onClose={onClose}
-      maxWidth={1000}
+      maxWidth={1100}
       scroll={false}
       title={
         <Heading level="h3" margin="none">
@@ -300,189 +298,195 @@ export function SettingsDialog({
         </Heading>
       }
     >
-      <div className="grid min-h-0 flex-1 grid-cols-[210px_1fr] gap-7">
-        <nav aria-label="Settings sections" className="flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active = section === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSection(item.id)}
-                aria-current={active ? 'page' : undefined}
-                className={`${NAV_BUTTON_BASE} ${active ? 'bg-surface-2 text-text' : 'text-text/80 bg-transparent'}`}
-              >
-                <Icon size={18} strokeWidth={2.4} aria-hidden />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <ScrollArea viewportClassName="pr-4">
-          {section === 'about' && settings ? (
-            <>
-              <SettingsRow
-                title="App version"
-                desc="Network Canvas Interviewer"
-                control={
-                  <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
-                    {APP_VERSION}
-                  </span>
-                }
-              />
-              <SettingsRow
-                title="Storage"
-                desc={storageLabel}
-                control={
-                  storageHasValues ? (
-                    <div className="w-[220px]">
-                      <StorageProgress value={storagePercent} />
-                    </div>
-                  ) : (
-                    <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
-                      —
-                    </span>
-                  )
-                }
-              />
-              {durabilityLabel ? (
+      <Tabs
+        aria-label="Settings sections"
+        value={section}
+        onValueChange={(next) => {
+          const item = NAV_ITEMS.find((i) => i.id === next);
+          if (item) setSection(item.id);
+        }}
+        tabs={NAV_ITEMS.map((item) => ({
+          value: item.id,
+          label: item.label,
+          icon: item.icon,
+        }))}
+        className="min-h-0 flex-1"
+      >
+        <ScrollArea
+          viewportClassName="@container pr-4"
+          className="min-w-0 flex-1"
+        >
+          <TabsPanel value="about">
+            {settings ? (
+              <>
                 <SettingsRow
-                  title="Offline storage"
-                  desc={durabilityLabel}
+                  title="App version"
+                  desc="Network Canvas Interviewer"
                   control={
-                    <span
-                      className={`inline-flex items-center gap-1.5 text-xs ${
-                        storagePersisted ? 'text-text/60' : 'text-warning'
-                      }`}
-                    >
-                      {storagePersisted ? (
-                        <ShieldCheck className="size-3.5" aria-hidden />
-                      ) : (
-                        <ShieldAlert className="size-3.5" aria-hidden />
-                      )}
-                      {storagePersisted ? 'Persisted' : 'Best-effort'}
+                    <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                      {APP_VERSION}
                     </span>
                   }
                 />
-              ) : null}
-              <SettingsRow
-                title="Installation ID"
-                desc="Unique per-device identifier"
-                control={
-                  <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
-                    {installationId}
-                  </span>
-                }
-              />
-              <UnconnectedField
-                name="showSampleProtocol"
-                label="Show sample protocol on home screen"
-                hint="Re-shows the one-click sample protocol card next to the Import card."
-                inline
-                component={ToggleField}
-                value={!settings.sampleProtocolDismissed}
-                onChange={(next: boolean | undefined) =>
-                  void persist({ sampleProtocolDismissed: next !== true })
-                }
-              />
-            </>
-          ) : null}
-
-          {section === 'interview' && settings ? (
-            <>
-              <UnconnectedField
-                name="allowStageNavigation"
-                label="Allow stage navigation"
-                hint="Let participants move between stages by tapping the progress bar during an interview, which opens a stages menu."
-                inline
-                component={ToggleField}
-                value={settings.allowStageNavigation}
-                onChange={(next: boolean | undefined) =>
-                  void persist({ allowStageNavigation: next === true })
-                }
-              />
-              <Paragraph intent="smallText" emphasis="muted">
-                When off, participants can only move forwards and backwards one
-                stage at a time. Turning this on lets them jump directly to any
-                stage, which is useful for piloting a protocol but is usually
-                left off for real interviews.
-              </Paragraph>
-            </>
-          ) : null}
-
-          {section === 'data' && settings ? (
-            <>
-              <UnconnectedField
-                name="exportGraphML"
-                label="Export GraphML"
-                hint="Include GraphML files in interview exports."
-                inline
-                component={ToggleField}
-                value={settings.exportGraphML}
-                onChange={(next: boolean | undefined) =>
-                  void persist({ exportGraphML: next === true })
-                }
-              />
-              <UnconnectedField
-                name="exportCSV"
-                label="Export CSV"
-                hint="Include CSV files (attributes, edges, ego) in interview exports."
-                inline
-                component={ToggleField}
-                value={settings.exportCSV}
-                onChange={(next: boolean | undefined) =>
-                  void persist({ exportCSV: next === true })
-                }
-              />
-              <UnconnectedField
-                name="useScreenLayoutCoordinates"
-                label="Export node positions as screen-coordinate pixels"
-                hint="Sociogram node positions are exported in pixel coordinates relative to the layout below."
-                inline
-                component={ToggleField}
-                value={settings.useScreenLayoutCoordinates}
-                onChange={(next: boolean | undefined) =>
-                  void persist({ useScreenLayoutCoordinates: next === true })
-                }
-              />
-              <UnconnectedField
-                inline
-                name="screenLayoutWidth"
-                label="Screen layout width"
-                hint="Pixels"
-                component={InputField}
-                type="number"
-                min={1}
-                value={String(settings.screenLayoutWidth)}
-                onChange={(next: string | undefined) => {
-                  const parsed = Number.parseInt(next ?? '', 10);
-                  if (Number.isFinite(parsed) && parsed > 0) {
-                    void persist({ screenLayoutWidth: parsed });
+                <SettingsRow
+                  title="Storage"
+                  desc={storageLabel}
+                  control={
+                    storageHasValues ? (
+                      // Fluid when the row is stacked (full width), fixed 220px
+                      // once the SettingsRow container is wide enough to go
+                      // two-column — same 26rem threshold as SettingsRow itself.
+                      <div className="w-full @min-[26rem]:w-[220px]">
+                        <StorageProgress value={storagePercent} />
+                      </div>
+                    ) : (
+                      <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                        —
+                      </span>
+                    )
                   }
-                }}
-              />
-              <UnconnectedField
-                inline
-                name="screenLayoutHeight"
-                label="Screen layout height"
-                hint="Pixels"
-                component={InputField}
-                type="number"
-                min={1}
-                value={String(settings.screenLayoutHeight)}
-                onChange={(next: string | undefined) => {
-                  const parsed = Number.parseInt(next ?? '', 10);
-                  if (Number.isFinite(parsed) && parsed > 0) {
-                    void persist({ screenLayoutHeight: parsed });
+                />
+                {durabilityLabel ? (
+                  <SettingsRow
+                    title="Offline storage"
+                    desc={durabilityLabel}
+                    control={
+                      <span
+                        className={`inline-flex items-center gap-1.5 text-xs ${
+                          storagePersisted ? 'text-text/60' : 'text-warning'
+                        }`}
+                      >
+                        {storagePersisted ? (
+                          <ShieldCheck className="size-3.5" aria-hidden />
+                        ) : (
+                          <ShieldAlert className="size-3.5" aria-hidden />
+                        )}
+                        {storagePersisted ? 'Persisted' : 'Best-effort'}
+                      </span>
+                    }
+                  />
+                ) : null}
+                <SettingsRow
+                  title="Installation ID"
+                  desc="Unique per-device identifier"
+                  control={
+                    <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
+                      {installationId}
+                    </span>
                   }
-                }}
-              />
-            </>
-          ) : null}
+                />
+                <UnconnectedField
+                  name="showSampleProtocol"
+                  label="Show sample protocol on home screen"
+                  hint="Re-shows the one-click sample protocol card next to the Import card."
+                  inline
+                  component={ToggleField}
+                  value={!settings.sampleProtocolDismissed}
+                  onChange={(next: boolean | undefined) =>
+                    void persist({ sampleProtocolDismissed: next !== true })
+                  }
+                />
+              </>
+            ) : null}
+          </TabsPanel>
 
-          {section === 'privacy' ? (
+          <TabsPanel value="interview">
+            {settings ? (
+              <>
+                <UnconnectedField
+                  name="allowStageNavigation"
+                  label="Allow stage navigation"
+                  hint="Let participants move between stages by tapping the progress bar during an interview, which opens a stages menu."
+                  inline
+                  component={ToggleField}
+                  value={settings.allowStageNavigation}
+                  onChange={(next: boolean | undefined) =>
+                    void persist({ allowStageNavigation: next === true })
+                  }
+                />
+                <Paragraph intent="smallText" emphasis="muted">
+                  When off, participants can only move forwards and backwards
+                  one stage at a time. Turning this on lets them jump directly
+                  to any stage, which is useful for piloting a protocol but is
+                  usually left off for real interviews.
+                </Paragraph>
+              </>
+            ) : null}
+          </TabsPanel>
+
+          <TabsPanel value="data">
+            {settings ? (
+              <>
+                <UnconnectedField
+                  name="exportGraphML"
+                  label="Export GraphML"
+                  hint="Include GraphML files in interview exports."
+                  inline
+                  component={ToggleField}
+                  value={settings.exportGraphML}
+                  onChange={(next: boolean | undefined) =>
+                    void persist({ exportGraphML: next === true })
+                  }
+                />
+                <UnconnectedField
+                  name="exportCSV"
+                  label="Export CSV"
+                  hint="Include CSV files (attributes, edges, ego) in interview exports."
+                  inline
+                  component={ToggleField}
+                  value={settings.exportCSV}
+                  onChange={(next: boolean | undefined) =>
+                    void persist({ exportCSV: next === true })
+                  }
+                />
+                <UnconnectedField
+                  name="useScreenLayoutCoordinates"
+                  label="Export node positions as screen-coordinate pixels"
+                  hint="Sociogram node positions are exported in pixel coordinates relative to the layout below."
+                  inline
+                  component={ToggleField}
+                  value={settings.useScreenLayoutCoordinates}
+                  onChange={(next: boolean | undefined) =>
+                    void persist({ useScreenLayoutCoordinates: next === true })
+                  }
+                />
+                <UnconnectedField
+                  inline
+                  name="screenLayoutWidth"
+                  label="Screen layout width"
+                  hint="Pixels"
+                  component={InputField}
+                  type="number"
+                  min={1}
+                  value={String(settings.screenLayoutWidth)}
+                  onChange={(next: string | undefined) => {
+                    const parsed = Number.parseInt(next ?? '', 10);
+                    if (Number.isFinite(parsed) && parsed > 0) {
+                      void persist({ screenLayoutWidth: parsed });
+                    }
+                  }}
+                />
+                <UnconnectedField
+                  inline
+                  name="screenLayoutHeight"
+                  label="Screen layout height"
+                  hint="Pixels"
+                  component={InputField}
+                  type="number"
+                  min={1}
+                  value={String(settings.screenLayoutHeight)}
+                  onChange={(next: string | undefined) => {
+                    const parsed = Number.parseInt(next ?? '', 10);
+                    if (Number.isFinite(parsed) && parsed > 0) {
+                      void persist({ screenLayoutHeight: parsed });
+                    }
+                  }}
+                />
+              </>
+            ) : null}
+          </TabsPanel>
+
+          <TabsPanel value="privacy">
             <>
               <UnconnectedField
                 name="analyticsEnabled"
@@ -511,27 +515,29 @@ export function SettingsDialog({
                 </AlertDescription>
               </Alert>
             </>
-          ) : null}
+          </TabsPanel>
 
-          {section === 'security' && settings ? (
-            <>
-              <ManageAuthenticator />
-              {auth.mode !== 'none' ? (
-                <>
-                  <Alert variant="info">
-                    Use the lock button in the top bar to lock immediately.
-                  </Alert>
-                  <SecurityBehaviorControls
-                    value={behavior}
-                    onChange={handleBehaviorChange}
-                  />
-                </>
-              ) : null}
-              <ResetDeviceRow />
-            </>
-          ) : null}
+          <TabsPanel value="security">
+            {settings ? (
+              <>
+                <ManageAuthenticator />
+                {auth.mode !== 'none' ? (
+                  <>
+                    <Alert variant="info">
+                      Use the lock button in the top bar to lock immediately.
+                    </Alert>
+                    <SecurityBehaviorControls
+                      value={behavior}
+                      onChange={handleBehaviorChange}
+                    />
+                  </>
+                ) : null}
+                <ResetDeviceRow />
+              </>
+            ) : null}
+          </TabsPanel>
 
-          {section === 'synthetic' ? (
+          <TabsPanel value="synthetic">
             <>
               <Paragraph intent="smallText" emphasis="muted">
                 Generate synthetic interview sessions to validate the export
@@ -637,9 +643,9 @@ export function SettingsDialog({
                 }
               />
             </>
-          ) : null}
+          </TabsPanel>
         </ScrollArea>
-      </div>
+      </Tabs>
     </HomeModal>
   );
 }

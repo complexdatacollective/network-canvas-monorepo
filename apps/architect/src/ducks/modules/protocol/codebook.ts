@@ -1,9 +1,4 @@
-import {
-  createAsyncThunk,
-  createSlice,
-  current,
-  type PayloadAction,
-} from '@reduxjs/toolkit';
+import { createSlice, current, type PayloadAction } from '@reduxjs/toolkit';
 import { find, get, has, isEmpty, omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
@@ -15,17 +10,15 @@ import type {
   EntityDefinition,
   Variable,
 } from '@codaco/protocol-validation';
-import type { RootState } from '~/ducks/modules/root';
+import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import {
   getAllVariableUUIDsByEntity,
   getVariablesForSubject,
 } from '~/selectors/codebook';
 import { getIsUsed } from '~/selectors/codebook/isUsed';
-import { makeGetUsageForType } from '~/selectors/usage';
 import prune from '~/utils/prune';
 import safeName from '~/utils/safeName';
 
-import { actionCreators as stageActions } from './stages';
 import { getNextCategoryColor } from './utils/helpers';
 
 type Entity = 'node' | 'edge' | 'ego';
@@ -77,7 +70,7 @@ const defaultTypeTemplate: Partial<EntityDefinition> = {
 };
 
 // Async thunks
-export const createTypeAsync = createAsyncThunk(
+export const createTypeAsync = createAppAsyncThunk(
   'codebook/createTypeAsync',
   async (
     {
@@ -101,7 +94,7 @@ export const createTypeAsync = createAsyncThunk(
   },
 );
 
-export const updateTypeAsync = createAsyncThunk(
+export const updateTypeAsync = createAppAsyncThunk(
   'codebook/updateTypeAsync',
   async (
     {
@@ -121,11 +114,11 @@ export const updateTypeAsync = createAsyncThunk(
   },
 );
 
-export const createEdgeAsync = createAsyncThunk(
+export const createEdgeAsync = createAppAsyncThunk(
   'codebook/createEdgeAsync',
   async (configuration: Partial<EdgeDefinition>, { dispatch, getState }) => {
     const entity: Entity = 'edge';
-    const state = getState() as RootState;
+    const state = getState();
     const protocol = (state.activeProtocol?.present ||
       state.activeProtocol) as CurrentProtocol;
     const colorFromHelper = getNextCategoryColor(protocol, entity);
@@ -147,7 +140,7 @@ export const createEdgeAsync = createAsyncThunk(
   },
 );
 
-export const createVariableAsync = createAsyncThunk(
+export const createVariableAsync = createAppAsyncThunk(
   'codebook/createVariableAsync',
   async (
     {
@@ -174,7 +167,7 @@ export const createVariableAsync = createAsyncThunk(
       throw new Error('Variable name contains no valid characters');
     }
 
-    const state = getState() as RootState;
+    const state = getState();
     const variables = getVariablesForSubject(state, { entity, type });
     const variableNameExists = Object.values(variables).some(
       ({ name }) => name === safeConfiguration.name,
@@ -200,7 +193,7 @@ export const createVariableAsync = createAsyncThunk(
   },
 );
 
-export const updateVariableAsync = createAsyncThunk(
+export const updateVariableAsync = createAppAsyncThunk(
   'codebook/updateVariableAsync',
   async (
     {
@@ -224,7 +217,7 @@ export const updateVariableAsync = createAsyncThunk(
 
     // If entity and type are provided, validate the variable exists
     if (entity && type) {
-      const state = getState() as RootState;
+      const state = getState();
       const variableExists = has(
         getVariablesForSubject(state, { entity, type }),
         variable,
@@ -246,7 +239,7 @@ export const updateVariableAsync = createAsyncThunk(
   },
 );
 
-export const deleteVariableAsync = createAsyncThunk(
+export const deleteVariableAsync = createAppAsyncThunk(
   'codebook/deleteVariableAsync',
   async (
     {
@@ -256,7 +249,7 @@ export const deleteVariableAsync = createAsyncThunk(
     }: { entity: Entity; type?: string; variable: string },
     { dispatch, getState },
   ) => {
-    const state = getState() as RootState;
+    const state = getState();
     const isUsed = getIsUsed(state);
 
     if (get(isUsed, variable, false)) {
@@ -269,83 +262,11 @@ export const deleteVariableAsync = createAsyncThunk(
   },
 );
 
-const getDeleteAction = ({
-  type,
-  ...owner
-}: {
-  type: string;
-  id?: string;
-  stageId?: string;
-  promptId?: string;
-}) => {
-  switch (type) {
-    case 'stage':
-      if (owner.id === undefined) {
-        throw new Error('Stage ID is required for deleting a stage');
-      }
-      return stageActions.deleteStage(owner.id);
-    case 'prompt':
-      if (owner.stageId === undefined || owner.promptId === undefined) {
-        throw new Error(
-          'Stage ID and Prompt ID are required for deleting a prompt',
-        );
-      }
-      return stageActions.deletePrompt(owner.stageId, owner.promptId, true);
-    default:
-      // Residual gap: the usage scanner (selectors/usage.ts) only surfaces
-      // stage/prompt/sociogram subject owners and a legacy 'form' owner that has
-      // no delete action in the schema-8 duck. References that live in filters,
-      // skip logic, or other stage config are deliberately not cascade-deleted
-      // here — removing a whole stage for an incidental reference would be
-      // destructive — and the validation listener surfaces any dangling
-      // reference the cascade leaves behind.
-      return { type: 'NO_OP' };
-  }
-};
-
-export const deleteTypeAsync = createAsyncThunk(
+export const deleteTypeAsync = createAppAsyncThunk(
   'codebook/deleteTypeAsync',
-  async (
-    {
-      entity,
-      type,
-      deleteRelatedObjects = false,
-    }: {
-      entity: Entity;
-      type: string;
-      deleteRelatedObjects?: boolean;
-    },
-    { dispatch, getState },
-  ) => {
+  async ({ entity, type }: { entity: Entity; type: string }, { dispatch }) => {
     const payload: DeleteTypePayload = { entity, type };
-
-    if (!deleteRelatedObjects) {
-      dispatch(codebookSlice.actions.deleteType(payload));
-      return;
-    }
-
-    // Scan usage BEFORE removing the type, so the cascade sees the stages and
-    // prompts that reference it.
-    const state = getState() as RootState;
-    const getUsageForType = makeGetUsageForType(state);
-    const usageForType = getUsageForType(entity, type);
-
     dispatch(codebookSlice.actions.deleteType(payload));
-
-    await Promise.all(
-      usageForType.map(
-        ({
-          owner,
-        }: {
-          owner: {
-            type: string;
-            id?: string;
-            stageId?: string;
-            promptId?: string;
-          };
-        }) => dispatch(getDeleteAction(owner)),
-      ),
-    );
   },
 );
 

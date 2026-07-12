@@ -16,19 +16,19 @@ const LAYER_OPACITY: Record<Intensity, number> = {
 const LIGHTS = [
   {
     position: '-top-[20vmax] -left-[15vmax] h-[55vmax] w-[55vmax]',
-    color: 'color-mix(in oklab, var(--color-sea-green), transparent 55%)',
+    color: 'color-mix(in oklab, oklch(var(--sea-green)), transparent 55%)',
   },
   {
     position: '-bottom-[25vmax] -right-[10vmax] h-[60vmax] w-[60vmax]',
-    color: 'color-mix(in oklab, var(--color-fresco-purple), transparent 78%)',
+    color: 'color-mix(in oklab, oklch(10% 0.4 290), transparent 78%)',
   },
   {
     position: '-top-[10vmax] right-[5vmax] h-[40vmax] w-[40vmax]',
-    color: 'color-mix(in oklab, var(--color-slate-blue), transparent 60%)',
+    color: 'color-mix(in oklab, oklch(var(--slate-blue)), transparent 60%)',
   },
   {
     position: 'bottom-[5vmax] -left-[10vmax] h-[35vmax] w-[35vmax]',
-    color: 'color-mix(in oklab, var(--color-sea-green), transparent 70%)',
+    color: 'color-mix(in oklab, oklch(var(--sea-green)), transparent 70%)',
   },
 ];
 

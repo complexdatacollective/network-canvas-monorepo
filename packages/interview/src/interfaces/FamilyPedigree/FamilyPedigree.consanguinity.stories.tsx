@@ -1,10 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
+
+import {
+  clickDialogSubmit,
+  clickMenuItem,
+  clickNext,
+  openNodeContextMenu,
+  setFieldInput,
+  WIZARD_TIMEOUT,
+} from './familyPedigreeWizardHelpers';
 
 /**
  * Shared protocol setup: mirrors FamilyPedigree.cousins.stories.tsx so the
@@ -283,95 +292,6 @@ export const ConsanguineousUnionRepresentation: Story = {
 //   3. Asserts the union (Maria still present) and the shared child appear.
 // ---------------------------------------------------------------------------
 
-const WIZARD_TIMEOUT = { timeout: 8000 };
-
-async function findContinueButton() {
-  const buttons = await screen.findAllByRole('button', {});
-  const btn = buttons.find(
-    (b) => b.textContent === 'Finish' || b.textContent === 'Continue',
-  );
-  if (!btn) throw new Error('No Finish or Continue button found');
-  return btn;
-}
-
-async function clickContinue() {
-  await userEvent.click(await findContinueButton());
-}
-
-// The "Add partner" form dialog submits via a button labelled "Add" (its
-// submitLabel) rather than the wizard's "Continue"/"Finish", so it needs its
-// own submitter.
-async function clickAdd() {
-  const dialog = await screen.findByRole('dialog', {}, WIZARD_TIMEOUT);
-  const buttons = await within(dialog).findAllByRole('button', {});
-  const btn = buttons.find((b) => b.textContent === 'Add');
-  if (!btn) throw new Error('No Add button found in the Add-partner dialog');
-  await userEvent.click(btn);
-}
-
-async function getDialog() {
-  return screen.findByRole('dialog', {}, WIZARD_TIMEOUT);
-}
-
-async function setFieldInput(fieldName: string, value: boolean | string) {
-  const dialog = await getDialog();
-  const container = dialog.querySelector(
-    `[data-field-name="${CSS.escape(fieldName)}"]`,
-  );
-  if (!container)
-    throw new Error(`No field found with data-field-name="${fieldName}"`);
-
-  if (typeof value === 'boolean') {
-    const toggle = container.querySelector('[role="switch"]');
-    if (toggle) {
-      const isChecked = toggle.getAttribute('aria-checked') === 'true';
-      if (isChecked !== value) await userEvent.click(toggle);
-      return;
-    }
-    const radios = within(container as HTMLElement).getAllByRole('radio');
-    const target = value ? radios[0] : radios[1];
-    if (!target)
-      throw new Error(`No radio for value=${String(value)} in "${fieldName}"`);
-    await userEvent.click(target);
-    return;
-  }
-
-  // String value — RadioGroup or text input
-  const radios = (container as HTMLElement).querySelectorAll('[role="radio"]');
-  if (radios.length > 0) {
-    const target = Array.from(radios).find(
-      (r) => r.getAttribute('aria-label') === value,
-    );
-    if (target) {
-      await userEvent.click(target);
-      return;
-    }
-    const byValue = Array.from(radios).find((r) => {
-      const input = r.querySelector('input[type="radio"]');
-      return input?.getAttribute('value') === value;
-    });
-    if (byValue) {
-      await userEvent.click(byValue);
-      return;
-    }
-    throw new Error(`No radio option matching "${value}" in "${fieldName}"`);
-  }
-
-  const input = within(container as HTMLElement).getByRole('textbox');
-  await userEvent.clear(input);
-  await userEvent.type(input, value);
-}
-
-async function openNodeContextMenu(nodeName: string) {
-  const nodeBtn = await screen.findByRole(
-    'button',
-    { name: nodeName },
-    WIZARD_TIMEOUT,
-  );
-  await userEvent.click(nodeBtn);
-  await screen.findByRole('menu', {}, WIZARD_TIMEOUT);
-}
-
 export const ConsanguineousUnionCreationViaWizard: Story = {
   render: () => {
     const buildFn = () => {
@@ -491,15 +411,13 @@ export const ConsanguineousUnionCreationViaWizard: Story = {
     // (buildNodeOptions labels ego specially). Selecting it forms the
     // undirected partner edge: the same consanguineous union as ego ⚭ Maria.
     await openNodeContextMenu('Maria');
-    await userEvent.click(
-      await screen.findByText('Add partner', {}, WIZARD_TIMEOUT),
-    );
+    await clickMenuItem('partner');
 
     // AddPersonFields: pick the existing-person branch, then ego ("You") from
     // the candidate picker. The current/ex question defaults to "current".
-    await setFieldInput('partnerType', 'Yes — already in the family tree');
+    await setFieldInput('partnerType', 'existing');
     await setFieldInput('existingPartnerId', 'You');
-    await clickAdd();
+    await clickDialogSubmit();
 
     // The consanguineous union now exists; Maria remains on the canvas.
     await screen.findByRole('button', { name: 'Maria' }, WIZARD_TIMEOUT);
@@ -511,21 +429,20 @@ export const ConsanguineousUnionCreationViaWizard: Story = {
     // as the sperm source, so the child descends from both members of the
     // consanguineous union. ego is re-selected explicitly for robustness.
     await openNodeContextMenu('Maria');
-    await userEvent.click(
-      await screen.findByText('Add child', {}, WIZARD_TIMEOUT),
-    );
+    await clickMenuItem('child');
 
     await setFieldInput('child.name', 'Emma');
-    await setFieldInput('child.gender_identity', 'Woman/girl');
-    await clickContinue(); // Child details → BioTriadStep
+    await setFieldInput('child.biologicalSex', 'female');
+    await setFieldInput('child.gender_identity', 'woman');
+    await clickNext(); // Child details → BioTriadStep
 
     await setFieldInput('sperm-source', 'You');
-    await clickContinue(); // BioTriadStep → Other parents
+    await clickNext(); // BioTriadStep → Other parents
 
     // Both genetic parents (Maria, ego) already exist, so the new-parent
     // partnership step is skipped and this continue finalises the wizard.
     await setFieldInput('hasOtherParents', false);
-    await clickContinue(); // Other parents → done
+    await clickNext(); // Other parents → done
 
     // -----------------------------------------------------------------------
     // Step 3: The union and the shared child render cleanly.

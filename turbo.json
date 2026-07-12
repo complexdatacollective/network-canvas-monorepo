@@ -30,6 +30,7 @@
     "@codaco/documentation#build": {
       "dependsOn": ["^build"],
       "inputs": [
+        "$TURBO_ROOT$/packages/protocols/documentation/**",
         "app/**",
         "components/**",
         "hooks/**",
@@ -64,7 +65,9 @@
     "@codaco/architect#build": {
       "dependsOn": ["^build"],
       "inputs": [
+        "$TURBO_ROOT$/packages/protocols/**",
         "src/**",
+        "scripts/**",
         "public/**",
         "index.html",
         "vite.config.*",
@@ -78,6 +81,23 @@
         "VITE_FRESCO_PREVIEW_API_TOKEN",
         "VITE_DISABLE_ANALYTICS"
       ],
+      "outputs": ["dist/**"]
+    },
+    "@codaco/interviewer#build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_ROOT$/packages/protocols/development/**",
+        "$TURBO_ROOT$/packages/protocols/sample/**",
+        "src/**",
+        "scripts/**",
+        "public/**",
+        "index.html",
+        "vite.config.*",
+        "tailwind.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
       "outputs": ["dist/**"]
     },
     "networkcanvas.com#build": {
@@ -145,6 +165,7 @@
     "build-storybook": {
       "dependsOn": ["^build"],
       "inputs": [
+        "$TURBO_ROOT$/tooling/tailwind/**",
         "src/**",
         ".storybook/**",
         "stories/**",
@@ -245,6 +266,71 @@
         "next.config.*",
         "tsconfig*.json",
         "package.json"
+      ],
+      "outputs": []
+    },
+    "@codaco/architect#typecheck": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_ROOT$/packages/protocols/**",
+        "src/**",
+        "scripts/**",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
+    "@codaco/interviewer#typecheck": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_ROOT$/packages/protocols/development/**",
+        "$TURBO_ROOT$/packages/protocols/sample/**",
+        "src/**",
+        "scripts/**",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
+    "@codaco/architect#test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_ROOT$/packages/protocols/**",
+        "src/**",
+        "scripts/**",
+        "__tests__/**",
+        "vitest.config.*",
+        "vite.config.*",
+        "package.json",
+        ".env"
+      ],
+      "env": [
+        "PROTOCOL_ENCRYPTION_KEY",
+        "PROTOCOL_ENCRYPTION_IV",
+        "GITHUB_TOKEN"
+      ],
+      "outputs": []
+    },
+    "@codaco/interviewer#test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_ROOT$/packages/protocols/development/**",
+        "$TURBO_ROOT$/packages/protocols/sample/**",
+        "src/**",
+        "__tests__/**",
+        "vitest.config.*",
+        "vite.config.*",
+        "package.json",
+        ".env"
+      ],
+      "env": [
+        "PROTOCOL_ENCRYPTION_KEY",
+        "PROTOCOL_ENCRYPTION_IV",
+        "GITHUB_TOKEN"
       ],
       "outputs": []
     },

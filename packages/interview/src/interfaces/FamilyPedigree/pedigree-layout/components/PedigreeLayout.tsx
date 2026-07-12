@@ -3,6 +3,7 @@
 import { type ReactNode, useMemo } from 'react';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
@@ -67,7 +68,8 @@ export default function PedigreeLayout({
     const nodeNames = variableConfig.nodeLabelVariable
       ? indexToId.map((id) => {
           const node = nodes.get(id);
-          const name = node?.attributes[variableConfig.nodeLabelVariable];
+          const name =
+            node?.[entityAttributesProperty][variableConfig.nodeLabelVariable];
           return typeof name === 'string' ? name : '';
         })
       : undefined;

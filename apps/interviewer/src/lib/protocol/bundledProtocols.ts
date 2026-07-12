@@ -1,4 +1,4 @@
-import sampleProtocolJson from '@codaco/sample-protocol';
+import sampleProtocolJson from '@codaco/protocols/sample';
 
 import { type BundledProtocol, resolveAssets } from './bundledAssets';
 
@@ -7,7 +7,7 @@ import { type BundledProtocol, resolveAssets } from './bundledAssets';
 // and enforced by the test that stubs `fetch` to throw. The map key is the file
 // name, which matches the `source` of the corresponding `assetManifest` entry.
 const sampleAssetBytes = import.meta.glob<ArrayBuffer>(
-  '../../../../../packages/sample-protocol/assets/*',
+  '../../../../../packages/protocols/sample/assets/*',
   { query: '?arraybuffer', import: 'default', eager: true },
 );
 

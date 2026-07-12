@@ -9,7 +9,13 @@ import { TESTING_MAPBOX_TOKEN } from '../testingMapboxToken';
 const here = dirname(fileURLToPath(import.meta.url));
 // src/templates/__tests__ -> repo root
 const repoRoot = resolve(here, '../../../../..');
-const templateDir = resolve(repoRoot, 'templates', 'transnational-networks');
+const templateDir = resolve(
+  repoRoot,
+  'packages',
+  'protocols',
+  'templates',
+  'transnational-networks',
+);
 
 type ManifestAsset = {
   id: string;
@@ -33,26 +39,10 @@ type Protocol = {
 const readJson = (path: string): unknown =>
   JSON.parse(readFileSync(path, 'utf8'));
 
-// Validate both the canonical source and the Architect-bundled copy so the
-// embedded token / asset wiring can't drift between them (bundled-sync keeps
-// them byte-identical, but assert it here too so this guard is self-contained).
 const cases = [
   {
     name: 'canonical source',
     protocol: readJson(resolve(templateDir, 'protocol.json')) as Protocol,
-  },
-  {
-    name: 'Architect-bundled copy',
-    protocol: readJson(
-      resolve(
-        repoRoot,
-        'apps',
-        'architect',
-        'src',
-        'templates',
-        'transnational-networks.json',
-      ),
-    ) as Protocol,
   },
 ];
 

@@ -1,6 +1,6 @@
 import plugin from 'tailwindcss/plugin';
 
-import { type Elevation, generateShadowLayers } from './jwc';
+import { type Elevation, generateShadowLayers } from './jwc.js';
 
 /**
  * Plugin that adds `elevation` utilities that create shadows based on the

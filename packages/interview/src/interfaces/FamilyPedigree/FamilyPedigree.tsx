@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
-import { isFamilyPedigreeStageMetadata } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  isFamilyPedigreeStageMetadata,
+} from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import Prompts from '~/components/Prompts/Prompts';
 import { useContractFlags } from '~/contract/context';
@@ -28,6 +31,7 @@ import { useFamilyPedigreeStore } from './FamilyPedigreeContext';
 import { FamilyPedigreeProvider } from './FamilyPedigreeProvider';
 import FamilyPedigreePlaceholder from './pedigree-layout/components/FamilyPedigreePlaceholder';
 import PedigreeView from './pedigree-layout/components/PedigreeView';
+import { SuppressPedigreeHintContext } from './pedigreeHintContext';
 import type { VariableConfig } from './store';
 import {
   getEdgeTypeKey,
@@ -83,6 +87,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
 
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
+  const suppressHint = useContext(SuppressPedigreeHintContext);
   const { isDevelopment } = useContractFlags();
   const { moveForward } = props.getNavigationHelpers();
   const { updateReady } = useReadyForNextStage();
@@ -154,7 +159,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   );
   const handleToggleAttribute = (nodeId: string, variable: string) => {
     const node = allNodes.find((n) => n._uid === nodeId);
-    const currentValue = node?.attributes[variable] === true;
+    const currentValue = node?.[entityAttributesProperty][variable] === true;
     dispatch(
       toggleNodeAttributes({
         nodeId,
@@ -164,10 +169,10 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   };
 
   const egoId = [...nodesMap.entries()].find(
-    ([, n]) => n.attributes[egoVariable] === true,
+    ([, n]) => n[entityAttributesProperty][egoVariable] === true,
   )?.[0];
   const nonEgoNodeCount = [...nodesMap.values()].filter(
-    (n) => n.attributes[egoVariable] !== true,
+    (n) => n[entityAttributesProperty][egoVariable] !== true,
   ).length;
   const hasNodes = nonEgoNodeCount > 0;
 
@@ -452,7 +457,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                     for (const [id, node] of Object.entries(data.nodes)) {
                       addNode({
                         id,
-                        attributes: node.attributes as Record<
+                        attributes: node[entityAttributesProperty] as Record<
                           string,
                           VariableValue
                         >,
@@ -552,7 +557,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                 nodes_created: Object.keys(result.batch.nodes ?? {}).length,
                 edges_created: Object.keys(result.batch.edges ?? {}).length,
               });
-              void openDialog(buildPedigreeDialog);
+              if (!suppressHint) void openDialog(buildPedigreeDialog);
             }}
             variableConfig={variableConfig}
           />

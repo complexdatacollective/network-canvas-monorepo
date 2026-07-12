@@ -20,9 +20,9 @@ const Prompts = ({ prompts = null }: PromptsProps) => {
 
   return (
     <SectionFrame title="Prompts">
-      <ol className="m-0 ps-(--space-xl)">
+      <ol className="m-0 ps-10">
         {prompts.map((prompt) => (
-          <li className="my-(--space-md) pl-(--space-md)" key={prompt.id}>
+          <li className="my-5 pl-5" key={prompt.id}>
             <Prompt {...prompt} />
           </li>
         ))}

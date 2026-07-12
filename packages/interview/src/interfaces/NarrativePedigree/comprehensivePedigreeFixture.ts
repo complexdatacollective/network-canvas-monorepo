@@ -1,10 +1,20 @@
-import type { SyntheticInterview } from '@codaco/protocol-utilities';
+import { SyntheticInterview } from '@codaco/protocol-utilities';
 
-// Shared fixture for the NarrativePedigree examples: a compact four-generation
-// pedigree whose six conditions collectively exercise every inheritance pattern
-// and every Sticker status, with a consanguineous cousin union. Kept separate
-// from any *.stories file so it can be composed into different stage sequences
-// (the all-pathways explorer and the FamilyPedigree→NarrativePedigree flow).
+// Shared fixture for the NarrativePedigree examples: one integrated five-
+// generation family whose six conditions all reach ego's own household, so the
+// interface reads as a single lived pedigree rather than six disjoint demos.
+// Kept separate from any *.stories file so it can be composed into different
+// stage sequences (the interface's own default story, its capture story, and
+// the FamilyPedigree→NarrativePedigree flow example).
+//
+// Names follow North-American patrilineal convention — a wife takes her
+// husband's surname, children take their father's, a married-in spouse brings
+// their own. That convention is itself part of the demonstration: ego's parents
+// are first cousins BORN with different surnames (Marsh vs Bauer) because one
+// descends through a son and the other through a daughter of the shared Marsh
+// great-grandparents. (Rose's displayed name is her married surname "Marsh",
+// which coincidentally matches David's; the "Bauer" birth surname shows only in
+// the `née Bauer` annotations below, not in the rendered pedigree.)
 
 const NAME_VAR = 'name';
 const EGO_VAR = 'isEgo';
@@ -24,46 +34,70 @@ const XLH_VAR = 'hasHypophosphataemia'; // X-linked dominant
 const YHL_VAR = 'hasYLinkedHearingLoss'; // Y-linked
 const MITO_VAR = 'hasMitochondrialMyopathy'; // mitochondrial
 
+// SyntheticInterview.getNetwork() may fill an unset boolean on a manual node, so
+// every condition flag (and the ego flag) is seeded false by default and only
+// the affected/ego nodes override it — keeping the pedigree deterministic.
+const BOOL_DEFAULTS = {
+  [EGO_VAR]: false,
+  [HD_VAR]: false,
+  [CF_VAR]: false,
+  [HAEM_VAR]: false,
+  [XLH_VAR]: false,
+  [YHL_VAR]: false,
+  [MITO_VAR]: false,
+};
+
 /**
  * Add the shared comprehensive pedigree to `si`: the Person node type and Family
  * edge type, a FamilyPedigree source stage, a NarrativePedigree stage, and the
- * seeded four-generation network.
+ * seeded five-generation network. Every condition is routed so it reaches ego,
+ * her partner, or her children — the pedigree is deliberately ego-centric:
  *
- *   Eleanor (F) ── Arthur (M)              Harold (M) ── Irene (F)
- *        └─────┬─────┘                          └────┬────┬────┘
- *      Rose (F)   Frank (M)              David (M)  Martin (M) ── Grace (F)
- *        └────────────────┬──────────────────┘              └──┬──┘
- *                 ego "You" (F) ══════════════════════════ Chris (M)   Alex (NB)
- *                        └───────────────┬───────────────┘
- *                                  Leo (M)   Mia (F)
- *
- * ══ is the consanguineous union: Chris is Martin's son, so he and ego (David's
- * daughter) are paternal first cousins.
- *
- * Conditions and the status each surfaces:
- *  - Huntington's (autosomal dominant): Arthur + Rose affected → ego and her
- *    children AT RISK down the maternal line.
- *  - Cystic fibrosis (autosomal recessive): Mia affected → ego and cousin-partner
- *    Chris are OBLIGATE CARRIERS and Leo is at risk; the consanguineous union
- *    makes the children autozygous (the homozygous-risk "?" shows on Leo).
- *  - Haemophilia A (X-linked recessive): David and his brother Martin affected →
- *    Irene and ego are OBLIGATE CARRIERS.
- *  - X-linked hypophosphataemia (X-linked dominant): David affected → his
- *    daughter ego is OBLIGATE-AFFECTED ("will develop it"), her children at risk.
- *  - Y-linked hearing loss (Y-linked): Harold affected → the paternal male line
- *    David/Martin/Chris and ego's son Leo are OBLIGATE-AFFECTED.
- *  - Mitochondrial myopathy (mitochondrial): Eleanor affected → the maternal line
- *    Rose → ego → Leo & Mia is at risk.
+ *  - Huntington's (autosomal dominant): George Bauer → Rose affected; the whole
+ *    maternal descent (ego and her children) is at risk — a late-onset dominant
+ *    sweeping down a line.
+ *  - Cystic fibrosis (autosomal recessive): ego's parents Rose & David are FIRST
+ *    COUSINS (both descend from the Marsh great-grandparents), so ego's affected
+ *    sibling Sam makes them obligate carriers and ego herself at-risk-affected
+ *    (25%, a full sibling of the affected with both carrier parents recorded).
+ *    The consanguinity is the lesson.
+ *  - Haemophilia A (X-linked recessive): ego's maternal uncle Thomas is affected,
+ *    making his mother Nancy an OBLIGATE carrier; the carrier-female line reaches
+ *    Rose, ego (may carry) and her son Noah (may develop).
+ *  - X-linked hypophosphataemia (X-linked dominant): ego's father David is an
+ *    affected male, so every daughter — ego — "will develop it"; ego then
+ *    transmits it to both of her children.
+ *  - Y-linked hearing loss (Y-linked): the partner's Adler male line Walter →
+ *    Chris is affected, so ego's son Noah "will develop it"; ego's daughter (no
+ *    Y) is untouched.
+ *  - Mitochondrial myopathy (mitochondrial): Eleanor Marsh affected → the whole
+ *    maternal line (Nancy → Rose → ego → her children) is at risk.
  *
  * The stages are appended in order (FamilyPedigree then NarrativePedigree), so a
  * caller that prepends its own stages knows the resulting indices by construction.
  *
+ * The default pedigree contains only structure a participant can actually build
+ * through the FamilyPedigree onboarding + building interactions (at most one egg
+ * contributor per child). Mitochondrial replacement therapy (MRT) — a child
+ * conceived from TWO eggs, one donor-tagged to supply the mtDNA — is NOT reachable
+ * through that participant interface; it is authorable only via Architect or
+ * protocol import. Pass `includeMrtBranch` to add that Architect/import-authored
+ * contrast: ego's aunt Margaret (also at risk down the maternal line) conceives
+ * Chloe by mitochondrial donation (a donor egg supplies the mtDNA), so Chloe
+ * escapes the mito condition while still inheriting Margaret's autosomes (she stays
+ * at risk for Huntington's).
+ *
  * @param showAtRisk  Whether the NarrativePedigree stage shows the at-risk
  *   (probabilistic) statuses. Defaults to `true` so every status is visible.
+ * @param includeMrtBranch  Whether to add the mitochondrial-donation (MRT) branch
+ *   (donor Ivy, child Chloe, and the two-egg parentage edges). Defaults to `false`
+ *   so the default pedigree stays participant-reachable; the dedicated MRT story
+ *   sets it `true`.
  */
 export function addComprehensivePedigree(
   si: SyntheticInterview,
   showAtRisk = true,
+  includeMrtBranch = false,
 ): void {
   const nodeType = si.addNodeType({
     name: 'Person',
@@ -101,9 +135,13 @@ export function addComprehensivePedigree(
     id: REL_TYPE_VAR,
     name: REL_TYPE_VAR,
     type: 'categorical',
+    // 'social' and 'donor' are needed by the mitochondrial-donation branch: the
+    // donor egg carries mtDNA, the intended mother's egg carries the nucleus.
     options: [
       { label: 'biological', value: 'biological' },
       { label: 'partner', value: 'partner' },
+      { label: 'social', value: 'social' },
+      { label: 'donor', value: 'donor' },
     ],
   });
   edgeType.addVariable({
@@ -214,72 +252,98 @@ export function addComprehensivePedigree(
 
   const fpId = fpStage.id;
   const person = (uid: string, attrs: Record<string, unknown>) =>
-    si.addManualNode(fpId, nodeType.id, uid, attrs);
+    si.addManualNode(fpId, nodeType.id, uid, { ...BOOL_DEFAULTS, ...attrs });
 
-  // Generation 1 — maternal grandparents (Huntington's + mitochondrial founders).
-  person('gm', {
-    [nameVarId]: 'Eleanor',
+  // --- Gen I: the shared Marsh great-grandparents --------------------------
+  // Eleanor founds the mitochondrial line. Arthur + Eleanor are the common
+  // ancestors that make ego's parents first cousins (the CF consanguinity).
+  person('ggf', { [nameVarId]: 'Arthur Marsh', [BIO_SEX_VAR]: 'male' });
+  person('ggm', {
+    [nameVarId]: 'Eleanor Marsh',
     [BIO_SEX_VAR]: 'female',
     [MITO_VAR]: true,
   });
-  person('gf', {
-    [nameVarId]: 'Arthur',
+
+  // --- Gen II: ego's grandparents (a Marsh sibling pair + married-in spouses)
+  // Nancy (Eleanor's daughter) and Frank (Eleanor's son) are siblings; their
+  // children Rose and David marry, which is the consanguineous union.
+  person('mgm', { [nameVarId]: 'Nancy Bauer', [BIO_SEX_VAR]: 'female' }); // née Marsh
+  person('mgf', {
+    [nameVarId]: 'George Bauer',
     [BIO_SEX_VAR]: 'male',
     [HD_VAR]: true,
   });
+  person('pgf', { [nameVarId]: 'Frank Marsh', [BIO_SEX_VAR]: 'male' });
+  person('pgm', { [nameVarId]: 'Irene Marsh', [BIO_SEX_VAR]: 'female' });
 
-  // Generation 1 — paternal grandparents (haemophilia carrier + Y-linked founder).
-  person('gf-pat', {
-    [nameVarId]: 'Harold',
+  // --- Gen III: ego's parents (first cousins), aunt, uncle, partner's parents
+  person('mother', {
+    [nameVarId]: 'Rose Marsh',
+    [BIO_SEX_VAR]: 'female',
+    [HD_VAR]: true,
+  }); // née Bauer
+  person('father', {
+    [nameVarId]: 'David Marsh',
+    [BIO_SEX_VAR]: 'male',
+    [XLH_VAR]: true,
+  });
+  // Ego's maternal aunt Margaret — at risk down the maternal (mito) line. In the
+  // MRT branch she conceives Chloe by mitochondrial donation.
+  person('maunt', { [nameVarId]: 'Margaret Nolan', [BIO_SEX_VAR]: 'female' }); // née Bauer
+  person('mhusb', { [nameVarId]: 'Paul Nolan', [BIO_SEX_VAR]: 'male' });
+  // Ego's maternal uncles Thomas and Robert — two affected haemophiliac brothers,
+  // which makes their mother Nancy an OBLIGATE carrier (the classic pattern).
+  person('muncle', {
+    [nameVarId]: 'Thomas Bauer',
+    [BIO_SEX_VAR]: 'male',
+    [HAEM_VAR]: true,
+  });
+  person('muncle2', {
+    [nameVarId]: 'Robert Bauer',
+    [BIO_SEX_VAR]: 'male',
+    [HAEM_VAR]: true,
+  });
+  // The mitochondrial-egg donor (an unaffected outsider) — MRT branch only.
+  if (includeMrtBranch) {
+    person('donor', { [nameVarId]: 'Ivy Brooks', [BIO_SEX_VAR]: 'female' });
+  }
+  // Partner's Adler line — Y-linked hearing loss.
+  person('pf', {
+    [nameVarId]: 'Walter Adler',
     [BIO_SEX_VAR]: 'male',
     [YHL_VAR]: true,
   });
-  person('gm-pat', { [nameVarId]: 'Irene', [BIO_SEX_VAR]: 'female' });
+  person('pm', { [nameVarId]: 'Diane Adler', [BIO_SEX_VAR]: 'female' });
 
-  // Generation 2 — maternal.
-  person('mother', {
-    [nameVarId]: 'Rose',
-    [BIO_SEX_VAR]: 'female',
-    [HD_VAR]: true,
-  });
-  person('uncle', { [nameVarId]: 'Frank', [BIO_SEX_VAR]: 'male' });
-
-  // Generation 2 — paternal. David is affected with two X-linked conditions
-  // (recessive haemophilia AND dominant hypophosphataemia) and, as Harold's son,
-  // is on the Y-linked male line. Martin (David's brother) is the second affected
-  // haemophilia son — making their mother Irene an obligate carrier — and is
-  // Chris's father, forming the cousin union.
-  person('father', {
-    [nameVarId]: 'David',
-    [BIO_SEX_VAR]: 'male',
-    [HAEM_VAR]: true,
-    [XLH_VAR]: true,
-  });
-  person('uncle-pat', {
-    [nameVarId]: 'Martin',
-    [BIO_SEX_VAR]: 'male',
-    [HAEM_VAR]: true,
-  });
-  person('cm', { [nameVarId]: 'Grace', [BIO_SEX_VAR]: 'female' });
-
-  // Generation 3.
+  // --- Gen IV: ego's household + ego's affected sibling (MRT child below) ---
   person('ego', {
     [nameVarId]: 'You',
     [EGO_VAR]: true,
     [BIO_SEX_VAR]: 'female',
   });
-  person('sibling', { [nameVarId]: 'Alex', [BIO_SEX_VAR]: 'other' });
-  // Chris — ego's partner AND her paternal first cousin (Martin's son).
-  person('partner', { [nameVarId]: 'Chris', [BIO_SEX_VAR]: 'male' });
-
-  // Generation 4 — ego's children.
-  person('son', { [nameVarId]: 'Leo', [BIO_SEX_VAR]: 'male' });
-  person('daughter', {
-    [nameVarId]: 'Mia',
-    [BIO_SEX_VAR]: 'female',
+  // Ego's brother Sam is affected with cystic fibrosis (autozygous via the
+  // cousin union), making Rose & David obligate carriers and ego at-risk.
+  person('sib', {
+    [nameVarId]: 'Sam Marsh',
+    [BIO_SEX_VAR]: 'male',
     [CF_VAR]: true,
   });
+  person('partner', {
+    [nameVarId]: 'Chris Adler',
+    [BIO_SEX_VAR]: 'male',
+    [YHL_VAR]: true,
+  });
+  // Chloe — Margaret's daughter by mitochondrial donation (MRT branch only).
+  // Nucleus from Margaret, mtDNA from the donor Ivy, sperm from Paul.
+  if (includeMrtBranch) {
+    person('mrtchild', { [nameVarId]: 'Chloe Nolan', [BIO_SEX_VAR]: 'female' });
+  }
 
+  // --- Gen V: ego's children -----------------------------------------------
+  person('son', { [nameVarId]: 'Noah Adler', [BIO_SEX_VAR]: 'male' });
+  person('daughter', { [nameVarId]: 'Ava Adler', [BIO_SEX_VAR]: 'female' });
+
+  // --- Edges ---------------------------------------------------------------
   const bioEdge = (uid: string, from: string, to: string) =>
     si.addManualEdge(edgeType.id, uid, from, to, {
       [REL_TYPE_VAR]: ['biological'],
@@ -291,36 +355,89 @@ export function addComprehensivePedigree(
       [IS_ACTIVE_VAR]: true,
     });
 
-  // Maternal grandparents → Rose + Frank.
-  bioEdge('gm-mother', 'gm', 'mother');
-  bioEdge('gf-mother', 'gf', 'mother');
-  bioEdge('gm-uncle', 'gm', 'uncle');
-  bioEdge('gf-uncle', 'gf', 'uncle');
-  partnerEdge('gm-gf', 'gm', 'gf');
+  // Unions.
+  partnerEdge('u-ggf-ggm', 'ggf', 'ggm');
+  partnerEdge('u-mgm-mgf', 'mgm', 'mgf');
+  partnerEdge('u-pgf-pgm', 'pgf', 'pgm');
+  partnerEdge('u-mother-father', 'mother', 'father'); // consanguineous first cousins
+  partnerEdge('u-maunt-paul', 'maunt', 'mhusb');
+  partnerEdge('u-ego-partner', 'ego', 'partner');
+  partnerEdge('u-pf-pm', 'pf', 'pm');
 
-  // Paternal grandparents → David + Martin.
-  bioEdge('gfp-father', 'gf-pat', 'father');
-  bioEdge('gmp-father', 'gm-pat', 'father');
-  bioEdge('gfp-unclepat', 'gf-pat', 'uncle-pat');
-  bioEdge('gmp-unclepat', 'gm-pat', 'uncle-pat');
-  partnerEdge('gfp-gmp', 'gf-pat', 'gm-pat');
+  // Gen I → II: Eleanor + Arthur's two children (Nancy and Frank).
+  bioEdge('b-ggf-mgm', 'ggf', 'mgm');
+  bioEdge('b-ggm-mgm', 'ggm', 'mgm');
+  bioEdge('b-ggf-pgf', 'ggf', 'pgf');
+  bioEdge('b-ggm-pgf', 'ggm', 'pgf');
 
-  // Martin + Grace → Chris (making Chris ego's paternal first cousin).
-  bioEdge('unclepat-partner', 'uncle-pat', 'partner');
-  bioEdge('cm-partner', 'cm', 'partner');
-  partnerEdge('unclepat-cm', 'uncle-pat', 'cm');
+  // Gen II → III: Rose + Margaret + Thomas via Nancy & George; David via Frank
+  // & Irene.
+  bioEdge('b-mgm-mother', 'mgm', 'mother');
+  bioEdge('b-mgf-mother', 'mgf', 'mother');
+  bioEdge('b-mgm-maunt', 'mgm', 'maunt');
+  bioEdge('b-mgf-maunt', 'mgf', 'maunt');
+  bioEdge('b-mgm-muncle', 'mgm', 'muncle');
+  bioEdge('b-mgf-muncle', 'mgf', 'muncle');
+  bioEdge('b-mgm-muncle2', 'mgm', 'muncle2');
+  bioEdge('b-mgf-muncle2', 'mgf', 'muncle2');
+  bioEdge('b-pgf-father', 'pgf', 'father');
+  bioEdge('b-pgm-father', 'pgm', 'father');
 
-  // Rose + David → ego + Alex.
-  bioEdge('mother-ego', 'mother', 'ego');
-  bioEdge('father-ego', 'father', 'ego');
-  bioEdge('mother-sibling', 'mother', 'sibling');
-  bioEdge('father-sibling', 'father', 'sibling');
-  partnerEdge('mother-father', 'mother', 'father');
+  // Gen III → IV: ego + Sam via Rose & David; Chris via Walter & Diane.
+  bioEdge('b-mother-ego', 'mother', 'ego');
+  bioEdge('b-father-ego', 'father', 'ego');
+  bioEdge('b-mother-sib', 'mother', 'sib');
+  bioEdge('b-father-sib', 'father', 'sib');
+  bioEdge('b-pf-partner', 'pf', 'partner');
+  bioEdge('b-pm-partner', 'pm', 'partner');
 
-  // ego + Chris → Leo + Mia (the consanguineous union).
-  bioEdge('ego-son', 'ego', 'son');
-  bioEdge('partner-son', 'partner', 'son');
-  bioEdge('ego-daughter', 'ego', 'daughter');
-  bioEdge('partner-daughter', 'partner', 'daughter');
-  partnerEdge('ego-partner', 'ego', 'partner');
+  // Mitochondrial donation → Chloe (MRT branch only). The intended mother
+  // Margaret supplies the egg NUCLEUS (a biological egg), the donor Ivy supplies
+  // the egg CYTOPLASM / mtDNA (a donor egg), Paul supplies the sperm. Because two
+  // egg edges reach Chloe, the genetics engine routes her mtDNA down the donor's
+  // line while her nuclear genome comes from Margaret + Paul. A participant cannot
+  // build a two-egg child through the FamilyPedigree interface, so this branch is
+  // Architect/import-authored only.
+  if (includeMrtBranch) {
+    si.addManualEdge(edgeType.id, 'e-maunt-chloe', 'maunt', 'mrtchild', {
+      [REL_TYPE_VAR]: ['biological'],
+      [IS_ACTIVE_VAR]: true,
+      [GAMETE_ROLE_VAR]: 'egg',
+    });
+    si.addManualEdge(edgeType.id, 'e-donor-chloe', 'donor', 'mrtchild', {
+      [REL_TYPE_VAR]: ['donor'],
+      [IS_ACTIVE_VAR]: true,
+      [GAMETE_ROLE_VAR]: 'egg',
+    });
+    si.addManualEdge(edgeType.id, 'e-paul-chloe', 'mhusb', 'mrtchild', {
+      [REL_TYPE_VAR]: ['biological'],
+      [IS_ACTIVE_VAR]: true,
+      [GAMETE_ROLE_VAR]: 'sperm',
+    });
+  }
+
+  // Gen IV → V: ego's children.
+  bioEdge('b-ego-son', 'ego', 'son');
+  bioEdge('b-partner-son', 'partner', 'son');
+  bioEdge('b-ego-daughter', 'ego', 'daughter');
+  bioEdge('b-partner-daughter', 'partner', 'daughter');
+}
+
+/**
+ * Convenience wrapper: a fresh SyntheticInterview seeded with the comprehensive
+ * pedigree. Used by the interface's default story, its capture story and the
+ * genetics tests; the mutator form above is used where a caller needs to prepend
+ * its own stages (the flow example adds an intro screen first).
+ *
+ * @param includeMrtBranch  Forwarded to `addComprehensivePedigree`; defaults to
+ *   `false` so the built pedigree is participant-reachable.
+ */
+export function buildComprehensivePedigree(
+  seed: number,
+  showAtRisk = true,
+  includeMrtBranch = false,
+) {
+  const si = new SyntheticInterview(seed);
+  addComprehensivePedigree(si, showAtRisk, includeMrtBranch);
+  return si;
 }

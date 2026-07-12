@@ -1,5 +1,43 @@
 # @codaco/architect
 
+## 8.0.0-beta.7
+
+### Minor Changes
+
+- Add a developer authoring mode for source-linked template protocols, including a toolbar action that saves edited template, sample, and development protocols back to the canonical protocol source package.
+- Use the shared rich text editor for protocol text fields and add support for inserting hyperlinks.
+
+## 8.0.0-beta.6
+
+### Minor Changes
+
+- Architect now uses the shared Network Canvas design system — the same theme foundation as Interviewer. Interface elements shared between the apps, including the app update dialog, confirmation dialogs, and form fields, now display correctly. Architect's appearance is otherwise unchanged, with a few small refinements: fonts are bundled with the app rather than loaded from Google Fonts (better offline support and privacy), timeline stage cards show a subtle highlight when hovered, and badge text on dark backgrounds is easier to read.
+
+### Patch Changes
+
+- The Narrative Pedigree stage editor's at-risk help text no longer references the removed "may be affected" (homozygous) marker. At-risk relatives are now described only as "may develop" or "may carry" a condition, and the copy clarifies that a solid, filled symbol indicates a clinically affected individual (per Bennett et al., 2022 nomenclature), so at-risk relatives always appear as unfilled symbols marked with a "?".
+
+## 8.0.0-beta.5
+
+### Minor Changes
+
+- Replace the update toast with a version indicator that shows when an update is available or has just been applied, and displays the release changelog. Updates now apply automatically on a fresh load when no work is in progress.
+
+### Patch Changes
+
+- Fix minor styling from invalid Tailwind classes: button colour transitions, the
+  search field's clear-icon colour, and the ordered-list error text colour.
+- Close a batch of data-durability, privacy and safety gaps surfaced by the pre-release audit follow-up:
+  - **Encrypted variables:** editing a field in the Network Composer or Family Pedigree editors no longer strips the variable's `encrypted` flag.
+  - **Analytics privacy:** import-validation failure analytics no longer embed protocol-derived strings (codebook keys, variable names, entered values) — only structural error codes/paths are sent.
+  - **Asset export:** distinct assets whose names sanitise to the same archive entry no longer silently overwrite each other, and the primary Download button now warns when a `.netcanvas` is exported with unresolved assets.
+  - **Validation timing:** an edit that lands while a validation is in flight is no longer dropped, and auto-undo no longer reverts a valid newer edit or stacks dialogs.
+  - **Undo/persistence:** inline-created variables with an invalid name show a friendly error instead of throwing; a mismatched rehydrated protocol id/content pair can't autosave the wrong content into a library row; a `sessionStorage` quota failure now surfaces the storage-unavailable banner instead of silently going in-memory.
+  - **Preview:** assets held in the Safari-private in-memory fallback are now transferred to the preview tab, so media/roster protocols preview correctly.
+  - **PWA updates:** the update auto-apply now also defers during the autosave-debounce window after a stage edit and during bundled-template imports, so a fresh-load auto-update can't reload mid-write.
+  - **Storage GC:** orphaned asset blobs are now removed within a transaction that includes the assets table, so the delete no longer throws and leaves the blob behind.
+  - **Stage editor:** a multi-step browser Back from a dirty stage editor now prompts before discarding the draft, and the unsaved-variable dialog confirms before a backdrop dismiss.
+
 ## 8.0.0-beta.4
 
 ### Patch Changes

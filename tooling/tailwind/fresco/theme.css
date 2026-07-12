@@ -412,6 +412,14 @@
   --radius-3xl: calc(var(--radius) * 4); /* 112px */
   --radius-full: 9999px; /* 9999px */
 
+  /*
+   * Border width for the translucent glass control treatment (the
+   * `control-glass` utility, used by the Button `glass` variant and the
+   * SegmentedSwitcher). Consumed via the `border-control` utility. Other
+   * controls keep their own `border-2`; this is not a global control border.
+   */
+  --control-border-width: 3px;
+
   /* Shadows */
   --shadow-sm: var(--shadow-sm-base);
   --shadow: var(--shadow-base);

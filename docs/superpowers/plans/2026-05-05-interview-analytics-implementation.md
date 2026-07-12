@@ -2263,8 +2263,7 @@ export function createAnalyticsListenerMiddleware({
     actionCreator: addNode.fulfilled,
     effect: (action) => {
       const node = action.payload as
-        | { _uid?: string; type?: string }
-        | undefined;
+        { _uid?: string; type?: string } | undefined;
       if (!node?._uid) return;
       tracker.track('node_added', { node_id: node._uid, node_type: node.type });
     },
@@ -2281,8 +2280,7 @@ export function createAnalyticsListenerMiddleware({
     actionCreator: addEdge.fulfilled,
     effect: (action) => {
       const edge = action.payload as
-        | { _uid?: string; type?: string }
-        | undefined;
+        { _uid?: string; type?: string } | undefined;
       if (!edge?._uid) return;
       tracker.track('edge_created', {
         edge_id: edge._uid,

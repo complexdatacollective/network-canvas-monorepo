@@ -164,18 +164,24 @@ const uniqueArrayAttribute =
     }
 
     // expects `name` of format: `fieldName[n].attribute`
-    const fieldName = (name as string).split('[')[0] ?? '';
-    const attribute = (name as string).split('.')[1] ?? '';
-    const instanceCount = (
-      get(allValues, fieldName) as Record<string, unknown>[]
-    ).reduce((count: number, option: Record<string, unknown>) => {
-      const optionValue = option[attribute];
+    const fieldMatch = name?.match(/^(.*)\[\d+\]\.([^.[\]]+)$/);
+    if (!fieldMatch) return undefined;
 
-      if (isRoughlyEqual(optionValue, value)) {
-        return count + 1;
-      }
-      return count;
-    }, 0);
+    const [, fieldName = '', attribute = ''] = fieldMatch;
+    const arrayValue = get(allValues, fieldName);
+    if (!Array.isArray(arrayValue)) return undefined;
+
+    const instanceCount = arrayValue.reduce(
+      (count: number, option: Record<string, unknown>) => {
+        const optionValue = option[attribute];
+
+        if (isRoughlyEqual(optionValue, value)) {
+          return count + 1;
+        }
+        return count;
+      },
+      0,
+    );
 
     if (instanceCount >= 2) {
       return messageWithDefault(
@@ -207,10 +213,16 @@ const uniqueByList =
 const ISODate =
   (dateFormat: string, message: ValidationMessage): Validator =>
   (value) => {
-    const dt = DateTime.fromISO(value as string);
+    if (!value) return undefined;
+
+    const dt =
+      typeof value === 'string'
+        ? DateTime.fromISO(value)
+        : DateTime.invalid('Date value must be a string');
     if (
-      (value && dateFormat.length !== (value as string).length) ||
-      (value && !dt.isValid)
+      typeof value !== 'string' ||
+      dateFormat.length !== value.length ||
+      !dt.isValid
     ) {
       return messageWithDefault(
         message,
@@ -322,10 +334,7 @@ export const getValidator = (validation: Record<string, unknown> = {}) => {
   return (value: ValidationValue) => {
     const errors = validators.reduce(
       (result: ValidationResult, validator: Validator) => {
-        if (!validator(value) || result) {
-          return result;
-        }
-
+        if (result) return result;
         return validator(value);
       },
       undefined,

@@ -1,18 +1,22 @@
 import { get } from 'es-toolkit/compat';
 import { useId } from 'react';
+import type { WrappedFieldMetaProps } from 'redux-form';
 
+import { Badge } from '@codaco/fresco-ui/Badge';
+import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
-import Badge from '~/components/Badge';
 import ExternalLink from '~/components/ExternalLink';
 import StageTypeImage from '~/components/StageTypeImage';
 import { cx } from '~/utils/cva';
 
 import { useFormContext } from '../Editor';
+import { getReduxFieldErrorState } from '../Form/reduxFieldMeta';
 import ValidatedField from '../Form/ValidatedField';
 import IssueAnchor from '../IssueAnchor';
 import { useAutoStageName } from './autoStageName/useAutoStageName';
 import { getInterface } from './Interfaces';
-
 type HeadingInputProps = {
   input?: {
     name?: string;
@@ -21,27 +25,30 @@ type HeadingInputProps = {
     onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
     onFocus?: (event: React.FocusEvent<HTMLInputElement>) => void;
   };
-  meta?: {
-    error?: string;
-    invalid?: boolean;
-    touched?: boolean;
-  };
+  meta?: Partial<WrappedFieldMetaProps>;
   placeholder?: string;
   maxLength?: number;
   autoFocus?: boolean;
   onFieldBlur?: () => void;
+  required?: boolean;
+  disabled?: boolean;
+  readOnly?: boolean;
 };
-
-const HeadingInput = ({
+export const HeadingInput = ({
   input = {},
   meta = {},
   placeholder,
   maxLength,
   autoFocus,
   onFieldBlur,
+  required = false,
+  disabled = false,
+  readOnly = false,
 }: HeadingInputProps) => {
   const errorId = useId();
-  const hasError = !!(meta.invalid && meta.touched && meta.error);
+  const { errors, showErrors } = getReduxFieldErrorState(
+    meta as WrappedFieldMetaProps,
+  );
   const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
     input.onBlur?.(event);
     onFieldBlur?.();
@@ -56,50 +63,49 @@ const HeadingInput = ({
         maxLength={maxLength}
         // biome-ignore lint/a11y/noAutofocus: stage name is the primary action in this hero
         autoFocus={autoFocus}
+        required={required}
+        disabled={disabled}
+        readOnly={readOnly}
         aria-label="Stage name"
-        aria-invalid={hasError}
-        aria-describedby={hasError ? errorId : undefined}
+        aria-required={required}
+        aria-invalid={showErrors}
+        aria-describedby={errorId}
         className={cx(
-          'h1 my-0 w-full border-none bg-transparent p-0 outline-none placeholder:opacity-40',
-          hasError && 'text-error',
+          headingVariants({ level: 'h1', margin: 'none' }),
+          'focusable w-full border-none bg-transparent p-0 outline-none placeholder:opacity-40',
+          showErrors && 'text-destructive',
         )}
       />
-      {hasError && (
-        <div id={errorId} className="text-error mt-(--space-xs) text-sm">
-          {meta.error}
-        </div>
-      )}
+      <FieldErrors
+        id={errorId}
+        name={input.name}
+        errors={errors}
+        show={showErrors}
+      />
     </>
   );
 };
-
 type StageHeadingProps = {
   stageNumber: number;
   totalStages: number;
   isNewStage: boolean;
 };
-
 const StageHeading = ({
   stageNumber,
   totalStages,
   isNewStage,
 }: StageHeadingProps) => {
   const { values } = useFormContext();
-
   const type = get(values, 'type') as string | undefined;
-
   const { onLabelBlur } = useAutoStageName(isNewStage);
-
   if (!type) {
     return null;
   }
-
   const interfaceMeta = getInterface(type as StageType);
   const typeLabel = interfaceMeta.name;
   const documentationLink = interfaceMeta.documentation;
-
   return (
-    <div className="w-full pt-(--space-lg) max-lg:flex max-lg:flex-col max-lg:gap-(--space-md) sm:pt-(--space-xl) lg:grid lg:grid-cols-[20rem_auto] lg:gap-8">
+    <div className="max-tablet-landscape:flex max-tablet-landscape:flex-col max-tablet-landscape:gap-5 tablet-portrait:pt-10 tablet-landscape:grid tablet-landscape:grid-cols-[20rem_auto] tablet-landscape:gap-8 w-full pt-7">
       <div className="flex items-center justify-center">
         {/*
          * Decorative timeline rail behind the stage thumbnail.
@@ -117,12 +123,21 @@ const StageHeading = ({
           />
         </div>
       </div>
-      <div className="flex min-w-0 flex-col justify-center gap-(--space-md)">
-        <p className="small-heading text-muted-foreground m-0">
+      <div className="flex min-w-0 flex-col justify-center">
+        <Paragraph
+          className={headingVariants({
+            level: 'label',
+            variant: 'all-caps',
+            margin: 'none',
+            className: 'text-muted',
+          })}
+        >
           Stage {stageNumber} of {totalStages}
-        </p>
+        </Paragraph>
         <IssueAnchor fieldName="label" description="Stage name" />
-        <ValidatedField<{ onFieldBlur?: () => void }>
+        <ValidatedField<{
+          onFieldBlur?: () => void;
+        }>
           name="label"
           component={HeadingInput}
           componentProps={{ onFieldBlur: onLabelBlur }}
@@ -131,7 +146,7 @@ const StageHeading = ({
           validation={{ required: true }}
           autoFocus={isNewStage}
         />
-        <div className="flex flex-wrap items-center gap-(--space-md) text-sm">
+        <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
           <Badge color="neon-coral">{typeLabel}</Badge>
           {documentationLink && (
             <ExternalLink href={documentationLink}>Documentation</ExternalLink>
@@ -141,5 +156,4 @@ const StageHeading = ({
     </div>
   );
 };
-
 export default StageHeading;

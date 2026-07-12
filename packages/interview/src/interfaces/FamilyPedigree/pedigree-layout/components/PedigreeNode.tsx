@@ -2,6 +2,7 @@ import { type MouseEventHandler, type Ref, useMemo } from 'react';
 
 import { useDragSource } from '@codaco/fresco-ui/dnd/dnd';
 import Node from '@codaco/fresco-ui/Node';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
@@ -91,7 +92,8 @@ export function computeNodeDisplayLabels(
     egoId = knownEgoId;
   } else {
     const egoEntry = [...nodes.entries()].find(
-      ([, n]) => n.attributes[variableConfig.egoVariable] === true,
+      ([, n]) =>
+        n[entityAttributesProperty][variableConfig.egoVariable] === true,
     );
     if (!egoEntry) return new Map();
     egoId = egoEntry[0];
@@ -111,9 +113,9 @@ export function computeNodeDisplayLabels(
   for (const [nodeId, node] of nodes) {
     if (nodeId === egoId) continue;
 
-    const storedName = node.attributes[variableConfig.nodeLabelVariable] as
-      | string
-      | undefined;
+    const storedName = node[entityAttributesProperty][
+      variableConfig.nodeLabelVariable
+    ] as string | undefined;
     if (storedName) {
       labels.set(nodeId, storedName);
       continue;
@@ -167,8 +169,8 @@ export default function PedigreeNode({
 
   const shape = useMemo(() => {
     if (!shapeDef) return 'square';
-    return resolveNodeShape(shapeDef, node.attributes);
-  }, [shapeDef, node.attributes]);
+    return resolveNodeShape(shapeDef, node[entityAttributesProperty]);
+  }, [shapeDef, node[entityAttributesProperty]]);
 
   useClickUnlessDragged();
 

@@ -2509,28 +2509,31 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
     // present as categorical variables with the supplied option sets.
     const protocolWithLockedVariables = ({
       biologicalSexOptions = BIOLOGICAL_SEX_OPTIONS,
+      biologicalSexType = 'categorical',
       relationshipTypeOptions = RELATIONSHIP_TYPE_OPTIONS,
       gameteRoleOptions = GAMETE_ROLE_OPTIONS,
     }: {
       biologicalSexOptions?: { value: string; label: string }[];
+      biologicalSexType?: 'categorical' | 'ordinal';
       relationshipTypeOptions?: { value: string; label: string }[];
       gameteRoleOptions?: { value: string; label: string }[];
     }) => ({
       name: 'Test Protocol',
       schemaVersion: 8 as const,
       codebook: {
-        ego: { variables: { isEgo: { name: 'IsEgo', type: 'boolean' } } },
         node: {
           person: {
             name: 'Person',
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
+              isEgo: { name: 'IsEgo', type: 'boolean' },
               label: { name: 'Label', type: 'text' },
               rel: { name: 'Rel', type: 'text' },
               bioSex: {
                 name: 'BioSex',
-                type: 'categorical',
+                type: biologicalSexType,
+                readOnly: true,
                 options: biologicalSexOptions,
               },
             },
@@ -2676,6 +2679,37 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           0,
           'edgeConfig',
           'gameteRoleVariable',
+        ]);
+      }
+    });
+
+    it('rejects an ordinal locked variable whose options were edited', () => {
+      // Architect treats readOnly ordinal variables as locked exactly like
+      // categorical ones (getLockedOptions), and ordinal carries the identical
+      // options schema. The locked-set backstop must fire for ordinal too.
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({
+          biologicalSexType: 'ordinal',
+          biologicalSexOptions: [
+            { value: 'yes', label: 'Yes' },
+            { value: 'no', label: 'No' },
+          ],
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find(
+          (i) =>
+            i.message.includes(
+              'FamilyPedigree biological sex variable "bioSex"',
+            ) && i.message.includes('must use its fixed set of options'),
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'nodeConfig',
+          'biologicalSexVariable',
         ]);
       }
     });

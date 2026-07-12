@@ -1,12 +1,13 @@
 import { Component } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 import ExternalLink from '../../ExternalLink';
-import Dialog from '../../NewComponents/Dialog';
 import EditEgoRule from './EditEgoRule';
 import EditEntityRule from './EditEntityRule';
-
 type EditRuleProps = {
   rule?: {
     type?: string;
@@ -17,7 +18,6 @@ type EditRuleProps = {
   onSave: () => void;
   onCancel: () => void;
 };
-
 class EditRule extends Component<EditRuleProps> {
   static defaultProps = {
     rule: undefined,
@@ -27,29 +27,33 @@ class EditRule extends Component<EditRuleProps> {
     if (rule?.type === 'ego') {
       return EditEgoRule;
     }
-
     return EditEntityRule;
   }
-
   handleSave = () => {
     const { onSave } = this.props;
     onSave();
   };
-
   render() {
     const { rule, codebook, onChange, onCancel, onSave } = this.props;
-
     return (
       <Dialog
         open={!!rule}
-        onOpenChange={(open) => !open && onCancel()}
+        closeDialog={onCancel}
         title="Construct a Rule"
-        onConfirm={onSave}
-        confirmText="Finish and Close"
-        cancelText="Cancel"
+        size="editor"
+        footer={
+          <>
+            <Button color="default" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button color="primary" onClick={onSave}>
+              Finish and Close
+            </Button>
+          </>
+        }
       >
         <div>
-          <p>
+          <Paragraph>
             For help with constructing rules, see our documentation articles on{' '}
             <ExternalLink href={documentationLinks.skipLogic}>
               skip logic
@@ -59,7 +63,7 @@ class EditRule extends Component<EditRuleProps> {
               network filtering
             </ExternalLink>
             .
-          </p>
+          </Paragraph>
           {rule?.type && (
             <this.TypeComponent
               rule={rule}
@@ -72,5 +76,4 @@ class EditRule extends Component<EditRuleProps> {
     );
   }
 }
-
 export default EditRule;

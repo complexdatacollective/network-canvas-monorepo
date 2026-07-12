@@ -1,17 +1,17 @@
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import { Field as RichText } from '~/components/Form/Fields/RichText';
 import ValidatedField from '~/components/Form/ValidatedField';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-
 const CensusPrompt = (_props: StageEditorSectionProps) => (
   <Section
     title="Census Prompt"
     summary={
-      <p>
+      <Paragraph>
         Configure the prompt shown to participants during the family building
         phase.
-      </p>
+      </Paragraph>
     }
   >
     <Row>
@@ -25,5 +25,4 @@ const CensusPrompt = (_props: StageEditorSectionProps) => (
     </Row>
   </Section>
 );
-
 export default CensusPrompt;

@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+
 import ProjectActions from '../ProjectNav/ProjectActions';
 
 const mockNavigate = vi.fn();
@@ -17,16 +19,7 @@ vi.mock('wouter', async () => {
   };
 });
 
-const openDialogMock = vi.fn((config: unknown) => ({
-  type: 'dialogs/openDialog',
-  payload: config,
-}));
-
-vi.mock('~/ducks/modules/dialogs', () => ({
-  actionCreators: {
-    openDialog: (config: unknown) => openDialogMock(config),
-  },
-}));
+const openDialogMock = globalThis.__architectDialogMocks.openDialog;
 
 const undoMock = vi.fn(() => ({ type: 'activeProtocol/undo' }));
 const redoMock = vi.fn(() => ({ type: 'activeProtocol/redo' }));
@@ -61,13 +54,56 @@ vi.mock('~/ducks/modules/userActions/userActions', () => ({
   exportNetcanvas: () => exportNetcanvasMock(),
 }));
 
-const createTestStore = ({ canUndo = true, canRedo = true } = {}) =>
+const sourceAuthoringMock = vi.hoisted(() => ({
+  enabled: false,
+  saveProtocolSource: vi.fn(),
+}));
+
+vi.mock('~/templates/source-authoring', () => ({
+  get isProtocolSourceAuthoringEnabled() {
+    return sourceAuthoringMock.enabled;
+  },
+  saveProtocolSource: (...args: unknown[]) =>
+    sourceAuthoringMock.saveProtocolSource(...args),
+}));
+
+const protocolLibraryMock = vi.hoisted(() => ({
+  getStoredProtocol: vi.fn(),
+}));
+
+vi.mock('~/utils/protocolLibrary', () => ({
+  getStoredProtocol: (...args: unknown[]) =>
+    protocolLibraryMock.getStoredProtocol(...args),
+}));
+
+const protocol: CurrentProtocol = {
+  name: 'Test',
+  schemaVersion: 8,
+  stages: [],
+  codebook: {
+    node: {},
+    edge: {},
+    ego: {},
+  },
+  assetManifest: {},
+};
+
+const createTestStore = ({
+  activeProtocolId = 'protocol-1',
+  canUndo = true,
+  canRedo = true,
+} = {}) =>
   configureStore({
     reducer: {
+      app: (
+        state = {
+          activeProtocolId,
+        },
+      ) => state,
       activeProtocol: (
         state = {
           past: canUndo ? [{}] : [],
-          present: { name: 'Test' },
+          present: protocol,
           future: canRedo ? [{}] : [],
         },
       ) => state,
@@ -95,12 +131,16 @@ describe('<ProjectActions />', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockLocation.mockReturnValue('/protocol');
-    openDialogMock.mockClear();
     undoMock.mockClear();
     redoMock.mockClear();
     clearActiveProtocolMock.mockClear();
     exportNetcanvasMock.mockClear();
     exportUnwrap.mockReset();
+    openDialogMock.mockClear();
+    sourceAuthoringMock.enabled = false;
+    sourceAuthoringMock.saveProtocolSource.mockReset();
+    protocolLibraryMock.getStoredProtocol.mockReset();
+    protocolLibraryMock.getStoredProtocol.mockResolvedValue(undefined);
   });
 
   it('dispatches undo when the Undo button is clicked', () => {
@@ -123,8 +163,14 @@ describe('<ProjectActions />', () => {
     const store = createTestStore({ canUndo: false, canRedo: false });
     render(<ProjectActions />, { wrapper: wrap(store) });
 
-    expect(screen.getByRole('button', { name: /undo/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /redo/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /undo/i })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: /redo/i })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it('hides undo/redo when readOnly is set', () => {
@@ -135,11 +181,18 @@ describe('<ProjectActions />', () => {
     expect(screen.queryByRole('button', { name: /redo/i })).toBeNull();
   });
 
-  it('renders additionalActions between Return-to-start and Undo/Redo', () => {
+  it('renders additional items between Return-to-start and Undo/Redo', () => {
     const store = createTestStore();
     render(
       <ProjectActions
-        additionalActions={<button type="button">Print</button>}
+        additionalItems={[
+          {
+            type: 'button',
+            id: 'print',
+            label: 'Print',
+            onClick: vi.fn(),
+          },
+        ]}
       />,
       { wrapper: wrap(store) },
     );
@@ -147,9 +200,21 @@ describe('<ProjectActions />', () => {
     expect(screen.getByRole('button', { name: /print/i })).toBeInTheDocument();
   });
 
+  it('keeps the Download action filled on hover', () => {
+    const store = createTestStore();
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    const downloadButton = screen.getByRole('button', { name: /^download$/i });
+    expect(downloadButton).toHaveClass('bg-sea-green');
+    expect(downloadButton).toHaveClass('text-white');
+    expect(downloadButton).not.toHaveClass(
+      'hover:enabled:bg-(--component-text)',
+    );
+  });
+
   it('transitions Download → Downloading... → Downloaded during export flow', async () => {
     const store = createTestStore();
-    exportUnwrap.mockResolvedValueOnce(undefined);
+    exportUnwrap.mockResolvedValueOnce({ skippedAssets: [] });
 
     render(<ProjectActions />, { wrapper: wrap(store) });
 
@@ -174,5 +239,57 @@ describe('<ProjectActions />', () => {
       screen.getByRole('button', { name: /return to start screen/i }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/');
+  });
+
+  it('hides save-to-source outside source authoring mode', () => {
+    const store = createTestStore();
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    expect(
+      screen.queryByRole('button', { name: /save to source/i }),
+    ).toBeNull();
+  });
+
+  it('saves the active source-linked protocol when authoring mode is enabled', async () => {
+    sourceAuthoringMock.enabled = true;
+    protocolLibraryMock.getStoredProtocol.mockResolvedValueOnce({
+      id: 'protocol-1',
+      name: 'Test',
+      protocol,
+      schemaVersion: 8,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      sourceRef: { kind: 'sample', id: 'sample' },
+    });
+    sourceAuthoringMock.saveProtocolSource.mockResolvedValueOnce({
+      ok: true,
+      writtenProtocolPath: 'sample/protocol.json',
+      writtenAssets: [],
+      removedAssets: [],
+    });
+    const store = createTestStore();
+
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    const saveButton = await screen.findByRole('button', {
+      name: /save to source/i,
+    });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(sourceAuthoringMock.saveProtocolSource).toHaveBeenCalledWith({
+        sourceRef: { kind: 'sample', id: 'sample' },
+        protocol,
+        protocolId: 'protocol-1',
+      });
+    });
+
+    const successCall = openDialogMock.mock.calls.find(
+      ([config]) =>
+        (config as { type?: string; title?: string }).type === 'acknowledge' &&
+        (config as { type?: string; title?: string }).title ===
+          'Protocol source saved',
+    );
+    expect(successCall).toBeDefined();
   });
 });

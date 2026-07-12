@@ -31,7 +31,14 @@ export default function FieldErrors({
       key={errors?.join('|')} // Re-render when errors change, to trigger animation
       aria-live="polite"
     >
-      {errors && <Paragraph>{errors[0]}</Paragraph>}
+      {errors?.length === 1 && <Paragraph>{errors[0]}</Paragraph>}
+      {errors && errors.length > 1 && (
+        <ul className="list-disc space-y-1 pl-5">
+          {errors.map((error, index) => (
+            <li key={`${error}-${index}`}>{error}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

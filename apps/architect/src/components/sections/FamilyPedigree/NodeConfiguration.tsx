@@ -2,7 +2,7 @@ import type { UnknownAction } from '@reduxjs/toolkit';
 import { difference, keys } from 'es-toolkit/compat';
 import { useCallback } from 'react';
 import { compose, withHandlers } from 'react-recompose';
-import { connect, useSelector } from 'react-redux';
+import { connect, type ConnectedProps, useSelector } from 'react-redux';
 import {
   change,
   type FormAction,
@@ -11,12 +11,14 @@ import {
   SubmissionError,
 } from 'redux-form';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
-import EditableList from '~/components/EditableList';
 import { Row, Section } from '~/components/EditorLayout';
+import DialogArrayField from '~/components/Form/DialogArrayField';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import ValidatedField from '~/components/Form/ValidatedField';
+import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { Entity } from '~/components/NewVariableWindow';
 import NewVariableWindow, {
@@ -41,12 +43,11 @@ import {
   getVariableOptionsForSubject,
   makeGetVariable,
 } from '~/selectors/codebook';
+import { ensureError } from '~/utils/ensureError';
 import { optionsMatch } from '~/utils/variables';
 
 import NodeFormFieldPreview from './NodeFormFieldPreview';
-
 const nodeEntity: Entity = 'node';
-
 // Stage-level configuration that does not reference node variables survives a
 // node-type change; framing/boundaries/introScreen are required (or
 // self-contained) schema fields, so clearing them would make the stage fail
@@ -65,23 +66,27 @@ export const PRESERVE_ON_NODE_TYPE_CHANGE = [
   'introScreen',
   'nodeConfig.type',
 ];
-
 type VariableWindowInitialProps = {
   entity: Entity;
   type: string;
-  initialValues: { name: string; type: string };
+  initialValues: {
+    name: string;
+    type: string;
+  };
   lockedOptions: VariableOptions | null;
 };
-
 type VariableRowProps = {
   name: string;
   label: string;
   description: string;
   entityType: string;
-  options: { value: string; label: string; type?: string }[];
+  options: {
+    value: string;
+    label: string;
+    type?: string;
+  }[];
   onCreateOption: (name: string) => void;
 };
-
 const VariableRow = ({
   name,
   label,
@@ -90,15 +95,13 @@ const VariableRow = ({
   options,
   onCreateOption,
 }: VariableRowProps) => (
-  <div className="flex items-start gap-(--space-md)">
-    <div className="flex flex-1 basis-0 flex-col gap-(--space-xs) pt-(--space-sm)">
+  <div className="flex items-start gap-5">
+    <div className="flex flex-1 basis-0 flex-col gap-1 pt-2.5">
       <span className="font-semibold">
         {label}
-        <span className="text-error ms-(--space-xs)">*</span>
+        <span className="text-destructive ms-1">*</span>
       </span>
-      <span className="text-foreground/60 text-sm leading-snug">
-        {description}
-      </span>
+      <span className="text-text/60 text-sm leading-snug">{description}</span>
     </div>
     <div className="relative flex-1 basis-0">
       <IssueAnchor fieldName={name} description={`${label} Variable`} />
@@ -117,43 +120,36 @@ const VariableRow = ({
     </div>
   </div>
 );
-
 type NodeConfigurationInnerProps = StageEditorSectionProps & {
   handleChangeFields: (
     fields: Record<string, unknown>,
   ) => Promise<Record<string, unknown>>;
 };
-
 const NodeConfigurationInner = ({
   form,
   handleChangeFields,
 }: NodeConfigurationInnerProps) => {
   const dispatch = useAppDispatch();
   const formSelector = formValueSelector(form);
-
   const nodeType = useSelector(
     (state: RootState) =>
       formSelector(state, 'nodeConfig.type') as string | undefined,
   );
-
   const formValues = useSelector((state: RootState) =>
     getFormValues(form)(state),
   );
   const formFields = keys(formValues);
-
   const handleResetStage = useCallback(() => {
     const fieldsToReset = difference(formFields, PRESERVE_ON_NODE_TYPE_CHANGE);
     for (const field of fieldsToReset) {
       dispatch(change(form, field, null) as UnknownAction);
     }
   }, [dispatch, formFields, form]);
-
   const nodeVariableOptions = useSelector((state: RootState) =>
     nodeType
       ? getVariableOptionsForSubject(state, { entity: 'node', type: nodeType })
       : [],
   );
-
   const textNodeVariables = nodeVariableOptions.filter(
     (v) => v.type === 'text',
   );
@@ -170,42 +166,40 @@ const NodeConfigurationInner = ({
       v.type === 'categorical' &&
       optionsMatch(v.options, BIOLOGICAL_SEX_OPTIONS),
   );
-
   const handleCreatedVariable = (...args: unknown[]) => {
-    const [id, params] = args as [string, { field: string }];
+    const [id, params] = args as [
+      string,
+      {
+        field: string;
+      },
+    ];
     dispatch(change(form, params.field, id));
   };
-
   const initialWindowProps: VariableWindowInitialProps = {
     entity: nodeEntity,
     type: nodeType ?? '',
     initialValues: { name: '', type: '' },
     lockedOptions: null,
   };
-
   const [variableWindowProps, openVariableWindow] = useNewVariableWindowState(
     initialWindowProps,
     handleCreatedVariable,
   );
-
   const handleNewNodeLabelVariable = (name: string) =>
     openVariableWindow(
       { initialValues: { name, type: 'text' }, lockedOptions: null },
       { field: 'nodeConfig.nodeLabelVariable' },
     );
-
   const handleNewEgoVariable = (name: string) =>
     openVariableWindow(
       { initialValues: { name, type: 'boolean' }, lockedOptions: null },
       { field: 'nodeConfig.egoVariable' },
     );
-
   const handleNewRelationshipVariable = (name: string) =>
     openVariableWindow(
       { initialValues: { name, type: 'text' }, lockedOptions: null },
       { field: 'nodeConfig.relationshipVariable' },
     );
-
   const handleNewBiologicalSexVariable = (name: string) =>
     openVariableWindow(
       {
@@ -217,16 +211,15 @@ const NodeConfigurationInner = ({
       },
       { field: 'nodeConfig.biologicalSexVariable' },
     );
-
   return (
     <>
       <Section
         title="Node Configuration"
         summary={
-          <p>
+          <Paragraph>
             Select the node type and configure variables and form fields for
             family members.
-          </p>
+          </Paragraph>
         }
       >
         <Row>
@@ -244,7 +237,7 @@ const NodeConfigurationInner = ({
         {nodeType && (
           <>
             {/* `[&_.variable-pill]:bg-white` lifts the pills off the surface-2 panel */}
-            <div className="bg-surface-2 text-surface-2-foreground my-(--space-lg) flex flex-col gap-(--space-lg) rounded p-(--space-md) [&_.variable-pill]:bg-white">
+            <div className="bg-surface-2 text-surface-2-contrast my-7 flex flex-col gap-7 rounded p-5 [&_.variable-pill]:bg-white">
               <VariableRow
                 name="nodeConfig.nodeLabelVariable"
                 label="Node Label"
@@ -282,35 +275,35 @@ const NodeConfigurationInner = ({
             <Section
               title="Form Fields"
               summary={
-                <p>
+                <Paragraph>
                   Add fields to collect information about each family member.
                   These fields will be shown when participants add or edit
                   family members.
-                </p>
+                </Paragraph>
               }
               layout="vertical"
-              className="bg-surface-2 text-surface-2-foreground p-(--space-md)"
+              className="bg-surface-2 text-surface-2-contrast p-5"
             >
-              <EditableList
-                editComponent={FieldFields}
-                editProps={{ type: nodeType, entity: 'node' }}
-                previewComponent={NodeFormFieldPreview}
-                fieldName="nodeConfig.form"
-                title="Edit Field"
+              <ValidatedFieldArray
+                name="nodeConfig.form"
+                label="Form fields"
+                component={DialogArrayField}
                 validation={{}}
-                onChange={(value: unknown) =>
-                  handleChangeFields(value as Record<string, unknown>)
-                }
-                normalize={(value: unknown) =>
-                  normalizeField(value as Record<string, unknown>)
-                }
-                itemSelector={
-                  itemSelector('node', nodeType) as (
-                    state: Record<string, unknown>,
-                    params: { form: string; editField: string },
-                  ) => unknown
-                }
-                form={form}
+                componentProps={{
+                  addTitle: 'Edit Field',
+                  editorFieldsComponent: FieldFields,
+                  editorProps: { type: nodeType, entity: 'node' },
+                  previewComponent: NodeFormFieldPreview,
+                  editorTitle: 'Edit Field',
+                  itemLabel: 'field',
+                  sortable: true,
+                  onBeforeSave: (value: unknown) =>
+                    handleChangeFields(value as Record<string, unknown>),
+                  normalizeItem: (value: unknown) =>
+                    normalizeField(value as Record<string, unknown>),
+                  itemSelector: itemSelector('node', nodeType),
+                  requestedEditFormName: 'editable-list-form',
+                }}
               />
             </Section>
           </>
@@ -320,27 +313,43 @@ const NodeConfigurationInner = ({
     </>
   );
 };
-
+const mapStateToProps = (
+  state: RootState,
+  {
+    form,
+  }: {
+    form: string;
+  },
+) => ({
+  getVariable: (uuid: string) => makeGetVariable(uuid)(state),
+  getNodeType: () =>
+    formValueSelector(form)(state, 'nodeConfig.type') as string | undefined,
+});
+const mapDispatchToProps = {
+  changeForm: change as (
+    form: string,
+    field: string,
+    value: unknown,
+  ) => FormAction,
+  updateVariable: updateVariableAsync,
+  createVariable: createVariableAsync,
+};
+const connector = connect(mapStateToProps, mapDispatchToProps);
+// ConnectedProps resolves the object-form thunk creators to their dispatched
+// form — functions returning the thunk promise (with `.unwrap()`) — matching
+// react-redux's runtime binding.
+type FormHandlerProps = ConnectedProps<typeof connector> & {
+  form: string;
+};
 const formHandlers = withHandlers({
   handleChangeFields:
-    (props: {
-      updateVariable: typeof updateVariableAsync;
-      createVariable: typeof createVariableAsync;
-      changeForm: (form: string, field: string, value: unknown) => FormAction;
-      form: string;
-      getVariable: (
-        uuid: string,
-      ) => ReturnType<ReturnType<typeof makeGetVariable>>;
-      getNodeType: () => string | undefined;
-    }) =>
-    async (values: Record<string, unknown>) => {
+    (props: FormHandlerProps) => async (values: Record<string, unknown>) => {
       const { variable, component, _createNewVariable, ...rest } = values as {
         variable?: string;
         component?: string;
         _createNewVariable?: string;
         [key: string]: unknown;
       };
-
       const nodeType = props.getNodeType();
       const variableType = getTypeForComponent(component);
       const codebookProperties = getCodebookProperties(rest);
@@ -349,26 +358,27 @@ const formHandlers = withHandlers({
         component,
         ...codebookProperties,
       };
-
       props.changeForm(props.form, '_modified', Date.now());
-
       if (!_createNewVariable) {
         const current = props.getVariable(variable ?? '');
         if (!current) {
           throw new SubmissionError({ _error: 'Variable not found' });
         }
-
         const currentVar = current as {
           component?: string;
           type?: string;
           name?: string;
+          encrypted?: boolean;
         };
         const baseProps = {
           component: currentVar.component,
           type: currentVar.type,
           name: currentVar.name,
+          // `encrypted` is a data-protection flag set by the Anonymisation
+          // stage, not an editable form field. Because merge is false, it must
+          // be carried over explicitly or saving a field edit would strip it.
+          encrypted: currentVar.encrypted,
         };
-
         await props.updateVariable({
           entity: 'node',
           type: nodeType ?? '',
@@ -379,49 +389,33 @@ const formHandlers = withHandlers({
           >,
           merge: false,
         });
-
         return { variable, ...rest };
       }
-
       try {
-        const result = await props.createVariable({
-          entity: 'node',
-          type: nodeType ?? '',
-          configuration: {
-            ...configuration,
-            name: _createNewVariable,
-          } as Record<string, unknown>,
-        });
-        const payload = result as unknown as { payload: { variable: string } };
-        return { variable: payload.payload.variable, ...rest };
+        // unwrap() re-throws the thunk's error instead of resolving to a
+        // rejected action whose payload is undefined (which would make
+        // payload.payload.variable a TypeError).
+        const { variable: createdVariable } = await props
+          .createVariable({
+            entity: 'node',
+            type: nodeType ?? '',
+            configuration: {
+              ...configuration,
+              name: _createNewVariable,
+            } as Record<string, unknown>,
+          })
+          .unwrap();
+        return { variable: createdVariable, ...rest };
       } catch (e) {
-        throw new SubmissionError({ variable: String(e) });
+        throw new SubmissionError({ variable: ensureError(e).message });
       }
     },
 });
-
-const mapStateToProps = (state: RootState, { form }: { form: string }) => ({
-  getVariable: (uuid: string) => makeGetVariable(uuid)(state),
-  getNodeType: () =>
-    formValueSelector(form)(state, 'nodeConfig.type') as string | undefined,
-});
-
-const mapDispatchToProps = {
-  changeForm: change as (
-    form: string,
-    field: string,
-    value: unknown,
-  ) => FormAction,
-  updateVariable: updateVariableAsync,
-  createVariable: createVariableAsync,
-};
-
 const NodeConfiguration = compose<
   NodeConfigurationInnerProps,
   StageEditorSectionProps
 >(
-  connect(mapStateToProps, mapDispatchToProps),
+  connector,
   formHandlers,
 )(NodeConfigurationInner);
-
 export default NodeConfiguration;

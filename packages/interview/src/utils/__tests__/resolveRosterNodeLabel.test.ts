@@ -9,7 +9,9 @@ import {
 
 import { resolveRosterNodeLabel } from '../resolveRosterNodeLabel';
 
-const makeNode = (attributes: NcNode['attributes']): NcNode => ({
+const makeNode = (
+  attributes: NcNode[typeof entityAttributesProperty],
+): NcNode => ({
   type: 'person',
   [entityPrimaryKeyProperty]: 'a1b2c3d4-content-hash-uid',
   [entityAttributesProperty]: attributes,

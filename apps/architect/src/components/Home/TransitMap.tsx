@@ -1,6 +1,8 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef } from 'react';
 
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
+
 import { STAGE_META, type TimelineStop } from './timelineScript';
 
 // Internal SVG design coordinates. The outer container width controls the
@@ -297,14 +299,27 @@ function Station({
             style={{ justifyContent: labelLeft ? 'flex-end' : 'flex-start' }}
           >
             <div
-              className="font-heading min-w-0 rounded-full bg-white/40 px-6 py-3 shadow-[0_8px_20px_rgba(22,21,43,0.10)]"
+              className="min-w-0 rounded-full bg-white/40 px-6 py-3 shadow-[0_8px_20px_rgba(22,21,43,0.10)]"
               style={{ maxWidth: LABEL_W - 20 }}
             >
-              <div className="truncate text-[19px] leading-tight font-extrabold tracking-tight text-[hsl(240_35%_17%)]">
+              <div
+                className={headingVariants({
+                  level: 'h3',
+                  margin: 'none',
+                  className:
+                    'truncate text-[19px] leading-tight font-extrabold tracking-tight text-[hsl(240_35%_17%)]',
+                })}
+              >
                 {label}
               </div>
               <div
-                className="mt-0.75 text-[12px] leading-none font-bold tracking-[0.16em] uppercase"
+                className={headingVariants({
+                  level: 'label',
+                  variant: 'all-caps',
+                  margin: 'none',
+                  className:
+                    'mt-0.75 text-[12px] leading-none font-bold tracking-[0.16em]',
+                })}
                 style={{ color: meta.color }}
               >
                 {sub}
@@ -331,7 +346,7 @@ function Station({
           height={20}
         >
           <div
-            className="font-mono text-[12px] tracking-widest text-[hsl(220_4%_44%)]"
+            className="font-monospace text-[12px] tracking-widest text-[hsl(220_4%_44%)]"
             style={{ textAlign: labelLeft ? 'left' : 'right' }}
           >
             {String(index + 1).padStart(2, '0')}

@@ -1,33 +1,29 @@
 import { groupBy, isEmpty, map, toPairs } from 'es-toolkit/compat';
 import React, { useContext } from 'react';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+
 import DualLink from './DualLink';
 import EntityBadge from './EntityBadge';
 import SummaryContext from './SummaryContext';
-
 type Asset = {
   name?: string;
   type?: string;
   [key: string]: unknown;
 };
-
-const headingClass =
-  'uppercase font-semibold text-xs tracking-widest my-(--space-md)';
-
+const headingClass = 'uppercase font-semibold text-xs tracking-widest my-5';
 const Contents = () => {
   const { protocol } = useContext(SummaryContext);
-
   const nodes = toPairs(protocol.codebook?.node ?? {});
   const edges = toPairs(protocol.codebook?.edge ?? {});
   const assets = groupBy(
     toPairs(protocol.assetManifest ?? {}),
     ([, asset]) => (asset as Asset).type,
   );
-
   return (
     <div>
-      <h1>Contents</h1>
-      <div className="[&_a]:text-neon-coral [&_li]:my-(--space-sm) [&_ol_ol]:ps-(--space-xl) [&_ol_ul]:ps-(--space-xl) [&_ul_li]:flex [&_ul_li]:items-center [&_ul_li]:ps-0">
+      <Heading level="h1">Contents</Heading>
+      <div className="[&_a]:text-neon-coral [&_li]:my-2.5 [&_ol_ol]:ps-10 [&_ol_ul]:ps-10 [&_ul_li]:flex [&_ul_li]:items-center [&_ul_li]:ps-0">
         <ol className="ps-0">
           <li className={`list-none ${headingClass}`}>Stages</li>
           <ol>
@@ -95,5 +91,4 @@ const Contents = () => {
     </div>
   );
 };
-
 export default Contents;

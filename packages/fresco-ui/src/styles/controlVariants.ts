@@ -144,7 +144,7 @@ export const heightVariants = cva({
   },
 });
 
-// Set the size of any child SVG icons to slightly above 1em to match text height
+// Keep Lucide icons at text height while preserving their intrinsic ratio.
 export const proportionalLucideIconVariants = cva({
   base: '[&>.lucide]:h-[1em] [&>.lucide]:max-h-full [&>.lucide]:w-auto [&>.lucide]:shrink-0',
 });

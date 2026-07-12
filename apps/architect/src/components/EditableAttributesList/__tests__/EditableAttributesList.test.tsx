@@ -1,21 +1,37 @@
 import { render, screen } from '@testing-library/react';
+import type { ComponentType } from 'react';
 import { expect, it, vi } from 'vitest';
 
 import EditableAttributesList from '../EditableAttributesList';
 
-vi.mock('~/components/EditableList', () => ({
-  formName: 'editable-list-form',
-  default: (props: {
-    fieldName?: string;
-    editFormName?: string;
+vi.mock('~/components/Form/DialogArrayField', () => ({
+  default: ({ requestedEditFormName }: { requestedEditFormName?: string }) => (
+    <div
+      data-testid="dialog-array-field"
+      data-editform={requestedEditFormName}
+    />
+  ),
+}));
+
+vi.mock('~/components/Form/ValidatedFieldArray', () => ({
+  default: ({
+    name,
+    component: Component,
+    componentProps,
+    validation,
+  }: {
+    name: string;
+    component: ComponentType<Record<string, unknown>>;
+    componentProps?: Record<string, unknown>;
     validation?: Record<string, unknown>;
   }) => (
     <div
-      data-testid="editable-list"
-      data-fieldname={props.fieldName}
-      data-editform={props.editFormName}
-      data-validation-keys={Object.keys(props.validation ?? {}).join(',')}
-    />
+      data-testid="validated-field"
+      data-fieldname={name}
+      data-validation-keys={Object.keys(validation ?? {}).join(',')}
+    >
+      <Component {...componentProps} />
+    </div>
   ),
 }));
 
@@ -31,16 +47,17 @@ const renderList = () =>
     />,
   );
 
-it('binds the EditableList to the given fieldName + editFormName', () => {
+it('binds the dialog array field to the given fieldName + editFormName', () => {
   renderList();
-  const list = screen.getByTestId('editable-list');
-  expect(list.dataset.fieldname).toBe('nodeForm.fields');
-  expect(list.dataset.editform).toBe('node-attr-edit');
+  expect(screen.getByTestId('validated-field').dataset.fieldname).toBe(
+    'nodeForm.fields',
+  );
+  expect(screen.getByTestId('dialog-array-field').dataset.editform).toBe(
+    'node-attr-edit',
+  );
 });
 
 it('allows an empty list (no "at least one item" validation)', () => {
   renderList();
-  // Empty validation means EditableList's default notEmpty is overridden, so
-  // a stage with no editable attributes is valid.
-  expect(screen.getByTestId('editable-list').dataset.validationKeys).toBe('');
+  expect(screen.getByTestId('validated-field').dataset.validationKeys).toBe('');
 });

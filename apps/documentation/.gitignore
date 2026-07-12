@@ -1,4 +1,3 @@
 .vercel
 public/sidebar.json
-# Generated at build time from @codaco/sample-protocol (see scripts/generateSampleProtocol.ts)
-public/protocols/Sample Protocol v5.netcanvas
+public/protocols/

@@ -4,43 +4,44 @@ import { useEffect } from 'react';
 import { connect } from 'react-redux';
 import { change, Field, formValueSelector } from 'redux-form';
 
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import RichText from '~/components/Form/Fields/RichText';
 import Toggle from '~/components/Form/Fields/Toggle';
 
 import ValidatedField from './Form/ValidatedField';
-
 type OptionType = {
   label: string;
   value: boolean;
   negative?: boolean;
 };
-
 type OptionsProps = {
   form: string;
   formSelector: (variable: string) => unknown;
   changeField: (form: string, field: string, value: unknown) => void;
 };
-
 type RootState = Record<string, unknown>;
-
-const mapStateToProps = (state: RootState, { form }: { form: string }) => {
+const mapStateToProps = (
+  state: RootState,
+  {
+    form,
+  }: {
+    form: string;
+  },
+) => {
   const selector = formValueSelector(form);
-
   const formSelector = (variable: string) => selector(state, variable);
   return {
     formSelector,
   };
 };
-
 const mapDispatchToProps = {
   changeField: change,
 };
-
 const initialValues: OptionType[] = [
   { label: 'Yes', value: true },
   { label: 'No', value: false, negative: true },
 ];
-
 const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
   form,
   formSelector,
@@ -52,26 +53,25 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
       changeField(form, 'options', initialValues);
     }
   }, [form, formSelector, changeField]);
-
   return (
     <div>
-      <p>
+      <Paragraph>
         The BooleanChoice input component allows you to specify rich text labels
         for the two choices that your participant sees. Create a label for the
         first option, representing the value true, and the second option,
         representing the value false, below.
-      </p>
-      <p>
+      </Paragraph>
+      <Paragraph>
         Each value can also be styled to indicate that it is negative. When
         enabled, this will make the option red when selected, and use a cross
         icon rather than a tick.
-      </p>
-      <div className="grid grid-cols-2 gap-x-(--space-md)">
-        <div className="bg-surface-3 space-y-md rounded-(--radius) p-(--space-lg) [&_h3]:mt-0">
-          <h3>Option One</h3>
-          <p>
+      </Paragraph>
+      <div className="grid grid-cols-2 gap-x-5">
+        <div className="bg-surface-3 rounded p-7 [&_h3]:mt-0">
+          <Heading level="h3">Option One</Heading>
+          <Paragraph>
             This option will set the value <strong>true</strong> when selected.
-          </p>
+          </Paragraph>
           <ValidatedField
             component={RichText}
             name="options[0].label"
@@ -87,11 +87,11 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
             name="options[0].negative"
           />
         </div>
-        <div className="bg-surface-3 space-y-md rounded-(--radius) p-(--space-lg) [&_h3]:mt-0">
-          <h3>Option Two</h3>
-          <p>
+        <div className="bg-surface-3 rounded p-7 [&_h3]:mt-0">
+          <Heading level="h3">Option Two</Heading>
+          <Paragraph>
             This option will set the value <strong>false</strong> when selected.
-          </p>
+          </Paragraph>
           <ValidatedField
             component={RichText}
             name="options[1].label"
@@ -111,5 +111,4 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
     </div>
   );
 });
-
 export default Options;

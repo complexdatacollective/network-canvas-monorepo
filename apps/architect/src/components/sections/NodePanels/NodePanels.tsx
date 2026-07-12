@@ -1,113 +1,118 @@
-import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
-import { bindActionCreators } from '@reduxjs/toolkit';
 import { has } from 'es-toolkit/compat';
 import { useCallback } from 'react';
 import { connect } from 'react-redux';
 import type { FormAction } from 'redux-form';
-import { arrayPush, change, Field, formValueSelector } from 'redux-form';
+import { change, FieldArray, formValueSelector } from 'redux-form';
 import { v4 as uuid } from 'uuid';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import OrderedList from '~/components/OrderedList/OrderedList';
+import FrescoReduxArrayField from '~/components/Form/FrescoReduxArrayField';
 import { useAppDispatch } from '~/ducks/hooks';
-import {
-  type DialogConfig,
-  actionCreators as dialogActions,
-} from '~/ducks/modules/dialogs';
 import type { RootState } from '~/ducks/modules/root';
-import { Button } from '~/lib/legacy-ui/components';
 
 import IssueAnchor from '../../IssueAnchor';
-import NodePanel from './NodePanel';
+import NodePanel, { type NodePanelValue } from './NodePanel';
+
+const createNodePanel = (): NodePanelValue => ({
+  id: uuid(),
+  title: null,
+  dataSource: 'existing',
+  filter: null,
+});
+
+export const handlePanelToggleChange = async (
+  newState: boolean,
+  panels: Array<Record<string, unknown>> | null | undefined,
+  confirm: ReturnType<typeof useDialog>['confirm'],
+  removePanels: () => void,
+) => {
+  if (!panels || panels.length === 0 || newState) {
+    return true;
+  }
+
+  const confirmed = await confirm({
+    title: 'This will delete your panel configuration',
+    description:
+      'This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?',
+    confirmLabel: 'Remove panels',
+    cancelLabel: 'Cancel',
+    intent: 'warning',
+    onConfirm: () => {},
+  });
+
+  if (!confirmed) return false;
+
+  removePanels();
+  return true;
+};
 
 type NodePanelsProps = {
   form: string;
-  createNewPanel: () => void;
   panels?: Array<Record<string, unknown>> | null;
   disabled?: boolean;
 };
-
-const NodePanels = ({
+export const NodePanels = ({
   form,
-  createNewPanel,
   panels = null,
   disabled = false,
   ...rest
 }: NodePanelsProps) => {
   const dispatch = useAppDispatch();
-  const openDialog = useCallback(
-    (dialog: DialogConfig) =>
-      dispatch(dialogActions.openDialog(dialog) as unknown as UnknownAction),
-    [dispatch],
-  );
-
+  const { confirm } = useDialog();
   const handleToggleChange = useCallback(
-    async (newState: boolean) => {
-      if (!panels || panels.length === 0 || newState) {
-        return true;
-      }
-
-      const confirm = await openDialog({
-        type: 'Warning',
-        title: 'This will delete your panel configuration',
-        message:
-          'This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?',
-        confirmLabel: 'Remove panels',
-      });
-
-      if (confirm) {
+    (newState: boolean) =>
+      handlePanelToggleChange(newState, panels, confirm, () => {
         dispatch(change(form, 'panels', null) as unknown as FormAction);
-        return true;
-      }
-
-      return false;
-    },
-    [dispatch, openDialog, panels, form],
+      }),
+    [confirm, dispatch, panels, form],
   );
-
-  const isFull = panels && panels.length === 2;
-
   return (
     <Section
       // eslint-disable-next-line react/jsx-props-no-spreading
       {...rest}
       title="Side Panels"
       toggleable
+      disabled={disabled}
       summary={
-        <p>
+        <Paragraph>
           Use this section to configure up to two side panels on this name
           generator.
-        </p>
+        </Paragraph>
       }
       startExpanded={!!panels}
       handleToggleChange={handleToggleChange}
     >
       <div>
         <IssueAnchor fieldName="panels" description="Panel Configuration" />
-        <Field
+        <FieldArray
           name="panels"
-          component={OrderedList}
-          item={NodePanel}
-          form={form}
+          component={FrescoReduxArrayField}
+          label=""
+          itemComponent={NodePanel}
+          itemTemplate={createNodePanel}
+          getId={(panel: NodePanelValue) => panel.id}
+          itemClasses="bg-accent text-accent-contrast elevation-low"
+          addButtonLabel="Add new panel"
+          emptyStateMessage="No side panels configured."
+          immediateAdd
+          sortable
+          maxItems={2}
+          rerenderOnEveryChange
+          confirmDelete={false}
+          disabled={disabled}
         />
-
-        {!isFull && (
-          <div className="mt-(--space-lg)">
-            <Button
-              onClick={() => createNewPanel()}
-              icon="add"
-              color="sea-green"
-            >
-              Add new panel
-            </Button>
-          </div>
-        )}
       </div>
     </Section>
   );
 };
-
-const mapStateToProps = (state: RootState, props: { form: string }) => {
+const mapStateToProps = (
+  state: RootState,
+  props: {
+    form: string;
+  },
+) => {
   const getFormValues = formValueSelector(props.form);
   const panels = getFormValues(state, 'panels') as
     | Array<Record<string, unknown>>
@@ -117,27 +122,9 @@ const mapStateToProps = (state: RootState, props: { form: string }) => {
     getFormValues(state, 'subject') as Record<string, unknown>,
     'type',
   );
-
   return {
     disabled,
     panels,
   };
 };
-
-const mapDispatchToProps = (
-  dispatch: Dispatch,
-  { form }: { form: string },
-) => ({
-  createNewPanel: bindActionCreators(
-    () =>
-      arrayPush(form, 'panels', {
-        id: uuid(),
-        title: null,
-        dataSource: 'existing',
-        filter: null,
-      }),
-    dispatch,
-  ),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(NodePanels);
+export default connect(mapStateToProps)(NodePanels);

@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
+import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -37,6 +38,11 @@ type CanvasProps = {
     moveNode: (nodeId: string, position: { x: number; y: number }) => void;
     releaseNode: (nodeId: string) => void;
   } | null;
+  /** DnD item type registered while dragging a node, so external drop targets
+   * (e.g. the unplaced-node drawer) can accept it. */
+  nodeDragItemType?: string;
+  /** Keyboard equivalent of dragging a node off the canvas (Delete/Backspace). */
+  onNodeRemove?: ((nodeId: string) => void) | null;
 };
 
 export default function Canvas({
@@ -54,9 +60,12 @@ export default function Canvas({
   allowRepositioning = true,
   disabled = false,
   simulation = null,
+  nodeDragItemType,
+  onNodeRemove = null,
 }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const lastPointerPosRef = useRef<{ x: number; y: number } | null>(null);
+  const dndStore = useDndStoreApi();
 
   // Track canvas dimensions so the store can compute boundary margins
   useEffect(() => {
@@ -166,6 +175,9 @@ export default function Canvas({
             disabled={disabled}
             allowRepositioning={allowRepositioning}
             simulation={simulation}
+            dragItemType={nodeDragItemType}
+            dndStore={nodeDragItemType ? dndStore : null}
+            onRemove={onNodeRemove}
           />
         );
       })}

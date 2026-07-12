@@ -5,7 +5,8 @@ import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
 import { Pattern } from '@codaco/art';
-import { TextArea } from '~/components/Form/Fields';
+import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   updateProtocolDescription,
@@ -68,13 +69,13 @@ const ProtocolInfoCard = () => {
       />
       <div className="from-rich-black/25 via-platinum/50 to-platinum absolute inset-0 size-full bg-linear-to-b via-20% to-45%" />
 
-      <div className="relative z-10 flex flex-col gap-(--space-md) p-(--space-lg)">
+      <div className="relative z-10 flex flex-col gap-5 p-7">
         {/* Top controls row — reserves space above the heading (pushing the
             dark title clear of the gradient's dark top) and houses the
             requires-internet pill, mirroring interviewer's DeckCard. */}
-        <div className="flex min-h-(--space-2xl) items-start justify-end">
+        <div className="flex min-h-14 items-start justify-end">
           {requiresInternet && (
-            <span className="text-neon-carrot border-neon-carrot bg-rich-black/60 font-monospace flex items-center gap-2 rounded-full border px-(--space-sm) py-(--space-xs) text-xs uppercase backdrop-blur-sm">
+            <span className="text-neon-carrot border-neon-carrot bg-rich-black/60 font-monospace flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs uppercase backdrop-blur-sm">
               <Globe className="size-4" />
               Requires Internet
             </span>
@@ -87,7 +88,13 @@ const ProtocolInfoCard = () => {
             newline, and newlines are stripped so the name stays single-line. */}
         <textarea
           rows={1}
-          className="font-heading text-navy-taupe placeholder:text-navy-taupe/50 focus-visible:ring-sea-green field-sizing-content w-full resize-none overflow-hidden rounded-sm border-none bg-transparent p-0 text-4xl leading-tight font-black outline-none focus-visible:ring-2 focus-visible:outline-none"
+          className={headingVariants({
+            level: 'h1',
+            variant: 'page-heading',
+            margin: 'none',
+            className:
+              'text-navy-taupe placeholder:text-navy-taupe/50 focus-visible:ring-sea-green field-sizing-content w-full resize-none overflow-hidden rounded-sm border-none bg-transparent p-0 font-black outline-none focus-visible:ring-2 focus-visible:outline-none',
+          })}
           value={localName}
           onChange={(e) => setLocalName(e.target.value.replace(/\n/g, ' '))}
           onKeyDown={(e) => {
@@ -109,21 +116,20 @@ const ProtocolInfoCard = () => {
         />
 
         <div className="border-platinum-dark/60 focus-within:border-primary overflow-hidden rounded-sm border bg-white/45 backdrop-blur-sm transition-colors">
-          <TextArea
+          <TextAreaField
+            aria-label="Protocol description"
             className="[&>textarea]:field-sizing-content [&>textarea]:max-h-52 [&>textarea]:min-h-24 [&>textarea]:rounded-none [&>textarea]:border-0 [&>textarea]:bg-transparent [&>textarea]:focus:border-0 [&>textarea]:focus:ring-0"
             placeholder="Enter a description for your protocol..."
-            input={{
-              value: localDescription,
-              onChange: (event) => setLocalDescription(event.target.value),
-              onBlur: () => {
-                if (localDescription !== description) {
-                  dispatch(
-                    updateProtocolDescription({
-                      description: localDescription,
-                    }),
-                  );
-                }
-              },
+            value={localDescription}
+            onChange={(value) => setLocalDescription(value ?? '')}
+            onBlur={() => {
+              if (localDescription !== description) {
+                dispatch(
+                  updateProtocolDescription({
+                    description: localDescription,
+                  }),
+                );
+              }
             }}
           />
         </div>

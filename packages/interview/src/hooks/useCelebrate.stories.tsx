@@ -32,7 +32,7 @@ export const Default: Story = {
       <div className="flex flex-col items-center gap-6">
         <div
           ref={ref}
-          className="bg-primary text-primary-foreground flex size-28 items-center justify-center rounded-full text-lg font-semibold"
+          className="bg-primary text-primary-contrast flex size-28 items-center justify-center rounded-full text-lg font-semibold"
         >
           Add
         </div>
@@ -74,7 +74,7 @@ export const ColorPalette: Story = {
       <div className="flex flex-col items-center gap-6">
         <div
           ref={ref}
-          className="bg-primary text-primary-foreground flex size-28 items-center justify-center rounded-full text-lg font-semibold"
+          className="bg-primary text-primary-contrast flex size-28 items-center justify-center rounded-full text-lg font-semibold"
         >
           Add
         </div>
@@ -98,7 +98,7 @@ export const ParticleSizes: Story = {
         <div className="flex flex-col items-center gap-4">
           <div
             ref={smallRef}
-            className="bg-primary text-primary-foreground flex size-20 items-center justify-center rounded-full text-sm font-semibold"
+            className="bg-primary text-primary-contrast flex size-20 items-center justify-center rounded-full text-sm font-semibold"
           >
             Small
           </div>
@@ -109,7 +109,7 @@ export const ParticleSizes: Story = {
         <div className="flex flex-col items-center gap-4">
           <div
             ref={mediumRef}
-            className="bg-primary text-primary-foreground flex size-24 items-center justify-center rounded-full font-semibold"
+            className="bg-primary text-primary-contrast flex size-24 items-center justify-center rounded-full font-semibold"
           >
             Medium
           </div>
@@ -120,7 +120,7 @@ export const ParticleSizes: Story = {
         <div className="flex flex-col items-center gap-4">
           <div
             ref={largeRef}
-            className="bg-primary text-primary-foreground flex size-28 items-center justify-center rounded-full text-lg font-semibold"
+            className="bg-primary text-primary-contrast flex size-28 items-center justify-center rounded-full text-lg font-semibold"
           >
             Large
           </div>
@@ -142,7 +142,7 @@ export const WithoutParticles: Story = {
       <div className="flex flex-col items-center gap-6">
         <div
           ref={ref}
-          className="bg-primary text-primary-foreground flex size-28 items-center justify-center rounded-full text-lg font-semibold"
+          className="bg-primary text-primary-contrast flex size-28 items-center justify-center rounded-full text-lg font-semibold"
         >
           Drop
         </div>

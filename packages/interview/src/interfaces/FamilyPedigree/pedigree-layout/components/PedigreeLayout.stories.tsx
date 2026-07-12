@@ -3,10 +3,15 @@ import type { Meta, StoryFn } from '@storybook/react-vite';
 import { useMemo } from 'react';
 
 import Node from '@codaco/fresco-ui/Node';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
+import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 import PedigreeKey from '../components/PedigreeKey';
 import PedigreeLayout from '../components/PedigreeLayout';
 import { AdoptionBrackets, EgoIcon } from '../components/PedigreeNode';
@@ -121,7 +126,7 @@ function buildNetwork(
     nodes.set(id, {
       _uid: id,
       type: 'person',
-      attributes: {
+      [entityAttributesProperty]: {
         [STORY_LABEL_VAR]: label,
         [STORY_EGO_VAR]: isEgo ?? false,
       },
@@ -132,8 +137,8 @@ function buildNetwork(
   for (let i = 0; i < edgeDefs.length; i++) {
     const e = edgeDefs[i]!;
     const eid = `e${i}`;
-    const attrs: NcEdge['attributes'] = {
-      [STORY_REL_TYPE_VAR]: e.relationshipType,
+    const attrs: NcEdge[typeof entityAttributesProperty] = {
+      [STORY_REL_TYPE_VAR]: [e.relationshipType],
       [STORY_IS_ACTIVE_VAR]: e.isActive,
     };
     if (e.isGestationalCarrier !== undefined) {
@@ -144,7 +149,7 @@ function buildNetwork(
       type: 'relationship',
       from: e.source,
       to: e.target,
-      attributes: attrs,
+      [entityAttributesProperty]: attrs,
     });
   }
 
@@ -1896,7 +1901,9 @@ type NodeRenderer = (
 
 function isNodeAdopted(nodeId: string, edges: Map<string, NcEdge>): boolean {
   return [...edges.values()].some(
-    (e) => e.to === nodeId && e.attributes[STORY_REL_TYPE_VAR] === 'adoptive',
+    (e) =>
+      e.to === nodeId &&
+      getEdgeRelationshipType(e, STORY_REL_TYPE_VAR) === 'adoptive',
   );
 }
 
@@ -1923,14 +1930,18 @@ const NODE_MEASUREMENT_COMPONENTS: Record<string, React.ReactElement> = {
 
 const NODE_RENDERERS: Record<string, NodeRenderer> = {
   'Colored Node': (node, edges) => {
-    const label = node.attributes[STORY_LABEL_VAR] as string | undefined;
+    const label = node[entityAttributesProperty][STORY_LABEL_VAR] as
+      | string
+      | undefined;
     const nodeEl = (
       <Node
         color="node-color-seq-1"
-        label={!node.attributes[STORY_EGO_VAR] ? (label ?? '') : ''}
+        label={
+          !node[entityAttributesProperty][STORY_EGO_VAR] ? (label ?? '') : ''
+        }
         size="sm"
       >
-        {node.attributes[STORY_EGO_VAR] === true && (
+        {node[entityAttributesProperty][STORY_EGO_VAR] === true && (
           <EgoIcon className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-1/2" />
         )}
       </Node>
@@ -1941,15 +1952,19 @@ const NODE_RENDERERS: Record<string, NodeRenderer> = {
     return nodeEl;
   },
   'Labeled Node': (node, edges) => {
-    const label = node.attributes[STORY_LABEL_VAR] as string | undefined;
+    const label = node[entityAttributesProperty][STORY_LABEL_VAR] as
+      | string
+      | undefined;
     const nodeEl = (
       <Node
         className="shrink-0"
         color="node-color-seq-1"
-        label={!node.attributes[STORY_EGO_VAR] ? (label ?? '') : ''}
+        label={
+          !node[entityAttributesProperty][STORY_EGO_VAR] ? (label ?? '') : ''
+        }
         size="sm"
       >
-        {node.attributes[STORY_EGO_VAR] === true && (
+        {node[entityAttributesProperty][STORY_EGO_VAR] === true && (
           <EgoIcon className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-1/2" />
         )}
       </Node>
@@ -1969,18 +1984,22 @@ const NODE_RENDERERS: Record<string, NodeRenderer> = {
   },
   'Responsive': (node, _edges) => (
     <div
-      className={`rounded-full ${node.attributes[STORY_EGO_VAR] === true ? 'bg-node-2' : 'bg-node-1'}`}
+      className={`rounded-full ${node[entityAttributesProperty][STORY_EGO_VAR] === true ? 'bg-node-2' : 'bg-node-1'}`}
       style={{
         width: 'clamp(24px, 5vw, 80px)',
         height: 'clamp(24px, 5vw, 80px)',
       }}
-      title={node.attributes[STORY_LABEL_VAR] as string | undefined}
+      title={
+        node[entityAttributesProperty][STORY_LABEL_VAR] as string | undefined
+      }
     />
   ),
   'Dot': (node, _edges) => (
     <div
-      className={`m-4 size-4 rounded-full ${node.attributes[STORY_EGO_VAR] === true ? 'bg-mustard' : 'bg-white'}`}
-      title={node.attributes[STORY_LABEL_VAR] as string | undefined}
+      className={`m-4 size-4 rounded-full ${node[entityAttributesProperty][STORY_EGO_VAR] === true ? 'bg-mustard' : 'bg-white'}`}
+      title={
+        node[entityAttributesProperty][STORY_LABEL_VAR] as string | undefined
+      }
     />
   ),
 };

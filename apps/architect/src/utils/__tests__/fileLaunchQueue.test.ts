@@ -1,22 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const mockDispatch = vi.fn();
-const mockGeneralErrorDialog = vi.fn((title: string, message: string) => ({
-  title,
-  message,
-}));
-
-// The failure path lazily imports the store and dialog action; mock them so the
-// app graph isn't pulled into this unit test and the error surface is
-// observable.
-vi.mock('~/ducks/store', () => ({
-  store: { dispatch: (action: unknown) => mockDispatch(action) },
-}));
-vi.mock('~/ducks/modules/userActions/dialogs', () => ({
-  generalErrorDialog: (title: string, message: string) =>
-    mockGeneralErrorDialog(title, message),
-}));
-
 type Handle = { getFile: () => Promise<File> };
 
 // The module registers the launchQueue consumer on init and holds module
@@ -49,13 +32,11 @@ const loadModule = async () => {
     consumer?.({ files: handles });
     await settle();
   };
-  return { mod, launch, launchHandles };
+  return { mod, launch, launchHandles, settle };
 };
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  mockDispatch.mockClear();
-  mockGeneralErrorDialog.mockClear();
 });
 
 describe('fileLaunchQueue', () => {
@@ -94,10 +75,37 @@ describe('fileLaunchQueue', () => {
     const { mod, launch } = await loadModule();
     await launch('a.netcanvas', 'b.netcanvas');
 
+    expect(mod.hasPendingLaunchFiles()).toBe(true);
     const taken = mod.takeLaunchFiles();
     expect(taken.map((f) => f.name)).toEqual(['a.netcanvas', 'b.netcanvas']);
     expect(mod.getLaunchFiles()).toEqual([]);
+    expect(mod.hasPendingLaunchFiles()).toBe(false);
     expect(mod.takeLaunchFiles()).toEqual([]);
+  });
+
+  it('reports pending launch files while OS handles are still being read', async () => {
+    const { mod, launchHandles, settle } = await loadModule();
+    let resolveFile: (file: File) => void = () => {};
+
+    await launchHandles({
+      getFile: () =>
+        new Promise<File>((resolve) => {
+          resolveFile = resolve;
+        }),
+    });
+
+    expect(mod.hasPendingLaunchFiles()).toBe(true);
+
+    resolveFile(new File(['zip'], 'pending.netcanvas'));
+    await settle();
+
+    expect(mod.getLaunchFiles().map((f) => f.name)).toEqual([
+      'pending.netcanvas',
+    ]);
+    expect(mod.hasPendingLaunchFiles()).toBe(true);
+
+    mod.takeLaunchFiles();
+    expect(mod.hasPendingLaunchFiles()).toBe(false);
   });
 
   it('keeps the snapshot identity stable between changes', async () => {
@@ -121,16 +129,16 @@ describe('fileLaunchQueue', () => {
   });
 
   it('surfaces a user-facing error for failed handles', async () => {
-    const { launchHandles } = await loadModule();
+    const { mod, launchHandles } = await loadModule();
+    const listener = vi.fn();
+    mod.subscribeLaunchReadFailures(listener);
 
     await launchHandles({
       getFile: () => Promise.reject(new Error('volume unmounted')),
     });
 
-    expect(mockGeneralErrorDialog).toHaveBeenCalledWith(
-      'Could not open file',
-      expect.stringContaining('could not be read'),
-    );
-    expect(mockDispatch).toHaveBeenCalled();
+    expect(listener).toHaveBeenCalled();
+    expect(mod.takeLaunchReadFailures()).toEqual([1]);
+    expect(mod.takeLaunchReadFailures()).toEqual([]);
   });
 });

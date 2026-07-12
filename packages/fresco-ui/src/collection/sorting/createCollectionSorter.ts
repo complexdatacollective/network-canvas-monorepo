@@ -55,7 +55,7 @@ const asc =
     }
 
     return (
-      -Number(firstValue < secondValue) || +Number(firstValue > secondValue)
+      -Number(firstValue < secondValue) || Number(firstValue > secondValue)
     );
   };
 
@@ -176,13 +176,13 @@ const dateFunction =
     if (direction === 'asc') {
       return (
         -Number(firstValueDate < secondValueDate) ||
-        +Number(firstValueDate > secondValueDate)
+        Number(firstValueDate > secondValueDate)
       );
     }
 
     return (
       -Number(firstValueDate > secondValueDate) ||
-      +Number(firstValueDate < secondValueDate)
+      Number(firstValueDate < secondValueDate)
     );
   };
 

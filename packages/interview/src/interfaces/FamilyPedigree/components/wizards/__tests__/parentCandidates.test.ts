@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import type {
   FamilyEdge,
@@ -35,7 +36,7 @@ function edge(from: string, to: string, rel: string): [string, NcEdge] {
       type: 'family',
       from,
       to,
-      attributes: { rel: [rel], isActive: true },
+      [entityAttributesProperty]: { rel: [rel], isActive: true },
     },
   ];
 }
@@ -168,7 +169,10 @@ describe('socialParentCandidates', () => {
         'steve',
         'donor',
         'otherchild',
-      ].map((id) => [id, { _uid: id, type: 'person', attributes: {} }]),
+      ].map((id) => [
+        id,
+        { _uid: id, type: 'person', [entityAttributesProperty]: {} },
+      ]),
     );
     const result = socialParentCandidates(
       'ego',
@@ -188,7 +192,7 @@ describe('socialParentCandidates', () => {
     const nodes = new Map(
       ['ego', 'mum', 'dad', 'grandma', 'kid', 'steve', 'spouse'].map((id) => [
         id,
-        { _uid: id, type: 'person', attributes: {} },
+        { _uid: id, type: 'person', [entityAttributesProperty]: {} },
       ]),
     );
     const edges = new Map<string, NcEdge>([
@@ -209,7 +213,10 @@ describe('partnerCandidates', () => {
   function makeNodes(): Map<string, NcNode> {
     return new Map(
       ['ego', 'mum', 'dad', 'sib', 'kid', 'uncle', 'cousin', 'grandma'].map(
-        (id) => [id, { _uid: id, type: 'person', attributes: {} }],
+        (id) => [
+          id,
+          { _uid: id, type: 'person', [entityAttributesProperty]: {} },
+        ],
       ),
     );
   }
@@ -260,7 +267,7 @@ describe('nominatedGameteRoles', () => {
         from,
         to,
         // gameteRole now lives as a network edge attribute, not a separate field
-        attributes: {
+        [entityAttributesProperty]: {
           rel: ['biological'],
           isActive: true,
           gameteRole,

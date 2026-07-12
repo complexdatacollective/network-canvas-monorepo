@@ -17,7 +17,7 @@ const labelClasses = 'inline-block text-current truncate max-w-xs';
 const Breadcrumb = ({ items }: BreadcrumbProps) => (
   <nav
     aria-label="Breadcrumb"
-    className="flex min-w-0 flex-1 items-center gap-(--space-sm)"
+    className="flex min-w-0 flex-1 items-center gap-2.5"
   >
     {items.map((item, index) => (
       <Fragment key={item.label}>

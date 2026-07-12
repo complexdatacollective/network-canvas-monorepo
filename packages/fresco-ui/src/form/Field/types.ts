@@ -206,9 +206,12 @@ export type InjectedFieldProps = {
    * standalone use (a native blur passed by a consumer outside Field).
    */
   'onBlur'?: (e: React.FocusEvent) => void;
+  'onFocus'?: (e: React.FocusEvent) => void;
+  'aria-label'?: string;
   'aria-required'?: boolean;
   'aria-invalid'?: boolean;
   'aria-describedby'?: string;
+  'aria-labelledby'?: string;
   'aria-disabled'?: boolean;
   'aria-readonly'?: boolean;
   'disabled'?: boolean;

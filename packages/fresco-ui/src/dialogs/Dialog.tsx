@@ -11,7 +11,7 @@ import { ScrollArea } from '../ScrollArea';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
-import DialogPopup from './DialogPopup';
+import DialogPopup, { type DialogSize } from './DialogPopup';
 
 // TODO: These seem like they belong in a shared location.
 export const STATE_VARIANTS = [
@@ -30,8 +30,17 @@ export type DialogProps = {
   footer?: React.ReactNode;
   open?: boolean;
   children?: ReactNode;
+  /** Supplementary controls rendered below the title in the fixed header. */
+  header?: ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   layoutId?: string;
+  /**
+   * Semantic sizing based on dialog use cases. Use `className` only when a
+   * dialog has exceptional requirements not covered by these presets.
+   * @default 'readable'
+   */
+  size?: DialogSize;
   /**
    * When false, the dialog cannot be dismissed: the close button is hidden,
    * and clicks outside / Escape no longer trigger `closeDialog`. Use this for
@@ -58,11 +67,13 @@ export default function Dialog({
   title,
   description,
   children,
+  header,
   closeDialog,
   accent,
   footer,
   open = false,
   className,
+  size = 'readable',
   dismissible = true,
   ...rest
 }: DialogProps) {
@@ -77,6 +88,7 @@ export default function Dialog({
     >
       <DialogPopup
         key="dialog-popup"
+        size={size}
         className={cx(
           // Accent overrides the primary hue so that nested primary buttons inherit color.
           // Override the primitives (--primary/--primary-contrast) because @theme inline
@@ -93,14 +105,19 @@ export default function Dialog({
         {...rest}
       >
         <DialogHeader>
-          <BaseDialog.Title render={<Heading level="h2" margin="none" />}>
-            {title}
-          </BaseDialog.Title>
+          <div className="min-w-0 flex-1">
+            <BaseDialog.Title render={<Heading level="h2" margin="none" />}>
+              {title}
+            </BaseDialog.Title>
+            {header && <div className="mt-4">{header}</div>}
+          </div>
           {dismissible && <BaseDialog.Close render={<CloseButton />} />}
         </DialogHeader>
         <DialogContent>
           {description && (
-            <BaseDialog.Description render={<Paragraph />}>
+            <BaseDialog.Description
+              render={<Paragraph margin="none" className="max-w-[75ch]" />}
+            >
               {description}
             </BaseDialog.Description>
           )}
@@ -118,7 +135,7 @@ const DialogHeader = ({ children }: { children: React.ReactNode }) => {
   return (
     <div
       className={cx(
-        'mb-4 flex items-center justify-between gap-2',
+        'mb-4 flex shrink-0 items-start justify-between gap-2',
         surfaceSpacingVariants({ section: 'header' }),
       )}
     >
@@ -153,7 +170,7 @@ const DialogFooter = ({
   return (
     <footer
       className={cx(
-        'phone-landscape:flex-row phone-landscape:justify-end phone-landscape:[&>*:first-child:not(:only-child)]:mr-auto mt-4 flex flex-col gap-2',
+        'mt-4 flex shrink-0 flex-col gap-2 @min-[30rem]:flex-row @min-[30rem]:justify-end @min-[30rem]:[&>*:first-child:not(:only-child)]:mr-auto',
         children && 'mt-6',
         surfaceSpacingVariants({ section: 'footer' }),
         className,

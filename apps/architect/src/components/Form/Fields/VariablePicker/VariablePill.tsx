@@ -1,15 +1,20 @@
 import { get } from 'es-toolkit/compat';
+import { Check, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useMemo, useRef, useState } from 'react';
 
+import { IconButton } from '@codaco/fresco-ui/Button';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import type { VariableType } from '@codaco/protocol-validation';
-import TextInput from '~/components/Form/Fields/Text';
-import Tooltip from '~/components/NewComponents/Tooltip';
-import { getIconForType } from '~/config/variables';
+import { getColorForType, getIconForType } from '~/config/variables';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableByUUID } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
-import { Icon } from '~/lib/legacy-ui/components';
 import {
   getVariablesForSubject,
   makeGetVariableWithEntity,
@@ -19,18 +24,6 @@ import { validations } from '~/utils/validations';
 
 const EDIT_COMPLETE_BUTTON_ID = 'editCompleteButton';
 
-const ICON_BACKGROUND_BY_TYPE: Record<VariableType, string> = {
-  number: 'bg-paradise-pink',
-  text: 'bg-cerulean-blue',
-  boolean: 'bg-neon-carrot',
-  ordinal: 'bg-sea-green',
-  categorical: 'bg-mustard',
-  scalar: 'bg-kiwi',
-  datetime: 'bg-tomato',
-  layout: 'bg-purple-pizazz',
-  location: 'bg-slate-blue-dark',
-};
-
 type BaseVariablePillProps = {
   type: VariableType;
   children: React.ReactNode;
@@ -38,39 +31,50 @@ type BaseVariablePillProps = {
   summary?: boolean;
 };
 
+type VariablePillStyle = React.CSSProperties & {
+  '--variable-pill-accent': string;
+  '--variable-pill-width'?: string;
+};
+
+const DARK_COLOR_SUFFIX = '-dark';
+
+const getRawColorToken = (color: string) =>
+  color.endsWith(DARK_COLOR_SUFFIX)
+    ? `${color.slice(0, -DARK_COLOR_SUFFIX.length)}--dark`
+    : color;
+
 const BaseVariablePill = React.forwardRef<
   HTMLDivElement,
   BaseVariablePillProps
 >(({ type, children, width, summary }, ref) => {
   const icon = useMemo(() => getIconForType(type), [type]);
+  const accentColor = getRawColorToken(getColorForType(type));
+  const style: VariablePillStyle = {
+    '--variable-pill-accent': `oklch(var(--${accentColor}))`,
+  };
+
+  if (width) {
+    style['--variable-pill-width'] = width;
+  }
 
   return (
     // `variable-pill` marker — hook for two remaining same-area cascades:
     // `VariablePicker.tsx` (mb on nested pills) and `PreviewRule.tsx` (zoom).
     <motion.div
       className={cx(
-        'variable-pill inline-flex h-(--space-2xl) w-(--variable-pill-width,20rem) flex-nowrap overflow-hidden rounded-full shadow-[0_0_var(--space-sm)_var(--variable-pill-shadow-color,transparent)]',
-        summary
-          ? 'm-2 max-w-[24rem] zoom-[0.8] bg-white [--variable-pill-shadow-color:var(--color-platinum-dark)]'
-          : 'bg-platinum',
+        'variable-pill variable-pill-effect-border effect-shadow-sm font-monospace inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap rounded-full p-0.5 text-base',
+        summary && 'm-2 max-w-[24rem] zoom-[0.8]',
       )}
-      style={
-        width
-          ? ({ '--variable-pill-width': width } as React.CSSProperties)
-          : undefined
-      }
+      style={style}
       ref={ref}
     >
-      <div
-        className={cx(
-          'flex shrink-0 basis-(--space-2xl) items-center justify-center [&_.icon]:w-(--space-lg)',
-          ICON_BACKGROUND_BY_TYPE[type],
-        )}
-      >
-        <img className="icon" src={icon} alt={type} />
-      </div>
-      <div className="flex w-[calc(100%-var(--space-2xl))] flex-1 items-center justify-between">
-        {children}
+      <div className="text-text flex h-full w-full overflow-hidden rounded-[inherit] bg-white">
+        <div className="flex shrink-0 basis-12 items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
+          <img className="icon opacity-80" src={icon} alt={type} />
+        </div>
+        <div className="flex w-[calc(100%-3rem)] flex-1 items-center justify-between">
+          {children}
+        </div>
       </div>
     </motion.div>
   );
@@ -86,9 +90,9 @@ export const SimpleVariablePill = ({
 }: SimpleVariablePillProps) => (
   // eslint-disable-next-line react/jsx-props-no-spreading
   <BaseVariablePill {...props}>
-    <motion.h4 className="text-input-foreground m-0 shrink-0 grow px-(--space-md) py-(--space-sm) break-keep">
+    <motion.span className="m-0 shrink-0 grow px-6 break-keep">
       {label}
-    </motion.h4>
+    </motion.span>
   </BaseVariablePill>
 );
 
@@ -133,7 +137,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 
   const onEditComplete = () => {
     const action = updateVariableByUUID(uuid, { name: newName }, true);
-    dispatch(action);
+    void dispatch(action);
     setValidation(null);
     setIsEditing(false);
   };
@@ -157,17 +161,15 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
     [existingVariables, uuid],
   );
 
-  const handleUpdateName = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const {
-      target: { value },
-    } = event;
-    setNewName(value);
+  const handleUpdateName = (value: string | undefined) => {
+    const nextValue = value ?? '';
+    setNewName(nextValue);
 
     const required = validations.required('You must enter a variable name')(
-      value,
+      nextValue,
     );
-    const unique = validations.uniqueByList(existingVariableNames)(value);
-    const allowed = validations.allowedVariableName()(value);
+    const unique = validations.uniqueByList(existingVariableNames)(nextValue);
+    const allowed = validations.allowedVariableName()(nextValue);
 
     const validationResult = required || unique || allowed || null;
     setValidation(validationResult);
@@ -199,72 +201,81 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <Tooltip
-              content={validation}
-              open={!!validation}
-              side="bottom"
-              variant="error"
-            >
-              <div className="w-full flex-auto">
-                <TextInput
-                  autoFocus
-                  placeholder="Enter a new variable name..."
-                  input={{
-                    value: newName,
-                    onChange: handleUpdateName,
-                    onBlur: handleBlur,
-                    onKeyDown: handleKeyDown,
-                  }}
-                  adornmentRight={
-                    <motion.div className="relative right-(--space-md) flex shrink-0 grow-0">
-                      <motion.div
-                        title="Finished"
-                        aria-label="Finished"
-                        initial={{ x: '100%', opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.4 }}
-                        role="button"
-                        tabIndex={0} // Needed to allow focus
-                        id={EDIT_COMPLETE_BUTTON_ID}
-                        onClick={onEditComplete}
-                        className={cx(
-                          'cursor-pointer [&_.icon]:size-(--space-md)',
-                          !canSubmit && 'cursor-not-allowed grayscale',
-                        )}
-                      >
-                        <Icon name="tick" className="text-sea-green" />
-                      </motion.div>
-                      <motion.div
-                        title="Cancel"
-                        aria-label="Cancel"
-                        initial={{ x: '100%', opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.6 }}
-                        role="button"
-                        tabIndex={0} // Needed to allow focus
-                        onClick={handleCancel}
-                        className="ml-(--space-sm) cursor-pointer [&_.icon]:size-(--space-md)"
-                      >
-                        <Icon name="cross" className="text-tomato" />
-                      </motion.div>
-                    </motion.div>
-                  }
-                />
-              </div>
+            <Tooltip open={!!validation}>
+              <TooltipTrigger
+                render={
+                  <div className="w-full flex-auto">
+                    <InputField
+                      autoFocus
+                      placeholder="Enter a new variable name..."
+                      value={newName}
+                      onChange={handleUpdateName}
+                      onBlur={handleBlur}
+                      onKeyDown={handleKeyDown}
+                      suffixComponent={
+                        <motion.div className="flex shrink-0 grow-0">
+                          <motion.div
+                            aria-label="Finished"
+                            initial={{ x: '100%', opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.4 }}
+                          >
+                            <IconButton
+                              id={EDIT_COMPLETE_BUTTON_ID}
+                              aria-label="Finished"
+                              title="Finished"
+                              size="sm"
+                              variant="text"
+                              color="success"
+                              disabled={!canSubmit}
+                              onClick={onEditComplete}
+                              icon={<Check aria-hidden />}
+                            />
+                          </motion.div>
+                          <motion.div
+                            initial={{ x: '100%', opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.6 }}
+                            className="ml-2.5"
+                          >
+                            <IconButton
+                              aria-label="Cancel"
+                              title="Cancel"
+                              size="sm"
+                              variant="text"
+                              color="destructive"
+                              onClick={handleCancel}
+                              icon={<X aria-hidden />}
+                            />
+                          </motion.div>
+                        </motion.div>
+                      }
+                    />
+                  </div>
+                }
+              />
+              <TooltipContent
+                side="bottom"
+                className="bg-destructive text-destructive-contrast"
+              >
+                {validation}
+              </TooltipContent>
             </Tooltip>
           </motion.div>
         ) : (
-          <motion.h4
+          <motion.button
+            type="button"
             key="label"
-            className="text-input-foreground m-0 w-full shrink-0 grow cursor-text overflow-hidden px-(--space-md) py-(--space-sm) break-keep text-ellipsis whitespace-nowrap"
+            className="focusable m-0 w-full shrink-0 grow cursor-text overflow-hidden border-0 bg-transparent px-6 text-left break-keep text-ellipsis whitespace-nowrap"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsEditing(true)}
             title="Click to rename this variable..."
+            aria-label={`Rename variable ${name ?? ''}`}
           >
             {name}
-          </motion.h4>
+          </motion.button>
         )}
       </AnimatePresence>
     </BaseVariablePill>

@@ -15,6 +15,7 @@ import type { ThunkDispatch } from 'redux-thunk';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
+  entityAttributesProperty,
   entityPrimaryKeyProperty,
   type VariableValue,
 } from '@codaco/shared-consts';
@@ -178,8 +179,9 @@ export default function GeospatialInterface({
   );
 
   const initialSelectionValue: string | undefined =
-    currentPrompt?.variable && stageNodes[navState.activeIndex]?.attributes
-      ? (stageNodes[navState.activeIndex]?.attributes?.[
+    currentPrompt?.variable &&
+    stageNodes[navState.activeIndex]?.[entityAttributesProperty]
+      ? (stageNodes[navState.activeIndex]?.[entityAttributesProperty]?.[
           currentPrompt.variable
         ] as string | undefined)
       : undefined;
@@ -354,7 +356,9 @@ export default function GeospatialInterface({
   // Update navigation button based on selection
   useEffect(() => {
     const readyForNext =
-      !!stageNodes[navState.activeIndex]?.attributes?.[currentPrompt.variable!];
+      !!stageNodes[navState.activeIndex]?.[entityAttributesProperty]?.[
+        currentPrompt.variable!
+      ];
     setIsReadyForNext(readyForNext);
   }, [
     currentPrompt.variable,
@@ -501,11 +505,9 @@ export default function GeospatialInterface({
           />
         </MotionSurface>
 
-        <CollapsablePrompts
-          currentPromptIndex={promptIndex}
-          dragConstraints={dragSafeRef}
-          className="flex flex-col items-center gap-4"
-        >
+        {/* The prompt is the participant's core task on this stage, so it is
+            not collapsible. */}
+        <CollapsablePrompts dragConstraints={dragSafeRef} collapsible={false}>
           <AnimatePresence mode="wait">
             <motion.div
               key={stageNodes[navState.activeIndex]?.[entityPrimaryKeyProperty]}
@@ -514,7 +516,6 @@ export default function GeospatialInterface({
               initial="initial"
               animate="animate"
               exit="exit"
-              className="[--base-node-size:calc(var(--nc-base-font-size)*6.6)]"
             >
               {stageNodes[navState.activeIndex] && (
                 <Node
