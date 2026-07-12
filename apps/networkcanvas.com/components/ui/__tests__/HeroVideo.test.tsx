@@ -1,4 +1,5 @@
 import { render } from '@testing-library/react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HeroVideo } from '../HeroVideo';
@@ -14,7 +15,14 @@ describe('HeroVideo', () => {
     motionPreference.reduced = false;
   });
 
-  it('autoplays the muted inline video for normal motion', () => {
+  it('renders the poster before client effects run', () => {
+    const markup = renderToStaticMarkup(<HeroVideo />);
+
+    expect(markup).not.toContain('<video');
+    expect(markup).toContain('src="/images/hero-video-poster.jpg"');
+  });
+
+  it('autoplays the muted inline video after mounting for normal motion', () => {
     const { container } = render(<HeroVideo />);
     const video = container.querySelector('video');
 

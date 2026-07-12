@@ -2,18 +2,24 @@
 
 import { useReducedMotion } from 'motion/react';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
 
 const mediaClasses = 'absolute inset-0 size-full object-cover';
 
 export function HeroVideo() {
   const shouldReduceMotion = useReducedMotion();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   return (
     <div
       aria-hidden="true"
       className="bg-cyber-grape relative aspect-4/3 w-full overflow-hidden rounded-[1.75rem] shadow-2xl"
     >
-      {shouldReduceMotion === false ? (
+      {hasMounted && shouldReduceMotion === false ? (
         <video
           aria-hidden="true"
           autoPlay
