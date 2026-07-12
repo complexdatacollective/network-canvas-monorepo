@@ -564,6 +564,7 @@ export function SettingsDialog({
               <UnconnectedField
                 name="syntheticCount"
                 label="Number of sessions"
+                data-testid="synthetic-count"
                 component={InputField}
                 type="number"
                 min={1}
@@ -609,6 +610,7 @@ export function SettingsDialog({
                     !selectedProtocolHash || isGenerating || noProtocols
                   }
                   icon={<FlaskConical className="size-4" aria-hidden />}
+                  data-testid="synthetic-generate"
                 >
                   {isGenerating ? 'Generating…' : 'Generate'}
                 </Button>
