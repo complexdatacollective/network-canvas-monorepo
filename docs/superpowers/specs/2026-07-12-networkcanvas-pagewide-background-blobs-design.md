@@ -30,9 +30,12 @@ consistent coverage without repeating the component per section.
 ## Accessibility and Motion
 
 The layer will use `aria-hidden`, disable pointer events, and remain behind all
-interactive content. Existing reduced-motion handling in `@codaco/art` will be
-preserved; the page will not introduce a separate animation loop or motion
-preference implementation.
+interactive content. `BackgroundBlobs` does not currently stop its canvas loop
+for reduced motion, so the page-level component will render the blob canvas only
+after normal motion is explicitly confirmed. Server rendering, the first client
+render, and reduced-motion mode will use a static token-colored radial-gradient
+fallback at the same opacity. This keeps hydration stable and the decorative
+background visible without adding a shared-library release change.
 
 ## Testing and Verification
 
