@@ -13,6 +13,7 @@ type RichTextFieldProps = {
   input: WrappedFieldInputProps;
   meta?: Partial<WrappedFieldMetaProps>;
   label?: string | null;
+  labelHidden?: boolean;
   placeholder?: string;
   autoFocus?: boolean;
   inline?: boolean;
@@ -39,6 +40,7 @@ const RichTextField = ({
   input,
   meta = {},
   label = null,
+  labelHidden = false,
   placeholder,
   autoFocus = false,
   inline = false,
@@ -64,6 +66,7 @@ const RichTextField = ({
       meta={meta}
       fieldComponent={FrescoRichTextEditorField}
       label={label ?? input.name ?? ''}
+      labelHidden={labelHidden}
       placeholder={placeholder}
       autoFocus={autoFocus}
       className={className ?? undefined}

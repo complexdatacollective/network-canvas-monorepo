@@ -25,6 +25,7 @@ type Option = {
 type NativeSelectProps = {
   className?: string;
   label?: string | null;
+  labelHidden?: boolean;
   options?: Option[];
   placeholder?: string;
   onCreateOption?: (value: string) => Promise<void> | void;
@@ -62,6 +63,7 @@ const asStringValue = (value: unknown) => {
 
 const NativeSelect = ({
   label = null,
+  labelHidden = false,
   options = [],
   placeholder = 'Select an option',
   className = '',
@@ -267,6 +269,7 @@ const NativeSelect = ({
               component={FrescoNativeSelectField}
               name={input.name}
               label={label ?? input.name}
+              labelHidden={labelHidden}
               options={selectOptions}
               value={input.value ?? ''}
               onChange={handleSelectChange}

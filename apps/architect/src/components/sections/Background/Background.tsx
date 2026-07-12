@@ -122,6 +122,7 @@ class Background extends PureComponent<BackgroundProps> {
               validation={{ required: true }}
               componentProps={{
                 label: 'Background image',
+                labelHidden: true,
               }}
             />
           </Row>

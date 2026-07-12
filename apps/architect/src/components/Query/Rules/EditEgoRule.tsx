@@ -84,6 +84,7 @@ const EditEgoRule = ({
         <RuleField
           component={FrescoNativeSelectField}
           label="Ego variable"
+          labelHidden
           name="attribute"
           options={variablesAsOptions}
           onChange={handleRuleChange}
@@ -96,6 +97,7 @@ const EditEgoRule = ({
           <RuleField
             component={FrescoNativeSelectField}
             label="Operator"
+            labelHidden
             name="operator"
             options={operatorOptions}
             onChange={handleRuleChange}
@@ -113,6 +115,7 @@ const EditEgoRule = ({
             value={optionsWithDefaults.value}
             options={variableOptions}
             validation={{ required: true }}
+            labelHidden
           />
         </Section>
       )}
@@ -125,6 +128,7 @@ const EditEgoRule = ({
             value={optionsWithDefaults.value}
             options={variableOptions}
             validation={{ required: true, validRegExp: true }}
+            labelHidden
           />
         </Section>
       )}

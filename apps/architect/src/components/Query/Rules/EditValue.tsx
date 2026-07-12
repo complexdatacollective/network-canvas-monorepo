@@ -112,6 +112,12 @@ type EditValueProps = {
   variableType?: string;
   placeholder?: string;
   validation?: Record<string, unknown>;
+  /**
+   * Visually hide the value field's label while keeping it as the control's
+   * accessible name. Forwarded to the underlying RuleField. Used when the
+   * surrounding Section heading already names the value.
+   */
+  labelHidden?: boolean;
 };
 
 const EditValue = ({

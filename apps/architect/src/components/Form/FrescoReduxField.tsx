@@ -10,6 +10,7 @@ type FrescoFieldComponent = ComponentType<Record<string, unknown>>;
 type FrescoReduxFieldProps = WrappedFieldProps & {
   fieldComponent: FrescoFieldComponent;
   label?: string;
+  labelHidden?: boolean;
   hint?: ReactNode;
   inline?: boolean;
   disabled?: boolean;
@@ -100,6 +101,7 @@ const FrescoReduxFieldBase = ({
   meta,
   fieldComponent,
   label,
+  labelHidden,
   hint,
   inline,
   disabled,
@@ -129,6 +131,7 @@ const FrescoReduxFieldBase = ({
       component={fieldComponent}
       name={input.name ?? undefined}
       label={label ?? input.name ?? ''}
+      labelHidden={labelHidden}
       hint={hint}
       inline={inline}
       disabled={disabled}

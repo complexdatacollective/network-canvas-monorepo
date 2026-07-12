@@ -159,6 +159,7 @@ export default function NewVariableWindow({
           <Field
             name="name"
             label="Variable name"
+            labelHidden
             component={FrescoReduxField}
             placeholder="e.g. Nickname"
             fieldComponent={FrescoInputField}
@@ -174,6 +175,7 @@ export default function NewVariableWindow({
           <ValidatedField
             name="type"
             label="Variable type"
+            labelHidden
             component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{

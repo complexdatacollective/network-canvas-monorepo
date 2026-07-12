@@ -188,7 +188,7 @@ const MapOptions = ({
           component={MapSelection as React.ComponentType}
           validation={{ required: requiredMapView }}
           componentProps={{
-            label: 'Initial Map View',
+            label: 'Map center and zoom',
           }}
         />
       </Section>

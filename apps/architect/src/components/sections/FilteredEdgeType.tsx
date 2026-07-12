@@ -52,6 +52,8 @@ const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
           parse={(value) => ({ type: value, entity: 'edge' })}
           format={(value) => get(value, 'type')}
           validation={{ required: true }}
+          label="Edge type"
+          labelHidden
         />
       </Row>
       <Filter />

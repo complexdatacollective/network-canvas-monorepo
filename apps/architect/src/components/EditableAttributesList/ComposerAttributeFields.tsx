@@ -98,6 +98,7 @@ const ComposerAttributeFields = ({
         <ValidatedField
           name="label"
           label="Label"
+          labelHidden
           component={FrescoReduxField}
           validation={{}}
           componentProps={{
@@ -125,6 +126,7 @@ const ComposerAttributeFields = ({
         <ValidatedField
           name="component"
           label="Input control"
+          labelHidden
           component={FrescoReduxField}
           validation={{ required: true }}
           componentProps={{

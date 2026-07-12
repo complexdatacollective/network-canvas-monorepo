@@ -45,6 +45,7 @@ const DiseaseFields = ({ nodeType }: DiseaseFieldsProps) => {
           <ValidatedField
             name="label"
             label="Disease label"
+            labelHidden
             component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{
@@ -94,6 +95,7 @@ const DiseaseFields = ({ nodeType }: DiseaseFieldsProps) => {
           <ValidatedField
             name="inheritancePattern"
             label="Inheritance pattern"
+            labelHidden
             component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{

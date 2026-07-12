@@ -51,6 +51,7 @@ const ItemEditor = ({ type, allowSize, handleChangeType }: ItemEditorProps) => (
           componentProps={{
             fieldComponent: FrescoRadioGroupField,
             label: 'Content type',
+            labelHidden: true,
             options: typeOptions,
           }}
           onChange={
@@ -68,6 +69,8 @@ const ItemEditor = ({ type, allowSize, handleChangeType }: ItemEditorProps) => (
           <ValidatedField
             name="content"
             component={getInputComponent(type)}
+            label="Content"
+            labelHidden
             validation={{ required: true }}
           />
         </Row>
@@ -89,6 +92,7 @@ const ItemEditor = ({ type, allowSize, handleChangeType }: ItemEditorProps) => (
             componentProps={{
               fieldComponent: FrescoRadioGroupField,
               label: 'Display size',
+              labelHidden: true,
               options: sizeOptions,
               orientation: 'horizontal',
             }}

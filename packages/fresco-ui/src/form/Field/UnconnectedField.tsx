@@ -23,6 +23,11 @@ type ManagedKeys = 'id' | 'aria-required' | 'aria-describedby';
 type FieldOwnProps<C extends ValidFieldComponent> = {
   name: string;
   label: string;
+  /**
+   * Visually hide the label while keeping it as the control's accessible name.
+   * Use when a surrounding heading already names the field.
+   */
+  labelHidden?: boolean;
   hint?: ReactNode;
   inline?: boolean;
   initialValue?: ExtractValue<C> | undefined;
@@ -74,6 +79,7 @@ type UnconnectedFieldProps<C extends ValidFieldComponent> = FieldOwnProps<C> &
  */
 export default function UnconnectedField<C extends ValidFieldComponent>({
   label,
+  labelHidden,
   hint,
   inline,
   errors,
@@ -110,6 +116,7 @@ export default function UnconnectedField<C extends ValidFieldComponent>({
       <BaseField
         id={id}
         label={label}
+        labelHidden={labelHidden}
         hint={hint}
         inline={inline}
         required={required}

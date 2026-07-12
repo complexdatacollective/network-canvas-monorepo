@@ -119,7 +119,7 @@ const PromptFields = ({
                 </AlertDescription>
               </Alert>
             )}
-            <Options name="variableOptions" label="Options" />
+            <Options name="variableOptions" label="Option values" />
           </Row>
         </Section>
       )}

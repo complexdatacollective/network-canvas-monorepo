@@ -144,6 +144,7 @@ const EditEntityRule = ({
           component={FrescoEntitySelectControl}
           entityType={entityType === 'node' ? 'node' : 'edge'}
           label={`${entityType === 'node' ? 'Node' : 'Edge'} type`}
+          labelHidden
           name="type"
           options={typeOptions}
           onChange={handleRuleChange}
@@ -159,6 +160,7 @@ const EditEntityRule = ({
         <RuleField
           component={FrescoRadioGroupField}
           label="Rule type"
+          labelHidden
           options={entityRuleTypeOptions(entityType)}
           value={entityRuleType}
           onChange={(_event, value) =>
@@ -171,6 +173,7 @@ const EditEntityRule = ({
           <RuleField
             component={FrescoRadioGroupField}
             label="Operator"
+            labelHidden
             name="operator"
             options={operatorOptions}
             onChange={handleRuleChange}
@@ -188,6 +191,7 @@ const EditEntityRule = ({
           <RuleField
             component={FrescoNativeSelectField}
             label="Variable"
+            labelHidden
             name="attribute"
             options={variablesAsOptions}
             onChange={handleRuleChange}
@@ -201,6 +205,7 @@ const EditEntityRule = ({
           <RuleField
             component={FrescoNativeSelectField}
             label="Operator"
+            labelHidden
             name="operator"
             options={operatorOptions}
             onChange={handleRuleChange}
@@ -218,6 +223,7 @@ const EditEntityRule = ({
             value={toEditValue(optionsWithDefaults.value)}
             options={variableOptions}
             validation={{ required: true }}
+            labelHidden
           />
         </Section>
       )}
@@ -230,6 +236,7 @@ const EditEntityRule = ({
             value={toEditValue(optionsWithDefaults.value)}
             options={variableOptions}
             validation={{ required: true, validRegExp: true }}
+            labelHidden
           />
         </Section>
       )}

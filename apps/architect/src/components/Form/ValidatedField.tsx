@@ -15,6 +15,12 @@ type ValidatedFieldProps<T = Record<string, never>> = Omit<
   component: ElementType;
   componentProps?: T;
   label?: string;
+  /**
+   * Visually hide the field's label while keeping it as the control's
+   * accessible name. Forwarded to the field component. Use when a surrounding
+   * Section heading already names the field.
+   */
+  labelHidden?: boolean;
   fieldLabel?: string;
   inline?: boolean;
   entityType?: string;

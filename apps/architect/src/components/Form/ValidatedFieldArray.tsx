@@ -24,6 +24,12 @@ type ValidatedFieldArrayProps<
   componentProps?: T;
   fieldLabel?: string;
   label?: string;
+  /**
+   * Visually hide the array field's label while keeping it as the list's
+   * accessible name. Forwarded to the rendered array component. Use when a
+   * surrounding Section heading already names the list.
+   */
+  labelHidden?: boolean;
 };
 
 /**

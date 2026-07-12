@@ -287,6 +287,7 @@ const NodeConfigurationInner = ({
               <ValidatedFieldArray
                 name="nodeConfig.form"
                 label="Form fields"
+                labelHidden
                 component={DialogArrayField}
                 validation={{}}
                 componentProps={{

@@ -56,6 +56,7 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
         name="interviewScript"
         component={RichText}
         label="Interviewer script text"
+        labelHidden
         placeholder="Enter text for the interviewer here."
       />
     </Section>

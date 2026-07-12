@@ -121,6 +121,7 @@ const PromptFields = ({
             componentProps={{
               inline: true,
               label: 'Prompt text',
+              labelHidden: true,
               placeholder: "What is this person's name?",
             }}
           />
@@ -136,6 +137,7 @@ const PromptFields = ({
             component={RichText as ComponentType<Record<string, unknown>>}
             inline
             label="Hint text"
+            labelHidden
             placeholder="e.g. Select all that apply..."
           />
         </div>
@@ -178,6 +180,7 @@ const PromptFields = ({
         <ValidatedField
           name="component"
           label="Input control"
+          labelHidden
           component={FrescoReduxField}
           validation={{ required: true }}
           componentProps={{

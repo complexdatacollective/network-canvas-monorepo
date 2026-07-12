@@ -24,6 +24,7 @@ const Title = (_props: StageEditorSectionProps) => (
     <IssueAnchor fieldName="title" description="Page Heading" />
     <ValidatedField
       label="Page heading"
+      labelHidden
       name="title"
       component={FrescoReduxField}
       placeholder="Enter your title here..."

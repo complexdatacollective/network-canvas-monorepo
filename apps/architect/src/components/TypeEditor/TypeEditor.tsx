@@ -71,6 +71,7 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
       >
         <ValidatedField
           label={`${capitalize(entity)} type name`}
+          labelHidden
           component={FrescoReduxField}
           name="name"
           validation={{
@@ -93,6 +94,8 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
         <ValidatedField
           component={ColorPicker}
           name="color"
+          label="Color"
+          labelHidden
           validation={{ required: true }}
           componentProps={{ palette: paletteName, paletteRange: paletteSize }}
         />

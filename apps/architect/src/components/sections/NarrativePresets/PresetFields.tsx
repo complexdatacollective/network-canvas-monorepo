@@ -102,6 +102,7 @@ const PresetFields = ({
           <ValidatedField
             name="label"
             label="Preset label"
+            labelHidden
             component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{

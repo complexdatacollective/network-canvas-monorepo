@@ -134,6 +134,7 @@ const DisplayEdges = ({ form }: DisplayEdgesProps) => {
           fieldComponent={FrescoCheckboxGroupField}
           options={displayEdgesOptions}
           label="Display edges of the following type(s)"
+          labelHidden
         />
       </Row>
     </Section>

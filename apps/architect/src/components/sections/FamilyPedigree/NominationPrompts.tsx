@@ -70,6 +70,7 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
       <ValidatedFieldArray
         name="nominationPrompts"
         label="Nomination prompts"
+        labelHidden
         component={DialogArrayField}
         validation={{ notEmpty }}
         componentProps={{

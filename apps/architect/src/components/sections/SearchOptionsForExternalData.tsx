@@ -112,7 +112,8 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
           validation={{ requiredAcceptsZero: true }}
           componentProps={{
             fieldComponent: FrescoLikertScaleField,
-            label: '',
+            label: 'Search accuracy',
+            labelHidden: true,
             options: [
               { value: 0.75, label: 'Low accuracy' },
               { value: 0.5, label: 'Medium accuracy' },

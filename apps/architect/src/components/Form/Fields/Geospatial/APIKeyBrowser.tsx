@@ -87,7 +87,7 @@ const APIKeyBrowser = ({
             />
             <div data-name="API Key Value" />
             <ValidatedField
-              label="API Key"
+              label="API Key Value"
               component={FrescoReduxField}
               name="keyValue"
               validation={{ required: true }}

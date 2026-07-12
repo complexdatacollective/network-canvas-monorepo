@@ -25,6 +25,7 @@ const PromptText = ({ name = 'text' }: PromptTextProps) => {
           component={RichText}
           inline
           label="Prompt text"
+          labelHidden
           placeholder="Enter text for the prompt here..."
           validation={{ required: true }}
         />

@@ -29,6 +29,7 @@ const RemoveAfterConsideration = () => (
           component={FrescoReduxField}
           fieldComponent={FrescoBooleanControl}
           label="Remove after consideration"
+          labelHidden
           options={[
             {
               value: true,
