@@ -11,7 +11,7 @@ import {
   PageBackground,
   PageBackgroundProvider,
   usePageBackgroundTargetRef,
-} from '../PageBackground';
+} from '../PageBackground/PageBackground';
 
 const networkWeaveProps = vi.hoisted(() => vi.fn());
 const motionState = vi.hoisted(() => {
