@@ -7,6 +7,28 @@
  * missing from this inventory entirely.
  */
 export const OPTION_INVENTORY: Record<string, readonly string[]> = {
+  NameGeneratorQuickAdd: [
+    'label',
+    'interviewScript',
+    'skipLogic',
+    'subject.type',
+    'quickAdd',
+    'behaviours.minNodes',
+    'behaviours.maxNodes',
+    'behaviours.maxNodes-panel-drag-gap',
+    'panels[].id',
+    'panels[].title',
+    'panels[].dataSource=existing',
+    'panels[].dataSource=assetId',
+    'panels[].filter',
+    'prompts[].id',
+    'prompts[].text',
+    'prompts[].additionalAttributes',
+    'codebook.node.color',
+    'codebook.node.icon',
+    'codebook.node.shape',
+    'codebook.variables.quickAdd.encrypted',
+  ],
   Information: [
     'title',
     'items[].type=text',

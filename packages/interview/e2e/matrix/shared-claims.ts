@@ -4,4 +4,8 @@
  * entry MUST be backed by a generated wiring scenario — the coverage
  * manifest asserts the correspondence.
  */
-export const sharedSuiteClaims: readonly string[] = ['Information:skipLogic'];
+export const sharedSuiteClaims: readonly string[] = [
+  'Information:skipLogic',
+  'NameGeneratorQuickAdd:skipLogic',
+  'NameGeneratorQuickAdd:panels[].filter',
+];

@@ -4,13 +4,17 @@ import { z } from 'zod';
 import { stageSchema } from '@codaco/protocol-validation';
 
 import { informationScenarios } from './information.scenarios.js';
+import { nameGeneratorQuickAddScenarios } from './name-generator-quick-add.scenarios.js';
 import { OPTION_INVENTORY } from './option-inventory.js';
 import { sharedSuiteClaims } from './shared-claims.js';
 import type { InterfaceScenarios } from './types.js';
 
 // Interface tasks append their registry import here as they land. Task 27
 // replaces this list with the all-scenarios.ts aggregator.
-const ALL_SUITES: InterfaceScenarios[] = [informationScenarios];
+const ALL_SUITES: InterfaceScenarios[] = [
+  informationScenarios,
+  nameGeneratorQuickAddScenarios,
+];
 
 describe('e2e matrix coverage manifest', () => {
   it('every inventoried option key is claimed by at least one scenario', () => {
