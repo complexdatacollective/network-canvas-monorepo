@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  CurrentProtocolSchema,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 
 import type { SeedAsset } from '../fixtures/seed.js';
 
@@ -14,9 +17,14 @@ export function loadAllInterfacesFixture(): {
   protocol: CurrentProtocol;
   assets: SeedAsset[];
 } {
-  const protocol = JSON.parse(
-    readFileSync(path.join(FIXTURE_DIR, 'protocol.json'), 'utf8'),
-  ) as CurrentProtocol;
+  // Parse through the Zod schema (as Task 7's fixture test does) rather than
+  // casting: `CurrentProtocolSchema`'s `z.infer` IS `CurrentProtocol`, so
+  // `.parse` returns the right type with no assertion, and a drifted
+  // protocol.json fails loudly at load time instead of seeding a
+  // wrongly-typed object.
+  const protocol: CurrentProtocol = CurrentProtocolSchema.parse(
+    JSON.parse(readFileSync(path.join(FIXTURE_DIR, 'protocol.json'), 'utf8')),
+  );
 
   // `assetManifest`'s two loose assets (both `source`-backed files under
   // assets/) — `mapbox_token` is an inline `value` apikey with no `source`,
