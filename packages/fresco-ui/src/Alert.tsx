@@ -11,7 +11,7 @@ import { paragraphVariants } from './typography/Paragraph';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const alertVariants = cva({
-  base: 'inset-surface my-6 flex w-full items-start rounded first:mt-0 last:mb-0',
+  base: 'my-6 flex w-full items-start rounded first:mt-0 last:mb-0',
   variants: {
     variant: {
       default: '',
@@ -28,7 +28,9 @@ const alertVariants = cva({
     // is kept and only the link is coloured with the intent. Colour is the only
     // difference; role, aria-live, sr-only label and icon are unchanged.
     appearance: {
-      solid: '',
+      // Only the solid fill gets the pressed-in `inset-surface` treatment; the
+      // soft tint is flat, so it drops the inset shadow.
+      solid: 'inset-surface',
       soft: '',
     },
     density: {
