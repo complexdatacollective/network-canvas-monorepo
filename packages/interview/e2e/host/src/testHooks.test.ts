@@ -1,11 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
+
 import type { ProtocolPayload } from '../../../src/contract/types';
-import { getTestState, installTestHooks, subscribe } from './testHooks';
+import {
+  createInterview,
+  getTestState,
+  installTestHooks,
+  subscribe,
+} from './testHooks';
 
 function makeProtocol(overrides?: Partial<ProtocolPayload>): ProtocolPayload {
   return {
     id: 'protocol-1',
+    hash: 'test-hash',
     importedAt: new Date().toISOString(),
     name: 'Test Protocol',
     description: '',
@@ -83,7 +94,9 @@ describe('getTestState', () => {
     const state = getTestState();
     expect(state.interviews.has(interviewId)).toBe(true);
     expect(state.interviews.get(interviewId)?.protocolId).toBe('p-2');
-    expect(state.interviews.get(interviewId)?.session.currentStep).toBe(0);
+    expect(state.interviews.get(interviewId)?.session.network.nodes).toEqual(
+      [],
+    );
   });
 });
 
@@ -173,5 +186,51 @@ describe('setAssetUrl', () => {
     expect(getTestState().assetUrls.get('asset-1')).toBe(
       'http://localhost:4200/protocols/p1/asset-1.png',
     );
+  });
+});
+
+describe('createInterview seeding', () => {
+  beforeEach(() => {
+    installTestHooks();
+  });
+
+  afterEach(() => {
+    (globalThis as { __test?: { reset(): void } }).__test?.reset();
+    delete (globalThis as Record<string, unknown>).__test;
+  });
+
+  it('seeds network and stageMetadata when provided', () => {
+    const seededNetwork = {
+      ego: {
+        [entityPrimaryKeyProperty]: 'ego-1',
+        [entityAttributesProperty]: {},
+      },
+      nodes: [
+        {
+          [entityPrimaryKeyProperty]: 'n1',
+          type: 'person',
+          promptIDs: [],
+          stageId: 's1',
+          [entityAttributesProperty]: {},
+        },
+      ],
+      edges: [],
+    };
+    const id = createInterview('proto-1', 'participant-1', {
+      network: seededNetwork,
+      stageMetadata: { 'stage-3': [[1, 'n1', 'n2', false]] },
+    });
+    const entry = getTestState().interviews.get(id);
+    expect(entry?.session.network.nodes).toHaveLength(1);
+    expect(entry?.session.stageMetadata).toEqual({
+      'stage-3': [[1, 'n1', 'n2', false]],
+    });
+  });
+
+  it('keeps the empty-network default without a seed', () => {
+    const id = createInterview('proto-1', 'participant-1');
+    const entry = getTestState().interviews.get(id);
+    expect(entry?.session.network.nodes).toHaveLength(0);
+    expect(entry?.session.stageMetadata).toBeUndefined();
   });
 });

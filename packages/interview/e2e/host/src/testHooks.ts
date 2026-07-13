@@ -105,22 +105,31 @@ export function setAssetUrl(assetId: string, url: string): void {
   notifySubscribers();
 }
 
+export type SessionSeed = {
+  network?: SessionPayload['network'];
+  stageMetadata?: SessionPayload['stageMetadata'];
+};
+
 export function createInterview(
   protocolId: string,
   participantId: string,
+  seed?: SessionSeed,
 ): string {
   const id = uuid();
   // This session is the initial payload Shell mounts with. After mount,
   // Shell owns its state in Redux — getNetworkState reads from that live
-  // store, not from this snapshot.
+  // store, not from this snapshot. The step is NOT part of the session:
+  // the host derives it from the URL (?step=) and passes it as a Shell prop.
   const session: SessionPayload = {
     id,
     startTime: new Date().toISOString(),
     finishTime: null,
     exportTime: null,
     lastUpdated: new Date().toISOString(),
-    network: createInitialNetwork(),
-    currentStep: 0,
+    network: seed?.network ?? createInitialNetwork(),
+    ...(seed?.stageMetadata != null
+      ? { stageMetadata: seed.stageMetadata }
+      : {}),
   };
   state.interviews.set(id, { protocolId, participantId, session });
   persistState();

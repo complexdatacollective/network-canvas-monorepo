@@ -8,7 +8,14 @@ declare global {
     __test: {
       installProtocol(protocol: ProtocolPayload): void;
       setAssetUrl(assetId: string, url: string): void;
-      createInterview(protocolId: string, participantId?: string): string;
+      createInterview(
+        protocolId: string,
+        participantId?: string,
+        seed?: {
+          network?: SessionPayload['network'];
+          stageMetadata?: SessionPayload['stageMetadata'];
+        },
+      ): string;
       getNetworkState(): SessionPayload['network'] | undefined;
       reset(): void;
     };

@@ -14,7 +14,8 @@ let sharedProtocolId: string;
 
 test.describe('SILOS Protocol', () => {
   // Run all nested suites in one worker to prevent parallel workers from
-  // calling restoreSnapshot() and wiping each other's dynamically installed protocols.
+  // calling window.__test.reset() and wiping each other's dynamically
+  // installed protocols (the worker-scoped sharedPage resets once per worker).
   test.describe.configure({ mode: 'serial' });
 
   // Install protocol once for all nested suites
