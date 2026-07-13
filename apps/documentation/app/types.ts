@@ -9,6 +9,11 @@ export const sections = [
 
 export type Section = (typeof sections)[number];
 
+export function hasDocumentationSection(pathname: string): boolean {
+  const section = pathname.split('/')[2];
+  return sections.some((candidate) => candidate === section);
+}
+
 export const locales = ['en'] as const;
 
 const zlocales = z.enum(locales);

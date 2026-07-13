@@ -10,7 +10,7 @@ import { ListItem } from '~/components/ui/typography/ListItem';
 
 export default function NotFound() {
   return (
-    <html lang="en" className="font-body antialiased">
+    <html lang="en">
       <ThemeProvider
         attribute="data-theme"
         enableSystem

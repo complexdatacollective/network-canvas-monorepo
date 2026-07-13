@@ -2,6 +2,7 @@ import { Play } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { Container } from '~/components/ui/Container';
 import { Logo } from '~/components/ui/Logo';
 import { Reveal } from '~/components/ui/Reveal';
@@ -10,14 +11,14 @@ import { externalLinks } from '~/lib/content';
 
 function renderChannelLink(chunks: ReactNode) {
   return (
-    <a
+    <NativeLink
       href={externalLinks.youtubeChannel}
       target="_blank"
       rel="noreferrer"
-      className="text-link font-bold hover:underline"
+      className="font-bold"
     >
       {chunks}
-    </a>
+    </NativeLink>
   );
 }
 

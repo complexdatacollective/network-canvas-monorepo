@@ -1,6 +1,6 @@
 import { type ComponentProps, forwardRef } from 'react';
 
-import { LinkLabel, linkRootClass } from './linkStyles';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 
 // Renders a static download (protocol bundle, roster) as a plain <a download>.
 // Authors reach for this explicitly in content
@@ -11,9 +11,9 @@ import { LinkLabel, linkRootClass } from './linkStyles';
 // `download` and the shared className are imposed.
 const DownloadLink = forwardRef<HTMLAnchorElement, ComponentProps<'a'>>(
   ({ className, children, ...props }, ref) => (
-    <a ref={ref} className={linkRootClass(className)} {...props} download>
-      <LinkLabel>{children}</LinkLabel>
-    </a>
+    <NativeLink ref={ref} className={className} {...props} download>
+      {children}
+    </NativeLink>
   ),
 );
 

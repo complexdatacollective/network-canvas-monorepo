@@ -22,24 +22,24 @@ export const SECTIONS: SectionConfig[] = [
   {
     key: 'design-protocols',
     color: 'sea-green',
-    images: ['/images/architect-icon.png'],
+    images: [
+      '/images/architect-icon.png',
+      '/images/architect-classic-icon.png',
+    ],
   },
   {
     key: 'collect-data',
     color: 'neon-coral',
-    images: ['/images/interviewer.png', '/images/fresco.png'],
+    images: ['/images/interviewer-icon.svg', '/images/fresco.png'],
   },
   { key: 'analyze-data', color: 'cerulean-blue' },
 ];
 
 export const sectionColorClasses: Record<SectionColor, string> = {
-  'slate-blue': 'bg-slate-blue',
-  // sea-green (shared OKLCH L≈0.7) is far lighter than the other section
-  // colours (L≈0.55), so white card text fell to ~2.3:1. Pin its lightness into
-  // the same range as the others (keeping hue/chroma) so the label reads.
-  'sea-green': 'bg-[oklch(from_oklch(var(--sea-green))_0.54_c_h)]',
-  'neon-coral': 'bg-neon-coral',
-  'cerulean-blue': 'bg-cerulean-blue',
+  'slate-blue': 'bg-slate-blue theme-dark:bg-slate-blue-dark',
+  'sea-green': 'bg-sea-green theme-dark:bg-sea-green-dark',
+  'neon-coral': 'bg-neon-coral theme-dark:bg-neon-coral-dark',
+  'cerulean-blue': 'bg-cerulean-blue theme-dark:bg-cerulean-blue-dark',
 };
 
 const colorBySlug = new Map(SECTIONS.map(({ key, color }) => [key, color]));

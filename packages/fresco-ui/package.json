@@ -156,6 +156,10 @@
       "types": "./dist/navigation/SiteNavigation.d.ts",
       "default": "./dist/navigation/SiteNavigation.js"
     },
+    "./navigation/SiteFooter": {
+      "types": "./dist/navigation/SiteFooter.d.ts",
+      "default": "./dist/navigation/SiteFooter.js"
+    },
     "./typography/Heading": {
       "types": "./dist/typography/Heading.d.ts",
       "default": "./dist/typography/Heading.js"

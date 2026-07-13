@@ -31,7 +31,6 @@
     "@posthog/react": "catalog:",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "catalog:",
-    "@radix-ui/react-navigation-menu": "^1.2.14",
     "@t3-oss/env-nextjs": "^0.13.11",
     "class-variance-authority": "catalog:",
     "dotenv": "catalog:",

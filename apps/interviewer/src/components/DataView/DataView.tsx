@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { getInterviewProgress } from '@codaco/interview';
 import type { ProtocolWithCounts } from '~/lib/db/types';
@@ -209,14 +210,15 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
                     All <strong>{selectedCount}</strong> matching interviews are
                     selected.
                   </span>
-                  <button
-                    type="button"
+                  <Button
+                    variant="link"
+                    size="sm"
                     onClick={clearSelection}
-                    className="text-sea-green inline-flex items-center gap-1 font-extrabold tracking-wide uppercase hover:underline"
+                    className="font-heading text-sea-green gap-1 font-extrabold tracking-wide uppercase"
+                    icon={<X size={14} aria-hidden />}
                   >
-                    <X size={14} aria-hidden />
                     Clear selection
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <>
@@ -224,13 +226,14 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
                     All <strong>{rows.length}</strong> on this page are
                     selected.
                   </span>
-                  <button
-                    type="button"
+                  <Button
+                    variant="link"
+                    size="sm"
                     onClick={expandSelectionToAll}
-                    className="text-sea-green font-extrabold tracking-wide uppercase hover:underline"
+                    className="font-heading text-sea-green font-extrabold tracking-wide uppercase"
                   >
                     Select all {totalCount} matching →
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
