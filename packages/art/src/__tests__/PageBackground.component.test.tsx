@@ -1,8 +1,8 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PageBackground } from '../PageBackground';
+import { PageBackground } from '../index';
 
 const motionPreference = vi.hoisted<{ reduced: boolean | null }>(() => ({
   reduced: false,
@@ -16,22 +16,25 @@ vi.mock('motion/react', () => ({
       animate,
       children,
       initial,
+      style,
       transition,
     }: {
       animate?: unknown;
       children: ReactNode;
       initial?: unknown;
+      style?: CSSProperties;
       transition?: unknown;
     }) => {
-      fadeProps({ animate, initial, transition });
+      fadeProps({ animate, initial, style, transition });
       return <div data-testid="blob-fade">{children}</div>;
     },
   },
   useReducedMotion: () => motionPreference.reduced,
 }));
 
-vi.mock('@codaco/art', () => ({
-  BackgroundBlobs: (props: unknown) => {
+vi.mock('../BackgroundBlobs/BackgroundBlobs', async (importOriginal) => ({
+  ...(await importOriginal()),
+  default: (props: unknown) => {
     backgroundBlobsProps(props);
     return <div data-testid="background-blobs" />;
   },
@@ -61,17 +64,16 @@ describe('PageBackground', () => {
 
   it('renders subtle fixed theme-colored blobs for normal motion', () => {
     const { container } = render(<PageBackground />);
-    const layer = container.firstElementChild;
+    const layer = container.firstElementChild as HTMLElement | null;
 
-    expect(layer).toHaveAttribute('aria-hidden', 'true');
-    expect(layer).toHaveClass(
-      'pointer-events-none',
-      'fixed',
-      'inset-0',
-      'z-0',
-      'opacity-10',
-    );
-    expect(screen.getByTestId('background-blobs')).toBeInTheDocument();
+    expect(layer?.getAttribute('aria-hidden')).toBe('true');
+    expect(layer?.style.position).toBe('fixed');
+    expect(layer?.style.inset).toBe('0px');
+    expect(layer?.style.zIndex).toBe('0');
+    expect(layer?.style.overflow).toBe('hidden');
+    expect(layer?.style.opacity).toBe('0.1');
+    expect(layer?.style.pointerEvents).toBe('none');
+    expect(screen.queryByTestId('background-blobs')).not.toBeNull();
     expect(backgroundBlobsProps).toHaveBeenCalledWith(
       expect.objectContaining({
         large: 2,
@@ -85,13 +87,12 @@ describe('PageBackground', () => {
         ],
       }),
     );
-    expect(
-      screen.queryByTestId('static-blob-background'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('static-blob-background')).toBeNull();
     expect(fadeProps).toHaveBeenCalledWith(
       expect.objectContaining({
         initial: { opacity: 0 },
         animate: { opacity: 1 },
+        style: { position: 'absolute', inset: 0 },
       }),
     );
   });
@@ -101,11 +102,9 @@ describe('PageBackground', () => {
 
     render(<PageBackground />);
 
-    expect(screen.queryByTestId('background-blobs')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('static-blob-background'),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByTestId('blob-fade')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('background-blobs')).toBeNull();
+    expect(screen.queryByTestId('static-blob-background')).toBeNull();
+    expect(screen.queryByTestId('blob-fade')).toBeNull();
     expect(backgroundBlobsProps).not.toHaveBeenCalled();
   });
 });

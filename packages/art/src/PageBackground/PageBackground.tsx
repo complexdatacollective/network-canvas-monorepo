@@ -1,9 +1,9 @@
 'use client';
 
 import { motion, useReducedMotion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 
-import { BackgroundBlobs } from '@codaco/art';
+import BackgroundBlobs from '../BackgroundBlobs/BackgroundBlobs';
 
 type BlobPalette = ReadonlyArray<readonly [string, string]>;
 
@@ -13,6 +13,20 @@ const colorTokens = {
   neonCoral: ['--neon-coral', '.5733 .2584 11.57'],
   seaGreen: ['--sea-green', '.7 .2 171.52'],
 } as const;
+
+const backgroundStyle: CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 0,
+  overflow: 'hidden',
+  opacity: 0.1,
+  pointerEvents: 'none',
+};
+
+const canvasStyle: CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+};
 
 function resolveThemeColor(
   styles: CSSStyleDeclaration,
@@ -43,13 +57,10 @@ export function PageBackground() {
   useEffect(() => setPalette(resolveBlobPalette()), []);
 
   return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-0 overflow-hidden opacity-10"
-    >
+    <div aria-hidden="true" style={backgroundStyle}>
       {palette && reduceMotion === false && (
         <motion.div
-          className="absolute inset-0"
+          style={canvasStyle}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}

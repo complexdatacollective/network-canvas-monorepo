@@ -16,7 +16,23 @@ const isProduction =
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  output: 'export',
+  ...(process.env.NODE_ENV === 'development'
+    ? {}
+    : { output: 'export' as const }),
+  // Static production hosts apply their own redirect rules. In development,
+  // redirect before rendering so `/` never falls through to the static-export
+  // redirect page's not-found fallback body.
+  ...(process.env.NODE_ENV === 'development'
+    ? {
+        redirects: async () => [
+          {
+            source: '/',
+            destination: '/en',
+            permanent: false,
+          },
+        ],
+      }
+    : {}),
   // Pin the workspace root: in a git worktree Next otherwise detects the parent
   // checkout's pnpm-workspace.yaml and infers the wrong root.
   turbopack: { root: join(import.meta.dirname, '..', '..') },

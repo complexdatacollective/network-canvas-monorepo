@@ -15,7 +15,7 @@ vi.mock('~/lib/i18n/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }));
 
-vi.mock('~/components/ui/PageBackground', () => ({
+vi.mock('@codaco/art', () => ({
   PageBackground: () => <div data-testid="page-background" />,
 }));
 

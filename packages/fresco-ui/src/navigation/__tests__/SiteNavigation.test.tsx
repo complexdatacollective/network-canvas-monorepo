@@ -1,79 +1,186 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import SiteNavigation from '../SiteNavigation';
 
-const baseProps = {
-  brand: <span>Network Canvas</span>,
-  brandHref: '/',
-  brandLabel: 'Network Canvas home',
-  closeMenuLabel: 'Close menu',
-  openMenuLabel: 'Open menu',
-};
-
 describe('SiteNavigation', () => {
-  it('marks the active page', () => {
+  it('owns the canonical English destinations and active state', () => {
     render(
       <SiteNavigation
-        {...baseProps}
         activeItemId="documentation"
-        items={[
-          { id: 'community', label: 'Community', href: '#community' },
-          {
-            id: 'documentation',
-            label: 'Documentation',
-            href: '#documentation',
-          },
-        ]}
+        locale="en-US"
+        site="website"
       />,
     );
 
     expect(
-      screen.getAllByRole('link', { name: 'Documentation' })[0],
-    ).toHaveAttribute('aria-current', 'page');
+      screen.getByRole('link', { name: 'Network Canvas home' }),
+    ).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Community' })).toHaveAttribute(
+      'href',
+      'https://community.networkcanvas.com/',
+    );
+    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+      'href',
+      'https://documentation.networkcanvas.com/',
+    );
+    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     expect(
-      screen.getAllByRole('link', { name: 'Community' })[0],
-    ).not.toHaveAttribute('aria-current');
+      screen.getByRole('link', { name: 'Protocol Gallery' }),
+    ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/');
+    expect(
+      screen.getByRole('button', { name: 'Software' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Get Started' })).toHaveAttribute(
+      'href',
+      '/get-started',
+    );
   });
 
-  it('renders app-owned items for desktop and mobile contexts', () => {
-    const renderItem = vi.fn(({ view }: { view: 'desktop' | 'mobile' }) => (
-      <span>Injected {view} item</span>
+  it('selects Spanish copy from the locale and resolves docs routing', () => {
+    render(
+      <SiteNavigation
+        activeItemId="documentation"
+        locale="es"
+        site="documentation"
+      />,
+    );
+
+    expect(
+      screen.getByRole('navigation', { name: 'Navegación principal' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Inicio de Network Canvas' }),
+    ).toHaveAttribute('href', 'https://networkcanvas.com/es/');
+    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+      'href',
+      '/',
+    );
+    expect(screen.getByRole('link', { name: 'Docs' })).not.toHaveAttribute(
+      'target',
+    );
+    expect(
+      screen.getByRole('link', { name: 'Galería de protocolos' }),
+    ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/');
+    expect(screen.getByRole('link', { name: 'Comenzar' })).toHaveAttribute(
+      'href',
+      'https://networkcanvas.com/es/get-started',
+    );
+  });
+
+  it('renders the canonical compact groups and app-owned utility slot', () => {
+    const renderUtility = vi.fn(({ view }: { view: 'desktop' | 'mobile' }) => (
+      <button type="button">Theme {view}</button>
     ));
 
     render(
       <SiteNavigation
-        {...baseProps}
-        items={[{ id: 'language', render: renderItem }]}
+        locale="en-US"
+        site="documentation"
+        renderUtility={renderUtility}
       />,
     );
 
-    expect(screen.getByText('Injected desktop item')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
-    expect(screen.getByText('Injected mobile item')).toBeInTheDocument();
-    expect(renderItem).toHaveBeenCalledWith(
-      expect.objectContaining({ view: 'mobile', active: false }),
+    expect(screen.getByText('Theme desktop')).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Open site navigation' }),
+    );
+
+    const compactNavigation = screen.getAllByRole('navigation', {
+      name: 'Primary navigation',
+    })[1];
+    if (!compactNavigation) throw new Error('Expected compact navigation.');
+
+    expect(
+      within(compactNavigation).getByText('Resources'),
+    ).toBeInTheDocument();
+    expect(within(compactNavigation).getByText('Software')).toBeInTheDocument();
+    expect(
+      within(compactNavigation).getByRole('link', { name: 'Open Architect' }),
+    ).toHaveAttribute('href', 'https://architect.networkcanvas.com/');
+    expect(
+      within(compactNavigation).getByRole('link', { name: 'Open Interviewer' }),
+    ).toHaveAttribute('href', 'https://interviewer.networkcanvas.com/');
+    expect(
+      within(compactNavigation).getByRole('link', {
+        name: 'Try the Fresco Sandbox',
+      }),
+    ).toHaveAttribute('href', 'https://fresco-sandbox.networkcanvas.com/');
+    expect(screen.getByText('Theme mobile')).toBeInTheDocument();
+    expect(renderUtility).toHaveBeenCalledWith(
+      expect.objectContaining({ view: 'mobile' }),
     );
   });
 
-  it('closes the mobile menu after following a standard link', () => {
+  it('marks the resources group active when selected directly', () => {
+    render(
+      <SiteNavigation activeItemId="resources" locale="en-US" site="website" />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Resources' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it('renders app-owned content beside the compact menu control', () => {
     render(
       <SiteNavigation
-        {...baseProps}
-        items={[{ id: 'community', label: 'Community', href: '#community' }]}
+        locale="en-US"
+        site="documentation"
+        mobileAccessory={<span>Search documentation</span>}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
-    const mobileLink = screen.getAllByRole('link', {
+    expect(screen.getByText('Search documentation')).toBeInTheDocument();
+    const menuButton = screen.getByRole('button', {
+      name: 'Open site navigation',
+    });
+    expect(menuButton).toHaveAttribute('aria-expanded', 'false');
+    expect(menuButton.parentElement).toHaveClass('@min-[64rem]:hidden');
+  });
+
+  it('closes the compact menu after following a link', () => {
+    render(<SiteNavigation locale="en-US" site="website" />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Open site navigation' }),
+    );
+    const mobileCommunityLink = screen.getAllByRole('link', {
       name: 'Community',
     })[1];
-    if (!mobileLink) throw new Error('Expected a mobile Community link.');
-    fireEvent.click(mobileLink);
+    if (!mobileCommunityLink) {
+      throw new Error('Expected a compact Community link.');
+    }
+    fireEvent.click(mobileCommunityLink);
 
-    expect(screen.getByRole('button', { name: 'Open menu' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    );
+    expect(
+      screen.getByRole('button', { name: 'Open site navigation' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('returns focus to the compact trigger when Escape dismisses the menu', () => {
+    render(<SiteNavigation locale="en-US" site="website" />);
+
+    const menuButton = screen.getByRole('button', {
+      name: 'Open site navigation',
+    });
+    fireEvent.click(menuButton);
+    const mobileCommunityLink = screen.getAllByRole('link', {
+      name: 'Community',
+    })[1];
+    if (!mobileCommunityLink) {
+      throw new Error('Expected a compact Community link.');
+    }
+    mobileCommunityLink.focus();
+    fireEvent.keyDown(mobileCommunityLink, { key: 'Escape' });
+
+    expect(
+      screen.getByRole('button', { name: 'Open site navigation' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(menuButton).toHaveFocus();
   });
 });

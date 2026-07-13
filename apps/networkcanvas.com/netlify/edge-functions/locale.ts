@@ -2,12 +2,13 @@ import { match } from '@formatjs/intl-localematcher';
 import type { Config, Context } from '@netlify/edge-functions';
 
 import {
-  defaultLocale,
-  isLocale,
-  localeCookie,
-  locales,
-  type Locale,
-} from '../../lib/i18n/locales.ts';
+  defaultSiteLocale,
+  isSiteLocale,
+  siteLocales,
+  type SiteLocale,
+} from '@codaco/shared-consts';
+
+import { localeCookie } from '../../lib/i18n/locales.ts';
 
 type RequestedLocale = {
   locale: string;
@@ -57,7 +58,7 @@ function getRequestedLocales(header: string) {
 }
 
 function getPathLocale(pathname: string) {
-  for (const locale of locales) {
+  for (const locale of siteLocales) {
     const prefix = `/${locale}`;
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
       return {
@@ -70,7 +71,7 @@ function getPathLocale(pathname: string) {
   return undefined;
 }
 
-function getLocalizedPathname(locale: Locale, pathname: string) {
+function getLocalizedPathname(locale: SiteLocale, pathname: string) {
   const unlocalizedPath = pathname.replace(/^\/+|\/+$/g, '');
 
   return unlocalizedPath ? `/${locale}/${unlocalizedPath}/` : `/${locale}/`;
@@ -85,17 +86,25 @@ function shouldBypass(pathname: string) {
   );
 }
 
-export function detectLocale(request: Request, savedLocale?: string): Locale {
-  if (savedLocale && isLocale(savedLocale)) return savedLocale;
+export function detectLocale(
+  request: Request,
+  savedLocale?: string,
+): SiteLocale {
+  if (savedLocale && isSiteLocale(savedLocale)) return savedLocale;
 
   const requestedLocales = getRequestedLocales(
     request.headers.get('accept-language') ?? '',
   );
-  const matchedLocale = match(requestedLocales, locales, defaultLocale, {
-    algorithm: 'best fit',
-  });
+  const matchedLocale = match(
+    requestedLocales,
+    siteLocales,
+    defaultSiteLocale,
+    {
+      algorithm: 'best fit',
+    },
+  );
 
-  return isLocale(matchedLocale) ? matchedLocale : defaultLocale;
+  return isSiteLocale(matchedLocale) ? matchedLocale : defaultSiteLocale;
 }
 
 export function getLocaleRedirect(request: Request, savedLocale?: string) {
