@@ -107,6 +107,7 @@ export default function UnconnectedField<C extends ValidFieldComponent>({
   const mergedProps: React.ComponentProps<C> = {
     ...componentProps,
     id,
+    name,
     'aria-required': required,
     'aria-labelledby': componentProps['aria-labelledby'] ?? `${id}-label`,
     'aria-describedby': describedBy || undefined,
