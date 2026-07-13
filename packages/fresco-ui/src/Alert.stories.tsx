@@ -25,6 +25,12 @@ const meta = {
       options: ['default', 'info', 'success', 'warning', 'destructive'],
       description: 'The visual style variant of the alert',
     },
+    appearance: {
+      control: 'select',
+      options: ['solid', 'soft'],
+      description:
+        'solid fills the alert with its intent colour (high emphasis); soft is a low tint over the surface for quieter notices. Role, aria-live, screen-reader label and icon are identical either way.',
+    },
     density: {
       control: 'select',
       options: ['default', 'compact'],
@@ -102,6 +108,45 @@ export const Variants: Story = {
         <AlertDescription>
           An error occurred while processing your request.
         </AlertDescription>
+      </Alert>
+    </div>
+  ),
+};
+
+export const SoftAppearance: Story = {
+  name: 'Soft Appearance',
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'appearance="soft" tints the surface with the intent colour instead of filling it, keeping surface text and colouring the link with the intent. Use for quieter, content-adjacent notices (docs callouts, tips) where a solid block would be too loud. Role, aria-live, screen-reader label and icon are identical to the solid appearance.',
+      },
+    },
+  },
+  render: () => (
+    <div className="flex flex-col gap-4">
+      <Alert variant="info" appearance="soft">
+        <AlertTitle>Information</AlertTitle>
+        <AlertDescription>
+          A soft info notice tints the surface and colours the link.
+        </AlertDescription>
+      </Alert>
+
+      <Alert variant="success" appearance="soft">
+        <AlertTitle>Success</AlertTitle>
+        <AlertDescription>Your changes have been saved.</AlertDescription>
+      </Alert>
+
+      <Alert variant="warning" appearance="soft">
+        <AlertTitle>Warning</AlertTitle>
+        <AlertDescription>
+          Review your changes before proceeding.
+        </AlertDescription>
+      </Alert>
+
+      <Alert variant="destructive" appearance="soft">
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>Something went wrong.</AlertDescription>
       </Alert>
     </div>
   ),

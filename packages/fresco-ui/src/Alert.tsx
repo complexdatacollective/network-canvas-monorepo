@@ -15,23 +15,75 @@ const alertVariants = cva({
   variants: {
     variant: {
       default: '',
-      // Override the --link primitive (not the --color-link @theme inline alias, which is
-      // substituted away at compile time so consumers read var(--link) directly).
-      info: 'text-info-contrast bg-info [--link:var(--info-contrast)]',
-      destructive:
-        'text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]',
-      success:
-        'text-success-contrast bg-success [--link:var(--success-contrast)]',
-      warning:
-        'text-warning-contrast bg-warning [--link:var(--warning-contrast)]',
+      info: '',
+      destructive: '',
+      success: '',
+      warning: '',
+    },
+    // `solid` fills the alert with its intent colour (loud, high-emphasis);
+    // `soft` is a low tint over the surface for quieter notices — surface text
+    // is kept and only the link is coloured with the intent. Colour is the only
+    // difference; role, aria-live, sr-only label and icon are unchanged.
+    appearance: {
+      solid: '',
+      soft: '',
     },
     density: {
       default: 'gap-4',
       compact: 'gap-3',
     },
   },
+  // Override the --link primitive (not the --color-link @theme inline alias, which
+  // is substituted away at compile time so consumers read var(--link) directly).
+  compoundVariants: [
+    {
+      variant: 'info',
+      appearance: 'solid',
+      className: 'text-info-contrast bg-info [--link:var(--info-contrast)]',
+    },
+    {
+      variant: 'destructive',
+      appearance: 'solid',
+      className:
+        'text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]',
+    },
+    {
+      variant: 'success',
+      appearance: 'solid',
+      className:
+        'text-success-contrast bg-success [--link:var(--success-contrast)]',
+    },
+    {
+      variant: 'warning',
+      appearance: 'solid',
+      className:
+        'text-warning-contrast bg-warning [--link:var(--warning-contrast)]',
+    },
+    {
+      variant: 'info',
+      appearance: 'soft',
+      className: 'bg-info/10 [--link:var(--info)]',
+    },
+    {
+      variant: 'destructive',
+      appearance: 'soft',
+      className: 'bg-destructive/10 [--link:var(--destructive)]',
+    },
+    {
+      variant: 'success',
+      appearance: 'soft',
+      className: 'bg-success/10 [--link:var(--success)]',
+    },
+    {
+      variant: 'warning',
+      appearance: 'soft',
+      className: 'bg-warning/10 [--link:var(--warning)]',
+    },
+    { variant: 'default', appearance: 'soft', className: 'bg-current/5' },
+  ],
   defaultVariants: {
     variant: 'default',
+    appearance: 'solid',
     density: 'default',
   },
 });
@@ -139,7 +191,15 @@ type AlertProps = React.HTMLAttributes<HTMLDivElement> &
 
 const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
   (
-    { className, variant = 'default', density, icon, children, ...props },
+    {
+      className,
+      variant = 'default',
+      appearance,
+      density,
+      icon,
+      children,
+      ...props
+    },
     ref,
   ) => {
     const animation = useAnimation();
@@ -155,7 +215,10 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
         role={variantRoles[variant]}
         spacing={resolvedDensity === 'compact' ? 'xs' : 'sm'}
         shadow="sm"
-        className={cx(alertVariants({ variant, density }), className)}
+        className={cx(
+          alertVariants({ variant, appearance, density }),
+          className,
+        )}
         noContainer
         maxWidth="3xl"
         {...props}
