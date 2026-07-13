@@ -21,14 +21,14 @@ export function Hero() {
       <div className="tablet-portrait:items-start flex w-full flex-col items-center justify-center">
         <FancyHeading
           level="h1"
-          className="font-heading text-cyber-grape tablet-portrait:mx-0 tablet-portrait:text-left tablet-portrait:text-[4rem] tablet-portrait:leading-[1.04] tablet-landscape:text-[4.5rem] tablet-landscape:leading-[1.02] desktop:text-[5rem] mx-auto max-w-5xl text-center text-4xl font-black"
+          className="font-heading tablet-portrait:mx-0 tablet-portrait:text-left tablet-portrait:text-[4rem] tablet-portrait:leading-[1.04] tablet-landscape:text-[4.5rem] tablet-landscape:leading-[1.02] desktop:text-[5rem] mx-auto max-w-5xl text-center text-4xl font-black"
         >
           {t('Hero.title')}
         </FancyHeading>
         <FancyParagraph
           intent="lead"
           margin="none"
-          className="text-cyber-grape tablet-portrait:text-left tablet-landscape:text-xl max-w-2xl text-center text-lg leading-relaxed"
+          className="tablet-portrait:text-left tablet-landscape:text-xl max-w-2xl text-center text-lg leading-relaxed"
         >
           {t('Hero.tagline')}
         </FancyParagraph>

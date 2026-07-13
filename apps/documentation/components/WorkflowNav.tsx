@@ -21,9 +21,11 @@ import FancyHeading from './FancyHeading';
 function SectionIcon({
   section,
   onColor,
+  large = false,
 }: {
   section: SectionConfig;
   onColor: boolean;
+  large?: boolean;
 }) {
   if (section.images) {
     const dual = section.images.length > 1;
@@ -34,9 +36,12 @@ function SectionIcon({
             key={src}
             src={src}
             alt=""
-            width={28}
-            height={28}
-            className={cx(dual ? 'h-6 w-6' : 'h-7 w-7')}
+            width={36}
+            height={36}
+            className={cx(
+              large ? 'size-9' : dual ? 'size-6' : 'size-7',
+              src === '/images/interviewer-icon.svg' && 'rounded-[18%]',
+            )}
           />
         ))}
       </span>
@@ -45,7 +50,10 @@ function SectionIcon({
 
   return (
     <ChartNetwork
-      className={cx('h-7 w-7', onColor ? 'text-white' : 'text-cerulean-blue')}
+      className={cx(
+        large ? 'size-8' : 'size-7',
+        onColor ? 'text-white' : 'text-cerulean-blue',
+      )}
     />
   );
 }
@@ -133,14 +141,14 @@ function WorkflowCard({ section }: { section: SectionConfig }) {
         sectionColorClasses[section.color],
       )}
     >
-      <span className="flex h-12 w-fit min-w-12 shrink-0 items-center justify-center gap-1 rounded-lg bg-white/15 px-2">
-        <SectionIcon section={section} onColor />
+      <span className="flex h-14 w-fit min-w-14 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white/15 px-2">
+        <SectionIcon section={section} onColor large />
       </span>
       <div className="mt-auto flex flex-col gap-2">
-        <FancyHeading level="h2" margin="none" className="text-xl text-white">
+        <FancyHeading level="h2" margin="none" className="text-xl text-current">
           {t(`${section.key}.label`)}
         </FancyHeading>
-        <Paragraph className="text-base text-white/85">
+        <Paragraph className="text-base text-current/85">
           {t(`${section.key}.description`)}
         </Paragraph>
       </div>

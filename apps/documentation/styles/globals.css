@@ -3,6 +3,9 @@
 
 @plugin '@tailwindcss/typography';
 
+/* next-themes sets data-theme independently of the OS colour preference. */
+@custom-variant theme-dark (&:where([data-theme='dark'] *));
+
 @layer base {
   code {
     @apply text-sm;
