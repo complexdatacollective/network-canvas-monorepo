@@ -10,7 +10,7 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
-import { isStageSkipped } from '../index';
+import { isStageSkipped, resolveSkipLogicDestinationIndex } from '../index';
 
 const matchingNetwork: NcNetwork = {
   ego: {
@@ -66,5 +66,46 @@ describe('isStageSkipped', () => {
     expect(isStageSkipped({ action: 'SHOW', filter }, nonMatchingNetwork)).toBe(
       true,
     );
+  });
+});
+
+describe('resolveSkipLogicDestinationIndex', () => {
+  const stages = [{ id: 'intro' }, { id: 'consent' }, { id: 'debrief' }];
+
+  it('resolves an immediate next stage', () => {
+    expect(
+      resolveSkipLogicDestinationIndex(
+        { type: 'stage', stageId: 'consent' },
+        stages,
+        0,
+      ),
+    ).toBe(1);
+  });
+
+  it('resolves a later stage', () => {
+    expect(
+      resolveSkipLogicDestinationIndex(
+        { type: 'stage', stageId: 'debrief' },
+        stages,
+        0,
+      ),
+    ).toBe(2);
+  });
+
+  it('resolves finish to the one-past-the-end index', () => {
+    expect(
+      resolveSkipLogicDestinationIndex({ type: 'finish' }, stages, 1),
+    ).toBe(3);
+  });
+
+  it.each([
+    ['a missing target', { type: 'stage', stageId: 'missing' }, 0],
+    ['the owning stage', { type: 'stage', stageId: 'consent' }, 1],
+    ['a backward target', { type: 'stage', stageId: 'intro' }, 1],
+    ['an invalid owning index', { type: 'finish' }, 3],
+  ] as const)('rejects %s', (_label, destination, owningStageIndex) => {
+    expect(
+      resolveSkipLogicDestinationIndex(destination, stages, owningStageIndex),
+    ).toBeUndefined();
   });
 });

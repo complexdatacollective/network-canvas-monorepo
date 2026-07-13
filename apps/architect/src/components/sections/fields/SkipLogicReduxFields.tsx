@@ -15,6 +15,33 @@ type SharedAdapterProps = WrappedFieldProps & {
   readOnly?: boolean;
 };
 
+type SkipLogicFieldValue = string | number | undefined;
+
+const useSkipLogicFieldState = (
+  input: WrappedFieldProps['input'],
+  meta: WrappedFieldProps['meta'],
+) => {
+  const { errors, showErrors } = getReduxFieldErrorState(meta);
+  const value: SkipLogicFieldValue =
+    typeof input.value === 'string' || typeof input.value === 'number'
+      ? input.value
+      : undefined;
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
+  return {
+    errors,
+    showErrors,
+    value,
+    onChange: (nextValue: SkipLogicFieldValue) => {
+      valueRef.current = nextValue;
+      input.onChange(nextValue);
+    },
+    onBlur: () => input.onBlur(valueRef.current),
+    onFocus: input.onFocus,
+  };
+};
+
 type SkipLogicRadioGroupReduxFieldProps = SharedAdapterProps & {
   options: ComponentProps<typeof RadioGroupField>['options'];
 };
@@ -30,13 +57,8 @@ export const SkipLogicRadioGroupReduxField = ({
   readOnly,
   options,
 }: SkipLogicRadioGroupReduxFieldProps) => {
-  const { errors, showErrors } = getReduxFieldErrorState(meta);
-  const value =
-    typeof input.value === 'string' || typeof input.value === 'number'
-      ? input.value
-      : undefined;
-  const valueRef = useRef(value);
-  valueRef.current = value;
+  const { errors, showErrors, value, onChange, onBlur, onFocus } =
+    useSkipLogicFieldState(input, meta);
 
   return (
     <UnconnectedField
@@ -46,12 +68,9 @@ export const SkipLogicRadioGroupReduxField = ({
       labelHidden={labelHidden}
       hint={hint}
       value={value}
-      onChange={(nextValue) => {
-        valueRef.current = nextValue;
-        input.onChange(nextValue);
-      }}
-      onBlur={() => input.onBlur(valueRef.current)}
-      onFocus={(event) => input.onFocus(event)}
+      onChange={onChange}
+      onBlur={onBlur}
+      onFocus={onFocus}
       options={options}
       required={required}
       disabled={disabled}
@@ -78,13 +97,8 @@ export const SkipLogicSelectReduxField = ({
   readOnly,
   options,
 }: SkipLogicSelectReduxFieldProps) => {
-  const { errors, showErrors } = getReduxFieldErrorState(meta);
-  const value =
-    typeof input.value === 'string' || typeof input.value === 'number'
-      ? input.value
-      : undefined;
-  const valueRef = useRef(value);
-  valueRef.current = value;
+  const { errors, showErrors, value, onChange, onBlur, onFocus } =
+    useSkipLogicFieldState(input, meta);
 
   return (
     <UnconnectedField
@@ -94,12 +108,9 @@ export const SkipLogicSelectReduxField = ({
       labelHidden={labelHidden}
       hint={hint}
       value={value}
-      onChange={(nextValue) => {
-        valueRef.current = nextValue;
-        input.onChange(nextValue);
-      }}
-      onBlur={() => input.onBlur(valueRef.current)}
-      onFocus={(event) => input.onFocus(event)}
+      onChange={onChange}
+      onBlur={onBlur}
+      onFocus={onFocus}
       options={options}
       required={required}
       disabled={disabled}

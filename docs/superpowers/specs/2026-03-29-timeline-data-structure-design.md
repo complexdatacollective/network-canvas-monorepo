@@ -230,7 +230,7 @@ v9:
             "id": "slot-1",
             "filter": { "join": "AND", "rules": [] },
             "label": "Skip",
-            "target": "s3-finish"
+            "target": "s3"
           },
           {
             "id": "slot-2",
@@ -245,13 +245,20 @@ v9:
         "type": "Stage",
         "stageType": "EgoForm",
         "label": "Demographics",
-        "target": "s3-finish"
+        "target": "s3"
       },
       {
-        "id": "s3-finish",
+        "id": "s3",
+        "type": "Stage",
+        "stageType": "Information",
+        "label": "Thank You",
+        "target": "finish"
+      },
+      {
+        "id": "finish",
         "type": "Stage",
         "stageType": "FinishInterview",
-        "label": "Thank You"
+        "label": "Finish"
       }
     ]
   }

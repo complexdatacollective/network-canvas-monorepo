@@ -1,6 +1,10 @@
 import { v4 as uuid } from 'uuid';
 
-import { filter as getFilter, isStageSkipped } from '@codaco/network-query';
+import {
+  filter as getFilter,
+  isStageSkipped,
+  resolveSkipLogicDestinationIndex,
+} from '@codaco/network-query';
 import type { Filter, SkipLogic, Stage } from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
@@ -451,16 +455,14 @@ export function generateNetwork(
         if (isStageSkipped(skipLogic, currentNetwork)) {
           const destination = skipLogic.destination;
 
-          if (destination?.type === 'finish') break;
-
-          if (destination?.type === 'stage') {
-            const destinationIndex = stages.findIndex(
-              (candidate) => getStageId(candidate) === destination.stageId,
+          if (destination) {
+            const destinationIndex = resolveSkipLogicDestinationIndex(
+              destination,
+              stages,
+              i,
             );
 
-            // Valid protocols guarantee a forward destination. Keep malformed
-            // direct callers safe by falling back to the legacy one-stage skip.
-            if (destinationIndex > i) {
+            if (destinationIndex !== undefined) {
               i = destinationIndex - 1;
             }
           }

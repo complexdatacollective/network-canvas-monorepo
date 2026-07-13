@@ -541,6 +541,25 @@
       "id": "e922f680-32ee-11eb-8503-3b4fa95b8bc6",
       "label": "Ego Form",
       "type": "EgoForm",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "type": "ego",
+              "id": "08639361-afc8-482b-845e-52c14abb37e9",
+              "options": {
+                "attribute": "09306238-68e4-498c-8c12-923eb2eec760",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
+      },
       "form": {
         "fields": [
           {

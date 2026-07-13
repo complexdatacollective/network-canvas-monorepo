@@ -76,12 +76,14 @@ Think carefully about the logical implications of your join operator when changi
 
 By default, hiding a stage continues the interview at the next stage whose own
 skip logic allows it to be shown. You can instead choose a specific later stage
-or the end of the interview in the **When this stage is skipped** field.
+or the interview finish screen in the **When this stage is skipped** field.
 
 The destination belongs to the stage that may be hidden. For example, suppose
 an Ego Form records consent and the rest of the interview should be bypassed
 when consent is not given. Add the consent rule to the first stage after the
 consent form, then choose **End the interview** as that stage's destination.
+This routes to the normal finish screen, where the interview is completed using
+the usual confirmation flow.
 
 Only forward destinations are available. When a destination is used, every
 stage between the hidden stage and the destination is bypassed. The destination

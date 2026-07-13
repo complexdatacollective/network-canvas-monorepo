@@ -1,6 +1,9 @@
 import { createSelector } from '@reduxjs/toolkit';
 
-import { isStageSkipped } from '@codaco/network-query';
+import {
+  isStageSkipped,
+  resolveSkipLogicDestinationIndex,
+} from '@codaco/network-query';
 import type {
   SkipLogic,
   SkipLogicDestination,
@@ -68,6 +71,7 @@ export const buildStageAvailabilityMap = (
     stages.map((_, index) => [index, AVAILABLE]),
   ) as Record<number, StageAvailability>;
   const finishIndex = stages.length - 1;
+  const protocolStages = stages.slice(0, finishIndex);
 
   for (let stageIndex = 0; stageIndex < stages.length; stageIndex += 1) {
     if (availability[stageIndex]?.kind === 'bypassed') {
@@ -89,14 +93,15 @@ export const buildStageAvailabilityMap = (
       continue;
     }
 
-    const destinationIndex =
-      destination.type === 'finish'
-        ? finishIndex
-        : stages.findIndex((candidate) => candidate.id === destination.stageId);
+    const destinationIndex = resolveSkipLogicDestinationIndex(
+      destination,
+      protocolStages,
+      stageIndex,
+    );
 
     // Protocol validation guarantees a real forward target. Keep the runtime
     // defensive for preview/host payloads that may not have been validated.
-    if (destinationIndex <= stageIndex || destinationIndex >= stages.length) {
+    if (destinationIndex === undefined) {
       continue;
     }
 
