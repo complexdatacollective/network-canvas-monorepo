@@ -21,8 +21,13 @@ async function selectOrCreateEntityType(
   name: string,
 ): Promise<void> {
   const entityLabel = entityType === 'node' ? 'Node' : 'Edge';
+  // `exact: true`: without it the default substring match means selecting a
+  // type named "Person" would also match an existing "Select node Personnel"
+  // pill and `.first()` would silently click the wrong one instead of falling
+  // through to creation.
   const existing = page.getByRole('radio', {
     name: `Select ${entityType} ${name}`,
+    exact: true,
   });
   if (await existing.count()) {
     await existing.first().click();

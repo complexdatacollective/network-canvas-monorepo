@@ -1,4 +1,4 @@
-import { type Page } from '@playwright/test';
+import { type Locator } from '@playwright/test';
 
 import { createVariableViaSpotlight } from './variables.js';
 
@@ -7,6 +7,14 @@ import { createVariableViaSpotlight } from './variables.js';
 // `editorFieldsComponent: FieldFields` (sections/Form/FieldFields.tsx,
 // confusingly exported as `PromptFields`). "Create new" is
 // DialogArrayField's default `addButtonLabel`.
+//
+// Takes the enclosing section `Locator` (e.g. `editor.section('Form')`) rather
+// than the Page, and scopes the "Create new" OPEN click to it: NameGenerator
+// renders both a `Form` AND a `NameGeneratorPrompts` DialogArrayField at once
+// (StageEditor/Interfaces.tsx), each with the same default "Create new" label,
+// so an unscoped match hits 2+ buttons and Playwright strict-mode throws. The
+// opened dialog is a single page-level portal, so its fields and the final
+// "Add" submit are unambiguous and reached via `section.page()`.
 //
 // Inside that dialog:
 // - `variable`: VariablePicker, driven the same way as any other spotlight
@@ -31,14 +39,17 @@ import { createVariableViaSpotlight } from './variables.js';
 // (config/variables.ts) available whenever the variable is newly created
 // (`componentOptions` falls back to the full `formattedInputOptions` list).
 export async function addFormField(
-  page: Page,
+  section: Locator,
   opts: {
     variableName: string;
     promptText: string;
     inputControl?: string;
   },
 ): Promise<void> {
-  await page.getByRole('button', { name: 'Create new' }).click();
+  const page = section.page();
+  await section
+    .getByRole('button', { name: 'Create new', exact: true })
+    .click();
   await createVariableViaSpotlight(page, { variableName: opts.variableName });
   const prompt = page.getByRole('textbox', { name: 'Prompt text' });
   await prompt.click();
@@ -46,5 +57,5 @@ export async function addFormField(
   await page
     .getByLabel('Input control')
     .selectOption({ label: opts.inputControl ?? 'Text Input' });
-  await page.getByRole('button', { name: 'Add' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
 }
