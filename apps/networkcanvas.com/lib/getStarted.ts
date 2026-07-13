@@ -1,7 +1,13 @@
 export type Workflow = 'design' | 'collect';
 export type WebAppId = 'architect' | 'interviewer' | 'fresco';
 export type ClassicAppId = 'architect-classic' | 'interviewer-classic';
-export type PlatformId = 'apple-silicon' | 'apple-intel' | 'windows' | 'linux';
+export type PlatformId =
+  | 'apple-silicon'
+  | 'apple-intel'
+  | 'windows'
+  | 'linux'
+  | 'ios'
+  | 'android';
 
 type AppAction = {
   labelKey:
@@ -47,7 +53,9 @@ type PlatformLink = {
     | 'platforms.appleSilicon'
     | 'platforms.appleIntel'
     | 'platforms.windows'
-    | 'platforms.linux';
+    | 'platforms.linux'
+    | 'platforms.ios'
+    | 'platforms.android';
   href: string;
 };
 
@@ -68,6 +76,8 @@ export const webDestinations = {
   architect: 'https://architect.networkcanvas.com/',
   interviewer: 'https://interviewer.networkcanvas.com/',
   frescoSandbox: 'https://fresco-sandbox.networkcanvas.com/',
+  frescoSandboxGuide:
+    'https://documentation.networkcanvas.com/en/collect-data/fresco/sandbox',
   frescoDeployment:
     'https://documentation.networkcanvas.com/en/fresco/deployment/guide',
 } as const;
@@ -136,7 +146,7 @@ export const webApps = [
     actions: [
       {
         labelKey: 'apps.fresco.actions.sandbox',
-        href: webDestinations.frescoSandbox,
+        href: webDestinations.frescoSandboxGuide,
       },
       {
         labelKey: 'apps.fresco.actions.deployment',
@@ -213,6 +223,16 @@ export const classicApps = [
         id: 'linux',
         labelKey: 'platforms.linux',
         href: classicDestinations.interviewerRelease,
+      },
+      {
+        id: 'ios',
+        labelKey: 'platforms.ios',
+        href: 'https://apps.apple.com/us/app/network-canvas-interviewer/id1538673677',
+      },
+      {
+        id: 'android',
+        labelKey: 'platforms.android',
+        href: 'https://play.google.com/store/apps/details?id=org.codaco.NetworkCanvasInterviewer6',
       },
     ],
     treatment: 'classic',

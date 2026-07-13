@@ -32,7 +32,8 @@ describe('message catalogs', () => {
   });
 
   it.each([
-    ['en', en],
+    ['en-US', en],
+    ['en-GB', en],
     ['es', es],
   ])('contains no blank %s messages', (_locale, messages) => {
     expect(

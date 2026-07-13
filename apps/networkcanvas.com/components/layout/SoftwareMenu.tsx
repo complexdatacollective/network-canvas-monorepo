@@ -6,7 +6,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import type { Transition } from 'motion/react';
 import { useTranslations } from 'next-intl';
 
-import Heading from '@codaco/fresco-ui/typography/Heading';
+import Heading, { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { DeviceMockup } from '~/components/ui/DeviceMockup';
 import { cn } from '~/lib/cn';
@@ -130,7 +130,7 @@ function SoftwareCard({ tool }: { tool: Tool }) {
  * Rendered as a `<div>` rather than its default `<nav>` so it can be embedded
  * inside the header's existing `<nav>` without nesting landmark regions.
  */
-export function SoftwareMenu() {
+export function SoftwareMenu({ active = false }: { active?: boolean }) {
   const t = useTranslations('Navigation');
 
   return (
@@ -142,7 +142,18 @@ export function SoftwareMenu() {
     >
       <NavigationMenu.List className="flex">
         <NavigationMenu.Item>
-          <NavigationMenu.Trigger className="focusable font-heading text-cyber-grape hover:text-neon-coral data-[popup-open]:text-neon-coral group flex items-center gap-1 text-sm font-bold tracking-[0.12em] uppercase transition-colors">
+          <NavigationMenu.Trigger
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+              headingVariants({
+                level: 'h4',
+                variant: 'all-caps',
+                margin: 'none',
+              }),
+              'focusable text-cyber-grape hover:text-neon-coral data-[popup-open]:text-neon-coral group flex items-center gap-1 transition-colors',
+              active && 'text-neon-coral',
+            )}
+          >
             {t('software')}
             <ChevronDown
               aria-hidden

@@ -36,3 +36,11 @@ class IntersectionObserverMock implements IntersectionObserver {
 }
 
 globalThis.IntersectionObserver = IntersectionObserverMock;
+
+class ResizeObserverMock implements ResizeObserver {
+  disconnect() {}
+  observe() {}
+  unobserve() {}
+}
+
+globalThis.ResizeObserver = ResizeObserverMock;

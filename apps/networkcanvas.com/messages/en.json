@@ -7,13 +7,17 @@
   },
   "LanguageSelector": {
     "label": "Language",
-    "english": "English",
-    "spanish": "Español"
+    "englishUS": "English (United States)",
+    "englishUK": "English (United Kingdom)",
+    "spanish": "Español",
+    "searchPlaceholder": "Search languages...",
+    "emptyMessage": "No languages found."
   },
   "Navigation": {
     "home": "Network Canvas home",
     "community": "Community",
     "documentation": "Documentation",
+    "protocolGallery": "Protocol Gallery",
     "software": "Software",
     "getStarted": "Get Started",
     "toggleMenu": "Toggle menu",
@@ -45,7 +49,7 @@
     },
     "fresco": {
       "description": "Bringing Network Canvas interviews to the web! Fresco is a pilot project that allows researchers to conduct Network Canvas interviews in a web browser.",
-      "action": "Open Fresco",
+      "action": "Try the Fresco Sandbox",
       "screenshotAlt": "Fresco dashboard showing protocol, participant, and interview totals"
     }
   },
@@ -192,7 +196,9 @@
       "appleSilicon": "Apple Silicon",
       "appleIntel": "Apple Intel",
       "windows": "Windows",
-      "linux": "Linux"
+      "linux": "Linux",
+      "ios": "iPhone and iPad",
+      "android": "Android"
     },
     "apps": {
       "architect": {
@@ -231,7 +237,7 @@
           "selfHosted": "Teams that can deploy and host a Fresco instance"
         },
         "actions": {
-          "sandbox": "Try the Fresco Sandbox",
+          "sandbox": "Fresco Sandbox Access Guide",
           "deployment": "Deployment Guide"
         }
       },

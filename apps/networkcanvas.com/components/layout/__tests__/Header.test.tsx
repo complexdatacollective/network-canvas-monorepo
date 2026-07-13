@@ -28,7 +28,7 @@ describe('localized layout navigation', () => {
   afterEach(cleanup);
 
   it('renders Spanish navigation and menu controls', () => {
-    renderWithIntl(<Header />, 'es');
+    renderWithIntl(<Header activeItemId="getStarted" />, 'es');
 
     expect(
       screen.getByRole('link', { name: 'Inicio de Network Canvas' }),
@@ -42,13 +42,22 @@ describe('localized layout navigation', () => {
       'https://documentation.networkcanvas.com/',
     );
     expect(
+      screen.getByRole('link', { name: 'Galería de protocolos' }),
+    ).toHaveAttribute('href', 'https://protocol-gallery.networkcanvas.com/');
+    expect(
       screen.getByRole('button', { name: 'Software' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Comenzar' })).toHaveAttribute(
       'href',
       '/get-started',
     );
-    expect(screen.getByRole('group', { name: 'Idioma' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Comenzar' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(
+      screen.getByRole('combobox', { name: 'Idioma' }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Abrir menú' }));
     expect(screen.getByRole('button', { name: 'Cerrar menú' })).toHaveAttribute(
@@ -69,6 +78,8 @@ describe('localized layout navigation', () => {
     expect(
       screen.getByText(/Derechos de autor de Complex Data Collective/),
     ).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Idioma' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Idioma' }),
+    ).toBeInTheDocument();
   });
 });

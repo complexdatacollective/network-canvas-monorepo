@@ -157,7 +157,7 @@ async function parseCsv<Row extends { id: string }>(
 }
 
 function localized(locale: Locale, english: string, spanish: string): string {
-  return locale === 'en' ? english : spanish;
+  return locale === 'es' ? spanish : english;
 }
 
 export async function loadSiteContent(

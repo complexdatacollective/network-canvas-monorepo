@@ -13,7 +13,7 @@ beforeEach(() => {
 });
 
 describe('legacy redirects', () => {
-  it.each(['en', 'es'] as const)(
+  it.each(['en-US', 'en-GB', 'es'] as const)(
     'preserves the %s locale for legacy downloads',
     async (locale) => {
       await LocalizedDownloadPage({ params: Promise.resolve({ locale }) });

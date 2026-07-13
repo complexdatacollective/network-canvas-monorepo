@@ -5,32 +5,35 @@
 > superpowers:executing-plans to implement this plan task-by-task. Steps use
 > checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Statically generate complete English and Spanish versions of
-NetworkCanvas.com with `next-intl`, browser-language redirects, and build-time
+**Goal:** Pre-render complete US English, UK English, and Spanish versions of
+NetworkCanvas.com with `next-intl`, browser-language negotiation, and build-time
 CSV content for Latest News, Publications, Grants, and Core Team.
 
-**Architecture:** Every content route is emitted under `/en` and `/es`; `/`
-redirects at Netlify's CDN edge according to browser language and defaults to
-English elsewhere. A server-only Zod-validated CSV loader selects paired
-English/Spanish fields at build time and passes serializable records into the
-existing section components. All remaining UI copy lives in typed `next-intl`
-message catalogs.
+**Architecture:** Every content route is emitted under `/en-US`, `/en-GB`, or
+`/es`. A `next-intl` proxy running in the deployed Next.js runtime negotiates
+unprefixed requests, honours the saved locale cookie, and defaults to US
+English. A server-only Zod-validated CSV loader selects paired English/Spanish
+fields at build time and passes serializable records into the existing section
+components. US and UK English share the English message catalog while retaining
+distinct locale identifiers.
 
-**Tech Stack:** Next.js 16 static export, React 19, `next-intl` 4.13,
-`csvtojson` 2, Zod 4, Vitest, Testing Library, TypeScript 6, Netlify redirects,
+**Tech Stack:** Next.js 16 with the Netlify Next.js runtime, React 19,
+`next-intl` 4.13, `csvtojson` 2, Zod 4, Vitest, Testing Library, TypeScript 6,
 Turbo, oxlint, and oxfmt.
 
 ## Global Constraints
 
-- Keep `output: 'export'`; do not add middleware, functions, runtime content
-  fetching, or browser-only translations.
-- Generate localized content at `/en`, `/es`, `/en/get-started`, and
-  `/es/get-started`; download paths exist only as redirects.
-- Use `en` as the source and default locale; use neutral international Spanish.
+- Deploy with the Next.js runtime and use `proxy.ts` for locale negotiation; do
+  not use `output: 'export'` or hosting-specific locale redirects.
+- Generate localised content under `/en-US`, `/en-GB`, and `/es`; download paths
+  exist only as redirects.
+- Use `en-US` as the default locale, distinguish `en-GB`, and use neutral
+  international Spanish.
 - Preserve the current page structure, section markup, animation behavior,
   styling, CSV row order, and the first-four publication limit.
-- Add a compact `English / Español` selector to desktop navigation, mobile
-  navigation, and footer; switching locale preserves the current page.
+- Add a searchable Fresco UI combobox to desktop navigation, mobile navigation,
+  and footer; options use country flags and switching locale preserves the
+  current page.
 - Store Latest News, Publications, Grants, and Core Team in four CSV files with
   stable IDs, shared structural fields, and paired `_en`/`_es` fields.
 - Missing files, empty datasets, duplicate IDs, blank translations, invalid
@@ -97,17 +100,14 @@ Turbo, oxlint, and oxfmt.
   — locale switch, current state, and preference persistence tests.
 - `apps/networkcanvas.com/test/renderWithIntl.tsx` — shared test renderer with a
   real `NextIntlClientProvider`.
-- `apps/networkcanvas.com/netlify.toml` — ordered locale-selection and legacy
-  redirects.
+- `apps/networkcanvas.com/netlify.toml` — Next.js runtime build and publish
+  configuration.
 
 ### Redirect-only paths
 
-- `apps/networkcanvas.com/app/get-started/page.tsx` — replaced with a static
-  English redirect fallback after its content moves under `[locale]`.
-- `apps/networkcanvas.com/app/download/page.tsx` — retained only as a static
-  English legacy redirect fallback.
-- `apps/networkcanvas.com/app/[locale]/download/page.tsx` — emits localized
-  legacy redirects without page content or canonical metadata.
+- `proxy.ts` negotiates unprefixed routes and normalises `/download.html`.
+- `apps/networkcanvas.com/app/[locale]/download/page.tsx` emits localised legacy
+  redirects without page content or canonical metadata.
 - The current home implementation in `apps/networkcanvas.com/app/page.tsx` —
   replaced with a static English redirect fallback.
 
@@ -166,10 +166,10 @@ Turbo, oxlint, and oxfmt.
 
 **Interfaces:**
 
-- Produces: `locales: readonly ['en', 'es']`.
-- Produces: `type Locale = 'en' | 'es'`.
+- Produces: `locales: readonly ['en-US', 'en-GB', 'es']`.
+- Produces: `type Locale = 'en-US' | 'en-GB' | 'es'`.
 - Produces: `getStaticLocaleParams(): Array<{locale: Locale}>`.
-- Produces: `routing` with `defaultLocale: 'en'` and
+- Produces: `routing` with `defaultLocale: 'en-US'` and
   `localePrefix: 'always'`.
 - Produces: locale-aware `Link`, `usePathname`, and `useRouter` from
   `~/lib/i18n/navigation`.
@@ -187,16 +187,17 @@ import { getStaticLocaleParams, locales } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
 
 describe('locale routing', () => {
-  it('generates English and Spanish static params', () => {
-    expect(locales).toEqual(['en', 'es']);
+  it('generates US English, UK English, and Spanish static params', () => {
+    expect(locales).toEqual(['en-US', 'en-GB', 'es']);
     expect(getStaticLocaleParams()).toEqual([
-      { locale: 'en' },
+      { locale: 'en-US' },
+      { locale: 'en-GB' },
       { locale: 'es' },
     ]);
   });
 
-  it('always prefixes routes and defaults to English', () => {
-    expect(routing.defaultLocale).toBe('en');
+  it('always prefixes routes and defaults to US English', () => {
+    expect(routing.defaultLocale).toBe('en-US');
     expect(routing.localePrefix).toBe('always');
   });
 });
@@ -233,7 +234,8 @@ describe('message catalogs', () => {
   });
 
   it.each([
-    ['en', en],
+    ['en-US', en],
+    ['en-GB', en],
     ['es', es],
   ])('contains no blank %s messages', (_locale, messages) => {
     expect(
@@ -243,10 +245,9 @@ describe('message catalogs', () => {
 });
 ```
 
-In `legacyRedirects.test.ts`, mock `permanentRedirect` and assert the static
-fallbacks send `/get-started` and `/download` to `/en/get-started`. Invoke the
-localized legacy redirect page for `en` and `es` and assert it preserves the
-locale at `/en/get-started` and `/es/get-started`.
+In `legacyRedirects.test.ts`, mock `permanentRedirect`. Invoke the localised
+legacy redirect page for `en-US`, `en-GB`, and `es` and assert it preserves the
+locale at each locale's Get Started route.
 
 - [ ] **Step 2: Run the focused tests and verify RED**
 
@@ -265,7 +266,7 @@ Add `next-intl: ^4.13.0` to website dependencies and run
 
 ```ts
 // lib/i18n/locales.ts
-export const locales = ['en', 'es'] as const;
+export const locales = ['en-US', 'en-GB', 'es'] as const;
 export type Locale = (typeof locales)[number];
 
 export function getStaticLocaleParams(): Array<{ locale: Locale }> {
@@ -280,7 +281,7 @@ import { locales } from './locales';
 
 export const routing = defineRouting({
   locales,
-  defaultLocale: 'en',
+  defaultLocale: 'en-US',
   localePrefix: 'always',
 });
 ```
@@ -303,16 +304,20 @@ import { routing } from './routing';
 export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale;
   if (!hasLocale(routing.locales, requested)) notFound();
+  const messages =
+    requested === 'es'
+      ? (await import('../../messages/es.json')).default
+      : (await import('../../messages/en.json')).default;
   return {
     locale: requested,
     timeZone: 'UTC',
-    messages: (await import(`../../messages/${requested}.json`)).default,
+    messages,
   };
 });
 ```
 
 Wrap the existing Next config with
-`createNextIntl('./lib/i18n/request.ts')` while retaining static export,
+`createNextIntl('./lib/i18n/request.ts')`, remove `output: 'export'`, and retain
 unoptimized images, strict mode, and the pinned Turbopack root.
 
 - [ ] **Step 4: Add the initial typed catalogs and type augmentation**
@@ -329,14 +334,16 @@ Create both catalogs with identical namespaces and localized values:
   },
   "LanguageSelector": {
     "label": "Language",
-    "english": "English",
+    "englishUS": "English (United States)",
+    "englishUK": "English (United Kingdom)",
     "spanish": "Español"
   }
 }
 ```
 
-Spanish uses `Idioma`, `Inglés`, `Español`, `Comenzar`, and a faithful Spanish
-translation of both descriptions. Augment `next-intl` in `types.d.ts`:
+Spanish uses `Idioma`, distinct translated US and UK English labels, `Español`,
+`Comenzar`, and faithful translations of both descriptions. Augment `next-intl`
+in `types.d.ts`:
 
 ```ts
 import type { Locale } from '~/lib/i18n/locales';
@@ -354,15 +361,8 @@ Keep the existing font module declarations.
 
 - [ ] **Step 5: Move pages under the locale segment**
 
-Change the top-level layout to a typed pass-through. Change root `page.tsx` to:
-
-```tsx
-import { permanentRedirect } from 'next/navigation';
-
-export default function RootPage() {
-  permanentRedirect('/en');
-}
-```
+Change the top-level layout to a typed pass-through and let `proxy.ts` negotiate
+unprefixed requests.
 
 In `[locale]/layout.tsx`, validate with `hasLocale`, call
 `setRequestLocale(locale)`, retrieve the matching catalog with
@@ -371,15 +371,13 @@ In `[locale]/layout.tsx`, validate with `hasLocale`, call
 `generateStaticParams = getStaticLocaleParams`. Generate localized site
 metadata with `getTranslations({locale, namespace: 'Metadata'})`, including
 canonical `https://networkcanvas.com/${locale}` and language alternates for
-`en` and `es`.
+`en-US`, `en-GB`, and `es`.
 
 Move the current home component body unchanged to `[locale]/page.tsx`, await
 `params`, call `setRequestLocale(locale)`, and retain every current section. Move
 the current Get Started page unchanged to `[locale]/get-started/page.tsx`; Task 6
-localizes it. Replace unprefixed `/get-started` with a static fallback redirect
-to `/en/get-started`. Keep `/download` as a permanent fallback redirect to
-`/en/get-started`, and add `[locale]/download/page.tsx` so `/en/download` and
-`/es/download` permanently redirect to their same-locale Get Started route.
+localises it. Add `[locale]/download/page.tsx` so each supported locale's legacy
+download path permanently redirects to its same-locale Get Started route.
 
 - [ ] **Step 6: Run tests, typecheck, lint, and format**
 
@@ -883,7 +881,7 @@ expect(onNavigate).toHaveBeenCalledOnce();
 
 Also assert the active locale has `aria-current="true"`, both controls are
 keyboard-focusable links or buttons, and the group name is localized. Update
-Header tests to expect `Comunidad`, `Documentación`, `Proyectos`, `Descargar`,
+Header tests to expect `Comunidad`, `Documentación`, `Software`, `Comenzar`,
 and the Spanish menu toggle label.
 
 - [ ] **Step 2: Run layout tests and verify RED**

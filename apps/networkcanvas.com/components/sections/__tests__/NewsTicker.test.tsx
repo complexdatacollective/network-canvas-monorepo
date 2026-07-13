@@ -26,6 +26,14 @@ describe('NewsTicker', () => {
     expect(desktopTicker).toHaveClass('tablet-portrait:flex', 'hidden');
     expect(mobileTicker).toHaveClass('tablet-portrait:hidden', 'flex');
     expect(screen.getAllByText('Fixture-only research news')).toHaveLength(3);
+    expect(screen.getAllByRole('link', { name: '[Full story]' })).toHaveLength(
+      2,
+    );
+    const duplicate = container.querySelector('[aria-hidden="true"] a');
+    expect(duplicate).toHaveAttribute('tabindex', '-1');
+    expect(container.querySelector('.animate-marquee')).toHaveClass(
+      'motion-reduce:animate-none',
+    );
     expect(
       screen.queryByText('Network Canvas wins INSNA Award'),
     ).not.toBeInTheDocument();

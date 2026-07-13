@@ -32,7 +32,7 @@ export function HeroIntro({ newsItems }: { newsItems: readonly NewsItem[] }) {
         initial={false}
         animate={controls}
       >
-        <Header entranceVariants={entrance.itemVariants} />
+        <Header activeItemId="home" entranceVariants={entrance.itemVariants} />
         <Hero
           containerVariants={entrance.heroVariants}
           itemVariants={entrance.itemVariants}

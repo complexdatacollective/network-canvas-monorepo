@@ -8,9 +8,14 @@ export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale;
   if (!hasLocale(routing.locales, requested)) notFound();
 
+  const messages =
+    requested === 'es'
+      ? (await import('../../messages/es.json')).default
+      : (await import('../../messages/en.json')).default;
+
   return {
     locale: requested,
     timeZone: 'UTC',
-    messages: (await import(`../../messages/${requested}.json`)).default,
+    messages,
   };
 });

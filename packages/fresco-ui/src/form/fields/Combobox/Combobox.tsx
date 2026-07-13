@@ -2,7 +2,12 @@
 
 import { Combobox } from '@base-ui/react/combobox';
 import { Check, ChevronsUpDown, SearchIcon } from 'lucide-react';
-import { type ComponentPropsWithoutRef, useMemo, useState } from 'react';
+import {
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+  useMemo,
+  useState,
+} from 'react';
 
 import Button from '../../../Button';
 import Surface from '../../../layout/Surface';
@@ -29,6 +34,8 @@ type ComboboxFieldProps = FieldValueProps<(string | number)[]> &
     showDeselectAll?: boolean;
     singular?: string;
     plural?: string;
+    renderOption?: (option: ComboboxOption) => ReactNode;
+    renderValue?: (selectedOptions: ComboboxOption[]) => ReactNode;
     className?: string;
   } & Omit<
     ComponentPropsWithoutRef<typeof Combobox.Root>,
@@ -41,6 +48,17 @@ type ComboboxFieldProps = FieldValueProps<(string | number)[]> &
   > &
   VariantProps<typeof comboboxTriggerVariants>;
 
+function isComboboxOption(value: unknown): value is ComboboxOption {
+  if (typeof value !== 'object' || value === null) return false;
+
+  return (
+    'value' in value &&
+    (typeof value.value === 'string' || typeof value.value === 'number') &&
+    'label' in value &&
+    typeof value.label === 'string'
+  );
+}
+
 function ComboboxField(props: ComboboxFieldProps) {
   const {
     options,
@@ -52,6 +70,8 @@ function ComboboxField(props: ComboboxFieldProps) {
     showDeselectAll = true,
     singular = 'item',
     plural = 'items',
+    renderOption,
+    renderValue,
     size,
     className,
     onChange,
@@ -86,9 +106,8 @@ function ComboboxField(props: ComboboxFieldProps) {
     if (readOnly) return;
     if (newValue === null) {
       onChange?.([]);
-    } else {
-      const typedValue = newValue as ComboboxOption[];
-      onChange?.(typedValue.map((opt) => opt.value));
+    } else if (newValue.every(isComboboxOption)) {
+      onChange?.(newValue.map((opt) => opt.value));
     }
   };
 
@@ -175,7 +194,7 @@ function ComboboxField(props: ComboboxFieldProps) {
               </span>
             }
           >
-            {triggerLabel}
+            {renderValue ? renderValue(selectedOptions) : triggerLabel}
           </Combobox.Value>
         </span>
         <Combobox.Icon className="shrink-0">
@@ -246,7 +265,7 @@ function ComboboxField(props: ComboboxFieldProps) {
                   >
                     <Check />
                   </Combobox.ItemIndicator>
-                  {option.label}
+                  {renderOption ? renderOption(option) : option.label}
                 </Combobox.Item>
               )}
             </Combobox.List>

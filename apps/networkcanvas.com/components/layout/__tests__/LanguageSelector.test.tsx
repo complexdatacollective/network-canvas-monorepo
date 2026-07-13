@@ -19,28 +19,42 @@ describe('LanguageSelector', () => {
 
   afterEach(cleanup);
 
-  it('preserves the pathname when changing locale', () => {
+  it('preserves the pathname when changing locale', async () => {
     const onNavigate = vi.fn();
     renderWithIntl(<LanguageSelector onNavigate={onNavigate} />, 'es');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Inglés' }));
+    fireEvent.click(screen.getByRole('combobox', { name: 'Idioma' }));
+    const englishOption = await screen.findByRole('option', {
+      name: 'Inglés (Reino Unido)',
+    });
+    fireEvent.mouseDown(englishOption);
+    fireEvent.click(englishOption);
 
     expect(router.replace).toHaveBeenCalledWith('/get-started', {
-      locale: 'en',
+      locale: 'en-GB',
     });
     expect(onNavigate).toHaveBeenCalledOnce();
   });
 
-  it('exposes a localized label and the active locale', () => {
+  it('shows only the active country flag in the trigger', () => {
     renderWithIntl(<LanguageSelector />, 'es');
 
-    expect(screen.getByRole('group', { name: 'Idioma' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Español' })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
-    expect(screen.getByRole('button', { name: 'Inglés' })).not.toHaveAttribute(
-      'aria-current',
-    );
+    const trigger = screen.getByRole('combobox', { name: 'Idioma' });
+    expect(trigger).toHaveTextContent('🇪🇸');
+    expect(trigger).not.toHaveTextContent('Español');
+  });
+
+  it('uses distinct flags for US and UK English', async () => {
+    renderWithIntl(<LanguageSelector />, 'en-US');
+
+    const trigger = screen.getByRole('combobox', { name: 'Language' });
+    expect(trigger).toHaveTextContent('🇺🇸');
+
+    fireEvent.click(trigger);
+    expect(
+      await screen.findByRole('option', {
+        name: 'English (United Kingdom)',
+      }),
+    ).toHaveTextContent('🇬🇧');
   });
 });

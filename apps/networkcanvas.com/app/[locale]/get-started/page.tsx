@@ -38,8 +38,9 @@ export async function generateMetadata({
     alternates: {
       canonical: `https://networkcanvas.com/${locale}/get-started`,
       languages: {
-        en: 'https://networkcanvas.com/en/get-started',
-        es: 'https://networkcanvas.com/es/get-started',
+        'en-US': 'https://networkcanvas.com/en-US/get-started',
+        'en-GB': 'https://networkcanvas.com/en-GB/get-started',
+        'es': 'https://networkcanvas.com/es/get-started',
       },
     },
   };

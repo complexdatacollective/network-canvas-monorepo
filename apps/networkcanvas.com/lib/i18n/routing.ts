@@ -4,7 +4,7 @@ import { locales } from './locales';
 
 export const routing = defineRouting({
   locales,
-  defaultLocale: 'en',
+  defaultLocale: 'en-US',
   localePrefix: 'always',
   localeDetection: true,
   localeCookie: {

@@ -55,7 +55,10 @@ export function GetStartedIntro() {
         initial={false}
         animate={controls}
       >
-        <Header entranceVariants={entrance.itemVariants} />
+        <Header
+          activeItemId="getStarted"
+          entranceVariants={entrance.itemVariants}
+        />
 
         <motion.div
           variants={entrance.heroVariants}

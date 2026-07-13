@@ -10,6 +10,7 @@ import { GET_STARTED_PATH, webDestinations } from '~/lib/getStarted';
 export const externalLinks = {
   community: 'https://community.networkcanvas.com/',
   documentation: 'https://documentation.networkcanvas.com/',
+  protocolGallery: 'https://protocol-gallery.networkcanvas.com/',
   github: 'https://github.com/complexdatacollective',
   twitter: 'https://twitter.com/networkcanvas?lang=en',
   youtube: 'https://www.youtube.com/@complexdatacollective2923',
@@ -32,6 +33,11 @@ export const navLinks = [
   {
     id: 'documentation',
     href: externalLinks.documentation,
+    external: true,
+  },
+  {
+    id: 'protocolGallery',
+    href: externalLinks.protocolGallery,
     external: true,
   },
   { id: 'getStarted', href: GET_STARTED_PATH, external: false },

@@ -7,13 +7,17 @@
   },
   "LanguageSelector": {
     "label": "Idioma",
-    "english": "Inglés",
-    "spanish": "Español"
+    "englishUS": "Inglés (Estados Unidos)",
+    "englishUK": "Inglés (Reino Unido)",
+    "spanish": "Español",
+    "searchPlaceholder": "Buscar idiomas...",
+    "emptyMessage": "No se encontraron idiomas."
   },
   "Navigation": {
     "home": "Inicio de Network Canvas",
     "community": "Comunidad",
     "documentation": "Documentación",
+    "protocolGallery": "Galería de protocolos",
     "software": "Software",
     "getStarted": "Comenzar",
     "toggleMenu": "Alternar menú",
@@ -45,7 +49,7 @@
     },
     "fresco": {
       "description": "¡Network Canvas lleva las entrevistas a la web! Fresco es un proyecto piloto que permite realizar entrevistas de Network Canvas en un navegador web.",
-      "action": "Abrir Fresco",
+      "action": "Probar el entorno sandbox de Fresco",
       "screenshotAlt": "Panel de Fresco que muestra los totales de protocolos, participantes y entrevistas"
     }
   },
@@ -192,7 +196,9 @@
       "appleSilicon": "Apple Silicon",
       "appleIntel": "Apple Intel",
       "windows": "Windows",
-      "linux": "Linux"
+      "linux": "Linux",
+      "ios": "iPhone y iPad",
+      "android": "Android"
     },
     "apps": {
       "architect": {
@@ -231,7 +237,7 @@
           "selfHosted": "Equipos que pueden implementar y alojar una instancia de Fresco"
         },
         "actions": {
-          "sandbox": "Probar el entorno sandbox de Fresco",
+          "sandbox": "Guía de acceso al entorno sandbox de Fresco",
           "deployment": "Guía de implementación"
         }
       },

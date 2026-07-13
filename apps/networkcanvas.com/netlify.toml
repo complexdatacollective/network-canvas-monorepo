@@ -1,0 +1,6 @@
+[build]
+command = "pnpm exec turbo run build --filter=networkcanvas.com"
+publish = "apps/networkcanvas.com/.next"
+
+[build.environment]
+NODE_OPTIONS = "--max-old-space-size=4096"

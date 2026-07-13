@@ -18,31 +18,37 @@ const negotiationCases: readonly NegotiationCase[] = [
     destination: 'http://localhost/es',
   },
   {
-    name: 'English fallback',
+    name: 'US English fallback',
     headers: {},
-    destination: 'http://localhost/en',
+    destination: 'http://localhost/en-US',
   },
   {
-    name: 'saved English preference before Spanish browser language',
+    name: 'saved UK English preference before Spanish browser language',
     headers: {
       'accept-language': 'es-ES,es;q=0.9',
-      'cookie': 'nf_lang=en',
+      'cookie': 'nf_lang=en-GB',
     },
-    destination: 'http://localhost/en',
+    destination: 'http://localhost/en-GB',
+  },
+  {
+    name: 'UK English browser language',
+    headers: { 'accept-language': 'en-GB,en;q=0.9' },
+    destination: 'http://localhost/en-GB',
   },
 ];
 
 describe('locale routing', () => {
-  it('generates English and Spanish static params', () => {
-    expect(locales).toEqual(['en', 'es']);
+  it('generates US English, UK English, and Spanish static params', () => {
+    expect(locales).toEqual(['en-US', 'en-GB', 'es']);
     expect(getStaticLocaleParams()).toEqual([
-      { locale: 'en' },
+      { locale: 'en-US' },
+      { locale: 'en-GB' },
       { locale: 'es' },
     ]);
   });
 
-  it('always prefixes routes and defaults to English', () => {
-    expect(routing.defaultLocale).toBe('en');
+  it('always prefixes routes and defaults to US English', () => {
+    expect(routing.defaultLocale).toBe('en-US');
     expect(routing.localePrefix).toBe('always');
     expect(routing.localeDetection).toBe(true);
     expect(routing.localeCookie).toMatchObject({

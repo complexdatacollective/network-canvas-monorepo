@@ -57,7 +57,7 @@ describe('loadSiteContent', () => {
   });
 
   it('limits publications to the first four rows', async () => {
-    const content = await loadSiteContent('en', directory);
+    const content = await loadSiteContent('en-US', directory);
 
     expect(content.publications.map(({ id }) => id)).toEqual([
       'p1',
@@ -68,7 +68,7 @@ describe('loadSiteContent', () => {
   });
 
   it('parses quoted commas and embedded newlines', async () => {
-    const content = await loadSiteContent('en', directory);
+    const content = await loadSiteContent('en-GB', directory);
 
     expect(content.grants[0]?.description).toBe(
       'Line one, with comma\nLine two',
@@ -76,7 +76,7 @@ describe('loadSiteContent', () => {
   });
 
   it('validates the shipped content files', async () => {
-    const content = await loadSiteContent('en');
+    const content = await loadSiteContent('en-US');
 
     expect(
       [
@@ -140,7 +140,7 @@ person,Person Name,Institution,Institución,person.jpg
   it('reports a missing file as an empty dataset', async () => {
     await rm(join(directory, 'latest-news.csv'));
 
-    await expect(loadSiteContent('en', directory)).rejects.toThrow(
+    await expect(loadSiteContent('en-US', directory)).rejects.toThrow(
       'latest-news.csv: dataset must contain at least one row',
     );
   });
@@ -151,7 +151,7 @@ person,Person Name,Institution,Institución,person.jpg
       'id,title_en,title_es,href\n',
     );
 
-    await expect(loadSiteContent('en', directory)).rejects.toThrow(
+    await expect(loadSiteContent('en-US', directory)).rejects.toThrow(
       'latest-news.csv: dataset must contain at least one row',
     );
   });

@@ -26,7 +26,7 @@ vi.mock('~/components/ui/Reveal', () => ({
 describe('HomePage background composition', () => {
   it('places one background behind the complete localized page content', async () => {
     const page = await HomePage({
-      params: Promise.resolve({ locale: 'en' }),
+      params: Promise.resolve({ locale: 'en-US' }),
     });
     const { container } = renderWithIntl(page);
     const main = container.querySelector('main');

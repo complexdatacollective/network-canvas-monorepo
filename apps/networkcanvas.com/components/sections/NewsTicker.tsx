@@ -5,16 +5,28 @@ import Pill from '@codaco/fresco-ui/Pill';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NewsItem as NewsItemRecord } from '~/lib/siteContent';
 
-function NewsItem({ title, href }: { title: string; href: string }) {
+function NewsItem({
+  title,
+  href,
+  duplicate = false,
+}: {
+  title: string;
+  href: string;
+  duplicate?: boolean;
+}) {
   const t = useTranslations('News');
 
   return (
-    <span className="text-base-sm text-text/80 inline-flex shrink-0 items-center gap-2 whitespace-nowrap">
+    <span
+      aria-hidden={duplicate || undefined}
+      className="text-base-sm text-text/80 inline-flex shrink-0 items-center gap-2 whitespace-nowrap"
+    >
       {title}
       <a
         href={href}
         target="_blank"
         rel="noreferrer"
+        tabIndex={duplicate ? -1 : undefined}
         className="text-cerulean-blue font-bold hover:underline"
       >
         {t('fullStory')}
@@ -45,12 +57,12 @@ export function NewsTicker({
       <div className="tablet-portrait:flex hidden items-center gap-5 px-6 py-3">
         <NewsLabel />
         <div className="relative flex-1 overflow-hidden mask-[linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
-          <div className="animate-marquee flex w-max gap-12">
+          <div className="animate-marquee flex w-max gap-12 motion-reduce:animate-none">
             {newsItems.map((item) => (
               <NewsItem key={`first-${item.id}`} {...item} />
             ))}
             {newsItems.map((item) => (
-              <NewsItem key={`second-${item.id}`} {...item} />
+              <NewsItem key={`second-${item.id}`} {...item} duplicate />
             ))}
           </div>
         </div>

@@ -2,47 +2,74 @@
 
 import { useLocale, useTranslations } from 'next-intl';
 
-import Button from '@codaco/fresco-ui/Button';
-import type { Locale } from '~/lib/i18n/locales';
+import ComboboxField from '@codaco/fresco-ui/form/fields/Combobox/Combobox';
+import type { ComboboxOption } from '@codaco/fresco-ui/form/fields/Combobox/shared';
+import { locales, type Locale } from '~/lib/i18n/locales';
 import { usePathname, useRouter } from '~/lib/i18n/navigation';
+
+const localeFlags = {
+  'en-US': '🇺🇸',
+  'en-GB': '🇬🇧',
+  'es': '🇪🇸',
+} satisfies Record<Locale, string>;
 
 export function LanguageSelector({ onNavigate }: { onNavigate?: () => void }) {
   const locale = useLocale();
   const t = useTranslations('LanguageSelector');
   const pathname = usePathname();
   const router = useRouter();
+  const options: ComboboxOption[] = [
+    { value: 'en-US', label: t('englishUS') },
+    { value: 'en-GB', label: t('englishUK') },
+    { value: 'es', label: t('spanish') },
+  ];
 
-  const navigate = (targetLocale: Locale) => {
+  const navigate = (targetLocale: Locale | undefined) => {
+    if (!targetLocale || targetLocale === locale) return;
+
     router.replace(pathname, { locale: targetLocale });
     onNavigate?.();
   };
 
   return (
-    <fieldset className="border-cyber-grape/15 flex w-fit items-center gap-0.5 rounded-full border bg-white/55 p-1 backdrop-blur-md">
-      <legend className="sr-only">{t('label')}</legend>
-      <Button
-        variant="text"
-        color="dynamic"
-        size="sm"
-        aria-current={locale === 'en' ? 'true' : undefined}
-        onClick={() => navigate('en')}
-        className="aria-current:bg-cyber-grape aria-current:hover:bg-cyber-grape min-w-0 rounded-full px-2.5 shadow-none aria-current:text-white"
-      >
-        {t('english')}
-      </Button>
-      <span aria-hidden className="text-cyber-grape/35">
-        /
-      </span>
-      <Button
-        variant="text"
-        color="dynamic"
-        size="sm"
-        aria-current={locale === 'es' ? 'true' : undefined}
-        onClick={() => navigate('es')}
-        className="aria-current:bg-cyber-grape aria-current:hover:bg-cyber-grape min-w-0 rounded-full px-2.5 shadow-none aria-current:text-white"
-      >
-        {t('spanish')}
-      </Button>
-    </fieldset>
+    <ComboboxField
+      aria-label={t('label')}
+      value={[locale]}
+      options={options}
+      searchPlaceholder={t('searchPlaceholder')}
+      emptyMessage={t('emptyMessage')}
+      showSelectAll={false}
+      showDeselectAll={false}
+      renderValue={() => (
+        <span aria-hidden className="text-lg leading-none">
+          {localeFlags[locale]}
+        </span>
+      )}
+      renderOption={(option) => {
+        const optionLocale = locales.find(
+          (supportedLocale) => supportedLocale === option.value,
+        );
+
+        return (
+          <span className="flex items-center gap-2">
+            {optionLocale ? (
+              <span aria-hidden className="text-lg leading-none">
+                {localeFlags[optionLocale]}
+              </span>
+            ) : null}
+            <span>{option.label}</span>
+          </span>
+        );
+      }}
+      onChange={(values) =>
+        navigate(
+          locales.find(
+            (supportedLocale) =>
+              supportedLocale !== locale && values?.includes(supportedLocale),
+          ),
+        )
+      }
+      className="border-cyber-grape/15 w-20 bg-white/55 backdrop-blur-md"
+    />
   );
 }

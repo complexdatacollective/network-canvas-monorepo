@@ -44,8 +44,9 @@ export async function generateMetadata({
     alternates: {
       canonical,
       languages: {
-        en: 'https://networkcanvas.com/en',
-        es: 'https://networkcanvas.com/es',
+        'en-US': 'https://networkcanvas.com/en-US',
+        'en-GB': 'https://networkcanvas.com/en-GB',
+        'es': 'https://networkcanvas.com/es',
       },
     },
     openGraph: {

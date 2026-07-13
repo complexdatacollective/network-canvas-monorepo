@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import Heading from './Heading';
-import Paragraph from './Paragraph';
+import Heading from '../Heading';
+import Paragraph from '../Paragraph';
 
 const sourceHasUseClientDirective = (sourceFile: string) => {
   const source = readFileSync(new URL(sourceFile, import.meta.url), 'utf8');
@@ -25,7 +25,7 @@ const headingLevels = [
 }>;
 
 describe('server-safe typography', () => {
-  it.each(['./Heading.tsx', './Paragraph.tsx'])(
+  it.each(['../Heading.tsx', '../Paragraph.tsx'])(
     'does not mark %s as a client module',
     (sourceFile) => {
       expect(sourceHasUseClientDirective(sourceFile)).toBe(false);

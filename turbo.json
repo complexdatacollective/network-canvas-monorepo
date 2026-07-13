@@ -137,6 +137,23 @@
       ],
       "outputs": []
     },
+    "networkcanvas.com#test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "app/**",
+        "components/**",
+        "content/**",
+        "lib/**",
+        "messages/**",
+        "test/**",
+        "proxy.ts",
+        "vitest.config.*",
+        "vitest.setup.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "outputs": []
+    },
     "@codaco/interviewer-classic#build:web": {
       "dependsOn": ["^build"],
       "inputs": [

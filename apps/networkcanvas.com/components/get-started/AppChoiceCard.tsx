@@ -4,6 +4,7 @@ import {
   ExternalLink,
   type LucideIcon,
   Monitor,
+  Smartphone,
   Terminal,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -33,6 +34,8 @@ const platformIcons = {
   'apple-intel': Apple,
   'windows': Monitor,
   'linux': Terminal,
+  'ios': Apple,
+  'android': Smartphone,
 } satisfies Record<PlatformId, LucideIcon>;
 
 function AppActions({ app }: { app: (typeof webApps)[number] }) {

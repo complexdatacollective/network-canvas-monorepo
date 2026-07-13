@@ -43,7 +43,7 @@ export function Tools() {
               key={tool.id}
               className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 grid items-center gap-8 rounded-[2rem] bg-white/55 p-6 shadow-xl backdrop-blur-md"
             >
-              <div className="tablet-landscape:order-1 order-2">
+              <div>
                 <Heading
                   level="h3"
                   margin="none"
@@ -66,7 +66,7 @@ export function Tools() {
                   {t(`${tool.id}.action`)}
                 </PillLink>
               </div>
-              <div className="tablet-landscape:order-2 order-1">
+              <div>
                 <a
                   href={tool.href}
                   target="_blank"

@@ -31,6 +31,13 @@ describe('get started content', () => {
         ),
       ),
     ).toBe(true);
+
+    const interviewer = classicApps.find(
+      ({ id }) => id === 'interviewer-classic',
+    );
+    expect(interviewer?.platforms.map(({ id }) => id)).toEqual(
+      expect.arrayContaining(['ios', 'android']),
+    );
   });
 
   it('does not include the retired Server app', () => {

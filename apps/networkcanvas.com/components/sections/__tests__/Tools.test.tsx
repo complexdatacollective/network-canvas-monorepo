@@ -39,16 +39,19 @@ describe('Tools', () => {
     const apps = [
       {
         name: 'Architect',
+        actionName: 'Open Architect',
         variant: 'architect',
         href: 'https://architect.networkcanvas.com/',
       },
       {
         name: 'Interviewer',
+        actionName: 'Open Interviewer',
         variant: 'interviewer',
         href: 'https://interviewer.networkcanvas.com/',
       },
       {
         name: 'Fresco',
+        actionName: 'Try the Fresco Sandbox',
         variant: 'fresco',
         href: 'https://fresco-sandbox.networkcanvas.com/',
       },
@@ -63,7 +66,7 @@ describe('Tools', () => {
         name: `${app.variant} preview`,
       });
       const actionLink = screen.getByRole('link', {
-        name: `Open ${app.name}`,
+        name: app.actionName,
       });
 
       expect(panel).toHaveClass('bg-white/55', 'backdrop-blur-md');
@@ -77,9 +80,9 @@ describe('Tools', () => {
     expect(screen.getByRole('heading', { name: 'Fresco' })).toHaveClass(
       'text-slate-blue',
     );
-    expect(screen.getByRole('link', { name: 'Open Fresco' })).toHaveClass(
-      'bg-slate-blue',
-    );
+    expect(
+      screen.getByRole('link', { name: 'Try the Fresco Sandbox' }),
+    ).toHaveClass('bg-slate-blue');
   });
 
   it('renders translated tool copy in Spanish', () => {

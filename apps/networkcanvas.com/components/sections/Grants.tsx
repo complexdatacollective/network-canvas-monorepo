@@ -37,7 +37,7 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
         />
 
         <div className="relative min-h-[22rem] flex-1">
-          <div className="absolute -inset-8 overflow-hidden p-8">
+          <div className="pointer-events-none absolute -inset-8 overflow-hidden p-8">
             <AnimatePresence custom={direction} initial={false} mode="wait">
               <motion.a
                 key={index}
@@ -49,7 +49,7 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: direction >= 0 ? -60 : 60 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="focusable bg-surface tablet-landscape:p-10 flex h-full flex-col rounded-[1.75rem] p-8 shadow-xl"
+                className="focusable bg-surface tablet-landscape:p-10 pointer-events-auto flex h-full flex-col rounded-[1.75rem] p-8 shadow-xl"
               >
                 <Heading
                   level="h3"

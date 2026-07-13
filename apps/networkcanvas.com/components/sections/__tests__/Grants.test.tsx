@@ -162,7 +162,9 @@ describe('Grants', () => {
       '-inset-8',
       'overflow-hidden',
       'p-8',
+      'pointer-events-none',
     );
+    expect(card).toHaveClass('pointer-events-auto');
   });
 
   it('translates grant controls and section copy into Spanish', () => {

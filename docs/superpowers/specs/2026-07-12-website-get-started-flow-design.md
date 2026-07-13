@@ -124,7 +124,8 @@ primary action is **Open Interviewer**, linking to
 
 #### Fresco
 
-Fresco carries the badge **Remote · Self-administered**.
+Fresco carries the badge **Large Teams · Remote Administration ·
+Recommended**.
 
 Use Fresco when:
 
@@ -135,8 +136,8 @@ Use Fresco when:
 
 Fresco has two actions:
 
-- **Try the Fresco Sandbox** — opens
-  `https://fresco-sandbox.networkcanvas.com/` in a new tab.
+- **Fresco Sandbox Access Guide** — opens the credentialed sandbox
+  documentation in a new tab so visitors have the public login details.
 - **Deployment Guide** — opens the Fresco deployment documentation in a new
   tab.
 
@@ -160,11 +161,14 @@ It exposes version 6.6.0 platform actions for:
 - **Apple Intel** — direct macOS x64 installer;
 - **Windows** — direct x64 installer; and
 - **Linux** — the Interviewer 6.6.0 GitHub release page, where the researcher can
-  select the appropriate package.
+  select the appropriate package;
+- **iPhone and iPad** — the Interviewer Classic App Store listing; and
+- **Android** — the Interviewer Classic Google Play listing.
 
 ## Compatibility Warning
 
-A concise warning follows the two paths:
+A concise warning appears immediately after the Design stage description and
+before the Architect and Architect Classic cards:
 
 > **Classic compatibility is one-way.** Architect can upgrade a schema 7
 > protocol to schema 8, but schema 8 protocols cannot be opened in Classic apps.
@@ -315,7 +319,7 @@ content work. After implementation, update both documents:
 The revisions must:
 
 - replace `download` routes and namespaces with `get-started`;
-- generate `/en/get-started` and `/es/get-started`;
+- generate `/en-US/get-started`, `/en-GB/get-started`, and `/es/get-started`;
 - redirect legacy `/download` and localized download routes appropriately;
 - translate the complete purpose chooser, app guidance, compatibility warning,
   platform names, maintenance labels, and accessible names; and

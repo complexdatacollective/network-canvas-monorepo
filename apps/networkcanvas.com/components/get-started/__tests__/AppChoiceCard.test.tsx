@@ -131,6 +131,27 @@ describe('AppChoiceCard', () => {
     }
   });
 
+  it('keeps the Classic tablet download options available', () => {
+    renderWithIntl(<AppChoiceCard app={interviewerClassic} />);
+
+    expect(
+      screen.getByRole('link', {
+        name: 'iPhone and iPad for Interviewer Classic',
+      }),
+    ).toHaveAttribute(
+      'href',
+      'https://apps.apple.com/us/app/network-canvas-interviewer/id1538673677',
+    );
+    expect(
+      screen.getByRole('link', {
+        name: 'Android for Interviewer Classic',
+      }),
+    ).toHaveAttribute(
+      'href',
+      'https://play.google.com/store/apps/details?id=org.codaco.NetworkCanvasInterviewer6',
+    );
+  });
+
   it('localizes guidance and platform accessible names', () => {
     renderWithIntl(<AppChoiceCard app={architectClassic} />, 'es');
 

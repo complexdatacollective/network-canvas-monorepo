@@ -4,27 +4,27 @@
 
 ## Goal
 
-Internationalise the statically exported NetworkCanvas.com site in English and
-Spanish with `next-intl`, and move Latest News, Recent Publications, Grants, and
-Core Team records into simple build-time CSV files. The work must preserve the
-current page structure and presentation, apart from adding the approved language
+Internationalise NetworkCanvas.com in US English, UK English, and Spanish with
+`next-intl`, and move Latest News, Recent Publications, Grants, and Core Team
+records into simple build-time CSV files. The work must preserve the current
+page structure and presentation, apart from adding the approved language
 selector.
 
 ## Scope
 
 This work includes:
 
-- English and Spanish versions of every page and all user-facing copy.
-- Locale-prefixed static routes at `/en`, `/es`, `/en/get-started`, and
-  `/es/get-started`.
-- Browser-language redirects from `/` and unprefixed `/get-started` at the
-  Netlify CDN edge, plus permanent legacy download redirects.
+- US English, UK English, and Spanish versions of every page and all user-facing
+  copy.
+- Locale-prefixed routes under `/en-US`, `/en-GB`, and `/es`.
+- Browser-language redirects from `/` and unprefixed routes through the
+  `next-intl` proxy, plus permanent legacy download redirects.
 - A locale selector in the desktop navigation, mobile navigation, and footer.
 - Build-time CSV content for Latest News, Recent Publications, Grants, and Core
   Team.
-- Localised metadata, canonical URLs, and English/Spanish alternate links.
+- Localised metadata, canonical URLs, and `en-US`/`en-GB`/`es` alternate links.
 - Build-time validation and automated tests for localisation, content loading,
-  routing, and static export.
+  routing, and pre-rendering.
 
 This work does not redesign sections, alter their animations, or change their
 display order or layout.
@@ -41,34 +41,31 @@ Interviewer and Fresco remain equal-width cards on the first Collect row using
 row using `tablet-landscape:col-span-12` with no column-start offset. Mobile
 order remains Interviewer, Fresco, then Interviewer Classic.
 
-## Routing and Static Rendering
+## Routing and Rendering
 
 All content pages use an explicit locale prefix:
 
-| Content     | English           | Spanish           |
-| ----------- | ----------------- | ----------------- |
-| Home        | `/en`             | `/es`             |
-| Get Started | `/en/get-started` | `/es/get-started` |
+| Content     | US English           | UK English           | Spanish           |
+| ----------- | -------------------- | -------------------- | ----------------- |
+| Home        | `/en-US`             | `/en-GB`             | `/es`             |
+| Get Started | `/en-US/get-started` | `/en-GB/get-started` | `/es/get-started` |
 
-The Next.js app continues to use `output: 'export'`. Both locales and both pages
-are generated during `next build`; no Next.js middleware, server function,
-runtime content request, or browser-only translation layer is introduced.
+The app deploys with the Next.js runtime rather than `output: 'export'`. The
+All locale content pages are still pre-rendered during `next build`,
+while `proxy.ts` runs through the Netlify Next.js runtime to negotiate locale
+redirects.
 
-The root `/` and unprefixed `/get-started` routes have two redirect mechanisms:
+The root `/` and unprefixed `/get-started` routes are handled by the next-intl
+proxy. A saved `nf_lang` preference takes precedence over `Accept-Language`; a
+Spanish preference redirects to the Spanish equivalent, UK English preferences
+use `/en-GB`, and all other requests use US English at `/en-US`. Explicitly
+prefixed routes remain stable.
 
-1. `apps/networkcanvas.com/netlify.toml` contains ordered, forced CDN redirects.
-   A Spanish `Accept-Language` preference receives a temporary redirect to the
-   Spanish equivalent (`/es` or `/es/get-started`). Every other request receives
-   a temporary redirect to the English equivalent (`/en` or
-   `/en/get-started`).
-2. Statically generated fallbacks redirect to the English equivalents for local
-   development and deployments that do not process Netlify rules.
-
-The legacy `/download`, `/en/download`, and `/es/download` routes remain only as
-permanent redirects. The localized legacy routes retain their locale, while the
-unprefixed route uses browser language at Netlify and defaults to
-`/en/get-started` in the static fallback. No download route renders page content
-or declares canonical metadata.
+The legacy `/download`, `/en-US/download`, `/en-GB/download`, and `/es/download`
+routes remain only as permanent redirects. The localised legacy routes retain
+their locale, while the unprefixed route uses the same runtime locale
+negotiation. The proxy also normalises the cited legacy `/download.html` URL. No
+download route renders page content or declares canonical metadata.
 
 Temporary redirects are required because browser language preferences can
 change. The language selector provides an explicit user override and switches
@@ -80,19 +77,22 @@ The website mirrors the proven `next-intl` structure already used by
 `apps/documentation`:
 
 - `next.config.ts` is wrapped with the `next-intl` plugin.
-- Routing configuration declares `en` and `es`, with `en` as the default locale
-  and an always-prefixed URL strategy.
+- Routing configuration declares `en-US`, `en-GB`, and `es`, with `en-US` as the
+  default locale and an always-prefixed URL strategy.
+- `proxy.ts` composes next-intl middleware with normalization for the legacy
+  `/download.html` route.
 - Request configuration loads the complete message catalog for the requested
   locale.
 - Locale layouts validate route parameters, call `setRequestLocale`, set the
   document `lang`, and provide `NextIntlClientProvider` to client components.
-- `generateStaticParams` emits both locales.
+- `generateStaticParams` emits all three locales.
 - Locale-aware navigation helpers preserve the current locale for internal
   links and switch locales while retaining the current pathname.
 - English message types augment `next-intl` so invalid message keys fail type
   checking.
 
-Every user-facing string moves into `messages/en.json` and `messages/es.json`,
+Every user-facing string moves into the shared English source catalog at
+`messages/en.json` and the Spanish catalog at `messages/es.json`,
 including:
 
 - navigation and footer labels;
@@ -105,8 +105,10 @@ including:
 - metadata and Open Graph copy; and
 - image alternative text that is not supplied by CSV content.
 
-English retains the current copy and is the source locale. Spanish uses clear,
-neutral international Spanish. Complete ICU messages and `t.rich` are used for
+US and UK English initially share the current English source copy while
+retaining distinct locale identifiers for routing, browser negotiation, Intl
+formatting, metadata, and language selection. Spanish uses clear, neutral
+international Spanish. Complete ICU messages and `t.rich` are used for
 sentences containing links or emphasis so translations do not concatenate
 grammatical fragments. Product names, people names, external URLs, colors, and
 asset paths remain locale-neutral configuration.
@@ -116,23 +118,19 @@ Each localized page emits:
 - the correct `<html lang>` value;
 - localized title, description, and Open Graph metadata;
 - a canonical URL for its locale; and
-- alternate links for `en` and `es`.
+- alternate links for `en-US`, `en-GB`, and `es`.
 
 Missing messages are errors. A localized page must never silently mix English
 and Spanish.
 
 ## Language Selector
 
-A compact `English / Español` selector appears in the desktop navigation, mobile
-navigation, and footer. It uses locale-aware navigation rather than direct
-location mutation, remains keyboard accessible, has a visible focus state, and
-exposes a localized accessible label. Switching locale preserves the current
-page:
-
-- `/en` switches to `/es`;
-- `/es` switches to `/en`;
-- `/en/get-started` switches to `/es/get-started`; and
-- `/es/get-started` switches to `/en/get-started`.
+A compact, searchable Fresco UI combobox appears in the desktop navigation,
+mobile navigation, and footer. Its options show country flags and localised
+language names; its selected state shows only the current flag. It uses
+locale-aware navigation rather than direct location mutation, remains keyboard
+accessible, has a visible focus state, and exposes a localised accessible label.
+Switching among `/en-US`, `/en-GB`, and `/es` preserves the current page.
 
 ## CSV Content Model
 
@@ -251,7 +249,7 @@ failing before production changes.
   records rather than importing hardcoded data;
 - translated interactive labels remain accessible;
 - Get Started pathway cards, app actions, status badges, platform controls, and
-  schema compatibility guidance are complete in both locales;
+  compatibility guidance are complete in all locales;
 - the compatibility warning retains its Fresco UI warning status, follows the
   Design description before the Design cards, and is absent from Collect;
 - Fresco retains both its slate tint and backdrop blur, including when its
@@ -265,13 +263,14 @@ failing before production changes.
 
 ### Locale integration tests
 
-- English and Spanish pages render their message catalogs and CSV content;
+- US English, UK English, and Spanish pages render their message catalogs and
+  CSV content;
 - internal links retain the active locale;
 - the selector switches the equivalent route;
 - metadata, canonical URLs, alternate links, and document language are
   localized; and
-- root redirect configuration selects Spanish for Spanish requests and English
-  otherwise.
+- root proxy negotiation selects Spanish for Spanish requests, UK English for
+  UK English requests, and US English otherwise.
 
 ### Completion checks
 
@@ -280,9 +279,9 @@ failing before production changes.
 - lint runs with automatic fixes and passes;
 - all touched files pass the project formatter;
 - `pnpm knip` passes;
-- the production static build passes; and
-- export output contains `/en`, `/es`, `/en/get-started`, and
-  `/es/get-started`, while download paths contain redirects only.
+- the production Next.js runtime build passes; and
+- the build pre-renders `/en-US`, `/en-GB`, `/es`, and their Get Started routes,
+  while download paths contain redirects only.
 
 ## Accessibility and Compatibility
 
@@ -293,4 +292,4 @@ destination or target app. Status badges supplement translated app guidance
 rather than carrying meaning alone. Translated labels are allowed to expand
 without fixed dimensions that clip content. Existing reduced-motion behavior is
 preserved. The final implementation is verified at representative desktop and
-mobile sizes in both locales without redesigning the page.
+mobile sizes in all locales without redesigning the page.

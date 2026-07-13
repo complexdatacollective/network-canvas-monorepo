@@ -22,7 +22,7 @@ describe('Hero', () => {
 
     expect(screen.getByRole('link', { name: 'Get Started' })).toHaveAttribute(
       'href',
-      '/en/get-started',
+      '/en-US/get-started',
     );
     expect(
       screen.queryByRole('link', { name: 'Download Now' }),
@@ -52,20 +52,16 @@ describe('Hero', () => {
 
   it('distributes tablet and desktop content across the available height', () => {
     const { container } = renderWithIntl(<Hero newsItems={newsItems} />);
-    const root = container.firstElementChild;
     const view = within(container);
+    const root = view.getByTestId('hero-root');
     const heading = view.getByRole('heading', {
       name: 'Simplifying complex network data collection.',
     });
-    const heroContainer = heading.parentElement;
-    const mediaRow = view.getByText(/Network Canvas provides/).parentElement;
-    const mediaSizer =
-      container.querySelector('video, img')?.parentElement?.parentElement;
-    const [newsBadge] = view.getAllByText('Latest News:');
-    const newsWrapper = newsBadge?.parentElement?.parentElement?.parentElement;
-    const ctaWrapper = view.getByRole('link', {
-      name: 'Get Started',
-    }).parentElement;
+    const heroContainer = view.getByTestId('hero-layout');
+    const mediaRow = view.getByTestId('hero-media-row');
+    const mediaSizer = view.getByTestId('hero-media-sizer');
+    const newsWrapper = view.getByTestId('hero-news-wrapper');
+    const ctaWrapper = view.getByTestId('hero-cta-wrapper');
 
     expect(root).toHaveClass('tablet-portrait:flex', 'tablet-portrait:flex-1');
     expect(heroContainer).toHaveClass(

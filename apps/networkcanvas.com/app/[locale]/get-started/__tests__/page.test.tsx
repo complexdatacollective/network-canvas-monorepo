@@ -7,12 +7,17 @@ import { renderWithIntl } from '~/test/renderWithIntl';
 import GetStartedPage, { generateMetadata } from '../page';
 
 const metadataMessages = vi.hoisted(() => ({
-  en: {
+  'en-US': {
     title: 'Get Started',
     description:
       'Choose the right Network Canvas app for designing a protocol or collecting network data.',
   },
-  es: {
+  'en-GB': {
+    title: 'Get Started',
+    description:
+      'Choose the right Network Canvas app for designing a protocol or collecting network data.',
+  },
+  'es': {
     title: 'Comenzar',
     description:
       'Elija la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes.',
@@ -22,7 +27,7 @@ const metadataMessages = vi.hoisted(() => ({
 vi.mock('next-intl/server', () => ({
   setRequestLocale: vi.fn(),
   getTranslations:
-    async ({ locale }: { locale: 'en' | 'es' }) =>
+    async ({ locale }: { locale: 'en-US' | 'en-GB' | 'es' }) =>
     (key: string) => {
       if (key === 'metadata.title') return metadataMessages[locale].title;
       if (key === 'metadata.description') {
@@ -129,8 +134,9 @@ describe('localized Get Started page', () => {
       alternates: {
         canonical: 'https://networkcanvas.com/es/get-started',
         languages: {
-          en: 'https://networkcanvas.com/en/get-started',
-          es: 'https://networkcanvas.com/es/get-started',
+          'en-US': 'https://networkcanvas.com/en-US/get-started',
+          'en-GB': 'https://networkcanvas.com/en-GB/get-started',
+          'es': 'https://networkcanvas.com/es/get-started',
         },
       },
     });
@@ -138,7 +144,7 @@ describe('localized Get Started page', () => {
 
   it('keeps the exact English Fresco recommendation', async () => {
     const page = await GetStartedPage({
-      params: Promise.resolve({ locale: 'en' }),
+      params: Promise.resolve({ locale: 'en-US' }),
     });
     renderWithIntl(page);
 

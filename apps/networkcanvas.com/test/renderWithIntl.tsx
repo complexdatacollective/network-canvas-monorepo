@@ -8,9 +8,9 @@ import es from '~/messages/es.json';
 
 export function renderWithIntl(
   ui: ReactElement,
-  locale: Locale = 'en',
+  locale: Locale = 'en-US',
 ): RenderResult {
-  const messages = locale === 'en' ? en : es;
+  const messages = locale === 'es' ? es : en;
 
   return render(
     <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
