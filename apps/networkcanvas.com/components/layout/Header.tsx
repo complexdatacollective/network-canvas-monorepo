@@ -37,7 +37,7 @@ function NavigationBrand() {
   return (
     <span className="inline-flex items-center gap-1">
       <span aria-hidden="true" className="shrink-0">
-        <Spinner customSize="0.625rem" animationMode="once" />
+        <Spinner customSize="0.625rem" animationMode="hover" playOnMount />
       </span>
       <span className="font-heading text-cyber-grape laptop:inline hidden text-lg font-bold tracking-[0.18em] whitespace-nowrap">
         Network Canvas

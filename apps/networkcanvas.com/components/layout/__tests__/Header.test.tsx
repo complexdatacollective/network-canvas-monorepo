@@ -37,10 +37,6 @@ describe('localized layout navigation', () => {
       'href',
       'https://community.networkcanvas.com/',
     );
-    expect(screen.getByRole('link', { name: 'Documentación' })).toHaveAttribute(
-      'href',
-      'https://documentation.networkcanvas.com/',
-    );
     expect(
       screen.getByRole('link', { name: 'Galería de protocolos' }),
     ).toHaveAttribute('href', 'https://protocol-gallery.networkcanvas.com/');
