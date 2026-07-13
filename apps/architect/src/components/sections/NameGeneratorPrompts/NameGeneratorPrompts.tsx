@@ -40,6 +40,7 @@ const NameGeneratorPrompts = ({
     <ValidatedFieldArray
       name="prompts"
       label="Prompts"
+      labelHidden
       component={DialogArrayField}
       validation={{ notEmpty }}
       componentProps={{

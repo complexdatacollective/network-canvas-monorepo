@@ -1,7 +1,7 @@
 import { get, isNull } from 'es-toolkit/compat';
 import type { ReactNode } from 'react';
 
-import Markdown from '~/components/Form/Fields/Markdown';
+import Markdown from '~/components/Markdown';
 
 import EntityBadge from '../EntityBadge';
 import { renderValue } from '../helpers';

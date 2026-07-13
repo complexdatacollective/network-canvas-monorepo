@@ -18,14 +18,15 @@ import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
+import { SimpleVariablePill } from '~/components/VariablePill';
 import type { RootState } from '~/ducks/store';
 import { cx } from '~/utils/cva';
+import { documentationLinks } from '~/utils/documentationLinks';
 import { validations } from '~/utils/validations';
 
 import { getVariablesForSubject } from '../../../../selectors/codebook';
 import { sortByLabel } from '../../../Codebook/helpers';
 import ExternalLink from '../../../ExternalLink';
-import { SimpleVariablePill } from './VariablePill';
 
 const EMPTY_CLASSES =
   'flex grow basis-full items-start rounded px-7 py-5 text-current/80 [&_svg]:mr-3 [&_svg]:mt-1 [&_svg]:shrink-0';
@@ -376,7 +377,7 @@ const VariableSpotlight = ({
                   <Paragraph margin="none">
                     To create your first variable of this type, type a name
                     above and press enter. See our&nbsp;
-                    <ExternalLink href="https://documentation.networkcanvas.com/reference/variable-naming/">
+                    <ExternalLink href={documentationLinks.variableNaming}>
                       documentation on variable naming
                     </ExternalLink>
                     &nbsp;for more information.

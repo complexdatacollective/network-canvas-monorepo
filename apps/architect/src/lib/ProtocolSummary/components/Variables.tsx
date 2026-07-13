@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import React, { useContext } from 'react';
 
 import type { Variable } from '@codaco/protocol-validation';
-import Markdown from '~/components/Form/Fields/Markdown';
-import { SimpleVariablePill } from '~/components/Form/Fields/VariablePicker/VariablePill';
+import Markdown from '~/components/Markdown';
+import { SimpleVariablePill } from '~/components/VariablePill';
 
 import DualLink from './DualLink';
 import { renderValue } from './helpers';

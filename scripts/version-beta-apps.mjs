@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-// Version step for the app (beta) release lane. Reads pending app changesets,
-// increments each app's -beta.N (base untouched), writes CHANGELOG sections,
-// deletes the consumed changesets, and emits a PR-body summary. Consumed by the
-// `apps-release-pr` workflow job. Apps with no pending changesets are skipped.
+// Version step for the gated release lane. It increments Architect and
+// Interviewer beta versions, bumps Documentation with normal semver, writes
+// CHANGELOG sections, deletes consumed changesets, and emits a PR-body summary.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -12,6 +11,7 @@ import {
   APP_DIRS,
   APP_PACKAGES,
   nextBetaVersion,
+  nextDocumentationVersion,
   readChangesets,
   renderChangelogSection,
 } from './changeset-app-utils.mjs';
@@ -37,7 +37,10 @@ export function planAppReleases(cwd, appPackages = APP_PACKAGES) {
       pkg,
       dir,
       from: current,
-      to: nextBetaVersion(current),
+      to:
+        pkg === '@codaco/documentation'
+          ? nextDocumentationVersion(current, entries)
+          : nextBetaVersion(current),
       entries,
     });
   }
@@ -71,10 +74,10 @@ export function applyAppReleases(cwd, plans, consumed) {
 }
 
 export function renderPrBody(plans) {
-  if (plans.length === 0) return 'No app changes pending.\n';
+  if (plans.length === 0) return 'No app or documentation changes pending.\n';
   const lines = [
-    'Merging this PR releases the app(s) below to Netlify **production** and',
-    'creates a GitHub release for each.',
+    'Merging this PR releases the product(s) below to Netlify **production**.',
+    'Architect and Interviewer also receive a GitHub prerelease.',
     '',
     '| App | From | To |',
     '| --- | --- | --- |',

@@ -1,0 +1,207 @@
+---
+title: Advanced Deployment
+date: 15th June 2026
+navOrder: 7
+---
+
+<SummaryCard duration="30 minutes">
+
+<SummarySection>
+
+This article explains how to deploy Fresco to a VPS or other infrastructure using Docker. For most users, the default [deployment process](./guide) will be sufficient. However, if you are an advanced user, an IT professional, or if you have specific hosting needs, this guide will explain the process.
+
+</SummarySection>
+
+<PrerequisitesSection>
+
+This guide is intended for advanced technical users who are already familiar with Docker and deploying containerised apps. It provides a high-level overview of the steps required to deploy Fresco using Docker, but does not provide detailed instructions for each step.
+
+If you are not already familiar with these technologies, we recommend following our [default deployment guide](./guide).
+
+</PrerequisitesSection>
+</SummaryCard>
+
+To assist users who have specialized hosting needs, we have created a Docker container which allows Fresco to be deployed across a variety of contexts, including institutional IT infrastructure, privately owned VPSs, and internal networks. This tutorial will guide you through the requirements of deploying Fresco using our docker image, and will outline the necessary steps.
+
+<Tipbox danger>
+  Because of the nature of self-hosting Dockerized applications on cloud
+  infrastructure, you are responsible for the security and maintenance of your
+  own deployment! The Network Canvas project team has no access to your data or
+  infrastructure by design, and updates will not be automatically applied. This
+  may leave your data at risk.
+</Tipbox>
+
+## Requirements for deploying Fresco
+
+Fresco is a Next.js application that stores interview and app data in **PostgreSQL** and protocol assets in an **S3-compatible object store**.
+
+The supported way to self-host is with the official Docker Compose files described below. Each one bundles a [Traefik](https://traefik.io/) reverse proxy — which obtains and renews **Let's Encrypt** TLS certificates automatically — together with a PostgreSQL database and the Fresco app, so you do not need to provision certificates or a database separately.
+
+To deploy Fresco, you'll need:
+
+- A host machine running Docker (with Docker Compose v2, i.e. the `docker compose` command), at least 1 GB of RAM, and enough disk space for your interview data (plus protocol assets if you self-host storage with MinIO).
+- A registered domain name, with DNS pointing at your host, and inbound ports **80 and 443** reachable from the Internet. Traefik uses port 80 for the Let's Encrypt HTTP challenge and port 443 to serve the app over HTTPS.
+- A storage choice: bundled MinIO (included), an external S3-compatible bucket, or UploadThing — see [Choose a deployment configuration](#choose-a-deployment-configuration).
+- _(Optional)_ an external PostgreSQL database, if you would rather not use the bundled one.
+
+## Choose a deployment configuration
+
+Fresco ships three ready-to-use Docker Compose files, one per storage option. Each bundles Traefik (TLS), PostgreSQL 17, and the Fresco app:
+
+| Compose file                                                                                                                 | Storage                                                                                                              | Use when                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml)               | Bundled **MinIO**, self-hosted on this host                                                                          | You want everything inside your own infrastructure, with no external storage dependency. |
+| [`docker-compose.external-s3.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.external-s3.yml) | An **external S3-compatible service** (AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, a managed MinIO, …) | You already have, or want to use, a managed S3 bucket.                                   |
+| [`docker-compose.uploadthing.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.uploadthing.yml) | **UploadThing** (cloud)                                                                                              | You want the simplest managed storage and are comfortable with assets stored off-host.   |
+
+Download the one that matches your choice; the [Running Fresco](#running-fresco) section below shows how.
+
+## Environment variables
+
+Each configuration reads its settings from a `.env` file placed next to the compose file. The variables common to all three are:
+
+| **Variable**              | **Details**                                                                                                                                                    |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **DATABASE_URL**          | A pooled connection URL for Prisma. With the bundled `postgres` service, point this at `postgres:5432`.                                                        |
+| **DATABASE_URL_UNPOOLED** | A non-pooling connection URL for Prisma, used for database migrations during upgrades. If you have no connection pooler, use the same value as `DATABASE_URL`. |
+| **FRESCO_DOMAIN**         | The public domain for this deployment (e.g. `study.example.com`). This is the single source of truth for the deployment's domain.                              |
+| **ACME_EMAIL**            | Contact email for Let's Encrypt certificate notifications.                                                                                                     |
+
+<TipBox>
+
+You do **not** set `PUBLIC_URL` yourself. The compose files derive it automatically from `FRESCO_DOMAIN` (the `fresco` service sets `PUBLIC_URL=https://${FRESCO_DOMAIN}`).
+
+</TipBox>
+
+If you use the **bundled `postgres` service**, it also reads `.env`. At a minimum set `POSTGRES_PASSWORD` — the PostgreSQL image refuses to start without it. `POSTGRES_USER` and `POSTGRES_DB` are optional and both default to `postgres`; keep `POSTGRES_USER` as `postgres` so the service's healthcheck (`pg_isready -U postgres`) succeeds. Make sure your `DATABASE_URL` / `DATABASE_URL_UNPOOLED` reference `postgres:5432` with matching credentials. If you point at an **external** PostgreSQL database (such as Neon) instead, use the connection strings that service provides and you can remove the `postgres` service from the compose file.
+
+A starting `.env` for a deployment using the bundled PostgreSQL looks like this; add your storage variables from the next section:
+
+```bash
+# Required for every deployment
+FRESCO_DOMAIN=study.example.com
+ACME_EMAIL=you@example.com
+
+DATABASE_URL=postgres://postgres:CHANGE_ME@postgres:5432/postgres
+DATABASE_URL_UNPOOLED=postgres://postgres:CHANGE_ME@postgres:5432/postgres
+
+# Required when using the bundled `postgres` service
+POSTGRES_PASSWORD=CHANGE_ME
+
+# Storage: add the variables for your chosen provider (see "Storage configuration").
+
+# Optional
+#DISABLE_ANALYTICS=true
+```
+
+<TipBox>
+
+We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us. To disable all analytics, set `DISABLE_ANALYTICS=true` in your `.env`. Leaving it at the default (`false`) helps us identify bugs and improve the app.
+
+</TipBox>
+
+## Storage configuration
+
+In a Docker deployment, configure storage with environment variables in your `.env` file. The variables depend on which compose file you chose. **Environment variables take precedence** over anything entered in the dashboard and lock the storage settings UI, so your `.env` is the single source of truth for storage.
+
+### Self-hosted storage with MinIO
+
+Used by [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml). MinIO runs as a **private** container with no published ports. Browsers reach it through the bundled Traefik proxy via a path route (`/<bucket>/*` → `minio:9000`) on your Fresco domain — path-style S3 URLs put the bucket name in the path. The default bucket, `assets`, is created automatically by a one-shot init container.
+
+Configure Fresco to use it by setting these variables in `.env`:
+
+```bash
+STORAGE_PROVIDER=s3
+S3_ENDPOINT=http://minio:9000             # internal Docker address — containers only
+S3_PUBLIC_URL=https://your-fresco-domain  # the same domain as FRESCO_DOMAIN (served via Traefik)
+S3_BUCKET=assets
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=minioadmin               # must match MINIO_ROOT_USER
+S3_SECRET_ACCESS_KEY=minioadmin           # must match MINIO_ROOT_PASSWORD
+```
+
+<TipBox danger>
+
+Change the default `minioadmin` credentials before running in production: set `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD` in your `.env`, and make sure `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` match them. If you change `S3_BUCKET` from `assets`, the Traefik route and the bucket created at startup follow it — but because the bucket name occupies `/<bucket>/` on your Fresco domain, pick a name that cannot collide with an app route (avoid names like `dashboard`, `api`, or `setup`); the default `assets` is known to be collision-free.
+
+</TipBox>
+
+### External S3-compatible storage
+
+Used by [`docker-compose.external-s3.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.external-s3.yml). No storage runs on the host: browsers upload assets directly to your S3 service via presigned URLs, and download them via presigned redirects.
+
+Set these variables in `.env`:
+
+```bash
+STORAGE_PROVIDER=s3
+S3_ENDPOINT=https://s3.us-east-1.amazonaws.com    # or https://<account-id>.r2.cloudflarestorage.com
+S3_PUBLIC_URL=https://s3.us-east-1.amazonaws.com   # for external services, usually THE SAME as S3_ENDPOINT
+S3_BUCKET=your-existing-bucket                      # create the bucket first
+S3_REGION=us-east-1                                 # use 'auto' for Cloudflare R2
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+```
+
+| **Variable**                                    | **Details**                                                                                                                                                                         |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **STORAGE_PROVIDER**                            | Set to `s3` for an S3-compatible bucket. When set, the provider is fixed and the storage settings UI is locked.                                                                     |
+| **S3_ENDPOINT**                                 | Your service's S3 API endpoint.                                                                                                                                                     |
+| **S3_PUBLIC_URL**                               | The URL browsers use to reach the storage. For an external service this is usually the same as `S3_ENDPOINT`. (For the bundled MinIO setup above it is your Fresco domain instead.) |
+| **S3_BUCKET**                                   | An existing bucket name.                                                                                                                                                            |
+| **S3_REGION**                                   | The bucket's region (for example `us-east-1`; use `auto` for Cloudflare R2).                                                                                                        |
+| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Credentials with read and write access to the bucket.                                                                                                                               |
+
+Bucket requirements on your S3 service:
+
+- The bucket can — and should — stay **private**. Fresco never requires public read access; downloads use short-lived presigned URLs.
+- **CORS** must allow your Fresco origin (`https://<FRESCO_DOMAIN>`) for `PUT` (browser asset uploads) and `GET` (presigned asset downloads), with the usual headers (`Content-Type`, `Content-Length`) exposed.
+
+### UploadThing
+
+Used by [`docker-compose.uploadthing.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.uploadthing.yml). This library provides a wrapper over Amazon S3, and requires a free UploadThing API key.
+
+Set:
+
+```bash
+STORAGE_PROVIDER=uploadthing
+UPLOADTHING_TOKEN=    # from https://uploadthing.com/dashboard (API Keys)
+```
+
+If you intend to run your instance on a LAN or private network, at least the `api/uploadthing` endpoint must be accessible from the Internet. This is used as a callback for uploads to Amazon S3.
+
+## Running Fresco
+
+1. Download the compose file for your chosen storage option onto your host. For example, for external S3:
+
+   ```bash
+   curl -O https://raw.githubusercontent.com/complexdatacollective/Fresco/next/docker-compose.external-s3.yml
+   ```
+
+2. Create a `.env` file in the same directory, containing the variables described above.
+
+3. Start the stack (substitute the compose file you downloaded):
+
+   ```bash
+   docker compose -f docker-compose.external-s3.yml up -d
+   ```
+
+On first start, Traefik will request a Let's Encrypt certificate for `FRESCO_DOMAIN`. This requires DNS to already point at the host and ports 80 and 443 to be reachable from the Internet.
+
+### Pinning a version
+
+The compose files use the `ghcr.io/complexdatacollective/fresco:latest` image, which always tracks the most recent release. To pin a specific version, change the image tag to `:vX.Y.Z` in the compose file. You can browse published images on the [Fresco container registry](https://github.com/complexdatacollective/Fresco/pkgs/container/fresco/versions).
+
+## Access Fresco
+
+Once the stack is running, visit `https://<FRESCO_DOMAIN>`. You should be greeted with the onboarding wizard, which guides you through setting up Fresco — including configuring storage, unless you have already set your storage provider via environment variables.
+
+For details on this process, refer to the [configuration and setup](./guide#configuration-and-setup) section of the basic deployment guide.
+
+## Updating Fresco
+
+To update, pull the latest image and recreate the stack (substitute the compose file you deployed):
+
+```bash
+docker compose -f docker-compose.external-s3.yml pull
+docker compose -f docker-compose.external-s3.yml up -d
+```

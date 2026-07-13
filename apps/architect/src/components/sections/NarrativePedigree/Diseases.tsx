@@ -59,6 +59,7 @@ const Diseases = ({ form }: StageEditorSectionProps) => {
       <ValidatedFieldArray
         name="diseases"
         label="Diseases"
+        labelHidden
         component={DialogArrayField}
         validation={{ notEmpty }}
         componentProps={{

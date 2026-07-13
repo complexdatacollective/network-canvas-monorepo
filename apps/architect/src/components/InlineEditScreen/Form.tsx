@@ -52,7 +52,7 @@ type WrappedFormProps = {
  * Would like to wrap this component up into InlineEditScreen if possible
  */
 const Form = ({ handleSubmit, children = null, id }: FormProps) => (
-  <form id={id} onSubmit={stopPropagationFromHandler(handleSubmit)}>
+  <form id={id} noValidate onSubmit={stopPropagationFromHandler(handleSubmit)}>
     {children}
   </form>
 );

@@ -96,6 +96,16 @@ const meta: Meta = {
         category: 'Field Props',
       },
     },
+    labelHidden: {
+      control: 'boolean',
+      description:
+        "Visually hides the label while keeping it as the control's accessible name. Use when a surrounding heading already names the field, so the redundant visible label is dropped without stripping the screen-reader name.",
+      table: {
+        type: { summary: 'boolean' },
+        defaultValue: { summary: 'false' },
+        category: 'Field Props',
+      },
+    },
     disabled: {
       control: 'boolean',
       description: 'Prevents user interaction and dims the control',
@@ -167,6 +177,7 @@ const meta: Meta = {
     name: 'demo-field',
     inline: false,
     label: 'Username',
+    labelHidden: false,
     hint: 'Choose a unique username.',
     disabled: false,
     readOnly: false,
@@ -182,6 +193,7 @@ export const Default: Story = {
     const component = (args.component ?? 'InputField') as ComponentKey;
     const inline = args.inline as boolean;
     const label = (args.label ?? 'Username') as string;
+    const labelHidden = args.labelHidden as boolean;
     const hint = (args.hint ?? '') as string;
     const error = (args.error ?? '') as string;
     const disabled = args.disabled as boolean;
@@ -211,6 +223,7 @@ export const Default: Story = {
         <UnconnectedField
           name="demo-field"
           label={label}
+          labelHidden={labelHidden}
           hint={hint}
           inline={inline}
           component={Component}
@@ -263,6 +276,48 @@ export const WithHint: Story = {
       description: {
         story:
           'The `hint` prop renders supplementary text below the label. It accepts a `ReactNode` so you can pass plain text or formatted content.',
+      },
+    },
+  },
+};
+
+/**
+ * Demonstrates `labelHidden`. When a surrounding heading already names the
+ * field, the visible label is redundant — but removing it outright would
+ * strip the control's accessible name. `labelHidden` keeps the label in the
+ * accessibility tree (as the control's `aria-labelledby` target) while hiding
+ * it visually, so screen-reader users still hear a name.
+ */
+export const LabelHidden: Story = {
+  render: () => (
+    <div className="max-w-lg">
+      <h4 className="mb-2 font-bold uppercase">Prompt text</h4>
+      <UnconnectedField
+        name="prompt-text"
+        label="Prompt text"
+        labelHidden
+        hint="A heading above already names this field, so its label is hidden."
+        component={InputField}
+        value="Sort the people you named…"
+        onChange={action('changed')}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The control keeps its accessible name even though no label is visible.
+    const input = canvas.getByRole('textbox', { name: 'Prompt text' });
+    await expect(input).toBeInTheDocument();
+    // The label element is present but visually hidden (sr-only).
+    const label = canvasElement.querySelector('label');
+    await expect(label).not.toBeNull();
+    await expect(label).toHaveClass('sr-only');
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Set `labelHidden` when a nearby heading already names the field. The label stays in the accessibility tree (so the control keeps an accessible name) but is not shown, removing the visual redundancy of a heading and a label that say the same thing.',
       },
     },
   },

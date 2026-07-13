@@ -1,13 +1,18 @@
-// Helpers for the app (beta) release lane. The two PWA apps are kept in the
+// Helpers for the gated release lane. These private workspaces are kept in the
 // changeset `ignore` list, so `changeset version` never consumes their
 // changesets — this module reads and versions them for our own tooling.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export const APP_PACKAGES = ['@codaco/architect', '@codaco/interviewer'];
+export const APP_PACKAGES = [
+  '@codaco/architect',
+  '@codaco/documentation',
+  '@codaco/interviewer',
+];
 
 export const APP_DIRS = {
   '@codaco/architect': 'apps/architect',
+  '@codaco/documentation': 'apps/documentation',
   '@codaco/interviewer': 'apps/interviewer',
 };
 
@@ -59,6 +64,29 @@ export function nextBetaVersion(current) {
   }
   const [, major, minor, patch, beta] = m;
   return `${major}.${minor}.${patch}-beta.${Number(beta) + 1}`;
+}
+
+export function nextDocumentationVersion(current, entries) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(current);
+  if (!match) {
+    throw new Error(
+      `Version "${current}" is not a stable semver version (expected e.g. 0.1.0).`,
+    );
+  }
+
+  const releaseType = ['major', 'minor', 'patch'].find((type) =>
+    entries.some((entry) => entry.type === type),
+  );
+  if (!releaseType) {
+    throw new Error('Documentation releases require at least one changeset.');
+  }
+
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  const patch = Number(match[3]);
+  if (releaseType === 'major') return `${major + 1}.0.0`;
+  if (releaseType === 'minor') return `${major}.${minor + 1}.0`;
+  return `${major}.${minor}.${patch + 1}`;
 }
 
 const TYPE_HEADINGS = {

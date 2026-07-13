@@ -113,6 +113,21 @@ const NestedReduxHarness = reduxForm({
   touchOnChange: true,
 })(NestedHarness);
 
+const DottedNameHarness = (_props: InjectedFormProps) => (
+  <FieldArray
+    name="form.fields"
+    component={FrescoReduxArrayField}
+    itemComponent={ItemRow}
+    itemTemplate={() => ({ label: 'new item' })}
+    confirmDelete={false}
+    rerenderOnEveryChange
+  />
+);
+
+const DottedNameReduxHarness = reduxForm({
+  form: 'dotted-name-array-adapter-test',
+})(DottedNameHarness);
+
 const ValidatedHarness = ({ handleSubmit }: InjectedFormProps) => (
   <form onSubmit={handleSubmit(() => undefined)}>
     <ValidatedFieldArray
@@ -385,6 +400,40 @@ describe('FrescoReduxArrayField', () => {
     expect(
       screen.queryByText('You must choose a minimum of 1 option(s)'),
     ).not.toBeInTheDocument();
+  });
+
+  it('humanizes the final path segment when no label is supplied', () => {
+    const store = configureStore({
+      reducer: { form: formReducer },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({ serializableCheck: false }),
+    });
+
+    render(
+      <Provider store={store}>
+        <DialogProvider>
+          <DottedNameReduxHarness
+            initialValues={{ form: { fields: [{ label: 'a' }] } }}
+          />
+        </DialogProvider>
+      </Provider>,
+    );
+
+    expect(screen.getByText('Fields')).toBeInTheDocument();
+    expect(screen.queryByText('form.fields')).not.toBeInTheDocument();
+  });
+
+  it('does not surface an empty-string array error as a blank error row', () => {
+    const { store } = setup([]);
+    act(() => {
+      store.dispatch(
+        stopSubmit('array-adapter-test', {
+          items: { _error: '' },
+        }) as unknown as UnknownAction,
+      );
+    });
+
+    expect(document.querySelector('.text-destructive')).toBeNull();
   });
 
   it('lets indexed child fields own focus and blur metadata', () => {

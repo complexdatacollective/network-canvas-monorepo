@@ -2,8 +2,8 @@ import { get, isArray, isNil, join } from 'es-toolkit/compat';
 import type { CSSProperties } from 'react';
 
 import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
+import { SimpleVariablePill } from '~/components/VariablePill';
 
-import { SimpleVariablePill } from '../../Form/Fields/VariablePicker/VariablePill';
 import PreviewEdge from '../../sections/fields/EntitySelectField/PreviewEdge';
 import PreviewNode from '../../sections/fields/EntitySelectField/PreviewNode';
 

@@ -154,9 +154,16 @@ ArrayField manages arrays of items with support for:
 - **Inline editing**: Item component handles both display and edit modes
 - **Dialog editing**: Separate editorComponent for complex forms in dialogs
 - **Drag-and-drop reordering**: Enable with \`sortable\` prop
-- **Keyboard reordering**: Use \`ArrayFieldDragHandle\` for arrow-key movement
+- **Keyboard reordering**: Use \`ArrayFieldDragHandle\` for arrow-key movement.
+  Focus stays on the handle after each move, so repeated presses keep working.
 - **Draft items**: New items are drafts until saved
 - **Item limits**: Set \`maxItems\` to prevent additional items at a fixed cap
+
+Each item renderer receives both \`index\` — the live position, which follows a
+reorder preview and is meant for visuals and drag bounds — and \`committedIndex\`
+— the item's position in the last committed value (\`undefined\` for an unsaved
+draft). Adapters that bind index-based field paths to a form store should prefer
+\`committedIndex\` so those paths stay attached to the right item mid-drag.
 
 ## Three Editing Patterns
 
@@ -205,7 +212,7 @@ immediately upon creation.
     'itemComponent': {
       control: false,
       description:
-        'Component for rendering each item. Receives ArrayFieldItemProps including isBeingEdited for inline editing.',
+        'Component for rendering each item. Receives ArrayFieldItemProps including isBeingEdited for inline editing, plus committedIndex for adapters that bind field paths to committed positions.',
     },
     'editorComponent': {
       control: false,

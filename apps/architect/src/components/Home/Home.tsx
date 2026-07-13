@@ -34,6 +34,7 @@ import {
   type ProtocolSourceRef,
 } from '~/templates';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
+import { documentationLinks } from '~/utils/documentationLinks';
 import { reportError } from '~/utils/reportError';
 
 import LibraryPanel from './LibraryPanel';
@@ -42,7 +43,7 @@ import { TIMELINE_SCRIPT } from './timelineScript';
 import TransitMap from './TransitMap';
 const NAV_LINKS = [
   {
-    href: 'https://documentation.networkcanvas.com',
+    href: documentationLinks.home,
     label: 'Docs',
     Icon: BookOpen,
   },

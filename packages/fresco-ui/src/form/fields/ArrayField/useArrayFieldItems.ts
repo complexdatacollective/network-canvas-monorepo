@@ -47,6 +47,13 @@ type UseArrayFieldItemsReturn<T extends Record<string, unknown>> = {
   // ─── Items ───────────────────────────────────────────────────────────────
   /** All items (both confirmed and draft) with managed properties. */
   items: WithItemProperties<T>[];
+  /**
+   * Maps each committed (non-draft) item's internal ID to its position in the
+   * last committed value. Unlike the live `items` order, this is unaffected by
+   * an uncommitted reorder preview, so consumers that bind index-based field
+   * paths can keep them pointing at the right item mid-drag.
+   */
+  committedIndexById: Map<string, number>;
   /** Preview a reordered list locally, or commit it with an operation. */
   setItems: (
     items: WithItemProperties<T>[],
@@ -245,6 +252,21 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
       editingId: editingStillExists ? currentState.editingId : null,
     });
   }
+
+  // Map internal IDs to their position in the committed value. Derived from
+  // `value` rather than the live `items`, so a local reorder preview (which
+  // mutates `items` without notifying the parent) leaves these indices pointing
+  // at each item's committed position until the reorder is committed.
+  const committedIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    value.forEach((item, index) => {
+      const internalId = getKnownInternalId(item);
+      if (internalId !== undefined) {
+        map.set(internalId, index);
+      }
+    });
+    return map;
+  }, [value, getKnownInternalId]);
 
   // Derive editing state from editingId
   const editingItem = useMemo(
@@ -495,6 +517,7 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
   return {
     // Items
     items,
+    committedIndexById,
     setItems,
 
     // Editing state (derived)

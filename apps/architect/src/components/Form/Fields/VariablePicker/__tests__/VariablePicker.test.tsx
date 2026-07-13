@@ -4,7 +4,7 @@ import { Provider } from 'react-redux';
 import { Field, reducer as formReducer, reduxForm } from 'redux-form';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../VariablePill', () => ({
+vi.mock('~/components/VariablePill', () => ({
   default: () => (
     <div data-testid="editable-variable-pill">EditableVariablePill</div>
   ),

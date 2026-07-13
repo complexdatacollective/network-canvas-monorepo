@@ -261,6 +261,13 @@ type FieldOwnProps<C extends ValidFieldComponent> = {
   /** Supplementary text rendered below the label. */
   hint?: ReactNode;
   /**
+   * Visually hide the label while keeping it as the control's accessible name.
+   * Use when a surrounding heading already names the field, so the redundant
+   * visible label is dropped without stripping the screen-reader name.
+   * @default false
+   */
+  labelHidden?: boolean;
+  /**
    * When true, renders the label and control on the same horizontal row
    * with the hint grouped beneath the label.
    * @default false

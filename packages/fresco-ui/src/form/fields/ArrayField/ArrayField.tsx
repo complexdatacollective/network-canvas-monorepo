@@ -78,6 +78,13 @@ const getItemAnimationProps = {
 export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
   item: Partial<WithItemProperties<T>>;
   index: number;
+  /**
+   * Position of this item in the last committed value, or undefined for a draft
+   * that is not yet part of it. Adapters that bind index-based field paths to a
+   * form store should prefer this over `index`, which tracks the live (possibly
+   * mid-reorder-preview) position and is meant for visuals and drag bounds.
+   */
+  committedIndex?: number;
   itemCount: number;
   isNewItem: boolean;
   /** Save and exit editing mode. Use for inline editing pattern. */
@@ -200,16 +207,38 @@ export function ArrayFieldDragHandle({
   label = `Reorder item ${index + 1} of ${itemCount}`,
   className,
 }: ArrayFieldDragHandleProps) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const refocusAfterMoveRef = useRef(false);
+
+  // Committing a keyboard reorder repositions this handle in the DOM, which
+  // blurs it in browsers and drops focus to <body>. Restore focus on the next
+  // frame (after the reposition settles) so repeated arrow presses keep working
+  // without tabbing back to the handle each step.
+  useEffect(() => {
+    if (!refocusAfterMoveRef.current) return undefined;
+    refocusAfterMoveRef.current = false;
+    const frame = requestAnimationFrame(() => buttonRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [index]);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
 
     event.preventDefault();
     event.stopPropagation();
-    onMove(index + (event.key === 'ArrowUp' ? -1 : 1));
+
+    const targetIndex = index + (event.key === 'ArrowUp' ? -1 : 1);
+    // Ignore presses that would run off either end: no move happens, so focus
+    // is never lost and no refocus should be scheduled.
+    if (targetIndex < 0 || targetIndex > itemCount - 1) return;
+
+    refocusAfterMoveRef.current = true;
+    onMove(targetIndex);
   };
 
   return (
     <IconButton
+      ref={buttonRef}
       icon={<GripVerticalIcon />}
       aria-label={label}
       aria-keyshortcuts="ArrowUp ArrowDown"
@@ -232,6 +261,7 @@ export function ArrayFieldDragHandle({
 type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   item: WithItemProperties<T>;
   index: number;
+  committedIndex?: number;
   itemCount: number;
   isSortable: boolean;
   isBeingEdited: boolean;
@@ -261,6 +291,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   {
     item,
     index,
+    committedIndex,
     itemCount,
     isSortable,
     isBeingEdited,
@@ -332,6 +363,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       <ItemComponent
         item={item}
         index={index}
+        committedIndex={committedIndex}
         itemCount={itemCount}
         isSortable={isSortable}
         isBeingEdited={isBeingEdited}
@@ -404,6 +436,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
 
   const {
     items,
+    committedIndexById,
     setItems,
     editingItem,
     isAddingNew,
@@ -642,12 +675,14 @@ export default function ArrayField<T extends Record<string, unknown>>({
               const index = items.findIndex(
                 (candidate) => candidate._internalId === item._internalId,
               );
+              const committedIndex = committedIndexById.get(item._internalId);
 
               return (
                 <ArrayFieldItemWrapper
                   key={item._internalId}
                   item={item}
                   index={index}
+                  committedIndex={committedIndex}
                   itemCount={items.length}
                   isSortable={effectiveSortable}
                   hasMounted={hasMountedRef.current}
@@ -682,6 +717,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
           <MotionButton
             layout
             key="add-button"
+            color="primary"
             onClick={() => {
               if (immediateAdd) {
                 addItem(itemTemplate() as T);

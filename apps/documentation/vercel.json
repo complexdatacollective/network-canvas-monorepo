@@ -6,78 +6,243 @@
       "permanent": true
     },
     {
+      "source": "/en/design-protocols/installing-architect-desktop",
+      "destination": "/en/design-protocols/installing-architect-classic",
+      "permanent": true
+    },
+    {
       "source": "/citing-the-software",
-      "destination": "/en/desktop/project-information/citing-the-software",
+      "destination": "/en/get-started/project-information/citing-the-software",
       "permanent": true
     },
     {
       "source": "/contributing-code",
-      "destination": "/en/desktop/project-information/contributing-code",
+      "destination": "/en/get-started/project-information/contributing-code",
       "permanent": true
     },
     {
       "source": "/faq",
-      "destination": "/en/desktop/project-information/faq",
+      "destination": "/en/get-started/project-information/faq",
       "permanent": true
     },
     {
       "source": "/project-overview",
-      "destination": "/en/desktop/project-information/project-overview",
+      "destination": "/en/get-started/project-information/project-overview",
       "permanent": true
     },
     {
       "source": "/requests-for-collaboration",
-      "destination": "/en/desktop/project-information/requests-for-collaboration",
-      "permanent": true
-    },
-    {
-      "source": "/reference/irb-best-practices",
-      "destination": "/en/desktop/project-information/irb-best-practices",
-      "permanent": true
-    },
-    {
-      "source": "/reference/security-model",
-      "destination": "/en/desktop/project-information/security-model",
-      "permanent": true
-    },
-    {
-      "source": "/reference/network-canvas-graphml",
-      "destination": "/en/desktop/advanced-topics/network-canvas-graphml",
-      "permanent": true
-    },
-    {
-      "source": "/reference/node-labelling",
-      "destination": "/en/desktop/advanced-topics/node-labelling",
-      "permanent": true
-    },
-    {
-      "source": "/reference/protocol-file-format",
-      "destination": "/en/desktop/advanced-topics/protocol-file-format",
-      "permanent": true
-    },
-    {
-      "source": "/reference/protocol-schema-information",
-      "destination": "/en/desktop/advanced-topics/protocol-schema-information",
+      "destination": "/en/get-started/project-information/requests-for-collaboration",
       "permanent": true
     },
     {
       "source": "/installation-guide",
-      "destination": "/en/desktop/getting-started/installation-guide",
+      "destination": "/en/get-started/network-canvas",
+      "permanent": true
+    },
+    {
+      "source": "/reference/irb-best-practices",
+      "destination": "/en/get-started/planning-a-study/irb-best-practices",
+      "permanent": true
+    },
+    {
+      "source": "/reference/security-model",
+      "destination": "/en/get-started/project-information/security-model",
+      "permanent": true
+    },
+    {
+      "source": "/reference/network-canvas-graphml",
+      "destination": "/en/analyze-data/network-canvas-graphml",
+      "permanent": true
+    },
+    {
+      "source": "/reference/node-labelling",
+      "destination": "/en/get-started/advanced-topics/node-labelling",
+      "permanent": true
+    },
+    {
+      "source": "/reference/protocol-file-format",
+      "destination": "/en/get-started/advanced-topics/protocol-file-format",
+      "permanent": true
+    },
+    {
+      "source": "/reference/protocol-schema-information",
+      "destination": "/en/get-started/advanced-topics/protocol-schema-information",
+      "permanent": true
+    },
+    {
+      "source": "/reference/variable-naming",
+      "destination": "/en/design-protocols/key-concepts/variables",
       "permanent": true
     },
     {
       "source": "/how-to/choosing-hardware",
-      "destination": "/en/desktop/getting-started/choosing-hardware",
+      "destination": "/en/collect-data/interviewer/choosing-hardware",
       "permanent": true
     },
     {
       "source": "/how-to/configuring-devices",
-      "destination": "/en/desktop/getting-started/configuring-devices",
+      "destination": "/en/collect-data/interviewer/configuring-devices",
       "permanent": true
     },
     {
-      "source": "/:path((?!en|_next/static|_next/image|assets|protocols|favicons|images|.*\\.\\w+.*).*)",
-      "destination": "/en/desktop/:path*",
+      "source": "/interface-documentation/:path*",
+      "destination": "/en/design-protocols/interface-documentation/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/key-concepts/data-export",
+      "destination": "/en/analyze-data/data-export",
+      "permanent": true
+    },
+    {
+      "source": "/key-concepts/:path*",
+      "destination": "/en/design-protocols/key-concepts/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/advanced-topics/network-canvas-graphml",
+      "destination": "/en/analyze-data/network-canvas-graphml",
+      "permanent": true
+    },
+    {
+      "source": "/advanced-topics/:path*",
+      "destination": "/en/get-started/advanced-topics/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/key-concepts/data-export",
+      "destination": "/en/analyze-data/data-export",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/key-concepts/:path*",
+      "destination": "/en/design-protocols/key-concepts/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/interface-documentation/:path*",
+      "destination": "/en/design-protocols/interface-documentation/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/advanced-topics/network-canvas-graphml",
+      "destination": "/en/analyze-data/network-canvas-graphml",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/advanced-topics/:path*",
+      "destination": "/en/get-started/advanced-topics/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/project-information/gdpr-compliance",
+      "destination": "/en/get-started/planning-a-study/gdpr-compliance",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/project-information/irb-best-practices",
+      "destination": "/en/get-started/planning-a-study/irb-best-practices",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/project-information/:path*",
+      "destination": "/en/get-started/project-information/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/tutorials/protocol-and-data-workflows",
+      "destination": "/en/collect-data/protocol-and-data-workflows",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/tutorials/working-with-rosters",
+      "destination": "/en/design-protocols/working-with-rosters",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/tutorials/building-a-protocol",
+      "destination": "/en/design-protocols/building-a-protocol",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/tutorials/using-interviewer",
+      "destination": "/en/collect-data/interviewer/using-interviewer",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/tutorials/working-with-data",
+      "destination": "/en/analyze-data/working-with-data",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/tutorials/web-based-workflow",
+      "destination": "/en/collect-data/protocol-and-data-workflows",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/getting-started/network-canvas",
+      "destination": "/en/get-started/network-canvas",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/getting-started/choosing-hardware",
+      "destination": "/en/collect-data/interviewer/choosing-hardware",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/getting-started/configuring-devices",
+      "destination": "/en/collect-data/interviewer/configuring-devices",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/getting-started/installation-guide",
+      "destination": "/en/get-started/network-canvas",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/:path*",
+      "destination": "/en/get-started/network-canvas",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop",
+      "destination": "/en/get-started/network-canvas",
+      "permanent": true
+    },
+    {
+      "source": "/en/fresco/advanced-topics/integration",
+      "destination": "/en/collect-data/fresco/integration",
+      "permanent": true
+    },
+    {
+      "source": "/en/fresco/deployment/troubleshooting",
+      "destination": "/en/collect-data/fresco/deployment-troubleshooting",
+      "permanent": true
+    },
+    {
+      "source": "/en/fresco/deployment/:path*",
+      "destination": "/en/collect-data/fresco/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/en/fresco",
+      "destination": "/en/collect-data/fresco/about",
+      "permanent": true
+    },
+    {
+      "source": "/en/fresco/",
+      "destination": "/en/collect-data/fresco/about",
+      "permanent": true
+    },
+    {
+      "source": "/en/fresco/:path*",
+      "destination": "/en/collect-data/fresco/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path((?!en|_next/static|_next/image|assets|protocols|favicons|images|sitemap|.*\\.\\w+.*).*)",
+      "destination": "/en/get-started/network-canvas",
       "permanent": true
     }
   ]

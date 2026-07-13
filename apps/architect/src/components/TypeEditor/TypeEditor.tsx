@@ -7,7 +7,8 @@ import { change, formValueSelector } from 'redux-form';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Layout, Section } from '~/components/EditorLayout';
-import { FrescoReduxField, ValidatedField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
+import ValidatedField from '~/components/Form/ValidatedField';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getCodebook } from '~/selectors/protocol';
@@ -70,6 +71,7 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
       >
         <ValidatedField
           label={`${capitalize(entity)} type name`}
+          labelHidden
           component={FrescoReduxField}
           name="name"
           validation={{
@@ -92,6 +94,8 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
         <ValidatedField
           component={ColorPicker}
           name="color"
+          label="Color"
+          labelHidden
           validation={{ required: true }}
           componentProps={{ palette: paletteName, paletteRange: paletteSize }}
         />
