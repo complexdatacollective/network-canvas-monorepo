@@ -128,7 +128,9 @@ const variantIcons: Record<Variant, AlertIcon | null> = {
   destructive: WarningAlertIcon,
   success: PartyPopper,
   warning: WarningAlertIcon,
-  accent: null,
+  // The accent (note/key-concept) variant shares the illustrated light-bulb
+  // with `info`. Overridable via the `icon` prop.
+  accent: InfoAlertIcon,
 };
 
 const variantIconStyles: Record<Variant, AlertIconStyle | undefined> = {

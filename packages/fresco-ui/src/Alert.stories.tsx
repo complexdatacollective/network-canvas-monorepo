@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Bell, CheckCircle, Lightbulb } from 'lucide-react';
+import { Bell, CheckCircle } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from './Alert';
 import Heading from './typography/Heading';
@@ -156,7 +156,7 @@ export const SoftAppearance: Story = {
         <AlertDescription>Something went wrong.</AlertDescription>
       </Alert>
 
-      <Alert variant="accent" appearance="soft" icon={Lightbulb}>
+      <Alert variant="accent" appearance="soft">
         <AlertTitle>Key concept</AlertTitle>
         <AlertDescription>
           The accent variant is a non-semantic brand highlight for
