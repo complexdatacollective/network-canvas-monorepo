@@ -369,8 +369,11 @@ const createMarkdownComponents = (docSlug?: string) => ({
   // the design system (surface-tinted header, row separators + hover, rounded
   // bordered container). Cells override fresco's data-table `whitespace-nowrap`
   // because docs tables carry prose (sentences, links) that must wrap.
+  // Spacing goes on the Surface via `surfaceProps`, not `className` — Table's
+  // `className` targets the inner <table>, so `my-6` there would open a gap of
+  // bare surface above/below the rows inside the bordered container.
   table: (props: ComponentProps<typeof Table>) => (
-    <Table className="my-6" {...props} />
+    <Table surfaceProps={{ className: 'my-6' }} {...props} />
   ),
   thead: (props: ComponentProps<typeof TableHeader>) => (
     <TableHeader {...props} />
