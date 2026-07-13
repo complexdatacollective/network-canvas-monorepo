@@ -214,16 +214,18 @@
     --background: oklch(0.2 0.03 var(--base-hue));
     --text: oklch(0.95 0.01 var(--base-hue));
 
-    --primary: oklch(0.62 0.2 var(--base-hue));
+    /* Primary/accent/secondary are dark enough that their `-contrast` white
+       text clears WCAG AA (~4.5:1) for `bg-*/text-*-contrast` usages. */
+    --primary: oklch(0.5 0.2 var(--base-hue));
     --primary-contrast: oklch(var(--white));
 
     --neutral: oklch(0.34 0.03 var(--base-hue));
     --neutral-contrast: oklch(0.96 0.01 var(--base-hue));
 
-    --accent: oklch(0.68 0.26 var(--base-hue));
+    --accent: oklch(0.52 0.24 var(--base-hue));
     --accent-contrast: oklch(var(--white));
 
-    --secondary: oklch(from var(--primary) calc(l + 0.12) c h);
+    --secondary: oklch(from var(--primary) calc(l + 0.06) c h);
     --secondary-contrast: oklch(var(--white));
 
     /* Surfaces ascend in lightness from the background. */
