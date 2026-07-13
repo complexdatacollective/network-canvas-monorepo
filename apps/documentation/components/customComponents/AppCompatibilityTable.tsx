@@ -1,6 +1,14 @@
 import { ArrowUp, TriangleAlert } from 'lucide-react';
 import { Fragment } from 'react';
 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@codaco/fresco-ui/Table';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 type Status = 'native' | 'migrate' | 'unsupported';
@@ -106,70 +114,51 @@ const AppCompatibilityTable = () => (
       App compatibility by schema version
     </h3>
 
-    <div className="border-outline overflow-x-auto rounded-lg border">
-      <table className="w-full min-w-[40rem] border-collapse text-sm">
-        <caption className="sr-only">
-          Which schema version of protocol each Network Canvas app can open,
-          grouped by app generation.
-        </caption>
-        <colgroup>
-          <col className="w-[28%]" />
-          <col className="w-[22%]" />
-          <col className="w-[25%]" />
-          <col className="w-[25%]" />
-        </colgroup>
-        <thead>
-          <tr className="bg-text text-background text-left">
-            <th scope="col" className="px-4 py-3 font-semibold">
-              App
-            </th>
-            <th scope="col" className="px-4 py-3 font-semibold">
-              Platform
-            </th>
-            <th scope="col" className="px-4 py-3 font-semibold">
-              Schema 7 protocols
-            </th>
-            <th scope="col" className="px-4 py-3 font-semibold">
-              Schema 8 protocols
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {GROUPS.map((group) => (
-            <Fragment key={group.label}>
-              <tr className="bg-accent/15">
-                <th
-                  scope="colgroup"
-                  colSpan={4}
-                  className="text-text/80 px-4 py-2 text-left text-xs font-semibold tracking-wide uppercase"
-                >
-                  {group.label}
-                  <span aria-hidden className="px-1.5 opacity-40">
-                    ·
-                  </span>
-                  Schema {group.schema}
-                </th>
-              </tr>
-              {group.rows.map((row) => (
-                <tr
-                  key={row.app}
-                  className="border-outline/70 border-t odd:bg-current/5"
-                >
-                  <td className="text-text px-4 py-3 font-bold">{row.app}</td>
-                  <td className="text-text/70 px-4 py-3">{row.platform}</td>
-                  <td className="px-4 py-3">
-                    <StatusCell status={row.schema7} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusCell status={row.schema8} />
-                  </td>
-                </tr>
-              ))}
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table>
+      <caption className="sr-only">
+        Which schema version of protocol each Network Canvas app can open,
+        grouped by app generation.
+      </caption>
+      <TableHeader>
+        <TableRow>
+          <TableHead scope="col">App</TableHead>
+          <TableHead scope="col">Platform</TableHead>
+          <TableHead scope="col">Schema 7 protocols</TableHead>
+          <TableHead scope="col">Schema 8 protocols</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {GROUPS.map((group) => (
+          <Fragment key={group.label}>
+            <TableRow className="bg-accent/15">
+              <TableHead
+                scope="colgroup"
+                colSpan={4}
+                className="text-text/80 text-xs font-semibold tracking-wide uppercase"
+              >
+                {group.label}
+                <span aria-hidden className="px-1.5 opacity-40">
+                  ·
+                </span>
+                Schema {group.schema}
+              </TableHead>
+            </TableRow>
+            {group.rows.map((row) => (
+              <TableRow key={row.app}>
+                <TableCell className="text-text font-bold">{row.app}</TableCell>
+                <TableCell className="text-text/70">{row.platform}</TableCell>
+                <TableCell>
+                  <StatusCell status={row.schema7} />
+                </TableCell>
+                <TableCell>
+                  <StatusCell status={row.schema8} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </Fragment>
+        ))}
+      </TableBody>
+    </Table>
 
     {/* Footnote */}
     <div className="mt-4 flex items-start gap-2">

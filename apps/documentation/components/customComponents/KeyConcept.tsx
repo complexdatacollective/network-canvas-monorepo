@@ -15,7 +15,11 @@ type KeyConceptProps = {
 
 const KeyConcept = ({ children, title }: KeyConceptProps) => {
   return (
-    <Alert icon={Lightbulb} className="bg-accent/10 [--link:var(--accent)]">
+    <Alert
+      appearance="soft"
+      icon={Lightbulb}
+      className="bg-accent/10 [--link:var(--accent)]"
+    >
       <AlertTitle>{title}</AlertTitle>
       {children}
     </Alert>

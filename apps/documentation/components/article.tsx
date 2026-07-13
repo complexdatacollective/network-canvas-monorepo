@@ -36,7 +36,7 @@ export default function Article({
 
   return (
     <>
-      <article className="@container/article mx-4 mb-5 w-full max-w-[75ch] flex-1 overflow-y-hidden lg:mx-8 xl:mx-10 2xl:mx-20">
+      <article className="tablet-landscape:mx-8 laptop:mx-10 desktop:mx-20 @container/article mx-4 mb-5 w-full max-w-[75ch] flex-1 overflow-y-hidden">
         <header>
           <Heading
             level="h4"

@@ -60,9 +60,9 @@ const TableOfContents = ({
         sideBar &&
           // Sticky offset clears the sticky section switcher (68px) plus an 8px
           // gap; max height subtracts that offset and the 8px bottom margin.
-          'sticky top-[76px] max-h-[calc(100vh-84px)] w-64 overflow-x-hidden overflow-y-auto xl:block',
+          'laptop:block sticky top-[76px] max-h-[calc(100vh-84px)] w-64 overflow-x-hidden overflow-y-auto',
         !sideBar &&
-          'border-outline bg-input mb-5 block rounded-lg border px-6 py-4 xl:hidden',
+          'border-outline bg-input laptop:hidden mb-5 block rounded-lg border px-6 py-4',
       )}
     >
       <Heading

@@ -129,11 +129,11 @@ function WorkflowCard({ section }: { section: SectionConfig }) {
     <Link
       href={`/${section.key}`}
       className={cx(
-        'group focusable flex flex-1 flex-col gap-6 rounded-3xl p-6 text-white shadow-lg transition-transform hover:-translate-y-1 hover:shadow-xl xl:min-h-56',
+        'group focusable laptop:min-h-56 flex flex-1 flex-col gap-6 rounded-lg p-6 text-white shadow-lg transition-transform hover:-translate-y-1 hover:shadow-xl',
         sectionColorClasses[section.color],
       )}
     >
-      <span className="flex h-12 w-fit min-w-12 shrink-0 items-center justify-center gap-1 rounded-2xl bg-white/15 px-2">
+      <span className="flex h-12 w-fit min-w-12 shrink-0 items-center justify-center gap-1 rounded-lg bg-white/15 px-2">
         <SectionIcon section={section} onColor />
       </span>
       <div className="mt-auto flex flex-col gap-2">
@@ -152,7 +152,7 @@ function FullCards({ className }: { className?: string }) {
   return (
     <div
       className={cx(
-        'grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:flex xl:flex-row xl:items-stretch xl:gap-3',
+        'phone-landscape:grid-cols-2 laptop:flex laptop:flex-row laptop:items-stretch laptop:gap-3 grid w-full grid-cols-1 gap-4',
         className,
       )}
     >
@@ -162,7 +162,7 @@ function FullCards({ className }: { className?: string }) {
             <ChevronRight
               aria-hidden
               strokeWidth={3}
-              className="text-text hidden h-8 w-8 shrink-0 self-center xl:block"
+              className="text-text laptop:block hidden h-8 w-8 shrink-0 self-center"
             />
           )}
           <WorkflowCard section={section} />

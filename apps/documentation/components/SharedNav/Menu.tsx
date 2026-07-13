@@ -98,8 +98,13 @@ export const NavigationMenuDemo = () => {
 
   return (
     <Root asChild>
-      <div className={cx('relative z-10 hidden grow justify-end', 'md:flex')}>
-        <List className="center m-0 flex list-none items-center gap-6 lg:gap-10">
+      <div
+        className={cx(
+          'relative z-10 hidden grow justify-end',
+          'tablet-portrait:flex',
+        )}
+      >
+        <List className="center tablet-landscape:gap-10 m-0 flex list-none items-center gap-6">
           {links.map((link, _i) => {
             if (link.menu) {
               return (
@@ -175,7 +180,7 @@ export const NavigationMenuDemo = () => {
         </List>
 
         <div className="absolute top-full right-0 flex justify-center perspective-[2000px]">
-          <Viewport className="data-[state=open]:animate-scaleIn data-[state=closed]:animate-scaleOut bg-surface-1 relative mt-2.5 h-(--radix-navigation-menu-viewport-height) w-[calc(100vw-20rem)] origin-[top_center] overflow-hidden rounded-[6px] shadow-xl transition-[width,height] duration-300 lg:w-200" />
+          <Viewport className="data-[state=open]:animate-scaleIn data-[state=closed]:animate-scaleOut bg-surface-1 tablet-landscape:w-200 relative mt-2.5 h-(--radix-navigation-menu-viewport-height) w-[calc(100vw-20rem)] origin-[top_center] overflow-hidden rounded-[6px] shadow-xl transition-[width,height] duration-300" />
         </div>
       </div>
     </Root>
@@ -189,7 +194,9 @@ export const NavigationMenuMobile = () => {
   if (!submenu.length) {
     return (
       <ul
-        className={'flex flex-col items-center justify-center gap-4 md:hidden'}
+        className={
+          'tablet-portrait:hidden flex flex-col items-center justify-center gap-4'
+        }
       >
         {links.map((link, _i) => {
           if (link.style === 'button' && link.href) {

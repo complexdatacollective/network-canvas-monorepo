@@ -26,7 +26,7 @@ const LogoComponent = ({
       <Image
         src="/images/mark.svg"
         alt="Network Canvas Documentation"
-        className="h-9 w-auto lg:hidden"
+        className="tablet-landscape:hidden h-9 w-auto"
         width={36}
         height={36}
       />
@@ -37,7 +37,7 @@ const LogoComponent = ({
             : '/images/typemark-negative.svg'
         }
         alt="Network Canvas Documentation"
-        className="hidden h-12 w-auto lg:block"
+        className="tablet-landscape:block hidden h-12 w-auto"
         width={120}
         height={48}
       />

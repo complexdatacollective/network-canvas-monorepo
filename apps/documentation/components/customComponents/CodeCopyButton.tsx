@@ -44,7 +44,7 @@ const CodeCopyButton = ({ code }: { code: string }) => {
         className={
           isCopied
             ? undefined
-            : 'transition-opacity sm:opacity-0 sm:group-hover:opacity-100'
+            : 'phone-landscape:opacity-0 phone-landscape:group-hover:opacity-100 transition-opacity'
         }
         onClick={() => copyToClipboard(code)}
       />

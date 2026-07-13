@@ -18,7 +18,7 @@ export default function NotFound() {
         storageKey="nc-docs-site"
       >
         <body className="flex h-screen items-center justify-center">
-          <div className="max-w-lg p-3 sm:p-0">
+          <div className="phone-landscape:p-0 max-w-lg p-3">
             <Heading level="h1">404 - Not found</Heading>
             <Divider />
             <Heading level="h2">The requested page could not be found.</Heading>

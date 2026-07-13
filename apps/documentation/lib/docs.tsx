@@ -17,6 +17,14 @@ import { unified } from 'unified';
 import { z } from 'zod';
 
 import Button from '@codaco/fresco-ui/Button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@codaco/fresco-ui/Table';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -229,40 +237,22 @@ const getSourceFile = (
 };
 
 const createMarkdownComponents = (docSlug?: string) => ({
-  // Fresco Heading owns size/weight/scroll-margin from the shared type scale;
-  // the docs prose rhythm (per-level margins) is reasserted here with important
-  // classes so it wins over fresco's built-in not-first/not-last margin variant.
+  // Fresco Heading owns size/weight/scroll-margin and the prose rhythm: its
+  // default margin variant applies a self-collapsing not-first/not-last spacing,
+  // so we leave both top and bottom margins entirely to fresco here. (The one
+  // exception — suppressing the top margin of a heading directly below an
+  // eyebrow/kicker — is handled in components/article.tsx.)
   h1: (props: ComponentProps<typeof Heading>) => (
-    <Heading
-      level="h1"
-      margin="none"
-      className="mb-6! scroll-m-20 [&:not(:first-child)]:mt-8!"
-      {...props}
-    />
+    <Heading level="h1" {...props} />
   ),
   h2: (props: ComponentProps<typeof Heading>) => (
-    <Heading
-      level="h2"
-      margin="none"
-      className="mb-4! scroll-m-20 [&:not(:first-child)]:mt-6!"
-      {...props}
-    />
+    <Heading level="h2" {...props} />
   ),
   h3: (props: ComponentProps<typeof Heading>) => (
-    <Heading
-      level="h3"
-      margin="none"
-      className="mb-2! scroll-m-20 [&:not(:first-child)]:mt-5!"
-      {...props}
-    />
+    <Heading level="h3" {...props} />
   ),
   h4: (props: ComponentProps<typeof Heading>) => (
-    <Heading
-      level="h4"
-      margin="none"
-      className="mb-1! scroll-m-20 [&:not(:first-child)]:mt-4!"
-      {...props}
-    />
+    <Heading level="h4" {...props} />
   ),
   p: Paragraph,
   paragraph: Paragraph,
@@ -375,13 +365,23 @@ const createMarkdownComponents = (docSlug?: string) => ({
   screenshot: (props: { axis: AppAxis; name: string; alt?: string }) => (
     <Screenshot {...props} />
   ),
-  table: (props: { children: ReactNode }) => (
-    <div className="overflow-x-auto">
-      <table
-        className="prose prose-th:text-text prose-strong:text-text prose-td:text-text my-5 w-full !max-w-max text-pretty break-keep [&>th]:text-nowrap"
-        {...props}
-      />
-    </div>
+  // Markdown tables render through fresco-ui's Table primitives so they match
+  // the design system (surface-tinted header, row separators + hover, rounded
+  // bordered container). Cells override fresco's data-table `whitespace-nowrap`
+  // because docs tables carry prose (sentences, links) that must wrap.
+  table: (props: ComponentProps<typeof Table>) => (
+    <Table className="my-6" {...props} />
+  ),
+  thead: (props: ComponentProps<typeof TableHeader>) => (
+    <TableHeader {...props} />
+  ),
+  tbody: (props: ComponentProps<typeof TableBody>) => <TableBody {...props} />,
+  tr: (props: ComponentProps<typeof TableRow>) => <TableRow {...props} />,
+  th: (props: ComponentProps<typeof TableHead>) => (
+    <TableHead className="w-auto align-top whitespace-normal" {...props} />
+  ),
+  td: (props: ComponentProps<typeof TableCell>) => (
+    <TableCell className="w-auto align-top whitespace-normal" {...props} />
   ),
   details: Details,
   summary: Summary,

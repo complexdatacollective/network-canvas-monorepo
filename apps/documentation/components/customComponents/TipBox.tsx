@@ -13,7 +13,7 @@ const TipBox = ({ children, danger = false }: TipBoxProps) => {
   const type = danger ? 'warning' : 'info';
 
   return (
-    <Alert variant={type}>
+    <Alert variant={type} appearance="soft">
       <AlertTitle>{t(type)}</AlertTitle>
       {children}
     </Alert>

@@ -27,7 +27,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
         // smaller screens the nav stays sticky, so it pins just below it.
         <WorkflowNav
           variant="collapsed"
-          className="bg-background/50 sticky top-16 z-40 w-full px-4 py-2 backdrop-blur-sm lg:top-0"
+          className="bg-background/50 tablet-landscape:top-0 sticky top-16 z-40 w-full px-4 py-2 backdrop-blur-sm"
         />
       )}
       <motion.div
@@ -53,21 +53,23 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
           'flex h-full w-full flex-auto justify-center',
           // Space content away from the nav on content pages; the margin scales
           // down on smaller viewports.
-          isHomePage ? 'mt-4' : 'mt-10 sm:mt-16 lg:mt-24',
+          isHomePage
+            ? 'mt-4'
+            : 'phone-landscape:mt-16 tablet-landscape:mt-24 mt-10',
         )}
       >
         {!isHomePage && (
           // Sticky offset clears the sticky section switcher (68px tall) plus an
           // 8px gap; max height subtracts that offset and the 8px bottom margin.
-          <Sidebar className="mx-4 hidden max-w-80 lg:sticky lg:top-[76px] lg:flex lg:max-h-[calc(100dvh-84px)]" />
+          <Sidebar className="tablet-landscape:sticky tablet-landscape:top-[76px] tablet-landscape:flex tablet-landscape:max-h-[calc(100dvh-84px)] mx-4 hidden max-w-80" />
         )}
 
         {children}
       </main>
       <footer>
-        <div className="mt-10 flex flex-col items-center gap-2 py-4 text-sm sm:flex-row sm:justify-center">
+        <div className="phone-landscape:flex-row phone-landscape:justify-center mt-10 flex flex-col items-center gap-2 py-4 text-sm">
           <span>© {new Date().getFullYear()} Complex Data Collective</span>
-          <span className="hidden sm:inline">|</span>
+          <span className="phone-landscape:inline hidden">|</span>
           <span>
             This site is powered by{' '}
             <a

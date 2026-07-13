@@ -45,9 +45,9 @@ const sheetVariants = cva(
         top: 'data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top inset-x-0 top-0 border-b',
         bottom:
           'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 border-t',
-        left: 'data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left left-0 h-full w-3/4 border-r sm:max-w-sm',
+        left: 'data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left phone-landscape:max-w-sm left-0 h-full w-3/4 border-r',
         right:
-          'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm',
+          'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right phone-landscape:max-w-sm inset-y-0 right-0 h-full w-3/4 border-l',
       },
     },
     defaultVariants: {
@@ -83,7 +83,7 @@ const SheetHeader = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cx(
-      'flex flex-col space-y-2 text-center sm:text-left',
+      'phone-landscape:text-left flex flex-col space-y-2 text-center',
       className,
     )}
     {...props}
@@ -97,7 +97,7 @@ const SheetFooter = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cx(
-      'flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2',
+      'phone-landscape:flex-row phone-landscape:justify-end phone-landscape:space-x-2 flex flex-col-reverse',
       className,
     )}
     {...props}

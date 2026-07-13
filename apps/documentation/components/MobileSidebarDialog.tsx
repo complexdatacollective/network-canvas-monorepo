@@ -44,7 +44,7 @@ export default function MobileSidebarDialog({
             onClick={() => setOpen(false)}
             variant="text"
             aria-label="Close navigation menu"
-            className="sm:hidden"
+            className="phone-landscape:hidden"
             icon={<CloseMenu className="h-4 w-4 shrink-0" />}
           />
         </div>

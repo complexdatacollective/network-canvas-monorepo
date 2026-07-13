@@ -17,7 +17,7 @@ const MobileNavBar = () => {
   // Check if we are on the home page by comparing the pathname to our supported locals
   const isHomePage = pathname === `/${locale}`;
   return (
-    <div className="flex shrink grow basis-auto items-center gap-4 lg:hidden">
+    <div className="tablet-landscape:hidden flex shrink grow basis-auto items-center gap-4">
       <MobileSidebarDialog open={open} setOpen={setOpen} />
       <DocSearchComponent />
       {open ? (
@@ -35,7 +35,7 @@ const MobileNavBar = () => {
           onClick={() => setOpen(true)}
           variant="text"
           aria-label="Open navigation menu"
-          className={cx('shrink-0', isHomePage && 'md:hidden')}
+          className={cx('shrink-0', isHomePage && 'tablet-portrait:hidden')}
           icon={<HamburgerMenu className="h-8 w-8" />}
         />
       )}

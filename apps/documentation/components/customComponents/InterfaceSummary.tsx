@@ -28,7 +28,7 @@ export const InterfaceSummary = ({
     );
   }
   return (
-    <div className="mb-4 flex flex-col gap-6 sm:flex-row sm:items-center">
+    <div className="phone-landscape:flex-row phone-landscape:items-center mb-4 flex flex-col gap-6">
       <div className="my-6 min-w-0 flex-1">
         <InterfacePicture
           type={type}
@@ -107,7 +107,7 @@ export const InterfaceMeta = ({
     .filter(Boolean);
 
   return (
-    <dl className="flex shrink-0 flex-col gap-5 sm:w-64 sm:pl-6">
+    <dl className="phone-landscape:w-64 phone-landscape:pl-6 flex shrink-0 flex-col gap-5">
       <SpecField label="Type">{type}</SpecField>
       <SpecField label="Creates">{creates}</SpecField>
       <div className="grid grid-cols-2 gap-5">

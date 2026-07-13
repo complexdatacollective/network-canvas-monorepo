@@ -13,24 +13,24 @@ export function Hero() {
   const t = useTranslations();
   return (
     <motion.div
-      className="mx-4 flex max-w-7xl flex-col items-center justify-center gap-10 pt-2 sm:mx-8 md:flex-1 md:pt-3 lg:gap-16"
+      className="phone-landscape:mx-8 tablet-portrait:flex-1 tablet-portrait:pt-3 tablet-landscape:gap-16 mx-4 flex max-w-7xl flex-col items-center justify-center gap-10 pt-2"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <div className="flex w-full flex-col-reverse items-center justify-center text-center md:flex-row md:justify-start md:text-left">
-        <div className="flex flex-col items-center justify-center md:items-start">
+      <div className="tablet-portrait:flex-row tablet-portrait:justify-start tablet-portrait:text-left flex w-full flex-col-reverse items-center justify-center text-center">
+        <div className="tablet-portrait:items-start flex flex-col items-center justify-center">
           <FancyHeading level="h1" className="text-4xl">
             {t('Hero.title')}
           </FancyHeading>
           <FancyParagraph intent="lead">{t('Hero.tagline')}</FancyParagraph>
           <DocSearchComponent
-            className="mt-4 hidden !w-full max-w-2xl rounded-3xl text-base lg:inline-flex"
+            className="tablet-landscape:inline-flex mt-4 hidden !w-full max-w-2xl rounded-3xl text-base"
             large
           />
         </div>
-        <div className="basis-auto items-center justify-center md:flex md:basis-1/2 lg:basis-2/5">
+        <div className="tablet-portrait:flex tablet-portrait:basis-1/2 tablet-landscape:basis-2/5 basis-auto items-center justify-center">
           <motion.div
-            className="mx-auto w-52 md:w-72"
+            className="tablet-portrait:w-72 mx-auto w-52"
             initial={{ opacity: 1, y: 0, scale: 1 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
           >
