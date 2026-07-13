@@ -6,3 +6,4 @@ export {
 } from './predicate.js';
 export { default as getQuery } from './query.js';
 export { getRuleFunction, getSingleRuleFunction } from './rules.js';
+export { isStageSkipped } from './skipLogic.js';

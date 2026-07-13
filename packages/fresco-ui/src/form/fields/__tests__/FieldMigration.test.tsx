@@ -77,6 +77,7 @@ describe('Select migration contracts', () => {
   it('keeps numeric values typed and forwards field ARIA to the styled trigger', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
+    const onBlur = vi.fn();
     render(
       <>
         <span id="choice-label">Numeric choice</span>
@@ -87,6 +88,7 @@ describe('Select migration contracts', () => {
           options={options}
           value={2}
           onChange={onChange}
+          onBlur={onBlur}
           aria-labelledby="choice-label"
           aria-describedby="choice-hint"
           aria-invalid
@@ -96,8 +98,12 @@ describe('Select migration contracts', () => {
 
     const trigger = screen.getByRole('combobox', { name: 'Numeric choice' });
     expect(trigger).toHaveTextContent('Two');
+    expect(trigger).toHaveAttribute('id', 'choice');
     expect(trigger).toHaveAccessibleDescription('Choose a number');
     expect(trigger).toHaveAttribute('aria-invalid', 'true');
+
+    fireEvent.blur(trigger);
+    expect(onBlur).toHaveBeenCalledTimes(1);
 
     await user.click(trigger);
     const disabledOption = await screen.findByRole('option', { name: 'One' });
@@ -105,6 +111,41 @@ describe('Select migration contracts', () => {
     const enabledOption = screen.getByRole('option', { name: 'Two' });
     await user.click(enabledOption);
     expect(onChange).toHaveBeenCalledWith(2);
+  });
+
+  it('constrains and wraps long options when the select is in a narrow container', async () => {
+    const user = userEvent.setup();
+    const longLabel =
+      'Stage 12 — A-deliberately-unbroken-destination-label-that-must-wrap-within-the-available-width';
+
+    render(
+      <div data-testid="narrow-select" style={{ width: '8rem' }}>
+        <StyledSelectField
+          name="destination"
+          options={[{ value: 'destination', label: longLabel }]}
+          value="destination"
+          onChange={() => undefined}
+        />
+      </div>,
+    );
+
+    expect(screen.getByTestId('narrow-select')).toHaveStyle({ width: '8rem' });
+    await user.click(screen.getByRole('combobox'));
+
+    const option = await screen.findByRole('option', { name: longLabel });
+    const optionText = within(option).getByText(longLabel);
+    const popup = option.parentElement?.parentElement;
+
+    expect(optionText).toHaveClass(
+      'min-w-0',
+      'wrap-break-word',
+      'whitespace-normal',
+    );
+    expect(popup).toHaveClass(
+      'max-w-(--available-width)',
+      'w-max',
+      'min-w-[min(var(--anchor-width),var(--available-width))]',
+    );
   });
 
   it.each([NativeSelectField, StyledSelectField])(

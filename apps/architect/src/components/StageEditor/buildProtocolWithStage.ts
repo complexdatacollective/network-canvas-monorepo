@@ -8,25 +8,21 @@ import prune from '~/utils/prune';
  * Normalises the live form values into the stage that preview will actually
  * build, validate, and launch.
  *
- * `_modified` is editor-only bookkeeping and is always dropped. With "Always
- * show this stage in preview" enabled (the default), skip logic is stripped
- * from the previewed stage so the interview doesn't bounce off the stage the
- * user launched into — but only when the stage actually has skip logic to
- * strip. Both the preview-disabled check and the preview launch must use this
- * same shape, otherwise the button could disable for a problem (e.g. invalid
- * skip-logic rules) that the launched, skip-logic-stripped protocol wouldn't
- * actually have.
+ * `_modified` is editor-only bookkeeping and is always dropped. "Always show
+ * this stage in preview" is represented separately as an initial one-stage
+ * override, so the real skip logic remains in the protocol and resumes after
+ * the first navigation.
  */
 export function normalizePreviewStage(
   formValues: Stage,
   ignoreSkipLogic: boolean,
 ): { stage: Stage; skipLogicBypassed: boolean } {
-  const skipLogicBypassed = ignoreSkipLogic && Boolean(formValues.skipLogic);
-  const omitKeys = skipLogicBypassed
-    ? ['_modified', 'skipLogic']
-    : ['_modified'];
+  const skipLogicBypassed = ignoreSkipLogic;
 
-  return { stage: omit(formValues, omitKeys) as Stage, skipLogicBypassed };
+  return {
+    stage: omit(formValues, ['_modified']) as Stage,
+    skipLogicBypassed,
+  };
 }
 
 /**

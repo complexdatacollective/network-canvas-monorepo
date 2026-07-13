@@ -112,18 +112,18 @@ const openAndAssertMenu = async (
   const canvas = within(canvasElement);
 
   const trigger = await canvas.findByRole('button', {
-    name: /go to a stage/i,
+    name: /go to another screen/i,
   });
   await userEvent.click(trigger);
 
-  const menu = await canvas.findByRole('listbox', { name: /stages/i });
+  const menu = await canvas.findByRole('listbox', {
+    name: /interview screens/i,
+  });
   const scoped = within(menu);
 
   await expect(scoped.getAllByRole('option')).toHaveLength(stageCount);
   if (stageCount >= 3) {
-    await expect(
-      scoped.getByRole('img', { name: /skipped/i }),
-    ).toBeInTheDocument();
+    await expect(scoped.getByText(/hidden by answers/i)).toBeInTheDocument();
   }
   await expect(
     scoped.getByRole('option', { current: 'step' }),

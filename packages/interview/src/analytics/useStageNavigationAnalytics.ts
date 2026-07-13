@@ -10,6 +10,7 @@ import { useTrack } from './useTrack';
 type StageDescriptor = {
   stage_type?: string;
   stage_index: number;
+  enabled?: boolean;
 };
 
 /**
@@ -24,6 +25,7 @@ type StageDescriptor = {
 export function useStageNavigationAnalytics({
   stage_index,
   stage_type,
+  enabled = true,
 }: StageDescriptor): void {
   const track = useTrack();
   const stages = useSelector((s: RootState) => s.protocol?.stages) as
@@ -40,6 +42,13 @@ export function useStageNavigationAnalytics({
     if (!startedRef.current) {
       track('interview_started');
       startedRef.current = true;
+    }
+
+    // An unavailable saved/current step is render-gated while navigation
+    // recovers. It was never shown, so it must not enter the stage analytics
+    // history or generate a matching exit event later.
+    if (!enabled) {
+      return;
     }
 
     const previousIndex = lastIndexRef.current;
@@ -87,5 +96,5 @@ export function useStageNavigationAnalytics({
 
     lastIndexRef.current = stage_index;
     lastEnteredAtRef.current = now;
-  }, [stage_index, stage_type, stages, track]);
+  }, [enabled, stage_index, stage_type, stages, track]);
 }

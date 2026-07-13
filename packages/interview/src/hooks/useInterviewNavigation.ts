@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector, useStore } from 'react-redux';
 
 import { useCurrentStep } from '../contexts/CurrentStepContext';
 import getInterface from '../interfaces';
@@ -20,12 +20,14 @@ import {
 } from '../selectors/session';
 import {
   getNavigableStages,
-  getSkipMap,
+  getStageAvailabilityMap,
   resolveRecoveryStep,
+  type UnavailableStage,
 } from '../selectors/skip-logic';
 import { calculateProgress, getInterviewProgress } from '../selectors/utils';
 import { getProtocolStages } from '../store/modules/protocol';
 import { transitionStage, updatePrompt } from '../store/modules/session';
+import type { RootState } from '../store/store';
 import type {
   BeforeNextFunction,
   Direction,
@@ -35,8 +37,11 @@ import type {
 import useReadyForNextStage from './useReadyForNextStage';
 import { useStageSelector } from './useStageSelector';
 
-export default function useInterviewNavigation() {
+export default function useInterviewNavigation(
+  initialStageOverrideIndex?: number,
+) {
   const dispatch = useDispatch();
+  const interviewStore = useStore<RootState>();
 
   // `currentStep` is the latest navigation target (updated synchronously when
   // the user presses next). `displayedStep` lags during a stage exit
@@ -49,6 +54,8 @@ export default function useInterviewNavigation() {
     setCurrentStep: setStep,
     commitDisplayedStep,
   } = useCurrentStep();
+  const currentStepRef = useRef(currentStep);
+  currentStepRef.current = currentStep;
 
   const [forceNavigationDisabled, setForceNavigationDisabled] = useState(false);
 
@@ -75,8 +82,10 @@ export default function useInterviewNavigation() {
   const { isReady: isReadyForNextStage } = useReadyForNextStage();
   const { isLastPrompt, isFirstPrompt, promptIndex } =
     useStageSelector(getNavigationInfo);
-  const { nextValidStageIndex, previousValidStageIndex, isCurrentStepValid } =
-    useStageSelector(getNavigableStages);
+  const displayedNavigation = useStageSelector(getNavigableStages);
+  const currentNavigation = useSelector((state: RootState) =>
+    getNavigableStages(state, currentStep),
+  );
   const stageCount = useSelector(getStageCount);
   const promptCount = useStageSelector(getPromptCount);
   // The raw protocol stages (without the appended FinishSession stage). Passed
@@ -84,25 +93,11 @@ export default function useInterviewNavigation() {
   // handed back to the host via onStepChange.
   const protocolStages = useSelector(getProtocolStages);
 
-  // Refs to avoid stale closures in navigation callbacks
-  const nextValidStageIndexRef = useRef(nextValidStageIndex);
-  const previousValidStageIndexRef = useRef(previousValidStageIndex);
-
-  useEffect(() => {
-    nextValidStageIndexRef.current = nextValidStageIndex;
-  }, [nextValidStageIndex]);
-
-  useEffect(() => {
-    previousValidStageIndexRef.current = previousValidStageIndex;
-  }, [previousValidStageIndex]);
-
-  const skipMap = useSelector(getSkipMap);
-  const skipMapRef = useRef(skipMap);
-  useEffect(() => {
-    skipMapRef.current = skipMap;
-  }, [skipMap]);
-
-  const [forcedStep, setForcedStep] = useState<number | null>(null);
+  const [forcedStep, setForcedStep] = useState<number | null>(() =>
+    initialStageOverrideIndex === currentStep
+      ? initialStageOverrideIndex
+      : null,
+  );
 
   const [progress, setProgress] = useState(
     calculateProgress(currentStep, stageCount, promptIndex, promptCount),
@@ -187,15 +182,19 @@ export default function useInterviewNavigation() {
       }
 
       // From this point on we are definitely navigating stages
-      const meta = getInterviewProgress(
-        protocolStages,
-        nextValidStageIndexRef.current,
+      // Read after beforeNext handlers finish: form submission can update the
+      // network, which can immediately change the active route.
+      const navigation = getNavigableStages(
+        interviewStore.getState(),
+        currentStepRef.current,
       );
+      const nextStep = navigation.nextValidStageIndex;
+      const meta = getInterviewProgress(protocolStages, nextStep);
       setProgress(meta.progress);
       registerBeforeNext(null);
       setForcedStep(null);
 
-      setStep(nextValidStageIndexRef.current, meta);
+      setStep(nextStep, meta);
     } finally {
       setForceNavigationDisabled(false);
     }
@@ -206,6 +205,7 @@ export default function useInterviewNavigation() {
     registerBeforeNext,
     protocolStages,
     setStep,
+    interviewStore,
   ]);
 
   const moveBackward = useCallback(async () => {
@@ -223,14 +223,16 @@ export default function useInterviewNavigation() {
         return;
       }
 
-      const meta = getInterviewProgress(
-        protocolStages,
-        previousValidStageIndexRef.current,
+      const navigation = getNavigableStages(
+        interviewStore.getState(),
+        currentStepRef.current,
       );
+      const previousStep = navigation.previousValidStageIndex;
+      const meta = getInterviewProgress(protocolStages, previousStep);
       setProgress(meta.progress);
       registerBeforeNext(null);
       setForcedStep(null);
-      setStep(previousValidStageIndexRef.current, meta);
+      setStep(previousStep, meta);
     } finally {
       setForceNavigationDisabled(false);
     }
@@ -241,12 +243,13 @@ export default function useInterviewNavigation() {
     promptIndex,
     registerBeforeNext,
     protocolStages,
+    interviewStore,
   ]);
 
   const goToStage = useCallback(
     async (
       targetIndex: number,
-      confirmSkip?: () => Promise<boolean>,
+      confirmUnavailable?: (availability: UnavailableStage) => Promise<boolean>,
     ): Promise<void> => {
       if (targetIndex === currentStep || currentStep !== displayedStep) {
         return;
@@ -263,8 +266,14 @@ export default function useInterviewNavigation() {
           return;
         }
 
-        if (skipMapRef.current[targetIndex] === true) {
-          const confirmed = (await confirmSkip?.()) ?? false;
+        // Re-check after beforeNext handlers: saving the current screen may
+        // have made this target locally hidden or bypassed by a new route.
+        const targetAvailability = getStageAvailabilityMap(
+          interviewStore.getState(),
+        )[targetIndex];
+        if (targetAvailability && targetAvailability.kind !== 'available') {
+          const confirmed =
+            (await confirmUnavailable?.(targetAvailability)) ?? false;
           if (!confirmed) {
             return;
           }
@@ -281,7 +290,14 @@ export default function useInterviewNavigation() {
         setForceNavigationDisabled(false);
       }
     },
-    [currentStep, displayedStep, protocolStages, registerBeforeNext, setStep],
+    [
+      currentStep,
+      displayedStep,
+      protocolStages,
+      registerBeforeNext,
+      setStep,
+      interviewStore,
+    ],
   );
 
   const getNavigationHelpers = useCallback(
@@ -306,31 +322,26 @@ export default function useInterviewNavigation() {
     setShowStage(true);
   }, [commitDisplayedStep, dispatch]);
 
-  // If the current stage should be skipped, recover to a valid stage. Prefer
-  // the nearest earlier valid stage; if none exists (e.g. the first/lowest
-  // stage is skipped on entry) advance to the next valid stage so a skipped
-  // stage is never rendered.
+  // If the current stage leaves the active route, recover without rendering
+  // it. A one-stage manual/preview override is the only exception.
   useEffect(() => {
-    if (!isCurrentStepValid && currentStep !== forcedStep) {
+    if (!currentNavigation.isCurrentStepValid && currentStep !== forcedStep) {
       const recoveryStep = resolveRecoveryStep({
         currentStep,
-        previousValidStageIndex,
-        nextValidStageIndex,
+        previousValidStageIndex: currentNavigation.previousValidStageIndex,
+        nextValidStageIndex: currentNavigation.nextValidStageIndex,
       });
       setStep(recoveryStep, getInterviewProgress(protocolStages, recoveryStep));
     }
-  }, [
-    setStep,
-    isCurrentStepValid,
-    currentStep,
-    forcedStep,
-    previousValidStageIndex,
-    nextValidStageIndex,
-    protocolStages,
-  ]);
+  }, [setStep, currentNavigation, currentStep, forcedStep, protocolStages]);
 
   const { canMoveForward, canMoveBackward } =
     useStageSelector(getNavigationInfo);
+  const isTransitioning = currentStep !== displayedStep;
+  const hasPreviousAvailableStage =
+    currentNavigation.previousValidStageIndex !== currentStep;
+  const canRenderDisplayedStage =
+    displayedNavigation.isCurrentStepValid || displayedStep === forcedStep;
 
   return {
     // Stage rendering
@@ -338,6 +349,7 @@ export default function useInterviewNavigation() {
     currentStep,
     displayedStep,
     showStage,
+    canRenderStage: canRenderDisplayedStage,
     CurrentInterface,
     registerBeforeNext,
     getNavigationHelpers,
@@ -347,10 +359,13 @@ export default function useInterviewNavigation() {
     moveForward,
     moveBackward,
     goToStage,
-    disableMoveForward: forceNavigationDisabled || !canMoveForward,
+    disableMoveForward:
+      forceNavigationDisabled || isTransitioning || !canMoveForward,
     disableMoveBackward:
       forceNavigationDisabled ||
-      (!canMoveBackward && beforeNextHandlers.current.size === 0),
+      isTransitioning ||
+      ((!canMoveBackward || (isFirstPrompt && !hasPreviousAvailableStage)) &&
+        beforeNextHandlers.current.size === 0),
     pulseNext: isReadyForNextStage,
     progress,
   };

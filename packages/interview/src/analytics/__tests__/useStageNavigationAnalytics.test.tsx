@@ -110,4 +110,50 @@ describe('useStageNavigationAnalytics', () => {
       stage_count: 3,
     });
   });
+
+  it('does not record an unavailable render-gated step before recovery', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const wrapper = makeWrapper(tracker, [
+      { type: 'Information' },
+      { type: 'AlterForm' },
+    ]);
+    const { rerender } = renderHook(
+      (props: { stage_index: number; stage_type?: string; enabled: boolean }) =>
+        useStageNavigationAnalytics(props),
+      {
+        wrapper,
+        initialProps: {
+          stage_index: 1,
+          stage_type: 'AlterForm',
+          enabled: false,
+        },
+      },
+    );
+
+    expect(tracker.track).toHaveBeenCalledWith('interview_started');
+    expect(tracker.track).not.toHaveBeenCalledWith(
+      'stage_entered',
+      expect.anything(),
+    );
+
+    tracker.track.mockClear();
+    rerender({
+      stage_index: 0,
+      stage_type: 'Information',
+      enabled: true,
+    });
+
+    expect(tracker.track).toHaveBeenCalledWith(
+      'stage_entered',
+      expect.objectContaining({
+        stage_type: 'Information',
+        stage_index: 0,
+        direction: 'initial',
+      }),
+    );
+    expect(tracker.track).not.toHaveBeenCalledWith(
+      'stage_exited',
+      expect.anything(),
+    );
+  });
 });

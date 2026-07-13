@@ -160,22 +160,22 @@ describe('normalizePreviewStage', () => {
     expect(stage).toHaveProperty('skipLogic');
   });
 
-  it('strips skip logic and flags bypass when ignoreSkipLogic is on and the stage has skip logic', () => {
+  it('keeps skip logic and flags an initial override when ignoreSkipLogic is on', () => {
     const { stage, skipLogicBypassed } = normalizePreviewStage(
       stageWithSkipLogic,
       true,
     );
     expect(skipLogicBypassed).toBe(true);
-    expect(stage).not.toHaveProperty('skipLogic');
+    expect(stage).toHaveProperty('skipLogic');
   });
 
-  it('does not flag bypass when ignoreSkipLogic is on but the stage has no skip logic', () => {
+  it('flags an initial override even when an earlier rule could bypass the stage', () => {
     const stageWithout = {
       id: STAGE_ID,
       type: 'NameGenerator',
       label: 'No skip logic',
     } as unknown as Stage;
     const { skipLogicBypassed } = normalizePreviewStage(stageWithout, true);
-    expect(skipLogicBypassed).toBe(false);
+    expect(skipLogicBypassed).toBe(true);
   });
 });

@@ -2,6 +2,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import { find, findIndex, reduce } from 'es-toolkit/compat';
 
 import type { RootState } from '~/ducks/modules/root';
+import { getSkipLogicDestinationLabel } from '~/utils/skipLogicDestination';
 
 // Protocol selectors
 export const getProtocol = (state: RootState) => {
@@ -36,6 +37,12 @@ export const getStageList = createSelector([getProtocol], (protocol) => {
     label: stage.label,
     hasFilter: 'filter' in stage ? !!stage.filter : false,
     hasSkipLogic: !!stage.skipLogic,
+    skipLogic: stage.skipLogic
+      ? { destination: stage.skipLogic.destination }
+      : undefined,
+    skipLogicDestinationLabel: stage.skipLogic
+      ? getSkipLogicDestinationLabel(stages, stage.skipLogic.destination)
+      : null,
   }));
 });
 

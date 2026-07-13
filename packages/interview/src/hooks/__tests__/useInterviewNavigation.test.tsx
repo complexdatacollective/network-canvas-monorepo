@@ -4,11 +4,15 @@ import { type ReactNode, useState } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  asEntityAttributeReference,
+  type SkipLogic,
+} from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import protocol from '../../store/modules/protocol';
-import session from '../../store/modules/session';
+import session, { updateEgo } from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import useInterviewNavigation from '../useInterviewNavigation';
 
@@ -17,7 +21,7 @@ type TestStage = {
   type: string;
   label: string;
   items: never[];
-  skipLogic?: { action: 'SKIP'; filter: { join: 'AND'; rules: never[] } };
+  skipLogic?: SkipLogic;
 };
 
 const makeStages = (count: number): TestStage[] =>
@@ -32,6 +36,32 @@ const ALWAYS_SKIPPED = {
   action: 'SKIP' as const,
   filter: { join: 'AND' as const, rules: [] as never[] },
 };
+
+const skipTo = (destination: NonNullable<SkipLogic['destination']>) => ({
+  ...ALWAYS_SKIPPED,
+  destination,
+});
+
+const skipWhenDeclined = (
+  destination: NonNullable<SkipLogic['destination']>,
+): SkipLogic => ({
+  action: 'SKIP',
+  filter: {
+    join: 'AND',
+    rules: [
+      {
+        id: 'does-not-agree',
+        type: 'ego',
+        options: {
+          attribute: asEntityAttributeReference('agrees'),
+          operator: 'EXACTLY',
+          value: false,
+        },
+      },
+    ],
+  },
+  destination,
+});
 
 function makeStore(stages: TestStage[]) {
   return configureStore({
@@ -50,7 +80,15 @@ function makeStore(stages: TestStage[]) {
         id: 'p',
         hash: 'h',
         schemaVersion: 8,
-        codebook: { node: {}, edge: {}, ego: { variables: {} } },
+        codebook: {
+          node: {},
+          edge: {},
+          ego: {
+            variables: {
+              agrees: { name: 'Agrees', type: 'boolean' },
+            },
+          },
+        },
         stages,
       } as never,
     },
@@ -58,7 +96,11 @@ function makeStore(stages: TestStage[]) {
   });
 }
 
-function renderStatefulNavigation(stages: TestStage[], initialStep = 0) {
+function renderStatefulNavigation(
+  stages: TestStage[],
+  initialStep = 0,
+  initialStageOverrideIndex?: number,
+) {
   const store = makeStore(stages);
   const onStepChange = vi.fn();
 
@@ -79,10 +121,11 @@ function renderStatefulNavigation(stages: TestStage[], initialStep = 0) {
     );
   }
 
-  const { result } = renderHook(() => useInterviewNavigation(), {
-    wrapper: Wrapper,
-  });
-  return { result, onStepChange };
+  const { result } = renderHook(
+    () => useInterviewNavigation(initialStageOverrideIndex),
+    { wrapper: Wrapper },
+  );
+  return { result, onStepChange, store };
 }
 
 function renderNavigation(stageCount: number, currentStep: number) {
@@ -102,7 +145,15 @@ function renderNavigation(stageCount: number, currentStep: number) {
         id: 'p',
         hash: 'h',
         schemaVersion: 8,
-        codebook: { node: {}, edge: {}, ego: { variables: {} } },
+        codebook: {
+          node: {},
+          edge: {},
+          ego: {
+            variables: {
+              agrees: { name: 'Agrees', type: 'boolean' },
+            },
+          },
+        },
         stages: makeStages(stageCount),
       } as never,
     },
@@ -126,7 +177,7 @@ function renderNavigation(stageCount: number, currentStep: number) {
   const { result } = renderHook(() => useInterviewNavigation(), {
     wrapper: Wrapper,
   });
-  return { result, onStepChange };
+  return { result, onStepChange, store };
 }
 
 describe('useInterviewNavigation step-change meta', () => {
@@ -157,6 +208,182 @@ describe('useInterviewNavigation step-change meta', () => {
       progress: 100,
       totalSteps: 3,
     });
+  });
+});
+
+describe('useInterviewNavigation targeted skip routes', () => {
+  it('advances directly to a configured later destination', async () => {
+    const stages = makeStages(5);
+    stages[1]!.skipLogic = skipTo({ type: 'stage', stageId: 's4' });
+    const { result, onStepChange } = renderStatefulNavigation(stages, 0);
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(onStepChange).toHaveBeenLastCalledWith(4, expect.anything());
+  });
+
+  it('advances to the synthetic finish screen for a finish destination', async () => {
+    const stages = makeStages(3);
+    stages[1]!.skipLogic = skipTo({ type: 'finish' });
+    const { result, onStepChange } = renderStatefulNavigation(stages, 0);
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(onStepChange).toHaveBeenLastCalledWith(3, {
+      progress: 100,
+      totalSteps: 4,
+    });
+  });
+
+  it('continues past a destination that is itself hidden', async () => {
+    const stages = makeStages(5);
+    stages[1]!.skipLogic = skipTo({ type: 'stage', stageId: 's3' });
+    stages[3]!.skipLogic = ALWAYS_SKIPPED;
+    const { result, onStepChange } = renderStatefulNavigation(stages, 0);
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(onStepChange).toHaveBeenLastCalledWith(4, expect.anything());
+  });
+
+  it('uses network changes saved by beforeNext when resolving the next screen', async () => {
+    const stages = makeStages(3);
+    stages[1]!.skipLogic = skipWhenDeclined({ type: 'finish' });
+    const { result, onStepChange, store } = renderStatefulNavigation(stages, 0);
+
+    act(() => {
+      result.current.registerBeforeNext(async () => {
+        await store.dispatch(updateEgo({ agrees: false }));
+        return true;
+      });
+    });
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(onStepChange).toHaveBeenLastCalledWith(3, expect.anything());
+  });
+
+  it('returns Back to the decision screen and reopens the range when the answer changes', async () => {
+    const stages = makeStages(5);
+    stages[1]!.skipLogic = skipWhenDeclined({
+      type: 'stage',
+      stageId: 's4',
+    });
+    const { result, onStepChange, store } = renderStatefulNavigation(stages, 0);
+
+    act(() => {
+      result.current.registerBeforeNext(async () => {
+        await store.dispatch(updateEgo({ agrees: false }));
+        return true;
+      });
+    });
+    await act(async () => result.current.moveForward());
+    act(() => result.current.handleExitComplete());
+
+    await act(async () => result.current.moveBackward());
+    act(() => result.current.handleExitComplete());
+
+    act(() => {
+      result.current.registerBeforeNext(async () => {
+        await store.dispatch(updateEgo({ agrees: true }));
+        return true;
+      });
+    });
+    await act(async () => result.current.moveForward());
+
+    expect(onStepChange.mock.calls.map(([step]) => step)).toEqual([4, 0, 1]);
+  });
+
+  it('rechecks and confirms a menu target that becomes bypassed while the current screen saves', async () => {
+    const stages = makeStages(5);
+    stages[1]!.skipLogic = skipWhenDeclined({
+      type: 'stage',
+      stageId: 's4',
+    });
+    const { result, onStepChange, store } = renderStatefulNavigation(stages, 0);
+    const confirmUnavailable = vi.fn().mockResolvedValue(true);
+
+    act(() => {
+      result.current.registerBeforeNext(async () => {
+        await store.dispatch(updateEgo({ agrees: false }));
+        return true;
+      });
+    });
+    await act(async () => {
+      await result.current.goToStage(2, confirmUnavailable);
+    });
+
+    expect(confirmUnavailable).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'bypassed' }),
+    );
+    expect(onStepChange).toHaveBeenLastCalledWith(2, expect.anything());
+  });
+
+  it('allows one confirmed bypassed screen, then returns Next and Back to the active route', async () => {
+    const stages = makeStages(5);
+    stages[1]!.skipLogic = skipTo({ type: 'stage', stageId: 's4' });
+    const { result, onStepChange } = renderStatefulNavigation(stages, 0);
+    const confirmUnavailable = vi.fn().mockResolvedValue(true);
+
+    await act(async () => {
+      await result.current.goToStage(2, confirmUnavailable);
+    });
+    expect(confirmUnavailable).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'bypassed' }),
+    );
+
+    act(() => result.current.handleExitComplete());
+    await act(async () => {
+      await result.current.moveForward();
+    });
+    act(() => result.current.handleExitComplete());
+    await act(async () => {
+      await result.current.moveBackward();
+    });
+
+    expect(onStepChange.mock.calls.map(([step]) => step)).toEqual([2, 4, 0]);
+  });
+
+  it('uses an initial override for one hidden screen and clears it on navigation', async () => {
+    const stages = makeStages(4);
+    stages[2]!.skipLogic = ALWAYS_SKIPPED;
+    const { result, onStepChange } = renderStatefulNavigation(stages, 2, 2);
+
+    expect(result.current.canRenderStage).toBe(true);
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(onStepChange).toHaveBeenLastCalledWith(3, expect.anything());
+  });
+
+  it('gates an unavailable resumed screen before recovering to the route', () => {
+    const stages = makeStages(4);
+    stages[2]!.skipLogic = ALWAYS_SKIPPED;
+    const { result, onStepChange } = renderStatefulNavigation(stages, 2);
+
+    expect(result.current.canRenderStage).toBe(false);
+    expect(onStepChange).toHaveBeenLastCalledWith(1, expect.anything());
+
+    act(() => result.current.handleExitComplete());
+    expect(result.current.canRenderStage).toBe(true);
+  });
+
+  it('disables Back when raw earlier screens exist but none are on the active route', () => {
+    const stages = makeStages(3);
+    stages[0]!.skipLogic = ALWAYS_SKIPPED;
+    const { result } = renderStatefulNavigation(stages, 1);
+
+    expect(result.current.disableMoveBackward).toBe(true);
   });
 });
 
@@ -250,6 +477,9 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
     });
 
     expect(confirmSkip).toHaveBeenCalledTimes(1);
+    expect(confirmSkip).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'local-skip' }),
+    );
     expect(onStepChange).not.toHaveBeenCalled();
   });
 

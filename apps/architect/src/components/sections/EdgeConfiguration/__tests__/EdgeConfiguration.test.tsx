@@ -134,6 +134,7 @@ const renderSection = ({ edges }: { edges: EdgeArg[] }) => {
     <EdgeConfiguration
       form="edit-stage"
       stagePath="stages[0]"
+      stagePosition={0}
       interfaceType="NetworkComposer"
     />,
   );

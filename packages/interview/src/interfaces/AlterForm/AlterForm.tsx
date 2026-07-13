@@ -130,6 +130,7 @@ const AlterForm = (props: StageProps<'AlterForm'>) => {
             subject={stage.subject}
             form={stage.form}
             onNavigateBack={() => setMode('intro')}
+            moveForward={moveForward}
             renderHeader={renderHeader}
             form_kind="alter"
           />

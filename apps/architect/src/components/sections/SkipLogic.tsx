@@ -9,7 +9,7 @@ import SkipLogicFields from '~/components/sections/fields/SkipLogicFields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
-const SkipLogicSection = (_props: StageEditorSectionProps) => {
+const SkipLogicSection = (props: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
   const { confirm } = useDialog();
   const getFormValue = formValueSelector('edit-stage');
@@ -46,14 +46,17 @@ const SkipLogicSection = (_props: StageEditorSectionProps) => {
       title="Skip Logic"
       summary={
         <Paragraph>
-          Use skip logic to determine if this stage should be shown in the
-          interview.
+          Use skip logic to determine if this stage should be shown and where
+          the interview continues when it is skipped.
         </Paragraph>
       }
       startExpanded={!!hasSkipLogic}
       handleToggleChange={handleToggleChange}
     >
-      <SkipLogicFields />
+      <SkipLogicFields
+        stagePath={props.stagePath}
+        stagePosition={props.stagePosition}
+      />
     </Section>
   );
 };
