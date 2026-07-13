@@ -193,7 +193,6 @@ export type ArrayFieldDragHandleProps = {
   disabled?: boolean;
   label?: string;
   className?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
 };
 
 /**
@@ -207,7 +206,6 @@ export function ArrayFieldDragHandle({
   disabled = false,
   label = `Reorder item ${index + 1} of ${itemCount}`,
   className,
-  size = 'sm',
 }: ArrayFieldDragHandleProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const refocusAfterMoveRef = useRef(false);
@@ -245,7 +243,7 @@ export function ArrayFieldDragHandle({
       aria-label={label}
       aria-keyshortcuts="ArrowUp ArrowDown"
       title="Drag to reorder. Use the up and down arrow keys with the handle focused."
-      size={size}
+      size="sm"
       variant="text"
       color="dynamic"
       disabled={disabled}

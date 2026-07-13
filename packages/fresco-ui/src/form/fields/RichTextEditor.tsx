@@ -196,10 +196,6 @@ const toolbarStyles = cx(
   'bg-surface-1 text-surface-1-contrast publish-colors order-1 flex w-max min-w-full items-center gap-1 border-b border-current/10 px-6 py-2',
 );
 
-const compactToolbarStyles = cx(
-  'text-input-contrast order-1 flex w-max min-w-full items-center gap-1 border-b border-current/10 px-3 py-1',
-);
-
 const toolbarGroupStyles = cx('flex items-center');
 
 const toolbarButtonStyles = iconButtonVariants({
@@ -211,28 +207,18 @@ const toolbarButtonStyles = iconButtonVariants({
 
 const toolbarSeparatorStyles = cx('mx-2 h-5 w-px shrink-0 bg-current/20');
 
-const placeholderContentStyles = cx(
+const editorContentStyles = cx(
+  multilineContentVariants(),
+  'order-2 flex-1',
+  'outline-none',
+  '[&_.tiptap]:min-h-[120px] [&_.tiptap]:outline-none',
+  // Placeholder styles
   '[&_.tiptap_p.is-editor-empty:first-child::before]:text-input-contrast/50',
   '[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none',
   '[&_.tiptap_p.is-editor-empty:first-child::before]:float-left',
   '[&_.tiptap_p.is-editor-empty:first-child::before]:h-0',
   '[&_.tiptap_p.is-editor-empty:first-child::before]:italic',
   '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
-);
-
-const editorContentStyles = cx(
-  multilineContentVariants(),
-  'order-2 flex-1',
-  'outline-none',
-  '[&_.tiptap]:min-h-[120px] [&_.tiptap]:outline-none',
-  placeholderContentStyles,
-);
-
-const compactEditorContentStyles = cx(
-  'order-2 w-full flex-1 px-3 py-2',
-  'outline-none',
-  '[&_.tiptap]:min-h-[1.5rem] [&_.tiptap]:outline-none',
-  placeholderContentStyles,
 );
 
 type ToolbarOptions = {
@@ -271,7 +257,6 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
     'toolbarOptions'?: ToolbarOptions;
     'changeMode'?: ChangeMode;
     'autoFocus'?: boolean;
-    'compact'?: boolean;
     'placeholder'?: string;
     'id': string;
     'name': string;
@@ -319,7 +304,6 @@ export default function RichTextEditorField({
   toolbarOptions,
   changeMode = 'blur',
   autoFocus = false,
-  compact = false,
   placeholder,
   className,
   onFocus,
@@ -658,14 +642,9 @@ export default function RichTextEditorField({
         onBlur?.(event);
       }}
     >
-      <EditorContent
-        editor={editor}
-        className={compact ? compactEditorContentStyles : editorContentStyles}
-      />
+      <EditorContent editor={editor} className={editorContentStyles} />
       {hasToolbar && (
-        <Toolbar.Root
-          className={compact ? compactToolbarStyles : toolbarStyles}
-        >
+        <Toolbar.Root className={toolbarStyles}>
           {showTextFormatting && (
             <Toolbar.Group className={toolbarGroupStyles}>
               <ToggleGroup
