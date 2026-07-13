@@ -146,7 +146,7 @@ export default function SiteNavigation({
     >
       <div
         className={cx(
-          'tablet-landscape:px-10 mx-auto flex w-full max-w-[1200px] items-center justify-between px-6 py-6',
+          'tablet-landscape:px-10 flex w-full items-center justify-between px-6 py-6',
           containerClassName,
         )}
       >
