@@ -78,6 +78,7 @@ type UnconnectedFieldProps<C extends ValidFieldComponent> = FieldOwnProps<C> &
  * ```
  */
 export default function UnconnectedField<C extends ValidFieldComponent>({
+  name,
   label,
   labelHidden,
   hint,
@@ -115,6 +116,7 @@ export default function UnconnectedField<C extends ValidFieldComponent>({
     <LayoutGroup id={id}>
       <BaseField
         id={id}
+        name={name}
         label={label}
         labelHidden={labelHidden}
         hint={hint}
@@ -122,6 +124,7 @@ export default function UnconnectedField<C extends ValidFieldComponent>({
         required={required}
         errors={errors}
         showErrors={showErrors}
+        containerProps={{ 'data-field-name': name }}
       >
         {createElement(component, mergedProps)}
       </BaseField>

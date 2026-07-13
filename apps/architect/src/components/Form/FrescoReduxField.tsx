@@ -129,7 +129,7 @@ const FrescoReduxFieldBase = ({
     <UnconnectedField
       {...normalizedFieldProps}
       component={fieldComponent}
-      name={input.name ?? undefined}
+      name={input.name}
       label={label ?? input.name ?? ''}
       labelHidden={labelHidden}
       hint={hint}
