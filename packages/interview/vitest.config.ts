@@ -58,6 +58,8 @@ export default defineConfig({
             'src/**/*.{test,spec}.{ts,tsx}',
             'src/**/__tests__/**/*.{test,spec}.{ts,tsx}',
             'e2e/host/src/**/*.{test,spec}.{ts,tsx}',
+            'e2e/helpers/**/*.{test,spec}.{ts,tsx}',
+            'e2e/matrix/**/*.{test,spec}.{ts,tsx}',
           ],
           exclude: ['**/*.stories.{ts,tsx}'],
         },

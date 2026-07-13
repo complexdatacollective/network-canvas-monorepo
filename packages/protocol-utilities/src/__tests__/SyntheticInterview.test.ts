@@ -1251,3 +1251,19 @@ describe('e2e-matrix builder extensions', () => {
     expect(stage.nodeForm.fields[0]?.showValidationHints).toBe(true);
   });
 });
+
+describe('quickAdd variable reference', () => {
+  it('defaults NameGeneratorQuickAdd.quickAdd to the seeded name variable id', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const stage = synth.addStage('NameGeneratorQuickAdd', {
+      subject: { entity: 'node', type: person.id },
+    });
+    stage.addPrompt();
+    const config = synth.getProtocol().stages[0] as { quickAdd: string };
+    // The auto-seeded "name" variable is the node type's first variable.
+    const nameVarId = synth.getVariableIds(person.id)[0];
+    expect(config.quickAdd).toBe(nameVarId);
+    expect(config.quickAdd).not.toBe('name');
+  });
+});

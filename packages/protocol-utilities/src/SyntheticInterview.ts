@@ -508,7 +508,17 @@ export class SyntheticInterview {
 
     // NameGeneratorQuickAdd
     if (type === 'NameGeneratorQuickAdd') {
-      entry.quickAdd = opts?.quickAdd ?? 'name';
+      if (opts?.quickAdd) {
+        entry.quickAdd = opts.quickAdd;
+      } else {
+        // The schema requires a variable ID reference, not a display name —
+        // dedupe-resolve to the "name" text variable addNodeType seeds.
+        const ref = this.addVariableToNodeType(subject!.type, {
+          type: 'text',
+          name: 'name',
+        });
+        entry.quickAdd = ref.id;
+      }
     }
 
     // NameGeneratorRoster
@@ -679,7 +689,7 @@ export class SyntheticInterview {
       } else {
         const ref = this.addVariableToNodeType(nodeTypeId, {
           type: 'layout',
-          name: 'Composer Layout',
+          name: 'composerLayout',
         });
         entry.layoutVariable = ref.id;
       }
@@ -1037,11 +1047,11 @@ export class SyntheticInterview {
 
   private defaultVariableName(type: VariableType): string {
     const names: Record<string, string> = {
-      text: 'Text Value',
-      number: 'Number Value',
-      scalar: 'Scale Value',
-      boolean: 'Boolean Value',
-      ordinal: 'Likert Value',
+      text: 'textValue',
+      number: 'numberValue',
+      scalar: 'scaleValue',
+      boolean: 'booleanValue',
+      ordinal: 'likertValue',
       categorical: 'Category',
       datetime: 'Date',
       layout: 'Layout',
@@ -1207,7 +1217,7 @@ export class SyntheticInterview {
     } else {
       const ref = this.addVariableToNodeType(nodeTypeId, {
         type: 'layout',
-        name: 'Sociogram Layout',
+        name: 'sociogramLayout',
       });
       layoutVariable = ref.id;
     }
@@ -1277,7 +1287,7 @@ export class SyntheticInterview {
     } else {
       const ref = this.addVariableToNodeType(nodeTypeId, {
         type: 'layout',
-        name: 'Narrative Layout',
+        name: 'narrativeLayout',
       });
       layoutVariable = ref.id;
     }
