@@ -4,9 +4,38 @@ import { readProtocolJson } from '../helpers/read-store.js';
 import { Timeline } from '../pageobjects/timeline.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
-type ProtocolStagesJson = {
-  stages: { id: string; label: string; type: string }[];
-};
+type Stage = { id: string; label: string; type: string };
+
+// Narrow one element of the protocol JSON's `stages` array with a real
+// runtime guard (mirroring `isRow` in helpers/read-store.ts) rather than an
+// `as` cast, so a drifted/malformed stage throws here instead of silently
+// producing a mis-typed object the assertions would then trust.
+function toStage(value: unknown): Stage {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    typeof value.id === 'string' &&
+    'label' in value &&
+    typeof value.label === 'string' &&
+    'type' in value &&
+    typeof value.type === 'string'
+  ) {
+    return { id: value.id, label: value.label, type: value.type };
+  }
+  throw new Error('protocol stage missing a string id, label, or type');
+}
+
+// `readProtocolJson` returns `Record<string, unknown>`; extract its stages as
+// a typed array via `toStage` (no `as`). Each `unknown` element is narrowed
+// runtime-side, so callers get a real `Stage[]`.
+function stagesOf(protocol: Record<string, unknown>): Stage[] {
+  const stages = protocol.stages;
+  if (!Array.isArray(stages)) {
+    throw new Error('protocol JSON has no stages array');
+  }
+  return stages.map((value: unknown) => toStage(value));
+}
 
 test('reorders stages via drag and commits one moveStage', async ({
   architectPage,
@@ -16,18 +45,13 @@ test('reorders stages via drag and commits one moveStage', async ({
   await seed(protocol, { name: 'All Interfaces', assets });
   await gotoProtocol(architectPage);
 
-  const before = (await readProtocolJson(architectPage)) as ProtocolStagesJson;
+  const before = stagesOf(await readProtocolJson(architectPage));
   const timeline = new Timeline(architectPage);
-  await timeline.dragStage(before.stages[0].label, before.stages[2].label);
+  await timeline.dragStage(before[0].label, before[2].label);
 
   await expect
-    .poll(async () => {
-      const after = (await readProtocolJson(
-        architectPage,
-      )) as ProtocolStagesJson;
-      return after.stages[0].id;
-    })
-    .not.toBe(before.stages[0].id);
+    .poll(async () => stagesOf(await readProtocolJson(architectPage))[0].id)
+    .not.toBe(before[0].id);
 });
 
 test('inserts a new Information stage at the clicked index', async ({
@@ -38,7 +62,7 @@ test('inserts a new Information stage at the clicked index', async ({
   await seed(protocol, { name: 'All Interfaces', assets });
   await gotoProtocol(architectPage);
 
-  const before = (await readProtocolJson(architectPage)) as ProtocolStagesJson;
+  const before = stagesOf(await readProtocolJson(architectPage));
   const insertIndex = 1;
 
   const timeline = new Timeline(architectPage);
@@ -104,24 +128,17 @@ test('inserts a new Information stage at the clicked index', async ({
   await architectPage.waitForURL(/\/protocol$/);
 
   await expect
-    .poll(async () => {
-      const after = (await readProtocolJson(
-        architectPage,
-      )) as ProtocolStagesJson;
-      return after.stages.length;
-    })
-    .toBe(before.stages.length + 1);
+    .poll(async () => stagesOf(await readProtocolJson(architectPage)).length)
+    .toBe(before.length + 1);
 
-  const after = (await readProtocolJson(architectPage)) as ProtocolStagesJson;
-  expect(after.stages[insertIndex]).toMatchObject({
+  const after = stagesOf(await readProtocolJson(architectPage));
+  expect(after[insertIndex]).toMatchObject({
     type: 'Information',
     label: 'Inserted Info Stage',
   });
   // The stage previously at `insertIndex` shifted down by one rather than
   // being replaced.
-  expect(after.stages[insertIndex + 1]?.id).toBe(
-    before.stages[insertIndex]?.id,
-  );
+  expect(after[insertIndex + 1].id).toBe(before[insertIndex].id);
 });
 
 test('blocks deleting a FamilyPedigree stage referenced by NarrativePedigree', async ({
@@ -132,15 +149,35 @@ test('blocks deleting a FamilyPedigree stage referenced by NarrativePedigree', a
   await seed(protocol, { name: 'All Interfaces', assets });
   await gotoProtocol(architectPage);
 
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const familyPedigree = before.find(
+    (stage) => stage.type === 'FamilyPedigree',
+  );
+  if (!familyPedigree) {
+    throw new Error('fixture is missing a FamilyPedigree stage');
+  }
+
   const timeline = new Timeline(architectPage);
   await timeline.deleteStage('Family Pedigree');
   // Guard shows an acknowledge dialog, not the destructive confirm. All of
   // fresco-ui's `useDialog` dialogs (and NewStageScreen's inline `Dialog`)
   // share one `Dialog` component built on a plain (non-alert) Base UI
   // `Dialog.Root`, so the accessible role is `dialog`, not `alertdialog`.
-  await expect(
-    architectPage.getByRole('dialog', { name: 'Cannot delete stage' }),
-  ).toBeVisible();
+  const guardDialog = architectPage.getByRole('dialog', {
+    name: 'Cannot delete stage',
+  });
+  await expect(guardDialog).toBeVisible();
+
+  // Dialog shown AND deletion did not proceed. The guard returns before any
+  // deleteStage dispatch, so no store change happens; acknowledging then
+  // waiting past the 600ms autosave debounce lets any (regression) erroneous
+  // delete's write land in IndexedDB before we assert it did NOT — closing
+  // the "dialog shown but deletion silently proceeds anyway" gap.
+  await guardDialog.getByRole('button', { name: 'OK' }).click();
+  await architectPage.waitForTimeout(1000);
+  const after = stagesOf(await readProtocolJson(architectPage));
+  expect(after.some((stage) => stage.id === familyPedigree.id)).toBe(true);
+  expect(after.length).toBe(before.length);
 });
 
 test('deletes a leaf stage after confirming the destructive dialog', async ({
@@ -151,8 +188,8 @@ test('deletes a leaf stage after confirming the destructive dialog', async ({
   await seed(protocol, { name: 'All Interfaces', assets });
   await gotoProtocol(architectPage);
 
-  const before = (await readProtocolJson(architectPage)) as ProtocolStagesJson;
-  const target = before.stages.find((stage) => stage.label === 'Information');
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const target = before.find((stage) => stage.label === 'Information');
   if (!target) throw new Error('fixture is missing an "Information" stage');
 
   const timeline = new Timeline(architectPage);
@@ -166,11 +203,10 @@ test('deletes a leaf stage after confirming the destructive dialog', async ({
     .click();
 
   await expect
-    .poll(async () => {
-      const after = (await readProtocolJson(
-        architectPage,
-      )) as ProtocolStagesJson;
-      return after.stages.some((stage) => stage.id === target.id);
-    })
+    .poll(async () =>
+      stagesOf(await readProtocolJson(architectPage)).some(
+        (stage) => stage.id === target.id,
+      ),
+    )
     .toBe(false);
 });
