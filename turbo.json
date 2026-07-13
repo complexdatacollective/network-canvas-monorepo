@@ -70,6 +70,7 @@
         "scripts/**",
         "public/**",
         "index.html",
+        "preview/index.html",
         "vite.config.*",
         "tailwind.config.*",
         "tsconfig*.json",

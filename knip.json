@@ -106,9 +106,15 @@
       }
     },
     "apps/architect": {
-      "entry": ["index.html!", "preview/index.html!", "src/preview-main.tsx!"],
+      "entry": [
+        "index.html!",
+        "preview/index.html!",
+        "src/preview-main.tsx!",
+        "e2e/specs/**/*.ts",
+        "e2e/scripts/*.{ts,mjs}"
+      ],
       "vite": true,
-      "project": ["src/**/*.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}"],
       "paths": {
         "~/*": ["./src/*"]
       },
