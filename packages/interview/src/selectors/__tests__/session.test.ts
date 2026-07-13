@@ -97,4 +97,20 @@ describe('resolveNodeShape', () => {
 
     expect(resolveNodeShape(shape, { role: 'lead' })).toBe('diamond');
   });
+
+  it('maps a true boolean attribute and falls back for other values', () => {
+    const shape: NodeDefinition['shape'] = {
+      default: 'square',
+      dynamic: {
+        variable: 'is_person',
+        type: 'discrete',
+        map: [{ value: true, shape: 'circle' }],
+      },
+    };
+
+    expect(resolveNodeShape(shape, { is_person: true })).toBe('circle');
+    expect(resolveNodeShape(shape, { is_person: false })).toBe('square');
+    expect(resolveNodeShape(shape, {})).toBe('square');
+    expect(resolveNodeShape(shape, { is_person: null })).toBe('square');
+  });
 });
