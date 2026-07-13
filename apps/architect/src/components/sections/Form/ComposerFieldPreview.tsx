@@ -39,10 +39,12 @@ const ComposerFieldPreview = ({
       <strong>{label ?? codebookVariable.name ?? variable}</strong>
       <div>
         <Badge color={getColorForType(codebookVariable.type)}>
-          <strong>{codebookVariable.type}</strong>
-          {' variable using '}
-          <strong>{component}</strong>
-          {' input control'}
+          <span>
+            <strong>{codebookVariable.type}</strong>
+            {' variable using '}
+            <strong>{component}</strong>
+            {' input control'}
+          </span>
         </Badge>
       </div>
     </div>
