@@ -27,14 +27,26 @@ const ExternalLink = ({
 
   if (unstyled) {
     return (
-      <a href={href} onClick={handleClick} className={className}>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleClick}
+        className={className}
+      >
         {children}
       </a>
     );
   }
 
   return (
-    <NativeLink href={href} onClick={handleClick} className={className}>
+    <NativeLink
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={handleClick}
+      className={className}
+    >
       {children}
     </NativeLink>
   );

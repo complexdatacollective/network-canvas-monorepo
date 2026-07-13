@@ -20,6 +20,8 @@ describe('ExternalLink', () => {
     const link = screen.getByRole('link', { name: 'Documentation' });
     const dispatched = fireEvent.click(link);
 
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     expect(link).toHaveClass('focusable', 'text-link', 'font-semibold');
     expect(dispatched).toBe(false);
     expect(open).toHaveBeenCalledWith(
@@ -42,6 +44,8 @@ describe('ExternalLink', () => {
 
     const link = screen.getByRole('link', { name: 'View documentation' });
 
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     expect(link).toHaveClass('bg-primary');
     expect(link).not.toHaveClass('text-link');
     expect(link.firstElementChild).toBeNull();

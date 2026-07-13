@@ -120,7 +120,24 @@ describe('SiteNavigation', () => {
       <SiteNavigation activeItemId="resources" locale="en-US" site="website" />,
     );
 
-    expect(screen.getByRole('button', { name: 'Resources' })).toHaveAttribute(
+    const resourcesButton = screen.getByRole('button', { name: 'Resources' });
+    expect(resourcesButton).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('exposes an active compact navigation group semantically', () => {
+    render(
+      <SiteNavigation activeItemId="resources" locale="en-US" site="website" />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Open site navigation' }),
+    );
+    const compactNavigation = screen.getAllByRole('navigation', {
+      name: 'Primary navigation',
+    })[1];
+    if (!compactNavigation) throw new Error('Expected compact navigation.');
+
+    expect(within(compactNavigation).getByText('Resources')).toHaveAttribute(
       'aria-current',
       'page',
     );

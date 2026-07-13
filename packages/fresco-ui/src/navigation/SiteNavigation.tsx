@@ -423,6 +423,7 @@ function MobileLinkGroup({
   return (
     <div className="flex flex-col gap-3">
       <span
+        aria-current={active ? 'page' : undefined}
         className={cx(
           headingVariants({
             level: 'h4',
@@ -530,11 +531,11 @@ export default function SiteNavigation({
   const items: InternalNavigationItem[] = [
     ...resourceLinks.map((link) => ({
       ...link,
-      className: 'hidden @min-[64rem]:block',
+      className: 'hidden @min-[80rem]:block',
     })),
     {
       id: 'resources',
-      className: '@min-[64rem]:hidden',
+      className: '@min-[80rem]:hidden',
       render: (view) =>
         view === 'desktop' ? (
           <ResourcesMenu

@@ -27,7 +27,12 @@ import { getInputState } from '../utils/getInputState';
  */
 type InputFieldSlot = ReactNode | ((field: FieldSlotController) => ReactNode);
 
-const inputWrapperVariants = compose(
+/**
+ * The complete InputField container treatment, exposed for controls that must
+ * retain different semantics while presenting as a field (for example, a
+ * search-dialog trigger).
+ */
+export const inputFieldControlVariants = compose(
   heightVariants,
   textSizeVariants,
   controlVariants,
@@ -183,7 +188,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
     );
 
     const wrapperClassName = cx(
-      inputWrapperVariants({ size, state: getInputState(props) }),
+      inputFieldControlVariants({ size, state: getInputState(props) }),
       isNumber && 'gap-0! px-0!',
       className,
     );

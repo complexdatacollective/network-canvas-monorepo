@@ -1,9 +1,10 @@
 import { PanelLeft } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
+import { hasDocumentationSection } from '~/app/types';
 
 import DocSearchComponent from './DocSearchComponent';
 import MobileSidebarDialog from './MobileSidebarDialog';
@@ -12,11 +13,9 @@ const MobileNavBar = () => {
   const [open, setOpen] = useState(false);
   const documentationMenuButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
-  const locale = useLocale();
   const t = useTranslations('SharedNavigation');
 
-  // The documentation tree is only relevant once the reader enters a section.
-  const isHomePage = pathname === `/${locale}`;
+  const showDocumentationMenu = hasDocumentationSection(pathname);
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -26,7 +25,7 @@ const MobileNavBar = () => {
         openerRef={documentationMenuButtonRef}
       />
       <DocSearchComponent className="min-w-0" />
-      {!isHomePage ? (
+      {showDocumentationMenu ? (
         <IconButton
           ref={documentationMenuButtonRef}
           onClick={() => setOpen(true)}

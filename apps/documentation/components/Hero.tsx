@@ -33,7 +33,7 @@ export function Hero() {
           {t('Hero.tagline')}
         </FancyParagraph>
         <DocSearchComponent
-          className="tablet-landscape:inline-flex mt-4 hidden !w-full max-w-2xl rounded-3xl text-base"
+          className="tablet-landscape:inline-flex mt-4 hidden max-w-2xl"
           large
         />
       </div>

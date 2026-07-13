@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Monitor, Search } from 'lucide-react';
+import { expect, within } from 'storybook/test';
 
 import Button from '../Button';
 import SiteNavigation from './SiteNavigation';
 import type { SiteNavigationLocale } from './SiteNavigation';
 
 type StoryArgs = {
-  activeItemId: 'home' | 'documentation' | 'getStarted';
+  activeItemId: 'home' | 'documentation' | 'resources' | 'getStarted';
   containerWidth: number;
   locale: SiteNavigationLocale;
   showMobileAccessory: boolean;
@@ -69,7 +70,7 @@ const meta = {
   argTypes: {
     activeItemId: {
       control: 'select',
-      options: ['home', 'documentation', 'getStarted'],
+      options: ['home', 'documentation', 'resources', 'getStarted'],
     },
     containerWidth: {
       control: 'select',
@@ -105,7 +106,7 @@ const meta = {
       locale={locale}
       site={site}
       className="bg-background text-text"
-      style={{ width: `min(100%, ${containerWidth}px)`, marginInline: 'auto' }}
+      style={{ width: `${containerWidth}px`, marginInline: 'auto' }}
       mobileAccessory={
         showMobileAccessory ? (
           <Button icon={<Search aria-hidden />} size="sm">
@@ -134,6 +135,42 @@ export const Website: Story = {};
 export const Spanish: Story = {
   args: {
     locale: 'es',
+  },
+};
+
+export const ResourcesGrouped: Story = {
+  args: {
+    activeItemId: 'documentation',
+    containerWidth: 1152,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const resourcesButton = canvas.getByRole('button', { name: 'Resources' });
+
+    await expect(resourcesButton).toBeVisible();
+    await expect(resourcesButton).toHaveAttribute('aria-current', 'page');
+    await expect(
+      canvas.getByRole('link', { name: 'Docs', hidden: true }),
+    ).not.toBeVisible();
+  },
+};
+
+export const ResourcesExpanded: Story = {
+  args: {
+    activeItemId: 'documentation',
+    containerWidth: 1280,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const resourcesButton = canvas.getByRole('button', {
+      name: 'Resources',
+      hidden: true,
+    });
+    const documentationLink = canvas.getByRole('link', { name: 'Docs' });
+
+    await expect(resourcesButton).not.toBeVisible();
+    await expect(documentationLink).toBeVisible();
+    await expect(documentationLink).toHaveAttribute('aria-current', 'page');
   },
 };
 

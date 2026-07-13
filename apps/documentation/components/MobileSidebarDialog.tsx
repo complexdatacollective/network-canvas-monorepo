@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, type RefObject } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import { sections } from '~/app/types';
+import { hasDocumentationSection } from '~/app/types';
 import {
   Sheet,
   SheetContent,
@@ -36,15 +36,10 @@ export default function MobileSidebarDialog({
     setOpen(false);
   }, [pathname, setOpen]);
 
-  const section = pathname.split('/')[2];
-  const hasDocumentationSection = sections.some(
-    (candidate) => candidate === section,
-  );
-
   // The drawer can remain open for one render while a client navigation moves
   // back to the docs home page. Avoid mounting Sidebar without a valid section
   // during that transition; the pathname effect above then resets open state.
-  if (!hasDocumentationSection) return null;
+  if (!hasDocumentationSection(pathname)) return null;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
