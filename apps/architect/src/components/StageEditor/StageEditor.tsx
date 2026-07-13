@@ -34,6 +34,7 @@ import { reportError } from '~/utils/reportError';
 import {
   buildProtocolWithStage,
   normalizePreviewStage,
+  shouldOverridePreviewStage,
 } from './buildProtocolWithStage';
 import { formName } from './configuration';
 import type { SectionComponent } from './Interfaces';
@@ -132,10 +133,7 @@ const StageEditor = (props: StageEditorProps) => {
     // can't disagree with what clicking Preview would actually do. The initial
     // one-stage override is runtime-only; skip logic remains in this shape.
     const runValidation = () => {
-      const { stage: stageToValidate } = normalizePreviewStage(
-        formValues,
-        ignoreSkipLogic,
-      );
+      const stageToValidate = normalizePreviewStage(formValues);
       const wipProtocol = buildProtocolWithStage(
         protocol,
         stageToValidate,
@@ -172,7 +170,7 @@ const StageEditor = (props: StageEditorProps) => {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [protocol, formValues, id, insertAtIndex, ignoreSkipLogic]);
+  }, [protocol, formValues, id, insertAtIndex]);
 
   // Preview is disabled when the form has obvious field-level errors (immediate
   // feedback) or when the wip protocol fails schema validation (comprehensive,
@@ -246,10 +244,7 @@ const StageEditor = (props: StageEditorProps) => {
       return;
     }
 
-    const { stage: normalizedStage, skipLogicBypassed } = normalizePreviewStage(
-      formValues,
-      ignoreSkipLogic,
-    );
+    const normalizedStage = normalizePreviewStage(formValues);
     const previewProtocol = buildProtocolWithStage(
       protocol,
       normalizedStage,
@@ -279,6 +274,11 @@ const StageEditor = (props: StageEditorProps) => {
     const startStage = Math.min(
       Math.max(desiredStartStage, 0),
       previewProtocol.stages.length - 1,
+    );
+    const skipLogicBypassed = shouldOverridePreviewStage(
+      previewProtocol,
+      startStage,
+      ignoreSkipLogic,
     );
     setIsOpeningPreview(true);
     try {

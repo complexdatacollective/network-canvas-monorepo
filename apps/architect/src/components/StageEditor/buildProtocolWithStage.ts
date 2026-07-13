@@ -1,6 +1,7 @@
 import { omit } from 'es-toolkit/compat';
 import { v1 as uuid } from 'uuid';
 
+import { resolveSkipLogicDestinationIndex } from '@codaco/network-query';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import prune from '~/utils/prune';
 
@@ -8,21 +9,45 @@ import prune from '~/utils/prune';
  * Normalises the live form values into the stage that preview will actually
  * build, validate, and launch.
  *
- * `_modified` is editor-only bookkeeping and is always dropped. "Always show
- * this stage in preview" is represented separately as an initial one-stage
- * override, so the real skip logic remains in the protocol and resumes after
- * the first navigation.
+ * `_modified` is editor-only bookkeeping and is always dropped. The preview
+ * override is determined after this stage is inserted into the work-in-progress
+ * protocol, so the real skip logic remains in place.
  */
-export function normalizePreviewStage(
-  formValues: Stage,
-  ignoreSkipLogic: boolean,
-): { stage: Stage; skipLogicBypassed: boolean } {
-  const skipLogicBypassed = ignoreSkipLogic;
+export function normalizePreviewStage(formValues: Stage): Stage {
+  return omit(formValues, ['_modified']) as Stage;
+}
 
-  return {
-    stage: omit(formValues, ['_modified']) as Stage,
-    skipLogicBypassed,
-  };
+/**
+ * Whether skip routing could make a stage unavailable during an interview.
+ *
+ * A stage can be unavailable because of its own skip logic or because an
+ * earlier targeted destination jumps past it. Merely enabling Architect's
+ * "Always show" preview preference is not enough: applying an override to a
+ * stage that cannot be skipped produces a misleading preview notice.
+ */
+export function shouldOverridePreviewStage(
+  protocol: CurrentProtocol,
+  stageIndex: number,
+  ignoreSkipLogic: boolean,
+): boolean {
+  if (!ignoreSkipLogic) return false;
+
+  const stage = protocol.stages[stageIndex];
+  if (!stage) return false;
+
+  if (stage.skipLogic) return true;
+
+  return protocol.stages.slice(0, stageIndex).some((candidate, index) => {
+    const destination = candidate.skipLogic?.destination;
+    if (!destination) return false;
+
+    const destinationIndex = resolveSkipLogicDestinationIndex(
+      destination,
+      protocol.stages,
+      index,
+    );
+    return destinationIndex !== undefined && destinationIndex > stageIndex;
+  });
 }
 
 /**

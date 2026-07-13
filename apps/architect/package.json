@@ -17,6 +17,7 @@
     "@codaco/fresco-ui": "workspace:*",
     "@codaco/interface-images": "workspace:*",
     "@codaco/interview": "workspace:*",
+    "@codaco/network-query": "workspace:*",
     "@codaco/protocol-utilities": "workspace:*",
     "@codaco/protocol-validation": "workspace:*",
     "@codaco/protocols": "workspace:*",

@@ -8,6 +8,8 @@ the next available stage, a specific later stage, or the interview finish
 screen.
 Architect now shows these routes in the timeline and protocol summary and
 protects referenced destinations from invalid deletion or reordering.
+Preview only applies its one-stage skip override when routing could actually
+make the selected stage unavailable.
 The bundled Mental Health Networks and Transnational Networks templates now
 collect explicit consent and route declined consent to the finish screen.
 
