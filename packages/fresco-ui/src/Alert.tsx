@@ -11,27 +11,108 @@ import { paragraphVariants } from './typography/Paragraph';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const alertVariants = cva({
-  base: 'inset-surface my-6 flex w-full items-start rounded first:mt-0 last:mb-0',
+  base: 'my-6 flex w-full items-start rounded first:mt-0 last:mb-0',
   variants: {
     variant: {
       default: '',
-      // Override the --link primitive (not the --color-link @theme inline alias, which is
-      // substituted away at compile time so consumers read var(--link) directly).
-      info: 'text-info-contrast bg-info [--link:var(--info-contrast)]',
-      destructive:
-        'text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]',
-      success:
-        'text-success-contrast bg-success [--link:var(--success-contrast)]',
-      warning:
-        'text-warning-contrast bg-warning [--link:var(--warning-contrast)]',
+      info: '',
+      destructive: '',
+      success: '',
+      warning: '',
+      // Brand-accent highlight (non-semantic): for "note"/"key concept" style
+      // callouts that draw attention without an info/success/warning meaning.
+      accent: '',
+    },
+    // `solid` fills the alert with its intent colour (loud, high-emphasis);
+    // `soft` is a low tint over the surface for quieter notices — surface text
+    // is kept and only the link is coloured with the intent. Colour is the only
+    // difference; role, aria-live, sr-only label and icon are unchanged.
+    appearance: {
+      // Only the solid fill gets the pressed-in `inset-surface` treatment; the
+      // soft tint is flat, so it drops the inset shadow.
+      solid: 'inset-surface',
+      soft: '',
     },
     density: {
       default: 'gap-4',
       compact: 'gap-3',
     },
   },
+  // Override the --link primitive (not the --color-link @theme inline alias, which
+  // is substituted away at compile time so consumers read var(--link) directly).
+  compoundVariants: [
+    {
+      variant: 'info',
+      appearance: 'solid',
+      className: 'text-info-contrast bg-info [--link:var(--info-contrast)]',
+    },
+    {
+      variant: 'destructive',
+      appearance: 'solid',
+      className:
+        'text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]',
+    },
+    {
+      variant: 'success',
+      appearance: 'solid',
+      className:
+        'text-success-contrast bg-success [--link:var(--success-contrast)]',
+    },
+    {
+      variant: 'warning',
+      appearance: 'solid',
+      className:
+        'text-warning-contrast bg-warning [--link:var(--warning-contrast)]',
+    },
+    // Soft tints are an OPAQUE blend of the intent colour into the surface
+    // (`color-mix`), not the intent colour at low opacity — so the tint reads
+    // the same regardless of what sits behind the alert. `--surface` is
+    // theme-aware, so the blend still adapts to dark mode.
+    {
+      variant: 'info',
+      appearance: 'soft',
+      className:
+        'bg-[color-mix(in_oklab,var(--info)_10%,var(--surface))] [--link:var(--info)]',
+    },
+    {
+      variant: 'destructive',
+      appearance: 'soft',
+      className:
+        'bg-[color-mix(in_oklab,var(--destructive)_10%,var(--surface))] [--link:var(--destructive)]',
+    },
+    {
+      variant: 'success',
+      appearance: 'soft',
+      className:
+        'bg-[color-mix(in_oklab,var(--success)_10%,var(--surface))] [--link:var(--success)]',
+    },
+    {
+      variant: 'warning',
+      appearance: 'soft',
+      className:
+        'bg-[color-mix(in_oklab,var(--warning)_10%,var(--surface))] [--link:var(--warning)]',
+    },
+    {
+      variant: 'accent',
+      appearance: 'solid',
+      className:
+        'text-accent-contrast bg-accent [--link:var(--accent-contrast)]',
+    },
+    {
+      variant: 'accent',
+      appearance: 'soft',
+      className:
+        'bg-[color-mix(in_oklab,var(--accent)_10%,var(--surface))] [--link:var(--accent)]',
+    },
+    {
+      variant: 'default',
+      appearance: 'soft',
+      className: 'bg-[color-mix(in_oklab,currentColor_5%,var(--surface))]',
+    },
+  ],
   defaultVariants: {
     variant: 'default',
+    appearance: 'solid',
     density: 'default',
   },
 });
@@ -60,6 +141,9 @@ const variantIcons: Record<Variant, AlertIcon | null> = {
   destructive: WarningAlertIcon,
   success: PartyPopper,
   warning: WarningAlertIcon,
+  // The accent (note/key-concept) variant shares the illustrated light-bulb
+  // with `info`. Overridable via the `icon` prop.
+  accent: InfoAlertIcon,
 };
 
 const variantIconStyles: Record<Variant, AlertIconStyle | undefined> = {
@@ -76,6 +160,7 @@ const variantIconStyles: Record<Variant, AlertIconStyle | undefined> = {
     '--warning-icon-accent-dark':
       'color-mix(in oklab, var(--destructive) 70%, black)',
   },
+  accent: undefined,
 };
 
 /**
@@ -91,6 +176,7 @@ const variantRoles: Record<Variant, 'alert' | 'status'> = {
   success: 'status',
   warning: 'status',
   destructive: 'alert',
+  accent: 'status',
 };
 
 /**
@@ -105,6 +191,7 @@ const variantContextLabels: Record<Variant, string> = {
   success: 'Success',
   warning: 'Warning',
   destructive: 'Error',
+  accent: 'Note',
 };
 
 const alertIconVariants = cva({
@@ -139,7 +226,15 @@ type AlertProps = React.HTMLAttributes<HTMLDivElement> &
 
 const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
   (
-    { className, variant = 'default', density, icon, children, ...props },
+    {
+      className,
+      variant = 'default',
+      appearance,
+      density,
+      icon,
+      children,
+      ...props
+    },
     ref,
   ) => {
     const animation = useAnimation();
@@ -155,7 +250,10 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
         role={variantRoles[variant]}
         spacing={resolvedDensity === 'compact' ? 'xs' : 'sm'}
         shadow="sm"
-        className={cx(alertVariants({ variant, density }), className)}
+        className={cx(
+          alertVariants({ variant, appearance, density }),
+          className,
+        )}
         noContainer
         maxWidth="3xl"
         {...props}

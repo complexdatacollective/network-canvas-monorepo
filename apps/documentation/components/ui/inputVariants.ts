@@ -1,12 +1,12 @@
 import { cva } from 'class-variance-authority';
 
-import { cn } from '~/lib/utils';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
-const inputClasses = cn(
-  'text-input-foreground rounded-input border-border bg-input ring-offset-background flex h-10 w-full border',
+const inputClasses = cx(
+  'text-input-contrast border-outline bg-input flex h-10 w-full rounded-sm border',
   'disabled:cursor-not-allowed disabled:opacity-50',
-  'focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
-  'placeholder:text-muted-foreground',
+  'focusable',
+  'placeholder:text-current/60',
   'file:border-0 file:bg-transparent file:text-sm file:font-medium',
 );
 

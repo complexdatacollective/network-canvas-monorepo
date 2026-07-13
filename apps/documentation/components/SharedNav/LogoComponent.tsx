@@ -2,7 +2,7 @@ import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import Link from 'next/link';
 
-import { cn } from '~/lib/utils';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 type LogoComponentProps = {
   invisible?: boolean;
@@ -17,7 +17,7 @@ const LogoComponent = ({
   return (
     <Link
       href="/"
-      className={cn(
+      className={cx(
         className,
         invisible ? 'invisible' : 'visible',
         'focusable shrink-0 transition-transform duration-1000',
@@ -26,7 +26,7 @@ const LogoComponent = ({
       <Image
         src="/images/mark.svg"
         alt="Network Canvas Documentation"
-        className="h-9 w-auto lg:hidden"
+        className="tablet-landscape:hidden h-9 w-auto"
         width={36}
         height={36}
       />
@@ -37,7 +37,7 @@ const LogoComponent = ({
             : '/images/typemark-negative.svg'
         }
         alt="Network Canvas Documentation"
-        className="hidden h-12 w-auto lg:block"
+        className="tablet-landscape:block hidden h-12 w-auto"
         width={120}
         height={48}
       />

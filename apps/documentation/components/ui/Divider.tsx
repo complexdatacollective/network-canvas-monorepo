@@ -1,9 +1,9 @@
-import { cn } from '~/lib/utils';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 export const Divider = ({ className }: { className?: string }) => (
   <hr
-    className={cn(
-      'border-foreground mx-auto w-full rounded-full border-[1.5px]',
+    className={cx(
+      'border-text mx-auto w-full rounded-full border-[1.5px]',
       className,
     )}
   />

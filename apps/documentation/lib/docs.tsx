@@ -16,6 +16,22 @@ import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { z } from 'zod';
 
+import Button from '@codaco/fresco-ui/Button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@codaco/fresco-ui/Table';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import {
+  OrderedList,
+  UnorderedList,
+} from '@codaco/fresco-ui/typography/UnorderedList';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import InterfacePicture, {
   type InterfacePictureProps,
 } from '@codaco/interface-images/InterfacePicture';
@@ -55,15 +71,8 @@ import VideoIFrame from '~/components/customComponents/VideoIFrame';
 import WorkflowsOverview from '~/components/customComponents/WorkflowsOverview';
 import DownloadLink from '~/components/DownloadLink';
 import Link from '~/components/Link';
-import { Button } from '~/components/ui/Button';
 import { Details, Summary } from '~/components/ui/typography/Details';
-import Heading from '~/components/ui/typography/Heading';
-import {
-  ListItem,
-  OrderedList,
-  UnorderedList,
-} from '~/components/ui/typography/Lists';
-import Paragraph from '~/components/ui/typography/Paragraph';
+import { ListItem } from '~/components/ui/typography/ListItem';
 import { getCompatibility } from '~/lib/interfaceCompatibility';
 
 import { DOCS_PATH, get } from './helper_functions';
@@ -71,7 +80,6 @@ import processPreTags from './processPreTags';
 import processYamlMatter from './processYamlMatter';
 import { type HeadingNode, headingTree } from './tableOfContents';
 import unwrapBlockComponents from './unwrapBlockComponents';
-import { cn } from './utils';
 
 const getSidebar = (): Partial<TSideBar> => {
   const sidebarPath = join(process.cwd(), 'public', 'sidebar.json');
@@ -229,17 +237,22 @@ const getSourceFile = (
 };
 
 const createMarkdownComponents = (docSlug?: string) => ({
+  // Fresco Heading owns size/weight/scroll-margin and the prose rhythm: its
+  // default margin variant applies a self-collapsing not-first/not-last spacing,
+  // so we leave both top and bottom margins entirely to fresco here. (The one
+  // exception — suppressing the top margin of a heading directly below an
+  // eyebrow/kicker — is handled in components/article.tsx.)
   h1: (props: ComponentProps<typeof Heading>) => (
-    <Heading variant="h1" {...props} />
+    <Heading level="h1" {...props} />
   ),
   h2: (props: ComponentProps<typeof Heading>) => (
-    <Heading variant="h2" {...props} />
+    <Heading level="h2" {...props} />
   ),
   h3: (props: ComponentProps<typeof Heading>) => (
-    <Heading variant="h3" {...props} />
+    <Heading level="h3" {...props} />
   ),
   h4: (props: ComponentProps<typeof Heading>) => (
-    <Heading variant="h4" {...props} />
+    <Heading level="h4" {...props} />
   ),
   p: Paragraph,
   paragraph: Paragraph,
@@ -248,13 +261,13 @@ const createMarkdownComponents = (docSlug?: string) => ({
   ol: OrderedList,
   li: ListItem,
   blockquote: (props: { children: ReactNode }) => (
-    <blockquote className="border-accent bg-card my-4 border-s-4 p-4">
+    <blockquote className="border-accent bg-surface-1 my-4 border-s-4 p-4">
       {props.children}
     </blockquote>
   ),
   pre: Pre,
   button: (props: ComponentProps<typeof Button>) => (
-    <Button variant="default" {...props} />
+    <Button color="primary" {...props} />
   ),
   link: Link,
   // Static download (protocol bundle, roster, etc.). Authors mark a link as a
@@ -284,9 +297,9 @@ const createMarkdownComponents = (docSlug?: string) => ({
   figure: (props: { children: ReactNode }) => (
     <figure
       {...props}
-      className={cn(
+      className={cx(
         'my-10 flex w-full flex-col items-center justify-center',
-        '[--shadow-color:color-mix(in_lab,hsl(var(--background))_80%,black)]',
+        '[--shadow-color:color-mix(in_lab,var(--background)_80%,black)]',
         '[&>a]:m-0 [&>a]:w-full [&>a]:drop-shadow-[0_0.5rem_1rem_var(--shadow-color)]',
       )}
     />
@@ -352,13 +365,26 @@ const createMarkdownComponents = (docSlug?: string) => ({
   screenshot: (props: { axis: AppAxis; name: string; alt?: string }) => (
     <Screenshot {...props} />
   ),
-  table: (props: { children: ReactNode }) => (
-    <div className="overflow-x-auto">
-      <table
-        className="prose dark:prose-th:text-foreground dark:prose-strong:text-foreground dark:prose-td:text-foreground my-5 w-full !max-w-max text-pretty break-keep [&>th]:text-nowrap"
-        {...props}
-      />
-    </div>
+  // Markdown tables render through fresco-ui's Table primitives so they match
+  // the design system (surface-tinted header, row separators + hover, rounded
+  // bordered container). Cells override fresco's data-table `whitespace-nowrap`
+  // because docs tables carry prose (sentences, links) that must wrap.
+  // Spacing goes on the Surface via `surfaceProps`, not `className` — Table's
+  // `className` targets the inner <table>, so `my-6` there would open a gap of
+  // bare surface above/below the rows inside the bordered container.
+  table: (props: ComponentProps<typeof Table>) => (
+    <Table surfaceProps={{ className: 'my-6' }} {...props} />
+  ),
+  thead: (props: ComponentProps<typeof TableHeader>) => (
+    <TableHeader {...props} />
+  ),
+  tbody: (props: ComponentProps<typeof TableBody>) => <TableBody {...props} />,
+  tr: (props: ComponentProps<typeof TableRow>) => <TableRow {...props} />,
+  th: (props: ComponentProps<typeof TableHead>) => (
+    <TableHead className="w-auto align-top whitespace-normal" {...props} />
+  ),
+  td: (props: ComponentProps<typeof TableCell>) => (
+    <TableCell className="w-auto align-top whitespace-normal" {...props} />
   ),
   details: Details,
   summary: Summary,

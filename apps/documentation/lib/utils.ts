@@ -1,10 +1,3 @@
-import { type ClassValue, clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
 // The canonical host for the documentation site. A link is "external" when it
 // points anywhere other than here, so we can open it in a new tab.
 const DOCS_HOST = 'documentation.networkcanvas.com';

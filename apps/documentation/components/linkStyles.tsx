@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { cn } from '~/lib/utils';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 // Shared visual treatment for inline links. Both Link (app routes, via
 // next/link) and DownloadLink (static assets, via a plain <a download>) render
@@ -9,7 +9,7 @@ import { cn } from '~/lib/utils';
 
 // The focusable root that establishes the hover group.
 export function linkRootClass(className?: string) {
-  return cn(
+  return cx(
     'focusable group text-link font-semibold transition-[background-size] duration-300 ease-in-out',
     className,
   );

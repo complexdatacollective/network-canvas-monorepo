@@ -3,8 +3,8 @@ import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 
+import { IconButton } from '@codaco/fresco-ui/Button';
 import { NavigationMenuMobile } from '~/components/SharedNav/Menu';
-import { Button } from '~/components/ui/Button';
 import { Sheet, SheetContent } from '~/components/ui/sheet';
 import WorkflowNav from '~/components/WorkflowNav';
 
@@ -39,14 +39,14 @@ export default function MobileSidebarDialog({
       >
         <div className="bg-background sticky top-0 z-10 flex items-center justify-between">
           <LogoComponent className="mx-4 my-2 block w-fit" />
-          <Button
-            size={'sm'}
+          <IconButton
+            size="sm"
             onClick={() => setOpen(false)}
-            variant="ghost"
-            className="flex h-10 w-10 items-center justify-center gap-2 rounded-full sm:hidden"
-          >
-            <CloseMenu className="h-4 w-4 shrink-0" />
-          </Button>
+            variant="text"
+            aria-label="Close navigation menu"
+            className="phone-landscape:hidden"
+            icon={<CloseMenu className="h-4 w-4 shrink-0" />}
+          />
         </div>
 
         <NavigationMenuMobile />
