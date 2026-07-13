@@ -18,11 +18,12 @@ const escapeAngleBracket = (value = '') =>
 type MarkdownProps = {
   label: string;
   className?: string;
+  allowedElements?: readonly string[];
 };
 
-const Markdown = ({ label, className }: MarkdownProps) => (
+const Markdown = ({ label, className, allowedElements }: MarkdownProps) => (
   <RenderMarkdown
-    allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+    allowedElements={allowedElements ?? ALLOWED_MARKDOWN_SECTION_TAGS}
     render={<span className={className} />}
   >
     {escapeAngleBracket(label)}
@@ -33,5 +34,6 @@ export default memo(
   Markdown,
   (prevProps, nextProps) =>
     prevProps.label === nextProps.label &&
-    prevProps.className === nextProps.className,
+    prevProps.className === nextProps.className &&
+    prevProps.allowedElements === nextProps.allowedElements,
 );
