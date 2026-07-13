@@ -3,15 +3,19 @@ import { Fragment, type CSSProperties, useId, useMemo } from 'react';
 import createNetworkWeaveScene, {
   clampNetworkWeaveValue,
   formatNetworkWeaveValue,
-  type NetworkWeaveFocus,
+  type NetworkWeaveConvergence,
   NETWORK_WEAVE_HEIGHT,
   type NetworkWeaveOrientation,
   NETWORK_WEAVE_WIDTH,
-  resolveNetworkWeaveFocus,
+  resolveNetworkWeaveConvergence,
 } from './networkWeaveScene';
+
+export type { NetworkWeaveConvergence } from './networkWeaveScene';
 
 const DEFAULT_COMPLEXITY = 28;
 const DEFAULT_STRANDS = 4;
+const RIBBON_FLOW_DURATION = 9;
+const TRIBUTARY_FLOW_DURATION = 4.5;
 
 const DEFAULT_COLORS = [
   'var(--node-1, oklch(0.5733 0.2584 11.57))',
@@ -25,7 +29,7 @@ type NetworkWeaveBackgroundProps = {
   seed?: string;
   complexity?: number;
   strands?: number;
-  focus?: NetworkWeaveFocus;
+  convergence?: NetworkWeaveConvergence;
   orientation?: NetworkWeaveOrientation;
   reverse?: boolean;
   colors?: readonly string[];
@@ -43,7 +47,7 @@ const NetworkWeaveBackground = ({
   seed = 'network-canvas',
   complexity = DEFAULT_COMPLEXITY,
   strands = DEFAULT_STRANDS,
-  focus,
+  convergence,
   orientation = 'horizontal',
   reverse = false,
   colors,
@@ -63,11 +67,8 @@ const NetworkWeaveBackground = ({
   const resolvedStrands = Math.floor(
     clampNetworkWeaveValue(strands, 2, 6, DEFAULT_STRANDS),
   );
-  const {
-    x: resolvedFocusX,
-    y: resolvedFocusY,
-    radius: resolvedFocusRadius,
-  } = resolveNetworkWeaveFocus(focus);
+  const { x: resolvedConvergenceX, y: resolvedConvergenceY } =
+    resolveNetworkWeaveConvergence(convergence);
   const resolvedIntensity = clampNetworkWeaveValue(intensity, 0, 1, 0.72);
   const resolvedFlare = clampNetworkWeaveValue(flare, 0, 2, 1);
   const resolvedSpeedFactor = clampNetworkWeaveValue(speedFactor, 0.1, 4, 1);
@@ -77,10 +78,10 @@ const NetworkWeaveBackground = ({
   const tributaryFlowClass = `network-weave-tributary-flow-${rawId}`;
   const tributaryFlowKeyframes = `network-weave-tributary-drift-${rawId}`;
   const ribbonAnimationDuration = formatNetworkWeaveValue(
-    6.5 / resolvedSpeedFactor,
+    RIBBON_FLOW_DURATION / resolvedSpeedFactor,
   );
   const tributaryAnimationDuration = formatNetworkWeaveValue(
-    9 / resolvedSpeedFactor,
+    TRIBUTARY_FLOW_DURATION / resolvedSpeedFactor,
   );
   const scene = useMemo(
     () =>
@@ -89,10 +90,9 @@ const NetworkWeaveBackground = ({
         complexity: resolvedComplexity,
         strands: resolvedStrands,
         colorCount: activeColors.length,
-        focus: {
-          x: resolvedFocusX,
-          y: resolvedFocusY,
-          radius: resolvedFocusRadius,
+        convergence: {
+          x: resolvedConvergenceX,
+          y: resolvedConvergenceY,
         },
         orientation,
         reverse,
@@ -103,9 +103,8 @@ const NetworkWeaveBackground = ({
       resolvedComplexity,
       resolvedStrands,
       activeColors.length,
-      resolvedFocusX,
-      resolvedFocusY,
-      resolvedFocusRadius,
+      resolvedConvergenceX,
+      resolvedConvergenceY,
       orientation,
       reverse,
       resolvedFlare,

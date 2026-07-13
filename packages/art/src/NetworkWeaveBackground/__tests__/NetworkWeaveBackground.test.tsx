@@ -204,6 +204,86 @@ describe('NetworkWeaveBackground', () => {
     verifyTangents('vertical', true);
   });
 
+  it.each([
+    ['horizontal', false],
+    ['horizontal', true],
+    ['vertical', false],
+    ['vertical', true],
+  ] as const)(
+    'places the %s flow convergence at the configured coordinates when reverse is %s',
+    (orientation, reverse) => {
+      const { container } = render(
+        <NetworkWeaveBackground
+          complexity={12}
+          strands={3}
+          convergence={{ x: 0.29, y: 0.6 }}
+          orientation={orientation}
+          reverse={reverse}
+          animated={false}
+        />,
+      );
+      const middleGuide = container.querySelectorAll(
+        '.network-weave__ribbon-guide',
+      )[1];
+      const coordinates =
+        middleGuide
+          ?.getAttribute('data-centerline')
+          ?.match(/-?\d+(?:\.\d+)?/g)
+          ?.map(Number) ?? [];
+
+      expect((coordinates[0] ?? 0) / 1600).toBeCloseTo(0.29, 4);
+      expect((coordinates[1] ?? 0) / 900).toBeCloseTo(0.6, 4);
+    },
+  );
+
+  it.each([
+    ['horizontal', false],
+    ['horizontal', true],
+    ['vertical', false],
+    ['vertical', true],
+  ] as const)(
+    'keeps the %s flow monotonic at coordinate edges when reverse is %s',
+    (orientation, reverse) => {
+      for (const convergence of [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ]) {
+        const { container } = render(
+          <NetworkWeaveBackground
+            complexity={12}
+            strands={3}
+            convergence={convergence}
+            orientation={orientation}
+            reverse={reverse}
+            animated={false}
+          />,
+        );
+        const middleGuide = container.querySelectorAll(
+          '.network-weave__ribbon-guide',
+        )[1];
+        const coordinates =
+          middleGuide
+            ?.getAttribute('data-centerline')
+            ?.match(/-?\d+(?:\.\d+)?/g)
+            ?.map(Number) ?? [];
+        const axisCoordinates =
+          orientation === 'horizontal'
+            ? [coordinates[0], coordinates[2], coordinates[4], coordinates[6]]
+            : [coordinates[1], coordinates[3], coordinates[5], coordinates[7]];
+        const deltas = axisCoordinates
+          .slice(1)
+          .map(
+            (coordinate, index) =>
+              (coordinate ?? 0) - (axisCoordinates[index] ?? 0),
+          );
+
+        expect(deltas.every((delta) => (reverse ? delta < 0 : delta > 0))).toBe(
+          true,
+        );
+      }
+    },
+  );
+
   it('supports vertical and reversed flows', () => {
     const horizontal = renderToStaticMarkup(
       <NetworkWeaveBackground seed="layout" animated={false} />,
@@ -260,6 +340,24 @@ describe('NetworkWeaveBackground', () => {
     expect(staticMarkup).not.toContain('@keyframes');
   });
 
+  it('moves incoming dots faster than outgoing ribbon signals', () => {
+    const { container } = render(
+      <NetworkWeaveBackground animated speedFactor={2} />,
+    );
+    const styles = container.querySelector('style')?.textContent ?? '';
+    const ribbonDuration = Number(
+      styles.match(/ribbon-drift-\S+ ([\d.]+)s/)?.[1],
+    );
+    const tributaryDuration = Number(
+      styles.match(/tributary-drift-\S+ ([\d.]+)s/)?.[1],
+    );
+
+    expect(ribbonDuration).toBe(4.5);
+    expect(tributaryDuration).toBe(2.25);
+    expect(tributaryDuration).toBeLessThan(ribbonDuration);
+    expect(ribbonDuration / tributaryDuration).toBe(2);
+  });
+
   it('loops flow motion without phase jumps', () => {
     const { container } = render(<NetworkWeaveBackground animated />);
     const styles = container.querySelector('style')?.textContent ?? '';
@@ -298,7 +396,7 @@ describe('NetworkWeaveBackground', () => {
         intensity={Number.NEGATIVE_INFINITY}
         flare={Number.NaN}
         speedFactor={Number.NaN}
-        focus={{ x: Number.NaN, y: Number.NaN, radius: Number.NaN }}
+        convergence={{ x: Number.NaN, y: Number.NaN }}
       />,
     );
 

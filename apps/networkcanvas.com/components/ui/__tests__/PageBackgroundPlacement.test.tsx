@@ -16,15 +16,21 @@ vi.mock('~/lib/i18n/navigation', () => ({
 }));
 
 vi.mock('~/components/ui/PageBackground', () => ({
-  PageBackground: () => <div data-testid="page-background" />,
+  usePageBackgroundTargetRef: () => null,
+  PageBackgroundProvider: ({ children }: { children: ReactNode }) => (
+    <>
+      <div data-testid="page-background" />
+      {children}
+    </>
+  ),
 }));
 
 vi.mock('~/components/ui/Reveal', () => ({
   Reveal: ({ children }: { children: ReactNode }) => children,
 }));
 
-describe('HomePage background composition', () => {
-  it('places one background behind the complete localized page content', async () => {
+describe('HomePage hero background composition', () => {
+  it('places one background before the localized page content', async () => {
     const page = await HomePage({
       params: Promise.resolve({ locale: 'en-US' }),
     });
@@ -35,6 +41,7 @@ describe('HomePage background composition', () => {
 
     expect(screen.getAllByTestId('page-background')).toHaveLength(1);
     expect(main).toHaveClass('homepage-body', 'relative', 'isolate');
+    expect(main).not.toHaveClass('grid');
     expect(background.parentElement).toBe(main);
     expect(foreground).toHaveClass('relative', 'z-10');
     expect(foreground).toContainElement(
