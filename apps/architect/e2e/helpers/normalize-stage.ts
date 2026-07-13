@@ -21,7 +21,9 @@
 const UUID_RE =
   /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
-export function normalizeStage(input: unknown): unknown {
+// Not exported: every consumer wants the snapshot-ready string produced by
+// `stageSnapshotJson` below, not this intermediate object — see its comment.
+function normalizeStage(input: unknown): unknown {
   let counter = 0;
   const idMap = new Map<string, string>();
 
@@ -53,4 +55,18 @@ export function normalizeStage(input: unknown): unknown {
   };
 
   return walk(input);
+}
+
+// `expect(value).toMatchSnapshot('foo.json')` is Playwright's *file* snapshot
+// mode: the argument is written/compared as raw file bytes, so it must be a
+// string — handing it `normalizeStage`'s plain object throws `TypeError:
+// file.slice is not a function` deep inside Playwright's snapshot writer.
+// `JSON.stringify` alone isn't enough either: the repo's pre-commit formatter
+// (oxfmt, via lint-staged) normalizes every committed text file to end with
+// exactly one trailing newline, so a snapshot written without one silently
+// drifts out of sync with the live-computed string the moment `git commit`
+// reformats it. Appending the newline up front keeps `--update-snapshots`
+// output and every later commit producing byte-identical files.
+export function stageSnapshotJson(stage: unknown): string {
+  return `${JSON.stringify(normalizeStage(stage), null, 2)}\n`;
 }

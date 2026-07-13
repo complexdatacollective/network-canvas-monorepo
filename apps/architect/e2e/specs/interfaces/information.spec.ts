@@ -1,6 +1,6 @@
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
-import { normalizeStage } from '../../helpers/normalize-stage.js';
+import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readStageJson } from '../../helpers/read-store.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
@@ -44,13 +44,10 @@ test('creates a valid Information stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('Information');
-  // `toMatchSnapshot(name)` with a `.json`-suffixed name is Playwright's
-  // *file* snapshot mode (it writes/reads the named file directly), which
-  // requires a `string`/`Buffer` body — handing it `normalizeStage`'s plain
-  // object throws `TypeError: file.slice is not a function` deep inside
-  // Playwright's snapshot writer. Stringify first; this is the pattern every
-  // other interface spec should copy.
-  expect(JSON.stringify(normalizeStage(stage), null, 2)).toMatchSnapshot(
-    'information-stage.json',
-  );
+  // `stageSnapshotJson` (helpers/normalize-stage.ts) normalizes generated ids
+  // AND serializes to the exact string `toMatchSnapshot`'s file-snapshot mode
+  // needs — see that function's comment for why a bare `normalizeStage(...)`
+  // object or a plain `JSON.stringify` (no trailing newline) both break here.
+  // This is the pattern every other interface spec should copy.
+  expect(stageSnapshotJson(stage)).toMatchSnapshot('information-stage.json');
 });
