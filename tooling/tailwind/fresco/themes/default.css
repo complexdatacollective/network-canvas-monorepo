@@ -109,7 +109,7 @@
     --surface-contrast: var(--text);
     --surface-1: oklch(97% 0.02 var(--base-hue));
     --surface-1-contrast: var(--text);
-    --surface-2: oklch(95% 0.025 var(--base-hue));
+    --surface-2: oklch(0.91 0.01 231.77);
     --surface-2-contrast: var(--text);
     --surface-3: oklch(93% 0.03 var(--base-hue));
     --surface-3-contrast: var(--text);
