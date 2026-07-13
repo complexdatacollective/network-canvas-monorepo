@@ -28,7 +28,7 @@ const FrescoInputField = InputField as React.ComponentType<
 >;
 
 export const MULTI_SELECT_RULE_CLASSES =
-  'flex items-center py-5 bg-(--rule-bg) text-sortable-contrast rounded-2xs z-1 transition-colors duration-300 ease-in-out';
+  'flex items-center py-5 bg-(--rule-bg) publish-colors text-sortable-contrast rounded-2xs z-1 transition-colors duration-300 ease-in-out';
 export const MULTI_SELECT_CONTROL_CLASSES = 'flex grow-0 items-center px-5';
 export const MULTI_SELECT_OPTIONS_CLASSES = 'flex-1 flex items-center px-5';
 export const MULTI_SELECT_OPTION_CLASSES =
