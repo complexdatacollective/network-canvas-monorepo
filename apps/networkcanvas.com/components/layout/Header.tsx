@@ -5,6 +5,7 @@ import { useLocale } from 'next-intl';
 
 import SiteNavigation from '@codaco/fresco-ui/navigation/SiteNavigation';
 import type { SiteNavigationLinkRenderProps } from '@codaco/fresco-ui/navigation/SiteNavigation';
+import ThemeSwitcher from '~/components/layout/ThemeSwitcher';
 import { isLocale } from '~/lib/i18n/locales';
 import { Link } from '~/lib/i18n/navigation';
 
@@ -33,6 +34,7 @@ export function Header({
       entranceVariants={entranceVariants}
       locale={locale}
       renderLink={renderNavigationLink}
+      renderUtility={({ view }) => <ThemeSwitcher view={view} />}
       site="website"
     />
   );

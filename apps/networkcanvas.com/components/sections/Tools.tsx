@@ -42,7 +42,7 @@ export function Tools() {
           return (
             <Reveal
               key={tool.id}
-              className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 grid items-center gap-8 rounded-[2rem] bg-white/55 p-6 shadow-xl backdrop-blur-md"
+              className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 bg-surface/55 grid items-center gap-8 rounded-[2rem] p-6 shadow-xl backdrop-blur-md"
             >
               <div>
                 <Heading
@@ -54,7 +54,7 @@ export function Tools() {
                 </Heading>
                 <Paragraph
                   margin="none"
-                  className="text-cyber-grape tablet-landscape:text-lg mt-4 text-base leading-relaxed"
+                  className="text-text tablet-landscape:text-lg mt-4 text-base leading-relaxed"
                 >
                   {t(`${tool.id}.description`)}
                 </Paragraph>
@@ -72,7 +72,7 @@ export function Tools() {
                       href={webDestinations.frescoDeployment}
                       external
                       color="default"
-                      className="text-slate-blue rounded-full bg-white"
+                      className="text-slate-blue bg-surface rounded-full"
                     >
                       {t('fresco.deployAction')}
                     </ButtonLink>

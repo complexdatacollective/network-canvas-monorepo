@@ -42,7 +42,7 @@ describe('Hero', () => {
       'desktop:text-[5rem]',
     );
     expect(screen.getByText(/Network Canvas provides/)).toHaveClass(
-      'text-cyber-grape',
+      'text-text',
     );
     expect(screen.getAllByText('Fixture-only hero news')).toHaveLength(3);
     expect(

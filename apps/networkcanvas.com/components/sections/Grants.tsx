@@ -54,7 +54,7 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
                 <Heading
                   level="h3"
                   margin="none"
-                  className="font-heading text-cyber-grape text-xl font-bold"
+                  className="font-heading text-text text-xl font-bold"
                 >
                   {active.title}
                 </Heading>
@@ -125,7 +125,7 @@ function CarouselButton({
       onClick={onClick}
       color="dynamic"
       size="sm"
-      className="bg-surface text-cyber-grape hover:bg-cyber-grape size-11 border-transparent shadow-lg transition-colors hover:text-white"
+      className="bg-surface text-text hover:bg-cyber-grape size-11 border-transparent shadow-lg transition-colors hover:text-white"
     />
   );
 }

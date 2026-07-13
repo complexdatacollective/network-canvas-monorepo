@@ -33,7 +33,7 @@ export function MailingListForm() {
         required
         placeholder={t('placeholder')}
         aria-label={t('emailLabel')}
-        className="focusable bg-platinum text-cyber-grape placeholder:text-cyber-grape/40 phone-landscape:max-w-xs w-full rounded-2xl px-4 py-3 text-base"
+        className="focusable bg-surface-1 text-text placeholder:text-text/40 phone-landscape:max-w-xs w-full rounded-2xl px-4 py-3 text-base"
       />
       <Button
         type="submit"

@@ -45,7 +45,7 @@ export function VideoSection() {
             <span className="font-heading tablet-landscape:text-3xl text-2xl font-bold">
               {t('title')}
             </span>
-            <span className="text-cyber-grape flex size-16 items-center justify-center rounded-full bg-white/90 transition-transform group-hover:scale-110">
+            <span className="text-text bg-surface/90 flex size-16 items-center justify-center rounded-full transition-transform group-hover:scale-110">
               <Play
                 aria-hidden
                 className="size-7 translate-x-0.5 fill-current"

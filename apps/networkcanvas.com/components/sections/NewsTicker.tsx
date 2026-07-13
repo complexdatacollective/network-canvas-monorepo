@@ -39,7 +39,7 @@ function NewsItem({
 const NewsLabel = () => (
   <Pill
     icon={<Sparkles aria-hidden className="text-mustard size-5" />}
-    className="font-heading text-base-sm text-cyber-grape inline-flex shrink-0 items-center gap-2 p-0 font-bold tracking-[0.12em] uppercase"
+    className="font-heading text-base-sm text-text inline-flex shrink-0 items-center gap-2 p-0 font-bold tracking-[0.12em] uppercase"
   >
     {useTranslations('News')('label')}
   </Pill>

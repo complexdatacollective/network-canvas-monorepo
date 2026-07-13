@@ -81,7 +81,7 @@ export function WhatNext() {
               <Heading
                 level="h3"
                 margin="none"
-                className="font-heading text-cyber-grape text-2xl font-bold"
+                className="font-heading text-text text-2xl font-bold"
               >
                 {card.title}
               </Heading>
@@ -111,7 +111,7 @@ function SectionTitle({ title }: { title: string }) {
     <Heading
       level="h2"
       margin="none"
-      className="font-heading text-cyber-grape tablet-landscape:text-4xl text-center text-3xl font-bold"
+      className="font-heading text-text tablet-landscape:text-4xl text-center text-3xl font-bold"
     >
       {title}
     </Heading>

@@ -25,8 +25,8 @@ type AppRecord = (typeof webApps)[number] | (typeof classicApps)[number];
 
 const treatmentClasses = {
   featured: 'bg-cyber-grape text-white elevation-high',
-  fresco: 'bg-slate-blue/10 text-cyber-grape backdrop-blur-md elevation-low',
-  classic: 'bg-white/55 text-cyber-grape backdrop-blur-md elevation-low',
+  fresco: 'bg-slate-blue/10 text-text backdrop-blur-md elevation-low',
+  classic: 'bg-surface/55 text-text backdrop-blur-md elevation-low',
 };
 
 const platformIcons = {
@@ -89,7 +89,7 @@ function PlatformActions({ app }: { app: (typeof classicApps)[number] }) {
                 platform: label,
                 app: app.name,
               })}
-              className="rounded-full bg-white/70 hover:bg-white"
+              className="bg-surface/70 hover:bg-surface rounded-full"
             >
               <PlatformIcon aria-hidden className="size-4" />
               {label}
@@ -126,8 +126,8 @@ export function AppChoiceCard({ app }: { app: AppRecord }) {
           className={cn(
             'rounded-full border-0 px-3 py-1.5 text-xs font-bold tracking-wide',
             featured
-              ? 'bg-white/15 text-white'
-              : 'bg-cyber-grape/10 text-cyber-grape',
+              ? 'bg-surface/15 text-white'
+              : 'bg-cyber-grape/10 text-text',
           )}
         >
           {t(`apps.${app.messageKey}.status`)}

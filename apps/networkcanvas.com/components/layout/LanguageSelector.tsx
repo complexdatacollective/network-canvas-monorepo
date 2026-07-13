@@ -88,7 +88,7 @@ export function LanguageSelector({ onNavigate }: { onNavigate?: () => void }) {
           ),
         )
       }
-      className="border-cyber-grape/15 w-28 bg-white/55 backdrop-blur-md"
+      className="border-text/15 bg-surface/55 w-28 backdrop-blur-md"
     />
   );
 }

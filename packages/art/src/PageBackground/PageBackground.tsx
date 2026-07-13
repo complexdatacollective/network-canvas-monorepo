@@ -1,10 +1,16 @@
 'use client';
 
 import {
+  animate,
+  motion,
+  type MotionValue,
   transform,
+  useMotionTemplate,
+  useMotionValue,
   useMotionValueEvent,
   useReducedMotion,
   useScroll,
+  useTransform,
 } from 'motion/react';
 import {
   createContext,
@@ -13,13 +19,17 @@ import {
   type RefCallback,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
 } from 'react';
 
 import NetworkWeaveBackground from '@codaco/art/NetworkWeaveBackground';
-import type { NetworkWeaveConvergence } from '@codaco/art/NetworkWeaveBackground';
+import type {
+  NetworkWeaveConvergence,
+  NetworkWeaveOrientation,
+} from '@codaco/art/NetworkWeaveBackground';
 
 const DEFAULT_CONVERGENCE: NetworkWeaveConvergence = { x: 0.5, y: 0.6 };
 const POSITION_TOLERANCE = 0.0005;
@@ -28,15 +38,26 @@ const CURVE_MIN_X = 0.08;
 const CURVE_MAX_X = 0.92;
 const CURVE_MIN_Y = 0.12;
 const CURVE_MAX_Y = 0.88;
-const INITIAL_INTENSITY = 0.22;
+const INITIAL_INTENSITY = 0.4;
 const BASELINE_INTENSITY = 0.1;
-const DEFAULT_FLARE = 1.25;
+const DEFAULT_FLARE = 1.8;
 const DEFAULT_SPEED_FACTOR = 0.35;
 const INTENSITY_SCROLL_RANGE = [0, 0.18];
 const INTENSITY_VALUES = [INITIAL_INTENSITY, BASELINE_INTENSITY];
 const PARAMETER_SCROLL_RANGE = [0, 0.25, 0.5, 0.75, 1];
-const FLARE_VALUES = [DEFAULT_FLARE, 0.9, 1.55, 1.05, 1.4];
+// The initial flare is the floor; the scroll animation only ever flares further
+// out from it, peaking well into the doubled range.
+const FLARE_VALUES = [DEFAULT_FLARE, 2.5, 3.3, 2.2, 2.9];
 const SPEED_FACTOR_VALUES = [DEFAULT_SPEED_FACTOR, 0.48, 0.28, 0.44, 0.34];
+
+// The weave is hidden behind an inverse-radial mask until the convergence target
+// (the hero video) resolves, then the masked disc shrinks to nothing at the
+// target so the weave appears to knit inward from the edges to the centre.
+const REVEAL_DURATION_SECONDS = 2;
+const REVEAL_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const REVEAL_EDGE_FEATHER = 0.12;
+const REVEAL_START_MARGIN = 1.06;
+const REVEAL_INITIAL_RADIUS = 100000;
 
 const PageBackgroundTargetContext =
   createContext<RefCallback<HTMLDivElement> | null>(null);
@@ -168,6 +189,7 @@ export function usePageBackgroundTargetRef() {
 export function PageBackgroundProvider({ children }: { children: ReactNode }) {
   const layerRef = useRef<HTMLDivElement>(null);
   const [target, setTarget] = useState<HTMLDivElement | null>(null);
+  const [resolved, setResolved] = useState(false);
   const [convergence, setConvergence] =
     useState<NetworkWeaveConvergence>(DEFAULT_CONVERGENCE);
   const targetRef = useCallback<RefCallback<HTMLDivElement>>((element) => {
@@ -182,6 +204,7 @@ export function PageBackgroundProvider({ children }: { children: ReactNode }) {
       const nextConvergence = measureConvergence(layer, target);
       if (!nextConvergence) return;
 
+      setResolved(true);
       setConvergence((currentConvergence) =>
         Math.abs(currentConvergence.x - nextConvergence.x) <
           POSITION_TOLERANCE &&
@@ -212,7 +235,11 @@ export function PageBackgroundProvider({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <PageBackground convergence={convergence} layerRef={layerRef} />
+      <PageBackground
+        convergence={convergence}
+        resolved={resolved}
+        layerRef={layerRef}
+      />
       <PageBackgroundTargetContext.Provider value={targetRef}>
         {children}
       </PageBackgroundTargetContext.Provider>
@@ -220,14 +247,107 @@ export function PageBackgroundProvider({ children }: { children: ReactNode }) {
   );
 }
 
+function getFarthestCornerDistance(
+  center: NetworkWeaveConvergence,
+  viewportWidth: number,
+  viewportHeight: number,
+): number {
+  const centerX = center.x * viewportWidth;
+  const centerY = center.y * viewportHeight;
+  const reachX = Math.max(centerX, viewportWidth - centerX);
+  const reachY = Math.max(centerY, viewportHeight - centerY);
+  return Math.hypot(reachX, reachY);
+}
+
+type ConvergenceReveal = {
+  maskImage: MotionValue<string> | undefined;
+  masked: boolean;
+};
+
+// Drives the inverse-radial reveal. `resolved` is `undefined` when the caller
+// opts out entirely (the weave is always visible, no mask); `false` while the
+// convergence target is still being measured (fully hidden); `true` once it has
+// resolved (play the reveal, or show instantly under reduced motion).
+function useConvergenceReveal(
+  convergence: NetworkWeaveConvergence,
+  resolved: boolean | undefined,
+  reduceMotion: boolean | null,
+): ConvergenceReveal {
+  const radius = useMotionValue(REVEAL_INITIAL_RADIUS);
+  const innerRadius = useTransform(radius, (value) =>
+    Math.max(0, value * (1 - REVEAL_EDGE_FEATHER)),
+  );
+  const centerX = convergence.x * 100;
+  const centerY = convergence.y * 100;
+  const maskImage = useMotionTemplate`radial-gradient(circle at ${centerX}% ${centerY}%, transparent ${innerRadius}px, #000 ${radius}px)`;
+
+  const [masked, setMasked] = useState(resolved !== undefined);
+  const hasRevealedRef = useRef(false);
+
+  useEffect(() => {
+    if (!resolved || reduceMotion === null || hasRevealedRef.current) return;
+    hasRevealedRef.current = true;
+
+    if (reduceMotion) {
+      radius.set(0);
+      setMasked(false);
+      return;
+    }
+
+    const cornerDistance = getFarthestCornerDistance(
+      convergence,
+      window.innerWidth,
+      window.innerHeight,
+    );
+    radius.set(
+      (cornerDistance * REVEAL_START_MARGIN) / (1 - REVEAL_EDGE_FEATHER),
+    );
+    const controls = animate(radius, 0, {
+      duration: REVEAL_DURATION_SECONDS,
+      ease: REVEAL_EASE,
+      onComplete: () => setMasked(false),
+    });
+    return () => controls.stop();
+  }, [convergence, radius, reduceMotion, resolved]);
+
+  return { maskImage: masked ? maskImage : undefined, masked };
+}
+
+// The weave is authored for a wide (horizontal) canvas; in a portrait viewport
+// its vertical layout reads far better. Starts 'horizontal' to match the server
+// render, then corrects on the client in a layout effect (before paint).
+function useResponsiveOrientation(): NetworkWeaveOrientation {
+  const [orientation, setOrientation] =
+    useState<NetworkWeaveOrientation>('horizontal');
+
+  useLayoutEffect(() => {
+    const portrait = window.matchMedia('(orientation: portrait)');
+    const update = () =>
+      setOrientation(portrait.matches ? 'vertical' : 'horizontal');
+    update();
+    portrait.addEventListener('change', update);
+    return () => portrait.removeEventListener('change', update);
+  }, []);
+
+  return orientation;
+}
+
 export function PageBackground({
   convergence = DEFAULT_CONVERGENCE,
+  resolved,
   layerRef,
 }: {
   convergence?: NetworkWeaveConvergence;
+  resolved?: boolean;
   layerRef?: Ref<HTMLDivElement>;
 }) {
   const reduceMotion = useReducedMotion();
+  const orientation = useResponsiveOrientation();
+  const { maskImage, masked } = useConvergenceReveal(
+    convergence,
+    resolved,
+    reduceMotion,
+  );
   const { scrollYProgress } = useScroll();
   const curveRef = useRef<ScrollCurve | null>(null);
   const [weaveSettings, setWeaveSettings] = useState<WeaveSettings>({
@@ -288,11 +408,16 @@ export function PageBackground({
   useMotionValueEvent(scrollYProgress, 'change', updateWeaveSettings);
 
   return (
-    <div
+    <motion.div
       ref={layerRef}
       aria-hidden="true"
       data-testid="page-background-layer"
       className="pointer-events-none fixed inset-0 z-1 overflow-hidden"
+      style={
+        masked
+          ? { WebkitMaskImage: maskImage, maskImage }
+          : { WebkitMaskImage: 'none', maskImage: 'none' }
+      }
     >
       <NetworkWeaveBackground
         seed="networkcanvas.com"
@@ -300,8 +425,9 @@ export function PageBackground({
         intensity={weaveSettings.intensity}
         flare={weaveSettings.flare}
         speedFactor={weaveSettings.speedFactor}
+        orientation={orientation}
         className="block"
       />
-    </div>
+    </motion.div>
   );
 }

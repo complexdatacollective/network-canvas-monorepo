@@ -10,7 +10,10 @@ import createNetworkWeaveScene, {
   resolveNetworkWeaveConvergence,
 } from './networkWeaveScene';
 
-export type { NetworkWeaveConvergence } from './networkWeaveScene';
+export type {
+  NetworkWeaveConvergence,
+  NetworkWeaveOrientation,
+} from './networkWeaveScene';
 
 const DEFAULT_COMPLEXITY = 28;
 const DEFAULT_STRANDS = 4;
@@ -70,7 +73,7 @@ const NetworkWeaveBackground = ({
   const { x: resolvedConvergenceX, y: resolvedConvergenceY } =
     resolveNetworkWeaveConvergence(convergence);
   const resolvedIntensity = clampNetworkWeaveValue(intensity, 0, 1, 0.72);
-  const resolvedFlare = clampNetworkWeaveValue(flare, 0, 2, 1);
+  const resolvedFlare = clampNetworkWeaveValue(flare, 0, 4, 1);
   const resolvedSpeedFactor = clampNetworkWeaveValue(speedFactor, 0.1, 4, 1);
   const rawId = useId().replace(/:/g, '');
   const ribbonFlowClass = `network-weave-ribbon-flow-${rawId}`;
