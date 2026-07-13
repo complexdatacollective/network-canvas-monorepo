@@ -15,7 +15,7 @@ vi.mock('~/lib/i18n/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }));
 
-vi.mock('~/components/ui/PageBackground', () => ({
+vi.mock('@codaco/art', () => ({
   usePageBackgroundTargetRef: () => null,
   PageBackgroundProvider: ({ children }: { children: ReactNode }) => (
     <>

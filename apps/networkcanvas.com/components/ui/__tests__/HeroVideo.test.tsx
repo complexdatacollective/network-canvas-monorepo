@@ -11,7 +11,7 @@ vi.mock('motion/react', () => ({
   useReducedMotion: () => motionPreference.reduced,
 }));
 
-vi.mock('~/components/ui/PageBackground', () => ({
+vi.mock('@codaco/art', () => ({
   usePageBackgroundTargetRef: () => backgroundTargetRef,
 }));
 
