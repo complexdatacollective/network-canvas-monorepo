@@ -118,7 +118,7 @@ const ProtocolInfoCard = () => {
         <div className="border-platinum-dark/60 focus-within:border-primary overflow-hidden rounded-sm border bg-white/45 backdrop-blur-sm transition-colors">
           <TextAreaField
             aria-label="Protocol description"
-            className="[&>textarea]:field-sizing-content [&>textarea]:max-h-52 [&>textarea]:min-h-24 [&>textarea]:rounded-none [&>textarea]:border-0 [&>textarea]:bg-transparent [&>textarea]:focus:border-0 [&>textarea]:focus:ring-0"
+            className="border-0 bg-transparent [&>textarea]:field-sizing-content [&>textarea]:max-h-52 [&>textarea]:min-h-24 [&>textarea]:rounded-none [&>textarea]:border-0 [&>textarea]:bg-transparent [&>textarea]:focus:border-0 [&>textarea]:focus:ring-0"
             placeholder="Enter a description for your protocol..."
             value={localDescription}
             onChange={(value) => setLocalDescription(value ?? '')}
