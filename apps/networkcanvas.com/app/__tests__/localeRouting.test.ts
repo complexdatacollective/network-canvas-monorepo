@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { getStaticLocaleParams, locales } from '~/lib/i18n/locales';
@@ -14,6 +17,12 @@ type NegotiationCase = {
   savedLocale?: string;
   destination: string;
 };
+
+type EdgeImportMap = {
+  imports: Record<string, string>;
+};
+
+const edgeImportMapPath = resolve(process.cwd(), 'netlify/import-map.json');
 
 const negotiationCases: readonly NegotiationCase[] = [
   {
@@ -60,6 +69,23 @@ const negotiationCases: readonly NegotiationCase[] = [
 ];
 
 describe('locale routing', () => {
+  it('maps the shared locale definition into the Netlify edge graph', () => {
+    const importMap = JSON.parse(
+      readFileSync(edgeImportMapPath, 'utf8'),
+    ) as EdgeImportMap;
+    const sharedLocalesTarget = importMap.imports['@codaco/shared-consts'];
+    if (!sharedLocalesTarget) {
+      throw new Error('Missing shared locale entry in the edge import map');
+    }
+
+    expect(sharedLocalesTarget).toBe(
+      '../../../packages/shared-consts/src/site-locales.ts',
+    );
+    expect(
+      existsSync(resolve(dirname(edgeImportMapPath), sharedLocalesTarget)),
+    ).toBe(true);
+  });
+
   it('generates US English, UK English, and Spanish static params', () => {
     expect(locales).toEqual(['en-US', 'en-GB', 'es']);
     expect(getStaticLocaleParams()).toEqual([

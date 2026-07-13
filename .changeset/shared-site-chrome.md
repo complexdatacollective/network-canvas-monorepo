@@ -1,5 +1,5 @@
 ---
-'@codaco/fresco-ui': minor
+'@codaco/fresco-ui': major
 '@codaco/shared-consts': minor
 '@codaco/tailwind-config': patch
 ---
