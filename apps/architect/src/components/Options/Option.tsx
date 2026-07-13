@@ -10,7 +10,6 @@ import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import type { FrescoReduxArrayFieldItemProps } from '~/components/Form/FrescoReduxArrayField';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
-import { cx } from '~/utils/cva';
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
@@ -45,7 +44,6 @@ const Option = ({
   onDelete,
   disabled,
   readOnly,
-  showErrors,
 }: OptionProps) => {
   const { confirm } = useDialog();
   const interactionDisabled = disabled || readOnly;
@@ -61,27 +59,21 @@ const Option = ({
   };
 
   return (
-    <div
-      className={cx(
-        'text-sortable-contrast bg-form-control z-1 flex w-full rounded-xl border-2 border-transparent transition-colors duration-300 ease-in-out',
-        showErrors && 'border-destructive',
-      )}
-    >
+    <div className="flex w-full items-center gap-4">
       {isSortable && (
-        <div className="flex grow-0 items-center p-5">
-          <ArrayFieldDragHandle
-            dragControls={dragControls}
-            index={index}
-            itemCount={itemCount}
-            onMove={onMove}
-            disabled={interactionDisabled}
-            label={`Reorder option ${index + 1} of ${itemCount}`}
-            className="text-sortable-contrast"
-          />
-        </div>
+        <ArrayFieldDragHandle
+          dragControls={dragControls}
+          index={index}
+          itemCount={itemCount}
+          onMove={onMove}
+          disabled={interactionDisabled}
+          label={`Reorder option ${index + 1} of ${itemCount}`}
+          size="md"
+          className="shrink-0 [&>.lucide]:h-[1.5em] [&>.lucide]:w-[1.5em]"
+        />
       )}
-      <div className="flex flex-1">
-        <div className="my-5 flex-1">
+      <div className="flex min-w-0 flex-1 gap-4">
+        <div className="min-w-0 flex-1">
           <ValidatedField
             component={FrescoReduxField}
             componentProps={{
@@ -89,6 +81,7 @@ const Option = ({
               label: 'Label',
               placeholder: 'Enter a label...',
               changeMode: 'input',
+              compact: true,
               toolbarOptions: {
                 headings: false,
                 history: true,
@@ -103,7 +96,7 @@ const Option = ({
             validation={{ required: true, uniqueArrayAttribute: true }}
           />
         </div>
-        <div className="my-5 ml-5 flex-1">
+        <div className="min-w-0 flex-1">
           <ValidatedField
             component={FrescoReduxField}
             componentProps={{
@@ -121,17 +114,16 @@ const Option = ({
           />
         </div>
       </div>
-      <div className="flex grow-0 p-5">
-        <IconButton
-          icon={<Trash2 />}
-          aria-label="Remove option"
-          size="sm"
-          variant="text"
-          color="destructive"
-          disabled={interactionDisabled}
-          onClick={handleDelete}
-        />
-      </div>
+      <IconButton
+        icon={<Trash2 />}
+        aria-label="Remove option"
+        size="md"
+        variant="text"
+        color="destructive"
+        disabled={interactionDisabled}
+        onClick={handleDelete}
+        className="shrink-0 [&>.lucide]:h-[1.5em] [&>.lucide]:w-[1.5em]"
+      />
     </div>
   );
 };
