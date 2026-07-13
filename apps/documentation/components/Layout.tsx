@@ -22,14 +22,13 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
     <div className="relative isolate flex min-h-dvh w-full flex-auto flex-col">
       <PageBackground />
       <div className="relative z-10 flex min-h-dvh w-full flex-auto flex-col">
-        <SharedNav isHomePage={isHomePage} />
+        <SharedNav />
         {!isHomePage && (
-          // Sticky so the section switcher stays visible while scrolling. On
-          // large screens the main nav scrolls away, so it pins to the top; on
-          // smaller screens the nav stays sticky, so it pins just below it.
+          // Keep the section switcher available after the site navigation
+          // scrolls away.
           <WorkflowNav
             variant="collapsed"
-            className="bg-background/50 tablet-landscape:top-0 sticky top-16 z-40 w-full px-4 py-2 backdrop-blur-sm"
+            className="bg-background sticky top-0 z-40 w-full px-4 py-2"
           />
         )}
         <main
