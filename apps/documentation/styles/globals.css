@@ -3,6 +3,23 @@
 
 @plugin '@tailwindcss/typography';
 
+/*
+ * Page background. The shared default is a faint brand-tinted near-white, which
+ * sits too close to the accent-tinted callouts (e.g. KeyConcept). Use
+ * networkcanvas.com's neutral platinum page background instead so tinted
+ * surfaces read distinctly against the page. Light mode only — dark mode keeps
+ * the shared [data-theme='dark'] background.
+ */
+@layer theme {
+  /* `:not([data-theme='dark'])` so this only applies in light mode — a bare
+     `:root` has the same specificity as the shared `[data-theme='dark']` block
+     and, being later in the cascade, would otherwise override the dark
+     background too. */
+  :root:not([data-theme='dark']) {
+    --background: #f2f6f7;
+  }
+}
+
 @layer base {
   body {
     @apply text-text;
