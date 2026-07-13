@@ -214,8 +214,8 @@
     --background: oklch(0.2 0.03 var(--base-hue));
     --text: oklch(0.95 0.01 var(--base-hue));
 
-    /* Primary/accent/secondary are dark enough that their `-contrast` white
-       text clears WCAG AA (~4.5:1) for `bg-*/text-*-contrast` usages. */
+    /* Primary/accent/secondary are dark enough that white `-contrast` text
+       clears WCAG AA (~4.5:1) on their solid surfaces. */
     --primary: oklch(0.5 0.2 var(--base-hue));
     --primary-contrast: oklch(var(--white));
 
