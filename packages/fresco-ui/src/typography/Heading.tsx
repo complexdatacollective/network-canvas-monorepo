@@ -1,5 +1,3 @@
-'use client';
-
 import { type useRender as UseRender, useRender } from '@base-ui/react';
 import * as React from 'react';
 

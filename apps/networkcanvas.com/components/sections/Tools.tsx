@@ -1,57 +1,93 @@
+import { useTranslations } from 'next-intl';
+
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { DeviceMockup } from '~/components/ui/DeviceMockup';
-import { PillLink } from '~/components/ui/PillLink';
 import { Reveal } from '~/components/ui/Reveal';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { tools } from '~/lib/content';
+import { webDestinations } from '~/lib/getStarted';
 
 const accents = {
-  'sea-green': { text: 'text-sea-green', tone: 'sea-green' as const },
-  'neon-coral': { text: 'text-neon-coral', tone: 'neon-coral' as const },
+  'sea-green': {
+    text: 'text-sea-green',
+    button: 'bg-sea-green text-white',
+  },
+  'neon-coral': {
+    text: 'text-neon-coral',
+    button: 'bg-neon-coral text-white',
+  },
   'cerulean-blue': {
     text: 'text-cerulean-blue',
-    tone: 'cerulean-blue' as const,
+    button: 'bg-cerulean-blue text-white',
+  },
+  'slate-blue': {
+    text: 'text-slate-blue',
+    button: 'bg-slate-blue text-white',
   },
 };
 
 export function Tools() {
+  const t = useTranslations('Tools');
+
   return (
     <Container className="tablet-landscape:py-28 py-20">
-      <SectionHeading title="A selection of tools to facilitate your research">
-        We provide a complete end-to-end workflow for networks research, with an
-        app for survey design and for interviewing. Using these tools,
-        researchers can easily design, capture, and export network data.
-      </SectionHeading>
+      <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
       <div className="tablet-landscape:gap-24 mt-16 flex flex-col gap-16">
         {tools.map((tool) => {
           const accent = accents[tool.color];
-          const isExternal = tool.cta.href.startsWith('http');
           return (
             <Reveal
-              key={tool.name}
-              className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 grid items-center gap-8"
+              key={tool.id}
+              className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 grid items-center gap-8 rounded-[2rem] bg-white/55 p-6 shadow-xl backdrop-blur-md"
             >
-              <div className="tablet-landscape:order-1 order-2">
-                <h3
+              <div>
+                <Heading
+                  level="h3"
+                  margin="none"
                   className={`font-heading tablet-landscape:text-3xl text-2xl font-bold ${accent.text}`}
                 >
                   {tool.name}
-                </h3>
-                <p className="text-text/85 tablet-landscape:text-lg mt-4 text-base leading-relaxed">
-                  {tool.description}
-                </p>
-                <PillLink
-                  href={tool.cta.href}
-                  external={isExternal}
-                  tone={accent.tone}
-                  className="mt-6"
+                </Heading>
+                <Paragraph
+                  margin="none"
+                  className="text-cyber-grape tablet-landscape:text-lg mt-4 text-base leading-relaxed"
                 >
-                  {tool.cta.label}
-                </PillLink>
+                  {t(`${tool.id}.description`)}
+                </Paragraph>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <ButtonLink
+                    href={tool.href}
+                    external
+                    color="default"
+                    className={`rounded-full ${accent.button}`}
+                  >
+                    {t(`${tool.id}.action`)}
+                  </ButtonLink>
+                  {tool.id === 'fresco' ? (
+                    <ButtonLink
+                      href={webDestinations.frescoDeployment}
+                      external
+                      color="default"
+                      className="text-slate-blue rounded-full bg-white"
+                    >
+                      {t('fresco.deployAction')}
+                    </ButtonLink>
+                  ) : null}
+                </div>
               </div>
-              <div className="tablet-landscape:order-2 order-1">
-                <DeviceMockup variant={tool.variant} />
+              <div>
+                <a
+                  href={tool.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="focusable block rounded-[1.75rem]"
+                >
+                  <DeviceMockup variant={tool.variant} />
+                </a>
               </div>
             </Reveal>
           );

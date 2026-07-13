@@ -1,5 +1,8 @@
+import { useTranslations } from 'next-intl';
 import type { SVGProps } from 'react';
 
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { LanguageSelector } from '~/components/layout/LanguageSelector';
 import { Container } from '~/components/ui/Container';
 import { Logo } from '~/components/ui/Logo';
 import { externalLinks, footerLinks } from '~/lib/content';
@@ -29,12 +32,14 @@ const GithubIcon = (p: SVGProps<SVGSVGElement>) => (
 );
 
 const socials = [
-  { label: 'YouTube', href: externalLinks.youtube, Icon: YoutubeIcon },
-  { label: 'Twitter', href: externalLinks.twitter, Icon: TwitterIcon },
-  { label: 'GitHub', href: externalLinks.github, Icon: GithubIcon },
-];
+  { id: 'youtube', href: externalLinks.youtube, Icon: YoutubeIcon },
+  { id: 'twitter', href: externalLinks.twitter, Icon: TwitterIcon },
+  { id: 'github', href: externalLinks.github, Icon: GithubIcon },
+] as const;
 
 export function Footer() {
+  const t = useTranslations('Footer');
+
   return (
     <footer className="pt-12 pb-16">
       <Container>
@@ -46,27 +51,28 @@ export function Footer() {
             <div className="flex gap-8">
               {footerLinks.map((link) => (
                 <a
-                  key={link.label}
+                  key={link.id}
                   href={link.href}
                   target="_blank"
                   rel="noreferrer"
                   className="text-link hover:text-cyber-grape text-base transition-colors"
                 >
-                  {link.label}
+                  {t(link.id)}
                 </a>
               ))}
             </div>
-            <p className="text-text/70 text-base">
-              Copyright Complex Data Collective 2016-{new Date().getFullYear()}
-            </p>
+            <Paragraph margin="none" className="text-text/70 text-base">
+              {t('copyright', { year: new Date().getFullYear() })}
+            </Paragraph>
+            <LanguageSelector />
             <div className="flex gap-5">
-              {socials.map(({ label, href, Icon }) => (
+              {socials.map(({ id, href, Icon }) => (
                 <a
-                  key={label}
+                  key={id}
                   href={href}
                   target="_blank"
                   rel="noreferrer"
-                  aria-label={label}
+                  aria-label={t(id)}
                   className="text-cyber-grape hover:text-neon-coral transition-colors"
                 >
                   <Icon className="size-5" />

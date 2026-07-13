@@ -2,69 +2,89 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 
+import { IconButton } from '@codaco/fresco-ui/Button';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { cn } from '~/lib/cn';
-import { grants } from '~/lib/content';
+import type { Grant } from '~/lib/siteContent';
 
-export function Grants() {
+export function Grants({ grants }: { grants: readonly Grant[] }) {
+  const t = useTranslations('Grants');
   const [[index, direction], setState] = useState<[number, number]>([0, 0]);
   const count = grants.length;
-  const active = grants[((index % count) + count) % count]!;
+  const activeIndex = count === 0 ? 0 : ((index % count) + count) % count;
+  const active = grants[activeIndex];
+
+  if (!active) return null;
 
   const paginate = (dir: number) => setState([index + dir, dir]);
 
   return (
     <Container className="tablet-landscape:py-28 py-20">
-      <SectionHeading title="Grants Using Network Canvas">
-        We are proud to say Network Canvas is being actively used in a number of
-        federally funded grants in the United States, across a diverse set of
-        research contexts, institutions, and funding bodies.
-      </SectionHeading>
+      <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
       <div className="tablet-landscape:gap-6 mx-auto mt-14 flex max-w-3xl items-center gap-3">
-        <CarouselButton label="Previous grant" onClick={() => paginate(-1)}>
-          <ChevronLeft className="size-6" />
-        </CarouselButton>
+        <CarouselButton
+          label={t('previous')}
+          onClick={() => paginate(-1)}
+          icon={<ChevronLeft aria-hidden className="size-6" />}
+        />
 
-        <div className="relative min-h-[22rem] flex-1 overflow-hidden">
-          <AnimatePresence custom={direction} initial={false} mode="wait">
-            <motion.a
-              key={index}
-              href={active.href}
-              target="_blank"
-              rel="noreferrer"
-              custom={direction}
-              initial={{ opacity: 0, x: direction >= 0 ? 60 : -60 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: direction >= 0 ? -60 : 60 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="focusable bg-surface tablet-landscape:p-10 flex h-full flex-col rounded-[1.75rem] p-8 shadow-xl"
-            >
-              <h3 className="font-heading text-cyber-grape text-xl font-bold">
-                {active.title}
-              </h3>
-              <p className="text-text/55 mt-3 text-sm font-bold">
-                {active.pis}
-              </p>
-              <p className="text-text/80 mt-4 text-base leading-relaxed">
-                {active.description}
-              </p>
-              <img
-                src={active.logo}
-                alt={active.logoAlt}
-                className="mt-auto h-12 w-auto self-start pt-6"
-              />
-            </motion.a>
-          </AnimatePresence>
+        <div className="relative min-h-[22rem] flex-1">
+          <div className="pointer-events-none absolute -inset-8 overflow-hidden p-8">
+            <AnimatePresence custom={direction} initial={false} mode="wait">
+              <motion.a
+                key={index}
+                href={active.href}
+                target="_blank"
+                rel="noreferrer"
+                custom={direction}
+                initial={{ opacity: 0, x: direction >= 0 ? 60 : -60 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: direction >= 0 ? -60 : 60 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="focusable bg-surface tablet-landscape:p-10 pointer-events-auto flex h-full flex-col rounded-[1.75rem] p-8 shadow-xl"
+              >
+                <Heading
+                  level="h3"
+                  margin="none"
+                  className="font-heading text-cyber-grape text-xl font-bold"
+                >
+                  {active.title}
+                </Heading>
+                <Paragraph
+                  margin="none"
+                  className="text-text/55 mt-3 text-sm font-bold"
+                >
+                  {active.pis}
+                </Paragraph>
+                <Paragraph
+                  margin="none"
+                  className="text-text/80 mt-4 text-base leading-relaxed"
+                >
+                  {active.description}
+                </Paragraph>
+                <img
+                  src={active.logo}
+                  alt={active.logoAlt}
+                  className="mt-auto h-12 w-auto self-start pt-6"
+                />
+              </motion.a>
+            </AnimatePresence>
+          </div>
         </div>
 
-        <CarouselButton label="Next grant" onClick={() => paginate(1)}>
-          <ChevronRight className="size-6" />
-        </CarouselButton>
+        <CarouselButton
+          label={t('next')}
+          onClick={() => paginate(1)}
+          icon={<ChevronRight aria-hidden className="size-6" />}
+        />
       </div>
 
       <div className="mt-8 flex justify-center gap-2.5">
@@ -73,9 +93,9 @@ export function Grants() {
           const isActive = current === i;
           return (
             <button
-              key={grant.title}
+              key={grant.id}
               type="button"
-              aria-label={`Show grant ${i + 1}`}
+              aria-label={t('show', { number: i + 1 })}
               onClick={() => setState([i, i > current ? 1 : -1])}
               className={cn(
                 'h-2.5 rounded-full transition-all',
@@ -90,22 +110,22 @@ export function Grants() {
 }
 
 function CarouselButton({
-  children,
+  icon,
   label,
   onClick,
 }: {
-  children: ReactNode;
+  icon: ReactNode;
   label: string;
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <IconButton
+      icon={icon}
       aria-label={label}
       onClick={onClick}
-      className="focusable bg-surface text-cyber-grape hover:bg-cyber-grape flex size-11 shrink-0 items-center justify-center rounded-full shadow-lg transition-colors hover:text-white"
-    >
-      {children}
-    </button>
+      color="dynamic"
+      size="sm"
+      className="bg-surface text-cyber-grape hover:bg-cyber-grape size-11 border-transparent shadow-lg transition-colors hover:text-white"
+    />
   );
 }

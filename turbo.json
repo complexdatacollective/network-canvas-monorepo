@@ -105,7 +105,12 @@
       "inputs": [
         "app/**",
         "components/**",
+        "content/**",
+        "font-modules.d.ts",
         "lib/**",
+        "messages/**",
+        "netlify/**",
+        "netlify.toml",
         "public/**",
         "types.d.ts",
         "next.config.*",
@@ -121,9 +126,30 @@
       "inputs": [
         "app/**",
         "components/**",
+        "content/**",
+        "font-modules.d.ts",
         "lib/**",
+        "messages/**",
+        "netlify/**",
         "types.d.ts",
         "next.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "outputs": []
+    },
+    "networkcanvas.com#test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "app/**",
+        "components/**",
+        "content/**",
+        "lib/**",
+        "messages/**",
+        "netlify/**",
+        "test/**",
+        "vitest.config.*",
+        "vitest.setup.*",
         "tsconfig*.json",
         "package.json"
       ],

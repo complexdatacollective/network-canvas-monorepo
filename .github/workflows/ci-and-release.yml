@@ -491,10 +491,8 @@ jobs:
       - id: deploy
         name: Build and deploy networkcanvas.com preview
         run: |
-          pnpm exec turbo run build --filter=networkcanvas.com
-          json=$(npx --yes netlify-cli@22 deploy --no-build \
+          json=$(npx --yes netlify-cli@26 deploy --build \
                    --filter=networkcanvas.com \
-                   --dir=apps/networkcanvas.com/out \
                    --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" \
                    --alias="pr-${{ github.event.number }}" --json)
           echo "$json" | jq .
@@ -580,10 +578,8 @@ jobs:
       - id: deploy
         name: Build and deploy networkcanvas.com production
         run: |
-          pnpm exec turbo run build --filter=networkcanvas.com
-          json=$(npx --yes netlify-cli@22 deploy --no-build --prod \
+          json=$(npx --yes netlify-cli@26 deploy --build --prod \
                    --filter=networkcanvas.com \
-                   --dir=apps/networkcanvas.com/out \
                    --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
           echo "$json" | jq .
           url=$(echo "$json" | jq -r '.deploy_url')

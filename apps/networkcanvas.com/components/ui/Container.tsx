@@ -1,23 +1,22 @@
-import type { ElementType, ReactNode } from 'react';
+import type { ComponentPropsWithoutRef, ElementType, ReactNode } from 'react';
 
 import { cn } from '~/lib/cn';
 
 type ContainerProps = {
   as?: ElementType;
   className?: string;
-  id?: string;
   children: ReactNode;
-};
+} & Omit<ComponentPropsWithoutRef<'div'>, 'children' | 'className'>;
 
 export function Container({
   as: Comp = 'div',
   className,
-  id,
   children,
+  ...props
 }: ContainerProps) {
   return (
     <Comp
-      id={id}
+      {...props}
       className={cn(
         'tablet-landscape:px-10 mx-auto w-full max-w-[1200px] px-6',
         className,

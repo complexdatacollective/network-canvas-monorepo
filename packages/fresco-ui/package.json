@@ -152,6 +152,10 @@
       "types": "./dist/layout/ResponsiveContainer.d.ts",
       "default": "./dist/layout/ResponsiveContainer.js"
     },
+    "./navigation/SiteNavigation": {
+      "types": "./dist/navigation/SiteNavigation.d.ts",
+      "default": "./dist/navigation/SiteNavigation.js"
+    },
     "./typography/Heading": {
       "types": "./dist/typography/Heading.d.ts",
       "default": "./dist/typography/Heading.js"

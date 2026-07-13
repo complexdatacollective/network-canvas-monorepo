@@ -6,18 +6,23 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
+    "@codaco/art": "workspace:*",
     "@codaco/fresco-ui": "workspace:*",
     "@codaco/shared-consts": "workspace:*",
     "@codaco/tailwind-config": "workspace:*",
     "@fontsource-variable/inclusive-sans": "catalog:",
     "@fontsource-variable/nunito": "catalog:",
+    "@formatjs/intl-localematcher": "^0.8.9",
+    "csvtojson": "catalog:",
     "lucide-react": "catalog:",
     "motion": "catalog:",
     "next": "catalog:",
+    "next-intl": "^4.13.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "zod": "catalog:",
@@ -25,12 +30,18 @@
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:*",
+    "@netlify/edge-functions": "^3.0.8",
     "@tailwindcss/postcss": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "jsdom": "catalog:",
     "postcss": "^8.5.16",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

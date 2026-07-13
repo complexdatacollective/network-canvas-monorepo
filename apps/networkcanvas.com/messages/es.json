@@ -1,0 +1,275 @@
+{
+  "Metadata": {
+    "siteTitle": "Network Canvas",
+    "siteDescription": "Network Canvas ofrece software gratuito y de código abierto para recopilar datos de redes, diseñado en función de las necesidades tanto de quienes investigan como de quienes participan.",
+    "getStartedTitle": "Comenzar",
+    "getStartedDescription": "Elija la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes."
+  },
+  "LanguageSelector": {
+    "label": "Idioma",
+    "searchPlaceholder": "Buscar idiomas...",
+    "emptyMessage": "No se encontraron idiomas."
+  },
+  "Navigation": {
+    "home": "Inicio de Network Canvas",
+    "community": "Comunidad",
+    "documentation": "Docs",
+    "protocolGallery": "Galería de protocolos",
+    "resources": "Recursos",
+    "software": "Software",
+    "getStarted": "Comenzar",
+    "toggleMenu": "Alternar menú",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú"
+  },
+  "Hero": {
+    "headline": "Simplificando la recopilación de datos de redes complejas.",
+    "description": "Network Canvas ofrece software <strong>gratuito y de código abierto</strong> para recopilar datos de redes, diseñado en función de las necesidades tanto de quienes investigan como de quienes participan.",
+    "getStarted": "Comenzar",
+    "keepScrolling": "o siga desplazándose para obtener más información"
+  },
+  "News": {
+    "label": "Últimas noticias:",
+    "fullStory": "[Leer la nota completa]"
+  },
+  "Tools": {
+    "heading": "Una selección de herramientas para facilitar su investigación",
+    "introduction": "Ofrecemos un flujo de trabajo integral para la investigación de redes, con una aplicación para diseñar encuestas y otra para realizar entrevistas. Con estas herramientas, quienes investigan pueden diseñar, recopilar y exportar datos de redes con facilidad.",
+    "architect": {
+      "description": "Una herramienta basada en el navegador para diseñar visualmente entrevistas de Network Canvas. Architect permite que especialistas en la materia se concentren en el diseño y la implementación de su estudio, sin tener que aprender tecnologías nuevas y complejas.",
+      "action": "Abrir Architect",
+      "screenshotAlt": "Editor de protocolos de Architect que muestra el diseño de una entrevista"
+    },
+    "interviewer": {
+      "description": "Una aplicación basada en el navegador para administrar entrevistas de Network Canvas sobre el terreno. Interviewer ofrece interfaces minimalistas y centradas en las personas participantes para todas las tareas de recopilación de datos asociadas con las entrevistas de redes personales.",
+      "action": "Abrir Interviewer",
+      "screenshotAlt": "Pantalla de inicio de Interviewer que muestra los protocolos disponibles de Network Canvas"
+    },
+    "fresco": {
+      "description": "¡Network Canvas lleva las entrevistas a la web! Fresco es un proyecto piloto que permite realizar entrevistas de Network Canvas en un navegador web.",
+      "action": "Probar el entorno sandbox de Fresco",
+      "deployAction": "Implementar Fresco",
+      "screenshotAlt": "Panel de Fresco que muestra los totales de protocolos, participantes y entrevistas"
+    }
+  },
+  "SoftwareMenu": {
+    "architect": {
+      "description": "Diseñe protocolos de entrevista de Network Canvas en su navegador con un flujo de trabajo visual creado para equipos de investigación."
+    },
+    "interviewer": {
+      "description": "Realice entrevistas de redes atractivas y guiadas por una persona entrevistadora desde cualquier navegador compatible."
+    },
+    "fresco": {
+      "description": "Coordine entrevistas de redes remotas y gestione los datos del estudio desde un panel compartido en el navegador."
+    }
+  },
+  "Video": {
+    "heading": "Más información",
+    "description": "Nuestro objetivo es crear un conjunto de herramientas para la comunidad investigadora que sea de alta calidad, gratuito, seguro para la investigación y duradero. Vea el video de nuestro proyecto para conocer mejor por qué creamos Network Canvas y visite nuestro <channel>canal de YouTube</channel> para ver más videos.",
+    "channel": "canal de YouTube",
+    "title": "¿Qué es Network Canvas?",
+    "watchLabel": "Ver: ¿Qué es Network Canvas?"
+  },
+  "Principles": {
+    "heading": "Principios de diseño",
+    "introduction": "Todo el software de Network Canvas se sustenta en un conjunto de cinco principios de diseño. Estos principios provienen de nuestras observaciones y experiencias con los problemas a los que se enfrentan quienes desean diseñar y realizar investigaciones de redes personales.",
+    "ontologicalFlexibility": {
+      "title": "Flexibilidad ontológica",
+      "paragraph1": "El software está diseñado con una flexibilidad ontológica fundamental. En pocas palabras, esto significa que no presuponemos nada sobre la naturaleza de su entrevista.",
+      "paragraph2": "Quienes investigan pueden definir libremente los nodos y las aristas de sus entrevistas, sus atributos, la secuencia de las tareas de recopilación de datos y la manera en que estas tareas se explican a la persona participante."
+    },
+    "interviewerAssisted": {
+      "title": "Presencial y con asistencia de una persona entrevistadora",
+      "paragraph1": "Creemos que la presencia de una persona entrevistadora capacitada que pueda facilitar la tarea de recopilación permite obtener datos de mayor calidad.",
+      "paragraph2": "Por lo tanto, las herramientas de Network Canvas se diseñaron bajo el supuesto de que las entrevistas se realizan en presencia de una persona entrevistadora, en un equipo controlado por ella y con una capacitación específica para orientar el proceso de entrevista."
+    },
+    "emphasisOnDesign": {
+      "title": "Énfasis en el diseño",
+      "paragraph1": "Nuestro software se diseñó desde el principio para que resulte lo más atractivo posible desde el punto de vista visual y suponga una carga mínima para las personas participantes.",
+      "paragraph2": "Nos tomamos el diseño muy en serio y recurrimos tanto a la bibliografía sobre interacción entre personas y computadoras como a estudios de la comunidad de análisis de redes para crear una experiencia de entrevista fácil de comprender, con interacciones claras, coherentes y táctiles que guían la recopilación de datos."
+    },
+    "endToEndWorkflow": {
+      "title": "Flujo de trabajo integral",
+      "paragraph1": "Simplificar la recopilación de datos estructurales complejos requiere no solo una herramienta para entrevistar, sino también una herramienta para diseñar esas entrevistas. Juntas, estas herramientas ofrecen un flujo de trabajo integral que reduce los costos, tanto materiales como técnicos, de recopilar datos de redes.",
+      "paragraph2": "Cabe destacar que nuestras herramientas no requieren un alto grado de conocimientos técnicos. Permiten que quienes investigan se concentren en aplicar su experiencia temática para diseñar una experiencia de entrevista eficaz."
+    },
+    "openSourceCommunity": {
+      "title": "Desarrollo de código abierto impulsado por la comunidad",
+      "paragraph1": "La participación y la colaboración de la comunidad, tanto dentro como fuera del ámbito académico, son fundamentales para sostener este esfuerzo. Por este motivo, las herramientas de Network Canvas son gratuitas y completamente de código abierto, bajo la licencia GPL versión 3.",
+      "paragraph2": "Hemos implementado un programa de desarrollo impulsado por la comunidad y queremos promover el desarrollo de funciones y otras contribuciones de cualquier tercero interesado."
+    }
+  },
+  "Grants": {
+    "heading": "Subvenciones que utilizan Network Canvas",
+    "introduction": "Nos enorgullece que Network Canvas se utilice activamente en varias subvenciones con financiación federal en Estados Unidos, en una amplia variedad de contextos de investigación, instituciones y organismos financiadores.",
+    "previous": "Subvención anterior",
+    "next": "Subvención siguiente",
+    "show": "Mostrar subvención {number}"
+  },
+  "Publications": {
+    "heading": "Publicaciones recientes que utilizan Network Canvas",
+    "introduction": "Estas son las cuatro publicaciones más recientes que utilizan Network Canvas. Para obtener orientación sobre cómo citar Network Canvas, consulte nuestro <article>artículo de documentación</article>.",
+    "submission": "Si desea que incluyamos su publicación, comuníquenoslo en el <thread>hilo</thread> de nuestro sitio de la comunidad.",
+    "article": "artículo de documentación",
+    "thread": "hilo"
+  },
+  "Team": {
+    "heading": "Equipo principal",
+    "introduction": "El equipo del proyecto está compuesto por personas de diversas disciplinas y especialidades."
+  },
+  "ScientificAdvisors": {
+    "heading": "Asesores científicos"
+  },
+  "Institutions": {
+    "heading": "Instituciones",
+    "paragraph1": "El software es desarrollado por un equipo de investigación y desarrollo de Northwestern University y University of Oxford, además de varias personas desarrolladoras externas contratadas. Agradecemos la financiación <prior>anterior</prior> y <ongoing>en curso</ongoing> de los National Institutes of Health, que hace posible este trabajo.",
+    "paragraph2": "La propiedad intelectual y los derechos de autor asociados con el software están bajo el control de Complex Data Collective, una organización sin fines de lucro registrada e integrada por el personal principal del proyecto.",
+    "prior": "anterior",
+    "ongoing": "en curso"
+  },
+  "WhatNext": {
+    "heading": "¿Qué sigue?",
+    "documentation": {
+      "title": "¿Desea obtener más información?",
+      "body": "Hemos creado documentación extensa que abarca todos los aspectos de la creación, la implementación y la gestión de un estudio con Network Canvas.",
+      "action": "Visitar el sitio de documentación"
+    },
+    "community": {
+      "title": "¿Necesita ayuda?",
+      "body": "También lanzamos recientemente un sitio de la comunidad donde puede hacer preguntas, informar errores, compartir su trabajo y recibir ayuda de otras personas investigadoras.",
+      "action": "Visitar el sitio de la comunidad"
+    },
+    "keepInTouch": {
+      "title": "Manténgase en contacto",
+      "body": "Si desea mantenerse al tanto del proyecto y enterarse de los eventos y lanzamientos en cuanto sucedan, le invitamos a unirse a nuestra lista de correo y seguirnos en Twitter. Enviaremos mensajes con consideración y utilizaremos esta lista únicamente para anuncios importantes."
+    },
+    "collaboration": {
+      "title": "¿Desea colaborar?",
+      "body": "Si le interesa una colaboración académica formal o una colaboración de consultoría, consulte nuestro artículo de documentación sobre el tema. Lamentablemente, no podemos ofrecer consultorías no remuneradas debido a la capacidad limitada de nuestro pequeño equipo.",
+      "action": "Explorar opciones de colaboración"
+    }
+  },
+  "MailingList": {
+    "placeholder": "email@networkcanvas.com",
+    "emailLabel": "Dirección de correo electrónico",
+    "submit": "Unirse a la lista",
+    "success": "¡Gracias! Nos pondremos en contacto."
+  },
+  "Footer": {
+    "terms": "Términos de uso",
+    "privacy": "Política de privacidad",
+    "copyright": "Derechos de autor de Complex Data Collective 2016-{year}",
+    "youtube": "YouTube",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "GetStarted": {
+    "metadata": {
+      "title": "Comenzar",
+      "description": "Elija la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes."
+    },
+    "intro": {
+      "eyebrow": "Elija la etapa de su investigación",
+      "heading": "¿En qué etapa de su investigación se encuentra?",
+      "introduction": "Elija la etapa que ha alcanzado su investigación y, a continuación, seleccione la aplicación de Network Canvas que mejor se adapte a su estudio.",
+      "stages": {
+        "design": {
+          "label": "Etapa de diseño",
+          "title": "Diseñar o crear un protocolo de entrevista",
+          "accessibleName": "Diseñar o crear un protocolo de entrevista"
+        },
+        "collect": {
+          "label": "Etapa de recopilación de datos",
+          "title": "Recopilar datos con Network Canvas",
+          "accessibleName": "Recopilar datos con Network Canvas"
+        }
+      }
+    },
+    "sections": {
+      "design": {
+        "label": "Etapa de diseño",
+        "heading": "Diseñar o crear un protocolo",
+        "description": "Diseñe un nuevo estudio basado en el navegador con Architect o continúe un estudio existente con Architect Classic."
+      },
+      "collect": {
+        "label": "Etapa de recopilación de datos",
+        "heading": "Recopilar datos",
+        "description": "Elija Interviewer, Fresco o Interviewer Classic según cómo y dónde planee recopilar datos."
+      }
+    },
+    "shared": {
+      "bestFor": "Ideal para",
+      "downloadVersion": "Descargar la versión {version}",
+      "platformAccessibleName": "{platform} para {app}",
+      "schemaVersionInfo": "Architect Classic e Interviewer Classic admiten protocolos de esquema 7. Architect, Interviewer y Fresco basados en el navegador utilizan el esquema 8, que incluye las funciones más recientes. La actualización de un protocolo es unidireccional, así que conserve el archivo original de esquema 7 si todavía necesita las aplicaciones Classic.",
+      "schemaVersionLink": "Más información sobre las versiones del esquema"
+    },
+    "platforms": {
+      "appleSilicon": "Apple Silicon",
+      "appleIntel": "Apple Intel",
+      "windows": "Windows",
+      "linux": "Linux",
+      "ios": "iPhone y iPad",
+      "android": "Android"
+    },
+    "apps": {
+      "architect": {
+        "status": "Recomendado para estudios nuevos",
+        "description": "Diseñe protocolos en su navegador sin instalar nada y utilice todas las funciones más recientes de Network Canvas.",
+        "bestFor": {
+          "newStudy": "Iniciar un estudio nuevo",
+          "latestFeatures": "Diseñar protocolos con todas las funciones más recientes",
+          "interviewerOrFresco": "Recopilar datos con la nueva versión de Interviewer o con Fresco",
+          "upgradeClassic": "Actualizar un protocolo creado en Architect Classic para utilizar las funciones más recientes"
+        },
+        "actions": {
+          "open": "Abrir Architect"
+        }
+      },
+      "interviewer": {
+        "status": "Presencial · Recomendado",
+        "description": "Realice la recopilación de datos con asistencia de una persona entrevistadora en un dispositivo bajo su control, utilizando protocolos con todas las funciones más recientes de Network Canvas.",
+        "bestFor": {
+          "inPerson": "Entrevistas realizadas en persona",
+          "guided": "Una persona entrevistadora capacitada que guía a la persona participante",
+          "researcherDevice": "Recopilación de datos en un dispositivo controlado por el equipo de investigación",
+          "latestFeatures": "Estudios que utilizan protocolos con todas las funciones más recientes"
+        },
+        "actions": {
+          "open": "Abrir Interviewer"
+        }
+      },
+      "fresco": {
+        "status": "Equipos grandes · Administración remota · Recomendado",
+        "description": "Para participantes que completan entrevistas a distancia en su propio navegador, con una gestión centralizada del estudio y los datos. El entorno sandbox es una demostración pública y no debe utilizarse para realizar un estudio real.",
+        "bestFor": {
+          "remoteBrowser": "Participantes que completan entrevistas a distancia en su propio navegador",
+          "centralManagement": "Gestión centralizada de estudios y participantes",
+          "sharedDashboard": "Gestión y exportación de datos desde un panel compartido",
+          "selfHosted": "Equipos que pueden implementar y alojar una instancia de Fresco"
+        },
+        "actions": {
+          "sandbox": "Guía de acceso al entorno sandbox de Fresco",
+          "deployment": "Guía de implementación"
+        }
+      },
+      "architectClassic": {
+        "status": "Classic · Modo de mantenimiento",
+        "description": "Utilícelo únicamente cuando su estudio deba seguir siendo compatible con Interviewer Classic y el esquema 7.",
+        "bestFor": {
+          "classicCompatibility": "Un estudio existente que debe seguir siendo compatible con Interviewer Classic",
+          "editWithoutMigration": "Un protocolo de esquema 7 que debe seguir editándose sin migración"
+        }
+      },
+      "interviewerClassic": {
+        "status": "Classic · Estudios existentes",
+        "description": "Para estudios consolidados con esquema 7 y flujos de trabajo sin conexión en computadoras de escritorio o tabletas. Se mantiene para ofrecer compatibilidad y corregir errores.",
+        "bestFor": {
+          "schema7Study": "Un estudio consolidado que depende del esquema 7",
+          "desktopTablet": "Conservar un flujo de trabajo existente en una computadora de escritorio o tableta",
+          "offlineCollection": "Estudios que requieren el flujo de trabajo anterior de recopilación sin conexión"
+        }
+      }
+    }
+  }
+}
