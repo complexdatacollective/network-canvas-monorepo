@@ -28,7 +28,10 @@
 
   code {
     @apply text-sm;
-    @apply bg-rich-black/10 dark:bg-white/5;
+    /* Tie the tint to the text colour (which swaps under [data-theme='dark'])
+       rather than a `dark:` (prefers-color-scheme) utility, so it tracks the
+       selected docs theme even when it differs from the OS preference. */
+    @apply bg-current/10;
     @apply p-[0.2rem];
     @apply rounded-sm;
   }
