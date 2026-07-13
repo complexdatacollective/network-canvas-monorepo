@@ -5,17 +5,15 @@ wip: false
 
 ## Summary
 
-Interviewer and Architect (from version 4.2.0 onward) implement a feature that tracks the version of the protocol file format, or "schema", associated with protocols that you author. You may notice messaging within the app that informs you of "out of date", or "obsolete" schema versions associated with your protocol. This article will explain these concepts in greater detail.
-
-**The key takeaway is that as long as your schema is not marked "obsolete", you can continue to use Interviewer to collect and export data, exactly as before.**
+This article will explain the concept of "protocol schemas", including what they are, why we need them, and how to work with schema version requirements within our apps.
 
 Although every effort is made to maintain compatibility with new schema versions, any features implemented that require a schema update will be unavailable to you until you migrate your protocol. We _strongly_ encourage you to update your protocol files wherever possible, so that you are able to use the newest Network Canvas features.
 
-The current, latest protocol schema version is **8**. Schema 8 is supported by **Architect**, **Fresco**, and the new **Interviewer** (beta) app. It is **not** supported by **Architect Classic** or **Interviewer Classic**, which support schema 7 and earlier. See [Schema version 8](#schema-version-8) below for details.
+The current, latest protocol schema version is **8**. Schema 8 is supported by **Architect**, **Fresco**, and **Interviewer**. It is **not** supported by **Architect Classic** or **Interviewer Classic**, which support schema 7 and earlier. See [Schema version 8](#schema-version-8) below for details.
 
 <TipBox danger>
 
-We urge iPadOS and Android users to follow the advice set out in the [configuring devices prior to starting data collection](/en/collect-data/interviewer/configuring-devices) article, and disable automatic app updates so that they are not caught out by breaking changes that result from new protocol schema versions.
+Users running Interviewer classic on iPadOS and Android: We urge you to follow the advice set out in the [configuring devices prior to starting data collection](/en/collect-data/interviewer/configuring-devices) article, and to disable automatic app updates so that you are not caught out by breaking changes that result from new protocol schema versions.
 
 This is essential if users wish to continue using a particular version of an app to ensure it remains compatible with their existing protocols (rollback to prior versions is not possible on these platforms!).
 
@@ -23,15 +21,15 @@ This is essential if users wish to continue using a particular version of an app
 
 ## What is a protocol schema?
 
-A protocol "schema" is a description of the structure of a protocol file. It takes the form of a series of constraints and logical rules that define property names, data types, and so on. When a protocol is used within Architect or Interviewer, it is validated against a schema. Unexpected values, properties, or structures will trigger various types of warning or error message.
+Fresco, Interviewer and Architect all implement a feature that allows us to verify a protocol file is correct by comparing it against a known set rules, called a "schema". This feature exists so that we can guarantee that a protocol authored in Architect will work in Interviewer and Fresco. When a protocol is used within Architect or Interviewer, it is validated against a schema. Unexpected values, properties, or structures will trigger various types of warning or error message.
 
-## Why do we need protocol schemas?
+## Why do we need protocol schema versions?
 
-We need to "version" Network Canvas protocol schemas so that we can add or change features as we develop them. This could mean implementing a new interface, or changing the way that an existing function, such as skip logic, works. Simply changing an existing schema would make previously authored protocols invalid, or would lead to the software crashing.
+We need to "version" Network Canvas protocol schemas so that we can add or change features as we develop them. This applies when implementing a new interface, or changing the way that an existing function, such as skip logic, works. Simply changing an existing schema would give the software no way to know which properties and configuration to expect, which would lead to a crash.
 
 We also adopted schemas in an effort to ensure stability and consistency within the functioning of the software. If a protocol is valid according to its schema, it should function without issues.
 
-Our priority when implementing schema versioning has been to not burden the end user, either through creating "maintenance work" (for example by requiring older protocols to be updated manually), or by disrupting your workflow (for example by preventing existing protocols from functioning).
+Our priority when implementing schema versioning has been to not burden the end user, either through creating "maintenance work" (for example by requiring older protocols to be updated manually), or by disrupting your workflow (for example by preventing existing protocols from functioning). For this reason, Architect, Interviewer, and Fresco all automatically update your protocols to the latest schema version when you import or open them.
 
 ## What it means for you
 
@@ -81,7 +79,7 @@ Migrating a protocol happens within Architect, Fresco, and Interviewer, and is a
 
 Schema version 8 is the current, latest protocol schema version. Support for it depends on which apps you use:
 
-- **Architect**, **Fresco**, and **Interviewer** (beta) support schema 8.
+- **Architect**, **Fresco**, and **Interviewer** support schema 8, and can migrate all prior schema versions.
 - **Architect Classic** and **Interviewer Classic** support schema 7 and earlier.
 
 This has two practical consequences:
@@ -110,7 +108,7 @@ Schema version 8 introduces several new interfaces and authoring features:
 - **New per-variable `encrypted` flag.** Marks a variable's values for on-device encryption; it is set via the experimental Anonymisation interface rather than the general variable editor.
 - **New comparator options for skip logic and filters:** "contains" and "does not contain".
 - **Multi-selection support** for the "includes"/"excludes" comparators on ordinal and categorical variables.
-- **Configurable node "shape" property** (default circle); the previous `iconVariant` property was renamed to `icon`.
+- **Configurable default and variable-driven node shapes.** Choose circle, square, or diamond as a node type's default, or [map its shape from a node variable](/en/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape). The previous `iconVariant` property was renamed to `icon`.
 - **Optional "hint" property on form fields** (a markdown string shown as extra guidance to participants), plus a `showValidationHints` option to automatically display hints derived from validation rules.
 - **New top-level `experiments` field on protocols.** A JSON channel (default `{}`) that carries protocol-level experiment/feature toggles consumed by the interview engine, allowing opt-in interview behaviours to be introduced without further schema changes.
 - **Various cleanup:** removed the deprecated, unused `displayVariable` property and the unused `options` property on boolean Toggle variables; filter rule entity naming was standardized; and a `name` property is now required on the protocol.
@@ -119,14 +117,14 @@ Schema version 8 introduces several new interfaces and authoring features:
 
 Consult the table below for information about which schema versions are supported by each released version of the Network Canvas software. Note that schema 8 is no longer tied to specific Architect Classic / Interviewer Classic version numbers — it is supported by the Architect and Fresco web apps and by Interviewer.
 
-| Schema Version | Features                                                                                                                                                                                                                                                  | Architect Versions                | Interviewer Versions |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------- |
-| 8              | New Geospatial, experimental Anonymisation, One-to-many dyad census, and Family pedigree interfaces. New `greaterThanVariable`/`lessThanVariable` validation and "contains"/"does not contain" comparators. Configurable node shape and form-field hints. | Architect                         | Fresco, Interviewer  |
-| 7              | Minimum/maximum alter counts on name generators. Additional skip logic options for categorical variables.                                                                                                                                                 | 6.4.0                             | \> 6.3.0             |
-| 6              | New "roster name generator" interface. Automatic node layout on the sociogram.                                                                                                                                                                            | 6.3.0, 6.3.1                      | \> 6.2.0             |
-| 5              | Supports "tie-strength census" interface. Adds "unique", "same as", and "different from" validation options. Adds the interview script section.                                                                                                           | 6.1.0, 6.1.1, 6.2.0, 6.2.1, 6.2.2 | \> 6.1.0             |
-| 4              | Initial stable release schema. Introduces stricter variable naming requirements.                                                                                                                                                                          | 6.0.0, 6.0.1, 6.0.2, 6.0.3        | \> 6.0.0             |
-| 1.0.0          | Obsolete alpha schema.                                                                                                                                                                                                                                    |                                   |                      |
+| Schema Version | Features                                                                                                                                                                                                                                                                                | Architect Versions                | Interviewer Versions |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------- |
+| 8              | New Geospatial, experimental Anonymisation, One-to-many dyad census, and Family pedigree interfaces. New `greaterThanVariable`/`lessThanVariable` validation and "contains"/"does not contain" comparators. Configurable default and variable-driven node shapes, and form-field hints. | Architect                         | Fresco, Interviewer  |
+| 7              | Minimum/maximum alter counts on name generators. Additional skip logic options for categorical variables.                                                                                                                                                                               | 6.4.0                             | \> 6.3.0             |
+| 6              | New "roster name generator" interface. Automatic node layout on the sociogram.                                                                                                                                                                                                          | 6.3.0, 6.3.1                      | \> 6.2.0             |
+| 5              | Supports "tie-strength census" interface. Adds "unique", "same as", and "different from" validation options. Adds the interview script section.                                                                                                                                         | 6.1.0, 6.1.1, 6.2.0, 6.2.1, 6.2.2 | \> 6.1.0             |
+| 4              | Initial stable release schema. Introduces stricter variable naming requirements.                                                                                                                                                                                                        | 6.0.0, 6.0.1, 6.0.2, 6.0.3        | \> 6.0.0             |
+| 1.0.0          | Obsolete alpha schema.                                                                                                                                                                                                                                                                  |                                   |                      |
 
 ## Technical implementation of schema migration
 
