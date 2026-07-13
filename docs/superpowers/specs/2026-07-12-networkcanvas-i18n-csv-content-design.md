@@ -17,8 +17,8 @@ This work includes:
 - US English, UK English, and Spanish versions of every page and all user-facing
   copy.
 - Locale-prefixed routes under `/en-US`, `/en-GB`, and `/es`.
-- Browser-language redirects from `/` and unprefixed routes through the
-  `next-intl` proxy, plus permanent legacy download redirects.
+- Browser-language redirects from `/` and unprefixed routes through a Netlify
+  Edge Function, plus locale-preserving legacy download redirects.
 - A locale selector in the desktop navigation, mobile navigation, and footer.
 - Build-time CSV content for Latest News, Recent Publications, Grants, and Core
   Team.
@@ -50,21 +50,20 @@ All content pages use an explicit locale prefix:
 | Home        | `/en-US`             | `/en-GB`             | `/es`             |
 | Get Started | `/en-US/get-started` | `/en-GB/get-started` | `/es/get-started` |
 
-The app deploys with the Next.js runtime rather than `output: 'export'`. The
-All locale content pages are still pre-rendered during `next build`,
-while `proxy.ts` runs through the Netlify Next.js runtime to negotiate locale
-redirects.
+The app deploys as a Next.js static export. All locale content pages are
+pre-rendered during `next build`, while a Netlify Edge Function negotiates
+locale redirects before the CDN serves the generated files.
 
-The root `/` and unprefixed `/get-started` routes are handled by the next-intl
-proxy. A saved `nf_lang` preference takes precedence over `Accept-Language`; a
-Spanish preference redirects to the Spanish equivalent, UK English preferences
-use `/en-GB`, and all other requests use US English at `/en-US`. Explicitly
-prefixed routes remain stable.
+The root `/` and unprefixed `/get-started` routes are handled by the locale Edge
+Function. A saved `NEXT_LOCALE` preference takes precedence over
+`Accept-Language`; a Spanish preference redirects to the Spanish equivalent,
+UK English preferences use `/en-GB`, and all other requests use US English at
+`/en-US`. Explicitly prefixed routes remain stable.
 
 The legacy `/download`, `/en-US/download`, `/en-GB/download`, and `/es/download`
 routes remain only as permanent redirects. The localised legacy routes retain
-their locale, while the unprefixed route uses the same runtime locale
-negotiation. The proxy also normalises the cited legacy `/download.html` URL. No
+their locale, while the unprefixed route uses the same edge locale negotiation.
+The Edge Function also normalises the cited legacy `/download.html` URL. No
 download route renders page content or declares canonical metadata.
 
 Temporary redirects are required because browser language preferences can
@@ -79,8 +78,8 @@ The website mirrors the proven `next-intl` structure already used by
 - `next.config.ts` is wrapped with the `next-intl` plugin.
 - Routing configuration declares `en-US`, `en-GB`, and `es`, with `en-US` as the
   default locale and an always-prefixed URL strategy.
-- `proxy.ts` composes next-intl middleware with normalization for the legacy
-  `/download.html` route.
+- `netlify/edge-functions/locale.ts` imports the shared locale registry, uses
+  FormatJS best-fit matching, and normalises the legacy `/download.html` route.
 - Request configuration loads the complete message catalog for the requested
   locale.
 - Locale layouts validate route parameters, call `setRequestLocale`, set the
@@ -269,7 +268,7 @@ failing before production changes.
 - the selector switches the equivalent route;
 - metadata, canonical URLs, alternate links, and document language are
   localized; and
-- root proxy negotiation selects Spanish for Spanish requests, UK English for
+- root edge negotiation selects Spanish for Spanish requests, UK English for
   UK English requests, and US English otherwise.
 
 ### Completion checks
@@ -279,7 +278,7 @@ failing before production changes.
 - lint runs with automatic fixes and passes;
 - all touched files pass the project formatter;
 - `pnpm knip` passes;
-- the production Next.js runtime build passes; and
+- the production static export build passes; and
 - the build pre-renders `/en-US`, `/en-GB`, `/es`, and their Get Started routes,
   while download paths contain redirects only.
 

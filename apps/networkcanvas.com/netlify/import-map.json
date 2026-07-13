@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@formatjs/intl-localematcher": "https://esm.sh/@formatjs/intl-localematcher@0.8.9"
+  }
+}

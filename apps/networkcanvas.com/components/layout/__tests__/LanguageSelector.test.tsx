@@ -5,16 +5,17 @@ import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { LanguageSelector } from '../LanguageSelector';
 
-const router = vi.hoisted(() => ({ replace: vi.fn() }));
+const switchLocale = vi.hoisted(() => vi.fn());
 
 vi.mock('~/lib/i18n/navigation', () => ({
   usePathname: () => '/get-started',
-  useRouter: () => router,
 }));
+
+vi.mock('~/lib/i18n/clientLocale', () => ({ switchLocale }));
 
 describe('LanguageSelector', () => {
   beforeEach(() => {
-    router.replace.mockClear();
+    switchLocale.mockClear();
   });
 
   afterEach(cleanup);
@@ -30,9 +31,7 @@ describe('LanguageSelector', () => {
     fireEvent.mouseDown(englishOption);
     fireEvent.click(englishOption);
 
-    expect(router.replace).toHaveBeenCalledWith('/get-started', {
-      locale: 'en-GB',
-    });
+    expect(switchLocale).toHaveBeenCalledWith('en-GB', '/get-started');
     expect(onNavigate).toHaveBeenCalledOnce();
   });
 

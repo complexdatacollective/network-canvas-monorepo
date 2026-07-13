@@ -1279,6 +1279,9 @@ importers:
       '@fontsource-variable/nunito':
         specifier: 'catalog:'
         version: 5.2.7
+      '@formatjs/intl-localematcher':
+        specifier: ^0.8.9
+        version: 0.8.9
       csvtojson:
         specifier: 'catalog:'
         version: 2.0.14
@@ -1310,6 +1313,9 @@ importers:
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@netlify/edge-functions':
+        specifier: ^3.0.8
+        version: 3.0.8
       '@tailwindcss/postcss':
         specifier: 'catalog:'
         version: 4.3.2
@@ -4449,6 +4455,14 @@ packages:
 
   '@neoconfetti/react@1.0.0':
     resolution: {integrity: sha512-klcSooChXXOzIm+SE5IISIAn3bYzYfPjbX7D7HoqZL84oAfgREeSg5vSIaSFH+DaGzzvImTyWe1OyrJ67vik4A==}
+
+  '@netlify/edge-functions@3.0.8':
+    resolution: {integrity: sha512-ml1oCDsRTTRmZS2nUj8XRD1b6+foEiZT3lPk7qQ4nv/jnxylHJ20ooPzPDH+cJmGjXFrMeR14/91W1o6D2ftBg==}
+    engines: {node: '>=18.0.0'}
+
+  '@netlify/types@2.8.0':
+    resolution: {integrity: sha512-8/g0Pt6y6wXj5Ia5eeYLiXhRfWeqZXGXpGFeCiiQdUOem+FPtXdA4+YdGxqzWc7D0AvptKSO01KGeeVWHSu8Kg==}
+    engines: {node: ^18.14.0 || >=20}
 
   '@next/bundle-analyzer@16.2.10':
     resolution: {integrity: sha512-KcepWhb3IVniZgm00GSSCQDEUQqZXuXtuXRh8J6e3Un342TcQ77iK4DedeEkct+fcx7yFEDL2J6z4Jeho5JDAw==}
@@ -17142,6 +17156,12 @@ snapshots:
     optional: true
 
   '@neoconfetti/react@1.0.0': {}
+
+  '@netlify/edge-functions@3.0.8':
+    dependencies:
+      '@netlify/types': 2.8.0
+
+  '@netlify/types@2.8.0': {}
 
   '@next/bundle-analyzer@16.2.10':
     dependencies:

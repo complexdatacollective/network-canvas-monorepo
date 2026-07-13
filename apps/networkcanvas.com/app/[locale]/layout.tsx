@@ -1,3 +1,6 @@
+import '@fontsource-variable/nunito';
+import '@fontsource-variable/inclusive-sans';
+import '~/app/globals.css';
 import type { Metadata } from 'next';
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
 import {
@@ -21,6 +24,7 @@ type LocaleMetadataProps = {
 };
 
 export const generateStaticParams = getStaticLocaleParams;
+export const dynamicParams = false;
 
 export async function generateMetadata({
   params,

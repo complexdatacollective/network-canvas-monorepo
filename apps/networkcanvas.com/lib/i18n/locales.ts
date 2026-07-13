@@ -28,7 +28,17 @@ export const supportedLocales = [
 
 export type Locale = (typeof supportedLocales)[number]['locale'];
 
+export const defaultLocale: Locale = 'en-US';
+export const localeCookie = {
+  name: 'NEXT_LOCALE',
+  maxAge: 31_536_000,
+  sameSite: 'lax',
+} as const;
 export const locales = supportedLocales.map(({ locale }) => locale);
+
+export function isLocale(value: string): value is Locale {
+  return supportedLocales.some(({ locale }) => locale === value);
+}
 
 export function getLocaleDefinition(locale: Locale) {
   const definition = supportedLocales.find(

@@ -9,7 +9,7 @@
   "tags": ["-public"],
   "workspaces": {
     "apps/networkcanvas.com": {
-      "entry": ["lib/i18n/request.ts"]
+      "entry": ["lib/i18n/request.ts", "netlify/edge-functions/locale.ts"]
     },
     "apps/documentation": {
       "ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]

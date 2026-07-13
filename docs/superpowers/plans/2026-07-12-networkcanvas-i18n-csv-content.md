@@ -1,5 +1,10 @@
 # NetworkCanvas.com Internationalisation and CSV Content Implementation Plan
 
+> **Deployment update (2026-07-13):** The completed implementation now uses a
+> Next.js static export. A Netlify Edge Function negotiates unprefixed locale
+> routes with the shared locale registry and `NEXT_LOCALE` cookie; the earlier
+> `proxy.ts` and Next.js runtime instructions below are superseded.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use

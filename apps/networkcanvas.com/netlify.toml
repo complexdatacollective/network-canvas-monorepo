@@ -1,6 +1,11 @@
 [build]
 command = "pnpm exec turbo run build --filter=networkcanvas.com"
-publish = "apps/networkcanvas.com/.next"
+publish = "apps/networkcanvas.com/out"
+edge_functions = "apps/networkcanvas.com/netlify/edge-functions"
 
 [build.environment]
+NETLIFY_NEXT_PLUGIN_SKIP = "true"
 NODE_OPTIONS = "--max-old-space-size=4096"
+
+[functions]
+deno_import_map = "apps/networkcanvas.com/netlify/import-map.json"

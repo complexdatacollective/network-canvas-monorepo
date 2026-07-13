@@ -109,8 +109,9 @@
         "font-modules.d.ts",
         "lib/**",
         "messages/**",
+        "netlify/**",
+        "netlify.toml",
         "public/**",
-        "proxy.ts",
         "types.d.ts",
         "next.config.*",
         "postcss.config.*",
@@ -118,7 +119,7 @@
         "package.json"
       ],
       "env": ["NODE_ENV"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
     "networkcanvas.com#typecheck": {
       "dependsOn": ["^build"],
@@ -129,7 +130,7 @@
         "font-modules.d.ts",
         "lib/**",
         "messages/**",
-        "proxy.ts",
+        "netlify/**",
         "types.d.ts",
         "next.config.*",
         "tsconfig*.json",
@@ -145,8 +146,8 @@
         "content/**",
         "lib/**",
         "messages/**",
+        "netlify/**",
         "test/**",
-        "proxy.ts",
         "vitest.config.*",
         "vitest.setup.*",
         "tsconfig*.json",

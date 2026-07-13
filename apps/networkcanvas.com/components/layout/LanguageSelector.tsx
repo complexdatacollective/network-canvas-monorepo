@@ -4,13 +4,14 @@ import { useLocale, useTranslations } from 'next-intl';
 
 import ComboboxField from '@codaco/fresco-ui/form/fields/Combobox/Combobox';
 import type { ComboboxOption } from '@codaco/fresco-ui/form/fields/Combobox/shared';
+import { switchLocale } from '~/lib/i18n/clientLocale';
 import {
   getLocaleDefinition,
   locales,
   supportedLocales,
   type Locale,
 } from '~/lib/i18n/locales';
-import { usePathname, useRouter } from '~/lib/i18n/navigation';
+import { usePathname } from '~/lib/i18n/navigation';
 
 function normalizeSearchTerm(value: string) {
   return value
@@ -50,7 +51,6 @@ export function LanguageSelector({ onNavigate }: { onNavigate?: () => void }) {
   const locale = useLocale();
   const t = useTranslations('LanguageSelector');
   const pathname = usePathname();
-  const router = useRouter();
   const activeLocale = getLocaleDefinition(locale);
   const options: ComboboxOption[] = supportedLocales.map((definition) => ({
     value: definition.locale,
@@ -60,7 +60,7 @@ export function LanguageSelector({ onNavigate }: { onNavigate?: () => void }) {
   const navigate = (targetLocale: Locale | undefined) => {
     if (!targetLocale || targetLocale === locale) return;
 
-    router.replace(pathname, { locale: targetLocale });
+    switchLocale(targetLocale, pathname);
     onNavigate?.();
   };
 

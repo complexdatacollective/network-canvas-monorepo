@@ -17,6 +17,7 @@
     "@codaco/tailwind-config": "workspace:*",
     "@fontsource-variable/inclusive-sans": "catalog:",
     "@fontsource-variable/nunito": "catalog:",
+    "@formatjs/intl-localematcher": "^0.8.9",
     "csvtojson": "catalog:",
     "lucide-react": "catalog:",
     "motion": "catalog:",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:*",
+    "@netlify/edge-functions": "^3.0.8",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
