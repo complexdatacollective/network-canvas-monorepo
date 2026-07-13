@@ -9,7 +9,7 @@ import {
   Trash2,
   Upload as UploadIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -138,11 +138,19 @@ export function SettingsDialog({
     setInstallationId(getInstallationId());
   }, []);
 
+  // Monotonic guard: the open-effect and the synthetic-tab effect can both call
+  // reloadSynthetic concurrently, so an earlier (e.g. empty, pre-import-commit)
+  // listProtocols() could otherwise resolve last and clobber a newer result.
+  // Only the latest invocation is allowed to write state.
+  const reloadSyntheticSeq = useRef(0);
+
   const reloadSynthetic = useCallback(async () => {
+    const seq = ++reloadSyntheticSeq.current;
     const [ps, n] = await Promise.all([
       listProtocols(),
       countSyntheticSessions(),
     ]);
+    if (seq !== reloadSyntheticSeq.current) return;
     setProtocols(ps);
     setSyntheticCount(n);
     // Default to the first protocol when none is selected yet.

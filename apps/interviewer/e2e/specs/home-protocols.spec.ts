@@ -33,6 +33,13 @@ test.describe('protocol import & delete', () => {
     page,
   }) => {
     await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+    // Wait for the first import to actually commit before re-importing: the
+    // deck shows the name from the pending card before saveProtocol lands, so
+    // without this the re-import could race a still-pending install instead of
+    // exercising the same-hash upsert this test is about.
+    await expect(page.getByText('Protocol imported')).toBeVisible({
+      timeout: 15_000,
+    });
     await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
     // Content hash is the key, so put() upserts — exactly one card.
     await expect(

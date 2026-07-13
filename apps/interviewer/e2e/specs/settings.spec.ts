@@ -53,6 +53,11 @@ test.describe('settings', () => {
     );
     const width = page.getByRole('spinbutton', { name: 'Screen layout width' });
     await width.fill('800');
+    // The width control is bound to the persisted setting, so waiting for it to
+    // read back 800 confirms the fire-and-forget updateSettings() write has
+    // round-tripped before we reload (otherwise a slow IndexedDB write can lose
+    // the value and make this persistence check flaky).
+    await expect(width).toHaveValue('800');
     await page.reload();
     await openSettings(page);
     await page.getByRole('tab', { name: 'Data export' }).click();

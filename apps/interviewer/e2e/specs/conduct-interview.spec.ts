@@ -165,6 +165,40 @@ test.describe('conducting an interview', () => {
     const stepBefore = await page
       .locator('[data-stage-step]')
       .getAttribute('data-stage-step');
+
+    // InterviewRoute persists currentStep with a fire-and-forget updateSession,
+    // so navigating away immediately can unmount before the write lands and
+    // leave the resume row on the previous step. Wait for the persisted
+    // currentStep (a plaintext field on the session row) to reflect the advance
+    // before leaving.
+    const sessionId = /\/interview\/([^/?#]+)/.exec(page.url())?.[1] ?? '';
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            (id) =>
+              new Promise<number | null>((resolve) => {
+                const req = indexedDB.open('interviewer');
+                req.onsuccess = () => {
+                  const get = req.result
+                    .transaction('sessions', 'readonly')
+                    .objectStore('sessions')
+                    .get(id);
+                  get.onsuccess = () =>
+                    resolve(
+                      (get.result as { currentStep?: number } | undefined)
+                        ?.currentStep ?? null,
+                    );
+                  get.onerror = () => resolve(null);
+                };
+                req.onerror = () => resolve(null);
+              }),
+            sessionId,
+          ),
+        { timeout: 10_000 },
+      )
+      .toBe(Number(stepBefore));
+
     await page.goto('/data');
 
     // Resume via the in-progress row.
