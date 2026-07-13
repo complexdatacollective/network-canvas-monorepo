@@ -50,6 +50,29 @@ describe('Shape Mapping Validation', () => {
     expect(result.success).toBe(true);
   });
 
+  it('accepts a discrete shape mapping for a boolean variable', () => {
+    const protocol = createBaseProtocol();
+    const variables = protocol.codebook.node.person.variables as Record<
+      string,
+      unknown
+    >;
+    variables.is_person = {
+      name: 'Is_Person',
+      type: 'boolean',
+    };
+    protocol.codebook.node.person.shape = {
+      default: 'square',
+      dynamic: {
+        variable: 'is_person',
+        type: 'discrete',
+        map: [{ value: true, shape: 'circle' }],
+      },
+    };
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+    expect(result.success).toBe(true);
+  });
+
   it('accepts a breakpoint shape mapping with 1 threshold', () => {
     const protocol = createBaseProtocol();
     protocol.codebook.node.person.shape = {
