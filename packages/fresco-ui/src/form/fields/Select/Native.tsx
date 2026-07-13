@@ -39,16 +39,14 @@ export default function SelectField(props: SelectProps) {
     onChange?.(selectedOption?.value ?? selectedValue);
   };
 
-  const hasValue = value !== undefined && value !== null && value !== '';
-
-  // Render a leading empty option whenever the current value matches no option,
-  // otherwise the browser silently displays the first option as if it were
-  // selected even though state is still empty — so choosing that first option
-  // fires no change event. An explicit placeholder always renders; without one
-  // we fall back to a generic label.
   const valueMatchesOption = options.some(
     (option) => String(option.value) === String(normalizedValue),
   );
+
+  // Fall back to the placeholder when the value matches no option, so a stale
+  // value can't leave the browser showing the first option as if selected.
+  const displayValue = valueMatchesOption ? normalizedValue : '';
+  const hasValue = displayValue !== '';
   const placeholderLabel = placeholder ?? 'Select an option…';
   const showPlaceholderOption =
     placeholder !== undefined || !valueMatchesOption;
@@ -65,7 +63,7 @@ export default function SelectField(props: SelectProps) {
         autoComplete="off"
         {...rest}
         name={name}
-        value={valueMatchesOption ? normalizedValue : ''}
+        value={displayValue}
         disabled={Boolean(disabled) || Boolean(readOnly)}
         aria-readonly={readOnly || rest['aria-readonly'] || undefined}
         onChange={handleChange}

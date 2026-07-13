@@ -319,6 +319,7 @@ export default function RichTextEditorField({
   const [linkValidationMessage, setLinkValidationMessage] = useState('');
   const [isEditingExistingLink, setIsEditingExistingLink] = useState(false);
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const options = normalizeToolbarOptions(toolbarOptions);
   const editorId = id ?? name ?? 'rich-text-editor';
   const editorName = name ?? editorId;
@@ -489,14 +490,16 @@ export default function RichTextEditorField({
       return;
     }
 
-    if (editor.isFocused) return;
+    // Don't overwrite the editor mid-edit; the effect re-runs on blur
+    // (isFocused is a dependency) to apply any value change deferred here.
+    if (isFocused) return;
 
     const currentContent = JSON.stringify(editor.getJSON());
     const newContent = JSON.stringify(value);
     if (currentContent !== newContent) {
       editor.commands.setContent(value, { emitUpdate: false });
     }
-  }, [editor, value]);
+  }, [editor, value, isFocused]);
 
   useEffect(() => {
     if (editor) {
@@ -634,11 +637,15 @@ export default function RichTextEditorField({
         state: inputState,
         className,
       })}
-      onFocus={onFocus}
+      onFocus={(event) => {
+        setIsFocused(true);
+        onFocus?.(event);
+      }}
       onBlur={(event) => {
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
           return;
         }
+        setIsFocused(false);
         onBlur?.(event);
       }}
     >
