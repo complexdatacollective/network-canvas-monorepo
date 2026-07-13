@@ -19,10 +19,20 @@ export function Hero() {
     >
       <div className="tablet-portrait:flex-row tablet-portrait:justify-start tablet-portrait:text-left flex w-full flex-col-reverse items-center justify-center text-center">
         <div className="tablet-portrait:items-start flex flex-col items-center justify-center">
-          <FancyHeading level="h1" className="text-4xl">
+          <FancyHeading
+            level="h1"
+            margin="none"
+            className="font-heading text-cyber-grape tablet-portrait:text-[4rem] tablet-portrait:leading-[1.04] tablet-landscape:text-[4.5rem] tablet-landscape:leading-[1.02] desktop:text-[5rem] mx-auto max-w-5xl text-center text-4xl font-black"
+          >
             {t('Hero.title')}
           </FancyHeading>
-          <FancyParagraph intent="lead">{t('Hero.tagline')}</FancyParagraph>
+          <FancyParagraph
+            intent="lead"
+            margin="none"
+            className="text-cyber-grape tablet-portrait:text-left tablet-landscape:text-xl text-center text-lg leading-relaxed"
+          >
+            {t('Hero.tagline')}
+          </FancyParagraph>
           <DocSearchComponent
             className="tablet-landscape:inline-flex mt-4 hidden !w-full max-w-2xl rounded-3xl text-base"
             large

@@ -66,12 +66,8 @@ export default async function MainLayout(props: MainLayoutProps) {
   }
 
   return (
-    <html
-      lang={locale}
-      suppressHydrationWarning
-      className="font-body antialiased"
-    >
-      <body className="flex min-h-dvh flex-col text-base">
+    <html lang={locale} suppressHydrationWarning className="font-body">
+      <body className="flex min-h-dvh flex-col">
         <PostHogClientProvider>
           <ThemeProvider
             enableSystem
