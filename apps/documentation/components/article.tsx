@@ -46,7 +46,11 @@ export default function Article({
           >
             {sectionLabel} {subsection && <>🠖 {subsection}</>}
           </Heading>
-          <FancyHeading level="h1" className="!mt-0">
+          {/* The title is the last child of <header>, so fresco's
+              not-last:mb-[0.5em] never applies — force a bottom margin so the
+              title is separated from the content below. !mt-0 keeps the top
+              tight to the eyebrow above. */}
+          <FancyHeading level="h1" className="mt-0! mb-6">
             {title}
           </FancyHeading>
         </header>
