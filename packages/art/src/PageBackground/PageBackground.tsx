@@ -105,6 +105,7 @@ function pointOnScrollCurve(
 
 function getDocumentLayoutBox(element: HTMLDivElement): DocumentLayoutBox {
   const rect = element.getBoundingClientRect();
+  const isFixed = window.getComputedStyle(element).position === 'fixed';
 
   if (element.offsetWidth <= 0 || element.offsetHeight <= 0) {
     return {
@@ -124,6 +125,12 @@ function getDocumentLayoutBox(element: HTMLDivElement): DocumentLayoutBox {
     top += currentElement.offsetTop;
     const offsetParent: Element | null = currentElement.offsetParent;
     currentElement = offsetParent instanceof HTMLElement ? offsetParent : null;
+  }
+
+  // For fixed elements, convert viewport-relative offsets to document coordinates
+  if (isFixed) {
+    left += window.scrollX;
+    top += window.scrollY;
   }
 
   return {
