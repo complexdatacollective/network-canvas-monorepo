@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { stageSchema } from '@codaco/protocol-validation';
+import { type Filter, stageSchema } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -1057,5 +1057,197 @@ describe('SyntheticInterview', () => {
         }),
       ).toThrow(/node subject/);
     });
+  });
+});
+
+describe('e2e-matrix builder extensions', () => {
+  const filter: Filter = {
+    join: 'AND',
+    rules: [
+      {
+        id: 'rule-1',
+        type: 'node',
+        options: { type: 'person', operator: 'EXISTS' },
+      },
+    ],
+  };
+
+  it('emits skipLogic and stage-level filter on stage configs', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    synth.addStage('NameGenerator', {
+      subject: { entity: 'node', type: person.id },
+      skipLogic: { action: 'SKIP', filter },
+      filter,
+    });
+    const stage = synth.getProtocol().stages[0] as Record<string, unknown>;
+    expect(stage.skipLogic).toEqual({ action: 'SKIP', filter });
+    expect(stage.filter).toEqual(filter);
+  });
+
+  it('emits panel filter', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const ng = synth.addStage('NameGenerator', {
+      subject: { entity: 'node', type: person.id },
+    });
+    ng.addPanel({ title: 'Filtered', dataSource: 'existing', filter });
+    const stage = synth.getProtocol().stages[0] as {
+      panels: { filter?: unknown }[];
+    };
+    expect(stage.panels[0]?.filter).toEqual(filter);
+  });
+
+  it('passes hint/showValidationHints/parameters through form fields', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const af = synth.addStage('AlterForm', {
+      subject: { entity: 'node', type: person.id },
+    });
+    af.addFormField({
+      component: 'Text',
+      hint: 'A helpful hint',
+      showValidationHints: true,
+      parameters: { minLabel: 'Low' },
+    });
+    const stage = synth.getProtocol().stages[0] as {
+      form: { fields: Record<string, unknown>[] };
+    };
+    expect(stage.form.fields[0]?.hint).toBe('A helpful hint');
+    expect(stage.form.fields[0]?.showValidationHints).toBe(true);
+  });
+
+  it('never emits form.title on AlterForm/AlterEdgeForm', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    synth.addStage('AlterForm', {
+      subject: { entity: 'node', type: person.id },
+      form: { title: 'Should be dropped', fields: [] },
+    });
+    const stage = synth.getProtocol().stages[0] as {
+      form: Record<string, unknown>;
+    };
+    expect(stage.form).not.toHaveProperty('title');
+  });
+
+  it('passes sortOrder through Sociogram prompts', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const soc = synth.addStage('Sociogram', {
+      subject: { entity: 'node', type: person.id },
+    });
+    soc.addPrompt({
+      sortOrder: [{ property: 'name', direction: 'asc' }],
+    });
+    const stage = synth.getProtocol().stages[0] as {
+      prompts: { sortOrder?: unknown }[];
+    };
+    expect(stage.prompts[0]?.sortOrder).toEqual([
+      { property: 'name', direction: 'asc' },
+    ]);
+  });
+
+  it('emits Anonymisation validation and protocol experiments', () => {
+    const synth = new SyntheticInterview();
+    synth.addStage('Anonymisation', {
+      validation: { minLength: 4, maxLength: 12 },
+    });
+    synth.setExperiments({ encryptedVariables: true });
+    const stage = synth.getProtocol().stages[0] as Record<string, unknown>;
+    expect(stage.validation).toEqual({ minLength: 4, maxLength: 12 });
+    const payload = synth.getInterviewPayload();
+    expect(payload.protocol.experiments).toEqual({ encryptedVariables: true });
+  });
+
+  it('passes additionalAttributes through NameGenerator-family prompts', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const closeTie = person.addVariable({ type: 'boolean', name: 'closeTie' });
+    const ng = synth.addStage('NameGenerator', {
+      subject: { entity: 'node', type: person.id },
+    });
+    ng.addPrompt({
+      text: 'Who is close to you?',
+      additionalAttributes: [{ variable: closeTie.id, value: true }],
+    });
+    const stage = synth.getProtocol().stages[0] as {
+      prompts: { additionalAttributes?: unknown }[];
+    };
+    expect(stage.prompts[0]?.additionalAttributes).toEqual([
+      { variable: closeTie.id, value: true },
+    ]);
+  });
+
+  it('emits encrypted on node text variables and rejects it on edge/ego', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const nameVar = person.addVariable({
+      type: 'text',
+      name: 'name',
+      encrypted: true,
+    });
+    const codebook = synth.getProtocol().codebook as {
+      node: Record<
+        string,
+        { variables: Record<string, { encrypted?: boolean }> }
+      >;
+    };
+    expect(codebook.node[person.id]?.variables[nameVar.id]?.encrypted).toBe(
+      true,
+    );
+
+    // Redeclaring an existing node variable with encrypted:true mutates the
+    // existing entry rather than being silently dropped by the dedupe branch.
+    const nameVarAgain = person.addVariable({
+      type: 'text',
+      name: 'name',
+      encrypted: true,
+    });
+    expect(nameVarAgain.id).toBe(nameVar.id);
+
+    // Edge/ego variables never carry `encrypted` — protocol-validation's
+    // variable schema rejects it outright for those entities, so the builder
+    // must not thread it through those paths at all.
+    const colleague = synth.addEdgeType({ name: 'Colleague' });
+    const edgeVar = colleague.addVariable({ type: 'text', name: 'note' });
+    const codebookWithEdge = synth.getProtocol().codebook as {
+      edge: Record<
+        string,
+        { variables: Record<string, { encrypted?: boolean }> }
+      >;
+    };
+    expect(
+      codebookWithEdge.edge[colleague.id]?.variables[edgeVar.id],
+    ).not.toHaveProperty('encrypted');
+  });
+
+  it('emits interviewScript verbatim on stage configs', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    synth.addStage('NameGenerator', {
+      subject: { entity: 'node', type: person.id },
+      interviewScript: 'Ask the participant who they trust.',
+    });
+    const stage = synth.getProtocol().stages[0] as Record<string, unknown>;
+    expect(stage.interviewScript).toBe('Ask the participant who they trust.');
+  });
+
+  it('passes hint/showValidationHints through NetworkComposer form fields', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const nc = synth.addStage('NetworkComposer', {
+      subject: { entity: 'node', type: person.id },
+    });
+    nc.addNodeFormField({
+      component: 'Text',
+      label: 'Age',
+      hint: 'Enter age in years',
+      showValidationHints: true,
+    });
+    const stage = synth.getProtocol().stages[0] as {
+      nodeForm: { fields: Record<string, unknown>[] };
+    };
+    expect(stage.nodeForm.fields[0]?.hint).toBe('Enter age in years');
+    expect(stage.nodeForm.fields[0]?.showValidationHints).toBe(true);
   });
 });

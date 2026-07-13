@@ -6,7 +6,9 @@ import type {
   FamilyPedigreeIntroItem,
   FamilyPedigreeNodeConfigInput,
   FamilyPedigreeNominationPromptInput,
+  Filter,
   Item,
+  SkipLogic,
   StageType,
   VariableOption,
   VariableType,
@@ -19,6 +21,10 @@ export type VariableEntry = {
   component?: ComponentType;
   options?: VariableOption[];
   validation?: Record<string, unknown>;
+  parameters?: Record<string, unknown>;
+  // Only meaningful on node text variables; the variable schema rejects
+  // `encrypted` on ego/edge variables, so only the node codebook emits it.
+  encrypted?: boolean;
 };
 
 type ShapeMapping =
@@ -199,12 +205,16 @@ type PanelEntry = {
   id: string;
   title: string;
   dataSource: string;
+  filter?: Filter;
 };
 
 export type StageEntry = {
   id: string;
   type: StageType;
   label: string;
+  interviewScript?: string;
+  skipLogic?: SkipLogic;
+  filter?: Filter;
   subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
   form?: FormEntry;
   prompts: PromptEntry[];
@@ -250,6 +260,7 @@ export type StageEntry = {
     title: string;
     body: string;
   };
+  validation?: { minLength?: number; maxLength?: number };
   // TieStrengthCensus (edge type reference on stage)
   edgeType?: { entity: 'edge'; type: string };
   // FamilyPedigree-specific fields, derived from the protocol-validation schema
@@ -327,11 +338,15 @@ export type AddVariableInput = {
   component?: ComponentType;
   options?: VariableOption[];
   validation?: Record<string, unknown>;
+  parameters?: Record<string, unknown>;
+  encrypted?: boolean;
 };
 
 export type FormFieldInput = {
   variable?: string;
   prompt?: string;
+  hint?: string;
+  showValidationHints?: boolean;
   component: ComponentType;
   parameters?: Record<string, unknown>;
   validation?: Record<string, unknown>;
@@ -343,6 +358,8 @@ export type FormFieldInput = {
 export type NetworkComposerFormFieldInput = {
   variable?: string;
   label?: string;
+  hint?: string;
+  showValidationHints?: boolean;
   component: ComponentType;
   parameters?: Record<string, unknown>;
   validation?: Record<string, unknown>;
@@ -350,6 +367,9 @@ export type NetworkComposerFormFieldInput = {
 
 export type AddStageInput = {
   label?: string;
+  interviewScript?: string;
+  skipLogic?: SkipLogic;
+  filter?: Filter;
   subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
   initialNodes?: InitialNodesSpec;
   initialEdges?: [number, number][];
@@ -394,6 +414,7 @@ export type AddStageInput = {
     title?: string;
     body?: string;
   };
+  validation?: { minLength?: number; maxLength?: number };
   // FamilyPedigree
   nodeConfig?: FamilyPedigreeNodeConfigInput;
   // Derived from the schema's edge config, but the builder fills the non-core
@@ -432,6 +453,8 @@ export type AddNetworkComposerEdgeInput = {
 
 export type AddPromptInput = {
   text?: string;
+  additionalAttributes?: { variable: string; value: boolean }[];
+  sortOrder?: SortRule[];
   layout?: {
     layoutVariable?: string;
   };
