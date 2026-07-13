@@ -4,7 +4,7 @@ import { useReducedMotion } from 'motion/react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
-import { usePageBackgroundTargetRef } from '~/components/ui/PageBackground';
+import { usePageBackgroundTargetRef } from '@codaco/art';
 
 const mediaClasses = 'absolute inset-0 size-full object-cover';
 
