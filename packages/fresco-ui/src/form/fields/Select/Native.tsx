@@ -41,6 +41,18 @@ export default function SelectField(props: SelectProps) {
 
   const hasValue = value !== undefined && value !== null && value !== '';
 
+  // Render a leading empty option whenever the current value matches no option,
+  // otherwise the browser silently displays the first option as if it were
+  // selected even though state is still empty — so choosing that first option
+  // fires no change event. An explicit placeholder always renders; without one
+  // we fall back to a generic label.
+  const valueMatchesOption = options.some(
+    (option) => String(option.value) === String(normalizedValue),
+  );
+  const placeholderLabel = placeholder ?? 'Select an option…';
+  const showPlaceholderOption =
+    placeholder !== undefined || !valueMatchesOption;
+
   return (
     <div
       className={selectWrapperVariants({
@@ -63,7 +75,7 @@ export default function SelectField(props: SelectProps) {
           !hasValue && 'text-current/50 italic',
         )}
       >
-        {placeholder && <option value="">{placeholder}</option>}
+        {showPlaceholderOption && <option value="">{placeholderLabel}</option>}
         {options.map((option) => (
           <option
             key={option.value}

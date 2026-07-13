@@ -86,6 +86,7 @@ const EditEgoRule = ({
           label="Ego variable"
           labelHidden
           name="attribute"
+          placeholder="Select an ego variable…"
           options={variablesAsOptions}
           onChange={handleRuleChange}
           value={optionsWithDefaults.attribute}
@@ -99,6 +100,7 @@ const EditEgoRule = ({
             label="Operator"
             labelHidden
             name="operator"
+            placeholder="Select an operator…"
             options={operatorOptions}
             onChange={handleRuleChange}
             value={optionsWithDefaults.operator}
