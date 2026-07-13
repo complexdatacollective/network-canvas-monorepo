@@ -35,6 +35,12 @@ const LIGHTS = [
 const BackgroundLights = ({ intensity }: { intensity: Intensity }) => (
   <motion.div
     aria-hidden
+    // e2e visual-snapshot hook (apps/architect/e2e/helpers/visual.ts): the
+    // layer's opacity fade-in is a framer-motion tween, immune to
+    // Playwright's animations:'disabled'/reducedMotion:'reduce', so a
+    // screenshot taken mid-fade would be non-deterministic. Baselines hide it
+    // by this testid rather than trying to wait the tween out.
+    data-testid="background-lights"
     className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
     initial={{ opacity: 0 }}
     animate={{ opacity: LAYER_OPACITY[intensity] }}
