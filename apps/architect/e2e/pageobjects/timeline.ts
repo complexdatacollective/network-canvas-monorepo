@@ -38,6 +38,15 @@ export class Timeline {
   async dragStage(fromLabel: string, toLabel: string) {
     const from = this.stageRowByLabel(fromLabel);
     const to = this.stageRowByLabel(toLabel);
+    // Raw `page.mouse.move` targets viewport-relative coordinates and never
+    // triggers a mid-drag auto-scroll the way real pointer input would, so a
+    // `to` row several rows below `from` (each ~200px tall) can sit off the
+    // 720px-tall viewport entirely. Scrolling `from` to the very top (native
+    // `block: 'start'`, not Playwright's `scrollIntoViewIfNeeded`'s
+    // 'nearest' — that landed on inconsistent offsets across rows in
+    // practice) reliably brings both rows' centers on-screen for any `to`
+    // within a couple of rows below `from`.
+    await from.evaluate((el) => el.scrollIntoView({ block: 'start' }));
     const fromBox = await from.boundingBox();
     const toBox = await to.boundingBox();
     if (!fromBox || !toBox) throw new Error('stage row not found');
