@@ -1,0 +1,13 @@
+{
+  "label": "About This Study",
+  "type": "Information",
+  "title": "Welcome",
+  "items": [
+    {
+      "id": "id-1",
+      "type": "text",
+      "content": "Thanks for taking part."
+    }
+  ],
+  "id": "id-2"
+}
