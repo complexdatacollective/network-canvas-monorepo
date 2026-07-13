@@ -65,7 +65,7 @@ export default function SelectField(props: SelectProps) {
         autoComplete="off"
         {...rest}
         name={name}
-        value={normalizedValue}
+        value={valueMatchesOption ? normalizedValue : ''}
         disabled={Boolean(disabled) || Boolean(readOnly)}
         aria-readonly={readOnly || rest['aria-readonly'] || undefined}
         onChange={handleChange}

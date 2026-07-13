@@ -92,7 +92,7 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
               onChange={(checked) =>
                 changeField(form, 'options[0].negative', checked)
               }
-              aria-label="Style option as negative"
+              aria-label="Style Option One as negative"
               className="shrink-0"
             />
           </div>
@@ -120,7 +120,7 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
               onChange={(checked) =>
                 changeField(form, 'options[1].negative', checked)
               }
-              aria-label="Style option as negative"
+              aria-label="Style Option Two as negative"
               className="shrink-0"
             />
           </div>
