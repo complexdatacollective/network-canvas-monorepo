@@ -73,6 +73,10 @@ test.describe('settings', () => {
     const before = await toggle.getAttribute('aria-checked');
     expect(before).not.toBeNull();
     await toggle.click();
+    // Confirm the optimistic flip landed before reloading — this both proves
+    // the click registered and gives the async settings write time to commit,
+    // avoiding a reload-vs-persist race.
+    await expect(toggle).not.toHaveAttribute('aria-checked', before ?? 'true');
     await page.reload();
     await openSettings(page);
     await page.getByRole('tab', { name: 'Interview' }).click();
@@ -147,17 +151,26 @@ test.describe('settings', () => {
     page,
     protocol,
   }) => {
-    // Regression test for the import→Settings race: SettingsDialog used to
-    // query the protocol list only on the dialog's open false→true
-    // transition, never again when the Synthetic tab was later selected. A
-    // protocol imported shortly before Settings opened — its DB write lands
-    // after the deck already shows its pending name — left the synthetic
-    // Protocol selector empty and Generate disabled until the dialog was
-    // closed and reopened. The fix re-queries on tab selection, so this is
-    // deterministic rather than timing-dependent.
+    // End-to-end smoke of the import→Synthetic-data path: a protocol imported
+    // through the UI is selectable in Settings → Synthetic data. The precise
+    // race the fix targets (SettingsDialog only queried protocols on the
+    // dialog's open transition, not on tab selection) is isolated
+    // deterministically in the unit test (SettingsDialog.test.tsx, mocked
+    // empty-then-populated listProtocols); here we simply wait for the import
+    // to commit (the "Protocol imported" toast fires after the DB write) so the
+    // path is exercised without depending on sub-second timing.
     await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+    await expect(page.getByText('Protocol imported')).toBeVisible({
+      timeout: 15_000,
+    });
     await page.getByTestId('settings-trigger').click();
-    await expect(page.getByRole('dialog')).toBeVisible();
+    // Target the Settings dialog's own tab rather than a bare getByRole('dialog')
+    // — right after an import a second (transient) dialog can coexist, so the
+    // bare role is ambiguous. The tab is unique to the Settings dialog and its
+    // click waits for the dialog to be open anyway.
+    await expect(
+      page.getByRole('tab', { name: 'Synthetic data' }),
+    ).toBeVisible();
     await page.getByRole('tab', { name: 'Synthetic data' }).click();
 
     const protocolSelect = page.getByRole('combobox', { name: 'Protocol' });

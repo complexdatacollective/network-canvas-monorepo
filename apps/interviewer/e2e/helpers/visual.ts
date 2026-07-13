@@ -103,22 +103,6 @@ export function makeCapture(page: Page): CaptureFn {
   };
 }
 
-// Standard masks for the Home/status chrome — version string, storage estimate,
-// installation id — whose text is environment-dependent.
-export function statusMasks(page: Page): Locator[] {
-  return [
-    page.getByTestId('encryption-status-trigger'),
-    page.getByTestId('storage-status-trigger'),
-  ];
-}
-
-// The /data table's <tbody> holds synthetic sessions seeded with random case
-// ids, timestamps, and progress on every seed — mask the whole body so the
-// toolbar, status chips, and column headers stay asserted.
-export function dataRowMasks(page: Page): Locator[] {
-  return [page.locator('tbody')];
-}
-
 // Settings → About's storage estimate (the "Storage usage" progress bar and
 // its "X of Y (Z%)" desc text) and per-device installation id vary by
 // environment/browser profile — mask both so the row labels ("Storage",
