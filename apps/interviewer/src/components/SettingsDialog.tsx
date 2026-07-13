@@ -9,7 +9,7 @@ import {
   Trash2,
   Upload as UploadIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -138,11 +138,19 @@ export function SettingsDialog({
     setInstallationId(getInstallationId());
   }, []);
 
+  // Monotonic guard: the open-effect and the synthetic-tab effect can both call
+  // reloadSynthetic concurrently, so an earlier (e.g. empty, pre-import-commit)
+  // listProtocols() could otherwise resolve last and clobber a newer result.
+  // Only the latest invocation is allowed to write state.
+  const reloadSyntheticSeq = useRef(0);
+
   const reloadSynthetic = useCallback(async () => {
+    const seq = ++reloadSyntheticSeq.current;
     const [ps, n] = await Promise.all([
       listProtocols(),
       countSyntheticSessions(),
     ]);
+    if (seq !== reloadSyntheticSeq.current) return;
     setProtocols(ps);
     setSyntheticCount(n);
     // Default to the first protocol when none is selected yet.
@@ -157,6 +165,14 @@ export function SettingsDialog({
     void reload();
     void reloadSynthetic();
   }, [open, reload, reloadSynthetic]);
+
+  // Re-query protocols whenever the Synthetic tab is (re)selected, so a protocol
+  // imported moments before Settings opened — its DB write lands ~0.6-2.1s after
+  // the deck shows its pending name — becomes selectable without reopening.
+  useEffect(() => {
+    if (!open || section !== 'synthetic') return;
+    void reloadSynthetic();
+  }, [open, section, reloadSynthetic]);
 
   const persist = useCallback(
     async (patch: Partial<Omit<StoredSettings, 'id'>>) => {
@@ -521,7 +537,7 @@ export function SettingsDialog({
             {settings ? (
               <>
                 <ManageAuthenticator />
-                {auth.mode !== 'none' ? (
+                {auth.kind === 'unlocked' && auth.mode !== 'none' ? (
                   <>
                     <Alert variant="info">
                       Use the lock button in the top bar to lock immediately.
@@ -564,6 +580,7 @@ export function SettingsDialog({
               <UnconnectedField
                 name="syntheticCount"
                 label="Number of sessions"
+                data-testid="synthetic-count"
                 component={InputField}
                 type="number"
                 min={1}
@@ -609,6 +626,7 @@ export function SettingsDialog({
                     !selectedProtocolHash || isGenerating || noProtocols
                   }
                   icon={<FlaskConical className="size-4" aria-hidden />}
+                  data-testid="synthetic-generate"
                 >
                   {isGenerating ? 'Generating…' : 'Generate'}
                 </Button>

@@ -16,6 +16,7 @@ export default function PasswordUnlockField({
       showStrengthMeter={false}
       required
       autoFocus={autoFocus}
+      data-testid="passphrase-input"
     />
   );
 }

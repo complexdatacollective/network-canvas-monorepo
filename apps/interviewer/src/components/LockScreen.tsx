@@ -39,6 +39,7 @@ function PinLockBody({
               form={formId}
               submittingText="Unlocking…"
               className="phone-landscape:self-center"
+              data-testid="unlock-submit"
             >
               Unlock
             </SubmitButton>
@@ -78,6 +79,7 @@ function PassphraseLockBody({
               form={formId}
               submittingText="Unlocking…"
               className="phone-landscape:self-center"
+              data-testid="unlock-submit"
             >
               Unlock
             </SubmitButton>

@@ -20,7 +20,10 @@
     "test:storybook": "vitest run --project=storybook",
     "storybook": "node ../../scripts/with-turbo.mjs --watch-deps storybook dev -p 6006",
     "build-storybook": "node ../../scripts/with-turbo.mjs storybook build",
-    "chromatic": "chromatic --exit-once-uploaded"
+    "chromatic": "chromatic --exit-once-uploaded",
+    "test:e2e": "./e2e/scripts/run.sh",
+    "test:e2e:update-snapshots": "./e2e/scripts/run.sh --update-snapshots",
+    "test:e2e:headed": "pnpm turbo run build --filter=@codaco/interviewer && playwright test --config e2e/playwright.config.ts --headed"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
@@ -51,6 +54,7 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:",
+    "@playwright/test": "catalog:",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",
     "@storybook/addon-vitest": "catalog:",

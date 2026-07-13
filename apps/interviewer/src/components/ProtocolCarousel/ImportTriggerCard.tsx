@@ -44,6 +44,7 @@ export function ImportTriggerCard({
         {...getInputProps({
           'aria-label': 'Choose a .netcanvas protocol file',
         })}
+        data-testid="protocol-import-input"
       />
       {/* The button fills the whole card so a click anywhere on it — not just
           the centred content — opens the picker. The note below overlays the
