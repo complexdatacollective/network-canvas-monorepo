@@ -59,6 +59,7 @@ jobs:
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
+      interviewer_e2e: ${{ steps.flags.outputs.interviewer_e2e }}
       interface_images: ${{ steps.flags.outputs.interface_images }}
       interview_release_version: ${{ steps.flags.outputs.interview_release_version }}
     steps:
@@ -203,6 +204,13 @@ jobs:
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
             echo "interview_e2e=$intv"
+            # interviewer-e2e runs on any change in @codaco/interviewer's
+            # workspace dependency tree — the app (incl. its e2e suite/baselines),
+            # every shared package it depends on, and @codaco/protocols (which
+            # holds the e2e protocol fixture). Same value as the `interviewer`
+            # deploy flag, but a dedicated output so the e2e gate stays decoupled
+            # from the preview-deploy gate (mirrors interview_e2e).
+            echo "interviewer_e2e=$intvr"
             echo "interface_images=$ifimg"
             echo "interview_release_version=$interview_release_version"
           } >> "$GITHUB_OUTPUT"
@@ -730,7 +738,7 @@ jobs:
 
   interviewer-e2e:
     needs: [quality, detect]
-    if: ${{ !cancelled() && needs.detect.outputs.interviewer == 'true' }}
+    if: ${{ !cancelled() && needs.detect.outputs.interviewer_e2e == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -1487,7 +1495,7 @@ jobs:
           FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
           FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
           FLAG_INTERVIEW_E2E: ${{ needs.detect.outputs.interview_e2e }}
-          FLAG_INTERVIEWER_E2E: ${{ needs.detect.outputs.interviewer }}
+          FLAG_INTERVIEWER_E2E: ${{ needs.detect.outputs.interviewer_e2e }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         with:
