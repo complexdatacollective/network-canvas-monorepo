@@ -5,7 +5,15 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 export type SeedAsset = {
   assetId: string;
   name: string;
-  data: Blob | string;
+  // Utf8 text content of the asset file. Wrapped into a real `Blob` inside
+  // `seedProtocol`'s `page.evaluate` callback (browser context) rather than
+  // here: a `Blob` constructed in Node wouldn't survive serialisation across
+  // the evaluate boundary intact (Playwright's argument serializer has no
+  // special case for it, so it arrives as an empty plain object) — and every
+  // row this writes into the `assets` store represents a file-backed asset,
+  // which `~/utils/bundleProtocol.ts` requires to carry `Blob` data (a
+  // string there is treated as an apikey value and skipped from exports).
+  data: string;
 };
 
 const DB_NAME = 'ArchitectProtocolDB';
@@ -89,7 +97,9 @@ export async function seedProtocol(
             assetId: asset.assetId,
             protocolId: storageId,
             name: asset.name,
-            data: asset.data,
+            // Built here (inside the evaluate callback) so it's a real,
+            // browser-native `Blob` — see the `SeedAsset.data` comment.
+            data: new Blob([asset.data]),
           });
         }
       });

@@ -30,7 +30,10 @@ export function loadAllInterfacesFixture(): {
   // assets/) — `mapbox_token` is an inline `value` apikey with no `source`,
   // so it isn't a StoredAsset and isn't loaded here. Names mirror the
   // manifest's own `name` field so a seeded StoredAsset's `name` matches
-  // what the app would display for it.
+  // what the app would display for it. Read as utf8 text: `seedProtocol`
+  // wraps each asset's `data` into a real (browser-native) `Blob` inside its
+  // `page.evaluate` callback — a `Blob` built here, in Node, wouldn't survive
+  // serialisation across the evaluate boundary intact.
   const geojson = readFileSync(
     path.join(FIXTURE_DIR, 'assets', 'regions.geojson'),
     'utf8',
