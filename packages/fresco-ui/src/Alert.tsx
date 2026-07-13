@@ -64,25 +64,33 @@ const alertVariants = cva({
       className:
         'text-warning-contrast bg-warning [--link:var(--warning-contrast)]',
     },
+    // Soft tints are an OPAQUE blend of the intent colour into the surface
+    // (`color-mix`), not the intent colour at low opacity — so the tint reads
+    // the same regardless of what sits behind the alert. `--surface` is
+    // theme-aware, so the blend still adapts to dark mode.
     {
       variant: 'info',
       appearance: 'soft',
-      className: 'bg-info/10 [--link:var(--info)]',
+      className:
+        'bg-[color-mix(in_oklab,var(--info)_10%,var(--surface))] [--link:var(--info)]',
     },
     {
       variant: 'destructive',
       appearance: 'soft',
-      className: 'bg-destructive/10 [--link:var(--destructive)]',
+      className:
+        'bg-[color-mix(in_oklab,var(--destructive)_10%,var(--surface))] [--link:var(--destructive)]',
     },
     {
       variant: 'success',
       appearance: 'soft',
-      className: 'bg-success/10 [--link:var(--success)]',
+      className:
+        'bg-[color-mix(in_oklab,var(--success)_10%,var(--surface))] [--link:var(--success)]',
     },
     {
       variant: 'warning',
       appearance: 'soft',
-      className: 'bg-warning/10 [--link:var(--warning)]',
+      className:
+        'bg-[color-mix(in_oklab,var(--warning)_10%,var(--surface))] [--link:var(--warning)]',
     },
     {
       variant: 'accent',
@@ -93,9 +101,14 @@ const alertVariants = cva({
     {
       variant: 'accent',
       appearance: 'soft',
-      className: 'bg-accent/10 [--link:var(--accent)]',
+      className:
+        'bg-[color-mix(in_oklab,var(--accent)_10%,var(--surface))] [--link:var(--accent)]',
     },
-    { variant: 'default', appearance: 'soft', className: 'bg-current/5' },
+    {
+      variant: 'default',
+      appearance: 'soft',
+      className: 'bg-[color-mix(in_oklab,currentColor_5%,var(--surface))]',
+    },
   ],
   defaultVariants: {
     variant: 'default',
