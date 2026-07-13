@@ -43,8 +43,8 @@ async function readNarrativePedigreeStage(
               (candidate): candidate is Record<string, unknown> =>
                 typeof candidate === 'object' &&
                 candidate !== null &&
-                (candidate as Record<string, unknown>).type ===
-                  'NarrativePedigree',
+                'type' in candidate &&
+                candidate.type === 'NarrativePedigree',
             )
           : undefined;
         return stage ? 'ready' : 'pending';
