@@ -28,6 +28,14 @@ export async function seedProtocol(
 ): Promise<string> {
   const id = opts.id ?? FIXED_ID;
   const name = opts.name ?? protocol.name;
+  // Mirror the app's own autosave invariant: protocolLibraryListener.ts always
+  // flushes `name: protocol.name` (protocolLibraryListener.ts:185), so the
+  // library row's display name and the protocol JSON's own `name` field are
+  // never independent. A caller-supplied `opts.name` must land in both, not
+  // just the row's denormalized field, or a read-back of the protocol JSON
+  // would disagree with what was asked to be seeded.
+  const seededProtocol: CurrentProtocol =
+    opts.name === undefined ? protocol : { ...protocol, name };
 
   // 1. Seed sessionStorage BEFORE the app boots, so redux-remember rehydrates
   //    straight into /protocol with this protocol active. Both keys must
@@ -44,7 +52,7 @@ export async function seedProtocol(
         JSON.stringify({ present: proto, activeProtocolId: storageId }),
       );
     },
-    [id, protocol] as const,
+    [id, seededProtocol] as const,
   );
 
   // 2. Navigate once so Dexie creates ArchitectProtocolDB, then write the
@@ -91,7 +99,7 @@ export async function seedProtocol(
       dbName: DB_NAME,
       storageId: id,
       protocolName: name,
-      proto: protocol,
+      proto: seededProtocol,
       assets: opts.assets ?? [],
     },
   );
