@@ -1,4 +1,4 @@
-import { type Page } from '@playwright/test';
+import { type Locator, type Page } from '@playwright/test';
 
 // VariableSpotlight (Form/Fields/VariablePicker/VariableSpotlight.tsx) is
 // opened by VariablePickerControl's own button, whose text is
@@ -24,11 +24,22 @@ import { type Page } from '@playwright/test';
 // categorical pickers such as "Group hull variable" or the bin/tie-strength
 // interfaces' locked-options pickers), use `createVariableWithOptions`
 // below once that dialog is open.
+//
+// `opts.scope`: NodeConfiguration.tsx (NetworkComposer) renders three
+// `VariablePicker`s at once (quickAdd/layoutVariable/convexHullVariable),
+// each still showing the unselected-state "Select variable" button
+// (VariablePicker.tsx: `value ? 'Change variable' : 'Select variable'`) — an
+// unscoped `page.getByRole('button', { name: 'Select variable' })` hits all
+// three and Playwright strict-mode throws. Pass the enclosing field's
+// `Locator` (e.g. `editor.field('quickAdd')` — `data-field-name` seam, Task
+// 2) to disambiguate the trigger click; the spotlight dialog itself is a
+// page-level portal (not a descendant of that field), so everything after
+// the click still resolves against `page`, same as the unscoped case.
 export async function createVariableViaSpotlight(
   page: Page,
-  opts: { variableName: string; buttonName?: string },
+  opts: { variableName: string; buttonName?: string; scope?: Locator },
 ): Promise<void> {
-  await page
+  await (opts.scope ?? page)
     .getByRole('button', { name: opts.buttonName ?? 'Select variable' })
     .click();
   const search = page.getByRole('searchbox', {
