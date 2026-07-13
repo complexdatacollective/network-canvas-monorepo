@@ -9,6 +9,24 @@
   "codebook": {
     "ego": {
       "variables": {
+        "participant_consent": {
+          "name": "participant_consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "validation": { "required": true },
+          "options": [
+            {
+              "label": "Yes. I agree to take part.",
+              "value": true,
+              "negative": false
+            },
+            {
+              "label": "No. I do not agree to take part.",
+              "value": false,
+              "negative": true
+            }
+          ]
+        },
         "k6_1": {
           "name": "k6_1",
           "type": "ordinal",
@@ -263,27 +281,48 @@
         {
           "id": "researcher-notes",
           "type": "text",
-          "content": "## For researchers\n\n_Delete this screen before you field the study. It lists the instruments and studies this template draws on._\n\n- [Kessler RC et al. The K6 psychological distress scale (overview, Cognitive Atlas).](https://www.cognitiveatlas.org/task/id/tsk_OA90UJX5qwTyc/)\n- [Offer S, Fischer CS (2018). They Drive Me Crazy: Difficult Social Ties and Subjective Well-Being (UCNets). *J Health Soc Behav*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC9242844/)\n- [GSS \"important matters\" generator — Contributions of the GSS to Egocentric Network Research (TR45).](https://gss.norc.org/content/dam/gss/get-documentation/pdf/reports/topical-reports/TR45%20Egocentric%20Network.pdf)"
+          "content": "## For researchers\n\n_Delete this screen before you field the study. It lists the instruments and studies this template draws on._\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n- [Kessler RC et al. The K6 psychological distress scale (overview, Cognitive Atlas).](https://www.cognitiveatlas.org/task/id/tsk_OA90UJX5qwTyc/)\n- [Offer S, Fischer CS (2018). They Drive Me Crazy: Difficult Social Ties and Subjective Well-Being (UCNets). *J Health Soc Behav*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC9242844/)\n- [GSS \"important matters\" generator — Contributions of the GSS to Egocentric Network Research (TR45).](https://gss.norc.org/content/dam/gss/get-documentation/pdf/reports/topical-reports/TR45%20Egocentric%20Network.pdf)"
         }
       ]
     },
     {
       "id": "information-intro",
-      "type": "Information",
+      "type": "EgoForm",
       "label": "Welcome and consent",
-      "title": "About this interview",
-      "items": [
-        {
-          "id": "intro-welcome",
-          "type": "text",
-          "content": "## Thank you for taking part\n\nIn this interview we will talk about the people in your life and how they relate to your mental health and wellbeing. We will ask you to name people who **support** you, and also people who are sometimes a **source of stress, conflict, or strain**. There are no right or wrong answers — we are simply interested in your own experience.\n\n### Some of these questions are personal\n\nWe will ask about how you have been feeling recently and about who knows about your mental health. You are free to skip any question, to pause, or to stop the interview at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nBy continuing, you confirm that the researcher has explained the study to you, that you have had the chance to ask questions, and that you agree to take part. If you would like to stop at any point, just let the interviewer know.\n\n**If talking about these topics brings up difficult feelings, please tell the interviewer — support is available, and there is a list of services at the end of the interview.**"
-        }
-      ]
+      "introductionPanel": {
+        "title": "About this interview",
+        "text": "## Thank you for taking part\n\nIn this interview we will talk about the people in your life and how they relate to your mental health and wellbeing. We will ask you to name people who **support** you, and also people who are sometimes a **source of stress, conflict, or strain**. There are no right or wrong answers — we are simply interested in your own experience.\n\n### Some of these questions are personal\n\nWe will ask about how you have been feeling recently and about who knows about your mental health. You are free to skip any question, to pause, or to stop the interview at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If reading or talking about these topics brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate local support whether or not you choose to participate.**"
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "participant_consent",
+            "prompt": "Do you consent to participate in this study?"
+          }
+        ]
+      }
     },
     {
       "id": "ego-form-background",
       "type": "EgoForm",
       "label": "About you",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "fbbf3e37-d0d9-45c8-9974-5305b452e274",
+              "type": "ego",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": { "type": "finish" }
+      },
       "introductionPanel": {
         "title": "A few questions about you",
         "text": "Before we talk about the people in your life, we would like to ask how you have been feeling **over the last 30 days**. Please answer as honestly as you can. Remember you can skip any question you would prefer not to answer."

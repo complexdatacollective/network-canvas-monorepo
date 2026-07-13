@@ -1,6 +1,6 @@
 'use client';
 
-import { EyeOff, LayoutTemplate } from 'lucide-react';
+import { EyeOff, LayoutTemplate, RouteOff } from 'lucide-react';
 import { motion, useReducedMotion, type Variants } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
@@ -17,7 +17,11 @@ import manifest, {
 } from '@codaco/interface-images/manifest';
 
 import { useCurrentStep } from '../contexts/CurrentStepContext';
-import { getSkipMap } from '../selectors/skip-logic';
+import {
+  getSkipMap,
+  getStageAvailabilityMap,
+  type StageAvailability,
+} from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
 import { getProtocolStages } from '../store/modules/protocol';
 
@@ -44,7 +48,8 @@ type StageItem = {
   label: string;
   position: string;
   isCurrent: boolean;
-  isSkipped: boolean;
+  isUnavailable: boolean;
+  availability: StageAvailability;
 };
 
 // Stable id for the listbox so the host drawer can move initial focus onto it
@@ -185,6 +190,7 @@ export default function StagesMenu({
 }: StagesMenuProps) {
   const stages = useSelector(getProtocolStages);
   const { displayedStep: currentStageIndex } = useCurrentStep();
+  const availabilityMap = useSelector(getStageAvailabilityMap);
   const skipMap = useSelector(getSkipMap);
   const reduceMotion = useReducedMotion() ?? false;
 
@@ -208,9 +214,10 @@ export default function StagesMenu({
         label: stage.label.trim() ? stage.label : 'Untitled stage',
         position: String(index + 1),
         isCurrent: index === currentStageIndex,
-        isSkipped: skipMap[index] === true,
+        isUnavailable: skipMap[index] === true,
+        availability: availabilityMap[index] ?? { kind: 'available' },
       })),
-    [stages, currentStageIndex, skipMap],
+    [stages, currentStageIndex, availabilityMap, skipMap],
   );
 
   const currentId = items[currentStageIndex]?.id;
@@ -334,6 +341,15 @@ export default function StagesMenu({
       </motion.span>
     );
 
+    const availabilityStatus =
+      item.availability.kind === 'local-skip'
+        ? 'Hidden by answers'
+        : item.availability.kind === 'bypassed'
+          ? 'Outside current path'
+          : null;
+    const AvailabilityIcon =
+      item.availability.kind === 'bypassed' ? RouteOff : EyeOff;
+
     const label = (
       <motion.span
         variants={variants.content}
@@ -341,11 +357,19 @@ export default function StagesMenu({
         initial={animate}
         animate={animate}
         className={cx(
-          'text-sm leading-tight font-bold wrap-break-word',
-          isHorizontal ? 'line-clamp-2 text-center' : 'min-w-0 flex-1',
+          'flex flex-col gap-1 text-sm leading-tight font-bold wrap-break-word',
+          isHorizontal ? 'items-center text-center' : 'min-w-0 flex-1',
         )}
       >
-        {item.label}
+        <span className={isHorizontal ? 'line-clamp-2' : undefined}>
+          {item.label}
+        </span>
+        {availabilityStatus && (
+          <span className="text-text/75 flex items-center gap-1 text-xs font-medium">
+            <AvailabilityIcon className="size-3.5 shrink-0" aria-hidden />
+            <span>{availabilityStatus}</span>
+          </span>
+        )}
       </motion.span>
     );
 
@@ -366,13 +390,12 @@ export default function StagesMenu({
         )}
       >
         {picture}
-        {item.isSkipped && (
+        {item.isUnavailable && (
           <span
-            role="img"
-            aria-label="Skipped"
+            aria-hidden
             className="bg-cerulean-blue elevation-low absolute top-1 right-1 flex size-6 items-center justify-center rounded-full text-white"
           >
-            <EyeOff className="size-3.5" aria-hidden />
+            <AvailabilityIcon className="size-3.5" />
           </span>
         )}
       </motion.span>
@@ -496,7 +519,7 @@ export default function StagesMenu({
       }}
       onFilterResultsChange={(keys) => setMatchingKeys(keys)}
       id={STAGES_MENU_LIST_ID}
-      aria-label="Stages"
+      aria-label="Interview screens"
       className="min-h-0 flex-1"
       viewportClassName={isHorizontal ? 'py-6' : 'py-4'}
       emptyState={

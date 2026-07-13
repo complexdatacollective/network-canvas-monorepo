@@ -34,6 +34,7 @@ import { reportError } from '~/utils/reportError';
 import {
   buildProtocolWithStage,
   normalizePreviewStage,
+  shouldOverridePreviewStage,
 } from './buildProtocolWithStage';
 import { formName } from './configuration';
 import type { SectionComponent } from './Interfaces';
@@ -128,14 +129,11 @@ const StageEditor = (props: StageEditorProps) => {
     }
 
     let cancelled = false;
-    // Validate the exact stage shape preview will launch (same skip-logic
-    // handling) so the disabled state can't disagree with what clicking Preview
-    // would actually do.
+    // Validate the exact stage shape preview will launch so the disabled state
+    // can't disagree with what clicking Preview would actually do. The initial
+    // one-stage override is runtime-only; skip logic remains in this shape.
     const runValidation = () => {
-      const { stage: stageToValidate } = normalizePreviewStage(
-        formValues,
-        ignoreSkipLogic,
-      );
+      const stageToValidate = normalizePreviewStage(formValues);
       const wipProtocol = buildProtocolWithStage(
         protocol,
         stageToValidate,
@@ -172,7 +170,7 @@ const StageEditor = (props: StageEditorProps) => {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [protocol, formValues, id, insertAtIndex, ignoreSkipLogic]);
+  }, [protocol, formValues, id, insertAtIndex]);
 
   // Preview is disabled when the form has obvious field-level errors (immediate
   // feedback) or when the wip protocol fails schema validation (comprehensive,
@@ -246,10 +244,7 @@ const StageEditor = (props: StageEditorProps) => {
       return;
     }
 
-    const { stage: normalizedStage, skipLogicBypassed } = normalizePreviewStage(
-      formValues,
-      ignoreSkipLogic,
-    );
+    const normalizedStage = normalizePreviewStage(formValues);
     const previewProtocol = buildProtocolWithStage(
       protocol,
       normalizedStage,
@@ -279,6 +274,11 @@ const StageEditor = (props: StageEditorProps) => {
     const startStage = Math.min(
       Math.max(desiredStartStage, 0),
       previewProtocol.stages.length - 1,
+    );
+    const skipLogicBypassed = shouldOverridePreviewStage(
+      previewProtocol,
+      startStage,
+      ignoreSkipLogic,
     );
     setIsOpeningPreview(true);
     try {
@@ -327,6 +327,12 @@ const StageEditor = (props: StageEditorProps) => {
     [interfaceType],
   );
 
+  const isExistingStage = stageIndex !== -1;
+  const protocolStageCount = protocol?.stages.length ?? 0;
+  const stagePosition = isExistingStage
+    ? stageIndex
+    : (insertAtIndex ?? protocolStageCount);
+
   const renderSections = (sectionsList: readonly SectionComponent[]) =>
     sectionsList.map(
       (SectionComponent: SectionComponent, sectionIndex: number) => {
@@ -336,6 +342,7 @@ const StageEditor = (props: StageEditorProps) => {
             key={sectionKey}
             form={formName}
             stagePath={stagePath}
+            stagePosition={stagePosition}
             interfaceType={interfaceType}
           />
         );
@@ -344,11 +351,6 @@ const StageEditor = (props: StageEditorProps) => {
 
   const stageName =
     (formValues?.label as string | undefined) ?? stage?.label ?? 'New stage';
-  const isExistingStage = stageIndex !== -1;
-  const protocolStageCount = protocol?.stages.length ?? 0;
-  const stagePosition = isExistingStage
-    ? stageIndex
-    : (insertAtIndex ?? protocolStageCount);
   const stageNumber = stagePosition + 1;
   const totalStages = protocolStageCount + (isExistingStage ? 0 : 1);
   const previewLabel = isOpeningPreview ? 'Opening preview…' : 'Preview';
@@ -370,7 +372,8 @@ const StageEditor = (props: StageEditorProps) => {
           onChange={(checked) => dispatch(setPreviewIgnoreSkipLogic(!!checked))}
         />
         <span className="text-sm">
-          Always show this stage in preview when skip logic would hide it
+          Always show this stage in preview when skip logic would otherwise make
+          it unavailable
         </span>
       </label>
     </div>

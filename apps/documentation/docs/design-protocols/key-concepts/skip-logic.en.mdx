@@ -35,9 +35,9 @@ To add skip logic to a stage, open it from the timeline view, and click **Use sk
 
 To disable skip logic for a stage, click the toggle at the top of this section.
 
-You can see which stages have skip logic enabled by looking for the skip logic icon next to the stage on the timeline.
-
-![](/assets/img/key-concepts/skip-logic/skip-icon.png)
+You can see which stages have skip logic enabled from the badge beside each
+stage on the timeline. The badge also shows where the interview continues when
+that stage is skipped.
 
 ## Skip logic rules
 
@@ -71,6 +71,31 @@ For example, if you wished to skip a stage based on whether a categorical variab
 Think carefully about the logical implications of your join operator when changing this property, as it can be counter-intuitive. It is very easy to make your rule too specific using the `AND` operator!
 
 </TipBox>
+
+## Choosing where to continue
+
+By default, hiding a stage continues the interview at the next stage whose own
+skip logic allows it to be shown. You can instead choose a specific later stage
+or the interview finish screen in the **When this stage is skipped** field.
+
+The destination belongs to the stage that may be hidden. For example, suppose
+an Ego Form records consent and the rest of the interview should be bypassed
+when consent is not given. Add the consent rule to the first stage after the
+consent form, then choose **End the interview** as that stage's destination.
+This routes to the normal finish screen, where the interview is completed using
+the usual confirmation flow.
+
+Only forward destinations are available. When a destination is used, every
+stage between the hidden stage and the destination is bypassed. The destination
+still evaluates its own skip logic, so the interview may continue farther if
+that stage is also hidden.
+
+Skip logic is recalculated from the current interview data. Moving back to an
+earlier stage and changing an answer can therefore reopen stages that were
+previously bypassed. When stage navigation is enabled, a skipped or bypassed
+stage can also be shown after confirmation. This override opens only the
+selected stage; continuing forward or backward returns to the active interview
+path.
 
 ## Extended example
 

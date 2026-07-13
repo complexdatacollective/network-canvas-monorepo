@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { type Stage, stageSchema } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type SkipLogic,
+  type SkipLogicDestination,
+  type Stage,
+  stageSchema,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -113,7 +119,178 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
   } as unknown as Stage;
 }
 
+function makeInformationStage(id: string, skipLogic?: SkipLogic): Stage {
+  return {
+    id,
+    label: id,
+    type: 'Information',
+    items: [],
+    skipLogic,
+  } as Stage;
+}
+
+function makeTypedNameGeneratorStage(id: string, nodeType: string): Stage {
+  return makeNameGeneratorStage({
+    id,
+    label: id,
+    subject: { entity: 'node', type: nodeType },
+    prompts: [{ id: `${id}-prompt`, text: id }],
+    behaviours: { minNodes: 2, maxNodes: 2 },
+  });
+}
+
+function makeHiddenSkipLogic(
+  destination?: SkipLogicDestination,
+  action: SkipLogic['action'] = 'SKIP',
+): SkipLogic {
+  return {
+    action,
+    filter: {
+      rules: [
+        {
+          id: `${action.toLowerCase()}-consent-rule`,
+          type: 'ego',
+          options: {
+            attribute: asEntityAttributeReference('consent'),
+            operator: action === 'SKIP' ? 'NOT_EXISTS' : 'EXISTS',
+          },
+        },
+      ],
+    },
+    destination,
+  };
+}
+
+function makeSkipRoutingCodebook(): Codebook {
+  const nodeDefinition = {
+    color: 'node-color-seq-1',
+    variables: { 'var-name': { name: 'Name', type: 'text' } },
+  };
+
+  return makeCodebook({
+    ego: {
+      variables: {
+        consent: { name: 'Consent', type: 'boolean' },
+      },
+    },
+    node: {
+      bypassed: nodeDefinition,
+      destination: nodeDefinition,
+      final: nodeDefinition,
+    },
+  });
+}
+
 describe('generateNetwork', () => {
+  describe('targeted skip destinations', () => {
+    it('preserves the legacy one-stage skip when destination is absent', () => {
+      const stages = [
+        makeTypedNameGeneratorStage('skipped', 'bypassed'),
+        makeTypedNameGeneratorStage('next', 'destination'),
+      ];
+      stages[0] = {
+        ...stages[0]!,
+        skipLogic: makeHiddenSkipLogic(),
+      } as Stage;
+
+      const { network } = generateNetwork(makeSkipRoutingCodebook(), stages, {
+        seed: 42,
+        respectSkipLogicAndFiltering: true,
+      });
+
+      expect(network.nodes).toHaveLength(2);
+      expect(network.nodes.every((node) => node.type === 'destination')).toBe(
+        true,
+      );
+    });
+
+    it('jumps over intermediate stages to a forward stage destination', () => {
+      const stages = [
+        makeInformationStage(
+          'source',
+          makeHiddenSkipLogic({ type: 'stage', stageId: 'target' }),
+        ),
+        makeTypedNameGeneratorStage('middle', 'bypassed'),
+        makeTypedNameGeneratorStage('target', 'destination'),
+      ];
+
+      const { network } = generateNetwork(makeSkipRoutingCodebook(), stages, {
+        seed: 42,
+        respectSkipLogicAndFiltering: true,
+      });
+
+      expect(network.nodes).toHaveLength(2);
+      expect(network.nodes.every((node) => node.type === 'destination')).toBe(
+        true,
+      );
+    });
+
+    it('stops generation at a finish destination', () => {
+      const stages = [
+        makeInformationStage(
+          'source',
+          makeHiddenSkipLogic({ type: 'finish' }, 'SHOW'),
+        ),
+        makeTypedNameGeneratorStage('unreachable', 'bypassed'),
+      ];
+
+      const { network } = generateNetwork(makeSkipRoutingCodebook(), stages, {
+        seed: 42,
+        respectSkipLogicAndFiltering: true,
+      });
+
+      expect(network.nodes).toHaveLength(0);
+    });
+
+    it('evaluates a hidden destination and follows its chained destination', () => {
+      const stages = [
+        makeInformationStage(
+          'source',
+          makeHiddenSkipLogic({ type: 'stage', stageId: 'second-source' }),
+        ),
+        makeTypedNameGeneratorStage('first-middle', 'bypassed'),
+        makeInformationStage(
+          'second-source',
+          makeHiddenSkipLogic({ type: 'stage', stageId: 'target' }),
+        ),
+        makeTypedNameGeneratorStage('second-middle', 'bypassed'),
+        makeTypedNameGeneratorStage('target', 'final'),
+      ];
+
+      const { network } = generateNetwork(makeSkipRoutingCodebook(), stages, {
+        seed: 42,
+        respectSkipLogicAndFiltering: true,
+      });
+
+      expect(network.nodes).toHaveLength(2);
+      expect(network.nodes.every((node) => node.type === 'final')).toBe(true);
+    });
+
+    it('does not activate skip logic on a bypassed stage', () => {
+      const stages = [
+        makeInformationStage(
+          'source',
+          makeHiddenSkipLogic({ type: 'stage', stageId: 'target' }),
+        ),
+        makeInformationStage(
+          'bypassed-finish',
+          makeHiddenSkipLogic({ type: 'finish' }),
+        ),
+        makeTypedNameGeneratorStage('target', 'destination'),
+      ];
+
+      const { network } = generateNetwork(makeSkipRoutingCodebook(), stages, {
+        seed: 42,
+        respectSkipLogicAndFiltering: true,
+      });
+
+      expect(network.nodes).toHaveLength(2);
+      expect(network.nodes.every((node) => node.type === 'destination')).toBe(
+        true,
+      );
+    });
+  });
+
   describe('FamilyPedigree stage', () => {
     it('should use nodeConfig.type for node types, not a hardcoded fallback', () => {
       const codebook = makeCodebook();

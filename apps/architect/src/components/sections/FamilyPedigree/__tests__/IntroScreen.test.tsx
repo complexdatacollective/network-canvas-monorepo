@@ -123,6 +123,7 @@ const renderSection = () => {
       <IntroScreen
         form="edit-stage"
         stagePath={null}
+        stagePosition={0}
         interfaceType="FamilyPedigree"
       />
     </Provider>,

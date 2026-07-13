@@ -62,6 +62,8 @@ export type StageEditorSectionProps = {
   form: string;
   /** Path to stage in Redux state (e.g., "stages[0]"), or null if creating a new stage */
   stagePath: string | null;
+  /** Zero-based stage position, including the prospective insertion position */
+  stagePosition: number;
   /** Type of the interface/stage being edited */
   interfaceType: StageType;
 };

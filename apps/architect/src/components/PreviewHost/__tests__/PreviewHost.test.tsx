@@ -137,6 +137,44 @@ describe('PreviewHost', () => {
     expect(call.currentStep).toBe(3);
   });
 
+  it('passes a one-stage initial override without removing skip logic', () => {
+    render(<PreviewHost />);
+    const baseProtocol = makeProtocol();
+    const protocol = {
+      ...baseProtocol,
+      stages: [
+        {
+          ...baseProtocol.stages[0],
+          skipLogic: {
+            action: 'SKIP',
+            filter: { join: 'AND', rules: [] },
+          },
+        },
+      ],
+    };
+    postPayload(
+      openerStub,
+      makePayload({ protocol, startStage: 0, skipLogicBypassed: true }),
+    );
+
+    const call = shellMock.mock.calls.at(-1)?.[0] as {
+      payload: InterviewPayload;
+      initialStageOverrideIndex?: number;
+    };
+    expect(call.initialStageOverrideIndex).toBe(0);
+    expect(call.payload.protocol.stages[0]).toHaveProperty('skipLogic');
+  });
+
+  it('omits the initial override when preview skip logic is active', () => {
+    render(<PreviewHost />);
+    postPayload(openerStub, makePayload({ skipLogicBypassed: false }));
+
+    const call = shellMock.mock.calls.at(-1)?.[0] as {
+      initialStageOverrideIndex?: number;
+    };
+    expect(call.initialStageOverrideIndex).toBeUndefined();
+  });
+
   it('seeds a synthetic network when useSyntheticData is true', () => {
     render(<PreviewHost />);
     postPayload(openerStub, makePayload({ useSyntheticData: true }));

@@ -18,8 +18,8 @@ export type PreviewPayload = {
   protocolId: string;
   startStage: number;
   useSyntheticData: boolean;
-  // True when skip logic was stripped from the previewed stage so it always
-  // shows. The preview surfaces a notice on that stage when this is set.
+  // True when the previewed stage should receive a one-stage initial override
+  // so it always shows. Its real skip logic remains in the protocol.
   skipLogicBypassed: boolean;
   // In-memory fallback assets ferried from the editor realm (blobs survive
   // structured clone over postMessage). Empty in the normal IndexedDB path.
