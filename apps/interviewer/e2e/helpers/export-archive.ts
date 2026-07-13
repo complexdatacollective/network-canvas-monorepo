@@ -4,11 +4,14 @@ export function graphmlNodeCount(graphml: string): number {
   return matches ? matches.length : 0;
 }
 
-// Find an entry whose filename ends with the given suffix; return its text.
-export function readEntry(
+// Return the text of every archive entry whose filename ends with the suffix.
+// An export batch produces one file per session, so a single-match lookup would
+// skip (and fail to validate) the rest of the batch.
+export function readEntries(
   files: Record<string, string>,
   suffix: string,
-): string | undefined {
-  const key = Object.keys(files).find((k) => k.endsWith(suffix));
-  return key ? files[key] : undefined;
+): string[] {
+  return Object.keys(files)
+    .filter((k) => k.endsWith(suffix))
+    .map((k) => files[k] ?? '');
 }

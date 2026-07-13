@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/test.js';
-import { graphmlNodeCount, readEntry } from '../helpers/export-archive.js';
+import { graphmlNodeCount, readEntries } from '../helpers/export-archive.js';
 import {
   LEAN_E2E_PROTOCOL_NAME,
   LEAN_E2E_PROTOCOL_PATH,
@@ -133,11 +133,16 @@ test.describe('interview data management', () => {
     // `.graphml`, since `.graphml`/`graphml` collide) — verified directly
     // against packages/network-exporters/src/utils/general.ts's
     // makeFilename/getFileExtension.
-    const graphml = readEntry(files, '.graphml');
-    expect(graphml).toBeDefined();
-    expect(graphmlNodeCount(graphml ?? '')).toBeGreaterThan(0);
-    const egoCsv = readEntry(files, '_ego.csv');
-    expect(egoCsv).toBeDefined();
+    const graphmls = readEntries(files, '.graphml');
+    expect(graphmls.length).toBeGreaterThan(0);
+    // Every exported (complete) session's GraphML must contain nodes — validate
+    // the whole batch, not just the first entry.
+    for (const graphml of graphmls) {
+      expect(graphmlNodeCount(graphml)).toBeGreaterThan(0);
+    }
+    // One GraphML and one ego CSV per exported session.
+    const egoCsvs = readEntries(files, '_ego.csv');
+    expect(egoCsvs).toHaveLength(graphmls.length);
 
     // Export-complete toast, and the Exported facet now flips.
     await expect(page.getByText('Export complete')).toBeVisible();

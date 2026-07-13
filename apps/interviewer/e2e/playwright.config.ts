@@ -32,7 +32,10 @@ export default defineConfig({
     video: 'retain-on-failure',
     actionTimeout: 10_000,
     navigationTimeout: 15_000,
-    viewport: { width: 1920, height: 1080 },
+    // No top-level `viewport` here: the chromium project uses the
+    // devices['Desktop Chrome'] preset (1280x720), which supplies its own
+    // viewport and would override a top-level one anyway. The baselines are
+    // captured at that preset size.
     // reducedMotion lives under contextOptions (not top-level, unlike its `use`
     // siblings above) to work around a @playwright/test@1.61.1 TS2769 overload
     // resolution bug — don't "simplify" this back, it reintroduces the type error.

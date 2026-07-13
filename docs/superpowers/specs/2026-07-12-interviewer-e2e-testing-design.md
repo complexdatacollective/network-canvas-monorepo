@@ -76,7 +76,7 @@ _Alternatives considered and rejected:_
 
 ## 4. Directory layout
 
-```
+```text
 apps/interviewer/e2e/
   playwright.config.ts
   fixtures/

@@ -735,6 +735,10 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          # The Dockerized test run mounts the workspace; don't leave the
+          # checkout token in .git/config for test/build code to read.
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - name: Run E2E tests
         run: ./apps/interviewer/e2e/scripts/run.sh

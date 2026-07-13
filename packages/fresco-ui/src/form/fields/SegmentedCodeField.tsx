@@ -263,7 +263,7 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
     <fieldset
       className={cx(segmentGroupVariants({ size }), className)}
       aria-label={rest['aria-describedby'] ? undefined : 'Code input'}
-      data-testid={`segmented-code-${name}`}
+      data-testid={name ? `segmented-code-${name}` : undefined}
     >
       {Array.from({ length: segments }, (_, i) => (
         <span key={i} className="contents">
