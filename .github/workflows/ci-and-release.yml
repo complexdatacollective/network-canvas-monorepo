@@ -483,7 +483,7 @@ jobs:
       - id: deploy
         name: Build and deploy networkcanvas.com preview
         run: |
-          json=$(npx --yes netlify-cli@22 deploy --build \
+          json=$(npx --yes netlify-cli@26 deploy --build \
                    --filter=networkcanvas.com \
                    --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" \
                    --alias="pr-${{ github.event.number }}" --json)
@@ -570,7 +570,7 @@ jobs:
       - id: deploy
         name: Build and deploy networkcanvas.com production
         run: |
-          json=$(npx --yes netlify-cli@22 deploy --build --prod \
+          json=$(npx --yes netlify-cli@26 deploy --build --prod \
                    --filter=networkcanvas.com \
                    --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
           echo "$json" | jq .
