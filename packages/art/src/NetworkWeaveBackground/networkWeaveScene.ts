@@ -3,16 +3,18 @@ import { seedToRng } from '../Pattern/seed';
 export const NETWORK_WEAVE_WIDTH = 1600;
 export const NETWORK_WEAVE_HEIGHT = 900;
 
-export type NetworkWeaveFocus = {
-  x?: number;
-  y?: number;
-  radius?: number;
-};
-
-export type ResolvedNetworkWeaveFocus = {
+/**
+ * The weave throat in normalized screen coordinates: (0, 0) is the rendered
+ * SVG's top-left and (1, 1) is its bottom-right, regardless of flow direction.
+ */
+export type NetworkWeaveConvergence = {
   x: number;
   y: number;
-  radius: number;
+};
+
+export type ResolvedNetworkWeaveConvergence = {
+  x: number;
+  y: number;
 };
 
 export type NetworkWeaveOrientation = 'horizontal' | 'vertical';
@@ -74,24 +76,12 @@ export const clampNetworkWeaveValue = (
 export const formatNetworkWeaveValue = (value: number) =>
   Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
 
-export const resolveNetworkWeaveFocus = (
-  focus?: NetworkWeaveFocus,
-): ResolvedNetworkWeaveFocus => {
-  const x = clampNetworkWeaveValue(focus?.x ?? 0.5, 0.3, 0.7, 0.5);
-  const y = clampNetworkWeaveValue(focus?.y ?? 0.45, 0.3, 0.7, 0.45);
-  const maximumRadius = Math.min(0.28, x - 0.1, 0.9 - x, y - 0.1, 0.9 - y);
-
-  return {
-    x,
-    y,
-    radius: clampNetworkWeaveValue(
-      focus?.radius ?? 0.22,
-      0.08,
-      maximumRadius,
-      0.22,
-    ),
-  };
-};
+export const resolveNetworkWeaveConvergence = (
+  convergence?: NetworkWeaveConvergence,
+): ResolvedNetworkWeaveConvergence => ({
+  x: clampNetworkWeaveValue(convergence?.x ?? 0.15, 0, 1, 0.15),
+  y: clampNetworkWeaveValue(convergence?.y ?? 0.45, 0, 1, 0.45),
+});
 
 const pointToString = ({ x, y }: NetworkWeavePoint) =>
   `${formatNetworkWeaveValue(x)} ${formatNetworkWeaveValue(y)}`;
@@ -134,18 +124,18 @@ const distribute = (count: number, start: number, end: number) => {
 
 const createLaneCrosses = (
   strands: number,
-  focusCross: number,
-  focusRadius: number,
+  convergenceCross: number,
+  clearanceRadius: number,
 ) => {
   const topCount = Math.ceil(strands / 2);
   const bottomCount = strands - topCount;
   const topInner = clampNetworkWeaveValue(
-    focusCross - focusRadius - 0.065,
+    convergenceCross - clearanceRadius - 0.065,
     0.14,
     0.36,
   );
   const bottomInner = clampNetworkWeaveValue(
-    focusCross + focusRadius + 0.065,
+    convergenceCross + clearanceRadius + 0.065,
     0.64,
     0.86,
   );
@@ -193,42 +183,39 @@ const createRibbonShape = (
 
 const createRibbonProfiles = ({
   laneCrosses,
-  focusAxis,
-  focusCross,
-  focusRadius,
+  convergenceAxis,
+  convergenceCross,
+  clearanceRadius,
   colorCount,
   orientation,
   flare,
 }: {
   laneCrosses: number[];
-  focusAxis: number;
-  focusCross: number;
-  focusRadius: number;
+  convergenceAxis: number;
+  convergenceCross: number;
+  clearanceRadius: number;
   colorCount: number;
   orientation: NetworkWeaveOrientation;
   flare: number;
 }): RibbonProfile[] => {
-  const mergeAxis = clampNetworkWeaveValue(
-    focusAxis - focusRadius - 0.13,
-    0.12,
-    0.48,
+  const endAxis = 1.04;
+  const outgoingSpan = endAxis - convergenceAxis;
+  const firstControlAxis =
+    convergenceAxis + Math.min(0.3236, outgoingSpan * 0.48);
+  const secondControlAxis = Math.max(
+    0.96,
+    firstControlAxis + (endAxis - firstControlAxis) * 0.35,
   );
-  const firstControlAxis = clampNetworkWeaveValue(
-    focusAxis - focusRadius * 0.12,
-    mergeAxis + 0.18,
-    0.68,
-  );
-  const secondControlAxis = 0.96;
   const crossDimension =
     orientation === 'horizontal' ? NETWORK_WEAVE_HEIGHT : NETWORK_WEAVE_WIDTH;
   const width = (pixels: number) => pixels / crossDimension;
 
   return laneCrosses.map((laneCross, laneIndex) => {
-    const side = laneCross < focusCross ? -1 : 1;
-    const innerBoundary = focusCross + side * (focusRadius + 0.055);
+    const side = laneCross < convergenceCross ? -1 : 1;
+    const innerBoundary = convergenceCross + side * (clearanceRadius + 0.055);
     const bypassCross = laneCross + (innerBoundary - laneCross) * 0.74;
     const mergeCross =
-      focusCross + (laneIndex - (laneCrosses.length - 1) / 2) * 0.014;
+      convergenceCross + (laneIndex - (laneCrosses.length - 1) / 2) * 0.014;
     const bandCross = (laneIndex + 0.5) / laneCrosses.length;
     const positionalFlare = Math.min(1, flare);
     const endCross = laneCross + (bandCross - laneCross) * positionalFlare;
@@ -244,7 +231,7 @@ const createRibbonProfiles = ({
     return {
       points: [
         {
-          position: { axis: mergeAxis, cross: mergeCross },
+          position: { axis: convergenceAxis, cross: mergeCross },
           halfWidth: width(3.2),
         },
         {
@@ -262,7 +249,7 @@ const createRibbonProfiles = ({
           halfWidth: secondControlWidth,
         },
         {
-          position: { axis: 1.04, cross: endCross },
+          position: { axis: endAxis, cross: endCross },
           halfWidth: endWidth,
         },
       ],
@@ -333,7 +320,7 @@ const createNetworkWeaveScene = ({
   complexity,
   strands,
   colorCount,
-  focus,
+  convergence,
   orientation,
   reverse,
   flare,
@@ -342,33 +329,39 @@ const createNetworkWeaveScene = ({
   complexity: number;
   strands: number;
   colorCount: number;
-  focus: ResolvedNetworkWeaveFocus;
+  convergence: ResolvedNetworkWeaveConvergence;
   orientation: NetworkWeaveOrientation;
   reverse: boolean;
   flare: number;
 }): NetworkWeaveScene => {
   const rng = seedToRng(`${seed}::network-weave`);
   const project = createProjector(orientation, reverse);
-  const focusAxis =
+  const convergenceAxis =
     orientation === 'horizontal'
       ? reverse
-        ? 1 - focus.x
-        : focus.x
+        ? 1 - convergence.x
+        : convergence.x
       : reverse
-        ? 1 - focus.y
-        : focus.y;
-  const focusCross = orientation === 'horizontal' ? focus.y : focus.x;
-  const laneCrosses = createLaneCrosses(strands, focusCross, focus.radius);
+        ? 1 - convergence.y
+        : convergence.y;
+  const convergenceCross =
+    orientation === 'horizontal' ? convergence.y : convergence.x;
+  const clearanceRadius = 0.22;
+  const laneCrosses = createLaneCrosses(
+    strands,
+    convergenceCross,
+    clearanceRadius,
+  );
   const profiles = createRibbonProfiles({
     laneCrosses,
-    focusAxis,
-    focusCross,
-    focusRadius: focus.radius,
+    convergenceAxis,
+    convergenceCross,
+    clearanceRadius,
     colorCount,
     orientation,
     flare,
   });
-  const mergeAxis = profiles[0]?.points[0].position.axis ?? 0.22;
+  const mergeAxis = profiles[0]?.points[0].position.axis ?? 0.15;
   const tributaries = Array.from(
     { length: complexity },
     (_, index): NetworkWeavePath => {

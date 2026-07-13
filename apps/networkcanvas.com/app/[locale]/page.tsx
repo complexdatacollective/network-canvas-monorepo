@@ -2,7 +2,7 @@ import { hasLocale } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
-import { PageBackground } from '@codaco/art';
+import { PageBackgroundProvider } from '@codaco/art';
 import { Footer } from '~/components/layout/Footer';
 import { CoreTeam } from '~/components/sections/CoreTeam';
 import { DesignPrinciples } from '~/components/sections/DesignPrinciples';
@@ -30,25 +30,26 @@ export default async function HomePage({ params }: HomePageProps) {
     await loadSiteContent(locale);
 
   return (
-    <main className="relative isolate">
-      <PageBackground />
-      <div className="relative z-10">
-        <HeroIntro newsItems={newsItems} />
+    <main className="homepage-body relative isolate">
+      <PageBackgroundProvider>
+        <div className="relative z-10">
+          <HeroIntro newsItems={newsItems} />
 
-        <Tools />
-        <VideoSection />
+          <Tools />
+          <VideoSection />
 
-        <DesignPrinciples />
+          <DesignPrinciples />
 
-        <Grants grants={grants} />
-        <Publications publications={publications} />
-        <CoreTeam members={coreTeam} />
-        <ScientificAdvisors />
-        <Institutions />
-        <WhatNext />
+          <Grants grants={grants} />
+          <Publications publications={publications} />
+          <CoreTeam members={coreTeam} />
+          <ScientificAdvisors />
+          <Institutions />
+          <WhatNext />
 
-        <Footer />
-      </div>
+          <Footer />
+        </div>
+      </PageBackgroundProvider>
     </main>
   );
 }

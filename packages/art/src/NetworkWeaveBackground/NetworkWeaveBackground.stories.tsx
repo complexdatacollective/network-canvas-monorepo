@@ -12,7 +12,7 @@ const meta = {
       description: {
         component: `A deterministic SVG background that gathers a dense network through a compact throat and opens it into a few expressive ribbons around foreground content.
 
-Import \`NetworkWeaveBackground\` from \`@codaco/art/NetworkWeaveBackground\`. Configure the visual with \`seed\`, \`complexity\`, \`strands\`, \`focus\`, \`orientation\`, \`reverse\`, \`colors\`, \`intensity\`, \`flare\`, \`blendMode\`, and the optional motion props.`,
+Import \`NetworkWeaveBackground\` from \`@codaco/art/NetworkWeaveBackground\`. Configure the visual with \`seed\`, \`complexity\`, \`strands\`, the normalized \`convergence\` throat coordinates, \`orientation\`, \`reverse\`, \`colors\`, \`intensity\`, \`flare\`, \`blendMode\`, and the optional motion props. Convergence stays in screen space for every flow direction: \`(0, 0)\` is the rendered SVG's top-left and \`(1, 1)\` is its bottom-right.`,
       },
     },
   },
@@ -20,7 +20,7 @@ Import \`NetworkWeaveBackground\` from \`@codaco/art/NetworkWeaveBackground\`. C
     seed: { control: 'text' },
     complexity: { control: { type: 'range', min: 8, max: 64, step: 1 } },
     strands: { control: { type: 'range', min: 2, max: 6, step: 1 } },
-    focus: { control: 'object' },
+    convergence: { control: 'object' },
     orientation: {
       control: 'radio',
       options: ['horizontal', 'vertical'],
@@ -53,7 +53,7 @@ Import \`NetworkWeaveBackground\` from \`@codaco/art/NetworkWeaveBackground\`. C
     seed: 'simplifying-complex-data',
     complexity: 28,
     strands: 4,
-    focus: { x: 0.5, y: 0.45, radius: 0.22 },
+    convergence: { x: 0.15, y: 0.45 },
     orientation: 'horizontal',
     reverse: false,
     backgroundColor: 'oklch(0.9593 0.009 281)',
@@ -146,7 +146,7 @@ export const BehindContent: Story = {
 export const PortraitFlow: Story = {
   args: {
     orientation: 'vertical',
-    focus: { x: 0.5, y: 0.5, radius: 0.2 },
+    convergence: { x: 0.5, y: 0.5 },
   },
 };
 
