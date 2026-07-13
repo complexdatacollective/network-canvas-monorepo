@@ -52,7 +52,7 @@ export function NewsTicker({
   const t = useTranslations('News');
 
   return (
-    <div className="border-cerulean-blue/30 bg-cerulean-blue/5 tablet-portrait:rounded-full rounded-[1.5rem] border">
+    <div className="border-cerulean-blue/30 bg-cerulean-blue/5 tablet-portrait:rounded-full rounded-[1.5rem] border backdrop-blur-md">
       {/* Desktop: single-line marquee */}
       <div className="tablet-portrait:flex hidden items-center gap-5 px-6 py-3">
         <NewsLabel />

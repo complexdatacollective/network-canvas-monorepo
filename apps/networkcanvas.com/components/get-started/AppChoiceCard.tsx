@@ -12,6 +12,7 @@ import { useTranslations } from 'next-intl';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { SchemaVersionTooltip } from '~/components/get-started/SchemaVersionTooltip';
 import { ButtonLink } from '~/components/ui/ButtonLink';
 import { cn } from '~/lib/cn';
 import {
@@ -133,15 +134,18 @@ export function AppChoiceCard({ app }: { app: AppRecord }) {
         </Badge>
       </div>
 
-      <Paragraph
-        margin="none"
-        className={cn(
-          'mt-5 text-base',
-          featured ? 'text-white/85' : 'text-text/80',
-        )}
-      >
-        {t(`apps.${app.messageKey}.description`)}
-      </Paragraph>
+      <div className="mt-5 flex items-start gap-2">
+        <Paragraph
+          margin="none"
+          className={cn(
+            'text-base',
+            featured ? 'text-white/85' : 'text-text/80',
+          )}
+        >
+          {t(`apps.${app.messageKey}.description`)}
+        </Paragraph>
+        {'platforms' in app && <SchemaVersionTooltip />}
+      </div>
 
       <Paragraph
         margin="none"

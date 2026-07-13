@@ -1,4 +1,4 @@
-import { cleanup, screen, within } from '@testing-library/react';
+import { cleanup, within } from '@testing-library/react';
 import type { ComponentProps, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -87,24 +87,6 @@ describe('localized Get Started page', () => {
       }),
     ).toBeInTheDocument();
 
-    const warning = within(design).getByRole('status');
-    const designDescription = within(design).getByText(
-      /Diseñe un nuevo estudio basado en el navegador/i,
-    );
-    const architect = within(design).getByRole('heading', {
-      level: 3,
-      name: 'Architect',
-    });
-    expect(
-      designDescription.compareDocumentPosition(warning) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      warning.compareDocumentPosition(architect) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(within(collect).queryByRole('status')).not.toBeInTheDocument();
-
     const appNames = ['Interviewer', 'Fresco', 'Interviewer Classic'];
     const cards = appNames.map((name) =>
       within(collect)
@@ -140,16 +122,5 @@ describe('localized Get Started page', () => {
         },
       },
     });
-  });
-
-  it('keeps the exact English Fresco recommendation', async () => {
-    const page = await GetStartedPage({
-      params: Promise.resolve({ locale: 'en-US' }),
-    });
-    renderWithIntl(page);
-
-    expect(
-      screen.getByText('Large Teams · Remote Administration · Recommended'),
-    ).toBeInTheDocument();
   });
 });

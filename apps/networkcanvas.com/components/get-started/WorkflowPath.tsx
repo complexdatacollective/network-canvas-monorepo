@@ -1,5 +1,4 @@
 import { useTranslations } from 'next-intl';
-import type { ReactNode } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -17,11 +16,9 @@ type AppRecord = (typeof webApps)[number] | (typeof classicApps)[number];
 export function WorkflowPath({
   workflow,
   apps,
-  compatibilityNotice,
 }: {
   workflow: Workflow;
   apps: readonly AppRecord[];
-  compatibilityNotice?: ReactNode;
 }) {
   const t = useTranslations('GetStarted');
 
@@ -52,7 +49,6 @@ export function WorkflowPath({
         >
           {t(`sections.${workflow}.description`)}
         </Paragraph>
-        {compatibilityNotice}
       </Reveal>
 
       <div className="tablet-landscape:grid-cols-12 mt-12 grid grid-cols-1 gap-6">

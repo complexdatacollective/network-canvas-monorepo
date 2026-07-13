@@ -7,9 +7,6 @@
   },
   "LanguageSelector": {
     "label": "Language",
-    "englishUS": "English (United States)",
-    "englishUK": "English (United Kingdom)",
-    "spanish": "Español",
     "searchPlaceholder": "Search languages...",
     "emptyMessage": "No languages found."
   },
@@ -53,6 +50,17 @@
       "action": "Try the Fresco Sandbox",
       "deployAction": "Deploy Fresco",
       "screenshotAlt": "Fresco dashboard showing protocol, participant, and interview totals"
+    }
+  },
+  "SoftwareMenu": {
+    "architect": {
+      "description": "Design polished Network Canvas interview protocols in your browser with a visual workflow built for researchers."
+    },
+    "interviewer": {
+      "description": "Run engaging, interviewer-led network interviews in the field from any supported browser."
+    },
+    "fresco": {
+      "description": "Coordinate remote network interviews and manage study data from one shared browser-based dashboard."
     }
   },
   "Video": {
@@ -100,7 +108,7 @@
   },
   "Publications": {
     "heading": "Recent Publications Using Network Canvas",
-    "introduction": "The following are the four most recent publications utilizing Network Canvas. For a full list of publications, see our <article>documentation article</article>.",
+    "introduction": "The following are the four most recent publications utilizing Network Canvas. For guidance on citing Network Canvas, see our <article>documentation article</article>.",
     "submission": "If you would like to feature your publication, please let us know by posting in our community site <thread>thread</thread>.",
     "article": "documentation article",
     "thread": "thread"
@@ -192,7 +200,9 @@
     "shared": {
       "bestFor": "Best for",
       "downloadVersion": "Download version {version}",
-      "platformAccessibleName": "{platform} for {app}"
+      "platformAccessibleName": "{platform} for {app}",
+      "schemaVersionInfo": "Architect Classic and Interviewer Classic support Schema 7 protocols. The browser-based Architect, Interviewer, and Fresco use Schema 8, which includes the latest features. Upgrading a protocol is one-way, so keep the original Schema 7 file if you still need the Classic apps.",
+      "schemaVersionLink": "Learn about schema versions"
     },
     "platforms": {
       "appleSilicon": "Apple Silicon",
@@ -205,12 +215,12 @@
     "apps": {
       "architect": {
         "status": "Recommended for new studies",
-        "description": "Design schema 8 protocols in your browser, with nothing to install. Use these protocols in Interviewer or Fresco.",
+        "description": "Design protocols in your browser with nothing to install, using all the latest Network Canvas features.",
         "bestFor": {
           "newStudy": "Starting a new study",
-          "schema8Protocol": "Designing a schema 8 protocol",
+          "latestFeatures": "Designing protocols with all the latest features",
           "interviewerOrFresco": "Collecting with the new Interviewer or Fresco",
-          "upgradeClassic": "Upgrading a schema 7 protocol created in Architect Classic"
+          "upgradeClassic": "Updating a protocol created in Architect Classic to use the latest features"
         },
         "actions": {
           "open": "Open Architect"
@@ -218,12 +228,12 @@
       },
       "interviewer": {
         "status": "In person · Recommended",
-        "description": "For interviewer-assisted data collection on a device you control. Open it in the browser and run schema 8 protocols.",
+        "description": "Run interviewer-assisted data collection on a device you control, using protocols built with all the latest Network Canvas features.",
         "bestFor": {
           "inPerson": "Interviews conducted in person",
           "guided": "A trained interviewer guiding the participant",
           "researcherDevice": "Data collection on a researcher-controlled device",
-          "schema8Protocol": "Studies using a schema 8 protocol"
+          "latestFeatures": "Studies using protocols with all the latest features"
         },
         "actions": {
           "open": "Open Interviewer"
@@ -260,10 +270,6 @@
           "offlineCollection": "Studies requiring the older offline collection workflow"
         }
       }
-    },
-    "compatibility": {
-      "title": "Classic compatibility is one-way.",
-      "description": "Architect can upgrade a schema 7 protocol to schema 8, but schema 8 protocols cannot be opened in Classic apps. Keep the original file if your study still depends on Classic."
     }
   }
 }

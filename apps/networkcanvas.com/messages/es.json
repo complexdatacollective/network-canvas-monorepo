@@ -7,9 +7,6 @@
   },
   "LanguageSelector": {
     "label": "Idioma",
-    "englishUS": "Inglés (Estados Unidos)",
-    "englishUK": "Inglés (Reino Unido)",
-    "spanish": "Español",
     "searchPlaceholder": "Buscar idiomas...",
     "emptyMessage": "No se encontraron idiomas."
   },
@@ -53,6 +50,17 @@
       "action": "Probar el entorno sandbox de Fresco",
       "deployAction": "Implementar Fresco",
       "screenshotAlt": "Panel de Fresco que muestra los totales de protocolos, participantes y entrevistas"
+    }
+  },
+  "SoftwareMenu": {
+    "architect": {
+      "description": "Diseñe protocolos de entrevista de Network Canvas en su navegador con un flujo de trabajo visual creado para equipos de investigación."
+    },
+    "interviewer": {
+      "description": "Realice entrevistas de redes atractivas y guiadas por una persona entrevistadora desde cualquier navegador compatible."
+    },
+    "fresco": {
+      "description": "Coordine entrevistas de redes remotas y gestione los datos del estudio desde un panel compartido en el navegador."
     }
   },
   "Video": {
@@ -100,7 +108,7 @@
   },
   "Publications": {
     "heading": "Publicaciones recientes que utilizan Network Canvas",
-    "introduction": "Estas son las cuatro publicaciones más recientes que utilizan Network Canvas. Para consultar la lista completa, vea nuestro <article>artículo de documentación</article>.",
+    "introduction": "Estas son las cuatro publicaciones más recientes que utilizan Network Canvas. Para obtener orientación sobre cómo citar Network Canvas, consulte nuestro <article>artículo de documentación</article>.",
     "submission": "Si desea que incluyamos su publicación, comuníquenoslo en el <thread>hilo</thread> de nuestro sitio de la comunidad.",
     "article": "artículo de documentación",
     "thread": "hilo"
@@ -192,7 +200,9 @@
     "shared": {
       "bestFor": "Ideal para",
       "downloadVersion": "Descargar la versión {version}",
-      "platformAccessibleName": "{platform} para {app}"
+      "platformAccessibleName": "{platform} para {app}",
+      "schemaVersionInfo": "Architect Classic e Interviewer Classic admiten protocolos de esquema 7. Architect, Interviewer y Fresco basados en el navegador utilizan el esquema 8, que incluye las funciones más recientes. La actualización de un protocolo es unidireccional, así que conserve el archivo original de esquema 7 si todavía necesita las aplicaciones Classic.",
+      "schemaVersionLink": "Más información sobre las versiones del esquema"
     },
     "platforms": {
       "appleSilicon": "Apple Silicon",
@@ -205,12 +215,12 @@
     "apps": {
       "architect": {
         "status": "Recomendado para estudios nuevos",
-        "description": "Diseñe protocolos de esquema 8 en su navegador, sin instalar nada. Utilice estos protocolos en Interviewer o Fresco.",
+        "description": "Diseñe protocolos en su navegador sin instalar nada y utilice todas las funciones más recientes de Network Canvas.",
         "bestFor": {
           "newStudy": "Iniciar un estudio nuevo",
-          "schema8Protocol": "Diseñar un protocolo de esquema 8",
+          "latestFeatures": "Diseñar protocolos con todas las funciones más recientes",
           "interviewerOrFresco": "Recopilar datos con la nueva versión de Interviewer o con Fresco",
-          "upgradeClassic": "Actualizar un protocolo de esquema 7 creado en Architect Classic"
+          "upgradeClassic": "Actualizar un protocolo creado en Architect Classic para utilizar las funciones más recientes"
         },
         "actions": {
           "open": "Abrir Architect"
@@ -218,12 +228,12 @@
       },
       "interviewer": {
         "status": "Presencial · Recomendado",
-        "description": "Para la recopilación de datos con asistencia de una persona entrevistadora en un dispositivo bajo su control. Ábralo en el navegador y ejecute protocolos de esquema 8.",
+        "description": "Realice la recopilación de datos con asistencia de una persona entrevistadora en un dispositivo bajo su control, utilizando protocolos con todas las funciones más recientes de Network Canvas.",
         "bestFor": {
           "inPerson": "Entrevistas realizadas en persona",
           "guided": "Una persona entrevistadora capacitada que guía a la persona participante",
           "researcherDevice": "Recopilación de datos en un dispositivo controlado por el equipo de investigación",
-          "schema8Protocol": "Estudios que utilizan un protocolo de esquema 8"
+          "latestFeatures": "Estudios que utilizan protocolos con todas las funciones más recientes"
         },
         "actions": {
           "open": "Abrir Interviewer"
@@ -260,10 +270,6 @@
           "offlineCollection": "Estudios que requieren el flujo de trabajo anterior de recopilación sin conexión"
         }
       }
-    },
-    "compatibility": {
-      "title": "La compatibilidad con Classic es unidireccional.",
-      "description": "Architect puede actualizar un protocolo de esquema 7 al esquema 8, pero los protocolos de esquema 8 no se pueden abrir en las aplicaciones Classic. Conserve el archivo original si su estudio todavía depende de Classic."
     }
   }
 }

@@ -11,7 +11,6 @@ import type {
 } from '@codaco/fresco-ui/navigation/SiteNavigation';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
-import { LanguageSelector } from '~/components/layout/LanguageSelector';
 import {
   type ResourceLink,
   ResourcesMenu,
@@ -129,6 +128,7 @@ export function Header({
   entranceVariants?: Variants;
 }) {
   const t = useTranslations('Navigation');
+  const tTools = useTranslations('Tools');
   const resourceLinks: ResourceLink[] = resourceNavLinks.map((link) => ({
     id: link.id,
     label: t(link.id),
@@ -137,7 +137,7 @@ export function Header({
   }));
   const softwareLinks: ResourceLink[] = tools.map((tool) => ({
     id: tool.id,
-    label: tool.name,
+    label: tTools(`${tool.id}.action`),
     href: tool.href,
     active: activeItemId === 'software',
   }));
@@ -183,14 +183,6 @@ export function Header({
             links={softwareLinks}
           />
         ),
-    },
-    {
-      id: 'language',
-      render: ({ closeMenu, view }) => (
-        <LanguageSelector
-          onNavigate={view === 'mobile' ? closeMenu : undefined}
-        />
-      ),
     },
     {
       id: 'getStarted',

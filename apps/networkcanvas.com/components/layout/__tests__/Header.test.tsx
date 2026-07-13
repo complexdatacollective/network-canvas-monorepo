@@ -49,8 +49,8 @@ describe('localized layout navigation', () => {
       expect(link).toHaveAttribute('aria-current', 'page');
     }
     expect(
-      screen.getByRole('combobox', { name: 'Idioma' }),
-    ).toBeInTheDocument();
+      screen.queryByRole('combobox', { name: 'Idioma' }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Abrir menú' }));
     expect(screen.getByRole('button', { name: 'Cerrar menú' })).toHaveAttribute(

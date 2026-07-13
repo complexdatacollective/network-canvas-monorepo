@@ -13,8 +13,18 @@ type NegotiationCase = {
 
 const negotiationCases: readonly NegotiationCase[] = [
   {
-    name: 'Spanish browser language',
+    name: 'Spain Spanish browser language',
     headers: { 'accept-language': 'es-ES,es;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/es',
+  },
+  {
+    name: 'Mexican Spanish browser language',
+    headers: { 'accept-language': 'es-MX,es;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/es',
+  },
+  {
+    name: 'Argentinian Spanish browser language',
+    headers: { 'accept-language': 'es-AR,es;q=0.9,en;q=0.8' },
     destination: 'http://localhost/es',
   },
   {
@@ -34,6 +44,16 @@ const negotiationCases: readonly NegotiationCase[] = [
     name: 'UK English browser language',
     headers: { 'accept-language': 'en-GB,en;q=0.9' },
     destination: 'http://localhost/en-GB',
+  },
+  {
+    name: 'Australian English browser language',
+    headers: { 'accept-language': 'en-AU,en;q=0.9' },
+    destination: 'http://localhost/en-GB',
+  },
+  {
+    name: 'Canadian English browser language',
+    headers: { 'accept-language': 'en-CA,en;q=0.9' },
+    destination: 'http://localhost/en-US',
   },
 ];
 

@@ -320,7 +320,9 @@ const meta: Meta<StoryArgs> = {
             aria-label="Select language"
             onClick={view === 'mobile' ? closeMenu : undefined}
           >
-            <span aria-hidden>🇺🇸</span>
+            <span className="font-heading text-sm font-bold tracking-wide">
+              en-US
+            </span>
           </Button>
         ),
       });

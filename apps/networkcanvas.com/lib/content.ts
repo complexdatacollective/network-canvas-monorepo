@@ -15,7 +15,8 @@ export const externalLinks = {
   twitter: 'https://twitter.com/networkcanvas?lang=en',
   youtube: 'https://www.youtube.com/@complexdatacollective2923',
   youtubeChannel: 'https://www.youtube.com/channel/UC3uFCh2HlR8iqiYhRNomUqQ',
-  publications: 'https://networkcanvas.com/publications/',
+  publications:
+    'https://documentation.networkcanvas.com/en/get-started/project-information/citing-the-software',
   shareYourWork:
     'https://community.networkcanvas.com/t/share-your-work-using-network-canvas/149',
   collaboration:

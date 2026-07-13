@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { Variants } from 'motion/react';
 import { useTranslations } from 'next-intl';
@@ -86,9 +87,13 @@ export function Hero({
             href={GET_STARTED_PATH}
             color="default"
             size="lg"
-            className="bg-neon-coral rounded-full text-white"
+            className="bg-neon-coral tablet-landscape:h-16 tablet-landscape:px-10 tablet-landscape:text-xl rounded-full text-white"
           >
             {t('getStarted')}
+            <ArrowRight
+              aria-hidden
+              className="tablet-landscape:size-6 size-5"
+            />
           </ButtonLink>
           <Paragraph margin="none" className="text-base-sm text-text/60">
             {t('keepScrolling')}

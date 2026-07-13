@@ -20,13 +20,13 @@ type AppAction = {
 
 type BestForKey =
   | 'apps.architect.bestFor.newStudy'
-  | 'apps.architect.bestFor.schema8Protocol'
+  | 'apps.architect.bestFor.latestFeatures'
   | 'apps.architect.bestFor.interviewerOrFresco'
   | 'apps.architect.bestFor.upgradeClassic'
   | 'apps.interviewer.bestFor.inPerson'
   | 'apps.interviewer.bestFor.guided'
   | 'apps.interviewer.bestFor.researcherDevice'
-  | 'apps.interviewer.bestFor.schema8Protocol'
+  | 'apps.interviewer.bestFor.latestFeatures'
   | 'apps.fresco.bestFor.remoteBrowser'
   | 'apps.fresco.bestFor.centralManagement'
   | 'apps.fresco.bestFor.sharedDashboard'
@@ -82,6 +82,11 @@ export const webDestinations = {
     'https://documentation.networkcanvas.com/en/collect-data/fresco/guide',
 } as const;
 
+export const documentationDestinations = {
+  schemaVersions:
+    'https://documentation.networkcanvas.com/en/get-started/advanced-topics/protocol-schema-information',
+} as const;
+
 const classicDestinations = {
   architectRelease:
     'https://github.com/complexdatacollective/architect/releases/tag/v6.6.0',
@@ -101,7 +106,7 @@ export const webApps = [
     name: 'Architect',
     bestFor: [
       'apps.architect.bestFor.newStudy',
-      'apps.architect.bestFor.schema8Protocol',
+      'apps.architect.bestFor.latestFeatures',
       'apps.architect.bestFor.interviewerOrFresco',
       'apps.architect.bestFor.upgradeClassic',
     ],
@@ -122,7 +127,7 @@ export const webApps = [
       'apps.interviewer.bestFor.inPerson',
       'apps.interviewer.bestFor.guided',
       'apps.interviewer.bestFor.researcherDevice',
-      'apps.interviewer.bestFor.schema8Protocol',
+      'apps.interviewer.bestFor.latestFeatures',
     ],
     actions: [
       {

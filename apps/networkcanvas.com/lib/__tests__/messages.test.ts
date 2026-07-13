@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { supportedLocales } from '~/lib/i18n/locales';
+import { loadLocaleMessages } from '~/lib/i18n/messages';
+import enGB from '~/messages/en-GB.json';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
 
@@ -31,14 +34,37 @@ describe('message catalogs', () => {
     );
   });
 
-  it.each([
-    ['en-US', en],
-    ['en-GB', en],
-    ['es', es],
-  ])('contains no blank %s messages', (_locale, messages) => {
+  it.each(
+    supportedLocales.map(({ locale }) => [locale, loadLocaleMessages(locale)]),
+  )('contains no blank %s messages', (_locale, messages) => {
     expect(
       messageLeaves(messages).every(([, text]) => text.trim().length > 0),
     ).toBe(true);
+  });
+
+  it('limits regional overrides to keys in the base catalog', () => {
+    const baseMessages = new Map(messageLeaves(en));
+
+    for (const [key, override] of messageLeaves(enGB)) {
+      const baseMessage = baseMessages.get(key);
+      expect(baseMessage, `Unknown regional override: ${key}`).toBeDefined();
+      expect(messageTokens(override)).toEqual(messageTokens(baseMessage ?? ''));
+    }
+  });
+
+  it('inherits shared English messages and applies regional overrides', () => {
+    const americanEnglish = new Map(messageLeaves(loadLocaleMessages('en-US')));
+    const britishEnglish = new Map(messageLeaves(loadLocaleMessages('en-GB')));
+
+    expect(britishEnglish.get('Hero.headline')).toBe(
+      americanEnglish.get('Hero.headline'),
+    );
+    expect(americanEnglish.get('GetStarted.apps.fresco.description')).toContain(
+      'centralized',
+    );
+    expect(britishEnglish.get('GetStarted.apps.fresco.description')).toContain(
+      'centralised',
+    );
   });
 
   it('keeps placeholders and rich-text tags in parity', () => {

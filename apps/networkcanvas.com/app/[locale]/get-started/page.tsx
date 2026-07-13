@@ -3,7 +3,6 @@ import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
-import { CompatibilityNotice } from '~/components/get-started/CompatibilityNotice';
 import { GetStartedIntro } from '~/components/get-started/GetStartedIntro';
 import { WorkflowPath } from '~/components/get-started/WorkflowPath';
 import { Footer } from '~/components/layout/Footer';
@@ -57,11 +56,7 @@ export default async function GetStartedPage({ params }: GetStartedPageProps) {
       <PageBackground />
       <div className="relative z-10">
         <GetStartedIntro />
-        <WorkflowPath
-          workflow="design"
-          apps={designApps}
-          compatibilityNotice={<CompatibilityNotice />}
-        />
+        <WorkflowPath workflow="design" apps={designApps} />
         <WorkflowPath workflow="collect" apps={collectApps} />
         <Footer />
       </div>
