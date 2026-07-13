@@ -106,9 +106,9 @@ export function DataTableColumnHeader<TData, TValue>({
 
   const icons: ReactNode[] = [];
   if (isSorted === 'asc')
-    icons.push(<ArrowUp key="sort" className="text-sea-green size-4" />);
+    icons.push(<ArrowUp key="sort" className="size-4 text-current" />);
   if (isSorted === 'desc')
-    icons.push(<ArrowDown key="sort" className="text-sea-green size-4" />);
+    icons.push(<ArrowDown key="sort" className="size-4 text-current" />);
   if (isFiltered)
     icons.push(<Filter key="filter" className="text-selected size-4" />);
 

@@ -1,5 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import {
+  type ColumnDef,
+  getCoreRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
+import { useMemo, useState } from 'react';
 
+import { DataTableColumnHeader } from './DataTable/ColumnHeader';
+import { DataTable } from './DataTable/DataTable';
 import {
   Table,
   TableBody,
@@ -33,6 +43,54 @@ const sampleData = [
   },
   { id: 5, name: 'Eve Davis', email: 'eve@example.com', role: 'User' },
 ];
+
+function SortableDataTableExample() {
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'name', desc: false },
+  ]);
+  const columns = useMemo<ColumnDef<(typeof sampleData)[number]>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column, table }) => (
+          <DataTableColumnHeader column={column} table={table} title="Name" />
+        ),
+        cell: ({ row }) => row.original.name,
+      },
+      {
+        accessorKey: 'email',
+        header: ({ column, table }) => (
+          <DataTableColumnHeader column={column} table={table} title="Email" />
+        ),
+        cell: ({ row }) => row.original.email,
+      },
+      {
+        accessorKey: 'role',
+        header: ({ column, table }) => (
+          <DataTableColumnHeader column={column} table={table} title="Role" />
+        ),
+        cell: ({ row }) => row.original.role,
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data: sampleData,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    enableSortingRemoval: false,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  return <DataTable table={table} showPagination={false} />;
+}
+
+export const Sortable: Story = {
+  render: () => <SortableDataTableExample />,
+};
 
 export const Default: Story = {
   render: () => (
