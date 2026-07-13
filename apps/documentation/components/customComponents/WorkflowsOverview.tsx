@@ -1,8 +1,6 @@
-import type { Route } from 'next';
-import NextLink from 'next/link';
 import type { ReactNode } from 'react';
 
-import { cx } from '@codaco/fresco-ui/utils/cva';
+import Link from '~/components/Link';
 
 type Step = {
   /** The tool used in this phase, e.g. "Architect". */
@@ -14,12 +12,9 @@ type Step = {
 };
 
 const DocLink = ({ href, children }: { href: string; children: ReactNode }) => (
-  <NextLink
-    href={href as Route}
-    className="text-link focusable font-medium hover:underline hover:underline-offset-2"
-  >
+  <Link href={{ pathname: href }} className="font-medium">
     {children}
-  </NextLink>
+  </Link>
 );
 
 type Workflow = {
@@ -106,15 +101,9 @@ const ToolLabel = ({ tool, href }: Pick<Step, 'tool' | 'href'>) => {
 
   if (href) {
     return (
-      <NextLink
-        href={href as Route}
-        className={cx(
-          className,
-          'focusable hover:underline hover:underline-offset-2',
-        )}
-      >
+      <Link href={{ pathname: href }} className={className}>
         {tool}
-      </NextLink>
+      </Link>
     );
   }
 

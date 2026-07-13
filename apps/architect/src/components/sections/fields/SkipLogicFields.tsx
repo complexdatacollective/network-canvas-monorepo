@@ -1,8 +1,7 @@
 import type { ComponentType } from 'react';
+import { useSelector } from 'react-redux';
 
-import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { Row } from '~/components/EditorLayout';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import {
   Query,
@@ -10,12 +9,12 @@ import {
   withFieldConnector,
   withStoreConnector,
 } from '~/components/Query';
+import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { getStageList } from '~/selectors/protocol';
 
 import IssueAnchor from '../../IssueAnchor';
-
-const FrescoRadioGroupField = RadioGroupField as ComponentType<
-  Record<string, unknown>
->;
+import SkipLogicDestinationField from './SkipLogicDestinationField';
+import { SkipLogicRadioGroupReduxField } from './SkipLogicReduxFields';
 
 const ConnectedQuery = (
   withFieldConnector as unknown as (
@@ -27,39 +26,61 @@ const ConnectedQuery = (
   ) as unknown as ComponentType,
 ) as ComponentType<Record<string, unknown>>;
 
-const SkipLogicFields = () => (
-  <>
-    <Row>
-      <IssueAnchor
-        fieldName="skipLogic.action"
-        description="Skip Logic Action"
-      />
-      <ValidatedField
-        name="skipLogic.action"
-        component={FrescoReduxField}
-        validation={{ required: true }}
-        componentProps={{
-          fieldComponent: FrescoRadioGroupField,
-          label: 'Skip logic action',
-          options: [
-            { value: 'SHOW', label: 'Show this stage if' },
-            { value: 'SKIP', label: 'Skip this stage if' },
-          ],
-        }}
-      />
-    </Row>
-    <Row>
-      <IssueAnchor
-        fieldName="skipLogic.filter"
-        description="Skip Logic Rules"
-      />
-      <ValidatedField
-        component={ConnectedQuery}
-        name="skipLogic.filter"
-        validation={{ required: true, validator: ruleValidator }}
-      />
-    </Row>
-  </>
-);
+type SkipLogicFieldsProps = Pick<
+  StageEditorSectionProps,
+  'stagePath' | 'stagePosition'
+>;
+
+const SkipLogicFields = ({
+  stagePath,
+  stagePosition,
+}: SkipLogicFieldsProps) => {
+  const stages = useSelector(getStageList);
+
+  return (
+    <>
+      <Row>
+        <IssueAnchor
+          fieldName="skipLogic.action"
+          description="Skip Logic Action"
+        />
+        <ValidatedField
+          name="skipLogic.action"
+          component={SkipLogicRadioGroupReduxField}
+          validation={{ required: true }}
+          componentProps={{
+            label: 'When the rules match',
+            options: [
+              { value: 'SHOW', label: 'Show this stage' },
+              { value: 'SKIP', label: 'Skip this stage' },
+            ],
+          }}
+        />
+      </Row>
+      <Row>
+        <IssueAnchor
+          fieldName="skipLogic.filter"
+          description="Skip Logic Rules"
+        />
+        <ValidatedField
+          component={ConnectedQuery}
+          name="skipLogic.filter"
+          validation={{ required: true, validator: ruleValidator }}
+        />
+      </Row>
+      <Row>
+        <IssueAnchor
+          fieldName="skipLogic.destination"
+          description="Skip Logic Destination"
+        />
+        <SkipLogicDestinationField
+          stages={stages}
+          stagePosition={stagePosition}
+          isNewStage={stagePath === null}
+        />
+      </Row>
+    </>
+  );
+};
 
 export default SkipLogicFields;

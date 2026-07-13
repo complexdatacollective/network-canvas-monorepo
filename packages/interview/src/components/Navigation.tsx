@@ -22,6 +22,7 @@ import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
+import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
 import PassphrasePrompter from './PassphrasePrompter';
 import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
@@ -129,7 +130,7 @@ type NavigationProps = {
   className?: string;
   goToStage?: (
     targetIndex: number,
-    confirmSkip?: () => Promise<boolean>,
+    confirmUnavailable?: (availability: UnavailableStage) => Promise<boolean>,
   ) => Promise<void>;
 };
 
@@ -167,13 +168,15 @@ const Navigation = ({
   const [menuSettled, setMenuSettled] = useState(false);
   const pendingStageRef = useRef<number | null>(null);
 
-  const confirmSkip = useCallback(
-    async () =>
+  const confirmUnavailable = useCallback(
+    async (availability: UnavailableStage) =>
       (await confirm({
-        title: 'Show this stage?',
+        title: 'Show this screen?',
         description:
-          'This stage is normally skipped based on the answers given so far. Do you want to show it anyway?',
-        confirmLabel: 'Show stage',
+          availability.kind === 'local-skip'
+            ? 'This screen is hidden based on the answers given so far. Do you want to show it anyway?'
+            : 'This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?',
+        confirmLabel: 'Show screen',
         cancelLabel: 'Cancel',
         intent: 'warning',
         onConfirm: () => {},
@@ -262,7 +265,7 @@ const Navigation = ({
             type="button"
             aria-haspopup="dialog"
             aria-expanded={menuOpen}
-            aria-label="Go to a stage"
+            aria-label="Go to another screen"
             onClick={() => setMenuOpen(true)}
             variants={variants}
             className={cx(
@@ -322,7 +325,7 @@ const Navigation = ({
             const target = pendingStageRef.current;
             pendingStageRef.current = null;
             if (target !== null) {
-              void goToStage?.(target, confirmSkip);
+              void goToStage?.(target, confirmUnavailable);
             }
           }}
           swipeDirection={orientation === 'vertical' ? 'left' : 'down'}
@@ -338,7 +341,7 @@ const Navigation = ({
               )}
             >
               <Drawer.Popup
-                aria-label="Go to a stage"
+                aria-label="Go to another screen"
                 initialFocus={() =>
                   document.getElementById(STAGES_MENU_LIST_ID)
                 }

@@ -1,6 +1,7 @@
 import BackgroundBlobs from './BackgroundBlobs/BackgroundBlobs';
 import useCanvas from './BackgroundBlobs/useCanvas';
 import BackgroundLights from './BackgroundLights/BackgroundLights';
+import { PageBackground } from './PageBackground/PageBackground';
 import { seedToPatternPalette } from './Pattern/palette';
 import type { PatternPalette } from './Pattern/palette';
 import { Pattern } from './Pattern/Pattern';
@@ -20,6 +21,7 @@ export {
   CrossesPattern,
   DotsPattern,
   FlowPattern,
+  PageBackground,
   Pattern,
   RingsPattern,
   seedToPatternPalette,

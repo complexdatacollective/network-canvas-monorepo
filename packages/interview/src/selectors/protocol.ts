@@ -75,7 +75,10 @@ export const getAllVariableUUIDsByEntity = createSelector(
   },
 );
 
-export const getCodebookVariablesForSubjectType = createSelector(
+export const getCodebookVariablesForSubjectType: (
+  state: RootState,
+  currentStep: number,
+) => Record<string, Variable> = createSelector(
   getCodebook,
   getStageSubject,
   (codebook, subject) => {

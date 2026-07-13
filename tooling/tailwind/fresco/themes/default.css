@@ -90,7 +90,8 @@
       color-mix(in oklab, var(--shadow-color) 70%, transparent);
 
     --background: color-mix(in oklab, var(--brand) 3%, white);
-    --text: color-mix(in oklab, var(--brand) 75%, black);
+    /* Canonical light-theme text color; applications should inherit this. */
+    --text: oklch(var(--cyber-grape));
 
     --primary: oklch(10% 0.4 var(--base-hue));
     --primary-contrast: oklch(var(--white));

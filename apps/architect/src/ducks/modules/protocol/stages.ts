@@ -3,7 +3,7 @@ import { invariant } from 'es-toolkit';
 import { compact, omit } from 'es-toolkit/compat';
 import { v1 as uuid } from 'uuid';
 
-import type { Stage } from '@codaco/protocol-validation';
+import type { SkipLogicDestination, Stage } from '@codaco/protocol-validation';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { getNodeTypes } from '~/selectors/codebook';
 import { getProtocol, getStage } from '~/selectors/protocol';
@@ -44,6 +44,9 @@ const initialStage = {
 
 type StageDependencyCandidate = Pick<Stage, 'id' | 'label' | 'type'> & {
   sourceStageId?: string;
+  skipLogic?: {
+    destination?: SkipLogicDestination;
+  };
 };
 
 export const getFamilyPedigreeDependentStages = <
@@ -57,6 +60,52 @@ export const getFamilyPedigreeDependentStages = <
       candidate.type === 'NarrativePedigree' &&
       candidate.sourceStageId === stageId,
   );
+
+export const getSkipDestinationDependentStages = <
+  T extends StageDependencyCandidate,
+>(
+  stages: T[],
+  stageId: string,
+) =>
+  stages.filter(
+    (candidate) =>
+      candidate.skipLogic?.destination?.type === 'stage' &&
+      candidate.skipLogic.destination.stageId === stageId,
+  );
+
+const isStageReferencedAsSkipDestination = <T extends StageDependencyCandidate>(
+  stages: T[],
+  stageId: string,
+) => getSkipDestinationDependentStages(stages, stageId).length > 0;
+
+export const getInvalidSkipDestinationReferences = <
+  T extends StageDependencyCandidate,
+>(
+  stages: T[],
+) =>
+  stages.flatMap((sourceStage, sourceIndex) => {
+    const destination = sourceStage.skipLogic?.destination;
+
+    if (destination?.type !== 'stage') {
+      return [];
+    }
+
+    const destinationIndex = stages.findIndex(
+      (stage) => stage.id === destination.stageId,
+    );
+
+    if (destinationIndex > sourceIndex) {
+      return [];
+    }
+
+    return [
+      {
+        sourceStage,
+        destinationStage: stages[destinationIndex],
+        destinationStageId: destination.stageId,
+      },
+    ];
+  });
 
 // Async thunks
 const createStageAsync = createAppAsyncThunk(
@@ -78,11 +127,15 @@ const deleteStageAsync = createAppAsyncThunk(
   async (stageId: string, { dispatch, getState }) => {
     const state = getState();
     const stage = getStage(state, stageId);
+    const allStages = getProtocol(state)?.stages ?? [];
+
+    if (isStageReferencedAsSkipDestination(allStages, stageId)) {
+      return stageId;
+    }
 
     // A NarrativePedigree renders a FamilyPedigree's finalised network via
     // sourceStageId; deleting that source leaves the dependent stage invalid.
     if (stage?.type === 'FamilyPedigree') {
-      const allStages = getProtocol(state)?.stages ?? [];
       const dependents = getFamilyPedigreeDependentStages(allStages, stageId);
 
       if (dependents.length > 0) {
@@ -178,17 +231,59 @@ const stagesSlice = createSlice({
         return;
       }
 
-      // Remove the item from oldIndex
-      const [movedStage] = state.splice(oldIndex, 1);
-      // Insert it at newIndex
-      state.splice(newIndex, 0, movedStage as Stage);
+      const reorderedStages = state.map((stage) => ({
+        id: stage.id,
+        label: stage.label,
+        type: stage.type,
+        skipLogic: stage.skipLogic
+          ? { destination: stage.skipLogic.destination }
+          : undefined,
+      }));
+      const [reorderedStage] = reorderedStages.splice(oldIndex, 1);
+      if (!reorderedStage) {
+        return;
+      }
+      reorderedStages.splice(newIndex, 0, reorderedStage);
+
+      if (getInvalidSkipDestinationReferences(reorderedStages).length > 0) {
+        return;
+      }
+
+      const movedStage = state[oldIndex];
+      if (!movedStage) {
+        return;
+      }
+      state.splice(oldIndex, 1);
+      state.splice(newIndex, 0, movedStage);
     },
     deleteStage: (state, action: PayloadAction<string>) => {
       const stageId = action.payload;
+
+      if (isStageReferencedAsSkipDestination(state, stageId)) {
+        return;
+      }
+
       return state.filter((stage) => stage.id !== stageId);
     },
     deletePrompt: (state, action: PayloadAction<DeletePromptPayload>) => {
       const { stageId, promptId, deleteEmptyStage = false } = action.payload;
+      const stageIsSkipDestination = isStageReferencedAsSkipDestination(
+        state,
+        stageId,
+      );
+
+      if (deleteEmptyStage && stageIsSkipDestination) {
+        const targetStage = state.find((stage) => stage.id === stageId);
+
+        if (
+          targetStage &&
+          'prompts' in targetStage &&
+          (targetStage.prompts?.filter(({ id }) => id !== promptId).length ??
+            0) === 0
+        ) {
+          return;
+        }
+      }
 
       return compact(
         state.map((stage) => {

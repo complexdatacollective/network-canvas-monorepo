@@ -1,6 +1,7 @@
 import { omit } from 'es-toolkit/compat';
 import { v1 as uuid } from 'uuid';
 
+import { resolveSkipLogicDestinationIndex } from '@codaco/network-query';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import prune from '~/utils/prune';
 
@@ -8,25 +9,45 @@ import prune from '~/utils/prune';
  * Normalises the live form values into the stage that preview will actually
  * build, validate, and launch.
  *
- * `_modified` is editor-only bookkeeping and is always dropped. With "Always
- * show this stage in preview" enabled (the default), skip logic is stripped
- * from the previewed stage so the interview doesn't bounce off the stage the
- * user launched into — but only when the stage actually has skip logic to
- * strip. Both the preview-disabled check and the preview launch must use this
- * same shape, otherwise the button could disable for a problem (e.g. invalid
- * skip-logic rules) that the launched, skip-logic-stripped protocol wouldn't
- * actually have.
+ * `_modified` is editor-only bookkeeping and is always dropped. The preview
+ * override is determined after this stage is inserted into the work-in-progress
+ * protocol, so the real skip logic remains in place.
  */
-export function normalizePreviewStage(
-  formValues: Stage,
-  ignoreSkipLogic: boolean,
-): { stage: Stage; skipLogicBypassed: boolean } {
-  const skipLogicBypassed = ignoreSkipLogic && Boolean(formValues.skipLogic);
-  const omitKeys = skipLogicBypassed
-    ? ['_modified', 'skipLogic']
-    : ['_modified'];
+export function normalizePreviewStage(formValues: Stage): Stage {
+  return omit(formValues, ['_modified']) as Stage;
+}
 
-  return { stage: omit(formValues, omitKeys) as Stage, skipLogicBypassed };
+/**
+ * Whether skip routing could make a stage unavailable during an interview.
+ *
+ * A stage can be unavailable because of its own skip logic or because an
+ * earlier targeted destination jumps past it. Merely enabling Architect's
+ * "Always show" preview preference is not enough: applying an override to a
+ * stage that cannot be skipped produces a misleading preview notice.
+ */
+export function shouldOverridePreviewStage(
+  protocol: CurrentProtocol,
+  stageIndex: number,
+  ignoreSkipLogic: boolean,
+): boolean {
+  if (!ignoreSkipLogic) return false;
+
+  const stage = protocol.stages[stageIndex];
+  if (!stage) return false;
+
+  if (stage.skipLogic) return true;
+
+  return protocol.stages.slice(0, stageIndex).some((candidate, index) => {
+    const destination = candidate.skipLogic?.destination;
+    if (!destination) return false;
+
+    const destinationIndex = resolveSkipLogicDestinationIndex(
+      destination,
+      protocol.stages,
+      index,
+    );
+    return destinationIndex !== undefined && destinationIndex > stageIndex;
+  });
 }
 
 /**

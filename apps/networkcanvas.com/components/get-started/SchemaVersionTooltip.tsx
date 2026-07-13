@@ -4,6 +4,7 @@ import { ExternalLink, Info } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { buttonVariants } from '@codaco/fresco-ui/Button';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import {
   Tooltip,
   TooltipContent,
@@ -42,15 +43,15 @@ export function SchemaVersionTooltip() {
         <Paragraph margin="none" className="text-sm leading-relaxed">
           {t('shared.schemaVersionInfo')}
         </Paragraph>
-        <a
+        <NativeLink
           href={documentationDestinations.schemaVersions}
           target="_blank"
           rel="noreferrer"
-          className="font-heading text-slate-blue focusable mt-2 inline-flex items-center gap-1 text-xs font-bold underline-offset-4 hover:underline"
+          className="font-heading text-slate-blue mt-2 inline-flex text-xs font-bold [&>span]:inline-flex [&>span]:items-center [&>span]:gap-1"
         >
           {t('shared.schemaVersionLink')}
           <ExternalLink aria-hidden className="size-3" />
-        </a>
+        </NativeLink>
       </TooltipContent>
     </Tooltip>
   );

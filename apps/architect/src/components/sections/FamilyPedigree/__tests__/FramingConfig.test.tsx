@@ -128,6 +128,7 @@ const renderSection = (form = 'edit-stage') => {
       <FramingConfig
         form={form}
         stagePath={null}
+        stagePosition={0}
         interfaceType="FamilyPedigree"
       />
     </Provider>,

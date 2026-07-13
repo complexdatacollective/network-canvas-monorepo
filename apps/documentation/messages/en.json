@@ -76,34 +76,31 @@
     }
   },
   "SharedNavigation": {
-    "community": "Community",
-    "documentation": "Documentation",
-    "projects": "Projects",
-    "projectsChildren": {
-      "partner-services": {
-        "label": "Partner Services",
-        "description": "Evaluating Network Canvas in the context of partner notification services."
-      },
-      "fresco": {
-        "label": "Fresco",
-        "description": "A pilot project to bring Network Canvas interviews to the web browser."
-      },
-      "studio": {
-        "label": "Studio",
-        "description": "A web-based platform for creating and sharing network data collection instruments."
-      }
-    },
-    "protocolGallery": "Protocol Gallery",
-    "download": "Download"
+    "documentationHome": "Documentation home",
+    "openDocumentationMenu": "Open documentation navigation",
+    "closeDocumentationMenu": "Close documentation navigation",
+    "documentationNavigation": "Documentation navigation",
+    "documentationNavigationDescription": "Browse documentation sections and pages."
+  },
+  "Footer": {
+    "terms": "Terms of Use",
+    "privacy": "Privacy Policy",
+    "copyright": "Copyright Complex Data Collective 2016-{year}",
+    "youtube": "YouTube",
+    "twitter": "Twitter",
+    "github": "GitHub",
+    "netlify": "This site is powered by <link>Netlify</link>"
   },
   "ThemeTranslations": {
+    "label": "Color theme",
+    "triggerLabel": "Color theme: {theme}",
     "light": "Light",
     "dark": "Dark",
     "system": "System"
   },
   "Hero": {
-    "title": "Welcome to our documentation!",
-    "tagline": "A home for tutorials, guides, and information about the Network Canvas project."
+    "title": "Documentation for every stage\nof your workflow",
+    "tagline": "Guides and reference material for planning studies, designing protocols, collecting data, and analyzing results."
   },
   "Home": {
     "title": "Home",

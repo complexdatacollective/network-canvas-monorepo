@@ -39,7 +39,7 @@ describe('localized layout navigation', () => {
     );
     expect(
       screen.getByRole('link', { name: 'Galería de protocolos' }),
-    ).toHaveAttribute('href', 'https://protocol-gallery.networkcanvas.com/');
+    ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/');
     expect(
       screen.getByRole('button', { name: 'Software' }),
     ).toBeInTheDocument();
@@ -52,11 +52,12 @@ describe('localized layout navigation', () => {
       screen.queryByRole('combobox', { name: 'Idioma' }),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir menú' }));
-    expect(screen.getByRole('button', { name: 'Cerrar menú' })).toHaveAttribute(
-      'aria-expanded',
-      'true',
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Abrir navegación del sitio' }),
     );
+    expect(
+      screen.getByRole('button', { name: 'Cerrar navegación del sitio' }),
+    ).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('renders translated footer links and language selection', () => {

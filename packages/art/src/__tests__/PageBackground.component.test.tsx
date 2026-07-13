@@ -134,7 +134,7 @@ describe('PageBackground', () => {
 
   it('renders a viewport-fixed network weave', () => {
     const { container } = render(<PageBackground />);
-    const layer = container.firstElementChild;
+    const layer = container.firstElementChild as HTMLElement | null;
 
     expect(layer).toHaveAttribute('aria-hidden', 'true');
     expect(layer).toHaveClass(

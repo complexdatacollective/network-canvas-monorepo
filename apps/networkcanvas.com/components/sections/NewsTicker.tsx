@@ -1,6 +1,7 @@
 import { Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Pill from '@codaco/fresco-ui/Pill';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NewsItem as NewsItemRecord } from '~/lib/siteContent';
@@ -22,15 +23,15 @@ function NewsItem({
       className="text-base-sm text-text/80 inline-flex shrink-0 items-center gap-2 whitespace-nowrap"
     >
       {title}
-      <a
+      <NativeLink
         href={href}
         target="_blank"
         rel="noreferrer"
         tabIndex={duplicate ? -1 : undefined}
-        className="text-cerulean-blue font-bold hover:underline"
+        className="text-cerulean-blue font-bold"
       >
         {t('fullStory')}
-      </a>
+      </NativeLink>
     </span>
   );
 }
@@ -78,14 +79,14 @@ export function NewsTicker({
             className="text-base-sm text-text/80"
           >
             {item.title}{' '}
-            <a
+            <NativeLink
               href={item.href}
               target="_blank"
               rel="noreferrer"
-              className="text-cerulean-blue font-bold hover:underline"
+              className="text-cerulean-blue font-bold"
             >
               {t('fullStory')}
-            </a>
+            </NativeLink>
           </Paragraph>
         ))}
       </div>

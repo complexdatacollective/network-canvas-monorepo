@@ -129,4 +129,4 @@ const SheetDescription = forwardRef<
 ));
 SheetDescription.displayName = Description.displayName;
 
-export { Sheet, SheetContent };
+export { Sheet, SheetContent, SheetDescription, SheetTitle };

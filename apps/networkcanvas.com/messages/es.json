@@ -10,18 +10,6 @@
     "searchPlaceholder": "Buscar idiomas...",
     "emptyMessage": "No se encontraron idiomas."
   },
-  "Navigation": {
-    "home": "Inicio de Network Canvas",
-    "community": "Comunidad",
-    "documentation": "Docs",
-    "protocolGallery": "Galería de protocolos",
-    "resources": "Recursos",
-    "software": "Software",
-    "getStarted": "Comenzar",
-    "toggleMenu": "Alternar menú",
-    "openMenu": "Abrir menú",
-    "closeMenu": "Cerrar menú"
-  },
   "Hero": {
     "headline": "Simplificando la recopilación de datos de redes complejas.",
     "description": "Network Canvas ofrece software <strong>gratuito y de código abierto</strong> para recopilar datos de redes, diseñado en función de las necesidades tanto de quienes investigan como de quienes participan.",
@@ -50,17 +38,6 @@
       "action": "Probar el entorno sandbox de Fresco",
       "deployAction": "Implementar Fresco",
       "screenshotAlt": "Panel de Fresco que muestra los totales de protocolos, participantes y entrevistas"
-    }
-  },
-  "SoftwareMenu": {
-    "architect": {
-      "description": "Diseñe protocolos de entrevista de Network Canvas en su navegador con un flujo de trabajo visual creado para equipos de investigación."
-    },
-    "interviewer": {
-      "description": "Realice entrevistas de redes atractivas y guiadas por una persona entrevistadora desde cualquier navegador compatible."
-    },
-    "fresco": {
-      "description": "Coordine entrevistas de redes remotas y gestione los datos del estudio desde un panel compartido en el navegador."
     }
   },
   "Video": {

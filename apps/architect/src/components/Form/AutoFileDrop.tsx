@@ -1,7 +1,7 @@
 import { has } from 'es-toolkit/compat';
 import { type ReactNode, useCallback, useMemo } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
+import { buttonVariants } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ExternalLink from '~/components/ExternalLink';
@@ -60,8 +60,12 @@ const documentationMessage = (
       &nbsp;with further details.
     </Paragraph>
     <Paragraph>
-      <ExternalLink href={documentationLinks.supportedResourceTypes}>
-        <Button>View documentation</Button>
+      <ExternalLink
+        href={documentationLinks.supportedResourceTypes}
+        className={buttonVariants()}
+        unstyled
+      >
+        View documentation
       </ExternalLink>
     </Paragraph>
   </>

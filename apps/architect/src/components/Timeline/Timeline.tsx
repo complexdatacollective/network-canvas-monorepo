@@ -14,13 +14,17 @@ import {
 } from '~/ducks/modules/protocol/stages';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import filterIcon from '~/images/timeline/filter-icon.svg';
-import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
 import NewStageScreen from '../Screens/NewStageScreen';
 import StageTypeImage from '../StageTypeImage';
 import InsertButton from './InsertButton';
+import SkipDestinationBadge from './SkipDestinationBadge';
+import {
+  getSkipDestinationDeleteWarning,
+  getSkipDestinationReorderGuard,
+} from './skipDestinationGuards';
 const timelineContainerVariants: Variants = {
   hidden: {},
   visible: {
@@ -70,7 +74,7 @@ const Timeline = () => {
 
   const deleteStage = useCallback(
     (stageId: string) => {
-      dispatch(stageActions.deleteStage(stageId));
+      void dispatch(stageActions.deleteStage(stageId));
     },
     [dispatch],
   );
@@ -89,6 +93,20 @@ const Timeline = () => {
   const handleDeleteStage = useCallback(
     (stageId: string) => {
       const stage = stages.find((candidate) => candidate.id === stageId);
+      const skipDestinationWarning = getSkipDestinationDeleteWarning(
+        stages,
+        stageId,
+      );
+      if (skipDestinationWarning) {
+        void openDialog({
+          type: 'acknowledge',
+          intent: 'warning',
+          ...skipDestinationWarning,
+          actions: { primary: { label: 'OK', value: true } },
+        });
+        return;
+      }
+
       if (stage?.type === 'FamilyPedigree') {
         const dependents = getFamilyPedigreeDependentStages(stages, stageId);
         if (dependents.length > 0) {
@@ -140,10 +158,26 @@ const Timeline = () => {
       const newIndex = orderedStages.findIndex((s) => s.id === stageId);
 
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        const reorderGuard = getSkipDestinationReorderGuard(
+          stages,
+          orderedStages,
+        );
+
+        if (!reorderGuard.allowed) {
+          setOrderedStages(reorderGuard.restoredStages);
+          void openDialog({
+            type: 'acknowledge',
+            intent: 'warning',
+            ...reorderGuard.warning,
+            actions: { primary: { label: 'OK', value: true } },
+          });
+          return;
+        }
+
         dispatch(stageActions.moveStage(oldIndex, newIndex));
       }
     },
-    [stages, orderedStages, dispatch],
+    [stages, orderedStages, dispatch, openDialog],
   );
 
   const itemClasses = cx(
@@ -245,11 +279,11 @@ const Timeline = () => {
                         />
                       )}
                       {stage.hasSkipLogic && (
-                        <img
-                          src={skipLogicIcon}
-                          alt="Has skip logic"
-                          title="Has skip logic"
-                          className="h-5 w-5"
+                        <SkipDestinationBadge
+                          destinationLabel={
+                            stage.skipLogicDestinationLabel ??
+                            'Next available stage'
+                          }
                         />
                       )}
                     </div>
