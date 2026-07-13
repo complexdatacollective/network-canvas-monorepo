@@ -12,6 +12,10 @@ import type {
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { LanguageSelector } from '~/components/layout/LanguageSelector';
+import {
+  type ResourceLink,
+  ResourcesMenu,
+} from '~/components/layout/ResourcesMenu';
 import { SoftwareMenu } from '~/components/layout/SoftwareMenu';
 import { ButtonLink } from '~/components/ui/ButtonLink';
 import { cn } from '~/lib/cn';
@@ -24,7 +28,7 @@ const linkClasses = cn(
   'text-cyber-grape hover:text-neon-coral whitespace-nowrap transition-colors',
 );
 
-const topLevelLinks = navLinks.filter((link) => link.id !== 'getStarted');
+const resourceNavLinks = navLinks.filter((link) => link.id !== 'getStarted');
 
 function renderNavigationLink({
   children,
@@ -35,26 +39,57 @@ function renderNavigationLink({
 
 function NavigationBrand() {
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex items-center gap-2">
       <span aria-hidden="true" className="shrink-0">
         <Spinner customSize="0.625rem" animationMode="hover" playOnMount />
       </span>
-      <span className="font-heading text-cyber-grape laptop:inline hidden text-lg font-bold tracking-[0.18em] whitespace-nowrap">
+      <span className="font-heading text-cyber-grape hidden text-lg font-bold tracking-[0.18em] whitespace-nowrap @min-[56rem]:inline @min-[64rem]:hidden @min-[80rem]:inline">
         Network Canvas
       </span>
     </span>
   );
 }
 
-function MobileSoftwareLinks({
+function GetStartedAction({
   active,
-  closeMenu,
+  onClick,
 }: {
   active: boolean;
-  closeMenu: () => void;
+  onClick?: () => void;
 }) {
   const t = useTranslations('Navigation');
 
+  return (
+    <ButtonLink
+      href={GET_STARTED_PATH}
+      color="primary"
+      className={cn(
+        'rounded-full',
+        headingVariants({
+          level: 'h4',
+          variant: 'all-caps',
+          margin: 'none',
+        }),
+      )}
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+    >
+      {t('getStarted')}
+    </ButtonLink>
+  );
+}
+
+function MobileLinkGroup({
+  active,
+  closeMenu,
+  label,
+  links,
+}: {
+  active: boolean;
+  closeMenu: () => void;
+  label: string;
+  links: ResourceLink[];
+}) {
   return (
     <div className="flex flex-col gap-3">
       <span
@@ -67,18 +102,19 @@ function MobileSoftwareLinks({
           active ? 'text-neon-coral' : 'text-cyber-grape/60',
         )}
       >
-        {t('software')}
+        {label}
       </span>
-      {tools.map((tool) => (
+      {links.map((link) => (
         <a
-          key={tool.name}
-          href={tool.href}
+          key={link.id}
+          href={link.href}
           target="_blank"
           rel="noreferrer"
           onClick={closeMenu}
-          className={`${linkClasses} pl-3`}
+          aria-current={link.active ? 'page' : undefined}
+          className={cn(linkClasses, 'pl-3', link.active && 'text-neon-coral')}
         >
-          {tool.name}
+          {link.label}
         </a>
       ))}
     </div>
@@ -93,21 +129,59 @@ export function Header({
   entranceVariants?: Variants;
 }) {
   const t = useTranslations('Navigation');
+  const resourceLinks: ResourceLink[] = resourceNavLinks.map((link) => ({
+    id: link.id,
+    label: t(link.id),
+    href: link.href,
+    active: activeItemId === link.id,
+  }));
+  const softwareLinks: ResourceLink[] = tools.map((tool) => ({
+    id: tool.id,
+    label: tool.name,
+    href: tool.href,
+    active: activeItemId === 'software',
+  }));
+  const resourcesActive = resourceLinks.some((link) => link.active);
   const items: SiteNavigationItem[] = [
-    ...topLevelLinks.map<SiteNavigationLinkItem>((link) => ({
+    ...resourceLinks.map<SiteNavigationLinkItem>((link) => ({
       id: link.id,
-      label: t(link.id),
+      label: link.label,
       href: link.href,
       target: '_blank',
       rel: 'noreferrer',
+      className: 'hidden @min-[64rem]:block',
     })),
+    {
+      id: 'resources',
+      className: '@min-[64rem]:hidden',
+      render: ({ closeMenu, view }) =>
+        view === 'desktop' ? (
+          <ResourcesMenu
+            active={resourcesActive}
+            label={t('resources')}
+            links={resourceLinks}
+          />
+        ) : (
+          <MobileLinkGroup
+            active={resourcesActive}
+            closeMenu={closeMenu}
+            label={t('resources')}
+            links={resourceLinks}
+          />
+        ),
+    },
     {
       id: 'software',
       render: ({ active, closeMenu, view }) =>
         view === 'desktop' ? (
           <SoftwareMenu active={active} />
         ) : (
-          <MobileSoftwareLinks active={active} closeMenu={closeMenu} />
+          <MobileLinkGroup
+            active={active}
+            closeMenu={closeMenu}
+            label={t('software')}
+            links={softwareLinks}
+          />
         ),
     },
     {
@@ -121,22 +195,10 @@ export function Header({
     {
       id: 'getStarted',
       render: ({ active, closeMenu, view }) => (
-        <ButtonLink
-          href={GET_STARTED_PATH}
-          color="primary"
-          className={cn(
-            'rounded-full',
-            headingVariants({
-              level: 'h4',
-              variant: 'all-caps',
-              margin: 'none',
-            }),
-          )}
+        <GetStartedAction
+          active={active}
           onClick={view === 'mobile' ? closeMenu : undefined}
-          aria-current={active ? 'page' : undefined}
-        >
-          {t('getStarted')}
-        </ButtonLink>
+        />
       ),
     },
   ];

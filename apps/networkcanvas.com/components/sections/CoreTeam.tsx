@@ -23,7 +23,7 @@ export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
             <img
               src={member.photo}
               alt={member.name}
-              className="tablet-landscape:size-36 size-28 rounded-full object-cover shadow-lg"
+              className="effect-shadow tablet-landscape:size-36 size-28 rounded-full object-cover"
             />
             <Paragraph
               margin="none"

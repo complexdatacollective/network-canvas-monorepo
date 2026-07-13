@@ -8,9 +8,9 @@ import type { ReactNode } from 'react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { NewsTicker } from '~/components/sections/NewsTicker';
+import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { HeroVideo } from '~/components/ui/HeroVideo';
-import { PillLink } from '~/components/ui/PillLink';
 import { GET_STARTED_PATH } from '~/lib/getStarted';
 import type { NewsItem } from '~/lib/siteContent';
 
@@ -82,9 +82,14 @@ export function Hero({
           data-testid="hero-cta-wrapper"
           className="tablet-portrait:col-start-1 tablet-portrait:row-start-4 tablet-portrait:mt-0 mt-12 flex flex-col items-center gap-3"
         >
-          <PillLink href={GET_STARTED_PATH} tone="neon-coral" size="lg">
+          <ButtonLink
+            href={GET_STARTED_PATH}
+            color="default"
+            size="lg"
+            className="bg-neon-coral rounded-full text-white"
+          >
             {t('getStarted')}
-          </PillLink>
+          </ButtonLink>
           <Paragraph margin="none" className="text-base-sm text-text/60">
             {t('keepScrolling')}
           </Paragraph>

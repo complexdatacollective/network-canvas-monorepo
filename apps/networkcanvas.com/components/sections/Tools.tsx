@@ -2,29 +2,30 @@ import { useTranslations } from 'next-intl';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { DeviceMockup } from '~/components/ui/DeviceMockup';
-import { PillLink } from '~/components/ui/PillLink';
 import { Reveal } from '~/components/ui/Reveal';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { tools } from '~/lib/content';
+import { webDestinations } from '~/lib/getStarted';
 
 const accents = {
   'sea-green': {
     text: 'text-sea-green',
-    tone: 'sea-green' as const,
+    button: 'bg-sea-green text-white',
   },
   'neon-coral': {
     text: 'text-neon-coral',
-    tone: 'neon-coral' as const,
+    button: 'bg-neon-coral text-white',
   },
   'cerulean-blue': {
     text: 'text-cerulean-blue',
-    tone: 'cerulean-blue' as const,
+    button: 'bg-cerulean-blue text-white',
   },
   'slate-blue': {
     text: 'text-slate-blue',
-    tone: 'slate-blue' as const,
+    button: 'bg-slate-blue text-white',
   },
 };
 
@@ -57,14 +58,26 @@ export function Tools() {
                 >
                   {t(`${tool.id}.description`)}
                 </Paragraph>
-                <PillLink
-                  href={tool.href}
-                  external
-                  tone={accent.tone}
-                  className="mt-6"
-                >
-                  {t(`${tool.id}.action`)}
-                </PillLink>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <ButtonLink
+                    href={tool.href}
+                    external
+                    color="default"
+                    className={`rounded-full ${accent.button}`}
+                  >
+                    {t(`${tool.id}.action`)}
+                  </ButtonLink>
+                  {tool.id === 'fresco' ? (
+                    <ButtonLink
+                      href={webDestinations.frescoDeployment}
+                      external
+                      color="default"
+                      className="text-slate-blue rounded-full bg-white"
+                    >
+                      {t('fresco.deployAction')}
+                    </ButtonLink>
+                  ) : null}
+                </div>
               </div>
               <div>
                 <a

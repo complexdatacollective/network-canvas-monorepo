@@ -13,7 +13,6 @@ import { Badge } from '@codaco/fresco-ui/Badge';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { ButtonLink } from '~/components/ui/ButtonLink';
-import { PillLink } from '~/components/ui/PillLink';
 import { cn } from '~/lib/cn';
 import {
   type classicApps,
@@ -44,15 +43,19 @@ function AppActions({ app }: { app: (typeof webApps)[number] }) {
   return (
     <div className="mt-8 flex flex-wrap gap-3">
       {app.actions.map((action) => (
-        <PillLink
+        <ButtonLink
           key={action.href}
           href={action.href}
           external
-          tone={app.treatment === 'fresco' ? 'slate-blue' : 'neon-coral'}
+          color="default"
+          className={cn(
+            'rounded-full text-white',
+            app.treatment === 'fresco' ? 'bg-slate-blue' : 'bg-neon-coral',
+          )}
         >
           {t(action.labelKey)}
           <ExternalLink aria-hidden className="size-4" />
-        </PillLink>
+        </ButtonLink>
       ))}
     </div>
   );

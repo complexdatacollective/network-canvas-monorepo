@@ -79,7 +79,7 @@ export const webDestinations = {
   frescoSandboxGuide:
     'https://documentation.networkcanvas.com/en/collect-data/fresco/sandbox',
   frescoDeployment:
-    'https://documentation.networkcanvas.com/en/fresco/deployment/guide',
+    'https://documentation.networkcanvas.com/en/collect-data/fresco/guide',
 } as const;
 
 const classicDestinations = {

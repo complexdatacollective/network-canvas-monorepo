@@ -43,14 +43,11 @@ describe('localized layout navigation', () => {
     expect(
       screen.getByRole('button', { name: 'Software' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Comenzar' })).toHaveAttribute(
-      'href',
-      '/get-started',
-    );
-    expect(screen.getByRole('link', { name: 'Comenzar' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    const getStartedLinks = screen.getAllByRole('link', { name: 'Comenzar' });
+    for (const link of getStartedLinks) {
+      expect(link).toHaveAttribute('href', '/get-started');
+      expect(link).toHaveAttribute('aria-current', 'page');
+    }
     expect(
       screen.getByRole('combobox', { name: 'Idioma' }),
     ).toBeInTheDocument();

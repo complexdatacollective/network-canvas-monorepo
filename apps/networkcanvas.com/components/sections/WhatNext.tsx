@@ -3,8 +3,8 @@ import { useTranslations } from 'next-intl';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { MailingListForm } from '~/components/sections/MailingListForm';
+import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
-import { PillLink } from '~/components/ui/PillLink';
 import { Reveal } from '~/components/ui/Reveal';
 import { externalLinks } from '~/lib/content';
 
@@ -17,14 +17,14 @@ export function WhatNext() {
       body: t('documentation.body'),
       icon: '/images/icons/docs.png',
       action: (
-        <PillLink
+        <ButtonLink
           href={externalLinks.documentation}
           external
-          tone="neon-coral"
-          className="mt-6"
+          color="default"
+          className="bg-neon-coral mt-6 rounded-full text-white"
         >
           {t('documentation.action')}
-        </PillLink>
+        </ButtonLink>
       ),
     },
     {
@@ -33,14 +33,14 @@ export function WhatNext() {
       body: t('community.body'),
       icon: '/images/icons/community.png',
       action: (
-        <PillLink
+        <ButtonLink
           href={externalLinks.community}
           external
-          tone="sea-green"
-          className="mt-6"
+          color="default"
+          className="bg-sea-green mt-6 rounded-full text-white"
         >
           {t('community.action')}
-        </PillLink>
+        </ButtonLink>
       ),
     },
     {
@@ -56,14 +56,14 @@ export function WhatNext() {
       body: t('collaboration.body'),
       icon: '/images/icons/collaborate.png',
       action: (
-        <PillLink
+        <ButtonLink
           href={externalLinks.collaboration}
           external
-          tone="mustard"
-          className="mt-6"
+          color="default"
+          className="bg-mustard mt-6 rounded-full text-white"
         >
           {t('collaboration.action')}
-        </PillLink>
+        </ButtonLink>
       ),
     },
   ];

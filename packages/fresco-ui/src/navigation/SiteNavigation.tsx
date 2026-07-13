@@ -4,7 +4,12 @@ import { NavigationMenu } from '@base-ui/react/navigation-menu';
 import { Menu, X } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { Variants } from 'motion/react';
-import { useState, type ReactElement, type ReactNode } from 'react';
+import {
+  useState,
+  type CSSProperties,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 
 import { IconButton } from '../Button';
 import { headingVariants } from '../typography/Heading';
@@ -33,11 +38,13 @@ export type SiteNavigationLinkItem = {
   href: string;
   target?: SiteNavigationLinkRenderProps['target'];
   rel?: string;
+  className?: string;
 };
 
 export type SiteNavigationCustomItem = {
   id: string;
   render: (context: SiteNavigationRenderContext) => ReactNode;
+  className?: string;
 };
 
 export type SiteNavigationItem =
@@ -57,6 +64,7 @@ type SiteNavigationProps = {
   renderLink?: (props: SiteNavigationLinkRenderProps) => ReactElement;
   className?: string;
   containerClassName?: string;
+  style?: CSSProperties;
 };
 
 const linkClasses = cx(
@@ -88,6 +96,7 @@ export default function SiteNavigation({
   renderLink = defaultRenderLink,
   className,
   containerClassName,
+  style,
 }: SiteNavigationProps) {
   const [open, setOpen] = useState(false);
   const shouldReduceMotion = useReducedMotion();
@@ -142,11 +151,12 @@ export default function SiteNavigation({
   return (
     <motion.header
       variants={entranceVariants}
-      className={cx('relative z-50', className)}
+      className={cx('@container relative z-50', className)}
+      style={style}
     >
       <div
         className={cx(
-          'tablet-landscape:px-10 flex w-full items-center justify-between px-6 py-6',
+          'tablet-landscape:px-10 flex w-full items-center justify-between px-4 py-6 @min-[30rem]:px-6',
           containerClassName,
         )}
       >
@@ -158,32 +168,34 @@ export default function SiteNavigation({
           'aria-current': activeItemId === brandItemId ? 'page' : undefined,
         })}
 
-        <NavigationMenu.Root className="hidden min-[1160px]:block">
-          <NavigationMenu.List className="flex items-center gap-8">
+        <NavigationMenu.Root className="hidden @min-[48rem]:block">
+          <NavigationMenu.List className="flex items-center gap-4 @min-[48rem]:gap-6 @min-[80rem]:gap-8">
             {items.map((item) => (
-              <NavigationMenu.Item key={item.id}>
+              <NavigationMenu.Item key={item.id} className={item.className}>
                 {renderItem(item, 'desktop')}
               </NavigationMenu.Item>
             ))}
           </NavigationMenu.List>
         </NavigationMenu.Root>
 
-        <IconButton
-          icon={
-            open ? (
-              <X aria-hidden className="size-7" />
-            ) : (
-              <Menu aria-hidden className="size-7" />
-            )
-          }
-          aria-label={open ? closeMenuLabel : openMenuLabel}
-          aria-expanded={open}
-          onClick={() => setOpen((current) => !current)}
-          variant="text"
-          color="dynamic"
-          size="sm"
-          className="text-cyber-grape size-11 border-transparent min-[1160px]:hidden"
-        />
+        <div className="flex items-center gap-1 @min-[48rem]:hidden">
+          <IconButton
+            icon={
+              open ? (
+                <X aria-hidden className="size-7" />
+              ) : (
+                <Menu aria-hidden className="size-7" />
+              )
+            }
+            aria-label={open ? closeMenuLabel : openMenuLabel}
+            aria-expanded={open}
+            onClick={() => setOpen((current) => !current)}
+            variant="text"
+            color="dynamic"
+            size="lg"
+            className="text-cyber-grape border-transparent"
+          />
+        </div>
       </div>
 
       <AnimatePresence>
@@ -193,11 +205,13 @@ export default function SiteNavigation({
             animate={mobileVisible}
             exit={mobileInitial}
             transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
-            className="bg-surface absolute inset-x-4 top-full z-50 rounded-[1.75rem] p-6 shadow-xl min-[1160px]:hidden"
+            className="bg-surface absolute inset-x-4 top-full z-50 rounded-[1.75rem] p-6 shadow-xl @min-[48rem]:hidden"
           >
             <nav className="flex flex-col gap-5">
               {items.map((item) => (
-                <div key={item.id}>{renderItem(item, 'mobile')}</div>
+                <div key={item.id} className={item.className}>
+                  {renderItem(item, 'mobile')}
+                </div>
               ))}
             </nav>
           </motion.div>

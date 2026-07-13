@@ -18,6 +18,7 @@
     "community": "Community",
     "documentation": "Docs",
     "protocolGallery": "Protocol Gallery",
+    "resources": "Resources",
     "software": "Software",
     "getStarted": "Get Started",
     "toggleMenu": "Toggle menu",
@@ -50,6 +51,7 @@
     "fresco": {
       "description": "Bringing Network Canvas interviews to the web! Fresco is a pilot project that allows researchers to conduct Network Canvas interviews in a web browser.",
       "action": "Try the Fresco Sandbox",
+      "deployAction": "Deploy Fresco",
       "screenshotAlt": "Fresco dashboard showing protocol, participant, and interview totals"
     }
   },
