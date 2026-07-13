@@ -492,19 +492,24 @@ export default function RichTextEditorField({
   useEffect(() => {
     if (!editor) return;
 
-    const currentContent = JSON.stringify(editor.getJSON());
-    const newContent = value === undefined ? undefined : JSON.stringify(value);
-
-    if (skipNextContentSyncRef.current) {
-      skipNextContentSyncRef.current = false;
-      if (newContent === currentContent) return;
-    }
-
     if (value === undefined) {
+      skipNextContentSyncRef.current = false;
       if (!editor.isEmpty) {
         editor.commands.clearContent(false);
       }
-    } else if (currentContent !== newContent) {
+      return;
+    }
+
+    if (skipNextContentSyncRef.current) {
+      skipNextContentSyncRef.current = false;
+      return;
+    }
+
+    if (editor.isFocused) return;
+
+    const currentContent = JSON.stringify(editor.getJSON());
+    const newContent = JSON.stringify(value);
+    if (currentContent !== newContent) {
       editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [editor, value]);
