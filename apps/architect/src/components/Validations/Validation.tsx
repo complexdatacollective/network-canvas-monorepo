@@ -143,10 +143,10 @@ const Validation = ({
         <IconButton
           icon={<Trash2 />}
           aria-label="Delete validation rule"
-          size="sm"
+          size="md"
           variant="text"
           color="destructive"
-          className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+          className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast text-current opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
           onClick={() => onDelete(itemKey || '')}
         />
       </div>

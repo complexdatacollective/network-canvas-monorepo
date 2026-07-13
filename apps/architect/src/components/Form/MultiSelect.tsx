@@ -118,6 +118,7 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
             onMove={onMove}
             disabled={interactionDisabled}
             label={`Reorder item ${index + 1} of ${itemCount}`}
+            size="md"
             className="text-sortable-contrast"
           />
         </div>
@@ -168,11 +169,11 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
         <IconButton
           icon={<Trash2 />}
           aria-label="Remove item"
-          size="sm"
+          size="md"
           variant="text"
           color="destructive"
           disabled={interactionDisabled}
-          className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+          className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast text-current opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
           onClick={handleDelete}
         />
       </div>

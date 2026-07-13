@@ -95,6 +95,7 @@ const DialogItem = ({
           onMove={onMove}
           disabled={interactionDisabled}
           label={`Reorder ${itemLabel} ${index + 1} of ${itemCount}`}
+          size="md"
         />
       )}
       <div className="min-w-0 flex-1">
@@ -109,7 +110,7 @@ const DialogItem = ({
       <IconButton
         icon={<Pencil />}
         aria-label={`Edit ${itemLabel}`}
-        size="sm"
+        size="md"
         variant="text"
         color="dynamic"
         disabled={interactionDisabled}
@@ -118,10 +119,11 @@ const DialogItem = ({
       <IconButton
         icon={<Trash2 />}
         aria-label={`Remove ${itemLabel}`}
-        size="sm"
+        size="md"
         variant="text"
         color="destructive"
         disabled={interactionDisabled}
+        className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast text-current"
         onClick={handleDelete}
       />
     </div>

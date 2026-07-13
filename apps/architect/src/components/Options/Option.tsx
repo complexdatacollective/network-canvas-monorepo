@@ -69,7 +69,7 @@ const Option = ({
           disabled={interactionDisabled}
           label={`Reorder option ${index + 1} of ${itemCount}`}
           size="md"
-          className="shrink-0 [&>.lucide]:h-[1.5em] [&>.lucide]:w-[1.5em]"
+          className="shrink-0"
         />
       )}
       <div className="flex min-w-0 flex-1 gap-4">
@@ -122,7 +122,7 @@ const Option = ({
         color="destructive"
         disabled={interactionDisabled}
         onClick={handleDelete}
-        className="shrink-0 [&>.lucide]:h-[1.5em] [&>.lucide]:w-[1.5em]"
+        className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast shrink-0 text-current"
       />
     </div>
   );
