@@ -4,7 +4,7 @@
 
 **Goal:** Build a Chromium-first Playwright e2e suite for `apps/architect` that creates every one of the 19 interface stages from scratch and asserts the saved stage JSON, plus covers protocol import/download/clear, timeline reordering, the printable summary/codebook, and resource management.
 
-**Architecture:** Playwright drives architect's real production build served by `vite preview` (dev server wipes Redux state via optimizeDeps reloads). Two deliberately-added test seams make it robust: `data-field-name` on redux-form fields (for locators) and a build-flag-gated `window.__architectStore` (for JSON assertions). State is seeded through architect's real storage layers — IndexedDB `ArchitectProtocolDB` (durable) and per-tab `sessionStorage` (`@@remember-app` / `@@remember-activeProtocol`). Create-from-scratch specs build stages via the real editor UI using shared page-object sub-flows; app-facet specs run against one hand-authored all-19-interfaces fixture protocol.
+**Architecture:** Modelled directly on the merged **`apps/interviewer/e2e`** suite — the closest analogue (a full-app Vite PWA, structurally identical to architect: same `scripts/build.mjs`, same `assert-pwa-build.mjs`, same `~/*` tsconfig). Playwright drives architect's **real production `dist/`** served by `vite preview` from the normal `turbo run build` — NOT the dev server (its optimizeDeps re-bundle wipes Redux state mid-test) and NOT a bespoke test build. Following the interviewer suite, there is **no `window` store hook and no `VITE_E2E` flag**. One deliberately-added test seam remains: `data-field-name` on redux-form fields (for locators). Saved stage JSON is asserted by a **read-only IndexedDB read** of the autosaved `ArchitectProtocolDB.protocols` row (architect autosaves the active protocol on a 600ms debounce). State is seeded through architect's own storage (`ArchitectProtocolDB` + `@@remember-*` sessionStorage) or by driving the real import/new-protocol UI. Create-from-scratch specs build stages via the real editor UI using shared page-object sub-flows; app-facet specs run against one hand-authored all-19-interfaces fixture protocol.
 
 **Tech Stack:** Playwright (`@playwright/test` `catalog:` = `^1.61.1`), Vite + Redux (architect), redux-form, Dexie/IndexedDB, JSZip, `@codaco/protocol-validation` (Zod schema 8), Docker (`mcr.microsoft.com/playwright:v<version>-noble`) for visual baselines, turbo + GitHub Actions.
 
@@ -16,9 +16,10 @@ Every task's requirements implicitly include this section. Exact values are load
 - **Playwright deps via `catalog:`.** Add `"@playwright/test": "catalog:"` and `"playwright": "catalog:"` to `apps/architect` `devDependencies`. Catalog pins are `^1.61.1` in `pnpm-workspace.yaml` (lines 44, 83), grouped in dependabot. Never hardcode versions.
 - **Docker image tag derived from the lockfile** in `run.sh` (never hardcoded): `PW_VERSION="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1)"`, `IMAGE="mcr.microsoft.com/playwright:v${PW_VERSION}-noble"`.
 - **Visual snapshots are CI-gated and Docker-only.** The capture helper no-ops unless `process.env.CI` is set; baselines are regenerated only inside the Docker image (font rendering). `toHaveScreenshot`: `{ animations: 'disabled', maxDiffPixels: 250 }`. Never regenerate baselines on macOS.
-- **`window.__architectStore` is gated on `import.meta.env.VITE_E2E === 'true'`** and must never appear in the production `build:web` bundle (asserted in `assert-pwa-build.mjs`).
-- **Pinned port `4301` with `--strictPort`** (distinct from interview's 4101/4200 so both run locally).
-- **One app page per browser context.** Two pages on `/protocol*` trip the BroadcastChannel single-editor lock (read-only, autosave off). `serviceWorkers: 'block'` and `reducedMotion: 'reduce'` on the context.
+- **Primary template is `apps/interviewer/e2e`** (full-app PWA analogue). Copy its `playwright.config.ts`, `tsconfig.json`, `scripts/run.sh`, `helpers/visual.ts`, and package-script trio, changing only the package filter, port, and app-specific selectors. Use `packages/interview/e2e` only for patterns the interviewer suite lacks.
+- **No app-source store hook, no test build flag.** Like the interviewer suite, architect serves its normal production `dist/` (from `turbo run build`) via `vite preview`; there is no `VITE_E2E`/`dist-e2e`/`build:e2e`. Stage/protocol JSON is asserted by a read-only IndexedDB read (Task 3), never an injected `window` hook.
+- **Pinned port `4301` with `--strictPort`** (distinct from interview's 4101/4200 and interviewer's 4180 so all suites run locally).
+- **Service worker + motion config (interviewer's exact placement).** `serviceWorkers: 'block'` at `use` top-level; `contextOptions: { reducedMotion: 'reduce' }` alone (this split placement dodges a real `@playwright/test@1.61.1` TS2769 overload bug — do not collapse both under `contextOptions`). `fullyParallel: true` with a fresh context per test (isolates IndexedDB/localStorage/BroadcastChannel for free), matching the interviewer suite — verify architect's single-editor lock is context-scoped (it almost certainly is) before relying on it.
 - **CI job is informational, not required** (only `quality` is required on the merge queue). A new conditional job must be wired into FOUR places in `ci-and-release.yml`: a `detect` output, the job itself, `carry-forward-statuses` `needs:`, and its `flagToJobs`/`env` map.
 - **knip is part of the required `quality` gate.** e2e spec/helper/config files must be added to the `apps/architect` knip `entry`/`project` globs or CI fails.
 - **The all-interfaces fixture is validated in the always-on `test` gate** via a dedicated Vitest test (not the path-filtered development-protocol workflow).
@@ -43,20 +44,17 @@ Produces a runnable e2e harness and a green smoke test. Touches shared `fresco-u
 
 **Interfaces:**
 
-- Produces: an `apps/architect/e2e/` dir with a Playwright config whose `webServer` previews a `dist-e2e` build on port 4301; package scripts `test:e2e`, `test:e2e:headed`, `build:e2e`, `preview:e2e`.
+- Produces: an `apps/architect/e2e/` dir with a Playwright config whose `webServer` previews the normal production `dist/` on port 4301; package scripts `test:e2e`, `test:e2e:update-snapshots`, `test:e2e:headed`.
 
 - [ ] **Step 1: Add Playwright devDependencies and scripts to `apps/architect/package.json`**
 
-Add to `devDependencies` (keep alphabetical): `"@playwright/test": "catalog:"`, `"playwright": "catalog:"`. Add to `scripts`:
+Add to `devDependencies` (keep alphabetical): `"@playwright/test": "catalog:"`, `"playwright": "catalog:"`. Add the interviewer suite's exact script trio (`apps/interviewer/package.json` lines 24–26), swapping the filter to `@codaco/architect` — there is NO `build:e2e`/`preview:e2e` (the suite serves the normal `dist/` from `turbo run build`):
 
 ```jsonc
-"build:e2e": "cross-env VITE_E2E=true vite build --outDir dist-e2e",
-"preview:e2e": "vite preview --outDir dist-e2e --port 4301 --strictPort",
 "test:e2e": "./e2e/scripts/run.sh",
-"test:e2e:headed": "pnpm build:e2e && playwright test --config e2e/playwright.config.ts --headed"
+"test:e2e:update-snapshots": "./e2e/scripts/run.sh --update-snapshots",
+"test:e2e:headed": "pnpm turbo run build --filter=@codaco/architect && playwright test --config e2e/playwright.config.ts --headed"
 ```
-
-Check whether `cross-env` is already a dependency (`grep cross-env apps/architect/package.json`); if absent, prefer the shell form `"build:e2e": "VITE_E2E=true vite build --outDir dist-e2e"` (macOS/Linux CI only — this repo's CI is ubuntu, and local dev is darwin, so the bare-env form is safe).
 
 - [ ] **Step 2: Install and verify the dep resolves**
 
@@ -64,6 +62,8 @@ Run: `pnpm install`
 Expected: completes; `pnpm --filter @codaco/architect exec playwright --version` prints `Version 1.61.x`.
 
 - [ ] **Step 3: Write `apps/architect/e2e/playwright.config.ts`**
+
+Copy `apps/interviewer/e2e/playwright.config.ts`, changing only the webServer filter/port and `baseURL`. Note the deliberate `serviceWorkers`/`reducedMotion` split and `fullyParallel: true` (see Global Constraints):
 
 ```ts
 import { defineConfig, devices } from '@playwright/test';
@@ -73,8 +73,9 @@ export default defineConfig({
   snapshotDir: './visual-snapshots',
   snapshotPathTemplate: '{snapshotDir}/{projectName}/{arg}{ext}',
 
-  fullyParallel: false,
-  workers: 1,
+  // Fresh context per test → IndexedDB + localStorage + BroadcastChannel isolated.
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   timeout: 60_000,
 
@@ -99,17 +100,25 @@ export default defineConfig({
     video: 'retain-on-failure',
     actionTimeout: 10_000,
     navigationTimeout: 15_000,
-    viewport: { width: 1920, height: 1080 },
-    contextOptions: { reducedMotion: 'reduce', serviceWorkers: 'block' },
+    // No top-level `viewport`: the chromium project's devices['Desktop Chrome']
+    // preset (1280×720) supplies its own and would override a top-level one.
+    // Baselines capture at that size. If a wider canvas is wanted for architect's
+    // desktop UI, set viewport inside projects[0].use (not here).
+    // reducedMotion lives under contextOptions (NOT top-level) to dodge a
+    // @playwright/test@1.61.1 TS2769 overload bug — do not "simplify" it back.
+    contextOptions: { reducedMotion: 'reduce' },
+    // Block the service worker: deterministic tests, page.route works, no
+    // SW-cache bleed between contexts. SW/offline behaviour is out of scope.
+    serviceWorkers: 'block',
   },
 
   webServer: {
-    // Preview a production build (VITE_E2E=true) — NOT the dev server, whose
-    // optimizeDeps re-bundling forces mid-test reloads that wipe Redux state.
-    // The dist-e2e build is produced upstream by run.sh (Docker) or the
-    // test:e2e:headed script; assumes apps/architect/dist-e2e/ exists.
+    // Serve the built PWA (not the dev server): the SW only exists in the build,
+    // the app's build runs a PWA-integrity check on this exact output, and the
+    // dev server's optimizeDeps re-bundle wipes app state mid-test. The build
+    // runs upstream in run.sh / test:e2e:headed, so this assumes dist/ exists.
     command:
-      'pnpm --filter @codaco/architect exec vite preview --outDir dist-e2e --port 4301 --strictPort',
+      'pnpm --filter @codaco/architect exec vite preview --port 4301 --strictPort',
     port: 4301,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
@@ -121,23 +130,24 @@ export default defineConfig({
 
 - [ ] **Step 4: Write `apps/architect/e2e/tsconfig.json`**
 
-Mirror the interview e2e tsconfig split:
+Copy `apps/interviewer/e2e/tsconfig.json` verbatim (architect's `apps/architect/tsconfig.json` provides `~/*` → `./src/*`, inherited via `extends`; Playwright types resolve via the package, not a `types` entry):
 
 ```jsonc
 {
-  "extends": "@codaco/tsconfig/web.json",
+  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "noEmit": true,
-    "types": ["node", "@playwright/test", "vite/client"],
-    "paths": { "~/*": ["../src/*"] },
+    "types": ["node"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true
   },
-  "include": ["**/*.ts", "fixtures/window-test.d.ts"],
+  "include": ["**/*.ts"]
 }
 ```
 
 - [ ] **Step 5: Extend the `apps/architect` knip entry (knip.json lines 117–126)**
 
-Replace the `apps/architect` block with:
+Graft the interviewer block's e2e globs (`knip.json` lines 92–104) onto the existing architect block, preserving architect's `ignoreDependencies`/`ignore` keys (the interviewer block lacks them):
 
 ```jsonc
     "apps/architect": {
@@ -146,8 +156,7 @@ Replace the `apps/architect` block with:
         "preview/index.html!",
         "src/preview-main.tsx!",
         "e2e/specs/**/*.ts",
-        "e2e/scripts/*.ts",
-        "e2e/fixtures/window-test.d.ts"
+        "e2e/scripts/*.{ts,mjs}"
       ],
       "vite": true,
       "project": ["src/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}"],
@@ -159,17 +168,18 @@ Replace the `apps/architect` block with:
     },
 ```
 
+(`.mjs` is included because Task 6/Task 9 may add a JSZip `e2e/scripts/build-e2e-protocol.mjs`, mirroring the interviewer suite.)
+
 - [ ] **Step 6: Ignore build/report artifacts**
 
 Add to `apps/architect/.gitignore` (create if missing):
 
 ```
-dist-e2e/
 e2e/playwright-report/
 e2e/test-results/
 ```
 
-(`**/test-results/` and `**/playwright-report/` may already be root-ignored; `dist-e2e/` is architect-specific.)
+(`**/test-results/` and `**/playwright-report/` may already be root-ignored; add these to be explicit. No `dist-e2e/` — the suite uses the normal `dist/`, already ignored.)
 
 - [ ] **Step 7: Add `preview/index.html` to the architect build turbo inputs**
 
@@ -321,83 +331,98 @@ git commit -m "feat(fresco-ui): forward name as data-field-name on UnconnectedFi
 
 ---
 
-### Task 3: `window.__architectStore` assertion seam
+### Task 3: IndexedDB stage/protocol reader (assertion mechanism)
+
+No app-source hook (following the interviewer suite). Assertions read the durable, autosaved protocol row from IndexedDB. After a stage save, architect autosaves the active protocol into `ArchitectProtocolDB.protocols` on a 600ms debounce (`ducks/middleware/protocolLibraryListener.ts`), so the reader polls until the expected stage appears. The active protocol id is read from the `@@remember-app` sessionStorage key the app itself writes.
 
 **Files:**
 
-- Modify: `apps/architect/src/ducks/store.ts` (after line 85 / near `export { store }` line 111)
-- Create: `apps/architect/e2e/fixtures/window-test.d.ts`
-- Modify: `apps/architect/scripts/assert-pwa-build.mjs` (insert before the success `console.log` at line 86)
-- Test: `apps/architect/scripts/__tests__/assert-pwa-build.test.mjs` OR a manual build verification step
+- Create: `apps/architect/e2e/helpers/read-store.ts`
 
 **Interfaces:**
 
-- Produces: `window.__architectStore` (the Redux store) present only when `import.meta.env.VITE_E2E === 'true'`. Consumed by `helpers/read-store.ts` (Task 13).
+- Produces: `readProtocolJson(page)` / `readStageJson(page, index)` — read the autosaved protocol/stage from IndexedDB. Consumed by the smoke spec (Task 5), app-facet specs (Tasks 9–10), and every interface spec (Tasks 14–20).
+- Consumes: the `ArchitectProtocolDB` `protocols` store (keyPath `id`) and the `@@remember-app` `activeProtocolId` contract.
 
-- [ ] **Step 1: Add the gated hook to `store.ts`**
-
-After the store is created (after line 85) and before `export { store };` (line 111), add:
-
-```ts
-// e2e assertion seam — only present in the VITE_E2E build (never in build:web),
-// so specs can read protocol/stage JSON directly from the store. The gate is a
-// static literal at build time, so the branch is tree-shaken out of production
-// bundles (asserted by scripts/assert-pwa-build.mjs).
-if (import.meta.env.VITE_E2E === 'true') {
-  (window as unknown as { __architectStore: typeof store }).__architectStore =
-    store;
-}
-```
-
-- [ ] **Step 2: Type the global in `window-test.d.ts`**
+- [ ] **Step 1: Write `helpers/read-store.ts`**
 
 ```ts
-import type { store } from '~/ducks/store';
+import { expect, type Page } from '@playwright/test';
 
-declare global {
-  interface Window {
-    __architectStore: typeof store;
-  }
+const DB_NAME = 'ArchitectProtocolDB';
+
+type Row = { protocol: { stages: Record<string, unknown>[] } };
+
+async function readActiveRow(page: Page): Promise<Row | null> {
+  return page.evaluate(async (dbName) => {
+    const activeId = (() => {
+      try {
+        const app = JSON.parse(sessionStorage.getItem('@@remember-app') ?? '{}');
+        return typeof app.activeProtocolId === 'string'
+          ? app.activeProtocolId
+          : undefined;
+      } catch {
+        return undefined;
+      }
+    })();
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open(dbName);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const row = await new Promise<unknown>((resolve, reject) => {
+      const store = db.transaction('protocols', 'readonly').objectStore('protocols');
+      // Prefer the active id; fall back to the most-recently-updated row.
+      const req = activeId ? store.get(activeId) : store.getAll();
+      req.onsuccess = () => {
+        const r = req.result as unknown;
+        resolve(Array.isArray(r) ? r[r.length - 1] : r);
+      };
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return (row as Row) ?? null;
+  }, dbName ?? DB_NAME);
 }
 
-export {};
-```
+export async function readProtocolJson(page: Page): Promise<Record<string, unknown>> {
+  const row = await readActiveRow(page);
+  if (!row) throw new Error('no autosaved protocol row in ArchitectProtocolDB');
+  return row.protocol as unknown as Record<string, unknown>;
+}
 
-- [ ] **Step 3: Add the "no hook in prod bundle" assertion to `assert-pwa-build.mjs`**
-
-The script already enumerates `jsAssets` (lines 52–60) and imports `readFileSync` from `node:fs` (line 9). Insert before the success `console.log` (line 86):
-
-```js
-for (const asset of jsAssets) {
-  const contents = readFileSync(path.join(dist, asset), 'utf8');
-  if (contents.includes('__architectStore')) {
-    fail(
-      `production bundle ${asset} references __architectStore — the e2e store hook leaked into build:web`,
-    );
-  }
+export async function readStageJson(
+  page: Page,
+  index: number,
+): Promise<Record<string, unknown>> {
+  let stage: Record<string, unknown> | undefined;
+  // Poll past the 600ms autosave debounce until the stage at `index` exists.
+  await expect
+    .poll(
+      async () => {
+        const row = await readActiveRow(page);
+        stage = row?.protocol.stages?.[index];
+        return stage ? 'ready' : 'pending';
+      },
+      { timeout: 5_000 },
+    )
+    .toBe('ready');
+  return stage!;
 }
 ```
 
-- [ ] **Step 4: Verify the prod build stays clean**
+Verify `ArchitectProtocolDB`, the `protocols` store name/keyPath, and the `@@remember-app` `activeProtocolId` shape against `apps/architect/src/utils/assetDB.ts` and `apps/architect/src/ducks/activeProtocolPersistence.ts`; adjust the row shape if the durable `protocol` field nests differently.
 
-Run: `pnpm --filter @codaco/architect build:web`
-Expected: exits 0 with "PWA build ok: ..." — the assertion passes because `VITE_E2E` is unset for `build:web`, so the branch is eliminated.
+- [ ] **Step 2: Typecheck**
 
-- [ ] **Step 5: Verify the e2e build exposes the hook**
+Run: `pnpm --filter @codaco/architect exec tsc -p e2e/tsconfig.json --noEmit`
+Expected: PASS (there are no specs yet consuming it; this validates the helper compiles).
 
-Run: `pnpm --filter @codaco/architect build:e2e && grep -rl "__architectStore" apps/architect/dist-e2e/assets/*.js | head -1`
-Expected: at least one chunk contains `__architectStore` (the VITE_E2E build keeps the branch).
-
-- [ ] **Step 6: Typecheck**
-
-Run: `pnpm --filter @codaco/architect typecheck`
-Expected: PASS.
-
-- [ ] **Step 7: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add apps/architect/src/ducks/store.ts apps/architect/e2e/fixtures/window-test.d.ts apps/architect/scripts/assert-pwa-build.mjs
-git commit -m "feat(architect): gated window.__architectStore e2e seam + build guard"
+git add apps/architect/e2e/helpers/read-store.ts
+git commit -m "test(architect): IndexedDB protocol/stage reader for e2e assertions"
 ```
 
 ---
@@ -408,15 +433,15 @@ git commit -m "feat(architect): gated window.__architectStore e2e seam + build g
 
 - Create: `apps/architect/e2e/fixtures/seed.ts`
 - Create: `apps/architect/e2e/fixtures/architect-test.ts`
-- Create: `apps/architect/e2e/helpers/read-store.ts`
 
 **Interfaces:**
 
 - Produces:
   - `seedProtocol(page, protocol, opts?)` — writes a `StoredProtocolRow` into IndexedDB `ArchitectProtocolDB.protocols` and (optionally) `StoredAsset` rows, plus the two `@@remember-*` sessionStorage keys, via `page.addInitScript` + `page.evaluate`. Signature: `async (page: Page, protocol: CurrentProtocol, opts?: { id?: string; name?: string; assets?: SeedAsset[] }) => string` (returns the protocol id).
-  - `test` / `expect` — the composed architect test fixture exposing `architectPage: Page` (SW-blocked, boot-loader settled) and `seed: (protocol, opts?) => Promise<string>`.
-  - `readProtocolJson(page)` / `readStageJson(page, index)` — read from `window.__architectStore`.
-- Consumes: `window.__architectStore` (Task 3); the `StoredProtocolRow`/`StoredAsset`/`assetKey` contract from `apps/architect/src/utils/assetDB.ts`.
+  - `test` / `expect` / `gotoProtocol` — the composed architect test fixture exposing `architectPage: Page` (SW-blocked, boot-loader settled) and `seed: (protocol, opts?) => Promise<string>`.
+- Consumes: the `StoredProtocolRow`/`StoredAsset`/`assetKey` contract from `apps/architect/src/utils/assetDB.ts`; the `readProtocolJson`/`readStageJson` reader from Task 3.
+
+> **Seeding approach.** This raw-IndexedDB + `@@remember-*` seeder is fast and hook-free, and the seeded row is exactly the row Task 3 reads back after autosave (the `FIXED_ID` makes the reader deterministic). It is the closest to the interviewer suite's philosophy of driving the app's real storage. If it proves brittle against `StoredProtocolRow`/schema drift, switch to the interviewer suite's **real-UI import seeding** (`apps/interviewer/e2e/fixtures/protocol-fixture.ts`): `page.getByTestId('protocol-import-input').setInputFiles(fixturePath)` on Home's hidden `input[type=file]`, asserting install by DOM — more robust, exercises real code, and needs a committed fixture `.netcanvas` (built by a JSZip `e2e/scripts/build-e2e-protocol.mjs`, mirroring the interviewer script). For create-from-scratch specs that need an empty protocol, `emptyProtocol()` seeded here is fine; the real-UI alternative is to drive the Home "Create a new protocol" flow.
 
 - [ ] **Step 1: Write the seeding helper `fixtures/seed.ts`**
 
@@ -525,35 +550,7 @@ export function emptyProtocol(): CurrentProtocol {
 
 Note: import `CurrentProtocol` as a type from `@codaco/protocol-validation` (Task fixture-delivery confirms it is exported). If TS complains about the `emptyProtocol` cast, build the object to satisfy `CurrentProtocolSchema` instead of casting — read `packages/protocol-validation/src/schemas/index.ts` for the exact `codebook` shape (`{ node?, edge?, ego? }`, all optional).
 
-- [ ] **Step 2: Write `helpers/read-store.ts`**
-
-```ts
-import type { Page } from '@playwright/test';
-
-export async function readProtocolJson(page: Page): Promise<unknown> {
-  return page.evaluate(() => {
-    const state = window.__architectStore.getState();
-    return state.activeProtocol.present;
-  });
-}
-
-export async function readStageJson(
-  page: Page,
-  index: number,
-): Promise<Record<string, unknown>> {
-  return page.evaluate((i) => {
-    const state = window.__architectStore.getState();
-    const stages = (
-      state.activeProtocol.present as { stages: Record<string, unknown>[] }
-    ).stages;
-    return stages[i];
-  }, index);
-}
-```
-
-Verify the state path `activeProtocol.present.stages` against `apps/architect/src/selectors/protocol.ts` (`getStageList`) and adjust if the slice nests differently.
-
-- [ ] **Step 3: Write the composed fixture `fixtures/architect-test.ts`**
+- [ ] **Step 2: Write the composed fixture `fixtures/architect-test.ts`**
 
 ```ts
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -591,16 +588,16 @@ export async function gotoProtocol(page: Page): Promise<void> {
 }
 ```
 
-- [ ] **Step 4: Typecheck the e2e dir**
+- [ ] **Step 3: Typecheck the e2e dir**
 
 Run: `pnpm --filter @codaco/architect exec tsc -p e2e/tsconfig.json --noEmit`
 Expected: PASS (fix any import-path issues surfaced here).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add apps/architect/e2e/fixtures/seed.ts apps/architect/e2e/fixtures/architect-test.ts apps/architect/e2e/helpers/read-store.ts
-git commit -m "test(architect): e2e seeding fixtures + store readers"
+git add apps/architect/e2e/fixtures/seed.ts apps/architect/e2e/fixtures/architect-test.ts
+git commit -m "test(architect): e2e seeding fixtures"
 ```
 
 ---
@@ -614,7 +611,7 @@ git commit -m "test(architect): e2e seeding fixtures + store readers"
 
 **Interfaces:**
 
-- Consumes: `test`/`expect`/`gotoProtocol` (Task 4), `readProtocolJson` (Task 4).
+- Consumes: `test`/`expect`/`gotoProtocol` (Task 4), `readProtocolJson` (Task 3).
 - Produces: a green smoke test proving seed → boot → store-read works end to end; a Docker runner mirroring interview's.
 
 - [ ] **Step 1: Write the smoke spec**
@@ -643,8 +640,8 @@ test('seeds a protocol and lands in the timeline', async ({
 
 - [ ] **Step 2: Build the e2e bundle and run the smoke test locally**
 
-Run: `pnpm --filter @codaco/architect build:e2e && pnpm --filter @codaco/architect exec playwright test --config e2e/playwright.config.ts`
-Expected: 1 passed. If the store path assertion fails, fix `read-store.ts`'s state path against the real slice shape; if `#boot-loader` never hides, relax the wait (it's `.catch`-guarded already).
+Run: `pnpm turbo run build --filter=@codaco/architect && pnpm --filter @codaco/architect exec playwright test --config e2e/playwright.config.ts`
+Expected: 1 passed. If the read fails, verify `read-store.ts`'s `ArchitectProtocolDB`/`protocols`/`@@remember-app` assumptions against the app; if `#boot-loader` never hides, relax the wait (it's `.catch`-guarded already).
 
 - [ ] **Step 3: Write `apps/architect/e2e/scripts/run.sh`**
 
@@ -684,8 +681,7 @@ docker run --rm \
   sh -c "set -e \
     && corepack enable \
     && pnpm install --filter '@codaco/architect...' --frozen-lockfile \
-    && pnpm turbo build --filter @codaco/architect \
-    && VITE_E2E=true pnpm --filter @codaco/architect exec vite build --outDir dist-e2e \
+    && pnpm turbo run build --filter=@codaco/architect \
     && pnpm --filter @codaco/architect exec playwright test --config=e2e/playwright.config.ts $*"
 ```
 
@@ -1129,7 +1125,7 @@ git commit -m "test(architect): app-facet page objects + fixture loader"
 
 **Interfaces:**
 
-- Consumes: `test`/`seed`/`gotoProtocol` (Task 4), `loadAllInterfacesFixture` (Task 8), `Toolbar` (Task 8), `readProtocolJson` (Task 4).
+- Consumes: `test`/`seed`/`gotoProtocol` (Task 4), `loadAllInterfacesFixture` (Task 8), `Toolbar` (Task 8), `readProtocolJson` (Task 3).
 
 - [ ] **Step 1: Write the download test**
 
@@ -1203,7 +1199,7 @@ Seed, enter a stage editor, make an edit, save, then assert `undo` reverts the s
 
 - [ ] **Step 5: Run the spec**
 
-Run: `pnpm --filter @codaco/architect build:e2e && pnpm --filter @codaco/architect exec playwright test --config e2e/playwright.config.ts specs/app-functionality.spec.ts`
+Run: `pnpm turbo run build --filter=@codaco/architect && pnpm --filter @codaco/architect exec playwright test --config e2e/playwright.config.ts specs/app-functionality.spec.ts`
 Expected: all pass. Debug locator mismatches against the live app with `--headed`.
 
 - [ ] **Step 6: Commit**
@@ -1223,7 +1219,7 @@ git commit -m "test(architect): app-functionality e2e (import/download/clear/und
 
 **Interfaces:**
 
-- Consumes: `Timeline` (Task 8), `readProtocolJson` (Task 4), `seed`/`gotoProtocol`.
+- Consumes: `Timeline` (Task 8), `readProtocolJson` (Task 3), `seed`/`gotoProtocol`.
 
 - [ ] **Step 1: Write the reorder test**
 
@@ -1286,7 +1282,7 @@ Also add a positive delete: delete a leaf stage (e.g. `Information`), confirm vi
 
 - [ ] **Step 4: Run + commit**
 
-Run: `pnpm --filter @codaco/architect exec playwright test --config e2e/playwright.config.ts specs/timeline.spec.ts` (after `build:e2e`).
+Run: `pnpm --filter @codaco/architect exec playwright test --config e2e/playwright.config.ts specs/timeline.spec.ts` (after `pnpm turbo run build --filter=@codaco/architect`).
 Expected: pass. Then:
 
 ```bash
@@ -1390,7 +1386,7 @@ Add an unused asset (Step 1), delete it via the destructive "Delete Resource?" c
 
 - [ ] **Step 4: Run + commit**
 
-Run the spec (after `build:e2e`); expect pass. Then:
+Run the spec (after `pnpm turbo run build --filter=@codaco/architect`); expect pass. Then:
 
 ```bash
 git add apps/architect/e2e/specs/resources.spec.ts apps/architect/e2e/fixtures/files/
@@ -1426,7 +1422,7 @@ The core coverage: build each of the 19 stages from scratch and snapshot the nor
   - `addPrompt(page, fill: () => Promise<void>): Promise<void>` — opens the "Create new" prompt dialog, runs `fill`, clicks "Add".
   - `addFormField(page, { variableName, promptText, inputControl? }): Promise<void>`
   - `normalizeStage(stage): unknown` — strips generated ids/uuids for stable snapshots.
-- Consumes: `readStageJson` (Task 4), the field-locator rules (Global Constraints).
+- Consumes: `readStageJson` (Task 3), the field-locator rules (Global Constraints).
 
 - [ ] **Step 1: Write `pageobjects/stage-editor.ts`**
 
@@ -1699,7 +1695,7 @@ test('creates a valid Information stage from scratch', async ({
 
 - [ ] **Step 2: Run + create the snapshot**
 
-Run: `pnpm --filter @codaco/architect build:e2e && pnpm --filter @codaco/architect exec playwright test --config e2e/playwright.config.ts specs/interfaces/information.spec.ts --update-snapshots`
+Run: `pnpm turbo run build --filter=@codaco/architect && pnpm --filter @codaco/architect exec playwright test --config e2e/playwright.config.ts specs/interfaces/information.spec.ts --update-snapshots`
 Expected: pass; `information-stage.json` snapshot written under `e2e/specs/interfaces/information.spec.ts-snapshots/`. (JSON snapshots are font-independent, so `--update-snapshots` locally is fine — unlike PNG baselines.)
 
 - [ ] **Step 3: Re-run without update to confirm stability**
