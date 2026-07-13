@@ -3,7 +3,7 @@
 import { Globe, Monitor } from 'lucide-react';
 import { Children, isValidElement, type ReactNode } from 'react';
 
-import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
+import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
 import {
   type AppAxis,
   useSelectedApp,
@@ -50,23 +50,24 @@ export const AppSwitch = ({
       : firstOption.label;
 
   return (
-    <Tabs
-      aria-label="Select application"
-      layout="top"
-      value={activeLabel}
-      onValueChange={selectApp}
-      className="py-8"
-      tabs={options.map((option) => ({
-        value: option.label,
-        label: option.label,
-        icon: option.icon ? ICONS[option.icon] : undefined,
-      }))}
-    >
-      {options.map((option) => (
-        <TabsPanel key={option.label} value={option.label}>
-          {option.children}
-        </TabsPanel>
-      ))}
-    </Tabs>
+    <div className="py-8">
+      <SegmentedSwitcher
+        aria-label="Select application"
+        value={activeLabel}
+        onValueChange={selectApp}
+        options={options.map((option) => ({
+          value: option.label,
+          label: option.label,
+          icon: option.icon ? ICONS[option.icon] : undefined,
+        }))}
+      />
+      <div className="mt-6">
+        {options.map((option) => (
+          <div key={option.label} hidden={option.label !== activeLabel}>
+            {option.children}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
