@@ -1267,3 +1267,23 @@ describe('quickAdd variable reference', () => {
     expect(config.quickAdd).not.toBe('name');
   });
 });
+
+describe('addInformationStage items', () => {
+  it('emits explicit items and interviewScript verbatim', () => {
+    const synth = new SyntheticInterview();
+    synth.addInformationStage({
+      title: 'Media stage',
+      interviewScript: 'Internal note.',
+      items: [
+        { id: 'item-a', type: 'text', content: 'Hello' },
+        { id: 'item-b', type: 'asset', content: 'img-1', size: 'LARGE' },
+      ],
+    });
+    const stage = synth.getProtocol().stages[0] as {
+      items: { id: string; type: string }[];
+      interviewScript?: string;
+    };
+    expect(stage.items.map((i) => i.id)).toEqual(['item-a', 'item-b']);
+    expect(stage.interviewScript).toBe('Internal note.');
+  });
+});

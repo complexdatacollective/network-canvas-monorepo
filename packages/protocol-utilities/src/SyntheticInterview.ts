@@ -3,6 +3,8 @@ import { invariant } from 'es-toolkit';
 import type {
   ComponentType,
   Filter,
+  Item,
+  SkipLogic,
   Stage,
   StageType,
   VariableType,
@@ -762,6 +764,9 @@ export class SyntheticInterview {
     title?: string;
     text?: string;
     label?: string;
+    interviewScript?: string;
+    skipLogic?: SkipLogic;
+    items?: Item[];
   }): InformationHandle {
     const stageId = this.nextId('stage');
     const title = opts?.title ?? 'Information';
@@ -771,8 +776,12 @@ export class SyntheticInterview {
       id: stageId,
       type: 'Information',
       label: opts?.label ?? title,
+      interviewScript: opts?.interviewScript,
+      skipLogic: opts?.skipLogic,
       title,
-      items: [{ id: this.nextId('item'), type: 'text', content: text }],
+      items: opts?.items ?? [
+        { id: this.nextId('item'), type: 'text', content: text },
+      ],
       prompts: [],
       presets: [],
       panels: [],

@@ -1,0 +1,10 @@
+- main:
+    - heading "Image sizes" [level=1]
+    - img "Small image"
+    - img "Medium image"
+    - img "Large image"
+    - navigation:
+        - button "Previous Step" [disabled]
+        - progressbar "Progress indicator": x
+        - button "Next Step"
+    - region "Interview notifications"
