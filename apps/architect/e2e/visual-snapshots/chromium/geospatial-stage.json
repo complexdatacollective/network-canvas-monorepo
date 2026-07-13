@@ -13,7 +13,7 @@
     "targetFeatureProperty": "name",
     "color": "ord-color-seq-1",
     "style": "mapbox://styles/mapbox/streets-v12",
-    "center": [140.62500667381187, -47.039934273802324],
+    "center": [0, 0],
     "initialZoom": 2
   },
   "prompts": [

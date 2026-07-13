@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+
 // Replace generated ids with stable, position-based placeholders so a stage
 // read back via `readStageJson` (Task 3) can be snapshotted deterministically
 // across runs. Ids the app generates at runtime are real `uuid` v4 strings
@@ -62,11 +64,39 @@ function normalizeStage(input: unknown): unknown {
 // string — handing it `normalizeStage`'s plain object throws `TypeError:
 // file.slice is not a function` deep inside Playwright's snapshot writer.
 // `JSON.stringify` alone isn't enough either: the repo's pre-commit formatter
-// (oxfmt, via lint-staged) normalizes every committed text file to end with
-// exactly one trailing newline, so a snapshot written without one silently
-// drifts out of sync with the live-computed string the moment `git commit`
-// reformats it. Appending the newline up front keeps `--update-snapshots`
-// output and every later commit producing byte-identical files.
+// (oxfmt, via lint-staged) reformats every committed `.json` file — not just
+// appending a trailing newline (which every snapshot to date incidentally
+// already needed), but also collapsing any array/object that fits within its
+// print width onto a single line (verified directly: `oxfmt` turns a
+// 2-space-indented `[lng, lat]` tuple like Geospatial's `mapOptions.center`
+// into `[lng, lat]` on one line, while a multi-key object array like a
+// `prompts` entry is left alone because it doesn't fit). No earlier spec's
+// snapshot had a short primitive-array field, so this went unnoticed until
+// Geospatial's `center`/`initialZoom` — the committed file drifted out of
+// sync with the live-computed string the moment `git commit` ran the hook,
+// exactly the same failure mode the trailing-newline fix above already
+// guards against, just for a case that fix didn't cover. Piping the raw
+// `JSON.stringify` output through the SAME `oxfmt` binary the pre-commit
+// hook uses (rather than hand-reimplementing its print-width rules) is the
+// only way to guarantee byte-identity with whatever the hook produces,
+// including if its formatting rules change later.
+function formatWithOxfmt(raw: string): string {
+  const result = spawnSync(
+    'pnpm',
+    ['exec', 'oxfmt', '--stdin-filepath=stage-snapshot.json'],
+    {
+      input: raw,
+      encoding: 'utf8',
+    },
+  );
+  if (result.error || result.status !== 0) {
+    throw new Error(
+      `oxfmt formatting failed (status ${String(result.status)}): ${result.stderr || String(result.error)}`,
+    );
+  }
+  return result.stdout;
+}
+
 export function stageSnapshotJson(stage: unknown): string {
-  return `${JSON.stringify(normalizeStage(stage), null, 2)}\n`;
+  return formatWithOxfmt(JSON.stringify(normalizeStage(stage), null, 2));
 }
