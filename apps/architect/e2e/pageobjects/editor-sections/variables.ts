@@ -5,9 +5,14 @@ import { type Page } from '@playwright/test';
 // `value ? 'Change variable' : 'Select variable'` (lower-case "variable" —
 // the task brief's 'Select Variable' guess had the wrong case). The search
 // box's real aria-label is `'Find or create a variable'` (verified
-// character-for-character against VariableSpotlight.tsx). Each result row
-// carries `data-testid="spotlight-list-item"`; the row that creates a new
-// variable reads `Create new variable called "${filterTerm}".`.
+// character-for-character against VariableSpotlight.tsx), rendered on an
+// `<InputField type="search" .../>` — a native `type="search"` input's
+// *implicit* ARIA role is `searchbox`, not `textbox` (confirmed live: Task
+// 15's first real exercise of this helper timed out on
+// `getByRole('textbox', ...)` even though the field was on screen and
+// focused). Each result row carries `data-testid="spotlight-list-item"`;
+// the row that creates a new variable reads `Create new variable called
+// "${filterTerm}".`.
 //
 // This is the *simple* creation path: VariablePickerControl's
 // `handleCreateOption` hands the typed name straight to the caller's
@@ -26,7 +31,7 @@ export async function createVariableViaSpotlight(
   await page
     .getByRole('button', { name: opts.buttonName ?? 'Select variable' })
     .click();
-  const search = page.getByRole('textbox', {
+  const search = page.getByRole('searchbox', {
     name: 'Find or create a variable',
   });
   await search.fill(opts.variableName);
