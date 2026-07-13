@@ -3,7 +3,6 @@ import type React from 'react';
 import { useLocation } from 'wouter';
 
 import ProjectNav from '~/components/ProjectNav/ProjectNav';
-import ProtocolOpenElsewhereBanner from '~/components/ProtocolOpenElsewhereBanner';
 import StorageUnavailableBanner from '~/components/StorageUnavailableBanner';
 import { cx } from '~/utils/cva';
 import { getScrollPosition, setScrollPosition } from '~/utils/scrollPositions';
@@ -47,7 +46,6 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
     >
       <ProjectNav />
       <StorageUnavailableBanner />
-      <ProtocolOpenElsewhereBanner />
       {children}
       <ProjectActions
         readOnly={isSummary}

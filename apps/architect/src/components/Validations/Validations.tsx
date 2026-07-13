@@ -1,6 +1,6 @@
 import { keys as getKeys, isNull, toPairs } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
-import { useId, type ReactNode, type ComponentProps } from 'react';
+import { useId, useState, type ReactNode, type ComponentProps } from 'react';
 import { Field } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
@@ -70,6 +70,8 @@ type ValidationsFieldProps = {
     error?: string;
   };
   children?: ReactNode;
+  editingKey: string | null;
+  onEditKey: (key: string | null) => void;
   onUpdate?: (key: string, value: unknown, itemKey: string) => void;
   onDelete?: (itemKey: string) => void;
 };
@@ -80,6 +82,8 @@ const ValidationsField = ({
   existingVariables,
   meta: { submitFailed, error },
   children = null,
+  editingKey,
+  onEditKey,
   ...rest
 }: ValidationsFieldProps) => {
   const hasError = !!(submitFailed && error);
@@ -100,6 +104,9 @@ const ValidationsField = ({
             itemValue={value}
             options={options}
             existingVariables={existingVariables}
+            isBeingEdited={key === editingKey}
+            onEdit={() => onEditKey(key)}
+            onCancel={() => onEditKey(null)}
             // eslint-disable-next-line react/jsx-props-no-spreading
             {...rest}
           />
@@ -134,12 +141,35 @@ const Validations = ({
   handleDelete,
   handleAddNew,
 }: ValidationsProps) => {
+  // Only one row (existing or the "add new" draft) is ever open for editing
+  // at a time.
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const usedOptions = getKeys(value);
   const availableOptions = getOptionsWithUsedDisabled(
     validationOptions,
     usedOptions,
   );
   const isFull = usedOptions.length === availableOptions.length;
+  const isEditingSomething = addNew || editingKey !== null;
+
+  const handleSaveExisting = (
+    key: string,
+    itemValue: unknown,
+    itemKey: string,
+  ) => {
+    handleChange(key, itemValue, itemKey);
+    setEditingKey(null);
+  };
+
+  const handleDeleteExisting = (itemKey: string) => {
+    handleDelete(itemKey);
+    setEditingKey((current) => (current === itemKey ? null : current));
+  };
+
+  const handleStartAddNew = () => {
+    setEditingKey(null);
+    setAddNew(true);
+  };
 
   return (
     <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
@@ -149,21 +179,26 @@ const Validations = ({
         format={format}
         options={availableOptions}
         existingVariables={existingVariables}
-        onUpdate={handleChange}
-        onDelete={handleDelete}
+        onUpdate={handleSaveExisting}
+        onDelete={handleDeleteExisting}
+        editingKey={editingKey}
+        onEditKey={setEditingKey}
         validate={validate}
       >
         {addNew && (
           <Validation
+            isBeingEdited
             onUpdate={handleAddNew}
-            onDelete={() => setAddNew(false)}
+            onCancel={() => setAddNew(false)}
             options={availableOptions}
             existingVariables={existingVariables}
           />
         )}
       </Field>
 
-      {!isFull && <AddItem onClick={() => setAddNew(true)} />}
+      {!isFull && (
+        <AddItem onClick={handleStartAddNew} disabled={isEditingSomething} />
+      )}
     </div>
   );
 };

@@ -125,7 +125,7 @@ const Section = ({
     <>
       {isOpen && children}
       {toggleable && !isOpen && layout !== 'vertical' && (
-        <div className="bg-surface-2/75 text-text/70 max-tablet-landscape:hidden absolute inset-0 flex h-full w-full items-center justify-center font-semibold italic">
+        <div className="text-text/70 max-tablet-landscape:hidden flex min-h-32 w-full items-center justify-center font-semibold italic">
           Click the toggle to enable this feature...
         </div>
       )}

@@ -105,9 +105,9 @@ const InstallBanner = () => {
         <span className="flex-1">{bannerMessage(deferredPrompt !== null)}</span>
         {deferredPrompt !== null && (
           <Button
-            color="primary"
+            color="warning"
             size="sm"
-            className="text-sm"
+            className="bg-warning-contrast text-warning text-sm"
             onClick={() => void promptInstall()}
           >
             <Download />

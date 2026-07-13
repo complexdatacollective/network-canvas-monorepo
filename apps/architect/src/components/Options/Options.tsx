@@ -24,7 +24,7 @@ const Options = ({ name, label = '' }: OptionsProps) => (
     label={label}
     itemComponent={Option}
     itemTemplate={() => ({})}
-    itemClasses="p-0! shadow-none"
+    itemClasses="bg-surface-3 text-surface-3-contrast p-0! shadow-none"
     addButtonLabel="Add new"
     emptyStateMessage="No options have been added yet."
     immediateAdd

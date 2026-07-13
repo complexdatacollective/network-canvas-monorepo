@@ -48,7 +48,6 @@
     --timeline-contrast: oklch(var(--white));
     --sortable-contrast: oklch(var(--white));
     --table-row-tint: oklch(var(--sea-serpent) / 5%);
-    --form-control: oklch(var(--sea-serpent));
     --action: oklch(var(--sea-green));
     --muted: oklch(var(--cyber-grape) / 60%);
     --active: oklch(var(--sea-green));
@@ -66,7 +65,6 @@
   --color-timeline-contrast: var(--timeline-contrast);
   --color-sortable-contrast: var(--sortable-contrast);
   --color-table-row-tint: var(--table-row-tint);
-  --color-form-control: var(--form-control);
   --color-action: var(--action);
   --color-muted: var(--muted);
   --color-active: var(--active);
