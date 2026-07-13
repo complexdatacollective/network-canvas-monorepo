@@ -2,6 +2,7 @@
 
 import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 import { PageBackground } from '@codaco/art';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -14,9 +15,32 @@ import SharedNav from './SharedNav/SharedNav';
 export function LayoutComponent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const locale = useLocale();
+  const workflowNavSentinelRef = useRef<HTMLDivElement>(null);
+  const [isWorkflowNavStuck, setIsWorkflowNavStuck] = useState(false);
 
   // Check if we are on the home page by comparing the pathname to our supported locals
   const isHomePage = pathname === `/${locale}`;
+
+  useEffect(() => {
+    const sentinel = workflowNavSentinelRef.current;
+    if (!sentinel) {
+      setIsWorkflowNavStuck(false);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        setIsWorkflowNavStuck(
+          entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0),
+        );
+      },
+      { threshold: 1 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isHomePage]);
 
   return (
     <div className="relative isolate flex min-h-dvh w-full flex-auto flex-col">
@@ -24,12 +48,20 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
       <div className="relative z-10 flex min-h-dvh w-full flex-auto flex-col">
         <SharedNav />
         {!isHomePage && (
-          // Keep the section switcher available after the site navigation
-          // scrolls away.
-          <WorkflowNav
-            variant="collapsed"
-            className="bg-background sticky top-0 z-40 w-full px-4 py-2"
-          />
+          <>
+            <div
+              ref={workflowNavSentinelRef}
+              aria-hidden="true"
+              className="-mb-px h-px"
+            />
+            <WorkflowNav
+              variant="collapsed"
+              className={cx(
+                'sticky top-0 z-40 w-full px-4 py-2',
+                isWorkflowNavStuck && 'bg-background',
+              )}
+            />
+          </>
         )}
         <main
           className={cx(
@@ -38,7 +70,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
             // down on smaller viewports.
             isHomePage
               ? 'mt-4'
-              : 'phone-landscape:mt-16 tablet-landscape:mt-24 mt-10',
+              : 'phone-landscape:mt-8 tablet-landscape:mt-12 mt-6',
           )}
         >
           {!isHomePage && (
