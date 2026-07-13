@@ -9,7 +9,6 @@
     "./NetworkWeaveBackground": "./src/NetworkWeaveBackground/NetworkWeaveBackground.tsx"
   },
   "scripts": {
-    "build": "node ../../scripts/with-turbo.mjs vite build",
     "build-storybook": "node ../../scripts/with-turbo.mjs storybook build",
     "clean": "rm -rf .turbo node_modules",
     "storybook": "node ../../scripts/with-turbo.mjs --watch-deps storybook dev -p 6007",
@@ -41,7 +40,6 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-dts": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
