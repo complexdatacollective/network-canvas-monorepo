@@ -148,7 +148,6 @@ const Timeline = () => {
 
   const itemClasses = cx(
     'group relative grid w-2xl cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-10 p-4',
-    'hover:bg-selected/20 focus-visible:bg-selected/20 transition-colors duration-300 ease-in-out',
     // Focus state for accessibility
     'focus:ring-selected focus:ring-2 focus:ring-offset-2 focus:outline-none',
   );
