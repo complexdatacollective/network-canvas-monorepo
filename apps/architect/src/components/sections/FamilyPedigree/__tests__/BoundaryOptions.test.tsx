@@ -54,6 +54,7 @@ const renderSection = () => {
       <BoundaryOptions
         form="edit-stage"
         stagePath={null}
+        stagePosition={0}
         interfaceType="FamilyPedigree"
       />
     </Provider>,

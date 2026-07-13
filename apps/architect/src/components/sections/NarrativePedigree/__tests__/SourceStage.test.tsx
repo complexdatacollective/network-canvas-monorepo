@@ -73,6 +73,7 @@ const renderSection = () => {
       <SourceStage
         form="edit-stage"
         stagePath={null}
+        stagePosition={0}
         interfaceType="NarrativePedigree"
       />
     </Provider>,

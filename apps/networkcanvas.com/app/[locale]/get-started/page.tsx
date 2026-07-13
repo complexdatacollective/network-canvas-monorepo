@@ -3,10 +3,10 @@ import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
+import { PageBackground } from '@codaco/art';
 import { GetStartedIntro } from '~/components/get-started/GetStartedIntro';
 import { WorkflowPath } from '~/components/get-started/WorkflowPath';
 import { Footer } from '~/components/layout/Footer';
-import { PageBackground } from '~/components/ui/PageBackground';
 import { classicApps, webApps } from '~/lib/getStarted';
 import { routing } from '~/lib/i18n/routing';
 
@@ -52,7 +52,7 @@ export default async function GetStartedPage({ params }: GetStartedPageProps) {
   setRequestLocale(locale);
 
   return (
-    <main className="homepage-body relative isolate">
+    <main className="relative isolate">
       <PageBackground />
       <div className="relative z-10">
         <GetStartedIntro />

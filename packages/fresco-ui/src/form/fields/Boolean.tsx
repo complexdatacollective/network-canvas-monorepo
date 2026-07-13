@@ -3,6 +3,7 @@
 import { motion } from 'motion/react';
 import { useCallback, useRef } from 'react';
 
+import Button from '../../Button';
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlVariants,
@@ -251,14 +252,14 @@ export default function BooleanField(props: BooleanFieldProps) {
         })}
       </fieldset>
       {!noReset && value !== undefined && (
-        <button
-          type="button"
-          className="text-sm text-current/60 underline hover:text-current/80"
+        <Button
+          variant="link"
+          size="sm"
           onClick={() => onChange?.(undefined)}
           disabled={Boolean(disabled) || Boolean(readOnly)}
         >
           Reset answer
-        </button>
+        </Button>
       )}
     </div>
   );

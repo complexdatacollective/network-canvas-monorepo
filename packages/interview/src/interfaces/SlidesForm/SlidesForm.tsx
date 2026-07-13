@@ -34,7 +34,6 @@ import {
 import { useTrack } from '~/analytics/useTrack';
 import useProtocolForm from '~/forms/useProtocolForm';
 import useBeforeNext from '~/hooks/useBeforeNext';
-import useInterviewNavigation from '~/hooks/useInterviewNavigation';
 import useReadyForNextStage from '~/hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '~/hooks/useScrolledToBottom';
 import type { Subject } from '~/selectors/forms';
@@ -96,6 +95,7 @@ type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
     newAttributeData: NcNode[EntityAttributesProperty],
   ) => void;
   onNavigateBack?: () => void;
+  moveForward: () => void | Promise<void>;
   renderHeader: (item: T) => ReactNode;
 };
 
@@ -278,14 +278,13 @@ export default function SlidesForm({
   subject,
   updateItem,
   onNavigateBack,
+  moveForward,
   renderHeader,
   form,
   form_kind,
 }: SlidesFormProps & SlidesFormAnalyticsProps) {
   const { confirm } = useDialog();
   const track = useTrack();
-
-  const { moveForward } = useInterviewNavigation();
 
   const slideRef = useRef<SlideHandle | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);

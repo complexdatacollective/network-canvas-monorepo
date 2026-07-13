@@ -1,4 +1,4 @@
-import { get, without } from 'es-toolkit/compat';
+import { get, startCase, without } from 'es-toolkit/compat';
 
 import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
 
@@ -67,6 +67,29 @@ const VALIDATIONS_WITH_NUMBER_VALUES = [
 
 const VALIDATIONS_WITHOUT_VALUES = ['required', 'unique'];
 
+// Human-readable labels for the "Select validation rule" dropdown and for the
+// collapsed-row summary text. Anything not listed here (there shouldn't be
+// any) falls back to a start-cased version of the key.
+const VALIDATION_LABELS: Record<string, string> = {
+  required: 'Required',
+  unique: 'Must be unique',
+  minLength: 'Minimum length',
+  maxLength: 'Maximum length',
+  minValue: 'Minimum value',
+  maxValue: 'Maximum value',
+  minSelected: 'Minimum selected',
+  maxSelected: 'Maximum selected',
+  differentFrom: 'Different from',
+  sameAs: 'Same as',
+  lessThanVariable: 'Less than',
+  greaterThanVariable: 'Greater than',
+  lessThanOrEqualToVariable: 'Less than or equal to',
+  greaterThanOrEqualToVariable: 'Greater than or equal to',
+};
+
+const getValidationLabel = (validation: string): string =>
+  VALIDATION_LABELS[validation] ?? startCase(validation);
+
 const isValidationWithoutValue = (validation: string): boolean =>
   VALIDATIONS_WITHOUT_VALUES.includes(validation);
 
@@ -93,11 +116,12 @@ const getValidationOptionsForVariableType = (
     getValidationsForVariableType(variableType),
     entity,
   ).map((validation) => ({
-    label: validation,
+    label: getValidationLabel(validation),
     value: validation,
   }));
 
 export {
+  getValidationLabel,
   getValidationOptionsForVariableType,
   isValidationWithListValue,
   isValidationWithNumberValue,

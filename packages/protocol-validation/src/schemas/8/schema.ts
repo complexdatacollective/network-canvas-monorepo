@@ -237,6 +237,27 @@ const ProtocolSchema = z
 
     // 1. Stage validation
     protocol.stages.forEach((stage, stageIndex) => {
+      const skipDestination = stage.skipLogic?.destination;
+      if (skipDestination?.type === 'stage') {
+        const destinationIndex = protocol.stages.findIndex(
+          (candidate) => candidate.id === skipDestination.stageId,
+        );
+
+        if (destinationIndex === -1) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Skip destination stage "${skipDestination.stageId}" does not exist.`,
+            path: ['stages', stageIndex, 'skipLogic', 'destination', 'stageId'],
+          });
+        } else if (destinationIndex <= stageIndex) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Skip destination stage "${skipDestination.stageId}" must come after the stage that references it.`,
+            path: ['stages', stageIndex, 'skipLogic', 'destination', 'stageId'],
+          });
+        }
+      }
+
       // Check stage subject exists in codebook
       if ('subject' in stage && stage.subject) {
         if (!entityExists(protocol.codebook, stage.subject)) {

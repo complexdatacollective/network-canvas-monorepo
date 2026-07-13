@@ -1,0 +1,384 @@
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  PageBackground,
+  PageBackgroundProvider,
+  usePageBackgroundTargetRef,
+} from '../PageBackground/PageBackground';
+
+const networkWeaveProps = vi.hoisted(() => vi.fn());
+const motionState = vi.hoisted(() => {
+  const state: {
+    reduced: boolean;
+    progress: number;
+    listener: ((progress: number) => void) | null;
+    scrollYProgress: { get: () => number };
+  } = {
+    reduced: false,
+    progress: 0,
+    listener: null,
+    scrollYProgress: { get: () => state.progress },
+  };
+
+  return state;
+});
+
+vi.mock('motion/react', () => ({
+  useReducedMotion: () => motionState.reduced,
+  useScroll: () => ({ scrollYProgress: motionState.scrollYProgress }),
+  transform: (input: number, inputRange: number[], outputRange: number[]) => {
+    if (input <= (inputRange[0] ?? 0)) return outputRange[0] ?? 0;
+    const lastIndex = inputRange.length - 1;
+    if (input >= (inputRange[lastIndex] ?? 1)) {
+      return outputRange[lastIndex] ?? 0;
+    }
+
+    const endIndex = inputRange.findIndex((rangeValue) => rangeValue >= input);
+    const startIndex = Math.max(0, endIndex - 1);
+    const rangeStart = inputRange[startIndex] ?? 0;
+    const rangeEnd = inputRange[endIndex] ?? rangeStart;
+    const outputStart = outputRange[startIndex] ?? 0;
+    const outputEnd = outputRange[endIndex] ?? outputStart;
+    const segmentProgress =
+      rangeEnd === rangeStart
+        ? 0
+        : (input - rangeStart) / (rangeEnd - rangeStart);
+
+    return outputStart + (outputEnd - outputStart) * segmentProgress;
+  },
+  useMotionValueEvent: (
+    _value: unknown,
+    _event: string,
+    listener: (progress: number) => void,
+  ) => {
+    motionState.listener = listener;
+  },
+}));
+
+vi.mock('@codaco/art/NetworkWeaveBackground', () => ({
+  default: (props: unknown) => {
+    networkWeaveProps(props);
+    return <div data-testid="network-weave-background" />;
+  },
+}));
+
+const resizeObservers: MockResizeObserver[] = [];
+
+class MockResizeObserver implements ResizeObserver {
+  callback: ResizeObserverCallback;
+  observe = vi.fn((_target: Element) => {});
+  unobserve = vi.fn((_target: Element) => {});
+  disconnect = vi.fn(() => {});
+
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback;
+    resizeObservers.push(this);
+  }
+
+  trigger() {
+    this.callback([], this);
+  }
+}
+
+const createRect = ({
+  left,
+  top,
+  width,
+  height,
+}: {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}): DOMRect => ({
+  x: left,
+  y: top,
+  left,
+  top,
+  width,
+  height,
+  right: left + width,
+  bottom: top + height,
+  toJSON: () => ({}),
+});
+
+function BackgroundTarget() {
+  const targetRef = usePageBackgroundTargetRef();
+
+  return <div ref={targetRef} data-testid="background-target" />;
+}
+
+describe('PageBackground', () => {
+  beforeEach(() => {
+    networkWeaveProps.mockClear();
+    motionState.reduced = false;
+    motionState.progress = 0;
+    motionState.listener = null;
+    resizeObservers.length = 0;
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('renders a viewport-fixed network weave', () => {
+    const { container } = render(<PageBackground />);
+    const layer = container.firstElementChild as HTMLElement | null;
+
+    expect(layer).toHaveAttribute('aria-hidden', 'true');
+    expect(layer).toHaveClass(
+      'pointer-events-none',
+      'fixed',
+      'inset-0',
+      'z-1',
+      'overflow-hidden',
+    );
+    expect(screen.getByTestId('network-weave-background')).toBeInTheDocument();
+    expect(networkWeaveProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        seed: 'networkcanvas.com',
+        convergence: { x: 0.5, y: 0.6 },
+        intensity: 0.22,
+        flare: 1.25,
+        speedFactor: 0.35,
+        className: 'block',
+      }),
+    );
+  });
+
+  it('moves the convergence along a random cubic curve as scroll progresses', () => {
+    render(<PageBackground convergence={{ x: 0.2, y: 0.4 }} />);
+
+    act(() => {
+      motionState.progress = 0.5;
+      motionState.listener?.(motionState.progress);
+    });
+
+    const latestProps = networkWeaveProps.mock.lastCall?.[0] as {
+      convergence: { x: number; y: number };
+      intensity: number;
+      flare: number;
+      speedFactor: number;
+    };
+    expect(latestProps.convergence.x).toBeCloseTo(0.4625);
+    expect(latestProps.convergence.y).toBeCloseTo(0.4875);
+    expect(latestProps.intensity).toBeCloseTo(0.1);
+    expect(latestProps.flare).toBeCloseTo(1.55);
+    expect(latestProps.speedFactor).toBeCloseTo(0.28);
+  });
+
+  it('settles intensity at its baseline while other parameters keep varying', () => {
+    render(<PageBackground />);
+
+    act(() => {
+      motionState.progress = 0.09;
+      motionState.listener?.(motionState.progress);
+    });
+    const fadingProps = networkWeaveProps.mock.lastCall?.[0] as {
+      intensity: number;
+    };
+
+    act(() => {
+      motionState.progress = 0.18;
+      motionState.listener?.(motionState.progress);
+    });
+    const settledProps = networkWeaveProps.mock.lastCall?.[0] as {
+      intensity: number;
+      flare: number;
+      speedFactor: number;
+    };
+
+    act(() => {
+      motionState.progress = 0.8;
+      motionState.listener?.(motionState.progress);
+    });
+    const laterProps = networkWeaveProps.mock.lastCall?.[0] as {
+      intensity: number;
+      flare: number;
+      speedFactor: number;
+    };
+
+    expect(fadingProps.intensity).toBeCloseTo(0.16);
+    expect(settledProps.intensity).toBeCloseTo(0.1);
+    expect(laterProps.intensity).toBeCloseTo(0.1);
+    expect(laterProps.flare).not.toBeCloseTo(settledProps.flare);
+    expect(laterProps.speedFactor).not.toBeCloseTo(settledProps.speedFactor);
+  });
+
+  it('keeps the measured convergence stationary for reduced motion', () => {
+    motionState.reduced = true;
+    render(<PageBackground convergence={{ x: 0.2, y: 0.4 }} />);
+
+    act(() => {
+      motionState.progress = 1;
+      motionState.listener?.(motionState.progress);
+    });
+
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.2, y: 0.4 },
+        intensity: 0.22,
+        flare: 1.25,
+        speedFactor: 0.35,
+      }),
+    );
+  });
+
+  it('measures the target center in the hero layer coordinate space', () => {
+    const layerRect = createRect({ left: 0, top: 0, width: 1000, height: 800 });
+    const targetRect = createRect({
+      left: 112,
+      top: 216,
+      width: 400,
+      height: 300,
+    });
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        return (this as HTMLElement).dataset.testid === 'page-background-layer'
+          ? layerRect
+          : targetRect;
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(
+      function (this: HTMLElement) {
+        return this.dataset.testid === 'page-background-layer' ? 1000 : 400;
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(
+      function (this: HTMLElement) {
+        return this.dataset.testid === 'page-background-layer' ? 800 : 300;
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(
+      function (this: HTMLElement) {
+        return this.dataset.testid === 'background-target' ? 100 : 0;
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(
+      function (this: HTMLElement) {
+        return this.dataset.testid === 'background-target' ? 200 : 0;
+      },
+    );
+
+    render(
+      <PageBackgroundProvider>
+        <BackgroundTarget />
+      </PageBackgroundProvider>,
+    );
+
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.3, y: 0.4375 },
+      }),
+    );
+  });
+
+  it('updates for viewport changes and cleans up its observers', () => {
+    let layerRect = createRect({ left: 0, top: 0, width: 1000, height: 800 });
+    let targetRect = createRect({
+      left: 100,
+      top: 200,
+      width: 400,
+      height: 300,
+    });
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        return (this as HTMLElement).dataset.testid === 'page-background-layer'
+          ? layerRect
+          : targetRect;
+      },
+    );
+
+    const { container, unmount } = render(
+      <PageBackgroundProvider>
+        <BackgroundTarget />
+      </PageBackgroundProvider>,
+    );
+    const observer = resizeObservers.at(-1);
+    const layer = container.querySelector(
+      '[data-testid="page-background-layer"]',
+    );
+    const target = container.querySelector('[data-testid="background-target"]');
+
+    expect(layer).not.toBeNull();
+    expect(target).not.toBeNull();
+    expect(observer?.observe).toHaveBeenCalledWith(layer);
+    expect(observer?.observe).toHaveBeenCalledWith(target);
+
+    layerRect = createRect({ left: 0, top: 0, width: 800, height: 600 });
+    targetRect = createRect({
+      left: 300,
+      top: 100,
+      width: 400,
+      height: 300,
+    });
+    act(() => {
+      fireEvent(window, new Event('resize'));
+    });
+
+    const latestProps = networkWeaveProps.mock.lastCall?.[0] as {
+      convergence: { x: number; y: number };
+    };
+    expect(latestProps.convergence.x).toBeCloseTo(0.625);
+    expect(latestProps.convergence.y).toBeCloseTo(0.4167);
+
+    unmount();
+    expect(observer?.disconnect).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the last finite coordinates when the layer has no size', () => {
+    let layerRect = createRect({ left: 0, top: 0, width: 1000, height: 800 });
+    const targetRect = createRect({
+      left: 100,
+      top: 200,
+      width: 400,
+      height: 300,
+    });
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        return (this as HTMLElement).dataset.testid === 'page-background-layer'
+          ? layerRect
+          : targetRect;
+      },
+    );
+
+    render(
+      <PageBackgroundProvider>
+        <BackgroundTarget />
+      </PageBackgroundProvider>,
+    );
+    layerRect = createRect({ left: 0, top: 0, width: 0, height: 0 });
+
+    act(() => resizeObservers.at(-1)?.trigger());
+
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.3, y: 0.4375 },
+      }),
+    );
+  });
+
+  it('uses the stable fallback when no target registers', () => {
+    render(
+      <PageBackgroundProvider>
+        <div />
+      </PageBackgroundProvider>,
+    );
+
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ convergence: { x: 0.5, y: 0.6 } }),
+    );
+    expect(resizeObservers).toHaveLength(0);
+  });
+});

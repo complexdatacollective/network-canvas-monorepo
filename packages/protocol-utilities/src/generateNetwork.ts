@@ -1,6 +1,10 @@
 import { v4 as uuid } from 'uuid';
 
-import { filter as getFilter, getQuery } from '@codaco/network-query';
+import {
+  filter as getFilter,
+  isStageSkipped,
+  resolveSkipLogicDestinationIndex,
+} from '@codaco/network-query';
 import type { Filter, SkipLogic, Stage } from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
@@ -448,11 +452,23 @@ export function generateNetwork(
           nodes,
           edges,
         );
-        const result = getQuery(skipLogic.filter)(currentNetwork);
-        const skipOnMatch = skipLogic.action === 'SKIP';
-        const isSkipped = (skipOnMatch && result) || (!skipOnMatch && !result);
+        if (isStageSkipped(skipLogic, currentNetwork)) {
+          const destination = skipLogic.destination;
 
-        if (isSkipped) continue;
+          if (destination) {
+            const destinationIndex = resolveSkipLogicDestinationIndex(
+              destination,
+              stages,
+              i,
+            );
+
+            if (destinationIndex !== undefined) {
+              i = destinationIndex - 1;
+            }
+          }
+
+          continue;
+        }
       }
     }
 

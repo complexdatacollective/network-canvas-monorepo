@@ -1,9 +1,8 @@
 import NextLink from 'next/link';
 import { type ComponentProps, forwardRef, type ReactNode } from 'react';
 
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { externalLinkProps } from '~/lib/utils';
-
-import { LinkLabel, linkRootClass } from './linkStyles';
 
 // An inline link to an app route, rendered via next/link for client-side
 // navigation. External destinations open in a new tab. This is what every
@@ -16,14 +15,15 @@ const Link = forwardRef<
   const external =
     typeof props.href === 'string' ? externalLinkProps(props.href) : {};
   return (
-    <NextLink
+    <NativeLink
       ref={ref}
-      className={linkRootClass(className)}
-      {...props}
-      {...external}
+      className={className}
+      render={(linkProps) => (
+        <NextLink {...props} {...external} {...linkProps} />
+      )}
     >
-      <LinkLabel>{children}</LinkLabel>
-    </NextLink>
+      {children}
+    </NativeLink>
   );
 });
 

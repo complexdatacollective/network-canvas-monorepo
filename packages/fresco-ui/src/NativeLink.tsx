@@ -1,14 +1,31 @@
+import { type useRender as UseRender, useRender } from '@base-ui/react';
+import * as React from 'react';
+
+import {
+  NATIVE_LINK_LABEL_CLASS_NAME,
+  NATIVE_LINK_ROOT_CLASS_NAME,
+} from './styles/nativeLinkStyles';
 import { cx } from './utils/cva';
 
-const groupClasses =
-  'group text-link focusable rounded-sm font-semibold transition-all duration-300 ease-in-out';
-const spanClasses =
-  'from-link to-link bg-linear-to-r bg-[length:0%_2px] bg-bottom-left bg-no-repeat pb-[2px] transition-all duration-200 ease-out group-hover:bg-[length:100%_2px]';
+export type NativeLinkProps = React.ComponentPropsWithoutRef<'a'> & {
+  /** Render with a framework router link while retaining link semantics. */
+  render?: UseRender.RenderProp;
+};
 
-export function NativeLink({ className, ...props }: React.ComponentProps<'a'>) {
-  return (
-    <a className={cx(groupClasses, className)} {...props}>
-      <span className={spanClasses}>{props.children}</span>
-    </a>
-  );
-}
+export const NativeLink = React.forwardRef<HTMLAnchorElement, NativeLinkProps>(
+  ({ className, children, render, ...props }, ref) =>
+    useRender({
+      defaultTagName: 'a',
+      render,
+      ref,
+      props: {
+        ...props,
+        className: cx(NATIVE_LINK_ROOT_CLASS_NAME, className),
+        children: (
+          <span className={NATIVE_LINK_LABEL_CLASS_NAME}>{children}</span>
+        ),
+      },
+    }),
+);
+
+NativeLink.displayName = 'NativeLink';

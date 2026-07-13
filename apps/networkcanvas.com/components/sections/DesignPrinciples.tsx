@@ -1,5 +1,6 @@
 import { useTranslations } from 'next-intl';
 
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
@@ -40,14 +41,14 @@ export function DesignPrinciples() {
                 margin="none"
                 className="font-heading text-cyber-grape tablet-landscape:text-2xl text-xl font-bold"
               >
-                <a
+                <NativeLink
                   href={principle.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:text-neon-coral"
+                  className="text-cyber-grape hover:text-neon-coral font-bold"
                 >
                   {t(`${principle.id}.title`)}
-                </a>
+                </NativeLink>
               </Heading>
               <div className="text-text/80 mt-4 flex flex-col gap-3 text-base leading-relaxed">
                 <Paragraph margin="none">

@@ -10,18 +10,6 @@
     "searchPlaceholder": "Search languages...",
     "emptyMessage": "No languages found."
   },
-  "Navigation": {
-    "home": "Network Canvas home",
-    "community": "Community",
-    "documentation": "Docs",
-    "protocolGallery": "Protocol Gallery",
-    "resources": "Resources",
-    "software": "Software",
-    "getStarted": "Get Started",
-    "toggleMenu": "Toggle menu",
-    "openMenu": "Open menu",
-    "closeMenu": "Close menu"
-  },
   "Hero": {
     "headline": "Simplifying complex network data collection.",
     "description": "Network Canvas provides <strong>free and open-source</strong> software for surveying networks, designed around the needs of both researchers and their participants.",
@@ -50,17 +38,6 @@
       "action": "Try the Fresco Sandbox",
       "deployAction": "Deploy Fresco",
       "screenshotAlt": "Fresco dashboard showing protocol, participant, and interview totals"
-    }
-  },
-  "SoftwareMenu": {
-    "architect": {
-      "description": "Design polished Network Canvas interview protocols in your browser with a visual workflow built for researchers."
-    },
-    "interviewer": {
-      "description": "Run engaging, interviewer-led network interviews in the field from any supported browser."
-    },
-    "fresco": {
-      "description": "Coordinate remote network interviews and manage study data from one shared browser-based dashboard."
     }
   },
   "Video": {

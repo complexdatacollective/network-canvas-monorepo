@@ -34,6 +34,7 @@ function SelectField(props: SelectProps) {
     className,
     onChange,
     value,
+    id,
     name,
     disabled,
     readOnly,
@@ -74,6 +75,7 @@ function SelectField(props: SelectProps) {
       name={name}
     >
       <Select.Trigger
+        id={id}
         onBlur={onBlur}
         onFocus={onFocus}
         aria-label={ariaLabel}
@@ -120,8 +122,8 @@ function SelectField(props: SelectProps) {
             className={cx(
               'elevation-high rounded-sm border-2 border-transparent',
               'bg-surface-popover text-surface-popover-contrast',
-              'max-h-96 overflow-auto',
-              'min-w-(--anchor-width)',
+              'max-h-96 max-w-(--available-width) overflow-auto',
+              'w-max min-w-[min(var(--anchor-width),var(--available-width))]',
             )}
           >
             <Select.List className="p-1">
@@ -132,7 +134,7 @@ function SelectField(props: SelectProps) {
                   disabled={option.disabled}
                   className={dropdownItemVariants()}
                 >
-                  <Select.ItemText className="flex-1">
+                  <Select.ItemText className="min-w-0 flex-1 wrap-break-word whitespace-normal">
                     {option.label}
                   </Select.ItemText>
                   <Select.ItemIndicator>

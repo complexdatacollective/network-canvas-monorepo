@@ -6,6 +6,7 @@ import { Link } from 'wouter';
 
 import { Pattern } from '@codaco/art';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -115,43 +116,35 @@ const ProtocolInfoCard = () => {
           aria-label="Protocol name"
         />
 
-        <div className="border-platinum-dark/60 focus-within:border-primary overflow-hidden rounded-sm border bg-white/45 backdrop-blur-sm transition-colors">
-          <TextAreaField
-            aria-label="Protocol description"
-            className="border-0 bg-transparent [&>textarea]:field-sizing-content [&>textarea]:max-h-52 [&>textarea]:min-h-24 [&>textarea]:rounded-none [&>textarea]:border-0 [&>textarea]:bg-transparent [&>textarea]:focus:border-0 [&>textarea]:focus:ring-0"
-            placeholder="Enter a description for your protocol..."
-            value={localDescription}
-            onChange={(value) => setLocalDescription(value ?? '')}
-            onBlur={() => {
-              if (localDescription !== description) {
-                dispatch(
-                  updateProtocolDescription({
-                    description: localDescription,
-                  }),
-                );
-              }
-            }}
-          />
-        </div>
+        <TextAreaField
+          aria-label="Protocol description"
+          className="[&>textarea]:field-sizing-content [&>textarea]:max-h-52 [&>textarea]:min-h-24"
+          placeholder="Enter a description for your protocol..."
+          value={localDescription}
+          onChange={(value) => setLocalDescription(value ?? '')}
+          onBlur={() => {
+            if (localDescription !== description) {
+              dispatch(
+                updateProtocolDescription({
+                  description: localDescription,
+                }),
+              );
+            }
+          }}
+        />
 
         <div className="text-navy-taupe/70 font-monospace flex flex-wrap items-center gap-2 text-xs tracking-wide uppercase">
           <span>
             {stageCount} {stageCount === 1 ? 'stage' : 'stages'}
           </span>
           <span aria-hidden>/</span>
-          <Link
-            href="/protocol/codebook"
-            className="hover:text-navy-taupe hover:underline"
-          >
+          <NativeLink render={<Link href="/protocol/codebook" />}>
             {nodeTypeCount} node {nodeTypeCount === 1 ? 'type' : 'types'}
-          </Link>
+          </NativeLink>
           <span aria-hidden>/</span>
-          <Link
-            href="/protocol/codebook"
-            className="hover:text-navy-taupe hover:underline"
-          >
+          <NativeLink render={<Link href="/protocol/codebook" />}>
             {edgeTypeCount} edge {edgeTypeCount === 1 ? 'type' : 'types'}
-          </Link>
+          </NativeLink>
         </div>
       </div>
     </motion.div>

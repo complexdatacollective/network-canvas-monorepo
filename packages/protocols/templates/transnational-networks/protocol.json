@@ -20,6 +20,24 @@
   "codebook": {
     "ego": {
       "variables": {
+        "participant_consent": {
+          "name": "participant_consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "validation": { "required": true },
+          "options": [
+            {
+              "label": "Yes. I agree to take part.",
+              "value": true,
+              "negative": false
+            },
+            {
+              "label": "No. I do not agree to take part.",
+              "value": false,
+              "negative": true
+            }
+          ]
+        },
         "birth_country": {
           "name": "birth_country",
           "type": "categorical",
@@ -377,27 +395,48 @@
         {
           "id": "researcher-notes",
           "type": "text",
-          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n**Map setup:** this template ships with Network Canvas's shared Mapbox testing token and a bundled world-countries GeoJSON, so the Geospatial stage renders out of the box. The testing token is rate-limited and for evaluation only — before you field this study, replace it with your own Mapbox access token in Architect (see the warning on the protocol timeline).\n\nThe instruments and studies this template draws on:\n\n- [Vacca R et al. Measuring personal networks of transnational migrants via binational link-tracing. *PLOS ONE*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8202912/)\n- [Lubbers MJ, Molina JL et al. A Personal Network Approach to the Study of Immigrant Structural Assimilation and Transnationalism.](https://www.researchgate.net/publication/309153406_A_Personal_Network_Approach_to_the_Study_of_Immigrant_Structural_Assimilation_and_Transnationalism)\n- [McCarty, Lubbers, Vacca & Molina (2019). *Conducting Personal Network Research* (Guilford Press).](https://www.guilford.com/books/Conducting-Personal-Network-Research/McCarty-Lubbers-Vacca-Molina/9781462538386/authors)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n**Map setup:** this template ships with Network Canvas's shared Mapbox testing token and a bundled world-countries GeoJSON, so the Geospatial stage renders out of the box. The testing token is rate-limited and for evaluation only — before you field this study, replace it with your own Mapbox access token in Architect (see the warning on the protocol timeline).\n\nThe instruments and studies this template draws on:\n\n- [Vacca R et al. Measuring personal networks of transnational migrants via binational link-tracing. *PLOS ONE*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8202912/)\n- [Lubbers MJ, Molina JL et al. A Personal Network Approach to the Study of Immigrant Structural Assimilation and Transnationalism.](https://www.researchgate.net/publication/309153406_A_Personal_Network_Approach_to_the_Study_of_Immigrant_Structural_Assimilation_and_Transnationalism)\n- [McCarty, Lubbers, Vacca & Molina (2019). *Conducting Personal Network Research* (Guilford Press).](https://www.guilford.com/books/Conducting-Personal-Network-Research/McCarty-Lubbers-Vacca-Molina/9781462538386/authors)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
         }
       ]
     },
     {
       "id": "information-intro",
-      "type": "Information",
+      "type": "EgoForm",
       "label": "Welcome and consent",
-      "title": "About this study",
-      "items": [
-        {
-          "id": "intro-welcome",
-          "type": "text",
-          "content": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **important people in your life** — both those near you here, and those who live in your country of origin or elsewhere abroad.\n\nThere are no right or wrong answers. We are simply interested in your own experience and the people who matter to you.\n\n### How it works\n\n- First we will ask a few questions about your own background and migration history.\n- Then you will be asked to name people you are connected to, here and abroad, and answer some questions about each of them.\n- Later you will place some of these people on a map, sort them into groups, and show how they know one another.\n\nYou may skip any question you prefer not to answer, and you can stop at any time. Your answers are confidential and will be used only for research. Please continue when you are ready to begin."
-        }
-      ]
+      "introductionPanel": {
+        "title": "About this study",
+        "text": "## Welcome\n\nThank you for considering taking part. In this interview we will talk about the **important people in your life** — both those near you here, and those who live in your country of origin or elsewhere abroad.\n\nThere are no right or wrong answers. We are simply interested in your own experience and the people who matter to you.\n\n### How it works\n\n- First we will ask a few questions about your own background and migration history.\n- Then you will be asked to name people you are connected to, here and abroad, and answer some questions about each of them.\n- Later you will place some of these people on a map, sort them into groups, and show how they know one another.\n\nYou may skip any question you prefer not to answer, and you can stop at any time. Your answers are confidential and will be used only for research. The researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "participant_consent",
+            "prompt": "Do you consent to participate in this study?"
+          }
+        ]
+      }
     },
     {
       "id": "ego-form-background",
       "type": "EgoForm",
       "label": "Your background and migration history",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "8ce02357-d1fd-4193-b02a-b221d2d01692",
+              "type": "ego",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": { "type": "finish" }
+      },
       "introductionPanel": {
         "title": "A little about you",
         "text": "Before we talk about the people in your life, we would like to understand a bit about **your own background and your migration history**. This helps us put the rest of your answers in context."

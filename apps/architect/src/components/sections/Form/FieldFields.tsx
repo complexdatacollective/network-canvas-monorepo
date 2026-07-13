@@ -9,7 +9,7 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section, Subsection } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
@@ -74,8 +74,8 @@ const PromptFields = ({
   );
   const lockedOptions = getLockedOptions(existingVariables, variable);
   return (
-    <Section layout="vertical">
-      <Subsection id={getFieldId('variable')} title="Variable">
+    <>
+      <Section layout="vertical" id={getFieldId('variable')} title="Variable">
         {variable && !isNewVariable && (
           <Alert variant="info" className="my-7">
             <AlertDescription>
@@ -97,9 +97,10 @@ const PromptFields = ({
             onChange: handleChangeVariable,
           }}
         />
-      </Subsection>
+      </Section>
 
-      <Subsection
+      <Section
+        layout="vertical"
         id={getFieldId('prompt')}
         title="Question"
         summary={
@@ -161,9 +162,10 @@ const PromptFields = ({
             className="shrink-0"
           />
         </div>
-      </Subsection>
+      </Section>
 
-      <Subsection
+      <Section
+        layout="vertical"
         id={getFieldId('component')}
         title="Input Control"
         disabled={!variable}
@@ -229,10 +231,11 @@ const PromptFields = ({
               />
             </div>
           )}
-      </Subsection>
+      </Section>
 
       {isOrdinalOrCategoricalType(variableType) && (
-        <Subsection
+        <Section
+          layout="vertical"
           id={getFieldId('options')}
           title="Categorical/Ordinal options"
           summary={
@@ -255,25 +258,33 @@ const PromptFields = ({
           ) : (
             <Options name="options" label="Options" />
           )}
-        </Subsection>
+        </Section>
       )}
       {isBooleanWithOptions(component) && (
         // BooleanChoice writes to the `options` field, so anchor it there (it is
-        // mutually exclusive with the Categorical/Ordinal options subsection
+        // mutually exclusive with the Categorical/Ordinal options section
         // above, so the shared id never collides at runtime).
-        <Subsection id={getFieldId('options')} title="BooleanChoice Options">
+        <Section
+          layout="vertical"
+          id={getFieldId('options')}
+          title="BooleanChoice Options"
+        >
           <BooleanChoice form={form} />
-        </Subsection>
+        </Section>
       )}
       {isVariableTypeWithParameters(variableType) && (
-        <Subsection id={getFieldId('parameters')} title="Input Options">
+        <Section
+          layout="vertical"
+          id={getFieldId('parameters')}
+          title="Input Options"
+        >
           <Parameters
             type={variableType}
             component={component ?? ''}
             name="parameters"
             form={form}
           />
-        </Subsection>
+        </Section>
       )}
 
       <ValidationSection
@@ -285,7 +296,7 @@ const PromptFields = ({
         }
         existingVariables={omit(existingVariables, variable)}
       />
-    </Section>
+    </>
   );
 };
 export default PromptFields;

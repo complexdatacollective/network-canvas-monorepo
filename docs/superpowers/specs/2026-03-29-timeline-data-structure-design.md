@@ -172,10 +172,16 @@ Linear chain: each stage targets the next. A FinishInterview stage is appended a
 
 ### Stages With Skip Logic
 
-Skip logic (`action: "SHOW" | "SKIP"` with filter) translates to a branch inserted before the stage:
+Skip logic (`action: "SHOW" | "SKIP"` with filter and an optional forward
+`destination`) translates to a branch inserted before the stage:
 
-- **SKIP**: Branch with 2 slots. Condition match targets the stage _after_ the skipped one (skip path). Default targets the stage itself (proceed path).
-- **SHOW**: Branch with 2 slots. Condition match targets the stage (show path). Default targets the stage after (skip path).
+- **SKIP**: Branch with 2 slots. Condition match targets the configured destination, or the stage _after_ the skipped one when no destination is present (skip path). Default targets the stage itself (proceed path).
+- **SHOW**: Branch with 2 slots. Condition match targets the stage (show path). Default targets the configured destination, or the stage after when no destination is present (skip path).
+
+A `{ type: "stage", stageId }` destination maps directly to that stage entity.
+A `{ type: "finish" }` destination maps to the generated FinishInterview
+entity. The migration must preserve the destination on the hidden branch slot;
+it must not first collapse it to the next linear stage.
 
 The branch gets a generated name based on the stage label (e.g., "Skip: Demographics").
 
@@ -224,7 +230,7 @@ v9:
             "id": "slot-1",
             "filter": { "join": "AND", "rules": [] },
             "label": "Skip",
-            "target": "s3-finish"
+            "target": "s3"
           },
           {
             "id": "slot-2",
@@ -239,13 +245,20 @@ v9:
         "type": "Stage",
         "stageType": "EgoForm",
         "label": "Demographics",
-        "target": "s3-finish"
+        "target": "s3"
       },
       {
-        "id": "s3-finish",
+        "id": "s3",
+        "type": "Stage",
+        "stageType": "Information",
+        "label": "Thank You",
+        "target": "finish"
+      },
+      {
+        "id": "finish",
         "type": "Stage",
         "stageType": "FinishInterview",
-        "label": "Thank You"
+        "label": "Finish"
       }
     ]
   }

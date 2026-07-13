@@ -11,7 +11,7 @@ import { paragraphVariants } from './typography/Paragraph';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const alertVariants = cva({
-  base: 'my-6 flex w-full items-start rounded first:mt-0 last:mb-0',
+  base: 'my-6 flex w-full rounded first:mt-0 last:mb-0',
   variants: {
     variant: {
       default: '',
@@ -34,8 +34,8 @@ const alertVariants = cva({
       soft: '',
     },
     density: {
-      default: 'gap-4',
-      compact: 'gap-3',
+      default: 'items-start gap-4',
+      compact: 'items-center gap-3',
     },
   },
   // Override the --link primitive (not the --color-link @theme inline alias, which

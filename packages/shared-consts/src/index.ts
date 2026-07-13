@@ -4,5 +4,6 @@ export * from './family-pedigree-framing';
 export * from './narrative-pedigree';
 export * from './network';
 export * from './session';
+export * from './site-locales';
 export * from './stage-metadata';
 export * from './variables';

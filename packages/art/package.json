@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "blobs": "2.3.0-beta.2"
+    "blobs": "2.3.0-beta.2",
+    "motion": "catalog:"
   },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:*",
@@ -27,6 +28,7 @@
     "@storybook/addon-docs": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

@@ -113,11 +113,11 @@ const Section = ({
 
   const fieldsetContent = disabled ? (
     layout === 'horizontal' ? (
-      <div className="text-text/70 max-tablet-landscape:p-8 max-tablet-landscape:text-center tablet-landscape:absolute tablet-landscape:inset-0 tablet-landscape:h-full tablet-landscape:w-full flex items-center justify-center font-semibold italic">
+      <div className="bg-surface-2/75 text-text/70 max-tablet-landscape:rounded max-tablet-landscape:p-8 max-tablet-landscape:text-center tablet-landscape:absolute tablet-landscape:inset-0 tablet-landscape:h-full tablet-landscape:w-full flex items-center justify-center font-semibold italic">
         {disabledMessage}
       </div>
     ) : (
-      <div className="bg-surface-2 text-text/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
+      <div className="bg-surface-2/75 text-text/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
         {disabledMessage}
       </div>
     )
@@ -125,7 +125,7 @@ const Section = ({
     <>
       {isOpen && children}
       {toggleable && !isOpen && layout !== 'vertical' && (
-        <div className="text-text/70 max-tablet-landscape:hidden absolute inset-0 flex h-full w-full items-center justify-center font-semibold italic">
+        <div className="text-text/70 max-tablet-landscape:hidden flex min-h-32 w-full items-center justify-center font-semibold italic">
           Click the toggle to enable this feature...
         </div>
       )}
@@ -149,15 +149,9 @@ const Section = ({
           noContainer
           spacing="md"
           shadow="sm"
-          className={cx(
-            'relative overflow-visible!',
-            disabled && 'bg-surface-2',
-            toggleable && !isOpen && 'tablet-landscape:bg-surface-2',
-          )}
+          className="relative overflow-visible!"
         >
-          <fieldset className="relative h-full min-w-0">
-            {fieldsetContent}
-          </fieldset>
+          <fieldset className="relative min-w-0">{fieldsetContent}</fieldset>
         </Surface>
       </section>
     );

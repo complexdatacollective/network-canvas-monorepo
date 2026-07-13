@@ -57,6 +57,7 @@ const migrationV7toV8 = createMigration({
 - New interface: "family pedigree". A pedigree building interface designed for genetic disease monitoring scenarios, with configurable node and edge types, relationship variables, and optional disease/condition nomination prompts.
 - Add new validation options for form fields: \`greaterThanVariable\` and \`lessThanVariable\`.
 - Add new comparator options for skip logic and filter: \`contains\` and \`does not contain\`.
+- Add optional targeted skip-logic destinations. When a stage is hidden, routing can continue at the next available stage, jump to a later stage, or continue to the interview finish screen.
 - Amplify comparator options \`includes\` and \`excludes\` for ordinal and categorical variables to allow multiple selections.
 - Removed 'displayVariable' property, if set. This property was not used, and has been marked as deprecated for a long time.
 - Removed 'options' property for boolean Toggle variables. This property was not used.

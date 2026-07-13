@@ -41,6 +41,7 @@ const renderSection = () =>
     <AtRiskStatuses
       form="edit-stage"
       stagePath={null}
+      stagePosition={0}
       interfaceType="NarrativePedigree"
     />,
   );

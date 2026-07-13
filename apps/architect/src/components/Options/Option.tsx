@@ -1,6 +1,7 @@
 import { toNumber } from 'es-toolkit/compat';
-import { Trash2 } from 'lucide-react';
+import { Check, Pencil, Trash2 } from 'lucide-react';
 import type { ComponentType } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -10,6 +11,7 @@ import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import type { FrescoReduxArrayFieldItemProps } from '~/components/Form/FrescoReduxArrayField';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
+import { cx } from '~/utils/cva';
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
@@ -32,9 +34,18 @@ const optionLabelFromRedux = (value: unknown) =>
 const optionLabelToRedux = (value: unknown) =>
   richTextContentToMarkdown(value as RichTextContent | undefined, true);
 
+const isValueEmpty = (value: unknown) =>
+  value === undefined || value === null || value === '';
+
+// Background and rounding live on the ArrayField item Surface (see Options.tsx
+// itemClasses); this inner wrapper only owns layout + the error-state border.
+const ROW_CLASSES =
+  'w-full border-2 border-transparent p-5 transition-colors duration-300 ease-in-out';
+
 type OptionProps = FrescoReduxArrayFieldItemProps<OptionValue>;
 
 const Option = ({
+  item,
   fieldName,
   index,
   itemCount,
@@ -42,11 +53,29 @@ const Option = ({
   dragControls,
   onMove,
   onDelete,
+  onEdit,
+  onCancel,
+  isBeingEdited,
   disabled,
   readOnly,
+  showErrors,
 }: OptionProps) => {
   const { confirm } = useDialog();
   const interactionDisabled = disabled || readOnly;
+
+  // immediateAdd (see Options.tsx) commits a new option straight into the
+  // array via ArrayField's addItem, which never marks it as "being edited" —
+  // that only happens through onEdit/startEditing. Enter edit mode ourselves
+  // the first time this row mounts still blank, so a freshly added option
+  // opens directly into the inline editor instead of an empty summary line.
+  const hasAutoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (hasAutoOpenedRef.current || isBeingEdited) return;
+    if (item.label || !isValueEmpty(item.value)) return;
+    hasAutoOpenedRef.current = true;
+    onEdit();
+  }, [isBeingEdited, item.label, item.value, onEdit]);
+
   const handleDelete = () => {
     void confirm({
       title: 'Remove option',
@@ -58,71 +87,133 @@ const Option = ({
     });
   };
 
-  return (
-    <div className="flex w-full items-center gap-4">
-      {isSortable && (
-        <ArrayFieldDragHandle
-          dragControls={dragControls}
-          index={index}
-          itemCount={itemCount}
-          onMove={onMove}
-          disabled={interactionDisabled}
-          label={`Reorder option ${index + 1} of ${itemCount}`}
-          size="md"
-          className="shrink-0"
-        />
-      )}
-      <div className="flex min-w-0 flex-1 gap-4">
-        <div className="min-w-0 flex-1">
-          <ValidatedField
-            component={FrescoReduxField}
-            componentProps={{
-              fieldComponent: FrescoRichTextEditorField,
-              label: 'Label',
-              placeholder: 'Enter a label...',
-              changeMode: 'input',
-              compact: true,
-              toolbarOptions: {
-                headings: false,
-                history: true,
-                links: false,
-                lists: false,
-                thematicBreak: false,
-              },
-              fromReduxValue: optionLabelFromRedux,
-              toReduxValue: optionLabelToRedux,
-            }}
-            name={`${fieldName}.label`}
-            validation={{ required: true, uniqueArrayAttribute: true }}
+  if (!isBeingEdited) {
+    const hasLabel = typeof item.label === 'string' && item.label.length > 0;
+    const hasValue = !isValueEmpty(item.value);
+
+    return (
+      <div
+        className={cx(
+          'flex items-center gap-3',
+          ROW_CLASSES,
+          showErrors && 'border-destructive',
+        )}
+      >
+        {isSortable && (
+          <ArrayFieldDragHandle
+            dragControls={dragControls}
+            index={index}
+            itemCount={itemCount}
+            onMove={onMove}
+            disabled={interactionDisabled}
+            label={`Reorder option ${index + 1} of ${itemCount}`}
           />
+        )}
+        <div className="min-w-0 flex-1 truncate">
+          <span className={!hasLabel ? 'text-current/50 italic' : undefined}>
+            {hasLabel ? item.label : 'Untitled option'}
+          </span>
+          <span className="text-current/50"> — </span>
+          <span
+            className={cx(
+              'font-monospace',
+              !hasValue && 'text-current/50 italic',
+            )}
+          >
+            {hasValue ? String(item.value) : 'No value'}
+          </span>
         </div>
-        <div className="min-w-0 flex-1">
-          <ValidatedField
-            component={FrescoReduxField}
-            componentProps={{
-              fieldComponent: FrescoInputField,
-              label: 'Value',
-              placeholder: 'Enter a value...',
-              toReduxValue: parseOptionValue,
-            }}
-            name={`${fieldName}.value`}
-            validation={{
-              required: true,
-              uniqueArrayAttribute: true,
-              allowedVariableName: 'option value',
-            }}
+        <div className="flex shrink-0 items-center gap-1">
+          <IconButton
+            icon={<Pencil />}
+            aria-label={`Edit option ${index + 1}`}
+            size="sm"
+            variant="text"
+            color="dynamic"
+            disabled={interactionDisabled}
+            onClick={onEdit}
+          />
+          <IconButton
+            icon={<Trash2 />}
+            aria-label={`Remove option ${index + 1}`}
+            size="sm"
+            variant="text"
+            color="destructive"
+            disabled={interactionDisabled}
+            onClick={handleDelete}
           />
         </div>
       </div>
-      <IconButton
-        icon={<Trash2 />}
-        aria-label="Remove option"
-        size="md"
-        variant="text"
-        color="destructive"
-        disabled={interactionDisabled}
-        onClick={handleDelete}
-        className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast shrink-0 text-current"
+    );
+  }
+
+  return (
+    <div
+      className={cx(
+        'flex flex-col gap-4',
+        ROW_CLASSES,
+        showErrors && 'border-destructive',
+      )}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape') return;
+        event.stopPropagation();
+        onCancel();
+      }}
+    >
+      <div className="flex items-center justify-end gap-1">
+        <IconButton
+          icon={<Check />}
+          aria-label="Finish editing option"
+          size="sm"
+          variant="text"
+          color="primary"
+          disabled={interactionDisabled}
+          onClick={onCancel}
+        />
+        <IconButton
+          icon={<Trash2 />}
+          aria-label={`Remove option ${index + 1}`}
+          size="sm"
+          variant="text"
+          color="destructive"
+          disabled={interactionDisabled}
+          onClick={handleDelete}
+        />
+      </div>
+      <ValidatedField
+        component={FrescoReduxField}
+        componentProps={{
+          fieldComponent: FrescoRichTextEditorField,
+          label: 'Label',
+          placeholder: 'Enter a label...',
+          changeMode: 'input',
+          toolbarOptions: {
+            headings: false,
+            history: true,
+            links: false,
+            lists: false,
+            thematicBreak: false,
+          },
+          fromReduxValue: optionLabelFromRedux,
+          toReduxValue: optionLabelToRedux,
+        }}
+        name={`${fieldName}.label`}
+        validation={{ required: true, uniqueArrayAttribute: true }}
+      />
+      <ValidatedField
+        component={FrescoReduxField}
+        componentProps={{
+          fieldComponent: FrescoInputField,
+          label: 'Value',
+          placeholder: 'Enter a value...',
+          toReduxValue: parseOptionValue,
+        }}
+        name={`${fieldName}.value`}
+        validation={{
+          required: true,
+          uniqueArrayAttribute: true,
+          allowedVariableName: 'option value',
+        }}
       />
     </div>
   );

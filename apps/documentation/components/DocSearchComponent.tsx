@@ -5,8 +5,8 @@ import '@docsearch/css';
 import { Search } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 
+import { inputFieldControlVariants } from '@codaco/fresco-ui/form/fields/InputField';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { inputVariants } from '~/components/ui/inputVariants';
 import { env } from '~/env';
 import { getSectionColorClass } from '~/lib/sections';
 import { usePathname } from '~/navigation';
@@ -23,6 +23,10 @@ const getSectionSlug = (url: string): string | undefined => {
   } catch {
     return undefined;
   }
+};
+
+const openDocSearch = () => {
+  document.querySelector<HTMLButtonElement>('.DocSearch-Button')?.click();
 };
 
 const useDocSearchTranslations = () => {
@@ -105,47 +109,45 @@ const DocSearchComponent = ({
       ? tSection(`${slug}.label`)
       : slug.replace(/-/g, ' ');
 
-  const madHax = () => {
-    const element = document.getElementsByClassName(
-      'DocSearch-Button',
-    )[0] as HTMLButtonElement;
-    if (element) {
-      element.click();
-    }
-  };
-
   return (
     <>
       <button
         type="button"
-        className={cx(
-          inputVariants({ size: large ? '2xl' : 'default' }),
-          'pointer-events-auto flex w-full items-center justify-between px-4',
-          className,
-        )}
-        onClick={madHax}
+        className={inputFieldControlVariants({
+          size: large ? 'lg' : 'md',
+          state: 'normal',
+          className: cx(
+            'pointer-events-auto w-full shrink cursor-pointer',
+            className,
+          ),
+        })}
+        onClick={openDocSearch}
         aria-label={t('button.buttonAriaLabel')}
+        aria-haspopup="dialog"
       >
-        <span className="flex items-center">
-          <Search
-            className={cx(
-              'adornment-left tablet-portrait:mr-0 tablet-landscape:mr-2 mr-2',
-              large && '!mr-4',
-            )}
-          />
-          <span className="phone-landscape:inline tablet-portrait:hidden tablet-landscape:inline hidden">
-            {t('button.buttonText')}
-          </span>
-          <span className="phone-landscape:hidden">
-            {t('button.buttonTextMobile')}
-          </span>
+        <Search aria-hidden />
+        <span
+          className={cx(
+            'text-input-contrast/50 min-w-0 grow basis-0 text-left italic',
+            'phone-landscape:inline tablet-portrait:hidden tablet-landscape:inline hidden',
+          )}
+        >
+          {t('button.buttonText')}
+        </span>
+        <span
+          className={cx(
+            'text-input-contrast/50 min-w-0 grow basis-0 text-left italic',
+            'phone-landscape:hidden',
+          )}
+        >
+          {t('button.buttonTextMobile')}
         </span>
 
         <kbd
           className={cx(
-            'pointer-events-none ml-4 hidden h-5 items-center gap-1 rounded border bg-current/5 px-1.5 font-mono text-xs font-medium text-current/70 opacity-100 select-none',
+            'pointer-events-none ml-auto hidden h-5 shrink-0 items-center gap-1 rounded border bg-current/5 px-1.5 text-xs font-medium text-current/70 not-italic opacity-100 select-none',
             'phone-landscape:inline-flex',
-            large && '!h-6',
+            large && 'h-6',
           )}
         >
           <span className="text-sm">⌘</span>K

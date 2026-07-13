@@ -23,37 +23,53 @@ const FancyHeading = (props: ComponentProps<typeof Heading>) => {
     }),
   };
 
-  const renderWord = (word: string, outerIndex: number) => {
-    const segments = word.split(' ');
-    return segments.map((segment, innerIndex) => (
-      <span
-        // biome-ignore lint/suspicious/noArrayIndexKey: word index won't change
-        key={`${outerIndex}-${innerIndex}`}
-        className="relative top-[-0.75em] mb-[-1em] inline-block overflow-hidden"
-      >
-        <motion.span
-          custom={outerIndex + innerIndex}
-          variants={variants}
-          initial="hidden"
-          animate="visible"
-          className="inline-block"
-        >
-          {segment}&nbsp;
-        </motion.span>
-      </span>
-    ));
-  };
+  let animationIndex = 0;
+
+  const renderText = (text: string, outerIndex: number) =>
+    text.split('\n').flatMap((line, lineIndex, lines) => {
+      const lineWords = line.split(' ').map((word, wordIndex) => {
+        const custom = animationIndex++;
+
+        return (
+          <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: word index won't change
+            key={`${outerIndex}-${lineIndex}-${wordIndex}`}
+            className="relative top-[-0.75em] mb-[-1em] inline-block overflow-hidden"
+          >
+            <motion.span
+              custom={custom}
+              variants={variants}
+              initial="hidden"
+              animate="visible"
+              className="inline-block"
+            >
+              {word}&nbsp;
+            </motion.span>
+          </span>
+        );
+      });
+
+      if (lineIndex === lines.length - 1) return lineWords;
+
+      return [
+        ...lineWords,
+        <br
+          // biome-ignore lint/suspicious/noArrayIndexKey: line index won't change
+          key={`${outerIndex}-${lineIndex}-break`}
+        />,
+      ];
+    });
 
   return (
     <Heading {...props}>
       {words.map((word, index) =>
         typeof word === 'string' ? (
-          renderWord(word, index)
+          renderText(word, index)
         ) : (
           <motion.span
             // biome-ignore lint/suspicious/noArrayIndexKey: word index won't change
             key={index}
-            custom={index}
+            custom={animationIndex++}
             variants={variants}
             initial="hidden"
             animate="visible"

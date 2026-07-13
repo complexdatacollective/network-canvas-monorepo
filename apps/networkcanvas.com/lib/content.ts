@@ -5,12 +5,11 @@
  */
 
 import type { Variant } from '~/components/ui/DeviceMockup';
-import { GET_STARTED_PATH, webDestinations } from '~/lib/getStarted';
+import { webDestinations } from '~/lib/getStarted';
 
 export const externalLinks = {
   community: 'https://community.networkcanvas.com/',
   documentation: 'https://documentation.networkcanvas.com/',
-  protocolGallery: 'https://protocol-gallery.networkcanvas.com/',
   github: 'https://github.com/complexdatacollective',
   twitter: 'https://twitter.com/networkcanvas?lang=en',
   youtube: 'https://www.youtube.com/@complexdatacollective2923',
@@ -28,21 +27,6 @@ export const externalLinks = {
   interviewerApp: webDestinations.interviewer,
   frescoApp: webDestinations.frescoSandbox,
 } as const;
-
-export const navLinks = [
-  { id: 'community', href: externalLinks.community, external: true },
-  {
-    id: 'documentation',
-    href: externalLinks.documentation,
-    external: true,
-  },
-  {
-    id: 'protocolGallery',
-    href: externalLinks.protocolGallery,
-    external: true,
-  },
-  { id: 'getStarted', href: GET_STARTED_PATH, external: false },
-] as const;
 
 export type Tool = {
   id: 'architect' | 'interviewer' | 'fresco';
