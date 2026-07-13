@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Bell, CheckCircle } from 'lucide-react';
+import { Bell, CheckCircle, Lightbulb } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from './Alert';
 import Heading from './typography/Heading';
@@ -22,7 +22,14 @@ const meta = {
   argTypes: {
     variant: {
       control: 'select',
-      options: ['default', 'info', 'success', 'warning', 'destructive'],
+      options: [
+        'default',
+        'info',
+        'success',
+        'warning',
+        'destructive',
+        'accent',
+      ],
       description: 'The visual style variant of the alert',
     },
     appearance: {
@@ -147,6 +154,14 @@ export const SoftAppearance: Story = {
       <Alert variant="destructive" appearance="soft">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>Something went wrong.</AlertDescription>
+      </Alert>
+
+      <Alert variant="accent" appearance="soft" icon={Lightbulb}>
+        <AlertTitle>Key concept</AlertTitle>
+        <AlertDescription>
+          The accent variant is a non-semantic brand highlight for
+          note/key-concept callouts.
+        </AlertDescription>
       </Alert>
     </div>
   ),

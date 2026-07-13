@@ -19,6 +19,9 @@ const alertVariants = cva({
       destructive: '',
       success: '',
       warning: '',
+      // Brand-accent highlight (non-semantic): for "note"/"key concept" style
+      // callouts that draw attention without an info/success/warning meaning.
+      accent: '',
     },
     // `solid` fills the alert with its intent colour (loud, high-emphasis);
     // `soft` is a low tint over the surface for quieter notices — surface text
@@ -79,6 +82,17 @@ const alertVariants = cva({
       appearance: 'soft',
       className: 'bg-warning/10 [--link:var(--warning)]',
     },
+    {
+      variant: 'accent',
+      appearance: 'solid',
+      className:
+        'text-accent-contrast bg-accent [--link:var(--accent-contrast)]',
+    },
+    {
+      variant: 'accent',
+      appearance: 'soft',
+      className: 'bg-accent/10 [--link:var(--accent)]',
+    },
     { variant: 'default', appearance: 'soft', className: 'bg-current/5' },
   ],
   defaultVariants: {
@@ -112,6 +126,7 @@ const variantIcons: Record<Variant, AlertIcon | null> = {
   destructive: WarningAlertIcon,
   success: PartyPopper,
   warning: WarningAlertIcon,
+  accent: null,
 };
 
 const variantIconStyles: Record<Variant, AlertIconStyle | undefined> = {
@@ -128,6 +143,7 @@ const variantIconStyles: Record<Variant, AlertIconStyle | undefined> = {
     '--warning-icon-accent-dark':
       'color-mix(in oklab, var(--destructive) 70%, black)',
   },
+  accent: undefined,
 };
 
 /**
@@ -143,6 +159,7 @@ const variantRoles: Record<Variant, 'alert' | 'status'> = {
   success: 'status',
   warning: 'status',
   destructive: 'alert',
+  accent: 'status',
 };
 
 /**
@@ -157,6 +174,7 @@ const variantContextLabels: Record<Variant, string> = {
   success: 'Success',
   warning: 'Warning',
   destructive: 'Error',
+  accent: 'Note',
 };
 
 const alertIconVariants = cva({
