@@ -140,6 +140,15 @@ describe('locale routing', () => {
     );
   });
 
+  it('recognizes locale paths after Netlify normalizes their casing', () => {
+    expect(
+      getLocaleRedirect(new Request('http://localhost/en-us/get-started/')),
+    ).toBeUndefined();
+    expect(
+      getLocaleRedirect(new Request('http://localhost/en-gb/get-started/')),
+    ).toBeUndefined();
+  });
+
   it('runs for all paths while bypassing localized routes and assets', () => {
     expect(config.path).toBe('/*');
     expect(

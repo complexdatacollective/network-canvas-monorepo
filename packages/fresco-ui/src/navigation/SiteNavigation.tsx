@@ -479,7 +479,7 @@ export default function SiteNavigation({
   const shouldReduceMotion = useReducedMotion();
   const labels = siteNavigationMessages[locale];
   const networkCanvasRootHref =
-    site === 'website' ? '/' : `${destinations.networkCanvas}${locale}/`;
+    site === 'website' ? '/' : destinations.networkCanvas;
   const documentationRootHref =
     site === 'documentation' ? '/' : destinations.documentation;
   const closeMenu = () => setOpen(false);
@@ -527,7 +527,12 @@ export default function SiteNavigation({
   }));
   const resourcesActive =
     activeItemId === 'resources' || resourceLinks.some((link) => link.active);
-  const getStartedHref = appendPath(networkCanvasRootHref, '/get-started');
+  // This legacy entry point works on the current site and redirects through
+  // locale detection after the replacement website is deployed.
+  const getStartedHref =
+    site === 'website'
+      ? appendPath(networkCanvasRootHref, '/get-started')
+      : appendPath(destinations.networkCanvas, '/download');
   const items: InternalNavigationItem[] = [
     ...resourceLinks.map((link) => ({
       ...link,

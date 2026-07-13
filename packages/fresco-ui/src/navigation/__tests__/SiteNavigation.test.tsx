@@ -54,7 +54,7 @@ describe('SiteNavigation', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Inicio de Network Canvas' }),
-    ).toHaveAttribute('href', 'https://networkcanvas.com/es/');
+    ).toHaveAttribute('href', 'https://networkcanvas.com/');
     expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
       'href',
       '/',
@@ -67,7 +67,7 @@ describe('SiteNavigation', () => {
     ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/');
     expect(screen.getByRole('link', { name: 'Comenzar' })).toHaveAttribute(
       'href',
-      'https://networkcanvas.com/es/get-started',
+      'https://networkcanvas.com/download',
     );
   });
 

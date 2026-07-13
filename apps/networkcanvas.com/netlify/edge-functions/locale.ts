@@ -58,9 +58,15 @@ function getRequestedLocales(header: string) {
 }
 
 function getPathLocale(pathname: string) {
+  // Netlify normalizes static URL paths to lowercase before serving them.
+  const normalizedPathname = pathname.toLowerCase();
+
   for (const locale of siteLocales) {
-    const prefix = `/${locale}`;
-    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+    const prefix = `/${locale.toLowerCase()}`;
+    if (
+      normalizedPathname === prefix ||
+      normalizedPathname.startsWith(`${prefix}/`)
+    ) {
       return {
         locale,
         unlocalizedPath: pathname.slice(prefix.length) || '/',
