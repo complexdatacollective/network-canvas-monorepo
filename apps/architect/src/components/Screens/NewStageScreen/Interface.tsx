@@ -58,7 +58,7 @@ const InterfaceThumbnail = ({
     <motion.button
       type="button"
       ref={ref}
-      className={`border-outline focusable w-full flex-1 cursor-pointer border-x-0 border-t-0 border-b-2 bg-transparent py-4 text-left ${highlighted ? 'bg-action' : ''}`}
+      className={`border-outline focusable w-full flex-1 cursor-pointer border-x-0 border-t-0 border-b-2 py-4 text-left ${highlighted ? 'bg-action' : 'bg-transparent'}`}
       onClick={handleSelect}
       onMouseEnter={setHighlighted}
       onMouseLeave={removeHighlighted}
