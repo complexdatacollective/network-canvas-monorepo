@@ -192,6 +192,7 @@ describe('resolveRecoveryStep', () => {
     expect(
       resolveRecoveryStep({
         currentStep: 0,
+        currentAvailability: { kind: 'local-skip' },
         previousValidStageIndex: 0,
         nextValidStageIndex: 1,
       }),
@@ -202,9 +203,42 @@ describe('resolveRecoveryStep', () => {
     expect(
       resolveRecoveryStep({
         currentStep: 3,
+        currentAvailability: { kind: 'local-skip' },
         previousValidStageIndex: 1,
         nextValidStageIndex: 4,
       }),
     ).toBe(1);
+  });
+
+  it('follows a local skip destination forward when an earlier stage exists', () => {
+    expect(
+      resolveRecoveryStep({
+        currentStep: 1,
+        currentAvailability: {
+          kind: 'local-skip',
+          destination: { type: 'finish' },
+        },
+        previousValidStageIndex: 0,
+        nextValidStageIndex: 4,
+      }),
+    ).toBe(4);
+  });
+
+  it('follows the active route forward from a bypassed stage', () => {
+    expect(
+      resolveRecoveryStep({
+        currentStep: 2,
+        currentAvailability: {
+          kind: 'bypassed',
+          by: {
+            stageId: 's1',
+            stageIndex: 1,
+            destination: { type: 'stage', stageId: 's4' },
+          },
+        },
+        previousValidStageIndex: 0,
+        nextValidStageIndex: 4,
+      }),
+    ).toBe(4);
   });
 });

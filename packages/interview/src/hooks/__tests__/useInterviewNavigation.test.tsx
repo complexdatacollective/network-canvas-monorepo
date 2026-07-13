@@ -378,6 +378,24 @@ describe('useInterviewNavigation targeted skip routes', () => {
     expect(result.current.canRenderStage).toBe(true);
   });
 
+  it('recovers a resumed targeted local skip forward to its destination', () => {
+    const stages = makeStages(4);
+    stages[2]!.skipLogic = skipTo({ type: 'finish' });
+    const { result, onStepChange } = renderStatefulNavigation(stages, 2);
+
+    expect(result.current.canRenderStage).toBe(false);
+    expect(onStepChange).toHaveBeenLastCalledWith(4, expect.anything());
+  });
+
+  it('recovers a resumed bypassed screen forward along the active route', () => {
+    const stages = makeStages(5);
+    stages[1]!.skipLogic = skipTo({ type: 'stage', stageId: 's4' });
+    const { result, onStepChange } = renderStatefulNavigation(stages, 2);
+
+    expect(result.current.canRenderStage).toBe(false);
+    expect(onStepChange).toHaveBeenLastCalledWith(4, expect.anything());
+  });
+
   it('disables Back when raw earlier screens exist but none are on the active route', () => {
     const stages = makeStages(3);
     stages[0]!.skipLogic = ALWAYS_SKIPPED;

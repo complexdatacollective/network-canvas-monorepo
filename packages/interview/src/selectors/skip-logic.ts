@@ -182,20 +182,33 @@ export const getNavigableStages: (
 /**
  * Resolves the step to navigate to when the current step is unavailable.
  *
- * Prefers the nearest earlier available stage. When none exists — e.g. the
- * first/lowest stage is hidden on interview entry — advance to the next
- * available stage. This preserves the existing recovery behavior while the
- * render gate prevents unavailable content from flashing first.
+ * Targeted routes recover forward to their next active stage, which is the
+ * configured destination (or the next available stage after a hidden/chained
+ * destination). Legacy local skips without a destination retain their existing
+ * recovery behavior: prefer the nearest earlier stage, then advance when none
+ * exists. The render gate prevents unavailable content from flashing first.
  */
 export const resolveRecoveryStep = ({
   currentStep,
+  currentAvailability,
   previousValidStageIndex,
   nextValidStageIndex,
 }: {
   currentStep: number;
+  currentAvailability: StageAvailability | undefined;
   previousValidStageIndex: number;
   nextValidStageIndex: number;
-}): number =>
-  previousValidStageIndex === currentStep
+}): number => {
+  const isTargetedRoute =
+    currentAvailability?.kind === 'bypassed' ||
+    (currentAvailability?.kind === 'local-skip' &&
+      currentAvailability.destination !== undefined);
+
+  if (isTargetedRoute) {
+    return nextValidStageIndex;
+  }
+
+  return previousValidStageIndex === currentStep
     ? nextValidStageIndex
     : previousValidStageIndex;
+};

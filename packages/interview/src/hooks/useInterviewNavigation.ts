@@ -328,6 +328,7 @@ export default function useInterviewNavigation(
     if (!currentNavigation.isCurrentStepValid && currentStep !== forcedStep) {
       const recoveryStep = resolveRecoveryStep({
         currentStep,
+        currentAvailability: currentNavigation.currentAvailability,
         previousValidStageIndex: currentNavigation.previousValidStageIndex,
         nextValidStageIndex: currentNavigation.nextValidStageIndex,
       });
