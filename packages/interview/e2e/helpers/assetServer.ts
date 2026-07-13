@@ -65,6 +65,14 @@ export class AssetServer {
 
       try {
         const stat = statSync(filePath);
+        // Directory requests (e.g. a health-check GET of '/') must 404
+        // instead of crashing the whole server with an unhandled EISDIR
+        // stream error.
+        if (!stat.isFile()) {
+          res.writeHead(404, { 'Content-Type': 'text/plain' });
+          res.end(`Not found: ${urlPath}`);
+          return;
+        }
         const ext = extname(filePath).toLowerCase();
         const contentType = MIME_TYPES[ext] ?? 'application/octet-stream';
 
@@ -74,7 +82,11 @@ export class AssetServer {
           'Cache-Control': 'no-cache',
         });
 
-        createReadStream(filePath).pipe(res);
+        const stream = createReadStream(filePath);
+        stream.on('error', () => {
+          res.destroy();
+        });
+        stream.pipe(res);
       } catch {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end(`Not found: ${urlPath}`);
