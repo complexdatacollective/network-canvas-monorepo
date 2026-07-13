@@ -82,6 +82,15 @@
       "architectTemplate": false
     },
     {
+      "id": "interviewer-e2e",
+      "kind": "e2e",
+      "name": "E2E Fixture",
+      "description": "Lean fixture used by the Interviewer app e2e suite.",
+      "protocolPath": "e2e/interviewer-e2e/interviewer-e2e.netcanvas",
+      "assetDir": "e2e/interviewer-e2e",
+      "architectTemplate": false
+    },
+    {
       "id": "documentation-hbh-ps-v21",
       "kind": "documentation",
       "name": "HBH-PS v21",

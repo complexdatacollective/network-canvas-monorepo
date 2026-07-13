@@ -34,7 +34,10 @@ export const SECTIONS: SectionConfig[] = [
 
 export const sectionColorClasses: Record<SectionColor, string> = {
   'slate-blue': 'bg-slate-blue',
-  'sea-green': 'bg-sea-green',
+  // sea-green (shared OKLCH L≈0.7) is far lighter than the other section
+  // colours (L≈0.55), so white card text fell to ~2.3:1. Pin its lightness into
+  // the same range as the others (keeping hue/chroma) so the label reads.
+  'sea-green': 'bg-[oklch(from_oklch(var(--sea-green))_0.54_c_h)]',
   'neon-coral': 'bg-neon-coral',
   'cerulean-blue': 'bg-cerulean-blue',
 };

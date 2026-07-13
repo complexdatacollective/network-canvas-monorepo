@@ -28,7 +28,7 @@ export const InterfaceSummary = ({
     );
   }
   return (
-    <div className="mb-4 flex flex-col gap-6 sm:flex-row sm:items-center">
+    <div className="phone-landscape:flex-row phone-landscape:items-center mb-4 flex flex-col gap-6">
       <div className="my-6 min-w-0 flex-1">
         <InterfacePicture
           type={type}
@@ -52,7 +52,7 @@ const SpecField = ({
   children: ReactNode;
 }) => (
   <div>
-    <dt className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+    <dt className="text-xs font-semibold tracking-wide text-current/70 uppercase">
       {label}
     </dt>
     <dd className="mt-1 text-base">{children}</dd>
@@ -78,7 +78,7 @@ const iconForRequirement = (requirement: string) => {
 };
 
 const RequiresPill = ({ requirement }: { requirement: string }) => (
-  <span className="bg-primary text-primary-foreground inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-semibold">
+  <span className="bg-primary text-primary-contrast inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-semibold">
     {iconForRequirement(requirement)}
     {requirement}
   </span>
@@ -107,14 +107,14 @@ export const InterfaceMeta = ({
     .filter(Boolean);
 
   return (
-    <dl className="flex shrink-0 flex-col gap-5 sm:w-64 sm:pl-6">
+    <dl className="phone-landscape:w-64 phone-landscape:pl-6 flex shrink-0 flex-col gap-5">
       <SpecField label="Type">{type}</SpecField>
       <SpecField label="Creates">{creates}</SpecField>
       <div className="grid grid-cols-2 gap-5">
         <SpecField label="Uses Prompts">{usesPromptsLabel}</SpecField>
         {compatibility && (
           <SpecField label="Schema">
-            <span className="bg-primary text-primary-foreground inline-block rounded-md px-3 py-1 text-sm font-semibold">
+            <span className="bg-primary text-primary-contrast inline-block rounded-md px-3 py-1 text-sm font-semibold">
               v{compatibility.introducedIn}+
             </span>
           </SpecField>
@@ -127,7 +127,7 @@ export const InterfaceMeta = ({
               <span
                 key={app.id}
                 title={`${app.role === 'configure' ? 'Configure' : 'Run'} in ${app.label}`}
-                className="bg-primary text-primary-foreground inline-block rounded-md px-3 py-1 text-sm font-semibold"
+                className="bg-primary text-primary-contrast inline-block rounded-md px-3 py-1 text-sm font-semibold"
               >
                 {app.label}
               </span>

@@ -20,7 +20,11 @@ export function ResetAppDataButton() {
       <Paragraph margin="none" intent="smallText" emphasis="muted">
         {HELPER_TEXT}
       </Paragraph>
-      <Button variant="link" onClick={() => void requestReset()}>
+      <Button
+        variant="link"
+        onClick={() => void requestReset()}
+        data-testid="reset-app-data"
+      >
         {RESET_LABEL}
       </Button>
     </div>

@@ -3,8 +3,8 @@ import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
-import { Button } from '~/components/ui/Button';
-import { cn } from '~/lib/utils';
+import { IconButton } from '@codaco/fresco-ui/Button';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import DocSearchComponent from './DocSearchComponent';
 import MobileSidebarDialog from './MobileSidebarDialog';
@@ -17,30 +17,27 @@ const MobileNavBar = () => {
   // Check if we are on the home page by comparing the pathname to our supported locals
   const isHomePage = pathname === `/${locale}`;
   return (
-    <div className="flex shrink grow basis-auto items-center gap-4 lg:hidden">
+    <div className="tablet-landscape:hidden flex shrink grow basis-auto items-center gap-4">
       <MobileSidebarDialog open={open} setOpen={setOpen} />
       <DocSearchComponent />
       {open ? (
-        <Button
+        <IconButton
           onClick={() => setOpen(false)}
-          variant="ghost"
-          size="icon-large"
+          variant="text"
+          aria-label="Close navigation menu"
           className="shrink-0"
-        >
-          <CloseMenu className="h-8 w-8 transition-transform duration-300" />
-        </Button>
+          icon={
+            <CloseMenu className="h-8 w-8 transition-transform duration-300" />
+          }
+        />
       ) : (
-        <Button
+        <IconButton
           onClick={() => setOpen(true)}
-          variant="ghost"
-          size="icon-large"
-          className={cn(
-            'flex shrink-0 items-center justify-center',
-            isHomePage && 'md:hidden',
-          )}
-        >
-          <HamburgerMenu className="h-8 w-8" />
-        </Button>
+          variant="text"
+          aria-label="Open navigation menu"
+          className={cx('shrink-0', isHomePage && 'tablet-portrait:hidden')}
+          icon={<HamburgerMenu className="h-8 w-8" />}
+        />
       )}
     </div>
   );

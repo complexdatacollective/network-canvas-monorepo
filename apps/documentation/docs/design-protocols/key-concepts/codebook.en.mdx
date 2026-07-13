@@ -29,14 +29,52 @@ The codebook organizes entities by entity type -- ego, node, and edge, and organ
 
 In both versions of Architect you can customize an entity type's name and color. Architect goes further for node types, letting you also set the shape and icon used to represent the node across interfaces.
 
+### Default node shape
+
 ![Editing a node type in Architect, where you can set its shape and icon in addition to its name and color](/assets/img/architect/edit-node-type-web.png)
 
-In Architect you can also make a node type's shape **dynamic**, so that the shape reflects the value of one of the node's variables rather than staying fixed. Enable the **Map variable to shape** option in the node type's Shape section to override the default shape based on a variable's value. The mapping works in one of two ways depending on the variable you choose:
+Every node type has a default shape: circle, square, or diamond. When no mapping is configured, every node of that type uses the default shape.
+
+### Mapping a node variable to shape
+
+In Architect you can also make a node type's shape **dynamic**, so that nodes within the same type can change shape according to an attribute value. Architect calls the codebook definition a **variable**; the value stored on a particular node is its **attribute**.
+
+To configure a mapping:
+
+1. Edit the node type and choose its default shape.
+2. Enable **Map variable to shape**.
+3. Select one of the node type's variables.
+4. Assign shapes to the values that should override the default.
+
+A node type's shape can be mapped from one variable at a time. The mapping works in one of two ways depending on the variable you choose:
 
 - For **categorical**, **ordinal**, or **boolean** variables, you assign a shape to each discrete value. Any value you leave unmapped falls back to the default shape.
 - For **number** or **scalar** variables, you define up to two numeric **thresholds**. Values below the first threshold use the default shape, and each threshold sets the shape used at or above its value.
 
 The shapes available are the same as for the default shape: circle, square, and diamond.
+
+#### Boolean example: people and places
+
+Suppose a node type contains both people and places, identified by a boolean variable named `is_person`. To show people as circles and places as squares:
+
+1. Choose **Square** as the default shape.
+2. Enable **Map variable to shape** and select `is_person`.
+3. Assign **Circle** to **True**.
+4. Leave **False** unmapped so that it uses the default square.
+
+| `is_person` value | Resulting shape      |
+| ----------------- | -------------------- |
+| `true`            | Circle               |
+| `false`           | Square (the default) |
+| Not recorded      | Square (the default) |
+
+<TipBox>
+
+The default shape is also used when the selected variable has not been recorded. If an unknown value should look different from a place, choose Diamond as the default, then explicitly map True to Circle and False to Square.
+
+</TipBox>
+
+![The is_person shape mapping assigns Circle to True and leaves False unmapped so that it uses the default shape](/assets/img/architect/node-shape-variable-mapping.jpg)
 
 ## Variables
 

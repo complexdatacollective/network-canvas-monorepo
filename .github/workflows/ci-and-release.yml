@@ -59,6 +59,7 @@ jobs:
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
       interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
+      interviewer_e2e: ${{ steps.flags.outputs.interviewer_e2e }}
       interface_images: ${{ steps.flags.outputs.interface_images }}
       interview_release_version: ${{ steps.flags.outputs.interview_release_version }}
     steps:
@@ -203,6 +204,13 @@ jobs:
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
             echo "interview_e2e=$intv"
+            # interviewer-e2e runs on any change in @codaco/interviewer's
+            # workspace dependency tree — the app (incl. its e2e suite/baselines),
+            # every shared package it depends on, and @codaco/protocols (which
+            # holds the e2e protocol fixture). Same value as the `interviewer`
+            # deploy flag, but a dedicated output so the e2e gate stays decoupled
+            # from the preview-deploy gate (mirrors interview_e2e).
+            echo "interviewer_e2e=$intvr"
             echo "interface_images=$ifimg"
             echo "interview_release_version=$interview_release_version"
           } >> "$GITHUB_OUTPUT"
@@ -721,6 +729,35 @@ jobs:
         with:
           name: interview-playwright-report
           path: packages/interview/e2e/playwright-report/
+          if-no-files-found: warn
+          retention-days: 14
+
+  interviewer-e2e:
+    needs: [quality, detect]
+    if: ${{ !cancelled() && needs.detect.outputs.interviewer_e2e == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          # The Dockerized test run mounts the workspace; don't leave the
+          # checkout token in .git/config for test/build code to read.
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Run E2E tests
+        run: ./apps/interviewer/e2e/scripts/run.sh
+      - name: Reclaim artifact ownership
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" \
+            apps/interviewer/e2e/playwright-report \
+            apps/interviewer/e2e/test-results 2>/dev/null || true
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: interviewer-playwright-report
+          path: apps/interviewer/e2e/playwright-report/
           if-no-files-found: warn
           retention-days: 14
 
@@ -1428,6 +1465,7 @@ jobs:
       - chromatic-fresco-ui
       - chromatic-interview
       - interview-e2e
+      - interviewer-e2e
       - docs-preview-checks
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -1453,6 +1491,7 @@ jobs:
           FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
           FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
           FLAG_INTERVIEW_E2E: ${{ needs.detect.outputs.interview_e2e }}
+          FLAG_INTERVIEWER_E2E: ${{ needs.detect.outputs.interviewer_e2e }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         with:
@@ -1465,6 +1504,7 @@ jobs:
               FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
               FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
               FLAG_INTERVIEW_E2E: ["interview-e2e"],
+              FLAG_INTERVIEWER_E2E: ["interviewer-e2e"],
             };
 
             // Only consider jobs the current run didn't execute (flag false).

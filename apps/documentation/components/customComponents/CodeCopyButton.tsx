@@ -1,10 +1,9 @@
 'use client';
 
-import { Anchor, Arrow, Content, Portal, Root } from '@radix-ui/react-popover';
 import { ClipboardCheck, ClipboardCopy } from 'lucide-react';
 import { useState } from 'react';
 
-import { Button } from '~/components/ui/Button';
+import { IconButton } from '@codaco/fresco-ui/Button';
 
 const CodeCopyButton = ({ code }: { code: string }) => {
   const [isCopied, setIsCopied] = useState(false);
@@ -18,36 +17,37 @@ const CodeCopyButton = ({ code }: { code: string }) => {
   };
 
   return (
-    <div className="absolute top-2 right-2">
-      <Root open>
-        <Anchor asChild>
-          {isCopied ? (
-            <Button size={'icon'}>
-              <ClipboardCheck className="h-4 w-4" />
-            </Button>
+    <div className="absolute top-2 right-2 flex items-center gap-2">
+      {/* Always-present live region so the "Copied!" result is announced; it
+          also renders the visible confirmation bubble when copied. */}
+      <span
+        role="status"
+        aria-live="polite"
+        className={
+          isCopied
+            ? 'bg-surface-popover text-surface-popover-contrast rounded-md p-1.5 text-sm font-semibold'
+            : 'sr-only'
+        }
+      >
+        {isCopied ? 'Copied!' : ''}
+      </span>
+      <IconButton
+        aria-label="Copy code"
+        color="primary"
+        icon={
+          isCopied ? (
+            <ClipboardCheck className="h-4 w-4" />
           ) : (
-            <Button
-              size={'icon'}
-              className="transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
-              onClick={() => copyToClipboard(code)}
-            >
-              <ClipboardCopy className="h-4 w-4" />
-            </Button>
-          )}
-        </Anchor>
-        <Portal>
-          {isCopied && (
-            <Content
-              side="left"
-              className="bg-background rounded-md p-1.5 text-sm font-semibold"
-              sideOffset={5}
-            >
-              Copied!
-              <Arrow className="fill-background" />
-            </Content>
-          )}
-        </Portal>
-      </Root>
+            <ClipboardCopy className="h-4 w-4" />
+          )
+        }
+        className={
+          isCopied
+            ? undefined
+            : 'phone-landscape:opacity-0 phone-landscape:group-hover:opacity-100 transition-opacity'
+        }
+        onClick={() => copyToClipboard(code)}
+      />
     </div>
   );
 };

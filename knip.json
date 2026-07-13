@@ -93,9 +93,14 @@
       }
     },
     "apps/interviewer": {
-      "entry": ["index.html!", "vite.renderer.config.ts"],
+      "entry": [
+        "index.html!",
+        "vite.renderer.config.ts",
+        "e2e/specs/**/*.ts",
+        "e2e/scripts/*.{ts,mjs}"
+      ],
       "vite": true,
-      "project": ["src/**/*.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}"],
       "paths": {
         "~/*": ["./src/*"]
       }

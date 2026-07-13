@@ -2,7 +2,7 @@ import type { Route } from 'next';
 import NextLink from 'next/link';
 import type { ReactNode } from 'react';
 
-import { cn } from '~/lib/utils';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 type Step = {
   /** The tool used in this phase, e.g. "Architect". */
@@ -108,7 +108,7 @@ const ToolLabel = ({ tool, href }: Pick<Step, 'tool' | 'href'>) => {
     return (
       <NextLink
         href={href as Route}
-        className={cn(
+        className={cx(
           className,
           'focusable hover:underline hover:underline-offset-2',
         )}
@@ -125,14 +125,14 @@ const StepCell = ({ step }: { step: Step }) => (
   <td className="px-4 py-3 align-top">
     <div className="flex flex-col gap-1">
       <ToolLabel tool={step.tool} href={step.href} />
-      <span className="text-foreground/70">{step.detail}</span>
+      <span className="text-text/70">{step.detail}</span>
     </div>
   </td>
 );
 
 const WorkflowsOverview = () => (
   <div className="my-8">
-    <div className="border-border overflow-x-auto rounded-lg border">
+    <div className="border-outline overflow-x-auto rounded-lg border">
       <table className="w-full min-w-[44rem] border-collapse text-sm">
         <caption className="sr-only">
           The three ways to run a Network Canvas study, across the design,
@@ -145,7 +145,7 @@ const WorkflowsOverview = () => (
           <col className="w-[26%]" />
         </colgroup>
         <thead>
-          <tr className="bg-foreground text-background text-left">
+          <tr className="bg-text text-background text-left">
             <th scope="col" className="px-4 py-3 font-semibold">
               Workflow
             </th>
@@ -163,14 +163,14 @@ const WorkflowsOverview = () => (
           {WORKFLOWS.map((workflow) => (
             <tr
               key={workflow.name}
-              className="border-border/70 odd:bg-muted/20 border-t"
+              className="border-outline/70 border-t odd:bg-current/5"
             >
               <th
                 scope="row"
                 className="px-4 py-3 text-left align-top font-bold"
               >
-                <span className="text-foreground block">{workflow.name}</span>
-                <span className="text-foreground/60 mt-1 block text-xs font-normal">
+                <span className="text-text block">{workflow.name}</span>
+                <span className="text-text/60 mt-1 block text-xs font-normal">
                   {workflow.summary}
                 </span>
               </th>

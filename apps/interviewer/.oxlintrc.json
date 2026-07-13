@@ -12,5 +12,11 @@
     "tailwindcss/no-conflicting-classes": "warn",
     "tailwindcss/no-unnecessary-whitespace": "error",
     "tailwindcss/enforce-canonical": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["e2e/**"],
+      "rules": { "react/rules-of-hooks": "off" }
+    }
+  ]
 }
