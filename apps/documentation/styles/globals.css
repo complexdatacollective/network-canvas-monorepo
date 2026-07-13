@@ -3,6 +3,22 @@
 
 @plugin '@tailwindcss/typography';
 
+/*
+ * The shared fresco theme resets Tailwind's default breakpoint namespace
+ * (`--breakpoint-*: initial`) in favour of the named `phone-*`/`tablet-*`/
+ * `laptop`/`desktop` scale. The documentation site's layout still uses the
+ * standard `sm`/`md`/`lg`/`xl`/`2xl` responsive variants, so re-declare them
+ * here with Tailwind's default values (this site is content-driven and not a
+ * consumer of the interview UI's named breakpoints).
+ */
+@theme {
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  --breakpoint-2xl: 96rem;
+}
+
 @layer base {
   body {
     @apply text-text;
