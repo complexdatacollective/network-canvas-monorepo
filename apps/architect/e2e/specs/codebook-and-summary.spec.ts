@@ -32,10 +32,9 @@ test('fires window.print with a pdf-styled document title', async ({
   // Record it from inside the stub rather than reading document.title after
   // the click, which would only ever observe the already-restored value.
   await architectPage.addInitScript(() => {
-    const w = window as typeof window & { __printTitles?: string[] };
-    w.__printTitles = [];
+    window.__printTitles = [];
     window.print = () => {
-      w.__printTitles?.push(document.title);
+      window.__printTitles?.push(document.title);
     };
   });
 
@@ -46,9 +45,7 @@ test('fires window.print with a pdf-styled document title', async ({
   await toolbar.print();
 
   const printTitles = await architectPage.evaluate(
-    () =>
-      (window as typeof window & { __printTitles?: string[] }).__printTitles ??
-      [],
+    () => window.__printTitles ?? [],
   );
   expect(printTitles).toHaveLength(1);
   // usePrintProtocolAction's filename format (PrintProtocolAction.tsx):
