@@ -1301,37 +1301,32 @@ git commit -m "test(architect): timeline reorder/insert/delete e2e"
 **Files:**
 
 - Create: `apps/architect/e2e/specs/codebook-and-summary.spec.ts`
-- Create: `apps/architect/e2e/fixtures/capture.ts` (CI-gated screenshot helper)
+- Create: `apps/architect/e2e/helpers/visual.ts` (CI-gated capture, copied from interviewer)
 
 **Interfaces:**
 
-- Produces: `capture(page, name, opts?)` — the CI-gated `toHaveScreenshot` wrapper (no-op unless `process.env.CI`).
+- Produces: `makeCapture(page)` → `capture(name, opts?)` — the CI-gated `toHaveScreenshot` wrapper (no-op unless `process.env.CI`) with a rAF spring-rest poller and blob/light-hiding styles.
 - Consumes: `seed`/`gotoProtocol`, fixture loader.
 
-- [ ] **Step 1: Write `fixtures/capture.ts`**
+- [ ] **Step 1: Copy `apps/interviewer/e2e/helpers/visual.ts` → `apps/architect/e2e/helpers/visual.ts`**
 
-```ts
-import { expect, type Locator, type Page } from '@playwright/test';
+Do **not** hand-roll a naive `toHaveScreenshot` wrapper — architect is the same `@codaco/art` blob/motion-heavy Vite app as interviewer, and its background lights/blobs drift via `requestAnimationFrame` springs seeded with `Math.random()`, which `animations: 'disabled'` and `reducedMotion: 'reduce'` do **not** stop. A naive capture flakes. Copy interviewer's `helpers/visual.ts` whole; it already provides the load-bearing pieces:
 
-const isCI = !!process.env.CI;
+- `makeCapture(page)` returning a `capture(name, opts)` fn that early-returns when `!process.env.CI` (baselines compare only under Docker/CI — font-stable).
+- `VISUAL_STYLES` injected via `addStyleTag` that hides the rAF-driven background elements and focus rings.
+- A **spring-rest poller** (`page.evaluate`): samples rounded `getBoundingClientRect` of up to ~1500 `#root *, [role="dialog"] *` nodes until `REQUIRED_STABLE = 4` consecutive identical frames (≈150-frame cap), so the shot is taken only once the JS springs have settled.
+- A toast-viewport hide wrapped in try/finally.
 
-export async function capture(
-  page: Page,
-  name: string,
-  opts: { fullPage?: boolean; mask?: Locator[] } = {},
-): Promise<void> {
-  if (!isCI) return; // baselines only compare under Docker/CI (font-stable)
-  await expect.soft(page).toHaveScreenshot(`${name}.png`, {
-    fullPage: opts.fullPage ?? false,
-    mask: opts.mask,
-  });
-}
-```
+Architect-specific swaps when copying:
+
+- Replace interviewer's background-element `data-testid`s in `VISUAL_STYLES` with architect's (`BackgroundLights` in `components/ViewManager/views/App.tsx`; confirm the actual `data-testid`/class and target it).
+- The poller samples `#root` because the interviewer app has no `<main>` landmark on plain routes — pick architect's actual mount node (architect renders a `<main>` on `/protocol*`; sample the app root that always exists, e.g. `#root`).
+- Drop or adapt the interviewer-only `settingsAboutMasks` export (architect has no settings-about screen; add architect-specific env-varying masks if any surface — e.g. the `time-ago` testid on library cards).
 
 - [ ] **Step 2: Write the summary print snapshot test**
 
 ```ts
-import { capture } from '../fixtures/capture.js';
+import { makeCapture } from '../helpers/visual.js';
 import { expect, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 
@@ -1341,10 +1336,11 @@ test('renders the printable summary under print media', async ({
 }) => {
   const { protocol, assets } = loadAllInterfacesFixture();
   await seed(protocol, { name: 'All Interfaces', assets });
+  const capture = makeCapture(architectPage);
   await architectPage.goto('/protocol/summary');
   await expect(architectPage.getByText('Loading protocol...')).toHaveCount(0);
   await architectPage.emulateMedia({ media: 'print' });
-  await capture(architectPage, 'summary-print', { fullPage: true });
+  await capture('summary-print', { fullPage: true });
 });
 ```
 
@@ -1354,7 +1350,7 @@ Stub `window.print` via `addInitScript` to record that it fired and that `docume
 
 - [ ] **Step 4: Write the codebook snapshot test**
 
-Navigate `/protocol/codebook`, assert the entity/variable list renders (e.g. `person` node type + a known variable name), `capture(page, 'codebook')`.
+Navigate `/protocol/codebook`, assert the entity/variable list renders (e.g. `person` node type + a known variable name), then `const capture = makeCapture(page); await capture('codebook')`.
 
 - [ ] **Step 5: Generate baselines in Docker + run**
 
@@ -1364,7 +1360,7 @@ Expected: baselines created; a second `run.sh` invocation is green.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/architect/e2e/fixtures/capture.ts apps/architect/e2e/specs/codebook-and-summary.spec.ts apps/architect/e2e/visual-snapshots/
+git add apps/architect/e2e/helpers/visual.ts apps/architect/e2e/specs/codebook-and-summary.spec.ts apps/architect/e2e/visual-snapshots/
 git commit -m "test(architect): codebook + printable summary e2e with print snapshots"
 ```
 
@@ -1884,95 +1880,97 @@ git commit -m "test(architect): geospatial + pedigree interfaces create-from-scr
 
 Wires the suite into `ci-and-release.yml` as a non-required, informational job. Landed last, once the suite is green in Docker.
 
-### Task 21: detect flag + architect-e2e job + report + carry-forward
+### Task 21: detect flag + architect-e2e job + carry-forward
+
+**Template:** mirror the merged **`interviewer-e2e`** wiring in `ci-and-release.yml`, NOT `interview-e2e`. The interviewer app suite (PR #926) is the direct precedent for a full-app-PWA e2e gate: a single job that uploads its report artifact, with **no** companion Pages/`-report` job and **no** slug plumbing (those belong only to the library `interview-e2e` suite). Line numbers below are current as of the post-#926 tree.
 
 **Files:**
 
-- Modify: `.github/workflows/ci-and-release.yml` (detect outputs, flag emission, new jobs, carry-forward)
+- Modify: `.github/workflows/ci-and-release.yml` (detect outputs, flag emission, new job, carry-forward)
 
 **Interfaces:**
 
-- Consumes: `run.sh` (Task 5), the existing `arch` detect flag.
+- Consumes: `run.sh` (Task 5), the existing `arch` detect flag (`arch=$(flag @codaco/architect)`, line 153).
 
 - [ ] **Step 1: Add the `architect_e2e` detect output**
 
-In the `detect` job `outputs:` block (after `interview_e2e`, ~line 623) add:
+In the `detect` job `outputs:` block (after `interviewer_e2e`, line 62) add:
 
 ```yaml
-architect_e2e: ${{ steps.flags.outputs.architect_e2e }}
+      architect_e2e: ${{ steps.flags.outputs.architect_e2e }}
 ```
 
-In the flag-emission block (~line 680, reusing the existing `arch` flag) add:
+In the flag-emission block (after `echo "interviewer_e2e=$intvr"`, line 213), reusing the existing `arch` flag (line 153), add:
 
 ```yaml
-echo "architect_e2e=$arch"
+            echo "architect_e2e=$arch"
 ```
 
-- [ ] **Step 2: Add the `architect-e2e` job** (mirror `interview-e2e`, lines 727–769)
+(This reuses the same `@codaco/architect`-tree change flag that already drives `deploy-architect-preview`, exactly as `interviewer_e2e` reuses `intvr`.)
+
+- [ ] **Step 2: Add the `architect-e2e` job** (copy the `interviewer-e2e` job, lines 739–766, changing only names/paths)
 
 ```yaml
-architect-e2e:
-  needs: [quality, detect]
-  if: ${{ !cancelled() && needs.detect.outputs.architect_e2e == 'true' }}
-  runs-on: ubuntu-latest
-  timeout-minutes: 45
-  outputs:
-    slug: ${{ steps.meta.outputs.slug }}
-  steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-    - uses: ./.github/actions/turbo-ci-setup
-    - id: meta
-      env:
-        REF: ${{ github.head_ref || github.ref_name }}
-      run: |
-        SLUG=$(printf '%s' "$REF" | tr '/' '-' | tr '[:upper:]' '[:lower:]')
-        SLUG=$(printf '%s' "$SLUG" | tr -c '[:alnum:]-_.' '-')
-        SLUG=${SLUG:-unknown}
-        printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
-    - name: Run E2E tests
-      run: ./apps/architect/e2e/scripts/run.sh
-    - name: Reclaim artifact ownership
-      if: always()
-      run: |
-        sudo chown -R "$(id -u):$(id -g)" \
-          apps/architect/e2e/playwright-report \
-          apps/architect/e2e/test-results 2>/dev/null || true
-    - name: Upload report
-      if: always()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-      with:
-        name: architect-playwright-report
-        path: apps/architect/e2e/playwright-report/
-        if-no-files-found: warn
-        retention-days: 14
+  architect-e2e:
+    needs: [quality, detect]
+    if: ${{ !cancelled() && needs.detect.outputs.architect_e2e == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          # The Dockerized test run mounts the workspace; don't leave the
+          # checkout token in .git/config for test/build code to read.
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Run E2E tests
+        run: ./apps/architect/e2e/scripts/run.sh
+      - name: Reclaim artifact ownership
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" \
+            apps/architect/e2e/playwright-report \
+            apps/architect/e2e/test-results 2>/dev/null || true
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: architect-playwright-report
+          path: apps/architect/e2e/playwright-report/
+          if-no-files-found: warn
+          retention-days: 14
 ```
 
-- [ ] **Step 3: Add the `architect-e2e-report` job** (mirror `interview-e2e-report`, distinct concurrency group + artifact name + Pages subdir `architect-e2e/${SLUG}`)
+No `outputs.slug`, no `id: meta` step, no flaky-summary step — the interviewer app job has none of these (they are interview-library-suite-only).
 
-Copy the `interview-e2e-report` job, replacing: `needs: interview-e2e` → `needs: architect-e2e`; `interview-playwright-report` → `architect-playwright-report`; `concurrency.group: interview-e2e-pages-deploy` → `architect-e2e-pages-deploy`; all `interview-e2e/` path segments → `architect-e2e/`; comment title "Interview E2E" → "Architect E2E".
+- [ ] **Step 3: Wire carry-forward** (the `carry-forward-statuses` job, lines 1462–1512)
 
-- [ ] **Step 4: Wire carry-forward** (lines 1400–1447)
-
-Add `architect-e2e` to the `carry-forward-statuses` `needs:` list. Add to `env:`:
+Add `architect-e2e` to the `needs:` list (after `interviewer-e2e`, line 1472):
 
 ```yaml
-FLAG_ARCHITECT_E2E: ${{ needs.detect.outputs.architect_e2e }}
+      - architect-e2e
 ```
 
-Add to the `flagToJobs` map:
+Add to the `env:` block (after `FLAG_INTERVIEWER_E2E`, line 1498):
+
+```yaml
+          FLAG_ARCHITECT_E2E: ${{ needs.detect.outputs.architect_e2e }}
+```
+
+Add to the `flagToJobs` map (after `FLAG_INTERVIEWER_E2E`, line 1511):
 
 ```js
               FLAG_ARCHITECT_E2E: ["architect-e2e"],
 ```
 
-Do NOT add `architect-e2e-report` (mirror the interview-e2e-report exclusion).
+There is no `architect-e2e-report` job to exclude (unlike `interview-e2e-report`) — the interviewer template omits the Pages/report companion, and so does this suite.
 
-- [ ] **Step 5: Validate the workflow YAML**
+- [ ] **Step 4: Validate the workflow YAML**
 
 Run: `npx --yes @action-validator/cli .github/workflows/ci-and-release.yml` (or `actionlint .github/workflows/ci-and-release.yml` if available)
 Expected: no errors. Also confirm indentation/anchors with `python -c "import yaml,sys; yaml.safe_load(open('.github/workflows/ci-and-release.yml'))"`.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add .github/workflows/ci-and-release.yml
