@@ -1,0 +1,490 @@
+{
+  "name": "All Interfaces (e2e)",
+  "description": "Schema-8 protocol covering all 19 interface types, used by the Architect e2e suite.",
+  "lastModified": "2026-07-13T00:00:00.000Z",
+  "schemaVersion": 8,
+  "codebook": {
+    "node": {
+      "person": {
+        "name": "person",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": { "default": "circle" },
+        "variables": {
+          "name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": { "unique": true }
+          },
+          "is_ego": {
+            "name": "is_ego",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "relationship_to_ego": {
+            "name": "relationship_to_ego",
+            "type": "text",
+            "component": "Text"
+          },
+          "biologicalSex": {
+            "name": "biologicalSex",
+            "type": "categorical",
+            "options": [
+              { "value": "female", "label": "Female" },
+              { "value": "male", "label": "Male" },
+              {
+                "value": "intersex",
+                "label": "Intersex or a variation in sex characteristics"
+              },
+              { "value": "unknown", "label": "Don’t know" },
+              { "value": "preferNotToSay", "label": "Prefer not to say" }
+            ]
+          },
+          "hasConditionX": {
+            "name": "hasConditionX",
+            "type": "boolean"
+          },
+          "composerName": {
+            "name": "composerName",
+            "type": "text",
+            "component": "Text"
+          },
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          },
+          "location": {
+            "name": "location",
+            "type": "location"
+          },
+          "contactFreq": {
+            "name": "contactFreq",
+            "type": "ordinal",
+            "options": [
+              { "label": "Weekly", "value": 3 },
+              { "label": "Monthly", "value": 2 },
+              { "label": "Rarely", "value": 1 }
+            ]
+          },
+          "contactType": {
+            "name": "contactType",
+            "type": "categorical",
+            "options": [
+              { "label": "In person", "value": "in_person" },
+              { "label": "Phone or video call", "value": "call" },
+              { "label": "Text or messaging", "value": "text" }
+            ]
+          },
+          "flagged": {
+            "name": "flagged",
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "ego": {
+      "variables": {
+        "ego_name": {
+          "name": "ego_name",
+          "type": "text",
+          "component": "Text"
+        }
+      }
+    },
+    "edge": {
+      "family_edge": {
+        "name": "family_edge",
+        "color": "edge-color-seq-1",
+        "variables": {
+          "relationshipType": {
+            "name": "relationshipType",
+            "type": "categorical",
+            "options": [
+              { "value": "biological", "label": "Biological" },
+              { "value": "social", "label": "Social" },
+              { "value": "donor", "label": "Donor" },
+              { "value": "surrogate", "label": "Surrogate" },
+              { "value": "adoptive", "label": "Adoptive" },
+              { "value": "partner", "label": "Partner" }
+            ]
+          },
+          "isActive": {
+            "name": "isActive",
+            "type": "boolean"
+          },
+          "isGestationalCarrier": {
+            "name": "isGestationalCarrier",
+            "type": "boolean"
+          },
+          "gameteRole": {
+            "name": "gameteRole",
+            "type": "categorical",
+            "options": [
+              { "value": "egg", "label": "Egg" },
+              { "value": "sperm", "label": "Sperm" }
+            ]
+          }
+        }
+      },
+      "knows": {
+        "name": "knows",
+        "color": "edge-color-seq-2",
+        "variables": {
+          "closeness": {
+            "name": "closeness",
+            "type": "ordinal",
+            "options": [
+              { "label": "Very close", "value": 3 },
+              { "label": "Somewhat close", "value": 2 },
+              { "label": "Not close", "value": 1 }
+            ]
+          },
+          "edgeNotes": {
+            "name": "edgeNotes",
+            "type": "text",
+            "component": "TextArea"
+          }
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "anonymisation-1",
+      "type": "Anonymisation",
+      "label": "Anonymisation",
+      "explanationText": {
+        "title": "This interview uses enhanced privacy protection",
+        "body": "This interview allows you to encrypt the names of people you mention so they cannot be seen by anyone but you. To use this feature, enter a passphrase below."
+      },
+      "validation": { "minLength": 4, "maxLength": 12 }
+    },
+    {
+      "id": "ego-form-1",
+      "type": "EgoForm",
+      "label": "Ego Form",
+      "form": {
+        "fields": [{ "variable": "ego_name", "prompt": "What is your name?" }]
+      },
+      "introductionPanel": {
+        "title": "Introduction",
+        "text": "There are a few questions about you before we begin."
+      }
+    },
+    {
+      "id": "information-1",
+      "type": "Information",
+      "label": "Information",
+      "title": "Welcome",
+      "items": [
+        {
+          "id": "info-item-1",
+          "type": "text",
+          "content": "Welcome to this interview."
+        }
+      ]
+    },
+    {
+      "id": "name-generator-1",
+      "type": "NameGenerator",
+      "label": "Name Generator",
+      "subject": { "entity": "node", "type": "person" },
+      "form": {
+        "title": "Add a person",
+        "fields": [
+          { "variable": "name", "prompt": "What is this person's name?" }
+        ]
+      },
+      "prompts": [
+        {
+          "id": "name-generator-prompt-1",
+          "text": "Who are the people you know?"
+        }
+      ]
+    },
+    {
+      "id": "name-generator-quick-add-1",
+      "type": "NameGeneratorQuickAdd",
+      "label": "Name Generator Quick Add",
+      "subject": { "entity": "node", "type": "person" },
+      "quickAdd": "name",
+      "prompts": [
+        {
+          "id": "name-generator-quick-add-prompt-1",
+          "text": "Quickly add people you know"
+        }
+      ]
+    },
+    {
+      "id": "name-generator-roster-1",
+      "type": "NameGeneratorRoster",
+      "label": "Name Generator Roster",
+      "subject": { "entity": "node", "type": "person" },
+      "dataSource": "roster_data",
+      "cardOptions": {
+        "additionalProperties": [{ "label": "Age", "variable": "age" }]
+      },
+      "sortOptions": {
+        "sortOrder": [{ "property": "age", "direction": "desc" }],
+        "sortableProperties": [{ "label": "Age", "variable": "age" }]
+      },
+      "searchOptions": {
+        "fuzziness": 0.4,
+        "matchProperties": ["name", "age"]
+      },
+      "prompts": [
+        {
+          "id": "name-generator-roster-prompt-1",
+          "text": "Select people from the roster"
+        }
+      ],
+      "behaviours": { "minNodes": 1, "maxNodes": 8 }
+    },
+    {
+      "id": "sociogram-1",
+      "type": "Sociogram",
+      "label": "Sociogram",
+      "subject": { "entity": "node", "type": "person" },
+      "background": { "concentricCircles": 4, "skewedTowardCenter": true },
+      "behaviours": { "automaticLayout": true },
+      "prompts": [
+        {
+          "id": "sociogram-prompt-1",
+          "text": "Place the people who know each other close together",
+          "layout": { "layoutVariable": "layout" },
+          "edges": { "display": ["knows"], "create": "knows" },
+          "highlight": { "allowHighlighting": false }
+        },
+        {
+          "id": "sociogram-prompt-2",
+          "text": "Highlight the people you feel closest to",
+          "layout": { "layoutVariable": "layout" },
+          "edges": { "display": ["knows"] },
+          "highlight": { "allowHighlighting": true, "variable": "flagged" }
+        }
+      ]
+    },
+    {
+      "id": "dyad-census-1",
+      "type": "DyadCensus",
+      "label": "Dyad Census",
+      "subject": { "entity": "node", "type": "person" },
+      "introductionPanel": {
+        "title": "Introduction to the Dyad Census",
+        "text": "This section will go through all possible node pairs and ask you how they are connected."
+      },
+      "prompts": [
+        {
+          "id": "dyad-census-prompt-1",
+          "text": "Do these two people know each other?",
+          "createEdge": "knows"
+        }
+      ]
+    },
+    {
+      "id": "one-to-many-dyad-census-1",
+      "type": "OneToManyDyadCensus",
+      "label": "One to Many Dyad Census",
+      "subject": { "entity": "node", "type": "person" },
+      "behaviours": { "removeAfterConsideration": true },
+      "prompts": [
+        {
+          "id": "one-to-many-dyad-census-prompt-1",
+          "text": "Tap on all the people who this person knows",
+          "createEdge": "knows"
+        }
+      ]
+    },
+    {
+      "id": "tie-strength-census-1",
+      "type": "TieStrengthCensus",
+      "label": "Tie-Strength Census",
+      "subject": { "entity": "node", "type": "person" },
+      "introductionPanel": {
+        "title": "Introduction to the Tie-Strength Census",
+        "text": "This interface both creates an edge and assigns an ordinal value to it."
+      },
+      "prompts": [
+        {
+          "id": "tie-strength-census-prompt-1",
+          "text": "How close are these two people?",
+          "createEdge": "knows",
+          "edgeVariable": "closeness",
+          "negativeLabel": "Don't know each other"
+        }
+      ]
+    },
+    {
+      "id": "ordinal-bin-1",
+      "type": "OrdinalBin",
+      "label": "Ordinal Bin",
+      "subject": { "entity": "node", "type": "person" },
+      "prompts": [
+        {
+          "id": "ordinal-bin-prompt-1",
+          "text": "How often do you have contact with this person?",
+          "variable": "contactFreq"
+        }
+      ]
+    },
+    {
+      "id": "categorical-bin-1",
+      "type": "CategoricalBin",
+      "label": "Categorical Bin",
+      "subject": { "entity": "node", "type": "person" },
+      "prompts": [
+        {
+          "id": "categorical-bin-prompt-1",
+          "text": "What type of contact do you have most with this person?",
+          "variable": "contactType"
+        }
+      ]
+    },
+    {
+      "id": "alter-form-1",
+      "type": "AlterForm",
+      "label": "Alter Form",
+      "subject": { "entity": "node", "type": "person" },
+      "form": {
+        "fields": [
+          {
+            "variable": "relationship_to_ego",
+            "prompt": "What is this person's relationship to you?"
+          },
+          {
+            "variable": "flagged",
+            "prompt": "Does this person have this attribute?"
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": "Introduction to the alter form",
+        "text": "A few more questions about each person."
+      }
+    },
+    {
+      "id": "alter-edge-form-1",
+      "type": "AlterEdgeForm",
+      "label": "Alter Edge Form",
+      "subject": { "entity": "edge", "type": "knows" },
+      "form": {
+        "fields": [
+          {
+            "variable": "edgeNotes",
+            "prompt": "Add any notes about this relationship"
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": "Introduction to the alter edge form",
+        "text": "A few questions about each relationship."
+      }
+    },
+    {
+      "id": "narrative-1",
+      "type": "Narrative",
+      "label": "Narrative",
+      "subject": { "entity": "node", "type": "person" },
+      "presets": [
+        {
+          "id": "narrative-preset-1",
+          "label": "Default layout",
+          "layoutVariable": "layout",
+          "groupVariable": "contactType",
+          "edges": { "display": ["knows"] },
+          "highlight": ["flagged"]
+        }
+      ],
+      "background": { "concentricCircles": 4, "skewedTowardCenter": true },
+      "behaviours": { "freeDraw": true, "allowRepositioning": true }
+    },
+    {
+      "id": "family-pedigree-1",
+      "type": "FamilyPedigree",
+      "label": "Family Pedigree",
+      "nodeConfig": {
+        "type": "person",
+        "nodeLabelVariable": "name",
+        "egoVariable": "is_ego",
+        "relationshipVariable": "relationship_to_ego",
+        "biologicalSexVariable": "biologicalSex"
+      },
+      "edgeConfig": {
+        "type": "family_edge",
+        "relationshipTypeVariable": "relationshipType",
+        "isActiveVariable": "isActive",
+        "isGestationalCarrierVariable": "isGestationalCarrier",
+        "gameteRoleVariable": "gameteRole"
+      },
+      "framing": { "mode": "fixed", "value": "gamete" },
+      "boundaries": {
+        "requireGrandparents": "off",
+        "requireChildrenContributors": "off"
+      },
+      "censusPrompt": "Who is in your family?"
+    },
+    {
+      "id": "narrative-pedigree-1",
+      "type": "NarrativePedigree",
+      "label": "Narrative Pedigree",
+      "sourceStageId": "family-pedigree-1",
+      "diseases": [
+        {
+          "id": "disease-1",
+          "label": "Condition X",
+          "color": "#cc0000",
+          "variable": "hasConditionX",
+          "inheritancePattern": "autosomalDominant"
+        }
+      ]
+    },
+    {
+      "id": "network-composer-1",
+      "type": "NetworkComposer",
+      "label": "Network Composer",
+      "subject": { "entity": "node", "type": "person" },
+      "quickAdd": "composerName",
+      "layoutVariable": "layout"
+    },
+    {
+      "id": "geospatial-1",
+      "type": "Geospatial",
+      "label": "Geospatial",
+      "subject": { "entity": "node", "type": "person" },
+      "mapOptions": {
+        "tokenAssetId": "mapbox_token",
+        "style": "mapbox://styles/mapbox/standard",
+        "center": [-74.0, 40.7],
+        "initialZoom": 10,
+        "dataSourceAssetId": "geo_data",
+        "color": "#3399ff",
+        "targetFeatureProperty": "name"
+      },
+      "prompts": [
+        {
+          "id": "geospatial-prompt-1",
+          "text": "Where do you live?",
+          "variable": "location"
+        }
+      ]
+    }
+  ],
+  "assetManifest": {
+    "mapbox_token": {
+      "name": "Mapbox Token",
+      "type": "apikey",
+      "value": "pk.eyJ1IjoibmV0d29ya2NhbnZhcyIsImEiOiJjbTZmaDJ0cTcwNTVpMmtvbDZhcXJneG1hIn0.wI5ooUHDWwFsH4jLXo3CVw"
+    },
+    "geo_data": {
+      "name": "Regions",
+      "type": "geojson",
+      "source": "regions.geojson"
+    },
+    "roster_data": {
+      "name": "Roster",
+      "type": "network",
+      "source": "roster.json"
+    }
+  }
+}
