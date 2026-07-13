@@ -66,10 +66,12 @@ import SiteFooter from '@codaco/fresco-ui/navigation/SiteFooter';
 
 - **\`brand\`** — app-owned brand artwork or wordmark.
 - **\`links\`** — labelled footer links. External links open in a new tab by
-  default; each item can override \`target\` and \`rel\`.
+  default; each item can override \`target\` and \`rel\`. Text links use the
+  shared animated underline treatment on hover and keyboard focus.
 - **\`copyright\`** — complete, localisable copyright content.
 - **\`socialLinks\`** — labelled YouTube, Twitter, and GitHub destinations. The
-  shared footer supplies the decorative platform icons.
+  shared footer supplies the decorative platform icons and their icon-specific
+  hover treatment rather than the text-link underline.
 - **\`extraContent\`** — optional app-owned content, such as a locale selector.
 - **Styling hooks** — \`className\`, \`containerClassName\`, and \`style\`.
 

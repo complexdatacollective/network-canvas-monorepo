@@ -34,7 +34,8 @@ describe('HomePage background composition', () => {
     const foreground = background.nextElementSibling;
 
     expect(screen.getAllByTestId('page-background')).toHaveLength(1);
-    expect(main).toHaveClass('homepage-body', 'relative', 'isolate');
+    expect(main).toHaveClass('relative', 'isolate');
+    expect(main).not.toHaveClass('homepage-body');
     expect(background.parentElement).toBe(main);
     expect(foreground).toHaveClass('relative', 'z-10');
     expect(foreground).toContainElement(

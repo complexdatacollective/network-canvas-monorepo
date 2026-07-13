@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode, SVGProps } from 'react';
 
+import { NativeLink } from '../NativeLink';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
 
@@ -86,15 +87,15 @@ export default function SiteFooter({
           <div className="flex flex-col items-center gap-6 text-center @min-[64rem]:flex-row @min-[64rem]:justify-between @min-[64rem]:text-left">
             <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
               {links.map((link) => (
-                <a
+                <NativeLink
                   key={`${link.href}-${link.label}`}
                   href={link.href}
                   target={link.target ?? '_blank'}
                   rel={link.rel ?? 'noreferrer'}
-                  className="focusable text-link hover:text-text rounded-sm text-base transition-colors"
+                  className="text-base"
                 >
                   {link.label}
-                </a>
+                </NativeLink>
               ))}
             </div>
             <Paragraph margin="none" className="text-text/70 text-base">

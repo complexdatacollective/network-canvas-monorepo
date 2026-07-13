@@ -52,7 +52,7 @@ export default async function GetStartedPage({ params }: GetStartedPageProps) {
   setRequestLocale(locale);
 
   return (
-    <main className="homepage-body relative isolate">
+    <main className="relative isolate">
       <PageBackground />
       <div className="relative z-10">
         <GetStartedIntro />

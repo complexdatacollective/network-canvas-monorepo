@@ -6,6 +6,7 @@ import { Link } from 'wouter';
 
 import { Pattern } from '@codaco/art';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -139,19 +140,13 @@ const ProtocolInfoCard = () => {
             {stageCount} {stageCount === 1 ? 'stage' : 'stages'}
           </span>
           <span aria-hidden>/</span>
-          <Link
-            href="/protocol/codebook"
-            className="hover:text-navy-taupe hover:underline"
-          >
+          <NativeLink render={<Link href="/protocol/codebook" />}>
             {nodeTypeCount} node {nodeTypeCount === 1 ? 'type' : 'types'}
-          </Link>
+          </NativeLink>
           <span aria-hidden>/</span>
-          <Link
-            href="/protocol/codebook"
-            className="hover:text-navy-taupe hover:underline"
-          >
+          <NativeLink render={<Link href="/protocol/codebook" />}>
             {edgeTypeCount} edge {edgeTypeCount === 1 ? 'type' : 'types'}
-          </Link>
+          </NativeLink>
         </div>
       </div>
     </motion.div>

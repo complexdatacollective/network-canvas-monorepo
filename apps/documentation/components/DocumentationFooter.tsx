@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import type { ReactNode } from 'react';
 
 import SiteFooter from '@codaco/fresco-ui/navigation/SiteFooter';
 import type {
@@ -8,6 +9,7 @@ import type {
   SiteFooterSocialLink,
 } from '@codaco/fresco-ui/navigation/SiteFooter';
 
+import Link from './Link';
 import LogoComponent from './SharedNav/LogoComponent';
 
 const links = {
@@ -21,6 +23,12 @@ const socialLinks = {
   twitter: 'https://twitter.com/networkcanvas?lang=en',
   github: 'https://github.com/complexdatacollective',
 } as const;
+
+const renderNetlifyLink = (children: ReactNode) => (
+  <Link href="https://www.netlify.com" className="font-normal">
+    {children}
+  </Link>
+);
 
 export default function DocumentationFooter() {
   const t = useTranslations('Footer');
@@ -55,16 +63,7 @@ export default function DocumentationFooter() {
       extraContent={
         <span className="text-text/70 text-base">
           {t.rich('netlify', {
-            link: (children) => (
-              <a
-                href="https://www.netlify.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="focusable text-link hover:text-text rounded-sm underline transition-colors"
-              >
-                {children}
-              </a>
-            ),
+            link: renderNetlifyLink,
           })}
         </span>
       }

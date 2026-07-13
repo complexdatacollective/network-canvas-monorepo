@@ -40,7 +40,6 @@ export function Footer() {
       copyright={t('copyright', { year: new Date().getFullYear() })}
       socialLinks={socialLinks}
       extraContent={<LanguageSelector />}
-      className="homepage-body"
     />
   );
 }

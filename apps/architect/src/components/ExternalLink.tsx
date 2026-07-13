@@ -1,5 +1,7 @@
 import type React from 'react';
 
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+
 const openExternalLink = (href: string) => {
   window.open(href, '_blank', 'noopener,noreferrer');
 };
@@ -7,18 +9,34 @@ const openExternalLink = (href: string) => {
 type ExternalLinkProps = {
   children: React.ReactNode;
   href: string;
+  className?: string;
+  /** Skip the prose-link treatment when another component supplies styling. */
+  unstyled?: boolean;
 };
 
-const ExternalLink = ({ children, href }: ExternalLinkProps) => {
+const ExternalLink = ({
+  children,
+  className,
+  href,
+  unstyled = false,
+}: ExternalLinkProps) => {
   const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     openExternalLink(href);
   };
 
+  if (unstyled) {
+    return (
+      <a href={href} onClick={handleClick} className={className}>
+        {children}
+      </a>
+    );
+  }
+
   return (
-    <a href={href} onClick={handleClick} className="action-link">
+    <NativeLink href={href} onClick={handleClick} className={className}>
       {children}
-    </a>
+    </NativeLink>
   );
 };
 

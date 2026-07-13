@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
@@ -11,27 +12,27 @@ import type { Publication } from '~/lib/siteContent';
 
 function renderArticleLink(chunks: ReactNode) {
   return (
-    <a
+    <NativeLink
       href={externalLinks.publications}
       target="_blank"
       rel="noreferrer"
-      className="text-link font-bold hover:underline"
+      className="font-bold"
     >
       {chunks}
-    </a>
+    </NativeLink>
   );
 }
 
 function renderThreadLink(chunks: ReactNode) {
   return (
-    <a
+    <NativeLink
       href={externalLinks.shareYourWork}
       target="_blank"
       rel="noreferrer"
-      className="text-link font-bold hover:underline"
+      className="font-bold"
     >
       {chunks}
-    </a>
+    </NativeLink>
   );
 }
 

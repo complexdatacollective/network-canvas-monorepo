@@ -30,7 +30,7 @@ export default async function HomePage({ params }: HomePageProps) {
     await loadSiteContent(locale);
 
   return (
-    <main className="homepage-body relative isolate">
+    <main className="relative isolate">
       <PageBackground />
       <div className="relative z-10">
         <HeroIntro newsItems={newsItems} />

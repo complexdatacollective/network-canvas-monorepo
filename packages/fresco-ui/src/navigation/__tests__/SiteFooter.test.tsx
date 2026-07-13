@@ -68,11 +68,24 @@ describe('SiteFooter', () => {
     );
 
     for (const { label, href } of links) {
-      expect(screen.getByRole('link', { name: label })).toMatchObject({
+      const link = screen.getByRole('link', { name: label });
+
+      expect(link).toMatchObject({
         href,
         target: '_blank',
         rel: 'noreferrer',
       });
+      expect(link).toHaveClass(
+        'group',
+        'text-link',
+        'focusable',
+        'font-semibold',
+        'text-base',
+      );
+      expect(link.querySelector('span')).toHaveClass(
+        'group-hover:bg-[length:100%_2px]',
+        'group-focus-visible:bg-[length:100%_2px]',
+      );
     }
 
     expect(
@@ -90,6 +103,8 @@ describe('SiteFooter', () => {
       expect(link).toHaveAttribute('href', href);
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noreferrer');
+      expect(link).not.toHaveClass('group');
+      expect(link.querySelector('span')).not.toBeInTheDocument();
       expect(icon).toHaveAttribute('aria-hidden', 'true');
       expect(icon).toHaveClass('size-5');
     }

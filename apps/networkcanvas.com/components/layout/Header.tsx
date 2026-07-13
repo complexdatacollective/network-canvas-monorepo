@@ -34,7 +34,6 @@ export function Header({
       locale={locale}
       renderLink={renderNavigationLink}
       site="website"
-      className="homepage-body"
     />
   );
 }

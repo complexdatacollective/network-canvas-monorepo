@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { SectionHeading } from '~/components/ui/SectionHeading';
@@ -8,27 +9,27 @@ import { institutions } from '~/lib/content';
 
 function renderPriorLink(chunks: ReactNode) {
   return (
-    <a
+    <NativeLink
       href="https://reporter.nih.gov/search/MPUhMnE1GkqRHltT4rj3TQ/project-details/10405582"
       target="_blank"
       rel="noreferrer"
-      className="text-link font-bold hover:underline"
+      className="font-bold"
     >
       {chunks}
-    </a>
+    </NativeLink>
   );
 }
 
 function renderOngoingLink(chunks: ReactNode) {
   return (
-    <a
+    <NativeLink
       href="https://reporter.nih.gov/search/vo3bW-y-mE6OeQAQvDNH5g/project-details/10233551"
       target="_blank"
       rel="noreferrer"
-      className="text-link font-bold hover:underline"
+      className="font-bold"
     >
       {chunks}
-    </a>
+    </NativeLink>
   );
 }
 

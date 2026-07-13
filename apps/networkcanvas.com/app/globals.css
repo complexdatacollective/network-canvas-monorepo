@@ -37,7 +37,3 @@
 @utility animate-marquee {
   animation: marquee-x 32s linear infinite;
 }
-
-@utility homepage-body {
-  --text: oklch(var(--cyber-grape));
-}
