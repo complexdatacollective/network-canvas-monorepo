@@ -121,8 +121,8 @@ class FormFixture {
    * Select a value on a LikertScale field using keyboard navigation.
    *
    * LikertScale renders as a native range input (role="slider") with an
-   * aria-label that reflects the current option. We press Home to go to
-   * index 0, then ArrowRight until the aria-label matches the target.
+   * aria-valuetext value that reflects the current option. We press Home to
+   * go to index 0, then ArrowRight until aria-valuetext matches the target.
    */
   async selectLikert(fieldName: string, optionLabel: string): Promise<void> {
     const field = this.getField(fieldName);
@@ -133,30 +133,32 @@ class FormFixture {
     await slider.press('Home');
     // Home commits asynchronously through the controlled form; wait for it to
     // land on a real option before stepping, so we count from a known start.
-    await expect(slider).not.toHaveAttribute('aria-label', /No selection/);
+    await expect(slider).not.toHaveAttribute('aria-valuetext', /No selection/);
 
     // Arrow right until we find the target label (max steps = option count).
     for (let i = 0; i <= max; i++) {
-      const label = (await slider.getAttribute('aria-label'))?.trim();
+      const label = (await slider.getAttribute('aria-valuetext'))?.trim();
       if (label?.includes(optionLabel)) {
         return;
       }
       if (i < max) {
         await slider.press('ArrowRight');
         // Wait for the controlled value to commit before reading again. The
-        // aria-label reflects the *committed* form value, which re-renders
+        // aria-valuetext reflects the *committed* form value, which re-renders
         // asynchronously — a slow commit (seen in Firefox) otherwise lets us
         // read the pre-press label and stop one step short of the target.
         await expect
-          .poll(async () => (await slider.getAttribute('aria-label'))?.trim())
+          .poll(async () =>
+            (await slider.getAttribute('aria-valuetext'))?.trim(),
+          )
           .not.toBe(label);
       }
     }
 
-    const finalLabel = await slider.getAttribute('aria-label');
+    const finalLabel = await slider.getAttribute('aria-valuetext');
     throw new Error(
       `LikertScale option "${optionLabel}" not found in field ${fieldName}. ` +
-        `Final aria-label: "${finalLabel}"`,
+        `Final aria-valuetext: "${finalLabel}"`,
     );
   }
 

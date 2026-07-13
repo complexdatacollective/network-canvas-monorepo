@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { formValueSelector } from 'redux-form';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
-import { Markdown } from '~/components/Form/Fields';
+import Markdown from '~/components/Markdown';
 import { getColorForType } from '~/config/variables';
 import type { RootState } from '~/ducks/store';
 import { getVariablesForSubject } from '~/selectors/codebook';

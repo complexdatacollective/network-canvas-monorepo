@@ -161,6 +161,7 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
         className,
       })}
       disabled={disabled}
+      aria-readonly={readOnly || undefined}
       {...(fieldsetProps['aria-labelledby']
         ? { 'aria-labelledby': fieldsetProps['aria-labelledby'] }
         : {})}
@@ -169,7 +170,7 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
         : {})}
     >
       {options.map((option, index) => {
-        const isOptionDisabled = disabled ?? option.disabled;
+        const isOptionDisabled = Boolean(disabled) || Boolean(option.disabled);
         const isChecked = currentValues.includes(option.value);
         const catColor = getCatColorIndex(index);
 
@@ -185,6 +186,8 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
               }
             }}
             disabled={isOptionDisabled}
+            aria-label={option.label}
+            aria-readonly={readOnly || undefined}
             nativeButton
             render={
               <motion.button

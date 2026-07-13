@@ -10,8 +10,8 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section, Subsection } from '~/components/EditorLayout';
-import { FrescoReduxField } from '~/components/Form';
-import { Field as RichText } from '~/components/Form/Fields/RichText';
+import RichText from '~/components/Form/Fields/RichText/Field';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Options from '~/components/Options';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';
@@ -24,6 +24,7 @@ import {
 } from '~/config/variables';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
+import { documentationLinks } from '~/utils/documentationLinks';
 import { getFieldId } from '~/utils/issues';
 
 import BooleanChoice from '../../BooleanChoice';
@@ -120,6 +121,8 @@ const PromptFields = ({
             validation={{ required: true }}
             componentProps={{
               inline: true,
+              label: 'Prompt text',
+              labelHidden: true,
               placeholder: "What is this person's name?",
             }}
           />
@@ -134,6 +137,8 @@ const PromptFields = ({
             name="hint"
             component={RichText as ComponentType<Record<string, unknown>>}
             inline
+            label="Hint text"
+            labelHidden
             placeholder="e.g. Select all that apply..."
           />
         </div>
@@ -166,7 +171,7 @@ const PromptFields = ({
           <Paragraph>
             Choose an input control that should be used to collect the answer.
             For detailed information about these options, see our{' '}
-            <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/input-controls/">
+            <ExternalLink href={documentationLinks.inputControls}>
               documentation
             </ExternalLink>
             .
@@ -176,6 +181,7 @@ const PromptFields = ({
         <ValidatedField
           name="component"
           label="Input control"
+          labelHidden
           component={FrescoReduxField}
           validation={{ required: true }}
           componentProps={{

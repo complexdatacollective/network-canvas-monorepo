@@ -219,9 +219,7 @@ import { createStore, useStore } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 export type ComposerTool =
-  | { kind: 'select' }
-  | { kind: 'addNode' }
-  | { kind: 'edge'; edgeType: string };
+  { kind: 'select' } | { kind: 'addNode' } | { kind: 'edge'; edgeType: string };
 
 type Point = { x: number; y: number };
 

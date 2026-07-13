@@ -4,7 +4,7 @@ import { compose } from 'react-recompose';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
 import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequired';
@@ -72,9 +72,10 @@ const NarrativePresets = ({
     }
     title="Narrative Presets"
   >
-    <ValidatedField
+    <ValidatedFieldArray
       name="presets"
       label="Narrative presets"
+      labelHidden
       component={DialogArrayField}
       validation={{ notEmpty }}
       componentProps={{

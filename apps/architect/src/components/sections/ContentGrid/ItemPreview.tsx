@@ -1,7 +1,7 @@
 import { get } from 'es-toolkit/compat';
 import { connect } from 'react-redux';
 
-import { Markdown } from '~/components/Form/Fields';
+import Markdown from '~/components/Markdown';
 import type { RootState } from '~/ducks/modules/root';
 import { getAssetManifest } from '~/selectors/protocol';
 

@@ -1,4 +1,5 @@
-import '@fontsource-variable/quicksand';
+import '@codaco/tailwind-config/fonts/inclusive-sans.css';
+import '@codaco/tailwind-config/fonts/nunito.css';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import type { Metadata } from 'next';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
@@ -7,7 +8,6 @@ import { notFound } from 'next/navigation';
 
 import type { Messages } from '~/app/types';
 import { locales } from '~/app/types';
-import AIAssistant from '~/components/ai-assistant';
 import { LayoutComponent } from '~/components/Layout';
 import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
@@ -69,14 +69,14 @@ export default async function MainLayout(props: MainLayoutProps) {
     <html
       lang={locale}
       suppressHydrationWarning
-      className="font-sans antialiased"
+      className="font-body antialiased"
     >
       <body className="flex min-h-dvh flex-col text-base">
         <PostHogClientProvider>
           <ThemeProvider
             enableSystem
             enableColorScheme
-            attribute="class"
+            attribute="data-theme"
             storageKey="nc-docs-site"
           >
             <NextIntlClientProvider
@@ -86,7 +86,6 @@ export default async function MainLayout(props: MainLayoutProps) {
               messages={messages.default}
             >
               <LayoutComponent>{children}</LayoutComponent>
-              <AIAssistant />
             </NextIntlClientProvider>
           </ThemeProvider>
         </PostHogClientProvider>

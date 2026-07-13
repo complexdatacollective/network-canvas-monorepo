@@ -14,10 +14,11 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { buttonVariants } from '~/components/ui/Button';
-import Heading, { headingVariants } from '~/components/ui/typography/Heading';
-import Paragraph from '~/components/ui/typography/Paragraph';
-import { cn } from '~/lib/utils';
+import { buttonVariants } from '@codaco/fresco-ui/Button';
+import Heading, { headingVariants } from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { cx } from '@codaco/fresco-ui/utils/cva';
+import { externalLinkProps } from '~/lib/utils';
 
 type BaseMenu = {
   translationKey: string;
@@ -77,14 +78,18 @@ const links: MenuItem[] = [
     ],
   },
   {
+    translationKey: 'protocolGallery',
+    href: 'https://protocolgallery.networkcanvas.com',
+  },
+  {
     translationKey: 'download',
     style: 'button',
     href: 'https://networkcanvas.com/download',
   },
 ];
 
-const linkClasses = cn(
-  headingVariants({ variant: 'h4-all-caps', margin: 'none' }),
+const linkClasses = cx(
+  headingVariants({ level: 'h4', variant: 'all-caps', margin: 'none' }),
   'focusable hover:text-success flex items-center underline-offset-8',
 );
 
@@ -93,13 +98,18 @@ export const NavigationMenuDemo = () => {
 
   return (
     <Root asChild>
-      <div className={cn('relative z-10 hidden grow justify-end', 'md:flex')}>
-        <List className="center m-0 flex list-none items-center gap-6 lg:gap-10">
+      <div
+        className={cx(
+          'relative z-10 hidden grow justify-end',
+          'tablet-portrait:flex',
+        )}
+      >
+        <List className="center tablet-landscape:gap-10 m-0 flex list-none items-center gap-6">
           {links.map((link, _i) => {
             if (link.menu) {
               return (
                 <Item key={link.translationKey}>
-                  <Trigger className={cn(linkClasses, 'gap-2')}>
+                  <Trigger className={cx(linkClasses, 'gap-2')}>
                     {t(link.translationKey)}{' '}
                     <ChevronDown className="h-4 w-4" aria-hidden />
                   </Trigger>
@@ -112,16 +122,17 @@ export const NavigationMenuDemo = () => {
                         >
                           <NavigationMenuLink asChild>
                             <a
-                              className={cn(
-                                'bg-accent text-accent-foreground flex h-full w-full flex-col justify-end rounded-md p-4 no-underline outline-none select-none',
+                              className={cx(
+                                'bg-accent text-accent-contrast flex h-full w-full flex-col justify-end rounded-md p-4 no-underline outline-none select-none',
                                 'focusable',
                               )}
                               href={subLink.href}
+                              {...externalLinkProps(subLink.href)}
                             >
-                              <Heading variant="label">
+                              <Heading level="label">
                                 {t(subLink.titleTranslationKey)}
                               </Heading>
-                              <Paragraph variant="smallText">
+                              <Paragraph intent="smallText">
                                 {t(subLink.descriptionTranslationKey)}
                               </Paragraph>
                             </a>
@@ -140,9 +151,10 @@ export const NavigationMenuDemo = () => {
                   <NavigationMenuLink
                     href={link.href}
                     className={buttonVariants({
-                      variant: 'default',
+                      color: 'primary',
                       size: 'sm',
                     })}
+                    {...externalLinkProps(link.href)}
                   >
                     {t(link.translationKey)}
                   </NavigationMenuLink>
@@ -152,19 +164,23 @@ export const NavigationMenuDemo = () => {
 
             return (
               <Item key={link.translationKey}>
-                <NavigationMenuLink className={linkClasses} href={link.href}>
+                <NavigationMenuLink
+                  className={linkClasses}
+                  href={link.href}
+                  {...externalLinkProps(link.href)}
+                >
                   {t(link.translationKey)}
                 </NavigationMenuLink>
               </Item>
             );
           })}
           <Indicator className="data-[state=visible]:animate-fadeIn data-[state=hidden]:animate-fadeOut top-full z-1 flex h-2.5 items-end justify-center overflow-hidden transition-[width,transform_250ms_ease]">
-            <div className="bg-card relative top-[70%] h-3.5 w-3.5 rotate-45 rounded-tl-[2px]" />
+            <div className="bg-surface-1 relative top-[70%] h-3.5 w-3.5 rotate-45 rounded-tl-[2px]" />
           </Indicator>
         </List>
 
         <div className="absolute top-full right-0 flex justify-center perspective-[2000px]">
-          <Viewport className="data-[state=open]:animate-scaleIn data-[state=closed]:animate-scaleOut bg-card relative mt-2.5 h-(--radix-navigation-menu-viewport-height) w-[calc(100vw-20rem)] origin-[top_center] overflow-hidden rounded-[6px] shadow-xl transition-[width,height] duration-300 lg:w-200" />
+          <Viewport className="data-[state=open]:animate-scaleIn data-[state=closed]:animate-scaleOut bg-surface-1 tablet-landscape:w-200 relative mt-2.5 h-(--radix-navigation-menu-viewport-height) w-[calc(100vw-20rem)] origin-[top_center] overflow-hidden rounded-[6px] shadow-xl transition-[width,height] duration-300" />
         </div>
       </div>
     </Root>
@@ -178,7 +194,9 @@ export const NavigationMenuMobile = () => {
   if (!submenu.length) {
     return (
       <ul
-        className={'flex flex-col items-center justify-center gap-4 md:hidden'}
+        className={
+          'tablet-portrait:hidden flex flex-col items-center justify-center gap-4'
+        }
       >
         {links.map((link, _i) => {
           if (link.style === 'button' && link.href) {
@@ -186,10 +204,11 @@ export const NavigationMenuMobile = () => {
               <li key={link.translationKey}>
                 <Link
                   className={buttonVariants({
-                    variant: 'default',
+                    color: 'primary',
                     size: 'sm',
                   })}
                   href={link.href}
+                  {...externalLinkProps(link.href)}
                 >
                   {t(link.translationKey)}
                 </Link>
@@ -213,7 +232,11 @@ export const NavigationMenuMobile = () => {
 
           return (
             <li key={link.translationKey}>
-              <Link className={linkClasses} href={link.href}>
+              <Link
+                className={linkClasses}
+                href={link.href}
+                {...externalLinkProps(link.href)}
+              >
                 {t(link.translationKey)}
               </Link>
             </li>
@@ -227,7 +250,11 @@ export const NavigationMenuMobile = () => {
     <ul className={'flex flex-col items-center justify-center gap-4'}>
       {submenu.map((subLink, _i) => (
         <li key={subLink.titleTranslationKey}>
-          <Link className={linkClasses} href={subLink.href}>
+          <Link
+            className={linkClasses}
+            href={subLink.href}
+            {...externalLinkProps(subLink.href)}
+          >
             {t(subLink.titleTranslationKey)}
           </Link>
         </li>
@@ -236,8 +263,8 @@ export const NavigationMenuMobile = () => {
       <li>
         <button
           type="button"
-          className={cn(
-            buttonVariants({ variant: 'accent', size: 'sm' }),
+          className={cx(
+            buttonVariants({ color: 'accent', size: 'sm' }),
             'inline rounded-full px-2',
           )}
           onClick={() => setSubmenu([])}

@@ -1,5 +1,4 @@
 import { enableMapSet } from 'immer';
-import { z } from 'zod/mini';
 import { immer } from 'zustand/middleware/immer';
 import { createStore, type Mutate, type StoreApi } from 'zustand/vanilla';
 
@@ -81,6 +80,39 @@ export type FormStoreApi = Mutate<
 >;
 
 export const createFormStore = (): FormStoreApi => {
+  // Validation tokens are unique by identity, so resetting the form can never
+  // make an old request current again (an ABA race). Authoritative state
+  // transitions clear all field tokens because a field schema may depend on
+  // any value in the form.
+  const fieldValidationTokens = new Map<string, symbol>();
+  let formValidationToken = Symbol('form-validation');
+
+  const invalidateFormValidation = () => {
+    formValidationToken = Symbol('form-validation');
+  };
+
+  const invalidateAllValidations = () => {
+    fieldValidationTokens.clear();
+    invalidateFormValidation();
+  };
+
+  const beginFieldValidation = (fieldName: string) => {
+    invalidateFormValidation();
+    const token = Symbol(`field-validation:${fieldName}`);
+    fieldValidationTokens.set(fieldName, token);
+    return token;
+  };
+
+  const beginFormValidation = () => {
+    // A form validation supersedes every field validation over the previous
+    // snapshot. Field validation is skipped while this token is active;
+    // authoritative state transitions invalidate it instead.
+    fieldValidationTokens.clear();
+    const token = Symbol('form-validation');
+    formValidationToken = token;
+    return token;
+  };
+
   return createStore<FormStore>()(
     immer((set, get, _store) => ({
       fields: new Map(),
@@ -103,6 +135,7 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       reset: () => {
+        invalidateAllValidations();
         set((state) => {
           state.fields.clear();
           state.dormantValues.clear();
@@ -117,7 +150,13 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       registerField: (config) => {
+        invalidateAllValidations();
         set((state) => {
+          state.isValidating = false;
+          state.fields.forEach((field) => {
+            field.meta.isValidating = false;
+          });
+
           const dormant = state.dormantValues.get(config.name);
           const hasDormantValue = dormant !== undefined;
           const value = hasDormantValue ? dormant.value : config.initialValue;
@@ -152,7 +191,13 @@ export const createFormStore = (): FormStoreApi => {
         // Check if field exists before updating to avoid unnecessary renders
         const currentState = get();
         if (currentState.fields.has(fieldName)) {
+          invalidateAllValidations();
           set((state) => {
+            state.isValidating = false;
+            state.fields.forEach((activeField) => {
+              activeField.meta.isValidating = false;
+            });
+
             const field = state.fields.get(fieldName);
             if (field) {
               state.dormantValues.set(fieldName, {
@@ -192,25 +237,67 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       setErrors: (errors) => {
+        invalidateAllValidations();
+
         if (errors === null) {
           set((state) => {
+            state.isValidating = false;
+            state.fields.forEach((field) => {
+              field.meta.isValidating = false;
+            });
+
+            // setErrors marks fields named by server errors invalid. Clearing
+            // those errors after a successful submission must also clear that
+            // server-owned invalid state; fields without client validation are
+            // otherwise never revalidated and can leave the form invalid.
+            Object.keys(state.errors.fieldErrors).forEach((fieldName) => {
+              const field = state.fields.get(fieldName);
+              if (field) field.meta.isValid = true;
+            });
             state.errors = { formErrors: [], fieldErrors: {} };
+            state.isValid = calculateFormValidity(state.fields, []);
           });
           return;
         }
 
         set((state) => {
+          state.isValidating = false;
+          state.fields.forEach((field) => {
+            field.meta.isValidating = false;
+          });
+
           state.errors = errors;
+          Object.entries(errors.fieldErrors).forEach(
+            ([fieldName, fieldErrors]) => {
+              if (!fieldErrors || fieldErrors.length === 0) return;
+              const field = state.fields.get(fieldName);
+              if (!field) return;
+              field.meta.isValid = false;
+              field.meta.isTouched = true;
+              field.meta.isBlurred = true;
+              field.meta.isDirty = true;
+            },
+          );
+          state.isValid = calculateFormValidity(
+            state.fields,
+            errors.formErrors,
+          );
         });
       },
 
       setFieldValue: (fieldName, value) => {
+        if (!get().fields.has(fieldName)) {
+          // eslint-disable-next-line no-console
+          console.warn(`Field "${fieldName}" is not registered.`);
+          return;
+        }
+
+        invalidateAllValidations();
         set((state) => {
-          if (!state.fields.get(fieldName)) {
-            // eslint-disable-next-line no-console
-            console.warn(`Field "${fieldName}" is not registered.`);
-            return;
-          }
+          state.isValidating = false;
+          state.fields.forEach((field) => {
+            field.meta.isValidating = false;
+          });
 
           state.fields.get(fieldName)!.value = value;
           state.fields.get(fieldName)!.meta.isDirty = true;
@@ -279,10 +366,17 @@ export const createFormStore = (): FormStoreApi => {
       validateField: async (fieldName) => {
         const state = get();
         const field = state.fields.get(fieldName);
-        if (!field?.validation) return;
+        // Whole-form validation owns the current snapshot. A delayed
+        // validate-on-change callback is redundant and must not cancel a
+        // submission that is already validating the same values.
+        if (!field?.validation || state.isValidating) return;
+        const validationToken = beginFieldValidation(fieldName);
+        const isCurrentValidation = () =>
+          fieldValidationTokens.get(fieldName) === validationToken;
 
         set((draft) => {
           const form = draft;
+          form.isValidating = false;
           if (form?.fields.get(fieldName)) {
             form.fields.get(fieldName)!.meta.isValidating = true;
           }
@@ -294,6 +388,8 @@ export const createFormStore = (): FormStoreApi => {
             field.validation,
             state.getFormValues(),
           );
+
+          if (!isCurrentValidation()) return;
 
           if (!result.success) {
             set((draft) => {
@@ -350,6 +446,7 @@ export const createFormStore = (): FormStoreApi => {
             });
           }
         } catch {
+          if (!isCurrentValidation()) return;
           set((draft) => {
             const form = draft;
             if (form?.fields.get(fieldName)) {
@@ -378,7 +475,18 @@ export const createFormStore = (): FormStoreApi => {
       validateForm: async () => {
         const state = get();
         const fields = state.fields;
+        const formValues = state.getFormValues();
+        const validationToken = beginFormValidation();
+        const isCurrentValidation = () =>
+          formValidationToken === validationToken;
         const fieldErrors: Record<string, string[]> = {};
+
+        set((draft) => {
+          draft.isValidating = true;
+          draft.fields.forEach((field) => {
+            field.meta.isValidating = false;
+          });
+        });
 
         // Collect field meta updates to apply in a single batch
         const fieldMetaUpdates = new Map<
@@ -394,27 +502,42 @@ export const createFormStore = (): FormStoreApi => {
             const result = await validateFieldValue(
               fieldState.value,
               fieldState.validation,
-              state.getFormValues(),
+              formValues,
             );
 
             return { fieldName, result };
           },
         );
+        type FieldValidationResult = Awaited<
+          (typeof fieldValidationPromises)[number]
+        >;
+        let fieldResults: FieldValidationResult[];
 
-        const fieldResults = await Promise.all(fieldValidationPromises);
+        try {
+          fieldResults = await Promise.all(fieldValidationPromises);
+        } catch (error) {
+          if (!isCurrentValidation()) return false;
+          set((draft) => {
+            draft.isValidating = false;
+          });
+          throw error;
+        }
+
+        if (!isCurrentValidation()) return false;
 
         // Process validation results and collect errors and meta updates
         fieldResults.forEach(({ fieldName, result }) => {
-          if (result && !result.success) {
-            // Field has validation errors - flatten and collect
-            const flattened = z.flattenError(result.error) as FlattenedErrors;
-
-            // Errors can be in formErrors (no path) or fieldErrors (with nested paths)
-            // Combine them for this field
-            const combinedErrors = [
-              ...flattened.formErrors,
-              ...(flattened.fieldErrors[fieldName] ?? []),
-            ] as string[];
+          if (!result) {
+            // A field without client validation is intrinsically valid at this
+            // stage. This also clears any invalid flag previously owned by a
+            // server response before a subsequent successful submission.
+            fieldMetaUpdates.set(fieldName, { isValid: true });
+          } else if (!result.success) {
+            // Each result is already scoped to one registered field. Preserve
+            // every issue regardless of its nested object/array path.
+            const combinedErrors = result.error.issues.map(
+              (issue) => issue.message,
+            );
 
             if (combinedErrors.length > 0) {
               fieldErrors[fieldName] = combinedErrors;
@@ -425,7 +548,7 @@ export const createFormStore = (): FormStoreApi => {
               isValid: false,
               markAsTouched: true,
             });
-          } else if (result?.success) {
+          } else {
             // Field is valid
             fieldMetaUpdates.set(fieldName, { isValid: true });
           }
@@ -433,6 +556,8 @@ export const createFormStore = (): FormStoreApi => {
 
         // Apply all updates in a single batch
         set((draft) => {
+          draft.isValidating = false;
+
           // Apply field meta updates
           fieldMetaUpdates.forEach(({ isValid, markAsTouched }, fieldName) => {
             const field = draft.fields.get(fieldName);
@@ -491,6 +616,7 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       resetForm: () => {
+        invalidateAllValidations();
         set((state) => {
           // Reset all fields to their initial values (inline to avoid nested set calls)
           state.fields.forEach((fieldState, fieldName) => {
@@ -518,7 +644,15 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       resetField: (fieldName) => {
+        if (!get().fields.has(fieldName)) return;
+
+        invalidateAllValidations();
         set((state) => {
+          state.isValidating = false;
+          state.fields.forEach((field) => {
+            field.meta.isValidating = false;
+          });
+
           const fieldConfig = state.fields.get(fieldName);
           if (!fieldConfig) return;
 

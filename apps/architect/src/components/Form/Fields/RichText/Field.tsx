@@ -1,52 +1,55 @@
-import { TriangleAlert } from 'lucide-react';
-import type React from 'react';
-import { useRef } from 'react';
-import { v4 as uuid } from 'uuid';
+import type { ComponentType } from 'react';
+import type { WrappedFieldInputProps, WrappedFieldMetaProps } from 'redux-form';
 
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import MarkdownLabel from '~/components/Form/Fields/MarkdownLabel';
-import { cx } from '~/utils/cva';
-
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
   type RichTextContent,
-} from './markdownAdapter';
+} from '~/utils/markdownAdapter';
+
 type RichTextFieldProps = {
-  input: {
-    name?: string;
-    value: string | null | undefined;
-    onChange: (value: string) => void;
-    onFocus?: React.FocusEventHandler;
-    onBlur?: React.FocusEventHandler;
-  };
-  meta?: {
-    error?: string;
-    active?: boolean;
-    invalid?: boolean;
-    touched?: boolean;
-  };
+  input: WrappedFieldInputProps;
+  meta?: Partial<WrappedFieldMetaProps>;
   label?: string | null;
+  labelHidden?: boolean;
   placeholder?: string;
   autoFocus?: boolean;
   inline?: boolean;
   disallowedTypes?: string[];
   className?: string | null;
+  disabled?: boolean;
+  readOnly?: boolean;
+  required?: boolean;
 };
+
+const FrescoRichTextEditorField = RichTextEditorField as ComponentType<
+  Record<string, unknown>
+>;
+const ReduxFieldAdapter = FrescoReduxField as ComponentType<
+  Record<string, unknown>
+>;
+
+const asRichTextContent = (value: unknown): RichTextContent | undefined =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as RichTextContent)
+    : undefined;
+
 const RichTextField = ({
   input,
   meta = {},
   label = null,
+  labelHidden = false,
   placeholder,
   autoFocus = false,
   inline = false,
   disallowedTypes = [],
   className = null,
+  disabled = false,
+  readOnly = false,
+  required = false,
 }: RichTextFieldProps) => {
-  const _id = useRef(uuid());
-  const anyLabel = label;
-  const hasError = !!(meta.invalid && meta.touched && meta.error);
   const toolbarOptions = {
     bold: !disallowedTypes.includes('bold'),
     italic: !disallowedTypes.includes('italic'),
@@ -56,41 +59,33 @@ const RichTextField = ({
     thematicBreak: !inline && !disallowedTypes.includes('thematic_break'),
     history: !disallowedTypes.includes('history'),
   };
-  const editorValue = markdownToRichTextContent(input.value, inline);
-  const handleChange = (value: RichTextContent | undefined) => {
-    input.onChange(richTextContentToMarkdown(value, inline));
-  };
+
   return (
-    <div className="m-0 w-full [&>h4]:m-0">
-      {anyLabel && (
-        <Heading level="h4">
-          <MarkdownLabel label={anyLabel} />
-        </Heading>
-      )}
-      <div className={cx(className)}>
-        <RichTextEditorField
-          id={_id.current}
-          name={input.name ?? _id.current}
-          onChange={handleChange}
-          placeholder={placeholder}
-          autoFocus={autoFocus}
-          value={editorValue}
-          changeMode="input"
-          toolbarOptions={toolbarOptions}
-          aria-describedby={`${_id.current}-error`}
-          aria-invalid={hasError}
-        />
-        {hasError && (
-          <div
-            id={`${_id.current}-error`}
-            className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-2.5 [&_svg]:max-h-5"
-          >
-            <TriangleAlert aria-hidden />
-            {meta.error}
-          </div>
-        )}
-      </div>
-    </div>
+    <ReduxFieldAdapter
+      input={input}
+      meta={meta}
+      fieldComponent={FrescoRichTextEditorField}
+      label={label ?? input.name ?? ''}
+      labelHidden={labelHidden}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      className={className ?? undefined}
+      disabled={disabled}
+      readOnly={readOnly}
+      required={required}
+      changeMode="input"
+      toolbarOptions={toolbarOptions}
+      fromReduxValue={(value: unknown) =>
+        markdownToRichTextContent(
+          typeof value === 'string' ? value : null,
+          inline,
+        )
+      }
+      toReduxValue={(value: unknown) =>
+        richTextContentToMarkdown(asRichTextContent(value), inline)
+      }
+    />
   );
 };
+
 export default RichTextField;

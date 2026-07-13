@@ -11,8 +11,9 @@ import {
   importAssetAsync,
   type ImportAssetErrorInfo,
 } from '~/ducks/modules/protocol/assetManifest';
+import { documentationLinks } from '~/utils/documentationLinks';
 
-import Dropzone from './Dropzone';
+import Dropzone from './Dropzone/Dropzone';
 type AutoFileDropProps = {
   type?: string;
   onDrop: (ids: string[]) => void;
@@ -45,7 +46,7 @@ const documentationMessage = (
   <>
     <Paragraph>
       Please see our{' '}
-      <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/resources/#supported-file-types">
+      <ExternalLink href={documentationLinks.supportedResourceTypes}>
         documentation page
       </ExternalLink>{' '}
       on using external data by clicking the button below.
@@ -59,7 +60,7 @@ const documentationMessage = (
       &nbsp;with further details.
     </Paragraph>
     <Paragraph>
-      <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/resources/#supported-file-types">
+      <ExternalLink href={documentationLinks.supportedResourceTypes}>
         <Button>View documentation</Button>
       </ExternalLink>
     </Paragraph>

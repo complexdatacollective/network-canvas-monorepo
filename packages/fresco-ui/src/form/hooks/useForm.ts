@@ -79,11 +79,17 @@ export function useForm(config: FormConfig) {
           return;
         }
 
-        // Handle the submission result
-        setErrors({
+        // Handle the submission result. Surface returned field errors using the
+        // same invalid-submit path as client validation so the first control is
+        // focused after the error UI renders.
+        const submissionErrors: FlattenedErrors = {
           formErrors: result.formErrors ?? [],
           fieldErrors: result.fieldErrors ?? {},
-        });
+        };
+        setErrors(submissionErrors);
+        setTimeout(() => {
+          configRef.current.onSubmitInvalid?.(submissionErrors);
+        }, 0);
       } catch {
         setErrors({
           formErrors: ['An error occurred while submitting the form.'],

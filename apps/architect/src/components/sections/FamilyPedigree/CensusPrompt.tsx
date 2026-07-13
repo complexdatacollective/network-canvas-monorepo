@@ -1,6 +1,6 @@
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import { Field as RichText } from '~/components/Form/Fields/RichText';
+import RichText from '~/components/Form/Fields/RichText/Field';
 import ValidatedField from '~/components/Form/ValidatedField';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -19,7 +19,8 @@ const CensusPrompt = (_props: StageEditorSectionProps) => (
       <ValidatedField
         name="censusPrompt"
         component={RichText}
-        componentProps={{ label: 'Prompt for building the family pedigree' }}
+        label="Prompt for building the family pedigree"
+        labelHidden
         validation={{ required: true }}
       />
     </Row>

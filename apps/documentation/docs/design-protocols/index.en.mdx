@@ -1,0 +1,28 @@
+---
+title: About Architect
+navOrder: 0
+---
+
+Architect is the protocol designer for Network Canvas — the tool you use to build the interview protocols that run in Interviewer and Fresco. It comes in two versions: **Architect**, which runs in your browser with nothing to install, and **Architect Classic**, a downloadable application. They share the same interface and protocol-building workflow, but they are **not interchangeable** — each builds a different version of the protocol file format ("schema"), and that version determines which app you can run your interviews in. The table below compares them; which you should use depends mainly on where you will run your interviews.
+
+<KeyConcept title="Not sure which to use?">
+
+Choose **Architect** for new studies — it's the default and needs no setup. Its schema 8 protocols run in **Fresco** and in the new **Interviewer** (beta) app.
+
+Choose **Architect Classic** only if you need to keep using **Interviewer Classic**, the older desktop and tablet app. It builds schema 7 protocols and cannot open protocols built in Architect.
+
+[Open Architect →](https://architect.networkcanvas.com)
+
+</KeyConcept>
+
+|                   | Architect                                            | Architect Classic                                                                                              |
+| ----------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Install           | Nothing — runs in the browser                        | Download and install (Windows, macOS, Linux)                                                                   |
+| Protocol schema   | Schema 8 (latest)                                    | Schema 7 and earlier                                                                                           |
+| Run interviews in | Fresco and Interviewer                               | Interviewer Classic (Interviewer and Fresco can automatically upgrade a protocol created in Architect Classic) |
+| Backup & moving   | Download a `.netcanvas` file to keep or share a copy | Your `.netcanvas` file is already on disk — copy it anywhere                                                   |
+| Updates           | Always the latest, automatically                     | Download each new release yourself                                                                             |
+| Best for          | New studies (run in Fresco or Interviewer)           | Studies that must keep using the older Interviewer Classic app                                                 |
+| Status            | Actively developed                                   | Maintenance mode — bug fixes only                                                                              |
+
+Architect can open a schema 7 protocol made in Architect Classic and upgrade it to schema 8, but this is one-way — a schema 8 protocol cannot be converted back or opened in Architect Classic. For a full explanation of schema versions and compatibility, see [App compatibility by schema version](/en/get-started/release-announcements) and [Protocol Schema Information](/en/get-started/advanced-topics/protocol-schema-information).

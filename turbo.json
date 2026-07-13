@@ -165,6 +165,7 @@
     "build-storybook": {
       "dependsOn": ["^build"],
       "inputs": [
+        "$TURBO_ROOT$/tooling/tailwind/**",
         "src/**",
         ".storybook/**",
         "stories/**",

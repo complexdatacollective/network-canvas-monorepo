@@ -1,25 +1,60 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { formValueSelector, reducer as formReducer } from 'redux-form';
+import { reducer as formReducer, reduxForm } from 'redux-form';
 import { describe, expect, it, vi } from 'vitest';
 
-import Editor from '~/components/Editor';
+vi.mock('../ShapePicker', () => ({
+  ShapePickerControl: ({
+    'aria-label': ariaLabel,
+    value,
+    onChange,
+  }: {
+    'aria-label'?: string;
+    'value'?: string;
+    'onChange'?: (value: string) => void;
+  }) => (
+    <div aria-label={ariaLabel}>
+      {['Circle', 'Square', 'Diamond'].map((label) => {
+        const shape = label.toLowerCase();
+        return (
+          <button
+            key={shape}
+            type="button"
+            aria-label={`Select shape ${label}`}
+            aria-pressed={value === shape}
+            onClick={() => onChange?.(shape)}
+          >
+            shape
+          </button>
+        );
+      })}
+    </div>
+  ),
+  SHAPES: [
+    { value: 'circle', label: 'Circle' },
+    { value: 'square', label: 'Square' },
+    { value: 'diamond', label: 'Diamond' },
+  ],
+}));
 
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: ({
-    input,
+  VariablePickerControl: ({
+    label,
     options = [],
+    onChange,
   }: {
-    input?: { onChange?: (value: string) => void };
+    label?: string;
     options?: Array<{ label: string; value: string }>;
+    onChange?: (value: string) => void;
   }) => (
     <div>
+      {label}
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
-          onClick={() => input?.onChange?.(option.value)}
+          onClick={() => onChange?.(option.value)}
         >
           Select {option.label}
         </button>
@@ -28,32 +63,11 @@ vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   ),
 }));
 
-vi.mock('../ShapePicker', () => ({
-  default: ({
-    input,
-  }: {
-    input: { value: string; onChange: (value: string) => void };
-  }) => (
-    <div>
-      {['Circle', 'Square', 'Diamond'].map((label) => {
-        const value = label.toLowerCase();
-        return (
-          <button
-            key={value}
-            type="button"
-            aria-label={`Select shape ${label}`}
-            aria-pressed={input.value === value}
-            onClick={() => input.onChange(value)}
-          />
-        );
-      })}
-    </div>
-  ),
-}));
-
 import ShapeVariableMapping from '../ShapeVariableMapping';
 
-const formName = 'SHAPE_VARIABLE_MAPPING_TEST';
+const FORM = 'shape-variable-mapping-test';
+
+type FormValues = Record<string, unknown>;
 
 type ShapeDynamic = {
   variable: string;
@@ -61,33 +75,61 @@ type ShapeDynamic = {
   map: Array<{ value: boolean; shape: string }>;
 };
 
+const Harness = () => <ShapeVariableMapping form={FORM} />;
+
+const ReduxHarness = reduxForm<FormValues>({ form: FORM })(Harness);
+
+const thresholdInitialValues = {
+  variables: { weight: { name: 'Weight', type: 'number' } },
+  shape: {
+    dynamic: {
+      variable: 'weight',
+      type: 'breakpoints',
+      thresholds: [{ value: 5, shape: 'square' }],
+    },
+  },
+};
+
+const setup = (initialValues: FormValues = thresholdInitialValues) => {
+  const store = configureStore({
+    reducer: { form: formReducer },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({ serializableCheck: false }),
+  });
+
+  render(
+    <Provider store={store}>
+      <ReduxHarness initialValues={initialValues} />
+    </Provider>,
+  );
+
+  const getDynamic = () =>
+    store.getState().form[FORM]?.values?.shape?.dynamic as
+      | ShapeDynamic
+      | undefined;
+  const getThresholds = () =>
+    store.getState().form[FORM]?.values?.shape?.dynamic?.thresholds as
+      | Array<{ value: number; shape: string }>
+      | undefined;
+
+  return { getDynamic, getThresholds };
+};
+
 describe('ShapeVariableMapping', () => {
   it('authors a discrete mapping with raw boolean values for a Toggle variable', () => {
-    const store = configureStore({ reducer: { form: formReducer } });
-
-    render(
-      <Provider store={store}>
-        <Editor
-          form={formName}
-          onSubmit={() => undefined}
-          initialValues={{
-            variables: {
-              is_person: {
-                name: 'Is Person',
-                type: 'boolean',
-                component: 'Toggle',
-              },
-            },
-            shape: { default: 'square' },
-          }}
-        >
-          <ShapeVariableMapping form={formName} />
-        </Editor>
-      </Provider>,
-    );
+    const { getDynamic } = setup({
+      variables: {
+        is_person: {
+          name: 'Is Person',
+          type: 'boolean',
+          component: 'Toggle',
+        },
+      },
+      shape: { default: 'square' },
+    });
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Map variable to shape' }),
+      screen.getByRole('switch', { name: 'Map variable to shape' }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Select Is Person' }));
 
@@ -100,18 +142,65 @@ describe('ShapeVariableMapping', () => {
       within(trueRow).getByRole('button', { name: 'Select shape Circle' }),
     );
 
-    const selectFormValue =
-      formValueSelector<ReturnType<typeof store.getState>>(formName);
-    const dynamic = selectFormValue(
-      store.getState(),
-      'shape.dynamic',
-    ) as ShapeDynamic;
-
-    expect(dynamic).toEqual({
+    expect(getDynamic()).toEqual({
       variable: 'is_person',
       type: 'discrete',
       map: [{ value: true, shape: 'circle' }],
     });
-    expect(typeof dynamic.map[0]?.value).toBe('boolean');
+    expect(typeof getDynamic()?.map[0]?.value).toBe('boolean');
+  });
+
+  it('can clear a threshold without snapping back to the committed value', () => {
+    const { getThresholds } = setup();
+    const input = screen.getByRole('spinbutton', { name: 'Threshold 1 value' });
+
+    expect(input).toHaveValue(5);
+
+    fireEvent.change(input, { target: { value: '' } });
+
+    expect(input).toHaveValue(null);
+    expect(getThresholds()?.[0]?.value).toBe(5);
+  });
+
+  it('commits a decimal threshold typed into the field on blur', () => {
+    const { getThresholds } = setup();
+    const input = screen.getByRole('spinbutton', { name: 'Threshold 1 value' });
+
+    fireEvent.change(input, { target: { value: '0.5' } });
+    expect(input).toHaveValue(0.5);
+    // The value commits on blur so the list does not re-sort mid-keystroke.
+    expect(getThresholds()?.[0]?.value).toBe(5);
+
+    fireEvent.blur(input);
+    expect(getThresholds()?.[0]?.value).toBe(0.5);
+  });
+
+  it('adds a threshold up to the shape-derived cap and removes it', () => {
+    const { getThresholds } = setup();
+    expect(getThresholds()).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /add threshold/i }));
+    expect(getThresholds()).toHaveLength(2);
+
+    // Three shapes → at most two thresholds, so the add control disappears.
+    expect(
+      screen.queryByRole('button', { name: /add threshold/i }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove threshold 2' }));
+    expect(getThresholds()).toHaveLength(1);
+  });
+
+  it('keeps thresholds sorted ascending after editing on blur', () => {
+    const { getThresholds } = setup();
+
+    fireEvent.click(screen.getByRole('button', { name: /add threshold/i }));
+    const inputs = screen.getAllByRole('spinbutton');
+    // Give the first row a value greater than the second, then blur.
+    fireEvent.change(inputs[0]!, { target: { value: '9' } });
+    fireEvent.blur(inputs[0]!);
+
+    const values = getThresholds()?.map((t) => t.value);
+    expect(values).toEqual([...(values ?? [])].toSorted((a, b) => a - b));
   });
 });

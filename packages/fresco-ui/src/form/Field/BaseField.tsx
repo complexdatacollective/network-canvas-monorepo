@@ -33,6 +33,12 @@ type BaseFieldProps = {
   errors?: string[];
   showErrors?: boolean;
   inline?: boolean;
+  /**
+   * Visually hide the label while keeping it as the control's accessible name.
+   * Use when a surrounding heading already names the field, so the redundant
+   * visible label is dropped but screen-reader users still hear a name.
+   */
+  labelHidden?: boolean;
   children: ReactNode;
   // TODO: the data attributes should be typed based on the return value of useField.
   containerProps?: ExcludeMotionConflicts<
@@ -55,9 +61,11 @@ export function BaseField({
   errors = [],
   showErrors = false,
   inline = false,
+  labelHidden = false,
   children,
   containerProps,
 }: BaseFieldProps) {
+  const hasVisibleHint = Boolean(hint ?? validationSummary);
   return (
     <div
       {...containerProps}
@@ -77,10 +85,27 @@ export function BaseField({
           'flex flex-col',
         )}
       >
-        <div className={cx(inline && 'min-w-0', !inline && 'mb-2')}>
-          <FieldLabel id={`${id}-label`} htmlFor={id} required={required}>
+        <div
+          className={cx(
+            inline && 'min-w-0',
+            // Keep the gap below the label block only when something visible
+            // remains there — the label itself, or a hint under a hidden label.
+            !inline && (!labelHidden || hasVisibleHint) && 'mb-2',
+          )}
+        >
+          <FieldLabel
+            id={`${id}-label`}
+            htmlFor={id}
+            required={required}
+            className={labelHidden ? 'sr-only' : undefined}
+          >
             {label}
           </FieldLabel>
+          {required && (
+            <span id={`${id}-required`} className="sr-only">
+              Required
+            </span>
+          )}
           {(hint ?? validationSummary) && (
             <Hint id={`${id}-hint`}>
               {hint}

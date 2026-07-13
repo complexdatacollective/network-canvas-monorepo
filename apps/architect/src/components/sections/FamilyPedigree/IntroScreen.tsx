@@ -6,7 +6,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { FamilyPedigreeIntroItem } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
 import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import ItemEditor from '~/components/sections/ContentGrid/ItemEditor';
 import ItemPreview from '~/components/sections/ContentGrid/ItemPreview';
 import {
@@ -57,7 +57,7 @@ const IntroScreen = ({ form }: StageEditorSectionProps) => {
       handleToggleChange={handleToggleChange}
     >
       <Row>
-        <ValidatedField
+        <ValidatedFieldArray
           name="introScreen.items"
           label="Content sections"
           component={DialogArrayField}

@@ -16,15 +16,38 @@ import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { z } from 'zod';
 
+import Button from '@codaco/fresco-ui/Button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@codaco/fresco-ui/Table';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import {
+  OrderedList,
+  UnorderedList,
+} from '@codaco/fresco-ui/typography/UnorderedList';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import InterfacePicture, {
   type InterfacePictureProps,
 } from '@codaco/interface-images/InterfacePicture';
 import type {
   SidebarFolder,
   SidebarPage,
-  SidebarProject,
+  SidebarSection,
   TSideBar,
 } from '~/app/types';
+import AppCompatibilityTable from '~/components/customComponents/AppCompatibilityTable';
+import { AppOnly } from '~/components/customComponents/AppOnly';
+import { AppOption, AppSwitch } from '~/components/customComponents/AppSwitch';
+import type {
+  AppKey,
+  InterviewerKey,
+} from '~/components/customComponents/appVariants';
 import {
   BadPractice,
   GoodPractice,
@@ -36,30 +59,27 @@ import {
 } from '~/components/customComponents/InterfaceSummary';
 import KeyConcept from '~/components/customComponents/KeyConcept';
 import Pre from '~/components/customComponents/Pre';
+import { Screenshot } from '~/components/customComponents/Screenshot';
 import {
   PrerequisitesSection,
   SummaryCard,
   SummarySection,
 } from '~/components/customComponents/SummaryCard';
 import TipBox, { type TipBoxProps } from '~/components/customComponents/TipBox';
+import type { AppAxis } from '~/components/customComponents/useSelectedApp';
 import VideoIFrame from '~/components/customComponents/VideoIFrame';
+import WorkflowsOverview from '~/components/customComponents/WorkflowsOverview';
 import DownloadLink from '~/components/DownloadLink';
 import Link from '~/components/Link';
-import { Button } from '~/components/ui/Button';
 import { Details, Summary } from '~/components/ui/typography/Details';
-import Heading from '~/components/ui/typography/Heading';
-import {
-  ListItem,
-  OrderedList,
-  UnorderedList,
-} from '~/components/ui/typography/Lists';
-import Paragraph from '~/components/ui/typography/Paragraph';
+import { ListItem } from '~/components/ui/typography/ListItem';
+import { getCompatibility } from '~/lib/interfaceCompatibility';
 
 import { DOCS_PATH, get } from './helper_functions';
 import processPreTags from './processPreTags';
 import processYamlMatter from './processYamlMatter';
 import { type HeadingNode, headingTree } from './tableOfContents';
-import { cn } from './utils';
+import unwrapBlockComponents from './unwrapBlockComponents';
 
 const getSidebar = (): Partial<TSideBar> => {
   const sidebarPath = join(process.cwd(), 'public', 'sidebar.json');
@@ -86,7 +106,7 @@ const FrontmatterSchema = z.object({
 const processPath = (docPath: string) => {
   const processedPath = docPath
     .split(sep)
-    .slice(3) // First element is empty string, second is 'docs', third is the project name
+    .slice(3) // First element is empty string, second is 'docs', third is the section name
     // Process the last item to remove the locale and file extension
     .map((segment, index, array) => {
       if (index === array.length - 1) {
@@ -99,56 +119,56 @@ const processPath = (docPath: string) => {
   return processedPath;
 };
 
-// Given locale and project, generate all the possible docPaths.
+// Given locale and section, generate all the possible docPaths.
 // Return something in the format of:
 // {
 //   locale: 'ru',
-//   project: 'fresco',
+//   section: 'collect-data',
 //   docPath: [ 'getting-started', 'installation' ]
 // }
 type ReturnType = {
   locale: string;
-  project: string;
+  section: string;
   docPath: string[];
 };
 
 export const getDocsForRouteSegment = ({
   locale,
-  project,
+  section,
 }: {
   locale: string;
-  project: string;
+  section: string;
 }) => {
   const sidebar = getSidebar();
-  const sidebarData = get(sidebar, [locale, project], null) as SidebarProject;
+  const sidebarData = get(sidebar, [locale, section], null) as SidebarSection;
 
   if (!sidebarData) {
     // biome-ignore lint/suspicious/noConsole: Logging missing sidebar data
-    console.log(`No sidebar data found for ${locale} and ${project}`);
+    console.log(`No sidebar data found for ${locale} and ${section}`);
     return [];
   }
 
   const results: ReturnType[] = [];
 
   const getSourceFilePaths = (
-    data: SidebarProject | SidebarFolder | SidebarPage,
+    data: SidebarSection | SidebarFolder | SidebarPage,
   ) => {
     // Leaf node
     if (data.type === 'page') {
       results.push({
         locale,
-        project,
+        section,
         docPath: processPath(data.sourceFile),
       });
       return;
     }
 
-    if (data.sourceFile && data.type !== 'project') {
+    if (data.sourceFile && data.type !== 'section') {
       // Handle folders differently - if they have a sourceFile
       // docPath should generate a path pointing to the folder.
       results.push({
         locale,
-        project,
+        section,
         docPath: processPath(data.sourceFile).slice(0, -1),
       });
     }
@@ -184,18 +204,18 @@ const stripDocsPrefix = (sourceFile: string) =>
 // trace the entire project and emit an "unexpected file in NFT list" warning.
 const getSourceFile = (
   locale: string,
-  project: string,
+  section: string,
   pathSegment?: string[],
 ) => {
   const sidebar = getSidebar();
-  const projectSourceFile = get(
+  const sectionSourceFile = get(
     sidebar,
-    [locale, project, 'sourceFile'],
+    [locale, section, 'sourceFile'],
     null,
   ) as string;
 
   if (!pathSegment)
-    return join(process.cwd(), 'docs', stripDocsPrefix(projectSourceFile));
+    return join(process.cwd(), 'docs', stripDocsPrefix(sectionSourceFile));
 
   const pathSegmentWithChildren = pathSegment.flatMap((segment, index) => {
     if (index === 0) {
@@ -207,7 +227,7 @@ const getSourceFile = (
 
   const folderSourceFile = get(
     sidebar,
-    [locale, project, 'children', ...pathSegmentWithChildren, 'sourceFile'],
+    [locale, section, 'children', ...pathSegmentWithChildren, 'sourceFile'],
     null,
   ) as string | null;
 
@@ -216,18 +236,23 @@ const getSourceFile = (
   return join(process.cwd(), 'docs', stripDocsPrefix(folderSourceFile));
 };
 
-const markdownComponents = {
+const createMarkdownComponents = (docSlug?: string) => ({
+  // Fresco Heading owns size/weight/scroll-margin and the prose rhythm: its
+  // default margin variant applies a self-collapsing not-first/not-last spacing,
+  // so we leave both top and bottom margins entirely to fresco here. (The one
+  // exception — suppressing the top margin of a heading directly below an
+  // eyebrow/kicker — is handled in components/article.tsx.)
   h1: (props: ComponentProps<typeof Heading>) => (
-    <Heading variant="h1" {...props} />
+    <Heading level="h1" {...props} />
   ),
   h2: (props: ComponentProps<typeof Heading>) => (
-    <Heading variant="h2" {...props} />
+    <Heading level="h2" {...props} />
   ),
   h3: (props: ComponentProps<typeof Heading>) => (
-    <Heading variant="h3" {...props} />
+    <Heading level="h3" {...props} />
   ),
   h4: (props: ComponentProps<typeof Heading>) => (
-    <Heading variant="h4" {...props} />
+    <Heading level="h4" {...props} />
   ),
   p: Paragraph,
   paragraph: Paragraph,
@@ -236,22 +261,15 @@ const markdownComponents = {
   ol: OrderedList,
   li: ListItem,
   blockquote: (props: { children: ReactNode }) => (
-    <blockquote className="border-accent bg-card my-4 border-s-4 p-4">
+    <blockquote className="border-accent bg-surface-1 my-4 border-s-4 p-4">
       {props.children}
     </blockquote>
   ),
   pre: Pre,
   button: (props: ComponentProps<typeof Button>) => (
-    <Button variant="default" {...props} />
+    <Button color="primary" {...props} />
   ),
-  link: (
-    props: ComponentProps<typeof Link> & {
-      className?: string;
-      children: ReactNode;
-    },
-  ) => {
-    return <Link {...props} />;
-  },
+  link: Link,
   // Static download (protocol bundle, roster, etc.). Authors mark a link as a
   // download explicitly — <DownloadLink href="/protocols/Example.netcanvas">…</DownloadLink>
   // — rather than relying on href sniffing; these render as a plain <a download>
@@ -279,9 +297,9 @@ const markdownComponents = {
   figure: (props: { children: ReactNode }) => (
     <figure
       {...props}
-      className={cn(
+      className={cx(
         'my-10 flex w-full flex-col items-center justify-center',
-        '[--shadow-color:color-mix(in_lab,hsl(var(--background))_80%,black)]',
+        '[--shadow-color:color-mix(in_lab,var(--background)_80%,black)]',
         '[&>a]:m-0 [&>a]:w-full [&>a]:drop-shadow-[0_0.5rem_1rem_var(--shadow-color)]',
       )}
     />
@@ -320,42 +338,76 @@ const markdownComponents = {
   interfacesummary: (props: { type: string; children: ReactNode }) => (
     <InterfaceSummary {...props} />
   ),
+  appcompatibilitytable: () => <AppCompatibilityTable />,
+  workflowsoverview: () => <WorkflowsOverview />,
   interfacemeta: (props: {
     type: string;
     creates: string;
     usesprompts: string;
-  }) => <InterfaceMeta {...props} />,
+    requires?: string;
+  }) => <InterfaceMeta {...props} compatibility={getCompatibility(docSlug)} />,
   definition: (props: { children: ReactNode }) => (
     <div className="text-lg font-normal">{props.children}</div>
   ),
-  table: (props: { children: ReactNode }) => (
-    <div className="overflow-x-auto">
-      <table
-        className="prose dark:prose-th:text-foreground dark:prose-strong:text-foreground dark:prose-td:text-foreground my-5 w-full !max-w-max text-pretty break-keep [&>th]:text-nowrap"
-        {...props}
-      />
-    </div>
+  appswitch: (props: { children: ReactNode; axis?: AppAxis }) => (
+    <AppSwitch {...props} />
+  ),
+  appoption: (props: {
+    label: string;
+    icon?: 'globe' | 'desktop';
+    children: ReactNode;
+  }) => <AppOption {...props} />,
+  apponly: (
+    props:
+      | { axis?: 'architect'; app: AppKey; children: ReactNode }
+      | { axis: 'interviewer'; app: InterviewerKey; children: ReactNode },
+  ) => <AppOnly {...props} />,
+  screenshot: (props: { axis: AppAxis; name: string; alt?: string }) => (
+    <Screenshot {...props} />
+  ),
+  // Markdown tables render through fresco-ui's Table primitives so they match
+  // the design system (surface-tinted header, row separators + hover, rounded
+  // bordered container). Cells override fresco's data-table `whitespace-nowrap`
+  // because docs tables carry prose (sentences, links) that must wrap.
+  // Spacing goes on the Surface via `surfaceProps`, not `className` — Table's
+  // `className` targets the inner <table>, so `my-6` there would open a gap of
+  // bare surface above/below the rows inside the bordered container.
+  table: (props: ComponentProps<typeof Table>) => (
+    <Table surfaceProps={{ className: 'my-6' }} {...props} />
+  ),
+  thead: (props: ComponentProps<typeof TableHeader>) => (
+    <TableHeader {...props} />
+  ),
+  tbody: (props: ComponentProps<typeof TableBody>) => <TableBody {...props} />,
+  tr: (props: ComponentProps<typeof TableRow>) => <TableRow {...props} />,
+  th: (props: ComponentProps<typeof TableHead>) => (
+    <TableHead className="w-auto align-top whitespace-normal" {...props} />
+  ),
+  td: (props: ComponentProps<typeof TableCell>) => (
+    <TableCell className="w-auto align-top whitespace-normal" {...props} />
   ),
   details: Details,
   summary: Summary,
-};
+});
 
 export async function getDocumentForPath({
   locale,
-  project,
+  section,
   pathSegment,
 }: {
   locale: string;
-  project: string;
+  section: string;
   pathSegment?: string[];
 }) {
-  const sourceFile = getSourceFile(locale, project, pathSegment);
+  const sourceFile = getSourceFile(locale, section, pathSegment);
 
   if (!sourceFile || (sourceFile && !existsSync(sourceFile))) {
     return null;
   }
 
   const markdownFile = readFileSync(sourceFile, 'utf-8');
+
+  const docSlug = pathSegment?.at(-1);
 
   const result = await unified()
     .use(remarkParse, { fragment: true })
@@ -365,6 +417,7 @@ export async function getDocumentForPath({
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeFigure)
     .use(rehypeRaw)
+    .use(unwrapBlockComponents)
     .use(slug)
     .use(headingTree)
     .use(processPreTags)
@@ -373,7 +426,7 @@ export async function getDocumentForPath({
       Fragment,
       jsx,
       jsxs,
-      components: markdownComponents,
+      components: createMarkdownComponents(docSlug),
     } as Options)
     .process(markdownFile);
 

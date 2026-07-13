@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 
 import type { VariableType } from '@codaco/protocol-validation';
-import { SimpleVariablePill } from '~/components/Form/Fields/VariablePicker/VariablePill';
+import { SimpleVariablePill } from '~/components/VariablePill';
 
 import DualLink from './DualLink';
 import { getVariableMeta, getVariableName } from './helpers';

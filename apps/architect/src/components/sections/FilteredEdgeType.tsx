@@ -5,12 +5,12 @@ import { useSelector } from 'react-redux';
 import { change, getFormValues } from 'redux-form';
 
 import { Row, Section } from '~/components/EditorLayout';
+// Screen message listeners removed as part of screen system refactor
+import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 
-// Screen message listeners removed as part of screen system refactor
-import { ValidatedField } from '../Form';
 import IssueAnchor from '../IssueAnchor';
 import EntitySelectField from './fields/EntitySelectField/EntitySelectField';
 import Filter from './Filter';
@@ -52,6 +52,8 @@ const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
           parse={(value) => ({ type: value, entity: 'edge' })}
           format={(value) => get(value, 'type')}
           validation={{ required: true }}
+          label="Edge type"
+          labelHidden
         />
       </Row>
       <Filter />

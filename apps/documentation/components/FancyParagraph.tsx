@@ -1,12 +1,10 @@
 import { motion, type Variants } from 'motion/react';
-import { Children } from 'react';
+import { Children, type ComponentProps } from 'react';
 
-import Paragraph, {
-  type ParagraphProps,
-} from '~/components/ui/typography/Paragraph';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 // FancyParagraph animates individual words in a paragraph.
-const FancyParagraph = (props: ParagraphProps) => {
+const FancyParagraph = (props: ComponentProps<typeof Paragraph>) => {
   const { children, ...rest } = props;
 
   const words = Children.toArray(children);

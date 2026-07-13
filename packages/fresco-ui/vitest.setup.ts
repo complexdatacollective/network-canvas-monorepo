@@ -50,12 +50,15 @@ const { motionMockModule } = vi.hoisted(() => {
 
   // Props that motion considers valid but should still be passed to DOM elements
   const domPassthroughProps = new Set(['style']);
+  const reorderOnlyProps = new Set(['onReorder']);
 
   // Filter out motion-specific props from HTML elements using motion's own detection
   const filterMotionProps = (props: Record<string, unknown>) => {
     return Object.fromEntries(
       Object.entries(props).filter(
-        ([key]) => !isValidMotionProp(key) || domPassthroughProps.has(key),
+        ([key]) =>
+          (!isValidMotionProp(key) && !reorderOnlyProps.has(key)) ||
+          domPassthroughProps.has(key),
       ),
     );
   };
@@ -114,6 +117,7 @@ const { motionMockModule } = vi.hoisted(() => {
     tbody: createMotionComponent('tbody'),
     thead: createMotionComponent('thead'),
     path: createMotionComponent('path'),
+    circle: createMotionComponent('circle'),
     // Add the create method for motion.create(Component) API
     create: createMotionFromComponent,
   };
