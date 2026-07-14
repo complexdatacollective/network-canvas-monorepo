@@ -1,21 +1,29 @@
 name: Open E2E Snapshot Update PR
 
 on:
-  workflow_run:
-    workflows: ['CI and Release']
-    types: [completed]
+  workflow_call:
+    inputs:
+      release_ref:
+        description: Release branch whose E2E baselines failed
+        required: true
+        type: string
+      run_head_sha:
+        description: Exact release branch revision that generated the snapshots
+        required: true
+        type: string
+      snapshot_branch:
+        description: Branch to use for the generated baseline PR
+        required: true
+        type: string
+      source_run_url:
+        description: URL of the CI run that generated the snapshots
+        required: true
+        type: string
 
 permissions: {}
 
 jobs:
   open-snapshot-update:
-    if: >-
-      ${{ github.event.workflow_run.conclusion == 'failure'
-      && github.event.workflow_run.head_repository.full_name == github.repository
-      && (github.event.workflow_run.event == 'pull_request'
-      || github.event.workflow_run.event == 'workflow_dispatch')
-      && (github.event.workflow_run.head_branch == 'changeset-release/main'
-      || github.event.workflow_run.head_branch == 'changeset-release/apps') }}
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -26,11 +34,23 @@ jobs:
         id: source
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          RELEASE_REF: ${{ github.event.workflow_run.head_branch }}
-          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_REF: ${{ inputs.release_ref }}
+          RUN_HEAD_SHA: ${{ inputs.run_head_sha }}
+          SNAPSHOT_BRANCH: ${{ inputs.snapshot_branch }}
         with:
           script: |
             const releaseRef = process.env.RELEASE_REF;
+            const expectedSnapshotBranches = new Map([
+              ['changeset-release/main', 'e2e-snapshots/changeset-release-main'],
+              ['changeset-release/apps', 'e2e-snapshots/changeset-release-apps'],
+            ]);
+            if (expectedSnapshotBranches.get(releaseRef) !== process.env.SNAPSHOT_BRANCH) {
+              core.setFailed(
+                `Unexpected release/snapshot branch pair: ${releaseRef} -> ${process.env.SNAPSHOT_BRANCH}`,
+              );
+              return;
+            }
+
             const head = `${context.repo.owner}:${releaseRef}`;
             const { data: pulls } = await github.rest.pulls.list({
               owner: context.repo.owner,
@@ -47,85 +67,35 @@ jobs:
                 pull.head.ref === releaseRef,
             );
             if (!source) {
-              core.notice(`No open first-party release PR found for ${releaseRef}`);
-              core.setOutput('current', 'false');
+              core.setFailed(`No open first-party release PR found for ${releaseRef}`);
               return;
             }
             if (source.head.sha !== process.env.RUN_HEAD_SHA) {
-              core.notice(
+              core.setFailed(
                 `Ignoring stale run for ${process.env.RUN_HEAD_SHA}; ${releaseRef} is now ${source.head.sha}`,
               );
-              core.setOutput('current', 'false');
               return;
             }
 
-            const snapshotBranch =
-              releaseRef === 'changeset-release/main'
-                ? 'e2e-snapshots/changeset-release-main'
-                : 'e2e-snapshots/changeset-release-apps';
-            core.setOutput('current', 'true');
             core.setOutput('number', String(source.number));
             core.setOutput('url', source.html_url);
-            core.setOutput('release_ref', releaseRef);
-            core.setOutput('snapshot_branch', snapshotBranch);
-
-      - name: Find generated snapshot artifacts
-        id: artifacts
-        if: steps.source.outputs.current == 'true'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const allowed = new Set([
-              'e2e-visual-snapshots-architect',
-              'e2e-visual-snapshots-interview',
-              'e2e-visual-snapshots-interviewer',
-            ]);
-            const artifacts = await github.paginate(
-              github.rest.actions.listWorkflowRunArtifacts,
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: context.payload.workflow_run.id,
-                per_page: 100,
-              },
-            );
-            const candidates = artifacts.filter(
-              (artifact) => allowed.has(artifact.name) && !artifact.expired,
-            );
-            core.setOutput('found', candidates.length > 0 ? 'true' : 'false');
-            core.setOutput(
-              'ids',
-              candidates.map((artifact) => String(artifact.id)).join(','),
-            );
-            core.setOutput(
-              'suites',
-              candidates
-                .map((artifact) => artifact.name.replace('e2e-visual-snapshots-', ''))
-                .sort()
-                .join(', '),
-            );
 
       - name: Download generated snapshots
-        if: steps.artifacts.outputs.found == 'true'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          artifact-ids: ${{ steps.artifacts.outputs.ids }}
+          pattern: e2e-visual-snapshots-*
           path: ${{ runner.temp }}/snapshot-artifacts
           merge-multiple: true
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check out the failing release revision
-        if: steps.artifacts.outputs.found == 'true'
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.run_head_sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Validate and copy snapshot data
         id: changes
-        if: steps.artifacts.outputs.found == 'true'
         env:
           ARTIFACT_ROOT: ${{ runner.temp }}/snapshot-artifacts
         run: |
@@ -146,12 +116,20 @@ jobs:
             exit 1
           fi
 
+          declare -A detected_suites=()
           while IFS= read -r -d '' candidate; do
             relative=${candidate#"$ARTIFACT_ROOT"/}
-            if [[ ! "$relative" =~ $architect && ! "$relative" =~ $interview && ! "$relative" =~ $interviewer ]]; then
+            if [[ "$relative" =~ $architect ]]; then
+              suite=architect
+            elif [[ "$relative" =~ $interview ]]; then
+              suite=interview
+            elif [[ "$relative" =~ $interviewer ]]; then
+              suite=interviewer
+            else
               echo "::error::unexpected snapshot path: $relative"
               exit 1
             fi
+            detected_suites["$suite"]=1
             magic=$(od -An -t x1 -N8 "$candidate" | tr -d ' \n')
             if [[ "$magic" != '89504e470d0a1a0a' ]]; then
               echo "::error::snapshot does not have a PNG signature: $relative"
@@ -181,6 +159,9 @@ jobs:
             fi
           done <<< "$changed"
 
+          mapfile -t suites < <(printf '%s\n' "${!detected_suites[@]}" | sort)
+          suites_output=$(IFS=,; echo "${suites[*]}")
+          echo "suites=$suites_output" >> "$GITHUB_OUTPUT"
           echo 'found=true' >> "$GITHUB_OUTPUT"
 
       - name: Confirm the release branch has not advanced
@@ -188,8 +169,8 @@ jobs:
         if: steps.changes.outputs.found == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          RELEASE_REF: ${{ steps.source.outputs.release_ref }}
-          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_REF: ${{ inputs.release_ref }}
+          RUN_HEAD_SHA: ${{ inputs.run_head_sha }}
         with:
           script: |
             const { data: ref } = await github.rest.git.getRef({
@@ -211,8 +192,8 @@ jobs:
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          base: ${{ steps.source.outputs.release_ref }}
-          branch: ${{ steps.source.outputs.snapshot_branch }}
+          base: ${{ inputs.release_ref }}
+          branch: ${{ inputs.snapshot_branch }}
           delete-branch: true
           add-paths: |
             apps/architect/e2e/visual-snapshots/
@@ -223,9 +204,9 @@ jobs:
           body: |
             The visual snapshot tests failed on ${{ steps.source.outputs.url }}.
 
-            This PR contains only regenerated PNG baselines from the `${{ steps.artifacts.outputs.suites }}` suite(s). Merging it into `${{ steps.source.outputs.release_ref }}` accepts these baselines and automatically reruns the parent release PR.
+            This PR contains only regenerated PNG baselines from the `${{ steps.changes.outputs.suites }}` suite(s). Merging it into `${{ inputs.release_ref }}` accepts these baselines and automatically reruns the parent release PR.
 
-            Source run: ${{ github.event.workflow_run.html_url }}
+            Source run: ${{ inputs.source_run_url }}
 
       - name: Link the snapshot PR from the release PR
         if: >-

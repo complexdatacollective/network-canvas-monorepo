@@ -19,9 +19,9 @@ export type GeneratedRatio = {
 };
 
 /**
- * Derive the shipped WebP variants for one interface × ratio from a PNG
- * master. The output is turbo-cached, not committed, so there is no committed
- * reference to diff against — every variant is (re)written on each run.
+ * Derive the committed WebP variants for one interface × ratio from a PNG
+ * master. Every variant is rewritten so a completed generation pass is a
+ * self-contained refresh of the shipped image set.
  */
 export const processMaster = async (
   assetsDir: string,

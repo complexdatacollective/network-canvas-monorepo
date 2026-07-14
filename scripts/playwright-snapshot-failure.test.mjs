@@ -29,6 +29,10 @@ const snapshotError = (
   message,
 });
 
+const missingSnapshotError = (
+  path = '/repo/e2e/visual-snapshots/chromium/new-baseline.png',
+) => snapshotError(`A snapshot doesn't exist at ${path}.`);
+
 const screenshotAttachments = (base = 'summary') =>
   ['expected', 'actual', 'diff'].map((kind) => ({
     name: `${base}-${kind}.png`,
@@ -96,6 +100,61 @@ test('recognises the Playwright screenshot comparison error wording', () => {
     ),
     true,
   );
+});
+
+test('recognises a missing PNG baseline without comparison attachments', () => {
+  assert.equal(
+    isSnapshotOnlyFailureReport(
+      report([
+        unexpectedTest([
+          result({ errors: [missingSnapshotError()], attachments: [] }),
+        ]),
+      ]),
+    ),
+    true,
+  );
+});
+
+test('requires attachment groups only for comparison errors in a mixed failure', () => {
+  const errors = [missingSnapshotError(), snapshotError()];
+
+  assert.equal(
+    isSnapshotOnlyFailureReport(
+      report([unexpectedTest([result({ errors, attachments: [] })])]),
+    ),
+    false,
+  );
+  assert.equal(
+    isSnapshotOnlyFailureReport(
+      report([
+        unexpectedTest([
+          result({ errors, attachments: screenshotAttachments() }),
+        ]),
+      ]),
+    ),
+    true,
+  );
+});
+
+test('rejects non-PNG and lookalike missing-snapshot errors', () => {
+  for (const error of [
+    missingSnapshotError('/repo/e2e/aria-snapshots/new-baseline.yml'),
+    snapshotError(
+      "Setup failed because a snapshot doesn't exist at /tmp/new-baseline.png.",
+    ),
+    snapshotError(
+      "A snapshot doesn't exist at /tmp/new-baseline.png, writing actual.",
+    ),
+  ]) {
+    assert.equal(
+      isSnapshotOnlyFailureReport(
+        report([
+          unexpectedTest([result({ errors: [error], attachments: [] })]),
+        ]),
+      ),
+      false,
+    );
+  }
 });
 
 test('accepts multiple screenshot errors when each has a complete attachment group', () => {
@@ -204,6 +263,24 @@ test('rejects timeout failures, including screenshot matcher timeouts', () => {
                 'expect(page).toHaveScreenshot(expected) failed\n\nTimeout: 5000ms',
               ),
             ],
+          }),
+        ]),
+      ]),
+    ),
+    false,
+  );
+
+  assert.equal(
+    isSnapshotOnlyFailureReport(
+      report([
+        unexpectedTest([
+          result({
+            errors: [
+              snapshotError(
+                "A snapshot doesn't exist at /repo/e2e/visual-snapshots/chromium/new-baseline.png.\nTimeout: 5000ms",
+              ),
+            ],
+            attachments: [],
           }),
         ]),
       ]),

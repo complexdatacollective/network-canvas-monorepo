@@ -163,26 +163,29 @@ After merging a PR with changesets, a release PR will be created that bumps pack
 
 [`@codaco/interface-images`](./packages/interface-images) ships generated screenshots of every interview interface (Sociogram, Name Generator, …), rendered from dedicated Storybook "capture" stories in `@codaco/interview` with Playwright + sharp. They are consumed by **architect** (stage thumbnails) and the **documentation** site (the hero image on each interface-documentation page).
 
-**Cached, not committed.** The screenshot assets (`packages/interface-images/src/generated/assets/`) are produced by the turbo `generate` task and **cached, not committed** — they are gitignored. Only the generated `manifest.ts` beside them (a small text file mapping each interface and ratio to its variant URLs and dimensions) is tracked, so typechecking and tooling work without running a capture.
+The generated WebP variants in
+`packages/interface-images/src/generated/assets/` and their
+`packages/interface-images/src/generated/manifest.ts` are committed. Architect,
+the documentation site, CI, and Netlify consume those committed files; CI and
+Netlify do not regenerate them.
 
-**Regeneration is keyed on the `@codaco/interview` version, by design.** The `generate` cache is keyed on the `@codaco/interview` _release version_ — the version in its `package.json`, or the pending version when a changeset bumps it — passed to turbo as `INTERVIEW_RELEASE_VERSION` (computed by [`scripts/interview-release-version.mjs`](./scripts/interview-release-version.mjs)). It is **not** keyed on interview/fresco-ui source content, so the images regenerate only when you deliberately version the interview package — not on every interview or fresco-ui edit.
-
-The trade-off is that, between versions, the cached images can lag the code. The safety net: `@codaco/interview`'s Chromatic build snapshots the capture stories, so a rendering change shows up there as a visual diff — that is your cue to add an `@codaco/interview` changeset (which moves the version and triggers regeneration). Treat Chromatic on the capture stories as the signal that a regen is due.
-
-**Versioning interview redeploys both consumers.** `architect` and `documentation` builds depend on `generate`, and CI's `detect` job treats a moved interview release version as a change to both apps. So the full chain holds:
-
-> version `@codaco/interview` (or add a changeset bumping it) → the `generate` cache key moves → images regenerate during the `quality` build → `architect` and `documentation` rebuild and redeploy with the fresh images.
-
-To regenerate locally — needed once for local development of architect or the documentation site, since the assets are not committed:
+Chromatic snapshots the Interview capture stories. Treat a relevant Chromatic
+diff as the review signal that the committed interface images may need to be
+refreshed, then regenerate them locally:
 
 ```bash
-pnpm generate:interface-images   # builds the interview storybook, then captures
+pnpm generate:interface-images
 ```
 
-Requires a Chromium browser (`pnpm exec playwright install chromium`) and, for the Geospatial map, `STORYBOOK_MAPBOX_TOKEN` set. See [`packages/interface-images`](./packages/interface-images) for details.
+This builds the Interview Storybook and captures the images. It requires a
+Chromium browser (`pnpm exec playwright install chromium`) and, for the
+Geospatial map, `STORYBOOK_MAPBOX_TOKEN`. Review the results and commit
+`packages/interface-images/src/generated/assets/` and
+`packages/interface-images/src/generated/manifest.ts` together. See
+[`packages/interface-images`](./packages/interface-images) for details.
 
-These cached interface screenshots are separate from the committed Playwright
-PNG baselines. For intentional Architect or Interview E2E pixel changes, use
+These interface screenshots are separate from the committed Playwright PNG
+baselines. For intentional Architect or Interview E2E pixel changes, use
 the `regenerating-e2e-visual-snapshots` skill and the manual
 `Regenerate E2E Visual Snapshots` GitHub Actions workflow.
 

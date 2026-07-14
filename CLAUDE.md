@@ -244,6 +244,25 @@ Network Canvas uses a protocol-based system where:
 - Uses Vitest for testing framework
 - If a storybook exists for a component, consider creating interactive tests within storybook
 
+#### Chromatic and TurboSnap
+
+Chromatic runs from `.github/workflows/chromatic.yml` as three independent
+projects: `@codaco/fresco-ui`, `@codaco/interview`, and
+`@codaco/interviewer`. The workflow uses Turbo's package graph and the Git diff
+to run only affected projects, including downstream consumers (a Fresco UI
+change affects all three; an Interview change also affects Interviewer). Each
+job uses its matching `CHROMATIC_PROJECT_TOKEN_FRESCO_UI`,
+`CHROMATIC_PROJECT_TOKEN_INTERVIEW`, or
+`CHROMATIC_PROJECT_TOKEN_INTERVIEWER` repository secret.
+
+Each project's `build-storybook` script must emit `preview-stats.json` with
+Storybook's `--stats-json` option. Its `chromatic` script uploads the prebuilt
+`storybook-static` directory with `--only-changed` and the correct
+`--storybook-base-dir`; these inputs and the workflow's full Git history are
+required for TurboSnap. Keep Interview's `.storybook/static/**` directory in
+its Chromatic externals so static-asset changes invalidate the relevant
+stories.
+
 #### Release-only E2E checks
 
 CI runs the complete Architect, Interview, and Interviewer E2E suites only for
@@ -275,5 +294,6 @@ retriggers the parent release PR. Functional failures do not start regeneration,
 and no PNG changes means no child PR.
 
 Keep Interview ARIA snapshot updates in the targeted local matrix workflow.
-Do not confuse E2E PNG baselines with `@codaco/interface-images`, whose cached
-WebP files are generated separately for stage thumbnails and documentation.
+Do not confuse E2E PNG baselines with `@codaco/interface-images`, whose
+committed WebP files are generated locally for stage thumbnails and
+documentation. CI and Netlify consume those files without regenerating them.

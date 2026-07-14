@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       force_run:
-        description: 'Force package-scoped conditional checks and Chromatic to run regardless of change detection.'
+        description: 'Force package-scoped conditional checks to run regardless of change detection.'
         type: boolean
         default: false
       release_app:
@@ -55,8 +55,6 @@ jobs:
     outputs:
       docs: ${{ steps.flags.outputs.docs }}
       website: ${{ steps.flags.outputs.website }}
-      fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
-      interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
@@ -146,46 +144,10 @@ jobs:
           }
           docs=$(flag @codaco/documentation)
           web=$(flag networkcanvas.com)
-          fui=$(flag @codaco/fresco-ui)
-          intv=$(flag @codaco/interview)
-
-          # Interface screenshots regenerate, and the documentation preview
-          # checks rerun, only when the @codaco/interview RELEASE VERSION moves
-          # — its package.json version, or the pending version a changeset
-          # implies — not on arbitrary interview/fresco-ui edits.
-
-          # ifimg: did that release-version signal change in this diff?
-          ifimg=false
-          if [[ "$FORCE_RUN" == "true" || -z "$PREV" ]]; then
-            ifimg=true
-          else
-            if ! git diff --quiet "$PREV" "$CURR" -- packages/interview/package.json; then
-              new_v=$(node -e 'process.stdout.write(require("./packages/interview/package.json").version)')
-              old_v=$(git show "$PREV:packages/interview/package.json" \
-                | node -e 'let d="";process.stdin.on("data",c=>{d+=c}).on("end",()=>{try{process.stdout.write(JSON.parse(d).version)}catch{}})')
-              [[ "$new_v" != "$old_v" ]] && ifimg=true
-            fi
-            # Match the @codaco/interview changeset frontmatter key exactly:
-            # '@codaco/interview' is a substring of '@codaco/interviewer', so a
-            # bare grep would false-trigger on unrelated interviewer changesets.
-            key_re="^[[:space:]]*['\"]?@codaco/interview['\"]?[[:space:]]*:"
-            for f in $(git diff --name-only "$PREV" "$CURR" -- '.changeset/*.md'); do
-              if git show "$CURR:$f" 2>/dev/null | grep -Eq "$key_re" \
-                || git show "$PREV:$f" 2>/dev/null | grep -Eq "$key_re"; then
-                ifimg=true
-              fi
-            done
-          fi
-
-          # Documentation embeds the generated interface images, so its checks
-          # must cover a release-version-driven regeneration as well.
-          if [[ "$ifimg" == "true" ]]; then docs=true; fi
 
           {
             echo "docs=$docs"
             echo "website=$web"
-            echo "fresco_ui_storybook=$fui"
-            echo "interview_storybook=$intv"
           } >> "$GITHUB_OUTPUT"
 
   e2e-policy:
@@ -524,62 +486,6 @@ jobs:
           DEPLOYMENT_URL: ${{ steps.netlify-preview.outputs.url }}
         run: pnpm run test-redirects
 
-  chromatic-fresco-ui:
-    needs: [quality, detect]
-    # `quality` is needed only to order this job after it (so it reuses the
-    # .turbo cache quality writes); this job runs its own install + build and
-    # does NOT consume quality's result. `!cancelled()` opts out of the
-    # implicit needs-success gate so an unrelated quality failure can't
-    # cascade-skip a flagged run, while a superseded (cancelled) run still skips.
-    if: ${{ !cancelled() && github.event.pull_request.user.login != 'dependabot[bot]' && needs.detect.outputs.fresco_ui_storybook == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/turbo-ci-setup
-      - run: pnpm exec turbo run build-storybook --filter=@codaco/fresco-ui
-      - working-directory: packages/fresco-ui
-        env:
-          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_FRESCO_UI }}
-          # Forward PR context so the chromatic CLI doesn't fall back to the
-          # merge commit (GH Actions checks out detached HEAD on pull_request).
-          CHROMATIC_BRANCH: ${{ github.head_ref || github.ref_name }}
-          CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          CHROMATIC_SLUG: ${{ github.repository }}
-        # --storybook-build-dir points chromatic at the storybook-static
-        # directory turbo just produced (or restored from cache); without it
-        # chromatic re-runs `pnpm build-storybook` into a tmp dir and the
-        # turbo cache savings evaporate.
-        run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static
-
-  chromatic-interview:
-    needs: [quality, detect]
-    # See chromatic-fresco-ui: `quality` orders this job for cache reuse only;
-    # `!cancelled()` keeps a quality failure from cascade-skipping a flagged run.
-    if: ${{ !cancelled() && github.event.pull_request.user.login != 'dependabot[bot]' && needs.detect.outputs.interview_storybook == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/turbo-ci-setup
-      - run: pnpm exec turbo run build-storybook --filter=@codaco/interview
-      - working-directory: packages/interview
-        env:
-          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEW }}
-          # Forward PR context — see chromatic-fresco-ui for rationale.
-          CHROMATIC_BRANCH: ${{ github.head_ref || github.ref_name }}
-          CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          CHROMATIC_SLUG: ${{ github.repository }}
-        # --storybook-build-dir points chromatic at the storybook-static
-        # directory turbo just produced (or restored from cache); without it
-        # chromatic re-runs `pnpm build-storybook` into a tmp dir and the
-        # turbo cache savings evaporate.
-        run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static
-
   interview-e2e:
     # Generated package/app release PRs run every E2E suite. The Dockerized
     # suite builds its own dependency graph and cannot consume the host runner's
@@ -767,6 +673,29 @@ jobs:
     uses: ./.github/workflows/regenerate-e2e-visual-snapshots.yml
     with:
       suite: architect
+
+  open-e2e-snapshot-update-pr:
+    needs:
+      - e2e-policy
+      - regenerate-interview-snapshots
+      - regenerate-interviewer-snapshots
+      - regenerate-architect-snapshots
+    if: >-
+      ${{ always()
+      && needs.e2e-policy.outputs.release_ref != ''
+      && (needs.regenerate-interview-snapshots.result == 'success'
+      || needs.regenerate-interviewer-snapshots.result == 'success'
+      || needs.regenerate-architect-snapshots.result == 'success') }}
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/open-e2e-snapshot-update-pr.yml
+    with:
+      release_ref: ${{ needs.e2e-policy.outputs.release_ref }}
+      run_head_sha: ${{ github.event.pull_request.head.sha || github.sha }}
+      snapshot_branch: ${{ needs.e2e-policy.outputs.snapshot_branch }}
+      source_run_url: ${{ format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
 
   # Publishes the Playwright report to GitHub Pages and comments the E2E result
   # on the PR. Purely informational: whether the report PUBLISHED says nothing
@@ -1484,8 +1413,6 @@ jobs:
   carry-forward-statuses:
     needs:
       - detect
-      - chromatic-fresco-ui
-      - chromatic-interview
       - docs-preview-checks
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -1504,16 +1431,12 @@ jobs:
           # report verdict onto an unrelated push would wrongly gate it — let
           # its natural skip stand instead.
           FLAG_DOCS: ${{ needs.detect.outputs.docs }}
-          FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
-          FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         with:
           script: |
             const flagToJobs = {
               FLAG_DOCS: ["docs-preview-checks"],
-              FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
-              FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
             };
 
             // Only consider jobs the current run didn't execute (flag false).

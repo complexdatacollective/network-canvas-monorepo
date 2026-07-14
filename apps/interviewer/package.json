@@ -19,8 +19,8 @@
     "test:watch": "vitest --project=unit",
     "test:storybook": "vitest run --project=storybook",
     "storybook": "node ../../scripts/with-turbo.mjs --watch-deps storybook dev -p 6006",
-    "build-storybook": "node ../../scripts/with-turbo.mjs storybook build",
-    "chromatic": "chromatic --exit-once-uploaded",
+    "build-storybook": "node ../../scripts/with-turbo.mjs storybook build --stats-json",
+    "chromatic": "chromatic --only-changed --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static --storybook-base-dir=apps/interviewer",
     "test:e2e": "./e2e/scripts/run.sh",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --grep @visual --update-snapshots",
     "test:e2e:headed": "pnpm turbo run build --filter=@codaco/interviewer && playwright test --config e2e/playwright.config.ts --headed"

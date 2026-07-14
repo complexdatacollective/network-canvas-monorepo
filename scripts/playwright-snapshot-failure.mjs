@@ -3,6 +3,8 @@ import { pathToFileURL } from 'node:url';
 
 const SCREENSHOT_ERROR_PATTERN =
   /(?:\btoHaveScreenshot\s*\(|Screenshot comparison failed)/i;
+const MISSING_SCREENSHOT_PATTERN =
+  /(?:^|\n)\s*(?:Error:\s*)?A snapshot doesn't exist at [^\r\n]+\.png\.(?=\r?\n|$)/i;
 const TIMEOUT_ERROR_PATTERN =
   /(?:^|\n)\s*(?:Timeout(?:Error)?\b|Test timeout\b)|\btimed out\b/i;
 const SCREENSHOT_ATTACHMENT_PATTERN =
@@ -12,13 +14,19 @@ function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function isScreenshotComparisonError(error) {
-  if (!isRecord(error) || typeof error.message !== 'string') return false;
+function snapshotErrorKind(error) {
+  if (
+    !isRecord(error) ||
+    typeof error.message !== 'string' ||
+    TIMEOUT_ERROR_PATTERN.test(error.message)
+  ) {
+    return null;
+  }
 
-  return (
-    SCREENSHOT_ERROR_PATTERN.test(error.message) &&
-    !TIMEOUT_ERROR_PATTERN.test(error.message)
-  );
+  if (MISSING_SCREENSHOT_PATTERN.test(error.message)) return 'missing';
+  if (SCREENSHOT_ERROR_PATTERN.test(error.message)) return 'comparison';
+
+  return null;
 }
 
 function completeScreenshotAttachmentCount(attachments) {
@@ -94,22 +102,34 @@ function isSnapshotOnlyUnexpectedTest(test) {
     !isRecord(finalResult) ||
     finalResult.status !== 'failed' ||
     !Array.isArray(finalResult.errors) ||
-    !finalResult.errors.length ||
-    !finalResult.errors.every(isScreenshotComparisonError)
+    !finalResult.errors.length
   ) {
     return false;
   }
 
-  if (
-    finalResult.error !== undefined &&
-    !isScreenshotComparisonError(finalResult.error)
-  ) {
+  const errorKinds = finalResult.errors.map(snapshotErrorKind);
+  if (errorKinds.some((kind) => kind === null)) {
     return false;
   }
+
+  const primaryErrorKind =
+    finalResult.error === undefined
+      ? null
+      : snapshotErrorKind(finalResult.error);
+  if (finalResult.error !== undefined && primaryErrorKind === null)
+    return false;
+
+  const comparisonErrorCount = errorKinds.filter(
+    (kind) => kind === 'comparison',
+  ).length;
+  const requiredAttachmentCount = Math.max(
+    comparisonErrorCount,
+    primaryErrorKind === 'comparison' ? 1 : 0,
+  );
 
   return (
     completeScreenshotAttachmentCount(finalResult.attachments) >=
-    finalResult.errors.length
+    requiredAttachmentCount
   );
 }
 

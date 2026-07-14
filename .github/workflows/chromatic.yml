@@ -1,0 +1,165 @@
+name: Chromatic
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    outputs:
+      fresco_ui: ${{ steps.affected.outputs.fresco_ui }}
+      interview: ${{ steps.affected.outputs.interview }}
+      interviewer: ${{ steps.affected.outputs.interviewer }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Detect affected Storybooks
+        id: affected
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            {
+              echo "fresco_ui=true"
+              echo "interview=true"
+              echo "interviewer=true"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          head_sha=$(git rev-parse HEAD)
+          base_sha=$BEFORE_SHA
+
+          if [[ -z "$base_sha" || "$base_sha" =~ ^0+$ ]] \
+            || ! git cat-file -e "${base_sha}^{commit}" 2>/dev/null; then
+            base_sha=$(git merge-base "$head_sha" "origin/$DEFAULT_BRANCH" 2>/dev/null || true)
+          fi
+
+          if [[ -z "$base_sha" ]]; then
+            echo "No comparison base is available; running every Chromatic project."
+            {
+              echo "fresco_ui=true"
+              echo "interview=true"
+              echo "interviewer=true"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          shared_paths=(
+            .github/actions/turbo-ci-setup
+            .github/workflows/chromatic.yml
+            .nvmrc
+            package.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+            scripts/with-turbo.mjs
+            tooling/tailwind
+            turbo.json
+          )
+
+          affected() {
+            local package=$1
+            local paths=()
+
+            if ! git diff --quiet "$base_sha" "$head_sha" -- "${shared_paths[@]}"; then
+              echo true
+              return
+            fi
+
+            while IFS= read -r workspace_path; do
+              [[ -n "$workspace_path" ]] && paths+=("$workspace_path")
+            done < <(
+              pnpm exec turbo ls --filter="${package}..." --output=json \
+                | jq -r '.packages.items[].path'
+            )
+
+            if git diff --quiet "$base_sha" "$head_sha" -- "${paths[@]}"; then
+              echo false
+            else
+              echo true
+            fi
+          }
+
+          fresco_ui=$(affected @codaco/fresco-ui)
+          interview=$(affected @codaco/interview)
+          interviewer=$(affected @codaco/interviewer)
+
+          echo "Comparing $base_sha..$head_sha"
+          echo "Fresco UI affected: $fresco_ui"
+          echo "Interview affected: $interview"
+          echo "Interviewer affected: $interviewer"
+
+          {
+            echo "fresco_ui=$fresco_ui"
+            echo "interview=$interview"
+            echo "interviewer=$interviewer"
+          } >> "$GITHUB_OUTPUT"
+
+  fresco-ui:
+    name: Fresco UI
+    needs: detect
+    if: needs.detect.outputs.fresco_ui == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Build Storybook
+        run: pnpm exec turbo run build-storybook --filter=@codaco/fresco-ui
+      - name: Verify TurboSnap metadata
+        run: test -s packages/fresco-ui/storybook-static/preview-stats.json
+      - name: Run Chromatic
+        env:
+          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_FRESCO_UI }}
+        run: pnpm --filter @codaco/fresco-ui chromatic
+
+  interview:
+    name: Interview
+    needs: detect
+    if: needs.detect.outputs.interview == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Build Storybook
+        run: pnpm exec turbo run build-storybook --filter=@codaco/interview
+      - name: Verify TurboSnap metadata
+        run: test -s packages/interview/storybook-static/preview-stats.json
+      - name: Run Chromatic
+        env:
+          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEW }}
+        run: pnpm --filter @codaco/interview chromatic
+
+  interviewer:
+    name: Interviewer
+    needs: detect
+    if: needs.detect.outputs.interviewer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Build Storybook
+        run: pnpm exec turbo run build-storybook --filter=@codaco/interviewer
+      - name: Verify TurboSnap metadata
+        run: test -s apps/interviewer/storybook-static/preview-stats.json
+      - name: Run Chromatic
+        env:
+          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEWER }}
+        run: pnpm --filter @codaco/interviewer chromatic
