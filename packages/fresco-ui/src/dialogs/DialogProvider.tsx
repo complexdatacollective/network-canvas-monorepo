@@ -304,7 +304,10 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         // inside a lifecycle method" — flushSync would otherwise execute while
         // the commit phase is still running.
         queueMicrotask(() => {
-          if (!isMounted.current) return;
+          if (!isMounted.current) {
+            resolveCallback(null);
+            return;
+          }
 
           flushSync(() =>
             setDialogs((prevDialogs) => [
