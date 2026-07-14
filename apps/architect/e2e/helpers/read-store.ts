@@ -56,26 +56,37 @@ async function readActiveRow(page: Page): Promise<Row | null> {
     db.close();
     // getAll() returns rows ordered by primary key (id), not recency, so sort
     // by the stored `updatedAt` (written on every autosave flush) and take the
-    // newest — the genuinely most-recently-updated row.
+    // newest — the genuinely most-recently-updated row. Narrow each element at
+    // runtime (Array.isArray gives `any[]`) instead of trusting `any` access.
     if (Array.isArray(result)) {
-      return result.toSorted(
-        (a, b) => (b?.updatedAt ?? 0) - (a?.updatedAt ?? 0),
-      )[0];
+      const rows: unknown[] = result;
+      const updatedAtOf = (candidate: unknown): number => {
+        if (
+          typeof candidate !== 'object' ||
+          candidate === null ||
+          !('updatedAt' in candidate)
+        ) {
+          return 0;
+        }
+        const { updatedAt } = candidate;
+        return typeof updatedAt === 'number' ? updatedAt : 0;
+      };
+      return rows.toSorted((a, b) => updatedAtOf(b) - updatedAtOf(a))[0];
     }
     return result;
   }, DB_NAME);
   return isRow(row) ? row : null;
 }
 
-export async function readProtocolJson(
-  page: Page,
-): Promise<Record<string, unknown>> {
+export async function readProtocolJson(page: Page): Promise<CurrentProtocol> {
   const row = await readActiveRow(page);
   if (!row) {
     throw new Error('no autosaved protocol row in ArchitectProtocolDB');
   }
   return row.protocol;
 }
+
+type Stage = CurrentProtocol['stages'][number];
 
 // Poll past the 600ms autosave debounce (protocolLibraryListener.ts) until
 // the stage at `index` exists in the durable row. Existence alone is only a
@@ -88,9 +99,9 @@ export async function readProtocolJson(
 export async function readStageJson(
   page: Page,
   index: number,
-  until?: (stage: Record<string, unknown>) => boolean,
-): Promise<Record<string, unknown>> {
-  let stage: Record<string, unknown> | undefined;
+  until?: (stage: Stage) => boolean,
+): Promise<Stage> {
+  let stage: Stage | undefined;
   await expect
     .poll(
       async () => {
