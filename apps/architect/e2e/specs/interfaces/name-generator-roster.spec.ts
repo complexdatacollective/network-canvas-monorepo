@@ -56,25 +56,6 @@ test('creates a valid NameGeneratorRoster stage from scratch', async ({
   // `withDisabledAssetRequired` on `dataSource`, so this must run before it.
   await selectNetworkAsset(editor.section('Data source for Roster'), 'Roster');
 
-  // ExternalDataSource.tsx's `handleChangeDataSource` resets `cardOptions`,
-  // `sortOptions`, AND `searchOptions` to `{}` on every data-source change
-  // (its `onChange` side effect, unconditional — not merely on replacing an
-  // existing selection). `SearchOptions`'s own `hasSearchOptions` reads the
-  // WHOLE `searchOptions` field (unlike `CardDisplayOptions`/`SortOptions`,
-  // which read a specific subfield like `cardOptions.additionalProperties`
-  // that stays falsy for `{}`), so this `{}` is truthy and the section
-  // auto-expands with its two `required`/`minSelected` fields mounted —
-  // confirmed live (Issues popover: "searchOptions.matchProperties" /
-  // "searchOptions.fuzziness"). `searchOptions` itself is fully optional in
-  // the schema (`nameGeneratorRosterStage`), so the realistic action here —
-  // same as a real author would take — is to toggle Search Options back off
-  // (`handleToggleSearchOptions(false)` nulls the field and unmounts its
-  // now-unregistered, no-longer-validated fields), not to fill them in.
-  await editor
-    .section('Search Options')
-    .getByRole('switch', { name: 'Turn this feature on or off' })
-    .click();
-
   // NameGeneratorRosterPrompts.tsx also renders `Section title="Prompts"`
   // (same PromptText.tsx RichText field, accessible name "Prompt text" — see
   // name-generator.spec.ts for why, not the brief's guessed `'text'`).
