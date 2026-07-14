@@ -88,7 +88,7 @@ describe('GetStartedIntro', () => {
 
   afterEach(cleanup);
 
-  it('renders both focusable workflow paths', () => {
+  it('renders all focusable starting paths', () => {
     renderWithIntl(<GetStartedIntro />);
 
     expect(
@@ -101,6 +101,16 @@ describe('GetStartedIntro', () => {
         name: 'Collect data using Network Canvas',
       }),
     ).toHaveClass('focusable');
+    expect(
+      screen.getByRole('link', {
+        name: 'Learn about Network Canvas in the documentation (opens in a new tab)',
+      }),
+    ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/');
+    expect(
+      screen.getByRole('link', {
+        name: 'Learn about Network Canvas in the documentation (opens in a new tab)',
+      }),
+    ).toHaveAttribute('target', '_blank');
   });
 
   it('keeps reduced-motion content visible without scheduling an entrance', () => {
@@ -131,7 +141,7 @@ describe('GetStartedIntro', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: '¿En qué etapa de su investigación se encuentra?',
+        name: '¿Qué le gustaría hacer?',
       }),
     ).toBeInTheDocument();
     expect(
@@ -139,5 +149,10 @@ describe('GetStartedIntro', () => {
         name: 'Diseñar o crear un protocolo de entrevista',
       }),
     ).toHaveAttribute('href', '#design');
+    expect(
+      screen.getByRole('link', {
+        name: 'Conocer Network Canvas en la documentación (se abre en una pestaña nueva)',
+      }),
+    ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/');
   });
 });

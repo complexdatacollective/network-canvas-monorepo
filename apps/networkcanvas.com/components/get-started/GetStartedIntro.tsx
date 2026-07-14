@@ -9,15 +9,17 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
+import { externalLinks } from '~/lib/content';
 import { createHeroEntrance } from '~/lib/heroEntrance';
 
-type ResearchStage = {
-  id: 'design' | 'collect';
-  href: '#design' | '#collect';
-  accent: 'bg-neon-coral' | 'bg-cerulean-blue';
+type StartingPath = {
+  id: 'design' | 'collect' | 'learn';
+  href: string;
+  accent: 'bg-neon-coral' | 'bg-cerulean-blue' | 'bg-sea-green';
+  external?: boolean;
 };
 
-const researchStages: readonly ResearchStage[] = [
+const startingPaths: readonly StartingPath[] = [
   {
     id: 'design',
     href: '#design',
@@ -27,6 +29,12 @@ const researchStages: readonly ResearchStage[] = [
     id: 'collect',
     href: '#collect',
     accent: 'bg-cerulean-blue',
+  },
+  {
+    id: 'learn',
+    href: externalLinks.documentation,
+    accent: 'bg-sea-green',
+    external: true,
   },
 ];
 
@@ -90,16 +98,18 @@ export function GetStartedIntro() {
             </Paragraph>
           </motion.div>
 
-          <Container className="tablet-portrait:grid-cols-2 mt-14 grid gap-6">
-            {researchStages.map((stage) => (
+          <Container className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 mt-14 grid gap-6">
+            {startingPaths.map((stage) => (
               <motion.a
                 key={stage.href}
                 href={stage.href}
+                target={stage.external ? '_blank' : undefined}
+                rel={stage.external ? 'noreferrer' : undefined}
                 aria-label={t(`intro.stages.${stage.id}.accessibleName`)}
                 variants={entrance.itemVariants}
                 whileHover={reduceMotion ? undefined : { y: -5 }}
                 whileFocus={reduceMotion ? undefined : { y: -5 }}
-                className="focusable elevation-medium group tablet-portrait:p-10 bg-surface/55 flex min-h-64 flex-col justify-between rounded p-8 backdrop-blur-md"
+                className="focusable elevation-medium group tablet-portrait:last:col-span-2 tablet-landscape:last:col-span-1 tablet-portrait:p-10 bg-surface/55 flex min-h-64 flex-col justify-between rounded p-8 backdrop-blur-md"
               >
                 <span className="font-heading text-text/65 text-xs font-bold tracking-[0.14em] uppercase">
                   {t(`intro.stages.${stage.id}.label`)}

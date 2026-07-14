@@ -153,9 +153,9 @@
       "description": "Elija la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes."
     },
     "intro": {
-      "eyebrow": "Elija la etapa de su investigación",
-      "heading": "¿En qué etapa de su investigación se encuentra?",
-      "introduction": "Elija la etapa que ha alcanzado su investigación y, a continuación, seleccione la aplicación de Network Canvas que mejor se adapte a su estudio.",
+      "eyebrow": "Elija por dónde empezar",
+      "heading": "¿Qué le gustaría hacer?",
+      "introduction": "Conozca Network Canvas, diseñe un protocolo de entrevista o elija la aplicación adecuada para recopilar datos.",
       "stages": {
         "design": {
           "label": "Etapa de diseño",
@@ -166,6 +166,11 @@
           "label": "Etapa de recopilación de datos",
           "title": "Recopilar datos con Network Canvas",
           "accessibleName": "Recopilar datos con Network Canvas"
+        },
+        "learn": {
+          "label": "Explorar Network Canvas",
+          "title": "Conocer el proyecto",
+          "accessibleName": "Conocer Network Canvas en la documentación (se abre en una pestaña nueva)"
         }
       }
     },
