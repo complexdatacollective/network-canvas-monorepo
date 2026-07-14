@@ -3,8 +3,8 @@ import { type Page } from '@playwright/test';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
-import { SlidesFormFixture } from '../fixtures/slides-form-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
+import { SlidesFormFixture } from '../fixtures/slides-form-fixture.js';
 import type { InterfaceScenarios } from './types.js';
 
 // AlterEdgeForm's EdgeHeader renders TWO endpoint node buttons inside the
@@ -64,8 +64,8 @@ async function goBackEdgeSlide(
   const beforeUrl = page.url();
   await page.getByTestId('previous-button').click();
   await page.waitForFunction(
-    ({ beforeUrl, prev, selector }) => {
-      if (window.location.href !== beforeUrl) return true;
+    ({ urlBefore, prev, selector }) => {
+      if (window.location.href !== urlBefore) return true;
       if (document.querySelector('[data-stage-section="intro"]') !== null) {
         return true;
       }
@@ -73,7 +73,7 @@ async function goBackEdgeSlide(
       const header = document.querySelector(selector);
       return header?.getAttribute('aria-label') !== prev;
     },
-    { beforeUrl, prev: fromLabelBefore, selector: HEADER_SELECTOR },
+    { urlBefore: beforeUrl, prev: fromLabelBefore, selector: HEADER_SELECTOR },
     { timeout: 10_000 },
   );
 }
@@ -128,7 +128,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         synth.addManualNode(stage.id, nt.id, 'n2', { [personName.id]: 'Jo' });
         synth.addManualEdge(et.id, 'e0', 'n0', 'n1', {});
         synth.addManualEdge(et.id, 'e1', 'n1', 'n2', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview }) => {
@@ -196,7 +199,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         synth.addManualEdge(et.id, 'f2', 'n1', 'n2', {});
         // A Coworker edge proves subject scoping: it never appears as a slide.
         synth.addManualEdge(et2.id, 'c1', 'n0', 'n2', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -286,7 +292,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         synth.addManualEdge(et.id, 'ab', 'a', 'b', {});
         synth.addManualEdge(et.id, 'bc', 'b', 'c', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -348,8 +357,13 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         // Three nodes but zero edges of the subject type.
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Avery' });
         synth.addManualNode(stage.id, nt.id, 'b', { [personName.id]: 'Blair' });
-        synth.addManualNode(stage.id, nt.id, 'c', { [personName.id]: 'Cameron' });
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addManualNode(stage.id, nt.id, 'c', {
+          [personName.id]: 'Cameron',
+        });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, protocol }) => {
@@ -359,9 +373,9 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await expect(
           page.locator('[data-stage-section="intro"]'),
         ).toBeVisible();
-        await expect(
-          page.locator('[data-stage-section="form"]'),
-        ).toHaveCount(0);
+        await expect(page.locator('[data-stage-section="form"]')).toHaveCount(
+          0,
+        );
 
         await interview.next();
 
@@ -426,7 +440,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
         synth.addManualNode(stage.id, nt.id, 'b', { [personName.id]: 'Sam' });
         synth.addManualEdge(et.id, 'e1', 'a', 'b', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -478,7 +495,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
         synth.addManualNode(stage.id, nt.id, 'b', { [personName.id]: 'Sam' });
         synth.addManualEdge(et.id, 'e1', 'a', 'b', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -585,7 +605,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
         synth.addManualNode(stage.id, nt.id, 'b', { [personName.id]: 'Sam' });
         synth.addManualEdge(et.id, 'e1', 'a', 'b', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -678,7 +701,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
         synth.addManualNode(stage.id, nt.id, 'b', { [personName.id]: 'Sam' });
         synth.addManualEdge(et.id, 'e1', 'a', 'b', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -750,7 +776,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
         synth.addManualNode(stage.id, nt.id, 'b', { [personName.id]: 'Sam' });
         synth.addManualEdge(et.id, 'e1', 'a', 'b', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview }) => {
@@ -765,9 +794,8 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
               .locator('[data-field-name="frequency"] fieldset')
               .evaluate(
                 (el) =>
-                  getComputedStyle(el)
-                    .gridTemplateColumns.trim()
-                    .split(/\s+/).length,
+                  getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/)
+                    .length,
               ),
           )
           .toBeGreaterThan(1);
@@ -836,10 +864,15 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           variable: 'last-contact',
           prompt: 'When did you last speak?',
         });
-        synth.addManualNode(stage.id, nt.id, 'alex', { [personName.id]: 'Alex' });
+        synth.addManualNode(stage.id, nt.id, 'alex', {
+          [personName.id]: 'Alex',
+        });
         synth.addManualNode(stage.id, nt.id, 'sam', { [personName.id]: 'Sam' });
         synth.addManualEdge(et.id, 'e1', 'alex', 'sam', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -964,7 +997,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
         synth.addManualNode(stage.id, nt.id, 'b', { [personName.id]: 'Sam' });
         synth.addManualEdge(et.id, 'e1', 'a', 'b', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -991,9 +1027,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await expect(stage.form.getFieldError('story')).toBeVisible();
         await expect(stage.form.getFieldError('contexts')).toBeVisible();
         const before = await protocol.getNetworkState(interview.interviewId);
-        expect(
-          (before?.edges ?? [])[0]?.attributes.closeness,
-        ).toBeUndefined();
+        expect((before?.edges ?? [])[0]?.attributes.closeness).toBeUndefined();
 
         // Attempt 2: too many selected (3 > 2); text too long; radio now valid.
         await stage.form.selectCheckbox('contexts', 'Social');
@@ -1130,12 +1164,17 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         ] as const) {
           stage.addFormField({ component: 'Number', variable, prompt });
         }
-        synth.addManualNode(stage.id, nt.id, 'alex', { [personName.id]: 'Alex' });
+        synth.addManualNode(stage.id, nt.id, 'alex', {
+          [personName.id]: 'Alex',
+        });
         synth.addManualNode(stage.id, nt.id, 'sam', { [personName.id]: 'Sam' });
         synth.addManualNode(stage.id, nt.id, 'jo', { [personName.id]: 'Jo' });
         synth.addManualEdge(et.id, 'e1', 'alex', 'sam', {});
         synth.addManualEdge(et.id, 'e2', 'sam', 'jo', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -1259,7 +1298,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         synth.addManualEdge(et.id, 'e01', 'n0', 'n1', { 'met-at': 'kept' });
         synth.addManualEdge(et.id, 'e12', 'n1', 'n2', {});
         synth.addManualEdge(et.id, 'e23', 'n2', 'n3', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -1368,7 +1410,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         synth.addManualNode(stage.id, nt.id, 'n2', { [personName.id]: 'Jo' });
         synth.addManualEdge(et.id, 'e1', 'n0', 'n1', {});
         synth.addManualEdge(et.id, 'e2', 'n1', 'n2', {});
-        synth.addInformationStage({ title: 'Complete', text: 'End of section.' });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'End of section.',
+        });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {

@@ -64,7 +64,10 @@ function Parent({
 }) {
   const [version, setVersion] = useState(0);
   start.current = () => setVersion(1);
-  const collection = useMemo(() => makeCollection(IDS), [version]);
+  const collection = useMemo(() => {
+    void version; // referenced so each bump rebuilds the collection identity
+    return makeCollection(IDS);
+  }, [version]);
   const layout = useMemo(() => new ListLayout<Item>(), []);
   useLayoutEffect(() => {
     if (hijack && version === 1) setVersion(2);

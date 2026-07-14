@@ -73,15 +73,19 @@ export class SlidesFormFixture {
     const beforeUrl = this.page.url();
     await this.page.getByTestId('next-button').click();
     await this.page.waitForFunction(
-      ({ beforeUrl, previousLabel, selector }) => {
-        if (window.location.href !== beforeUrl) return true;
+      ({ urlBefore, labelBefore, selector }) => {
+        if (window.location.href !== urlBefore) return true;
         const stageSection = document.querySelector('[data-stage-section]');
         if (!stageSection) return true;
-        if (previousLabel == null) return false;
+        if (labelBefore == null) return false;
         const header = document.querySelector(selector);
-        return header?.getAttribute('aria-label') !== previousLabel;
+        return header?.getAttribute('aria-label') !== labelBefore;
       },
-      { beforeUrl, previousLabel: previousLabel ?? null, selector: HEADER_SELECTOR },
+      {
+        urlBefore: beforeUrl,
+        labelBefore: previousLabel ?? null,
+        selector: HEADER_SELECTOR,
+      },
       { timeout: 10_000 },
     );
   }
@@ -98,15 +102,19 @@ export class SlidesFormFixture {
     const beforeLabel = await this.getCurrentItemLabel();
     await this.page.getByTestId('previous-button').click();
     await this.page.waitForFunction(
-      ({ beforeUrl, beforeLabel, selector }) => {
-        if (window.location.href !== beforeUrl) return true;
+      ({ urlBefore, labelBefore, selector }) => {
+        if (window.location.href !== urlBefore) return true;
         if (document.querySelector('[data-stage-section="intro"]') !== null) {
           return true;
         }
         const header = document.querySelector(selector);
-        return header?.getAttribute('aria-label') !== beforeLabel;
+        return header?.getAttribute('aria-label') !== labelBefore;
       },
-      { beforeUrl, beforeLabel: beforeLabel ?? null, selector: HEADER_SELECTOR },
+      {
+        urlBefore: beforeUrl,
+        labelBefore: beforeLabel ?? null,
+        selector: HEADER_SELECTOR,
+      },
       { timeout: 10_000 },
     );
   }

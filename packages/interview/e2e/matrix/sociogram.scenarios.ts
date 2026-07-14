@@ -92,7 +92,10 @@ async function dragNodeToDrawer(page: Page, label: string): Promise<void> {
  * accessible equivalent of `dragNodeToDrawer` (Sociogram.tsx wires
  * `onNodeRemove` only in MANUAL mode).
  */
-async function unplaceNodeViaKeyboard(page: Page, label: string): Promise<void> {
+async function unplaceNodeViaKeyboard(
+  page: Page,
+  label: string,
+): Promise<void> {
   const node = sociogramNode(page, label);
   await node.focus();
   await node.press('Delete');
@@ -221,9 +224,9 @@ function buildManualBaseline(): ScenarioDefinition {
       // Default background: ConcentricCircles n=4, skewed=true. Scope to the
       // radar class — every Node renders its own aria-hidden icon svg, so a
       // bare `svg[aria-hidden] circle` would also count those.
-      await expect(
-        sociogram.locator('circle.canvas-radar__range'),
-      ).toHaveCount(4);
+      await expect(sociogram.locator('circle.canvas-radar__range')).toHaveCount(
+        4,
+      );
     },
   };
 }
@@ -345,7 +348,11 @@ function buildBackgroundImage(): ScenarioDefinition {
       await expect(img).toHaveAttribute('src', /quadrant\.png/);
       // Actually loaded from the asset server, not a broken image.
       await expect
-        .poll(() => img.evaluate((el) => (el instanceof HTMLImageElement ? el.naturalWidth : 0)))
+        .poll(() =>
+          img.evaluate((el) =>
+            el instanceof HTMLImageElement ? el.naturalWidth : 0,
+          ),
+        )
         .toBeGreaterThan(0);
       // background.image wins: no ConcentricCircles renders alongside it.
       // (Scoped to the radar class — nodes render their own aria-hidden svgs.)
@@ -425,7 +432,9 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
           const ash = asPoint(
             nodeAttribute(state, nameVarId, 'Ash', layoutVarId),
           );
-          return ash ? Math.abs(ash.x - 0.4) < 0.1 && Math.abs(ash.y - 0.6) < 0.1 : false;
+          return ash
+            ? Math.abs(ash.x - 0.4) < 0.1 && Math.abs(ash.y - 0.6) < 0.1
+            : false;
         })
         .toBe(true);
 
@@ -680,14 +689,18 @@ function buildAutomaticLayoutNodeDrag(): ScenarioDefinition {
       await stage.sociogram.waitForSimulationSettled();
 
       let state = await protocol.getNetworkState(interview.interviewId);
-      const before = asPoint(nodeAttribute(state, nameVarId, 'Ash', layoutVarId));
+      const before = asPoint(
+        nodeAttribute(state, nameVarId, 'Ash', layoutVarId),
+      );
       expect(before).not.toBeNull();
 
       await dragNodeToCanvasPosition(page, 'Ash', { x: 0.15, y: 0.85 });
       await stage.sociogram.waitForSimulationSettled();
 
       state = await protocol.getNetworkState(interview.interviewId);
-      const after = asPoint(nodeAttribute(state, nameVarId, 'Ash', layoutVarId));
+      const after = asPoint(
+        nodeAttribute(state, nameVarId, 'Ash', layoutVarId),
+      );
       expect(after).not.toBeNull();
       // The dragged position is persisted (handleNodeDragEnd) even though the
       // simulation owns positions — Ash moved from its settled grid cell.
@@ -880,7 +893,7 @@ function buildHighlightToggle(): ScenarioDefinition {
       });
       return synth;
     },
-    run: async ({ page, protocol, interview, stage }) => {
+    run: async ({ protocol, interview, stage }) => {
       await expect
         .poll(() => stage.sociogram.isNodeHighlighted('Ash'))
         .toBe(true);
@@ -982,7 +995,7 @@ function buildHighlightDisplayOnlyWithEdgesCreate(): ScenarioDefinition {
       }
       return synth;
     },
-    run: async ({ page, protocol, interview, stage }) => {
+    run: async ({ protocol, interview, stage }) => {
       // Read-only highlight renders from the seeded attribute before any
       // interaction — allowHighlighting:false never blocks display.
       await expect
@@ -996,9 +1009,7 @@ function buildHighlightDisplayOnlyWithEdgesCreate(): ScenarioDefinition {
 
       expect(await stage.sociogram.getEdgeCount()).toBe(1);
       const state = await protocol.getNetworkState(interview.interviewId);
-      expect(
-        state?.edges.some((e) => e.type === friendshipTypeId),
-      ).toBe(true);
+      expect(state?.edges.some((e) => e.type === friendshipTypeId)).toBe(true);
 
       // Highlight attribute is untouched by the tap — display-only confirmed.
       expect(nodeAttribute(state, nameVarId, 'Ash', closeFriendVarId)).toBe(
@@ -1145,8 +1156,9 @@ function buildSortOrderDrawer(): ScenarioDefinition {
       // 2 prompts on 1 stage: "next" advances the prompt, not the stage, so the
       // URL step never changes — interview.next() would time out.
       await interview.nextButton.click();
-      await expect(page.getByText('Unplaced people, sorted by name ascending.'))
-        .toBeVisible();
+      await expect(
+        page.getByText('Unplaced people, sorted by name ascending.'),
+      ).toBeVisible();
       await expect
         .poll(drawerLabels)
         .toEqual(['Alice', 'Bob', 'Carol', 'Dave']);

@@ -48,7 +48,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
             (v): v is string => typeof v === 'string',
           ),
         );
-        expect(labels.sort()).toEqual(['Alice', 'Bob']);
+        expect(labels.toSorted()).toEqual(['Alice', 'Bob']);
         for (const node of network!.nodes) {
           expect(node.promptIDs).toHaveLength(1);
         }
@@ -160,7 +160,11 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         const boolEntries = Object.entries(
           network!.nodes[0]![entityAttributesProperty],
         ).filter(([, v]) => typeof v === 'boolean');
-        expect(boolEntries.map(([, v]) => v).sort()).toEqual([false, true]);
+        expect(
+          boolEntries
+            .map(([, v]) => v)
+            .toSorted((a, b) => Number(a) - Number(b)),
+        ).toEqual([false, true]);
 
         // Advance to prompt 2 (same stage — nextButton advances the prompt,
         // not the stage, while isLastPrompt is false).
@@ -188,7 +192,11 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         const boolAfterDrop = Object.entries(
           network!.nodes[0]![entityAttributesProperty],
         ).filter(([, v]) => typeof v === 'boolean');
-        expect(boolAfterDrop.map(([, v]) => v).sort()).toEqual([false, true]);
+        expect(
+          boolAfterDrop
+            .map(([, v]) => v)
+            .toSorted((a, b) => Number(a) - Number(b)),
+        ).toEqual([false, true]);
       },
     },
 
@@ -493,13 +501,9 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         await page
           .getByRole('textbox', { name: 'Passphrase' })
           .fill('correct horse battery');
-        await page
-          .getByRole('button', { name: 'Submit passphrase' })
-          .click();
+        await page.getByRole('button', { name: 'Submit passphrase' }).click();
 
-        await expect
-          .poll(async () => stage.quickAdd.isDisabled())
-          .toBe(false);
+        await expect.poll(async () => stage.quickAdd.isDisabled()).toBe(false);
         await stage.quickAdd.addNode('Alice');
         await expect(stage.getNode('Alice')).toBeVisible();
 
