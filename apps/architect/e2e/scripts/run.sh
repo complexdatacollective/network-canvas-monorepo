@@ -6,6 +6,11 @@
 #
 #   ./e2e/scripts/run.sh                    # run all specs
 #   ./e2e/scripts/run.sh --update-snapshots # regenerate visual baselines
+#   ./e2e/scripts/run.sh specs/foo.spec.ts --update-snapshots
+#     # scoped regen — extra args pass through to playwright verbatim. Put
+#     # spec paths BEFORE --update-snapshots: playwright's -u takes an
+#     # optional mode argument, so a path directly after it is rejected
+#     # ("argument 'specs/…' is invalid").
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
