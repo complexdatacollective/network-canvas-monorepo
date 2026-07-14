@@ -25,13 +25,16 @@ const PreviewEdge = ({
 }: PreviewEdgeProps) => {
   const wrapperStyle = {
     '--edge-color': resolveProtocolColor(color),
+  } as CSSProperties;
+
+  const iconStyle = {
     '--icon-tone-primary': resolveProtocolColor(color, { dark: true }),
     '--icon-tone-secondary': resolveProtocolColor(color),
   } as CSSProperties;
 
   const content = (
     <>
-      <Icon name="links" className="mr-2.5" />
+      <Icon name="links" className="mr-2.5 size-6" style={iconStyle} />
       {label}
     </>
   );
