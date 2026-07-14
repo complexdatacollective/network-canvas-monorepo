@@ -99,7 +99,7 @@
     --neutral: color-mix(in oklab, var(--primary) 8%, white);
     --neutral-contrast: oklch(10% 0.2 var(--base-hue));
 
-    --accent: oklch(65% 0.3 var(--base-hue));
+    --accent: oklch(var(--slate-blue));
     --accent-contrast: oklch(var(--white));
 
     --secondary: oklch(from var(--primary) calc(l + 0.2) calc(c + 0.05) h);
@@ -223,7 +223,7 @@
     --neutral: oklch(0.34 0.03 var(--base-hue));
     --neutral-contrast: oklch(0.96 0.01 var(--base-hue));
 
-    --accent: oklch(0.52 0.24 var(--base-hue));
+    --accent: oklch(var(--slate-blue--dark));
     --accent-contrast: oklch(var(--white));
 
     --secondary: oklch(from var(--primary) calc(l + 0.06) c h);

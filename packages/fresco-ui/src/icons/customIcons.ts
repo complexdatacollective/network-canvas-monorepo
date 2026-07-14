@@ -27,6 +27,7 @@ import move from './move.svg.react';
 import protocolCard from './protocol-card.svg.react';
 import reset from './reset.svg.react';
 import settings from './settings.svg.react';
+import success from './success.svg.react';
 import tick from './tick.svg.react';
 import trashBin from './trash-bin.svg.react';
 import warning from './warning.svg.react';
@@ -68,6 +69,7 @@ export default {
   'protocol-card': protocolCard,
   reset,
   settings,
+  success,
   'trash-bin': trashBin,
   warning,
   'delete': remove,

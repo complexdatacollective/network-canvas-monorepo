@@ -2,7 +2,14 @@
 
 import { Loader2 } from 'lucide-react';
 import type React from 'react';
-import { createContext, useCallback, useContext, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { flushSync } from 'react-dom';
 
 import { Button } from '../Button';
@@ -109,15 +116,15 @@ export type WizardDialog = BaseDialog & {
 };
 
 // Helper type to extract return type from a dialog
-export type DialogReturnType<D> = D extends AcknowledgeDialog
-  ? true | null
-  : D extends ChoiceDialog<infer P, infer S, infer C>
-    ? P | S | C | null
-    : D extends FormDialog
-      ? Record<string, FieldValue> | null
-      : D extends WizardDialog
-        ? unknown
-        : unknown;
+export type DialogReturnType<D> =
+  | null
+  | (D extends AcknowledgeDialog
+      ? true
+      : D extends ChoiceDialog<infer P, infer S, infer C>
+        ? P | S | C
+        : D extends FormDialog
+          ? Record<string, FieldValue>
+          : unknown);
 
 export type AnyDialog =
   | AcknowledgeDialog
@@ -280,6 +287,25 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [dialogs, setDialogs] = useState<DialogState[]>([]);
+  const dialogsRef = useRef<DialogState[]>([]);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    dialogsRef.current = dialogs;
+  }, [dialogs]);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      for (const dialog of dialogsRef.current) {
+        if (!dialog.open) continue;
+        dialog.abortController?.abort();
+        dialog.resolveCallback(null);
+      }
+      dialogsRef.current = [];
+    };
+  }, []);
 
   const openDialog = useCallback(
     <D extends AnyDialog>(dialogProps: D): Promise<DialogReturnType<D>> => {
@@ -289,6 +315,11 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         // inside a lifecycle method" — flushSync would otherwise execute while
         // the commit phase is still running.
         queueMicrotask(() => {
+          if (!isMounted.current) {
+            resolveCallback(null);
+            return;
+          }
+
           flushSync(() =>
             setDialogs((prevDialogs) => [
               ...prevDialogs,
@@ -346,6 +377,8 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
 
       await new Promise((resolve) => setTimeout(resolve, 500));
 
+      if (!isMounted.current) return;
+
       setDialogs((prevDialogs) => prevDialogs.filter((d) => d.id !== id));
     },
     [],
@@ -356,6 +389,8 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
     // (e.g. an auth-lock useEffect) — flushSync must not run inside React's
     // commit phase. Mirrors openDialog's deferral above.
     queueMicrotask(() => {
+      if (!isMounted.current) return;
+
       let toResolve: DialogState[] = [];
       // flushSync so `toResolve` is captured before we resolve/remove below,
       // mirroring closeDialog. Aborting in-flight confirm handlers here matches
@@ -379,6 +414,8 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const closedIds = new Set(toResolve.map((d) => d.id));
       setTimeout(() => {
+        if (!isMounted.current) return;
+
         setDialogs((prevDialogs) =>
           prevDialogs.filter((d) => !closedIds.has(d.id)),
         );
