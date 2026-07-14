@@ -1,0 +1,16 @@
+{
+  "label": "Group These",
+  "type": "CategoricalBin",
+  "subject": {
+    "type": "id-1",
+    "entity": "node"
+  },
+  "prompts": [
+    {
+      "variable": "id-2",
+      "id": "id-3",
+      "text": "Group these"
+    }
+  ],
+  "id": "id-4"
+}

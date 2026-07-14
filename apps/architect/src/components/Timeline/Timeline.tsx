@@ -14,7 +14,7 @@ import {
 } from '~/ducks/modules/protocol/stages';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import filterIcon from '~/images/timeline/filter-icon.svg';
-import { getStageList } from '~/selectors/protocol';
+import { getProtocol, getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
 import NewStageScreen from '../Screens/NewStageScreen';
@@ -54,6 +54,14 @@ const timelineInsertVariants: Variants = {
 
 const Timeline = () => {
   const stages = useSelector(getStageList);
+  // `getStageList` maps each stage down to `{id, type, label, hasFilter,
+  // hasSkipLogic}` for cheap render diffing, dropping stage-type-specific
+  // fields like NarrativePedigree's `sourceStageId`. The FamilyPedigree
+  // delete guard below needs that field to find dependents, so it reads the
+  // full protocol separately (mirroring `deleteStageAsync`'s own dependents
+  // check in ducks/modules/protocol/stages.ts, which already does this
+  // correctly) rather than off the pruned list.
+  const protocol = useSelector(getProtocol);
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
   const pointerStart = useRef({ x: 0, y: 0 });
@@ -108,7 +116,10 @@ const Timeline = () => {
       }
 
       if (stage?.type === 'FamilyPedigree') {
-        const dependents = getFamilyPedigreeDependentStages(stages, stageId);
+        const dependents = getFamilyPedigreeDependentStages(
+          protocol?.stages ?? [],
+          stageId,
+        );
         if (dependents.length > 0) {
           const names = dependents
             .map((dependent) => `"${dependent.label || 'Untitled'}"`)
@@ -134,7 +145,7 @@ const Timeline = () => {
         onConfirm: () => deleteStage(stageId),
       });
     },
-    [confirm, deleteStage, openDialog, stages],
+    [confirm, deleteStage, openDialog, stages, protocol],
   );
 
   const handleEditStage = useCallback(

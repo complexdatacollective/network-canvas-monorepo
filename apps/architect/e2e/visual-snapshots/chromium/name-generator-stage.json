@@ -1,0 +1,25 @@
+{
+  "label": "Friends",
+  "type": "NameGenerator",
+  "subject": {
+    "type": "id-1",
+    "entity": "node"
+  },
+  "form": {
+    "title": "Add a person",
+    "fields": [
+      {
+        "variable": "id-2",
+        "id": "id-3",
+        "prompt": "What is your name?"
+      }
+    ]
+  },
+  "prompts": [
+    {
+      "id": "id-4",
+      "text": "Name someone you know"
+    }
+  ],
+  "id": "id-5"
+}

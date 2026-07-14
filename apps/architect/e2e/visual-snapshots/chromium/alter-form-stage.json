@@ -1,0 +1,22 @@
+{
+  "label": "About Each Person",
+  "type": "AlterForm",
+  "subject": {
+    "type": "id-1",
+    "entity": "node"
+  },
+  "introductionPanel": {
+    "title": "About Each Person",
+    "text": "Tell us a bit about each person you know."
+  },
+  "form": {
+    "fields": [
+      {
+        "variable": "id-2",
+        "id": "id-3",
+        "prompt": "What is your name?"
+      }
+    ]
+  },
+  "id": "id-4"
+}

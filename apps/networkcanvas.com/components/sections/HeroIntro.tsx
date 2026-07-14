@@ -13,6 +13,7 @@ export function HeroIntro({ newsItems }: { newsItems: readonly NewsItem[] }) {
   const entrance = createHeroEntrance(reduceMotion ?? true);
   const controls = useAnimationControls();
   const entranceStarted = useRef(false);
+  const introRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     if (reduceMotion !== false || entranceStarted.current) {
@@ -21,11 +22,16 @@ export function HeroIntro({ newsItems }: { newsItems: readonly NewsItem[] }) {
 
     entranceStarted.current = true;
     controls.set('hidden');
+    introRef.current?.removeAttribute('data-entrance-pending');
     void controls.start('visible');
   }, [controls, reduceMotion]);
 
   return (
-    <div className="tablet-portrait:min-h-svh relative isolate overflow-hidden">
+    <div
+      ref={introRef}
+      data-entrance-pending
+      className="tablet-portrait:min-h-svh relative isolate overflow-hidden"
+    >
       <motion.div
         className="tablet-portrait:flex tablet-portrait:min-h-svh tablet-portrait:flex-col relative z-10"
         variants={entrance.pageVariants}

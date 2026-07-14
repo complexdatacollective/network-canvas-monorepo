@@ -107,6 +107,9 @@ describe('GetStartedIntro', () => {
     motionPreference.reduced = true;
     const { container } = renderWithIntl(<GetStartedIntro />);
 
+    expect(container.firstElementChild).toHaveAttribute(
+      'data-entrance-pending',
+    );
     expect(container.firstElementChild?.firstElementChild).toHaveAttribute(
       'data-initial',
       'false',
@@ -124,6 +127,19 @@ describe('GetStartedIntro', () => {
     expect(animationControls.set).toHaveBeenCalledBefore(
       animationControls.start,
     );
+    expect(screen.getByRole('heading', { level: 1 }).parentElement).toHaveClass(
+      'entrance-motion-item',
+    );
+    expect(
+      screen.getByRole('link', {
+        name: 'Design or create an interview protocol',
+      }),
+    ).toHaveClass('entrance-motion-item');
+    expect(
+      screen
+        .getByRole('heading', { level: 1 })
+        .closest('[data-entrance-pending]'),
+    ).toBeNull();
   });
 
   it('localizes the stage choices', () => {

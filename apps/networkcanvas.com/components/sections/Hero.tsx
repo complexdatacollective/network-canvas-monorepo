@@ -46,7 +46,7 @@ export function Hero({
           level="h1"
           margin="none"
           variants={itemVariants}
-          className="font-heading text-text tablet-portrait:row-start-1 tablet-portrait:self-center tablet-portrait:text-[4rem] tablet-portrait:leading-[1.04] tablet-landscape:text-[4.5rem] tablet-landscape:leading-[1.02] desktop:text-[5rem] mx-auto max-w-5xl text-center text-4xl font-black"
+          className="entrance-motion-item font-heading text-text tablet-portrait:row-start-1 tablet-portrait:self-center tablet-portrait:text-[4rem] tablet-portrait:leading-[1.04] tablet-landscape:text-[4.5rem] tablet-landscape:leading-[1.02] desktop:text-[5rem] mx-auto max-w-5xl text-center text-4xl font-black"
         >
           {t('headline')}
         </MotionHeading>
@@ -54,7 +54,7 @@ export function Hero({
         <motion.div
           variants={itemVariants}
           data-testid="hero-media-row"
-          className="tablet-portrait:row-start-2 tablet-portrait:mt-0 tablet-portrait:grid-cols-[1.1fr_0.9fr] tablet-portrait:gap-10 tablet-landscape:gap-16 mt-12 grid items-center gap-10"
+          className="entrance-motion-item tablet-portrait:row-start-2 tablet-portrait:mt-0 tablet-portrait:grid-cols-[1.1fr_0.9fr] tablet-portrait:gap-10 tablet-landscape:gap-16 mt-12 grid items-center gap-10"
         >
           <div
             data-testid="hero-media-sizer"
@@ -73,7 +73,7 @@ export function Hero({
         <motion.div
           variants={itemVariants}
           data-testid="hero-news-wrapper"
-          className="tablet-portrait:col-start-1 tablet-portrait:row-start-3 tablet-portrait:mt-0 tablet-portrait:min-w-0 mt-12"
+          className="entrance-motion-item tablet-portrait:col-start-1 tablet-portrait:row-start-3 tablet-portrait:mt-0 tablet-portrait:min-w-0 mt-12"
         >
           <NewsTicker newsItems={newsItems} />
         </motion.div>
@@ -81,7 +81,7 @@ export function Hero({
         <motion.div
           variants={itemVariants}
           data-testid="hero-cta-wrapper"
-          className="tablet-portrait:col-start-1 tablet-portrait:row-start-4 tablet-portrait:mt-0 mt-12 flex flex-col items-center gap-3"
+          className="entrance-motion-item tablet-portrait:col-start-1 tablet-portrait:row-start-4 tablet-portrait:mt-0 mt-12 flex flex-col items-center gap-3"
         >
           <ButtonLink
             href={GET_STARTED_PATH}

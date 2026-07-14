@@ -460,6 +460,8 @@ export function PageBackground({
   const weaveSettingsRef = useRef(weaveSettings);
   const [scrollBasis, setScrollBasis] =
     useState<NetworkWeaveConvergence | null>(null);
+  const [hasPreparedScrollSettings, setHasPreparedScrollSettings] =
+    useState(false);
   const hasResolvedTargetRef = useRef(resolved === true);
   const commitWeaveSettings = useCallback((settings: WeaveSettings) => {
     if (weaveSettingsAreEqual(weaveSettingsRef.current, settings)) return;
@@ -576,8 +578,18 @@ export function PageBackground({
     motionMode !== 'scroll' ||
     (scrollBasis !== null &&
       convergencePointsAreEqual(scrollBasis, convergence));
+  useLayoutEffect(() => {
+    if (motionMode !== 'scroll' || resolved === false) {
+      setHasPreparedScrollSettings(false);
+      return;
+    }
+
+    if (scrollSettingsReady) setHasPreparedScrollSettings(true);
+  }, [motionMode, resolved, scrollSettingsReady]);
   const revealResolved =
-    resolved === undefined ? undefined : resolved && scrollSettingsReady;
+    resolved === undefined
+      ? undefined
+      : resolved && (motionMode !== 'scroll' || hasPreparedScrollSettings);
   const { maskImage, masked } = useConvergenceReveal(
     motionMode === 'scroll' ? weaveSettings.convergence : convergence,
     revealResolved,

@@ -1,0 +1,37 @@
+{
+  "label": "Your Family",
+  "framing": {
+    "mode": "fixed",
+    "value": "gamete"
+  },
+  "boundaries": {
+    "requireGrandparents": "off",
+    "requireChildrenContributors": "off"
+  },
+  "introScreen": {
+    "items": [
+      {
+        "id": "id-1",
+        "type": "text",
+        "content": "Building a pedigree means asking about the people you're biologically related to — the people whose egg and sperm you came from — not necessarily the people who raised you. A pedigree maps genetic relationships, so we focus on biological parents. Don't worry — you'll be able to include non-biological parents later."
+      }
+    ]
+  },
+  "type": "FamilyPedigree",
+  "nodeConfig": {
+    "type": "id-2",
+    "nodeLabelVariable": "id-3",
+    "egoVariable": "id-4",
+    "relationshipVariable": "id-5",
+    "biologicalSexVariable": "id-6"
+  },
+  "edgeConfig": {
+    "type": "id-7",
+    "relationshipTypeVariable": "id-8",
+    "isActiveVariable": "id-9",
+    "isGestationalCarrierVariable": "id-10",
+    "gameteRoleVariable": "id-11"
+  },
+  "censusPrompt": "Who is in your family?",
+  "id": "id-12"
+}
