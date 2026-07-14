@@ -1,0 +1,21 @@
+{
+  "label": "Draw Your Network",
+  "type": "Sociogram",
+  "background": {
+    "concentricCircles": 4
+  },
+  "subject": {
+    "type": "id-1",
+    "entity": "node"
+  },
+  "prompts": [
+    {
+      "id": "id-2",
+      "text": "Place them",
+      "layout": {
+        "layoutVariable": "id-3"
+      }
+    }
+  ],
+  "id": "id-4"
+}

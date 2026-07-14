@@ -49,7 +49,9 @@ const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
           promptBeforeChange="You attempted to change the edge type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
           component={EntitySelectField}
           onChange={handleResetStage}
-          parse={(value) => ({ type: value, entity: 'edge' })}
+          parse={(value) =>
+            value == null ? value : { type: value, entity: 'edge' }
+          }
           format={(value) => get(value, 'type')}
           validation={{ required: true }}
           label="Edge type"

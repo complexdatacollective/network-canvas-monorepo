@@ -1,0 +1,19 @@
+{
+  "label": "Explore Your Network",
+  "type": "Narrative",
+  "background": {
+    "concentricCircles": 4
+  },
+  "subject": {
+    "type": "id-1",
+    "entity": "node"
+  },
+  "presets": [
+    {
+      "layoutVariable": "id-2",
+      "id": "id-3",
+      "label": "Default view"
+    }
+  ],
+  "id": "id-4"
+}

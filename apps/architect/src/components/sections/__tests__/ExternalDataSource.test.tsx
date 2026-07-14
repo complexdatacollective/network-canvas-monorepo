@@ -86,16 +86,15 @@ describe('ExternalDataSource handleChangeDataSource', () => {
     expect(onChange).toBeTypeOf('function');
     onChange?.();
 
-    const resetFields = changeForm.mock.calls.map(([, field]) => field);
-
-    // searchOptions must be reset alongside cardOptions/sortOptions so stale
-    // matchProperties referencing the previous source's columns are dropped.
-    expect(resetFields).toContain('cardOptions');
-    expect(resetFields).toContain('sortOptions');
-    expect(resetFields).toContain('searchOptions');
-
-    for (const call of changeForm.mock.calls) {
-      expect(call).toEqual(['edit-stage', expect.any(String), {}]);
-    }
+    // Exact call list: cardOptions/sortOptions reset to {} so stale
+    // matchProperties referencing the previous source's columns are dropped;
+    // searchOptions resets to null (not {}) because a truthy {} would
+    // auto-expand the optional Search Options section and block save with
+    // its now-mounted required fields (see handleChangeDataSource).
+    expect(changeForm.mock.calls).toEqual([
+      ['edit-stage', 'cardOptions', {}],
+      ['edit-stage', 'sortOptions', {}],
+      ['edit-stage', 'searchOptions', null],
+    ]);
   });
 });

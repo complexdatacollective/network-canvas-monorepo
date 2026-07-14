@@ -1,0 +1,18 @@
+{
+  "label": "About You",
+  "type": "EgoForm",
+  "introductionPanel": {
+    "title": "About You",
+    "text": "Thanks for taking part in this study."
+  },
+  "form": {
+    "fields": [
+      {
+        "variable": "id-1",
+        "id": "id-2",
+        "prompt": "What is your name?"
+      }
+    ]
+  },
+  "id": "id-3"
+}
