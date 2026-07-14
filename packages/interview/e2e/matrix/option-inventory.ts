@@ -29,7 +29,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'other-dialog-submit-writes-other-clears-variable',
     'other-dialog-cancel-noop',
     'regular-bin-drop-clears-other-variable',
-    'other-option-label-without-other-variable-dead-config',
     'multi-value-membership',
     'empty-array-treated-as-unset',
     'ready-for-next-pulse',
@@ -264,7 +263,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'convexHullVariable.tapToggle',
     'convexHullVariable.lasso',
     'convexHullVariable.unset',
-    'background.image', // dead config
     'background.concentricCircles',
     'background.skewedTowardCenter',
     'behaviours.automaticLayout',

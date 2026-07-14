@@ -494,60 +494,6 @@ export const categoricalBinScenarios: InterfaceScenarios = {
     })(),
 
     {
-      id: 'other-option-label-dead-config',
-      covers: ['other-option-label-without-other-variable-dead-config'],
-      seedNetwork: true,
-      build: () => {
-        const synth = new SyntheticInterview();
-        const personType = synth.addNodeType({ name: 'Person' });
-        const personName = personType.addVariable({
-          name: 'name',
-          type: 'text',
-        });
-        const categoryVar = personType.addVariable({
-          name: 'Category',
-          type: 'categorical',
-          options: [
-            { label: 'Family', value: 1 },
-            { label: 'Work', value: 2 },
-          ],
-        });
-        const stage = synth.addStage('CategoricalBin', {
-          label: 'Categorise',
-          subject: { entity: 'node', type: personType.id },
-          initialNodes: { count: 2 },
-        });
-        stage.addPrompt({
-          variable: categoryVar.id,
-          otherOptionLabel: 'Other',
-          // otherVariable intentionally omitted: useCategoricalBins only pushes
-          // an Other bin when BOTH otherVariable AND otherOptionLabel are set,
-          // so otherOptionLabel alone is a silent no-op.
-        });
-
-        synth.setNodeAttribute(0, personName.id, 'Alice');
-        synth.setNodeAttribute(0, categoryVar.id, []);
-        synth.setNodeAttribute(1, personName.id, 'Bob');
-        synth.setNodeAttribute(1, categoryVar.id, []);
-
-        return synth;
-      },
-      run: async ({ page, stage }) => {
-        // No Other bin renders.
-        await expect(
-          page.getByRole('button', { name: /^Category Other/ }),
-        ).toHaveCount(0);
-        // Bin count matches the codebook's 2 options, not 3.
-        await expect(page.locator('.catbin-item')).toHaveCount(2);
-        // otherOptionLabel alone provides no way to categorise: both nodes
-        // remain uncategorised in the drawer.
-        await expect(stage.categoricalBin.drawerToggle).toContainText(
-          '2 unplaced',
-        );
-      },
-    },
-
-    {
       id: 'bucket-sort-order-drawer',
       covers: ['prompts[].bucketSortOrder', 'prompts[].bucketSortOrder=*'],
       seedNetwork: true,

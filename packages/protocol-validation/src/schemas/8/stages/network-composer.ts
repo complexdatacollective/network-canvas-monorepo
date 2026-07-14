@@ -71,9 +71,10 @@ export const networkComposerStage = baseStageSchema.extend({
   convexHullVariable: entityAttributeReference({
     subject: 'stageSubject',
   }).optional(),
+  // Unlike the Sociogram, NetworkComposer has no background image: the
+  // interface only draws (optional) concentric circles.
   background: z
     .strictObject({
-      image: z.string().optional(),
       concentricCircles: z.number().int().optional(),
       skewedTowardCenter: z.boolean().optional(),
     })

@@ -1,17 +1,9 @@
-import path from 'node:path';
-
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { NetworkComposerFixture } from '../fixtures/network-composer-fixture.js';
-import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
-
-const DEV_PROTOCOL_ASSETS = path.resolve(
-  import.meta.dirname,
-  '../../../development-protocol/assets',
-);
 
 /** Narrow an unknown attribute value to a canvas {x,y} position. */
 function isPosition(value: unknown): value is { x: number; y: number } {
@@ -59,14 +51,6 @@ const matrixRefs = {
   metDate: '',
   lastContact: '',
   occupation: '',
-};
-
-const bgAsset: SyntheticAssetSpec = {
-  assetId: 'nc-bg-1',
-  name: 'bg',
-  type: 'image',
-  source: 'quadrant.png',
-  localPath: path.join(DEV_PROTOCOL_ASSETS, 'quadrant.png'),
 };
 
 export const networkComposerScenarios: InterfaceScenarios = {
@@ -192,9 +176,8 @@ export const networkComposerScenarios: InterfaceScenarios = {
         await expect
           .poll(async () => {
             const s = await protocol.getNetworkState(interview.interviewId);
-            const layout = s?.nodes[0]?.[entityAttributesProperty][
-              dragRefs.layout
-            ];
+            const layout =
+              s?.nodes[0]?.[entityAttributesProperty][dragRefs.layout];
             return isPosition(layout) ? layout.x : 0;
           })
           .toBeGreaterThan(0.4);
@@ -347,7 +330,10 @@ export const networkComposerScenarios: InterfaceScenarios = {
 
     {
       id: 'convexhull-tap-toggle-groups-popover',
-      covers: ['convexHullVariable.tapToggle', 'hullVariable.categoricalOptions'],
+      covers: [
+        'convexHullVariable.tapToggle',
+        'hullVariable.categoricalOptions',
+      ],
       build: () => {
         const synth = new SyntheticInterview(184);
         const person = synth.addNodeType({ name: 'Person' });
@@ -506,14 +492,9 @@ export const networkComposerScenarios: InterfaceScenarios = {
     },
 
     {
-      id: 'background-custom-concentric-skew-dead-image',
-      covers: [
-        'background.concentricCircles',
-        'background.skewedTowardCenter',
-        'background.image',
-      ],
+      id: 'background-custom-concentric-skew',
+      covers: ['background.concentricCircles', 'background.skewedTowardCenter'],
       visual: true,
-      assets: [bgAsset],
       build: () => {
         const synth = new SyntheticInterview(186);
         const person = synth.addNodeType({ name: 'Person' });
@@ -522,12 +503,8 @@ export const networkComposerScenarios: InterfaceScenarios = {
           type: 'layout',
           name: 'composerLayout',
         });
-        synth.addAsset({
-          id: 'nc-bg-1',
-          name: 'bg',
-          type: 'image',
-          source: 'quadrant.png',
-        });
+        // NetworkComposer's background is concentric circles only — unlike the
+        // Sociogram, its schema has no background.image key.
         synth.addStage('NetworkComposer', {
           subject: { entity: 'node', type: person.id },
           quickAdd: quickAdd.id,
@@ -535,7 +512,6 @@ export const networkComposerScenarios: InterfaceScenarios = {
           background: {
             concentricCircles: 6,
             skewedTowardCenter: false,
-            image: 'nc-bg-1',
           },
         });
         synth.addInformationStage({ title: 'Complete' });
@@ -547,7 +523,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         // 6 unskewed (q=1) rings: computeRadii(6,1) reversed.
         const expectedRadii = [1, 2, 3, 4, 5, 6]
           .map((i) => 50 * (1 - (1 - i / 6) ** 1))
-          .reverse();
+          .toReversed();
         await expect(composer.backgroundCircles).toHaveCount(6);
         const radii = await composer.backgroundCircles.evaluateAll((circles) =>
           circles.map((c) => Number(c.getAttribute('r'))),
@@ -555,11 +531,6 @@ export const networkComposerScenarios: InterfaceScenarios = {
         radii.forEach((r, i) => {
           expect(r).toBeCloseTo(expectedRadii[i]!, 1);
         });
-
-        // background.image is dead config for NetworkComposer — the stage never
-        // reads it (contrast Sociogram, which renders <img alt="Background">).
-        await expect(composer.root.locator('img')).toHaveCount(0);
-        await expect(composer.root.getByAltText('Background')).toHaveCount(0);
 
         // The decorative background does not intercept pointer events: the
         // add-node popover still opens on top of it.
@@ -1134,7 +1105,10 @@ export const networkComposerScenarios: InterfaceScenarios = {
 
     {
       id: 'validation-hints-and-autosave-gating',
-      covers: ['fields[].showValidationHints', 'codebook.validationGatesAutosave'],
+      covers: [
+        'fields[].showValidationHints',
+        'codebook.validationGatesAutosave',
+      ],
       seedNetwork: true,
       build: () => {
         const synth = new SyntheticInterview(194);
@@ -1226,7 +1200,9 @@ export const networkComposerScenarios: InterfaceScenarios = {
         await numberInput.fill('30');
 
         await expect.poll(() => attr(validationRefs.number)).toBe(30);
-        await expect.poll(() => attr(validationRefs.textA)).toBe('Gated marker');
+        await expect
+          .poll(() => attr(validationRefs.textA))
+          .toBe('Gated marker');
       },
     },
 
@@ -1301,8 +1277,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           .poll(async () => {
             const s = await protocol.getNetworkState(interview.interviewId);
             return s?.nodes.find(
-              (n) =>
-                n[entityAttributesProperty][undoRefs.quickAdd] === 'Quinn',
+              (n) => n[entityAttributesProperty][undoRefs.quickAdd] === 'Quinn',
             )?.[entityAttributesProperty][undoRefs.community];
           })
           .toEqual(['school']);

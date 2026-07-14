@@ -2257,6 +2257,127 @@ describe('Migration V7 to V8', () => {
         expect(stage.prompts[0]).not.toHaveProperty('otherVariablePrompt');
       }
     });
+
+    it('drops otherOptionLabel and otherVariablePrompt when otherVariable is absent', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('otherOptionLabel');
+        expect(stage.prompts[0]).not.toHaveProperty('otherVariablePrompt');
+      }
+    });
+
+    it('drops an orphaned otherOptionLabel on its own', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({ otherOptionLabel: 'Other' }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('otherOptionLabel');
+      }
+    });
+
+    it('keeps otherOptionLabel and otherVariablePrompt when otherVariable is set', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherVariable: 'other',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty('otherOptionLabel', 'Other');
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherVariablePrompt',
+          'Please specify',
+        );
+      }
+    });
+  });
+
+  describe('OrdinalBin prompt color normalisation', () => {
+    const buildOrdinalProtocol = (prompt: Record<string, unknown>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                rating: {
+                  name: 'Rating',
+                  type: 'ordinal',
+                  options: [
+                    { label: 'Low', value: 1 },
+                    { label: 'High', value: 2 },
+                  ],
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ob1',
+            type: 'OrdinalBin',
+            label: 'Rate',
+            subject: { entity: 'node', type: 'person' },
+            prompts: [
+              { id: 'p1', text: 'Rate', variable: 'rating', ...prompt },
+            ],
+          },
+        ],
+      }) as Protocol<7>;
+
+    it('drops a color outside the ord-color-seq palette', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildOrdinalProtocol({ color: 'coral' }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('color');
+      }
+    });
+
+    it('keeps a color from the ord-color-seq palette', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildOrdinalProtocol({ color: 'ord-color-seq-3' }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty('color', 'ord-color-seq-3');
+      }
+    });
+
+    it('leaves a prompt without color untouched', () => {
+      const migratedRaw = migrationV7toV8.migrate(buildOrdinalProtocol({}), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('color');
+      }
+    });
   });
 
   describe('TieStrengthCensus negativeLabel default', () => {

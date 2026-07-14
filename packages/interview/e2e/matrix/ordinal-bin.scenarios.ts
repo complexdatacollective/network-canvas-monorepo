@@ -502,20 +502,14 @@ export const ordinalBinScenarios: InterfaceScenarios = {
             variable: closeness.id,
             color: 'ord-color-seq-1',
           });
+          // Prompt 3: a different palette value resolves to a different colour.
+          // The schema (prompts.ts) restricts `color` to the ten ord-color-seq
+          // enum values, so an out-of-palette string is rejected at build time
+          // and can never reach the interface.
           stage.addPrompt({
             text: 'Prompt three',
             variable: closeness.id,
             color: 'ord-color-seq-5',
-          });
-          // Prompt 4: schema-valid string (prompts.ts `color:
-          // z.string().optional()`) but not one of the ten values
-          // getPromptColorClass switches on. No cx() branch matches and the
-          // truthy value skips the `!color` default, so no [--prompt-color:...]
-          // utility is applied — an unvalidated color silently no-ops.
-          stage.addPrompt({
-            text: 'Prompt four',
-            variable: closeness.id,
-            color: 'not-a-real-color',
           });
           synth.addManualNode(stage.id, person.id, 'n-ivy', {
             [nameVar.id]: 'Ivy',
@@ -560,18 +554,6 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           const promptThreeColor = await readPromptColor();
           expect(promptThreeColor).not.toBe('');
           expect(promptThreeColor).not.toBe(promptOneColor);
-
-          // Prompt 4 (unvalidated color) applies no --prompt-color utility, so
-          // the property is unset — it matches neither valid prompt colour.
-          await interview.nextButton.click();
-          await expect(page.locator('[data-testid="prompt"]')).toHaveText(
-            'Prompt four',
-          );
-          await expect(accent).toBeVisible();
-          const promptFourColor = await readPromptColor();
-          expect(promptFourColor).toBe('');
-          expect(promptFourColor).not.toBe(promptOneColor);
-          expect(promptFourColor).not.toBe(promptThreeColor);
         },
       };
     })(),
