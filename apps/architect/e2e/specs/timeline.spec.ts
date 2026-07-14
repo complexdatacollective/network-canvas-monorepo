@@ -1,0 +1,212 @@
+import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
+import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { readProtocolJson } from '../helpers/read-store.js';
+import { Timeline } from '../pageobjects/timeline.js';
+import { Toolbar } from '../pageobjects/toolbar.js';
+
+type Stage = { id: string; label: string; type: string };
+
+// Narrow one element of the protocol JSON's `stages` array with a real
+// runtime guard (mirroring `isRow` in helpers/read-store.ts) rather than an
+// `as` cast, so a drifted/malformed stage throws here instead of silently
+// producing a mis-typed object the assertions would then trust.
+function toStage(value: unknown): Stage {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    typeof value.id === 'string' &&
+    'label' in value &&
+    typeof value.label === 'string' &&
+    'type' in value &&
+    typeof value.type === 'string'
+  ) {
+    return { id: value.id, label: value.label, type: value.type };
+  }
+  throw new Error('protocol stage missing a string id, label, or type');
+}
+
+// `readProtocolJson` returns `Record<string, unknown>`; extract its stages as
+// a typed array via `toStage` (no `as`). Each `unknown` element is narrowed
+// runtime-side, so callers get a real `Stage[]`.
+function stagesOf(protocol: Record<string, unknown>): Stage[] {
+  const stages = protocol.stages;
+  if (!Array.isArray(stages)) {
+    throw new Error('protocol JSON has no stages array');
+  }
+  return stages.map((value: unknown) => toStage(value));
+}
+
+test('reorders stages via drag and commits one moveStage', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const timeline = new Timeline(architectPage);
+  await timeline.dragStage(before[0].label, before[2].label);
+
+  await expect
+    .poll(async () => stagesOf(await readProtocolJson(architectPage))[0].id)
+    .not.toBe(before[0].id);
+});
+
+test('inserts a new Information stage at the clicked index', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const insertIndex = 1;
+
+  const timeline = new Timeline(architectPage);
+  await timeline.insertAt(insertIndex);
+
+  // NewStageScreen opens as a fullscreen dialog titled "Select an Interface
+  // Type" (Dialog `title` prop in NewStageScreen.tsx).
+  await expect(
+    architectPage.getByRole('dialog', { name: 'Select an Interface Type' }),
+  ).toBeVisible();
+
+  // `type="search"` gives the input an implicit `searchbox` role.
+  await architectPage
+    .getByRole('searchbox', { name: 'Search interfaces' })
+    .fill('Information');
+  await architectPage
+    .getByRole('button')
+    .filter({
+      has: architectPage.getByRole('heading', {
+        level: 4,
+        name: 'Information',
+        exact: true,
+      }),
+    })
+    .click();
+
+  // handleSelectInterface (NewStageScreen.tsx) builds the query string as
+  // `type` then `insertAtIndex`, in that order.
+  await architectPage.waitForURL(
+    new RegExp(
+      `/protocol/stage/new\\?type=Information&insertAtIndex=${insertIndex}$`,
+    ),
+  );
+
+  // StageHeading.tsx's stage-name input is `aria-label="Stage name"`.
+  await architectPage
+    .getByRole('textbox', { name: 'Stage name' })
+    .fill('Inserted Info Stage');
+
+  // Information's Title section (Title.tsx) requires a non-empty `title`
+  // (UI-level `validation={{ required: true }}`, stricter than the schema's
+  // `title: z.string().optional()`) and ContentGrid.tsx's `notEmpty`
+  // validator requires a non-empty `items` array — both are redux-form
+  // sync-validated, so a save that actually commits needs both filled.
+  await architectPage
+    .getByRole('textbox', { name: 'Page heading' })
+    .fill('Inserted stage heading');
+  await architectPage.getByRole('button', { name: 'Create new' }).click();
+  await architectPage.getByRole('radio', { name: 'Text' }).click();
+  const contentField = architectPage.getByRole('textbox', {
+    name: 'Content',
+  });
+  await contentField.click();
+  // Real keystrokes (not `.fill()`) so Tiptap/ProseMirror's own input
+  // handling — which `.fill()`'s direct DOM write bypasses — registers the
+  // change into redux-form.
+  await contentField.pressSequentially('Minimal content.');
+  // `exact` to avoid matching the RichTextEditor toolbar's "Add link" button.
+  await architectPage.getByRole('button', { name: 'Add', exact: true }).click();
+
+  const toolbar = new Toolbar(architectPage);
+  await toolbar.button('finished-editing').click();
+  await architectPage.waitForURL(/\/protocol$/);
+
+  await expect
+    .poll(async () => stagesOf(await readProtocolJson(architectPage)).length)
+    .toBe(before.length + 1);
+
+  const after = stagesOf(await readProtocolJson(architectPage));
+  expect(after[insertIndex]).toMatchObject({
+    type: 'Information',
+    label: 'Inserted Info Stage',
+  });
+  // The stage previously at `insertIndex` shifted down by one rather than
+  // being replaced.
+  expect(after[insertIndex + 1].id).toBe(before[insertIndex].id);
+});
+
+test('blocks deleting a FamilyPedigree stage referenced by NarrativePedigree', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const familyPedigree = before.find(
+    (stage) => stage.type === 'FamilyPedigree',
+  );
+  if (!familyPedigree) {
+    throw new Error('fixture is missing a FamilyPedigree stage');
+  }
+
+  const timeline = new Timeline(architectPage);
+  await timeline.deleteStage('Family Pedigree');
+  // Guard shows an acknowledge dialog, not the destructive confirm. All of
+  // fresco-ui's `useDialog` dialogs (and NewStageScreen's inline `Dialog`)
+  // share one `Dialog` component built on a plain (non-alert) Base UI
+  // `Dialog.Root`, so the accessible role is `dialog`, not `alertdialog`.
+  const guardDialog = architectPage.getByRole('dialog', {
+    name: 'Cannot delete stage',
+  });
+  await expect(guardDialog).toBeVisible();
+
+  // Dialog shown AND deletion did not proceed. The guard returns before any
+  // deleteStage dispatch, so no store change happens; acknowledging then
+  // waiting past the 600ms autosave debounce lets any (regression) erroneous
+  // delete's write land in IndexedDB before we assert it did NOT — closing
+  // the "dialog shown but deletion silently proceeds anyway" gap.
+  await guardDialog.getByRole('button', { name: 'OK' }).click();
+  await architectPage.waitForTimeout(1000);
+  const after = stagesOf(await readProtocolJson(architectPage));
+  expect(after.some((stage) => stage.id === familyPedigree.id)).toBe(true);
+  expect(after.length).toBe(before.length);
+});
+
+test('deletes a leaf stage after confirming the destructive dialog', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const target = before.find((stage) => stage.label === 'Information');
+  if (!target) throw new Error('fixture is missing an "Information" stage');
+
+  const timeline = new Timeline(architectPage);
+  await timeline.deleteStage('Information');
+
+  // handleDeleteStage's non-guarded path opens a destructive `confirm`
+  // dialog titled "Delete stage".
+  await architectPage
+    .getByRole('dialog', { name: 'Delete stage' })
+    .getByRole('button', { name: 'Delete stage' })
+    .click();
+
+  await expect
+    .poll(async () =>
+      stagesOf(await readProtocolJson(architectPage)).some(
+        (stage) => stage.id === target.id,
+      ),
+    )
+    .toBe(false);
+});

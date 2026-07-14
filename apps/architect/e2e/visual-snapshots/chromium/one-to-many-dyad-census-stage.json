@@ -1,0 +1,16 @@
+{
+  "label": "Who Knows This Person?",
+  "type": "OneToManyDyadCensus",
+  "subject": {
+    "type": "id-1",
+    "entity": "node"
+  },
+  "prompts": [
+    {
+      "id": "id-2",
+      "text": "Who does this person know?",
+      "createEdge": "id-3"
+    }
+  ],
+  "id": "id-4"
+}

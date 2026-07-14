@@ -1,0 +1,17 @@
+{
+  "label": "Rank These",
+  "type": "OrdinalBin",
+  "subject": {
+    "type": "id-1",
+    "entity": "node"
+  },
+  "prompts": [
+    {
+      "variable": "id-2",
+      "color": "ord-color-seq-1",
+      "id": "id-3",
+      "text": "Rank these"
+    }
+  ],
+  "id": "id-4"
+}

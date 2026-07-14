@@ -1,0 +1,17 @@
+{
+  "label": "Build Your Network",
+  "behaviours": {
+    "automaticLayout": true
+  },
+  "type": "NetworkComposer",
+  "background": {
+    "concentricCircles": 4
+  },
+  "subject": {
+    "type": "id-1",
+    "entity": "node"
+  },
+  "quickAdd": "id-2",
+  "layoutVariable": "id-3",
+  "id": "id-4"
+}

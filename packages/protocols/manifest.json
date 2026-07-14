@@ -82,6 +82,15 @@
       "architectTemplate": false
     },
     {
+      "id": "all-interfaces",
+      "kind": "e2e",
+      "name": "All Interfaces (e2e)",
+      "description": "Schema-8 protocol covering all 19 interface types, used by the Architect e2e suite.",
+      "protocolPath": "e2e/all-interfaces/protocol.json",
+      "assetDir": "e2e/all-interfaces/assets",
+      "architectTemplate": false
+    },
+    {
       "id": "interviewer-e2e",
       "kind": "e2e",
       "name": "E2E Fixture",

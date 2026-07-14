@@ -19,7 +19,11 @@ const ExternalDataSource = (props: ExternalDataSourceProps) => {
   const handleChangeDataSource = () => {
     props.changeForm('edit-stage', 'cardOptions', {});
     props.changeForm('edit-stage', 'sortOptions', {});
-    props.changeForm('edit-stage', 'searchOptions', {});
+    // Reset searchOptions to null (not {}): SearchOptionsForExternalData's
+    // `hasSearchOptions` reads the whole field, so a truthy {} would
+    // auto-expand the optional Search Options section and block save with its
+    // now-mounted required fields. null matches handleToggleSearchOptions(false).
+    props.changeForm('edit-stage', 'searchOptions', null);
   };
   return (
     <Section
