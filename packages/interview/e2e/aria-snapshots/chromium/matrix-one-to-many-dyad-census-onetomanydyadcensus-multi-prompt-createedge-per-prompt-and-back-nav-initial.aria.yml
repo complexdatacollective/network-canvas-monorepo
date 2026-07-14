@@ -1,0 +1,14 @@
+- main:
+  - status:
+    - 'heading "Prompt one: friendship" [level=2]'
+  - button "Carol"
+  - button "Select all that apply, then click next":
+    - heading "Select all that apply, then click next" [level=3]
+  - listbox "Target nodes":
+    - option "Alice"
+    - option "Bob"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -102,8 +102,13 @@ export function useMeasureItems<T>({
     height: number;
   } | null>(null);
 
-  // Version counter bumped when root font-size changes, forcing re-measurement
-  const [remVersion, setRemVersion] = useState(0);
+  // Version counter bumped whenever a completed measurement is invalidated
+  // (collection/layout identity change, root font-size change). It must be a
+  // dependency of the measurement effect: invalidation happens in effects
+  // that can run in the same commit as (and after) a successful measurement
+  // pass, so without the bump no dependency would change afterwards and the
+  // wiped state would never be re-measured.
+  const [measureVersion, setMeasureVersion] = useState(0);
 
   // ---------------------------------------------------------------------
   // Lazy measurements — refinements reported by items actually rendered
@@ -242,7 +247,7 @@ export function useMeasureItems<T>({
       // Root font-size changed since last measurement - invalidate
       setIsComplete(false);
       setMeasurements(new Map());
-      setRemVersion((v) => v + 1);
+      setMeasureVersion((v) => v + 1);
     });
 
     observer.observe(sentinel);
@@ -331,7 +336,7 @@ export function useMeasureItems<T>({
     measurementInfo.mode,
     skip,
     containerWidth,
-    remVersion,
+    measureVersion,
     isComplete,
   ]);
 
@@ -348,6 +353,7 @@ export function useMeasureItems<T>({
     }
     setIsComplete(false);
     setMeasurements(new Map());
+    setMeasureVersion((v) => v + 1);
     lastMeasuredSentinelSizeRef.current = null;
     // The layout (or collection contents) changed — any previously reported
     // lazy measurements are stale, so drop them and let items in the

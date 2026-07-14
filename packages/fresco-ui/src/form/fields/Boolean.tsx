@@ -189,12 +189,17 @@ export default function BooleanField(props: BooleanFieldProps) {
   const groupState = getInputState(props);
 
   return (
-    <div className={cx('@container flex w-full flex-col gap-2', className)}>
+    <div className={cx('flex w-full flex-col gap-2', className)}>
       <fieldset
         id={id}
         {...rest}
         role="radiogroup"
-        className="flex w-full flex-col items-stretch gap-2 border-0 p-0 *:flex-1 @xs:flex-row"
+        // Options sit side by side and wrap to a stack only when the container
+        // is genuinely too narrow for them. Sizing is intrinsic (no container
+        // query), so this also holds inside fit-content ancestors, where a
+        // container query can never match (inline-size containment collapses
+        // a content-sized container to zero width).
+        className="flex w-full flex-row flex-wrap items-stretch gap-2 border-0 p-0 *:min-w-0 *:grow"
         disabled={disabled}
         aria-label={label ?? rest['aria-label']}
         aria-labelledby={rest['aria-labelledby']}

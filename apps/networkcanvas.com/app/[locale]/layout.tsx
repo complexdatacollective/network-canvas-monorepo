@@ -11,6 +11,7 @@ import {
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { ThemeProvider } from '~/components/Providers/theme-provider';
 import { getStaticLocaleParams } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
 
@@ -74,11 +75,18 @@ export default async function LocaleLayout({
   const messages = await getMessages({ locale });
 
   return (
-    <html lang={locale} data-scroll-behavior="smooth">
+    <html lang={locale} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="root overflow-x-hidden">
-        <NextIntlClientProvider messages={messages}>
-          {children}
-        </NextIntlClientProvider>
+        <ThemeProvider
+          enableSystem
+          enableColorScheme
+          attribute="data-theme"
+          storageKey="networkcanvas-site"
+        >
+          <NextIntlClientProvider messages={messages}>
+            {children}
+          </NextIntlClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

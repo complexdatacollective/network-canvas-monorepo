@@ -1,0 +1,11 @@
+- main:
+  - heading "Network Relationships" [level=1]
+  - paragraph:
+    - text: Do
+    - strong: these two
+    - text: know each other?
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -1,0 +1,15 @@
+- main:
+  - application "Sociogram Canvas"
+  - button "Collapse drawer" [expanded]: 4 unplaced
+  - button "Dave"
+  - button "Carol"
+  - button "Bob"
+  - button "Alice"
+  - button "Hide instructions" [expanded]
+  - status:
+    - heading "Unplaced people, sorted by name descending." [level=4]
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

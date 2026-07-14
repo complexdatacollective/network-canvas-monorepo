@@ -18,7 +18,7 @@ import type { NewsItem } from '~/lib/siteContent';
 const MotionHeading = motion.create(Heading);
 
 function renderStrong(chunks: ReactNode) {
-  return <strong className="text-cyber-grape">{chunks}</strong>;
+  return <strong className="text-text">{chunks}</strong>;
 }
 
 export function Hero({
@@ -46,7 +46,7 @@ export function Hero({
           level="h1"
           margin="none"
           variants={itemVariants}
-          className="font-heading text-cyber-grape tablet-portrait:row-start-1 tablet-portrait:self-center tablet-portrait:text-[4rem] tablet-portrait:leading-[1.04] tablet-landscape:text-[4.5rem] tablet-landscape:leading-[1.02] desktop:text-[5rem] mx-auto max-w-5xl text-center text-4xl font-black"
+          className="font-heading text-text tablet-portrait:row-start-1 tablet-portrait:self-center tablet-portrait:text-[4rem] tablet-portrait:leading-[1.04] tablet-landscape:text-[4.5rem] tablet-landscape:leading-[1.02] desktop:text-[5rem] mx-auto max-w-5xl text-center text-4xl font-black"
         >
           {t('headline')}
         </MotionHeading>
@@ -64,7 +64,7 @@ export function Hero({
           </div>
           <Paragraph
             margin="none"
-            className="text-cyber-grape tablet-portrait:text-left tablet-landscape:text-xl text-center text-lg leading-relaxed"
+            className="text-text tablet-portrait:text-left tablet-landscape:text-xl text-center text-lg leading-relaxed"
           >
             {t.rich('description', { strong: renderStrong })}
           </Paragraph>

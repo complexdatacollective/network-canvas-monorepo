@@ -1,0 +1,12 @@
+- main:
+  - status:
+    - heading "Add a person (this will be encrypted)" [level=2]
+  - listbox "Added Nodes":
+    - option "Alice"
+  - button "Add a person":
+    - img "Add a person"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

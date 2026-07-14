@@ -1,0 +1,7 @@
+- main:
+  - heading "Next stage" [level=1]
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

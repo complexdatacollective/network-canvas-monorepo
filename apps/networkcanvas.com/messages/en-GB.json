@@ -1,4 +1,11 @@
 {
+  "ThemeTranslations": {
+    "label": "Colour theme",
+    "triggerLabel": "Colour theme: {theme}",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
   "GetStarted": {
     "apps": {
       "fresco": {

@@ -1,0 +1,16 @@
+- main:
+  - heading "The map could not be displayed" [level=2]
+  - paragraph: This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.
+  - button "Zoom In"
+  - button "Zoom Out"
+  - button "Recenter Map"
+  - status:
+    - heading "Where does this person currently live?" [level=4]
+  - button "Mohammad"
+  - button "Outside Selectable Areas"
+  - region "Map"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -5,8 +5,9 @@ import { ChartNetwork, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, type ReactNode, useCallback, useRef } from 'react';
 
+import { usePageBackgroundTargetRef } from '@codaco/art';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
@@ -94,7 +95,7 @@ function CollapsedNav({ className }: { className?: string }) {
               <Tabs.Tab
                 value={section.key}
                 className={cx(
-                  'focusable relative flex shrink-0 cursor-pointer items-center gap-2 rounded-xl py-2 pr-5 pl-3 text-base font-semibold transition-colors duration-200',
+                  'focusable relative flex shrink-0 cursor-pointer items-center gap-2 rounded py-2 pr-5 pl-3 text-base font-semibold transition-colors duration-200',
                   isActive ? 'text-white' : 'hover:text-text text-current/70',
                 )}
               >
@@ -114,7 +115,7 @@ function CollapsedNav({ className }: { className?: string }) {
                   className={cx(
                     'relative z-10 flex h-9 shrink-0 items-center justify-center',
                     dualIcon ? 'w-auto px-1' : 'w-9',
-                    isActive && 'rounded-lg bg-white/20',
+                    isActive && 'rounded bg-white/20',
                   )}
                 >
                   <SectionIcon section={section} onColor={isActive} />
@@ -133,15 +134,31 @@ function CollapsedNav({ className }: { className?: string }) {
 
 function WorkflowCard({ section }: { section: SectionConfig }) {
   const t = useTranslations('SectionSwitcher');
+  const backgroundTargetRef = usePageBackgroundTargetRef();
+  const cardRef = useRef<HTMLAnchorElement>(null);
+  const setCardRef = useCallback(
+    (element: HTMLAnchorElement | null) => {
+      cardRef.current = element;
+      if (section.key === 'get-started') backgroundTargetRef?.(element);
+    },
+    [backgroundTargetRef, section.key],
+  );
+  const selectBackgroundTarget = useCallback(() => {
+    backgroundTargetRef?.(cardRef.current);
+  }, [backgroundTargetRef]);
+
   return (
     <Link
+      ref={setCardRef}
       href={`/${section.key}`}
+      onFocus={selectBackgroundTarget}
+      onPointerEnter={selectBackgroundTarget}
       className={cx(
-        'group focusable laptop:min-h-56 flex flex-1 flex-col gap-6 rounded-lg p-6 text-white shadow-lg transition-transform hover:-translate-y-1 hover:shadow-xl',
+        'group focusable laptop:min-h-56 flex flex-1 flex-col gap-6 rounded p-6 text-white shadow-lg transition-transform hover:-translate-y-1 hover:shadow-xl',
         sectionColorClasses[section.color],
       )}
     >
-      <span className="flex h-14 w-fit min-w-14 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white/15 px-2">
+      <span className="flex h-14 w-fit min-w-14 shrink-0 items-center justify-center gap-1.5 rounded bg-white/15 px-2">
         <SectionIcon section={section} onColor large />
       </span>
       <div className="mt-auto flex flex-col gap-2">

@@ -1,0 +1,21 @@
+- main:
+  - application "Sociogram Canvas":
+    - button "Alice"
+    - button "Bob"
+  - button "Drag to reposition"
+  - toolbar "Presets":
+    - button "Previous preset" [disabled]
+    - button "bleakly custody" [expanded]
+    - button "Next preset" [disabled]
+  - status
+  - dialog:
+    - region
+  - toolbar "Layout and drawing tools":
+    - button "Disable drawing" [pressed]
+    - button "Freeze annotations"
+    - button "Reset annotations"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

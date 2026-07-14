@@ -1,0 +1,16 @@
+- main:
+    - status:
+        - heading "Prompt three" [level=2]
+    - heading "Not close" [level=4]
+    - listbox "Container for the value 'Not close'"
+    - heading "Close" [level=4]
+    - listbox "Container for the value 'Close'"
+    - heading "Very close" [level=4]
+    - listbox "Container for the value 'Very close'"
+    - button "Collapse drawer" [expanded]: 1 unplaced
+    - button "Ivy"
+    - navigation:
+        - button "Previous Step"
+        - progressbar "Progress indicator": x
+        - button "Next Step"
+    - region "Interview notifications"

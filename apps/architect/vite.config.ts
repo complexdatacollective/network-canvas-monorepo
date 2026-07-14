@@ -2,7 +2,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react-swc';
+import react from '@vitejs/plugin-react';
 import { loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => {
         repoRoot,
         enabled: env.VITE_PROTOCOL_SOURCE_AUTHORING === 'true',
       }),
-      react({}),
+      react(),
       tailwindcss(),
       VitePWA({
         registerType: 'prompt',

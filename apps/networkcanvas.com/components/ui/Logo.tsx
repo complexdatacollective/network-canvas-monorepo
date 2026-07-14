@@ -20,7 +20,7 @@ export function Logo({
         className={cn('h-9 w-9', markClassName)}
       />
       {showWordmark ? (
-        <span className="font-heading text-cyber-grape text-lg font-bold tracking-[0.18em]">
+        <span className="font-heading text-text text-lg font-bold tracking-[0.18em]">
           Network Canvas
         </span>
       ) : null}

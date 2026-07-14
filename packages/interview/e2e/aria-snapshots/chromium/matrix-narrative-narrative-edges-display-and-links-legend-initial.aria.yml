@@ -1,0 +1,23 @@
+- main:
+  - application "Sociogram Canvas":
+    - img
+    - button "Node0"
+    - button "Node1"
+    - button "Node2"
+    - button "Node3"
+  - button "Drag to reposition"
+  - toolbar "Presets":
+    - button "Previous preset" [disabled]
+    - button "Friends" [expanded]
+    - button "Next preset"
+  - status
+  - dialog:
+    - region:
+      - heading "Links" [level=3]:
+        - button "Links" [expanded]
+      - region "Links": Friendship
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

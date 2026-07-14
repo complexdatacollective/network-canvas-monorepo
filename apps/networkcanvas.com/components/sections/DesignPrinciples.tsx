@@ -17,7 +17,7 @@ export function DesignPrinciples() {
           <Heading
             level="h2"
             margin="none"
-            className="font-heading text-cyber-grape tablet-landscape:text-4xl text-3xl font-bold"
+            className="font-heading text-text tablet-landscape:text-4xl text-3xl font-bold"
           >
             {t('heading')}
           </Heading>
@@ -34,18 +34,18 @@ export function DesignPrinciples() {
             <Reveal
               key={principle.id}
               delay={i * 0.04}
-              className="bg-surface tablet-landscape:p-10 rounded-[1.75rem] p-8 shadow-lg"
+              className="bg-surface tablet-landscape:p-10 rounded p-8 shadow-lg"
             >
               <Heading
                 level="h3"
                 margin="none"
-                className="font-heading text-cyber-grape tablet-landscape:text-2xl text-xl font-bold"
+                className="font-heading text-text tablet-landscape:text-2xl text-xl font-bold"
               >
                 <NativeLink
                   href={principle.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-cyber-grape hover:text-neon-coral font-bold"
+                  className="text-text hover:text-neon-coral font-bold"
                 >
                   {t(`${principle.id}.title`)}
                 </NativeLink>

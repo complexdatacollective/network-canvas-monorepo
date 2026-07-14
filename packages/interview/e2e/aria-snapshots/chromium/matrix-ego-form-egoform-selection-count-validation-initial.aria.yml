@@ -1,0 +1,18 @@
+- main:
+  - heading "About you" [level=1]
+  - paragraph: Please answer the questions below.
+  - text: Where do you know them from?
+  - group:
+    - checkbox "Family"
+    - text: Family
+    - checkbox "Work"
+    - text: Work
+    - checkbox "School"
+    - text: School
+    - checkbox "Neighborhood"
+    - text: Neighborhood
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

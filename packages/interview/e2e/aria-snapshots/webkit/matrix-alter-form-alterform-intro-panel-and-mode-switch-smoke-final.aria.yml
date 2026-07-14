@@ -1,0 +1,11 @@
+- main:
+  - heading "About Each Person" [level=1]
+  - paragraph:
+    - text: Please give
+    - strong: details
+    - text: about each person.
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

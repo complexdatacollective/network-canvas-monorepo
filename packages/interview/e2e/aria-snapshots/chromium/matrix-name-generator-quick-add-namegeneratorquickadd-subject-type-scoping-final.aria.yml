@@ -1,0 +1,15 @@
+- main:
+  - status:
+    - heading "Add the people you know" [level=2]
+  - button "Already added":
+    - heading "Already added" [level=3]
+  - listbox "Already added"
+  - listbox "Added Nodes":
+    - option "Priya"
+  - textbox "Type a label and press enter..." [invalid]
+  - button [pressed]
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

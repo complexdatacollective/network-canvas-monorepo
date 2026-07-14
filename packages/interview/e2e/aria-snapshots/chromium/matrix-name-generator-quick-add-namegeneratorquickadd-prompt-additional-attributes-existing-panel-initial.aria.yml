@@ -1,0 +1,14 @@
+- main:
+  - status:
+    - heading "People close to you" [level=2]
+  - button "Already added":
+    - heading "Already added" [level=3]
+  - listbox "Already added"
+  - listbox "Added Nodes"
+  - button "Add a person":
+    - img "Add a person"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

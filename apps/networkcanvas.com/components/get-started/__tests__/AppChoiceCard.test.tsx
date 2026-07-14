@@ -60,7 +60,7 @@ describe('AppChoiceCard', () => {
       'border-0',
       'px-3',
       'py-1.5',
-      'bg-white/15',
+      'bg-surface/15',
       'text-white',
     );
     expect(status).toHaveTextContent('Recommended for new studies');
@@ -70,7 +70,7 @@ describe('AppChoiceCard', () => {
     renderWithIntl(<AppChoiceCard app={architectClassic} />);
 
     expect(screen.getByRole('article')).toHaveClass(
-      'bg-white/55',
+      'bg-surface/55',
       'backdrop-blur-md',
     );
   });
@@ -85,7 +85,7 @@ describe('AppChoiceCard', () => {
 
     expect(
       screen.getByText('Large Teams · Remote Administration · Recommended'),
-    ).toHaveClass('bg-cyber-grape/10', 'text-cyber-grape');
+    ).toHaveClass('bg-cyber-grape/10', 'text-text');
   });
 
   it('gives each Classic platform link an app-specific accessible name', () => {

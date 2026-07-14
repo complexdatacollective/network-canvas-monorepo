@@ -77,7 +77,7 @@ export function GetStartedIntro() {
             <Heading
               level="h1"
               margin="none"
-              className="font-heading text-cyber-grape mt-5! text-4xl font-black tracking-tight text-balance"
+              className="font-heading text-text mt-5! text-4xl font-black tracking-tight text-balance"
             >
               {t('intro.heading')}
             </Heading>
@@ -99,13 +99,13 @@ export function GetStartedIntro() {
                 variants={entrance.itemVariants}
                 whileHover={reduceMotion ? undefined : { y: -5 }}
                 whileFocus={reduceMotion ? undefined : { y: -5 }}
-                className="focusable elevation-medium group tablet-portrait:p-10 flex min-h-64 flex-col justify-between rounded-[2rem] bg-white/55 p-8 backdrop-blur-md"
+                className="focusable elevation-medium group tablet-portrait:p-10 bg-surface/55 flex min-h-64 flex-col justify-between rounded p-8 backdrop-blur-md"
               >
-                <span className="font-heading text-cyber-grape/65 text-xs font-bold tracking-[0.14em] uppercase">
+                <span className="font-heading text-text/65 text-xs font-bold tracking-[0.14em] uppercase">
                   {t(`intro.stages.${stage.id}.label`)}
                 </span>
                 <span className="mt-12 flex items-end justify-between gap-6">
-                  <span className="font-heading text-cyber-grape tablet-portrait:text-3xl max-w-lg text-2xl font-black tracking-tight text-balance">
+                  <span className="font-heading text-text tablet-portrait:text-3xl max-w-lg text-2xl font-black tracking-tight text-balance">
                     {t(`intro.stages.${stage.id}.title`)}
                   </span>
                   <span

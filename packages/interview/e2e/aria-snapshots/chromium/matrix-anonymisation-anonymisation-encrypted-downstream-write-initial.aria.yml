@@ -1,0 +1,8 @@
+- main:
+  - heading "Introduction" [level=1]
+  - paragraph: Before the anonymisation stage.
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

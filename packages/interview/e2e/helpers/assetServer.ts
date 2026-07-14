@@ -36,13 +36,11 @@ const MIME_TYPES: Record<string, string> = {
 export class AssetServer {
   private server: Server;
   private port: number;
-  private assetDir: string;
   url: string;
 
-  private constructor(server: Server, port: number, assetDir: string) {
+  private constructor(server: Server, port: number) {
     this.server = server;
     this.port = port;
-    this.assetDir = assetDir;
     this.url = `http://localhost:${port}`;
   }
 
@@ -67,6 +65,14 @@ export class AssetServer {
 
       try {
         const stat = statSync(filePath);
+        // Directory requests (e.g. a health-check GET of '/') must 404
+        // instead of crashing the whole server with an unhandled EISDIR
+        // stream error.
+        if (!stat.isFile()) {
+          res.writeHead(404, { 'Content-Type': 'text/plain' });
+          res.end(`Not found: ${urlPath}`);
+          return;
+        }
         const ext = extname(filePath).toLowerCase();
         const contentType = MIME_TYPES[ext] ?? 'application/octet-stream';
 
@@ -76,7 +82,11 @@ export class AssetServer {
           'Cache-Control': 'no-cache',
         });
 
-        createReadStream(filePath).pipe(res);
+        const stream = createReadStream(filePath);
+        stream.on('error', () => {
+          res.destroy();
+        });
+        stream.pipe(res);
       } catch {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end(`Not found: ${urlPath}`);
@@ -86,7 +96,7 @@ export class AssetServer {
     return new Promise((resolve, reject) => {
       server.on('error', reject);
       server.listen(port, () => {
-        const assetServer = new AssetServer(server, port, assetDir);
+        const assetServer = new AssetServer(server, port);
         log('setup', `Asset server started at ${assetServer.url}`);
         resolve(assetServer);
       });
@@ -103,14 +113,15 @@ export class AssetServer {
     });
   }
 
-  /** Clean up all assets in the asset directory. */
-  async cleanup(): Promise<void> {
-    try {
-      await fs.rm(this.assetDir, { recursive: true, force: true });
-      await fs.mkdir(this.assetDir, { recursive: true });
-    } catch {
-      // Ignore errors
-    }
+  /**
+   * Intentionally disabled: e2e/.assets is shared by all parallel workers,
+   * so a recursive delete here would destroy other workers' in-flight
+   * fixtures. Per-protocol cleanup lives in ProtocolFixture.uninstall().
+   */
+  cleanup(): never {
+    throw new Error(
+      'AssetServer.cleanup() must not be used: e2e/.assets is shared across parallel workers.',
+    );
   }
 
   /** Get the full URL for an asset path. */

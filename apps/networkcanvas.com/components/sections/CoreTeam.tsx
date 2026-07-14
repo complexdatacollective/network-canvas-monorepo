@@ -27,7 +27,7 @@ export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
             />
             <Paragraph
               margin="none"
-              className="font-heading text-cyber-grape mt-5 text-lg font-bold"
+              className="font-heading text-text mt-5 text-lg font-bold"
             >
               {member.name}
             </Paragraph>

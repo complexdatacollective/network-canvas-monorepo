@@ -1,0 +1,26 @@
+- main:
+  - button "Alex"
+  - button "Sam"
+  - text: How often do you interact?
+  - radiogroup:
+    - radio "Never"
+    - text: Never
+    - radio "Yearly"
+    - text: Yearly
+    - radio "Monthly"
+    - text: Monthly
+    - radio "Weekly"
+    - text: Weekly
+    - radio "Several times a week"
+    - text: Several times a week
+    - radio "Daily"
+    - text: Daily
+    - radio "Several times a day"
+    - text: Several times a day
+    - radio "Constantly"
+    - text: Constantly
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

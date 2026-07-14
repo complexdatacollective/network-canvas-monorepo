@@ -18,6 +18,7 @@ import { Shell } from '@codaco/interview';
 import { mockFinish, mockSync } from './mockCallbacks';
 import {
   createInterview as createInterviewHook,
+  getAllowStageNavigation,
   getTestState,
   installProtocol as installProtocolHook,
   installTestHooks,
@@ -65,9 +66,12 @@ function useTestState() {
   return useSyncExternalStore(
     subscribe,
     () =>
-      Array.from(getTestState().interviews.entries())
+      // Include allowStageNavigation so a mid-test setAllowStageNavigation()
+      // toggle changes the snapshot and re-renders App (which re-reads the flag
+      // and passes it to Shell). Without it useSyncExternalStore would bail out.
+      `${Array.from(getTestState().interviews.entries())
         .map(([id]) => id)
-        .join(','),
+        .join(',')}|${getAllowStageNavigation()}`,
     () => '',
   );
 }
@@ -155,6 +159,7 @@ export default function App() {
         onRequestAsset={mockAssetReq}
         currentStep={currentStep}
         onStepChange={onStepChange}
+        allowStageNavigation={getAllowStageNavigation()}
         flags={{ isE2E: true }}
         analytics={{ installationId: 'e2e', hostApp: 'e2e' }}
         disableAnalytics={true}

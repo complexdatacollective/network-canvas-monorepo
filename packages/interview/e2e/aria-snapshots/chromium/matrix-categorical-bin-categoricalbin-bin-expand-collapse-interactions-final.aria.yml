@@ -1,0 +1,15 @@
+- main:
+  - status:
+    - heading "Which categories does each person belong to?" [level=2]
+  - button "Category Yes, 0 items":
+    - heading "Yes" [level=4]
+  - button "Category No, 0 items":
+    - heading "No" [level=4]
+  - button "Collapse drawer" [expanded]: 2 unplaced
+  - button "Placed"
+  - button "Unplaced"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

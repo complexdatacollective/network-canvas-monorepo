@@ -52,12 +52,19 @@ export function Institutions() {
 
       <div className="mt-14 flex flex-wrap items-center justify-center gap-x-16 gap-y-10">
         {institutions.map((inst) => (
-          <img
+          // Partner logos are fixed-colour brand assets. In dark mode they sit on
+          // a light plate so dark marks (e.g. the Oxford wordmark) stay legible;
+          // in light mode the plate is absent and the logos render as before.
+          <div
             key={inst.name}
-            src={inst.logo}
-            alt={inst.name}
-            className="tablet-landscape:h-20 h-16 w-auto object-contain"
-          />
+            className="[[data-theme=dark]_&]:rounded [[data-theme=dark]_&]:bg-white/90 [[data-theme=dark]_&]:px-5 [[data-theme=dark]_&]:py-3"
+          >
+            <img
+              src={inst.logo}
+              alt={inst.name}
+              className="tablet-landscape:h-20 h-16 w-auto object-contain"
+            />
+          </div>
         ))}
       </div>
     </Container>

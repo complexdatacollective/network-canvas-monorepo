@@ -29,7 +29,7 @@ describe('Hero', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('uses the large desktop headline scale and cyber-grape body copy', () => {
+  it('uses the large desktop headline scale and the semantic text token for body copy', () => {
     renderWithIntl(<Hero newsItems={newsItems} />);
 
     expect(
@@ -42,7 +42,7 @@ describe('Hero', () => {
       'desktop:text-[5rem]',
     );
     expect(screen.getByText(/Network Canvas provides/)).toHaveClass(
-      'text-cyber-grape',
+      'text-text',
     );
     expect(screen.getAllByText('Fixture-only hero news')).toHaveLength(3);
     expect(

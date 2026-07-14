@@ -1,0 +1,36 @@
+- main:
+  - status:
+    - 'heading "Stage A: please add a person from this list." [level=2]'
+  - button "Available to add":
+    - heading "Available to add" [level=3]
+  - searchbox "Filter"
+  - listbox "Available Roster Nodes":
+    - option "John":
+      - heading "John" [level=4]
+    - option "William":
+      - heading "William" [level=4]
+    - option "James":
+      - heading "James" [level=4]
+    - option "Charles":
+      - heading "Charles" [level=4]
+    - option "George":
+      - heading "George" [level=4]
+    - option "Frank":
+      - heading "Frank" [level=4]
+    - option "Joseph":
+      - heading "Joseph" [level=4]
+    - option "Thomas":
+      - heading "Thomas" [level=4]
+    - option "Henry":
+      - heading "Henry" [level=4]
+    - option "Robert":
+      - heading "Robert" [level=4]
+    - option "Edward":
+      - heading "Edward" [level=4]
+  - slider "Resize panel and node list areas"
+  - listbox "Added Nodes"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

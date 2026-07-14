@@ -1,0 +1,17 @@
+- main:
+  - status:
+    - heading "Rate closeness" [level=2]
+  - heading "Not close" [level=4]
+  - listbox "Container for the value 'Not close'":
+    - option "Erin"
+  - heading "Close" [level=4]
+  - listbox "Container for the value 'Close'":
+    - option "Dana"
+  - heading "Very close" [level=4]
+  - listbox "Container for the value 'Very close'"
+  - button "Expand drawer" [disabled]: 0 unplaced
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

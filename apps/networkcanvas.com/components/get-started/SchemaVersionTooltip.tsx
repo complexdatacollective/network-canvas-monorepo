@@ -39,7 +39,7 @@ export function SchemaVersionTooltip() {
           </a>
         }
       />
-      <TooltipContent className="text-cyber-grape max-w-sm">
+      <TooltipContent className="text-text max-w-sm">
         <Paragraph margin="none" className="text-sm leading-relaxed">
           {t('shared.schemaVersionInfo')}
         </Paragraph>

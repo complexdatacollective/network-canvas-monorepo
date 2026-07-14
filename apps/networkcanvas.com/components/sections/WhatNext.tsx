@@ -75,13 +75,13 @@ export function WhatNext() {
         {cards.map((card) => (
           <Reveal
             key={card.id}
-            className="bg-surface tablet-landscape:gap-10 tablet-landscape:p-10 flex items-center gap-6 rounded-[1.75rem] p-8 shadow-lg"
+            className="bg-surface tablet-landscape:gap-10 tablet-landscape:p-10 flex items-center gap-6 rounded p-8 shadow-lg"
           >
             <div className="flex-1">
               <Heading
                 level="h3"
                 margin="none"
-                className="font-heading text-cyber-grape text-2xl font-bold"
+                className="font-heading text-text text-2xl font-bold"
               >
                 {card.title}
               </Heading>
@@ -111,7 +111,7 @@ function SectionTitle({ title }: { title: string }) {
     <Heading
       level="h2"
       margin="none"
-      className="font-heading text-cyber-grape tablet-landscape:text-4xl text-center text-3xl font-bold"
+      className="font-heading text-text tablet-landscape:text-4xl text-center text-3xl font-bold"
     >
       {title}
     </Heading>

@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
-import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
@@ -38,7 +38,7 @@ function AnonymisationInner(props: AnonymisationProps) {
   const { passphrase, setPassphrase } = usePassphrase();
   const celebrate = useCelebrate(alertRef);
 
-  const { isValid: isFormValid } = useFormMeta();
+  const validateForm = useFormStore((state) => state.validateForm);
 
   useEffect(() => {
     if (passphrase) {
@@ -46,18 +46,26 @@ function AnonymisationInner(props: AnonymisationProps) {
     }
   }, [passphrase, celebrate]);
 
-  useBeforeNext((direction) => {
+  useBeforeNext(async (direction) => {
     if (direction === 'backwards') {
       return true;
     }
-
-    formRef.current?.submit();
-
-    if (!isFormValid) {
-      return false;
+    if (passphrase) {
+      return true;
     }
 
-    return true;
+    // Validate against the current values rather than reading the
+    // render-time isValid, which is stale while a field validation is still
+    // in flight and would block a genuinely valid direct-Next attempt.
+    const valid = await validateForm();
+
+    // requestSubmit (NOT native submit()) so the React onSubmit handler runs
+    // and its preventDefault applies — native submit() bypasses it entirely
+    // and performs a real GET navigation to `/?passphrase=…`, throwing the
+    // participant out of the interview.
+    formRef.current?.requestSubmit();
+
+    return valid;
   });
 
   const handleSetPassphrase = useCallback(

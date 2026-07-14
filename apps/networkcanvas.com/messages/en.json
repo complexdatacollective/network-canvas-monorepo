@@ -1,4 +1,11 @@
 {
+  "ThemeTranslations": {
+    "label": "Color theme",
+    "triggerLabel": "Color theme: {theme}",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
   "Metadata": {
     "siteTitle": "Network Canvas",
     "siteDescription": "Network Canvas provides free and open-source software for surveying networks, designed around the needs of both researchers and their participants.",

@@ -95,11 +95,12 @@ export function useSelectionState(
     }
   }, [storeApi, isControlled, defaultSelectedKeys]);
 
-  // Sync disabled keys
+  // Sync disabled keys. A falsy prop must CLEAR the store's set — consumers
+  // toggle between a populated array and undefined (e.g. NameGeneratorRoster
+  // re-enabling cards when maxNodes headroom returns or a passphrase unlocks
+  // an encrypted roster), and a stale set would disable items forever.
   useEffect(() => {
-    if (disabledKeysProp) {
-      storeApi.getState().setDisabledKeys(new Set(disabledKeysProp));
-    }
+    storeApi.getState().setDisabledKeys(new Set(disabledKeysProp ?? []));
   }, [storeApi, disabledKeysProp]);
 
   // Track controlled mode via ref so `setState` stays stable across renders.

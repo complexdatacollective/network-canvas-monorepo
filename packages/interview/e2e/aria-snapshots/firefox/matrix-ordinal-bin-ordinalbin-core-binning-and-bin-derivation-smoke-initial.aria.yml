@@ -1,0 +1,23 @@
+- main:
+  - status:
+    - heading "How close are you to these people?" [level=2]:
+      - text: ""
+      - emphasis: these
+      - text: ""
+  - heading "Not close" [level=4]
+  - listbox "Container for the value 'Not close'"
+  - heading "Close" [level=4]
+  - listbox "Container for the value 'Close'"
+  - heading "Very close" [level=4]:
+    - strong: Very
+    - text: ""
+  - listbox "Container for the value '**Very** close'"
+  - button "Collapse drawer" [expanded]: 3 unplaced
+  - button "Alice"
+  - button "Bob"
+  - button "Carol"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

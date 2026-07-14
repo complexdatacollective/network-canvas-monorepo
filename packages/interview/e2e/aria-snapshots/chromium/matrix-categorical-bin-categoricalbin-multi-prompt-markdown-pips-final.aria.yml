@@ -1,0 +1,14 @@
+- main:
+  - status:
+    - heading "Prompt two" [level=2]
+  - button "Category Yes, 2 items":
+    - heading "Yes" [level=4]
+    - paragraph: Alice and 1 other
+  - button "Category No, 0 items":
+    - heading "No" [level=4]
+  - button "Expand drawer" [disabled]: 0 unplaced
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

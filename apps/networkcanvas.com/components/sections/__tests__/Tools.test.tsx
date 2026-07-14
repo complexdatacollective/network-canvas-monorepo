@@ -69,7 +69,7 @@ describe('Tools', () => {
         name: app.actionName,
       });
 
-      expect(panel).toHaveClass('bg-white/55', 'backdrop-blur-md');
+      expect(panel).toHaveClass('bg-surface/55', 'backdrop-blur-md');
       expect(previewLink).toHaveAttribute('href', app.href);
       expect(previewLink).toHaveAttribute('target', '_blank');
       expect(previewLink).toHaveClass('focusable');

@@ -1,0 +1,8 @@
+- main:
+  - heading "Scoping Complete" [level=1]
+  - paragraph: You have finished the census.
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

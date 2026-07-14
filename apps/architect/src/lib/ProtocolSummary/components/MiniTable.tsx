@@ -11,7 +11,7 @@ type MiniTableProps = {
 
 const tableVariants = cva({
   base: [
-    'bg-table-row-tint my-5 break-inside-avoid overflow-hidden rounded',
+    'my-5 break-inside-avoid overflow-hidden rounded',
     '[&>thead>tr>th]:text-xs [&>thead>tr>th]:font-semibold [&>thead>tr>th]:tracking-widest [&>thead>tr>th]:break-keep [&>thead>tr>th]:uppercase',
     '[&_:is(td,th)]:px-5 [&_:is(td,th)]:py-2.5',
     '[&_:is(td,th)_:is(ul,ol)]:p-[inherit]',
