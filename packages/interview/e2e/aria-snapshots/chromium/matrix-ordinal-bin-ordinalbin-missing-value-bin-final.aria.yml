@@ -1,0 +1,18 @@
+- main:
+  - status:
+    - heading "Rate availability" [level=2]
+  - heading "N/A" [level=4]
+  - listbox "Container for the value 'N/A'":
+    - option "Frank"
+  - heading "Low" [level=4]
+  - listbox "Container for the value 'Low'"
+  - heading "Medium" [level=4]
+  - listbox "Container for the value 'Medium'"
+  - heading "High" [level=4]
+  - listbox "Container for the value 'High'"
+  - button "Expand drawer" [disabled]: 0 unplaced
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

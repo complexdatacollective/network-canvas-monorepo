@@ -292,6 +292,19 @@ export const createFormStore = (): FormStoreApi => {
           return;
         }
 
+        // Invalidation silently drops any sibling field's in-flight
+        // validation, and nothing else reschedules it — the field would stay
+        // invalid with no error until the next whole-form validation. Capture
+        // those fields so they can be revalidated against the new values
+        // below. The changed field itself is excluded: its component owns
+        // rescheduling its (debounced) validate-on-change.
+        const supersededFields: string[] = [];
+        get().fields.forEach((field, name) => {
+          if (name !== fieldName && field.meta.isValidating) {
+            supersededFields.push(name);
+          }
+        });
+
         invalidateAllValidations();
         set((state) => {
           state.isValidating = false;
@@ -303,6 +316,10 @@ export const createFormStore = (): FormStoreApi => {
           state.fields.get(fieldName)!.meta.isDirty = true;
           state.fields.get(fieldName)!.meta.isTouched = true;
           state.isDirty = true;
+        });
+
+        supersededFields.forEach((name) => {
+          void get().validateField(name);
         });
       },
 

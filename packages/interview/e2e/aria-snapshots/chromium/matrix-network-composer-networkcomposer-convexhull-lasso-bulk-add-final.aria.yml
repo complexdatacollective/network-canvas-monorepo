@@ -1,0 +1,23 @@
+- main:
+  - toolbar "Network composer tools":
+    - button "Select" [pressed]
+    - button "Add node"
+    - button "Groups"
+    - separator
+    - button "Automatic layout"
+    - separator
+    - button "Undo"
+    - button "Redo" [disabled]
+  - button "Add all to School"
+  - button "Add all to Work"
+  - button "Add all to Family"
+  - application:
+    - img
+    - button "Ida"
+    - button "Jack"
+    - button "Kim"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

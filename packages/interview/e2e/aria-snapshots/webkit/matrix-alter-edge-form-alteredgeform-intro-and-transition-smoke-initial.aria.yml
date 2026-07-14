@@ -1,0 +1,11 @@
+- main:
+  - heading "Relationship details" [level=1]
+  - paragraph:
+    - text: This section asks about
+    - strong: each relationship
+    - text: you noted.
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

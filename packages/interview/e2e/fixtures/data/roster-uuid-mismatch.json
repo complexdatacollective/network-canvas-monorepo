@@ -1,0 +1,19 @@
+{
+  "nodes": [
+    {
+      "attributes": {
+        "mismatched-uuid-name": "Alice Smith",
+        "mismatched-uuid-age": 30
+      }
+    },
+    {
+      "attributes": {
+        "mismatched-uuid-name": "Bob Jones",
+        "mismatched-uuid-age": 42
+      }
+    },
+    {
+      "attributes": {}
+    }
+  ]
+}

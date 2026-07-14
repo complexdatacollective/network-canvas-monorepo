@@ -1,0 +1,9 @@
+- main:
+    - heading "Ordered stage" [level=1]
+    - paragraph: Alpha block
+    - paragraph: Omega block
+    - navigation:
+        - button "Previous Step" [disabled]
+        - progressbar "Progress indicator": x
+        - button "Next Step"
+    - region "Interview notifications"

@@ -1,0 +1,8 @@
+- main:
+  - heading "Relationship details" [level=1]
+  - paragraph: Answer the following.
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

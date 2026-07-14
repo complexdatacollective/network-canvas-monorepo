@@ -1,0 +1,27 @@
+- main:
+  - application "Sociogram Canvas":
+    - img
+    - button "Fa"
+    - button "Fb"
+    - button "Fc"
+    - button "Wa"
+    - button "Wb"
+    - button "Mx"
+    - button "Im"
+    - button "Un"
+  - button "Drag to reposition"
+  - toolbar "Presets":
+    - button "Previous preset" [disabled]
+    - button "bleakly custody" [expanded]
+    - button "Next preset" [disabled]
+  - status
+  - dialog:
+    - region:
+      - heading "Groups" [level=3]:
+        - button "Groups" [expanded]
+      - region "Groups": Family Work imported
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

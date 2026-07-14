@@ -1,0 +1,8 @@
+- main:
+  - heading "Rate Your Relationships" [level=1]
+  - paragraph: You will be shown pairs of people from your network. For each pair, indicate the strength of their relationship.
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

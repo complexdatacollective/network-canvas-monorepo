@@ -1,0 +1,16 @@
+- main:
+  - application "Sociogram Canvas":
+    - button "Alice"
+  - button "Drag to reposition"
+  - toolbar "Presets":
+    - button "Previous preset" [disabled]
+    - button "bleakly custody" [expanded]
+    - button "Next preset" [disabled]
+  - status
+  - dialog:
+    - region
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

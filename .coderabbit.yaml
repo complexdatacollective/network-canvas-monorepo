@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit configuration.
+#
+# Exclude generated snapshot baselines from review. These are machine-generated
+# artifacts — accessibility (aria) trees and pixel PNGs produced by the
+# interview e2e configuration matrix — not hand-written code. Regenerating them
+# with `--update-snapshots` is the intended workflow, and a single suite change
+# can touch hundreds of them, which pushes PRs past CodeRabbit's 150-file review
+# limit and drowns out the reviewable harness/source changes.
+reviews:
+  path_filters:
+    - '!packages/interview/e2e/aria-snapshots/**'
+    - '!packages/interview/e2e/visual-snapshots/**'

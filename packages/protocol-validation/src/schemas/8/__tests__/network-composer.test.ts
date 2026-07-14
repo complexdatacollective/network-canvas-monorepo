@@ -80,7 +80,7 @@ describe('networkComposerStage schema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('accepts optional forms, background and behaviours', () => {
+  it('accepts optional forms, background (including image) and behaviours', () => {
     const result = networkComposerStage.safeParse({
       ...validStage,
       nodeForm: {
@@ -103,7 +103,11 @@ describe('networkComposerStage schema', () => {
           },
         },
       ],
-      background: { concentricCircles: 4, skewedTowardCenter: true },
+      background: {
+        image: 'assets/background.png',
+        concentricCircles: 4,
+        skewedTowardCenter: true,
+      },
       behaviours: { automaticLayout: false },
     });
     expect(result.success).toBe(true);

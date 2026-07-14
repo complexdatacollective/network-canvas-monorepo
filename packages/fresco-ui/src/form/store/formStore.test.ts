@@ -700,6 +700,145 @@ describe('FormStore', () => {
       ).resolves.not.toThrow();
     });
 
+    describe('superseded by a sibling value change', () => {
+      // Drop the surrounding suite's 'email' field, then register fieldA as
+      // intrinsically valid (no validation) so form validity reflects fieldB
+      // alone.
+      const registerFields = () => {
+        store.getState().reset();
+        store.getState().registerField({
+          name: 'fieldA',
+          initialValue: '',
+        });
+        store.getState().registerField({
+          name: 'fieldB',
+          initialValue: 'value-b',
+          validation: z.string().check(z.minLength(1, 'Field B is required')),
+        });
+      };
+
+      // The rescheduled validation is fire-and-forget, so settle it via a
+      // macrotask, which runs after all pending microtask continuations.
+      const flushPendingValidations = () =>
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, 0);
+        });
+
+      it('revalidates a field whose in-flight validation was superseded by a sibling value change', async () => {
+        registerFields();
+        const supersededValidation = createDeferredValidation();
+        const rescheduledValidation = createDeferredValidation();
+        mockValidateFieldValue
+          .mockReturnValueOnce(supersededValidation.promise)
+          .mockReturnValueOnce(rescheduledValidation.promise);
+
+        const supersededRequest = store.getState().validateField('fieldB');
+        store.getState().setFieldValue('fieldA', 'typed');
+
+        // Rescheduled immediately, against the updated form values
+        expect(mockValidateFieldValue).toHaveBeenCalledTimes(2);
+        expect(mockValidateFieldValue).toHaveBeenLastCalledWith(
+          'value-b',
+          expect.any(Object),
+          expect.objectContaining({ fieldA: 'typed', fieldB: 'value-b' }),
+        );
+
+        supersededValidation.resolve({ success: true, data: 'value-b' });
+        await supersededRequest;
+        rescheduledValidation.resolve({ success: true, data: 'value-b' });
+        await flushPendingValidations();
+
+        const fieldB = store.getState().getFieldState('fieldB');
+        expect(fieldB?.meta.isValidating).toBe(false);
+        expect(fieldB?.meta.isValid).toBe(true);
+        expect(store.getState().getFieldErrors('fieldB')).toBeNull();
+        expect(store.getState().isValid).toBe(true);
+      });
+
+      it('drops the superseded result even when it resolves after the rescheduled validation', async () => {
+        registerFields();
+        const supersededValidation = createDeferredValidation();
+        const rescheduledValidation = createDeferredValidation();
+        mockValidateFieldValue
+          .mockReturnValueOnce(supersededValidation.promise)
+          .mockReturnValueOnce(rescheduledValidation.promise);
+
+        const supersededRequest = store.getState().validateField('fieldB');
+        store.getState().setFieldValue('fieldA', 'typed');
+
+        rescheduledValidation.resolve({ success: true, data: 'value-b' });
+        await flushPendingValidations();
+        supersededValidation.resolve({
+          success: false,
+          error: new z.core.$ZodError([
+            { code: 'custom', message: 'Stale error', path: [] },
+          ]),
+        });
+        await supersededRequest;
+
+        expect(store.getState().getFieldErrors('fieldB')).toBeNull();
+        expect(store.getState().getFieldState('fieldB')?.meta.isValid).toBe(
+          true,
+        );
+        expect(store.getState().isValid).toBe(true);
+      });
+
+      it('keeps a superseded field invalid when revalidation against the new values fails', async () => {
+        registerFields();
+        const supersededValidation = createDeferredValidation();
+        const rescheduledValidation = createDeferredValidation();
+        mockValidateFieldValue
+          .mockReturnValueOnce(supersededValidation.promise)
+          .mockReturnValueOnce(rescheduledValidation.promise);
+
+        const supersededRequest = store.getState().validateField('fieldB');
+        store.getState().setFieldValue('fieldA', 'typed');
+
+        // A stale success from the pre-change snapshot must not win either
+        supersededValidation.resolve({ success: true, data: 'value-b' });
+        await supersededRequest;
+        rescheduledValidation.resolve({
+          success: false,
+          error: new z.core.$ZodError([
+            { code: 'custom', message: 'Field B is required', path: [] },
+          ]),
+        });
+        await flushPendingValidations();
+
+        expect(store.getState().getFieldErrors('fieldB')).toEqual([
+          'Field B is required',
+        ]);
+        expect(store.getState().getFieldState('fieldB')?.meta.isValid).toBe(
+          false,
+        );
+        expect(store.getState().isValid).toBe(false);
+      });
+
+      it('does not reschedule validation for the field whose own value changed', async () => {
+        registerFields();
+        const validation = createDeferredValidation();
+        mockValidateFieldValue.mockReturnValueOnce(validation.promise);
+
+        const request = store.getState().validateField('fieldB');
+        store.getState().setFieldValue('fieldB', 'updated');
+
+        expect(mockValidateFieldValue).toHaveBeenCalledTimes(1);
+        expect(
+          store.getState().getFieldState('fieldB')?.meta.isValidating,
+        ).toBe(false);
+
+        validation.resolve({ success: true, data: 'value-b' });
+        await request;
+
+        // The stale result is dropped; the field's component owns the
+        // debounced revalidation of its own value.
+        expect(store.getState().getFieldState('fieldB')?.meta.isValid).toBe(
+          false,
+        );
+        expect(store.getState().getFieldErrors('fieldB')).toBeNull();
+      });
+    });
+
     it('should pass correct parameters to validateFieldValue', async () => {
       mockValidateFieldValue.mockResolvedValue({
         success: true,

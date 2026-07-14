@@ -1,0 +1,14 @@
+- main:
+  - button "Stubbed map (click to select test feature)"
+  - button "Zoom In"
+  - button "Zoom Out"
+  - button "Recenter Map"
+  - status:
+    - heading "Where does this person currently live?" [level=4]
+  - button "Node 1"
+  - button "Outside Selectable Areas"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

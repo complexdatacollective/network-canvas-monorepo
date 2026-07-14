@@ -2,6 +2,7 @@ import { invariant } from 'es-toolkit';
 
 import type {
   ComponentType,
+  Item,
   Stage,
   StageType,
   VariableType,
@@ -41,6 +42,7 @@ import type {
   DyadCensusPromptEntry,
   EdgeEntry,
   EdgeTypeEntry,
+  FilterInput,
   FormFieldInput,
   GeospatialPromptEntry,
   GetSessionInput,
@@ -53,6 +55,7 @@ import type {
   OneToManyDyadCensusPromptEntry,
   OrdinalBinPromptEntry,
   PresetEntry,
+  SkipLogicInput,
   SociogramPromptEntry,
   StageEntry,
   TieStrengthCensusPromptEntry,
@@ -84,18 +87,27 @@ type AddFormFieldOpts = {
   component: ComponentType;
   variable?: string;
   prompt?: string;
+  hint?: string;
+  showValidationHints?: boolean;
+  parameters?: Record<string, unknown>;
   validation?: Record<string, unknown>;
+};
+
+type AddPanelOpts = {
+  title?: string;
+  dataSource?: string;
+  filter?: FilterInput;
 };
 
 type NameGeneratorHandle = StageHandleBase & {
   addFormField: (opts: AddFormFieldOpts) => void;
   addPrompt: (opts?: AddPromptInput) => void;
-  addPanel: (opts?: { title?: string; dataSource?: string }) => void;
+  addPanel: (opts?: AddPanelOpts) => void;
 };
 
 type NameGeneratorQuickAddHandle = StageHandleBase & {
   addPrompt: (opts?: AddPromptInput) => void;
-  addPanel: (opts?: { title?: string; dataSource?: string }) => void;
+  addPanel: (opts?: AddPanelOpts) => void;
 };
 
 type NameGeneratorRosterHandle = StageHandleBase & {
@@ -209,6 +221,7 @@ export class SyntheticInterview {
   private nodeTypeCounter = 0;
   private edgeTypeCounter = 0;
   private ordinalPromptCounter = 0;
+  private experiments: { encryptedVariables?: boolean } | null = null;
 
   constructor(seed = 42) {
     this.seed = seed;
@@ -303,6 +316,11 @@ export class SyntheticInterview {
           `Variable "${name}" already exists on node type "${nodeTypeId}" with type "${existing.type}"; cannot redeclare as "${type}".`,
         );
       }
+      // Redeclaring with encrypted:true must not be silently dropped — the
+      // auto-seeded "name" variable is the most common encryption target.
+      if (opts?.encrypted) {
+        existing.encrypted = true;
+      }
       return { id: existing.id };
     }
 
@@ -316,6 +334,8 @@ export class SyntheticInterview {
       component: opts?.component,
       options,
       validation: opts?.validation,
+      parameters: opts?.parameters,
+      encrypted: opts?.encrypted,
     };
 
     nodeType.variables.set(varId, entry);
@@ -354,6 +374,7 @@ export class SyntheticInterview {
       component: opts?.component,
       options,
       validation: opts?.validation,
+      parameters: opts?.parameters,
     };
 
     edgeType.variables.set(varId, entry);
@@ -382,6 +403,7 @@ export class SyntheticInterview {
       component: opts?.component,
       options,
       validation: opts?.validation,
+      parameters: opts?.parameters,
     };
 
     this.egoVariables.set(varId, entry);
@@ -433,6 +455,9 @@ export class SyntheticInterview {
       id: stageId,
       type,
       label: opts?.label ?? type,
+      interviewScript: opts?.interviewScript,
+      skipLogic: opts?.skipLogic,
+      filter: opts?.filter,
       subject,
       prompts: [],
       presets: [],
@@ -485,7 +510,17 @@ export class SyntheticInterview {
 
     // NameGeneratorQuickAdd
     if (type === 'NameGeneratorQuickAdd') {
-      entry.quickAdd = opts?.quickAdd ?? 'name';
+      if (opts?.quickAdd) {
+        entry.quickAdd = opts.quickAdd;
+      } else {
+        // The schema requires a variable ID reference, not a display name —
+        // dedupe-resolve to the "name" text variable addNodeType seeds.
+        const ref = this.addVariableToNodeType(subject!.type, {
+          type: 'text',
+          name: 'name',
+        });
+        entry.quickAdd = ref.id;
+      }
     }
 
     // NameGeneratorRoster
@@ -520,6 +555,9 @@ export class SyntheticInterview {
           opts?.explanationText?.body ??
           'Please enter a passphrase to protect your data.',
       };
+      if (opts?.validation) {
+        entry.validation = opts.validation;
+      }
     }
 
     // FamilyPedigree
@@ -653,7 +691,7 @@ export class SyntheticInterview {
       } else {
         const ref = this.addVariableToNodeType(nodeTypeId, {
           type: 'layout',
-          name: 'Composer Layout',
+          name: 'composerLayout',
         });
         entry.layoutVariable = ref.id;
       }
@@ -726,6 +764,9 @@ export class SyntheticInterview {
     title?: string;
     text?: string;
     label?: string;
+    interviewScript?: string;
+    skipLogic?: SkipLogicInput;
+    items?: Item[];
   }): InformationHandle {
     const stageId = this.nextId('stage');
     const title = opts?.title ?? 'Information';
@@ -735,8 +776,12 @@ export class SyntheticInterview {
       id: stageId,
       type: 'Information',
       label: opts?.label ?? title,
+      interviewScript: opts?.interviewScript,
+      skipLogic: opts?.skipLogic,
       title,
-      items: [{ id: this.nextId('item'), type: 'text', content: text }],
+      items: opts?.items ?? [
+        { id: this.nextId('item'), type: 'text', content: text },
+      ],
       prompts: [],
       presets: [],
       panels: [],
@@ -766,6 +811,9 @@ export class SyntheticInterview {
                 component: opts.component,
                 variable: opts.variable,
                 prompt: opts.prompt,
+                hint: opts.hint,
+                showValidationHints: opts.showValidationHints,
+                parameters: opts.parameters,
                 validation: opts.validation,
               },
               entry.subject!.type,
@@ -776,11 +824,12 @@ export class SyntheticInterview {
           addPrompt: (opts?: AddPromptInput) => {
             entry.prompts.push(this.resolvePrompt(opts, entry));
           },
-          addPanel: (opts?: { title?: string; dataSource?: string }) => {
+          addPanel: (opts?: AddPanelOpts) => {
             entry.panels.push({
               id: this.nextId('panel'),
               title: opts?.title ?? 'Panel',
               dataSource: opts?.dataSource ?? 'existing',
+              ...(opts?.filter ? { filter: opts.filter } : {}),
             });
           },
         } as StageHandleMap[T];
@@ -791,11 +840,12 @@ export class SyntheticInterview {
           addPrompt: (opts?: AddPromptInput) => {
             entry.prompts.push(this.resolvePrompt(opts, entry));
           },
-          addPanel: (opts?: { title?: string; dataSource?: string }) => {
+          addPanel: (opts?: AddPanelOpts) => {
             entry.panels.push({
               id: this.nextId('panel'),
               title: opts?.title ?? 'Panel',
               dataSource: opts?.dataSource ?? 'existing',
+              ...(opts?.filter ? { filter: opts.filter } : {}),
             });
           },
         } as StageHandleMap[T];
@@ -890,6 +940,9 @@ export class SyntheticInterview {
                 component: opts.component,
                 variable: opts.variable,
                 prompt: opts.prompt,
+                hint: opts.hint,
+                showValidationHints: opts.showValidationHints,
+                parameters: opts.parameters,
                 validation: opts.validation,
               },
               entry.subject!.type,
@@ -908,6 +961,9 @@ export class SyntheticInterview {
                 component: opts.component,
                 variable: opts.variable,
                 prompt: opts.prompt,
+                hint: opts.hint,
+                showValidationHints: opts.showValidationHints,
+                parameters: opts.parameters,
                 validation: opts.validation,
               },
               entry.subject!.type,
@@ -1000,11 +1056,11 @@ export class SyntheticInterview {
 
   private defaultVariableName(type: VariableType): string {
     const names: Record<string, string> = {
-      text: 'Text Value',
-      number: 'Number Value',
-      scalar: 'Scale Value',
-      boolean: 'Boolean Value',
-      ordinal: 'Likert Value',
+      text: 'textValue',
+      number: 'numberValue',
+      scalar: 'scaleValue',
+      boolean: 'booleanValue',
+      ordinal: 'likertValue',
       categorical: 'Category',
       datetime: 'Date',
       layout: 'Layout',
@@ -1021,6 +1077,7 @@ export class SyntheticInterview {
         component: input.component,
         name: input.prompt,
         validation: input.validation,
+        parameters: input.parameters,
       });
       variableId = ref.id;
     }
@@ -1029,10 +1086,15 @@ export class SyntheticInterview {
     const variable = nodeType?.variables.get(variableId);
     const prompt = input.prompt ?? variable?.name ?? 'Field';
 
+    // The strict form schemas reject a field-level `component`; the runtime
+    // resolves the control from the codebook variable's own component.
     return {
       variable: variableId,
-      component: input.component,
       prompt,
+      ...(input.hint !== undefined ? { hint: input.hint } : {}),
+      ...(input.showValidationHints !== undefined
+        ? { showValidationHints: input.showValidationHints }
+        : {}),
     };
   }
 
@@ -1043,6 +1105,7 @@ export class SyntheticInterview {
         component: input.component,
         name: input.prompt,
         validation: input.validation,
+        parameters: input.parameters,
       });
       variableId = ref.id;
     }
@@ -1051,10 +1114,14 @@ export class SyntheticInterview {
     const variable = edgeType?.variables.get(variableId);
     const prompt = input.prompt ?? variable?.name ?? 'Field';
 
+    // See resolveFormField: field-level `component` is schema-rejected.
     return {
       variable: variableId,
-      component: input.component,
       prompt,
+      ...(input.hint !== undefined ? { hint: input.hint } : {}),
+      ...(input.showValidationHints !== undefined
+        ? { showValidationHints: input.showValidationHints }
+        : {}),
     };
   }
 
@@ -1078,6 +1145,10 @@ export class SyntheticInterview {
       component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),
       label: input.label ?? variable?.name ?? 'Field',
+      ...(input.hint !== undefined ? { hint: input.hint } : {}),
+      ...(input.showValidationHints !== undefined
+        ? { showValidationHints: input.showValidationHints }
+        : {}),
     };
   }
 
@@ -1101,6 +1172,10 @@ export class SyntheticInterview {
       component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),
       label: input.label ?? variable?.name ?? 'Field',
+      ...(input.hint !== undefined ? { hint: input.hint } : {}),
+      ...(input.showValidationHints !== undefined
+        ? { showValidationHints: input.showValidationHints }
+        : {}),
     };
   }
 
@@ -1111,12 +1186,17 @@ export class SyntheticInterview {
         component: input.component,
         name: input.prompt,
         validation: input.validation,
+        parameters: input.parameters,
       });
       variableId = ref.id;
     }
     return {
       variable: variableId,
       prompt: input.prompt ?? 'Enter a value',
+      ...(input.hint !== undefined ? { hint: input.hint } : {}),
+      ...(input.showValidationHints !== undefined
+        ? { showValidationHints: input.showValidationHints }
+        : {}),
     };
   }
 
@@ -1127,6 +1207,9 @@ export class SyntheticInterview {
     return {
       id: this.nextId('prompt'),
       text: opts?.text ?? this.valueGen.generatePromptText(entry.type),
+      ...(opts?.additionalAttributes
+        ? { additionalAttributes: opts.additionalAttributes }
+        : {}),
     };
   }
 
@@ -1144,7 +1227,7 @@ export class SyntheticInterview {
     } else {
       const ref = this.addVariableToNodeType(nodeTypeId, {
         type: 'layout',
-        name: 'Sociogram Layout',
+        name: 'sociogramLayout',
       });
       layoutVariable = ref.id;
     }
@@ -1194,6 +1277,7 @@ export class SyntheticInterview {
       id: promptId,
       text: opts?.text ?? this.valueGen.generatePromptText('Sociogram'),
       layout: { layoutVariable },
+      ...(opts?.sortOrder ? { sortOrder: opts.sortOrder } : {}),
       edges,
       highlight,
     };
@@ -1213,7 +1297,7 @@ export class SyntheticInterview {
     } else {
       const ref = this.addVariableToNodeType(nodeTypeId, {
         type: 'layout',
-        name: 'Narrative Layout',
+        name: 'narrativeLayout',
       });
       layoutVariable = ref.id;
     }
@@ -1553,7 +1637,7 @@ export class SyntheticInterview {
         importedAt: now,
         isPreview: false,
         isPending: false,
-        experiments: null,
+        experiments: this.experiments,
       },
     };
   }
@@ -1572,6 +1656,8 @@ export class SyntheticInterview {
         if (varEntry.component) variable.component = varEntry.component;
         if (varEntry.options) variable.options = varEntry.options;
         if (varEntry.validation) variable.validation = varEntry.validation;
+        if (varEntry.parameters) variable.parameters = varEntry.parameters;
+        if (varEntry.encrypted) variable.encrypted = varEntry.encrypted;
         variables[varId] = variable;
       }
       node[id] = {
@@ -1600,6 +1686,7 @@ export class SyntheticInterview {
           if (varEntry.component) variable.component = varEntry.component;
           if (varEntry.options) variable.options = varEntry.options;
           if (varEntry.validation) variable.validation = varEntry.validation;
+          if (varEntry.parameters) variable.parameters = varEntry.parameters;
           variables[varId] = variable;
         }
         edgeEntry.variables = variables;
@@ -1619,6 +1706,7 @@ export class SyntheticInterview {
         if (varEntry.component) variable.component = varEntry.component;
         if (varEntry.options) variable.options = varEntry.options;
         if (varEntry.validation) variable.validation = varEntry.validation;
+        if (varEntry.parameters) variable.parameters = varEntry.parameters;
         variables[varId] = variable;
       }
       ego = { variables };
@@ -1634,12 +1722,33 @@ export class SyntheticInterview {
       label: stage.label,
     };
 
-    if (stage.subject) {
+    if (stage.interviewScript !== undefined) {
+      config.interviewScript = stage.interviewScript;
+    }
+
+    if (stage.skipLogic) {
+      config.skipLogic = stage.skipLogic;
+    }
+
+    if (stage.filter) {
+      config.filter = stage.filter;
+    }
+
+    // FamilyPedigree references its entity types via nodeConfig/edgeConfig;
+    // its strict schema rejects a stage-level subject.
+    if (stage.subject && stage.type !== 'FamilyPedigree') {
       config.subject = stage.subject;
     }
 
     if (stage.form) {
-      config.form = stage.form;
+      // TitlelessFormSchema: AlterForm/AlterEdgeForm/EgoForm forms must not
+      // carry a title; every other form stage keeps it.
+      config.form =
+        stage.type === 'AlterForm' ||
+        stage.type === 'AlterEdgeForm' ||
+        stage.type === 'EgoForm'
+          ? { fields: stage.form.fields }
+          : stage.form;
     }
 
     if (stage.prompts.length > 0) {
@@ -1696,6 +1805,9 @@ export class SyntheticInterview {
     // Anonymisation
     if (stage.explanationText) {
       config.explanationText = stage.explanationText;
+    }
+    if (stage.validation) {
+      config.validation = stage.validation;
     }
 
     // FamilyPedigree
@@ -1847,6 +1959,13 @@ export class SyntheticInterview {
    */
   addAsset(asset: Record<string, unknown>): void {
     this.assets.push(asset);
+  }
+
+  /**
+   * Set protocol-level experiments, emitted by getInterviewPayload().
+   */
+  setExperiments(experiments: { encryptedVariables?: boolean }): void {
+    this.experiments = experiments;
   }
 
   // --- Accessors for internal state (useful for tests) ---

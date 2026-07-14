@@ -1,0 +1,15 @@
+- main:
+  - status:
+    - heading "Who do you know?" [level=2]
+  - button "Broken source":
+    - heading "Broken source" [level=3]
+  - heading "Something went wrong" [level=4]
+  - paragraph: External data could not be loaded.
+  - listbox "Added Nodes"
+  - button "Add a person":
+    - img "Add a person"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

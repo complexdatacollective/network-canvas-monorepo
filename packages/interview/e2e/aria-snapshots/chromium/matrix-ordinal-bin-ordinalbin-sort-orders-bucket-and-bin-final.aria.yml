@@ -1,0 +1,22 @@
+- main:
+  - status:
+    - heading "Sort bins" [level=2]
+  - heading "Not close" [level=4]
+  - listbox "Container for the value 'Not close'"
+  - heading "Close" [level=4]
+  - listbox "Container for the value 'Close'":
+    - option "Ann"
+    - option "Mia"
+    - option "Zed"
+  - heading "Very close" [level=4]
+  - listbox "Container for the value 'Very close'"
+  - button "Collapse drawer" [expanded]: 4 unplaced
+  - button "Dana"
+  - button "Alice"
+  - button "Carol"
+  - button "Bob"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

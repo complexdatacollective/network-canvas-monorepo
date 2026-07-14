@@ -1,0 +1,11 @@
+- main:
+    - status:
+        - heading "Who do you know?" [level=2]
+    - region "Interview notifications"
+    - dialog "Add a person":
+        - heading "Add a person" [level=2]
+        - button "Close"
+        - text: Their name Required
+        - textbox "Their name" [invalid]: Bob
+        - paragraph: This value is used elsewhere. It must be unique.
+        - button "Finished"

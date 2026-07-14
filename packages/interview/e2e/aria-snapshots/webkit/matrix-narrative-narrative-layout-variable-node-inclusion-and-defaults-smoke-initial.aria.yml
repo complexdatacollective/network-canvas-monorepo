@@ -1,0 +1,24 @@
+- main:
+  - application "Sociogram Canvas":
+    - button "Alice"
+    - button "Bob"
+    - button "Cara"
+  - button "Drag to reposition"
+  - toolbar "Presets":
+    - button "Previous preset" [disabled]
+    - button
+    - button "Social View" [expanded]
+    - button
+    - button "Next preset" [disabled]
+  - status
+  - button
+  - button
+  - dialog:
+    - region
+  - button
+  - button
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

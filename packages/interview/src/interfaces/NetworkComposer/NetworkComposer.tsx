@@ -18,6 +18,7 @@ import { useAutoLayout } from '~/canvas/useAutoLayout';
 import { createCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
 import { useCurrentStep } from '~/contexts/CurrentStepContext';
+import { useAssetUrl } from '~/hooks/useAssetUrl';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import type { Subject } from '~/selectors/forms';
@@ -66,6 +67,12 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const { currentStep } = useCurrentStep();
 
   const layoutVariable = stage.layoutVariable;
+
+  // Background Configuration
+  const bgImageId = get(stage, 'background.image', '') || undefined;
+  const { url: backgroundImage } = useAssetUrl(bgImageId);
+  const concentricCircles = get(stage, 'background.concentricCircles');
+  const skewedTowardCenter = get(stage, 'background.skewedTowardCenter');
 
   // Automatic layout is an interview-time choice, not a fixed stage config. The
   // schema's automaticLayout boolean only seeds the initial value; the
@@ -476,10 +483,13 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     return [];
   })();
 
-  const concentricCircles = get(stage, 'background.concentricCircles');
-  const skewedTowardCenter = get(stage, 'background.skewedTowardCenter');
-
-  const background = (
+  const background = backgroundImage ? (
+    <img
+      src={backgroundImage}
+      className="size-full object-cover"
+      alt="Background"
+    />
+  ) : (
     <ConcentricCircles n={concentricCircles} skewed={skewedTowardCenter} />
   );
 

@@ -1,0 +1,8 @@
+- main:
+  - region "Interview notifications"
+  - dialog "Are you sure you want to finish the interview?":
+    - heading "Are you sure you want to finish the interview?" [level=2]
+    - button "Close"
+    - paragraph: Your responses cannot be changed after you finish the interview.
+    - button "Cancel"
+    - button "Finish Interview"

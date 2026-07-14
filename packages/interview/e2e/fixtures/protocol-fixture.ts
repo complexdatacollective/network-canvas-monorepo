@@ -17,6 +17,14 @@ import type {
   ResolvedAsset,
   SessionPayload,
 } from '../../src/contract/types.js';
+import type { SyntheticPayloadResult } from '../helpers/synthetic-payload.js';
+
+// Mirrors the host's testHooks SessionSeed (host/src is outside this
+// tsconfig, so the shape is re-declared here like window-test.d.ts does).
+export type SessionSeed = {
+  network?: SessionPayload['network'];
+  stageMetadata?: SessionPayload['stageMetadata'];
+};
 
 type AssetEntry = {
   name: string;
@@ -210,16 +218,57 @@ export class ProtocolFixture {
     return assets;
   }
 
+  /**
+   * Install a SyntheticInterview-built payload (synthetic-payload adapter
+   * output). Mirrors install(): copies asset files under
+   * e2e/.assets/<protocolId>/, registers the protocol and asset URLs via
+   * window.__test.
+   */
+  async installPayload(
+    result: SyntheticPayloadResult,
+  ): Promise<{ protocolId: string }> {
+    const protocolId = result.protocol.id;
+    const protocolAssetDir = path.join(this.assetDir, protocolId);
+    await fs.mkdir(protocolAssetDir, { recursive: true });
+
+    for (const file of result.assetFiles) {
+      const destPath = path.join(protocolAssetDir, file.source);
+      await fs.mkdir(path.dirname(destPath), { recursive: true });
+      await fs.copyFile(file.localPath, destPath);
+    }
+
+    await this.page.evaluate(
+      (p: ProtocolPayload) => window.__test.installProtocol(p),
+      result.protocol,
+    );
+
+    for (const file of result.assetFiles) {
+      const resolvedUrl = `${this.assetServerUrl}/${protocolId}/${file.source}`;
+      await this.page.evaluate(
+        ([id, url]: [string, string]) => window.__test.setAssetUrl(id, url),
+        [file.assetId, resolvedUrl] as [string, string],
+      );
+    }
+
+    this.installedProtocolIds.push(protocolId);
+    return { protocolId };
+  }
+
   async createInterview(
     protocolId: string,
     participantIdentifier?: string,
+    session?: SessionSeed,
   ): Promise<string> {
     const participantId =
       participantIdentifier ?? `e2e-participant-${Date.now()}`;
     return this.page.evaluate(
-      ([pid, partId]: [string, string]) =>
-        window.__test.createInterview(pid, partId),
-      [protocolId, participantId] as [string, string],
+      ([pid, partId, seed]: [string, string, SessionSeed | undefined]) =>
+        window.__test.createInterview(pid, partId, seed),
+      [protocolId, participantId, session] as [
+        string,
+        string,
+        SessionSeed | undefined,
+      ],
     );
   }
 

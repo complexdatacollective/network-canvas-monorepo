@@ -1,0 +1,8 @@
+- main:
+  - heading "Census Complete" [level=1]
+  - paragraph: All done.
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

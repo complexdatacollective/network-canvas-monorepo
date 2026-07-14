@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "tract_id": "tract-west" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-180, -10],
+            [-0.001, -10],
+            [-0.001, 10],
+            [-180, 10],
+            [-180, -10]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "tract_id": "tract-east" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [0.001, -10],
+            [180, -10],
+            [180, 10],
+            [0.001, 10],
+            [0.001, -10]
+          ]
+        ]
+      }
+    }
+  ]
+}
