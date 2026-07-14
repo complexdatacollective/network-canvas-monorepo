@@ -1,7 +1,11 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalDependencies": ["pnpm-lock.yaml", "pnpm-workspace.yaml"],
+  "globalDependencies": [
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "packages/protocols/e2e/all-interfaces/**"
+  ],
   "globalPassThroughEnv": [
     "NC_PREVIEW_HOST",
     "NEXT_PUBLIC_ALGOLIA_APPLICATION_ID",

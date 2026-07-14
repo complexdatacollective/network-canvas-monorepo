@@ -66,7 +66,9 @@ const NodeType = (props: NodeTypeProps) => {
           promptBeforeChange="You attempted to change the node type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
           component={EntitySelectField}
           onChange={handleResetStage}
-          parse={(value) => ({ type: value, entity: 'node' })}
+          parse={(value) =>
+            value == null ? value : { type: value, entity: 'node' }
+          }
           format={(value) => get(value, 'type')}
           validation={{ required: true }}
         />

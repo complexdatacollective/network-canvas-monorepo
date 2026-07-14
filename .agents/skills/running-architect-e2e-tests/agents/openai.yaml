@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Running Architect e2e Tests'
+  short_description: 'Run and update the Architect Playwright e2e suite'
+  default_prompt: 'Use $running-architect-e2e-tests to run the Architect e2e suite and act on its results.'

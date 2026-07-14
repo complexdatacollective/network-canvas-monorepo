@@ -29,7 +29,7 @@ type PromptFieldsProps = {
   form: string;
   changeForm: (form: string, field: string, value: unknown) => void;
   edgesForSubject?: SelectOption[];
-  handleCreateEdge: (option: string) => string;
+  handleCreateEdge: (option: string) => Promise<string>;
   handleChangeCreateEdge: (value: string) => void;
   createEdge: string;
   edgeVariable?: string | null;
@@ -158,8 +158,14 @@ const PromptFields = ({
               componentProps={{
                 label: 'Select an edge type',
                 options: edgesForSubject,
-                onCreateOption: (option: string) => {
-                  handleChangeCreateEdge(handleCreateEdge(option));
+                onCreateOption: async (option: string) => {
+                  // handleCreateEdge is async (dispatches createEdgeAsync and
+                  // resolves to the new edge type's id). It must be awaited:
+                  // writing the pending Promise into the createEdge field
+                  // corrupts codebook.edge with an "[object Promise]" key and
+                  // triggers the "Misconfigured Protocol" recovery dialog.
+                  const type = await handleCreateEdge(option);
+                  handleChangeCreateEdge(type);
                 },
                 onChange: (_e: unknown, value: string) =>
                   handleChangeCreateEdge(value),
