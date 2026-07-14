@@ -1,7 +1,14 @@
-import { localeCookie, type Locale } from './locales';
+import { localeCookie, locales, type Locale } from './locales';
 
 export function getLocalizedPathname(locale: Locale, pathname: string) {
-  const unlocalizedPath = pathname.replace(/^\/+|\/+$/g, '');
+  const segments = pathname.split('/').filter(Boolean);
+  const unlocalizedSegments = locales.some(
+    (supportedLocale) =>
+      supportedLocale.toLowerCase() === segments[0]?.toLowerCase(),
+  )
+    ? segments.slice(1)
+    : segments;
+  const unlocalizedPath = unlocalizedSegments.join('/');
 
   return unlocalizedPath ? `/${locale}/${unlocalizedPath}/` : `/${locale}/`;
 }

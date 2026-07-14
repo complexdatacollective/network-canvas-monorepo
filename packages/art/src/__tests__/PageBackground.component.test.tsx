@@ -456,6 +456,11 @@ describe('PageBackground', () => {
     };
     expect(scrolledProps.convergence.x).toBeCloseTo(0.625);
     expect(scrolledProps.convergence.y).toBeCloseTo(0.1667);
+    expect(
+      animateMock.mock.calls.filter(
+        ([start, end]) => typeof start === 'object' && end === 0,
+      ),
+    ).toHaveLength(1);
 
     unmount();
     expect(observer?.disconnect).toHaveBeenCalledOnce();
