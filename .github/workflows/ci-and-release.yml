@@ -696,12 +696,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      # Cap matrix parallelism on the GitHub runner. The config default ('50%')
-      # both under-uses the box for the fully-parallel matrix projects and lets
-      # the crypto-heavy Anonymisation scenarios (PBKDF2 at write time) contend
-      # under high worker counts, which surfaces as spurious timeout flakes. 4 is
-      # the measured sweet spot for the single-job (no shard matrix) run.
-      PW_WORKERS: 4
+      # Cap matrix parallelism inside the Dockerized run (run.sh forwards this
+      # into the container). 2 matches the container's effective worker count
+      # from when the suite's stability was established (50% of the 4-vCPU
+      # runner): at 4 workers the runner is oversubscribed and pixel captures
+      # drift mid-animation, surfacing as small cross-browser screenshot
+      # failures on otherwise-green suites.
+      PW_WORKERS: 2
     outputs:
       slug: ${{ steps.meta.outputs.slug }}
     steps:
