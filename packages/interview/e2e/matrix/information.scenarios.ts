@@ -138,10 +138,13 @@ export const informationScenarios: InterfaceScenarios = {
         // Size bands produce non-decreasing rendered heights; SMALL is
         // strictly smallest. (MEDIUM and LARGE can cap at the same height
         // when the image's aspect ratio hits the shared width constraint.)
+        // Round to whole pixels: when MEDIUM and LARGE cap equal, sub-pixel
+        // layout rounding (notably in Firefox) can make LARGE fractionally
+        // SMALLER than MEDIUM, which a raw `>=` would spuriously reject.
         const heights = await Promise.all(
           [0, 1, 2].map(async (i) => {
             const box = await images.nth(i).boundingBox();
-            return box?.height ?? 0;
+            return Math.round(box?.height ?? 0);
           }),
         );
         expect(heights[0]!).toBeLessThan(heights[1]!);
