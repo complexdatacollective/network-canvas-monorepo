@@ -14,15 +14,12 @@ const alertVariants = cva({
   base: 'my-6 flex w-full rounded first:mt-0 last:mb-0',
   variants: {
     variant: {
-      default: 'bg-surface text-contrast [--link:var(--color-link)]',
-      info: 'text-info-contrast bg-info [--link:var(--info-contrast)]',
-      destructive:
-        'text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]',
-      success:
-        'text-success-contrast bg-success [--link:var(--success-contrast)]',
-      warning:
-        'text-warning-contrast bg-warning [--link:var(--warning-contrast)]',
-      accent: 'text-accent-contrast bg-accent [--link:var(--accent-contrast)]',
+      default: '',
+      info: '',
+      destructive: '',
+      success: '',
+      warning: '',
+      accent: '',
     },
     // `solid` fills the alert with its intent colour (loud, high-emphasis);
     // `soft` is a low tint over the surface for quieter notices
@@ -35,6 +32,72 @@ const alertVariants = cva({
       compact: 'items-center gap-3',
     },
   },
+  compoundVariants: [
+    {
+      variant: 'info',
+      appearance: 'solid',
+      className: 'text-info-contrast bg-info [--link:var(--info-contrast)]',
+    },
+    {
+      variant: 'destructive',
+      appearance: 'solid',
+      className:
+        'text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]',
+    },
+    {
+      variant: 'success',
+      appearance: 'solid',
+      className:
+        'text-success-contrast bg-success [--link:var(--success-contrast)]',
+    },
+    {
+      variant: 'warning',
+      appearance: 'solid',
+      className:
+        'text-warning-contrast bg-warning [--link:var(--warning-contrast)]',
+    },
+    {
+      variant: 'accent',
+      appearance: 'solid',
+      className:
+        'text-accent-contrast bg-accent [--link:var(--accent-contrast)]',
+    },
+    {
+      variant: 'info',
+      appearance: 'soft',
+      className:
+        'bg-[color-mix(in_oklab,var(--info)_10%,var(--surface))] [--link:var(--info)]',
+    },
+    {
+      variant: 'destructive',
+      appearance: 'soft',
+      className:
+        'bg-[color-mix(in_oklab,var(--destructive)_10%,var(--surface))] [--link:var(--destructive)]',
+    },
+    {
+      variant: 'success',
+      appearance: 'soft',
+      className:
+        'bg-[color-mix(in_oklab,var(--success)_10%,var(--surface))] [--link:var(--success)]',
+    },
+    {
+      variant: 'warning',
+      appearance: 'soft',
+      className:
+        'bg-[color-mix(in_oklab,var(--warning)_10%,var(--surface))] [--link:var(--warning)]',
+    },
+    {
+      variant: 'accent',
+      appearance: 'soft',
+      className:
+        'bg-[color-mix(in_oklab,var(--accent)_10%,var(--surface))] [--link:var(--accent)]',
+    },
+    {
+      variant: 'default',
+      appearance: 'soft',
+      className: 'bg-[color-mix(in_oklab,currentColor_5%,var(--surface))]',
+    },
+  ],
   defaultVariants: {
     variant: 'default',
     appearance: 'solid',
