@@ -56,7 +56,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
   }, [isHomePage]);
 
   return (
-    <div className="bg-background publish-colors relative isolate flex min-h-dvh w-full flex-auto flex-col">
+    <div className="bg-background text-text publish-colors relative isolate flex min-h-dvh w-full flex-auto flex-col">
       <PageBackgroundProvider
         fallbackConvergence={fallbackConvergence}
         intensity={isHomePage ? 0.4 : 0.1}

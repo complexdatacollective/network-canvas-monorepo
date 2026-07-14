@@ -287,12 +287,23 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [dialogs, setDialogs] = useState<DialogState[]>([]);
+  const dialogsRef = useRef<DialogState[]>([]);
   const isMounted = useRef(true);
+
+  useEffect(() => {
+    dialogsRef.current = dialogs;
+  }, [dialogs]);
 
   useEffect(() => {
     isMounted.current = true;
     return () => {
       isMounted.current = false;
+      for (const dialog of dialogsRef.current) {
+        if (!dialog.open) continue;
+        dialog.abortController?.abort();
+        dialog.resolveCallback(null);
+      }
+      dialogsRef.current = [];
     };
   }, []);
 
