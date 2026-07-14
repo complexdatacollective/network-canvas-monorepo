@@ -36,6 +36,7 @@ export function GetStartedIntro() {
   const entrance = createHeroEntrance(reduceMotion ?? true);
   const controls = useAnimationControls();
   const entranceStarted = useRef(false);
+  const introRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     if (reduceMotion !== false || entranceStarted.current) {
@@ -44,11 +45,16 @@ export function GetStartedIntro() {
 
     entranceStarted.current = true;
     controls.set('hidden');
+    introRef.current?.removeAttribute('data-entrance-pending');
     void controls.start('visible');
   }, [controls, reduceMotion]);
 
   return (
-    <div className="relative isolate overflow-hidden">
+    <div
+      ref={introRef}
+      data-entrance-pending
+      className="relative isolate overflow-hidden"
+    >
       <motion.div
         className="relative z-10"
         variants={entrance.pageVariants}
@@ -66,7 +72,7 @@ export function GetStartedIntro() {
         >
           <motion.div
             variants={entrance.itemVariants}
-            className="mx-auto max-w-4xl px-6 text-center"
+            className="entrance-motion-item mx-auto max-w-4xl px-6 text-center"
           >
             <Paragraph
               margin="none"
@@ -99,7 +105,7 @@ export function GetStartedIntro() {
                 variants={entrance.itemVariants}
                 whileHover={reduceMotion ? undefined : { y: -5 }}
                 whileFocus={reduceMotion ? undefined : { y: -5 }}
-                className="focusable elevation-medium group tablet-portrait:p-10 bg-surface/55 flex min-h-64 flex-col justify-between rounded p-8 backdrop-blur-md"
+                className="entrance-motion-item focusable elevation-medium group tablet-portrait:p-10 bg-surface/55 flex min-h-64 flex-col justify-between rounded p-8 backdrop-blur-md"
               >
                 <span className="font-heading text-text/65 text-xs font-bold tracking-[0.14em] uppercase">
                   {t(`intro.stages.${stage.id}.label`)}

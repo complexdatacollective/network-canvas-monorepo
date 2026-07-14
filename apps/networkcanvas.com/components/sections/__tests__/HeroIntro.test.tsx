@@ -133,6 +133,9 @@ describe('HeroIntro', () => {
     const container = document.createElement('div');
     container.innerHTML = serverMarkup;
 
+    expect(container.firstElementChild).toHaveAttribute(
+      'data-entrance-pending',
+    );
     expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
       'data-initial',
       'false',
@@ -194,6 +197,9 @@ describe('HeroIntro', () => {
     ).toHaveAttribute('data-hero-item-variants', 'active');
     expect(animationControls.set).not.toHaveBeenCalled();
     expect(animationControls.start).not.toHaveBeenCalled();
+    expect(container.firstElementChild).toHaveAttribute(
+      'data-entrance-pending',
+    );
 
     await act(async () => root.unmount());
     container.remove();
@@ -240,6 +246,9 @@ describe('HeroIntro', () => {
     expect(animationControls.start).toHaveBeenCalledWith('visible');
     expect(animationControls.set).toHaveBeenCalledBefore(
       animationControls.start,
+    );
+    expect(container.firstElementChild).not.toHaveAttribute(
+      'data-entrance-pending',
     );
 
     await act(async () => root.unmount());

@@ -73,10 +73,12 @@ describe('Hero', () => {
       'tablet-portrait:content-center',
     );
     expect(heading).toHaveClass(
+      'entrance-motion-item',
       'tablet-portrait:row-start-1',
       'tablet-portrait:self-center',
     );
     expect(mediaRow).toHaveClass(
+      'entrance-motion-item',
       'tablet-portrait:row-start-2',
       'tablet-portrait:grid-cols-[1.1fr_0.9fr]',
       'tablet-portrait:mt-0',
@@ -87,11 +89,13 @@ describe('Hero', () => {
       'tablet-portrait:justify-self-center',
     );
     expect(newsWrapper).toHaveClass(
+      'entrance-motion-item',
       'tablet-portrait:col-start-1',
       'tablet-portrait:row-start-3',
       'tablet-portrait:mt-0',
     );
     expect(ctaWrapper).toHaveClass(
+      'entrance-motion-item',
       'tablet-portrait:col-start-1',
       'tablet-portrait:row-start-4',
       'tablet-portrait:mt-0',
