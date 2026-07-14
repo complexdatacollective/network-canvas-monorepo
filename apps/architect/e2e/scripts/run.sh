@@ -37,7 +37,7 @@ fi
 # is non-deterministic, so it can occasionally interleave with a spec's own
 # page.evaluate/addStyleTag calls and surface as a spurious action failure.
 # Reuse the app's build-time analytics gate (already used by vitest and the
-# Netlify PR-preview deploy — see vite.config.ts / ci-and-release.yml) so the
+# Netlify PR-preview build — see vite.config.ts / netlify.toml) so the
 # build under test never initializes PostHog at all.
 # Visual baselines are amd64-truth: glyph advance widths differ subtly
 # between the image's amd64 and arm64 builds, which moves text wrap points in

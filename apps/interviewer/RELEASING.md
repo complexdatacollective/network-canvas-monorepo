@@ -28,9 +28,9 @@ base while in beta.
    builds, deploys to Netlify **production**, and creates the prerelease GitHub release
    `@codaco/interviewer@<version>` with the CHANGELOG notes.
 
-Pull requests still get a preview deploy (`deploy-interviewer-preview`),
-aliased `pr-<number>` and posted as a comment. Production is no longer deployed
-on every push to `main` — only on a Release apps & documentation PR merge.
+Netlify's Git integration builds pull-request previews and reports their URLs
+directly on the PR. Production is no longer deployed on every push to `main` —
+only on a Release apps & documentation PR merge.
 
 ## Developer site
 
@@ -60,12 +60,12 @@ failure as a hard release blocker, not a warning to route around.
 
 ## Manual setup required (one-time)
 
-CI deploys to a Netlify **site that must already exist** — netlify-cli can't
-create one. Before the preview and production deploys will work:
+CI deploys production releases to a Netlify **site that must already exist** —
+netlify-cli can't create one. Netlify's Git integration uses the same linked site
+for pull-request previews. To configure it:
 
-1. Create a new Netlify site for Network Canvas Interviewer (Netlify dashboard or
-   `netlify sites:create`). Don't point it at a repo for auto-build; CI
-   supplies the build.
+1. Create a new Netlify site for Network Canvas Interviewer and connect it to
+   this repository so Netlify builds pull-request previews.
 2. Note its Site ID (Site settings → General → Site details).
 3. Add it as the repo secret `NETLIFY_SITE_ID_INTERVIEWER`. The
    `NETLIFY_AUTH_TOKEN` secret is already shared across all Netlify deploys in
@@ -73,10 +73,9 @@ create one. Before the preview and production deploys will work:
 4. If Network Canvas Interviewer needs its own custom domain, configure it in the
    Netlify site's domain settings; nothing in CI needs to change for that.
 
-Until the secret is set, `deploy-interviewer-preview` and the
-`apps-release-interviewer` production deploy will fail at the `netlify-cli deploy`
-step with a `site not found` style error — the rest of CI (quality gate,
-typecheck, tests) is unaffected.
+Until the secret is set, the `apps-release-interviewer` production deploy will
+fail at the `netlify-cli deploy` step with a `site not found` style error. The
+Git-connected preview deploys and the rest of CI are unaffected.
 
 ## Service worker update propagation
 

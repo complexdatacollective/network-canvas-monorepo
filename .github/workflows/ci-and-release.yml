@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       force_run:
-        description: 'Force package-scoped conditional jobs (deploys and Chromatic) to run regardless of change detection.'
+        description: 'Force package-scoped conditional checks and Chromatic to run regardless of change detection.'
         type: boolean
         default: false
       release_app:
@@ -53,15 +53,10 @@ jobs:
     if: github.event_name != 'merge_group'
     runs-on: ubuntu-latest
     outputs:
-      any_app: ${{ steps.flags.outputs.any_app }}
       docs: ${{ steps.flags.outputs.docs }}
-      architect: ${{ steps.flags.outputs.architect }}
-      interviewer: ${{ steps.flags.outputs.interviewer }}
       website: ${{ steps.flags.outputs.website }}
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
-      interface_images: ${{ steps.flags.outputs.interface_images }}
-      interview_release_version: ${{ steps.flags.outputs.interview_release_version }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
@@ -150,19 +145,14 @@ jobs:
             fi
           }
           docs=$(flag @codaco/documentation)
-          arch=$(flag @codaco/architect)
-          intvr=$(flag @codaco/interviewer)
           web=$(flag networkcanvas.com)
           fui=$(flag @codaco/fresco-ui)
           intv=$(flag @codaco/interview)
 
-          # Interface screenshots regenerate, and their consumers (architect,
-          # documentation) redeploy, only when the @codaco/interview RELEASE
-          # VERSION moves — its package.json version, or the pending version a
-          # changeset implies — not on arbitrary interview/fresco-ui edits. The
-          # same value is handed to turbo as INTERVIEW_RELEASE_VERSION so the
-          # `generate` cache key matches.
-          interview_release_version=$(node scripts/interview-release-version.mjs)
+          # Interface screenshots regenerate, and the documentation preview
+          # checks rerun, only when the @codaco/interview RELEASE VERSION moves
+          # — its package.json version, or the pending version a changeset
+          # implies — not on arbitrary interview/fresco-ui edits.
 
           # ifimg: did that release-version signal change in this diff?
           ifimg=false
@@ -187,24 +177,15 @@ jobs:
             done
           fi
 
-          # An interview version bump regenerates the interface images, which both
-          # architect and documentation embed — treat it as a change to each so
-          # their deploys (and the carry-forward / any_app gating) fire.
-          if [[ "$ifimg" == "true" ]]; then docs=true; arch=true; fi
-
-          any_app=false
-          if [[ "$docs" == "true" || "$arch" == "true" || "$intvr" == "true" || "$web" == "true" ]]; then any_app=true; fi
+          # Documentation embeds the generated interface images, so its checks
+          # must cover a release-version-driven regeneration as well.
+          if [[ "$ifimg" == "true" ]]; then docs=true; fi
 
           {
-            echo "any_app=$any_app"
             echo "docs=$docs"
-            echo "architect=$arch"
-            echo "interviewer=$intvr"
             echo "website=$web"
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
-            echo "interface_images=$ifimg"
-            echo "interview_release_version=$interview_release_version"
           } >> "$GITHUB_OUTPUT"
 
   e2e-policy:
@@ -416,228 +397,6 @@ jobs:
           fi
           echo "quality gate passed"
 
-  # Deploy jobs are split per-app and per-environment so:
-  #   * one app's build failure never blocks the other app's deploy
-  #   * preview deploys never wait on quality / chromatic / e2e
-  #   * production deploys are strictly gated on every check passing
-  #
-  # netlify-cli flags:
-  #   --no-build:    skip dashboard build command + plugin lifecycle hooks
-  #   --filter=<pkg>: workspace selector (required because pnpm-workspace.yaml
-  #                   is at the repo root and netlify-cli detects the monorepo)
-  #   --dir:         pre-built directory to upload
-
-  deploy-docs-preview:
-    # needs:quality (not just detect) so quality finishes first and owns the
-    # .turbo cache slot; deploy reads it back instead of racing. The
-    # `always()` and `result != 'cancelled'` clauses mean a quality failure
-    # doesn't block the preview deploy.
-    needs: [detect, quality]
-    if: |
-      always() &&
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.docs == 'true' &&
-      needs.quality.result != 'cancelled'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
-      NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
-      NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
-      NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
-      NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: ./.github/actions/turbo-ci-setup
-      - id: deploy
-        name: Build and deploy docs preview
-        run: |
-          pnpm exec turbo run build --filter=@codaco/documentation
-          cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
-          json=$(npx --yes netlify-cli@22 deploy --no-build \
-                   --filter=@codaco/documentation \
-                   --dir=apps/documentation/out \
-                   --site="${{ secrets.NETLIFY_DOCUMENTATION_SITE_ID }}" \
-                   --alias="pr-${{ github.event.number }}" --json)
-          echo "$json" | jq .
-          url=$(echo "$json" | jq -r '.deploy_url')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-  deploy-architect-preview:
-    # Runs independently of quality (quality no longer builds apps). Restores the
-    # shared `.turbo` cache so a prior run's package builds are reused when
-    # present, then builds the app itself and pushes a preview to Netlify.
-    needs: detect
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.architect == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
-      VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
-      # Preview bundles ship without analytics so PR-preview interaction
-      # doesn't pollute the production PostHog project.
-      VITE_DISABLE_ANALYTICS: 'true'
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: ./.github/actions/turbo-ci-setup
-      - id: deploy
-        name: Build and deploy architect preview
-        run: |
-          pnpm exec turbo run build --filter=@codaco/architect
-          json=$(npx --yes netlify-cli@22 deploy --no-build \
-                   --filter=@codaco/architect \
-                   --dir=apps/architect/dist \
-                   --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}" \
-                   --alias="pr-${{ github.event.number }}" --json)
-          echo "$json" | jq .
-          url=$(echo "$json" | jq -r '.deploy_url')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-  # Interviewer is a vite-plugin-pwa PWA, the same shape as architect. Its
-  # canonical build includes the post-build PWA assertion, so a broken service
-  # worker or precache manifest fails the deploy instead of shipping.
-  #
-  # NOTE(human-setup-required): needs its own Netlify site, created manually,
-  # with its site ID stored in the NETLIFY_SITE_ID_INTERVIEWER secret —
-  # see apps/interviewer/RELEASING.md.
-  deploy-interviewer-preview:
-    # Runs independently of quality (same shape as deploy-architect-preview):
-    # restores the shared `.turbo` cache to reuse prior package builds when
-    # present, then builds the app itself and pushes a preview to Netlify.
-    needs: detect
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.interviewer == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: ./.github/actions/turbo-ci-setup
-      - id: deploy
-        name: Build and deploy interviewer preview
-        run: |
-          pnpm exec turbo run build --filter=@codaco/interviewer
-          json=$(npx --yes netlify-cli@22 deploy --no-build \
-                   --filter=@codaco/interviewer \
-                   --dir=apps/interviewer/dist \
-                   --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}" \
-                   --alias="pr-${{ github.event.number }}" --json)
-          echo "$json" | jq .
-          url=$(echo "$json" | jq -r '.deploy_url')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-  deploy-website-preview:
-    # Same shape as deploy-architect-preview: wait for quality (cache +
-    # write-slot) but don't gate the preview deploy on its success.
-    needs: [detect, quality]
-    if: |
-      always() &&
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.website == 'true' &&
-      needs.quality.result != 'cancelled'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: ./.github/actions/turbo-ci-setup
-      - id: deploy
-        name: Build and deploy networkcanvas.com preview
-        run: |
-          json=$(npx --yes netlify-cli@26 deploy --build \
-                   --filter=networkcanvas.com \
-                   --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" \
-                   --alias="pr-${{ github.event.number }}" --json)
-          echo "$json" | jq .
-          url=$(echo "$json" | jq -r '.deploy_url')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-  # Single PR comment summarising whichever preview(s) deployed. Uses a hidden
-  # HTML marker to locate the existing comment on subsequent runs so we update
-  # in place rather than spamming the PR with one new comment per run.
-  comment-preview-urls:
-    needs:
-      [
-        deploy-docs-preview,
-        deploy-architect-preview,
-        deploy-interviewer-preview,
-        deploy-website-preview,
-      ]
-    if: |
-      always() &&
-      github.event_name == 'pull_request' &&
-      (needs.deploy-docs-preview.result == 'success' || needs.deploy-architect-preview.result == 'success' || needs.deploy-interviewer-preview.result == 'success' || needs.deploy-website-preview.result == 'success')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
-          ARCHITECT_URL: ${{ needs.deploy-architect-preview.outputs.url }}
-          INTERVIEWER_URL: ${{ needs.deploy-interviewer-preview.outputs.url }}
-          WEBSITE_URL: ${{ needs.deploy-website-preview.outputs.url }}
-        with:
-          script: |
-            const marker = '<!-- ci:deploy-previews -->';
-            const lines = [marker, '🚀 **Deploy previews**'];
-            const { DOCS_URL, ARCHITECT_URL, INTERVIEWER_URL, WEBSITE_URL } = process.env;
-            if (DOCS_URL) lines.push(`- documentation → ${DOCS_URL}`);
-            if (ARCHITECT_URL) lines.push(`- architect → ${ARCHITECT_URL}`);
-            if (INTERVIEWER_URL) lines.push(`- interviewer → ${INTERVIEWER_URL}`);
-            if (WEBSITE_URL) lines.push(`- networkcanvas.com → ${WEBSITE_URL}`);
-            const body = lines.join('\n');
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              per_page: 100,
-            });
-            const existing = comments.find((c) => c.body && c.body.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
-
   deploy-website-prod:
     needs: [detect]
     if: |
@@ -666,13 +425,68 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
   docs-preview-checks:
-    # Run link-check + redirect-test against the preview URL only. Production
-    # deploys aren't gated on these — the equivalent checks have already
-    # passed against the preview before the change reached main.
-    needs: [deploy-docs-preview]
-    if: needs.deploy-docs-preview.result == 'success'
+    needs: detect
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      needs.detect.outputs.docs == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      statuses: read
     steps:
+      - id: netlify-preview
+        name: Wait for Netlify documentation preview
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const statusContext = 'netlify/nc-documentation/deploy-preview';
+            const headSha = context.payload.pull_request.head.sha;
+            const expectedHost = `deploy-preview-${context.issue.number}--nc-documentation.netlify.app`;
+            const deadline = Date.now() + 15 * 60 * 1000;
+
+            while (Date.now() < deadline) {
+              const statuses = await github.paginate(
+                github.rest.repos.listCommitStatusesForRef,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: headSha,
+                  per_page: 100,
+                },
+              );
+              const status = statuses.find(({ context }) => context === statusContext);
+
+              if (status?.state === 'success') {
+                let previewUrl;
+                try {
+                  previewUrl = new URL(status.target_url);
+                } catch {
+                  core.setFailed(`${statusContext} did not provide a valid preview URL`);
+                  return;
+                }
+
+                if (previewUrl.protocol !== 'https:' || previewUrl.hostname !== expectedHost) {
+                  core.setFailed(
+                    `${statusContext} pointed to unexpected URL ${previewUrl.toString()}`,
+                  );
+                  return;
+                }
+
+                core.setOutput('url', previewUrl.origin);
+                return;
+              }
+
+              if (status && ['error', 'failure'].includes(status.state)) {
+                core.setFailed(`${statusContext} concluded ${status.state}`);
+                return;
+              }
+
+              await new Promise((resolve) => setTimeout(resolve, 15_000));
+            }
+
+            core.setFailed(`Timed out waiting for ${statusContext}`);
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
@@ -680,26 +494,23 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Wait for Netlify CDN propagation
-        # netlify-cli's deploy returns as soon as the deploy is queued, but
-        # asset URLs are served from edges that may take a few seconds to
-        # propagate. The link-checker fans out many parallel requests; without
-        # this wait it hits FETCH_ERROR on assets that resolve fine moments
-        # later. Cheap and reliable.
+      - name: Confirm Netlify preview is reachable
         env:
-          DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
+          DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
         run: |
           for i in 1 2 3 4 5 6; do
             if curl -fsSL --max-time 10 -o /dev/null "$DOCS_URL/en"; then
               echo "deploy is reachable; proceeding"
-              break
+              exit 0
             fi
             echo "attempt $i: not yet, sleeping 5s"
             sleep 5
           done
+          echo "::error::Netlify documentation preview is not reachable at $DOCS_URL"
+          exit 1
       - name: Dead-link check
         env:
-          DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
+          DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
         # @jthrilly/dead-link-checker >=1.1.0 retries each request on transient
         # network errors (UND_ERR_SOCKET / connect timeouts), so a single flaky
         # fetch no longer fails the run. Retrying the whole crawl here was the
@@ -709,7 +520,7 @@ jobs:
       - name: Redirect test
         working-directory: apps/documentation
         env:
-          DEPLOYMENT_URL: ${{ needs.deploy-docs-preview.outputs.url }}
+          DEPLOYMENT_URL: ${{ steps.netlify-preview.outputs.url }}
         run: pnpm run test-redirects
 
   chromatic-fresco-ui:
@@ -1672,10 +1483,6 @@ jobs:
   carry-forward-statuses:
     needs:
       - detect
-      - deploy-docs-preview
-      - deploy-architect-preview
-      - deploy-interviewer-preview
-      - deploy-website-preview
       - chromatic-fresco-ui
       - chromatic-interview
       - docs-preview-checks
@@ -1688,18 +1495,14 @@ jobs:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           # Map detect flag → list of conditional jobs gated on it.
-          # docs-preview-checks depends on deploy-docs-preview, so they share a
-          # flag. interview-e2e-report is deliberately NOT here: it is a
-          # dependent, reporting-only job (publishes the Playwright report to
-          # Pages + comments) whose own `if:` already skips it whenever
-          # interview-e2e is skipped. Its verdict describes whether the report
-          # PUBLISHED, not whether the code is sound, so carrying a stale
-          # (possibly failed) report verdict onto an unrelated push would wrongly
-          # gate it — let its natural skip stand instead.
+          # interview-e2e-report is deliberately NOT here: it is a dependent,
+          # reporting-only job (publishes the Playwright report to Pages +
+          # comments) whose own `if:` already skips it whenever interview-e2e is
+          # skipped. Its verdict describes whether the report PUBLISHED, not
+          # whether the code is sound, so carrying a stale (possibly failed)
+          # report verdict onto an unrelated push would wrongly gate it — let
+          # its natural skip stand instead.
           FLAG_DOCS: ${{ needs.detect.outputs.docs }}
-          FLAG_ARCHITECT: ${{ needs.detect.outputs.architect }}
-          FLAG_INTERVIEWER: ${{ needs.detect.outputs.interviewer }}
-          FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
           FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
           FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
@@ -1707,10 +1510,7 @@ jobs:
         with:
           script: |
             const flagToJobs = {
-              FLAG_DOCS: ["deploy-docs-preview", "docs-preview-checks"],
-              FLAG_ARCHITECT: ["deploy-architect-preview"],
-              FLAG_INTERVIEWER: ["deploy-interviewer-preview"],
-              FLAG_WEBSITE: ["deploy-website-preview"],
+              FLAG_DOCS: ["docs-preview-checks"],
               FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
               FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
             };

@@ -87,4 +87,4 @@ The app is designed to be used with no network connection at all. Protocol impor
 
 ## Deploying
 
-Deploys are continuous, not versioned — every push to `main` that touches this app (or a workspace dependency it builds from) deploys straight to Netlify, and every PR gets a preview deploy. See [`RELEASING.md`](./RELEASING.md) for the full pipeline, the one-time Netlify setup, and how service-worker updates propagate to already-open tabs.
+Netlify's Git integration builds a preview for every pull request. Production deploys are versioned and occur when the generated Release apps & documentation PR is merged. See [`RELEASING.md`](./RELEASING.md) for the full pipeline, the one-time Netlify setup, and how service-worker updates propagate to already-open tabs.
