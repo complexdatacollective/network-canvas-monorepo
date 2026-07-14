@@ -49,7 +49,7 @@ const meta = {
       options: Object.keys(iconMap),
       mapping: iconMap,
       description:
-        'Custom icon to display. The default info and warning/destructive variants use illustrated Fresco icons. Use "none" to hide the icon entirely.',
+        'Custom icon to display. The default info, success, and warning/destructive variants use illustrated Fresco icons. Use "none" to hide the icon entirely.',
     },
   },
 } satisfies Meta<typeof Alert>;
@@ -76,7 +76,7 @@ export const Variants: Story = {
     docs: {
       description: {
         story:
-          'The info variant uses the illustrated Fresco light bulb. Warning and destructive variants share the illustrated warning icon, with the accent color following the alert intent. Icons perform a short attention shake when they enter the viewport, respecting reduced-motion preferences.',
+          'The info variant uses the illustrated Fresco light bulb, and success uses an illustrated check badge. Warning and destructive variants share the illustrated warning icon, with the accent color following the alert intent. Icons perform a short attention shake when they enter the viewport, respecting reduced-motion preferences.',
       },
     },
   },

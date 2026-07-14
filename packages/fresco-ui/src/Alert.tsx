@@ -1,6 +1,6 @@
 'use client';
 
-import { type LucideIcon, PartyPopper } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { motion, useAnimation, useReducedMotion } from 'motion/react';
 import * as React from 'react';
 
@@ -14,102 +14,27 @@ const alertVariants = cva({
   base: 'my-6 flex w-full rounded first:mt-0 last:mb-0',
   variants: {
     variant: {
-      default: '',
-      info: '',
-      destructive: '',
-      success: '',
-      warning: '',
-      // Brand-accent highlight (non-semantic): for "note"/"key concept" style
-      // callouts that draw attention without an info/success/warning meaning.
-      accent: '',
+      default: 'bg-surface text-contrast [--link:var(--color-link)]',
+      info: 'text-info-contrast bg-info [--link:var(--info-contrast)]',
+      destructive:
+        'text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]',
+      success:
+        'text-success-contrast bg-success [--link:var(--success-contrast)]',
+      warning:
+        'text-warning-contrast bg-warning [--link:var(--warning-contrast)]',
+      accent: 'text-accent-contrast bg-accent [--link:var(--accent-contrast)]',
     },
     // `solid` fills the alert with its intent colour (loud, high-emphasis);
-    // `soft` is a low tint over the surface for quieter notices — surface text
-    // is kept and only the link is coloured with the intent. Colour is the only
-    // difference; role, aria-live, sr-only label and icon are unchanged.
+    // `soft` is a low tint over the surface for quieter notices
     appearance: {
-      // Only the solid fill gets the pressed-in `inset-surface` treatment; the
-      // soft tint is flat, so it drops the inset shadow.
       solid: 'inset-surface',
-      soft: '',
+      soft: 'elevation-medium [--published-bg:inherit]',
     },
     density: {
       default: 'items-start gap-4',
       compact: 'items-center gap-3',
     },
   },
-  // Override the --link primitive (not the --color-link @theme inline alias, which
-  // is substituted away at compile time so consumers read var(--link) directly).
-  compoundVariants: [
-    {
-      variant: 'info',
-      appearance: 'solid',
-      className: 'text-info-contrast bg-info [--link:var(--info-contrast)]',
-    },
-    {
-      variant: 'destructive',
-      appearance: 'solid',
-      className:
-        'text-destructive-contrast bg-destructive [--link:var(--destructive-contrast)]',
-    },
-    {
-      variant: 'success',
-      appearance: 'solid',
-      className:
-        'text-success-contrast bg-success [--link:var(--success-contrast)]',
-    },
-    {
-      variant: 'warning',
-      appearance: 'solid',
-      className:
-        'text-warning-contrast bg-warning [--link:var(--warning-contrast)]',
-    },
-    // Soft tints are an OPAQUE blend of the intent colour into the surface
-    // (`color-mix`), not the intent colour at low opacity — so the tint reads
-    // the same regardless of what sits behind the alert. `--surface` is
-    // theme-aware, so the blend still adapts to dark mode.
-    {
-      variant: 'info',
-      appearance: 'soft',
-      className:
-        'bg-[color-mix(in_oklab,var(--info)_10%,var(--surface))] [--link:var(--info)]',
-    },
-    {
-      variant: 'destructive',
-      appearance: 'soft',
-      className:
-        'bg-[color-mix(in_oklab,var(--destructive)_10%,var(--surface))] [--link:var(--destructive)]',
-    },
-    {
-      variant: 'success',
-      appearance: 'soft',
-      className:
-        'bg-[color-mix(in_oklab,var(--success)_10%,var(--surface))] [--link:var(--success)]',
-    },
-    {
-      variant: 'warning',
-      appearance: 'soft',
-      className:
-        'bg-[color-mix(in_oklab,var(--warning)_10%,var(--surface))] [--link:var(--warning)]',
-    },
-    {
-      variant: 'accent',
-      appearance: 'solid',
-      className:
-        'text-accent-contrast bg-accent [--link:var(--accent-contrast)]',
-    },
-    {
-      variant: 'accent',
-      appearance: 'soft',
-      className:
-        'bg-[color-mix(in_oklab,var(--accent)_10%,var(--surface))] [--link:var(--accent)]',
-    },
-    {
-      variant: 'default',
-      appearance: 'soft',
-      className: 'bg-[color-mix(in_oklab,currentColor_5%,var(--surface))]',
-    },
-  ],
   defaultVariants: {
     variant: 'default',
     appearance: 'solid',
@@ -131,6 +56,10 @@ const InfoAlertIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <Icon {...props} name="info" />
 );
 
+const SuccessAlertIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <Icon {...props} name="success" />
+);
+
 const WarningAlertIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <Icon {...props} name="warning" />
 );
@@ -139,7 +68,7 @@ const variantIcons: Record<Variant, AlertIcon | null> = {
   default: null,
   info: InfoAlertIcon,
   destructive: WarningAlertIcon,
-  success: PartyPopper,
+  success: SuccessAlertIcon,
   warning: WarningAlertIcon,
   // The accent (note/key-concept) variant shares the illustrated light-bulb
   // with `info`. Overridable via the `icon` prop.

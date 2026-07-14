@@ -43,7 +43,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
   }, [isHomePage]);
 
   return (
-    <div className="relative isolate flex min-h-dvh w-full flex-auto flex-col">
+    <div className="bg-background publish-colors relative isolate flex min-h-dvh w-full flex-auto flex-col">
       <PageBackground />
       <div className="relative z-10 flex min-h-dvh w-full flex-auto flex-col">
         <SharedNav />
