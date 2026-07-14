@@ -5,21 +5,30 @@ export default defineConfig({
   snapshotDir: './visual-snapshots',
   snapshotPathTemplate: '{snapshotDir}/{projectName}/{arg}{ext}',
 
+  // Parallelism is per-project: the legacy silos suite stays serial, the
+  // matrix/visual projects run fullyParallel with per-test isolated pages.
   fullyParallel: false,
-  workers: 1,
-  // Retry on CI only. The suite is serial (mode: 'serial'), so a retry re-runs
-  // the whole group from beforeAll and rebuilds state — recovering known
-  // transient visual flakes (e.g. SILOS stage-29, issue #844) so the gate stays
-  // green while Playwright still reports them as flaky. Local stays 0 so flakes
-  // surface deterministically while developing.
+  workers: process.env.PW_WORKERS ? Number(process.env.PW_WORKERS) : '50%',
+  // Retry on CI only. The legacy suite is serial (mode: 'serial'), so a retry
+  // re-runs the whole group from beforeAll and rebuilds state — recovering
+  // known transient visual flakes (e.g. SILOS stage-29, issue #844) so the
+  // gate stays green while Playwright still reports them as flaky. Matrix
+  // tests are order-independent, so a retry re-runs just the one test. Local
+  // stays 0 so flakes surface deterministically while developing.
   retries: process.env.CI ? 2 : 0,
   timeout: 30_000,
 
-  reporter: [
-    ['line'],
-    ['html', { outputFolder: './playwright-report', open: 'never' }],
-    ['json', { outputFile: './test-results/results.json' }],
-  ],
+  // PW_BLOB switches to the blob reporter so a future shard matrix can merge
+  // per-shard reports (see the dormant merge step in ci-and-release.yml and the
+  // shard escape-hatch in e2e/README.md). Unset, the local/CI default emits the
+  // line + html + json trio.
+  reporter: process.env.PW_BLOB
+    ? [['blob']]
+    : [
+        ['line'],
+        ['html', { outputFolder: './playwright-report', open: 'never' }],
+        ['json', { outputFile: './test-results/results.json' }],
+      ],
 
   expect: {
     timeout: 10_000,
@@ -65,8 +74,82 @@ export default defineConfig({
   ],
 
   projects: [
-    { name: 'chromium', use: devices['Desktop Chrome'] },
-    { name: 'firefox', use: devices['Desktop Firefox'] },
-    { name: 'webkit', use: devices['Desktop Safari'] },
+    // Legacy: the silos serial chain. Keeps its original per-browser snapshot
+    // dirs so the committed baselines don't move.
+    {
+      name: 'chromium-legacy',
+      use: devices['Desktop Chrome'],
+      testMatch: /silos-protocol\.spec\.ts/,
+      fullyParallel: false,
+      snapshotPathTemplate: '{snapshotDir}/chromium/{arg}{ext}',
+    },
+    {
+      name: 'firefox-legacy',
+      use: devices['Desktop Firefox'],
+      testMatch: /silos-protocol\.spec\.ts/,
+      fullyParallel: false,
+      snapshotPathTemplate: '{snapshotDir}/firefox/{arg}{ext}',
+    },
+    {
+      name: 'webkit-legacy',
+      // Playwright's Linux WebKit renders in software and stalls for seconds
+      // on heavy stage transitions (video decode, map init), so the global
+      // 5s actionTimeout intermittently expires mid-click even though the
+      // interaction is sound. Triple it for webkit only.
+      use: { ...devices['Desktop Safari'], actionTimeout: 15_000 },
+      testMatch: /silos-protocol\.spec\.ts/,
+      fullyParallel: false,
+      snapshotPathTemplate: '{snapshotDir}/webkit/{arg}{ext}',
+    },
+    // Matrix: functional assertions + aria snapshots. Fully parallel,
+    // per-test isolation (fixtures/matrix-test.ts). Aria snapshots are
+    // OS-independent text and live outside the pixel snapshotDir.
+    {
+      name: 'chromium-matrix',
+      use: devices['Desktop Chrome'],
+      testMatch: /specs\/matrix\/(?!visual).*\.spec\.ts/,
+      fullyParallel: true,
+      snapshotPathTemplate: './aria-snapshots/chromium/{arg}{ext}',
+    },
+    {
+      name: 'firefox-matrix',
+      use: devices['Desktop Firefox'],
+      testMatch: /specs\/matrix\/(?!visual).*\.spec\.ts/,
+      grep: /@smoke/,
+      fullyParallel: true,
+      snapshotPathTemplate: './aria-snapshots/firefox/{arg}{ext}',
+    },
+    {
+      name: 'webkit-matrix',
+      // Same webkit-only actionTimeout accommodation as webkit-legacy.
+      use: { ...devices['Desktop Safari'], actionTimeout: 15_000 },
+      testMatch: /specs\/matrix\/(?!visual).*\.spec\.ts/,
+      grep: /@smoke/,
+      fullyParallel: true,
+      snapshotPathTemplate: './aria-snapshots/webkit/{arg}{ext}',
+    },
+    // Visual: pixel snapshots of visual-flagged scenarios, all browsers.
+    {
+      name: 'chromium-visual',
+      use: devices['Desktop Chrome'],
+      testMatch: /specs\/matrix\/visual\.spec\.ts/,
+      fullyParallel: true,
+      snapshotPathTemplate: '{snapshotDir}/chromium-matrix/{arg}{ext}',
+    },
+    {
+      name: 'firefox-visual',
+      use: devices['Desktop Firefox'],
+      testMatch: /specs\/matrix\/visual\.spec\.ts/,
+      fullyParallel: true,
+      snapshotPathTemplate: '{snapshotDir}/firefox-matrix/{arg}{ext}',
+    },
+    {
+      name: 'webkit-visual',
+      // Same webkit-only actionTimeout accommodation as webkit-legacy.
+      use: { ...devices['Desktop Safari'], actionTimeout: 15_000 },
+      testMatch: /specs\/matrix\/visual\.spec\.ts/,
+      fullyParallel: true,
+      snapshotPathTemplate: '{snapshotDir}/webkit-matrix/{arg}{ext}',
+    },
   ],
 });

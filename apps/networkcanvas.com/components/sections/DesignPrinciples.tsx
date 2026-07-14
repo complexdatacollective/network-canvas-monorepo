@@ -34,7 +34,7 @@ export function DesignPrinciples() {
             <Reveal
               key={principle.id}
               delay={i * 0.04}
-              className="bg-surface tablet-landscape:p-10 rounded-[1.75rem] p-8 shadow-lg"
+              className="bg-surface tablet-landscape:p-10 rounded p-8 shadow-lg"
             >
               <Heading
                 level="h3"

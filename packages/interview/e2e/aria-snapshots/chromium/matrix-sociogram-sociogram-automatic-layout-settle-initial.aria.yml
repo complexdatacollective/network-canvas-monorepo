@@ -1,0 +1,11 @@
+- main:
+  - application "Sociogram Canvas"
+  - button "Hide instructions" [expanded]
+  - status:
+    - heading "Place people in the circles based on how close you are to them." [level=4]
+  - button "Pause Auto Layout"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

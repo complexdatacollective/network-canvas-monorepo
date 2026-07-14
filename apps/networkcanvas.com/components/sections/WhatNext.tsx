@@ -75,7 +75,7 @@ export function WhatNext() {
         {cards.map((card) => (
           <Reveal
             key={card.id}
-            className="bg-surface tablet-landscape:gap-10 tablet-landscape:p-10 flex items-center gap-6 rounded-[1.75rem] p-8 shadow-lg"
+            className="bg-surface tablet-landscape:gap-10 tablet-landscape:p-10 flex items-center gap-6 rounded p-8 shadow-lg"
           >
             <div className="flex-1">
               <Heading

@@ -1,0 +1,11 @@
+- main:
+  - button "Ada"
+  - text: Age
+  - button "Decrease value"
+  - spinbutton "Age": /\d+/
+  - button "Increase value"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

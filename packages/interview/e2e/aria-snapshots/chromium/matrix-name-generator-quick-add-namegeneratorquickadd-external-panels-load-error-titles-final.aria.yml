@@ -1,0 +1,25 @@
+- main:
+  - status:
+    - heading "Add people from previous rounds" [level=2]
+  - button "Previous interview":
+    - heading "Previous interview" [level=3]
+  - listbox "Previous interview":
+    - option "Li"
+    - option "González"
+    - option "Dee"
+    - option "Eugine"
+    - option "Eustace"
+  - button "Missing import":
+    - heading "Missing import" [level=3]
+  - heading "Something went wrong" [level=4]
+  - paragraph: External data could not be loaded.
+  - slider "Resize panel and node list areas"
+  - listbox "Added Nodes":
+    - option "Barry"
+  - button "Add a person":
+    - img "Add a person"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

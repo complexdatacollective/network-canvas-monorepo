@@ -1,0 +1,21 @@
+- main:
+  - toolbar "Network composer tools":
+    - button "Select" [pressed]
+    - button "Add node"
+    - button "Draw edge"
+    - separator
+    - button "Automatic layout"
+    - separator
+    - button "Undo" [disabled]
+    - button "Redo" [disabled]
+  - application:
+    - img
+    - button "Lurline"
+    - button "Raven"
+    - button "Joesph"
+    - button "Ernesto"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

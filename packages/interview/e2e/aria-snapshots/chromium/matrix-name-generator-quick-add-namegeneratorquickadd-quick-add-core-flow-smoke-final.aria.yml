@@ -1,0 +1,14 @@
+- main:
+  - status:
+    - heading "Who do you know?" [level=2]
+  - listbox "Added Nodes":
+    - option "Alice"
+    - option "Bob"
+  - textbox "Type a label and press enter..." [invalid]
+  - button [pressed]
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"
+  - paragraph: You must enter a value before pressing enter.

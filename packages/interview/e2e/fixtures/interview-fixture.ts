@@ -90,7 +90,7 @@ export class InterviewFixture {
     await this.waitForStageLoad();
   }
 
-  async captureInitial(): Promise<void> {
+  async captureInitial(mask?: Locator[]): Promise<void> {
     if (!this.interviewId) {
       throw new Error(
         'interviewId must be set before calling goto(). Set it in beforeEach.',
@@ -102,7 +102,10 @@ export class InterviewFixture {
     await this.waitForStageLoad();
 
     const prefix = this.snapshotPrefix ? `${this.snapshotPrefix}-` : '';
-    await this.capture(`${prefix}stage-${stageIndex}`);
+    await this.capture(
+      `${prefix}stage-${stageIndex}`,
+      mask ? { mask } : undefined,
+    );
   }
 
   /**
@@ -117,7 +120,7 @@ export class InterviewFixture {
    * fullPage, and the inline styles are restored before the test
    * proceeds.
    */
-  async captureFinal(): Promise<void> {
+  async captureFinal(mask?: Locator[]): Promise<void> {
     const step = this.getCurrentStep();
     if (step) {
       await this.waitForMotionCommit();
@@ -157,6 +160,7 @@ export class InterviewFixture {
       const prefix = this.snapshotPrefix ? `${this.snapshotPrefix}-` : '';
       await this.capture(`${prefix}stage-${step}-final`, {
         fullPage: hasScrollableContent,
+        ...(mask ? { mask } : {}),
       });
 
       await this.page.evaluate(() => {

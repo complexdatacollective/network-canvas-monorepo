@@ -1,0 +1,17 @@
+- main:
+  - button "Zoom In"
+  - button "Zoom Out"
+  - button "Recenter Map"
+  - status:
+    - heading "Where does this person currently live?" [level=4]
+  - button "Node 1"
+  - button "Outside Selectable Areas"
+  - region "Map"
+  - button "Toggle attribution"
+  - link "Mapbox homepage":
+    - /url: https://www.mapbox.com/
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

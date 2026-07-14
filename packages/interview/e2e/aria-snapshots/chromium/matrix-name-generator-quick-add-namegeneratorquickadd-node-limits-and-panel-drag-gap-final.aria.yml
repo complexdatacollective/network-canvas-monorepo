@@ -1,0 +1,16 @@
+- main:
+  - status:
+    - heading "Add exactly one person" [level=2]
+  - button "Prior contacts":
+    - heading "Prior contacts" [level=3]
+  - listbox "Prior contacts"
+  - listbox "Added Nodes":
+    - option "Mohammad"
+    - option "Alice"
+  - button "Add a person" [disabled]:
+    - img "Add a person"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

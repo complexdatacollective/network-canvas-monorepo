@@ -1,0 +1,22 @@
+- main:
+  - status:
+    - heading "Sort bucket" [level=2]
+  - heading "Not close" [level=4]
+  - listbox "Container for the value 'Not close'"
+  - heading "Close" [level=4]
+  - listbox "Container for the value 'Close'":
+    - option "Zed"
+    - option "Ann"
+    - option "Mia"
+  - heading "Very close" [level=4]
+  - listbox "Container for the value 'Very close'"
+  - button "Collapse drawer" [expanded]: 4 unplaced
+  - button "Dana"
+  - button "Carol"
+  - button "Bob"
+  - button "Alice"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

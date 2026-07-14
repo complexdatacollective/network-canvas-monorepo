@@ -1,0 +1,38 @@
+- main:
+  - text: Showing all conditions
+  - complementary "Condition key":
+    - heading "Key" [level=4]
+    - heading "Conditions" [level=4]
+    - paragraph: Select a condition to see who it affects.
+    - button "Heart Disease"
+    - button "Rare Condition"
+    - separator
+    - heading "What the symbols mean" [level=4]
+    - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
+    - button "Save snapshot"
+  - slider "Resize the condition key panel"
+  - button "Focus on Mary" [disabled]:
+    - text: "Heart Disease: Status unknown. Rare Condition: Status unknown"
+    - button "Mary" [disabled]
+  - button "Focus on Diane" [disabled]:
+    - text: "Heart Disease: Affected. Rare Condition: Status unknown"
+    - button "Diane" [disabled]
+  - button "Focus on Roy" [disabled]:
+    - text: "Heart Disease: Status unknown. Rare Condition: Affected"
+    - button "Roy" [disabled]
+  - button "Focus on You" [disabled]:
+    - text: "Heart Disease: Affected. Rare Condition: Status unknown"
+    - button "You" [disabled]
+  - button "Focus on Sam" [disabled]:
+    - text: "Heart Disease: Status unknown. Rare Condition: Status unknown"
+    - button "Sam" [disabled]
+  - toolbar "Zoom controls":
+    - button "Zoom out"
+    - button "Zoom in"
+    - separator
+    - button "Reset zoom"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

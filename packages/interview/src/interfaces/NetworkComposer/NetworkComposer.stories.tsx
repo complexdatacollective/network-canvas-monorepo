@@ -245,3 +245,31 @@ const buildConvexHulls = () => {
 export const ConvexHulls: Story = {
   render: () => <NetworkComposerStoryWrapper buildFn={buildConvexHulls} />,
 };
+
+const buildBackgroundImage = () => {
+  const { si, quickAddVar, layoutVar, friendship } = createComposerInterview(9);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const bgAssetId = 'bg-map-1';
+  const stage = si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+    initialNodes: { count: 6 },
+    background: { image: bgAssetId },
+  });
+  stage.addEdgeType({ type: friendship.id });
+  si.addAsset({
+    assetId: bgAssetId,
+    url: 'https://picsum.photos/seed/network-composer/1200/1200',
+  });
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+/**
+ * Configures `background.image` with a resolvable asset, mirroring the
+ * Sociogram's background image support: the image renders behind the canvas
+ * in place of the (default) concentric circles.
+ */
+export const BackgroundImage: Story = {
+  render: () => <NetworkComposerStoryWrapper buildFn={buildBackgroundImage} />,
+};

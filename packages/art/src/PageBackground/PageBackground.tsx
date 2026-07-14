@@ -19,7 +19,6 @@ import {
   type RefCallback,
   useCallback,
   useContext,
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -43,7 +42,6 @@ const BASELINE_INTENSITY = 0.1;
 const DEFAULT_FLARE = 1.8;
 const DEFAULT_SPEED_FACTOR = 0.35;
 const INTENSITY_SCROLL_RANGE = [0, 0.18];
-const INTENSITY_VALUES = [INITIAL_INTENSITY, BASELINE_INTENSITY];
 const PARAMETER_SCROLL_RANGE = [0, 0.25, 0.5, 0.75, 1];
 // The initial flare is the floor; the scroll animation only ever flares further
 // out from it, peaking well into the doubled range.
@@ -60,13 +58,18 @@ const REVEAL_START_MARGIN = 1.06;
 const REVEAL_INITIAL_RADIUS = 100000;
 
 const PageBackgroundTargetContext =
-  createContext<RefCallback<HTMLDivElement> | null>(null);
+  createContext<RefCallback<HTMLElement> | null>(null);
 
 type DocumentLayoutBox = {
   left: number;
   top: number;
   width: number;
   height: number;
+};
+
+type TargetMeasurement = {
+  convergence: NetworkWeaveConvergence;
+  targetIsBeforeLayer: boolean;
 };
 
 type ScrollCurve = {
@@ -81,6 +84,34 @@ type WeaveSettings = {
   flare: number;
   speedFactor: number;
 };
+
+function convergencePointsAreEqual(
+  currentPoint: NetworkWeaveConvergence,
+  nextPoint: NetworkWeaveConvergence,
+) {
+  return (
+    Math.abs(currentPoint.x - nextPoint.x) < POSITION_TOLERANCE &&
+    Math.abs(currentPoint.y - nextPoint.y) < POSITION_TOLERANCE
+  );
+}
+
+function weaveSettingsAreEqual(
+  currentSettings: WeaveSettings,
+  nextSettings: WeaveSettings,
+) {
+  return (
+    convergencePointsAreEqual(
+      currentSettings.convergence,
+      nextSettings.convergence,
+    ) &&
+    Math.abs(currentSettings.intensity - nextSettings.intensity) <
+      PARAMETER_TOLERANCE &&
+    Math.abs(currentSettings.flare - nextSettings.flare) <
+      PARAMETER_TOLERANCE &&
+    Math.abs(currentSettings.speedFactor - nextSettings.speedFactor) <
+      PARAMETER_TOLERANCE
+  );
+}
 
 const randomBetween = (minimum: number, maximum: number) =>
   minimum + Math.random() * (maximum - minimum);
@@ -124,7 +155,7 @@ function pointOnScrollCurve(
   };
 }
 
-function getDocumentLayoutBox(element: HTMLDivElement): DocumentLayoutBox {
+function getDocumentLayoutBox(element: HTMLElement): DocumentLayoutBox {
   const rect = element.getBoundingClientRect();
   const isFixed = window.getComputedStyle(element).position === 'fixed';
 
@@ -164,9 +195,9 @@ function getDocumentLayoutBox(element: HTMLDivElement): DocumentLayoutBox {
 
 function measureConvergence(
   layer: HTMLDivElement,
-  target: HTMLDivElement,
-): NetworkWeaveConvergence | null {
-  // Layout boxes ignore the hero's entrance transform and share document space.
+  target: HTMLElement,
+): TargetMeasurement | null {
+  // Layout boxes ignore entrance transforms and share document space.
   const layerBox = getDocumentLayoutBox(layer);
   const targetBox = getDocumentLayoutBox(target);
 
@@ -178,7 +209,10 @@ function measureConvergence(
   };
 
   return Number.isFinite(convergence.x) && Number.isFinite(convergence.y)
-    ? convergence
+    ? {
+        convergence,
+        targetIsBeforeLayer: targetBox.top + targetBox.height <= layerBox.top,
+      }
     : null;
 }
 
@@ -186,31 +220,56 @@ export function usePageBackgroundTargetRef() {
   return useContext(PageBackgroundTargetContext);
 }
 
-export function PageBackgroundProvider({ children }: { children: ReactNode }) {
+export function PageBackgroundProvider({
+  children,
+  fallbackConvergence = DEFAULT_CONVERGENCE,
+  intensity = INITIAL_INTENSITY,
+  motionMode = 'scroll',
+  waitForTarget = true,
+}: {
+  children: ReactNode;
+  fallbackConvergence?: NetworkWeaveConvergence;
+  intensity?: number;
+  motionMode?: 'scroll' | 'target';
+  waitForTarget?: boolean;
+}) {
   const layerRef = useRef<HTMLDivElement>(null);
-  const [target, setTarget] = useState<HTMLDivElement | null>(null);
+  const [target, setTarget] = useState<HTMLElement | null>(null);
   const [resolved, setResolved] = useState(false);
   const [convergence, setConvergence] =
-    useState<NetworkWeaveConvergence>(DEFAULT_CONVERGENCE);
-  const targetRef = useCallback<RefCallback<HTMLDivElement>>((element) => {
+    useState<NetworkWeaveConvergence>(fallbackConvergence);
+  const hasTrackedTargetRef = useRef(false);
+  const targetRef = useCallback<RefCallback<HTMLElement>>((element) => {
     setTarget(element);
   }, []);
 
   useLayoutEffect(() => {
+    hasTrackedTargetRef.current = false;
     const layer = layerRef.current;
-    if (!layer || !target) return undefined;
+    if (!waitForTarget || !layer || !target) return undefined;
 
     const updateConvergence = () => {
-      const nextConvergence = measureConvergence(layer, target);
-      if (!nextConvergence) return;
+      const measurement = measureConvergence(layer, target);
+      if (!measurement) return;
 
+      if (
+        motionMode === 'scroll' &&
+        !hasTrackedTargetRef.current &&
+        measurement.targetIsBeforeLayer
+      ) {
+        setResolved(true);
+        return;
+      }
+
+      hasTrackedTargetRef.current = true;
       setResolved(true);
       setConvergence((currentConvergence) =>
-        Math.abs(currentConvergence.x - nextConvergence.x) <
+        Math.abs(currentConvergence.x - measurement.convergence.x) <
           POSITION_TOLERANCE &&
-        Math.abs(currentConvergence.y - nextConvergence.y) < POSITION_TOLERANCE
+        Math.abs(currentConvergence.y - measurement.convergence.y) <
+          POSITION_TOLERANCE
           ? currentConvergence
-          : nextConvergence,
+          : measurement.convergence,
       );
     };
 
@@ -220,6 +279,7 @@ export function PageBackgroundProvider({ children }: { children: ReactNode }) {
     observer.observe(layer);
     observer.observe(target);
     window.addEventListener('resize', updateConvergence);
+    window.addEventListener('scroll', updateConvergence, { passive: true });
     let isActive = true;
     void document.fonts?.ready.then(() => {
       if (isActive) updateConvergence();
@@ -230,15 +290,25 @@ export function PageBackgroundProvider({ children }: { children: ReactNode }) {
       isActive = false;
       observer.disconnect();
       window.removeEventListener('resize', updateConvergence);
+      window.removeEventListener('scroll', updateConvergence);
     };
-  }, [target]);
+  }, [motionMode, target, waitForTarget]);
+
+  useLayoutEffect(() => {
+    if (waitForTarget && target) return;
+
+    setResolved(false);
+    setConvergence(fallbackConvergence);
+  }, [fallbackConvergence, target, waitForTarget]);
 
   return (
     <>
       <PageBackground
         convergence={convergence}
-        resolved={resolved}
+        intensity={intensity}
         layerRef={layerRef}
+        motionMode={motionMode}
+        resolved={waitForTarget ? resolved : undefined}
       />
       <PageBackgroundTargetContext.Provider value={targetRef}>
         {children}
@@ -289,14 +359,28 @@ function useConvergenceReveal(
   const convergenceRef = useRef(convergence);
   convergenceRef.current = convergence;
 
-  useEffect(() => {
-    if (!resolved || reduceMotion === null || hasRevealedRef.current) return;
+  useLayoutEffect(() => {
+    if (resolved === undefined) {
+      hasRevealedRef.current = false;
+      radius.set(REVEAL_INITIAL_RADIUS);
+      setMasked(false);
+      return undefined;
+    }
+
+    if (!resolved) {
+      hasRevealedRef.current = false;
+      radius.set(REVEAL_INITIAL_RADIUS);
+      setMasked(true);
+      return undefined;
+    }
+
+    if (reduceMotion === null || hasRevealedRef.current) return undefined;
     hasRevealedRef.current = true;
 
     if (reduceMotion) {
       radius.set(0);
       setMasked(false);
-      return;
+      return undefined;
     }
 
     const cornerDistance = getFarthestCornerDistance(
@@ -339,40 +423,50 @@ function useResponsiveOrientation(): NetworkWeaveOrientation {
 
 export function PageBackground({
   convergence = DEFAULT_CONVERGENCE,
+  intensity = INITIAL_INTENSITY,
+  motionMode = 'scroll',
   resolved,
   layerRef,
 }: {
   convergence?: NetworkWeaveConvergence;
+  intensity?: number;
+  motionMode?: 'scroll' | 'target';
   resolved?: boolean;
   layerRef?: Ref<HTMLDivElement>;
 }) {
   const reduceMotion = useReducedMotion();
   const orientation = useResponsiveOrientation();
-  const { maskImage, masked } = useConvergenceReveal(
-    convergence,
-    resolved,
-    reduceMotion,
-  );
   const { scrollYProgress } = useScroll();
   const curveRef = useRef<ScrollCurve | null>(null);
   const [weaveSettings, setWeaveSettings] = useState<WeaveSettings>({
     convergence,
-    intensity: INITIAL_INTENSITY,
+    intensity,
     flare: DEFAULT_FLARE,
     speedFactor: DEFAULT_SPEED_FACTOR,
   });
+  const weaveSettingsRef = useRef(weaveSettings);
+  const [scrollBasis, setScrollBasis] =
+    useState<NetworkWeaveConvergence | null>(null);
+  const hasResolvedTargetRef = useRef(resolved === true);
+  const commitWeaveSettings = useCallback((settings: WeaveSettings) => {
+    if (weaveSettingsAreEqual(weaveSettingsRef.current, settings)) return;
+
+    weaveSettingsRef.current = settings;
+    setWeaveSettings(settings);
+  }, []);
   const updateWeaveSettings = useCallback(
     (progress: number) => {
+      if (motionMode !== 'scroll') return;
+
       const curve = curveRef.current;
       const nextSettings: WeaveSettings =
         reduceMotion === false && curve
           ? {
               convergence: pointOnScrollCurve(convergence, curve, progress),
-              intensity: transform(
-                progress,
-                INTENSITY_SCROLL_RANGE,
-                INTENSITY_VALUES,
-              ),
+              intensity: transform(progress, INTENSITY_SCROLL_RANGE, [
+                intensity,
+                BASELINE_INTENSITY,
+              ]),
               flare: transform(progress, PARAMETER_SCROLL_RANGE, FLARE_VALUES),
               speedFactor: transform(
                 progress,
@@ -382,35 +476,100 @@ export function PageBackground({
             }
           : {
               convergence,
-              intensity: INITIAL_INTENSITY,
+              intensity,
               flare: DEFAULT_FLARE,
               speedFactor: DEFAULT_SPEED_FACTOR,
             };
 
-      setWeaveSettings((currentSettings) =>
-        Math.abs(currentSettings.convergence.x - nextSettings.convergence.x) <
-          POSITION_TOLERANCE &&
-        Math.abs(currentSettings.convergence.y - nextSettings.convergence.y) <
-          POSITION_TOLERANCE &&
-        Math.abs(currentSettings.intensity - nextSettings.intensity) <
-          PARAMETER_TOLERANCE &&
-        Math.abs(currentSettings.flare - nextSettings.flare) <
-          PARAMETER_TOLERANCE &&
-        Math.abs(currentSettings.speedFactor - nextSettings.speedFactor) <
-          PARAMETER_TOLERANCE
-          ? currentSettings
-          : nextSettings,
+      commitWeaveSettings(nextSettings);
+      setScrollBasis((currentBasis) =>
+        currentBasis && convergencePointsAreEqual(currentBasis, convergence)
+          ? currentBasis
+          : convergence,
       );
     },
-    [convergence, reduceMotion],
+    [commitWeaveSettings, convergence, intensity, motionMode, reduceMotion],
   );
 
   useLayoutEffect(() => {
+    if (motionMode !== 'scroll') return;
+
     curveRef.current ??= createRandomScrollCurve();
     updateWeaveSettings(scrollYProgress.get());
-  }, [scrollYProgress, updateWeaveSettings]);
+  }, [motionMode, scrollYProgress, updateWeaveSettings]);
 
   useMotionValueEvent(scrollYProgress, 'change', updateWeaveSettings);
+
+  useLayoutEffect(() => {
+    if (motionMode !== 'target') return undefined;
+
+    const nextSettings: WeaveSettings = {
+      convergence,
+      intensity,
+      flare: DEFAULT_FLARE,
+      speedFactor: DEFAULT_SPEED_FACTOR,
+    };
+    const isFirstResolvedTarget =
+      resolved === true && !hasResolvedTargetRef.current;
+
+    if (resolved === false) hasResolvedTargetRef.current = false;
+    if (resolved === true) hasResolvedTargetRef.current = true;
+
+    if (reduceMotion !== false || resolved === false || isFirstResolvedTarget) {
+      commitWeaveSettings(nextSettings);
+      return undefined;
+    }
+
+    const startSettings = weaveSettingsRef.current;
+    if (weaveSettingsAreEqual(startSettings, nextSettings)) return undefined;
+
+    const controls = animate(0, 1, {
+      type: 'spring',
+      stiffness: 100,
+      damping: 20,
+      mass: 0.8,
+      onUpdate: (progress) => {
+        commitWeaveSettings({
+          convergence: {
+            x:
+              startSettings.convergence.x +
+              (nextSettings.convergence.x - startSettings.convergence.x) *
+                progress,
+            y:
+              startSettings.convergence.y +
+              (nextSettings.convergence.y - startSettings.convergence.y) *
+                progress,
+          },
+          intensity:
+            startSettings.intensity +
+            (nextSettings.intensity - startSettings.intensity) * progress,
+          flare: DEFAULT_FLARE,
+          speedFactor: DEFAULT_SPEED_FACTOR,
+        });
+      },
+    });
+
+    return () => controls.stop();
+  }, [
+    commitWeaveSettings,
+    convergence,
+    intensity,
+    motionMode,
+    reduceMotion,
+    resolved,
+  ]);
+
+  const scrollSettingsReady =
+    motionMode !== 'scroll' ||
+    (scrollBasis !== null &&
+      convergencePointsAreEqual(scrollBasis, convergence));
+  const revealResolved =
+    resolved === undefined ? undefined : resolved && scrollSettingsReady;
+  const { maskImage, masked } = useConvergenceReveal(
+    motionMode === 'scroll' ? weaveSettings.convergence : convergence,
+    revealResolved,
+    reduceMotion,
+  );
 
   return (
     <motion.div

@@ -17,7 +17,7 @@ export const Details = forwardRef<
       ref={ref}
       className={cx(
         'mt-5',
-        'border-outline my-5 rounded-xl border-2 px-5 [&_svg]:open:rotate-90',
+        'border-outline my-5 rounded border-2 px-5 [&_svg]:open:rotate-90',
         className,
       )}
       {...props}

@@ -5,6 +5,13 @@ import type {
   ProtocolPayload,
   SessionPayload,
 } from '../../../src/contract/types';
+import {
+  getFinishCalls,
+  rejectManualFinish,
+  resetFinishInstrumentation,
+  resolveManualFinish,
+  setFinishBehavior,
+} from './mockCallbacks';
 
 const STORAGE_KEY = '__e2e_test_state';
 
@@ -105,22 +112,31 @@ export function setAssetUrl(assetId: string, url: string): void {
   notifySubscribers();
 }
 
+export type SessionSeed = {
+  network?: SessionPayload['network'];
+  stageMetadata?: SessionPayload['stageMetadata'];
+};
+
 export function createInterview(
   protocolId: string,
   participantId: string,
+  seed?: SessionSeed,
 ): string {
   const id = uuid();
   // This session is the initial payload Shell mounts with. After mount,
   // Shell owns its state in Redux — getNetworkState reads from that live
-  // store, not from this snapshot.
+  // store, not from this snapshot. The step is NOT part of the session:
+  // the host derives it from the URL (?step=) and passes it as a Shell prop.
   const session: SessionPayload = {
     id,
     startTime: new Date().toISOString(),
     finishTime: null,
     exportTime: null,
     lastUpdated: new Date().toISOString(),
-    network: createInitialNetwork(),
-    currentStep: 0,
+    network: seed?.network ?? createInitialNetwork(),
+    ...(seed?.stageMetadata != null
+      ? { stageMetadata: seed.stageMetadata }
+      : {}),
   };
   state.interviews.set(id, { protocolId, participantId, session });
   persistState();
@@ -134,8 +150,26 @@ function getNetworkState(): SessionPayload['network'] | undefined {
   return window.__interviewStore?.getState().session.network;
 }
 
+// Opt-in Shell stage navigation ("Go to a stage" drawer). Default OFF so the
+// host's aria tree is unchanged for every suite that doesn't ask for it —
+// enabling it unconditionally would add a "Go to a stage" button inside
+// main[data-theme-interview], changing every committed aria baseline. Only the
+// StagesMenu-exclusion scenario flips this on, via setAllowStageNavigation.
+let allowStageNavigation = false;
+
+export function getAllowStageNavigation(): boolean {
+  return allowStageNavigation;
+}
+
+function setAllowStageNavigation(enabled: boolean): void {
+  allowStageNavigation = enabled;
+  notifySubscribers();
+}
+
 function reset(): void {
   state = createEmptyState();
+  allowStageNavigation = false;
+  resetFinishInstrumentation();
   sessionStorage.removeItem(STORAGE_KEY);
   notifySubscribers();
 }
@@ -152,5 +186,10 @@ export function installTestHooks(): void {
     createInterview,
     getNetworkState,
     reset,
+    setFinishBehavior,
+    resolveManualFinish,
+    rejectManualFinish,
+    getFinishCalls,
+    setAllowStageNavigation,
   };
 }

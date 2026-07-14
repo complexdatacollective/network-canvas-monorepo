@@ -14,7 +14,8 @@ let sharedProtocolId: string;
 
 test.describe('SILOS Protocol', () => {
   // Run all nested suites in one worker to prevent parallel workers from
-  // calling restoreSnapshot() and wiping each other's dynamically installed protocols.
+  // calling window.__test.reset() and wiping each other's dynamically
+  // installed protocols (the worker-scoped sharedPage resets once per worker).
   test.describe.configure({ mode: 'serial' });
 
   // Install protocol once for all nested suites
@@ -550,10 +551,13 @@ test.describe('SILOS Protocol', () => {
 
       // --- Test drag and drop from side panel ---
       // The side panel should show previously added (close-tie) nodes
-      await expect(stage.nodePanel.panel).toBeVisible();
+      const priorListedPanel = 'People you have already listed';
+      await expect(stage.nodePanel.getPanel(priorListedPanel)).toBeVisible();
 
       // Find Alice in the side panel
-      await expect(stage.nodePanel.getNode('Alice')).toBeVisible();
+      await expect(
+        stage.nodePanel.getNode(priorListedPanel, 'Alice'),
+      ).toBeVisible();
 
       // Get the drop target (node list/canvas area)
       const mainList = page.getByTestId('node-list');
@@ -563,7 +567,7 @@ test.describe('SILOS Protocol', () => {
       await expect(aliceInMainList).not.toBeVisible();
 
       // Perform drag and drop using fixture (adds Alice to the drug-use prompt)
-      await stage.nodePanel.dragNodeToMainList('Alice');
+      await stage.nodePanel.dragNodeToMainList(priorListedPanel, 'Alice');
 
       // Verify Alice now appears in the main node list (not just the panel)
       await expect(aliceInMainList).toBeVisible();
@@ -583,11 +587,16 @@ test.describe('SILOS Protocol', () => {
       await expect(stage.getPrompt()).toBeVisible();
 
       // --- Verify Alice is NOT in the side panel (she's 17, under 18 filter) ---
-      await expect(stage.nodePanel.panel).toBeVisible();
-      await expect(stage.nodePanel.getNode('Alice')).not.toBeVisible();
+      const priorListedPanel = 'People you have already listed';
+      await expect(stage.nodePanel.getPanel(priorListedPanel)).toBeVisible();
+      await expect(
+        stage.nodePanel.getNode(priorListedPanel, 'Alice'),
+      ).not.toBeVisible();
 
       // Bob (age 30) and Dan (age 27) should be visible in the panel
-      await expect(stage.nodePanel.getNode('Bob')).toBeVisible();
+      await expect(
+        stage.nodePanel.getNode(priorListedPanel, 'Bob'),
+      ).toBeVisible();
 
       // --- Create one new person ---
       await stage.nameGenerator.openAddForm();
@@ -614,7 +623,7 @@ test.describe('SILOS Protocol', () => {
       await expect(bobInMainList).not.toBeVisible();
 
       // Perform drag and drop using fixture
-      await stage.nodePanel.dragNodeToMainList('Bob');
+      await stage.nodePanel.dragNodeToMainList(priorListedPanel, 'Bob');
 
       // Verify Bob now appears in the main node list
       await expect(bobInMainList).toBeVisible();
@@ -1384,8 +1393,11 @@ test.describe('SILOS Protocol', () => {
       await expect(stage.getPrompt()).toBeVisible();
 
       // Side panel should show previously added venues
-      await expect(stage.nodePanel.panel).toBeVisible();
-      await expect(stage.nodePanel.getNode('The Bar')).toBeVisible();
+      const priorVenuesPanel = 'Places you already named';
+      await expect(stage.nodePanel.getPanel(priorVenuesPanel)).toBeVisible();
+      await expect(
+        stage.nodePanel.getNode(priorVenuesPanel, 'The Bar'),
+      ).toBeVisible();
 
       // Add a new venue
       await stage.quickAdd.addNode('Club X');

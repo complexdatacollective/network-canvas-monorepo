@@ -42,7 +42,7 @@ export function Tools() {
           return (
             <Reveal
               key={tool.id}
-              className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 bg-surface/55 grid items-center gap-8 rounded-[2rem] p-6 shadow-xl backdrop-blur-md"
+              className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 bg-surface/55 grid items-center gap-8 rounded p-6 shadow-xl backdrop-blur-md"
             >
               <div>
                 <Heading
@@ -84,7 +84,7 @@ export function Tools() {
                   href={tool.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="focusable block rounded-[1.75rem]"
+                  className="focusable block rounded"
                 >
                   <DeviceMockup variant={tool.variant} />
                 </a>

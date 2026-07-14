@@ -1,0 +1,29 @@
+- main:
+  - application "Sociogram Canvas":
+    - button "Ada"
+    - button "Bev"
+    - button "Cy"
+  - button "Drag to reposition"
+  - toolbar "Presets":
+    - button "Previous preset" [disabled]
+    - button "View A" [expanded]
+    - button "Next preset"
+  - status
+  - dialog:
+    - region:
+      - heading "Attributes" [level=3]:
+        - button "Attributes" [expanded]
+      - region "Attributes":
+        - radiogroup:
+          - radio "CloseFriend" [checked]
+          - text: CloseFriend
+          - radio "Trusted"
+          - text: Trusted
+      - heading "Links" [level=3]:
+        - button "Links" [expanded]
+      - region "Links": Friendship
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

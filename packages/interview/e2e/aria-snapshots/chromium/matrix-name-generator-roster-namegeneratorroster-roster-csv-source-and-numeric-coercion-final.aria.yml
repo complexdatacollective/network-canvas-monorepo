@@ -1,0 +1,22 @@
+- main:
+  - status:
+    - 'heading "Stage B: please review these people." [level=2]'
+  - button "Available to add":
+    - heading "Available to add" [level=3]
+  - button "Sort by Age (ascending)" [pressed]
+  - listbox "Available Roster Nodes":
+    - option "Leo Two":
+      - heading "Leo Two" [level=4]
+    - option "Ivy Nine":
+      - heading "Ivy Nine" [level=4]
+    - option "Jax Ten":
+      - heading "Jax Ten" [level=4]
+    - option "Kim Eleven":
+      - heading "Kim Eleven" [level=4]
+  - slider "Resize panel and node list areas"
+  - listbox "Added Nodes"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

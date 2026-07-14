@@ -121,7 +121,7 @@ const StepCell = ({ step }: { step: Step }) => (
 
 const WorkflowsOverview = () => (
   <div className="my-8">
-    <div className="border-outline overflow-x-auto rounded-lg border">
+    <div className="border-outline overflow-x-auto rounded border">
       <table className="w-full min-w-[44rem] border-collapse text-sm">
         <caption className="sr-only">
           The three ways to run a Network Canvas study, across the design,

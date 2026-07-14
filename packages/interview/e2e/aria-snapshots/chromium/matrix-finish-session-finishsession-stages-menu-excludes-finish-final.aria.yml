@@ -1,0 +1,7 @@
+- main:
+    - region "Interview notifications"
+    - dialog "Go to another screen":
+        - listbox "Interview screens":
+            - option "Stage One"
+            - option "Stage Two"
+        - searchbox "Filter"

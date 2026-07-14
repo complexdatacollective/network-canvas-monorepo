@@ -367,8 +367,9 @@ const createMarkdownComponents = (docSlug?: string) => ({
   ),
   // Markdown tables render through fresco-ui's Table primitives so they match
   // the design system (surface-tinted header, row separators + hover, rounded
-  // bordered container). Cells override fresco's data-table `whitespace-nowrap`
-  // because docs tables carry prose (sentences, links) that must wrap.
+  // bordered container). Cells override fresco's data-table
+  // `whitespace-nowrap` because docs tables carry prose (sentences, links) that
+  // must wrap.
   // Spacing goes on the Surface via `surfaceProps`, not `className` — Table's
   // `className` targets the inner <table>, so `my-6` there would open a gap of
   // bare surface above/below the rows inside the bordered container.
@@ -381,7 +382,10 @@ const createMarkdownComponents = (docSlug?: string) => ({
   tbody: (props: ComponentProps<typeof TableBody>) => <TableBody {...props} />,
   tr: (props: ComponentProps<typeof TableRow>) => <TableRow {...props} />,
   th: (props: ComponentProps<typeof TableHead>) => (
-    <TableHead className="w-auto align-top whitespace-normal" {...props} />
+    <TableHead
+      {...props}
+      className={cx('w-auto whitespace-normal', props.className)}
+    />
   ),
   td: (props: ComponentProps<typeof TableCell>) => (
     <TableCell className="w-auto align-top whitespace-normal" {...props} />

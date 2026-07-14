@@ -51,8 +51,18 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
+# Forwarded args are spliced into the container's `sh -c` string, so each one
+# must be shell-quoted or characters like the `|` in `-g "A|B"` are re-parsed
+# as shell syntax inside the container (a pipe to a nonexistent command, which
+# EPIPE-crashes the Playwright reporter).
+FORWARDED_ARGS=""
+for arg in "$@"; do
+  FORWARDED_ARGS="${FORWARDED_ARGS} $(printf '%q' "$arg")"
+done
+
 docker run --rm \
   -e CI=true \
+  -e PW_WORKERS \
   -v "$(pwd)":/workspace \
   -v interview-e2e-node-modules:/workspace/node_modules \
   -w /workspace \
@@ -62,4 +72,4 @@ docker run --rm \
     && pnpm install --filter '@codaco/interview...' --frozen-lockfile \
     && pnpm turbo build --filter @codaco/interview \
     && pnpm --filter @codaco/interview exec vite build --config e2e/host/vite.config.ts \
-    && pnpm --filter @codaco/interview exec playwright test --config=e2e/playwright.config.ts $*"
+    && pnpm --filter @codaco/interview exec playwright test --config=e2e/playwright.config.ts${FORWARDED_ARGS}"

@@ -37,7 +37,7 @@ export function VideoSection() {
           target="_blank"
           rel="noreferrer"
           aria-label={t('watchLabel')}
-          className="focusable group relative flex aspect-video items-center justify-center overflow-hidden rounded-[1.75rem] shadow-xl"
+          className="focusable group relative flex aspect-video items-center justify-center overflow-hidden rounded shadow-xl"
         >
           <span className="animate-background-gradient from-neon-coral via-purple-pizazz to-cerulean-blue absolute inset-0 bg-linear-to-br bg-[length:200%_200%]" />
           <span className="relative flex flex-col items-center gap-5 text-white">

@@ -1,0 +1,25 @@
+- main:
+  - text: Family member added. Your family pedigree now has 4 members.
+  - status:
+    - heading "Please build your family pedigree." [level=2]
+  - button
+  - button "Egg Parent"
+  - button "Sperm Parent"
+  - button "Jennifer"
+  - button "Daniel"
+  - heading "Pedigree Checklist" [level=4]
+  - button "Close"
+  - paragraph: Complete the following tasks before continuing. If a task doesn't apply you can click it to mark it as done.
+  - list:
+    - button "Record children's co-parents and their parents *"
+    - button "Add parents for Jennifer"
+    - button "Add parent's siblings"
+    - button "Add siblings"
+    - button "Add children"
+    - button "Add partners"
+  - button "How to build your pedigree": Help
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

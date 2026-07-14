@@ -10,6 +10,8 @@ import ProtocolSchemaV8 from '../schema';
  * - EgoForm/AlterForm/AlterEdgeForm forms must not carry a (never-rendered) title
  * - TieStrengthCensus prompt negativeLabel must be non-empty
  * - CategoricalBin prompt otherVariablePrompt required when otherVariable set
+ * - CategoricalBin prompt otherOptionLabel/otherVariablePrompt require otherVariable
+ * - OrdinalBin prompt color restricted to the ord-color-seq palette
  * - NameGenerator(QuickAdd) behaviours: maxNodes>=minNodes, maxNodes>=1, minNodes>=0
  *
  * The codebook here keeps variable record keys unique per entity type so the
@@ -38,6 +40,14 @@ const createProtocol = (stages: unknown[]) => ({
             options: [
               { label: 'Friend', value: 'friend' },
               { label: 'Family', value: 'family' },
+            ],
+          },
+          personRating: {
+            name: 'Rating',
+            type: 'ordinal',
+            options: [
+              { label: 'Low', value: 1 },
+              { label: 'High', value: 2 },
             ],
           },
         },
@@ -296,6 +306,56 @@ describe('Forms & prompts schema conformance', () => {
     it('accepts a prompt with no otherVariable at all', () => {
       const protocol = createProtocol([categoricalBinStage({})]);
       expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    });
+
+    it('rejects otherOptionLabel set without otherVariable', () => {
+      const protocol = createProtocol([
+        categoricalBinStage({ otherOptionLabel: 'Other' }),
+      ]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    });
+
+    it('rejects otherVariablePrompt set without otherVariable', () => {
+      const protocol = createProtocol([
+        categoricalBinStage({ otherVariablePrompt: 'Please specify' }),
+      ]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    });
+  });
+
+  describe('OrdinalBin prompt color', () => {
+    const ordinalBinStage = (prompt: Record<string, unknown>) => ({
+      id: 'ob1',
+      type: 'OrdinalBin',
+      label: 'Ordinal Bin',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Rate this',
+          variable: 'personRating',
+          ...prompt,
+        },
+      ],
+    });
+
+    it('accepts a color from the ord-color-seq palette', () => {
+      const protocol = createProtocol([
+        ordinalBinStage({ color: 'ord-color-seq-5' }),
+      ]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    });
+
+    it('accepts a prompt with no color', () => {
+      const protocol = createProtocol([ordinalBinStage({})]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    });
+
+    it('rejects a color outside the ord-color-seq palette', () => {
+      const protocol = createProtocol([
+        ordinalBinStage({ color: 'not-a-real-color' }),
+      ]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
     });
   });
 

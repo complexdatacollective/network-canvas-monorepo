@@ -1,0 +1,14 @@
+- main:
+    - text: Mohammad and Laury
+    - button "Mohammad"
+    - button "Laury"
+    - status:
+        - 'heading "Prompt 2: know each other?" [level=2]'
+    - 'radiogroup "Mohammad and Laury Prompt 2: know each other?"':
+        - radio "Yes"
+        - radio "No"
+    - navigation:
+        - button "Previous Step"
+        - progressbar "Progress indicator": x
+        - button "Next Step"
+    - region "Interview notifications"

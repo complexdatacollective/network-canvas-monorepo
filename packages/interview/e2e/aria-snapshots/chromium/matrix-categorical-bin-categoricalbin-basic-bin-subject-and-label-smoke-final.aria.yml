@@ -1,0 +1,18 @@
+- main:
+  - status:
+    - heading "Which categories does each person belong to?" [level=2]
+  - button "Category Family, 1 items":
+    - heading "Family" [level=4]
+    - paragraph: Alice
+  - button "Category Work, 1 items":
+    - heading "Work" [level=4]
+    - paragraph: Bob
+  - button "Category School, 1 items":
+    - heading "School" [level=4]
+    - paragraph: Carol
+  - button "Expand drawer" [disabled]: 0 unplaced
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

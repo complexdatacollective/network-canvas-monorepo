@@ -1,0 +1,14 @@
+- main:
+  - status:
+    - heading "Who do you trust?" [level=2]:
+      - text: ""
+      - emphasis: trust
+      - text: ""
+  - listbox "Added Nodes"
+  - button "Add a person":
+    - img "Add a person"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

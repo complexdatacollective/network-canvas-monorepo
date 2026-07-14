@@ -1,0 +1,18 @@
+- main:
+  - heading "About You" [level=1]
+  - heading "Section" [level=2]
+  - list:
+    - listitem: item one
+  - text: Name? Legal name
+  - textbox "Name?"
+  - text: Age?
+  - button "Decrease value"
+  - spinbutton "Age?"
+  - button "Increase value"
+  - text: Alone?
+  - switch "Alone?"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

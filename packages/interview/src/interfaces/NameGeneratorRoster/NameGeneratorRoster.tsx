@@ -80,7 +80,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   const { isLastPrompt } = usePrompts();
 
-  const { requirePassphrase, passphrase } = usePassphrase();
+  const { requirePassphrase, passphrase, isEnabled } = usePassphrase();
 
   const interfaceRef = useRef(null);
 
@@ -164,6 +164,13 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   // --- Encryption detection ---
   const useEncryption = useMemo(() => {
+    // The encrypted-variables experiment is the master switch: the decrypt
+    // path (useNodeAttributes) only runs when it is enabled, so writing
+    // ciphertext without it would store values that can never be displayed.
+    if (!isEnabled) {
+      return false;
+    }
+
     if (
       Object.keys(newNodeAttributes).some(
         (variableId) => codebookForNodeType[variableId]?.encrypted,
@@ -202,7 +209,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     return itemAttributesWithCodebookMatches.some(
       (itemAttribute) => codebookForNodeType[itemAttribute]?.encrypted,
     );
-  }, [items, codebookForNodeType, newNodeAttributes]);
+  }, [items, codebookForNodeType, newNodeAttributes, isEnabled]);
 
   useEffect(() => {
     if (useEncryption) {

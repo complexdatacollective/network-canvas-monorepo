@@ -1,0 +1,26 @@
+- main:
+  - application "Sociogram Canvas":
+    - button "Alice"
+    - button "Bob"
+    - button "Cara"
+  - button "Drag to reposition"
+  - toolbar "Presets":
+    - button "Previous preset" [disabled]
+    - button "bleakly custody" [expanded]
+    - button "Next preset" [disabled]
+  - status
+  - dialog:
+    - region:
+      - heading "Attributes" [level=3]:
+        - button "Attributes" [expanded]
+      - region "Attributes":
+        - radiogroup:
+          - radio "CloseFriend" [checked]
+          - text: CloseFriend
+          - radio "Trusted"
+          - text: Trusted
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

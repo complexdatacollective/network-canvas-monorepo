@@ -13,4 +13,8 @@ describe('allowsBackgroundImage', () => {
   it('allows a background image for Sociogram stages', () => {
     expect(allowsBackgroundImage('Sociogram')).toBe(true);
   });
+
+  it('allows a background image for NetworkComposer stages', () => {
+    expect(allowsBackgroundImage('NetworkComposer')).toBe(true);
+  });
 });

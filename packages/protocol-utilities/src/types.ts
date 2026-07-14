@@ -6,19 +6,67 @@ import type {
   FamilyPedigreeIntroItem,
   FamilyPedigreeNodeConfigInput,
   FamilyPedigreeNominationPromptInput,
+  FilterOperator,
   Item,
   StageType,
-  VariableOption,
   VariableType,
 } from '@codaco/protocol-validation';
+
+/**
+ * Structural (unbranded) filter input. The real `Filter` type brands
+ * `options.attribute` as an EntityAttributeReference, which callers building
+ * test protocols cannot produce without a schema parse; the e2e adapter
+ * re-validates the whole protocol against `CurrentProtocolSchema` anyway, so
+ * the builder accepts the plain shape. `Filter` is assignable to this type.
+ */
+export type FilterRuleInput = {
+  id: string;
+  type: 'node' | 'edge' | 'ego';
+  options: {
+    type?: string;
+    attribute?: string;
+    operator: FilterOperator;
+    value?: string | number | boolean | unknown[];
+  };
+};
+
+export type FilterInput = {
+  join?: 'AND' | 'OR';
+  rules: FilterRuleInput[];
+};
+
+type SkipLogicDestinationInput =
+  | { type: 'stage'; stageId: string }
+  | { type: 'finish' };
+
+export type SkipLogicInput = {
+  action: 'SHOW' | 'SKIP';
+  filter: FilterInput;
+  destination?: SkipLogicDestinationInput;
+};
+
+/**
+ * Structural variable option input: boolean values are legal on boolean
+ * variables (schema-validated downstream), which the exported VariableOption
+ * union does not admit.
+ */
+export type VariableOptionInput = {
+  label: string;
+  value: string | number | boolean;
+  negative?: boolean;
+};
 
 export type VariableEntry = {
   id: string;
   name: string;
   type: VariableType;
   component?: ComponentType;
-  options?: VariableOption[];
+  options?: VariableOptionInput[];
   validation?: Record<string, unknown>;
+  parameters?: Record<string, unknown>;
+  // Only meaningful on node text variables; the variable schema rejects
+  // `encrypted` on ego/edge variables, so only the node codebook emits it.
+  encrypted?: boolean;
 };
 
 type ShapeMapping =
@@ -199,12 +247,16 @@ type PanelEntry = {
   id: string;
   title: string;
   dataSource: string;
+  filter?: FilterInput;
 };
 
 export type StageEntry = {
   id: string;
   type: StageType;
   label: string;
+  interviewScript?: string;
+  skipLogic?: SkipLogicInput;
+  filter?: FilterInput;
   subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
   form?: FormEntry;
   prompts: PromptEntry[];
@@ -250,6 +302,7 @@ export type StageEntry = {
     title: string;
     body: string;
   };
+  validation?: { minLength?: number; maxLength?: number };
   // TieStrengthCensus (edge type reference on stage)
   edgeType?: { entity: 'edge'; type: string };
   // FamilyPedigree-specific fields, derived from the protocol-validation schema
@@ -325,13 +378,17 @@ export type AddVariableInput = {
   name?: string;
   type?: VariableType;
   component?: ComponentType;
-  options?: VariableOption[];
+  options?: VariableOptionInput[];
   validation?: Record<string, unknown>;
+  parameters?: Record<string, unknown>;
+  encrypted?: boolean;
 };
 
 export type FormFieldInput = {
   variable?: string;
   prompt?: string;
+  hint?: string;
+  showValidationHints?: boolean;
   component: ComponentType;
   parameters?: Record<string, unknown>;
   validation?: Record<string, unknown>;
@@ -343,6 +400,8 @@ export type FormFieldInput = {
 export type NetworkComposerFormFieldInput = {
   variable?: string;
   label?: string;
+  hint?: string;
+  showValidationHints?: boolean;
   component: ComponentType;
   parameters?: Record<string, unknown>;
   validation?: Record<string, unknown>;
@@ -350,6 +409,9 @@ export type NetworkComposerFormFieldInput = {
 
 export type AddStageInput = {
   label?: string;
+  interviewScript?: string;
+  skipLogic?: SkipLogicInput;
+  filter?: FilterInput;
   subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
   initialNodes?: InitialNodesSpec;
   initialEdges?: [number, number][];
@@ -394,6 +456,7 @@ export type AddStageInput = {
     title?: string;
     body?: string;
   };
+  validation?: { minLength?: number; maxLength?: number };
   // FamilyPedigree
   nodeConfig?: FamilyPedigreeNodeConfigInput;
   // Derived from the schema's edge config, but the builder fills the non-core
@@ -432,6 +495,8 @@ export type AddNetworkComposerEdgeInput = {
 
 export type AddPromptInput = {
   text?: string;
+  additionalAttributes?: { variable: string; value: boolean }[];
+  sortOrder?: SortRule[];
   layout?: {
     layoutVariable?: string;
   };

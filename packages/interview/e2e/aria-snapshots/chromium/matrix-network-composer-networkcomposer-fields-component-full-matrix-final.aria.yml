@@ -1,0 +1,67 @@
+- main:
+    - toolbar "Network composer tools":
+        - button "Select" [pressed]
+        - button "Add node"
+        - separator
+        - button "Automatic layout"
+        - separator
+        - button "Undo"
+        - button "Redo" [disabled]
+    - application:
+        - button "Pat"
+    - dialog "Pat":
+        - separator "Resize panel"
+        - heading "Pat" [level=2]
+        - button "Close"
+        - text: How old?
+        - textbox "How old?": Alex
+        - text: Bio
+        - textbox "Bio": Met at university
+        - text: Age In whole years
+        - button "Decrease value"
+        - spinbutton "Age": /\d+/
+        - button "Increase value"
+        - text: Closeness
+        - radiogroup "Closeness":
+            - radio "Not close"
+            - text: Not close
+            - radio "Somewhat close"
+            - text: Somewhat close
+            - radio "Very close" [checked]
+            - text: Very close
+        - text: Keep in touch
+        - group "Keep in touch":
+            - checkbox "Phone call"
+            - text: Phone call
+            - checkbox "Text message" [checked]
+            - text: Text message
+            - checkbox "In person"
+            - text: In person
+        - text: Lives together?
+        - radiogroup "Lives together?":
+            - radio "Yes" [checked]
+            - radio "No"
+        - text: Seen recently?
+        - switch "Seen recently?" [checked]
+        - text: Community
+        - group "Community":
+            - checkbox "School"
+            - checkbox "Work" [checked]
+        - text: Closeness score
+        - group "Closeness score":
+            - slider "Closeness score": '1'
+        - text: Not at all Completely Talk frequency
+        - group "Talk frequency":
+            - slider "Talk frequency": '2'
+        - text: Rarely Sometimes Often Often Date met
+        - textbox "Date met": /\d+-\d+-\d+/
+        - text: Last contact
+        - textbox: /\d+-\d+-\d+/
+        - text: Occupation
+        - textbox "Occupation": Teacher
+        - button "Delete"
+    - navigation:
+        - button "Previous Step" [disabled]
+        - progressbar "Progress indicator": x
+        - button "Next Step"
+    - region "Interview notifications"

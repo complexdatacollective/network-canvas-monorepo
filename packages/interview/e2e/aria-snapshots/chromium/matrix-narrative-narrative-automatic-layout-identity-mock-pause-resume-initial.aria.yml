@@ -1,0 +1,23 @@
+- main:
+  - application "Sociogram Canvas":
+    - button "Node0"
+    - button "Node1"
+    - button "Node2"
+    - button "Node3"
+    - button "Node4"
+    - button "Node5"
+  - button "Drag to reposition"
+  - toolbar "Presets":
+    - button "Previous preset" [disabled]
+    - button "bleakly custody" [expanded]
+    - button "Next preset" [disabled]
+  - status
+  - dialog:
+    - region
+  - toolbar "Layout and drawing tools":
+    - button "Pause automatic layout"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

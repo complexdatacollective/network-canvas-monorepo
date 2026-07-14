@@ -1,0 +1,14 @@
+- main:
+  - status:
+    - heading "Does this person have a relationship with any of the people below?" [level=2]
+  - button "Alice"
+  - button "Select all that apply, then click next":
+    - heading "Select all that apply, then click next" [level=3]
+  - listbox "Target nodes":
+    - option "Carol"
+    - option "Bob"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

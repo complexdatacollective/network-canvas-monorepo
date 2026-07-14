@@ -1,0 +1,34 @@
+- main:
+  - status:
+    - heading "Which categories does each person belong to?" [level=2]
+  - button "Category Option 1, 0 items":
+    - heading "Option 1" [level=4]
+  - button "Category Option 2, 0 items":
+    - heading "Option 2" [level=4]
+  - button "Category Option 3, 0 items":
+    - heading "Option 3" [level=4]
+  - button "Category Option 4, 0 items":
+    - heading "Option 4" [level=4]
+  - button "Category Option 5, 0 items":
+    - heading "Option 5" [level=4]
+  - button "Category Option 6, 0 items":
+    - heading "Option 6" [level=4]
+  - button "Category Option 7, 0 items":
+    - heading "Option 7" [level=4]
+  - button "Category Option 8, 0 items":
+    - heading "Option 8" [level=4]
+  - button "Category Option 9, 0 items":
+    - heading "Option 9" [level=4]
+  - button /Category Option \d+, 0 items/:
+    - heading /Option \d+/ [level=4]
+  - button /Category Option \d+, 0 items/:
+    - heading /Option \d+/ [level=4]
+  - button /Category Option \d+, 0 items/:
+    - heading /Option \d+/ [level=4]
+  - button "Collapse drawer" [expanded]: 1 unplaced
+  - button "Alex"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -2,7 +2,11 @@ import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('~/hooks/useAssetUrl', () => ({
+  useAssetUrl: vi.fn(),
+}));
 
 import {
   entityAttributesProperty,
@@ -11,6 +15,7 @@ import {
 import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
 import { StageMetadataContext } from '~/contexts/StageMetadataContext';
 import { ContractProvider } from '~/contract/context';
+import { useAssetUrl } from '~/hooks/useAssetUrl';
 import protocol from '~/store/modules/protocol';
 import session from '~/store/modules/session';
 import ui from '~/store/modules/ui';
@@ -29,10 +34,33 @@ beforeAll(() => {
   }
 });
 
+// Default to "no image resolved" so existing tests (which don't configure
+// background.image) exercise the ConcentricCircles fallback path.
+beforeEach(() => {
+  vi.mocked(useAssetUrl).mockReturnValue({
+    url: null,
+    isLoading: false,
+    error: null,
+  });
+});
+
 const NODE_TYPE = 'person';
 const EDGE_TYPE = 'knows';
 const LAYOUT_VAR = 'xy_position';
 const QUICK_ADD_VAR = 'var-quick-add';
+
+// Typed independently of the (currently narrower) protocol-validation schema
+// so tests can exercise background.image ahead of the schema restoring it.
+type TestBackground = {
+  concentricCircles?: number;
+  skewedTowardCenter?: boolean;
+  image?: string;
+};
+
+const defaultBackground: TestBackground = {
+  concentricCircles: 4,
+  skewedTowardCenter: true,
+};
 
 const stage = {
   id: 'nc1',
@@ -42,10 +70,7 @@ const stage = {
   layoutVariable: LAYOUT_VAR,
   quickAdd: QUICK_ADD_VAR,
   edges: [{ subject: { entity: 'edge' as const, type: EDGE_TYPE } }],
-  background: {
-    concentricCircles: 4,
-    skewedTowardCenter: true,
-  },
+  background: defaultBackground,
 };
 
 const codebook = {
@@ -87,7 +112,7 @@ const makeNodes = () => [
   },
 ];
 
-function renderInterface() {
+function renderInterface(stageOverride: typeof stage = stage) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -105,7 +130,7 @@ function renderInterface() {
         hash: 'h',
         schemaVersion: 8,
         codebook,
-        stages: [stage],
+        stages: [stageOverride],
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),
@@ -115,7 +140,7 @@ function renderInterface() {
   const moveForward = vi.fn();
 
   const props: StageProps<'NetworkComposer'> = {
-    stage: stage as StageProps<'NetworkComposer'>['stage'],
+    stage: stageOverride as StageProps<'NetworkComposer'>['stage'],
     getNavigationHelpers: () => ({ moveForward, moveBackward: vi.fn() }),
   };
 
@@ -163,6 +188,36 @@ describe('NetworkComposer canvas', () => {
     // ConcentricCircles renders an <svg aria-hidden> element
     const svgs = document.querySelectorAll('svg[aria-hidden="true"]');
     expect(svgs.length).toBeGreaterThan(0);
+  });
+
+  it('renders the resolved background image instead of concentric circles when background.image is set', () => {
+    vi.mocked(useAssetUrl).mockReturnValue({
+      url: 'blob:mock-background-image',
+      isLoading: false,
+      error: null,
+    });
+
+    renderInterface({
+      ...stage,
+      background: { image: 'asset-1' },
+    });
+
+    const img = screen.getByAltText('Background');
+    expect(img).toHaveAttribute('src', 'blob:mock-background-image');
+
+    // Scope to the decorative background wrapper — other chrome (e.g. tool
+    // palette icons) also renders aria-hidden svgs, so a page-wide query
+    // isn't a reliable signal that ConcentricCircles specifically is absent.
+    const canvas = screen.getByRole('application');
+    const backgroundWrapper = Array.from(canvas.children).find(
+      (el) =>
+        el.tagName === 'DIV' &&
+        el.className.includes('inset-0') &&
+        el.className.includes('items-center'),
+    );
+    expect(
+      backgroundWrapper?.querySelectorAll('svg[aria-hidden="true"]'),
+    ).toHaveLength(0);
   });
 
   it('keeps the decorative background non-interactive so background taps reach the canvas', () => {

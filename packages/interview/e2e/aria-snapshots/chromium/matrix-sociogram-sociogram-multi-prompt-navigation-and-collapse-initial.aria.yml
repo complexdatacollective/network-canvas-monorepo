@@ -1,0 +1,12 @@
+- main:
+  - application "Sociogram Canvas"
+  - button "Expand drawer": 0 unplaced
+  - text: Drop here to remove
+  - button "Hide instructions" [expanded]
+  - status:
+    - heading "Position each person." [level=4]
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

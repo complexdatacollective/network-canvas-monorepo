@@ -57,7 +57,7 @@ export function Institutions() {
           // in light mode the plate is absent and the logos render as before.
           <div
             key={inst.name}
-            className="[[data-theme=dark]_&]:rounded-2xl [[data-theme=dark]_&]:bg-white/90 [[data-theme=dark]_&]:px-5 [[data-theme=dark]_&]:py-3"
+            className="[[data-theme=dark]_&]:rounded [[data-theme=dark]_&]:bg-white/90 [[data-theme=dark]_&]:px-5 [[data-theme=dark]_&]:py-3"
           >
             <img
               src={inst.logo}

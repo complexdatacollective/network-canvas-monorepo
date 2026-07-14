@@ -1,0 +1,8 @@
+- main:
+  - heading "Intro" [level=1]
+  - paragraph: Intro copy
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

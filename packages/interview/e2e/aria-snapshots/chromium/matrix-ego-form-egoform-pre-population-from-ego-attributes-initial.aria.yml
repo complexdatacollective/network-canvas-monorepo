@@ -1,0 +1,10 @@
+- main:
+  - heading "About You" [level=1]
+  - paragraph: Please confirm your details.
+  - text: What is your name?
+  - textbox "What is your name?"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"
