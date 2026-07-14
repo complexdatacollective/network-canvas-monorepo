@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 
 // Replace generated ids with stable, position-based placeholders so a stage
 // read back via `readStageJson` (Task 3) can be snapshotted deterministically
@@ -80,10 +82,23 @@ function normalizeStage(input: unknown): unknown {
 // hook uses (rather than hand-reimplementing its print-width rules) is the
 // only way to guarantee byte-identity with whatever the hook produces,
 // including if its formatting rules change later.
+// Resolve oxfmt's Node bin shim once and invoke it directly with the current
+// Node executable. Going back through `pnpm exec` from inside the
+// already-running playwright process is not a cheap formatter call — pnpm
+// re-verifies the workspace (and can kick off an install) on every
+// invocation, once per snapshot assertion. oxfmt is a direct devDependency
+// of @codaco/architect, so the shim is always present in the filtered
+// Docker/CI install.
+const oxfmtBin = path.join(
+  path.dirname(createRequire(import.meta.url).resolve('oxfmt/package.json')),
+  'bin',
+  'oxfmt',
+);
+
 function formatWithOxfmt(raw: string): string {
   const result = spawnSync(
-    'pnpm',
-    ['exec', 'oxfmt', '--stdin-filepath=stage-snapshot.json'],
+    process.execPath,
+    [oxfmtBin, '--stdin-filepath=stage-snapshot.json'],
     {
       input: raw,
       encoding: 'utf8',

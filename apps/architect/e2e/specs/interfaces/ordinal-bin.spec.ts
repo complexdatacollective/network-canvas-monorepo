@@ -118,7 +118,9 @@ test('creates a valid OrdinalBin stage from scratch', async ({
   await editor.save();
 
   const stage = await readStageJson(architectPage, 0);
-  expect(stage.type).toBe('OrdinalBin');
+  if (stage.type !== 'OrdinalBin') {
+    throw new Error(`expected OrdinalBin stage, got ${stage.type}`);
+  }
 
   const { prompts } = stage;
   if (!Array.isArray(prompts) || prompts.length !== 1) {
