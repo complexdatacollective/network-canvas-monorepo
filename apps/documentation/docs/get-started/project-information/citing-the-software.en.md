@@ -54,4 +54,4 @@ URLs for Network Canvas software repositories are:
 
 Architect and Interviewer run in your web browser; to get started with any of the tools, see the [get started guide](/en/get-started/network-canvas). Downloads for the **Classic** desktop apps are available at:
 
-- [https://networkcanvas.com/download.html](https://networkcanvas.com/download)
+- [https://networkcanvas.com/download](https://networkcanvas.com/download)

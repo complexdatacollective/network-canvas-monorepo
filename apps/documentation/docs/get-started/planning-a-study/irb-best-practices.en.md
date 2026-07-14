@@ -9,7 +9,7 @@ Network Canvas uses modern security features, and has built on existing technolo
 
 How that data is stored, and therefore what security measures you need to put in place, depends on which tool you use:
 
-- **Local-device apps (Interviewer, Interviewer Classic, and Architect Classic)** — data is stored only on the local device (in the app, or in the browser for the browser-based Interviewer and Architect). Security relies on protecting that device.
+- **Local-device apps (Architect, Architect Classic, Interviewer, and Interviewer Classic)** — data is stored only on the local device: in the browser for the browser-based Architect and Interviewer, or within the app for the Classic desktop and tablet apps. Security relies on protecting that device.
 - **Fresco (self-hosted web app)** — data is stored centrally in a database and storage that you deploy and host. Security relies on protecting that server infrastructure.
 
 <TipBox>
@@ -18,7 +18,7 @@ This page summarizes the practical best practices for each tool. For a comprehen
 
 </TipBox>
 
-## Local-device apps (Interviewer, Interviewer Classic, and Architect Classic)
+## Local-device apps (Architect, Architect Classic, Interviewer, and Interviewer Classic)
 
 <TipBox>
 
