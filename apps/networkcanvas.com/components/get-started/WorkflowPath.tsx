@@ -38,7 +38,7 @@ export function WorkflowPath({
         <Heading
           level="h2"
           margin="none"
-          className="font-heading text-cyber-grape text-4xl font-black tracking-tight text-balance"
+          className="font-heading text-text text-4xl font-black tracking-tight text-balance"
         >
           {t(`sections.${workflow}.heading`)}
         </Heading>

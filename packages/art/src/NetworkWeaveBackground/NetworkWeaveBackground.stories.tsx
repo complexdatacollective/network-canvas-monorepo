@@ -29,7 +29,7 @@ Import \`NetworkWeaveBackground\` from \`@codaco/art/NetworkWeaveBackground\`. C
     colors: { control: 'object' },
     backgroundColor: { control: 'color' },
     intensity: { control: { type: 'range', min: 0, max: 1, step: 0.05 } },
-    flare: { control: { type: 'range', min: 0, max: 2, step: 0.05 } },
+    flare: { control: { type: 'range', min: 0, max: 4, step: 0.05 } },
     blendMode: {
       control: 'select',
       options: [

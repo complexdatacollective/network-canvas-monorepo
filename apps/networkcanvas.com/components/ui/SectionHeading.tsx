@@ -22,7 +22,7 @@ export function SectionHeading({
         level="h2"
         margin="none"
         id={id}
-        className="font-heading text-cyber-grape tablet-landscape:text-4xl text-3xl font-bold"
+        className="font-heading text-text tablet-landscape:text-4xl text-3xl font-bold"
       >
         {title}
       </Heading>

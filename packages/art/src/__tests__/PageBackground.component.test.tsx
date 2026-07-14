@@ -5,6 +5,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import type { ComponentPropsWithRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -30,9 +31,34 @@ const motionState = vi.hoisted(() => {
   return state;
 });
 
+type MockMotionValue = {
+  get: () => number;
+  set: (next: number) => void;
+  on: () => () => void;
+};
+
+const createMotionValue = (initial: number): MockMotionValue => {
+  let current = initial;
+  return {
+    get: () => current,
+    set: (next: number) => {
+      current = next;
+    },
+    on: () => () => {},
+  };
+};
+
 vi.mock('motion/react', () => ({
+  // Ref must forward so PageBackgroundProvider can measure the layer element.
+  motion: {
+    div: (props: ComponentPropsWithRef<'div'>) => <div {...props} />,
+  },
   useReducedMotion: () => motionState.reduced,
   useScroll: () => ({ scrollYProgress: motionState.scrollYProgress }),
+  useMotionValue: (initial: number) => createMotionValue(initial),
+  useTransform: () => createMotionValue(0),
+  useMotionTemplate: () => 'none',
+  animate: () => ({ stop: () => {} }),
   transform: (input: number, inputRange: number[], outputRange: number[]) => {
     if (input <= (inputRange[0] ?? 0)) return outputRange[0] ?? 0;
     const lastIndex = inputRange.length - 1;
@@ -124,6 +150,16 @@ describe('PageBackground', () => {
     resizeObservers.length = 0;
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     vi.stubGlobal('ResizeObserver', MockResizeObserver);
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }));
   });
 
   afterEach(() => {
@@ -149,8 +185,8 @@ describe('PageBackground', () => {
       expect.objectContaining({
         seed: 'networkcanvas.com',
         convergence: { x: 0.5, y: 0.6 },
-        intensity: 0.22,
-        flare: 1.25,
+        intensity: 0.4,
+        flare: 1.8,
         speedFactor: 0.35,
         className: 'block',
       }),
@@ -174,7 +210,7 @@ describe('PageBackground', () => {
     expect(latestProps.convergence.x).toBeCloseTo(0.4625);
     expect(latestProps.convergence.y).toBeCloseTo(0.4875);
     expect(latestProps.intensity).toBeCloseTo(0.1);
-    expect(latestProps.flare).toBeCloseTo(1.55);
+    expect(latestProps.flare).toBeCloseTo(3.3);
     expect(latestProps.speedFactor).toBeCloseTo(0.28);
   });
 
@@ -209,7 +245,7 @@ describe('PageBackground', () => {
       speedFactor: number;
     };
 
-    expect(fadingProps.intensity).toBeCloseTo(0.16);
+    expect(fadingProps.intensity).toBeCloseTo(0.25);
     expect(settledProps.intensity).toBeCloseTo(0.1);
     expect(laterProps.intensity).toBeCloseTo(0.1);
     expect(laterProps.flare).not.toBeCloseTo(settledProps.flare);
@@ -228,8 +264,8 @@ describe('PageBackground', () => {
     expect(networkWeaveProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         convergence: { x: 0.2, y: 0.4 },
-        intensity: 0.22,
-        flare: 1.25,
+        intensity: 0.4,
+        flare: 1.8,
         speedFactor: 0.35,
       }),
     );

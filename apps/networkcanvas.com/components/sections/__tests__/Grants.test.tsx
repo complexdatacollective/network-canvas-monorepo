@@ -74,7 +74,7 @@ describe('Grants', () => {
     expect(heading.tagName).toBe('H3');
     expect(heading).toHaveClass(
       'font-heading',
-      'text-cyber-grape',
+      'text-text',
       'text-xl',
       'font-bold',
     );

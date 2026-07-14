@@ -1,4 +1,11 @@
 {
+  "ThemeTranslations": {
+    "label": "Tema de color",
+    "triggerLabel": "Tema de color: {theme}",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
+  },
   "Metadata": {
     "siteTitle": "Network Canvas",
     "siteDescription": "Network Canvas ofrece software gratuito y de código abierto para recopilar datos de redes, diseñado en función de las necesidades tanto de quienes investigan como de quienes participan.",
