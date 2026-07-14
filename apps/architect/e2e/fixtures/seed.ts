@@ -86,7 +86,27 @@ export async function seedProtocol(
           req.onsuccess = () => resolve(req.result);
           req.onerror = () => reject(req.error);
         });
-      const db = await open();
+      // A versionless open that wins the race with Dexie's first open would
+      // CREATE an empty version-1 DB with no object stores, and the
+      // transaction below would then throw NotFoundError. Wait until the
+      // app's Dexie instance (assetDB.ts) has created both stores, closing
+      // between polls so an in-flight Dexie upgrade is never blocked by this
+      // connection.
+      let db = await open();
+      const deadline = Date.now() + 10_000;
+      while (
+        !db.objectStoreNames.contains('protocols') ||
+        !db.objectStoreNames.contains('assets')
+      ) {
+        db.close();
+        if (Date.now() > deadline) {
+          throw new Error(
+            `stores missing from ${dbName} — app never opened its Dexie DB`,
+          );
+        }
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+        db = await open();
+      }
       const now = Date.now();
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(['protocols', 'assets'], 'readwrite');
