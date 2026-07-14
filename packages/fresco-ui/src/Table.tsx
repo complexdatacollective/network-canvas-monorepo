@@ -107,7 +107,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cx(
-      'w-0 px-6 whitespace-nowrap',
+      'w-0 px-6 py-3 align-bottom whitespace-nowrap',
       'text-left font-medium last:w-auto',
       className,
     )}

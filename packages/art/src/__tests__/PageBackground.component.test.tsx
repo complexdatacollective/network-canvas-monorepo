@@ -15,6 +15,18 @@ import {
 } from '../PageBackground/PageBackground';
 
 const networkWeaveProps = vi.hoisted(() => vi.fn());
+const animateMock = vi.hoisted(() =>
+  vi.fn(
+    (
+      start: unknown,
+      _end: unknown,
+      options?: { onUpdate?: (progress: number) => void },
+    ) => {
+      if (typeof start === 'number') options?.onUpdate?.(1);
+      return { stop: () => {} };
+    },
+  ),
+);
 const motionState = vi.hoisted(() => {
   const state: {
     reduced: boolean;
@@ -58,7 +70,7 @@ vi.mock('motion/react', () => ({
   useMotionValue: (initial: number) => createMotionValue(initial),
   useTransform: () => createMotionValue(0),
   useMotionTemplate: () => 'none',
-  animate: () => ({ stop: () => {} }),
+  animate: animateMock,
   transform: (input: number, inputRange: number[], outputRange: number[]) => {
     if (input <= (inputRange[0] ?? 0)) return outputRange[0] ?? 0;
     const lastIndex = inputRange.length - 1;
@@ -144,6 +156,7 @@ function BackgroundTarget() {
 describe('PageBackground', () => {
   beforeEach(() => {
     networkWeaveProps.mockClear();
+    animateMock.mockClear();
     motionState.reduced = false;
     motionState.progress = 0;
     motionState.listener = null;
@@ -271,6 +284,65 @@ describe('PageBackground', () => {
     );
   });
 
+  it('animates between target positions and intensities', () => {
+    const { rerender } = render(
+      <PageBackground
+        convergence={{ x: 0.2, y: 0.4 }}
+        intensity={0.4}
+        motionMode="target"
+        resolved
+      />,
+    );
+
+    animateMock.mockClear();
+    rerender(
+      <PageBackground
+        convergence={{ x: 0.8, y: 0.7 }}
+        intensity={0.1}
+        motionMode="target"
+        resolved
+      />,
+    );
+
+    expect(animateMock).toHaveBeenCalledWith(
+      0,
+      1,
+      expect.objectContaining({
+        type: 'spring',
+        stiffness: 100,
+        damping: 20,
+      }),
+    );
+    const latestProps = networkWeaveProps.mock.lastCall?.[0] as {
+      convergence: { x: number; y: number };
+      intensity: number;
+    };
+    expect(latestProps.convergence).toEqual({ x: 0.8, y: 0.7 });
+    expect(latestProps.intensity).toBeCloseTo(0.1);
+  });
+
+  it('snaps to the first measured target before revealing the weave', () => {
+    const { rerender } = render(
+      <PageBackground motionMode="target" resolved={false} />,
+    );
+
+    animateMock.mockClear();
+    rerender(
+      <PageBackground
+        convergence={{ x: 0.25, y: 0.75 }}
+        motionMode="target"
+        resolved
+      />,
+    );
+
+    expect(
+      animateMock.mock.calls.some(([start, end]) => start === 0 && end === 1),
+    ).toBe(false);
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ convergence: { x: 0.25, y: 0.75 } }),
+    );
+  });
+
   it('measures the target center in the hero layer coordinate space', () => {
     const layerRect = createRect({ left: 0, top: 0, width: 1000, height: 800 });
     const targetRect = createRect({
@@ -320,7 +392,7 @@ describe('PageBackground', () => {
     );
   });
 
-  it('updates for viewport changes and cleans up its observers', () => {
+  it('updates for scroll and viewport changes and cleans up its observers', () => {
     let layerRect = createRect({ left: 0, top: 0, width: 1000, height: 800 });
     let targetRect = createRect({
       left: 100,
@@ -369,8 +441,61 @@ describe('PageBackground', () => {
     expect(latestProps.convergence.x).toBeCloseTo(0.625);
     expect(latestProps.convergence.y).toBeCloseTo(0.4167);
 
+    targetRect = createRect({
+      left: 300,
+      top: -50,
+      width: 400,
+      height: 300,
+    });
+    act(() => {
+      fireEvent.scroll(window);
+    });
+
+    const scrolledProps = networkWeaveProps.mock.lastCall?.[0] as {
+      convergence: { x: number; y: number };
+    };
+    expect(scrolledProps.convergence.x).toBeCloseTo(0.625);
+    expect(scrolledProps.convergence.y).toBeCloseTo(0.1667);
+
     unmount();
     expect(observer?.disconnect).toHaveBeenCalledOnce();
+  });
+
+  it('reveals at the scroll path when the initial target is above the viewport', () => {
+    motionState.progress = 0.5;
+    const layerRect = createRect({ left: 0, top: 0, width: 1000, height: 800 });
+    const targetRect = createRect({
+      left: 100,
+      top: -500,
+      width: 400,
+      height: 100,
+    });
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        return (this as HTMLElement).dataset.testid === 'page-background-layer'
+          ? layerRect
+          : targetRect;
+      },
+    );
+
+    render(
+      <PageBackgroundProvider>
+        <BackgroundTarget />
+      </PageBackgroundProvider>,
+    );
+
+    const latestProps = networkWeaveProps.mock.lastCall?.[0] as {
+      convergence: { x: number; y: number };
+      intensity: number;
+    };
+    expect(latestProps.convergence.x).toBeCloseTo(0.5);
+    expect(latestProps.convergence.y).toBeCloseTo(0.5125);
+    expect(latestProps.intensity).toBeCloseTo(0.1);
+    expect(
+      animateMock.mock.calls.some(
+        ([start, end]) => typeof start === 'object' && end === 0,
+      ),
+    ).toBe(true);
   });
 
   it('keeps the last finite coordinates when the layer has no size', () => {
