@@ -12,7 +12,7 @@
     "typecheck": "tsc --build --noEmit",
     "test:e2e": "./e2e/scripts/run.sh",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --update-snapshots",
-    "test:e2e:headed": "pnpm turbo run build --filter=@codaco/architect && playwright test --config e2e/playwright.config.ts --headed"
+    "test:e2e:headed": "VITE_DISABLE_ANALYTICS=true pnpm turbo run build --filter=@codaco/architect && playwright test --config e2e/playwright.config.ts --headed"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
