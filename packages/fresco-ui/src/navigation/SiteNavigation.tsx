@@ -50,7 +50,12 @@ export type SiteNavigationUtilityRenderProps = {
   view: 'desktop' | 'mobile';
 };
 
-type SoftwareId = 'architect' | 'interviewer' | 'fresco';
+type SoftwareId =
+  | 'architect'
+  | 'architectClassic'
+  | 'interviewer'
+  | 'interviewerClassic'
+  | 'fresco';
 
 type ResourceLink = {
   id: 'community' | 'documentation' | 'protocolGallery';
@@ -95,7 +100,11 @@ const destinations = {
   documentation: 'https://documentation.networkcanvas.com/',
   protocolGallery: 'https://protocolgallery.networkcanvas.com/',
   architect: 'https://architect.networkcanvas.com/',
+  architectClassic:
+    'https://networkcanvas.com/get-started#architect-classic-downloads',
   interviewer: 'https://interviewer.networkcanvas.com/',
+  interviewerClassic:
+    'https://networkcanvas.com/get-started#interviewer-classic-downloads',
   fresco: 'https://fresco-sandbox.networkcanvas.com/',
   networkCanvas: 'https://networkcanvas.com/',
 } as const;
@@ -112,13 +121,20 @@ const breakpointClasses = {
 
 const accentClasses: Record<SoftwareId, string> = {
   architect: 'text-sea-green',
+  architectClassic: 'text-cyber-grape [[data-theme=dark]_&]:text-platinum-dark',
   interviewer: 'text-neon-coral',
+  interviewerClassic:
+    'text-cyber-grape [[data-theme=dark]_&]:text-platinum-dark',
   fresco: 'text-slate-blue',
 };
 
 const hoverAccentClasses: Record<SoftwareId, string> = {
   architect: 'hover:bg-sea-green/10 focus-visible:bg-sea-green/10',
+  architectClassic:
+    'hover:bg-cyber-grape/10 focus-visible:bg-cyber-grape/10 [[data-theme=dark]_&]:hover:bg-platinum-dark/10 [[data-theme=dark]_&]:focus-visible:bg-platinum-dark/10',
   interviewer: 'hover:bg-neon-coral/10 focus-visible:bg-neon-coral/10',
+  interviewerClassic:
+    'hover:bg-cyber-grape/10 focus-visible:bg-cyber-grape/10 [[data-theme=dark]_&]:hover:bg-platinum-dark/10 [[data-theme=dark]_&]:focus-visible:bg-platinum-dark/10',
   fresco: 'hover:bg-slate-blue/10 focus-visible:bg-slate-blue/10',
 };
 
@@ -273,7 +289,7 @@ function SoftwareCard({
   renderLink: (props: SiteNavigationLinkRenderProps) => ReactElement;
 }) {
   const className = cx(
-    'focusable tablet-landscape:w-[clamp(19rem,29vw,22rem)] block h-full w-[min(42rem,calc(100vw-4rem))] rounded p-4 transition-colors',
+    'focusable flex h-full w-[19rem] flex-col rounded p-5 transition-colors',
     hoverAccentClasses[link.id],
   );
   const content = (
@@ -299,7 +315,7 @@ function SoftwareCard({
       </Paragraph>
       <span
         className={cx(
-          'font-heading mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold tracking-[0.12em] uppercase',
+          'font-heading mt-auto inline-flex items-center gap-1.5 pt-2.5 text-xs font-bold tracking-[0.12em] uppercase',
           accentClasses[link.id],
         )}
       >
@@ -365,18 +381,9 @@ function SoftwareMenu({
             />
           </NavigationMenu.Trigger>
           <NavigationMenu.Content className="transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
-            <ul className="tablet-landscape:flex-row flex flex-col p-1">
-              {links.map((link, index) => (
-                <li
-                  key={link.id}
-                  className={cx(
-                    'tablet-landscape:flex tablet-landscape:px-2',
-                    index > 0 &&
-                      'border-outline tablet-landscape:mt-0 tablet-landscape:border-t-0 tablet-landscape:border-l tablet-landscape:pt-0 mt-2 border-t pt-2',
-                    index === 0 && 'tablet-landscape:pl-0',
-                    index === links.length - 1 && 'tablet-landscape:pr-0',
-                  )}
-                >
+            <ul className="grid grid-cols-3 gap-1 p-1">
+              {links.map((link) => (
+                <li key={link.id} className="flex">
                   <SoftwareCard link={link} renderLink={renderLink} />
                 </li>
               ))}
@@ -519,7 +526,13 @@ export default function SiteNavigation({
     },
   ];
   const softwareLinks: SoftwareLink[] = (
-    ['architect', 'interviewer', 'fresco'] as const
+    [
+      'architect',
+      'interviewer',
+      'fresco',
+      'architectClassic',
+      'interviewerClassic',
+    ] as const
   ).map((id) => ({
     id,
     ...labels.softwareLinks[id],
