@@ -77,19 +77,27 @@ export async function readProtocolJson(
   return row.protocol;
 }
 
+// Poll past the 600ms autosave debounce (protocolLibraryListener.ts) until
+// the stage at `index` exists in the durable row. Existence alone is only a
+// meaningful wait for create-from-scratch specs (the seeded row has no stage
+// at `index` until the autosave lands); when editing a stage that ALREADY
+// exists in the seeded protocol, existence passes immediately and can return
+// the pre-autosave JSON — those callers must pass `until`, a predicate on the
+// stage (e.g. checking the field they just changed) that the poll also waits
+// on.
 export async function readStageJson(
   page: Page,
   index: number,
+  until?: (stage: Record<string, unknown>) => boolean,
 ): Promise<Record<string, unknown>> {
   let stage: Record<string, unknown> | undefined;
-  // Poll past the 600ms autosave debounce (protocolLibraryListener.ts) until
-  // the stage at `index` exists in the durable row.
   await expect
     .poll(
       async () => {
         const row = await readActiveRow(page);
         stage = row?.protocol.stages[index];
-        return stage ? 'ready' : 'pending';
+        if (!stage) return 'pending';
+        return until === undefined || until(stage) ? 'ready' : 'pending';
       },
       { timeout: 5_000 },
     )

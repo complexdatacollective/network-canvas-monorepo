@@ -5,13 +5,25 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 export type SeedAsset = {
   assetId: string;
   name: string;
-  data: Blob | string;
+  // Utf8 text content of the asset file. Wrapped into a real `Blob` inside
+  // `seedProtocol`'s `page.evaluate` callback (browser context) rather than
+  // here: a `Blob` constructed in Node wouldn't survive serialisation across
+  // the evaluate boundary intact (Playwright's argument serializer has no
+  // special case for it, so it arrives as an empty plain object) — and every
+  // row this writes into the `assets` store represents a file-backed asset,
+  // which `~/utils/bundleProtocol.ts` requires to carry `Blob` data (a
+  // string there is treated as an apikey value and skipped from exports).
+  data: string;
 };
 
 const DB_NAME = 'ArchitectProtocolDB';
 
 // Deterministic id so create-from-scratch snapshots are stable across runs.
 const FIXED_ID = 'e2e-protocol';
+
+// Distinguishes each seedProtocol call's init script within a worker, so two
+// seeds in one test each apply exactly once (see the one-shot guard below).
+let seedCallCount = 0;
 
 // Writes a protocol straight into the app's real storage contract (raw
 // IndexedDB `protocols`/`assets` stores + the two redux-remember
@@ -40,9 +52,16 @@ export async function seedProtocol(
   // 1. Seed sessionStorage BEFORE the app boots, so redux-remember rehydrates
   //    straight into /protocol with this protocol active. Both keys must
   //    carry the same id — a mismatch makes redux-remember discard `present`
-  //    on rehydrate.
+  //    on rehydrate. Init scripts run before EVERY document load in the
+  //    context, so guard with a per-call sessionStorage flag (sessionStorage
+  //    survives same-tab navigations): without it, a reload/navigation after
+  //    the spec edits the protocol would rewrite the redux-remember keys back
+  //    to the original seed, masking the autosaved edits under test.
+  const seedFlag = `__e2eSeeded:${++seedCallCount}`;
   await page.addInitScript(
-    ([storageId, proto]) => {
+    ([storageId, proto, flag]) => {
+      if (sessionStorage.getItem(flag)) return;
+      sessionStorage.setItem(flag, '1');
       sessionStorage.setItem(
         '@@remember-app',
         JSON.stringify({ activeProtocolId: storageId }),
@@ -52,7 +71,7 @@ export async function seedProtocol(
         JSON.stringify({ present: proto, activeProtocolId: storageId }),
       );
     },
-    [id, seededProtocol] as const,
+    [id, seededProtocol, seedFlag] as const,
   );
 
   // 2. Navigate once so Dexie creates ArchitectProtocolDB, then write the
@@ -89,7 +108,9 @@ export async function seedProtocol(
             assetId: asset.assetId,
             protocolId: storageId,
             name: asset.name,
-            data: asset.data,
+            // Built here (inside the evaluate callback) so it's a real,
+            // browser-native `Blob` — see the `SeedAsset.data` comment.
+            data: new Blob([asset.data]),
           });
         }
       });
