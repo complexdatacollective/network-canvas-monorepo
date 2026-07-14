@@ -65,7 +65,9 @@ type GeoMapOptions = {
 };
 
 /** Standard Chicago-tracts map options; override any field per scenario. */
-function chicagoMapOptions(overrides: Partial<GeoMapOptions> = {}): GeoMapOptions {
+function chicagoMapOptions(
+  overrides: Partial<GeoMapOptions> = {},
+): GeoMapOptions {
   return {
     tokenAssetId: TOKEN_ASSET_ID,
     style: 'mapbox://styles/mapbox/streets-v12',
@@ -327,9 +329,7 @@ function buildOutsideSelectableAreasScenario(): ScenarioDefinition {
       ).toBe('outside-selectable-areas');
 
       await stage.geospatial.deselectOutsideArea();
-      await expect(
-        stage.geospatial.outsideSelectableOverlay,
-      ).not.toBeVisible();
+      await expect(stage.geospatial.outsideSelectableOverlay).not.toBeVisible();
       await expect(stage.geospatial.outsideSelectableAreasButton).toBeEnabled();
       await expect.poll(() => interview.nextButtonHasPulse()).toBe(false);
 
@@ -812,10 +812,9 @@ function buildMapStyleColorTransitScenario(): ScenarioDefinition {
     currentStep: 0,
     seedNetwork: true,
     run: async ({ page, interview, stage }) => {
-      const stylePromise = page.waitForRequest(
-        /styles\/v1\/mapbox\/dark-v11/,
-        { timeout: 30_000 },
-      );
+      const stylePromise = page.waitForRequest(/styles\/v1\/mapbox\/dark-v11/, {
+        timeout: 30_000,
+      });
       const tileJsonPromise = page.waitForRequest(
         /mapbox\.mapbox-streets-v8\.json/,
         { timeout: 30_000 },

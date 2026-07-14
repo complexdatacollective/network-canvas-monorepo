@@ -84,7 +84,9 @@ export class NarrativeFixture {
   async getBackgroundCircleRadii(): Promise<number[]> {
     const circles = await this.getBackgroundCircles().all();
     return Promise.all(
-      circles.map(async (c) => Number.parseFloat((await c.getAttribute('r')) ?? '0')),
+      circles.map(async (c) =>
+        Number.parseFloat((await c.getAttribute('r')) ?? '0'),
+      ),
     );
   }
 

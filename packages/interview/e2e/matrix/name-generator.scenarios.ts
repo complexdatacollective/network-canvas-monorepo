@@ -323,14 +323,46 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           subject: { entity: 'node', type: person.id },
           form: { title: 'About this person', fields: [] },
         });
-        stage.addFormField({ variable: 'v-text', component: 'Text', prompt: 'Free text' });
-        stage.addFormField({ variable: 'v-area', component: 'TextArea', prompt: 'Notes' });
-        stage.addFormField({ variable: 'v-num', component: 'Number', prompt: 'Age' });
-        stage.addFormField({ variable: 'v-radio', component: 'RadioGroup', prompt: 'Agreement' });
-        stage.addFormField({ variable: 'v-check', component: 'CheckboxGroup', prompt: 'Contexts' });
-        stage.addFormField({ variable: 'v-bool', component: 'Boolean', prompt: 'Active tie' });
-        stage.addFormField({ variable: 'v-vas', component: 'VisualAnalogScale', prompt: 'Closeness' });
-        stage.addFormField({ variable: 'v-date', component: 'DatePicker', prompt: 'Birth year' });
+        stage.addFormField({
+          variable: 'v-text',
+          component: 'Text',
+          prompt: 'Free text',
+        });
+        stage.addFormField({
+          variable: 'v-area',
+          component: 'TextArea',
+          prompt: 'Notes',
+        });
+        stage.addFormField({
+          variable: 'v-num',
+          component: 'Number',
+          prompt: 'Age',
+        });
+        stage.addFormField({
+          variable: 'v-radio',
+          component: 'RadioGroup',
+          prompt: 'Agreement',
+        });
+        stage.addFormField({
+          variable: 'v-check',
+          component: 'CheckboxGroup',
+          prompt: 'Contexts',
+        });
+        stage.addFormField({
+          variable: 'v-bool',
+          component: 'Boolean',
+          prompt: 'Active tie',
+        });
+        stage.addFormField({
+          variable: 'v-vas',
+          component: 'VisualAnalogScale',
+          prompt: 'Closeness',
+        });
+        stage.addFormField({
+          variable: 'v-date',
+          component: 'DatePicker',
+          prompt: 'Birth year',
+        });
         stage.addFormField({
           variable: 'v-reldate',
           component: 'RelativeDatePicker',
@@ -416,7 +448,9 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           component: 'Text',
           prompt: 'Their name',
         });
-        stage.addPrompt({ text: 'Who do you talk to about important matters?' });
+        stage.addPrompt({
+          text: 'Who do you talk to about important matters?',
+        });
         stage.addPrompt({ text: 'Who do you turn to for help?' });
         return synth;
       },
@@ -871,9 +905,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           .filter({ hasText: 'Broken source' });
         await expect(panel).toBeAttached();
         await expect(panel).toBeHidden();
-        await expect(
-          panel.getByText('Something went wrong'),
-        ).toBeAttached();
+        await expect(panel.getByText('Something went wrong')).toBeAttached();
         await expect(
           panel.getByText('External data could not be loaded.'),
         ).toBeAttached();

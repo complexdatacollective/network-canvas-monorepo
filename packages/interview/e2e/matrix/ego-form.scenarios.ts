@@ -1,5 +1,5 @@
-import type { ComponentType } from '@codaco/protocol-validation';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import type { ComponentType } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -107,7 +107,8 @@ export const egoFormScenarios: InterfaceScenarios = {
           variable: aloneVar.id,
           component: 'Toggle',
           prompt: 'Alone?',
-        });        return synth;
+        });
+        return synth;
       },
       run: async ({ page }) => {
         // introductionPanel renders as real markdown elements, not raw
@@ -128,7 +129,11 @@ export const egoFormScenarios: InterfaceScenarios = {
         // `data-field-name` wrapper), in declaration order.
         const fieldContainers = page.locator('[data-field-name]');
         await expect(fieldContainers).toHaveCount(3);
-        await expect(fieldContainers).toContainText(['Name?', 'Age?', 'Alone?']);
+        await expect(fieldContainers).toContainText([
+          'Name?',
+          'Age?',
+          'Alone?',
+        ]);
 
         // The Text field's hint renders inside its own container
         // (BaseField.tsx:84-89).
@@ -338,7 +343,8 @@ export const egoFormScenarios: InterfaceScenarios = {
         });
 
         // Somewhere to advance to so the autosubmit-on-forward-nav persists.
-        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });        return synth;
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
       },
       run: async ({ page, interview, protocol }) => {
         const field = (prompt: string) =>
@@ -388,7 +394,9 @@ export const egoFormScenarios: InterfaceScenarios = {
         const toggleButtonGroup = field(
           'What is your highest education level?',
         );
-        await toggleButtonGroup.getByRole('checkbox', { name: 'School' }).click();
+        await toggleButtonGroup
+          .getByRole('checkbox', { name: 'School' })
+          .click();
 
         await field('What is your date of birth?')
           .locator('input[type="date"]')
@@ -481,7 +489,8 @@ export const egoFormScenarios: InterfaceScenarios = {
           prompt: 'Do you agree to take part?',
         });
 
-        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });        return synth;
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
       },
       run: async ({ page, interview, protocol }) => {
         const radioGroup = page.locator('[data-field-name]', {
@@ -491,9 +500,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         await expect(radioGroup.getByRole('radio')).toHaveCount(7);
         // > 6 options switches on the container-query columns layout
         // (orientationVariants useColumns → `grid-cols-*` classes).
-        await expect(
-          radioGroup.locator('[class*="grid-cols"]'),
-        ).toHaveCount(1);
+        await expect(radioGroup.locator('[class*="grid-cols"]')).toHaveCount(1);
 
         // Select the 4th option (value 3).
         await page.getByRole('radio', { name: 'Three' }).click();
@@ -560,7 +567,8 @@ export const egoFormScenarios: InterfaceScenarios = {
           prompt: 'Alone?',
         });
 
-        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });        return synth;
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
       },
       run: async ({ page, interview, protocol }) => {
         // Pulse is driven by form validity: a required-empty field registers
@@ -615,7 +623,8 @@ export const egoFormScenarios: InterfaceScenarios = {
           component: 'Text',
           prompt: 'Enter a short code',
         });
-        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });        return synth;
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
       },
       run: async ({ page, interview, protocol }) => {
         const codeField = page.getByLabel('Enter a short code');
@@ -660,7 +669,8 @@ export const egoFormScenarios: InterfaceScenarios = {
           component: 'Number',
           prompt: 'How old are you?',
         });
-        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });        return synth;
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
       },
       run: async ({ page, interview, protocol }) => {
         const ageField = page.getByLabel('How old are you?');
@@ -702,7 +712,8 @@ export const egoFormScenarios: InterfaceScenarios = {
           component: 'CheckboxGroup',
           prompt: 'Where do you know them from?',
         });
-        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });        return synth;
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
       },
       run: async ({ page, interview, protocol }) => {
         const group = page.locator('[data-field-name]', {
@@ -730,11 +741,11 @@ export const egoFormScenarios: InterfaceScenarios = {
         await interview.next();
         await expect(page).toHaveURL(/step=1/);
         // Categorical values persist as an array of the remaining option values.
-        await protocol.waitForEgoAttribute(interview.interviewId, selectionVarId, [
-          'family',
-          'work',
-          'school',
-        ]);
+        await protocol.waitForEgoAttribute(
+          interview.interviewId,
+          selectionVarId,
+          ['family', 'work', 'school'],
+        );
       },
     },
 
@@ -785,7 +796,8 @@ export const egoFormScenarios: InterfaceScenarios = {
           prompt: 'Choose a nickname',
         });
 
-        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });        return synth;
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
       },
       run: async ({ page, interview, protocol }) => {
         // `exact` avoids "Email address" substring-matching "Confirm email
@@ -868,7 +880,8 @@ export const egoFormScenarios: InterfaceScenarios = {
           prompt: 'Age when it ended',
         });
 
-        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });        return synth;
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
       },
       run: async ({ page, interview, protocol }) => {
         const startField = page.getByLabel('Age when it started');
@@ -899,7 +912,10 @@ export const egoFormScenarios: InterfaceScenarios = {
 
     {
       id: 'validation-hints-summary',
-      covers: ['showValidationHints-summary', 'form.fields[].showValidationHints'],
+      covers: [
+        'showValidationHints-summary',
+        'form.fields[].showValidationHints',
+      ],
       build: () => {
         const synth = new SyntheticInterview();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
@@ -927,7 +943,8 @@ export const egoFormScenarios: InterfaceScenarios = {
           variable: ageVar.id,
           component: 'Number',
           prompt: 'Age?',
-        });        return synth;
+        });
+        return synth;
       },
       run: async ({ page }) => {
         // The Text field's hint region (BaseField.tsx:84-89) carries the
@@ -970,7 +987,8 @@ export const egoFormScenarios: InterfaceScenarios = {
           component: 'RelativeDatePicker',
           prompt: 'When did you last visit?',
         });
-        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });        return synth;
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
       },
       run: async ({ page, interview, protocol }) => {
         const dateInput = page
@@ -1025,7 +1043,8 @@ export const egoFormScenarios: InterfaceScenarios = {
           component: 'Text',
           prompt: 'What is your name?',
         });
-        synth.addInformationStage({ title: 'Next', text: 'Continue.' });        return synth;
+        synth.addInformationStage({ title: 'Next', text: 'Continue.' });
+        return synth;
       },
       run: async ({ page, interview, protocol }) => {
         const nameField = page.getByLabel('What is your name?');
@@ -1080,7 +1099,8 @@ export const egoFormScenarios: InterfaceScenarios = {
         synth.addInformationStage({
           title: 'After',
           text: 'Placeholder stage after EgoForm.',
-        });        return synth;
+        });
+        return synth;
       },
       run: async ({ page, interview, protocol }) => {
         const ageField = page.getByLabel('How old are you?');
@@ -1204,7 +1224,8 @@ export const egoFormScenarios: InterfaceScenarios = {
             component: preset.component,
             prompt: preset.prompt,
           });
-        }        return synth;
+        }
+        return synth;
       },
       run: async ({ page }) => {
         // The 15s nudge timer is scheduled in a mount effect (EgoForm.tsx:78-85).

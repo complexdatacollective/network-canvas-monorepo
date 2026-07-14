@@ -786,9 +786,9 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         expect(caraFinal[entityAttributesProperty][multiVerifiedVarId]).toBe(
           true,
         );
-        expect(
-          amy[entityAttributesProperty][multiVerifiedVarId],
-        ).not.toBe(true);
+        expect(amy[entityAttributesProperty][multiVerifiedVarId]).not.toBe(
+          true,
+        );
 
         // Each node is scoped to exactly its own prompt.
         expect(amy.promptIDs).toHaveLength(1);

@@ -73,7 +73,11 @@ function scaffoldPedigree(diseaseVarIds: string[]): PedigreeScaffold {
       value: o.value,
     })),
   });
-  nodeType.addVariable({ id: REL_TO_EGO_VAR, name: REL_TO_EGO_VAR, type: 'text' });
+  nodeType.addVariable({
+    id: REL_TO_EGO_VAR,
+    name: REL_TO_EGO_VAR,
+    type: 'text',
+  });
   for (const id of diseaseVarIds) {
     nodeType.addVariable({ id, name: id, type: 'boolean' });
   }
@@ -88,7 +92,11 @@ function scaffoldPedigree(diseaseVarIds: string[]): PedigreeScaffold {
       value: o.value,
     })),
   });
-  edgeType.addVariable({ id: IS_ACTIVE_VAR, name: IS_ACTIVE_VAR, type: 'boolean' });
+  edgeType.addVariable({
+    id: IS_ACTIVE_VAR,
+    name: IS_ACTIVE_VAR,
+    type: 'boolean',
+  });
   edgeType.addVariable({ id: IS_GEST_VAR, name: IS_GEST_VAR, type: 'boolean' });
   edgeType.addVariable({
     id: GAMETE_ROLE_VAR,
@@ -177,7 +185,10 @@ function buildAdScenario(): SyntheticInterview {
     [BIO_SEX_VAR]: 'male',
     [HD_VAR]: true,
   });
-  person('grandparent-partner', { [nameVarId]: 'Nancy', [BIO_SEX_VAR]: 'female' });
+  person('grandparent-partner', {
+    [nameVarId]: 'Nancy',
+    [BIO_SEX_VAR]: 'female',
+  });
   // A collateral aunt — a child of the grandparents, so never in ego's ancestral
   // line — giving the focal scenario a node that must stay dimmed.
   person('aunt', { [nameVarId]: 'Margaret', [BIO_SEX_VAR]: 'female' });
@@ -229,11 +240,26 @@ function buildCousinUnion(showAtRiskStatuses: boolean): SyntheticInterview {
     scaffoldPedigree([CF_VAR]);
 
   person('great-grandfather', { [nameVarId]: 'Albert', [BIO_SEX_VAR]: 'male' });
-  person('great-grandmother', { [nameVarId]: 'Mabel', [BIO_SEX_VAR]: 'female' });
-  person('maternal-grandmother', { [nameVarId]: 'Iris', [BIO_SEX_VAR]: 'female' });
-  person('maternal-grandfather', { [nameVarId]: 'Frank', [BIO_SEX_VAR]: 'male' });
-  person('paternal-grandfather', { [nameVarId]: 'Ernest', [BIO_SEX_VAR]: 'male' });
-  person('paternal-grandmother', { [nameVarId]: 'Vera', [BIO_SEX_VAR]: 'female' });
+  person('great-grandmother', {
+    [nameVarId]: 'Mabel',
+    [BIO_SEX_VAR]: 'female',
+  });
+  person('maternal-grandmother', {
+    [nameVarId]: 'Iris',
+    [BIO_SEX_VAR]: 'female',
+  });
+  person('maternal-grandfather', {
+    [nameVarId]: 'Frank',
+    [BIO_SEX_VAR]: 'male',
+  });
+  person('paternal-grandfather', {
+    [nameVarId]: 'Ernest',
+    [BIO_SEX_VAR]: 'male',
+  });
+  person('paternal-grandmother', {
+    [nameVarId]: 'Vera',
+    [BIO_SEX_VAR]: 'female',
+  });
   person('mother', { [nameVarId]: 'Diane', [BIO_SEX_VAR]: 'female' });
   person('father', { [nameVarId]: 'Roy', [BIO_SEX_VAR]: 'male' });
   person('ego', {
@@ -298,10 +324,8 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       currentStep: 1,
       seedNetwork: true,
       build: () => {
-        const { synth, nameVarId, fpStageId, person, bioEdge } = scaffoldPedigree([
-          HD_VAR,
-          CF_VAR,
-        ]);
+        const { synth, nameVarId, fpStageId, person, bioEdge } =
+          scaffoldPedigree([HD_VAR, CF_VAR]);
         person('mother', { [nameVarId]: 'Rose', [BIO_SEX_VAR]: 'female' });
         person('father', { [nameVarId]: 'David', [BIO_SEX_VAR]: 'male' });
         person('ego', {
@@ -339,7 +363,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         await expect(
           page.locator('aside[aria-label="Condition key"]'),
         ).toBeVisible();
-        await expect(page.locator('[data-pedigree-member="true"]')).toHaveCount(3);
+        await expect(page.locator('[data-pedigree-member="true"]')).toHaveCount(
+          3,
+        );
         await expect(
           page.locator('[role="button"][aria-label="Focus on You"]'),
         ).toBeVisible();
@@ -400,7 +426,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         await expect(
           conditionButton.locator('span[aria-hidden]').first(),
         ).toHaveCSS('background-color', 'rgb(229, 62, 62)');
-        await expect(page.getByText("Showing Huntington's Disease")).toBeVisible();
+        await expect(
+          page.getByText("Showing Huntington's Disease"),
+        ).toBeVisible();
 
         await conditionButton.click();
         await expect(conditionButton).toHaveAttribute('aria-pressed', 'false');
@@ -428,10 +456,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         await expect(
           page.getByRole('button', { name: 'Clear focus' }),
         ).toBeVisible();
-        await expect(page.locator('[data-node-id="grandparent"]')).toHaveAttribute(
-          'data-dimmed',
-          'false',
-        );
+        await expect(
+          page.locator('[data-node-id="grandparent"]'),
+        ).toHaveAttribute('data-dimmed', 'false');
         await expect(page.locator('[data-node-id="aunt"]')).toHaveAttribute(
           'data-dimmed',
           'true',
@@ -504,14 +531,16 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         await expect(page.locator('[data-question-mark]')).toHaveCount(0);
 
         // The condition key omits the two at-risk rows.
-        await expect(page.getByText('May develop this condition')).toHaveCount(0);
+        await expect(page.getByText('May develop this condition')).toHaveCount(
+          0,
+        );
         await expect(page.getByText('May carry this condition')).toHaveCount(0);
 
         // A relative the engine computes as at-risk is announced to screen readers
         // as "Status unknown" (mirroring the collapsed display).
-        await expect(page.locator('#np-status-maternal-grandmother')).toHaveText(
-          'Cystic Fibrosis: Status unknown',
-        );
+        await expect(
+          page.locator('#np-status-maternal-grandmother'),
+        ).toHaveText('Cystic Fibrosis: Status unknown');
       },
     },
     {
@@ -534,7 +563,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           ),
         ).toHaveAttribute('data-notation-status', 'atRiskCarrier');
         await expect(
-          page.locator('[data-node-id="maternal-grandmother"] [data-question-mark]'),
+          page.locator(
+            '[data-node-id="maternal-grandmother"] [data-question-mark]',
+          ),
         ).toHaveCount(1);
 
         // The condition key now lists both at-risk rows.
@@ -918,9 +949,8 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         },
       },
       build: (): SyntheticInterview => {
-        const { synth, nameVarId, fpStageId, person, bioEdge } = scaffoldPedigree([
-          HD_VAR,
-        ]);
+        const { synth, nameVarId, fpStageId, person, bioEdge } =
+          scaffoldPedigree([HD_VAR]);
         person('mother', { [nameVarId]: 'Rose', [BIO_SEX_VAR]: 'female' });
         person('father', { [nameVarId]: 'David', [BIO_SEX_VAR]: 'male' });
         person('ego', {
@@ -952,7 +982,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page }) => {
-        await expect(page.locator('[data-pedigree-member="true"]')).toHaveCount(3);
+        await expect(page.locator('[data-pedigree-member="true"]')).toHaveCount(
+          3,
+        );
         await expect(page.locator('[data-node-id="outsider"]')).toHaveCount(0);
       },
     },
@@ -998,7 +1030,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
             'This stage references a family pedigree that could not be found.',
           ),
         ).toBeVisible();
-        await expect(page.locator('[data-pedigree-member="true"]')).toHaveCount(0);
+        await expect(page.locator('[data-pedigree-member="true"]')).toHaveCount(
+          0,
+        );
       },
     },
     {
@@ -1008,9 +1042,8 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       currentStep: 1,
       seedNetwork: true,
       build: (): SyntheticInterview => {
-        const { synth, nameVarId, fpStageId, person, bioEdge } = scaffoldPedigree([
-          HD_VAR,
-        ]);
+        const { synth, nameVarId, fpStageId, person, bioEdge } =
+          scaffoldPedigree([HD_VAR]);
         person('mother', { [nameVarId]: 'Rose', [BIO_SEX_VAR]: 'female' });
         person('father', { [nameVarId]: 'David', [BIO_SEX_VAR]: 'male' });
         person('ego', {
@@ -1043,7 +1076,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         const zoomContent = page.locator('[data-testid="np-zoom-content"]');
         const zoomInButton = page.getByRole('button', { name: 'Zoom in' });
         const zoomOutButton = page.getByRole('button', { name: 'Zoom out' });
-        const resetZoomButton = page.getByRole('button', { name: 'Reset zoom' });
+        const resetZoomButton = page.getByRole('button', {
+          name: 'Reset zoom',
+        });
 
         await zoomInButton.click();
         await zoomInButton.click();

@@ -1,7 +1,7 @@
+import { matrixTest } from '../../fixtures/matrix-test.js';
 import { ALL_SUITES } from '../../matrix/all-scenarios.js';
 import { installScenario } from '../../matrix/run-scenario.js';
 import type { ScenarioContext } from '../../matrix/types.js';
-import { matrixTest } from '../../fixtures/matrix-test.js';
 
 /**
  * Pixel visual suite. Runs only the `visual`-flagged scenarios of every

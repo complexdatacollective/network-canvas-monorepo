@@ -102,7 +102,10 @@ export class InterviewFixture {
     await this.waitForStageLoad();
 
     const prefix = this.snapshotPrefix ? `${this.snapshotPrefix}-` : '';
-    await this.capture(`${prefix}stage-${stageIndex}`, mask ? { mask } : undefined);
+    await this.capture(
+      `${prefix}stage-${stageIndex}`,
+      mask ? { mask } : undefined,
+    );
   }
 
   /**

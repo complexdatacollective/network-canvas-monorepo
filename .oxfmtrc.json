@@ -44,6 +44,8 @@
     "**/public/**/*.*",
     "**/worker-configuration.d.ts",
     "**/*.xcassets/**/Contents.json",
-    "packages/interface-images/src/generated/**"
+    "packages/interface-images/src/generated/**",
+    "packages/interview/e2e/fixtures/data/roster-broken.json",
+    "packages/interview/e2e/aria-snapshots/**"
   ]
 }

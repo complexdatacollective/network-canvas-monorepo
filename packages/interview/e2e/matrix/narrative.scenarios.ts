@@ -311,21 +311,27 @@ const convexHullsGroups: ScenarioDefinition = {
     const stage = synth.addStage('Narrative', {
       subject: { entity: 'node', type: person.id },
     });
-    stage.addPreset({ layoutVariable: layoutVar.id, groupVariable: community.id });
+    stage.addPreset({
+      layoutVariable: layoutVar.id,
+      groupVariable: community.id,
+    });
 
     // 3 family, 2 work, 1 multi-membership, 1 out-of-codebook ('imported'),
     // 1 ungrouped (null). Categorical values are stored as arrays.
-    const members: { name: string; coord: { x: number; y: number }; community: string[] | null }[] =
-      [
-        { name: 'Fa', coord: { x: 0.2, y: 0.2 }, community: ['family'] },
-        { name: 'Fb', coord: { x: 0.3, y: 0.25 }, community: ['family'] },
-        { name: 'Fc', coord: { x: 0.25, y: 0.35 }, community: ['family'] },
-        { name: 'Wa', coord: { x: 0.7, y: 0.7 }, community: ['work'] },
-        { name: 'Wb', coord: { x: 0.8, y: 0.75 }, community: ['work'] },
-        { name: 'Mx', coord: { x: 0.5, y: 0.5 }, community: ['family', 'work'] },
-        { name: 'Im', coord: { x: 0.5, y: 0.85 }, community: ['imported'] },
-        { name: 'Un', coord: { x: 0.15, y: 0.85 }, community: null },
-      ];
+    const members: {
+      name: string;
+      coord: { x: number; y: number };
+      community: string[] | null;
+    }[] = [
+      { name: 'Fa', coord: { x: 0.2, y: 0.2 }, community: ['family'] },
+      { name: 'Fb', coord: { x: 0.3, y: 0.25 }, community: ['family'] },
+      { name: 'Fc', coord: { x: 0.25, y: 0.35 }, community: ['family'] },
+      { name: 'Wa', coord: { x: 0.7, y: 0.7 }, community: ['work'] },
+      { name: 'Wb', coord: { x: 0.8, y: 0.75 }, community: ['work'] },
+      { name: 'Mx', coord: { x: 0.5, y: 0.5 }, community: ['family', 'work'] },
+      { name: 'Im', coord: { x: 0.5, y: 0.85 }, community: ['imported'] },
+      { name: 'Un', coord: { x: 0.15, y: 0.85 }, community: null },
+    ];
     members.forEach((m, i) => {
       synth.addManualNode(stage.id, person.id, `node-${i}`, {
         [nameVar.id]: m.name,
@@ -356,11 +362,7 @@ const convexHullsGroups: ScenarioDefinition = {
         p.getAttribute('fill'),
       ),
     );
-    expect(fills).toEqual([
-      'var(--cat-1)',
-      'var(--cat-2)',
-      'var(--cat-3)',
-    ]);
+    expect(fills).toEqual(['var(--cat-1)', 'var(--cat-2)', 'var(--cat-3)']);
 
     // Groups legend lists the three values, 'imported' last.
     await expect(narrative.getAccordionTrigger('Groups')).toBeVisible();
@@ -418,9 +420,7 @@ const highlightMultiAttribute: ScenarioDefinition = {
     const narrative = new NarrativeFixture(page);
 
     // Default highlight = 'Close Friend': Alice + Cara highlighted, Bob not.
-    await expect
-      .poll(() => narrative.isNodeHighlighted('Alice'))
-      .toBe(true);
+    await expect.poll(() => narrative.isNodeHighlighted('Alice')).toBe(true);
     expect(await narrative.isNodeHighlighted('Cara')).toBe(true);
     expect(await narrative.isNodeHighlighted('Bob')).toBe(false);
 
@@ -746,9 +746,7 @@ const filterDisplayScoping: ScenarioDefinition = {
     await expect(narrative.getNode('Node3')).toHaveCount(0);
 
     // The filter is display-only: the underlying network still holds all 5.
-    const network = await page.evaluate(() =>
-      window.__test.getNetworkState(),
-    );
+    const network = await page.evaluate(() => window.__test.getNetworkState());
     expect(network?.nodes).toHaveLength(5);
   },
 };
@@ -825,9 +823,7 @@ const subjectCodebookLookupAndScoping: ScenarioDefinition = {
 
     // The Place node is still present in the underlying network — display
     // scoping, not deletion.
-    const network = await page.evaluate(() =>
-      window.__test.getNetworkState(),
-    );
+    const network = await page.evaluate(() => window.__test.getNetworkState());
     expect(network?.nodes).toHaveLength(2);
   },
 };

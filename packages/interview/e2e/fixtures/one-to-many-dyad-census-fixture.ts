@@ -62,9 +62,8 @@ export class OneToManyDyadCensusFixture {
 
   /** Whether a target currently has an edge to the focal node. */
   async isTargetSelected(label: string): Promise<boolean> {
-    const selected = await this.getTargetNode(label).getAttribute(
-      'data-node-selected',
-    );
+    const selected =
+      await this.getTargetNode(label).getAttribute('data-node-selected');
     return selected === 'true';
   }
 
