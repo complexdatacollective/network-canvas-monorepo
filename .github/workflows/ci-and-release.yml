@@ -697,9 +697,9 @@ jobs:
         run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static
 
   interview-e2e:
-    needs: [quality, detect]
-    # See chromatic-fresco-ui: `quality` orders this job for cache reuse only;
-    # `!cancelled()` keeps a quality failure from cascade-skipping a flagged run.
+    # The Dockerized suite builds its own dependency graph and cannot consume
+    # the host runner's Turbo cache, so start it as soon as detection completes.
+    needs: detect
     if: ${{ !cancelled() && needs.detect.outputs.interview_e2e == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -714,7 +714,10 @@ jobs:
       slug: ${{ steps.meta.outputs.slug }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: ./.github/actions/turbo-ci-setup
+        with:
+          # The Dockerized test run mounts the workspace; don't leave the
+          # checkout token in .git/config for test/build code to read.
+          persist-credentials: false
       - id: meta
         env:
           REF: ${{ github.head_ref || github.ref_name }}
@@ -729,7 +732,10 @@ jobs:
       # Dormant until a shard matrix is added (spec: enable shards only if the
       # single-job wall-clock exceeds the 45-minute budget). When enabling: add
       # strategy.matrix.shard, pass --shard=${{ matrix.shard }} to run.sh, set
-      # PW_BLOB: 1, and give this step the downloaded per-shard blob dirs.
+      # PW_BLOB: 1, and give the merge step the downloaded per-shard blob dirs.
+      - name: Set up sharded report merger
+        if: ${{ env.PW_BLOB == '1' }}
+        uses: ./.github/actions/turbo-ci-setup
       - name: Merge sharded blob reports
         if: ${{ env.PW_BLOB == '1' }}
         run: pnpm --filter @codaco/interview exec playwright merge-reports --reporter html ./blob-report
@@ -755,7 +761,8 @@ jobs:
           retention-days: 14
 
   interviewer-e2e:
-    needs: [quality, detect]
+    # See interview-e2e: this Dockerized suite owns its build too.
+    needs: detect
     if: ${{ !cancelled() && needs.detect.outputs.interviewer_e2e == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -765,7 +772,6 @@ jobs:
           # The Dockerized test run mounts the workspace; don't leave the
           # checkout token in .git/config for test/build code to read.
           persist-credentials: false
-      - uses: ./.github/actions/turbo-ci-setup
       - name: Run E2E tests
         run: ./apps/interviewer/e2e/scripts/run.sh
       - name: Reclaim artifact ownership
@@ -784,7 +790,8 @@ jobs:
           retention-days: 14
 
   architect-e2e:
-    needs: [quality, detect]
+    # See interview-e2e: this Dockerized suite owns its build too.
+    needs: detect
     if: ${{ !cancelled() && needs.detect.outputs.architect_e2e == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -794,7 +801,6 @@ jobs:
           # The Dockerized test run mounts the workspace; don't leave the
           # checkout token in .git/config for test/build code to read.
           persist-credentials: false
-      - uses: ./.github/actions/turbo-ci-setup
       - name: Run E2E tests
         run: ./apps/architect/e2e/scripts/run.sh
       - name: Reclaim artifact ownership
