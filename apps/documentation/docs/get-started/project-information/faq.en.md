@@ -55,8 +55,8 @@ Unfortunately we do not have specific support for screen readers, or right-to-le
 
 The Network Canvas suite consists of three applications, with each component running on a variety of platforms:
 
-- Architect is a desktop app, and will run on Windows, macOS, and Linux operating systems.
-- Interviewer is a hybrid desktop/mobile app, and will run on Windows, Mac, iOS and Android. It will work best with a touch screen device, but will also function well with a conventional computer that uses a keyboard and mouse. Specific functionality may vary by operating system.
+- Architect runs in your web browser — there is nothing to install. **Architect Classic**, the downloadable desktop app, runs on Windows, macOS, and Linux.
+- Interviewer runs in your web browser and can be installed to a device you control as a Progressive Web App. It works best with a touch screen device, but also functions well with a conventional computer that uses a keyboard and mouse. **Interviewer Classic**, the downloadable app, runs on Windows, macOS, iOS, and Android; specific functionality may vary by operating system.
 - Fresco is a web-based application. For information on supported browsers, devices, and platforms, see our [Fresco FAQ](/en/collect-data/fresco/faq#which-browsers-are-supported).
 
 Our development test devices have included a Samsung Chromebook Plus, iPad Pros (both 9.7" and 12.1"), and the Google Pixel C tablet. We have also completed Network Canvas studies using 27 inch “all in one” touchscreen computers with positive results.
@@ -87,7 +87,7 @@ If you have specific security requirements, please contact us to discuss how we 
 
 Fresco and Interviewer are software tools that can be used in a GDPR-compliant manner, but compliance depends entirely on how you deploy and configure them. The Network Canvas development team does **not** host any participant data and does **not** act as a Data Controller or Data Processor under GDPR.
 
-**For Interviewer (Desktop/Tablet App):**
+**For Interviewer and Interviewer Classic (data stored on your device):**
 
 - All participant data is stored only on your local device
 - No participant data is transmitted externally unless you manually export it

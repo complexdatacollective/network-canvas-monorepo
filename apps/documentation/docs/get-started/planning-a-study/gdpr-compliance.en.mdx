@@ -24,7 +24,7 @@ The Network Canvas development team does not act as a Data Controller or Data Pr
 
 ## Interviewer vs Fresco: Key Differences
 
-| Aspect                     | Interviewer (Desktop/Tablet)                                                                 | Fresco (Self-Hosted Web)                                                              |
+| Aspect                     | Interviewer & Interviewer Classic (data on your device)                                      | Fresco (Self-Hosted Web)                                                              |
 | -------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | **Data Storage Location**  | All participant data stored only on your local device                                        | Interview data stored in Postgres database; study assets stored in S3 via UploadThing |
 | **Data Transmission**      | No participant data transmitted externally unless you manually export it                     | Data remains on your infrastructure; no transmission to developers                    |
@@ -52,7 +52,7 @@ The **research institution or individual researcher** deploying the software is 
 
 The Network Canvas development team provides the open-source software but does not receive or host participant data, does not monitor researcher use, and does not operate a data processing service. **Therefore, the developers do not act as a Data Processor under GDPR.** All data processing occurs entirely within infrastructure controlled by the researcher.
 
-## Interviewer (Desktop/Tablet application)
+## Interviewer (data stored on your device)
 
 <TipBox>
 
@@ -60,7 +60,7 @@ The data-handling description in this section applies to **Interviewer Classic**
 
 </TipBox>
 
-Interviewer is a fully offline application designed to run on researcher-controlled devices.
+Interviewer is designed to run on researcher-controlled devices, storing interview data on the device itself (Interviewer Classic works fully offline; see the note above).
 
 ### Data storage
 
@@ -248,7 +248,7 @@ For Network Canvas-specific information, note that Interviewer stores data local
 
 ### For IT departments
 
-For Interviewer, infrastructure requirements include desktop or tablet devices with disk encryption, secure storage facilities for devices, a secure network for data export and transfer, and regular security updates.
+For Interviewer and Interviewer Classic, infrastructure requirements include the researcher-controlled devices you run interviews on, with disk encryption, secure storage facilities for devices, a secure network for data export and transfer, and regular security updates.
 
 For Fresco, you need Next.js hosting (Vercel, Netlify, or Docker), a Postgres database (we recommend Neon with an EU region), an UploadThing account (paid plan with EU S3 region), and HTTPS enabled (which is automatic on hosting platforms).
 

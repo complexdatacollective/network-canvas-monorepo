@@ -7,6 +7,12 @@ toc: true
 
 Choosing a device for running Interviewer is an important step in optimizing the quality of the data that you collect, as well as the overall workflow of running a Network Canvas study.
 
+<TipBox>
+
+The platform comparison below — along with the App Store availability and native-app management concerns — chiefly applies to **Interviewer Classic**, which you install natively on each device. The browser-based **Interviewer** runs in any [supported web browser](/en/collect-data/interviewer/about), so its main hardware requirement is a device that runs a current browser well. The display-quality, keyboard, performance, and connectivity advice on this page still applies, but you can disregard the app-store and native-install caveats.
+
+</TipBox>
+
 ## Key Concerns
 
 There are several important considerations you should keep in mind when making this decision.

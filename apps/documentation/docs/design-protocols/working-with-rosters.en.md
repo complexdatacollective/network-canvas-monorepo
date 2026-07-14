@@ -19,7 +19,7 @@ To follow along, you should:
 
 - Be familiar with Network Canvas and its data collection process.
 - Have access to a spreadsheet program such as Microsoft Excel or OpenOffice Calc
-- Have installed Network Canvas Interviewer and Architect
+- Have access to Network Canvas Interviewer and Architect (open them in your browser, or install the Classic desktop apps)
 
 </PrerequisitesSection>
 </SummaryCard>
