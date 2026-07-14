@@ -3,12 +3,21 @@ import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { makeCapture } from '../helpers/visual.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
+// The summary cover prints "Document Created: <now>" from `new Date()` at
+// render time (Cover.tsx), and falls back to `DateTime.now()` when the
+// protocol has no lastModified — both would differ on every run (and can
+// even change line wrapping, shifting the whole page). Pin the page clock
+// so the visual baselines are deterministic. setFixedTime only fakes Date;
+// timers keep running, so the autosave debounce is unaffected.
+const FIXED_CLOCK = new Date('2026-01-01T12:00:00Z');
+
 test('renders the printable summary under print media', async ({
   architectPage,
   seed,
 }) => {
   const { protocol, assets } = loadAllInterfacesFixture();
   await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.clock.setFixedTime(FIXED_CLOCK);
   const capture = makeCapture(architectPage);
   await architectPage.goto('/protocol/summary');
   await expect(architectPage.getByText('Loading protocol...')).toHaveCount(0);
@@ -66,6 +75,7 @@ test('renders the codebook with entity types and variables', async ({
 }) => {
   const { protocol, assets } = loadAllInterfacesFixture();
   await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.clock.setFixedTime(FIXED_CLOCK);
   await architectPage.goto('/protocol/codebook');
 
   // Codebook.tsx renders each node type's protocol-defined `name` as an h2
