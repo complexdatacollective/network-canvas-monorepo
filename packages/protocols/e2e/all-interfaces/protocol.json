@@ -78,7 +78,12 @@
           },
           "flagged": {
             "name": "flagged",
-            "type": "boolean"
+            "type": "boolean",
+            "component": "Boolean"
+          },
+          "age": {
+            "name": "age",
+            "type": "number"
           }
         }
       }
