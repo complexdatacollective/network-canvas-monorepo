@@ -203,6 +203,7 @@ const Validation = ({
             aria-label={`Delete ${label} validation rule`}
             variant="text"
             color="destructive"
+            className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast text-current"
             onClick={() => onDelete(itemKey)}
           />
         </div>

@@ -140,6 +140,7 @@ const Option = ({
             variant="text"
             color="destructive"
             disabled={interactionDisabled}
+            className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast text-current"
             onClick={handleDelete}
           />
         </div>
