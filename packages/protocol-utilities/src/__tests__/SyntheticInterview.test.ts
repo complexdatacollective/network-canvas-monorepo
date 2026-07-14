@@ -235,9 +235,9 @@ describe('SyntheticInterview', () => {
       const nodeType = protocol.codebook.node[nodeTypeId] as {
         variables: Record<string, { component?: string }>;
       };
-      expect(
-        nodeType.variables[form.fields[0]!.variable]?.component,
-      ).toBe('RadioGroup');
+      expect(nodeType.variables[form.fields[0]!.variable]?.component).toBe(
+        'RadioGroup',
+      );
     });
 
     it('supports prompts and panels', () => {
@@ -1100,6 +1100,34 @@ describe('e2e-matrix builder extensions', () => {
     const stage = synth.getProtocol().stages[0] as Record<string, unknown>;
     expect(stage.skipLogic).toEqual({ action: 'SKIP', filter });
     expect(stage.filter).toEqual(filter);
+  });
+
+  it('emits skipLogic destinations (stage and finish) on stage configs', () => {
+    const synth = new SyntheticInterview();
+    const source = synth.addInformationStage({ title: 'Source' });
+    synth.addInformationStage({
+      title: 'Finish source',
+      skipLogic: { action: 'SKIP', filter, destination: { type: 'finish' } },
+    });
+    const target = synth.addInformationStage({ title: 'Target' });
+    // The handle's stageEntry is the stored entry, so setting skipLogic after
+    // the destination stage exists flows into the emitted protocol.
+    source.stageEntry.skipLogic = {
+      action: 'SKIP',
+      filter,
+      destination: { type: 'stage', stageId: target.id },
+    };
+    const stages = synth.getProtocol().stages;
+    expect(stages[0]?.skipLogic).toEqual({
+      action: 'SKIP',
+      filter,
+      destination: { type: 'stage', stageId: target.id },
+    });
+    expect(stages[1]?.skipLogic).toEqual({
+      action: 'SKIP',
+      filter,
+      destination: { type: 'finish' },
+    });
   });
 
   it('emits panel filter', () => {

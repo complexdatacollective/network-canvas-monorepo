@@ -1,5 +1,5 @@
-import type { FilterOperator } from '@codaco/protocol-validation';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import type { FilterOperator } from '@codaco/protocol-validation';
 
 import { expect } from '../fixtures/matrix-test.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
@@ -44,20 +44,104 @@ type OperatorCase = {
 const OPERATOR_CASES: readonly OperatorCase[] = [
   { op: 'EXISTS', seedNode: true },
   { op: 'NOT_EXISTS', seedNode: false },
-  { op: 'EXACTLY', varType: 'number', seedNode: true, seedValue: 5, filterValue: 5 },
-  { op: 'NOT', varType: 'number', seedNode: true, seedValue: 3, filterValue: 5 },
-  { op: 'GREATER_THAN', varType: 'number', seedNode: true, seedValue: 10, filterValue: 5 },
-  { op: 'GREATER_THAN_OR_EQUAL', varType: 'number', seedNode: true, seedValue: 5, filterValue: 5 },
-  { op: 'LESS_THAN', varType: 'number', seedNode: true, seedValue: 3, filterValue: 5 },
-  { op: 'LESS_THAN_OR_EQUAL', varType: 'number', seedNode: true, seedValue: 5, filterValue: 5 },
-  { op: 'INCLUDES', varType: 'categorical', seedNode: true, seedValue: ['a', 'b'], filterValue: 'a' },
-  { op: 'EXCLUDES', varType: 'categorical', seedNode: true, seedValue: ['a'], filterValue: 'b' },
-  { op: 'OPTIONS_GREATER_THAN', varType: 'categorical', seedNode: true, seedValue: ['a', 'b', 'c'], filterValue: 2 },
-  { op: 'OPTIONS_LESS_THAN', varType: 'categorical', seedNode: true, seedValue: ['a'], filterValue: 2 },
-  { op: 'OPTIONS_EQUALS', varType: 'categorical', seedNode: true, seedValue: ['a', 'b'], filterValue: 2 },
-  { op: 'OPTIONS_NOT_EQUALS', varType: 'categorical', seedNode: true, seedValue: ['a'], filterValue: 2 },
-  { op: 'CONTAINS', varType: 'text', seedNode: true, seedValue: 'hello world', filterValue: 'world' },
-  { op: 'DOES_NOT_CONTAIN', varType: 'text', seedNode: true, seedValue: 'hello', filterValue: 'xyz' },
+  {
+    op: 'EXACTLY',
+    varType: 'number',
+    seedNode: true,
+    seedValue: 5,
+    filterValue: 5,
+  },
+  {
+    op: 'NOT',
+    varType: 'number',
+    seedNode: true,
+    seedValue: 3,
+    filterValue: 5,
+  },
+  {
+    op: 'GREATER_THAN',
+    varType: 'number',
+    seedNode: true,
+    seedValue: 10,
+    filterValue: 5,
+  },
+  {
+    op: 'GREATER_THAN_OR_EQUAL',
+    varType: 'number',
+    seedNode: true,
+    seedValue: 5,
+    filterValue: 5,
+  },
+  {
+    op: 'LESS_THAN',
+    varType: 'number',
+    seedNode: true,
+    seedValue: 3,
+    filterValue: 5,
+  },
+  {
+    op: 'LESS_THAN_OR_EQUAL',
+    varType: 'number',
+    seedNode: true,
+    seedValue: 5,
+    filterValue: 5,
+  },
+  {
+    op: 'INCLUDES',
+    varType: 'categorical',
+    seedNode: true,
+    seedValue: ['a', 'b'],
+    filterValue: 'a',
+  },
+  {
+    op: 'EXCLUDES',
+    varType: 'categorical',
+    seedNode: true,
+    seedValue: ['a'],
+    filterValue: 'b',
+  },
+  {
+    op: 'OPTIONS_GREATER_THAN',
+    varType: 'categorical',
+    seedNode: true,
+    seedValue: ['a', 'b', 'c'],
+    filterValue: 2,
+  },
+  {
+    op: 'OPTIONS_LESS_THAN',
+    varType: 'categorical',
+    seedNode: true,
+    seedValue: ['a'],
+    filterValue: 2,
+  },
+  {
+    op: 'OPTIONS_EQUALS',
+    varType: 'categorical',
+    seedNode: true,
+    seedValue: ['a', 'b'],
+    filterValue: 2,
+  },
+  {
+    op: 'OPTIONS_NOT_EQUALS',
+    varType: 'categorical',
+    seedNode: true,
+    seedValue: ['a'],
+    filterValue: 2,
+  },
+  {
+    op: 'CONTAINS',
+    varType: 'text',
+    seedNode: true,
+    seedValue: 'hello world',
+    filterValue: 'world',
+  },
+  {
+    op: 'DOES_NOT_CONTAIN',
+    varType: 'text',
+    seedNode: true,
+    seedValue: 'hello',
+    filterValue: 'xyz',
+  },
 ];
 
 function kebab(s: string): string {
@@ -99,7 +183,9 @@ function buildOperatorInterview(tc: OperatorCase): SyntheticInterview {
               type: nodeType.id,
               ...(attributeId ? { attribute: attributeId } : {}),
               operator: tc.op,
-              ...(tc.filterValue !== undefined ? { value: tc.filterValue } : {}),
+              ...(tc.filterValue !== undefined
+                ? { value: tc.filterValue }
+                : {}),
             },
           },
         ],
@@ -131,9 +217,7 @@ const operatorScenarios: ScenarioDefinition[] = OPERATOR_CASES.map((tc) => ({
     await interview.next();
     await expect(page).toHaveURL(/step=2/);
     await expect(page.getByRole('heading', { name: 'End' })).toBeVisible();
-    await expect(
-      page.getByRole('heading', { name: 'Target' }),
-    ).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Target' })).toHaveCount(0);
   },
 }));
 
@@ -162,7 +246,10 @@ const behaviourScenarios: ScenarioDefinition[] = [
       // seeded, so the middle stage IS shown and next() lands on it (step 1).
       const synth = new SyntheticInterview();
       const nodeType = synth.addNodeType({ name: 'Person' });
-      const intro = synth.addInformationStage({ title: 'Start', text: 'Begin.' });
+      const intro = synth.addInformationStage({
+        title: 'Start',
+        text: 'Begin.',
+      });
       synth.addInformationStage({
         title: 'Conditional',
         text: 'Shown only when a node exists.',
@@ -190,6 +277,179 @@ const behaviourScenarios: ScenarioDefinition[] = [
       await expect(
         page.getByRole('heading', { name: 'Conditional' }),
       ).toBeVisible();
+    },
+  },
+];
+
+// --- skip-logic destinations ----------------------------------------------------
+//
+// A skipLogic `destination` turns a local skip into a targeted jump: stages
+// between the hidden stage and its destination are bypassed WITHOUT evaluating
+// their own rules, `{ type: 'finish' }` routes to the engine-appended
+// FinishSession stage, and a destination that is itself hidden chains onward
+// (its own skipLogic is evaluated normally, so its own destination applies).
+// Destinations must point at a later stage, so the source stage's skipLogic is
+// set through its handle's mutable `stageEntry.skipLogic` once the target
+// stage exists and has an id.
+
+/** SKIP-when-a-node-EXISTS skipLogic routed to `destination`. */
+function skipToDestination(
+  nodeTypeId: string,
+  ruleId: string,
+  destination: { type: 'stage'; stageId: string } | { type: 'finish' },
+) {
+  return {
+    action: 'SKIP' as const,
+    filter: {
+      join: 'OR' as const,
+      rules: [
+        {
+          id: ruleId,
+          type: 'node' as const,
+          options: { type: nodeTypeId, operator: 'EXISTS' as const },
+        },
+      ],
+    },
+    destination,
+  };
+}
+
+const destinationScenarios: ScenarioDefinition[] = [
+  {
+    id: 'skip-logic-destination-stage',
+    covers: [],
+    seedNetwork: true,
+    build: () => {
+      const synth = new SyntheticInterview();
+      const nodeType = synth.addNodeType({ name: 'Person' });
+      const intro = synth.addInformationStage({
+        title: 'Start',
+        text: 'Begin.',
+      });
+      const source = synth.addInformationStage({
+        title: 'Source',
+        text: 'Hidden; jumps to Destination.',
+      });
+      synth.addInformationStage({
+        title: 'Bypassed',
+        text: 'Jumped over without evaluating its rules.',
+      });
+      const target = synth.addInformationStage({
+        title: 'Destination',
+        text: 'The targeted jump lands here.',
+      });
+      synth.addInformationStage({ title: 'End', text: 'You reached the end.' });
+      source.stageEntry.skipLogic = skipToDestination(
+        nodeType.id,
+        'dest-rule',
+        {
+          type: 'stage',
+          stageId: target.id,
+        },
+      );
+      synth.addManualNode(intro.id, nodeType.id, 'dest-node', {});
+      return synth;
+    },
+    run: async ({ page, interview }) => {
+      // Source (step 1) is hidden and targets Destination (step 3), so
+      // Bypassed (step 2) is jumped over: next() from step 0 lands on step 3,
+      // never rendering Bypassed's heading.
+      await interview.next();
+      await expect(page).toHaveURL(/step=3/);
+      await expect(
+        page.getByRole('heading', { name: 'Destination' }),
+      ).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Bypassed' })).toHaveCount(
+        0,
+      );
+    },
+  },
+  {
+    id: 'skip-logic-destination-finish',
+    covers: [],
+    seedNetwork: true,
+    build: () => {
+      const synth = new SyntheticInterview();
+      const nodeType = synth.addNodeType({ name: 'Person' });
+      const intro = synth.addInformationStage({
+        title: 'Start',
+        text: 'Begin.',
+      });
+      synth.addInformationStage({
+        title: 'Source',
+        text: 'Hidden; routes straight to the finish stage.',
+        skipLogic: skipToDestination(nodeType.id, 'finish-rule', {
+          type: 'finish',
+        }),
+      });
+      synth.addInformationStage({
+        title: 'After',
+        text: 'Bypassed on the way to finish.',
+      });
+      synth.addManualNode(intro.id, nodeType.id, 'finish-node', {});
+      return synth;
+    },
+    run: async ({ page, interview }) => {
+      // A finish destination resolves to the engine-appended FinishSession
+      // stage (index === protocolStages.length === 3), bypassing 'After'.
+      await interview.next();
+      await expect(page).toHaveURL(/step=3/);
+      await expect(
+        page.getByRole('heading', { name: 'Finish Interview' }),
+      ).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'After' })).toHaveCount(0);
+    },
+  },
+  {
+    id: 'skip-logic-destination-chaining',
+    covers: [],
+    seedNetwork: true,
+    build: () => {
+      const synth = new SyntheticInterview();
+      const nodeType = synth.addNodeType({ name: 'Person' });
+      const intro = synth.addInformationStage({
+        title: 'Start',
+        text: 'Begin.',
+      });
+      const firstHop = synth.addInformationStage({
+        title: 'First hop',
+        text: 'Hidden; targets Second hop.',
+      });
+      synth.addInformationStage({ title: 'Bypassed A', text: 'Jumped over.' });
+      const secondHop = synth.addInformationStage({
+        title: 'Second hop',
+        text: 'Also hidden; its own destination chains onward.',
+      });
+      synth.addInformationStage({ title: 'Bypassed B', text: 'Jumped over.' });
+      const landing = synth.addInformationStage({
+        title: 'Landing',
+        text: 'The chained route ends here.',
+      });
+      firstHop.stageEntry.skipLogic = skipToDestination(
+        nodeType.id,
+        'chain-rule-1',
+        { type: 'stage', stageId: secondHop.id },
+      );
+      secondHop.stageEntry.skipLogic = skipToDestination(
+        nodeType.id,
+        'chain-rule-2',
+        { type: 'stage', stageId: landing.id },
+      );
+      synth.addManualNode(intro.id, nodeType.id, 'chain-node', {});
+      return synth;
+    },
+    run: async ({ page, interview }) => {
+      // First hop (step 1) targets Second hop (step 3); the destination is
+      // itself hidden, so its own destination applies and the route chains to
+      // Landing (step 5). Both bypassed stages and both hops never render.
+      await interview.next();
+      await expect(page).toHaveURL(/step=5/);
+      await expect(
+        page.getByRole('heading', { name: 'Landing' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: /Bypassed|hop/ }),
+      ).toHaveCount(0);
     },
   },
 ];
@@ -272,5 +532,10 @@ const filterScenarios: ScenarioDefinition[] = [
 
 export const crossCuttingScenarios: InterfaceScenarios = {
   interfaceType: 'CrossCutting',
-  scenarios: [...behaviourScenarios, ...operatorScenarios, ...filterScenarios],
+  scenarios: [
+    ...behaviourScenarios,
+    ...operatorScenarios,
+    ...destinationScenarios,
+    ...filterScenarios,
+  ],
 };
