@@ -19,5 +19,7 @@ export function getLocaleCookie(locale: Locale) {
 
 export function switchLocale(locale: Locale, pathname: string) {
   document.cookie = getLocaleCookie(locale);
-  window.location.assign(getLocalizedPathname(locale, pathname));
+  window.location.assign(
+    `${getLocalizedPathname(locale, pathname)}${window.location.search}${window.location.hash}`,
+  );
 }
