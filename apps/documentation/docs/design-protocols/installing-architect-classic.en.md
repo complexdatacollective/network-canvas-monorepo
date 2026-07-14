@@ -4,7 +4,7 @@ navOrder: 1
 toc: true
 ---
 
-For all new studies, we recommend using [Architect](/en/design-protocols/getting-started), which runs entirely in your browser with nothing to download or install. It creates schema 8 protocols, which can be used in [Fresco](/en/collect-data/fresco) and [Interviewer](/en/collect-data/interviewer).
+For all new studies, we recommend using [Architect](/en/design-protocols/getting-started), which runs entirely in your browser with nothing to download or install (and can be installed as a Progressive Web App for offline use). It creates schema 8 protocols, which can be used in [Fresco](/en/collect-data/fresco) and [Interviewer](/en/collect-data/interviewer).
 
 However, if you need to create a schema 7 protocol, you can use **Architect Classic**. It can be downloaded and installed individually from the [download page](https://networkcanvas.com/download) — you do not need to install any of the other Network Canvas applications to use it.
 
@@ -18,7 +18,7 @@ You may install and run the software on devices that do not meet these criteria,
 
 ## Windows
 
-Visit the [download page](https://networkcanvas.com/download), and download the Windows version of Architect.
+Visit the [download page](https://networkcanvas.com/download), and download the Windows version of Architect Classic.
 
 Open the .exe file. You may be presented with a dialog that says the application cannot be run because it is from an unsigned publisher. This happens because our apps have not yet built up enough trust with Microsoft to automatically pass these filters. This will change as more users install our apps.
 
@@ -26,7 +26,7 @@ In order to continue to install the application simply click the "more info" tex
 
 ## macOS
 
-Visit the [download page](https://networkcanvas.com/download), and download the macOS version of Architect. This is packaged in the form of a DMG disk archive.
+Visit the [download page](https://networkcanvas.com/download), and download the macOS version of Architect Classic. This is packaged in the form of a DMG disk archive.
 
 When you double-click on the DMG file it will open a new Finder window with the application icon and a folder representing your computer's "Applications" folder. Drag the application into the Applications folder. If you are prompted for authentication and you do not have it, you can simply drag the application to anywhere underneath your home directory.
 
@@ -34,7 +34,7 @@ Once the application is installed you will need to double click on the applicati
 
 ## Linux
 
-We provide Linux packages in a variety of formats, and for both x86 and ARM architectures. Visit the [download page](https://networkcanvas.com/download), and click on the link for downloading Architect on Linux. You will be redirected to the most recent release on GitHub, where you will find the package files themselves. Please refer to your distribution's documentation on which package formats are supported, and for specific installation instructions.
+We provide Linux packages in a variety of formats, and for both x86 and ARM architectures. Visit the [download page](https://networkcanvas.com/download), and click on the link for downloading Architect Classic on Linux. You will be redirected to the most recent release on GitHub, where you will find the package files themselves. Please refer to your distribution's documentation on which package formats are supported, and for specific installation instructions.
 
 If you have difficulties installing or running these packages, please contact the project team.
 
