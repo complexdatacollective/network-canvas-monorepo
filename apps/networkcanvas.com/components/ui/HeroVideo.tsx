@@ -21,7 +21,7 @@ export function HeroVideo() {
     <div
       ref={backgroundTargetRef}
       aria-hidden="true"
-      className="bg-cyber-grape relative aspect-4/3 w-full overflow-hidden rounded-[1.75rem] shadow-2xl"
+      className="bg-cyber-grape relative aspect-4/3 w-full overflow-hidden rounded shadow-2xl"
     >
       {hasMounted && shouldReduceMotion === false ? (
         <video

@@ -12,7 +12,7 @@ export const SummaryCard = ({
   duration: string;
 }) => {
   return (
-    <div className="border-outline bg-accent text-accent-contrast my-8 rounded-lg border p-6 text-base [--link:var(--accent-contrast)]">
+    <div className="border-outline bg-accent text-accent-contrast my-8 rounded border p-6 text-base [--link:var(--accent-contrast)]">
       {children}
       <Heading level="h4" variant="all-caps">
         Duration:

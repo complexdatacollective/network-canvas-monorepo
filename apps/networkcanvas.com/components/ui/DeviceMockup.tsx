@@ -30,7 +30,7 @@ export function DeviceMockup({
   return (
     <div
       className={cn(
-        'bg-cyber-grape tablet-landscape:p-4 w-full rounded-[1.75rem] p-3 shadow-2xl',
+        'bg-cyber-grape tablet-landscape:p-4 w-full rounded p-3 shadow-2xl',
         className,
       )}
     >

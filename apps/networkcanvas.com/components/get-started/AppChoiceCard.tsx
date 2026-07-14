@@ -109,7 +109,7 @@ export function AppChoiceCard({ app }: { app: AppRecord }) {
   return (
     <article
       className={cn(
-        'tablet-portrait:p-9 flex h-full flex-col rounded-[2rem] p-7 transition-transform focus-within:-translate-y-1 hover:-translate-y-1 motion-reduce:transform-none',
+        'tablet-portrait:p-9 flex h-full flex-col rounded p-7 transition-transform focus-within:-translate-y-1 hover:-translate-y-1 motion-reduce:transform-none',
         treatmentClasses[app.treatment],
       )}
     >
