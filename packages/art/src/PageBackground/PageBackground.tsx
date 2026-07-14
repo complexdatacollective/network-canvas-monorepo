@@ -252,12 +252,25 @@ export function PageBackgroundProvider({
       const measurement = measureConvergence(layer, target);
       if (!measurement) return;
 
-      if (
-        motionMode === 'scroll' &&
-        !hasTrackedTargetRef.current &&
-        measurement.targetIsBeforeLayer
-      ) {
+      if (motionMode === 'scroll' && measurement.targetIsBeforeLayer) {
         setResolved(true);
+
+        if (hasTrackedTargetRef.current) {
+          setConvergence((currentConvergence) => {
+            const exitConvergence = {
+              x: measurement.convergence.x,
+              y: 0,
+            };
+
+            return convergencePointsAreEqual(
+              currentConvergence,
+              exitConvergence,
+            )
+              ? currentConvergence
+              : exitConvergence;
+          });
+        }
+
         return;
       }
 

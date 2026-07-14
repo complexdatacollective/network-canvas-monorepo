@@ -457,6 +457,38 @@ describe('PageBackground', () => {
     expect(scrolledProps.convergence.x).toBeCloseTo(0.625);
     expect(scrolledProps.convergence.y).toBeCloseTo(0.1667);
 
+    targetRect = createRect({
+      left: 300,
+      top: -300,
+      width: 400,
+      height: 300,
+    });
+    act(() => {
+      fireEvent.scroll(window);
+    });
+
+    const detachedProps = networkWeaveProps.mock.lastCall?.[0] as {
+      convergence: { x: number; y: number };
+    };
+    expect(detachedProps.convergence.x).toBeCloseTo(0.625);
+    expect(detachedProps.convergence.y).toBe(0);
+
+    targetRect = createRect({
+      left: 300,
+      top: -500,
+      width: 400,
+      height: 300,
+    });
+    act(() => {
+      fireEvent.scroll(window);
+    });
+
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.625, y: 0 },
+      }),
+    );
+
     unmount();
     expect(observer?.disconnect).toHaveBeenCalledOnce();
   });
