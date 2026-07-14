@@ -36,7 +36,7 @@ pnpm --filter @codaco/architect test:e2e
 ## Reading a failure
 
 - **A JSON stage-snapshot diff** (`specs/interfaces/*.spec.ts`, `*-stage.json`) means the **saved stage shape changed**. If the change is intended, regenerate: `… playwright test <spec> --update-snapshots` (JSON snapshots are font-independent, so regenerating locally is fine). If it's _not_ intended, it's a regression — fix the app, don't update the snapshot.
-- **A visual PNG diff** (`codebook`/`summary`, under `e2e/visual-snapshots/`) means rendered output changed. These are **font-sensitive**: regenerate baselines **only inside Docker** with `pnpm --filter @codaco/architect test:e2e:update-snapshots` — **never on macOS/host**.
+- **A visual PNG diff** (`codebook`/`summary`, under `e2e/visual-snapshots/`) means rendered output changed. These baselines are **amd64-truth**: regenerate **only inside Docker** with `pnpm --filter @codaco/architect test:e2e:update-snapshots` — never on the host. The regen run pins `--platform linux/amd64` (glyph metrics differ on arm64, moving text wrap points); on Apple Silicon this needs Docker's Rosetta mode, and under plain QEMU Chromium crashes — in that case adopt the `actual` image from the failing CI run's `architect-playwright-report` artifact as the new baseline. Native arm64 runs skip the pixel comparison automatically (a `[visual] skipping` warning is normal there, not a gap).
 - **A locator timeout** usually means the editor UI changed (renamed/moved field, section, or control). Update the locator (below), don't loosen the assertion.
 
 ## Updating / adding e2e when a feature changes
