@@ -32,6 +32,7 @@ const MobileNavBar = () => {
         <IconButton
           ref={documentationMenuButtonRef}
           onClick={() => setOpen(true)}
+          size="lg"
           variant="text"
           color="dynamic"
           aria-label={t('openDocumentationMenu')}

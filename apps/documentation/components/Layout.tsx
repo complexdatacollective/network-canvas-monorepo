@@ -60,7 +60,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
               <WorkflowNav
                 variant="collapsed"
                 className={cx(
-                  'sticky top-0 z-40 w-full px-4 py-2',
+                  'tablet-landscape:flex sticky top-0 z-40 hidden w-full px-4 py-2',
                   isWorkflowNavStuck && 'bg-background',
                 )}
               />
