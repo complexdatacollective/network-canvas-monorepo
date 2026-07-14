@@ -31,6 +31,7 @@ export function Header({
   return (
     <SiteNavigation
       activeItemId={activeItemId}
+      className={entranceVariants ? 'entrance-motion-item' : undefined}
       entranceVariants={entranceVariants}
       locale={locale}
       renderLink={renderNavigationLink}

@@ -1,0 +1,22 @@
+{
+  "label": "About Each Relationship",
+  "type": "AlterEdgeForm",
+  "subject": {
+    "type": "id-1",
+    "entity": "edge"
+  },
+  "introductionPanel": {
+    "title": "About Each Relationship",
+    "text": "Tell us a bit about how these two people know each other."
+  },
+  "form": {
+    "fields": [
+      {
+        "variable": "id-2",
+        "id": "id-3",
+        "prompt": "What is your name?"
+      }
+    ]
+  },
+  "id": "id-4"
+}

@@ -24,6 +24,8 @@ type LocaleMetadataProps = {
   params: Promise<{ locale: string }>;
 };
 
+const entranceMotionScript = `document.documentElement.dataset.entranceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'enabled';`;
+
 export const generateStaticParams = getStaticLocaleParams;
 export const dynamicParams = false;
 
@@ -76,6 +78,9 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        <script id="entrance-motion">{entranceMotionScript}</script>
+      </head>
       <body className="root overflow-x-hidden">
         <ThemeProvider
           enableSystem

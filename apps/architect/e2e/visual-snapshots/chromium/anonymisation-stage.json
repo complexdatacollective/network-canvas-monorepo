@@ -1,0 +1,9 @@
+{
+  "label": "Anonymise Your Data",
+  "type": "Anonymisation",
+  "explanationText": {
+    "title": "Protecting Your Privacy",
+    "body": "Enter your passphrase below, then continue."
+  },
+  "id": "id-1"
+}

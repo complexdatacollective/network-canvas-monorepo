@@ -60,6 +60,16 @@ describe('localized layout navigation', () => {
     ).toHaveAttribute('aria-expanded', 'true');
   });
 
+  it('marks animated navigation for its pre-hydration entrance state', () => {
+    const { container } = renderWithIntl(
+      <Header entranceVariants={{ hidden: {}, visible: {} }} />,
+    );
+
+    expect(container.querySelector('header')).toHaveClass(
+      'entrance-motion-item',
+    );
+  });
+
   it('renders translated footer links and language selection', () => {
     renderWithIntl(<Footer />, 'es');
 
