@@ -335,24 +335,6 @@ describe('PageBackground', () => {
     expect(latestProps.intensity).toBeCloseTo(0.1);
   });
 
-  it('fades the target-mode weave when it is hidden', () => {
-    const { rerender } = render(<PageBackground motionMode="target" visible />);
-
-    rerender(<PageBackground motionMode="target" visible={false} />);
-
-    const hiddenProps = motionDivProps.mock.lastCall?.[0] as {
-      animate: { opacity: number };
-      initial: boolean;
-      transition: { duration: number; ease: number[] };
-    };
-    expect(hiddenProps.animate).toEqual({ opacity: 0 });
-    expect(hiddenProps.initial).toBe(false);
-    expect(hiddenProps.transition).toEqual({
-      duration: 0.35,
-      ease: [0.16, 1, 0.3, 1],
-    });
-  });
-
   it('snaps to the first measured target before revealing the weave', () => {
     const { rerender } = render(
       <PageBackground motionMode="target" resolved={false} />,

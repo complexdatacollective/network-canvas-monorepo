@@ -44,10 +44,9 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-background text-text publish-colors relative isolate flex min-h-dvh w-full flex-auto flex-col">
       <PageBackgroundProvider
-        intensity={0.4}
+        intensity={isHomePage ? 0.4 : 0.1}
         motionMode="target"
-        visible={isHomePage}
-        waitForTarget={isHomePage}
+        waitForTarget
       >
         <div className="relative z-10 flex min-h-dvh w-full flex-auto flex-col">
           <SharedNav />

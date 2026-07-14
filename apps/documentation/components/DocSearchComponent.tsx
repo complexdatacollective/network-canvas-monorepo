@@ -4,7 +4,9 @@ import { DocSearch } from '@docsearch/react';
 import '@docsearch/css';
 import { Search } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 
+import { usePageBackgroundTargetRef } from '@codaco/art';
 import { inputFieldControlVariants } from '@codaco/fresco-ui/form/fields/InputField';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { env } from '~/env';
@@ -85,9 +87,11 @@ const useDocSearchTranslations = () => {
 };
 
 const DocSearchComponent = ({
+  backgroundTarget = false,
   className,
   large,
 }: {
+  backgroundTarget?: boolean;
   className?: string;
   large?: boolean;
 }) => {
@@ -95,6 +99,41 @@ const DocSearchComponent = ({
   const t = useTranslations('DocSearch');
   const tSection = useTranslations('SectionSwitcher');
   const translations = useDocSearchTranslations();
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const backgroundTargetRef = usePageBackgroundTargetRef();
+
+  const selectVisibleSearchAsBackgroundTarget = useCallback(() => {
+    const button = buttonRef.current;
+    if (
+      !backgroundTarget ||
+      !button ||
+      button.offsetWidth === 0 ||
+      button.offsetHeight === 0
+    ) {
+      return;
+    }
+
+    backgroundTargetRef?.(button);
+  }, [backgroundTarget, backgroundTargetRef]);
+
+  useLayoutEffect(() => {
+    const button = buttonRef.current;
+    if (!backgroundTarget || !button) return undefined;
+
+    selectVisibleSearchAsBackgroundTarget();
+
+    const observer = new ResizeObserver(selectVisibleSearchAsBackgroundTarget);
+    observer.observe(button);
+    window.addEventListener('resize', selectVisibleSearchAsBackgroundTarget);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener(
+        'resize',
+        selectVisibleSearchAsBackgroundTarget,
+      );
+    };
+  }, [backgroundTarget, selectVisibleSearchAsBackgroundTarget]);
 
   const pathname = usePathname();
   // The reader's current workflow section (first path segment, locale stripped
@@ -112,6 +151,7 @@ const DocSearchComponent = ({
   return (
     <>
       <button
+        ref={buttonRef}
         type="button"
         className={inputFieldControlVariants({
           size: large ? 'lg' : 'md',

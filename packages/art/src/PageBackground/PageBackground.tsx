@@ -37,8 +37,6 @@ const DEFAULT_SPEED_FACTOR = 0.35;
 const SCROLL_PROGRESS_RANGE = [0, 1];
 const SCROLL_OPACITY_RANGE = [1, 0];
 const SCROLL_SCALE_RANGE = [1, 1.8];
-const ROUTE_FADE_DURATION_SECONDS = 0.35;
-const ROUTE_FADE_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 // The weave is hidden behind an inverse-radial mask until the convergence target
 // (the hero video) resolves, then the masked disc shrinks to nothing at the
@@ -171,14 +169,12 @@ export function PageBackgroundProvider({
   fallbackConvergence = DEFAULT_CONVERGENCE,
   intensity = INITIAL_INTENSITY,
   motionMode = 'scroll',
-  visible = true,
   waitForTarget = true,
 }: {
   children: ReactNode;
   fallbackConvergence?: NetworkWeaveConvergence;
   intensity?: number;
   motionMode?: 'scroll' | 'target';
-  visible?: boolean;
   waitForTarget?: boolean;
 }) {
   const layerRef = useRef<HTMLDivElement>(null);
@@ -274,7 +270,6 @@ export function PageBackgroundProvider({
         motionMode={motionMode}
         resolved={waitForTarget ? resolved : undefined}
         scrollFadeEnd={scrollFadeEnd}
-        visible={visible}
       />
       <PageBackgroundTargetContext.Provider value={targetRef}>
         {children}
@@ -393,7 +388,6 @@ export function PageBackground({
   motionMode = 'scroll',
   resolved,
   scrollFadeEnd,
-  visible = true,
   layerRef,
 }: {
   convergence?: NetworkWeaveConvergence;
@@ -401,7 +395,6 @@ export function PageBackground({
   motionMode?: 'scroll' | 'target';
   resolved?: boolean;
   scrollFadeEnd?: number;
-  visible?: boolean;
   layerRef?: Ref<HTMLDivElement>;
 }) {
   const reduceMotion = useReducedMotion();
@@ -529,25 +522,12 @@ export function PageBackground({
           transformOrigin: `${convergence.x * 100}% ${convergence.y * 100}%`,
         }
       : {};
-  const targetAnimation =
-    motionMode === 'target'
-      ? {
-          initial: false,
-          animate: { opacity: visible ? 1 : 0 },
-          transition: {
-            duration: reduceMotion ? 0 : ROUTE_FADE_DURATION_SECONDS,
-            ease: ROUTE_FADE_EASE,
-          },
-        }
-      : {};
-
   return (
     <motion.div
       ref={layerRef}
       aria-hidden="true"
       data-testid="page-background-layer"
       className="pointer-events-none fixed inset-0 z-1 overflow-hidden"
-      {...targetAnimation}
       style={{ ...maskStyle, ...scrollStyle }}
     >
       <NetworkWeaveBackground
