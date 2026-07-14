@@ -154,6 +154,7 @@
     },
     "intro": {
       "heading": "Choose where to begin",
+      "introduction": "Choose the stage your research has reached, then select the Network Canvas app that fits your study.",
       "stages": {
         "design": {
           "label": "Design stage",

@@ -97,6 +97,11 @@ describe('GetStartedIntro', () => {
 
     expect(screen.getAllByRole('link')[0]).toBe(documentationLink);
     expect(documentationLink.parentElement).toHaveClass('max-w-[1400px]');
+    expect(
+      screen.getByText(
+        'Choose the stage your research has reached, then select the Network Canvas app that fits your study.',
+      ),
+    ).toBeInTheDocument();
     expect(documentationLink).toHaveClass('relative', 'pb-24');
     expect(screen.getByText('Learn about the project')).toHaveClass('mt-8');
     expect(documentationLink.querySelector('svg')?.parentElement).toHaveClass(
@@ -168,6 +173,11 @@ describe('GetStartedIntro', () => {
       screen.getByRole('heading', {
         name: 'Elija por dónde empezar',
       }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Elija la etapa que ha alcanzado su investigación y, a continuación, seleccione la aplicación de Network Canvas que mejor se adapte a su estudio.',
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', {

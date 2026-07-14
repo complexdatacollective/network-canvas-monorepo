@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useLayoutEffect, useRef } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
 import { externalLinks } from '~/lib/content';
@@ -88,6 +89,13 @@ export function GetStartedIntro() {
             >
               {t('intro.heading')}
             </Heading>
+            <Paragraph
+              intent="lead"
+              margin="none"
+              className="text-text/75 mx-auto mt-6 max-w-2xl text-lg text-pretty"
+            >
+              {t('intro.introduction')}
+            </Paragraph>
           </motion.div>
 
           <Container

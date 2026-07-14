@@ -154,6 +154,7 @@
     },
     "intro": {
       "heading": "Elija por dónde empezar",
+      "introduction": "Elija la etapa que ha alcanzado su investigación y, a continuación, seleccione la aplicación de Network Canvas que mejor se adapte a su estudio.",
       "stages": {
         "design": {
           "label": "Etapa de diseño",
