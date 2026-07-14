@@ -1,12 +1,10 @@
 import { compose, withHandlers } from 'react-recompose';
 import { connect } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import { formValueSelector } from 'redux-form';
 
-import {
-  createVariableAsync,
-  deleteVariableAsync,
-} from '~/ducks/modules/protocol/codebook';
-import type { AppDispatch, RootState } from '~/ducks/store';
+import type { VariableType } from '@codaco/protocol-validation';
+import withCreateVariableHandler from '~/components/enhancers/withCreateVariableHandler';
+import type { RootState } from '~/ducks/store';
 
 import { getEdgesForSubject, getNarrativeVariables } from './selectors';
 
@@ -35,56 +33,28 @@ const mapStateToProps = (
   };
 };
 
-const mapDispatchToProps = {
-  createVariable: createVariableAsync,
-  deleteVariable: deleteVariableAsync,
-  changeForm: change,
-};
-
 type HandlerProps = {
-  form: string;
-  changeForm: typeof change;
-  createVariable: typeof createVariableAsync;
-  deleteVariable: typeof deleteVariableAsync;
-  entity: string;
-  type: string;
-  dispatch: AppDispatch;
+  handleCreateVariable: (
+    variableName: string,
+    variableType?: VariableType,
+    field?: string,
+  ) => Promise<string | undefined>;
 };
 
 const variableHandlers = withHandlers({
+  // handleCreateVariable (injected by withCreateVariableHandler) creates the
+  // variable, surfaces failures such as duplicate or invalid names via a
+  // dialog, and writes the new variable id into the given form field on
+  // success — the same pattern the Sociogram layout picker uses.
   handleCreateLayoutVariable:
-    ({
-      form,
-      changeForm,
-      createVariable,
-      dispatch,
-      entity,
-      type,
-    }: HandlerProps) =>
-    async (name: string) => {
-      const result = await dispatch(
-        createVariable({
-          entity: entity as 'node' | 'edge' | 'ego',
-          type,
-          configuration: { type: 'layout', name },
-        }),
-      ).unwrap();
-      const { variable } = result;
-      changeForm(form, 'layoutVariable', variable);
-      return variable;
-    },
-  handleDeleteVariable:
-    ({ entity, type, deleteVariable }: HandlerProps) =>
-    (variable: string) =>
-      deleteVariable({
-        entity: entity as 'node' | 'edge' | 'ego',
-        type,
-        variable,
-      }),
+    ({ handleCreateVariable }: HandlerProps) =>
+    (name: string) =>
+      handleCreateVariable(name, 'layout', 'layoutVariable'),
 });
 
 const withPresetProps = compose(
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(mapStateToProps),
+  withCreateVariableHandler,
   variableHandlers,
 );
 
