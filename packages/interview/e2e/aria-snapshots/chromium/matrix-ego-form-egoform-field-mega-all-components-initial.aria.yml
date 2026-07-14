@@ -1,58 +1,58 @@
 - main:
-  - heading "About You" [level=1]
-  - paragraph: Answer every question below.
-  - text: What is your name?
-  - textbox "What is your name?"
-  - text: Describe yourself briefly.
-  - textbox "Describe yourself briefly."
-  - text: How old are you?
-  - button "Decrease value"
-  - spinbutton "How old are you?"
-  - button "Increase value"
-  - text: How happy are you right now?
-  - group:
-    - slider "Visual analog scale value": "0.5"
-  - text: Are you currently employed?
-  - group:
-    - radio "Yes"
-    - radio "No"
-  - text: Do you live alone?
-  - switch "Do you live alone?"
-  - text: How many siblings do you have?
-  - radiogroup:
-    - radio "One"
-    - text: One
-    - radio "Two"
-    - text: Two
-    - radio "Three"
-    - text: Three
-    - radio "Four"
-    - text: Four
-  - text: How would you rate your overall health?
-  - group:
-    - 'slider "Select value on scale: No selection"': "2"
-  - text: Strongly disagree Disagree Neutral Agree Strongly agree Which languages do you speak?
-  - group:
-    - checkbox "Family"
-    - text: Family
-    - checkbox "Work"
-    - text: Work
-    - checkbox "School"
-    - text: School
-    - checkbox "Neighborhood"
-    - text: Neighborhood
-  - text: What is your highest education level?
-  - group:
-    - checkbox "Family"
-    - checkbox "Work"
-    - checkbox "School"
-    - checkbox "Neighborhood"
-  - text: What is your date of birth?
-  - textbox
-  - text: When did you last see a doctor?
-  - textbox
-  - navigation:
-    - button "Previous Step"
-    - progressbar "Progress indicator": x
-    - button "Next Step"
-  - region "Interview notifications"
+    - heading "About You" [level=1]
+    - paragraph: Answer every question below.
+    - text: What is your name?
+    - textbox "What is your name?"
+    - text: Describe yourself briefly.
+    - textbox "Describe yourself briefly."
+    - text: How old are you?
+    - button "Decrease value"
+    - spinbutton "How old are you?"
+    - button "Increase value"
+    - text: How happy are you right now?
+    - group "How happy are you right now?":
+        - slider "How happy are you right now?": '0.5'
+    - text: Are you currently employed?
+    - radiogroup "Are you currently employed?":
+        - radio "Yes"
+        - radio "No"
+    - text: Do you live alone?
+    - switch "Do you live alone?"
+    - text: How many siblings do you have?
+    - radiogroup "How many siblings do you have?":
+        - radio "One"
+        - text: One
+        - radio "Two"
+        - text: Two
+        - radio "Three"
+        - text: Three
+        - radio "Four"
+        - text: Four
+    - text: How would you rate your overall health?
+    - group "How would you rate your overall health?":
+        - slider "How would you rate your overall health?": '2'
+    - text: Strongly disagree Disagree Neutral Agree Strongly agree Which languages do you speak?
+    - group "Which languages do you speak?":
+        - checkbox "Family"
+        - text: Family
+        - checkbox "Work"
+        - text: Work
+        - checkbox "School"
+        - text: School
+        - checkbox "Neighborhood"
+        - text: Neighborhood
+    - text: What is your highest education level?
+    - group "What is your highest education level?":
+        - checkbox "Family"
+        - checkbox "Work"
+        - checkbox "School"
+        - checkbox "Neighborhood"
+    - text: What is your date of birth?
+    - textbox "What is your date of birth?"
+    - text: When did you last see a doctor?
+    - textbox
+    - navigation:
+        - button "Previous Step"
+        - progressbar "Progress indicator": x
+        - button "Next Step"
+    - region "Interview notifications"

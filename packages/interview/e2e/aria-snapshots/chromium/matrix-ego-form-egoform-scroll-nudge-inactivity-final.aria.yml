@@ -1,50 +1,50 @@
 - main:
-  - heading "About You" [level=1]
-  - paragraph: This form has enough fields to overflow the viewport.
-  - text: What is your name?
-  - textbox "What is your name?"
-  - text: How old are you?
-  - button "Decrease value"
-  - spinbutton "How old are you?"
-  - button "Increase value"
-  - text: Describe yourself briefly.
-  - textbox "Describe yourself briefly."
-  - text: Do you live alone?
-  - switch "Do you live alone?"
-  - text: Are you currently employed?
-  - group:
-    - radio "Yes"
-    - radio "No"
-  - text: What is your highest education level?
-  - radiogroup:
-    - radio "Strongly disagree"
-    - text: Strongly disagree
-    - radio "Disagree"
-    - text: Disagree
-    - radio "Neutral"
-    - text: Neutral
-    - radio "Agree"
-    - text: Agree
-    - radio "Strongly agree"
-    - text: Strongly agree
-  - text: Which languages do you speak?
-  - group:
-    - checkbox "Family"
-    - text: Family
-    - checkbox "Work"
-    - text: Work
-    - checkbox "School"
-    - text: School
-    - checkbox "Neighborhood"
-    - text: Neighborhood
-  - text: How would you rate your overall health?
-  - group:
-    - 'slider "Select value on scale: No selection"': "2"
-  - text: Strongly disagree Disagree Neutral Agree Strongly agree How happy are you right now?
-  - group:
-    - slider "Visual analog scale value": "0.5"
-  - navigation:
-    - button "Previous Step"
-    - progressbar "Progress indicator": x
-    - button "Next Step"
-  - region "Interview notifications"
+    - heading "About You" [level=1]
+    - paragraph: This form has enough fields to overflow the viewport.
+    - text: What is your name?
+    - textbox "What is your name?"
+    - text: How old are you?
+    - button "Decrease value"
+    - spinbutton "How old are you?"
+    - button "Increase value"
+    - text: Describe yourself briefly.
+    - textbox "Describe yourself briefly."
+    - text: Do you live alone?
+    - switch "Do you live alone?"
+    - text: Are you currently employed?
+    - radiogroup "Are you currently employed?":
+        - radio "Yes"
+        - radio "No"
+    - text: What is your highest education level?
+    - radiogroup "What is your highest education level?":
+        - radio "Strongly disagree"
+        - text: Strongly disagree
+        - radio "Disagree"
+        - text: Disagree
+        - radio "Neutral"
+        - text: Neutral
+        - radio "Agree"
+        - text: Agree
+        - radio "Strongly agree"
+        - text: Strongly agree
+    - text: Which languages do you speak?
+    - group "Which languages do you speak?":
+        - checkbox "Family"
+        - text: Family
+        - checkbox "Work"
+        - text: Work
+        - checkbox "School"
+        - text: School
+        - checkbox "Neighborhood"
+        - text: Neighborhood
+    - text: How would you rate your overall health?
+    - group "How would you rate your overall health?":
+        - slider "How would you rate your overall health?": '2'
+    - text: Strongly disagree Disagree Neutral Agree Strongly agree How happy are you right now?
+    - group "How happy are you right now?":
+        - slider "How happy are you right now?": '0.5'
+    - navigation:
+        - button "Previous Step"
+        - progressbar "Progress indicator": x
+        - button "Next Step"
+    - region "Interview notifications"

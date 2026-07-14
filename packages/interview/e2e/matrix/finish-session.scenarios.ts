@@ -299,14 +299,13 @@ export const finishSessionScenarios: InterfaceScenarios = {
       currentStep: 2,
       run: async ({ page }) => {
         // Stage navigation is opt-in in the e2e host (default off keeps the
-        // "Go to a stage" button out of every other suite's aria tree). Enable
-        // it for this scenario only; App re-renders and Shell mounts the drawer.
-        await page.evaluate(() =>
-          window.__test.setAllowStageNavigation(true),
-        );
+        // "Go to another screen" button out of every other suite's aria tree).
+        // Enable it for this scenario only; App re-renders and Shell mounts the
+        // drawer.
+        await page.evaluate(() => window.__test.setAllowStageNavigation(true));
 
         await page
-          .getByRole('button', { name: 'Go to a stage' })
+          .getByRole('button', { name: 'Go to another screen' })
           .first()
           .click();
 

@@ -1,16 +1,16 @@
 - main:
-  - heading "About you" [level=1]
-  - paragraph: Please answer the questions below.
-  - text: Name?
-  - textbox "Name?"
-  - text: Age?
-  - button "Decrease value"
-  - spinbutton "Age?"
-  - button "Increase value"
-  - text: Alone?
-  - switch "Alone?"
-  - navigation:
-    - button "Previous Step"
-    - progressbar "Progress indicator": x
-    - button "Next Step"
-  - region "Interview notifications"
+    - heading "About you" [level=1]
+    - paragraph: Please answer the questions below.
+    - text: Name? Required
+    - textbox "Name?"
+    - text: Age?
+    - button "Decrease value"
+    - spinbutton "Age?"
+    - button "Increase value"
+    - text: Alone?
+    - switch "Alone?"
+    - navigation:
+        - button "Previous Step"
+        - progressbar "Progress indicator": x
+        - button "Next Step"
+    - region "Interview notifications"
