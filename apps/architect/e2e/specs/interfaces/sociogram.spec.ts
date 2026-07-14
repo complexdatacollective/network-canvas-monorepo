@@ -66,5 +66,7 @@ test('creates a valid Sociogram stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('Sociogram');
-  expect(stageSnapshotJson(stage)).toMatchSnapshot('sociogram-stage.json');
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
+    'sociogram-stage.json',
+  );
 });

@@ -57,5 +57,7 @@ test('creates a valid NameGenerator stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('NameGenerator');
-  expect(stageSnapshotJson(stage)).toMatchSnapshot('name-generator-stage.json');
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
+    'name-generator-stage.json',
+  );
 });

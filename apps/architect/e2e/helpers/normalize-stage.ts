@@ -1,6 +1,4 @@
-import { spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
-import path from 'node:path';
+import { format } from 'oxfmt';
 
 // Replace generated ids with stable, position-based placeholders so a stage
 // read back via `readStageJson` (Task 3) can be snapshotted deterministically
@@ -77,41 +75,29 @@ function normalizeStage(input: unknown): unknown {
 // Geospatial's `center`/`initialZoom` — the committed file drifted out of
 // sync with the live-computed string the moment `git commit` ran the hook,
 // exactly the same failure mode the trailing-newline fix above already
-// guards against, just for a case that fix didn't cover. Piping the raw
-// `JSON.stringify` output through the SAME `oxfmt` binary the pre-commit
+// guards against, just for a case that fix didn't cover. Running the raw
+// `JSON.stringify` output through the SAME oxfmt version the pre-commit
 // hook uses (rather than hand-reimplementing its print-width rules) is the
-// only way to guarantee byte-identity with whatever the hook produces,
-// including if its formatting rules change later.
-// Resolve oxfmt's Node bin shim once and invoke it directly with the current
-// Node executable. Going back through `pnpm exec` from inside the
-// already-running playwright process is not a cheap formatter call — pnpm
-// re-verifies the workspace (and can kick off an install) on every
-// invocation, once per snapshot assertion. oxfmt is a direct devDependency
-// of @codaco/architect, so the shim is always present in the filtered
-// Docker/CI install.
-const oxfmtBin = path.join(
-  path.dirname(createRequire(import.meta.url).resolve('oxfmt/package.json')),
-  'bin',
-  'oxfmt',
-);
-
-function formatWithOxfmt(raw: string): string {
-  const result = spawnSync(
-    process.execPath,
-    [oxfmtBin, '--stdin-filepath=stage-snapshot.json'],
-    {
-      input: raw,
-      encoding: 'utf8',
-    },
-  );
-  if (result.error || result.status !== 0) {
+// only way to guarantee byte-identity with whatever the hook produces.
+// oxfmt is a direct devDependency of @codaco/architect (so it is present in
+// the filtered Docker/CI install) and exposes an in-process `format` API —
+// no per-assertion process spawn, let alone a `pnpm exec` round trip (pnpm
+// re-verifies the workspace on every invocation). The API is called without
+// options: the repo's .oxfmtrc.json JSON-affecting options (printWidth,
+// tabWidth, useTabs, endOfLine) all equal oxfmt's defaults — verified
+// byte-identical against committed hook-formatted snapshots — and if that
+// ever diverges, the very next CI run fails the snapshot comparison loudly
+// rather than drifting silently.
+async function formatWithOxfmt(raw: string): Promise<string> {
+  const { code, errors } = await format('stage-snapshot.json', raw);
+  if (errors.length > 0) {
     throw new Error(
-      `oxfmt formatting failed (status ${String(result.status)}): ${result.stderr || String(result.error)}`,
+      `oxfmt formatting failed: ${errors.map((e) => e.message).join('; ')}`,
     );
   }
-  return result.stdout;
+  return code;
 }
 
-export function stageSnapshotJson(stage: unknown): string {
+export function stageSnapshotJson(stage: unknown): Promise<string> {
   return formatWithOxfmt(JSON.stringify(normalizeStage(stage), null, 2));
 }

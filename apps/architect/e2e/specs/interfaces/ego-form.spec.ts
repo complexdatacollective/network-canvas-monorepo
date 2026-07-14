@@ -56,5 +56,5 @@ test('creates a valid EgoForm stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('EgoForm');
-  expect(stageSnapshotJson(stage)).toMatchSnapshot('ego-form-stage.json');
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot('ego-form-stage.json');
 });

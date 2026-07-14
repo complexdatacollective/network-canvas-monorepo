@@ -150,5 +150,7 @@ test('creates a valid OrdinalBin stage from scratch', async ({
     'High',
   ]);
 
-  expect(stageSnapshotJson(stage)).toMatchSnapshot('ordinal-bin-stage.json');
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
+    'ordinal-bin-stage.json',
+  );
 });

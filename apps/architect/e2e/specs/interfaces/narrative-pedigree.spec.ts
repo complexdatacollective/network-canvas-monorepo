@@ -249,7 +249,7 @@ test('creates a valid NarrativePedigree stage from scratch', async ({
   expect(stage.type).toBe('NarrativePedigree');
   expect(stage.sourceStageId).toBe(SOURCE_STAGE_ID);
 
-  expect(stageSnapshotJson(stage)).toMatchSnapshot(
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'narrative-pedigree-stage.json',
   );
 });

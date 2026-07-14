@@ -154,5 +154,7 @@ test('creates a valid Narrative stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('Narrative');
-  expect(stageSnapshotJson(stage)).toMatchSnapshot('narrative-stage.json');
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
+    'narrative-stage.json',
+  );
 });

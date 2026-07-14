@@ -71,7 +71,7 @@ test('creates a valid NameGeneratorRoster stage from scratch', async ({
     throw new Error(`expected NameGeneratorRoster stage, got ${stage.type}`);
   }
   expect(stage.dataSource).toBe('roster_data');
-  expect(stageSnapshotJson(stage)).toMatchSnapshot(
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'name-generator-roster-stage.json',
   );
 });

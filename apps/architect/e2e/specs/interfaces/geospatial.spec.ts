@@ -308,7 +308,7 @@ test('creates a valid Geospatial stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('Geospatial');
-  expect(stageSnapshotJson(withRoundedCenter(stage))).toMatchSnapshot(
+  expect(await stageSnapshotJson(withRoundedCenter(stage))).toMatchSnapshot(
     'geospatial-stage.json',
   );
 });

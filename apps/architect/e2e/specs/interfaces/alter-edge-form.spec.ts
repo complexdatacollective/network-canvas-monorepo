@@ -46,7 +46,7 @@ test('creates a valid AlterEdgeForm stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('AlterEdgeForm');
-  expect(stageSnapshotJson(stage)).toMatchSnapshot(
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'alter-edge-form-stage.json',
   );
 });

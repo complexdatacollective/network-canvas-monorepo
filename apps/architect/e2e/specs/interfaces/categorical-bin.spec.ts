@@ -144,7 +144,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
     'Friends',
   ]);
 
-  expect(stageSnapshotJson(stage)).toMatchSnapshot(
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'categorical-bin-stage.json',
   );
 });

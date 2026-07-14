@@ -43,7 +43,7 @@ test('creates a valid NameGeneratorQuickAdd stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('NameGeneratorQuickAdd');
-  expect(stageSnapshotJson(stage)).toMatchSnapshot(
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'name-generator-quick-add-stage.json',
   );
 });
