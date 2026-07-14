@@ -140,7 +140,9 @@ test('creates a valid Geospatial stage from scratch', async ({
   seed,
 }) => {
   await seed(protocolWithGeoDataAsset(), {
-    assets: [{ assetId: 'geo_data', name: 'Regions', data: REGIONS_GEOJSON }],
+    assets: [
+      { assetId: 'geo_data', name: 'regions.geojson', data: REGIONS_GEOJSON },
+    ],
   });
   await gotoProtocol(architectPage);
 

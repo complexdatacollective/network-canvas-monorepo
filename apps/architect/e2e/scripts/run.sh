@@ -57,6 +57,15 @@ if [[ " $* " == *"--update-snapshots"* ]]; then
   PLATFORM_FLAG="--platform linux/amd64"
   VOLUME="architect-e2e-node-modules-amd64"
 fi
+# Forwarded args are spliced into the container's `sh -c` string, so each one
+# must be shell-quoted or characters like the `|` in `--grep "A|B"` are
+# re-parsed as shell syntax inside the container (mirrors the interview
+# runner's fix).
+FORWARDED_ARGS=""
+for arg in "$@"; do
+  FORWARDED_ARGS="${FORWARDED_ARGS} $(printf '%q' "$arg")"
+done
+
 # shellcheck disable=SC2086 # PLATFORM_FLAG intentionally word-splits
 docker run --rm \
   ${PLATFORM_FLAG} \
@@ -70,4 +79,4 @@ docker run --rm \
     && corepack enable \
     && pnpm install --filter '@codaco/architect...' --frozen-lockfile \
     && pnpm turbo run build --filter=@codaco/architect \
-    && pnpm --filter @codaco/architect exec playwright test --config=e2e/playwright.config.ts $*"
+    && pnpm --filter @codaco/architect exec playwright test --config=e2e/playwright.config.ts ${FORWARDED_ARGS}"

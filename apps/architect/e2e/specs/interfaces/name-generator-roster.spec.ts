@@ -37,7 +37,9 @@ test('creates a valid NameGeneratorRoster stage from scratch', async ({
   seed,
 }) => {
   await seed(rosterProtocol(), {
-    assets: [{ assetId: 'roster_data', name: 'Roster', data: ROSTER_DATA }],
+    assets: [
+      { assetId: 'roster_data', name: 'roster.json', data: ROSTER_DATA },
+    ],
   });
   await gotoProtocol(architectPage);
 

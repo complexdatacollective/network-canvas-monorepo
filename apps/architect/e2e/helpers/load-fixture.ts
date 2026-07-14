@@ -28,9 +28,12 @@ export function loadAllInterfacesFixture(): {
 
   // `assetManifest`'s two loose assets (both `source`-backed files under
   // assets/) — `mapbox_token` is an inline `value` apikey with no `source`,
-  // so it isn't a StoredAsset and isn't loaded here. Names mirror the
-  // manifest's own `name` field so a seeded StoredAsset's `name` matches
-  // what the app would display for it. Read as utf8 text: `seedProtocol`
+  // so it isn't a StoredAsset and isn't loaded here. The stored row's `name`
+  // is the SOURCE FILENAME, not the manifest's display name: the app's
+  // `networkReader` (assetTools.ts, `withExtensionSwitch`) picks its
+  // CSV/JSON reader from the stored name's extension, so a display name
+  // like "Roster" would leave roster/search/sort editors unable to
+  // enumerate the asset's variables. Read as utf8 text: `seedProtocol`
   // wraps each asset's `data` into a real (browser-native) `Blob` inside its
   // `page.evaluate` callback — a `Blob` built here, in Node, wouldn't survive
   // serialisation across the evaluate boundary intact.
@@ -43,8 +46,8 @@ export function loadAllInterfacesFixture(): {
     'utf8',
   );
   const assets: SeedAsset[] = [
-    { assetId: 'geo_data', name: 'Regions', data: geojson },
-    { assetId: 'roster_data', name: 'Roster', data: roster },
+    { assetId: 'geo_data', name: 'regions.geojson', data: geojson },
+    { assetId: 'roster_data', name: 'roster.json', data: roster },
   ];
   return { protocol, assets };
 }
