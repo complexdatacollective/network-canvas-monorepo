@@ -30,9 +30,11 @@ type ManifestEntry = { id: string; name: string; source?: string };
 // Development protocol instantiates into the library with its media intact.
 // Called lazily, only when the Development template is actually opened.
 export const loadDevelopmentAssets = async (): Promise<ExtractedAsset[]> => {
-  const entries = Object.values(
-    developmentProtocol.assetManifest ?? {},
-  ) as ManifestEntry[];
+  const entries = (
+    Object.entries(developmentProtocol.assetManifest ?? {}) as Array<
+      [string, ManifestEntry]
+    >
+  ).map(([id, entry]) => ({ ...entry, id }));
 
   return Promise.all(
     entries
