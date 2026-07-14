@@ -55,5 +55,7 @@ test('creates a valid DyadCensus stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('DyadCensus');
-  expect(stageSnapshotJson(stage)).toMatchSnapshot('dyad-census-stage.json');
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
+    'dyad-census-stage.json',
+  );
 });

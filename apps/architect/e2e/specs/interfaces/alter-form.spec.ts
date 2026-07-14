@@ -49,5 +49,7 @@ test('creates a valid AlterForm stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('AlterForm');
-  expect(stageSnapshotJson(stage)).toMatchSnapshot('alter-form-stage.json');
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
+    'alter-form-stage.json',
+  );
 });

@@ -74,5 +74,7 @@ test('creates a valid Anonymisation stage from scratch', async ({
     'Enter your passphrase below, then continue.',
   );
 
-  expect(stageSnapshotJson(stage)).toMatchSnapshot('anonymisation-stage.json');
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
+    'anonymisation-stage.json',
+  );
 });

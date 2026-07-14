@@ -49,5 +49,7 @@ test('creates a valid Information stage from scratch', async ({
   // needs — see that function's comment for why a bare `normalizeStage(...)`
   // object or a plain `JSON.stringify` (no trailing newline) both break here.
   // This is the pattern every other interface spec should copy.
-  expect(stageSnapshotJson(stage)).toMatchSnapshot('information-stage.json');
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
+    'information-stage.json',
+  );
 });

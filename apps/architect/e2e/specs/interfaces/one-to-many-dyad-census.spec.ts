@@ -46,7 +46,7 @@ test('creates a valid OneToManyDyadCensus stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('OneToManyDyadCensus');
-  expect(stageSnapshotJson(stage)).toMatchSnapshot(
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'one-to-many-dyad-census-stage.json',
   );
 });

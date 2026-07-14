@@ -212,7 +212,7 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   expect(prompt.text).toContain('How close are you?');
   expect(prompt.negativeLabel).toContain('We are not close');
 
-  expect(stageSnapshotJson(stage)).toMatchSnapshot(
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'tie-strength-census-stage.json',
   );
 });

@@ -75,7 +75,7 @@ test('creates a valid NetworkComposer stage from scratch', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('NetworkComposer');
-  expect(stageSnapshotJson(stage)).toMatchSnapshot(
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'network-composer-stage.json',
   );
 });
