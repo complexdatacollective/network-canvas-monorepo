@@ -112,6 +112,14 @@ export async function seedProtocol(
         const tx = db.transaction(['protocols', 'assets'], 'readwrite');
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
+        // A reseed with the same storageId must not leave asset rows from a
+        // previous seed behind: a stale Blob could satisfy a later fixture
+        // that forgot to declare the asset, masking missing fixture data.
+        // Keys are `${storageId}::<assetId>`, so a prefix range delete
+        // clears exactly this protocol's rows before the fresh puts.
+        tx.objectStore('assets').delete(
+          IDBKeyRange.bound(`${storageId}::`, `${storageId}::\uffff`),
+        );
         tx.objectStore('protocols').put({
           id: storageId,
           protocol: proto,
