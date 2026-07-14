@@ -102,8 +102,18 @@ describe('SiteNavigation', () => {
       within(compactNavigation).getByRole('link', { name: 'Open Architect' }),
     ).toHaveAttribute('href', 'https://architect.networkcanvas.com/');
     expect(
+      within(compactNavigation).getByRole('link', {
+        name: 'Get Architect Classic',
+      }),
+    ).toHaveAttribute('href', 'https://networkcanvas.com/get-started#design');
+    expect(
       within(compactNavigation).getByRole('link', { name: 'Open Interviewer' }),
     ).toHaveAttribute('href', 'https://interviewer.networkcanvas.com/');
+    expect(
+      within(compactNavigation).getByRole('link', {
+        name: 'Get Interviewer Classic',
+      }),
+    ).toHaveAttribute('href', 'https://networkcanvas.com/get-started#collect');
     expect(
       within(compactNavigation).getByRole('link', {
         name: 'Try the Fresco Sandbox',
@@ -122,6 +132,20 @@ describe('SiteNavigation', () => {
 
     const resourcesButton = screen.getByRole('button', { name: 'Resources' });
     expect(resourcesButton).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('lays out the five software destinations in a two-column grid', () => {
+    render(<SiteNavigation locale="en-US" site="website" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Software' }));
+    const architectClassicLink = screen.getByRole('link', {
+      name: 'Architect Classic',
+    });
+    const softwareGrid = architectClassicLink.closest('ul');
+    if (!softwareGrid) throw new Error('Expected the software grid.');
+
+    expect(softwareGrid).toHaveClass('grid', 'grid-cols-2');
+    expect(within(softwareGrid).getAllByRole('listitem')).toHaveLength(5);
   });
 
   it('exposes an active compact navigation group semantically', () => {

@@ -50,7 +50,12 @@ export type SiteNavigationUtilityRenderProps = {
   view: 'desktop' | 'mobile';
 };
 
-type SoftwareId = 'architect' | 'interviewer' | 'fresco';
+type SoftwareId =
+  | 'architect'
+  | 'architectClassic'
+  | 'interviewer'
+  | 'interviewerClassic'
+  | 'fresco';
 
 type ResourceLink = {
   id: 'community' | 'documentation' | 'protocolGallery';
@@ -95,7 +100,9 @@ const destinations = {
   documentation: 'https://documentation.networkcanvas.com/',
   protocolGallery: 'https://protocolgallery.networkcanvas.com/',
   architect: 'https://architect.networkcanvas.com/',
+  architectClassic: 'https://networkcanvas.com/get-started#design',
   interviewer: 'https://interviewer.networkcanvas.com/',
+  interviewerClassic: 'https://networkcanvas.com/get-started#collect',
   fresco: 'https://fresco-sandbox.networkcanvas.com/',
   networkCanvas: 'https://networkcanvas.com/',
 } as const;
@@ -112,13 +119,17 @@ const breakpointClasses = {
 
 const accentClasses: Record<SoftwareId, string> = {
   architect: 'text-sea-green',
+  architectClassic: 'text-sea-green',
   interviewer: 'text-neon-coral',
+  interviewerClassic: 'text-neon-coral',
   fresco: 'text-slate-blue',
 };
 
 const hoverAccentClasses: Record<SoftwareId, string> = {
   architect: 'hover:bg-sea-green/10 focus-visible:bg-sea-green/10',
+  architectClassic: 'hover:bg-sea-green/10 focus-visible:bg-sea-green/10',
   interviewer: 'hover:bg-neon-coral/10 focus-visible:bg-neon-coral/10',
+  interviewerClassic: 'hover:bg-neon-coral/10 focus-visible:bg-neon-coral/10',
   fresco: 'hover:bg-slate-blue/10 focus-visible:bg-slate-blue/10',
 };
 
@@ -273,7 +284,7 @@ function SoftwareCard({
   renderLink: (props: SiteNavigationLinkRenderProps) => ReactElement;
 }) {
   const className = cx(
-    'focusable tablet-landscape:w-[clamp(19rem,29vw,22rem)] block h-full w-[min(42rem,calc(100vw-4rem))] rounded p-4 transition-colors',
+    'focusable block h-full w-80 rounded p-4 transition-colors',
     hoverAccentClasses[link.id],
   );
   const content = (
@@ -365,18 +376,9 @@ function SoftwareMenu({
             />
           </NavigationMenu.Trigger>
           <NavigationMenu.Content className="transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
-            <ul className="tablet-landscape:flex-row flex flex-col p-1">
-              {links.map((link, index) => (
-                <li
-                  key={link.id}
-                  className={cx(
-                    'tablet-landscape:flex tablet-landscape:px-2',
-                    index > 0 &&
-                      'border-outline tablet-landscape:mt-0 tablet-landscape:border-t-0 tablet-landscape:border-l tablet-landscape:pt-0 mt-2 border-t pt-2',
-                    index === 0 && 'tablet-landscape:pl-0',
-                    index === links.length - 1 && 'tablet-landscape:pr-0',
-                  )}
-                >
+            <ul className="grid grid-cols-2 gap-1 p-1">
+              {links.map((link) => (
+                <li key={link.id} className="flex">
                   <SoftwareCard link={link} renderLink={renderLink} />
                 </li>
               ))}
@@ -519,7 +521,13 @@ export default function SiteNavigation({
     },
   ];
   const softwareLinks: SoftwareLink[] = (
-    ['architect', 'interviewer', 'fresco'] as const
+    [
+      'architect',
+      'architectClassic',
+      'interviewer',
+      'interviewerClassic',
+      'fresco',
+    ] as const
   ).map((id) => ({
     id,
     ...labels.softwareLinks[id],
