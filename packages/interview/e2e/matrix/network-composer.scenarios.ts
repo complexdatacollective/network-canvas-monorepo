@@ -1,9 +1,17 @@
+import path from 'node:path';
+
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { NetworkComposerFixture } from '../fixtures/network-composer-fixture.js';
+import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
+
+const DEV_PROTOCOL_ASSETS_DIR = path.resolve(
+  import.meta.dirname,
+  '../../../development-protocol/assets',
+);
 
 /** Narrow an unknown attribute value to a canvas {x,y} position. */
 function isPosition(value: unknown): value is { x: number; y: number } {
@@ -34,6 +42,13 @@ const hullTapRefs = { community: '' };
 const lassoRefs = { quickAdd: '', community: '' };
 const undoRefs = { quickAdd: '', community: '' };
 const multiDelRefs = { friendship: '' };
+const backgroundImageAsset: SyntheticAssetSpec = {
+  assetId: 'network-composer-bg-1',
+  name: 'Background',
+  type: 'image',
+  source: 'quadrant.png',
+  localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
+};
 const drawRefs = { friendship: '' };
 const multiEdgeRefs = { friendship: '', advice: '', reciprocated: '' };
 const validationRefs = { textA: '', textB: '', number: '' };
@@ -503,8 +518,6 @@ export const networkComposerScenarios: InterfaceScenarios = {
           type: 'layout',
           name: 'composerLayout',
         });
-        // NetworkComposer's background is concentric circles only — unlike the
-        // Sociogram, its schema has no background.image key.
         synth.addStage('NetworkComposer', {
           subject: { entity: 'node', type: person.id },
           quickAdd: quickAdd.id,
@@ -534,6 +547,66 @@ export const networkComposerScenarios: InterfaceScenarios = {
 
         // The decorative background does not intercept pointer events: the
         // add-node popover still opens on top of it.
+        await composer.addNodeToolButton.click();
+        await expect(page.getByLabel('Person name')).toBeVisible();
+      },
+    },
+
+    {
+      id: 'background-image',
+      covers: ['background.image'],
+      visual: true,
+      assets: [backgroundImageAsset],
+      build: () => {
+        const synth = new SyntheticInterview(188);
+        const person = synth.addNodeType({ name: 'Person' });
+        const quickAdd = person.addVariable({ type: 'text', name: 'name' });
+        const layoutVar = person.addVariable({
+          type: 'layout',
+          name: 'composerLayout',
+        });
+        synth.addAsset({
+          id: backgroundImageAsset.assetId,
+          name: backgroundImageAsset.name,
+          type: 'image',
+          source: backgroundImageAsset.source,
+        });
+        synth.addStage('NetworkComposer', {
+          subject: { entity: 'node', type: person.id },
+          quickAdd: quickAdd.id,
+          layoutVariable: layoutVar.id,
+          // background.image wins over concentricCircles when both are set
+          // (NetworkComposer.tsx renders the <img> in place of
+          // ConcentricCircles whenever the asset resolves) — set both to pin
+          // that precedence.
+          background: {
+            image: backgroundImageAsset.assetId,
+            concentricCircles: 6,
+          },
+        });
+        synth.addInformationStage({ title: 'Complete' });
+        return synth;
+      },
+      run: async ({ page }) => {
+        const composer = new NetworkComposerFixture(page);
+        const img = composer.root.locator('img[alt="Background"]');
+        await expect(img).toBeVisible();
+        await expect(img).toHaveAttribute('src', /quadrant\.png/);
+        // Actually loaded from the asset server, not a broken image.
+        await expect
+          .poll(() =>
+            img.evaluate((el) =>
+              el instanceof HTMLImageElement ? el.naturalWidth : 0,
+            ),
+          )
+          .toBeGreaterThan(0);
+
+        // background.image wins: it replaces ConcentricCircles rather than
+        // layering with it.
+        await expect(composer.backgroundCircles).toHaveCount(0);
+
+        // The image does not intercept pointer events: the add-node popover
+        // still opens on top of it.
         await composer.addNodeToolButton.click();
         await expect(page.getByLabel('Person name')).toBeVisible();
       },

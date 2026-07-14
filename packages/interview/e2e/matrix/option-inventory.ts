@@ -263,6 +263,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'convexHullVariable.tapToggle',
     'convexHullVariable.lasso',
     'convexHullVariable.unset',
+    'background.image',
     'background.concentricCircles',
     'background.skewedTowardCenter',
     'behaviours.automaticLayout',

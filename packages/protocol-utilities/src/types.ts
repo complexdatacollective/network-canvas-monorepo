@@ -265,8 +265,6 @@ export type StageEntry = {
   background?: {
     concentricCircles?: number;
     skewedTowardCenter?: boolean;
-    // Sociogram only — NetworkComposer's schema rejects a background image
-    // (strictObject), which buildSyntheticPayload validation surfaces.
     image?: string;
   };
   behaviours?: {
@@ -420,8 +418,6 @@ export type AddStageInput = {
   background?: {
     concentricCircles?: number;
     skewedTowardCenter?: boolean;
-    // Sociogram only — NetworkComposer's schema rejects a background image
-    // (strictObject), which buildSyntheticPayload validation surfaces.
     image?: string;
   };
   behaviours?: {

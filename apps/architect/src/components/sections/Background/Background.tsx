@@ -2,16 +2,13 @@ import type { ComponentType } from 'react';
 import { PureComponent } from 'react';
 import { compose } from 'react-recompose';
 import { Field } from 'redux-form';
-import type { change } from 'redux-form';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 /**
- * The Narrative and NetworkComposer stage schemas forbid a background image
- * (their backgrounds are strict objects of only
- * concentricCircles/skewedTowardCenter). The shared Background section must
- * not offer the image option for those stages, and clears a stale image left
- * by a protocol authored before NetworkComposer forbade it.
+ * The Narrative stage schema forbids a background image (its background is a
+ * strict object of only concentricCircles/skewedTowardCenter). The shared
+ * Background section must not offer the image option for Narrative stages.
  */
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -45,24 +42,12 @@ const backgroundTypeOptions = [
 ];
 
 export const allowsBackgroundImage = (interfaceType: StageType): boolean =>
-  interfaceType !== 'Narrative' && interfaceType !== 'NetworkComposer';
+  interfaceType !== 'Narrative';
 type BackgroundProps = StageEditorSectionProps & {
   handleChooseBackgroundType: (value: boolean) => void;
   useImage: boolean;
-  changeForm: typeof change;
 };
 class Background extends PureComponent<BackgroundProps> {
-  componentDidMount() {
-    const { interfaceType, useImage, changeForm, form } = this.props;
-    // A protocol authored before the image option was withdrawn for this
-    // stage type may still carry background.image; the strict stage schema
-    // now rejects it and the hidden control would leave it uneditable.
-    // Null it so the stage save prunes the key.
-    if (!allowsBackgroundImage(interfaceType) && useImage) {
-      changeForm(form, 'background.image', null);
-    }
-  }
-
   render() {
     const { handleChooseBackgroundType, useImage, interfaceType } = this.props;
     const imageAllowed = allowsBackgroundImage(interfaceType);
