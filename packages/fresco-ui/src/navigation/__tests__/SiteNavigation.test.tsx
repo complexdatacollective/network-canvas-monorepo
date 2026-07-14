@@ -105,7 +105,10 @@ describe('SiteNavigation', () => {
       within(compactNavigation).getByRole('link', {
         name: 'Get Architect Classic',
       }),
-    ).toHaveAttribute('href', 'https://networkcanvas.com/get-started#design');
+    ).toHaveAttribute(
+      'href',
+      'https://networkcanvas.com/get-started#architect-classic-downloads',
+    );
     expect(
       within(compactNavigation).getByRole('link', { name: 'Open Interviewer' }),
     ).toHaveAttribute('href', 'https://interviewer.networkcanvas.com/');
@@ -113,7 +116,10 @@ describe('SiteNavigation', () => {
       within(compactNavigation).getByRole('link', {
         name: 'Get Interviewer Classic',
       }),
-    ).toHaveAttribute('href', 'https://networkcanvas.com/get-started#collect');
+    ).toHaveAttribute(
+      'href',
+      'https://networkcanvas.com/get-started#interviewer-classic-downloads',
+    );
     expect(
       within(compactNavigation).getByRole('link', {
         name: 'Try the Fresco Sandbox',

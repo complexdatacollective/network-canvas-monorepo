@@ -100,9 +100,11 @@ const destinations = {
   documentation: 'https://documentation.networkcanvas.com/',
   protocolGallery: 'https://protocolgallery.networkcanvas.com/',
   architect: 'https://architect.networkcanvas.com/',
-  architectClassic: 'https://networkcanvas.com/get-started#design',
+  architectClassic:
+    'https://networkcanvas.com/get-started#architect-classic-downloads',
   interviewer: 'https://interviewer.networkcanvas.com/',
-  interviewerClassic: 'https://networkcanvas.com/get-started#collect',
+  interviewerClassic:
+    'https://networkcanvas.com/get-started#interviewer-classic-downloads',
   fresco: 'https://fresco-sandbox.networkcanvas.com/',
   networkCanvas: 'https://networkcanvas.com/',
 } as const;
