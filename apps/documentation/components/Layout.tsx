@@ -17,22 +17,8 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
   const locale = useLocale();
   const workflowNavSentinelRef = useRef<HTMLDivElement>(null);
   const [isWorkflowNavStuck, setIsWorkflowNavStuck] = useState(false);
-  const [fallbackConvergence, setFallbackConvergence] = useState({
-    x: 0.5,
-    y: 0.6,
-  });
 
-  // Check if we are on the home page by comparing the pathname to our supported locals
   const isHomePage = pathname === `/${locale}`;
-
-  useEffect(() => {
-    if (isHomePage) return;
-
-    setFallbackConvergence({
-      x: 0.08 + Math.random() * 0.84,
-      y: 0.12 + Math.random() * 0.76,
-    });
-  }, [isHomePage, pathname]);
 
   useEffect(() => {
     const sentinel = workflowNavSentinelRef.current;
@@ -41,27 +27,26 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
       return undefined;
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry) return;
-        setIsWorkflowNavStuck(
-          entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0),
-        );
-      },
-      { threshold: 1 },
-    );
+    const updateStickyState = () => {
+      setIsWorkflowNavStuck(sentinel.getBoundingClientRect().top <= 0);
+    };
 
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    updateStickyState();
+    window.addEventListener('scroll', updateStickyState, { passive: true });
+    window.addEventListener('resize', updateStickyState);
+
+    return () => {
+      window.removeEventListener('scroll', updateStickyState);
+      window.removeEventListener('resize', updateStickyState);
+    };
   }, [isHomePage]);
 
   return (
     <div className="bg-background text-text publish-colors relative isolate flex min-h-dvh w-full flex-auto flex-col">
       <PageBackgroundProvider
-        fallbackConvergence={fallbackConvergence}
         intensity={isHomePage ? 0.4 : 0.1}
         motionMode="target"
-        waitForTarget={isHomePage}
+        waitForTarget
       >
         <div className="relative z-10 flex min-h-dvh w-full flex-auto flex-col">
           <SharedNav />
@@ -75,7 +60,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
               <WorkflowNav
                 variant="collapsed"
                 className={cx(
-                  'sticky top-0 z-40 w-full px-4 py-2',
+                  'tablet-landscape:flex sticky top-0 z-40 hidden w-full px-4 py-2',
                   isWorkflowNavStuck && 'bg-background',
                 )}
               />

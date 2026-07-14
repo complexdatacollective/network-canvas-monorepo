@@ -15,6 +15,7 @@ import {
 } from '../PageBackground/PageBackground';
 
 const networkWeaveProps = vi.hoisted(() => vi.fn());
+const motionDivProps = vi.hoisted(() => vi.fn());
 const animateMock = vi.hoisted(() =>
   vi.fn(
     (
@@ -31,12 +32,14 @@ const motionState = vi.hoisted(() => {
   const state: {
     reduced: boolean;
     progress: number;
-    listener: ((progress: number) => void) | null;
+    scroll: number;
+    scrollY: { get: () => number };
     scrollYProgress: { get: () => number };
   } = {
     reduced: false,
     progress: 0,
-    listener: null,
+    scroll: 0,
+    scrollY: { get: () => state.scroll },
     scrollYProgress: { get: () => state.progress },
   };
 
@@ -47,6 +50,16 @@ type MockMotionValue = {
   get: () => number;
   set: (next: number) => void;
   on: () => () => void;
+};
+
+type MockMotionDivComponentProps = Omit<
+  ComponentPropsWithRef<'div'>,
+  'style'
+> & {
+  animate?: unknown;
+  initial?: unknown;
+  style?: unknown;
+  transition?: unknown;
 };
 
 const createMotionValue = (initial: number): MockMotionValue => {
@@ -60,44 +73,66 @@ const createMotionValue = (initial: number): MockMotionValue => {
   };
 };
 
+function interpolateValue(
+  input: number,
+  inputRange: number[],
+  outputRange: number[],
+) {
+  if (input <= (inputRange[0] ?? 0)) return outputRange[0] ?? 0;
+  const lastIndex = inputRange.length - 1;
+  if (input >= (inputRange[lastIndex] ?? 1)) {
+    return outputRange[lastIndex] ?? 0;
+  }
+
+  const endIndex = inputRange.findIndex((rangeValue) => rangeValue >= input);
+  const startIndex = Math.max(0, endIndex - 1);
+  const rangeStart = inputRange[startIndex] ?? 0;
+  const rangeEnd = inputRange[endIndex] ?? rangeStart;
+  const outputStart = outputRange[startIndex] ?? 0;
+  const outputEnd = outputRange[endIndex] ?? outputStart;
+  const segmentProgress =
+    rangeEnd === rangeStart
+      ? 0
+      : (input - rangeStart) / (rangeEnd - rangeStart);
+
+  return outputStart + (outputEnd - outputStart) * segmentProgress;
+}
+
 vi.mock('motion/react', () => ({
-  // Ref must forward so PageBackgroundProvider can measure the layer element.
   motion: {
-    div: (props: ComponentPropsWithRef<'div'>) => <div {...props} />,
+    div: ({
+      animate,
+      initial,
+      style,
+      transition,
+      ...props
+    }: MockMotionDivComponentProps) => {
+      motionDivProps({ animate, initial, style, transition });
+      return <div {...props} />;
+    },
   },
   useReducedMotion: () => motionState.reduced,
-  useScroll: () => ({ scrollYProgress: motionState.scrollYProgress }),
+  useScroll: () => ({
+    scrollY: motionState.scrollY,
+    scrollYProgress: motionState.scrollYProgress,
+  }),
   useMotionValue: (initial: number) => createMotionValue(initial),
-  useTransform: () => createMotionValue(0),
+  useTransform: (
+    input: MockMotionValue,
+    inputRangeOrTransformer: number[] | ((value: number) => number),
+    outputRange?: number[],
+  ) =>
+    createMotionValue(
+      typeof inputRangeOrTransformer === 'function'
+        ? inputRangeOrTransformer(input.get())
+        : interpolateValue(
+            input.get(),
+            inputRangeOrTransformer,
+            outputRange ?? [],
+          ),
+    ),
   useMotionTemplate: () => 'none',
   animate: animateMock,
-  transform: (input: number, inputRange: number[], outputRange: number[]) => {
-    if (input <= (inputRange[0] ?? 0)) return outputRange[0] ?? 0;
-    const lastIndex = inputRange.length - 1;
-    if (input >= (inputRange[lastIndex] ?? 1)) {
-      return outputRange[lastIndex] ?? 0;
-    }
-
-    const endIndex = inputRange.findIndex((rangeValue) => rangeValue >= input);
-    const startIndex = Math.max(0, endIndex - 1);
-    const rangeStart = inputRange[startIndex] ?? 0;
-    const rangeEnd = inputRange[endIndex] ?? rangeStart;
-    const outputStart = outputRange[startIndex] ?? 0;
-    const outputEnd = outputRange[endIndex] ?? outputStart;
-    const segmentProgress =
-      rangeEnd === rangeStart
-        ? 0
-        : (input - rangeStart) / (rangeEnd - rangeStart);
-
-    return outputStart + (outputEnd - outputStart) * segmentProgress;
-  },
-  useMotionValueEvent: (
-    _value: unknown,
-    _event: string,
-    listener: (progress: number) => void,
-  ) => {
-    motionState.listener = listener;
-  },
 }));
 
 vi.mock('@codaco/art/NetworkWeaveBackground', () => ({
@@ -156,12 +191,12 @@ function BackgroundTarget() {
 describe('PageBackground', () => {
   beforeEach(() => {
     networkWeaveProps.mockClear();
+    motionDivProps.mockClear();
     animateMock.mockClear();
     motionState.reduced = false;
     motionState.progress = 0;
-    motionState.listener = null;
+    motionState.scroll = 0;
     resizeObservers.length = 0;
-    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     vi.stubGlobal('ResizeObserver', MockResizeObserver);
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: false,
@@ -206,74 +241,53 @@ describe('PageBackground', () => {
     );
   });
 
-  it('moves the convergence along a random cubic curve as scroll progresses', () => {
-    render(<PageBackground convergence={{ x: 0.2, y: 0.4 }} />);
+  it('zooms in and fades out by the time the target leaves the viewport', () => {
+    motionState.scroll = 300;
+    const { rerender } = render(
+      <PageBackground convergence={{ x: 0.2, y: 0.4 }} scrollFadeEnd={600} />,
+    );
 
-    act(() => {
-      motionState.progress = 0.5;
-      motionState.listener?.(motionState.progress);
-    });
-
-    const latestProps = networkWeaveProps.mock.lastCall?.[0] as {
-      convergence: { x: number; y: number };
-      intensity: number;
-      flare: number;
-      speedFactor: number;
+    const halfwayProps = motionDivProps.mock.lastCall?.[0] as {
+      style: {
+        opacity: MockMotionValue;
+        scale: MockMotionValue;
+        transformOrigin: string;
+      };
     };
-    expect(latestProps.convergence.x).toBeCloseTo(0.4625);
-    expect(latestProps.convergence.y).toBeCloseTo(0.4875);
-    expect(latestProps.intensity).toBeCloseTo(0.1);
-    expect(latestProps.flare).toBeCloseTo(3.3);
-    expect(latestProps.speedFactor).toBeCloseTo(0.28);
-  });
+    expect(halfwayProps.style.opacity.get()).toBeCloseTo(0.5);
+    expect(halfwayProps.style.scale.get()).toBeCloseTo(1.4);
+    expect(halfwayProps.style.transformOrigin).toBe('20% 40%');
 
-  it('settles intensity at its baseline while other parameters keep varying', () => {
-    render(<PageBackground />);
+    motionState.scroll = 600;
+    rerender(
+      <PageBackground convergence={{ x: 0.2, y: 0.4 }} scrollFadeEnd={600} />,
+    );
 
-    act(() => {
-      motionState.progress = 0.09;
-      motionState.listener?.(motionState.progress);
-    });
-    const fadingProps = networkWeaveProps.mock.lastCall?.[0] as {
-      intensity: number;
+    const exitedProps = motionDivProps.mock.lastCall?.[0] as {
+      style: { opacity: MockMotionValue; scale: MockMotionValue };
     };
-
-    act(() => {
-      motionState.progress = 0.18;
-      motionState.listener?.(motionState.progress);
-    });
-    const settledProps = networkWeaveProps.mock.lastCall?.[0] as {
-      intensity: number;
-      flare: number;
-      speedFactor: number;
-    };
-
-    act(() => {
-      motionState.progress = 0.8;
-      motionState.listener?.(motionState.progress);
-    });
-    const laterProps = networkWeaveProps.mock.lastCall?.[0] as {
-      intensity: number;
-      flare: number;
-      speedFactor: number;
-    };
-
-    expect(fadingProps.intensity).toBeCloseTo(0.25);
-    expect(settledProps.intensity).toBeCloseTo(0.1);
-    expect(laterProps.intensity).toBeCloseTo(0.1);
-    expect(laterProps.flare).not.toBeCloseTo(settledProps.flare);
-    expect(laterProps.speedFactor).not.toBeCloseTo(settledProps.speedFactor);
+    expect(exitedProps.style.opacity.get()).toBe(0);
+    expect(exitedProps.style.scale.get()).toBeCloseTo(1.8);
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.2, y: 0.4 },
+        intensity: 0.4,
+        flare: 1.8,
+        speedFactor: 0.35,
+      }),
+    );
   });
 
   it('keeps the measured convergence stationary for reduced motion', () => {
     motionState.reduced = true;
     render(<PageBackground convergence={{ x: 0.2, y: 0.4 }} />);
 
-    act(() => {
-      motionState.progress = 1;
-      motionState.listener?.(motionState.progress);
-    });
+    motionState.scroll = 300;
+    const layerProps = motionDivProps.mock.lastCall?.[0] as {
+      style: { scale: number };
+    };
 
+    expect(layerProps.style.scale).toBe(1);
     expect(networkWeaveProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         convergence: { x: 0.2, y: 0.4 },
@@ -291,6 +305,7 @@ describe('PageBackground', () => {
         intensity={0.4}
         motionMode="target"
         resolved
+        targetChangeVersion={1}
       />,
     );
 
@@ -301,6 +316,7 @@ describe('PageBackground', () => {
         intensity={0.1}
         motionMode="target"
         resolved
+        targetChangeVersion={2}
       />,
     );
 
@@ -319,6 +335,39 @@ describe('PageBackground', () => {
     };
     expect(latestProps.convergence).toEqual({ x: 0.8, y: 0.7 });
     expect(latestProps.intensity).toBeCloseTo(0.1);
+  });
+
+  it('updates the current target position immediately during scroll', () => {
+    const { rerender } = render(
+      <PageBackground
+        convergence={{ x: 0.2, y: 0.4 }}
+        intensity={0.1}
+        motionMode="target"
+        resolved
+        targetChangeVersion={1}
+      />,
+    );
+
+    animateMock.mockClear();
+    rerender(
+      <PageBackground
+        convergence={{ x: 0.2, y: 0.2 }}
+        intensity={0.1}
+        motionMode="target"
+        resolved
+        targetChangeVersion={1}
+      />,
+    );
+
+    expect(
+      animateMock.mock.calls.some(([start, end]) => start === 0 && end === 1),
+    ).toBe(false);
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.2, y: 0.2 },
+        intensity: 0.1,
+      }),
+    );
   });
 
   it('snaps to the first measured target before revealing the weave', () => {
@@ -462,12 +511,44 @@ describe('PageBackground', () => {
       ),
     ).toHaveLength(1);
 
+    targetRect = createRect({
+      left: 300,
+      top: -300,
+      width: 400,
+      height: 300,
+    });
+    act(() => {
+      fireEvent.scroll(window);
+    });
+
+    const detachedProps = networkWeaveProps.mock.lastCall?.[0] as {
+      convergence: { x: number; y: number };
+    };
+    expect(detachedProps.convergence.x).toBeCloseTo(0.625);
+    expect(detachedProps.convergence.y).toBe(0);
+
+    targetRect = createRect({
+      left: 300,
+      top: -500,
+      width: 400,
+      height: 300,
+    });
+    act(() => {
+      fireEvent.scroll(window);
+    });
+
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.625, y: 0 },
+      }),
+    );
+
     unmount();
     expect(observer?.disconnect).toHaveBeenCalledOnce();
   });
 
-  it('reveals at the scroll path when the initial target is above the viewport', () => {
-    motionState.progress = 0.5;
+  it('is fully faded when the initial target is above the viewport', () => {
+    motionState.scroll = 500;
     const layerRect = createRect({ left: 0, top: 0, width: 1000, height: 800 });
     const targetRect = createRect({
       left: 100,
@@ -493,9 +574,12 @@ describe('PageBackground', () => {
       convergence: { x: number; y: number };
       intensity: number;
     };
-    expect(latestProps.convergence.x).toBeCloseTo(0.5);
-    expect(latestProps.convergence.y).toBeCloseTo(0.5125);
-    expect(latestProps.intensity).toBeCloseTo(0.1);
+    const layerProps = motionDivProps.mock.lastCall?.[0] as {
+      style: { opacity: MockMotionValue };
+    };
+    expect(latestProps.convergence).toEqual({ x: 0.5, y: 0.6 });
+    expect(latestProps.intensity).toBeCloseTo(0.4);
+    expect(layerProps.style.opacity.get()).toBe(0);
     expect(
       animateMock.mock.calls.some(
         ([start, end]) => typeof start === 'object' && end === 0,
