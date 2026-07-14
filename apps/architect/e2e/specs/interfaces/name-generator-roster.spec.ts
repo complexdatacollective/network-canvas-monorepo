@@ -67,7 +67,9 @@ test('creates a valid NameGeneratorRoster stage from scratch', async ({
   await editor.save();
 
   const stage = await readStageJson(architectPage, 0);
-  expect(stage.type).toBe('NameGeneratorRoster');
+  if (stage.type !== 'NameGeneratorRoster') {
+    throw new Error(`expected NameGeneratorRoster stage, got ${stage.type}`);
+  }
   expect(stage.dataSource).toBe('roster_data');
   expect(stageSnapshotJson(stage)).toMatchSnapshot(
     'name-generator-roster-stage.json',

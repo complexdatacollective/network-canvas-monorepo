@@ -200,7 +200,9 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   await editor.save();
 
   const stage = await readStageJson(architectPage, 0);
-  expect(stage.type).toBe('TieStrengthCensus');
+  if (stage.type !== 'TieStrengthCensus') {
+    throw new Error(`expected TieStrengthCensus stage, got ${stage.type}`);
+  }
 
   const { prompts } = stage;
   if (!Array.isArray(prompts) || prompts.length !== 1) {

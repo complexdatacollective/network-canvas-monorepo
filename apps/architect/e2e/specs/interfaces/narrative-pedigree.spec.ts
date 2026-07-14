@@ -29,24 +29,23 @@ const SOURCE_STAGE_ID = 'family-pedigree-1';
 // `type`, not a timeout). Polling until a stage with the expected `type`
 // appears anywhere in the array is race-free regardless of which index the
 // app inserts at.
+type NarrativePedigreeStage = Extract<
+  CurrentProtocol['stages'][number],
+  { type: 'NarrativePedigree' }
+>;
+
 async function readNarrativePedigreeStage(
   page: Page,
-): Promise<Record<string, unknown>> {
-  let stage: Record<string, unknown> | undefined;
+): Promise<NarrativePedigreeStage> {
+  let stage: NarrativePedigreeStage | undefined;
   await expect
     .poll(
       async () => {
         const protocol = await readProtocolJson(page);
-        const stages = protocol.stages;
-        stage = Array.isArray(stages)
-          ? stages.find(
-              (candidate): candidate is Record<string, unknown> =>
-                typeof candidate === 'object' &&
-                candidate !== null &&
-                'type' in candidate &&
-                candidate.type === 'NarrativePedigree',
-            )
-          : undefined;
+        stage = protocol.stages.find(
+          (candidate): candidate is NarrativePedigreeStage =>
+            candidate.type === 'NarrativePedigree',
+        );
         return stage ? 'ready' : 'pending';
       },
       { timeout: 5_000 },

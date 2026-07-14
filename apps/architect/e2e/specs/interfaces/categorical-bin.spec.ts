@@ -110,7 +110,9 @@ test('creates a valid CategoricalBin stage from scratch', async ({
   await editor.save();
 
   const stage = await readStageJson(architectPage, 0);
-  expect(stage.type).toBe('CategoricalBin');
+  if (stage.type !== 'CategoricalBin') {
+    throw new Error(`expected CategoricalBin stage, got ${stage.type}`);
+  }
 
   const { prompts } = stage;
   if (!Array.isArray(prompts) || prompts.length !== 1) {

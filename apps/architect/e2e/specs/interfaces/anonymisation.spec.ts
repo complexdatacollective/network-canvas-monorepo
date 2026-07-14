@@ -52,7 +52,9 @@ test('creates a valid Anonymisation stage from scratch', async ({
   await editor.save();
 
   const stage = await readStageJson(architectPage, 0);
-  expect(stage.type).toBe('Anonymisation');
+  if (stage.type !== 'Anonymisation') {
+    throw new Error(`expected Anonymisation stage, got ${stage.type}`);
+  }
   expect(stage).not.toHaveProperty('subject');
   expect(stage).not.toHaveProperty('prompts');
 
