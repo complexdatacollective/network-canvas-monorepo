@@ -34,18 +34,31 @@ fi
 # Reuse the app's build-time analytics gate (already used by vitest and the
 # Netlify PR-preview deploy — see vite.config.ts / ci-and-release.yml) so the
 # build under test never initializes PostHog at all.
-# --platform linux/amd64 pins the container to the architecture CI runs on.
-# Glyph advance widths differ subtly between the image's amd64 and arm64
-# builds, which moves text wrap points in the summary/codebook print
-# documents — an arm64-generated baseline is a whole line-height off by the
-# bottom of the page. The node_modules volume is arch-specific to match
-# (native binaries installed under one platform don't run under the other).
+# Visual baselines are amd64-truth: glyph advance widths differ subtly
+# between the image's amd64 and arm64 builds, which moves text wrap points in
+# the print documents — an arm64-generated baseline is a whole line-height off
+# by the bottom of the page. Baseline-writing runs are therefore pinned to
+# linux/amd64 (a no-op on CI and other amd64 hosts; on Apple Silicon it needs
+# Docker's Rosetta mode — under plain QEMU Chromium's GPU process crashes and
+# the run fails loudly; if that happens, adopt the `actual` image from the CI
+# run's architect-playwright-report artifact instead). Normal runs stay on the
+# native platform — fast everywhere — and the pixel comparison itself is
+# arch-gated in e2e/helpers/visual.ts, so an arm64 run never compares against
+# (or writes) amd64 baselines. Each platform gets its own node_modules volume
+# so native binaries never mix.
+PLATFORM_FLAG=""
+VOLUME="architect-e2e-node-modules"
+if [[ " $* " == *"--update-snapshots"* ]]; then
+  PLATFORM_FLAG="--platform linux/amd64"
+  VOLUME="architect-e2e-node-modules-amd64"
+fi
+# shellcheck disable=SC2086 # PLATFORM_FLAG intentionally word-splits
 docker run --rm \
-  --platform linux/amd64 \
+  ${PLATFORM_FLAG} \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \
   -v "$(pwd)":/workspace \
-  -v architect-e2e-node-modules-amd64:/workspace/node_modules \
+  -v "${VOLUME}":/workspace/node_modules \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \
