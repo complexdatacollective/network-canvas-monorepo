@@ -322,7 +322,6 @@ export default function DyadCensus(props: DyadCensusProps) {
                   exit={{ opacity: 0 }}
                 >
                   <BooleanField
-                    className="w-fit"
                     value={displayedEdge ?? undefined}
                     onChange={setEdge}
                     options={[

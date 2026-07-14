@@ -1,24 +1,52 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
 
-import Paragraph from '../../typography/Paragraph';
 import BooleanField from './Boolean';
 
-const meta: Meta<typeof BooleanField> = {
+type StoryArgs = React.ComponentProps<typeof BooleanField> & {
+  containerWidth: number;
+};
+
+const meta: Meta<StoryArgs> = {
   title: 'Systems/Form/Fields/BooleanField',
   component: BooleanField,
   parameters: {
     layout: 'padded',
+    docs: {
+      description: {
+        component:
+          'A radiogroup of option cards for a boolean value. Options sit side by side and wrap to a stack only when their container is too narrow for them — sizing is intrinsic, so the field also works inside fit-content parents. Use the container width control to watch the layout respond, and edit the options to see how label length affects when wrapping happens.',
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {
+    'containerWidth': {
+      control: { type: 'range', min: 120, max: 960, step: 10 },
+      description:
+        'Width (px) of the container the field is rendered in. Story-only — not a component prop.',
+      table: {
+        type: { summary: 'number' },
+      },
+    },
+    'options': {
+      control: 'object',
+      description: 'Label and value for each choice',
+      table: {
+        type: { summary: 'Array<{ label: string; value: boolean }>' },
+        defaultValue: {
+          summary:
+            '[{ label: "Yes", value: true }, { label: "No", value: false }]',
+        },
+      },
+    },
     'value': {
       control: 'radio',
-      options: [true, false, null],
+      options: [true, false, undefined],
       description: 'Current value of the boolean field',
       table: {
-        type: { summary: 'boolean | null' },
-        defaultValue: { summary: 'null' },
+        type: { summary: 'boolean | undefined' },
+        defaultValue: { summary: 'undefined' },
       },
     },
     'disabled': {
@@ -45,17 +73,6 @@ const meta: Meta<typeof BooleanField> = {
         defaultValue: { summary: 'false' },
       },
     },
-    'options': {
-      control: 'object',
-      description: 'Custom options for yes/no buttons',
-      table: {
-        type: { summary: 'Array<{ label: string; value: boolean }>' },
-        defaultValue: {
-          summary:
-            '[{ label: "Yes. I wish to participate in the study in accordance with the terms outlined above.", value: true }, { label: "No. I decline to participate, and wish to immediately withdraw from this study.", value: false }]',
-        },
-      },
-    },
     'aria-invalid': {
       control: 'radio',
       options: [undefined, true, false],
@@ -69,25 +86,18 @@ const meta: Meta<typeof BooleanField> = {
       action: 'onChange',
       description: 'Callback when value changes',
       table: {
-        type: { summary: '(value: boolean | null) => void' },
+        type: { summary: '(value: boolean | undefined) => void' },
       },
     },
   },
   args: {
+    containerWidth: 600,
     disabled: false,
     readOnly: false,
     noReset: false,
     options: [
-      {
-        label:
-          'Yes. I wish to participate in the study in accordance with the terms outlined above.',
-        value: true,
-      },
-      {
-        label:
-          'No. I decline to participate, and wish to immediately withdraw from this study.',
-        value: false,
-      },
+      { label: 'Yes', value: true },
+      { label: 'No', value: false },
     ],
   },
 };
@@ -97,6 +107,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: (args) => {
+    const { containerWidth, ...fieldArgs } = args;
     const [value, setValue] = useState<boolean | undefined>(args.value);
 
     useEffect(() => {
@@ -104,164 +115,15 @@ export const Default: Story = {
     }, [args.value]);
 
     return (
-      <div className="w-full max-w-2xl">
+      <div style={{ width: containerWidth, maxWidth: '100%' }}>
         <BooleanField
-          {...args}
+          {...fieldArgs}
           value={value}
           onChange={(newValue) => {
             setValue(newValue);
             args.onChange?.(newValue);
           }}
         />
-      </div>
-    );
-  },
-};
-
-export const DisabledWithSelection: Story = {
-  render: () => {
-    return (
-      <div className="w-full max-w-2xl space-y-8">
-        <div>
-          <Paragraph margin="none" className="mb-2 text-sm font-medium">
-            Disabled with Yes selected:
-          </Paragraph>
-          <BooleanField
-            value={true}
-            disabled
-            options={[
-              { label: 'Yes', value: true },
-              { label: 'No', value: false },
-            ]}
-          />
-        </div>
-        <div>
-          <Paragraph margin="none" className="mb-2 text-sm font-medium">
-            Disabled with No selected:
-          </Paragraph>
-          <BooleanField
-            value={false}
-            disabled
-            options={[
-              { label: 'Yes', value: true },
-              { label: 'No', value: false },
-            ]}
-          />
-        </div>
-        <div>
-          <Paragraph margin="none" className="mb-2 text-sm font-medium">
-            Disabled with no selection:
-          </Paragraph>
-          <BooleanField
-            value={undefined}
-            disabled
-            options={[
-              { label: 'Yes', value: true },
-              { label: 'No', value: false },
-            ]}
-          />
-        </div>
-      </div>
-    );
-  },
-};
-
-export const Invalid: Story = {
-  args: {
-    'aria-invalid': true,
-    'options': [
-      { label: 'Yes', value: true },
-      { label: 'No', value: false },
-    ],
-  },
-  render: (args) => {
-    const [value, setValue] = useState<boolean | undefined>(args.value);
-
-    useEffect(() => {
-      setValue(args.value);
-    }, [args.value]);
-
-    return (
-      <div className="w-full max-w-2xl">
-        <BooleanField
-          {...args}
-          value={value}
-          onChange={(newValue) => {
-            setValue(newValue);
-            args.onChange?.(newValue);
-          }}
-        />
-      </div>
-    );
-  },
-};
-
-export const NarrowContainer: Story = {
-  render: (args) => {
-    const [value, setValue] = useState<boolean | undefined>(args.value);
-
-    useEffect(() => {
-      setValue(args.value);
-    }, [args.value]);
-
-    return (
-      <div className="w-56">
-        <BooleanField
-          {...args}
-          value={value}
-          onChange={(newValue) => {
-            setValue(newValue);
-            args.onChange?.(newValue);
-          }}
-        />
-      </div>
-    );
-  },
-};
-
-export const ReadOnly: Story = {
-  render: () => {
-    return (
-      <div className="w-full space-y-8">
-        <div>
-          <Paragraph margin="none" className="mb-2 text-sm font-medium">
-            Read-only with Yes selected:
-          </Paragraph>
-          <BooleanField
-            value={true}
-            readOnly
-            options={[
-              { label: 'Yessss this is correct', value: true },
-              { label: 'No', value: false },
-            ]}
-          />
-        </div>
-        <div>
-          <Paragraph margin="none" className="mb-2 text-sm font-medium">
-            Read-only with No selected:
-          </Paragraph>
-          <BooleanField
-            value={false}
-            readOnly
-            options={[
-              { label: 'Yes', value: true },
-              { label: 'No', value: false },
-            ]}
-          />
-        </div>
-        <div>
-          <Paragraph margin="none" className="mb-2 text-sm font-medium">
-            Read-only with no selection:
-          </Paragraph>
-          <BooleanField
-            value={undefined}
-            readOnly
-            options={[
-              { label: 'Yes', value: true },
-              { label: 'No', value: false },
-            ]}
-          />
-        </div>
       </div>
     );
   },
