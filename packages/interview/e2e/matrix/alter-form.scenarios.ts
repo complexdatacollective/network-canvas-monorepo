@@ -1,8 +1,8 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
-import { SlidesFormFixture } from '../fixtures/slides-form-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
+import { SlidesFormFixture } from '../fixtures/slides-form-fixture.js';
 import type { InterfaceScenarios } from './types.js';
 
 const HEADER_SELECTOR =
@@ -74,9 +74,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         await expect(
           page.locator('[data-stage-section="form"][data-stage-ready="true"]'),
         ).toBeVisible();
-        await expect(
-          slides.getCurrentItemLabel(),
-        ).resolves.not.toBeNull();
+        await expect(slides.getCurrentItemLabel()).resolves.not.toBeNull();
 
         // Backwards from the first slide returns to the intro panel.
         await slides.previousSlide();
@@ -238,9 +236,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         const labelBefore = await slides.getCurrentItemLabel();
         await interview.nextButton.click();
         await expect(stage.form.getFieldError('fullName')).toBeVisible();
-        await expect(
-          page.locator('[data-stage-section="form"]'),
-        ).toBeVisible();
+        await expect(page.locator('[data-stage-section="form"]')).toBeVisible();
         await expect(slides.getCurrentItemLabel()).resolves.toBe(labelBefore);
         // focusFirstError moves focus into the required field (deferred).
         await expect
@@ -316,9 +312,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         await interview.nextButton.click();
         await expect(stage.form.getFieldError('bio')).toBeVisible();
         await expect(stage.form.getFieldError('age')).toBeVisible();
-        await expect(
-          page.locator('[data-stage-section="form"]'),
-        ).toBeVisible();
+        await expect(page.locator('[data-stage-section="form"]')).toBeVisible();
 
         await stage.form.fillText('bio', 'A longer bio');
         await stage.form.fillNumber('age', '42');
@@ -843,6 +837,15 @@ export const alterFormScenarios: InterfaceScenarios = {
         // VAS -> max via keyboard (End), same pattern as selectLikert.
         await vasSlider.focus();
         await vasSlider.press('End');
+        // Blur explicitly so the VAS validate-on-blur commits before the next
+        // field is touched. The store's setFieldValue re-dispatches sibling
+        // validations it supersedes (formStore.ts), but that capture only sees
+        // validations that have already STARTED — leaving the blur to the
+        // DatePicker selectOption below (which focuses the <select> and
+        // dispatches its change in one synchronous task) still races on
+        // Firefox/WebKit and can leave the vas field isValid=false with no
+        // error, so the ready pulse never appears.
+        await vasSlider.blur();
 
         // Month-resolution DatePicker: two native <select>s (year, then month).
         const dateSelects = page
@@ -951,9 +954,9 @@ export const alterFormScenarios: InterfaceScenarios = {
         // Cancel: stays on slide 2, typed value intact.
         await slides.discardCancelButton.click();
         await expect(dialog).toBeHidden();
-        await expect(
-          page.locator('[data-field-name="age"] input'),
-        ).toHaveValue('999');
+        await expect(page.locator('[data-field-name="age"] input')).toHaveValue(
+          '999',
+        );
 
         // Go back again and confirm this time.
         await slides.previousSlideExpectingDiscardDialog();
@@ -1006,16 +1009,16 @@ export const alterFormScenarios: InterfaceScenarios = {
         // The form section never paints (AlterForm returns null then
         // moveForward()s), so dismissIntro()'s wait for it would never
         // resolve — advance with next() and observe the following stage.
-        await expect(
-          page.locator('[data-stage-section="form"]'),
-        ).toHaveCount(0);
+        await expect(page.locator('[data-stage-section="form"]')).toHaveCount(
+          0,
+        );
         await interview.next();
         await expect(
           page.getByRole('heading', { name: 'Next stage' }),
         ).toBeVisible();
-        await expect(
-          page.locator('[data-stage-section="form"]'),
-        ).toHaveCount(0);
+        await expect(page.locator('[data-stage-section="form"]')).toHaveCount(
+          0,
+        );
       },
     },
 
