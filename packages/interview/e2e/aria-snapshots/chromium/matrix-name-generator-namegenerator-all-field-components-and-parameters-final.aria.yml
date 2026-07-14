@@ -1,0 +1,12 @@
+- main:
+  - status:
+    - heading "Tell us about this person." [level=2]
+  - listbox "Added Nodes":
+    - option "Hello there"
+  - button "Add a person":
+    - img "Add a person"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -1,0 +1,19 @@
+- main:
+  - status:
+    - heading "Who from your contacts do you see most?" [level=2]
+  - button "Contacts file":
+    - heading "Contacts file" [level=3]
+  - listbox "Contacts file":
+    - option "Alice"
+    - option "Bianca"
+    - option "Carlos"
+    - option "Deepa"
+  - slider "Resize panel and node list areas"
+  - listbox "Added Nodes"
+  - button "Add a person":
+    - img "Add a person"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -21,6 +21,7 @@
         "e2e/scripts/*.ts",
         "e2e/helpers/assetServer.ts",
         "e2e/fixtures/window-test.d.ts",
+        "e2e/fixtures/dyad-census-window.d.ts",
         "e2e/host/src/global-augmentations.d.ts"
       ],
       "project": [

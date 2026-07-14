@@ -731,6 +731,13 @@ jobs:
     if: ${{ !cancelled() && needs.detect.outputs.interview_e2e == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      # Cap matrix parallelism on the GitHub runner. The config default ('50%')
+      # both under-uses the box for the fully-parallel matrix projects and lets
+      # the crypto-heavy Anonymisation scenarios (PBKDF2 at write time) contend
+      # under high worker counts, which surfaces as spurious timeout flakes. 4 is
+      # the measured sweet spot for the single-job (no shard matrix) run.
+      PW_WORKERS: 4
     outputs:
       slug: ${{ steps.meta.outputs.slug }}
     steps:
@@ -747,6 +754,13 @@ jobs:
           printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
       - name: Run E2E tests
         run: ./packages/interview/e2e/scripts/run.sh
+      # Dormant until a shard matrix is added (spec: enable shards only if the
+      # single-job wall-clock exceeds the 45-minute budget). When enabling: add
+      # strategy.matrix.shard, pass --shard=${{ matrix.shard }} to run.sh, set
+      # PW_BLOB: 1, and give this step the downloaded per-shard blob dirs.
+      - name: Merge sharded blob reports
+        if: ${{ env.PW_BLOB == '1' }}
+        run: pnpm --filter @codaco/interview exec playwright merge-reports --reporter html ./blob-report
       - name: Reclaim artifact ownership
         if: always()
         run: |

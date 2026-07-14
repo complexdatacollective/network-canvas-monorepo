@@ -3,18 +3,9 @@ import { z } from 'zod';
 
 import { stageSchema } from '@codaco/protocol-validation';
 
-import { informationScenarios } from './information.scenarios.js';
-import { nameGeneratorQuickAddScenarios } from './name-generator-quick-add.scenarios.js';
+import { ALL_SUITES } from './all-scenarios.js';
 import { OPTION_INVENTORY } from './option-inventory.js';
 import { sharedSuiteClaims } from './shared-claims.js';
-import type { InterfaceScenarios } from './types.js';
-
-// Interface tasks append their registry import here as they land. Task 27
-// replaces this list with the all-scenarios.ts aggregator.
-const ALL_SUITES: InterfaceScenarios[] = [
-  informationScenarios,
-  nameGeneratorQuickAddScenarios,
-];
 
 describe('e2e matrix coverage manifest', () => {
   it('every inventoried option key is claimed by at least one scenario', () => {
@@ -131,14 +122,18 @@ describe('e2e matrix coverage manifest', () => {
 
   it('every shared claim is backed by a real suite scenario or pending suite', () => {
     // Until Task 26 (cross-cutting suite) lands, shared claims are only
-    // asserted to reference inventoried keys of known interfaces.
+    // asserted to reference inventoried keys of known interfaces. Split at
+    // the FIRST colon only — inventory keys themselves may contain colons
+    // (e.g. 'codebook: variable.encrypted').
     for (const claim of sharedSuiteClaims) {
-      const [iface, key] = claim.split(':');
+      const splitAt = claim.indexOf(':');
+      const iface = splitAt > 0 ? claim.slice(0, splitAt) : '';
+      const key = splitAt > 0 ? claim.slice(splitAt + 1) : '';
       expect(iface && key, `malformed shared claim: ${claim}`).toBeTruthy();
       expect(
-        OPTION_INVENTORY[iface!] ?? [],
+        OPTION_INVENTORY[iface] ?? [],
         `shared claim references unknown inventory: ${claim}`,
-      ).toContain(key!);
+      ).toContain(key);
     }
   });
 });

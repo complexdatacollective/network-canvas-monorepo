@@ -10,7 +10,7 @@ export type CaptureInterviewFn = (
   options?: CaptureInterviewOptions,
 ) => Promise<void>;
 
-export const VISUAL_STYLES = `
+const VISUAL_STYLES = `
   [data-testid="background-blobs"] { visibility: hidden !important; }
   /* Suppress focus rings so snapshots don't depend on what last held focus.
      Rings here are outlines (incl. the focusable-after ::after pseudo), so

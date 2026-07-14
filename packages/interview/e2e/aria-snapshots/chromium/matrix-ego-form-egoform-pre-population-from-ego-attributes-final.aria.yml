@@ -1,0 +1,8 @@
+- main:
+  - heading "Next" [level=1]
+  - paragraph: Continue.
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

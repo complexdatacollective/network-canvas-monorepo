@@ -1,0 +1,8 @@
+- main:
+  - heading "Before" [level=1]
+  - paragraph: Placeholder stage so Back has somewhere to land.
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

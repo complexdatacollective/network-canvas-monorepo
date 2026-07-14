@@ -1,4 +1,4 @@
-import { expect, matrixTest } from '../fixtures/matrix-test.js';
+import { matrixTest } from '../fixtures/matrix-test.js';
 import { buildSyntheticPayload } from '../helpers/synthetic-payload.js';
 import type {
   InterfaceScenarios,
@@ -61,5 +61,3 @@ export function defineScenarioTests(suite: InterfaceScenarios): void {
     );
   }
 }
-
-export { expect };

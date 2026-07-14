@@ -128,6 +128,87 @@ test.describe('My protocol', () => {
 is OS-sensitive — always regenerate baselines via `pnpm test:e2e:update-snapshots`
 (which runs in the Playwright Docker image), never locally.
 
+## The configuration matrix
+
+Alongside the protocol-driven suites above, `e2e/matrix/` holds a
+configuration matrix that exercises **every interface and its configuration
+options**. Each option is verified functionally AND snapshotted, and the whole
+matrix runs fully parallel.
+
+### Two snapshot tiers
+
+- **Aria snapshots** (`toMatchAriaSnapshot`, baselines in
+  `aria-snapshots/{chromium,firefox,webkit}/`) back the config matrix. They
+  are structural (accessibility tree, not pixels), so they are **OS-independent
+  and regenerated locally** with `--update-snapshots`. Every matrix scenario
+  takes an `initial` and a `final` aria snapshot around its interactions.
+- **Pixel snapshots** (a small `visual`-flagged subset, baselines in
+  `visual-snapshots/{chromium,firefox,webkit}-matrix/`) guard the rendered
+  look of representative configurations. Pixels are OS-sensitive, so — like the
+  legacy suite — they are **only regenerated in Docker** via
+  `pnpm test:e2e:update-snapshots`, and captures are CI-only at runtime.
+
+### Registry pattern
+
+Each interface owns `matrix/<iface>.scenarios.ts` exporting an
+`InterfaceScenarios` (`interfaceType` + a list of `ScenarioDefinition`s — see
+`matrix/types.ts`). A `ScenarioDefinition` is a self-contained cell: `build()`
+returns a `SyntheticInterview`, `run()` performs interactions + functional
+assertions, and flags (`smoke`, `visual`, `chromiumOnly`, `slow`,
+`seedNetwork`, `captureMask`, …) tune how it runs. `matrix/all-scenarios.ts`
+aggregates every registry; `specs/matrix/<iface>.spec.ts` is a three-line file
+that calls `defineScenarioTests(<registry>)`. The shared cross-cutting suite
+(`matrix/cross-cutting.scenarios.ts`) proves the engine-level `skipLogic` and
+stage `filter` machinery once — both skip actions and every Filter operator —
+rather than re-testing it per interface.
+
+### Coverage manifest
+
+`matrix/option-inventory.ts` enumerates the configuration keys each interface
+must cover. `matrix/coverage-manifest.test.ts` (a vitest unit test) asserts
+that every inventoried key is claimed by some scenario's `covers`, that ids are
+unique with exactly one `smoke` per interface, and — by walking the Zod stage
+schema — that the inventory itself has not drifted from the protocol schema.
+Keys handled by the cross-cutting suite are recorded in
+`matrix/shared-claims.ts`.
+
+### Adding a scenario
+
+1. Add the option key(s) to that interface's list in `option-inventory.ts`.
+2. Add a `ScenarioDefinition` to `matrix/<iface>.scenarios.ts` whose `covers`
+   names those keys; write the functional assertions in `run()`.
+3. Run the manifest: `pnpm --filter @codaco/interview exec vitest run --project units e2e/matrix/coverage-manifest.test.ts`.
+4. Generate its aria baseline:
+   `pnpm exec playwright test --config e2e/playwright.config.ts --project=chromium-matrix --update-snapshots -g "<id>"`.
+5. If the scenario is `visual`, its pixel baseline is generated in the Docker
+   update run, not locally.
+
+### Projects
+
+`playwright.config.ts` defines nine projects: `{chromium,firefox,webkit}` ×
+`{legacy, matrix, visual}`. The legacy silos suite stays serial; matrix and
+visual run fully parallel. To keep the browser matrix affordable, the
+`firefox-matrix` / `webkit-matrix` projects run only the `@smoke` subset (one
+scenario per interface) while `chromium-matrix` runs the full matrix. Worker
+count is `PW_WORKERS ?? '50%'` (CI pins `PW_WORKERS=4` — high parallelism lets
+the crypto-heavy Anonymisation scenarios contend and flake).
+
+### Sharding escape hatch (dormant)
+
+CI runs the whole suite in one job under the 45-minute budget with no shard
+matrix. If wall-clock ever exceeds that budget, enable sharding:
+
+1. Add `strategy.matrix.shard: [1/2, 2/2]` to the `interview-e2e` job and pass
+   `--shard=${{ matrix.shard }}` through to `run.sh`.
+2. Set `PW_BLOB: 1` on the job — `playwright.config.ts` then emits the `blob`
+   reporter instead of line/html/json.
+3. The dormant `Merge sharded blob reports` step (already present, gated on
+   `env.PW_BLOB == '1'`) merges the per-shard `blob-report` dirs into one HTML
+   report. Give it the downloaded blob dirs.
+
+The criterion for enabling shards is measured wall-clock over budget — not a
+guess. Caching the in-container `pnpm install`/build is a cheaper first lever.
+
 ## The `?bootstrap=<slug>` URL
 
 Used by `dev:host` and any other entry point that wants to drop a user into a

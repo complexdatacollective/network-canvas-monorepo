@@ -1,0 +1,44 @@
+- main:
+  - status:
+    - heading "Please add anyone you recognise." [level=2]
+  - button "Available to add":
+    - heading "Available to add" [level=3]
+  - listbox "Available Roster Nodes":
+    - option "Amy Adams":
+      - heading "Amy Adams" [level=4]
+      - term: Age
+      - definition: /\d+/
+      - term: Location
+      - definition: Boston
+    - option "Finn Frost":
+      - heading "Finn Frost" [level=4]
+      - term: Age
+      - definition: /\d+/
+      - term: Location
+      - definition: —
+    - option "Ben Brown":
+      - heading "Ben Brown" [level=4]
+      - term: Age
+      - definition: /\d+/
+      - term: Location
+      - definition: —
+    - option "Drew Diaz":
+      - heading "Drew Diaz" [level=4]
+      - term: Age
+      - definition: /\d+/
+      - term: Location
+      - definition: Boston
+    - option "Elle Evans":
+      - heading "Elle Evans" [level=4]
+      - term: Age
+      - definition: /\d+/
+      - term: Location
+      - definition: Reno
+  - slider "Resize panel and node list areas"
+  - listbox "Added Nodes":
+    - option "Cara Chen"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -1,0 +1,19 @@
+- main:
+  - heading "You have indicated an area outside of the selectable map. If this is correct, please select the next arrow to proceed." [level=2]
+  - button "Deselect"
+  - button "Zoom In"
+  - button "Zoom Out"
+  - button "Recenter Map"
+  - status:
+    - heading "Select the test tract for this person." [level=4]
+  - button "Mohammad"
+  - button "Outside Selectable Areas" [disabled]
+  - region "Map"
+  - button "Toggle attribution"
+  - link "Mapbox homepage":
+    - /url: https://www.mapbox.com/
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

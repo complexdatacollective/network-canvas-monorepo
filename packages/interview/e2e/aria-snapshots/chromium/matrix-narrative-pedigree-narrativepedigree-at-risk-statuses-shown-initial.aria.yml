@@ -1,0 +1,49 @@
+- main:
+  - text: Showing all conditions
+  - complementary "Condition key":
+    - heading "Key" [level=4]
+    - heading "Conditions" [level=4]
+    - paragraph: Select a condition to see who it affects.
+    - button "Cystic Fibrosis"
+    - separator
+    - heading "What the symbols mean" [level=4]
+    - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
+    - button "Save snapshot"
+  - slider "Resize the condition key panel"
+  - button "Focus on Albert" [disabled]:
+    - text: "Cystic Fibrosis: Status unknown"
+    - button "Albert" [disabled]
+  - button "Focus on Mabel" [disabled]:
+    - text: "Cystic Fibrosis: Status unknown"
+    - button "Mabel" [disabled]
+  - button "Focus on Iris" [disabled]:
+    - text: "Cystic Fibrosis: At risk (carrier)"
+    - button "Iris" [disabled]
+  - button "Focus on Frank" [disabled]:
+    - text: "Cystic Fibrosis: At risk (carrier)"
+    - button "Frank" [disabled]
+  - button "Focus on Ernest" [disabled]:
+    - text: "Cystic Fibrosis: At risk (carrier)"
+    - button "Ernest" [disabled]
+  - button "Focus on Vera" [disabled]:
+    - text: "Cystic Fibrosis: At risk (carrier)"
+    - button "Vera" [disabled]
+  - button "Focus on Diane" [disabled]:
+    - text: "Cystic Fibrosis: Obligate carrier"
+    - button "Diane" [disabled]
+  - button "Focus on Roy" [disabled]:
+    - text: "Cystic Fibrosis: Obligate carrier"
+    - button "Roy" [disabled]
+  - button "Focus on You" [disabled]:
+    - text: "Cystic Fibrosis: Affected"
+    - button "You" [disabled]
+  - toolbar "Zoom controls":
+    - button "Zoom out"
+    - button "Zoom in"
+    - separator
+    - button "Reset zoom"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -1,0 +1,14 @@
+{
+  "nodes": [
+    { "attributes": { "name": "Alice", "isColleague": true } },
+    { "attributes": { "name": "Bianca", "isColleague": true } },
+    { "attributes": { "name": "Carlos", "isColleague": true } },
+    { "attributes": { "name": "Deepa", "isColleague": true } },
+    { "attributes": { "name": "Elena", "isColleague": false } },
+    { "attributes": { "name": "Farid", "isColleague": false } },
+    { "attributes": { "name": "Grace", "isColleague": false } },
+    { "attributes": { "name": "Hassan", "isColleague": false } },
+    { "attributes": { "name": "Ines", "isColleague": false } },
+    { "attributes": { "name": "Jonas", "isColleague": false } }
+  ]
+}

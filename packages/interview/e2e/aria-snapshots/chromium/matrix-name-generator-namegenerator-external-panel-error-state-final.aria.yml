@@ -1,0 +1,10 @@
+- main:
+  - status:
+    - heading "Who do you know?" [level=2]
+  - region "Interview notifications"
+  - dialog "Add a person":
+    - heading "Add a person" [level=2]
+    - button "Close"
+    - text: Note
+    - textbox "Note"
+    - button "Finished"

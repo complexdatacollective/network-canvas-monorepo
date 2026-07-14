@@ -1,0 +1,38 @@
+- main:
+  - text: Showing Mitochondrial Myopathy. Focused on You. Showing who contributes to their inheritance.
+  - complementary "Condition key":
+    - heading "Key" [level=4]
+    - heading "Conditions" [level=4]
+    - paragraph: Select a condition to see who it affects.
+    - button "Haemophilia"
+    - button "Hypophosphataemia"
+    - button "Hearing Loss"
+    - button "Mitochondrial Myopathy" [pressed]
+    - separator
+    - heading "What the symbols mean" [level=4]
+    - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
+    - button "Save snapshot"
+  - slider "Resize the condition key panel"
+  - button "Focus on Walter": "Mitochondrial Myopathy: Status unknown"
+  - button "Focus on Edith": "Mitochondrial Myopathy: Status unknown"
+  - button "Focus on Gerald": "Mitochondrial Myopathy: Status unknown"
+  - button "Focus on Agnes": "Mitochondrial Myopathy: Affected"
+  - button "Focus on Herbert": "Mitochondrial Myopathy: Status unknown"
+  - button "Focus on Iris": "Mitochondrial Myopathy: At risk (affected)"
+  - button "Focus on Frank": "Mitochondrial Myopathy: Status unknown"
+  - button "Focus on Alan": "Mitochondrial Myopathy: At risk (affected)"
+  - button "Focus on Bruce": "Mitochondrial Myopathy: At risk (affected)"
+  - button "Focus on Diane": "Mitochondrial Myopathy: At risk (affected)"
+  - button "Focus on You": "Mitochondrial Myopathy: At risk (affected)"
+  - button "Focus on Helen": "Mitochondrial Myopathy: At risk (affected)"
+  - toolbar "Zoom controls":
+    - button "Zoom out"
+    - button "Zoom in"
+    - separator
+    - button "Reset zoom"
+  - button "Clear focus"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

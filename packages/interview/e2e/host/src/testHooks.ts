@@ -5,6 +5,13 @@ import type {
   ProtocolPayload,
   SessionPayload,
 } from '../../../src/contract/types';
+import {
+  getFinishCalls,
+  rejectManualFinish,
+  resetFinishInstrumentation,
+  resolveManualFinish,
+  setFinishBehavior,
+} from './mockCallbacks';
 
 const STORAGE_KEY = '__e2e_test_state';
 
@@ -143,8 +150,26 @@ function getNetworkState(): SessionPayload['network'] | undefined {
   return window.__interviewStore?.getState().session.network;
 }
 
+// Opt-in Shell stage navigation ("Go to a stage" drawer). Default OFF so the
+// host's aria tree is unchanged for every suite that doesn't ask for it —
+// enabling it unconditionally would add a "Go to a stage" button inside
+// main[data-theme-interview], changing every committed aria baseline. Only the
+// StagesMenu-exclusion scenario flips this on, via setAllowStageNavigation.
+let allowStageNavigation = false;
+
+export function getAllowStageNavigation(): boolean {
+  return allowStageNavigation;
+}
+
+function setAllowStageNavigation(enabled: boolean): void {
+  allowStageNavigation = enabled;
+  notifySubscribers();
+}
+
 function reset(): void {
   state = createEmptyState();
+  allowStageNavigation = false;
+  resetFinishInstrumentation();
   sessionStorage.removeItem(STORAGE_KEY);
   notifySubscribers();
 }
@@ -161,5 +186,10 @@ export function installTestHooks(): void {
     createInterview,
     getNetworkState,
     reset,
+    setFinishBehavior,
+    resolveManualFinish,
+    rejectManualFinish,
+    getFinishCalls,
+    setAllowStageNavigation,
   };
 }

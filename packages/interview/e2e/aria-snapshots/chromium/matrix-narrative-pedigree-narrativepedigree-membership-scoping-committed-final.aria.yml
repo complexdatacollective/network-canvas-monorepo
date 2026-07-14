@@ -1,0 +1,31 @@
+- main:
+  - text: Showing all conditions
+  - complementary "Condition key":
+    - heading "Key" [level=4]
+    - heading "Conditions" [level=4]
+    - paragraph: Select a condition to see who it affects.
+    - button "Huntington's Disease"
+    - separator
+    - heading "What the symbols mean" [level=4]
+    - text: Has this condition Will develop this condition Carries this condition Not known
+    - button "Save snapshot"
+  - slider "Resize the condition key panel"
+  - button "Focus on Rose" [disabled]:
+    - text: "Huntington's Disease: Status unknown"
+    - button "Rose" [disabled]
+  - button "Focus on David" [disabled]:
+    - text: "Huntington's Disease: Status unknown"
+    - button "David" [disabled]
+  - button "Focus on You" [disabled]:
+    - text: "Huntington's Disease: Status unknown"
+    - button "You" [disabled]
+  - toolbar "Zoom controls":
+    - button "Zoom out"
+    - button "Zoom in"
+    - separator
+    - button "Reset zoom"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

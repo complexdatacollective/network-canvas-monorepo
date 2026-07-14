@@ -1,0 +1,52 @@
+{
+  "nodes": [
+    {
+      "attributes": {
+        "name": "Cara Chen",
+        "age": 40,
+        "location": "Denver",
+        "closeness": "very-close"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Amy Adams",
+        "age": 30,
+        "location": "Boston",
+        "closeness": "close"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Finn Frost",
+        "age": 18,
+        "location": "",
+        "closeness": "very-close"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Ben Brown",
+        "age": 25,
+        "location": "",
+        "closeness": "not-close"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Drew Diaz",
+        "age": 22,
+        "location": "Boston",
+        "closeness": "close"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Elle Evans",
+        "age": 55,
+        "location": "Reno",
+        "closeness": "not-close"
+      }
+    }
+  ]
+}

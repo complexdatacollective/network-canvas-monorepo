@@ -1,0 +1,16 @@
+- main:
+  - toolbar "Network composer tools":
+    - button "Select" [pressed]
+    - button "Add node"
+    - separator
+    - button "Automatic layout"
+    - separator
+    - button "Undo"
+    - button "Redo" [disabled]
+  - application:
+    - button "Carol"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -1,5 +1,7 @@
 import type { ProtocolPayload, SessionPayload } from '@codaco/interview';
 
+import type { FinishBehavior } from '../host/src/mockCallbacks.js';
+
 declare global {
   // `interface` is required (not `type`) so this declaration MERGES with
   // the global Window from lib.dom.d.ts.
@@ -18,12 +20,20 @@ declare global {
       ): string;
       getNetworkState(): SessionPayload['network'] | undefined;
       reset(): void;
+      setFinishBehavior(behavior: FinishBehavior): void;
+      resolveManualFinish(): void;
+      rejectManualFinish(message: string): void;
+      getFinishCalls(): { interviewId: string; aborted: boolean }[];
+      setAllowStageNavigation(enabled: boolean): void;
     };
     __e2eMap?: {
       getSource(id: string): unknown;
       isSourceLoaded(id: string): boolean;
       querySourceFeatures(id: string): unknown[];
       queryRenderedFeatures(options: { layers: string[] }): unknown[];
+      getFilter(layerId: string): unknown;
+      getLayoutProperty(layerId: string, name: string): unknown;
+      getPaintProperty(layerId: string, name: string): unknown;
       once(event: string, fn: () => void): void;
       resize(): void;
       triggerRepaint(): void;

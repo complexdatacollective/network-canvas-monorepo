@@ -1,0 +1,7 @@
+- main:
+  - region "Interview notifications"
+  - dialog "Go to a stage":
+    - listbox "Stages":
+      - option "Stage One"
+      - option "Stage Two"
+    - searchbox "Filter"

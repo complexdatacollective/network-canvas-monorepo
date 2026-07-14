@@ -1,0 +1,17 @@
+- main:
+  - text: Mohammad and Laury
+  - button "Mohammad"
+  - button "Laury"
+  - status:
+    - heading "Do they know each other?" [level=2]:
+      - text: ""
+      - strong: know
+      - text: ""
+  - group "Mohammad and Laury Do they know each other?":
+    - radio "Yes"
+    - radio "No"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

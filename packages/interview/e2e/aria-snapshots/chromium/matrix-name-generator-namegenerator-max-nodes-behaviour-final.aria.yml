@@ -1,0 +1,13 @@
+- main:
+  - status:
+    - heading "Who do you know?" [level=2]
+  - listbox "Added Nodes":
+    - option "Anna"
+    - option "Ben"
+  - button "Add a person" [disabled]:
+    - img "Add a person"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

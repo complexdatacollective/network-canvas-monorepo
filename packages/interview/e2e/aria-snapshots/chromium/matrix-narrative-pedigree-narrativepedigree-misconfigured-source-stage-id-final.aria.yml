@@ -1,0 +1,7 @@
+- main:
+  - paragraph: This stage references a family pedigree that could not be found.
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

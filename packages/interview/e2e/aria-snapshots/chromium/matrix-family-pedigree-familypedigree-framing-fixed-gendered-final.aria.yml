@@ -1,0 +1,22 @@
+- main:
+  - status:
+    - heading "Please build your family pedigree." [level=2]
+  - region "Interview notifications"
+  - dialog "Mother":
+    - heading "Mother" [level=2]
+    - button "Close"
+    - paragraph: Please answer the following questions about your mother. This is your biological mother, who may be different from the person who carried you during pregnancy.
+    - separator
+    - text: What is their name? Leave blank if the name is not known
+    - textbox "What is their name?"
+    - text: Was this person an egg donor?
+    - group:
+      - radio "Yes"
+      - radio "No" [checked]
+    - text: Did this parent carry you during pregnancy?
+    - group:
+      - radio "Yes" [checked]
+      - radio "No"
+    - button "Cancel"
+    - button "Back"
+    - button "Continue"

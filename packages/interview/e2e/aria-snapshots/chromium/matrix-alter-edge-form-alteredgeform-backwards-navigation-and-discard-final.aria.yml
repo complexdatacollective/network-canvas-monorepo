@@ -1,0 +1,48 @@
+- main:
+  - button "Alex"
+  - button "Sam"
+  - text: Note 1
+  - textbox "Note 1": value 0
+  - text: Note 2
+  - textbox "Note 2": value 1
+  - text: Note 3
+  - textbox "Note 3": value 2
+  - text: Note 4
+  - textbox "Note 4": value 3
+  - text: Note 5
+  - textbox "Note 5": value 4
+  - text: Note 6
+  - textbox "Note 6": value 5
+  - text: Note 7
+  - textbox "Note 7": value 6
+  - text: Note 8
+  - textbox "Note 8": value 7
+  - text: Note 9
+  - textbox "Note 9": value 8
+  - text: /Note \d+/
+  - textbox /Note \d+/: value 9
+  - text: /Note \d+/
+  - textbox /Note \d+/: /value \d+/
+  - text: /Note \d+/
+  - textbox /Note \d+/: /value \d+/
+  - text: /Note \d+/
+  - textbox /Note \d+/: /value \d+/
+  - text: /Note \d+/
+  - textbox /Note \d+/: /value \d+/
+  - text: /Note \d+/
+  - textbox /Note \d+/: /value \d+/
+  - text: /Note \d+/
+  - textbox /Note \d+/: /value \d+/
+  - text: /Note \d+/
+  - textbox /Note \d+/: /value \d+/
+  - text: /Note \d+/
+  - textbox /Note \d+/: /value \d+/
+  - text: /Note \d+/
+  - textbox /Note \d+/: /value \d+/
+  - text: /Note \d+/
+  - textbox /Note \d+/: /value \d+/
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

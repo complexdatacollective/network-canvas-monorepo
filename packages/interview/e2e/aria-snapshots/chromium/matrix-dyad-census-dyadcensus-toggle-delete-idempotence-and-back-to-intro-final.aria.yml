@@ -1,0 +1,8 @@
+- main:
+  - heading "Relationships" [level=1]
+  - paragraph: Do they know each other?
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

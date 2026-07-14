@@ -1035,6 +1035,11 @@ class GeospatialFixture {
 
 /**
  * Node Panel fixture for side panel interactions.
+ *
+ * Panels are disambiguated by their title (the accessible name of the
+ * toggle-button heading each panel renders — Panel.tsx), since a
+ * NameGenerator stage can configure 0-2 panels that all share
+ * data-testid="node-panel" (NodePanel.tsx).
  */
 class NodePanelFixture {
   readonly page: Page;
@@ -1044,51 +1049,90 @@ class NodePanelFixture {
   }
 
   /**
-   * Get the side panel locator.
+   * Get a specific panel by its configured title.
    */
-  get panel(): Locator {
-    return this.page.getByTestId('node-panel');
+  getPanel(title: string): Locator {
+    return this.page
+      .getByTestId('node-panel')
+      .filter({ has: this.page.getByRole('button', { name: title }) });
   }
 
   /**
-   * Get a node from the side panel by its label.
+   * Get a node within a specific panel by its label.
    */
-  getNode(label: string): Locator {
-    return this.panel.getByRole('option', { name: label });
+  getNode(panelTitle: string, label: string): Locator {
+    return this.getPanel(panelTitle).getByRole('option', { name: label });
   }
 
   /**
-   * Drag a node from the side panel to the main node list using keyboard DnD.
+   * Count of nodes currently rendered in a panel.
+   */
+  async getNodeCount(panelTitle: string): Promise<number> {
+    return this.getPanel(panelTitle).getByRole('option').count();
+  }
+
+  /**
+   * External-data panels render "Something went wrong" / "External data
+   * could not be loaded." instead of a node list when the asset fails to
+   * load or the asset id is unknown (NodePanel.tsx).
+   */
+  getErrorState(panelTitle: string): Locator {
+    return this.getPanel(panelTitle).getByText(
+      'External data could not be loaded.',
+    );
+  }
+
+  /**
+   * Panels minimize (opacity-0, no pointer events) when empty and nothing
+   * compatible is being dragged (Panel.tsx: minimize && 'border-b-0 opacity-0').
+   */
+  async isPanelMinimized(panelTitle: string): Promise<boolean> {
+    const className = await this.getPanel(panelTitle).getAttribute('class');
+    return (className ?? '').includes('opacity-0');
+  }
+
+  /**
+   * Drag a node from a named panel to the main node list using keyboard DnD.
+   * The main list's drop-target announcement name is "Added Nodes"
+   * (NameGenerator.tsx announcedName="Added Nodes").
    *
    * Uses the app's keyboard-accessible drag path (Ctrl+D to start, arrow keys
    * to navigate, Enter to drop) instead of pointer simulation, which fails
    * in WebKit due to setPointerCapture issues with synthetic events.
    */
-  async dragNodeToMainList(label: string): Promise<void> {
-    const nodeInPanel = this.getNode(label);
+  async dragNodeToMainList(panelTitle: string, label: string): Promise<void> {
+    const nodeInPanel = this.getNode(panelTitle, label);
     const dropTarget = this.page.getByTestId('node-list');
 
     await expect(nodeInPanel).toBeVisible();
     await expect(dropTarget).toBeVisible();
 
-    // Use keyboard DnD instead of pointer simulation because WebKit has issues
-    // with setPointerCapture on synthetic pointer events from Playwright's mouse
-    // API. The nodes have tabIndex=-1 (roving tabindex within a listbox), so we
-    // must focus them programmatically rather than via Tab.
-    await nodeInPanel.evaluate((el) => {
-      if (el instanceof HTMLElement) {
-        el.focus();
-      }
-    });
-    await nodeInPanel.press('Control+d');
-    // After Ctrl+D, DnD creates a visual clone so the locator may match 2
-    // elements. Use page.keyboard since focus is already established.
-    await this.page.keyboard.press('ArrowRight');
-    await this.page.keyboard.press('Enter');
+    await navigateDndToTarget(this.page, nodeInPanel, 'Added Nodes');
 
     await expect(
       this.page.getByTestId('node-list').getByRole('option', { name: label }),
     ).toBeVisible();
+  }
+
+  /**
+   * Drag a node from the main list back into a named panel using keyboard
+   * DnD. The panel's drop-target announcement name is its configured title
+   * (NodePanel.tsx announcedName={panelConfig.title}).
+   */
+  async dragNodeFromMainListToPanel(
+    label: string,
+    panelTitle: string,
+  ): Promise<void> {
+    const nodeInMainList = this.page
+      .getByTestId('node-list')
+      .getByRole('option', { name: label });
+    await expect(nodeInMainList).toBeVisible();
+
+    await navigateDndToTarget(this.page, nodeInMainList, panelTitle);
+
+    await expect(
+      this.page.getByTestId('node-list').getByRole('option', { name: label }),
+    ).not.toBeVisible();
   }
 }
 

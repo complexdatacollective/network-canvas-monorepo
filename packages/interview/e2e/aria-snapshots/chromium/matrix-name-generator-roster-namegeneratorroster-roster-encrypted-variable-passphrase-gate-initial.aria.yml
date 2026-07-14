@@ -1,0 +1,26 @@
+- main:
+  - status:
+    - heading "Please add anyone you recognise." [level=2]
+  - button "Available to add":
+    - heading "Available to add" [level=3]
+  - listbox "Available Roster Nodes":
+    - option "Cara Chen" [disabled]:
+      - heading "Cara Chen" [level=4]
+    - option "Amy Adams" [disabled]:
+      - heading "Amy Adams" [level=4]
+    - option "Finn Frost" [disabled]:
+      - heading "Finn Frost" [level=4]
+    - option "Ben Brown" [disabled]:
+      - heading "Ben Brown" [level=4]
+    - option "Drew Diaz" [disabled]:
+      - heading "Drew Diaz" [level=4]
+    - option "Elle Evans" [disabled]:
+      - heading "Elle Evans" [level=4]
+  - slider "Resize panel and node list areas"
+  - listbox "Added Nodes"
+  - navigation:
+    - button "Previous Step"
+    - button "🔑"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

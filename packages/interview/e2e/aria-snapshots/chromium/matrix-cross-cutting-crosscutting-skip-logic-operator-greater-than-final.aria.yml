@@ -1,0 +1,8 @@
+- main:
+  - heading "End" [level=1]
+  - paragraph: You reached the end.
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

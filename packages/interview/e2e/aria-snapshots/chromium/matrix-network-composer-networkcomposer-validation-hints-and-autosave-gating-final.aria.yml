@@ -1,0 +1,31 @@
+- main:
+  - toolbar "Network composer tools":
+    - button "Select" [pressed]
+    - button "Add node"
+    - separator
+    - button "Automatic layout"
+    - separator
+    - button "Undo"
+    - button "Redo" [disabled]
+  - application:
+    - button "Priya"
+  - dialog "Priya":
+    - separator "Resize panel"
+    - heading "Priya" [level=2]
+    - button "Close"
+    - text: Bio A
+    - list:
+      - listitem: Enter at least 3 characters.
+    - textbox "Bio A": Gated marker
+    - text: Bio B
+    - textbox "Bio B": Known
+    - text: Count
+    - button "Decrease value"
+    - spinbutton "Count": /\d+/
+    - button "Increase value"
+    - button "Delete"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

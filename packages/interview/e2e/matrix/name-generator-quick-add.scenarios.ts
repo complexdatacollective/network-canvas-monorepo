@@ -168,7 +168,9 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         await expect(
           stage.getPrompt('People from your childhood'),
         ).toBeVisible();
-        await expect(stage.nodePanel.getNode('Alice')).toBeVisible();
+        await expect(
+          stage.nodePanel.getNode('Already added', 'Alice'),
+        ).toBeVisible();
         // Scoped to the main list: the panel now also shows an "Alice"
         // button, so a page-wide role query would be ambiguous.
         await expect(
@@ -179,7 +181,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         // prompt 2's promptID and its additionalAttributes are re-applied
         // (closeTie stays true; estranged keeps its creation-time false —
         // prompt 2 doesn't set it).
-        await stage.nodePanel.dragNodeToMainList('Alice');
+        await stage.nodePanel.dragNodeToMainList('Already added', 'Alice');
         network = await protocol.getNetworkState(interview.interviewId);
         expect(network?.nodes).toHaveLength(1);
         expect(network?.nodes[0]?.promptIDs).toHaveLength(2);
@@ -237,11 +239,15 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         // read (NodePanel.tsx:21) and handleDropNode has no maxNodesReached
         // guard (NameGenerator.tsx:171-190), so a panel drop still succeeds
         // even though maxNodes: 1 was already reached via quick-add.
-        const setupNodeName = await stage.nodePanel.panel
+        const setupNodeName = await stage.nodePanel
+          .getPanel('Prior contacts')
           .getByRole('option')
           .first()
           .textContent();
-        await stage.nodePanel.dragNodeToMainList(setupNodeName!.trim());
+        await stage.nodePanel.dragNodeToMainList(
+          'Prior contacts',
+          setupNodeName!.trim(),
+        );
 
         network = await protocol.getNetworkState(interview.interviewId);
         expect(network?.nodes).toHaveLength(2);
@@ -362,7 +368,9 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       run: async ({ page, stage, protocol, interview }) => {
         // 2 Place nodes exist but don't satisfy minNodes (Person-scoped) and
         // don't appear in the existing-panel (Person-scoped).
-        await expect(stage.nodePanel.panel.getByRole('option')).toHaveCount(0);
+        await expect(
+          stage.nodePanel.getPanel('Already added').getByRole('option'),
+        ).toHaveCount(0);
         await interview.nextButton.click();
         await expect(page.getByText(/must create at least/i)).toBeVisible();
 

@@ -18,11 +18,17 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   timeout: 30_000,
 
-  reporter: [
-    ['line'],
-    ['html', { outputFolder: './playwright-report', open: 'never' }],
-    ['json', { outputFile: './test-results/results.json' }],
-  ],
+  // PW_BLOB switches to the blob reporter so a future shard matrix can merge
+  // per-shard reports (see the dormant merge step in ci-and-release.yml and the
+  // shard escape-hatch in e2e/README.md). Unset, the local/CI default emits the
+  // line + html + json trio.
+  reporter: process.env.PW_BLOB
+    ? [['blob']]
+    : [
+        ['line'],
+        ['html', { outputFolder: './playwright-report', open: 'never' }],
+        ['json', { outputFile: './test-results/results.json' }],
+      ],
 
   expect: {
     timeout: 10_000,

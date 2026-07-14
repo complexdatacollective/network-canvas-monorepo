@@ -1,0 +1,16 @@
+- main:
+  - text: Mohammad and Charlie
+  - button "Mohammad"
+  - button "Charlie"
+  - status:
+    - heading "How close are these two people?" [level=2]
+  - listbox "Mohammad and Charlie How close are these two people?":
+    - option "Weak"
+    - option "Moderate" [selected]
+    - option "Strong"
+    - option "Not close"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"
