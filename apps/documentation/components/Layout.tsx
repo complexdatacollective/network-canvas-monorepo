@@ -27,18 +27,18 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
       return undefined;
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry) return;
-        setIsWorkflowNavStuck(
-          entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0),
-        );
-      },
-      { threshold: 1 },
-    );
+    const updateStickyState = () => {
+      setIsWorkflowNavStuck(sentinel.getBoundingClientRect().top <= 0);
+    };
 
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    updateStickyState();
+    window.addEventListener('scroll', updateStickyState, { passive: true });
+    window.addEventListener('resize', updateStickyState);
+
+    return () => {
+      window.removeEventListener('scroll', updateStickyState);
+      window.removeEventListener('resize', updateStickyState);
+    };
   }, [isHomePage]);
 
   return (

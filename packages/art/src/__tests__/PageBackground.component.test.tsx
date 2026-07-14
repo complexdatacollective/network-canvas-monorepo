@@ -305,6 +305,7 @@ describe('PageBackground', () => {
         intensity={0.4}
         motionMode="target"
         resolved
+        targetChangeVersion={1}
       />,
     );
 
@@ -315,6 +316,7 @@ describe('PageBackground', () => {
         intensity={0.1}
         motionMode="target"
         resolved
+        targetChangeVersion={2}
       />,
     );
 
@@ -333,6 +335,39 @@ describe('PageBackground', () => {
     };
     expect(latestProps.convergence).toEqual({ x: 0.8, y: 0.7 });
     expect(latestProps.intensity).toBeCloseTo(0.1);
+  });
+
+  it('updates the current target position immediately during scroll', () => {
+    const { rerender } = render(
+      <PageBackground
+        convergence={{ x: 0.2, y: 0.4 }}
+        intensity={0.1}
+        motionMode="target"
+        resolved
+        targetChangeVersion={1}
+      />,
+    );
+
+    animateMock.mockClear();
+    rerender(
+      <PageBackground
+        convergence={{ x: 0.2, y: 0.2 }}
+        intensity={0.1}
+        motionMode="target"
+        resolved
+        targetChangeVersion={1}
+      />,
+    );
+
+    expect(
+      animateMock.mock.calls.some(([start, end]) => start === 0 && end === 1),
+    ).toBe(false);
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.2, y: 0.2 },
+        intensity: 0.1,
+      }),
+    );
   });
 
   it('snaps to the first measured target before revealing the weave', () => {

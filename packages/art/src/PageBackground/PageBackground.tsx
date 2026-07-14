@@ -183,8 +183,15 @@ export function PageBackgroundProvider({
   const [convergence, setConvergence] =
     useState<NetworkWeaveConvergence>(fallbackConvergence);
   const [scrollFadeEnd, setScrollFadeEnd] = useState<number>();
+  const [targetChangeVersion, setTargetChangeVersion] = useState(0);
   const hasTrackedTargetRef = useRef(false);
+  const selectedTargetRef = useRef<HTMLElement | null>(null);
+  const selectedTargetVersionRef = useRef(0);
   const targetRef = useCallback<RefCallback<HTMLElement>>((element) => {
+    if (selectedTargetRef.current === element) return;
+
+    selectedTargetRef.current = element;
+    selectedTargetVersionRef.current += 1;
     setTarget(element);
   }, []);
 
@@ -223,6 +230,7 @@ export function PageBackgroundProvider({
 
       hasTrackedTargetRef.current = true;
       setResolved(true);
+      setTargetChangeVersion(selectedTargetVersionRef.current);
       setConvergence((currentConvergence) =>
         Math.abs(currentConvergence.x - measurement.convergence.x) <
           POSITION_TOLERANCE &&
@@ -270,6 +278,7 @@ export function PageBackgroundProvider({
         motionMode={motionMode}
         resolved={waitForTarget ? resolved : undefined}
         scrollFadeEnd={scrollFadeEnd}
+        targetChangeVersion={targetChangeVersion}
       />
       <PageBackgroundTargetContext.Provider value={targetRef}>
         {children}
@@ -388,6 +397,7 @@ export function PageBackground({
   motionMode = 'scroll',
   resolved,
   scrollFadeEnd,
+  targetChangeVersion = 0,
   layerRef,
 }: {
   convergence?: NetworkWeaveConvergence;
@@ -395,6 +405,7 @@ export function PageBackground({
   motionMode?: 'scroll' | 'target';
   resolved?: boolean;
   scrollFadeEnd?: number;
+  targetChangeVersion?: number;
   layerRef?: Ref<HTMLDivElement>;
 }) {
   const reduceMotion = useReducedMotion();
@@ -432,6 +443,8 @@ export function PageBackground({
   });
   const weaveSettingsRef = useRef(weaveSettings);
   const hasResolvedTargetRef = useRef(resolved === true);
+  const lastIntensityRef = useRef(intensity);
+  const lastTargetChangeVersionRef = useRef(targetChangeVersion);
   const commitWeaveSettings = useCallback((settings: WeaveSettings) => {
     if (weaveSettingsAreEqual(weaveSettingsRef.current, settings)) return;
 
@@ -449,11 +462,22 @@ export function PageBackground({
     };
     const isFirstResolvedTarget =
       resolved === true && !hasResolvedTargetRef.current;
+    const intensityChanged =
+      Math.abs(lastIntensityRef.current - intensity) >= PARAMETER_TOLERANCE;
+    const targetChanged =
+      lastTargetChangeVersionRef.current !== targetChangeVersion;
 
     if (resolved === false) hasResolvedTargetRef.current = false;
     if (resolved === true) hasResolvedTargetRef.current = true;
+    lastIntensityRef.current = intensity;
+    lastTargetChangeVersionRef.current = targetChangeVersion;
 
-    if (reduceMotion !== false || resolved === false || isFirstResolvedTarget) {
+    if (
+      reduceMotion !== false ||
+      resolved === false ||
+      isFirstResolvedTarget ||
+      (!intensityChanged && !targetChanged)
+    ) {
       commitWeaveSettings(nextSettings);
       return undefined;
     }
@@ -495,6 +519,7 @@ export function PageBackground({
     motionMode,
     reduceMotion,
     resolved,
+    targetChangeVersion,
   ]);
 
   const { maskImage, masked } = useConvergenceReveal(
