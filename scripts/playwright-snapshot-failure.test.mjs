@@ -31,7 +31,8 @@ const snapshotError = (
 
 const missingSnapshotError = (
   path = '/repo/e2e/visual-snapshots/chromium/new-baseline.png',
-) => snapshotError(`A snapshot doesn't exist at ${path}.`);
+) =>
+  snapshotError(`Error: A snapshot doesn't exist at ${path}, writing actual.`);
 
 const screenshotAttachments = (base = 'summary') =>
   ['expected', 'actual', 'diff'].map((kind) => ({
@@ -115,6 +116,26 @@ test('recognises a missing PNG baseline without comparison attachments', () => {
   );
 });
 
+test('recognises missing-baseline wording without the writing-actual suffix', () => {
+  assert.equal(
+    isSnapshotOnlyFailureReport(
+      report([
+        unexpectedTest([
+          result({
+            errors: [
+              snapshotError(
+                "A snapshot doesn't exist at /repo/e2e/visual-snapshots/chromium/new-baseline.png.",
+              ),
+            ],
+            attachments: [],
+          }),
+        ]),
+      ]),
+    ),
+    true,
+  );
+});
+
 test('requires attachment groups only for comparison errors in a mixed failure', () => {
   const errors = [missingSnapshotError(), snapshotError()];
 
@@ -143,7 +164,7 @@ test('rejects non-PNG and lookalike missing-snapshot errors', () => {
       "Setup failed because a snapshot doesn't exist at /tmp/new-baseline.png.",
     ),
     snapshotError(
-      "A snapshot doesn't exist at /tmp/new-baseline.png, writing actual.",
+      "A snapshot doesn't exist at /tmp/new-baseline.png, preserving previous.",
     ),
   ]) {
     assert.equal(

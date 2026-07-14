@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 const SCREENSHOT_ERROR_PATTERN =
   /(?:\btoHaveScreenshot\s*\(|Screenshot comparison failed)/i;
 const MISSING_SCREENSHOT_PATTERN =
-  /(?:^|\n)\s*(?:Error:\s*)?A snapshot doesn't exist at [^\r\n]+\.png\.(?=\r?\n|$)/i;
+  /(?:^|\n)\s*(?:Error:\s*)?A snapshot doesn't exist at [^\r\n]+\.png(?:\.|, writing actual\.)(?=\r?\n|$)/i;
 const TIMEOUT_ERROR_PATTERN =
   /(?:^|\n)\s*(?:Timeout(?:Error)?\b|Test timeout\b)|\btimed out\b/i;
 const SCREENSHOT_ATTACHMENT_PATTERN =
