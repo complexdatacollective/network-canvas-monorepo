@@ -78,12 +78,31 @@ async function readActiveRow(page: Page): Promise<Row | null> {
   return isRow(row) ? row : null;
 }
 
-export async function readProtocolJson(page: Page): Promise<CurrentProtocol> {
-  const row = await readActiveRow(page);
-  if (!row) {
+// A single read after editing top-level protocol data (name, description,
+// asset manifest) can land inside the 600ms autosave debounce and return the
+// pre-edit row — the same stale-read window `readStageJson`'s `until` guards
+// against for stages. Callers asserting a field they just changed pass
+// `until`, a predicate on the protocol the poll also waits on; a bare call
+// still polls for the row itself to exist.
+export async function readProtocolJson(
+  page: Page,
+  until?: (protocol: CurrentProtocol) => boolean,
+): Promise<CurrentProtocol> {
+  let protocol: CurrentProtocol | undefined;
+  await expect
+    .poll(
+      async () => {
+        protocol = (await readActiveRow(page))?.protocol;
+        if (!protocol) return 'pending';
+        return until === undefined || until(protocol) ? 'ready' : 'pending';
+      },
+      { timeout: 5_000 },
+    )
+    .toBe('ready');
+  if (!protocol) {
     throw new Error('no autosaved protocol row in ArchitectProtocolDB');
   }
-  return row.protocol;
+  return protocol;
 }
 
 type Stage = CurrentProtocol['stages'][number];

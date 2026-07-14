@@ -99,19 +99,22 @@ test('undoes and redoes a protocol-name edit', async ({
   await nameField.fill('Undo Redo Final');
   await nameField.blur();
   await expect(nameField).toHaveValue('Undo Redo Final');
-  await expect
-    .poll(async () => (await readProtocolJson(architectPage)).name)
-    .toBe('Undo Redo Final');
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Undo Redo Final',
+  );
 
   await toolbar.undo();
   await expect(nameField).toHaveValue('Undo Redo Intermediate');
-  await expect
-    .poll(async () => (await readProtocolJson(architectPage)).name)
-    .toBe('Undo Redo Intermediate');
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Undo Redo Intermediate',
+  );
 
   await toolbar.redo();
   await expect(nameField).toHaveValue('Undo Redo Final');
-  await expect
-    .poll(async () => (await readProtocolJson(architectPage)).name)
-    .toBe('Undo Redo Final');
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Undo Redo Final',
+  );
 });
