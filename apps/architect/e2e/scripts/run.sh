@@ -46,7 +46,7 @@ fi
 # linux/amd64 (a no-op on CI and other amd64 hosts; on Apple Silicon it needs
 # Docker's Rosetta mode — under plain QEMU Chromium's GPU process crashes and
 # the run fails loudly; if that happens, adopt the `actual` image from the CI
-# run's architect-playwright-report artifact instead). Normal runs stay on the
+# run's playwright-report-architect artifact instead). Normal runs stay on the
 # native platform — fast everywhere — and the pixel comparison itself is
 # arch-gated in e2e/helpers/visual.ts, so an arm64 run never compares against
 # (or writes) amd64 baselines. Each platform gets its own node_modules volume
