@@ -25,7 +25,7 @@ We recommend a modern device with a high-resolution screen and ample memory. Per
 
 Interviewer Classic is supported only when running on Windows 10 (1909) or newer, macOS 10.15.4 or newer, Android 10 or newer, and iPadOS 14.2 or newer.
 
-We recommend a modern device, featuring a high resolution screen (greater than 900 pixels effective vertical resolution), ample RAM, and dedicated graphics. Performance may differ considerably depending on the power of the device that you use, and you should be aware that this can negatively impact the interview experience for your research participants, leading to poorer quality data.
+We recommend a modern device, featuring a high-resolution screen (greater than 900 pixels effective vertical resolution), ample RAM, and dedicated graphics. Performance may differ considerably depending on the power of the device that you use, and you should be aware that this can negatively impact the interview experience for your research participants, leading to poorer quality data.
 
 You may install and run the software on devices that do not meet these criteria, but we are unfortunately unable to offer support regarding technical issues if you do.
 
@@ -43,7 +43,7 @@ Visit the [download page](https://networkcanvas.com/download), and download the 
 
 When you double-click on the DMG file it will open a new Finder window with the application icon and a folder representing your computer's "Applications" folder. Drag the application into the Applications folder. If you are prompted for authentication and you do not have it, you can simply drag the application to anywhere underneath your home directory.
 
-Once the application is installed you will need to double click on the application icon to open the program.
+Once the application is installed you will need to double-click on the application icon to open the program.
 
 ### Linux
 
