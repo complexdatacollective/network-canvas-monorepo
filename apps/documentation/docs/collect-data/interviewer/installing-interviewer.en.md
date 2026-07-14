@@ -4,16 +4,16 @@ navOrder: 1
 toc: true
 ---
 
-Interviewer runs your Network Canvas protocols and collects data in the field. You do not need to install any of the other Network Canvas applications to use it.
+Interviewer runs your Network Canvas protocols and collects data in the field. You do not need any of the other Network Canvas applications to use it.
 
-Interviewer comes in two versions, and both are supported — use whichever suits your study:
+Interviewer comes in two supported versions, and you get them in different ways:
 
-- **Interviewer** (beta) — runs in your web browser, with nothing to download. Built on the same new platform as Fresco 4.0, it supports schema 8, is compatible with all your existing protocols, and is recommended for new studies. You can also install it to a device you control as a Progressive Web App for quick access and offline use.
-- **Interviewer Classic** — the established desktop and tablet app that you download and install. Runs schema 7 protocols and works fully offline.
+- **Interviewer** (beta) — runs in your **web browser**, with nothing to download. Open it at [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com), and optionally install it as a **Progressive Web App (PWA)** on a device you control for quick access and offline use. Built on the same platform as Fresco 4.0, it supports schema 8, is compatible with your existing protocols, and is recommended for new studies.
+- **Interviewer Classic** — the established **desktop and tablet** app. Download and install it from the [download page](https://networkcanvas.com/download). Runs schema 7 protocols and works fully offline.
 
 ## Using Interviewer in the browser
 
-Open [Interviewer](/en/collect-data/interviewer/about) in a modern web browser — there is no download or installation step, and the app always runs the latest version. To keep it handy on an interview device, use your browser's **Install** option (often shown as an install icon in the address bar, or "Add to Home Screen") to install it as a Progressive Web App. It then opens in its own window, appears alongside your other apps, and remains available offline.
+Open [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com) in a modern web browser — there is no download or installation step, and the app always runs the latest version. To keep it handy on an interview device, use your browser's **Install** option (often shown as an install icon in the address bar, or "Add to Home Screen") to install it as a Progressive Web App. It then opens in its own window, appears alongside your other apps, and remains available offline.
 
 We recommend a modern device with a high-resolution screen and ample memory. Performance may differ considerably depending on the power of the device you use, and a slow device can negatively impact the interview experience for your research participants, leading to poorer-quality data.
 
