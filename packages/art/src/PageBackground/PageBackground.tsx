@@ -283,6 +283,11 @@ function useConvergenceReveal(
 
   const [masked, setMasked] = useState(resolved !== undefined);
   const hasRevealedRef = useRef(false);
+  // Read via a ref so a mid-reveal convergence change (e.g. a fonts.ready layout
+  // shift) doesn't re-run the effect and stop the tween before it completes. The
+  // mask centre still tracks live convergence — it is computed on each render.
+  const convergenceRef = useRef(convergence);
+  convergenceRef.current = convergence;
 
   useEffect(() => {
     if (!resolved || reduceMotion === null || hasRevealedRef.current) return;
@@ -295,7 +300,7 @@ function useConvergenceReveal(
     }
 
     const cornerDistance = getFarthestCornerDistance(
-      convergence,
+      convergenceRef.current,
       window.innerWidth,
       window.innerHeight,
     );
@@ -308,7 +313,7 @@ function useConvergenceReveal(
       onComplete: () => setMasked(false),
     });
     return () => controls.stop();
-  }, [convergence, radius, reduceMotion, resolved]);
+  }, [radius, reduceMotion, resolved]);
 
   return { maskImage: masked ? maskImage : undefined, masked };
 }

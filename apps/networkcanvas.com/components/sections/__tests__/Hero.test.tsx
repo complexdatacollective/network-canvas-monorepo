@@ -29,7 +29,7 @@ describe('Hero', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('uses the large desktop headline scale and cyber-grape body copy', () => {
+  it('uses the large desktop headline scale and the semantic text token for body copy', () => {
     renderWithIntl(<Hero newsItems={newsItems} />);
 
     expect(
