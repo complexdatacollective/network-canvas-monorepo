@@ -92,11 +92,18 @@ describe('GetStartedIntro', () => {
     renderWithIntl(<GetStartedIntro />);
 
     const documentationLink = screen.getByRole('link', {
-      name: 'Learn about Network Canvas in the documentation (opens in a new tab)',
+      name: 'Learn about the project — opens the documentation in a new tab',
     });
 
     expect(screen.getAllByRole('link')[0]).toBe(documentationLink);
     expect(documentationLink.parentElement).toHaveClass('max-w-[1400px]');
+    expect(documentationLink).toHaveClass('relative', 'pb-24');
+    expect(screen.getByText('Learn about the project')).toHaveClass('mt-8');
+    expect(documentationLink.querySelector('svg')?.parentElement).toHaveClass(
+      'absolute',
+      'right-8',
+      'bottom-8',
+    );
 
     expect(
       screen.getByRole('link', {
@@ -169,7 +176,7 @@ describe('GetStartedIntro', () => {
     ).toHaveAttribute('href', '#design');
     expect(
       screen.getByRole('link', {
-        name: 'Conocer Network Canvas en la documentación (se abre en una pestaña nueva)',
+        name: 'Conocer el proyecto — abre la documentación en una pestaña nueva',
       }),
     ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/');
   });
