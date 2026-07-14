@@ -14,6 +14,7 @@ import {
 } from '~/ducks/modules/protocol/stages';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import filterIcon from '~/images/timeline/filter-icon.svg';
+import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { getProtocol, getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
@@ -289,12 +290,20 @@ const Timeline = () => {
                         />
                       )}
                       {stage.hasSkipLogic && (
-                        <SkipDestinationBadge
-                          destinationLabel={
-                            stage.skipLogicDestinationLabel ??
-                            'Next available stage'
-                          }
-                        />
+                        <>
+                          <img
+                            src={skipLogicIcon}
+                            alt="Has skip logic"
+                            title="Has skip logic"
+                            className="h-5 w-5"
+                          />
+                          <SkipDestinationBadge
+                            destinationLabel={
+                              stage.skipLogicDestinationLabel ??
+                              'Next available stage'
+                            }
+                          />
+                        </>
                       )}
                     </div>
                   )}
