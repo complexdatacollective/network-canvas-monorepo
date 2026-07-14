@@ -102,8 +102,24 @@ describe('SiteNavigation', () => {
       within(compactNavigation).getByRole('link', { name: 'Open Architect' }),
     ).toHaveAttribute('href', 'https://architect.networkcanvas.com/');
     expect(
+      within(compactNavigation).getByRole('link', {
+        name: 'Get Architect Classic',
+      }),
+    ).toHaveAttribute(
+      'href',
+      'https://networkcanvas.com/get-started#architect-classic-downloads',
+    );
+    expect(
       within(compactNavigation).getByRole('link', { name: 'Open Interviewer' }),
     ).toHaveAttribute('href', 'https://interviewer.networkcanvas.com/');
+    expect(
+      within(compactNavigation).getByRole('link', {
+        name: 'Get Interviewer Classic',
+      }),
+    ).toHaveAttribute(
+      'href',
+      'https://networkcanvas.com/get-started#interviewer-classic-downloads',
+    );
     expect(
       within(compactNavigation).getByRole('link', {
         name: 'Try the Fresco Sandbox',
@@ -122,6 +138,46 @@ describe('SiteNavigation', () => {
 
     const resourcesButton = screen.getByRole('button', { name: 'Resources' });
     expect(resourcesButton).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('lays out modern apps above their Classic counterparts', () => {
+    render(<SiteNavigation locale="en-US" site="website" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Software' }));
+    const architectClassicLink = screen.getByRole('link', {
+      name: 'Architect Classic',
+    });
+    const softwareGrid = architectClassicLink.closest('ul');
+    if (!softwareGrid) throw new Error('Expected the software grid.');
+
+    expect(softwareGrid).toHaveClass('grid', 'grid-cols-3');
+    expect(within(softwareGrid).getAllByRole('listitem')).toHaveLength(5);
+    expect(
+      within(softwareGrid)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('aria-label')),
+    ).toEqual([
+      'Architect',
+      'Interviewer',
+      'Fresco',
+      'Architect Classic',
+      'Interviewer Classic',
+    ]);
+    expect(architectClassicLink).toHaveClass(
+      'flex-col',
+      'p-5',
+      'hover:bg-cyber-grape/10',
+      '[[data-theme=dark]_&]:hover:bg-platinum-dark/10',
+    );
+    expect(
+      within(architectClassicLink).getByText('Architect Classic'),
+    ).toHaveClass(
+      'text-cyber-grape',
+      '[[data-theme=dark]_&]:text-platinum-dark',
+    );
+    expect(
+      within(architectClassicLink).getByText('Get Architect Classic'),
+    ).toHaveClass('mt-auto');
   });
 
   it('exposes an active compact navigation group semantically', () => {

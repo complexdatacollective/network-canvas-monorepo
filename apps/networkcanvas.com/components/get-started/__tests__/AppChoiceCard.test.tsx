@@ -91,11 +91,15 @@ describe('AppChoiceCard', () => {
   it('gives each Classic platform link an app-specific accessible name', () => {
     renderWithIntl(<AppChoiceCard app={architectClassic} />);
 
-    expect(
-      screen.getByRole('link', {
-        name: 'Apple Silicon for Architect Classic',
-      }),
-    ).toHaveAttribute('target', '_blank');
+    const appleSiliconLink = screen.getByRole('link', {
+      name: 'Apple Silicon for Architect Classic',
+    });
+
+    expect(appleSiliconLink).toHaveAttribute('target', '_blank');
+    expect(appleSiliconLink.closest('[id]')).toHaveAttribute(
+      'id',
+      'architect-classic-downloads',
+    );
     expect(
       screen.getByRole('link', { name: 'Apple Intel for Architect Classic' }),
     ).toBeInTheDocument();
