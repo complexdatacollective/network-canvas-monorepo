@@ -230,6 +230,7 @@ const Validation = ({
           <div className={MULTI_SELECT_OPTION_CLASSES}>
             <InputField
               name="validation-value"
+              className="w-36"
               value={
                 typeof draftValue === 'number'
                   ? draftValue.toString()
