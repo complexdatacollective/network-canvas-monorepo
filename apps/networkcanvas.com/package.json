@@ -41,7 +41,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "jsdom": "catalog:",
-    "postcss": "^8.5.16",
+    "postcss": "^8.5.17",
     "sharp": "^0.34.5",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
