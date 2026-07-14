@@ -53,6 +53,7 @@ fi
 
 docker run --rm \
   -e CI=true \
+  -e PW_WORKERS \
   -v "$(pwd)":/workspace \
   -v interview-e2e-node-modules:/workspace/node_modules \
   -w /workspace \

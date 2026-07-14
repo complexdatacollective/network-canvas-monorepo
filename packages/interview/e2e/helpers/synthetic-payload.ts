@@ -60,6 +60,13 @@ export function buildSyntheticPayload(
   opts: BuildSyntheticPayloadOptions,
 ): SyntheticPayloadResult {
   const parsedStageMetadata = StageMetadataSchema.safeParse(opts.stageMetadata);
+  if (opts.stageMetadata != null && !parsedStageMetadata.success) {
+    // Silently dropping bad seeded metadata would run the interface from an
+    // unseeded state and fail later with misleading assertions.
+    throw new Error(
+      `Synthetic payload "${opts.protocolName}" was given stageMetadata that fails StageMetadataSchema:\n${parsedStageMetadata.error.message}`,
+    );
+  }
   const raw = synth.getInterviewPayload({
     currentStep: opts.currentStep ?? 0,
   });
