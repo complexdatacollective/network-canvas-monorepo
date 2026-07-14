@@ -79,11 +79,21 @@ export async function createVariableViaSpotlight(
 // disabled — only click through it when it's actually interactive.
 //
 // Options (components/Options/Options.tsx) only reveal once an
-// ordinal/categorical type is set; "Add new" appends a row immediately
-// (`immediateAdd`, no separate confirm step). Each row's Label field is
-// itself a RichText/Tiptap control (components/Options/Option.tsx,
-// `label: 'Label'`) — role "textbox" — and its Value field is a plain input
-// named "Value"; both names repeat per row, hence `.nth(i)`.
+// ordinal/categorical type is set. "Add new" commits a blank row straight
+// into the array (`immediateAdd` — no separate confirm-to-add step), but
+// Option.tsx's own mount effect immediately opens that blank row into edit
+// mode. Only one option can be "being edited" at a time (ArrayField tracks a
+// single editingId) — opening a row collapses whichever one was previously
+// edited back to a read-only summary line ("label — value") and unmounts its
+// inputs, so exactly one Label/Value pair ever exists in the DOM (no
+// `.nth(i)` needed). Each row's Label field is itself a RichText/Tiptap
+// control (`label: 'Label'`) — role "textbox" — and its Value field is a
+// plain input named "Value". Both fields commit live via direct Redux Form
+// binding on every keystroke, so the row doesn't need to be "saved" before
+// moving on; the Check-icon button (aria-label "Finish editing option") just
+// collapses it back to summary. We click that after each option, before
+// adding the next, to avoid depending on the auto-open effect racing our own
+// next "Add new" click.
 export async function createVariableWithOptions(
   page: Page,
   opts: {
@@ -103,16 +113,13 @@ export async function createVariableWithOptions(
     await page.getByRole('option', { name: typeLabel }).click();
   }
 
-  for (const [index, optionLabel] of opts.options.entries()) {
+  for (const optionLabel of opts.options) {
     await page.getByRole('button', { name: 'Add new' }).click();
-    await page
-      .getByRole('textbox', { name: 'Label' })
-      .nth(index)
-      .fill(optionLabel);
+    await page.getByRole('textbox', { name: 'Label' }).fill(optionLabel);
     await page
       .getByRole('textbox', { name: 'Value' })
-      .nth(index)
       .fill(optionLabel.toLowerCase());
+    await page.getByRole('button', { name: 'Finish editing option' }).click();
   }
 
   await page.getByRole('button', { name: 'Save and Close' }).click();
