@@ -27,7 +27,7 @@ pnpm --filter @codaco/architect exec playwright test --config e2e/playwright.con
 # scope to one spec: … playwright test --config e2e/playwright.config.ts specs/interfaces/<type>.spec.ts
 
 # Debug locators against the live app:
-pnpm --filter @codaco/architect test:e2e:headed          # (add --headed / --trace on / --debug)
+pnpm --filter @codaco/architect test:e2e:headed          # (add --trace on / --debug)
 
 # Full run inside the pinned Playwright Docker image (the CI path; also compares visual baselines):
 pnpm --filter @codaco/architect test:e2e
@@ -35,13 +35,13 @@ pnpm --filter @codaco/architect test:e2e
 
 ## Reading a failure
 
-- **A JSON stage-snapshot diff** (`specs/interfaces/*.spec.ts`, `*-stage.json`) means the **saved stage shape changed**. If the change is intended, regenerate: `… playwright test <spec> --update-snapshots` (JSON snapshots are font-independent, so regenerating locally is fine). If it's *not* intended, it's a regression — fix the app, don't update the snapshot.
+- **A JSON stage-snapshot diff** (`specs/interfaces/*.spec.ts`, `*-stage.json`) means the **saved stage shape changed**. If the change is intended, regenerate: `… playwright test <spec> --update-snapshots` (JSON snapshots are font-independent, so regenerating locally is fine). If it's _not_ intended, it's a regression — fix the app, don't update the snapshot.
 - **A visual PNG diff** (`codebook`/`summary`, under `e2e/visual-snapshots/`) means rendered output changed. These are **font-sensitive**: regenerate baselines **only inside Docker** with `pnpm --filter @codaco/architect test:e2e:update-snapshots` — **never on macOS/host**.
 - **A locator timeout** usually means the editor UI changed (renamed/moved field, section, or control). Update the locator (below), don't loosen the assertion.
 
 ## Updating / adding e2e when a feature changes
 
-- **New interface type** → add a create-from-scratch spec under `e2e/specs/interfaces/` mirroring an existing one (use the `StageEditor` page object, the section-scoped `editor-sections/*` helpers, and `stageSnapshotJson`). Give the snapshot a unique `<type>-stage.json` name (they share one flat `visual-snapshots/chromium/` dir). Add the type to the all-interfaces fixture (`packages/protocols/e2e/all-interfaces/protocol.json`) — the fixture-validation test enforces all types are covered.
+- **New interface type** → add a create-from-scratch spec under `e2e/specs/interfaces/` mirroring an existing one (use the `StageEditor` page object, the section-scoped `editor-sections/*` helpers, and `stageSnapshotJson`). Give the snapshot a unique `<type>-stage.json` name (they share one flat `visual-snapshots/chromium/` dir). Add the type to the all-interfaces fixture (`packages/protocols/e2e/all-interfaces/protocol.json`) **and** bump `EXPECTED_STAGE_TYPE_COUNT` in `packages/protocol-validation/src/__tests__/all-interfaces-fixture.test.ts` — the test guards against accidental fixture edits (it asserts a hardcoded count, it does not enforce coverage), so a new type breaks it until the constant is bumped.
 - **Changed editor UI** (new/renamed field, section, or control) → update the affected spec's locators and, if shared, the page objects in `e2e/pageobjects/` and `e2e/pageobjects/editor-sections/`. `section(title)` takes the section's `data-name` **title** (which may differ from the component name — grep the real `<Section title=…>` prop). If a stage's saved JSON changes as a result, regenerate that spec's snapshot.
 - **Changed app-facet behaviour** (timeline, download/import/clear, codebook, summary, resources) → update the matching `e2e/specs/<facet>.spec.ts`.
 - **Locators**: prefer `getByRole` accessible name, existing fresco-ui dialog/wizard/spotlight testids, and the `data-field-name` seam. Do **not** add new app-source `data-testid`s unless a control is genuinely unlocatable otherwise — and if you must, keep it minimal and note it.
