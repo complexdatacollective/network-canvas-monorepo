@@ -51,7 +51,11 @@ function AnonymisationInner(props: AnonymisationProps) {
       return true;
     }
 
-    formRef.current?.submit();
+    // requestSubmit (NOT native submit()) so the React onSubmit handler runs
+    // and its preventDefault applies — native submit() bypasses it entirely
+    // and performs a real GET navigation to `/?passphrase=…`, throwing the
+    // participant out of the interview.
+    formRef.current?.requestSubmit();
 
     if (!isFormValid) {
       return false;

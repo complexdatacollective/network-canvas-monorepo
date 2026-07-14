@@ -6,20 +6,57 @@ import type {
   FamilyPedigreeIntroItem,
   FamilyPedigreeNodeConfigInput,
   FamilyPedigreeNominationPromptInput,
-  Filter,
+  FilterOperator,
   Item,
-  SkipLogic,
   StageType,
-  VariableOption,
   VariableType,
 } from '@codaco/protocol-validation';
+
+/**
+ * Structural (unbranded) filter input. The real `Filter` type brands
+ * `options.attribute` as an EntityAttributeReference, which callers building
+ * test protocols cannot produce without a schema parse; the e2e adapter
+ * re-validates the whole protocol against `CurrentProtocolSchema` anyway, so
+ * the builder accepts the plain shape. `Filter` is assignable to this type.
+ */
+export type FilterRuleInput = {
+  id: string;
+  type: 'node' | 'edge' | 'ego';
+  options: {
+    type?: string;
+    attribute?: string;
+    operator: FilterOperator;
+    value?: string | number | boolean | unknown[];
+  };
+};
+
+export type FilterInput = {
+  join?: 'AND' | 'OR';
+  rules: FilterRuleInput[];
+};
+
+export type SkipLogicInput = {
+  action: 'SHOW' | 'SKIP';
+  filter: FilterInput;
+};
+
+/**
+ * Structural variable option input: boolean values are legal on boolean
+ * variables (schema-validated downstream), which the exported VariableOption
+ * union does not admit.
+ */
+export type VariableOptionInput = {
+  label: string;
+  value: string | number | boolean;
+  negative?: boolean;
+};
 
 export type VariableEntry = {
   id: string;
   name: string;
   type: VariableType;
   component?: ComponentType;
-  options?: VariableOption[];
+  options?: VariableOptionInput[];
   validation?: Record<string, unknown>;
   parameters?: Record<string, unknown>;
   // Only meaningful on node text variables; the variable schema rejects
@@ -205,7 +242,7 @@ type PanelEntry = {
   id: string;
   title: string;
   dataSource: string;
-  filter?: Filter;
+  filter?: FilterInput;
 };
 
 export type StageEntry = {
@@ -213,8 +250,8 @@ export type StageEntry = {
   type: StageType;
   label: string;
   interviewScript?: string;
-  skipLogic?: SkipLogic;
-  filter?: Filter;
+  skipLogic?: SkipLogicInput;
+  filter?: FilterInput;
   subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
   form?: FormEntry;
   prompts: PromptEntry[];
@@ -336,7 +373,7 @@ export type AddVariableInput = {
   name?: string;
   type?: VariableType;
   component?: ComponentType;
-  options?: VariableOption[];
+  options?: VariableOptionInput[];
   validation?: Record<string, unknown>;
   parameters?: Record<string, unknown>;
   encrypted?: boolean;
@@ -368,8 +405,8 @@ export type NetworkComposerFormFieldInput = {
 export type AddStageInput = {
   label?: string;
   interviewScript?: string;
-  skipLogic?: SkipLogic;
-  filter?: Filter;
+  skipLogic?: SkipLogicInput;
+  filter?: FilterInput;
   subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
   initialNodes?: InitialNodesSpec;
   initialEdges?: [number, number][];

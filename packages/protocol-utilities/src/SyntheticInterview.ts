@@ -2,9 +2,7 @@ import { invariant } from 'es-toolkit';
 
 import type {
   ComponentType,
-  Filter,
   Item,
-  SkipLogic,
   Stage,
   StageType,
   VariableType,
@@ -44,6 +42,7 @@ import type {
   DyadCensusPromptEntry,
   EdgeEntry,
   EdgeTypeEntry,
+  FilterInput,
   FormFieldInput,
   GeospatialPromptEntry,
   GetSessionInput,
@@ -56,6 +55,7 @@ import type {
   OneToManyDyadCensusPromptEntry,
   OrdinalBinPromptEntry,
   PresetEntry,
+  SkipLogicInput,
   SociogramPromptEntry,
   StageEntry,
   TieStrengthCensusPromptEntry,
@@ -96,7 +96,7 @@ type AddFormFieldOpts = {
 type AddPanelOpts = {
   title?: string;
   dataSource?: string;
-  filter?: Filter;
+  filter?: FilterInput;
 };
 
 type NameGeneratorHandle = StageHandleBase & {
@@ -765,7 +765,7 @@ export class SyntheticInterview {
     text?: string;
     label?: string;
     interviewScript?: string;
-    skipLogic?: SkipLogic;
+    skipLogic?: SkipLogicInput;
     items?: Item[];
   }): InformationHandle {
     const stageId = this.nextId('stage');
@@ -1086,9 +1086,10 @@ export class SyntheticInterview {
     const variable = nodeType?.variables.get(variableId);
     const prompt = input.prompt ?? variable?.name ?? 'Field';
 
+    // The strict form schemas reject a field-level `component`; the runtime
+    // resolves the control from the codebook variable's own component.
     return {
       variable: variableId,
-      component: input.component,
       prompt,
       ...(input.hint !== undefined ? { hint: input.hint } : {}),
       ...(input.showValidationHints !== undefined
@@ -1113,9 +1114,9 @@ export class SyntheticInterview {
     const variable = edgeType?.variables.get(variableId);
     const prompt = input.prompt ?? variable?.name ?? 'Field';
 
+    // See resolveFormField: field-level `component` is schema-rejected.
     return {
       variable: variableId,
-      component: input.component,
       prompt,
       ...(input.hint !== undefined ? { hint: input.hint } : {}),
       ...(input.showValidationHints !== undefined
@@ -1733,15 +1734,19 @@ export class SyntheticInterview {
       config.filter = stage.filter;
     }
 
-    if (stage.subject) {
+    // FamilyPedigree references its entity types via nodeConfig/edgeConfig;
+    // its strict schema rejects a stage-level subject.
+    if (stage.subject && stage.type !== 'FamilyPedigree') {
       config.subject = stage.subject;
     }
 
     if (stage.form) {
-      // TitlelessFormSchema: AlterForm/AlterEdgeForm forms must not carry a
-      // title; every other form stage keeps it.
+      // TitlelessFormSchema: AlterForm/AlterEdgeForm/EgoForm forms must not
+      // carry a title; every other form stage keeps it.
       config.form =
-        stage.type === 'AlterForm' || stage.type === 'AlterEdgeForm'
+        stage.type === 'AlterForm' ||
+        stage.type === 'AlterEdgeForm' ||
+        stage.type === 'EgoForm'
           ? { fields: stage.form.fields }
           : stage.form;
     }

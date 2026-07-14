@@ -193,22 +193,30 @@ describe('SyntheticInterview', () => {
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       const form = stageConfig.form as {
-        fields: { variable: string; component: string }[];
+        fields: { variable: string }[];
       };
       expect(form.fields).toHaveLength(2);
-      expect(form.fields[0]!.component).toBe('Text');
-      expect(form.fields[1]!.component).toBe('Number');
+      // The strict form schemas reject field-level `component`; the control
+      // is resolved from the codebook variable instead.
+      expect(form.fields[0]).not.toHaveProperty('component');
+      expect(form.fields[1]).not.toHaveProperty('component');
 
-      // Variables should exist in codebook
+      // Variables should exist in codebook, carrying the component
       const nodeTypeId = Object.keys(protocol.codebook.node)[0]!;
       const nodeType = protocol.codebook.node[nodeTypeId] as Record<
         string,
         unknown
       >;
-      const variables = nodeType.variables as Record<string, { type: string }>;
+      const variables = nodeType.variables as Record<
+        string,
+        { type: string; component?: string }
+      >;
       const varTypes = Object.values(variables).map((v) => v.type);
       expect(varTypes).toContain('text');
       expect(varTypes).toContain('number');
+      const components = Object.values(variables).map((v) => v.component);
+      expect(components).toContain('Text');
+      expect(components).toContain('Number');
     });
 
     it('supports addFormField on stage handle', () => {
@@ -218,9 +226,18 @@ describe('SyntheticInterview', () => {
 
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
-      const form = stageConfig.form as { fields: { component: string }[] };
+      const form = stageConfig.form as { fields: { variable: string }[] };
       expect(form.fields).toHaveLength(1);
-      expect(form.fields[0]!.component).toBe('RadioGroup');
+      expect(form.fields[0]).not.toHaveProperty('component');
+
+      // The component lives on the auto-created codebook variable.
+      const nodeTypeId = Object.keys(protocol.codebook.node)[0]!;
+      const nodeType = protocol.codebook.node[nodeTypeId] as {
+        variables: Record<string, { component?: string }>;
+      };
+      expect(
+        nodeType.variables[form.fields[0]!.variable]?.component,
+      ).toBe('RadioGroup');
     });
 
     it('supports prompts and panels', () => {
