@@ -88,8 +88,27 @@ describe('GetStartedIntro', () => {
 
   afterEach(cleanup);
 
-  it('renders both focusable workflow paths', () => {
+  it('renders all focusable starting paths', () => {
     renderWithIntl(<GetStartedIntro />);
+
+    const documentationLink = screen.getByRole('link', {
+      name: 'Learn about the project — opens the documentation in a new tab',
+    });
+
+    expect(screen.getAllByRole('link')[0]).toBe(documentationLink);
+    expect(documentationLink.parentElement).toHaveClass('max-w-[1400px]');
+    expect(
+      screen.getByText(
+        'Choose the stage your research has reached, then select the Network Canvas app that fits your study.',
+      ),
+    ).toBeInTheDocument();
+    expect(documentationLink).toHaveClass('relative', 'pb-24');
+    expect(screen.getByText('Learn about the project')).toHaveClass('mt-8');
+    expect(documentationLink.querySelector('svg')?.parentElement).toHaveClass(
+      'absolute',
+      'right-8',
+      'bottom-8',
+    );
 
     expect(
       screen.getByRole('link', {
@@ -101,6 +120,11 @@ describe('GetStartedIntro', () => {
         name: 'Collect data using Network Canvas',
       }),
     ).toHaveClass('focusable');
+    expect(documentationLink).toHaveAttribute(
+      'href',
+      'https://documentation.networkcanvas.com/',
+    );
+    expect(documentationLink).toHaveAttribute('target', '_blank');
   });
 
   it('keeps reduced-motion content visible without scheduling an entrance', () => {
@@ -147,13 +171,23 @@ describe('GetStartedIntro', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: '¿En qué etapa de su investigación se encuentra?',
+        name: 'Elija por dónde empezar',
       }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Elija la etapa que ha alcanzado su investigación y, a continuación, seleccione la aplicación de Network Canvas que mejor se adapte a su estudio.',
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', {
         name: 'Diseñar o crear un protocolo de entrevista',
       }),
     ).toHaveAttribute('href', '#design');
+    expect(
+      screen.getByRole('link', {
+        name: 'Conocer el proyecto — abre la documentación en una pestaña nueva',
+      }),
+    ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/');
   });
 });

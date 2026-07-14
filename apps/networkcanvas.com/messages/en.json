@@ -153,8 +153,7 @@
       "description": "Choose the right Network Canvas app for designing a protocol or collecting network data."
     },
     "intro": {
-      "eyebrow": "Choose your research stage",
-      "heading": "Where are you in your research?",
+      "heading": "Choose where to begin",
       "introduction": "Choose the stage your research has reached, then select the Network Canvas app that fits your study.",
       "stages": {
         "design": {
@@ -166,6 +165,11 @@
           "label": "Data collection stage",
           "title": "Collect data using Network Canvas",
           "accessibleName": "Collect data using Network Canvas"
+        },
+        "learn": {
+          "label": "Exploring Network Canvas",
+          "title": "Learn about the project",
+          "accessibleName": "Learn about the project — opens the documentation in a new tab"
         }
       }
     },

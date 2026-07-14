@@ -66,7 +66,7 @@ function PlatformActions({ app }: { app: (typeof classicApps)[number] }) {
   const t = useTranslations('GetStarted');
 
   return (
-    <div className="mt-8">
+    <div id={`${app.id}-downloads`} className="mt-8 scroll-mt-8">
       <Paragraph
         margin="none"
         className="font-heading text-xs font-bold tracking-[0.12em] uppercase"

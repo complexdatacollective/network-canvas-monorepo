@@ -9,15 +9,23 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
+import { externalLinks } from '~/lib/content';
 import { createHeroEntrance } from '~/lib/heroEntrance';
 
-type ResearchStage = {
-  id: 'design' | 'collect';
-  href: '#design' | '#collect';
-  accent: 'bg-neon-coral' | 'bg-cerulean-blue';
+type StartingPath = {
+  id: 'design' | 'collect' | 'learn';
+  href: string;
+  accent: 'bg-neon-coral' | 'bg-cerulean-blue' | 'bg-sea-green';
+  external?: boolean;
 };
 
-const researchStages: readonly ResearchStage[] = [
+const startingPaths: readonly StartingPath[] = [
+  {
+    id: 'learn',
+    href: externalLinks.documentation,
+    accent: 'bg-sea-green',
+    external: true,
+  },
   {
     id: 'design',
     href: '#design',
@@ -74,16 +82,10 @@ export function GetStartedIntro() {
             variants={entrance.itemVariants}
             className="entrance-motion-item mx-auto max-w-4xl px-6 text-center"
           >
-            <Paragraph
-              margin="none"
-              className="font-heading text-neon-coral text-sm font-bold tracking-[0.16em] uppercase"
-            >
-              {t('intro.eyebrow')}
-            </Paragraph>
             <Heading
               level="h1"
               margin="none"
-              className="font-heading text-text mt-5! text-4xl font-black tracking-tight text-balance"
+              className="font-heading text-text text-4xl font-black tracking-tight text-balance"
             >
               {t('intro.heading')}
             </Heading>
@@ -96,29 +98,32 @@ export function GetStartedIntro() {
             </Paragraph>
           </motion.div>
 
-          <Container className="tablet-portrait:grid-cols-2 mt-14 grid gap-6">
-            {researchStages.map((stage) => (
+          <Container
+            maxWidth="wide"
+            className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 mt-14 grid gap-6"
+          >
+            {startingPaths.map((stage) => (
               <motion.a
                 key={stage.href}
                 href={stage.href}
+                target={stage.external ? '_blank' : undefined}
+                rel={stage.external ? 'noreferrer' : undefined}
                 aria-label={t(`intro.stages.${stage.id}.accessibleName`)}
                 variants={entrance.itemVariants}
                 whileHover={reduceMotion ? undefined : { y: -5 }}
                 whileFocus={reduceMotion ? undefined : { y: -5 }}
-                className="entrance-motion-item focusable elevation-medium group tablet-portrait:p-10 bg-surface/55 flex min-h-64 flex-col justify-between rounded p-8 backdrop-blur-md"
+                className="entrance-motion-item focusable elevation-medium group tablet-portrait:last:col-span-2 tablet-landscape:last:col-span-1 tablet-portrait:p-10 tablet-portrait:pb-28 bg-surface/55 relative flex min-h-64 flex-col rounded p-8 pb-24 backdrop-blur-md"
               >
                 <span className="font-heading text-text/65 text-xs font-bold tracking-[0.14em] uppercase">
                   {t(`intro.stages.${stage.id}.label`)}
                 </span>
-                <span className="mt-12 flex items-end justify-between gap-6">
-                  <span className="font-heading text-text tablet-portrait:text-3xl max-w-lg text-2xl font-black tracking-tight text-balance">
-                    {t(`intro.stages.${stage.id}.title`)}
-                  </span>
-                  <span
-                    className={`${stage.accent} flex size-12 shrink-0 items-center justify-center rounded-full text-white transition-transform group-hover:translate-x-1 group-hover:translate-y-1 group-focus-visible:translate-x-1 group-focus-visible:translate-y-1 motion-reduce:transform-none`}
-                  >
-                    <ArrowDownRight aria-hidden className="size-6" />
-                  </span>
+                <span className="font-heading text-text tablet-portrait:text-3xl mt-8 block max-w-lg text-2xl font-black tracking-tight text-balance">
+                  {t(`intro.stages.${stage.id}.title`)}
+                </span>
+                <span
+                  className={`${stage.accent} tablet-portrait:right-10 tablet-portrait:bottom-10 absolute right-8 bottom-8 flex size-12 items-center justify-center rounded-full text-white transition-transform group-hover:translate-x-1 group-hover:translate-y-1 group-focus-visible:translate-x-1 group-focus-visible:translate-y-1 motion-reduce:transform-none`}
+                >
+                  <ArrowDownRight aria-hidden className="size-6" />
                 </span>
               </motion.a>
             ))}
