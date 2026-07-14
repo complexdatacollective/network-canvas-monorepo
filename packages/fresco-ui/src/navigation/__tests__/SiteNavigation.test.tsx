@@ -163,10 +163,21 @@ describe('SiteNavigation', () => {
       'Architect Classic',
       'Interviewer Classic',
     ]);
-    expect(architectClassicLink).toHaveClass('p-5', 'hover:bg-mustard/10');
+    expect(architectClassicLink).toHaveClass(
+      'flex-col',
+      'p-5',
+      'hover:bg-cyber-grape/10',
+      '[[data-theme=dark]_&]:hover:bg-platinum-dark/10',
+    );
     expect(
       within(architectClassicLink).getByText('Architect Classic'),
-    ).toHaveClass('text-mustard');
+    ).toHaveClass(
+      'text-cyber-grape',
+      '[[data-theme=dark]_&]:text-platinum-dark',
+    );
+    expect(
+      within(architectClassicLink).getByText('Get Architect Classic'),
+    ).toHaveClass('mt-auto');
   });
 
   it('exposes an active compact navigation group semantically', () => {

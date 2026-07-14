@@ -121,17 +121,20 @@ const breakpointClasses = {
 
 const accentClasses: Record<SoftwareId, string> = {
   architect: 'text-sea-green',
-  architectClassic: 'text-mustard',
+  architectClassic: 'text-cyber-grape [[data-theme=dark]_&]:text-platinum-dark',
   interviewer: 'text-neon-coral',
-  interviewerClassic: 'text-mustard',
+  interviewerClassic:
+    'text-cyber-grape [[data-theme=dark]_&]:text-platinum-dark',
   fresco: 'text-slate-blue',
 };
 
 const hoverAccentClasses: Record<SoftwareId, string> = {
   architect: 'hover:bg-sea-green/10 focus-visible:bg-sea-green/10',
-  architectClassic: 'hover:bg-mustard/10 focus-visible:bg-mustard/10',
+  architectClassic:
+    'hover:bg-cyber-grape/10 focus-visible:bg-cyber-grape/10 [[data-theme=dark]_&]:hover:bg-platinum-dark/10 [[data-theme=dark]_&]:focus-visible:bg-platinum-dark/10',
   interviewer: 'hover:bg-neon-coral/10 focus-visible:bg-neon-coral/10',
-  interviewerClassic: 'hover:bg-mustard/10 focus-visible:bg-mustard/10',
+  interviewerClassic:
+    'hover:bg-cyber-grape/10 focus-visible:bg-cyber-grape/10 [[data-theme=dark]_&]:hover:bg-platinum-dark/10 [[data-theme=dark]_&]:focus-visible:bg-platinum-dark/10',
   fresco: 'hover:bg-slate-blue/10 focus-visible:bg-slate-blue/10',
 };
 
@@ -286,7 +289,7 @@ function SoftwareCard({
   renderLink: (props: SiteNavigationLinkRenderProps) => ReactElement;
 }) {
   const className = cx(
-    'focusable block h-full w-[19rem] rounded p-5 transition-colors',
+    'focusable flex h-full w-[19rem] flex-col rounded p-5 transition-colors',
     hoverAccentClasses[link.id],
   );
   const content = (
@@ -312,7 +315,7 @@ function SoftwareCard({
       </Paragraph>
       <span
         className={cx(
-          'font-heading mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold tracking-[0.12em] uppercase',
+          'font-heading mt-auto inline-flex items-center gap-1.5 pt-2.5 text-xs font-bold tracking-[0.12em] uppercase',
           accentClasses[link.id],
         )}
       >
