@@ -148,6 +148,15 @@ matrix runs fully parallel.
   legacy suite — they are **only regenerated in Docker** via
   `pnpm test:e2e:update-snapshots`, and captures are CI-only at runtime.
 
+  One webkit-only quirk: the matrix fixture disables `backdrop-filter` on
+  webkit (see `fixtures/matrix-test.ts`) because Playwright's Linux WebKit
+  re-runs each blur in software on every rendering update that invalidates it
+  (the dialog overlay's full-viewport blur, floating frosted panels over
+  animating canvases), stalling actionability checks and click dispatch.
+  Webkit baselines therefore show sharp content behind translucent veils and
+  panels (the tint remains, the blur does not), where chromium/firefox
+  baselines show blurred content.
+
 ### Registry pattern
 
 Each interface owns `matrix/<iface>.scenarios.ts` exporting an
