@@ -34,11 +34,18 @@ fi
 # Reuse the app's build-time analytics gate (already used by vitest and the
 # Netlify PR-preview deploy — see vite.config.ts / ci-and-release.yml) so the
 # build under test never initializes PostHog at all.
+# --platform linux/amd64 pins the container to the architecture CI runs on.
+# Glyph advance widths differ subtly between the image's amd64 and arm64
+# builds, which moves text wrap points in the summary/codebook print
+# documents — an arm64-generated baseline is a whole line-height off by the
+# bottom of the page. The node_modules volume is arch-specific to match
+# (native binaries installed under one platform don't run under the other).
 docker run --rm \
+  --platform linux/amd64 \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \
   -v "$(pwd)":/workspace \
-  -v architect-e2e-node-modules:/workspace/node_modules \
+  -v architect-e2e-node-modules-amd64:/workspace/node_modules \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \
