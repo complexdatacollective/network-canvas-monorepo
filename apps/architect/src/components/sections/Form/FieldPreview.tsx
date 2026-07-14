@@ -37,10 +37,12 @@ const FieldPreview = ({
       <Markdown label={prompt} className="[&>p]:m-0" />
       <div>
         <Badge color={getColorForType(codebookVariable.type)}>
-          <strong>{codebookVariable.type}</strong>
-          {' variable using '}
-          <strong>{codebookVariable.component}</strong>
-          {' input control'}
+          <span>
+            <strong>{codebookVariable.type}</strong>
+            {' variable using '}
+            <strong>{codebookVariable.component}</strong>
+            {' input control'}
+          </span>
         </Badge>
       </div>
     </div>

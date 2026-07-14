@@ -87,7 +87,7 @@ const RuleField = ({
       component={component}
       label={label}
       name={name ?? ''}
-      options={options === undefined ? undefined : options.map(normalizeOption)}
+      options={options == null ? undefined : options.map(normalizeOption)}
       value={fromValue ? fromValue(value) : value}
       onChange={handleChange}
       errors={errors}

@@ -39,7 +39,17 @@ export default function SelectField(props: SelectProps) {
     onChange?.(selectedOption?.value ?? selectedValue);
   };
 
-  const hasValue = value !== undefined && value !== null && value !== '';
+  const valueMatchesOption = options.some(
+    (option) => String(option.value) === String(normalizedValue),
+  );
+
+  // Fall back to the placeholder when the value matches no option, so a stale
+  // value can't leave the browser showing the first option as if selected.
+  const displayValue = valueMatchesOption ? normalizedValue : '';
+  const hasValue = displayValue !== '';
+  const placeholderLabel = placeholder ?? 'Select an option…';
+  const showPlaceholderOption =
+    placeholder !== undefined || !valueMatchesOption;
 
   return (
     <div
@@ -53,7 +63,7 @@ export default function SelectField(props: SelectProps) {
         autoComplete="off"
         {...rest}
         name={name}
-        value={normalizedValue}
+        value={displayValue}
         disabled={Boolean(disabled) || Boolean(readOnly)}
         aria-readonly={readOnly || rest['aria-readonly'] || undefined}
         onChange={handleChange}
@@ -63,7 +73,7 @@ export default function SelectField(props: SelectProps) {
           !hasValue && 'text-current/50 italic',
         )}
       >
-        {placeholder && <option value="">{placeholder}</option>}
+        {showPlaceholderOption && <option value="">{placeholderLabel}</option>}
         {options.map((option) => (
           <option
             key={option.value}

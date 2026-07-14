@@ -193,6 +193,7 @@ const EditEntityRule = ({
             label="Variable"
             labelHidden
             name="attribute"
+            placeholder="Select a variable…"
             options={variablesAsOptions}
             onChange={handleRuleChange}
             value={optionsWithDefaults.attribute}
@@ -207,6 +208,7 @@ const EditEntityRule = ({
             label="Operator"
             labelHidden
             name="operator"
+            placeholder="Select an operator…"
             options={operatorOptions}
             onChange={handleRuleChange}
             value={optionsWithDefaults.operator}

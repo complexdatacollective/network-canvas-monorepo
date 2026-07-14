@@ -187,6 +187,7 @@ const Rules = ({
           <RuleField
             component={FrescoRadioGroupField}
             label="Rule matching"
+            labelHidden
             options={[
               { label: 'All rules', value: 'AND' },
               { label: 'Any rule', value: 'OR' },

@@ -132,13 +132,17 @@ const PanelRow = ({
       onOpen();
     }
   };
-  const runMenuAction = (action: () => void | Promise<void>) => () => {
-    setMenuOpen(false);
-    void Promise.resolve(action()).catch((error: unknown) => {
-      console.error('LibraryPanel action failed', error);
-      reportError(error);
-    });
-  };
+  const runMenuAction =
+    (action: () => void | Promise<void>) => (event: React.MouseEvent) => {
+      event.stopPropagation();
+      setMenuOpen(false);
+      void Promise.resolve()
+        .then(() => action())
+        .catch((error: unknown) => {
+          console.error('LibraryPanel action failed', error);
+          reportError(error);
+        });
+    };
   const hasMenu = Boolean(onDownload || onDelete || onShowInfo);
   return (
     <div
