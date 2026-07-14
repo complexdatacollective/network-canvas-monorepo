@@ -34,8 +34,8 @@ const VISUAL_STYLES = `
 `;
 
 /**
- * Shared pixel-capture pipeline used by both the legacy interview-test
- * fixture and the matrix fixture. Captures are CI-only (`enabled`).
+ * Shared pixel-capture pipeline used by both the interview-test fixture and
+ * the matrix fixture. Captures are CI-only (`enabled`).
  */
 export function createCaptureInterview(
   page: Page,

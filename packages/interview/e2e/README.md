@@ -122,18 +122,18 @@ test.describe('My protocol', () => {
 });
 ```
 
-`captureInitial()` / `captureFinal()` produce per-browser snapshots in
-`visual-snapshots/{chromium,firefox,webkit}/`. Snapshots are tolerant of
+`captureInitial()` / `captureFinal()` produce per-browser pixel snapshots for
+the matrix's `visual`-flagged scenarios in
+`visual-snapshots/{chromium,firefox,webkit}-matrix/`. Snapshots are tolerant of
 ≤250 pixel diffs (`maxDiffPixels` in `playwright.config.ts`) but font rendering
 is OS-sensitive — always regenerate baselines via `pnpm test:e2e:update-snapshots`
 (which runs in the Playwright Docker image), never locally.
 
 ## The configuration matrix
 
-Alongside the protocol-driven suites above, `e2e/matrix/` holds a
-configuration matrix that exercises **every interface and its configuration
-options**. Each option is verified functionally AND snapshotted, and the whole
-matrix runs fully parallel.
+`e2e/matrix/` holds a configuration matrix that exercises **every interface and
+its configuration options**. Each option is verified functionally AND
+snapshotted, and the whole matrix runs fully parallel.
 
 ### Two snapshot tiers
 
@@ -144,9 +144,9 @@ matrix runs fully parallel.
   takes an `initial` and a `final` aria snapshot around its interactions.
 - **Pixel snapshots** (a small `visual`-flagged subset, baselines in
   `visual-snapshots/{chromium,firefox,webkit}-matrix/`) guard the rendered
-  look of representative configurations. Pixels are OS-sensitive, so — like the
-  legacy suite — they are **only regenerated in Docker** via
-  `pnpm test:e2e:update-snapshots`, and captures are CI-only at runtime.
+  look of representative configurations. Pixels are OS-sensitive, so they are
+  **only regenerated in Docker** via `pnpm test:e2e:update-snapshots`, and
+  captures are CI-only at runtime.
 
   One webkit-only quirk: the matrix fixture disables `backdrop-filter` on
   webkit (see `fixtures/matrix-test.ts`) because Playwright's Linux WebKit
@@ -194,10 +194,9 @@ Keys handled by the cross-cutting suite are recorded in
 
 ### Projects
 
-`playwright.config.ts` defines nine projects: `{chromium,firefox,webkit}` ×
-`{legacy, matrix, visual}`. The legacy silos suite stays serial; matrix and
-visual run fully parallel. To keep the browser matrix affordable, the
-`firefox-matrix` / `webkit-matrix` projects run only the `@smoke` subset (one
+`playwright.config.ts` defines six projects: `{chromium,firefox,webkit}` ×
+`{matrix, visual}`, all fully parallel. To keep the browser matrix affordable,
+the `firefox-matrix` / `webkit-matrix` projects run only the `@smoke` subset (one
 scenario per interface) while `chromium-matrix` runs the full matrix. Worker
 count is `PW_WORKERS ?? '50%'` (CI pins `PW_WORKERS=4` — high parallelism lets
 the crypto-heavy Anonymisation scenarios contend and flake).
