@@ -134,7 +134,7 @@ describe('SiteNavigation', () => {
     expect(resourcesButton).toHaveAttribute('aria-current', 'page');
   });
 
-  it('lays out the five software destinations in a two-column grid', () => {
+  it('lays out modern apps above their Classic counterparts', () => {
     render(<SiteNavigation locale="en-US" site="website" />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Software' }));
@@ -144,8 +144,23 @@ describe('SiteNavigation', () => {
     const softwareGrid = architectClassicLink.closest('ul');
     if (!softwareGrid) throw new Error('Expected the software grid.');
 
-    expect(softwareGrid).toHaveClass('grid', 'grid-cols-2');
+    expect(softwareGrid).toHaveClass('grid', 'grid-cols-3');
     expect(within(softwareGrid).getAllByRole('listitem')).toHaveLength(5);
+    expect(
+      within(softwareGrid)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('aria-label')),
+    ).toEqual([
+      'Architect',
+      'Interviewer',
+      'Fresco',
+      'Architect Classic',
+      'Interviewer Classic',
+    ]);
+    expect(architectClassicLink).toHaveClass('p-5', 'hover:bg-mustard/10');
+    expect(
+      within(architectClassicLink).getByText('Architect Classic'),
+    ).toHaveClass('text-mustard');
   });
 
   it('exposes an active compact navigation group semantically', () => {

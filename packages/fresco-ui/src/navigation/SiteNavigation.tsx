@@ -119,17 +119,17 @@ const breakpointClasses = {
 
 const accentClasses: Record<SoftwareId, string> = {
   architect: 'text-sea-green',
-  architectClassic: 'text-sea-green',
+  architectClassic: 'text-mustard',
   interviewer: 'text-neon-coral',
-  interviewerClassic: 'text-neon-coral',
+  interviewerClassic: 'text-mustard',
   fresco: 'text-slate-blue',
 };
 
 const hoverAccentClasses: Record<SoftwareId, string> = {
   architect: 'hover:bg-sea-green/10 focus-visible:bg-sea-green/10',
-  architectClassic: 'hover:bg-sea-green/10 focus-visible:bg-sea-green/10',
+  architectClassic: 'hover:bg-mustard/10 focus-visible:bg-mustard/10',
   interviewer: 'hover:bg-neon-coral/10 focus-visible:bg-neon-coral/10',
-  interviewerClassic: 'hover:bg-neon-coral/10 focus-visible:bg-neon-coral/10',
+  interviewerClassic: 'hover:bg-mustard/10 focus-visible:bg-mustard/10',
   fresco: 'hover:bg-slate-blue/10 focus-visible:bg-slate-blue/10',
 };
 
@@ -284,7 +284,7 @@ function SoftwareCard({
   renderLink: (props: SiteNavigationLinkRenderProps) => ReactElement;
 }) {
   const className = cx(
-    'focusable block h-full w-80 rounded p-4 transition-colors',
+    'focusable block h-full w-[19rem] rounded p-5 transition-colors',
     hoverAccentClasses[link.id],
   );
   const content = (
@@ -376,7 +376,7 @@ function SoftwareMenu({
             />
           </NavigationMenu.Trigger>
           <NavigationMenu.Content className="transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
-            <ul className="grid grid-cols-2 gap-1 p-1">
+            <ul className="grid grid-cols-3 gap-1 p-1">
               {links.map((link) => (
                 <li key={link.id} className="flex">
                   <SoftwareCard link={link} renderLink={renderLink} />
@@ -523,10 +523,10 @@ export default function SiteNavigation({
   const softwareLinks: SoftwareLink[] = (
     [
       'architect',
-      'architectClassic',
       'interviewer',
-      'interviewerClassic',
       'fresco',
+      'architectClassic',
+      'interviewerClassic',
     ] as const
   ).map((id) => ({
     id,
