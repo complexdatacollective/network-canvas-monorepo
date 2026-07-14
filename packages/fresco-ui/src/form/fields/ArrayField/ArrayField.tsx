@@ -34,8 +34,11 @@ import type { CreateFormFieldProps } from '../../Field/types';
 import { getInputState } from '../../utils/getInputState';
 import {
   useArrayFieldItems,
+  type ArrayFieldOperation,
   type WithItemProperties,
 } from './useArrayFieldItems';
+
+export type { ArrayFieldOperation } from './useArrayFieldItems';
 
 // Stable empty array to prevent infinite re-renders when value is undefined
 const EMPTY_ARRAY: never[] = [];
@@ -75,6 +78,13 @@ const getItemAnimationProps = {
 export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
   item: Partial<WithItemProperties<T>>;
   index: number;
+  /**
+   * Position of this item in the last committed value, or undefined for a draft
+   * that is not yet part of it. Adapters that bind index-based field paths to a
+   * form store should prefer this over `index`, which tracks the live (possibly
+   * mid-reorder-preview) position and is meant for visuals and drag bounds.
+   */
+  committedIndex?: number;
   itemCount: number;
   isNewItem: boolean;
   /** Save and exit editing mode. Use for inline editing pattern. */
@@ -163,6 +173,13 @@ type ArrayFieldCustomProps<T extends Record<string, unknown>> = {
    * @default false
    */
   immediateAdd?: boolean;
+
+  /**
+   * Receive one semantic descriptor for each committed mutation. When this is
+   * provided, it replaces the value-level onChange callback so array-aware
+   * form stores can preserve index-based metadata.
+   */
+  onOperation?: (operation: ArrayFieldOperation<T>) => void;
 };
 
 export type ArrayFieldProps<T extends Record<string, unknown>> =
@@ -176,6 +193,7 @@ export type ArrayFieldDragHandleProps = {
   disabled?: boolean;
   label?: string;
   className?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 };
 
 /**
@@ -189,22 +207,45 @@ export function ArrayFieldDragHandle({
   disabled = false,
   label = `Reorder item ${index + 1} of ${itemCount}`,
   className,
+  size = 'sm',
 }: ArrayFieldDragHandleProps) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const refocusAfterMoveRef = useRef(false);
+
+  // Committing a keyboard reorder repositions this handle in the DOM, which
+  // blurs it in browsers and drops focus to <body>. Restore focus on the next
+  // frame (after the reposition settles) so repeated arrow presses keep working
+  // without tabbing back to the handle each step.
+  useEffect(() => {
+    if (!refocusAfterMoveRef.current) return undefined;
+    refocusAfterMoveRef.current = false;
+    const frame = requestAnimationFrame(() => buttonRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [index]);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
 
     event.preventDefault();
     event.stopPropagation();
-    onMove(index + (event.key === 'ArrowUp' ? -1 : 1));
+
+    const targetIndex = index + (event.key === 'ArrowUp' ? -1 : 1);
+    // Ignore presses that would run off either end: no move happens, so focus
+    // is never lost and no refocus should be scheduled.
+    if (targetIndex < 0 || targetIndex > itemCount - 1) return;
+
+    refocusAfterMoveRef.current = true;
+    onMove(targetIndex);
   };
 
   return (
     <IconButton
+      ref={buttonRef}
       icon={<GripVerticalIcon />}
       aria-label={label}
       aria-keyshortcuts="ArrowUp ArrowDown"
       title="Drag to reorder. Use the up and down arrow keys with the handle focused."
-      size="sm"
+      size={size}
       variant="text"
       color="dynamic"
       disabled={disabled}
@@ -222,6 +263,7 @@ export function ArrayFieldDragHandle({
 type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   item: WithItemProperties<T>;
   index: number;
+  committedIndex?: number;
   itemCount: number;
   isSortable: boolean;
   isBeingEdited: boolean;
@@ -233,6 +275,8 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   onDeleteItem: (internalId: string) => void;
   onEditItem: (internalId: string) => void;
   onMoveItem: (internalId: string, targetIndex: number) => void;
+  onDragStartItem: (internalId: string) => void;
+  onDragEndItem: () => void;
   ItemComponent: ComponentType<ArrayFieldItemProps<T>>;
   disabled: boolean;
   readOnly: boolean;
@@ -249,6 +293,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   {
     item,
     index,
+    committedIndex,
     itemCount,
     isSortable,
     isBeingEdited,
@@ -257,6 +302,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     onDeleteItem,
     onEditItem,
     onMoveItem,
+    onDragStartItem,
+    onDragEndItem,
     onCancel,
     onChange,
     onUpdateItem,
@@ -303,6 +350,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       value={item}
       dragListener={false}
       dragControls={dragControls}
+      onDragStart={() => onDragStartItem(item._internalId)}
+      onDragEnd={onDragEndItem}
       className={cx(itemVariants(), resolvedItemClasses)}
       custom={hasMounted}
       layout
@@ -316,6 +365,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       <ItemComponent
         item={item}
         index={index}
+        committedIndex={committedIndex}
         itemCount={itemCount}
         isSortable={isSortable}
         isBeingEdited={isBeingEdited}
@@ -344,6 +394,7 @@ const ArrayFieldItemWrapper = forwardRef(ArrayFieldItemWrapperInner) as <
 export default function ArrayField<T extends Record<string, unknown>>({
   value = EMPTY_ARRAY as T[],
   onChange,
+  onOperation,
   sortable = false,
   maxItems,
   getId,
@@ -374,8 +425,20 @@ export default function ArrayField<T extends Record<string, unknown>>({
   const { announce } = useAccessibilityAnnouncements();
   const isInteractionDisabled = (disabled ?? false) || (readOnly ?? false);
 
+  const handleCommittedChange = useCallback(
+    (nextValue: T[], operation: ArrayFieldOperation<T>) => {
+      if (onOperation) {
+        onOperation(operation);
+        return;
+      }
+      onChange?.(nextValue);
+    },
+    [onChange, onOperation],
+  );
+
   const {
     items,
+    committedIndexById,
     setItems,
     editingItem,
     isAddingNew,
@@ -387,7 +450,58 @@ export default function ArrayField<T extends Record<string, unknown>>({
     removeItem,
     updateItem,
     isDraft,
-  } = useArrayFieldItems(value, onChange, { getId });
+  } = useArrayFieldItems(value, handleCommittedChange, { getId });
+
+  const editingIndex = editingItem
+    ? items.findIndex((item) => item._internalId === editingItem._internalId)
+    : null;
+  const confirmedItemCount = items.filter((item) => !item._draft).length;
+
+  const latestItemsRef = useRef(items);
+  latestItemsRef.current = items;
+  const pointerDragRef = useRef<{
+    internalId: string;
+    from: number | null;
+  } | null>(null);
+
+  const startPointerDrag = useCallback(
+    (internalId: string) => {
+      if (isInteractionDisabled) return;
+      const itemIndex = items.findIndex(
+        (item) => item._internalId === internalId,
+      );
+      if (itemIndex === -1) return;
+      const item = items[itemIndex];
+      const from = item?._draft
+        ? null
+        : items.slice(0, itemIndex).filter((candidate) => !candidate._draft)
+            .length;
+      pointerDragRef.current = { internalId, from };
+      latestItemsRef.current = items;
+    },
+    [isInteractionDisabled, items],
+  );
+
+  const finishPointerDrag = useCallback(() => {
+    const drag = pointerDragRef.current;
+    pointerDragRef.current = null;
+    if (!drag || drag.from === null || isInteractionDisabled) return;
+
+    const previewItems = latestItemsRef.current;
+    const itemIndex = previewItems.findIndex(
+      (item) => item._internalId === drag.internalId,
+    );
+    if (itemIndex === -1) return;
+    const to = previewItems
+      .slice(0, itemIndex)
+      .filter((candidate) => !candidate._draft).length;
+    if (drag.from === to) return;
+
+    setItems(previewItems, { type: 'move', from: drag.from, to });
+    announce(
+      `Moved item ${drag.from + 1} to position ${to + 1} of ${previewItems.length}.`,
+    );
+  }, [announce, isInteractionDisabled, setItems]);
 
   const moveItem = useCallback(
     (internalId: string, targetIndex: number) => {
@@ -403,12 +517,50 @@ export default function ArrayField<T extends Record<string, unknown>>({
       const [movedItem] = reorderedItems.splice(currentIndex, 1);
       if (!movedItem) return;
       reorderedItems.splice(boundedIndex, 0, movedItem);
-      setItems(reorderedItems);
+
+      const confirmedBefore = items.filter((item) => !item._draft);
+      const confirmedAfter = reorderedItems.filter((item) => !item._draft);
+      const from = confirmedBefore.findIndex(
+        (item) => item._internalId === internalId,
+      );
+      const to = confirmedAfter.findIndex(
+        (item) => item._internalId === internalId,
+      );
+      if (from === -1 || from === to) {
+        setItems(reorderedItems);
+      } else {
+        setItems(reorderedItems, { type: 'move', from, to });
+      }
       announce(
         `Moved item ${currentIndex + 1} to position ${boundedIndex + 1} of ${items.length}.`,
       );
     },
     [announce, isInteractionDisabled, items, setItems],
+  );
+
+  const commitEditing = useCallback(
+    (data: T) => {
+      const wasAdding = editingItem?._draft === true;
+      const newItemPosition = wasAdding
+        ? items
+            .slice(0, editingIndex ?? items.length)
+            .filter((item) => !item._draft).length + 1
+        : null;
+      saveEditing(data);
+      if (newItemPosition !== null) {
+        announce(
+          `Added item at position ${newItemPosition} of ${confirmedItemCount + 1}.`,
+        );
+      }
+    },
+    [
+      announce,
+      confirmedItemCount,
+      editingIndex,
+      editingItem?._draft,
+      items,
+      saveEditing,
+    ],
   );
 
   // Handle delete with optional confirmation for non-draft items
@@ -422,16 +574,35 @@ export default function ArrayField<T extends Record<string, unknown>>({
         return;
       }
 
+      const index = items.findIndex((item) => item._internalId === internalId);
+      const position =
+        items.slice(0, index).filter((item) => !item._draft).length + 1;
+      const removeAndAnnounce = () => {
+        removeItem(internalId);
+        announce(
+          `Removed item ${position}. ${Math.max(0, confirmedItemCount - 1)} items remaining.`,
+        );
+      };
+
       if (confirmDelete) {
         await confirm({
           confirmLabel: 'Delete',
-          onConfirm: () => removeItem(internalId),
+          onConfirm: removeAndAnnounce,
         });
       } else {
-        removeItem(internalId);
+        removeAndAnnounce();
       }
     },
-    [confirmDelete, confirm, removeItem, isDraft, isInteractionDisabled],
+    [
+      announce,
+      confirm,
+      confirmedItemCount,
+      confirmDelete,
+      isDraft,
+      isInteractionDisabled,
+      items,
+      removeItem,
+    ],
   );
 
   // When using an external editor, filter out draft items from the list
@@ -442,10 +613,6 @@ export default function ArrayField<T extends Record<string, unknown>>({
   );
 
   const id = useId();
-  const editingIndex = editingItem
-    ? items.findIndex((item) => item._internalId === editingItem._internalId)
-    : null;
-  const confirmedItemCount = items.filter((item) => !item._draft).length;
   const isAtCapacity =
     maxItems !== undefined && confirmedItemCount >= Math.max(0, maxItems);
   const effectiveSortable = sortable && !isInteractionDisabled;
@@ -479,7 +646,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
           axis="y"
           values={items}
           onReorder={(reorderedItems) => {
-            if (effectiveSortable) setItems(reorderedItems);
+            if (!effectiveSortable) return;
+            latestItemsRef.current = reorderedItems;
+            setItems(reorderedItems);
           }}
           className={arrayFieldVariants({
             state: getInputState(inputStateProps),
@@ -508,12 +677,14 @@ export default function ArrayField<T extends Record<string, unknown>>({
               const index = items.findIndex(
                 (candidate) => candidate._internalId === item._internalId,
               );
+              const committedIndex = committedIndexById.get(item._internalId);
 
               return (
                 <ArrayFieldItemWrapper
                   key={item._internalId}
                   item={item}
                   index={index}
+                  committedIndex={committedIndex}
                   itemCount={items.length}
                   isSortable={effectiveSortable}
                   hasMounted={hasMountedRef.current}
@@ -524,8 +695,10 @@ export default function ArrayField<T extends Record<string, unknown>>({
                     isInteractionDisabled ? () => undefined : startEditing
                   }
                   onMoveItem={moveItem}
+                  onDragStartItem={startPointerDrag}
+                  onDragEndItem={finishPointerDrag}
                   onChange={
-                    isInteractionDisabled ? () => undefined : saveEditing
+                    isInteractionDisabled ? () => undefined : commitEditing
                   }
                   onUpdateItem={
                     isInteractionDisabled ? () => undefined : updateItem
@@ -546,11 +719,17 @@ export default function ArrayField<T extends Record<string, unknown>>({
           <MotionButton
             layout
             key="add-button"
-            onClick={() =>
-              immediateAdd
-                ? addItem(itemTemplate() as T)
-                : startAdding(itemTemplate() as T)
-            }
+            color="primary"
+            onClick={() => {
+              if (immediateAdd) {
+                addItem(itemTemplate() as T);
+                announce(
+                  `Added item at position ${confirmedItemCount + 1} of ${confirmedItemCount + 1}.`,
+                );
+                return;
+              }
+              startAdding(itemTemplate() as T);
+            }}
             icon={<PlusIcon />}
             disabled={isInteractionDisabled || (!immediateAdd && !!editingItem)}
           >
@@ -562,7 +741,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
             item={editingItem}
             index={editingIndex}
             isNewItem={isAddingNew}
-            onSave={isInteractionDisabled ? () => undefined : saveEditing}
+            onSave={isInteractionDisabled ? () => undefined : commitEditing}
             onCancel={cancelEditing}
           />
         )}

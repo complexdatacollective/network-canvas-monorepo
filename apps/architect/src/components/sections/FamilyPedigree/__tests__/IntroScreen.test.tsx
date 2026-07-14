@@ -74,7 +74,7 @@ vi.mock('~/components/IssueAnchor', () => ({
   default: () => null,
 }));
 
-vi.mock('~/components/Form/ValidatedField', () => ({
+vi.mock('~/components/Form/ValidatedFieldArray', () => ({
   default: ({
     name,
     component,
@@ -86,10 +86,6 @@ vi.mock('~/components/Form/ValidatedField', () => ({
     componentProps?: Record<string, unknown>;
     label?: string;
   }) => createElement(component, { ...componentProps, label, name }),
-}));
-
-vi.mock('~/components/Form/Fields/Text', () => ({
-  default: () => <div data-testid="text-field" />,
 }));
 
 let capturedArrayFieldProps: Record<string, unknown> | undefined;
@@ -127,6 +123,7 @@ const renderSection = () => {
       <IntroScreen
         form="edit-stage"
         stagePath={null}
+        stagePosition={0}
         interfaceType="FamilyPedigree"
       />
     </Provider>,

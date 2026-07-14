@@ -1,3 +1,5 @@
+import '@testing-library/jest-dom';
+
 // Setup file for vitest tests
 // Mock window.devicePixelRatio for canvas tests
 if (typeof window !== 'undefined') {

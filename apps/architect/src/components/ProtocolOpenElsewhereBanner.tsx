@@ -19,9 +19,9 @@ const ProtocolOpenElsewhereBanner = () => {
 
   return (
     <Alert
-      variant="warning"
+      variant="info"
       density="compact"
-      className="my-0 rounded-none! px-7 py-2.5 shadow-none!"
+      className="border-outline my-0 shrink-0 rounded-none! border-x-0 border-t-0 border-b px-7 py-2.5 shadow-none!"
     >
       <AlertDescription className="flex items-center justify-between gap-5 text-sm">
         <span>
@@ -29,7 +29,12 @@ const ProtocolOpenElsewhereBanner = () => {
           edits, changes here won&apos;t be saved. Continue editing in the other
           tab, or return to the start screen.
         </span>
-        <Button size="sm" color="primary" onClick={() => setLocation('/')}>
+        <Button
+          size="sm"
+          color="info"
+          className="bg-info-contrast text-info"
+          onClick={() => setLocation('/')}
+        >
           Return to start screen
         </Button>
       </AlertDescription>

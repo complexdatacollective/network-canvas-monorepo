@@ -1,7 +1,9 @@
 import { get } from 'es-toolkit/compat';
 import { useId } from 'react';
+import type { WrappedFieldMetaProps } from 'redux-form';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
+import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
@@ -10,6 +12,7 @@ import StageTypeImage from '~/components/StageTypeImage';
 import { cx } from '~/utils/cva';
 
 import { useFormContext } from '../Editor';
+import { getReduxFieldErrorState } from '../Form/reduxFieldMeta';
 import ValidatedField from '../Form/ValidatedField';
 import IssueAnchor from '../IssueAnchor';
 import { useAutoStageName } from './autoStageName/useAutoStageName';
@@ -22,26 +25,30 @@ type HeadingInputProps = {
     onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
     onFocus?: (event: React.FocusEvent<HTMLInputElement>) => void;
   };
-  meta?: {
-    error?: string;
-    invalid?: boolean;
-    touched?: boolean;
-  };
+  meta?: Partial<WrappedFieldMetaProps>;
   placeholder?: string;
   maxLength?: number;
   autoFocus?: boolean;
   onFieldBlur?: () => void;
+  required?: boolean;
+  disabled?: boolean;
+  readOnly?: boolean;
 };
-const HeadingInput = ({
+export const HeadingInput = ({
   input = {},
   meta = {},
   placeholder,
   maxLength,
   autoFocus,
   onFieldBlur,
+  required = false,
+  disabled = false,
+  readOnly = false,
 }: HeadingInputProps) => {
   const errorId = useId();
-  const hasError = !!(meta.invalid && meta.touched && meta.error);
+  const { errors, showErrors } = getReduxFieldErrorState(
+    meta as WrappedFieldMetaProps,
+  );
   const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
     input.onBlur?.(event);
     onFieldBlur?.();
@@ -56,20 +63,25 @@ const HeadingInput = ({
         maxLength={maxLength}
         // biome-ignore lint/a11y/noAutofocus: stage name is the primary action in this hero
         autoFocus={autoFocus}
+        required={required}
+        disabled={disabled}
+        readOnly={readOnly}
         aria-label="Stage name"
-        aria-invalid={hasError}
-        aria-describedby={hasError ? errorId : undefined}
+        aria-required={required}
+        aria-invalid={showErrors}
+        aria-describedby={errorId}
         className={cx(
           headingVariants({ level: 'h1', margin: 'none' }),
-          'w-full border-none bg-transparent p-0 outline-none placeholder:opacity-40',
-          hasError && 'text-destructive',
+          'focusable w-full border-none bg-transparent p-0 outline-none placeholder:opacity-40',
+          showErrors && 'text-destructive',
         )}
       />
-      {hasError && (
-        <div id={errorId} className="text-destructive mt-1 text-sm">
-          {meta.error}
-        </div>
-      )}
+      <FieldErrors
+        id={errorId}
+        name={input.name}
+        errors={errors}
+        show={showErrors}
+      />
     </>
   );
 };
@@ -83,8 +95,8 @@ const StageHeading = ({
   totalStages,
   isNewStage,
 }: StageHeadingProps) => {
-  const { values } = useFormContext();
-  const type = get(values, 'type') as string | undefined;
+  const { initialValues } = useFormContext();
+  const type = get(initialValues, 'type') as string | undefined;
   const { onLabelBlur } = useAutoStageName(isNewStage);
   if (!type) {
     return null;

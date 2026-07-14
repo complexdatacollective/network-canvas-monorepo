@@ -1,15 +1,22 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+
 export function MailingListForm() {
+  const t = useTranslations('MailingList');
   const [submitted, setSubmitted] = useState(false);
 
   if (submitted) {
     return (
-      <p className="text-sea-green mt-6 font-bold">
-        Thanks! We&apos;ll be in touch.
-      </p>
+      <output aria-live="polite" className="mt-6 block">
+        <Paragraph margin="none" className="text-sea-green font-bold">
+          {t('success')}
+        </Paragraph>
+      </output>
     );
   }
 
@@ -24,16 +31,16 @@ export function MailingListForm() {
       <input
         type="email"
         required
-        placeholder="email@networkcanvas.com"
-        aria-label="Email address"
+        placeholder={t('placeholder')}
+        aria-label={t('emailLabel')}
         className="focusable bg-platinum text-cyber-grape placeholder:text-cyber-grape/40 phone-landscape:max-w-xs w-full rounded-2xl px-4 py-3 text-base"
       />
-      <button
+      <Button
         type="submit"
-        className="focusable bg-cyber-grape font-heading elevation-low shrink-0 rounded-2xl px-6 py-3 text-sm font-bold tracking-wide text-white uppercase transition-transform hover:-translate-y-0.5"
+        className="bg-cyber-grape shrink-0 rounded-2xl border-transparent px-6 py-3 text-sm text-white uppercase transition-transform hover:-translate-y-0.5"
       >
-        Join List
-      </button>
+        {t('submit')}
+      </Button>
     </form>
   );
 }

@@ -1,7 +1,7 @@
 import { has } from 'es-toolkit/compat';
 import { type ReactNode, useCallback, useMemo } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
+import { buttonVariants } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ExternalLink from '~/components/ExternalLink';
@@ -11,8 +11,9 @@ import {
   importAssetAsync,
   type ImportAssetErrorInfo,
 } from '~/ducks/modules/protocol/assetManifest';
+import { documentationLinks } from '~/utils/documentationLinks';
 
-import Dropzone from './Dropzone';
+import Dropzone from './Dropzone/Dropzone';
 type AutoFileDropProps = {
   type?: string;
   onDrop: (ids: string[]) => void;
@@ -45,7 +46,7 @@ const documentationMessage = (
   <>
     <Paragraph>
       Please see our{' '}
-      <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/resources/#supported-file-types">
+      <ExternalLink href={documentationLinks.supportedResourceTypes}>
         documentation page
       </ExternalLink>{' '}
       on using external data by clicking the button below.
@@ -59,8 +60,12 @@ const documentationMessage = (
       &nbsp;with further details.
     </Paragraph>
     <Paragraph>
-      <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/resources/#supported-file-types">
-        <Button>View documentation</Button>
+      <ExternalLink
+        href={documentationLinks.supportedResourceTypes}
+        className={buttonVariants()}
+        unstyled
+      >
+        View documentation
       </ExternalLink>
     </Paragraph>
   </>

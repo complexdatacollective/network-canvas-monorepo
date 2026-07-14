@@ -324,7 +324,10 @@ export const makeGetNodeById = createSelector(
   },
 );
 
-export const getNodeTypeDefinition = createSelector(
+export const getNodeTypeDefinition: (
+  state: RootState,
+  currentStep: number,
+) => NodeDefinition | null = createSelector(
   getCodebook,
   getStageSubject,
   (codebook, subject) => {

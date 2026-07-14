@@ -1846,7 +1846,7 @@ test.describe('SILOS Protocol', () => {
    * sex assigned at birth, which triggers the ineligibility flow:
    * - Stage 4: Sex confirmation ("Is this correct?")
    * - Stage 5: Ineligibility notice
-   * - Skip to interview end
+   * - Use the first post-ineligibility stage's targeted destination to finish
    */
   test.describe('Female Ineligibility Path', () => {
     test.describe.configure({ mode: 'serial' });

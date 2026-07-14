@@ -16,7 +16,7 @@ import {
   type HTMLAttributes,
 } from 'react';
 
-import { cn } from '~/lib/utils';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 const Sheet = Root;
 
@@ -27,7 +27,7 @@ const SheetOverlay = forwardRef<
   ComponentPropsWithoutRef<typeof Overlay>
 >(({ className, ...props }, ref) => (
   <Overlay
-    className={cn(
+    className={cx(
       'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-40 bg-black/5 backdrop-blur-lg',
       className,
     )}
@@ -45,9 +45,9 @@ const sheetVariants = cva(
         top: 'data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top inset-x-0 top-0 border-b',
         bottom:
           'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 border-t',
-        left: 'data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left left-0 h-full w-3/4 border-r sm:max-w-sm',
+        left: 'data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left phone-landscape:max-w-sm left-0 h-full w-3/4 border-r',
         right:
-          'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm',
+          'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right phone-landscape:max-w-sm inset-y-0 right-0 h-full w-3/4 border-l',
       },
     },
     defaultVariants: {
@@ -68,7 +68,7 @@ const SheetContent = forwardRef<
     <SheetOverlay />
     <Content
       ref={ref}
-      className={cn(sheetVariants({ side }), className)}
+      className={cx(sheetVariants({ side }), className)}
       {...props}
     >
       {children}
@@ -82,8 +82,8 @@ const SheetHeader = ({
   ...props
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn(
-      'flex flex-col space-y-2 text-center sm:text-left',
+    className={cx(
+      'phone-landscape:text-left flex flex-col space-y-2 text-center',
       className,
     )}
     {...props}
@@ -96,8 +96,8 @@ const SheetFooter = ({
   ...props
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn(
-      'flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2',
+    className={cx(
+      'phone-landscape:flex-row phone-landscape:justify-end phone-landscape:space-x-2 flex flex-col-reverse',
       className,
     )}
     {...props}
@@ -111,7 +111,7 @@ const SheetTitle = forwardRef<
 >(({ className, ...props }, ref) => (
   <Title
     ref={ref}
-    className={cn('text-foreground text-lg font-semibold', className)}
+    className={cx('text-text text-lg font-semibold', className)}
     {...props}
   />
 ));
@@ -123,10 +123,10 @@ const SheetDescription = forwardRef<
 >(({ className, ...props }, ref) => (
   <Description
     ref={ref}
-    className={cn('text-muted-foreground text-sm', className)}
+    className={cx('text-sm text-current/70', className)}
     {...props}
   />
 ));
 SheetDescription.displayName = Description.displayName;
 
-export { Sheet, SheetContent };
+export { Sheet, SheetContent, SheetDescription, SheetTitle };

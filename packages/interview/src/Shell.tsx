@@ -52,23 +52,30 @@ const variants = {
  */
 export type NavigationOrientation = 'horizontal' | 'vertical';
 
+type NavigationClassnames = {
+  [Orientation in NavigationOrientation]?: string;
+};
+
 function Interview({
   onExit,
   hideNavigation = false,
   navigationOrientation: orientationProp,
   navigationClassnames,
   allowStageNavigation,
+  initialStageOverrideIndex,
 }: {
   onExit?: () => void;
   hideNavigation?: boolean;
   navigationOrientation?: NavigationOrientation;
-  navigationClassnames?: Partial<Record<NavigationOrientation, string>>;
+  navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
+  initialStageOverrideIndex?: number;
 }) {
   const {
     stage,
     displayedStep,
     showStage,
+    canRenderStage,
     CurrentInterface,
     registerBeforeNext,
     getNavigationHelpers,
@@ -80,11 +87,12 @@ function Interview({
     disableMoveBackward,
     pulseNext,
     progress,
-  } = useInterviewNavigation();
+  } = useInterviewNavigation(initialStageOverrideIndex);
 
   useStageNavigationAnalytics({
     stage_index: displayedStep,
     stage_type: stage?.type,
+    enabled: canRenderStage,
   });
 
   const forwardButtonRef = useRef<HTMLButtonElement>(null);
@@ -146,11 +154,13 @@ function Interview({
                       id="stage"
                       key={stage.id}
                     >
-                      <GeospatialOfflineIndicator
-                        active={stage.type === 'Geospatial'}
-                      />
+                      {canRenderStage && (
+                        <GeospatialOfflineIndicator
+                          active={stage.type === 'Geospatial'}
+                        />
+                      )}
                       <StageErrorBoundary>
-                        {CurrentInterface && (
+                        {canRenderStage && CurrentInterface && (
                           <CurrentInterface
                             key={stage.id}
                             stage={stage}
@@ -231,8 +241,14 @@ type ShellProps = {
    * omitted, the orientation responds to the aspect ratio automatically.
    */
   navigationOrientation?: NavigationOrientation;
-  navigationClassnames?: Partial<Record<NavigationOrientation, string>>;
+  navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
+  /**
+   * Allow this unavailable stage to render on the initial visit only. The
+   * override is cleared as soon as stage navigation occurs. Architect preview
+   * uses this to show the stage being edited without removing its skip logic.
+   */
+  initialStageOverrideIndex?: number;
 };
 
 const Shell = ({
@@ -251,6 +267,7 @@ const Shell = ({
   navigationOrientation,
   navigationClassnames,
   allowStageNavigation,
+  initialStageOverrideIndex,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
   // (the sync middleware closes over it once at store creation). Hosts
@@ -332,6 +349,7 @@ const Shell = ({
                 allowStageNavigation &&
                 (currentStep === undefined || onStepChange !== undefined)
               }
+              initialStageOverrideIndex={initialStageOverrideIndex}
             />
           </CurrentStepProvider>
         </ContractProvider>

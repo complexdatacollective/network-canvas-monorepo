@@ -1,11 +1,10 @@
-import type { ComponentType } from 'react';
-
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ExternalLink from '~/components/ExternalLink';
-import { Markdown } from '~/components/Form/Fields';
+import Markdown from '~/components/Markdown';
 import type { ProtocolOpenResult } from '~/ducks/modules/userActions/userActions';
+import { documentationLinks } from '~/utils/documentationLinks';
 type ShowProtocolOpenResultDialogArgs = {
   result: ProtocolOpenResult | undefined;
   openDialog: DialogContextType['openDialog'];
@@ -48,12 +47,7 @@ export const showProtocolOpenResultDialog = async ({
                     <Heading level="h4">
                       Migrating to schema Version {version} will:
                     </Heading>
-                    <Markdown
-                      label={notes}
-                      markdownRenderers={{
-                        a: ExternalLink as ComponentType<unknown>,
-                      }}
-                    />
+                    <Markdown label={notes} />
                   </div>
                 ))}
               </div>
@@ -64,7 +58,7 @@ export const showProtocolOpenResultDialog = async ({
             created and then opened. Your original protocol will not be changed,
             and can still be opened and modified using an older version of
             Architect. Please see our{' '}
-            <ExternalLink href="https://documentation.networkcanvas.com/advanced-topics/protocol-schema-information/">
+            <ExternalLink href={documentationLinks.protocolSchema}>
               documentation on protocol schemas
             </ExternalLink>{' '}
             for more information on this topic.
@@ -98,7 +92,7 @@ export const showProtocolOpenResultDialog = async ({
           </Paragraph>
           <Paragraph>
             Please see our{' '}
-            <ExternalLink href="https://documentation.networkcanvas.com/reference/protocol-schema-information/">
+            <ExternalLink href={documentationLinks.protocolSchema}>
               documentation on protocol schemas
             </ExternalLink>{' '}
             to locate an appropriate version, and for further information on

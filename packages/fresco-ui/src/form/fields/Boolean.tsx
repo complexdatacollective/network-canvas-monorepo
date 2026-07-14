@@ -3,6 +3,7 @@
 import { motion } from 'motion/react';
 import { useCallback, useRef } from 'react';
 
+import Button from '../../Button';
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlVariants,
@@ -192,10 +193,13 @@ export default function BooleanField(props: BooleanFieldProps) {
       <fieldset
         id={id}
         {...rest}
+        role="radiogroup"
         className="flex w-full flex-col items-stretch gap-2 border-0 p-0 *:flex-1 @xs:flex-row"
         disabled={disabled}
         aria-label={label ?? rest['aria-label']}
+        aria-labelledby={rest['aria-labelledby']}
         aria-invalid={rest['aria-invalid'] ?? undefined}
+        aria-readonly={readOnly || undefined}
         data-readonly={readOnly ? 'true' : undefined}
       >
         {label && <legend className="sr-only">{label}</legend>}
@@ -248,14 +252,14 @@ export default function BooleanField(props: BooleanFieldProps) {
         })}
       </fieldset>
       {!noReset && value !== undefined && (
-        <button
-          type="button"
-          className="text-sm text-current/60 underline hover:text-current/80"
+        <Button
+          variant="link"
+          size="sm"
           onClick={() => onChange?.(undefined)}
-          disabled={disabled ?? readOnly}
+          disabled={Boolean(disabled) || Boolean(readOnly)}
         >
           Reset answer
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -1,0 +1,51 @@
+'use client';
+
+import { useReducedMotion } from 'motion/react';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+
+import { usePageBackgroundTargetRef } from '@codaco/art';
+
+const mediaClasses = 'absolute inset-0 size-full object-cover';
+
+export function HeroVideo() {
+  const shouldReduceMotion = useReducedMotion();
+  const backgroundTargetRef = usePageBackgroundTargetRef();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  return (
+    <div
+      ref={backgroundTargetRef}
+      aria-hidden="true"
+      className="bg-cyber-grape relative aspect-4/3 w-full overflow-hidden rounded-[1.75rem] shadow-2xl"
+    >
+      {hasMounted && shouldReduceMotion === false ? (
+        <video
+          aria-hidden="true"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          poster="/images/hero-video-poster.jpg"
+          className={mediaClasses}
+        >
+          <source src="/videos/hero-video.mp4" type="video/mp4" />
+        </video>
+      ) : (
+        <Image
+          fill
+          priority
+          src="/images/hero-video-poster.jpg"
+          alt=""
+          sizes="(min-width: 1024px) 55vw, 100vw"
+          className={mediaClasses}
+        />
+      )}
+    </div>
+  );
+}

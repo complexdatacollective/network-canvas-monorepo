@@ -22,7 +22,7 @@ const InterfaceThumbnail = ({
   setHighlighted,
   removeHighlighted,
 }: InterfaceThumbnailProps) => {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLButtonElement>(null);
   const meta = useMemo(
     () => find(INTERFACE_TYPES, ['type', interfaceType]),
     [interfaceType],
@@ -38,7 +38,7 @@ const InterfaceThumbnail = ({
   }
 
   const handleSelect = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       e.stopPropagation();
 
@@ -55,12 +55,15 @@ const InterfaceThumbnail = ({
   }, [highlighted]);
 
   return (
-    <motion.div
+    <motion.button
+      type="button"
       ref={ref}
-      className={`border-outline flex-1 cursor-pointer border-b-2 py-4 ${highlighted ? 'bg-action' : ''}`}
+      className={`border-outline focusable w-full flex-1 cursor-pointer border-x-0 border-t-0 border-b-2 py-4 text-left ${highlighted ? 'bg-action' : 'bg-transparent'}`}
       onClick={handleSelect}
       onMouseEnter={setHighlighted}
       onMouseLeave={removeHighlighted}
+      onFocus={setHighlighted}
+      onBlur={removeHighlighted}
     >
       <div className="mx-6 flex items-center gap-10">
         <div className="shrink-0">
@@ -92,7 +95,7 @@ const InterfaceThumbnail = ({
           </div>
         </div>
       </div>
-    </motion.div>
+    </motion.button>
   );
 };
 

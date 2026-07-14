@@ -5,7 +5,7 @@ import { Section } from '~/components/EditorLayout';
 import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
 import withSubject from '~/components/enhancers/withSubject';
 import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import { itemSelector } from '~/components/sections/CategoricalBinPrompts/helpers';
 import withPromptChangeHandler from '~/components/sections/CategoricalBinPrompts/withPromptChangeHandler';
 import { PromptPreview } from '~/components/sections/NameGeneratorPrompts';
@@ -42,7 +42,7 @@ const OrdinalBinPrompts = ({
     }
     title="Prompts"
   >
-    <ValidatedField
+    <ValidatedFieldArray
       name="prompts"
       label="Prompts"
       component={DialogArrayField}

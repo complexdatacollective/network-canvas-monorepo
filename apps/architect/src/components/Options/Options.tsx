@@ -1,4 +1,4 @@
-import { Field } from 'redux-form';
+import { FieldArray } from 'redux-form';
 
 import type { VariableOptions } from '@codaco/protocol-validation';
 import FrescoReduxArrayField from '~/components/Form/FrescoReduxArrayField';
@@ -18,19 +18,20 @@ type OptionsProps = {
 };
 
 const Options = ({ name, label = '' }: OptionsProps) => (
-  <Field
+  <FieldArray
     name={name}
     component={FrescoReduxArrayField}
     label={label}
     itemComponent={Option}
     itemTemplate={() => ({})}
-    itemClasses="p-0! shadow-none"
+    itemClasses="bg-surface-3 text-surface-3-contrast p-0! shadow-none"
     addButtonLabel="Add new"
     emptyStateMessage="No options have been added yet."
     immediateAdd
     sortable
     confirmDelete={false}
     validate={minTwoOptions}
+    rerenderOnEveryChange
   />
 );
 

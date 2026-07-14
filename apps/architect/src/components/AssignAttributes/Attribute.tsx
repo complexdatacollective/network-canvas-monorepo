@@ -68,7 +68,7 @@ const Attribute = ({
   );
 
   return (
-    <div className="[&_.form-field]:bg-surface-2 my-5 flex rounded p-5 [&_.form-field]:mb-0">
+    <div className="my-5 flex rounded p-5">
       <div className="flex shrink-0 grow basis-auto flex-col">
         <div className="shrink-0 grow basis-auto">
           <ValidatedField
@@ -108,11 +108,11 @@ const Attribute = ({
       <IconButton
         icon={<Trash2 />}
         aria-label="Delete attribute"
-        size="sm"
+        size="md"
         variant="text"
         color="destructive"
         disabled={disabled || readOnly}
-        className="ml-5 self-center"
+        className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast ml-5 self-center text-current"
         onClick={onDelete}
       />
     </div>

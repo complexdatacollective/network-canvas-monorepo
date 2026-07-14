@@ -1,13 +1,14 @@
 import { get } from 'es-toolkit/compat';
 import Fuse from 'fuse.js';
+import { Search, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
-import Button from '@codaco/fresco-ui/Button';
+import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Search from '~/components/Form/Fields/Search';
 import Tag from '~/components/Tag';
 import type { RootState } from '~/ducks/modules/root';
 import { getExperiments, getTimelineLocus } from '~/selectors/protocol';
@@ -134,17 +135,9 @@ const NewStageScreen = ({
     }
   }, [mouseMoved]);
 
-  const handleUpdateQuery = useCallback(
-    (eventOrValue: React.ChangeEvent<HTMLInputElement> | string) => {
-      const newQuery = get(
-        eventOrValue,
-        ['target', 'value'],
-        eventOrValue,
-      ) as string;
-      setQuery(newQuery);
-    },
-    [],
-  );
+  const handleUpdateQuery = useCallback((value: string | undefined) => {
+    setQuery(value ?? '');
+  }, []);
 
   const handleSelectInterface = useCallback(
     (interfaceType: string) => {
@@ -256,14 +249,28 @@ const NewStageScreen = ({
       header={
         <div className="flex flex-col gap-4">
           <div className="w-full">
-            <Search
+            <InputField
+              type="search"
+              aria-label="Search interfaces"
               placeholder="Search interfaces by name or keyword..."
-              input={{
-                value: query,
-                onChange: handleUpdateQuery,
-                onKeyDown: handleKeyDown,
-              }}
+              value={query}
+              onChange={handleUpdateQuery}
+              onKeyDown={handleKeyDown}
               autoFocus
+              prefixComponent={<Search aria-hidden />}
+              suffixComponent={
+                hasQuery ? (
+                  <IconButton
+                    aria-label="Clear search"
+                    title="Clear search"
+                    size="sm"
+                    variant="text"
+                    color="dynamic"
+                    onClick={() => setQuery('')}
+                    icon={<X aria-hidden />}
+                  />
+                ) : null
+              }
             />
           </div>
           <div className="flex items-center gap-4">
@@ -274,7 +281,11 @@ const NewStageScreen = ({
             >
               Filter by capabilities:
             </Heading>
-            <div className="flex flex-wrap gap-1">
+            <div
+              className="flex flex-wrap gap-1"
+              role="group"
+              aria-label="Interface capability filters"
+            >
               {tags.map(({ value, selected, disabled }) => (
                 <Tag
                   key={value}

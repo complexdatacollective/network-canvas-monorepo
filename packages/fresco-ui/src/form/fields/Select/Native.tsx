@@ -1,5 +1,3 @@
-import { isEmpty } from 'es-toolkit/compat';
-
 import { nativeSelectVariants } from '../../../styles/controlVariants';
 import { cx, type VariantProps } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
@@ -35,10 +33,23 @@ export default function SelectField(props: SelectProps) {
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = event.target.value;
-    onChange?.(selectedValue);
+    const selectedOption = options.find(
+      (option) => String(option.value) === selectedValue,
+    );
+    onChange?.(selectedOption?.value ?? selectedValue);
   };
 
-  const hasValue = !isEmpty(value);
+  const valueMatchesOption = options.some(
+    (option) => String(option.value) === String(normalizedValue),
+  );
+
+  // Fall back to the placeholder when the value matches no option, so a stale
+  // value can't leave the browser showing the first option as if selected.
+  const displayValue = valueMatchesOption ? normalizedValue : '';
+  const hasValue = displayValue !== '';
+  const placeholderLabel = placeholder ?? 'Select an option…';
+  const showPlaceholderOption =
+    placeholder !== undefined || !valueMatchesOption;
 
   return (
     <div
@@ -52,8 +63,9 @@ export default function SelectField(props: SelectProps) {
         autoComplete="off"
         {...rest}
         name={name}
-        value={normalizedValue}
-        disabled={disabled ?? readOnly}
+        value={displayValue}
+        disabled={Boolean(disabled) || Boolean(readOnly)}
+        aria-readonly={readOnly || rest['aria-readonly'] || undefined}
         onChange={handleChange}
         className={cx(
           'w-full',
@@ -61,9 +73,13 @@ export default function SelectField(props: SelectProps) {
           !hasValue && 'text-current/50 italic',
         )}
       >
-        {placeholder && <option value="">{placeholder}</option>}
+        {showPlaceholderOption && <option value="">{placeholderLabel}</option>}
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option
+            key={option.value}
+            value={option.value}
+            disabled={option.disabled}
+          >
             {option.label}
           </option>
         ))}

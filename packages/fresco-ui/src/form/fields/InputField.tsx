@@ -27,7 +27,12 @@ import { getInputState } from '../utils/getInputState';
  */
 type InputFieldSlot = ReactNode | ((field: FieldSlotController) => ReactNode);
 
-const inputWrapperVariants = compose(
+/**
+ * The complete InputField container treatment, exposed for controls that must
+ * retain different semantics while presenting as a field (for example, a
+ * search-dialog trigger).
+ */
+export const inputFieldControlVariants = compose(
   heightVariants,
   textSizeVariants,
   controlVariants,
@@ -102,7 +107,9 @@ const inputVariants = compose(
 );
 
 const stepperButtonVariants = cx(
-  'aspect-square h-full! rounded-none',
+  // Steppers keep their square footprint; they must never compress when the
+  // field is constrained narrow (the middle input shrinks instead).
+  'aspect-square h-full! shrink-0 rounded-none',
   'elevation-none! translate-y-0!',
   'bg-input-contrast/5 text-input-contrast',
   'hover:bg-input-contrast/10',
@@ -181,7 +188,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
     );
 
     const wrapperClassName = cx(
-      inputWrapperVariants({ size, state: getInputState(props) }),
+      inputFieldControlVariants({ size, state: getInputState(props) }),
       isNumber && 'gap-0! px-0!',
       className,
     );
@@ -237,9 +244,13 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         />
         <div
           className={cx(
-            'flex min-w-0 grow items-center',
+            'flex min-w-0 grow items-center justify-center',
             inlineSpacingVariants(),
-            wrapperPaddingVariants(),
+            // The steppers already frame the value, so the middle needs only
+            // modest padding. The full `wrapperPaddingVariants` (px-6) would
+            // consume the entire middle slot on a narrow field (e.g. w-28),
+            // collapsing the input to zero width and hiding the value.
+            size === 'sm' ? 'px-2.5' : 'px-4',
           )}
         >
           {inputContent}

@@ -8,3 +8,8 @@ export const SILOS_PROTOCOL_PATH = path.resolve(
   import.meta.dirname,
   '../../../protocols/e2e/silos/silos_chicago-2026-06-02_17-31.netcanvas',
 );
+
+export const TARGETED_SKIP_CONSENT_PROTOCOL_PATH = path.resolve(
+  import.meta.dirname,
+  '../protocols/targeted-skip-consent.json',
+);

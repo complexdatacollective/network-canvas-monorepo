@@ -1,0 +1,97 @@
+{
+  "name": "E2E Fixture",
+  "description": "Lean fixture for the Interviewer app e2e suite.",
+  "schemaVersion": 8,
+  "lastModified": "2026-07-12T00:00:00.000Z",
+  "codebook": {
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "shape": { "default": "circle" },
+        "variables": {
+          "name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": { "required": true }
+          },
+          "close": {
+            "name": "close",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No", "value": false }
+            ]
+          },
+          "layout": { "name": "layout", "type": "layout" }
+        }
+      }
+    },
+    "edge": {
+      "knows": { "name": "Knows", "color": "edge-color-seq-1" }
+    },
+    "ego": {
+      "variables": {
+        "ego_name": {
+          "name": "ego_name",
+          "type": "text",
+          "component": "Text",
+          "validation": { "required": true }
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "stage-info",
+      "type": "Information",
+      "label": "Welcome",
+      "title": "Welcome",
+      "items": [
+        {
+          "id": "item-1",
+          "type": "text",
+          "content": "# Welcome\n\nThanks for taking part."
+        }
+      ]
+    },
+    {
+      "id": "stage-ego",
+      "type": "EgoForm",
+      "label": "About you",
+      "introductionPanel": {
+        "title": "Introduction",
+        "text": "Tell us about **you**."
+      },
+      "form": {
+        "fields": [{ "variable": "ego_name", "prompt": "What is your name?" }]
+      }
+    },
+    {
+      "id": "stage-ng",
+      "type": "NameGeneratorQuickAdd",
+      "label": "Name people",
+      "subject": { "entity": "node", "type": "person" },
+      "quickAdd": "name",
+      "behaviours": { "minNodes": 1, "maxNodes": 8 },
+      "prompts": [{ "id": "p1", "text": "Who are the people you know?" }]
+    },
+    {
+      "id": "stage-socio",
+      "type": "Sociogram",
+      "label": "Connect people",
+      "subject": { "entity": "node", "type": "person" },
+      "background": { "concentricCircles": 4, "skewedTowardCenter": true },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Drag to place; link people who know each other.",
+          "layout": { "layoutVariable": "layout" },
+          "edges": { "create": "knows", "display": ["knows"] }
+        }
+      ]
+    }
+  ]
+}

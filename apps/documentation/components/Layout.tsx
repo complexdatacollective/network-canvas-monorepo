@@ -1,67 +1,88 @@
 'use client';
 
-import { motion } from 'motion/react';
 import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
-import { BackgroundBlobs } from '@codaco/art';
+import { PageBackground } from '@codaco/art';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { Sidebar } from '~/components/Sidebar';
-import { cn } from '~/lib/utils';
+import WorkflowNav from '~/components/WorkflowNav';
 
+import DocumentationFooter from './DocumentationFooter';
 import SharedNav from './SharedNav/SharedNav';
 
 export function LayoutComponent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const locale = useLocale();
+  const workflowNavSentinelRef = useRef<HTMLDivElement>(null);
+  const [isWorkflowNavStuck, setIsWorkflowNavStuck] = useState(false);
 
   // Check if we are on the home page by comparing the pathname to our supported locals
   const isHomePage = pathname === `/${locale}`;
 
-  return (
-    <>
-      <SharedNav />
-      <motion.div
-        className="fixed inset-0 z-[-1]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isHomePage ? 0.15 : 0.05 }}
-        transition={{
-          duration: isHomePage ? 2 : 0,
-        }}
-      >
-        <BackgroundBlobs
-          large={0}
-          medium={3}
-          small={3}
-          // speedFactor={20}
-          // filter={isHomePage ? '' : 'blur(10rem)'}
-          compositeOperation="screen"
-          // compositeOperation="lighten"
-        />
-      </motion.div>
-      <main className={cn('mt-4 flex h-full w-full flex-auto justify-center')}>
-        {!isHomePage && (
-          <Sidebar className="mx-4 hidden max-w-80 lg:sticky lg:top-2 lg:flex lg:max-h-[calc(100dvh-1rem)]" />
-        )}
+  useEffect(() => {
+    const sentinel = workflowNavSentinelRef.current;
+    if (!sentinel) {
+      setIsWorkflowNavStuck(false);
+      return undefined;
+    }
 
-        {children}
-      </main>
-      <footer>
-        <div className="mt-10 flex flex-col items-center gap-2 py-4 text-sm sm:flex-row sm:justify-center">
-          <span>© {new Date().getFullYear()} Complex Data Collective</span>
-          <span className="hidden sm:inline">|</span>
-          <span>
-            This site is powered by{' '}
-            <a
-              href="https://www.netlify.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-accent underline"
-            >
-              Netlify
-            </a>
-          </span>
-        </div>
-      </footer>
-    </>
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        setIsWorkflowNavStuck(
+          entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0),
+        );
+      },
+      { threshold: 1 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isHomePage]);
+
+  return (
+    <div className="relative isolate flex min-h-dvh w-full flex-auto flex-col">
+      <PageBackground />
+      <div className="relative z-10 flex min-h-dvh w-full flex-auto flex-col">
+        <SharedNav />
+        {!isHomePage && (
+          <>
+            <div
+              ref={workflowNavSentinelRef}
+              aria-hidden="true"
+              className="-mb-px h-px"
+            />
+            <WorkflowNav
+              variant="collapsed"
+              className={cx(
+                'sticky top-0 z-40 w-full px-4 py-2',
+                isWorkflowNavStuck && 'bg-background',
+              )}
+            />
+          </>
+        )}
+        <main
+          className={cx(
+            'flex h-full w-full flex-auto justify-center',
+            // Space content away from the nav on content pages; the margin scales
+            // down on smaller viewports.
+            isHomePage
+              ? 'mt-4'
+              : 'phone-landscape:mt-8 tablet-landscape:mt-12 mt-6',
+          )}
+        >
+          {!isHomePage && (
+            // Sticky offset clears the sticky section switcher (68px tall) plus an
+            // 8px gap; max height subtracts that offset and the 8px bottom margin.
+            <Sidebar className="tablet-landscape:sticky tablet-landscape:top-[76px] tablet-landscape:flex tablet-landscape:max-h-[calc(100dvh-84px)] mx-4 hidden max-w-80" />
+          )}
+
+          {children}
+        </main>
+        <DocumentationFooter />
+      </div>
+    </div>
   );
 }

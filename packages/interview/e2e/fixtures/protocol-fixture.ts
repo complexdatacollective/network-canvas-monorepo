@@ -141,6 +141,36 @@ export class ProtocolFixture {
     };
   }
 
+  /** Install an asset-free protocol JSON fixture directly. */
+  async installJson(protocolPath: string): Promise<InstalledProtocol> {
+    const protocolJson = JSON.parse(await fs.readFile(protocolPath, 'utf8'));
+    const protocol = CurrentProtocolSchema.parse(protocolJson);
+    const protocolId = uuid();
+    const payload: ProtocolPayload = {
+      ...protocol,
+      id: protocolId,
+      hash: hashProtocol(protocol),
+      importedAt: new Date().toISOString(),
+      assets: [],
+    };
+
+    await this.page.evaluate(
+      (installedPayload: ProtocolPayload) =>
+        window.__test.installProtocol(installedPayload),
+      payload,
+    );
+
+    this.installedProtocolIds.push(protocolId);
+
+    return {
+      protocolId,
+      name: protocol.name ?? 'Untitled',
+      stages: protocol.stages,
+      codebook: protocol.codebook,
+      assetBasePath: `${this.assetServerUrl}/${protocolId}`,
+    };
+  }
+
   private buildResolvedAssets(protocol: CurrentProtocol): ResolvedAsset[] {
     if (!protocol.assetManifest) return [];
 

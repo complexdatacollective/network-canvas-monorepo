@@ -1,135 +1,39 @@
 'use client';
 
-import { Menu, X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
-import Link from 'next/link';
-import { useState } from 'react';
+import type { Variants } from 'motion/react';
+import { useLocale } from 'next-intl';
 
-import { ProjectsMenu } from '~/components/layout/ProjectsMenu';
-import { ButtonLink } from '~/components/ui/ButtonLink';
-import { Container } from '~/components/ui/Container';
-import { Logo } from '~/components/ui/Logo';
-import { navLinks, projects } from '~/lib/content';
+import SiteNavigation from '@codaco/fresco-ui/navigation/SiteNavigation';
+import type { SiteNavigationLinkRenderProps } from '@codaco/fresco-ui/navigation/SiteNavigation';
+import { isLocale } from '~/lib/i18n/locales';
+import { Link } from '~/lib/i18n/navigation';
 
-const linkClasses =
-  'font-heading text-cyber-grape hover:text-neon-coral text-sm font-bold tracking-[0.12em] uppercase transition-colors';
-
-/** Top-level nav links, excluding the Projects dropdown and the Download CTA. */
-const topLevelLinks = navLinks.filter(
-  (link) => link.href !== '/download' && link.href !== '/#projects',
-);
-
-function DesktopLinks() {
-  return (
-    <>
-      {topLevelLinks.map((link) => (
-        <Link
-          key={link.label}
-          href={link.href}
-          target={link.external ? '_blank' : undefined}
-          rel={link.external ? 'noreferrer' : undefined}
-          className={linkClasses}
-        >
-          {link.label}
-        </Link>
-      ))}
-    </>
-  );
+function renderNavigationLink({
+  children,
+  ...props
+}: SiteNavigationLinkRenderProps) {
+  return <Link {...props}>{children}</Link>;
 }
 
-function MobileLinks({ onNavigate }: { onNavigate: () => void }) {
-  return (
-    <>
-      {topLevelLinks.map((link) => (
-        <Link
-          key={link.label}
-          href={link.href}
-          target={link.external ? '_blank' : undefined}
-          rel={link.external ? 'noreferrer' : undefined}
-          onClick={onNavigate}
-          className={linkClasses}
-        >
-          {link.label}
-        </Link>
-      ))}
-
-      <div className="flex flex-col gap-3">
-        <Link
-          href="/#projects"
-          onClick={onNavigate}
-          className="font-heading text-cyber-grape/60 hover:text-neon-coral text-xs font-bold tracking-[0.12em] uppercase transition-colors"
-        >
-          Projects
-        </Link>
-        {projects.map((project) => (
-          <a
-            key={project.name}
-            href={project.href}
-            target="_blank"
-            rel="noreferrer"
-            onClick={onNavigate}
-            className={`${linkClasses} pl-3`}
-          >
-            {project.name}
-          </a>
-        ))}
-      </div>
-    </>
-  );
-}
-
-export function Header() {
-  const [open, setOpen] = useState(false);
+export function Header({
+  activeItemId,
+  entranceVariants,
+}: {
+  activeItemId?: 'home' | 'getStarted';
+  entranceVariants?: Variants;
+}) {
+  const locale = useLocale();
+  if (!isLocale(locale)) {
+    throw new Error(`Unsupported site navigation locale: ${locale}`);
+  }
 
   return (
-    <header className="relative z-50">
-      <Container className="flex items-center justify-between py-6">
-        <Link href="/" aria-label="Network Canvas home">
-          <Logo />
-        </Link>
-
-        <nav className="tablet-landscape:flex hidden items-center gap-9">
-          <DesktopLinks />
-          <ProjectsMenu />
-          <ButtonLink href="/download" color="primary" className="rounded-full">
-            Download
-          </ButtonLink>
-        </nav>
-
-        <button
-          type="button"
-          aria-label="Toggle menu"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          className="focusable text-cyber-grape tablet-landscape:hidden rounded-full p-2"
-        >
-          {open ? <X className="size-7" /> : <Menu className="size-7" />}
-        </button>
-      </Container>
-
-      <AnimatePresence>
-        {open ? (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.18 }}
-            className="bg-surface tablet-landscape:hidden absolute inset-x-4 top-full z-50 rounded-[1.75rem] p-6 shadow-xl"
-          >
-            <nav className="flex flex-col gap-5">
-              <MobileLinks onNavigate={() => setOpen(false)} />
-              <ButtonLink
-                href="/download"
-                color="primary"
-                className="rounded-full"
-                onClick={() => setOpen(false)}
-              >
-                Download
-              </ButtonLink>
-            </nav>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </header>
+    <SiteNavigation
+      activeItemId={activeItemId}
+      entranceVariants={entranceVariants}
+      locale={locale}
+      renderLink={renderNavigationLink}
+      site="website"
+    />
   );
 }

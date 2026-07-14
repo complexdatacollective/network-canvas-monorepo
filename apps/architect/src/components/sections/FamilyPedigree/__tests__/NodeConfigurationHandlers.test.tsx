@@ -69,6 +69,15 @@ vi.mock('~/components/Form/ValidatedField', () => ({
       ? createElement(component, componentProps)
       : null,
 }));
+vi.mock('~/components/Form/ValidatedFieldArray', () => ({
+  default: ({
+    component,
+    componentProps,
+  }: {
+    component: React.ComponentType<Record<string, unknown>>;
+    componentProps?: Record<string, unknown>;
+  }) => createElement(component, componentProps),
+}));
 vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
 vi.mock('~/components/NewVariableWindow', () => ({
   default: () => null,
@@ -134,6 +143,7 @@ const renderSection = () =>
     <NodeConfiguration
       form="edit-stage"
       stagePath="stages[0]"
+      stagePosition={0}
       interfaceType={'FamilyPedigreeCensus' as never}
     />,
   );

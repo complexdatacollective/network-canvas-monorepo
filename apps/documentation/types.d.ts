@@ -1,4 +1,3 @@
-declare module '@fontsource-variable/quicksand';
 declare module '@docsearch/css';
 
 // declaring module for rehype-figure as it does not have types

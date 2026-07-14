@@ -534,8 +534,7 @@ export const composerItemSelector =
     { form, editField }: { form: string; editField: string },
   ) => {
     const item = formValueSelector(form)(state, editField) as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     if (!item || !entity) return null;
 
     const variable = item.variable as string | undefined;

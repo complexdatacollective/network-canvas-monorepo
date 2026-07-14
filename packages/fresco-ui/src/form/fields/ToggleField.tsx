@@ -118,6 +118,10 @@ export default function ToggleField(props: ToggleFieldProps) {
     value = false,
     size,
     onChange,
+    onBlur,
+    onFocus,
+    title,
+    style,
     disabled,
     readOnly,
     'aria-required': ariaRequired,
@@ -127,6 +131,7 @@ export default function ToggleField(props: ToggleFieldProps) {
     'aria-readonly': ariaReadonly,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
+    ...buttonProps
   } = props;
 
   const isInvalid = !!ariaInvalid;
@@ -149,7 +154,11 @@ export default function ToggleField(props: ToggleFieldProps) {
       nativeButton
       render={
         <button
+          {...buttonProps}
           type="button"
+          title={title}
+          onBlur={onBlur}
+          onFocus={onFocus}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
           className={toggleContainerVariants({
@@ -159,6 +168,7 @@ export default function ToggleField(props: ToggleFieldProps) {
             className,
           })}
           style={{
+            ...style,
             justifyContent: value ? 'flex-end' : 'flex-start',
           }}
         />

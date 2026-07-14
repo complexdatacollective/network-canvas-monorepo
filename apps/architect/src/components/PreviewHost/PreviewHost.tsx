@@ -76,7 +76,7 @@ export function PreviewHost() {
   const [timedOut, setTimedOut] = useState(false);
   const [processingFailed, setProcessingFailed] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
-  // Index of the stage whose skip logic was bypassed for preview, or null.
+  // Index of the stage receiving a one-stage preview override, or null.
   // The notice only shows while that stage is the one being viewed.
   const [bypassedStageIndex, setBypassedStageIndex] = useState<number | null>(
     null,
@@ -226,8 +226,8 @@ export function PreviewHost() {
         <div className="fixed right-8 bottom-6 z-50 max-w-sm">
           <Alert variant="info" icon={false} className="my-0">
             <AlertDescription className="pr-10 text-sm">
-              This stage has skip logic, so depending on a participant’s
-              responses it may not be shown during an interview.
+              This stage is being shown for preview. During an interview, skip
+              logic may make it unavailable.
             </AlertDescription>
             <CloseButton
               size="sm"
@@ -244,6 +244,7 @@ export function PreviewHost() {
         onRequestAsset={onRequestAsset}
         currentStep={currentStep}
         onStepChange={setCurrentStep}
+        initialStageOverrideIndex={bypassedStageIndex ?? undefined}
         allowStageNavigation
         disableAnalytics
         analytics={{

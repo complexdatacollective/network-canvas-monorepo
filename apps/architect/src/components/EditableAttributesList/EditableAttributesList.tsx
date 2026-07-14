@@ -1,5 +1,5 @@
 import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 
 import ComposerFieldPreview from '../sections/Form/ComposerFieldPreview';
 import {
@@ -26,7 +26,7 @@ const EditableAttributesList = ({
   title = 'Edit attribute',
   handleChangeFields,
 }: EditableAttributesListProps) => (
-  <ValidatedField
+  <ValidatedFieldArray
     name={fieldName}
     component={DialogArrayField}
     // Editable attributes are optional (no node/edge attributes is valid).

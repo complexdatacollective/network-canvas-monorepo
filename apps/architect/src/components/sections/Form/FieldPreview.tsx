@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
 import withSubject from '~/components/enhancers/withSubject';
-import { Markdown } from '~/components/Form/Fields';
+import Markdown from '~/components/Markdown';
 import { getColorForType } from '~/config/variables';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
@@ -37,10 +37,12 @@ const FieldPreview = ({
       <Markdown label={prompt} className="[&>p]:m-0" />
       <div>
         <Badge color={getColorForType(codebookVariable.type)}>
-          <strong>{codebookVariable.type}</strong>
-          {' variable using '}
-          <strong>{codebookVariable.component}</strong>
-          {' input control'}
+          <span>
+            <strong>{codebookVariable.type}</strong>
+            {' variable using '}
+            <strong>{codebookVariable.component}</strong>
+            {' input control'}
+          </span>
         </Badge>
       </div>
     </div>

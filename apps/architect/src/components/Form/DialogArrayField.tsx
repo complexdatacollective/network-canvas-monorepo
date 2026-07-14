@@ -1,7 +1,13 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import { createElement, type ComponentType } from 'react';
+import {
+  createElement,
+  type ComponentType,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
-import type { WrappedFieldProps } from 'redux-form';
+import { isSubmitting, type WrappedFieldArrayProps } from 'redux-form';
 import { v4 as uuid } from 'uuid';
 
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
@@ -89,6 +95,7 @@ const DialogItem = ({
           onMove={onMove}
           disabled={interactionDisabled}
           label={`Reorder ${itemLabel} ${index + 1} of ${itemCount}`}
+          size="md"
         />
       )}
       <div className="min-w-0 flex-1">
@@ -103,7 +110,7 @@ const DialogItem = ({
       <IconButton
         icon={<Pencil />}
         aria-label={`Edit ${itemLabel}`}
-        size="sm"
+        size="md"
         variant="text"
         color="dynamic"
         disabled={interactionDisabled}
@@ -112,10 +119,11 @@ const DialogItem = ({
       <IconButton
         icon={<Trash2 />}
         aria-label={`Remove ${itemLabel}`}
-        size="sm"
+        size="md"
         variant="text"
         color="destructive"
         disabled={interactionDisabled}
+        className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast text-current"
         onClick={handleDelete}
       />
     </div>
@@ -161,31 +169,71 @@ const DialogEditor = ({
   const initialValues = isRecord(selectedItem)
     ? selectedItem
     : stripManagedProperties(item);
+  const reduxFormIsSubmitting = useSelector(isSubmitting(editFormName));
+  const saveInFlightRef = useRef(false);
+  const mountedRef = useRef(true);
+  const activeItemIdRef = useRef(item?._internalId);
+  activeItemIdRef.current = item?._internalId;
+  const [saveInFlight, setSaveInFlight] = useState(false);
+  const isBusy = reduxFormIsSubmitting || saveInFlight;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const handleCancel = () => {
+    if (!saveInFlightRef.current) onCancel();
+  };
 
   const handleSave = async (value: unknown) => {
-    let valueToSave = value;
-    if (onBeforeSave) {
-      const transformedValue = await onBeforeSave(value);
-      if (transformedValue !== undefined) valueToSave = transformedValue;
-    }
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setSaveInFlight(true);
+    const itemIdAtSaveStart = item?._internalId;
 
-    onSave(normalizeItem(valueToSave) as ArrayItem);
+    try {
+      let valueToSave = value;
+      if (onBeforeSave) {
+        const transformedValue = await onBeforeSave(value);
+        if (transformedValue !== undefined) valueToSave = transformedValue;
+      }
+
+      if (
+        !mountedRef.current ||
+        activeItemIdRef.current !== itemIdAtSaveStart
+      ) {
+        return;
+      }
+      onSave(normalizeItem(valueToSave) as ArrayItem);
+    } finally {
+      saveInFlightRef.current = false;
+      if (mountedRef.current) setSaveInFlight(false);
+    }
   };
 
   return (
     <Dialog
       open={!!item}
-      closeDialog={onCancel}
+      closeDialog={handleCancel}
+      dismissible={!isBusy}
       layoutId={!isNewItem && item ? item._internalId : undefined}
       style={{ borderRadius: 'var(--radius)' }}
       title={isNewItem ? addTitle : editorTitle}
       size="editor"
       footer={
         <>
-          <Button type="button" onClick={onCancel}>
+          <Button type="button" onClick={handleCancel} disabled={isBusy}>
             Cancel
           </Button>
-          <Button type="submit" form={editFormName} color="primary">
+          <Button
+            type="submit"
+            form={editFormName}
+            color="primary"
+            disabled={isBusy}
+          >
             {isNewItem ? 'Add' : 'Save'}
           </Button>
         </>
@@ -303,7 +351,7 @@ function DialogArrayFieldBase<T extends ArrayItem>({
 }
 
 const DialogArrayField =
-  DialogArrayFieldBase as ComponentType<WrappedFieldProps> &
+  DialogArrayFieldBase as ComponentType<WrappedFieldArrayProps> &
     ComponentType<Record<string, unknown>>;
 
 export default DialogArrayField;

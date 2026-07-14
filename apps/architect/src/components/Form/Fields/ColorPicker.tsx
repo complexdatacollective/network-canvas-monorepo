@@ -1,33 +1,36 @@
+import { Radio } from '@base-ui/react/radio';
+import { RadioGroup } from '@base-ui/react/radio-group';
 import { range } from 'es-toolkit';
-import { TriangleAlert } from 'lucide-react';
+import type { ComponentType, FocusEventHandler } from 'react';
+import type { WrappedFieldProps } from 'redux-form';
 
-import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
+
+import FrescoReduxField from '../FrescoReduxField';
 
 type ColorOption = {
   label: string;
   value: string;
 };
 
-type InputProps = {
-  value: string;
-  onChange: (value: string) => void;
-};
-
-type MetaProps = {
-  error?: string;
-  invalid?: boolean;
-  touched?: boolean;
-};
-
-type ColorPickerProps = {
-  palette?: string;
-  paletteRange?: number;
-  options?: ColorOption[];
-  input: InputProps;
-  label?: string;
-  meta: MetaProps;
+type ColorPickerControlProps = {
+  'id'?: string;
+  'name'?: string;
+  'value'?: string;
+  'onChange'?: (value: string) => void;
+  'onBlur'?: FocusEventHandler;
+  'onFocus'?: FocusEventHandler;
+  'palette'?: string;
+  'paletteRange'?: number;
+  'options'?: ColorOption[];
+  'disabled'?: boolean;
+  'readOnly'?: boolean;
+  'required'?: boolean;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean;
+  'aria-labelledby'?: string;
+  'aria-required'?: boolean;
 };
 
 const asColorOption = (name: string): ColorOption => ({
@@ -35,14 +38,24 @@ const asColorOption = (name: string): ColorOption => ({
   value: name,
 });
 
-const ColorPicker = ({
+const ColorPickerControl = ({
+  id,
+  name,
+  value,
+  onChange,
+  onBlur,
+  onFocus,
   palette,
   paletteRange = 0,
   options = [],
-  input,
-  label,
-  meta: { error, invalid, touched },
-}: ColorPickerProps) => {
+  disabled = false,
+  readOnly = false,
+  required = false,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-required': ariaRequired,
+}: ColorPickerControlProps) => {
   // range() is end-exclusive, so run to paletteRange + 1 — otherwise the
   // palette's last colour can never be picked.
   const colors = palette
@@ -51,67 +64,89 @@ const ColorPicker = ({
       )
     : options;
 
-  const handleClick = (value: string) => {
-    input.onChange(value);
-  };
-
-  const renderColor = (color: ColorOption) => (
-    <button
-      type="button"
-      className={cx(
-        'flex cursor-pointer items-center justify-center overflow-hidden',
-        'mr-2.5 mb-2.5 size-[60px] rounded-[60px]',
-        'transition-colors duration-300 ease-in-out',
-        "after:m-[4px] after:rounded-[60px] after:content-['']",
-        'after:size-[52px]',
-        'after:border-2 after:border-transparent after:bg-(--color)',
-        'after:transition-colors after:duration-300 after:ease-in-out',
-        input.value === color.value && 'bg-selected after:border-surface-1',
-      )}
-      onClick={() => handleClick(color.value)}
-      aria-label={`Select color ${color.label}`}
-      style={
-        { '--color': resolveProtocolColor(color.value) } as React.CSSProperties
-      }
-      key={color.value}
-    >
-      <div className="hidden">{color.label}</div>
-    </button>
-  );
-
-  const showError = invalid && touched && error;
-
   return (
-    <div className="m-0 [&>h4]:m-0">
-      <div>
-        {label && (
-          <div
-            className={headingVariants({
-              level: 'h4',
-              margin: 'none',
-              className: 'text-text mt-10 mb-5 font-semibold',
-            })}
-          >
-            {label}
-          </div>
-        )}
-        <div
-          className={cx(
-            'bg-surface-1 text-input-contrast rounded-t-sm pt-2.5 pl-2.5',
-            showError && 'border-destructive border-[0.3rem]',
+    <RadioGroup
+      id={id}
+      name={name}
+      value={value ?? ''}
+      onValueChange={(nextValue) => {
+        if (!readOnly && typeof nextValue === 'string') onChange?.(nextValue);
+      }}
+      disabled={disabled}
+      readOnly={readOnly}
+      required={required}
+      onBlur={onBlur}
+      onFocus={onFocus}
+      render={<fieldset />}
+      aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
+      aria-describedby={ariaDescribedBy}
+      aria-invalid={ariaInvalid || undefined}
+      aria-required={ariaRequired || required || undefined}
+      className={cx(
+        'bg-input text-input-contrast @container flex w-full flex-wrap gap-3 rounded border-2 p-4',
+        'border-transparent',
+        ariaInvalid && 'border-destructive',
+        disabled && 'cursor-not-allowed opacity-50',
+        readOnly && 'cursor-default opacity-70',
+      )}
+    >
+      {colors.map((color) => (
+        <Radio.Root
+          key={color.value}
+          value={color.value}
+          disabled={disabled}
+          nativeButton
+          render={(renderProps, state) => (
+            <button
+              {...renderProps}
+              type="button"
+              aria-label={color.label}
+              className={cx(
+                'focusable relative size-12 shrink-0 rounded-full',
+                // The selection ring is the design-system focus outline in the
+                // swatch's own colour (not a generic primary border), so the cue
+                // reads as "this colour". Hover previews it at a tighter offset.
+                'bg-(--color) outline-(--color) transition-all',
+                state.checked
+                  ? 'outline-2 outline-offset-3'
+                  : 'hover:outline-2 hover:outline-offset-2',
+                readOnly && 'pointer-events-none',
+              )}
+              style={
+                {
+                  '--color': resolveProtocolColor(color.value),
+                } as React.CSSProperties
+              }
+            />
           )}
-        >
-          <div className="flex flex-wrap">{colors.map(renderColor)}</div>
-        </div>
-        {showError && (
-          <div className="bg-destructive text-destructive-contrast flex items-center rounded-b-sm px-1 py-1 [&_svg]:max-h-5">
-            <TriangleAlert aria-hidden />
-            {error}
-          </div>
-        )}
-      </div>
-    </div>
+        />
+      ))}
+    </RadioGroup>
   );
 };
+
+type ColorPickerProps = WrappedFieldProps & {
+  palette?: string;
+  paletteRange?: number;
+  options?: ColorOption[];
+  label?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+};
+
+const FrescoColorPickerControl = ColorPickerControl as ComponentType<
+  Record<string, unknown>
+>;
+const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
+  Record<string, unknown>
+>;
+
+const ColorPicker = ({ label = 'Color', ...props }: ColorPickerProps) => (
+  <ReduxFieldAdapter
+    {...props}
+    label={label}
+    fieldComponent={FrescoColorPickerControl}
+  />
+);
 
 export default ColorPicker;

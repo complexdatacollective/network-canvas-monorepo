@@ -59,6 +59,7 @@ export function TopActionBarView({
           aria-label="Settings"
           onClick={onOpenSettings}
           className="border-outline"
+          data-testid="settings-trigger"
         />
       </motion.span>
     </div>

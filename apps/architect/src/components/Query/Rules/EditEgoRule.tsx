@@ -3,8 +3,6 @@ import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import DetachedField from '~/components/DetachedField';
-import { FrescoReduxField } from '~/components/Form';
 
 import Section from '../../EditorLayout/Section';
 import EditValue from './EditValue';
@@ -13,6 +11,7 @@ import {
   operatorsWithRegExp,
   operatorsWithValue,
 } from './options';
+import RuleField from './RuleField';
 import withOptions from './withOptions';
 import withRuleChangeHandler from './withRuleChangeHandler';
 
@@ -82,11 +81,12 @@ const EditEgoRule = ({
   return (
     <>
       <Section title="Ego Variable" layout="vertical">
-        <DetachedField
-          component={FrescoReduxField}
-          fieldComponent={FrescoNativeSelectField}
+        <RuleField
+          component={FrescoNativeSelectField}
           label="Ego variable"
+          labelHidden
           name="attribute"
+          placeholder="Select an ego variable…"
           options={variablesAsOptions}
           onChange={handleRuleChange}
           value={optionsWithDefaults.attribute}
@@ -95,11 +95,12 @@ const EditEgoRule = ({
       </Section>
       {optionsWithDefaults.attribute && (
         <Section title="Operator" layout="vertical">
-          <DetachedField
-            component={FrescoReduxField}
-            fieldComponent={FrescoNativeSelectField}
+          <RuleField
+            component={FrescoNativeSelectField}
             label="Operator"
+            labelHidden
             name="operator"
+            placeholder="Select an operator…"
             options={operatorOptions}
             onChange={handleRuleChange}
             value={optionsWithDefaults.operator}
@@ -116,6 +117,7 @@ const EditEgoRule = ({
             value={optionsWithDefaults.value}
             options={variableOptions}
             validation={{ required: true }}
+            labelHidden
           />
         </Section>
       )}
@@ -128,6 +130,7 @@ const EditEgoRule = ({
             value={optionsWithDefaults.value}
             options={variableOptions}
             validation={{ required: true, validRegExp: true }}
+            labelHidden
           />
         </Section>
       )}

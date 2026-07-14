@@ -7,77 +7,255 @@ status = 301
 # exists at the path. Force this rule so the 301 wins over index.html.
 force = true
 
+# Renamed page slugs (keep old URLs working — may be embedded in apps/documents)
+[[redirects]]
+from = "/en/design-protocols/installing-architect-desktop"
+to = "/en/design-protocols/installing-architect-classic"
+status = 301
+
+# Legacy flat (pre-locale) top-level pages
 [[redirects]]
 from = "/citing-the-software"
-to = "/en/desktop/project-information/citing-the-software"
+to = "/en/get-started/project-information/citing-the-software"
 status = 301
 
 [[redirects]]
 from = "/contributing-code"
-to = "/en/desktop/project-information/contributing-code"
+to = "/en/get-started/project-information/contributing-code"
 status = 301
 
 [[redirects]]
 from = "/faq"
-to = "/en/desktop/project-information/faq"
+to = "/en/get-started/project-information/faq"
 status = 301
 
 [[redirects]]
 from = "/project-overview"
-to = "/en/desktop/project-information/project-overview"
+to = "/en/get-started/project-information/project-overview"
 status = 301
 
 [[redirects]]
 from = "/requests-for-collaboration"
-to = "/en/desktop/project-information/requests-for-collaboration"
-status = 301
-
-[[redirects]]
-from = "/reference/irb-best-practices"
-to = "/en/desktop/project-information/irb-best-practices"
-status = 301
-
-[[redirects]]
-from = "/reference/security-model"
-to = "/en/desktop/project-information/security-model"
-status = 301
-
-[[redirects]]
-from = "/reference/network-canvas-graphml"
-to = "/en/desktop/advanced-topics/network-canvas-graphml"
-status = 301
-
-[[redirects]]
-from = "/reference/node-labelling"
-to = "/en/desktop/advanced-topics/node-labelling"
-status = 301
-
-[[redirects]]
-from = "/reference/protocol-file-format"
-to = "/en/desktop/advanced-topics/protocol-file-format"
-status = 301
-
-[[redirects]]
-from = "/reference/protocol-schema-information"
-to = "/en/desktop/advanced-topics/protocol-schema-information"
+to = "/en/get-started/project-information/requests-for-collaboration"
 status = 301
 
 [[redirects]]
 from = "/installation-guide"
-to = "/en/desktop/getting-started/installation-guide"
+to = "/en/get-started/network-canvas"
+status = 301
+
+# Legacy flat /reference/*
+[[redirects]]
+from = "/reference/irb-best-practices"
+to = "/en/get-started/planning-a-study/irb-best-practices"
 status = 301
 
 [[redirects]]
+from = "/reference/security-model"
+to = "/en/get-started/project-information/security-model"
+status = 301
+
+[[redirects]]
+from = "/reference/network-canvas-graphml"
+to = "/en/analyze-data/network-canvas-graphml"
+status = 301
+
+[[redirects]]
+from = "/reference/node-labelling"
+to = "/en/get-started/advanced-topics/node-labelling"
+status = 301
+
+[[redirects]]
+from = "/reference/protocol-file-format"
+to = "/en/get-started/advanced-topics/protocol-file-format"
+status = 301
+
+[[redirects]]
+from = "/reference/protocol-schema-information"
+to = "/en/get-started/advanced-topics/protocol-schema-information"
+status = 301
+
+[[redirects]]
+from = "/reference/variable-naming"
+to = "/en/design-protocols/key-concepts/variables"
+status = 301
+
+# Legacy flat /how-to/*
+[[redirects]]
 from = "/how-to/choosing-hardware"
-to = "/en/desktop/getting-started/choosing-hardware"
+to = "/en/collect-data/interviewer/choosing-hardware"
 status = 301
 
 [[redirects]]
 from = "/how-to/configuring-devices"
-to = "/en/desktop/getting-started/configuring-devices"
+to = "/en/collect-data/interviewer/configuring-devices"
+status = 301
+
+# Legacy flat /interface-documentation/* (old Architect links)
+[[redirects]]
+from = "/interface-documentation/*"
+to = "/en/design-protocols/interface-documentation/:splat"
+status = 301
+
+# Legacy flat /key-concepts/* (old Architect links)
+[[redirects]]
+from = "/key-concepts/data-export"
+to = "/en/analyze-data/data-export"
 status = 301
 
 [[redirects]]
+from = "/key-concepts/*"
+to = "/en/design-protocols/key-concepts/:splat"
+status = 301
+
+# Legacy flat /advanced-topics/* (old Architect links)
+[[redirects]]
+from = "/advanced-topics/network-canvas-graphml"
+to = "/en/analyze-data/network-canvas-graphml"
+status = 301
+
+[[redirects]]
+from = "/advanced-topics/*"
+to = "/en/get-started/advanced-topics/:splat"
+status = 301
+
+# Two-section layout: /en/desktop/*
+[[redirects]]
+from = "/en/desktop/key-concepts/data-export"
+to = "/en/analyze-data/data-export"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/key-concepts/*"
+to = "/en/design-protocols/key-concepts/:splat"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/interface-documentation/*"
+to = "/en/design-protocols/interface-documentation/:splat"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/advanced-topics/network-canvas-graphml"
+to = "/en/analyze-data/network-canvas-graphml"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/advanced-topics/*"
+to = "/en/get-started/advanced-topics/:splat"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/project-information/gdpr-compliance"
+to = "/en/get-started/planning-a-study/gdpr-compliance"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/project-information/irb-best-practices"
+to = "/en/get-started/planning-a-study/irb-best-practices"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/project-information/*"
+to = "/en/get-started/project-information/:splat"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/tutorials/protocol-and-data-workflows"
+to = "/en/collect-data/protocol-and-data-workflows"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/tutorials/working-with-rosters"
+to = "/en/design-protocols/working-with-rosters"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/tutorials/building-a-protocol"
+to = "/en/design-protocols/building-a-protocol"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/tutorials/using-interviewer"
+to = "/en/collect-data/interviewer/using-interviewer"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/tutorials/working-with-data"
+to = "/en/analyze-data/working-with-data"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/tutorials/web-based-workflow"
+to = "/en/collect-data/protocol-and-data-workflows"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/getting-started/network-canvas"
+to = "/en/get-started/network-canvas"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/getting-started/choosing-hardware"
+to = "/en/collect-data/interviewer/choosing-hardware"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/getting-started/configuring-devices"
+to = "/en/collect-data/interviewer/configuring-devices"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/getting-started/installation-guide"
+to = "/en/get-started/network-canvas"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/*"
+to = "/en/get-started/network-canvas"
+status = 301
+
+[[redirects]]
+from = "/en/desktop"
+to = "/en/get-started/network-canvas"
+status = 301
+
+# Two-section layout: /en/fresco/*
+[[redirects]]
+from = "/en/fresco/advanced-topics/integration"
+to = "/en/collect-data/fresco/integration"
+status = 301
+
+[[redirects]]
+from = "/en/fresco/deployment/troubleshooting"
+to = "/en/collect-data/fresco/deployment-troubleshooting"
+status = 301
+
+[[redirects]]
+from = "/en/fresco/deployment/*"
+to = "/en/collect-data/fresco/:splat"
+status = 301
+
+# Bare /en/fresco (and its trailing-slash form) must precede the /en/fresco/*
+# splat below — otherwise the splat matches with an empty :splat and lands on
+# /en/collect-data/fresco/ (no such page) instead of this dedicated landing.
+[[redirects]]
+from = "/en/fresco"
+to = "/en/collect-data/fresco/about"
+status = 301
+
+[[redirects]]
+from = "/en/fresco/"
+to = "/en/collect-data/fresco/about"
+status = 301
+
+[[redirects]]
+from = "/en/fresco/*"
+to = "/en/collect-data/fresco/:splat"
+status = 301
+
+# Final fallback for any other legacy flat path (real files take precedence)
+[[redirects]]
 from = "/*"
-to = "/en/desktop/:splat"
+to = "/en/get-started/network-canvas"
 status = 301

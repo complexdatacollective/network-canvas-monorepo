@@ -183,6 +183,7 @@ export function DataViewToolbar({
         <InputField
           type="search"
           name="data-view-search"
+          data-testid="data-search"
           size="md"
           prefixComponent={<Search />}
           value={globalFilter}
@@ -204,6 +205,7 @@ export function DataViewToolbar({
                 color={isFilterActive ? 'primary' : 'default'}
                 icon={<FilterIcon size={14} strokeWidth={2.5} aria-hidden />}
                 aria-pressed={isFilterActive}
+                data-testid="data-filter-trigger"
               >
                 Filter
                 {isFilterActive ? ` · ${columnFilters.length}` : ''}
@@ -301,6 +303,7 @@ export function DataViewToolbar({
               icon={<Trash2 aria-hidden />}
               onClick={onDelete}
               disabled={deleting || exporting}
+              data-testid="data-delete"
             >
               {deleting ? 'Deleting…' : `Delete ${selectedCount} selected`}
             </Button>
@@ -312,6 +315,7 @@ export function DataViewToolbar({
               icon={<Download aria-hidden />}
               onClick={onExport}
               disabled={exporting || deleting}
+              data-testid="data-export"
             >
               {exporting ? 'Exporting…' : `Export ${selectedCount} selected`}
             </Button>
@@ -325,6 +329,7 @@ export function DataViewToolbar({
             size="md"
             icon={<Download aria-hidden />}
             onClick={onShareReady}
+            data-testid="data-save-export"
           >
             Save export
           </Button>

@@ -1,11 +1,11 @@
 import { keys as getKeys, isNull, toPairs } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
-import type React from 'react';
+import { useId, useState, type ReactNode, type ComponentProps } from 'react';
 import { Field } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
+import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import type { Variable } from '@codaco/protocol-validation';
-import FieldError from '~/components/Form/FieldError';
 import { cx } from '~/utils/cva';
 
 import Validation from './Validation';
@@ -41,7 +41,7 @@ const getOptionsWithUsedDisabled = (
     return { ...option, disabled: true };
   });
 
-const AddItem = (props: React.ComponentProps<typeof Button>) => (
+const AddItem = (props: ComponentProps<typeof Button>) => (
   <Button
     color="primary"
     icon={<Plus />}
@@ -69,7 +69,9 @@ type ValidationsFieldProps = {
     submitFailed: boolean;
     error?: string;
   };
-  children?: React.ReactNode;
+  children?: ReactNode;
+  editingKey: string | null;
+  onEditKey: (key: string | null) => void;
   onUpdate?: (key: string, value: unknown, itemKey: string) => void;
   onDelete?: (itemKey: string) => void;
 };
@@ -80,12 +82,20 @@ const ValidationsField = ({
   existingVariables,
   meta: { submitFailed, error },
   children = null,
+  editingKey,
+  onEditKey,
   ...rest
 }: ValidationsFieldProps) => {
   const hasError = !!(submitFailed && error);
+  const errorId = useId();
 
   return (
-    <div className={cx(hasError && '[--rule-bg:var(--destructive)]')}>
+    <div
+      className={cx(
+        'rounded-xl border-2 border-transparent transition-colors',
+        hasError && 'border-destructive',
+      )}
+    >
       <div className="flex flex-col gap-5">
         {input.value.map(([key, value]) => (
           <Validation
@@ -94,17 +104,16 @@ const ValidationsField = ({
             itemValue={value}
             options={options}
             existingVariables={existingVariables}
+            isBeingEdited={key === editingKey}
+            onEdit={() => onEditKey(key)}
+            onCancel={() => onEditKey(null)}
             // eslint-disable-next-line react/jsx-props-no-spreading
             {...rest}
           />
         ))}
         {children}
       </div>
-      <FieldError
-        show={hasError}
-        error={error}
-        className={hasError ? 'my-1 rounded-[0.3rem]' : undefined}
-      />
+      <FieldErrors id={errorId} errors={error ? [error] : []} show={hasError} />
     </div>
   );
 };
@@ -132,12 +141,35 @@ const Validations = ({
   handleDelete,
   handleAddNew,
 }: ValidationsProps) => {
+  // Only one row (existing or the "add new" draft) is ever open for editing
+  // at a time.
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const usedOptions = getKeys(value);
   const availableOptions = getOptionsWithUsedDisabled(
     validationOptions,
     usedOptions,
   );
   const isFull = usedOptions.length === availableOptions.length;
+  const isEditingSomething = addNew || editingKey !== null;
+
+  const handleSaveExisting = (
+    key: string,
+    itemValue: unknown,
+    itemKey: string,
+  ) => {
+    handleChange(key, itemValue, itemKey);
+    setEditingKey(null);
+  };
+
+  const handleDeleteExisting = (itemKey: string) => {
+    handleDelete(itemKey);
+    setEditingKey((current) => (current === itemKey ? null : current));
+  };
+
+  const handleStartAddNew = () => {
+    setEditingKey(null);
+    setAddNew(true);
+  };
 
   return (
     <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
@@ -147,21 +179,26 @@ const Validations = ({
         format={format}
         options={availableOptions}
         existingVariables={existingVariables}
-        onUpdate={handleChange}
-        onDelete={handleDelete}
+        onUpdate={handleSaveExisting}
+        onDelete={handleDeleteExisting}
+        editingKey={editingKey}
+        onEditKey={setEditingKey}
         validate={validate}
       >
         {addNew && (
           <Validation
+            isBeingEdited
             onUpdate={handleAddNew}
-            onDelete={() => setAddNew(false)}
+            onCancel={() => setAddNew(false)}
             options={availableOptions}
             existingVariables={existingVariables}
           />
         )}
       </Field>
 
-      {!isFull && <AddItem onClick={() => setAddNew(true)} />}
+      {!isFull && (
+        <AddItem onClick={handleStartAddNew} disabled={isEditingSomething} />
+      )}
     </div>
   );
 };

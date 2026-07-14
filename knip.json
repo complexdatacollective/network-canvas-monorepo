@@ -4,10 +4,13 @@
   // The legacy app-build workflow (.github/workflows/legacy-app-build.yml)
   // invokes the electron-builder binary, which is a devDependency of the
   // legacy architect app rather than the root, so knip sees it as unlisted.
-  "ignoreBinaries": ["electron-builder"],
+  // xcrun is the macOS simulator tool used by the Capacitor dev helper.
+  "ignoreBinaries": ["electron-builder", "xcrun"],
   "tags": ["-public"],
   "workspaces": {
-    "packages/ui": {},
+    "apps/networkcanvas.com": {
+      "entry": ["lib/i18n/request.ts", "netlify/edge-functions/locale.ts"]
+    },
     "apps/documentation": {
       "ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
     },
@@ -46,18 +49,13 @@
         "shared/plugins/inset-surface/inset-surface.ts",
         "shared/plugins/motion-spring.ts"
       ],
-      "project": ["fresco/**/*.{ts,css}", "shared/**/*.{ts,css}"],
+      "project": ["shared/**/*.ts"],
       "ignoreDependencies": [
         "@fontsource-variable/inclusive-sans",
         "@fontsource-variable/nunito"
       ]
     },
     "apps/interviewer-classic": {
-      "entry": [
-        "src/main/index.js!",
-        "src/preload/index.js!",
-        "electron.vite.config.js"
-      ],
       "project": ["src/**/*.{js,jsx}"],
       "paths": { "@/*": ["./src/*"] },
       "ignore": [
@@ -65,22 +63,11 @@
       ],
       "ignoreDependencies": [
         "buffer", // npm Buffer polyfill — `import { Buffer } from 'buffer'` in filesystem.js + saveExport.js; knip treats 'buffer' as a Node built-in
-        "is-hotkey", // required by @codaco/ui's bundled RichText field; @codaco/ui does not declare it
-        // knip's Capacitor plugin resolves @capacitor/android from
-        // android/capacitor.settings.gradle, but only detects iOS via a CocoaPods
-        // Podfile — this iOS project uses Swift Package Manager (CapApp-SPM), so
-        // @capacitor/ios (native-only, never JS-imported) must be ignored here.
-        "@capacitor/ios"
+        "is-hotkey" // required by @codaco/ui's bundled RichText field; @codaco/ui does not declare it
       ]
     },
     "apps/architect-classic": {
-      "entry": [
-        "public/electron-starter.js!",
-        "public/preload/appPreload.js!",
-        "public/preload/summaryPreload.js!",
-        "electron.vite.config.js",
-        "electron-builder.config.js"
-      ],
+      "entry": ["electron-builder.config.js"],
       "project": ["src/**/*.{js,jsx}"],
       "ignoreDependencies": [
         "react-resizable", // CSS only — @import in main.scss, invisible to knip
@@ -107,13 +94,17 @@
       }
     },
     "apps/interviewer": {
-      "entry": ["index.html!", "vite.renderer.config.ts"],
+      "entry": [
+        "index.html!",
+        "vite.renderer.config.ts",
+        "e2e/specs/**/*.ts",
+        "e2e/scripts/*.{ts,mjs}"
+      ],
       "vite": true,
-      "project": ["src/**/*.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}"],
       "paths": {
         "~/*": ["./src/*"]
-      },
-      "ignore": ["src/**/*.d.ts"]
+      }
     },
     "apps/architect": {
       "entry": ["index.html!", "preview/index.html!", "src/preview-main.tsx!"],

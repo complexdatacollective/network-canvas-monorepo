@@ -77,6 +77,7 @@ type UseFieldResult = {
     'aria-required': boolean; // Indicates if the field is required
     'aria-invalid': boolean; // Indicates if the field is invalid
     'aria-describedby': string; // IDs of elements that provide additional information about the field
+    'aria-labelledby': string; // ID of the visible field label
     'aria-disabled': boolean; // Indicates if the field is disabled
     'aria-readonly': boolean; // Indicates if the field is read-only
   };
@@ -332,6 +333,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       'readOnly': isReadOnly ?? false,
       'aria-required': !!validationProps.required,
       'aria-invalid': showInvalid,
+      'aria-labelledby': `${id}-label`,
       'aria-disabled': isDisabled ?? false,
       'aria-readonly': isReadOnly ?? false,
       /**
@@ -342,7 +344,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
        *
        * Note: we cannot use aria-description yet, as it is not widely supported.
        */
-      'aria-describedby': `${id}-hint ${id}-error`.trim(),
+      'aria-describedby': `${id}-required ${id}-hint ${id}-error`.trim(),
     },
     controller,
     validationSummary,

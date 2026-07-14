@@ -1,8 +1,18 @@
 import { z } from 'zod';
 
-export const projects = ['desktop', 'fresco'] as const;
+export const sections = [
+  'get-started',
+  'design-protocols',
+  'collect-data',
+  'analyze-data',
+] as const;
 
-export type Project = (typeof projects)[number];
+export type Section = (typeof sections)[number];
+
+export function hasDocumentationSection(pathname: string): boolean {
+  const section = pathname.split('/')[2];
+  return sections.some((candidate) => candidate === section);
+}
 
 export const locales = ['en'] as const;
 
@@ -11,7 +21,7 @@ const zlocales = z.enum(locales);
 export type Locale = (typeof locales)[number];
 
 const _itemTypes = [
-  'project', // Top level projects
+  'section', // Top level workflow sections
   'folder', // Anything that has children
   'page', // Single page
 ] as const;
@@ -55,32 +65,33 @@ const SidebarFolderSchema: z.ZodType<TSidebarFolder> = baseSidebarFolder.extend(
 
 export type SidebarFolder = z.infer<typeof SidebarFolderSchema>;
 
-const SidebarProjectSchema = SidebarItemBase.extend({
-  type: z.literal('project'),
+const SidebarSectionSchema = SidebarItemBase.extend({
+  type: z.literal('section'),
   children: z.record(
     z.string(),
     z.union([SidebarFolderSchema, SidebarPageSchema]),
   ),
 });
 
-export type SidebarProject = z.infer<typeof SidebarProjectSchema>;
+export type SidebarSection = z.infer<typeof SidebarSectionSchema>;
 
 const SidebarLocaleDefinitionSchema = z.record(
-  z.enum(projects),
-  SidebarProjectSchema,
+  z.enum(sections),
+  SidebarSectionSchema,
 );
 
-export type SidebarLocaleDefinition = Record<Project, SidebarProject>;
+export type SidebarLocaleDefinition = Record<Section, SidebarSection>;
 
 const _SideBarSchema = z.record(zlocales, SidebarLocaleDefinitionSchema);
 
 // Can't infer this from above because of this: https://github.com/colinhacks/zod/issues/2623
 export type TSideBar = Record<Locale, SidebarLocaleDefinition>;
 
-const metadatatypes = ['folder', 'project'] as const;
+const metadatatypes = ['folder', 'section'] as const;
 
 export const MetadataFileSchema = z.object({
   type: z.enum(metadatatypes),
+  slug: z.string().optional(),
   sourceFile: z.string().optional(),
   localeLabels: z.record(z.string(), z.string()).optional(),
   localeIndexFiles: z.record(z.string(), z.string()).optional(),

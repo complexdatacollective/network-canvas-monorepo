@@ -607,10 +607,7 @@ Update the union:
 
 ```tsx
 export type ToolbarSegment =
-  | ButtonSegment
-  | ToggleSegment
-  | GroupSegment
-  | SeparatorSegment;
+  ButtonSegment | ToggleSegment | GroupSegment | SeparatorSegment;
 ```
 
 Add a group renderer (after `ToolbarToggleSegment`):

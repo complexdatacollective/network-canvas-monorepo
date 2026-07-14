@@ -14,6 +14,7 @@ import { Link } from 'wouter';
 
 import { Pattern } from '@codaco/art';
 import { buttonVariants, IconButton } from '@codaco/fresco-ui/Button';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { Skeleton } from '@codaco/fresco-ui/Skeleton';
@@ -711,13 +712,14 @@ export function DeckCard(props: DeckCardProps) {
                       </span>
                     )
                   ) : (
-                    <Link
-                      href={protocolDataViewPath(protocol.name)}
-                      className="hover:underline"
+                    <NativeLink
+                      render={
+                        <Link href={protocolDataViewPath(protocol.name)} />
+                      }
                     >
                       {sessionCount ?? 0}{' '}
                       {sessionCount === 1 ? 'interview' : 'interviews'}
-                    </Link>
+                    </NativeLink>
                   )}
                 </motion.div>
               )}

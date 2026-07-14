@@ -1,30 +1,40 @@
-import { motion } from 'motion/react';
+'use client';
 
-import { cn } from '~/lib/utils';
+import { useLocale } from 'next-intl';
+
+import SiteNavigation from '@codaco/fresco-ui/navigation/SiteNavigation';
+import type {
+  SiteNavigationLinkRenderProps,
+  SiteNavigationLocale,
+} from '@codaco/fresco-ui/navigation/SiteNavigation';
+import type { Locale } from '~/app/types';
+import { Link } from '~/navigation';
 
 import MobileNavBar from '../MobileNavBar';
-import LogoComponent from './LogoComponent';
-import { NavigationMenuDemo as Menu } from './Menu';
+import ThemeSwitcher from '../ThemeSwitcher';
+
+const siteLocaleByDocumentationLocale = {
+  en: 'en-US',
+} satisfies Record<Locale, SiteNavigationLocale>;
+
+function renderNavigationLink({
+  children,
+  ...props
+}: SiteNavigationLinkRenderProps) {
+  return <Link {...props}>{children}</Link>;
+}
 
 export default function SharedNav() {
+  const locale = useLocale() as Locale;
+
   return (
-    <motion.nav
-      className={cn(
-        'border-border bg-background/50 sticky top-0 z-50 mx-auto flex w-full flex-auto grow-0 items-center justify-between gap-4 border-b px-4 py-2 backdrop-blur-sm',
-        'lg:backdrop-blur-0 lg:relative lg:flex lg:border-none lg:bg-transparent lg:px-6 lg:py-4',
-      )}
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{
-        type: 'spring',
-        stiffness: 200,
-        damping: 30,
-        mass: 1,
-      }}
-    >
-      <LogoComponent />
-      <Menu />
-      <MobileNavBar />
-    </motion.nav>
+    <SiteNavigation
+      activeItemId="documentation"
+      locale={siteLocaleByDocumentationLocale[locale]}
+      mobileAccessory={<MobileNavBar />}
+      renderLink={renderNavigationLink}
+      renderUtility={({ view }) => <ThemeSwitcher view={view} />}
+      site="documentation"
+    />
   );
 }

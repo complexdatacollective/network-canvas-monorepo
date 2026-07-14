@@ -1,7 +1,7 @@
 import type { WrappedFieldMetaProps } from 'redux-form';
 
 const isErrorMessage = (error: unknown): error is string | number =>
-  typeof error === 'string' || typeof error === 'number';
+  (typeof error === 'string' && error.length > 0) || typeof error === 'number';
 
 const getReduxFieldErrors = (error: unknown): string[] => {
   if (isErrorMessage(error)) return [String(error)];

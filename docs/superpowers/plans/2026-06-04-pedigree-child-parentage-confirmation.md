@@ -235,8 +235,7 @@ export function buildChildParentage(
     if (selection === 'new') {
       const namespace = NEW_PERSON_NAMESPACE[roleKey];
       const personValues = triadValues[namespace] as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       if (!personValues) continue;
       const name = (personValues.name as string | undefined) ?? '';
       const extraAttrs = extractCustomAttributes(personValues);
@@ -597,8 +596,7 @@ const childrenCount = hasPartner
   ? Number(values.childrenWithPartnerCount ?? 0)
   : 0;
 const childrenArray = values.childWithPartner as
-  | Record<string, unknown>[]
-  | undefined;
+  Record<string, unknown>[] | undefined;
 
 for (let i = 0; i < childrenCount; i++) {
   const child = childrenArray?.[i];
@@ -876,8 +874,7 @@ export function countGeneticParents(
   for (const edge of edges.values()) {
     if (edge.to !== nodeId) continue;
     const rel = edge.attributes[variableConfig.relationshipTypeVariable] as
-      | string
-      | undefined;
+      string | undefined;
     if (rel && GENETIC_RELATIONSHIPS.has(rel)) count += 1;
   }
   return count;

@@ -158,9 +158,7 @@ const handleDeleteProtocol = useCallback(
     ).length;
     const totalCount = protocolSessions.length;
 
-    const confirmed = await openDialog({
-      /* choice dialog as above */
-    });
+    const confirmed = await openDialog({/* choice dialog as above */});
     if (confirmed !== true) return;
 
     try {

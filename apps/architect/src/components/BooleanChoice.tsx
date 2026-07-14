@@ -2,12 +2,12 @@ import { compose } from '@reduxjs/toolkit';
 import { isEmpty, isNull } from 'es-toolkit/compat';
 import { useEffect } from 'react';
 import { connect } from 'react-redux';
-import { change, Field, formValueSelector } from 'redux-form';
+import { change, formValueSelector } from 'redux-form';
 
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import RichText from '~/components/Form/Fields/RichText';
-import Toggle from '~/components/Form/Fields/Toggle';
+import RichText from '~/components/Form/Fields/RichText/Field';
 
 import ValidatedField from './Form/ValidatedField';
 type OptionType = {
@@ -53,6 +53,8 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
       changeField(form, 'options', initialValues);
     }
   }, [form, formSelector, changeField]);
+  const negativeOne = Boolean(formSelector('options[0].negative'));
+  const negativeTwo = Boolean(formSelector('options[1].negative'));
   return (
     <div>
       <Paragraph>
@@ -67,7 +69,7 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
         icon rather than a tick.
       </Paragraph>
       <div className="grid grid-cols-2 gap-x-5">
-        <div className="bg-surface-3 rounded p-7 [&_h3]:mt-0">
+        <div className="bg-surface-3 text-surface-3-contrast rounded p-7 [&_h3]:mt-0">
           <Heading level="h3">Option One</Heading>
           <Paragraph>
             This option will set the value <strong>true</strong> when selected.
@@ -81,13 +83,21 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
               disallowedTypes: ['history', 'quote'],
             }}
           />
-          <Field
-            label="Style option as negative"
-            component={Toggle}
-            name="options[0].negative"
-          />
+          <div className="flex items-center justify-between gap-3">
+            <Heading level="label" margin="none" render={<span />}>
+              Style option as negative
+            </Heading>
+            <ToggleField
+              value={negativeOne}
+              onChange={(checked) =>
+                changeField(form, 'options[0].negative', checked)
+              }
+              aria-label="Style Option One as negative"
+              className="shrink-0"
+            />
+          </div>
         </div>
-        <div className="bg-surface-3 rounded p-7 [&_h3]:mt-0">
+        <div className="bg-surface-3 text-surface-3-contrast rounded p-7 [&_h3]:mt-0">
           <Heading level="h3">Option Two</Heading>
           <Paragraph>
             This option will set the value <strong>false</strong> when selected.
@@ -101,11 +111,19 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
               disallowedTypes: ['history', 'quote'],
             }}
           />
-          <Field
-            label="Style option as negative"
-            component={Toggle}
-            name="options[1].negative"
-          />
+          <div className="flex items-center justify-between gap-3">
+            <Heading level="label" margin="none" render={<span />}>
+              Style option as negative
+            </Heading>
+            <ToggleField
+              value={negativeTwo}
+              onChange={(checked) =>
+                changeField(form, 'options[1].negative', checked)
+              }
+              aria-label="Style Option Two as negative"
+              className="shrink-0"
+            />
+          </div>
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@ import { startCase } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { UnknownAction } from 'redux';
-import { change, Field, formValueSelector } from 'redux-form';
+import { change, FieldArray, formValueSelector } from 'redux-form';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -28,7 +28,7 @@ const FrescoInputField = InputField as React.ComponentType<
 >;
 
 export const MULTI_SELECT_RULE_CLASSES =
-  'flex items-center py-5 bg-(--rule-bg) text-sortable-contrast rounded-[0.3rem] z-1 transition-colors duration-300 ease-in-out';
+  'flex items-center py-5 bg-(--rule-bg) publish-colors text-sortable-contrast rounded-2xs z-1 transition-colors duration-300 ease-in-out';
 export const MULTI_SELECT_CONTROL_CLASSES = 'flex grow-0 items-center px-5';
 export const MULTI_SELECT_OPTIONS_CLASSES = 'flex-1 flex items-center px-5';
 export const MULTI_SELECT_OPTION_CLASSES =
@@ -118,6 +118,7 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
             onMove={onMove}
             disabled={interactionDisabled}
             label={`Reorder item ${index + 1} of ${itemCount}`}
+            size="md"
             className="text-sortable-contrast"
           />
         </div>
@@ -168,11 +169,11 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
         <IconButton
           icon={<Trash2 />}
           aria-label="Remove item"
-          size="sm"
+          size="md"
           variant="text"
           color="destructive"
           disabled={interactionDisabled}
-          className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+          className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast text-current opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
           onClick={handleDelete}
         />
       </div>
@@ -195,7 +196,7 @@ const MultiSelect = ({
   maxItems = null,
 }: MultiSelectProps) => (
   <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
-    <Field
+    <FieldArray
       name={name}
       component={FrescoReduxArrayField}
       label={label}
@@ -208,6 +209,7 @@ const MultiSelect = ({
       immediateAdd
       sortable
       confirmDelete={false}
+      rerenderOnEveryChange
       maxItems={maxItems ?? undefined}
     />
   </div>

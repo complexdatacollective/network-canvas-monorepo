@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { getValidations, validations } from '../validations';
+import { getValidations, getValidator, validations } from '../validations';
 
 const {
   greaterThan,
+  ISODate,
+  allowedVariableName,
   maxLength,
   maxSelected,
   maxValue,
@@ -11,6 +13,10 @@ const {
   minSelected,
   minValue,
   required,
+  requiredAcceptsNull,
+  requiredAcceptsZero,
+  uniqueArrayAttribute,
+  uniqueByList,
 } = validations;
 
 describe('Validations', () => {
@@ -34,6 +40,70 @@ describe('Validations', () => {
 
     it('fails for an empty string', () => {
       expect(subject('')).toEqual(errorMessage);
+    });
+  });
+
+  describe('requiredAcceptsZero()', () => {
+    describe('when required', () => {
+      const subject = requiredAcceptsZero(true, 'Required');
+
+      it('passes for zero', () => {
+        expect(subject(0)).toBeUndefined();
+      });
+
+      it('passes for a filled value', () => {
+        expect(subject(5)).toBeUndefined();
+      });
+
+      it('fails for null or undefined', () => {
+        expect(subject(null)).toBe('Required');
+        expect(subject(undefined)).toBe('Required');
+      });
+    });
+
+    describe('when not required', () => {
+      const subject = requiredAcceptsZero(false, 'Required');
+
+      it('passes for empty values', () => {
+        expect(subject(null)).toBeUndefined();
+        expect(subject(undefined)).toBeUndefined();
+      });
+
+      it('passes for filled values', () => {
+        expect(subject(0)).toBeUndefined();
+        expect(subject(5)).toBeUndefined();
+      });
+    });
+  });
+
+  describe('requiredAcceptsNull()', () => {
+    describe('when required', () => {
+      const subject = requiredAcceptsNull(true, 'Required');
+
+      it('passes for null', () => {
+        expect(subject(null)).toBeUndefined();
+      });
+
+      it('passes for a filled value', () => {
+        expect(subject(5)).toBeUndefined();
+      });
+
+      it('fails for undefined', () => {
+        expect(subject(undefined)).toBe('Required');
+      });
+    });
+
+    describe('when not required', () => {
+      const subject = requiredAcceptsNull(false, 'Required');
+
+      it('passes for empty values', () => {
+        expect(subject(undefined)).toBeUndefined();
+        expect(subject(null)).toBeUndefined();
+      });
+
+      it('passes for filled values', () => {
+        expect(subject(5)).toBeUndefined();
+      });
     });
   });
 
@@ -165,6 +235,20 @@ describe('Validations', () => {
     it('passes for a larger array', () => {
       expect(subject([1, 2, 3])).toBe(undefined);
     });
+
+    it('counts an array of option objects by element', () => {
+      expect(subject([{ value: 'a' }, { value: 'b' }])).toBe(undefined);
+      expect(subject([{ value: 'a' }])).toBe(errorMessage);
+    });
+
+    it('coerces a non-array object to its values without throwing', () => {
+      expect(subject({ a: 1 })).toBe(errorMessage);
+      expect(subject({ a: 1, b: 2 })).toBe(undefined);
+    });
+
+    it('treats a string as an empty selection', () => {
+      expect(subject('ab')).toBe(errorMessage);
+    });
   });
 
   describe('maxSelected()', () => {
@@ -195,15 +279,126 @@ describe('Validations', () => {
     it('fails for a larger array', () => {
       expect(subject([1, 2, 3])).toBe(errorMessage);
     });
+
+    it('counts an array of option objects by element', () => {
+      expect(subject([{ value: 'a' }, { value: 'b' }])).toBe(undefined);
+      expect(subject([{ value: 'a' }, { value: 'b' }, { value: 'c' }])).toBe(
+        errorMessage,
+      );
+    });
+
+    it('coerces a non-array object to its values without throwing', () => {
+      expect(subject({ a: 1, b: 2 })).toBe(undefined);
+      expect(subject({ a: 1, b: 2, c: 3 })).toBe(errorMessage);
+    });
   });
 
-  it.todo('uniqueArrayAttribute()');
+  describe('uniqueArrayAttribute()', () => {
+    const subject = uniqueArrayAttribute(undefined, undefined);
 
-  it.todo('uniqueByList()');
+    it('compares values case-insensitively within the named array', () => {
+      const values = {
+        options: [{ value: 'Alpha' }, { value: 'alpha' }],
+      };
 
-  it.todo('ISODate()');
+      expect(subject('alpha', values, undefined, 'options[1].value')).toBe(
+        'Values must be unique',
+      );
+    });
 
-  it.todo('allowedVariableName()');
+    it('passes for a unique or empty value', () => {
+      const values = {
+        options: [{ value: 'Alpha' }, { value: 'Beta' }],
+      };
+
+      expect(
+        subject('Beta', values, undefined, 'options[1].value'),
+      ).toBeUndefined();
+      expect(
+        subject('', values, undefined, 'options[1].value'),
+      ).toBeUndefined();
+    });
+
+    it('uses a custom message', () => {
+      const customSubject = uniqueArrayAttribute(undefined, 'Already used');
+      expect(
+        customSubject(
+          'same',
+          { options: [{ value: 'same' }, { value: 'same' }] },
+          undefined,
+          'options[1].value',
+        ),
+      ).toBe('Already used');
+    });
+  });
+
+  describe('uniqueByList()', () => {
+    const subject = uniqueByList(['Alpha', 2, { id: 'item' }]);
+
+    it('rejects case-insensitive string and deeply-equal values', () => {
+      expect(subject('alpha')).toBe('"alpha" is already in use');
+      expect(subject(2)).toBe('"2" is already in use');
+      expect(subject({ id: 'item' })).toBe(
+        '"[object Object]" is already in use',
+      );
+    });
+
+    it('passes for unique and empty values', () => {
+      expect(subject('Beta')).toBeUndefined();
+      expect(subject('')).toBeUndefined();
+      expect(subject(null)).toBeUndefined();
+    });
+  });
+
+  describe('ISODate()', () => {
+    it.each([
+      ['2024-02-29', 'yyyy-MM-dd'],
+      ['2024-02', 'yyyy-MM'],
+      ['2024', 'yyyy'],
+    ])('accepts %s for %s', (value, format) => {
+      expect(ISODate(format, undefined)(value)).toBeUndefined();
+    });
+
+    it.each([
+      ['2023-02-29', 'yyyy-MM-dd'],
+      ['2024-13', 'yyyy-MM'],
+      ['2024-01', 'yyyy-MM-dd'],
+      ['2024-01-01', 'yyyy'],
+    ])('rejects %s for %s', (value, format) => {
+      expect(ISODate(format, undefined)(value)).toBe(
+        `Date is not valid (${format.toUpperCase()})`,
+      );
+    });
+
+    it('allows an empty optional value', () => {
+      expect(ISODate('yyyy-MM-dd', undefined)('')).toBeUndefined();
+      expect(ISODate('yyyy-MM-dd', undefined)(null)).toBeUndefined();
+    });
+  });
+
+  describe('allowedVariableName()', () => {
+    it.each(['name', 'name.with-dashes_and:punctuation', '123'])(
+      'accepts %s',
+      (value) => {
+        expect(allowedVariableName()(value)).toBeUndefined();
+      },
+    );
+
+    it.each(['contains spaces', 'slash/name', 'emoji-🚀', ''])(
+      'rejects %s',
+      (value) => {
+        expect(allowedVariableName()(value)).toBe(
+          'Not a valid variable name. Only letters, numbers and the symbols ._-: are supported',
+        );
+      },
+    );
+
+    it('uses the supplied name in its error', () => {
+      expect(allowedVariableName('option value')('not valid')).toContain(
+        'Not a valid option value',
+      );
+    });
+  });
 
   describe('greaterThan()', () => {
     const errorMessage = 'Must be greater than the other field';
@@ -307,6 +502,16 @@ describe('Validations', () => {
       });
       expect(validators[0]?.('alice')).toBe('Name taken');
       expect(validators[0]?.('charlie')).toBe(undefined);
+    });
+  });
+
+  describe('getValidator()', () => {
+    it('evaluates each validator at most once', () => {
+      const validator = vi.fn(() => undefined);
+      const validate = getValidator({ custom: validator });
+
+      expect(validate('value')).toBeUndefined();
+      expect(validator).toHaveBeenCalledOnce();
     });
   });
 });

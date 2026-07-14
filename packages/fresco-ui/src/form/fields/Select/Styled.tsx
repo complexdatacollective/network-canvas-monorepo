@@ -34,19 +34,32 @@ function SelectField(props: SelectProps) {
     className,
     onChange,
     value,
+    id,
     name,
     disabled,
     readOnly,
+    onBlur,
+    onFocus,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
+    'aria-describedby': ariaDescribedBy,
+    'aria-invalid': ariaInvalid,
+    'aria-required': ariaRequired,
+    'aria-disabled': ariaDisabled,
+    'aria-readonly': ariaReadOnly,
     ...rest
   } = props;
 
   const handleValueChange = (newValue: unknown) => {
     if (newValue !== null && newValue !== undefined) {
-      const convertedValue =
-        typeof newValue === 'string' || typeof newValue === 'number'
-          ? newValue
-          : undefined;
-      onChange?.(convertedValue);
+      const isPrimitiveValue =
+        typeof newValue === 'string' || typeof newValue === 'number';
+      const selectedOption = options.find(
+        (option) =>
+          Object.is(option.value, newValue) ||
+          (isPrimitiveValue && String(option.value) === String(newValue)),
+      );
+      onChange?.(selectedOption?.value);
     }
   };
 
@@ -55,12 +68,23 @@ function SelectField(props: SelectProps) {
   return (
     <Select.Root
       {...rest}
-      value={value !== undefined ? String(value) : undefined}
+      value={value}
       onValueChange={handleValueChange}
-      disabled={disabled ?? readOnly}
+      disabled={disabled}
+      readOnly={readOnly}
       name={name}
     >
       <Select.Trigger
+        id={id}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid || undefined}
+        aria-required={ariaRequired}
+        aria-disabled={ariaDisabled || disabled || undefined}
+        aria-readonly={ariaReadOnly || readOnly || undefined}
         className={selectWrapperVariants({
           size,
           className: cx('w-full', className),
@@ -80,7 +104,11 @@ function SelectField(props: SelectProps) {
                 </span>
               );
             }
-            const option = options.find((opt) => opt.value === currentValue);
+            const option = options.find(
+              (opt) =>
+                Object.is(opt.value, currentValue) ||
+                String(opt.value) === String(currentValue),
+            );
             return option?.label ?? currentValue;
           }}
         </Select.Value>
@@ -94,8 +122,8 @@ function SelectField(props: SelectProps) {
             className={cx(
               'elevation-high rounded-sm border-2 border-transparent',
               'bg-surface-popover text-surface-popover-contrast',
-              'max-h-96 overflow-auto',
-              'min-w-(--anchor-width)',
+              'max-h-96 max-w-(--available-width) overflow-auto',
+              'w-max min-w-[min(var(--anchor-width),var(--available-width))]',
             )}
           >
             <Select.List className="p-1">
@@ -103,9 +131,10 @@ function SelectField(props: SelectProps) {
                 <Select.Item
                   key={option.value}
                   value={option.value}
+                  disabled={option.disabled}
                   className={dropdownItemVariants()}
                 >
-                  <Select.ItemText className="flex-1">
+                  <Select.ItemText className="min-w-0 flex-1 wrap-break-word whitespace-normal">
                     {option.label}
                   </Select.ItemText>
                   <Select.ItemIndicator>

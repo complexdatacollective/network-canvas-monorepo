@@ -25,4 +25,5 @@ export const selectWrapperVariants = compose(
 export type SelectOption = {
   value: string | number;
   label: string;
+  disabled?: boolean;
 };

@@ -230,13 +230,18 @@ export function ManageAuthenticator() {
   const [changing, setChanging] = useState(false);
 
   const canChange = auth.mode === 'pin' || auth.mode === 'passphrase';
+  // Treat the unconfigured state (no vault yet; auth.mode === undefined) the
+  // same as an explicitly-enrolled 'none' vault — both mean "no device lock",
+  // matching how AuthGate treats a plain browser tab. Otherwise a fresh tab
+  // shows the "Authenticator" heading for a lock that doesn't exist.
+  const hasNoLock = !auth.mode || auth.mode === 'none';
 
   return (
     <section>
       <Heading level="label" margin="none">
-        {auth.mode === 'none' ? 'Device lock' : 'Authenticator'}
+        {hasNoLock ? 'Device lock' : 'Authenticator'}
       </Heading>
-      {auth.mode === 'none' && (
+      {hasNoLock && (
         <Paragraph intent="smallText" emphasis="muted">
           No device lock is configured. Data on this device is not encrypted at
           the app layer. To enable a lock, reset the device first and run setup
@@ -302,12 +307,16 @@ export function ResetDeviceRow() {
   const auth = useAuth();
   const { confirm } = useDialog();
 
+  // Unconfigured (auth.mode === undefined) and enrolled 'none' both mean "no
+  // device lock" — there is nothing to revoke, so present the "reset" variant
+  // rather than "revoke device lock".
+  const isReset = !auth.mode || auth.mode === 'none';
+
   const handleRevoke = async () => {
     await confirm({
-      title:
-        auth.mode === 'none'
-          ? 'Reset device and wipe data?'
-          : 'Revoke device lock and wipe data?',
+      title: isReset
+        ? 'Reset device and wipe data?'
+        : 'Revoke device lock and wipe data?',
       description: 'This will destroy all data on this device. Continue?',
       confirmLabel: 'Destroy device data',
       intent: 'destructive',
@@ -317,7 +326,6 @@ export function ResetDeviceRow() {
     });
   };
 
-  const isReset = auth.mode === 'none';
   return (
     <SettingsRow
       title={isReset ? 'Reset device' : 'Revoke device lock'}

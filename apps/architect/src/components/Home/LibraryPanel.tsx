@@ -41,6 +41,7 @@ import { sampleProtocol } from '~/templates/sample-protocol';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
+import { documentationLinks } from '~/utils/documentationLinks';
 import { reportError } from '~/utils/reportError';
 type Tab = 'recent' | 'templates';
 const RELATIVE_CUTOFF_DAYS = 7;
@@ -131,13 +132,17 @@ const PanelRow = ({
       onOpen();
     }
   };
-  const runMenuAction = (action: () => void | Promise<void>) => () => {
-    setMenuOpen(false);
-    void Promise.resolve(action()).catch((error: unknown) => {
-      console.error('LibraryPanel action failed', error);
-      reportError(error);
-    });
-  };
+  const runMenuAction =
+    (action: () => void | Promise<void>) => (event: React.MouseEvent) => {
+      event.stopPropagation();
+      setMenuOpen(false);
+      void Promise.resolve()
+        .then(() => action())
+        .catch((error: unknown) => {
+          console.error('LibraryPanel action failed', error);
+          reportError(error);
+        });
+    };
   const hasMenu = Boolean(onDownload || onDelete || onShowInfo);
   return (
     <div
@@ -469,7 +474,18 @@ const LibraryPanel = ({
             your browsing data, or using &quot;Clear all protocols&quot;, will
             permanently remove it. Download the protocol as a{' '}
             <code>.netcanvas</code> file to save a copy or move it to another
-            device.
+            device. See our guide to{' '}
+            <ExternalLink href={documentationLinks.savingAndBackingUp}>
+              saving and backing up your work
+            </ExternalLink>{' '}
+            for more.
+          </Paragraph>
+          <Paragraph>
+            Looking for inspiration? Browse example research protocols in the{' '}
+            <ExternalLink href={documentationLinks.protocolGallery}>
+              Protocol Gallery
+            </ExternalLink>
+            .
           </Paragraph>
         </>
       ),

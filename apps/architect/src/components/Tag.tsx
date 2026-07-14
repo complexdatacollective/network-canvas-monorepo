@@ -22,12 +22,12 @@ const Tag = ({
   disabled = false,
 }: TagProps) => {
   const componentClasses = cx(
-    'bg-text/15 inline-flex items-center justify-center gap-2 rounded-full border-2 border-transparent px-2 py-1 text-xs font-semibold tracking-widest text-white uppercase',
-    selected && 'bg-platinum text-surface-2-contrast',
+    'bg-text/15 text-text inline-flex items-center justify-center gap-2 rounded-full border-2 border-transparent px-2 py-1 text-xs font-semibold tracking-widest uppercase',
+    selected && 'bg-text text-background',
     light && 'bg-platinum text-surface-2-contrast',
     disabled && !!onClick && '',
     disabled && 'cursor-not-allowed opacity-50',
-    onClick && !disabled && 'cursor-pointer',
+    onClick && !disabled && 'focusable cursor-pointer',
   );
 
   const dotClasses = cx(
@@ -66,8 +66,9 @@ const Tag = ({
         className={componentClasses}
         onClick={handleClick}
         disabled={disabled}
+        aria-pressed={selected}
       >
-        <div className={dotClasses} />
+        <div className={dotClasses} aria-hidden />
         {children}
       </button>
     );
@@ -75,7 +76,7 @@ const Tag = ({
 
   return (
     <div className={componentClasses}>
-      <div className={dotClasses} />
+      <div className={dotClasses} aria-hidden />
       {children}
     </div>
   );

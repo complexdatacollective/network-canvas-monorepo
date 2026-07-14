@@ -1,0 +1,12 @@
+{
+  "GetStarted": {
+    "apps": {
+      "fresco": {
+        "description": "For participants completing interviews remotely in their own browser, with centralised study and data management. The sandbox is a public demonstration environment, not a place to run a real study.",
+        "bestFor": {
+          "centralManagement": "Centralised study and participant management"
+        }
+      }
+    }
+  }
+}

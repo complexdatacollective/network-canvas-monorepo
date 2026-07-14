@@ -154,9 +154,8 @@ New job, runs on **push to `main`** (`fetch-depth: 2`):
      current prod jobs use:
      - architect-web: `turbo run build --filter=@codaco/architect-web`, deploy
        `apps/architect-web/dist`, site `NETLIFY_SITE_ID_ARCHITECT`.
-     - interviewer-v8: `turbo run build --filter=@codaco/interviewer-v8^...` then
-       `pnpm --filter=@codaco/interviewer-v8 build:web` (keeps the PWA precache
-       assertion), deploy `apps/interviewer-v8/dist`, site
+     - interviewer-v8: `turbo run build --filter=@codaco/interviewer-v8`
+       (includes the PWA precache assertion), deploy `apps/interviewer-v8/dist`, site
        `NETLIFY_SITE_ID_INTERVIEWER`.
    - Create the **GitHub release + tag** `@codaco/<app>@<version>`, notes taken
      from the top (`## <version>`) section of the app's `CHANGELOG.md`.

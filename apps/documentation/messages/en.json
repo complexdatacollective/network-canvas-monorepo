@@ -1,17 +1,28 @@
 {
-  "ProjectSwitcher": {
-    "fresco": {
-      "label": "Fresco",
-      "description": "A new project that brings Network Canvas interviews to the web browser."
+  "SectionSwitcher": {
+    "get-started": {
+      "label": "Get Started",
+      "description": "Install the software and learn about Network Canvas."
     },
-    "desktop": {
-      "label": "Desktop Suite",
-      "description": "The traditional Network Canvas suite of desktop and tablet applications (Architect and Interviewer)."
+    "design-protocols": {
+      "label": "Design Protocols",
+      "description": "Build interview protocols in Architect or Architect Classic."
+    },
+    "collect-data": {
+      "label": "Collect Data",
+      "description": "Run your protocol and collect data with Interviewer or Fresco."
+    },
+    "analyze-data": {
+      "label": "Analyze Data",
+      "description": "Export and analyze the network data your interviews produce."
     },
     "studio": {
       "label": "Studio",
       "description": "A web-based platform for creating and sharing network data collection instruments."
     }
+  },
+  "WorkflowNav": {
+    "workflowLabel": "Workflow"
   },
   "TipBox": {
     "info": "Good to know:",
@@ -65,33 +76,31 @@
     }
   },
   "SharedNavigation": {
-    "community": "Community",
-    "documentation": "Documentation",
-    "projects": "Projects",
-    "projectsChildren": {
-      "partner-services": {
-        "label": "Partner Services",
-        "description": "Evaluating Network Canvas in the context of partner notification services."
-      },
-      "fresco": {
-        "label": "Fresco",
-        "description": "A pilot project to bring Network Canvas interviews to the web browser."
-      },
-      "studio": {
-        "label": "Studio",
-        "description": "A web-based platform for creating and sharing network data collection instruments."
-      }
-    },
-    "download": "Download"
+    "documentationHome": "Documentation home",
+    "openDocumentationMenu": "Open documentation navigation",
+    "closeDocumentationMenu": "Close documentation navigation",
+    "documentationNavigation": "Documentation navigation",
+    "documentationNavigationDescription": "Browse documentation sections and pages."
+  },
+  "Footer": {
+    "terms": "Terms of Use",
+    "privacy": "Privacy Policy",
+    "copyright": "Copyright Complex Data Collective 2016-{year}",
+    "youtube": "YouTube",
+    "twitter": "Twitter",
+    "github": "GitHub",
+    "netlify": "This site is powered by <link>Netlify</link>"
   },
   "ThemeTranslations": {
+    "label": "Color theme",
+    "triggerLabel": "Color theme: {theme}",
     "light": "Light",
     "dark": "Dark",
     "system": "System"
   },
   "Hero": {
-    "title": "Welcome to our documentation!",
-    "tagline": "A home for tutorials, guides, and information about the Network Canvas project."
+    "title": "Documentation for every stage\nof your workflow",
+    "tagline": "Guides and reference material for planning studies, designing protocols, collecting data, and analyzing results."
   },
   "Home": {
     "title": "Home",
@@ -99,12 +108,5 @@
   },
   "DocPage": {
     "docAvailableTxt": "This document is also available in"
-  },
-  "AIAssistant": {
-    "dialogPlaceholder": "What are the main aims of the Network Canvas project?",
-    "q2": "How do I get started with Network Canvas?",
-    "q1": "What is Network Canvas?",
-    "popupText": "Click this button to open our AI assistant. It's a great way to get quick answers to your questions.",
-    "welcomeMessage": "Hi, I'm an AI assistant trained on the Network Canvas documentation. Ask me anything about Network Canvas."
   }
 }

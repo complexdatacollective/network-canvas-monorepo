@@ -1,0 +1,8 @@
+{
+  "type": "folder",
+  "slug": "planning-a-study",
+  "localeLabels": { "en": "Planning a Study" },
+  "localeIndexFiles": { "en": "workflows.en.mdx" },
+  "isExpanded": true,
+  "navOrder": 3
+}

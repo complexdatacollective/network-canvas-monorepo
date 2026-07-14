@@ -6,8 +6,10 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import withDisabledAPIKeyRequired from '~/components/enhancers/withDisabledAPIKeyRequired';
 import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
-import { FrescoReduxField } from '~/components/Form';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { mapboxStyleOptions } from '~/config/mapboxConstants';
+import { documentationLinks } from '~/utils/documentationLinks';
 
 import useVariablesFromExternalData from '../../hooks/useVariablesFromExternalData';
 import { Row, Section } from '../EditorLayout';
@@ -15,8 +17,9 @@ import ExternalLink from '../ExternalLink';
 import ColorPicker from '../Form/Fields/ColorPicker';
 import GeoAPIKey from '../Form/Fields/Geospatial/GeoAPIKey';
 import GeoDataSource from '../Form/Fields/Geospatial/GeoDataSource';
-import { mapboxStyleOptions } from '../Form/Fields/Geospatial/mapboxConstants';
-import MapSelection from '../Form/Fields/Geospatial/MapSelection';
+import MapSelection, {
+  requiredMapView,
+} from '../Form/Fields/Geospatial/MapSelection';
 import Toggle from '../Form/Fields/Toggle';
 import ValidatedField from '../Form/ValidatedField';
 
@@ -70,7 +73,7 @@ const MapOptions = ({
           <Paragraph>
             This interface requires an API key from Mapbox. For more information
             about Mapbox and retreiving an API Key, read our{' '}
-            <ExternalLink href="https://documentation.networkcanvas.com/interface-documentation/geospatial/">
+            <ExternalLink href={documentationLinks.geospatialInterface}>
               documentation
             </ExternalLink>{' '}
             on the interface.
@@ -184,9 +187,9 @@ const MapOptions = ({
         <ValidatedField
           name="mapOptions"
           component={MapSelection as React.ComponentType}
-          validation={{ required: true }}
+          validation={{ required: requiredMapView }}
           componentProps={{
-            label: 'Initial Map View',
+            label: 'Map center and zoom',
           }}
         />
       </Section>

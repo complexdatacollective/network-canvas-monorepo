@@ -24,6 +24,10 @@ export const SUBJECT_INDEPENDENT_FIELDS = [
   'label',
   'interviewScript',
   'introductionPanel',
+  // The subject field itself never depends on its own value — omitting it
+  // here meant handleResetStage nulled the just-selected subject out from
+  // under the user on every change, including the very first selection.
+  'subject',
 ];
 type NodeTypeProps = StageEditorSectionProps & {
   withFilter?: boolean;
@@ -35,7 +39,6 @@ const NodeType = (props: NodeTypeProps) => {
     getFormValues(form)(state),
   );
   const fields = keys(formValues);
-  const _currentSubject = get(formValues, 'subject');
   const handleResetStage = useCallback(() => {
     const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
     fieldsToReset.forEach((field) => {
@@ -58,6 +61,8 @@ const NodeType = (props: NodeTypeProps) => {
         <ValidatedField
           name="subject"
           entityType="node"
+          label="Node type"
+          labelHidden
           promptBeforeChange="You attempted to change the node type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
           component={EntitySelectField}
           onChange={handleResetStage}

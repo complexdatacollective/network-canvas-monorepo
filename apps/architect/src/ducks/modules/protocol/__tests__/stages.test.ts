@@ -4,7 +4,12 @@ import { describe, expect, it } from 'vitest';
 import type { Stage } from '@codaco/protocol-validation';
 import type { AppDispatch } from '~/ducks/store';
 
-import reducer, { actionCreators, test } from '../stages';
+import reducer, {
+  actionCreators,
+  getInvalidSkipDestinationReferences,
+  getSkipDestinationDependentStages,
+  test,
+} from '../stages';
 
 const mockStages = [
   { id: '3', type: 'Information', label: 'Foo' },
@@ -95,6 +100,73 @@ describe('protocol.stages', () => {
       });
     });
 
+    describe('skip destination ordering', () => {
+      const stagesWithDestination = [
+        {
+          id: 'source',
+          type: 'Information',
+          label: 'Source',
+          skipLogic: {
+            action: 'SKIP',
+            filter: { join: 'AND', rules: [] },
+            destination: { type: 'stage', stageId: 'destination' },
+          },
+        },
+        { id: 'middle', type: 'Information', label: 'Middle' },
+        { id: 'destination', type: 'Information', label: 'Destination' },
+      ] as Stage[];
+
+      it('finds stages that depend on a destination', () => {
+        expect(
+          getSkipDestinationDependentStages(
+            stagesWithDestination,
+            'destination',
+          ).map((stage) => stage.id),
+        ).toEqual(['source']);
+      });
+
+      it('rejects deleting a referenced destination', () => {
+        const updatedStages = reducer(
+          stagesWithDestination,
+          test.deleteStage('destination'),
+        );
+
+        expect(updatedStages).toEqual(stagesWithDestination);
+      });
+
+      it('rejects a reorder that moves the destination before its source', () => {
+        const updatedStages = reducer(
+          stagesWithDestination,
+          test.moveStage(2, 0),
+        );
+
+        expect(updatedStages).toEqual(stagesWithDestination);
+      });
+
+      it('allows a reorder that keeps the destination later than its source', () => {
+        const updatedStages = reducer(
+          stagesWithDestination,
+          test.moveStage(1, 2),
+        );
+
+        expect(updatedStages.map((stage) => stage.id)).toEqual([
+          'source',
+          'destination',
+          'middle',
+        ]);
+      });
+
+      it('reports a missing destination as invalid', () => {
+        const [violation] = getInvalidSkipDestinationReferences([
+          stagesWithDestination[0] as Stage,
+        ]);
+
+        expect(violation?.sourceStage.id).toBe('source');
+        expect(violation?.destinationStage).toBeUndefined();
+        expect(violation?.destinationStageId).toBe('destination');
+      });
+    });
+
     describe('deletePrompt', () => {
       it('Deletes the prompt with promptId', () => {
         const updatedStages = reducer(mockStages, test.deletePrompt('9', '3'));
@@ -112,6 +184,55 @@ describe('protocol.stages', () => {
           },
           { id: '5', type: 'OrdinalBin', label: 'Baz' },
         ]);
+      });
+
+      it('deletes an unreferenced stage when its final prompt is removed', () => {
+        const stages = [
+          {
+            id: 'target',
+            type: 'NameGenerator',
+            label: 'Target',
+            prompts: [{ id: 'only', text: 'Only prompt' }],
+          },
+        ] as Stage[];
+
+        const updatedStages = reducer(
+          stages,
+          test.deletePrompt('target', 'only', true),
+        );
+
+        expect(updatedStages).toEqual([]);
+      });
+
+      it('rejects removing the final prompt from a referenced skip destination', () => {
+        const stages = [
+          {
+            id: 'source',
+            type: 'Information',
+            label: 'Source',
+            skipLogic: {
+              action: 'SKIP',
+              filter: { join: 'AND', rules: [] },
+              destination: { type: 'stage', stageId: 'target' },
+            },
+          },
+          {
+            id: 'target',
+            type: 'NameGenerator',
+            label: 'Target',
+            prompts: [{ id: 'only', text: 'Only prompt' }],
+          },
+        ] as Stage[];
+
+        const updatedStages = reducer(
+          stages,
+          test.deletePrompt('target', 'only', true),
+        );
+
+        expect(updatedStages).toEqual(stages);
+        expect(updatedStages[1]).toMatchObject({
+          prompts: [{ id: 'only', text: 'Only prompt' }],
+        });
       });
     });
   });
@@ -153,6 +274,36 @@ describe('protocol.stages', () => {
     };
 
     describe('deleteStageAsync', () => {
+      it('blocks deleting a stage used as a skip destination', async () => {
+        const present = {
+          stages: [
+            {
+              id: 'source',
+              type: 'Information',
+              label: 'Source',
+              skipLogic: {
+                action: 'SKIP',
+                filter: { join: 'AND', rules: [] },
+                destination: { type: 'stage', stageId: 'destination' },
+              },
+            },
+            {
+              id: 'destination',
+              type: 'Information',
+              label: 'Destination',
+            },
+          ],
+          codebook: { node: {} },
+        };
+        const { store, dispatched } = createThunkStore(present);
+
+        await store.dispatch(actionCreators.deleteStage('destination'));
+
+        expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
+          false,
+        );
+      });
+
       it('blocks deleting a FamilyPedigree referenced by a NarrativePedigree', async () => {
         const present = {
           stages: [

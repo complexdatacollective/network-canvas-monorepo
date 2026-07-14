@@ -6,9 +6,9 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
 import { Row, Section } from '~/components/EditorLayout';
-import { FrescoReduxField } from '~/components/Form';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
 import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
+import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { RootState } from '~/ducks/store';
@@ -45,6 +45,7 @@ const DiseaseFields = ({ nodeType }: DiseaseFieldsProps) => {
           <ValidatedField
             name="label"
             label="Disease label"
+            labelHidden
             component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{
@@ -94,6 +95,7 @@ const DiseaseFields = ({ nodeType }: DiseaseFieldsProps) => {
           <ValidatedField
             name="inheritancePattern"
             label="Inheritance pattern"
+            labelHidden
             component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{

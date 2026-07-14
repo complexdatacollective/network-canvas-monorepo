@@ -1,32 +1,28 @@
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
-import Link from 'next/link';
 
-import { cn } from '~/lib/utils';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 type LogoComponentProps = {
-  invisible?: boolean;
   className?: string;
+  variant?: 'responsive' | 'wordmark';
 };
 
 const LogoComponent = ({
-  invisible = false,
   className,
+  variant = 'responsive',
 }: LogoComponentProps) => {
   const { resolvedTheme } = useTheme();
   return (
-    <Link
-      href="/"
-      className={cn(
-        className,
-        invisible ? 'invisible' : 'visible',
-        'focusable shrink-0 transition-transform duration-1000',
-      )}
-    >
+    <span className={cx('inline-flex shrink-0 items-center', className)}>
       <Image
         src="/images/mark.svg"
-        alt="Network Canvas Documentation"
-        className="h-9 w-auto lg:hidden"
+        alt=""
+        aria-hidden
+        className={cx(
+          'h-9 w-auto',
+          variant === 'responsive' ? 'tablet-landscape:hidden' : 'hidden',
+        )}
         width={36}
         height={36}
       />
@@ -36,12 +32,16 @@ const LogoComponent = ({
             ? '/images/typemark-positive.svg'
             : '/images/typemark-negative.svg'
         }
-        alt="Network Canvas Documentation"
-        className="hidden h-12 w-auto lg:block"
+        alt=""
+        aria-hidden
+        className={cx(
+          'h-12 w-auto',
+          variant === 'responsive' ? 'tablet-landscape:block hidden' : 'block',
+        )}
         width={120}
         height={48}
       />
-    </Link>
+    </span>
   );
 };
 

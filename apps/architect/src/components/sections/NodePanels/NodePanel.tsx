@@ -52,7 +52,7 @@ const NodePanel = ({
   };
 
   return (
-    <div className="flex w-full items-start gap-4">
+    <div className="flex w-full items-center gap-4">
       {isSortable && (
         <ArrayFieldDragHandle
           dragControls={dragControls}
@@ -61,7 +61,7 @@ const NodePanel = ({
           onMove={onMove}
           disabled={interactionDisabled}
           label={`Reorder side panel ${index + 1} of ${itemCount}`}
-          className="mt-10"
+          size="lg"
         />
       )}
       <div className="min-w-0 flex-1">
@@ -80,6 +80,7 @@ const NodePanel = ({
           <ValidatedField
             name={`${fieldName}.title`}
             label="Panel title"
+            labelHidden
             component={FrescoReduxField}
             validation={{ required: true }}
             componentProps={{
@@ -124,11 +125,11 @@ const NodePanel = ({
       <IconButton
         icon={<Trash2 />}
         aria-label="Remove side panel"
-        size="sm"
+        size="lg"
         variant="text"
         color="destructive"
         disabled={interactionDisabled}
-        className="mt-10"
+        className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast text-current"
         onClick={handleDelete}
       />
     </div>

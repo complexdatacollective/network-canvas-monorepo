@@ -14,8 +14,8 @@ const SCRIPT = join(
   'detect-app-release.sh',
 );
 
-const PKG_NAME = '@codaco/interviewer';
-const PKG_JSON = 'apps/interviewer/package.json';
+const DEFAULT_PKG_NAME = '@codaco/interviewer';
+const DEFAULT_PKG_JSON = 'apps/interviewer/package.json';
 
 function git(cwd, ...args) {
   execFileSync('git', args, { cwd, stdio: 'pipe' });
@@ -24,17 +24,24 @@ function git(cwd, ...args) {
 // A throwaway git repo with the app's package.json committed at `version`.
 // `tags` are created pointing at HEAD so the script's tag-existence check sees
 // them. Returns the parsed `$GITHUB_OUTPUT` the script wrote.
-function detect({ version, previousVersion, tags = [] }) {
+function detect({
+  version,
+  previousVersion,
+  tags = [],
+  pkgName = DEFAULT_PKG_NAME,
+  pkgJson = DEFAULT_PKG_JSON,
+  releaseChannel,
+}) {
   const cwd = mkdtempSync(join(tmpdir(), 'dar-'));
-  mkdirSync(join(cwd, 'apps/interviewer'), { recursive: true });
+  mkdirSync(join(cwd, dirname(pkgJson)), { recursive: true });
   git(cwd, 'init', '-q');
   git(cwd, 'config', 'user.email', 'ci@example.com');
   git(cwd, 'config', 'user.name', 'ci');
 
   const writePkg = (v) =>
     writeFileSync(
-      join(cwd, PKG_JSON),
-      `${JSON.stringify({ name: PKG_NAME, version: v, private: true }, null, 2)}\n`,
+      join(cwd, pkgJson),
+      `${JSON.stringify({ name: pkgName, version: v, private: true }, null, 2)}\n`,
     );
 
   // Two commits give the repo real history. The script is tag-driven and never
@@ -58,7 +65,13 @@ function detect({ version, previousVersion, tags = [] }) {
   writeFileSync(output, '');
   execFileSync('bash', [SCRIPT], {
     cwd,
-    env: { ...process.env, PKG_JSON, PKG_NAME, GITHUB_OUTPUT: output },
+    env: {
+      ...process.env,
+      PKG_JSON: pkgJson,
+      PKG_NAME: pkgName,
+      RELEASE_CHANNEL: releaseChannel,
+      GITHUB_OUTPUT: output,
+    },
     stdio: 'pipe',
   });
 
@@ -83,7 +96,7 @@ test('is idempotent: does not re-release when the tag already exists', () => {
   const out = detect({
     previousVersion: '8.0.0-beta.1',
     version: '8.0.0-beta.2',
-    tags: [`${PKG_NAME}@8.0.0-beta.2`],
+    tags: [`${DEFAULT_PKG_NAME}@8.0.0-beta.2`],
   });
   assert.equal(out.released, 'false');
 });
@@ -109,5 +122,18 @@ test('does not release the initial beta.0 seed', () => {
 
 test('does not release a non-beta version', () => {
   const out = detect({ previousVersion: '6.6.0', version: '6.6.0' });
+  assert.equal(out.released, 'false');
+});
+
+test('does not re-release a tagged stable documentation version', () => {
+  const pkgName = '@codaco/documentation';
+  const out = detect({
+    previousVersion: '0.1.0',
+    version: '0.1.1',
+    tags: [`${pkgName}@0.1.1`],
+    pkgName,
+    pkgJson: 'apps/documentation/package.json',
+    releaseChannel: 'stable',
+  });
   assert.equal(out.released, 'false');
 });

@@ -1,10 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 
 import { buttonVariants } from '@codaco/fresco-ui/Button';
 import { cn } from '~/lib/cn';
+import { Link } from '~/lib/i18n/navigation';
 
 type Variants = Parameters<typeof buttonVariants>[0];
 

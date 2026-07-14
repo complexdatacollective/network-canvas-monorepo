@@ -400,8 +400,9 @@ export const LinkVariant: Story = {
         </Heading>
         <Paragraph margin="none" className="text-text/70 mb-6 text-sm">
           The link variant renders a button that visually appears like an anchor
-          tag, with an underline on hover. Useful for inline actions that should
-          look like text links.
+          tag, with the same animated underline as NativeLink on hover and
+          keyboard focus. Useful for inline actions that should look like text
+          links.
         </Paragraph>
       </div>
 

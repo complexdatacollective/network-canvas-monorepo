@@ -1,70 +1,37 @@
 import { omit } from 'es-toolkit/compat';
 import { withHandlers } from 'react-recompose';
 
-import {
-  isValidationWithListValue,
-  isValidationWithNumberValue,
-  isValidationWithoutValue,
-} from './options';
-
 type ValidationValue = boolean | number | string | null;
 
 /**
- * Function called when a validation is added or updated. Returns a value
- * based on the validation type, and the previous value (if any).
- *
- * @param {string} type - The validation type.
- * @param {string} oldType - The previous validation type.
- * @param {string} value - The current value.
- * @returns {string} The new value.
+ * Applies a committed (key, value) pair to the validation map, renaming the
+ * row from `oldKey` if given. `Validation.tsx` owns deciding whether a value
+ * survives a rule-type change (and forces `true` for value-less rule types)
+ * before this is ever called, via its own draft state and `isDraftComplete`
+ * gate — so the value handed in here is already final and is stored as-is,
+ * with no further "does this look stale" heuristic re-applied.
  */
-const getAutoValue = (
-  type: string,
-  oldType: string | null,
-  value: ValidationValue,
-): ValidationValue => {
-  // If the validation type doesn't require a value, return true.
-  if (isValidationWithoutValue(type)) {
-    return true;
-  }
-
-  // If the new type and the old type are both numbers, keep the value
-  if (
-    isValidationWithNumberValue(type) &&
-    oldType &&
-    isValidationWithNumberValue(oldType)
-  ) {
-    return value;
-  }
-
-  // If the new type and the old type both reference variables, keep the value.
-  if (
-    isValidationWithListValue(type) &&
-    oldType &&
-    isValidationWithListValue(oldType)
-  ) {
-    return value;
-  }
-
-  // Otherwise, set an empty value to force the user to enter a value.
-  return null;
-};
-
-const getUpdatedValue = (
+export const getUpdatedValue = (
   previousValue: Record<string, ValidationValue>,
   key: string,
   value: ValidationValue,
   oldKey: string | null = null,
 ): Record<string, ValidationValue> => {
-  const autoValue = getAutoValue(key, oldKey, value);
+  // A disabled option should make this unreachable in the UI, but keep the
+  // update lossless if a stale/programmatic event still requests a key that
+  // belongs to another row. The old behavior overwrote the existing rule and
+  // then removed the edited one.
+  if (oldKey && key !== oldKey && Object.hasOwn(previousValue, key)) {
+    return previousValue;
+  }
 
   if (!oldKey) {
-    return { ...previousValue, [key]: autoValue };
+    return { ...previousValue, [key]: value };
   }
 
   return {
     ...omit(previousValue, oldKey),
-    [key]: autoValue,
+    [key]: value,
   };
 };
 

@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 
-import Heading from '~/components/ui/typography/Heading';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import useHighlighted from '~/hooks/useHighlighted';
 import type { HeadingNode } from '~/lib/tableOfContents';
-import { cn } from '~/lib/utils';
 
 const TOCLink = ({
   node,
@@ -34,8 +34,8 @@ const TOCLink = ({
     <Link
       ref={ref}
       href={`#${node.id}`}
-      className={cn(
-        'focusable text-base-sm hover:text-accent my-2 block transition-colors',
+      className={cx(
+        'focusable hover:text-accent my-2 block text-base transition-colors',
         sideBar && 'm-2 text-sm',
         node.level === 3 && 'ml-6 font-normal',
         sideBar && highlighted && 'text-accent font-semibold',
@@ -55,17 +55,21 @@ const TableOfContents = ({
 }) => {
   return (
     <aside
-      className={cn(
+      className={cx(
         'hidden shrink-0',
         sideBar &&
-          'sticky top-2 max-h-[calc(100vh-1rem)] w-64 overflow-x-hidden overflow-y-auto xl:block',
+          // Sticky offset clears the sticky section switcher (68px) plus an 8px
+          // gap; max height subtracts that offset and the 8px bottom margin.
+          'laptop:block sticky top-19 max-h-[calc(100vh-84px)] w-64 overflow-x-hidden overflow-y-auto',
         !sideBar &&
-          'border-border bg-input mb-5 block rounded-lg border px-6 py-4 xl:hidden',
+          'border-outline bg-input laptop:hidden mb-5 block rounded-lg border px-6 py-4',
       )}
     >
       <Heading
-        variant={sideBar ? 'h4-all-caps' : 'h3'}
-        className={cn(sideBar && 'mb-2')}
+        {...(sideBar
+          ? ({ level: 'h4', variant: 'all-caps' } as const)
+          : ({ level: 'h3' } as const))}
+        className={cx(sideBar && 'mb-2')}
       >
         Table of Contents
       </Heading>
@@ -78,7 +82,7 @@ function renderNodes(nodes: HeadingNode[], sideBar: boolean) {
   return (
     <ol>
       {nodes.map((node) => (
-        <li key={node.id} className={cn('list-none')}>
+        <li key={node.id} className={cx('list-none')}>
           <TOCLink node={node} sideBar={sideBar} />
           {node.children?.length > 0 && renderNodes(node.children, sideBar)}
         </li>

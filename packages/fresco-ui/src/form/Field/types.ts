@@ -206,9 +206,12 @@ export type InjectedFieldProps = {
    * standalone use (a native blur passed by a consumer outside Field).
    */
   'onBlur'?: (e: React.FocusEvent) => void;
+  'onFocus'?: (e: React.FocusEvent) => void;
+  'aria-label'?: string;
   'aria-required'?: boolean;
   'aria-invalid'?: boolean;
   'aria-describedby'?: string;
+  'aria-labelledby'?: string;
   'aria-disabled'?: boolean;
   'aria-readonly'?: boolean;
   'disabled'?: boolean;
@@ -257,6 +260,13 @@ type FieldOwnProps<C extends ValidFieldComponent> = {
   label: string;
   /** Supplementary text rendered below the label. */
   hint?: ReactNode;
+  /**
+   * Visually hide the label while keeping it as the control's accessible name.
+   * Use when a surrounding heading already names the field, so the redundant
+   * visible label is dropped without stripping the screen-reader name.
+   * @default false
+   */
+  labelHidden?: boolean;
   /**
    * When true, renders the label and control on the same horizontal row
    * with the hint grouped beneath the label.

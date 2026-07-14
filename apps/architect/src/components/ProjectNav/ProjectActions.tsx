@@ -246,6 +246,7 @@ const ProjectActions = ({
             : 'Download',
         icon: downloadSuccess ? <Check /> : <Download />,
         showLabel: true,
+        variant: 'default',
         className: 'bg-sea-green text-white',
         disabled: isExporting,
         onClick: handleDownload,

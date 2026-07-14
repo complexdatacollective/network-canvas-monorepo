@@ -88,6 +88,7 @@ const StageEditorNav = ({
         label: 'Finished Editing',
         icon: <Check />,
         showLabel: true,
+        variant: 'default',
         className: 'bg-sea-green text-white',
         onClick: () => {
           openIssues();

@@ -77,12 +77,15 @@ export function NewSessionFormView({
         minLength={1}
         validateOnChange
         autoFocus
+        data-testid="new-session-case-id"
       />
       <div className="flex items-center justify-end gap-[2cqi]">
         <Button type="button" variant="text" color="dynamic" onClick={onCancel}>
           Cancel
         </Button>
-        <SubmitButton>Start interview</SubmitButton>
+        <SubmitButton data-testid="new-session-submit">
+          Start interview
+        </SubmitButton>
       </div>
     </Form>
   );

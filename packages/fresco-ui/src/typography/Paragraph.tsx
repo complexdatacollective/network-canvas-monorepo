@@ -1,5 +1,3 @@
-'use client';
-
 import { forwardRef } from 'react';
 
 import { cva, cx, type VariantProps } from '../utils/cva';

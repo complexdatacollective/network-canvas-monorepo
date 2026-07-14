@@ -1,6 +1,6 @@
 'use client';
 
-import { Slot } from '@radix-ui/react-slot';
+import { Slot, Slottable } from '@radix-ui/react-slot';
 import { motion } from 'motion/react';
 import * as React from 'react';
 
@@ -13,6 +13,10 @@ import {
   textSizeVariants,
   wrapperPaddingVariants,
 } from './styles/controlVariants';
+import {
+  NATIVE_LINK_LABEL_CLASS_NAME,
+  NATIVE_LINK_ROOT_CLASS_NAME,
+} from './styles/nativeLinkStyles';
 import { compose, cva, cx, type VariantProps } from './utils/cva';
 
 const buttonSpecificVariants = cva({
@@ -35,7 +39,10 @@ const buttonSpecificVariants = cva({
         'border-2 border-dashed border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
       glass:
         'control-glass border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
-      link: 'elevation-none hover:elevation-none! text-link h-auto! rounded-none p-0! underline-offset-4 hover:translate-none! hover:enabled:underline',
+      link: cx(
+        NATIVE_LINK_ROOT_CLASS_NAME,
+        'font-body elevation-none hover:elevation-none! h-auto! p-0! tracking-normal hover:translate-none! active:translate-none! disabled:[&>span]:bg-[length:0%_2px]!',
+      ),
     },
     color: {
       default:
@@ -139,23 +146,45 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref,
   ) => {
-    const Comp = asChild ? Slot : 'button';
+    const isLinkVariant = variant === 'link';
+    const classes = buttonVariants({
+      variant,
+      color,
+      size,
+      iconPosition,
+      className,
+    });
+
+    if (asChild) {
+      const slottedChild =
+        isLinkVariant &&
+        React.isValidElement<{ children?: React.ReactNode }>(children)
+          ? React.cloneElement(
+              children,
+              undefined,
+              <span className={NATIVE_LINK_LABEL_CLASS_NAME}>
+                {children.props.children}
+              </span>,
+            )
+          : children;
+
+      return (
+        <Slot className={classes} ref={ref} {...props}>
+          {icon}
+          <Slottable>{slottedChild}</Slottable>
+        </Slot>
+      );
+    }
+
     return (
-      <Comp
-        type={type}
-        className={buttonVariants({
-          variant,
-          color,
-          size,
-          iconPosition: iconPosition,
-          className,
-        })}
-        ref={ref}
-        {...props}
-      >
+      <button type={type} className={classes} ref={ref} {...props}>
         {icon}
-        {children}
-      </Comp>
+        {isLinkVariant ? (
+          <span className={NATIVE_LINK_LABEL_CLASS_NAME}>{children}</span>
+        ) : (
+          children
+        )}
+      </button>
     );
   },
 );

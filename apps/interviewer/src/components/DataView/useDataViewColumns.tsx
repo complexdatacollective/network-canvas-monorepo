@@ -201,6 +201,7 @@ export function useDataViewColumns({
                   navigate(`/interview/${id}`),
                 );
               }}
+              data-testid="data-resume"
             >
               Resume
             </Button>

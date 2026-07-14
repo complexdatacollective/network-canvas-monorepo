@@ -1,0 +1,6 @@
+[build]
+command = "pnpm exec turbo run build --filter=@codaco/interviewer"
+publish = "apps/interviewer/dist"
+
+[build.environment]
+NODE_OPTIONS = "--max-old-space-size=4096"

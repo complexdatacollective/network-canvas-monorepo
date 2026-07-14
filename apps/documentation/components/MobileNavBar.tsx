@@ -1,47 +1,43 @@
-import { X as CloseMenu, Menu as HamburgerMenu } from 'lucide-react';
-import { useLocale } from 'next-intl';
+import { PanelLeft } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
-import { Button } from '~/components/ui/Button';
-import { cn } from '~/lib/utils';
+import { IconButton } from '@codaco/fresco-ui/Button';
+import { hasDocumentationSection } from '~/app/types';
 
 import DocSearchComponent from './DocSearchComponent';
 import MobileSidebarDialog from './MobileSidebarDialog';
 
 const MobileNavBar = () => {
   const [open, setOpen] = useState(false);
+  const documentationMenuButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
-  const locale = useLocale();
+  const t = useTranslations('SharedNavigation');
 
-  // Check if we are on the home page by comparing the pathname to our supported locals
-  const isHomePage = pathname === `/${locale}`;
+  const showDocumentationMenu = hasDocumentationSection(pathname);
+
   return (
-    <div className="flex shrink grow basis-auto items-center gap-4 lg:hidden">
-      <MobileSidebarDialog open={open} setOpen={setOpen} />
-      <DocSearchComponent />
-      {open ? (
-        <Button
-          onClick={() => setOpen(false)}
-          variant="ghost"
-          size="icon-large"
-          className="shrink-0"
-        >
-          <CloseMenu className="h-8 w-8 transition-transform duration-300" />
-        </Button>
-      ) : (
-        <Button
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <MobileSidebarDialog
+        open={open}
+        setOpen={setOpen}
+        openerRef={documentationMenuButtonRef}
+      />
+      <DocSearchComponent className="min-w-0" />
+      {showDocumentationMenu ? (
+        <IconButton
+          ref={documentationMenuButtonRef}
           onClick={() => setOpen(true)}
-          variant="ghost"
-          size="icon-large"
-          className={cn(
-            'flex shrink-0 items-center justify-center',
-            isHomePage && 'md:hidden',
-          )}
-        >
-          <HamburgerMenu className="h-8 w-8" />
-        </Button>
-      )}
+          variant="text"
+          color="dynamic"
+          aria-label={t('openDocumentationMenu')}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          className="text-text shrink-0 border-transparent"
+          icon={<PanelLeft aria-hidden className="size-7" />}
+        />
+      ) : null}
     </div>
   );
 };

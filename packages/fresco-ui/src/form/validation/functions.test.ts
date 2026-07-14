@@ -117,6 +117,14 @@ describe('Validation Functions', () => {
       expect(validator.safeParse(true).success).toBe(true);
       expect(validator.safeParse(false).success).toBe(true);
     });
+
+    it('is a no-op when explicitly disabled', () => {
+      const validator = required(false)();
+
+      expect(validator.safeParse(undefined).success).toBe(true);
+      expect(validator.safeParse('').success).toBe(true);
+      expect(validator.safeParse([]).success).toBe(true);
+    });
   });
 
   describe('maxLength', () => {

@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -110,6 +116,56 @@ describe('ArrayField', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(onChange).toHaveBeenCalledWith([{ label: 'new' }]);
+  });
+
+  it('emits an insert descriptor instead of a whole-value change when requested', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onOperation = vi.fn();
+    renderField({ onChange, onOperation });
+
+    await user.click(screen.getByRole('button', { name: 'Add Item' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onOperation).toHaveBeenCalledWith({
+      type: 'insert',
+      index: 0,
+      item: { label: 'new' },
+    });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Added item at position 1 of 1.',
+    );
+  });
+
+  it('emits replace and remove descriptors with confirmed array indices', async () => {
+    const user = userEvent.setup();
+    const onOperation = vi.fn();
+    renderField({
+      value: [
+        { id: 'one', label: 'one' },
+        { id: 'two', label: 'two' },
+      ],
+      getId: (item) => item.id,
+      onOperation,
+    });
+
+    await user.click(screen.getAllByRole('button', { name: 'Edit' })[1]!);
+    await user.click(screen.getAllByRole('button', { name: 'Save' })[1]!);
+    expect(onOperation).toHaveBeenLastCalledWith({
+      type: 'replace',
+      index: 1,
+      item: { id: 'two', label: 'two' },
+    });
+
+    await user.click(screen.getAllByRole('button', { name: 'Delete' })[0]!);
+    expect(onOperation).toHaveBeenLastCalledWith({
+      type: 'remove',
+      index: 0,
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Removed item 1. 1 items remaining.',
+    );
   });
 
   it('removes a cancelled draft without changing the external value', async () => {
@@ -234,6 +290,81 @@ describe('ArrayField', () => {
 
     fireEvent.keyDown(secondHandle, { key: 'ArrowUp' });
     expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores focus to the drag handle after a keyboard reorder', async () => {
+    // jsdom does not reproduce the browser blur that follows repositioning the
+    // moved element, so this asserts the refocus mechanism fires; the live focus
+    // retention is verified downstream in a real browser.
+    renderField({
+      sortable: true,
+      value: [
+        { id: 'one', label: 'one' },
+        { id: 'two', label: 'two' },
+      ],
+      getId: (item) => item.id,
+      onChange: vi.fn(),
+    });
+
+    const secondHandle = screen.getByRole('button', {
+      name: 'Reorder item 2 of 2',
+    });
+    secondHandle.focus();
+    const focusSpy = vi.spyOn(secondHandle, 'focus');
+
+    fireEvent.keyDown(secondHandle, { key: 'ArrowUp' });
+
+    await waitFor(() => expect(focusSpy).toHaveBeenCalled());
+  });
+
+  it('does not refocus the handle for a clamped keyboard press at the bounds', async () => {
+    renderField({
+      sortable: true,
+      value: [
+        { id: 'one', label: 'one' },
+        { id: 'two', label: 'two' },
+      ],
+      getId: (item) => item.id,
+      onChange: vi.fn(),
+    });
+
+    const firstHandle = screen.getByRole('button', {
+      name: 'Reorder item 1 of 2',
+    });
+    firstHandle.focus();
+    const focusSpy = vi.spyOn(firstHandle, 'focus');
+
+    fireEvent.keyDown(firstHandle, { key: 'ArrowUp' });
+
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    expect(focusSpy).not.toHaveBeenCalled();
+  });
+
+  it('commits one move descriptor for one keyboard reorder', () => {
+    const onOperation = vi.fn();
+    renderField({
+      sortable: true,
+      value: [
+        { id: 'one', label: 'one' },
+        { id: 'two', label: 'two' },
+      ],
+      getId: (item) => item.id,
+      onOperation,
+    });
+
+    const secondHandle = screen.getByRole('button', {
+      name: 'Reorder item 2 of 2',
+    });
+    fireEvent.keyDown(secondHandle, { key: 'ArrowUp' });
+
+    expect(onOperation).toHaveBeenCalledOnce();
+    expect(onOperation).toHaveBeenCalledWith({
+      type: 'move',
+      from: 1,
+      to: 0,
+    });
   });
 
   it('hides the add action at maxItems', () => {

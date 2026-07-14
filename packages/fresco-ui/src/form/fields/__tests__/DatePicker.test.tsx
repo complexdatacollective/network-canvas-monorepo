@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '../../Field/Field';
+import UnconnectedField from '../../Field/UnconnectedField';
 import Form from '../../Form';
 import FormStoreProvider from '../../store/formStoreProvider';
 import SubmitButton from '../../SubmitButton';
@@ -14,6 +16,126 @@ function optionValues(select: HTMLElement): string[] {
 }
 
 describe('DatePickerField month mode', () => {
+  it('clears its controlled month and year selections when the value clears', async () => {
+    const { rerender } = render(
+      <DatePickerField type="month" name="date" value="2020-05" />,
+    );
+    let [yearSelect, monthSelect] = screen.getAllByRole('combobox');
+    expect(yearSelect).toHaveValue('2020');
+    expect(monthSelect).toHaveValue('05');
+
+    rerender(<DatePickerField type="month" name="date" value="" />);
+
+    await waitFor(() => {
+      [yearSelect, monthSelect] = screen.getAllByRole('combobox');
+      expect(yearSelect).toHaveValue('');
+      expect(monthSelect).toHaveValue('');
+    });
+  });
+
+  it('clears a selected month that is invalid in a newly selected boundary year', () => {
+    const onChange = vi.fn();
+    render(
+      <DatePickerField
+        type="month"
+        name="date"
+        value="2010-10"
+        min="2010-01"
+        max="2020-05"
+        onChange={onChange}
+      />,
+    );
+    const [yearSelect, monthSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect || !monthSelect) throw new Error('selects not rendered');
+
+    fireEvent.change(yearSelect, { target: { value: '2020' } });
+
+    expect(monthSelect).toHaveValue('');
+    expect(optionValues(monthSelect)).toEqual(['01', '02', '03', '04', '05']);
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
+
+    fireEvent.change(monthSelect, { target: { value: '05' } });
+    expect(onChange).toHaveBeenLastCalledWith('2020-05');
+  });
+
+  it('preserves a partial boundary year while a controlled parent clears the stale value', async () => {
+    const ControlledMonthPicker = () => {
+      const [controlledValue, setControlledValue] = useState<
+        string | undefined
+      >('2010-10');
+
+      return (
+        <>
+          <output data-testid="controlled-value">
+            {controlledValue ?? 'empty'}
+          </output>
+          <DatePickerField
+            type="month"
+            name="date"
+            value={controlledValue}
+            min="2010-01"
+            max="2020-05"
+            onChange={(nextValue) =>
+              setControlledValue(
+                typeof nextValue === 'string' ? nextValue : undefined,
+              )
+            }
+          />
+        </>
+      );
+    };
+
+    render(<ControlledMonthPicker />);
+    const [yearSelect, monthSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect || !monthSelect) throw new Error('selects not rendered');
+
+    fireEvent.change(yearSelect, { target: { value: '2020' } });
+
+    expect(screen.getByTestId('controlled-value')).toHaveTextContent('empty');
+    await waitFor(() => {
+      expect(yearSelect).toHaveValue('2020');
+      expect(monthSelect).toHaveValue('');
+    });
+
+    fireEvent.change(monthSelect, { target: { value: '05' } });
+
+    expect(screen.getByTestId('controlled-value')).toHaveTextContent('2020-05');
+    expect(yearSelect).toHaveValue('2020');
+    expect(monthSelect).toHaveValue('05');
+  });
+
+  it('emits undefined whenever either month control becomes incomplete', () => {
+    const onChange = vi.fn();
+    render(
+      <DatePickerField
+        type="month"
+        name="date"
+        value="2020-05"
+        onChange={onChange}
+      />,
+    );
+    const [yearSelect, monthSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect || !monthSelect) throw new Error('selects not rendered');
+
+    fireEvent.change(monthSelect, { target: { value: '' } });
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
+
+    fireEvent.change(yearSelect, { target: { value: '' } });
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('emits a complete value without requiring a name prop', () => {
+    const onChange = vi.fn();
+    render(<DatePickerField type="month" onChange={onChange} />);
+    const [yearSelect, monthSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect || !monthSelect) throw new Error('selects not rendered');
+
+    fireEvent.change(yearSelect, { target: { value: '2020' } });
+    fireEvent.change(monthSelect, { target: { value: '05' } });
+
+    expect(onChange).toHaveBeenLastCalledWith('2020-05');
+  });
+
   it('derives year range from YYYY-MM-DD min/max without timezone drift', () => {
     render(
       <DatePickerField
@@ -99,6 +221,88 @@ describe('DatePickerField month mode', () => {
     fireEvent.change(yearSelect, { target: { value: '2010' } });
 
     expect(optionValues(monthSelect)).toHaveLength(12);
+  });
+});
+
+describe('DatePickerField accessibility and native events', () => {
+  it.each(['full', 'year'] as const)(
+    'emits undefined instead of a stringified empty value when %s mode clears',
+    (type) => {
+      const onChange = vi.fn();
+      const { container } = render(
+        <DatePickerField
+          type={type}
+          name="date"
+          value={type === 'full' ? '2020-05-01' : '2020'}
+          onChange={onChange}
+        />,
+      );
+
+      const control =
+        type === 'full'
+          ? container.querySelector('input[type="date"]')
+          : screen.getByRole('combobox');
+      if (!control) throw new Error('date control not rendered');
+      fireEvent.change(control, { target: { value: '' } });
+
+      expect(onChange).toHaveBeenLastCalledWith(undefined);
+      expect(onChange).not.toHaveBeenCalledWith('undefined');
+    },
+  );
+
+  it.each(['full', 'year'] as const)(
+    'associates the visible label and error description in %s mode',
+    (type) => {
+      render(
+        <UnconnectedField
+          name="date"
+          label="Date of birth"
+          hint="Choose carefully"
+          component={DatePickerField}
+          type={type}
+          value=""
+          onChange={() => undefined}
+        />,
+      );
+
+      const control =
+        type === 'full'
+          ? screen.getByLabelText('Date of birth')
+          : screen.getByRole('combobox', { name: 'Date of birth' });
+      expect(control).toHaveAccessibleDescription('Choose carefully');
+    },
+  );
+
+  it('names both operative controls in month mode and forwards focus/blur', () => {
+    const onFocus = vi.fn();
+    const onBlur = vi.fn();
+    render(
+      <UnconnectedField
+        name="date"
+        label="Date of birth"
+        component={DatePickerField}
+        type="month"
+        value="2020-05"
+        onChange={() => undefined}
+        onFocus={onFocus}
+        onBlur={onBlur}
+      />,
+    );
+
+    const year = screen.getByRole('combobox', {
+      name: 'Date of birth Year',
+    });
+    const month = screen.getByRole('combobox', {
+      name: 'Date of birth Month',
+    });
+
+    fireEvent.focus(year);
+    fireEvent.blur(year);
+    fireEvent.focus(month);
+    fireEvent.blur(month);
+
+    expect(onFocus).toHaveBeenCalledTimes(2);
+    expect(onBlur).toHaveBeenCalledTimes(2);
   });
 });
 
