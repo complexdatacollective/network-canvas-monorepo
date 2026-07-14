@@ -139,7 +139,9 @@ function WorkflowCard({ section }: { section: SectionConfig }) {
   const setCardRef = useCallback(
     (element: HTMLAnchorElement | null) => {
       cardRef.current = element;
-      if (section.key === 'get-started') backgroundTargetRef?.(element);
+      if (section.key === 'get-started' && element) {
+        backgroundTargetRef?.(element);
+      }
     },
     [backgroundTargetRef, section.key],
   );
