@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       force_run:
-        description: 'Force all conditional jobs (deploys, chromatic, e2e) to run regardless of turbo-ignore detection.'
+        description: 'Force package-scoped conditional jobs (deploys and Chromatic) to run regardless of change detection.'
         type: boolean
         default: false
       release_app:
@@ -36,15 +36,17 @@ permissions:
 # safety net if a release run is dropped anyway.
 concurrency:
   group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
-  # Cancel superseded PR runs — EXCEPT the changesets bot's release PRs
-  # (`changeset-release/*`), which get force-updated on every merge to main.
-  # Cancelling those leaves the `quality` aggregate `skipped` (it is
-  # `if: !cancelled()`), and a skipped required check blocks the PR, so the
-  # release PRs could never satisfy the merge queue. Not cancelling lets their
-  # `quality` run complete (success/failure) so they stay mergeable.
+  # Cancel superseded feature-PR runs and explicitly dispatched release-branch
+  # runs. Keep pull_request runs for the changesets bot's release PRs alive:
+  # cancelling those leaves the required `quality` aggregate skipped and can
+  # strand the PR. A release-branch dispatch targets a concrete branch head, so
+  # a newer dispatch can safely replace an obsolete one.
   cancel-in-progress: >-
-    ${{ github.event_name == 'pull_request'
-    && !startsWith(github.head_ref, 'changeset-release/') }}
+    ${{ (github.event_name == 'pull_request'
+    && !startsWith(github.head_ref, 'changeset-release/'))
+    || (github.event_name == 'workflow_dispatch'
+    && (github.ref_name == 'changeset-release/main'
+    || github.ref_name == 'changeset-release/apps')) }}
 
 jobs:
   detect:
@@ -58,9 +60,6 @@ jobs:
       website: ${{ steps.flags.outputs.website }}
       fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
       interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
-      interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
-      interviewer_e2e: ${{ steps.flags.outputs.interviewer_e2e }}
-      architect_e2e: ${{ steps.flags.outputs.architect_e2e }}
       interface_images: ${{ steps.flags.outputs.interface_images }}
       interview_release_version: ${{ steps.flags.outputs.interview_release_version }}
     steps:
@@ -72,8 +71,8 @@ jobs:
           node-version-file: '.nvmrc'
       - id: flags
         env:
-          # Manual runs may set force_run=true to bypass detection and run
-          # every conditional job (replaces the old per-workflow rerun buttons).
+          # Manual runs may set force_run=true to bypass package change
+          # detection (replaces the old per-workflow rerun buttons).
           FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.force_run == true }}
           EVENT_ACTION: ${{ github.event.action }}
         run: |
@@ -114,11 +113,11 @@ jobs:
 
           # A change to this CI workflow itself can alter how any conditional job
           # behaves or whether it passes, so a prior run's verdict no longer
-          # describes the new code. Treat a workflow change like FORCE_RUN: run
-          # every conditional job fresh (so the carry-forward job below carries
-          # nothing stale forward for it). Without this, a workflow-only commit
-          # leaves every flag false → jobs skipped → a now-irrelevant prior
-          # verdict gets republished against the new SHA.
+          # describes the new code. Treat a workflow change like FORCE_RUN for
+          # package-scoped conditional jobs (E2E is release-gated separately), so
+          # the carry-forward job below carries nothing stale forward for it.
+          # Without this, a workflow-only commit leaves every package flag false
+          # and republishes now-irrelevant prior verdicts against the new SHA.
           WORKFLOW_CHANGED=false
           if [[ -n "$PREV" ]] && ! git diff --quiet "$PREV" "$CURR" -- .github/workflows/ci-and-release.yml; then
             WORKFLOW_CHANGED=true
@@ -204,23 +203,40 @@ jobs:
             echo "website=$web"
             echo "fresco_ui_storybook=$fui"
             echo "interview_storybook=$intv"
-            echo "interview_e2e=$intv"
-            # interviewer-e2e runs on any change in @codaco/interviewer's
-            # workspace dependency tree — the app (incl. its e2e suite/baselines),
-            # every shared package it depends on, and @codaco/protocols (which
-            # holds the e2e protocol fixture). Same value as the `interviewer`
-            # deploy flag, but a dedicated output so the e2e gate stays decoupled
-            # from the preview-deploy gate (mirrors interview_e2e).
-            echo "interviewer_e2e=$intvr"
-            # architect-e2e runs on any change in @codaco/architect's workspace
-            # dependency tree — the app (incl. its e2e suite/baselines), its
-            # shared packages, and @codaco/protocols (the e2e protocol fixture).
-            # Reuses the same `arch` flag that drives deploy-architect-preview,
-            # as a dedicated output so the e2e gate stays decoupled from the
-            # preview-deploy gate (mirrors interviewer_e2e).
-            echo "architect_e2e=$arch"
             echo "interface_images=$ifimg"
             echo "interview_release_version=$interview_release_version"
+          } >> "$GITHUB_OUTPUT"
+
+  e2e-policy:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.policy.outputs.required }}
+      release_ref: ${{ steps.policy.outputs.release_ref }}
+      snapshot_branch: ${{ steps.policy.outputs.snapshot_branch }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+      - name: Determine whether this ref triggers a release
+        id: policy
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+        run: |
+          policy=$(node scripts/release-e2e-policy.mjs)
+          echo "release E2E policy: $policy"
+          {
+            echo "required=$(jq -r '.required' <<< "$policy")"
+            echo "release_ref=$(jq -r '.releaseRef' <<< "$policy")"
+            echo "snapshot_branch=$(jq -r '.snapshotBranch' <<< "$policy")"
           } >> "$GITHUB_OUTPUT"
 
   # Cache design: every Turbo-using job restores `.turbo` from the same
@@ -326,22 +342,78 @@ jobs:
       - run: pnpm exec turbo run test
 
   quality:
-    needs: [lint, knip, check-changesets, test-scripts, build, typecheck, test]
+    needs:
+      - lint
+      - knip
+      - check-changesets
+      - test-scripts
+      - build
+      - typecheck
+      - test
+      - detect
+      - e2e-policy
+      - interview-e2e
+      - interviewer-e2e
+      - architect-e2e
     if: ${{ !cancelled() && github.event_name != 'push' }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify all quality checks passed
         env:
-          RESULTS: ${{ join(needs.*.result, ',') }}
+          EVENT_NAME: ${{ github.event_name }}
+          DETECT_RESULT: ${{ needs.detect.result }}
+          E2E_POLICY_RESULT: ${{ needs.e2e-policy.result }}
+          E2E_REQUIRED: ${{ needs.e2e-policy.outputs.required }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          KNIP_RESULT: ${{ needs.knip.result }}
+          CHANGESETS_RESULT: ${{ needs.check-changesets.result }}
+          SCRIPTS_RESULT: ${{ needs.test-scripts.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          TYPECHECK_RESULT: ${{ needs.typecheck.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+          INTERVIEW_E2E_RESULT: ${{ needs.interview-e2e.result }}
+          INTERVIEWER_E2E_RESULT: ${{ needs.interviewer-e2e.result }}
+          ARCHITECT_E2E_RESULT: ${{ needs.architect-e2e.result }}
         run: |
-          echo "sub-job results: $RESULTS"
-          IFS=',' read -ra arr <<< "$RESULTS"
-          for r in "${arr[@]}"; do
-            if [ "$r" != "success" ]; then
-              echo "::error::quality gate failed — a sub-job concluded '$r'"
-              exit 1
-            fi
-          done
+          verify_successes() {
+            local gate=$1
+            shift
+            echo "$gate results: $*"
+            for r in "$@"; do
+              if [ "$r" != "success" ]; then
+                echo "::error::$gate failed — a sub-job concluded '$r'"
+                exit 1
+              fi
+            done
+          }
+
+          verify_successes "quality gate" \
+            "$LINT_RESULT" \
+            "$KNIP_RESULT" \
+            "$CHANGESETS_RESULT" \
+            "$SCRIPTS_RESULT" \
+            "$BUILD_RESULT" \
+            "$TYPECHECK_RESULT" \
+            "$TEST_RESULT"
+
+          if [[ "$EVENT_NAME" != "merge_group" && "$DETECT_RESULT" != "success" ]]; then
+            echo "::error::quality gate failed — detect concluded '$DETECT_RESULT'"
+            exit 1
+          fi
+
+          if [[ "$E2E_POLICY_RESULT" != "success" ]]; then
+            echo "::error::quality gate failed — E2E policy concluded '$E2E_POLICY_RESULT'"
+            exit 1
+          fi
+
+          if [[ "$E2E_REQUIRED" == "true" ]]; then
+            verify_successes "release E2E gate" \
+              "$INTERVIEW_E2E_RESULT" \
+              "$INTERVIEWER_E2E_RESULT" \
+              "$ARCHITECT_E2E_RESULT"
+          else
+            echo "E2E gate is not required for this event"
+          fi
           echo "quality gate passed"
 
   # Deploy jobs are split per-app and per-environment so:
@@ -697,10 +769,11 @@ jobs:
         run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static
 
   interview-e2e:
-    # The Dockerized suite builds its own dependency graph and cannot consume
-    # the host runner's Turbo cache, so start it as soon as detection completes.
-    needs: detect
-    if: ${{ !cancelled() && needs.detect.outputs.interview_e2e == 'true' }}
+    # Generated package/app release PRs run every E2E suite. The Dockerized
+    # suite builds its own dependency graph and cannot consume the host runner's
+    # Turbo cache, so start it as soon as the release policy completes.
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -712,6 +785,7 @@ jobs:
       PW_WORKERS: 4
     outputs:
       slug: ${{ steps.meta.outputs.slug }}
+      snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
@@ -729,6 +803,13 @@ jobs:
           printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
       - name: Run E2E tests
         run: ./packages/interview/e2e/scripts/run.sh
+      - name: Classify snapshot-only failure
+        id: snapshot_failure
+        if: failure()
+        run: |
+          detected=$(node scripts/playwright-snapshot-failure.mjs packages/interview/e2e/test-results/results.json)
+          echo "snapshot-only failure: $detected"
+          echo "detected=$detected" >> "$GITHUB_OUTPUT"
       # Dormant until a shard matrix is added (spec: enable shards only if the
       # single-job wall-clock exceeds the 45-minute budget). When enabling: add
       # strategy.matrix.shard, pass --shard=${{ matrix.shard }} to run.sh, set
@@ -762,10 +843,12 @@ jobs:
 
   interviewer-e2e:
     # See interview-e2e: this Dockerized suite owns its build too.
-    needs: detect
-    if: ${{ !cancelled() && needs.detect.outputs.interviewer_e2e == 'true' }}
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
@@ -774,6 +857,13 @@ jobs:
           persist-credentials: false
       - name: Run E2E tests
         run: ./apps/interviewer/e2e/scripts/run.sh
+      - name: Classify snapshot-only failure
+        id: snapshot_failure
+        if: failure()
+        run: |
+          detected=$(node scripts/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
+          echo "snapshot-only failure: $detected"
+          echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim artifact ownership
         if: always()
         run: |
@@ -791,10 +881,12 @@ jobs:
 
   architect-e2e:
     # See interview-e2e: this Dockerized suite owns its build too.
-    needs: detect
-    if: ${{ !cancelled() && needs.detect.outputs.architect_e2e == 'true' }}
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
@@ -803,6 +895,13 @@ jobs:
           persist-credentials: false
       - name: Run E2E tests
         run: ./apps/architect/e2e/scripts/run.sh
+      - name: Classify snapshot-only failure
+        id: snapshot_failure
+        if: failure()
+        run: |
+          detected=$(node scripts/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
+          echo "snapshot-only failure: $detected"
+          echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim artifact ownership
         if: always()
         run: |
@@ -817,6 +916,45 @@ jobs:
           path: apps/architect/e2e/playwright-report/
           if-no-files-found: warn
           retention-days: 14
+
+  regenerate-interview-snapshots:
+    needs: [e2e-policy, interview-e2e]
+    if: >-
+      ${{ always()
+      && needs.e2e-policy.outputs.release_ref != ''
+      && needs.interview-e2e.result == 'failure'
+      && needs.interview-e2e.outputs.snapshot_failure == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/regenerate-e2e-visual-snapshots.yml
+    with:
+      suite: interview
+
+  regenerate-interviewer-snapshots:
+    needs: [e2e-policy, interviewer-e2e]
+    if: >-
+      ${{ always()
+      && needs.e2e-policy.outputs.release_ref != ''
+      && needs.interviewer-e2e.result == 'failure'
+      && needs.interviewer-e2e.outputs.snapshot_failure == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/regenerate-e2e-visual-snapshots.yml
+    with:
+      suite: interviewer
+
+  regenerate-architect-snapshots:
+    needs: [e2e-policy, architect-e2e]
+    if: >-
+      ${{ always()
+      && needs.e2e-policy.outputs.release_ref != ''
+      && needs.architect-e2e.result == 'failure'
+      && needs.architect-e2e.outputs.snapshot_failure == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/regenerate-e2e-visual-snapshots.yml
+    with:
+      suite: architect
 
   # Publishes the Playwright report to GitHub Pages and comments the E2E result
   # on the PR. Purely informational: whether the report PUBLISHED says nothing
@@ -895,6 +1033,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm-publish
     permissions:
+      actions: write
       contents: write
       pull-requests: write
       id-token: write
@@ -911,7 +1050,8 @@ jobs:
         # publishes to npm. Apps (./apps/*) are private:true and don't need to
         # build successfully here; their deploy pipeline is per-app deploy jobs.
         run: pnpm exec turbo run build --filter='./packages/*'
-      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
+      - id: changesets
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
         with:
           version: pnpm run version-packages
           publish: pnpm run publish-packages
@@ -919,6 +1059,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+      - name: Run CI on the Version Packages branch
+        if: steps.changesets.outputs.hasChangesets == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run ci-and-release.yml --ref changeset-release/main
 
   # Maintains a gated product-release PR (sibling of the library "Version Packages" PR).
   # On every push to main it re-runs the app version step on a fresh branch and
@@ -929,6 +1074,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -947,6 +1093,7 @@ jobs:
       - name: Compute product version bumps
         run: node scripts/version-beta-apps.mjs --out "${RUNNER_TEMP}/apps-release-body.md"
       - name: Open/update the Release apps and documentation PR
+        id: apps_pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           branch: changeset-release/apps
@@ -955,6 +1102,13 @@ jobs:
           title: 'Release apps & documentation'
           commit-message: 'chore(release): version apps and documentation'
           body-path: ${{ runner.temp }}/apps-release-body.md
+      - name: Run CI on the app release branch
+        if: >-
+          ${{ steps.apps_pr.outputs['pull-request-operation'] == 'created'
+          || steps.apps_pr.outputs['pull-request-operation'] == 'updated' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run ci-and-release.yml --ref changeset-release/apps
 
   # On a push to main that changes an app version (i.e. the Release apps PR just
   # merged), detect which app(s) moved — mirrors detect-legacy-release.sh, but
@@ -1512,6 +1666,9 @@ jobs:
   # First push on a PR: no prior runs exist, so nothing to carry; the
   # detect logic already runs the relevant jobs at least once because
   # the push diff IS the cumulative PR diff on the first commit.
+  # E2E jobs are deliberately excluded: release PRs run all three on every
+  # push and the required quality gate checks their live results; non-release
+  # PRs must never inherit an E2E verdict from an earlier commit.
   carry-forward-statuses:
     needs:
       - detect
@@ -1521,9 +1678,6 @@ jobs:
       - deploy-website-preview
       - chromatic-fresco-ui
       - chromatic-interview
-      - interview-e2e
-      - interviewer-e2e
-      - architect-e2e
       - docs-preview-checks
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -1548,9 +1702,6 @@ jobs:
           FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
           FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
           FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
-          FLAG_INTERVIEW_E2E: ${{ needs.detect.outputs.interview_e2e }}
-          FLAG_INTERVIEWER_E2E: ${{ needs.detect.outputs.interviewer_e2e }}
-          FLAG_ARCHITECT_E2E: ${{ needs.detect.outputs.architect_e2e }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         with:
@@ -1562,9 +1713,6 @@ jobs:
               FLAG_WEBSITE: ["deploy-website-preview"],
               FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
               FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
-              FLAG_INTERVIEW_E2E: ["interview-e2e"],
-              FLAG_INTERVIEWER_E2E: ["interviewer-e2e"],
-              FLAG_ARCHITECT_E2E: ["architect-e2e"],
             };
 
             // Only consider jobs the current run didn't execute (flag false).

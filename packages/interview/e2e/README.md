@@ -139,7 +139,7 @@ ARIA snapshots.
 Use the `regenerating-e2e-visual-snapshots` skill and dispatch the manual
 `Regenerate E2E Visual Snapshots` GitHub Actions workflow with the `interview`
 suite. The job runs only those three visual projects and uploads the
-`interview-visual-snapshots` artifact; it does not run the functional/ARIA
+`e2e-visual-snapshots-interview` artifact; it does not run the functional/ARIA
 matrix, unit tests, lint, typecheck, or other quality jobs.
 
 ```sh
@@ -152,6 +152,18 @@ gh workflow run regenerate-e2e-visual-snapshots.yml \
 Inspect every generated browser image before copying selected PNGs into the
 three committed `visual-snapshots/*-matrix/` directories. The package update
 command above is the pinned-Docker local fallback.
+
+Repository CI runs all three complete E2E suites only for the exact generated
+release branches `changeset-release/main` and `changeset-release/apps`, and for
+release-triggering merge groups. The required `quality` check conditionally
+requires their results; ordinary PRs skip them. Release automation explicitly
+dispatches CI for generated branches, so no manual trigger is needed.
+
+If Interview E2E reports a visual-snapshot failure on a release PR, CI runs only
+the three visual projects. Changed baselines open a PNG-only child PR against
+that failing release branch. Review every browser image before merging it; the
+merge accepts the baselines and retriggers the parent release PR. Functional or
+ARIA failures do not start regeneration.
 
 ## The configuration matrix
 

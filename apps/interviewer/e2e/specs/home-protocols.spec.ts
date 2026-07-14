@@ -70,30 +70,32 @@ test.describe('protocol import & delete', () => {
     });
   });
 
-  test('deletes a protocol via the confirm dialog', async ({
-    protocol,
-    page,
-    capture,
-  }) => {
-    // Import leaves the single imported card active, so the Delete Protocol
-    // control targets it directly.
-    await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
-    // force: true — see the comment on ProtocolFixture.delete(): the active
-    // card's delete control sits under the next card's bounding box in the
-    // deck's fanned 3D layout, which fools Playwright's actionability
-    // pre-check even though a real click there is delivered correctly.
-    await page
-      .getByRole('button', { name: 'Delete Protocol' })
-      .click({ force: true });
-    const dialog = page.getByRole('dialog');
-    await expect(
-      dialog.getByRole('heading', { name: 'Delete this protocol?' }),
-    ).toBeVisible();
-    await capture('delete-confirm-dialog');
-    await dialog.getByTestId('dialog-primary').click();
-    await expect(page.getByText('Protocol deleted')).toBeVisible();
-    await expect(
-      page.getByRole('heading', { name: LEAN_E2E_PROTOCOL_NAME }),
-    ).toHaveCount(0);
-  });
+  test(
+    'deletes a protocol via the confirm dialog',
+    {
+      tag: '@visual',
+    },
+    async ({ protocol, page, capture }) => {
+      // Import leaves the single imported card active, so the Delete Protocol
+      // control targets it directly.
+      await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+      // force: true — see the comment on ProtocolFixture.delete(): the active
+      // card's delete control sits under the next card's bounding box in the
+      // deck's fanned 3D layout, which fools Playwright's actionability
+      // pre-check even though a real click there is delivered correctly.
+      await page
+        .getByRole('button', { name: 'Delete Protocol' })
+        .click({ force: true });
+      const dialog = page.getByRole('dialog');
+      await expect(
+        dialog.getByRole('heading', { name: 'Delete this protocol?' }),
+      ).toBeVisible();
+      await capture('delete-confirm-dialog');
+      await dialog.getByTestId('dialog-primary').click();
+      await expect(page.getByText('Protocol deleted')).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: LEAN_E2E_PROTOCOL_NAME }),
+      ).toHaveCount(0);
+    },
+  );
 });

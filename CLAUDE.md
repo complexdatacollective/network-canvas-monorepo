@@ -244,14 +244,35 @@ Network Canvas uses a protocol-based system where:
 - Uses Vitest for testing framework
 - If a storybook exists for a component, consider creating interactive tests within storybook
 
+#### Release-only E2E checks
+
+CI runs the complete Architect, Interview, and Interviewer E2E suites only for
+the exact generated release branches `changeset-release/main` and
+`changeset-release/apps`, or for merge groups whose package or app version
+changes will trigger a release. The required `quality` check conditionally
+requires all three E2E jobs in those cases. Ordinary PRs skip E2E, and E2E
+results are never carried forward from an earlier commit.
+
+The release jobs explicitly dispatch `ci-and-release.yml` after creating or
+updating either generated branch. Normal release PRs therefore do not need a
+manual E2E trigger, even though GitHub does not start PR workflows for branch
+updates made with the repository token.
+
 #### E2E visual snapshot baselines
 
 When an intentional rendering change requires new committed Playwright PNGs,
 invoke the `regenerating-e2e-visual-snapshots` skill. The manual
 `Regenerate E2E Visual Snapshots` GitHub Actions workflow runs only the
-Architect `@visual` captures or the Interview `*-visual` projects and uploads
-their images; it does not run the normal test or quality jobs. Inspect every
-artifact before committing selected baselines.
+selected Architect, Interview, or Interviewer capture code and uploads its
+images; it does not run normal tests or quality jobs. Inspect every artifact
+before committing selected baselines.
+
+On a generated release PR, a visual-snapshot E2E failure automatically runs the
+same focused generation-only workflow. If it produces changed baseline PNGs, a
+trusted follow-up opens a PNG-only child PR against the failing release branch,
+not `main`. Review every image; merging the child PR accepts the baselines and
+retriggers the parent release PR. Functional failures do not start regeneration,
+and no PNG changes means no child PR.
 
 Keep Interview ARIA snapshot updates in the targeted local matrix workflow.
 Do not confuse E2E PNG baselines with `@codaco/interface-images`, whose cached

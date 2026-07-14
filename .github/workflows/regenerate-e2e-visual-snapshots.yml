@@ -1,6 +1,12 @@
 name: Regenerate E2E Visual Snapshots
 
 on:
+  workflow_call:
+    inputs:
+      suite:
+        description: Visual snapshot suite to regenerate
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       suite:
@@ -10,6 +16,7 @@ on:
         options:
           - architect
           - interview
+          - interviewer
 
 permissions:
   contents: read
@@ -38,32 +45,53 @@ jobs:
           --project=webkit-visual
           --update-snapshots
 
+      - name: Regenerate Interviewer visual snapshots
+        if: inputs.suite == 'interviewer'
+        run: ./apps/interviewer/e2e/scripts/run.sh --grep @visual --update-snapshots
+
       - name: Reclaim snapshot ownership
         if: always()
         run: |
           sudo chown -R "$(id -u):$(id -g)" \
             apps/architect/e2e/visual-snapshots \
-            packages/interview/e2e/visual-snapshots 2>/dev/null || true
+            packages/interview/e2e/visual-snapshots \
+            apps/interviewer/e2e/visual-snapshots 2>/dev/null || true
 
-      - name: Upload Architect visual snapshots
-        if: success() && inputs.suite == 'architect'
+      - name: Stage canonical snapshot paths
+        env:
+          ARTIFACT_ROOT: ${{ runner.temp }}/snapshot-candidate
+          SUITE: ${{ inputs.suite }}
+        run: |
+          case "$SUITE" in
+            architect)
+              parent=apps/architect/e2e/visual-snapshots
+              mkdir -p "$ARTIFACT_ROOT/$parent/chromium"
+              cp "$parent/chromium/"*.png "$ARTIFACT_ROOT/$parent/chromium/"
+              ;;
+            interview)
+              parent=packages/interview/e2e/visual-snapshots
+              for browser in chromium firefox webkit; do
+                directory="$browser-matrix"
+                mkdir -p "$ARTIFACT_ROOT/$parent/$directory"
+                cp "$parent/$directory/"*.png "$ARTIFACT_ROOT/$parent/$directory/"
+              done
+              ;;
+            interviewer)
+              parent=apps/interviewer/e2e/visual-snapshots
+              mkdir -p "$ARTIFACT_ROOT/$parent/chromium"
+              cp "$parent/chromium/"*.png "$ARTIFACT_ROOT/$parent/chromium/"
+              ;;
+            *)
+              echo "::error::unsupported snapshot suite '$SUITE'"
+              exit 1
+              ;;
+          esac
+
+      - name: Upload visual snapshots
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: architect-visual-snapshots
-          path: apps/architect/e2e/visual-snapshots/chromium/*.png
-          if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
-
-      - name: Upload Interview visual snapshots
-        if: success() && inputs.suite == 'interview'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: interview-visual-snapshots
-          path: |
-            packages/interview/e2e/visual-snapshots/chromium-matrix/
-            packages/interview/e2e/visual-snapshots/firefox-matrix/
-            packages/interview/e2e/visual-snapshots/webkit-matrix/
+          name: e2e-visual-snapshots-${{ inputs.suite }}
+          path: ${{ runner.temp }}/snapshot-candidate/
           if-no-files-found: error
           retention-days: 14
           compression-level: 0

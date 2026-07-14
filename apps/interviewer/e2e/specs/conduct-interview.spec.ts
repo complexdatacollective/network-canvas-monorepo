@@ -103,55 +103,56 @@ async function connectNodes(
 }
 
 test.describe('conducting an interview', () => {
-  test('walks the lean protocol from start to completion', async ({
-    protocol,
-    interviewNav,
-    page,
-    capture,
-  }) => {
-    await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
-    await interviewNav.startNewSession('P01');
+  test(
+    'walks the lean protocol from start to completion',
+    {
+      tag: '@visual',
+    },
+    async ({ protocol, interviewNav, page, capture }) => {
+      await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+      await interviewNav.startNewSession('P01');
 
-    // Stage 0: Information — capture then advance.
-    await capture('interview-stage-info');
-    await interviewNav.next();
+      // Stage 0: Information — capture then advance.
+      await capture('interview-stage-info');
+      await interviewNav.next();
 
-    // Stage 1: EgoForm.
-    await interviewNav.fillEgoName('Ada');
-    // EgoForm exposes no data-stage-ready; readiness is signalled only by the
-    // next-button gaining the bg-success pulse once the form becomes valid.
-    // next()'s click auto-waits on the button's disabled state too, but this
-    // makes the readiness gate explicit.
-    await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
-    await capture('interview-stage-ego');
-    await interviewNav.next();
+      // Stage 1: EgoForm.
+      await interviewNav.fillEgoName('Ada');
+      // EgoForm exposes no data-stage-ready; readiness is signalled only by the
+      // next-button gaining the bg-success pulse once the form becomes valid.
+      // next()'s click auto-waits on the button's disabled state too, but this
+      // makes the readiness gate explicit.
+      await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
+      await capture('interview-stage-ego');
+      await interviewNav.next();
 
-    // Stage 2: NameGeneratorQuickAdd — add two alters.
-    await interviewNav.quickAddNode('Grace');
-    await interviewNav.quickAddNode('Katherine');
-    await capture('interview-stage-namegen');
-    await interviewNav.next();
+      // Stage 2: NameGeneratorQuickAdd — add two alters.
+      await interviewNav.quickAddNode('Grace');
+      await interviewNav.quickAddNode('Katherine');
+      await capture('interview-stage-namegen');
+      await interviewNav.next();
 
-    // Stage 3: Sociogram — placement/edges are exercised in the dedicated
-    // sociogram test below; here we simply advance to Finish. Nodes may
-    // remain unplaced in the drawer — the stage has no minNodes-placed
-    // behaviour.
-    await capture('interview-stage-sociogram');
-    await interviewNav.next();
+      // Stage 3: Sociogram — placement/edges are exercised in the dedicated
+      // sociogram test below; here we simply advance to Finish. Nodes may
+      // remain unplaced in the drawer — the stage has no minNodes-placed
+      // behaviour.
+      await capture('interview-stage-sociogram');
+      await interviewNav.next();
 
-    // FinishSession stage.
-    await interviewNav.finish();
+      // FinishSession stage.
+      await interviewNav.finish();
 
-    // App renders InterviewComplete.
-    await expect(page.getByTestId('interview-complete')).toBeVisible();
-    await expect(
-      page.getByRole('heading', { name: 'Interview complete' }),
-    ).toBeVisible();
-    await capture('interview-complete');
+      // App renders InterviewComplete.
+      await expect(page.getByTestId('interview-complete')).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Interview complete' }),
+      ).toBeVisible();
+      await capture('interview-complete');
 
-    await page.getByTestId('interview-complete-exit').click();
-    await expect(page).toHaveURL(/\/(data)?$/);
-  });
+      await page.getByTestId('interview-complete-exit').click();
+      await expect(page).toHaveURL(/\/(data)?$/);
+    },
+  );
 
   test('resumes a partially-completed interview at the right stage', async ({
     protocol,
