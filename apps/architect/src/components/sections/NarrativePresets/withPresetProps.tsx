@@ -6,7 +6,7 @@ import {
   createVariableAsync,
   deleteVariableAsync,
 } from '~/ducks/modules/protocol/codebook';
-import type { AppDispatch, RootState } from '~/ducks/store';
+import type { RootState } from '~/ducks/store';
 
 import { getEdgesForSubject, getNarrativeVariables } from './selectors';
 
@@ -44,31 +44,32 @@ const mapDispatchToProps = {
 type HandlerProps = {
   form: string;
   changeForm: typeof change;
-  createVariable: typeof createVariableAsync;
+  // react-redux's object-shorthand mapDispatchToProps dispatch-binds these
+  // action creators, so calling `createVariable(arg)` returns the dispatched
+  // thunk promise (with `.unwrap()`), not the raw AsyncThunkAction that
+  // `typeof createVariableAsync` describes. Type it to what is actually used.
+  createVariable: (arg: Parameters<typeof createVariableAsync>[0]) => {
+    unwrap: () => Promise<{ variable: string }>;
+  };
   deleteVariable: typeof deleteVariableAsync;
   entity: string;
   type: string;
-  dispatch: AppDispatch;
 };
 
 const variableHandlers = withHandlers({
   handleCreateLayoutVariable:
-    ({
-      form,
-      changeForm,
-      createVariable,
-      dispatch,
-      entity,
-      type,
-    }: HandlerProps) =>
+    ({ form, changeForm, createVariable, entity, type }: HandlerProps) =>
     async (name: string) => {
-      const result = await dispatch(
-        createVariable({
-          entity: entity as 'node' | 'edge' | 'ego',
-          type,
-          configuration: { type: 'layout', name },
-        }),
-      ).unwrap();
+      // `createVariable` is already dispatch-bound by react-redux's
+      // object-shorthand `mapDispatchToProps`, so it is called directly (and
+      // returns the thunk promise). The previous code destructured a `dispatch`
+      // prop that object-shorthand mapDispatchToProps never injects, so
+      // creating a layout variable from a preset threw.
+      const result = await createVariable({
+        entity: entity as 'node' | 'edge' | 'ego',
+        type,
+        configuration: { type: 'layout', name },
+      }).unwrap();
       const { variable } = result;
       changeForm(form, 'layoutVariable', variable);
       return variable;
