@@ -441,9 +441,10 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const statusContext = 'netlify/nc-documentation/deploy-preview';
+            const siteName = 'documentation-dev';
+            const statusContext = `netlify/${siteName}/deploy-preview`;
             const headSha = context.payload.pull_request.head.sha;
-            const expectedHost = `deploy-preview-${context.issue.number}--nc-documentation.netlify.app`;
+            const expectedHost = `deploy-preview-${context.issue.number}--${siteName}.netlify.app`;
             const deadline = Date.now() + 15 * 60 * 1000;
 
             while (Date.now() < deadline) {
