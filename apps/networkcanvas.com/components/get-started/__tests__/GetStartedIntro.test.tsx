@@ -91,6 +91,13 @@ describe('GetStartedIntro', () => {
   it('renders all focusable starting paths', () => {
     renderWithIntl(<GetStartedIntro />);
 
+    const documentationLink = screen.getByRole('link', {
+      name: 'Learn about Network Canvas in the documentation (opens in a new tab)',
+    });
+
+    expect(screen.getAllByRole('link')[0]).toBe(documentationLink);
+    expect(documentationLink.parentElement).toHaveClass('max-w-[1400px]');
+
     expect(
       screen.getByRole('link', {
         name: 'Design or create an interview protocol',
@@ -101,16 +108,11 @@ describe('GetStartedIntro', () => {
         name: 'Collect data using Network Canvas',
       }),
     ).toHaveClass('focusable');
-    expect(
-      screen.getByRole('link', {
-        name: 'Learn about Network Canvas in the documentation (opens in a new tab)',
-      }),
-    ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/');
-    expect(
-      screen.getByRole('link', {
-        name: 'Learn about Network Canvas in the documentation (opens in a new tab)',
-      }),
-    ).toHaveAttribute('target', '_blank');
+    expect(documentationLink).toHaveAttribute(
+      'href',
+      'https://documentation.networkcanvas.com/',
+    );
+    expect(documentationLink).toHaveAttribute('target', '_blank');
   });
 
   it('keeps reduced-motion content visible without scheduling an entrance', () => {
@@ -141,7 +143,7 @@ describe('GetStartedIntro', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: '¿Qué le gustaría hacer?',
+        name: 'Elija por dónde empezar',
       }),
     ).toBeInTheDocument();
     expect(

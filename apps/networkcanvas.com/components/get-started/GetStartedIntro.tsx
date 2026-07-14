@@ -6,7 +6,6 @@ import { useTranslations } from 'next-intl';
 import { useLayoutEffect, useRef } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
 import { externalLinks } from '~/lib/content';
@@ -21,6 +20,12 @@ type StartingPath = {
 
 const startingPaths: readonly StartingPath[] = [
   {
+    id: 'learn',
+    href: externalLinks.documentation,
+    accent: 'bg-sea-green',
+    external: true,
+  },
+  {
     id: 'design',
     href: '#design',
     accent: 'bg-neon-coral',
@@ -29,12 +34,6 @@ const startingPaths: readonly StartingPath[] = [
     id: 'collect',
     href: '#collect',
     accent: 'bg-cerulean-blue',
-  },
-  {
-    id: 'learn',
-    href: externalLinks.documentation,
-    accent: 'bg-sea-green',
-    external: true,
   },
 ];
 
@@ -76,29 +75,19 @@ export function GetStartedIntro() {
             variants={entrance.itemVariants}
             className="mx-auto max-w-4xl px-6 text-center"
           >
-            <Paragraph
-              margin="none"
-              className="font-heading text-neon-coral text-sm font-bold tracking-[0.16em] uppercase"
-            >
-              {t('intro.eyebrow')}
-            </Paragraph>
             <Heading
               level="h1"
               margin="none"
-              className="font-heading text-text mt-5! text-4xl font-black tracking-tight text-balance"
+              className="font-heading text-text text-4xl font-black tracking-tight text-balance"
             >
               {t('intro.heading')}
             </Heading>
-            <Paragraph
-              intent="lead"
-              margin="none"
-              className="text-text/75 mx-auto mt-6 max-w-2xl text-lg text-pretty"
-            >
-              {t('intro.introduction')}
-            </Paragraph>
           </motion.div>
 
-          <Container className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 mt-14 grid gap-6">
+          <Container
+            maxWidth="wide"
+            className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 mt-14 grid gap-6"
+          >
             {startingPaths.map((stage) => (
               <motion.a
                 key={stage.href}

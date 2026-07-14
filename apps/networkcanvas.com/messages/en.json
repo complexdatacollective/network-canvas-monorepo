@@ -153,9 +153,7 @@
       "description": "Choose the right Network Canvas app for designing a protocol or collecting network data."
     },
     "intro": {
-      "eyebrow": "Choose where to begin",
-      "heading": "What would you like to do?",
-      "introduction": "Explore Network Canvas, design an interview protocol, or choose the right app for collecting data.",
+      "heading": "Choose where to begin",
       "stages": {
         "design": {
           "label": "Design stage",
