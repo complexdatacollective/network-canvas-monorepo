@@ -107,6 +107,7 @@ const Option = ({
             onMove={onMove}
             disabled={interactionDisabled}
             label={`Reorder option ${index + 1} of ${itemCount}`}
+            size="lg"
           />
         )}
         <div className="min-w-0 flex-1 truncate">
@@ -123,12 +124,11 @@ const Option = ({
             {hasValue ? String(item.value) : 'No value'}
           </span>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-2">
           <IconButton
             icon={<Pencil />}
             aria-label={`Edit option ${index + 1}`}
-            size="sm"
-            variant="text"
+            size="lg"
             color="dynamic"
             disabled={interactionDisabled}
             onClick={onEdit}
@@ -136,11 +136,9 @@ const Option = ({
           <IconButton
             icon={<Trash2 />}
             aria-label={`Remove option ${index + 1}`}
-            size="sm"
-            variant="text"
+            size="lg"
             color="destructive"
             disabled={interactionDisabled}
-            className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast text-current"
             onClick={handleDelete}
           />
         </div>
@@ -161,12 +159,11 @@ const Option = ({
         onCancel();
       }}
     >
-      <div className="flex items-center justify-end gap-1">
+      <div className="flex items-center justify-end gap-2">
         <IconButton
           icon={<Check />}
           aria-label="Finish editing option"
-          size="sm"
-          variant="text"
+          size="lg"
           color="primary"
           disabled={interactionDisabled}
           onClick={onCancel}
@@ -174,8 +171,7 @@ const Option = ({
         <IconButton
           icon={<Trash2 />}
           aria-label={`Remove option ${index + 1}`}
-          size="sm"
-          variant="text"
+          size="lg"
           color="destructive"
           disabled={interactionDisabled}
           onClick={handleDelete}

@@ -194,16 +194,15 @@ const Validation = ({
           <IconButton
             icon={<Pencil />}
             aria-label={`Edit ${label} validation rule`}
-            variant="text"
+            size="lg"
             color="dynamic"
             onClick={onEdit}
           />
           <IconButton
             icon={<Trash2 />}
             aria-label={`Delete ${label} validation rule`}
-            variant="text"
+            size="lg"
             color="destructive"
-            className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast text-current"
             onClick={() => onDelete(itemKey)}
           />
         </div>
@@ -264,7 +263,7 @@ const Validation = ({
           aria-label={
             isNewItem ? 'Add validation rule' : 'Save validation rule'
           }
-          variant="text"
+          size="lg"
           color="success"
           disabled={!isDraftComplete(draftKey, draftValue)}
           onClick={handleSave}
@@ -272,7 +271,7 @@ const Validation = ({
         <IconButton
           icon={<X />}
           aria-label="Cancel editing validation rule"
-          variant="text"
+          size="lg"
           color="destructive"
           onClick={onCancel}
         />
