@@ -106,9 +106,10 @@ export async function setFieldInput(
     const byValue = Array.from(options).find(
       (o) => o.getAttribute('data-value') === value,
     );
-    const byLabel = Array.from(options).find(
-      (o) => o.getAttribute('aria-label') === value,
-    );
+    const scoped = within(container);
+    const byLabel =
+      scoped.queryByRole('radio', { name: value }) ??
+      scoped.queryByRole('option', { name: value });
     const target = byValue ?? byLabel;
     if (!target)
       throw new Error(`No option matching "${value}" in "${fieldName}"`);

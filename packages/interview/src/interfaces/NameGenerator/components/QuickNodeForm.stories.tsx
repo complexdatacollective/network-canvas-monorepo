@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { Provider } from 'react-redux';
 
+import type { NodeDefinition } from '@codaco/protocol-validation';
 import {
   type EntityAttributesProperty,
   entityAttributesProperty,
@@ -18,15 +19,15 @@ const mockProtocol = {
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
-        displayVariable: 'name',
-        iconVariant: 'add-a-person',
+        shape: { default: 'circle' },
+        icon: 'add-a-person',
         variables: {
           name: {
             name: 'Name',
             type: 'text',
           },
         },
-      },
+      } satisfies NodeDefinition,
     },
   },
   stages: [

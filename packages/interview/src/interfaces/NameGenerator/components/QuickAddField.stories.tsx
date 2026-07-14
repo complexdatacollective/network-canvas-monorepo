@@ -8,6 +8,7 @@ import { fn } from 'storybook/test';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
+import type { NodeDefinition } from '@codaco/protocol-validation';
 
 import QuickAddField from './QuickAddField';
 
@@ -24,7 +25,7 @@ const buildMockProtocol = (icon: string) => ({
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
-        displayVariable: 'name',
+        shape: { default: 'circle' },
         icon,
         variables: {
           name: {
@@ -32,7 +33,7 @@ const buildMockProtocol = (icon: string) => ({
             type: 'text',
           },
         },
-      },
+      } satisfies NodeDefinition,
     },
   },
   stages: [

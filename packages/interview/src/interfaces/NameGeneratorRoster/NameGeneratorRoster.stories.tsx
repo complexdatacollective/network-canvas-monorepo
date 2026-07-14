@@ -310,11 +310,11 @@ const readSourceLabels = (sourceListbox: HTMLElement): string[] =>
   );
 
 /**
- * Interaction test: clicking "Sort by Name" reorders the roster
- * alphabetically. Regression guard for the UUID-keyed attribute path
- * in sort rules — if `useExternalData`'s UUID replacer or
- * `getNodeLabelAttribute` codebook lookup ever silently breaks again,
- * the items will not be in alphabetical order and this test will fail.
+ * Interaction test: the configured name sort is applied on load, and clicking
+ * "Sort by Name" toggles its direction. Regression guard for the UUID-keyed
+ * attribute path in sort rules — if `useExternalData`'s UUID replacer or
+ * `getNodeLabelAttribute` codebook lookup ever silently breaks again, the items
+ * will not be in alphabetical order and this test will fail.
  */
 export const SortInteraction: Story = {
   render: (args) => <NameGeneratorRosterStoryWrapper {...args} />,
@@ -322,15 +322,8 @@ export const SortInteraction: Story = {
     const canvas = within(canvasElement);
     await waitForSourceListbox(canvasElement);
 
-    const sortByNameButton = canvas.getByRole('button', {
-      name: /^Sort by Name/,
-    });
-    await userEvent.click(sortByNameButton);
-
     await waitFor(
       async () => {
-        // Re-query the listbox each iteration — the element reference may
-        // change as the virtualized list re-renders during sort.
         const sourceListbox = canvas.getByRole('listbox', {
           name: 'Available Roster Nodes',
         });
@@ -349,7 +342,12 @@ export const SortInteraction: Story = {
       { timeout: 5000 },
     );
 
-    // Toggle to descending and verify the order reverses
+    const sortByNameButton = canvas.getByRole('button', {
+      name: /^Sort by Name/,
+    });
+
+    // The configured initial sort is ascending, so the first click toggles it
+    // to descending.
     await userEvent.click(sortByNameButton);
 
     await waitFor(
@@ -363,6 +361,21 @@ export const SortInteraction: Story = {
           b.localeCompare(a),
         );
         await expect(labels).toEqual(sortedDescCopy);
+      },
+      { timeout: 5000 },
+    );
+
+    await userEvent.click(sortByNameButton);
+
+    await waitFor(
+      async () => {
+        const sourceListbox = canvas.getByRole('listbox', {
+          name: 'Available Roster Nodes',
+        });
+        const labels = readSourceLabels(sourceListbox).slice(0, 5);
+        await expect(labels.length).toBeGreaterThan(0);
+        const sortedCopy = [...labels].toSorted((a, b) => a.localeCompare(b));
+        await expect(labels).toEqual(sortedCopy);
       },
       { timeout: 5000 },
     );

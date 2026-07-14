@@ -148,6 +148,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
       value,
       onChange,
       nativeOnChange,
+      onKeyDown,
       type = 'text',
       disabled,
       readOnly,
@@ -216,6 +217,21 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           onChange={(e) => {
             onChange?.(e.target.value);
             nativeOnChange?.(e);
+          }}
+          onKeyDown={(event) => {
+            onKeyDown?.(event);
+
+            if (
+              event.defaultPrevented ||
+              !isNumber ||
+              !isInteractive ||
+              (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')
+            ) {
+              return;
+            }
+
+            event.preventDefault();
+            handleStep(event.key === 'ArrowUp' ? 'up' : 'down');
           }}
           onWheel={(e) => {
             if (isNumber) {

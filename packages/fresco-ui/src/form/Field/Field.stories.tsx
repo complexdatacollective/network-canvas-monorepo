@@ -550,10 +550,10 @@ export const SlotControllerNoStaleError: Story = {
 };
 
 /**
- * `<input type="number">` already supports ArrowUp/ArrowDown stepping while
- * focused, so the keyboard story is covered natively. The +/- buttons are
- * redundant pointer affordances (`tabIndex=-1`), and because they are in-field
- * controls, clicking them does not fire premature validation.
+ * InputField applies ArrowUp/ArrowDown through the same native stepUp/stepDown
+ * path as its +/- buttons, keeping the controlled value in sync. The buttons
+ * are redundant pointer affordances (`tabIndex=-1`), and because they are
+ * in-field controls, clicking them does not fire premature validation.
  */
 export const NumberStepperKeyboard: Story = {
   name: 'Number steppers — keyboard + no premature validation',

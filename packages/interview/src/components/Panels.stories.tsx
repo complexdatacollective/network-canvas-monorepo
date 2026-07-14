@@ -130,6 +130,8 @@ export const CollapseKeepsTitle: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    await document.fonts.ready;
+
     const panel = canvas.getByTestId('panel-0');
     const header = within(panel).getByRole('button', {
       name: /in progress interview/i,
