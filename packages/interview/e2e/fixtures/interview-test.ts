@@ -14,6 +14,7 @@ import { installMapboxMocks } from './mapbox-mocks.js';
 import { ProtocolFixture } from './protocol-fixture.js';
 import { StageFixture } from './stage-fixture.js';
 import { test as baseTest, expect } from './test.js';
+import { neutraliseBackdropFilters } from './webkit-workarounds.js';
 
 type InterviewTestFixtures = {
   interview: InterviewFixture;
@@ -87,8 +88,11 @@ export const test = baseTest.extend<
   ],
 
   sharedPage: [
-    async ({ sharedContext }, use) => {
+    async ({ sharedContext, browserName }, use) => {
       const page = await sharedContext.newPage();
+      if (browserName === 'webkit') {
+        await neutraliseBackdropFilters(page);
+      }
       // Before anything can mount a map: stages initialise mapbox during
       // navigation, so the routes must exist before the first goto.
       await installMapboxMocks(page);

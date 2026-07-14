@@ -6,6 +6,7 @@ import { installMapboxMocks } from './mapbox-mocks.js';
 import { ProtocolFixture } from './protocol-fixture.js';
 import { StageFixture } from './stage-fixture.js';
 import { test as baseTest } from './test.js';
+import { neutraliseBackdropFilters } from './webkit-workarounds.js';
 
 type MatrixFixtures = {
   interview: InterviewFixture;
@@ -33,33 +34,8 @@ function slugify(parts: string[]): string {
  */
 export const matrixTest = baseTest.extend<MatrixFixtures>({
   page: async ({ page, browserName }, use) => {
-    // Playwright's Linux WebKit renders `backdrop-filter` in software, and
-    // recomputes each blur on EVERY rendering update that invalidates it: the
-    // ModalBackdrop's full-viewport blur while any dialog is open, and
-    // floating frosted panels (e.g. the pedigree checklist) whenever the
-    // canvas behind them animates (measured 150ms-2.2s per frame under CI
-    // load). Playwright's actionability checks poll element stability once
-    // per rAF frame and click dispatch waits on the same rendering pipeline,
-    // so each affected click stretches to seconds and dialog-heavy scenarios
-    // (e.g. the FamilyPedigree wizard) blow their test budget. Real WebKit
-    // GPU-accelerates backdrop-filter, so this is a test environment
-    // pathology — neutralise backdrop blurs on webkit only. Pixel effect:
-    // webkit baselines show sharp (not blurred) content behind translucent
-    // veils and panels; the tint itself remains.
     if (browserName === 'webkit') {
-      await page.addInitScript(() => {
-        const inject = () => {
-          const style = document.createElement('style');
-          style.textContent =
-            '* { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }';
-          document.head.appendChild(style);
-        };
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', inject);
-        } else {
-          inject();
-        }
-      });
+      await neutraliseBackdropFilters(page);
     }
     // Before anything can mount a map: stages initialise mapbox during
     // navigation, so the routes must exist before the first goto.

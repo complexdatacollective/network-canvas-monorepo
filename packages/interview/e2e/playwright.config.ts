@@ -92,7 +92,11 @@ export default defineConfig({
     },
     {
       name: 'webkit-legacy',
-      use: devices['Desktop Safari'],
+      // Playwright's Linux WebKit renders in software and stalls for seconds
+      // on heavy stage transitions (video decode, map init), so the global
+      // 5s actionTimeout intermittently expires mid-click even though the
+      // interaction is sound. Triple it for webkit only.
+      use: { ...devices['Desktop Safari'], actionTimeout: 15_000 },
       testMatch: /silos-protocol\.spec\.ts/,
       fullyParallel: false,
       snapshotPathTemplate: '{snapshotDir}/webkit/{arg}{ext}',
@@ -117,7 +121,8 @@ export default defineConfig({
     },
     {
       name: 'webkit-matrix',
-      use: devices['Desktop Safari'],
+      // Same webkit-only actionTimeout accommodation as webkit-legacy.
+      use: { ...devices['Desktop Safari'], actionTimeout: 15_000 },
       testMatch: /specs\/matrix\/(?!visual).*\.spec\.ts/,
       grep: /@smoke/,
       fullyParallel: true,
@@ -140,7 +145,8 @@ export default defineConfig({
     },
     {
       name: 'webkit-visual',
-      use: devices['Desktop Safari'],
+      // Same webkit-only actionTimeout accommodation as webkit-legacy.
+      use: { ...devices['Desktop Safari'], actionTimeout: 15_000 },
       testMatch: /specs\/matrix\/visual\.spec\.ts/,
       fullyParallel: true,
       snapshotPathTemplate: '{snapshotDir}/webkit-matrix/{arg}{ext}',
