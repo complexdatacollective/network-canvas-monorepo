@@ -11,19 +11,20 @@ import { Toolbar } from '../pageobjects/toolbar.js';
 // timers keep running, so the autosave debounce is unaffected.
 const FIXED_CLOCK = new Date('2026-01-01T12:00:00Z');
 
-test('renders the printable summary under print media', async ({
-  architectPage,
-  seed,
-}) => {
-  const { protocol, assets } = loadAllInterfacesFixture();
-  await seed(protocol, { name: 'All Interfaces', assets });
-  await architectPage.clock.setFixedTime(FIXED_CLOCK);
-  const capture = makeCapture(architectPage);
-  await architectPage.goto('/protocol/summary');
-  await expect(architectPage.getByText('Loading protocol...')).toHaveCount(0);
-  await architectPage.emulateMedia({ media: 'print' });
-  await capture('summary-print', { fullPage: true });
-});
+test(
+  'renders the printable summary under print media',
+  { tag: '@visual' },
+  async ({ architectPage, seed }) => {
+    const { protocol, assets } = loadAllInterfacesFixture();
+    await seed(protocol, { name: 'All Interfaces', assets });
+    await architectPage.clock.setFixedTime(FIXED_CLOCK);
+    const capture = makeCapture(architectPage);
+    await architectPage.goto('/protocol/summary');
+    await expect(architectPage.getByText('Loading protocol...')).toHaveCount(0);
+    await architectPage.emulateMedia({ media: 'print' });
+    await capture('summary-print', { fullPage: true });
+  },
+);
 
 test('fires window.print with a pdf-styled document title', async ({
   architectPage,
@@ -69,33 +70,34 @@ test('fires window.print with a pdf-styled document title', async ({
   await expect(architectPage).toHaveTitle('Architect');
 });
 
-test('renders the codebook with entity types and variables', async ({
-  architectPage,
-  seed,
-}) => {
-  const { protocol, assets } = loadAllInterfacesFixture();
-  await seed(protocol, { name: 'All Interfaces', assets });
-  await architectPage.clock.setFixedTime(FIXED_CLOCK);
-  await architectPage.goto('/protocol/codebook');
+test(
+  'renders the codebook with entity types and variables',
+  { tag: '@visual' },
+  async ({ architectPage, seed }) => {
+    const { protocol, assets } = loadAllInterfacesFixture();
+    await seed(protocol, { name: 'All Interfaces', assets });
+    await architectPage.clock.setFixedTime(FIXED_CLOCK);
+    await architectPage.goto('/protocol/codebook');
 
-  // Codebook.tsx renders each node type's protocol-defined `name` as an h2
-  // (EntityType.tsx); the fixture's only node type is `person`.
-  await expect(
-    architectPage.getByRole('heading', {
-      level: 2,
-      name: 'person',
-      exact: true,
-    }),
-  ).toBeVisible();
-  // Each variable renders as an EditableVariablePill button labelled "Rename
-  // variable <name>" (VariablePill.tsx); `biologicalSex` is unique to the
-  // `person` node type in the fixture.
-  await expect(
-    architectPage.getByRole('button', {
-      name: 'Rename variable biologicalSex',
-    }),
-  ).toBeVisible();
+    // Codebook.tsx renders each node type's protocol-defined `name` as an h2
+    // (EntityType.tsx); the fixture's only node type is `person`.
+    await expect(
+      architectPage.getByRole('heading', {
+        level: 2,
+        name: 'person',
+        exact: true,
+      }),
+    ).toBeVisible();
+    // Each variable renders as an EditableVariablePill button labelled "Rename
+    // variable <name>" (VariablePill.tsx); `biologicalSex` is unique to the
+    // `person` node type in the fixture.
+    await expect(
+      architectPage.getByRole('button', {
+        name: 'Rename variable biologicalSex',
+      }),
+    ).toBeVisible();
 
-  const capture = makeCapture(architectPage);
-  await capture('codebook');
-});
+    const capture = makeCapture(architectPage);
+    await capture('codebook');
+  },
+);

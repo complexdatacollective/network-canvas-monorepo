@@ -59,7 +59,17 @@ pnpm --filter @codaco/architect test
 
 # Type check
 pnpm --filter @codaco/architect typecheck
+
+# Run the complete Playwright suite in its pinned Docker image
+pnpm --filter @codaco/architect test:e2e
 ```
+
+The `codebook` and printable-summary PNGs are amd64 Linux baselines. For an
+intentional pixel change, use the `regenerating-e2e-visual-snapshots` skill and
+the manual `Regenerate E2E Visual Snapshots` GitHub Actions workflow. It runs
+only the two `@visual` capture cases and uploads the generated artifact; normal
+tests and quality checks remain separate. The local Docker fallback is
+`pnpm --filter @codaco/architect test:e2e:update-snapshots`.
 
 ## Tech Stack
 

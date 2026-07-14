@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Regenerating E2E Visual Snapshots'
+  short_description: 'Regenerate canonical Playwright PNG baselines'
+  default_prompt: 'Use $regenerating-e2e-visual-snapshots to regenerate and inspect the intended Playwright visual baselines.'

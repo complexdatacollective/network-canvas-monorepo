@@ -243,3 +243,16 @@ Network Canvas uses a protocol-based system where:
 - Tests are co-located with source files in `__tests__/` directories
 - Uses Vitest for testing framework
 - If a storybook exists for a component, consider creating interactive tests within storybook
+
+#### E2E visual snapshot baselines
+
+When an intentional rendering change requires new committed Playwright PNGs,
+invoke the `regenerating-e2e-visual-snapshots` skill. The manual
+`Regenerate E2E Visual Snapshots` GitHub Actions workflow runs only the
+Architect `@visual` captures or the Interview `*-visual` projects and uploads
+their images; it does not run the normal test or quality jobs. Inspect every
+artifact before committing selected baselines.
+
+Keep Interview ARIA snapshot updates in the targeted local matrix workflow.
+Do not confuse E2E PNG baselines with `@codaco/interface-images`, whose cached
+WebP files are generated separately for stage thumbnails and documentation.

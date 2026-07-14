@@ -107,17 +107,12 @@ effect" — rebuild + kill :4101 before concluding anything.
   baseline silently. If a scenario now reaches a materially richer end-state,
   delete its `-final.aria.yml` and regenerate so the baseline captures it.
 
-- **Intended pixel change → pixel baselines (Docker ONLY):** the `visual`-flagged
-  scenarios' PNGs are font-rendering-sensitive and must be regenerated in the
-  pinned Playwright container — never locally:
-
-  ```sh
-  ./e2e/scripts/run.sh --update-snapshots --project=chromium-visual -g "<Name>"
-  # (omit -g / --project to regenerate the whole visual suite)
-  ```
-
-  Verify the legacy silos pixels (`visual-snapshots/{chromium,firefox,webkit}/`)
-  show NO diff afterward — only `*-matrix/` dirs should change.
+- **Intended pixel change → pixel baselines:** invoke
+  `regenerating-e2e-visual-snapshots`. Use its manual CI workflow to run only
+  the three `*-visual` projects, inspect the generated artifact, and copy
+  approved PNGs into `visual-snapshots/{chromium,firefox,webkit}-matrix/`.
+  Keep functional/ARIA matrix runs and normal quality checks separate from
+  image generation.
 
 - **Changed a shared cross-cutting mechanism** (`skipLogic`, stage `filter`):
   update `e2e/matrix/cross-cutting.scenarios.ts` and re-run its spec; the
@@ -135,6 +130,6 @@ effect" — rebuild + kill :4101 before concluding anything.
 
 - **Suites:** `e2e/matrix/<name>.scenarios.ts` (cells) → `e2e/specs/matrix/<name>.spec.ts` (3-line runner) → aggregated in `e2e/matrix/all-scenarios.ts`.
 - **Coverage contract:** `e2e/matrix/option-inventory.ts` + `e2e/matrix/coverage-manifest.test.ts` + `e2e/matrix/stage-config-schema-support.test.ts`.
-- **Projects:** `{chromium,firefox,webkit}` × `{legacy,matrix,visual}`; ff/wk matrix run `@smoke` only. Aria baselines in `e2e/aria-snapshots/`, pixels in `e2e/visual-snapshots/*-matrix/`.
+- **Projects:** `{chromium,firefox,webkit}` × `{matrix,visual}`; ff/wk matrix run `@smoke` only. Aria baselines in `e2e/aria-snapshots/`, pixels in `e2e/visual-snapshots/*-matrix/`.
 - **Rebuild rule:** runtime change → host build; dep/schema change → `turbo build --filter @codaco/interview` then host build; then free :4101.
 - **Full architecture:** `packages/interview/e2e/README.md` (the "configuration matrix" section).

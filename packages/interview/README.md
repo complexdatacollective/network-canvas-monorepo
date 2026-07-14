@@ -430,8 +430,8 @@ The package's own e2e suite (in this repo) uses a Vite host that
 implements `window.__test` hooks for `installProtocol` / `createInterview` /
 `reset`, runs in the official `mcr.microsoft.com/playwright` image for
 font-rendering determinism, and asserts against per-stage screenshots in
-`e2e/visual-snapshots/{chromium,firefox,webkit}/`. Use it as a reference for
-wiring your own e2e setup — see [`e2e/README.md`](./e2e/README.md) for the
+`e2e/visual-snapshots/{chromium,firefox,webkit}-matrix/`. Use it as a reference
+for wiring your own e2e setup — see [`e2e/README.md`](./e2e/README.md) for the
 layout and the test-authoring pattern.
 
 For interactive debugging (no test runner), run **`pnpm dev:host`** to boot

@@ -11,7 +11,7 @@ that mounts `Shell` directly.
 # Run the full suite in the official Playwright Docker image
 pnpm test:e2e
 
-# Regenerate visual baselines (also Docker)
+# Regenerate pixel baselines only (the three visual projects; also Docker)
 pnpm test:e2e:update-snapshots
 
 # Run headed against a single browser for local debugging
@@ -126,8 +126,32 @@ test.describe('My protocol', () => {
 the matrix's `visual`-flagged scenarios in
 `visual-snapshots/{chromium,firefox,webkit}-matrix/`. Snapshots are tolerant of
 ≤250 pixel diffs (`maxDiffPixels` in `playwright.config.ts`) but font rendering
-is OS-sensitive — always regenerate baselines via `pnpm test:e2e:update-snapshots`
-(which runs in the Playwright Docker image), never locally.
+is OS-sensitive. Prefer the manual CI workflow described below; use
+`pnpm test:e2e:update-snapshots` as the pinned-Docker fallback, never a host
+Playwright run.
+
+The update command selects only the `chromium-visual`, `firefox-visual`, and
+`webkit-visual` projects. It does not run the matrix projects or update their
+ARIA snapshots.
+
+### Regenerating committed PNGs in CI
+
+Use the `regenerating-e2e-visual-snapshots` skill and dispatch the manual
+`Regenerate E2E Visual Snapshots` GitHub Actions workflow with the `interview`
+suite. The job runs only those three visual projects and uploads the
+`interview-visual-snapshots` artifact; it does not run the functional/ARIA
+matrix, unit tests, lint, typecheck, or other quality jobs.
+
+```sh
+branch=$(git branch --show-current)
+gh workflow run regenerate-e2e-visual-snapshots.yml \
+  --ref "$branch" \
+  -f suite=interview
+```
+
+Inspect every generated browser image before copying selected PNGs into the
+three committed `visual-snapshots/*-matrix/` directories. The package update
+command above is the pinned-Docker local fallback.
 
 ## The configuration matrix
 
@@ -145,8 +169,9 @@ snapshotted, and the whole matrix runs fully parallel.
 - **Pixel snapshots** (a small `visual`-flagged subset, baselines in
   `visual-snapshots/{chromium,firefox,webkit}-matrix/`) guard the rendered
   look of representative configurations. Pixels are OS-sensitive, so they are
-  **only regenerated in Docker** via `pnpm test:e2e:update-snapshots`, and
-  captures are CI-only at runtime.
+  **only regenerated in pinned Docker** through the manual CI workflow or the
+  `pnpm test:e2e:update-snapshots` fallback. Both run only the three visual
+  projects; regenerate ARIA snapshots separately and locally.
 
   One webkit-only quirk: the matrix fixture disables `backdrop-filter` on
   webkit (see `fixtures/matrix-test.ts`) because Playwright's Linux WebKit
@@ -210,9 +235,10 @@ matrix. If wall-clock ever exceeds that budget, enable sharding:
    `--shard=${{ matrix.shard }}` through to `run.sh`.
 2. Set `PW_BLOB: 1` on the job — `playwright.config.ts` then emits the `blob`
    reporter instead of line/html/json.
-3. The dormant `Merge sharded blob reports` step (already present, gated on
-   `env.PW_BLOB == '1'`) merges the per-shard `blob-report` dirs into one HTML
-   report. Give it the downloaded blob dirs.
+3. The dormant report-setup and merge steps (already present, gated on
+   `env.PW_BLOB == '1'`) install the host-side merger after the Docker run and
+   combine the downloaded per-shard `blob-report` directories into one HTML
+   report.
 
 The criterion for enabling shards is measured wall-clock over budget — not a
 guess. Caching the in-container `pnpm install`/build is a cheaper first lever.

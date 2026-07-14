@@ -181,6 +181,11 @@ pnpm generate:interface-images   # builds the interview storybook, then captures
 
 Requires a Chromium browser (`pnpm exec playwright install chromium`) and, for the Geospatial map, `STORYBOOK_MAPBOX_TOKEN` set. See [`packages/interface-images`](./packages/interface-images) for details.
 
+These cached interface screenshots are separate from the committed Playwright
+PNG baselines. For intentional Architect or Interview E2E pixel changes, use
+the `regenerating-e2e-visual-snapshots` skill and the manual
+`Regenerate E2E Visual Snapshots` GitHub Actions workflow.
+
 ## Contributing
 
 1. Fork the repository
