@@ -465,7 +465,10 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'stagesMenu-exclusion',
     'back-navigation-network-intact',
     'analytics.interview_finished', // dead e2e: host sets disableAnalytics=true
-    'skipLogic',
+    // NOTE: no `skipLogic` — FinishSession is engine-appended, has no schema-8
+    // definition, and is absent from the stageSchema union, so an author cannot
+    // attach skipLogic to it (and semantically you cannot skip the finish).
+    // stage-config-schema-support.test.ts enforces this.
   ],
   Geospatial: [
     'label',

@@ -1,18 +1,28 @@
 /**
- * Option-inventory keys satisfied by the shared cross-cutting suite
- * (cross-cutting.scenarios.ts) rather than per-interface scenarios.
+ * Option-inventory keys satisfied by shared coverage rather than per-interface
+ * scenarios. `skipLogic` and `filter` have two-part backing:
  *
- * `skipLogic` and `filter` are engine-level: the Shell decides whether to
- * render a stage from its `skipLogic`, and shared network selectors apply a
- * stage `filter` before any interface renders — the same code path regardless
- * of stage type. The cross-cutting suite proves that machinery exhaustively:
- * both skip actions (SKIP/SHOW) and every Filter operator drive skips
- * correctly, and a stage `filter` scopes the rendered node set without
- * mutating the stored network. These claims are therefore backed by that
- * shared mechanism coverage, not blanket-declared. (Per-interface wiring
- * scenarios were considered but omitted: they re-exercise the identical
- * engine path once per interface and prove nothing the operator matrix does
- * not.)
+ * 1. SCHEMA support (per interface): whether a stage type can carry a
+ *    stage-level `skipLogic` / `filter` at all is a schema question, and it is
+ *    NOT uniform — `skipLogic` lives on `baseStageSchema` so every authorable
+ *    stage accepts it, but `filter` is declared only by the ten stage schemas
+ *    listed below. `stage-config-schema-support.test.ts` builds each interface's
+ *    stage config and re-parses it against the `stageSchema` union with each key
+ *    injected, asserting acceptance exactly matches the schema — so every claim
+ *    here is proven schema-valid per interface, and a bogus claim (e.g. the
+ *    former `FinishSession:skipLogic`, on a non-authorable engine-appended
+ *    stage) fails the test.
+ * 2. RUNTIME behaviour (shared, type-agnostic): the Shell's skip decision
+ *    (`getSkipMap` in src/selectors/skip-logic.ts) reads `stage.skipLogic` by
+ *    index and never inspects `stage.type`, and stage `filter` is applied by
+ *    shared network selectors before any interface renders. The cross-cutting
+ *    suite proves that machinery exhaustively — both skip actions (SKIP/SHOW),
+ *    every Filter operator, and a stage `filter` scoping the rendered node set
+ *    without mutating the stored network.
+ *
+ * Together these back each claim without 20 redundant per-interface e2e
+ * navigation scenarios (which would only re-exercise the type-agnostic runtime
+ * path once per interface).
  */
 export const sharedSuiteClaims: readonly string[] = [
   'AlterEdgeForm:skipLogic',
@@ -26,7 +36,6 @@ export const sharedSuiteClaims: readonly string[] = [
   'DyadCensus:filter',
   'EgoForm:skipLogic',
   'FamilyPedigree:skipLogic',
-  'FinishSession:skipLogic',
   'Geospatial:skipLogic',
   'Geospatial:filter',
   'Information:skipLogic',
