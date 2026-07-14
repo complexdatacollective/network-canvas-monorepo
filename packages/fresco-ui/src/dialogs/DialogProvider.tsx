@@ -116,15 +116,15 @@ export type WizardDialog = BaseDialog & {
 };
 
 // Helper type to extract return type from a dialog
-export type DialogReturnType<D> = D extends AcknowledgeDialog
-  ? true | null
-  : D extends ChoiceDialog<infer P, infer S, infer C>
-    ? P | S | C | null
-    : D extends FormDialog
-      ? Record<string, FieldValue> | null
-      : D extends WizardDialog
-        ? unknown
-        : unknown;
+export type DialogReturnType<D> =
+  | null
+  | (D extends AcknowledgeDialog
+      ? true
+      : D extends ChoiceDialog<infer P, infer S, infer C>
+        ? P | S | C
+        : D extends FormDialog
+          ? Record<string, FieldValue>
+          : unknown);
 
 export type AnyDialog =
   | AcknowledgeDialog
