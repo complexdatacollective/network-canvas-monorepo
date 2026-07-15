@@ -1,5 +1,36 @@
 # @codaco/interviewer
 
+## 8.0.0-beta.7
+
+### Minor Changes
+
+- Let researchers choose where an interview continues when a stage is skipped:
+  the next available stage, a specific later stage, or the interview finish
+  screen.
+  Architect now shows these routes in the timeline and protocol summary and
+  protects referenced destinations from invalid deletion or reordering.
+  Preview only applies its one-stage skip override when routing could actually
+  make the selected stage unavailable.
+  The bundled Mental Health Networks and Transnational Networks templates now
+  collect explicit consent and route declined consent to the finish screen.
+
+  Interviewer follows the live route as answers change, keeps unavailable screens
+  from flashing during recovery, and allows a skipped or bypassed screen to be
+  opened once after confirmation.
+
+### Patch Changes
+
+- Fix roster name generator stages failing to load roster data in Interviewer.
+- Load the newest app shell on fresh online launches while preserving the precached offline startup path and keeping in-progress interviews on the active offline-safe shell.
+- End-to-end test suite and the fixes it surfaced:
+
+  - Settings → Synthetic data now re-queries protocols when the tab is selected, so a protocol imported moments before Settings was opened becomes selectable without closing and reopening the dialog.
+  - The Security tab no longer shows the step-up "require unlock" toggles and auto-lock timeout before a vault is configured — those controls were inert (and discarded on enrolment) without a secured, unlocked vault.
+  - The authenticator/device-reset UI now treats an unconfigured device the same as an explicitly unsecured one: it reads "Device lock" / "Reset device" rather than "Authenticator" / "Revoke device lock" when there is no lock to revoke.
+  - Added `data-testid` hooks to app chrome (protocol deck import, DataView toolbar/resume, settings trigger, synthetic controls, new-session form, interview-complete, lock/unlock forms, ambient background) to support the new end-to-end suite.
+
+- Use responsive shared dialogs throughout Architect while preserving Interviewer's purpose-built home modal sizing.
+
 ## 8.0.0-beta.6
 
 ### Patch Changes
