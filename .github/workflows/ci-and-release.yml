@@ -45,7 +45,8 @@ concurrency:
     ${{ (github.event_name == 'pull_request'
     && !startsWith(github.head_ref, 'changeset-release/'))
     || (github.event_name == 'workflow_dispatch'
-    && startsWith(github.ref_name, 'changeset-release/')) }}
+    && (startsWith(github.ref_name, 'changeset-release/')
+    || github.ref_name == 'e2e-snapshots/main')) }}
 
 jobs:
   detect:
@@ -690,7 +691,7 @@ jobs:
       || needs.regenerate-interviewer-snapshots.result == 'success'
       || needs.regenerate-architect-snapshots.result == 'success') }}
     permissions:
-      actions: read
+      actions: write
       contents: write
       pull-requests: write
     uses: ./.github/workflows/open-e2e-snapshot-update-pr.yml

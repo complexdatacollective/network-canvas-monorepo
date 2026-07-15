@@ -288,10 +288,12 @@ before committing selected baselines.
 
 On a generated release PR, a visual-snapshot E2E failure automatically runs the
 same focused generation-only workflow. If it produces changed baseline PNGs, a
-trusted follow-up opens a PNG-only child PR against the failing release branch,
-not `main`. Review every image; merging the child PR accepts the baselines and
-retriggers the parent release PR. Functional failures do not start regeneration,
-and no PNG changes means no child PR.
+trusted follow-up opens or updates one serialized PNG-only PR against `main`.
+Failures from multiple release gates accumulate in that shared PR instead of
+creating per-product copies. Review every image; merging the snapshot PR accepts
+the baselines, refreshes every generated release branch from `main`, and reruns
+their E2E gates. Functional failures do not start regeneration, and no PNG
+changes means no snapshot PR.
 
 Keep Interview ARIA snapshot updates in the targeted local matrix workflow.
 Do not confuse E2E PNG baselines with `@codaco/interface-images`, whose

@@ -68,7 +68,7 @@ export function releaseE2EPolicy(
     return {
       required: true,
       releaseRef,
-      snapshotBranch: `e2e-snapshots/${releaseRef.replaceAll('/', '-')}`,
+      snapshotBranch: 'e2e-snapshots/main',
     };
   }
 

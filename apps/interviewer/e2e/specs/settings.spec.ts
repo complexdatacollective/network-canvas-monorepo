@@ -101,6 +101,18 @@ test.describe('settings', () => {
     async ({ page, capture }) => {
       await openSettings(page);
       await page.getByRole('tab', { name: 'About' }).click();
+      const versionHeading = page.getByRole('heading', {
+        level: 4,
+        name: 'App version',
+        exact: true,
+      });
+      const versionValue = versionHeading
+        .locator('xpath=../..')
+        .locator('> div')
+        .last();
+      await expect(versionValue).toHaveText(
+        /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/,
+      );
       await expect(
         page.getByRole('progressbar', { name: 'Storage usage' }),
       ).toBeVisible();

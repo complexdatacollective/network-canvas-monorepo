@@ -80,10 +80,10 @@ automation explicitly dispatches CI for generated branches, so no manual trigger
 is needed.
 
 If Interviewer E2E reports a visual-snapshot failure on a release PR, CI runs
-the same focused generator. Changed baselines open a PNG-only child PR against
-that failing release branch. Review the images before merging it; the merge
-accepts the baselines and retriggers the parent release PR. Functional failures
-do not start regeneration.
+the same focused generator. Changed baselines open or update the shared PNG-only
+snapshot PR against `main`. Review the images before merging it; the merge
+refreshes all generated release branches and reruns their E2E gates. Functional
+failures do not start regeneration.
 
 ## Running tests in CI vs locally
 

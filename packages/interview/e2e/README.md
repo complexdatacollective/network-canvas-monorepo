@@ -161,10 +161,10 @@ automation explicitly dispatches CI for generated branches, so no manual trigger
 is needed.
 
 If Interview E2E reports a visual-snapshot failure on a release PR, CI runs only
-the three visual projects. Changed baselines open a PNG-only child PR against
-that failing release branch. Review every browser image before merging it; the
-merge accepts the baselines and retriggers the parent release PR. Functional or
-ARIA failures do not start regeneration.
+the three visual projects. Changed baselines open or update the shared PNG-only
+snapshot PR against `main`. Review every browser image before merging it; the
+merge refreshes all generated release branches and reruns their E2E gates.
+Functional or ARIA failures do not start regeneration.
 
 ## The configuration matrix
 

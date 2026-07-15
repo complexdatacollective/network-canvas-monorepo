@@ -103,11 +103,18 @@ export function makeCapture(page: Page): CaptureFn {
   };
 }
 
-// Settings → About's storage estimate (the "Storage usage" progress bar and
-// its "X of Y (Z%)" desc text) and per-device installation id vary by
-// environment/browser profile — mask both so the row labels ("Storage",
-// "Installation ID") and the stable App version row stay asserted.
+// Settings → About's app version varies between generated release branches;
+// the storage estimate (the "Storage usage" progress bar and its "X of Y (Z%)"
+// desc text) and per-device installation id vary by environment/browser
+// profile. Mask those values so one canonical baseline works for every release
+// gate while the row labels and layout remain asserted. The settings spec
+// verifies the version value semantically before capture.
 export function settingsAboutMasks(page: Page): Locator[] {
+  const versionHeading = page.getByRole('heading', {
+    level: 4,
+    name: 'App version',
+    exact: true,
+  });
   const storageHeading = page.getByRole('heading', {
     level: 4,
     name: 'Storage',
@@ -119,6 +126,7 @@ export function settingsAboutMasks(page: Page): Locator[] {
     exact: true,
   });
   return [
+    versionHeading.locator('xpath=../..').locator('> div').last(),
     page.getByRole('progressbar', { name: 'Storage usage' }),
     // SettingsRow renders the desc text as the heading's next sibling, inside
     // their shared title/desc column.

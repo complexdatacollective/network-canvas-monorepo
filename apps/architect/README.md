@@ -78,10 +78,10 @@ conditionally requires their results; ordinary PRs skip them. Release automation
 explicitly dispatches CI for generated branches, so no manual trigger is needed.
 
 If Architect E2E reports a visual-snapshot failure on a release PR, CI runs only
-the two capture cases. A successful generation with changed baselines opens a
-PNG-only child PR against that failing release branch. Review the images before
-merging it; the merge accepts the baselines and retriggers the parent release
-PR. Functional failures do not start regeneration.
+the two capture cases. A successful generation with changed baselines opens or
+updates the shared PNG-only snapshot PR against `main`. Review the images before
+merging it; the merge refreshes all generated release branches and reruns their
+E2E gates. Functional failures do not start regeneration.
 
 ## Tech Stack
 

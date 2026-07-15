@@ -45,8 +45,12 @@ release-note text.
 The release E2E allowlist contains the library branch and all three product
 branches. Each generated branch still runs Architect, Interview, and Interviewer
 E2E, and a version-changing merge-group run repeats those suites against the exact
-commit that can enter `main`. Snapshot-only failures create a child PR against the
-specific failing release branch.
+commit that can enter `main`. Snapshot-only failures from any generated branch
+accumulate in one serialized `e2e-snapshots/main` PR against `main`. Merging it
+refreshes all generated release branches and reruns their independent gates.
+The Interviewer About capture masks the release-specific version value while
+asserting its semver text separately, keeping the shared PNG canonical across
+product branches without losing functional coverage.
 
 ## Migration
 

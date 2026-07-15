@@ -53,7 +53,7 @@ test('recognises only the generated release PR refs', () => {
   );
 });
 
-test('release PR and dispatch policies carry the child PR target', () => {
+test('all release policies share the central snapshot PR target', () => {
   for (const [eventName, releaseRef] of [
     ['pull_request', 'changeset-release/main'],
     ['workflow_dispatch', 'changeset-release/architect'],
@@ -69,7 +69,7 @@ test('release PR and dispatch policies carry the child PR target', () => {
       {
         required: true,
         releaseRef,
-        snapshotBranch: `e2e-snapshots/${releaseRef.replace('/', '-')}`,
+        snapshotBranch: 'e2e-snapshots/main',
       },
     );
   }
