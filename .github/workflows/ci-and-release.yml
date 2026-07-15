@@ -282,6 +282,11 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
+      # site-navigation-element's test script runs vitest browser mode
+      # (real Chromium via @vitest/browser-playwright); the runner image
+      # doesn't ship the pinned Playwright build's browsers.
+      - name: Install Playwright Chromium (vitest browser mode)
+        run: pnpm --filter @codaco/site-navigation-element exec playwright install --with-deps chromium
       - run: pnpm exec turbo run test
 
   quality:
