@@ -1,5 +1,11 @@
 # @codaco/art
 
+## 0.1.3
+
+### Patch Changes
+
+- f586759: Keep the page background visible after its initial reveal instead of restarting the fade during scrolling.
+
 ## 0.1.2
 
 ### Patch Changes

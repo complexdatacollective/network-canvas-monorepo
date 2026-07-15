@@ -1,5 +1,18 @@
 # @codaco/network-exporters
 
+## 1.1.3
+
+### Patch Changes
+
+- Updated dependencies [367e702]
+- Updated dependencies [e6c58c2]
+- Updated dependencies [c16a1d9]
+- Updated dependencies [803e4e7]
+- Updated dependencies [179952e]
+- Updated dependencies [b467615]
+  - @codaco/protocol-validation@11.9.0
+  - @codaco/shared-consts@5.5.0
+
 ## 1.1.2
 
 ### Patch Changes
@@ -29,6 +42,7 @@
 - 8be592d: Store categorical attribute values consistently as arrays of selected option values.
 
   Previously the CategoricalBin interface wrote a bare scalar while CheckboxGroup / ToggleButtonGroup wrote arrays, and consumers carried bridging helpers to tolerate both shapes. Categorical attributes are now always arrays (a single selection is a one-element array), and the bridges have been removed:
+
   - `interview`: `CategoricalBin` writes a single-element array; the node-shape resolver, categorical sorter, and bin matcher read the array contract directly.
   - `network-query`: `EXACTLY` / `NOT` use deep equality and `OPTIONS_*` use array length — the scalar-categorical fallbacks (`categoricalEqual`, scalar `optionsLength`) are gone.
   - `network-exporters`: `isCategoricalOptionSelected` checks array membership only.
@@ -84,6 +98,7 @@
   ### Public API
 
   The package now uses **multi-entry-point exports** instead of a single barrel. Each public concern is its own sub-path:
+
   - `@codaco/network-exporters/pipeline` — `exportPipeline(ids, options, queue)` returning an `Effect.Effect<ExportReturn, ExportError, …>`
   - `@codaco/network-exporters/options` — `ExportOptions`, `ExportOptionsSchema`, `ExportFormat`
   - `@codaco/network-exporters/input` — `InterviewExportInput`, `ProtocolExportInput`, `parseNcNetwork`, plus session shape types
@@ -115,6 +130,7 @@
   ### Breaking changes
 
   This is a major version bump and shares no API with 0.1.x. Consumers must:
+
   1. Replace stand-alone formatter calls with `exportPipeline(...)` + Layer composition.
   2. Provide their own `InterviewRepository` and `FileStorage` Layer implementations (or use the built-in `NodeFileSystem` for the filesystem service).
   3. Update imports to the relevant sub-path (no top-level barrel).
@@ -122,6 +138,7 @@
 - fe48a62: Runtime-agnostic redesign. Removes Node-only types from the public surface and the core pipeline. Three injected services (`InterviewRepository`, `ProtocolRepository`, `Output`) replace the previous `InterviewRepository` + `FileStorage` + `FileSystem` trio. Streams flow as `AsyncIterable<Uint8Array>`. Bundling is a host concern; the package ships `makeZipOutput` (pure-JS via fflate) for hosts that want today's bundled-zip behaviour.
 
   Breaking changes:
+
   - `InterviewExportInput.protocol` is replaced by `InterviewExportInput.protocolHash`. Hosts implement a new `ProtocolRepository` Tag that returns `Record<hash, ProtocolExportInput>` for unique hashes.
   - `FileStorage` and `FileSystem` Tags are replaced by a single stateful `Output` Tag (`begin`/`writeEntry`/`end`). The shipped `NodeFileSystem` layer is removed.
   - `parseNcNetwork` is removed from public exports; hosts call `NcNetworkSchema.parse()` directly.
