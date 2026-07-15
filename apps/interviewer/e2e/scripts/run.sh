@@ -39,6 +39,7 @@ docker run --rm \
   -v "$(pwd)":/workspace \
   -v interviewer-e2e-node-modules:/workspace/node_modules \
   -v interviewer-e2e-turbo-cache:/workspace/.turbo/cache \
+  -v interviewer-e2e-pnpm-store:/workspace/.pnpm-store \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \

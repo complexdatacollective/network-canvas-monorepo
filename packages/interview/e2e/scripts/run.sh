@@ -28,6 +28,14 @@
 # with:
 #   docker volume rm interview-e2e-turbo-cache
 #
+# A third volume backs .pnpm-store: pnpm picks the project dir for its store
+# when the configured global store is on a different filesystem, which
+# otherwise dumps gigabytes of root-owned content-addressed store files into
+# the bind-mounted workspace on every install (observed breaking the next
+# `git clean` on the self-hosted runner). The volume keeps the store out of
+# the checkout AND on the same filesystem as the node_modules volume, so
+# pnpm can hardlink instead of copying.
+#
 # Build @codaco/interview and its workspace deps before launching the vite
 # host. Sibling workspace packages ship dist-only (their package.json `exports`
 # point at ./dist/*), so the dist trees must exist before the host can resolve
@@ -74,6 +82,7 @@ docker run --rm \
   -v "$(pwd)":/workspace \
   -v interview-e2e-node-modules:/workspace/node_modules \
   -v interview-e2e-turbo-cache:/workspace/.turbo/cache \
+  -v interview-e2e-pnpm-store:/workspace/.pnpm-store \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \
