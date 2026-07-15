@@ -19,6 +19,8 @@ export type CaptureFn = (
   options?: CaptureOptions,
 ) => Promise<void>;
 
+export const APP_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+
 // Returns a capture function that is a no-op unless running in CI. This keeps
 // local headed runs functional-only (no baselines needed) while CI asserts
 // against the committed Docker-generated baselines.
@@ -110,11 +112,6 @@ export function makeCapture(page: Page): CaptureFn {
 // gate while the row labels and layout remain asserted. The settings spec
 // verifies the version value semantically before capture.
 export function settingsAboutMasks(page: Page): Locator[] {
-  const versionHeading = page.getByRole('heading', {
-    level: 4,
-    name: 'App version',
-    exact: true,
-  });
   const storageHeading = page.getByRole('heading', {
     level: 4,
     name: 'Storage',
@@ -126,7 +123,10 @@ export function settingsAboutMasks(page: Page): Locator[] {
     exact: true,
   });
   return [
-    versionHeading.locator('xpath=../..').locator('> div').last(),
+    // Match the text-bearing span itself. Walking up from the heading to the
+    // control column can select a responsive layout container whose painted
+    // area includes unrelated settings content.
+    page.getByText(APP_VERSION_PATTERN, { exact: true }),
     page.getByRole('progressbar', { name: 'Storage usage' }),
     // SettingsRow renders the desc text as the heading's next sibling, inside
     // their shared title/desc column.
