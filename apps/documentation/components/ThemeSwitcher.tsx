@@ -1,6 +1,6 @@
 'use client';
 
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { Moon, Sun, SunMoon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
@@ -17,7 +17,7 @@ import {
 const themeOptions = [
   { id: 'light', icon: Sun },
   { id: 'dark', icon: Moon },
-  { id: 'system', icon: Monitor },
+  { id: 'system', icon: SunMoon },
 ] as const;
 
 type ThemeOption = (typeof themeOptions)[number]['id'];
@@ -42,7 +42,7 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
   // the actual configured mode.
   const selectedTheme = mounted && isThemeOption(theme) ? theme : 'system';
   const SelectedIcon =
-    themeOptions.find((option) => option.id === selectedTheme)?.icon ?? Monitor;
+    themeOptions.find((option) => option.id === selectedTheme)?.icon ?? SunMoon;
   const triggerLabel = t('triggerLabel', {
     theme: t(selectedTheme),
   });

@@ -79,6 +79,7 @@ describe('localized layout navigation', () => {
     });
     expect(trigger).toHaveClass('h-16');
     expect(trigger).toHaveClass('[&>.lucide]:[stroke-width:3.5]');
+    expect(trigger.querySelector('.lucide-sun-moon')).toBeInTheDocument();
   });
 
   it('renders translated footer links and language selection', () => {
