@@ -3038,6 +3038,18 @@ describe('Migration V7 to V8', () => {
         expect(stage.prompts[0]).toHaveProperty('edges.display', ['knows']);
       }
     });
+
+    it('drops an edges object whose display is an empty array', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildSociogramProtocol({ edges: { display: [] } }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('edges');
+      }
+    });
   });
 
   describe('Information item size normalisation', () => {
@@ -3532,6 +3544,37 @@ describe('Migration V7 to V8', () => {
         }
       ).stages[0];
       expect(stage?.items?.[0]?.content).toBe('Information.');
+    });
+
+    it('drops an Information asset item whose content (asset id) is empty', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [
+          {
+            id: 'info1',
+            type: 'Information',
+            label: 'Intro',
+            title: 'Welcome page',
+            items: [
+              { id: 'i1', type: 'asset', content: '' },
+              { id: 'i2', type: 'text', content: 'Kept' },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      const stage = (
+        migratedRaw as unknown as {
+          stages: { items?: { id?: unknown }[] }[];
+        }
+      ).stages[0];
+      expect(stage?.items).toHaveLength(1);
+      expect(stage?.items?.[0]?.id).toBe('i2');
     });
 
     it("backfills an empty Narrative preset label by position ('Preset 1')", () => {

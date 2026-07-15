@@ -225,19 +225,18 @@ describe('NarrativePedigree protocol-level cross-references', () => {
   });
 
   it('rejects when sourceStageId references a non-FamilyPedigree stage', () => {
-    const nameGenStage = {
-      id: 'ng1',
-      label: 'Name Generator',
-      type: 'NameGenerator' as const,
-      subject: { entity: 'node' as const, type: 'person' },
-      form: { title: 'Add person', fields: [] },
-      prompts: [{ id: 'p1', text: 'Who do you know?' }],
+    const informationStage = {
+      id: 'info1',
+      label: 'Information',
+      type: 'Information' as const,
+      title: 'Welcome',
+      items: [{ id: 'i1', type: 'text' as const, content: 'Hello' }],
     };
     const result = ProtocolSchemaV8.safeParse(
       makeProtocol({
         stages: [
-          nameGenStage,
-          { ...validNarrativePedigreeStageShape, sourceStageId: 'ng1' },
+          informationStage,
+          { ...validNarrativePedigreeStageShape, sourceStageId: 'info1' },
         ],
       }),
     );

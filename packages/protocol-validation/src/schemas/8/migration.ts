@@ -104,7 +104,7 @@ const migrationV7toV8 = createMigration({
 - The Information stage \`title\` (page heading) is now required. Any Information stage without one is given its stage label as the title, or "Information" when no label was authored.
 - The NameGenerator \`form.title\` (heading of the add-a-person dialog) is now required. Any NameGenerator form without one is given "Add {node type name}" (e.g. "Add Person").
 - A codebook variable referenced by a form field must define a \`component\` (input control). Previously this was only checked by the Architect editor; a protocol violating it crashed the interview when the form rendered.
-- Several free-text fields that the Architect editor already requires are now required (non-empty) in the schema: a prompt's \`text\`, a form field's \`prompt\`, an introduction panel's \`title\` and \`text\`, an Information item's \`content\`, a Narrative preset's \`label\`, a side panel's \`title\`, a NameGeneratorRoster \`dataSource\`, and its \`searchOptions.matchProperties\` (at least one). Any that were empty are backfilled — the form-field prompt from the variable's name, the panel title from the stage label, a preset/side-panel label by position — else a plain default. An empty \`searchOptions\` is dropped. (The FamilyPedigree \`censusPrompt\`, NarrativePedigree disease \`label\`/\`color\`, and Anonymisation \`explanationText\` are likewise required but are v8-only, so no migration is needed.)
+- Several free-text fields that the Architect editor already requires are now required (non-empty) in the schema: a prompt's \`text\`, a form field's \`prompt\`, an introduction panel's \`title\` and \`text\`, an Information item's \`content\`, a Narrative preset's \`label\`, a side panel's \`title\`, a NameGeneratorRoster \`dataSource\`, and its \`searchOptions.matchProperties\` (at least one). Any that were empty are backfilled — the form-field prompt from the variable's name, the panel title from the stage label, a preset/side-panel label by position — else a plain default. An empty \`searchOptions\`, and an Information asset item with no asset id (a broken reference), are dropped. (The FamilyPedigree \`censusPrompt\`, NarrativePedigree disease \`label\`/\`color\`, and Anonymisation \`explanationText\` are likewise required but are v8-only, so no migration is needed.)
 - The Sociogram, Narrative, and NetworkComposer \`background\` is now required and must be exactly one of its two variants: an image (\`image\` set, no \`concentricCircles\`) or concentric circles (\`concentricCircles\` set to a whole number, no \`image\`; 0 renders no rings). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise \`concentricCircles\` defaults to 4, matching what the interview already rendered.
 - An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color default to the first palette color (\`ord-color-seq-1\`), the runtime's previous fallback.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored. Such orphaned properties are removed.
@@ -518,17 +518,24 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        paths: ['stages[].items[]'],
-        fn: <V>(item: V) => {
-          const typedItem = asRecord(item);
-          if (!typedItem) return item;
-          if (
-            typedItem.type === 'text' &&
-            (typeof typedItem.content !== 'string' || typedItem.content === '')
-          ) {
-            typedItem.content = 'Information.';
-          }
-          return item;
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage || typedStage.type !== 'Information') return stage;
+          if (!Array.isArray(typedStage.items)) return stage;
+          typedStage.items = typedStage.items.filter((item) => {
+            const typedItem = asRecord(item);
+            if (!typedItem) return true;
+            const emptyContent =
+              typeof typedItem.content !== 'string' || typedItem.content === '';
+            if (!emptyContent) return true;
+            if (typedItem.type === 'text') {
+              typedItem.content = 'Information.';
+              return true;
+            }
+            return typedItem.type !== 'asset';
+          });
+          return stage;
         },
       },
       {
@@ -690,7 +697,8 @@ const migrationV7toV8 = createMigration({
             if (
               edges &&
               edges.create === undefined &&
-              edges.display === undefined
+              (edges.display === undefined ||
+                (Array.isArray(edges.display) && edges.display.length === 0))
             ) {
               delete typedPrompt.edges;
             }
