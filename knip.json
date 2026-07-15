@@ -40,12 +40,11 @@
     "packages/network-exporters": {},
     "packages/interface-images": {},
     "packages/site-navigation-element": {
-      "entry": ["src/element.tsx", "scripts/build.mjs"],
+      "entry": ["src/styles/shadow.css"],
       "ignoreDependencies": [
         "@fontsource-variable/inclusive-sans",
         "@fontsource-variable/nunito",
-        "@tailwindcss/cli",
-        "playwright"
+        "@tailwindcss/cli"
       ]
     },
     "tooling/tailwind": {

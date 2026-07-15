@@ -57,7 +57,7 @@ Tag name: **`<nc-site-navigation>`**.
 | Attribute     | Values                         | Default | Maps to                                               |
 | ------------- | ------------------------------ | ------- | ----------------------------------------------------- |
 | `active-item` | `SiteNavigationItemId` strings | unset   | `activeItemId` (forum will use `community`)           |
-| `locale`      | `SiteLocale` strings           | `en`    | `locale`                                              |
+| `locale`      | `SiteLocale` strings           | `en-US` | `locale`                                              |
 | `theme`       | `light` \| `dark` \| `auto`    | `auto`  | resolved theme; `auto` follows `prefers-color-scheme` |
 
 - Links render as plain anchors via the component's default `renderLink`.
@@ -122,8 +122,10 @@ it, and applies one compiled stylesheet via `adoptedStyleSheets`.
   string. This is intentionally the opposite of fresco-ui's externals-only
   build.
 - Output: `dist/element.js` plus `dist/fonts/*.woff2`.
-- Size budget: **~120–150 kB gzipped** (JS + CSS); fonts load separately on
-  first visit.
+- Size (measured at release): **~194 kB gzipped / ~161 kB brotli** (JS + CSS
+  inlined; jsDelivr serves brotli); fonts load separately on first visit. The
+  original ~120–150 kB estimate was revised after measurement; composition and
+  accepted trade-offs are documented in the implementation history.
 - **Supply-chain trade-off (accepted).** Subresource Integrity cannot be used
   with a semver-range CDN URL: an `integrity` hash pins exact bytes and would
   break on every release. Auto-tracking therefore extends trust to the npm +

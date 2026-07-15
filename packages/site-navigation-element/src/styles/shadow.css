@@ -15,6 +15,11 @@
  * symlinked+gitignored `node_modules/@codaco/fresco-ui/dist/*.js` scan
  * unreliably and order-dependently under Tailwind v4, while glob forms scan
  * reliably.
+ *
+ * Whenever SiteNavigation (or its fresco-ui imports) gains a new
+ * component/module, or starts using another class-bearing file, the
+ * `@source` list below must be extended to match — a missed file fails
+ * SILENTLY (its classes simply don't render, with no build error).
  */
 @import '@codaco/tailwind-config/fresco.css' source(none);
 
