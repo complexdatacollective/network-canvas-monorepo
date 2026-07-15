@@ -8,13 +8,20 @@ export const GATED_PRODUCT_PACKAGES = [
   '@codaco/architect',
   '@codaco/documentation',
   '@codaco/interviewer',
+  'networkcanvas.com',
 ];
 
 export const GATED_PRODUCT_DIRS = {
   '@codaco/architect': 'apps/architect',
   '@codaco/documentation': 'apps/documentation',
   '@codaco/interviewer': 'apps/interviewer',
+  'networkcanvas.com': 'apps/networkcanvas.com',
 };
+
+export const STABLE_GATED_PRODUCT_PACKAGES = [
+  '@codaco/documentation',
+  'networkcanvas.com',
+];
 
 export function parseChangeset(contents) {
   const m = contents.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
@@ -80,7 +87,7 @@ export function nextBetaVersion(current) {
   return `${major}.${minor}.${patch}-beta.${Number(beta) + 1}`;
 }
 
-export function nextDocumentationVersion(current, entries) {
+export function nextStableVersion(current, entries) {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(current);
   if (!match) {
     throw new Error(
@@ -92,7 +99,7 @@ export function nextDocumentationVersion(current, entries) {
     entries.some((entry) => entry.type === type),
   );
   if (!releaseType) {
-    throw new Error('Documentation releases require at least one changeset.');
+    throw new Error('Stable releases require at least one changeset.');
   }
 
   const major = Number(match[1]);

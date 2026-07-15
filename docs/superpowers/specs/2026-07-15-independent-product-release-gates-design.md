@@ -5,19 +5,21 @@
 
 ## Goal
 
-Architect, Interviewer, and Documentation must be releasable independently.
-Merging one generated release PR must never version or deploy either of the other
-products. The existing library and classic-desktop release lanes remain unchanged.
+Architect, Interviewer, Documentation, and networkcanvas.com must be releasable
+independently. Merging one generated release PR must never version or deploy any
+other product. The existing library and classic-desktop release lanes remain
+unchanged.
 
 ## Design
 
-The `product-release-pr` job runs a three-entry matrix on every push to `main`:
+The `product-release-pr` job runs a four-entry matrix on every push to `main`:
 
 | Product       | Package                 | Generated branch                  | Release PR title      |
 | ------------- | ----------------------- | --------------------------------- | --------------------- |
 | Architect     | `@codaco/architect`     | `changeset-release/architect`     | Release Architect     |
 | Interviewer   | `@codaco/interviewer`   | `changeset-release/interviewer`   | Release Interviewer   |
 | Documentation | `@codaco/documentation` | `changeset-release/documentation` | Release Documentation |
+| Website       | `networkcanvas.com`     | `changeset-release/website`       | Release Website       |
 
 Each matrix entry runs the existing version helper with a required `--package`
 argument. It reads and consumes changesets for only that package, versions only
@@ -25,8 +27,8 @@ that package, writes only that changelog, and maintains only that branch. A
 per-product concurrency group serialises branch maintenance across overlapping
 pushes to `main`.
 
-The post-merge detection and deployment jobs were already isolated per product.
-They continue to build and deploy only the product whose version moved.
+Post-merge detection and deployment are isolated per product. Each release job
+builds and deploys only the product whose version moved.
 
 ## Changeset invariant
 
@@ -42,7 +44,7 @@ release-note text.
 
 ## Release verification
 
-The release E2E allowlist contains the library branch and all three product
+The release E2E allowlist contains the library branch and all four product
 branches. Each generated branch still runs Architect, Interview, and Interviewer
 E2E, and a version-changing merge-group run repeats those suites against the exact
 commit that can enter `main`. Snapshot-only failures from any generated branch
@@ -59,6 +61,8 @@ CI closes any open combined release PR and snapshot child targeting that branch,
 explaining that pending changesets will be reproposed through the independent
 gates. It does not delete either branch.
 
-`networkcanvas.com` remains continuously deployed from `main`. The classic
-Architect and Interviewer release jobs remain version/tag driven and continue to
-publish to their external repositories.
+`networkcanvas.com` now follows the same stable release gate as Documentation:
+its generated release PR versions the site, and merging that PR deploys it to
+Netlify production before tagging `networkcanvas.com@<version>`. The classic
+Architect and Interviewer release jobs remain version/tag driven and continue
+to publish to their external repositories.

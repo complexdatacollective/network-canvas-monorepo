@@ -1,7 +1,7 @@
 # Releasing documentation
 
 Documentation releases are gated through the generated **Release Documentation**
-pull request, independently of Architect and Interviewer.
+pull request, independently of Architect, Interviewer, and Website.
 
 1. Create a changeset containing only `@codaco/documentation`. Its patch, minor,
    or major level determines the next documentation version and changelog heading.

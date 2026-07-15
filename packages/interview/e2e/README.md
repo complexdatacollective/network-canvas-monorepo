@@ -154,8 +154,8 @@ three committed `visual-snapshots/*-matrix/` directories. The package update
 command above is the pinned-Docker local fallback.
 
 Repository CI runs all three complete E2E suites only for the generated library
-release branch, the independent Architect, Interviewer, and Documentation
-release branches, and release-triggering merge groups. The required `quality`
+release branch, the independent Architect, Interviewer, Documentation, and
+Website release branches, and release-triggering merge groups. The required `quality`
 check conditionally requires their results; ordinary PRs skip them. Release
 automation explicitly dispatches CI for generated branches, so no manual trigger
 is needed.

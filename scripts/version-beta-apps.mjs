@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Version step for one gated product release lane. It increments an Architect or
-// Interviewer beta version, or bumps Documentation with normal semver, writes a
+// Interviewer beta version, or bumps a website with normal semver, writes a
 // CHANGELOG section, deletes consumed changesets, and emits a PR-body summary.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -10,8 +10,9 @@ import { pathToFileURL } from 'node:url';
 import {
   GATED_PRODUCT_DIRS,
   GATED_PRODUCT_PACKAGES,
+  STABLE_GATED_PRODUCT_PACKAGES,
   nextBetaVersion,
-  nextDocumentationVersion,
+  nextStableVersion,
   readChangesets,
   renderChangelogSection,
 } from './changeset-app-utils.mjs';
@@ -40,10 +41,9 @@ export function planProductReleases(
       pkg,
       dir,
       from: current,
-      to:
-        pkg === '@codaco/documentation'
-          ? nextDocumentationVersion(current, entries)
-          : nextBetaVersion(current),
+      to: STABLE_GATED_PRODUCT_PACKAGES.includes(pkg)
+        ? nextStableVersion(current, entries)
+        : nextBetaVersion(current),
       entries,
     });
   }
@@ -84,7 +84,7 @@ export function renderPrBody(plans) {
   const [plan] = plans;
   const lines = [
     `Merging this PR releases \`${plan.pkg}\` to Netlify **production**.`,
-    ...(plan.pkg === '@codaco/documentation'
+    ...(STABLE_GATED_PRODUCT_PACKAGES.includes(plan.pkg)
       ? []
       : ['It also creates a GitHub prerelease.']),
     '',

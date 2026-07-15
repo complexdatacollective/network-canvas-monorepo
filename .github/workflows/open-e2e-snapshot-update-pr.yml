@@ -48,6 +48,7 @@ jobs:
               'changeset-release/documentation',
               'changeset-release/interviewer',
               'changeset-release/main',
+              'changeset-release/website',
             ]);
             const snapshotBranch = 'e2e-snapshots/main';
             if (!releaseRefs.has(releaseRef) || process.env.SNAPSHOT_BRANCH !== snapshotBranch) {

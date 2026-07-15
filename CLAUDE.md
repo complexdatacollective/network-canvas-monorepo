@@ -127,8 +127,9 @@ pnpm publish-packages
 - **Library packages** (`packages/*`) release to npm via `changesets/action` (the
   "Version Packages" PR).
 - **Each gated product** has its own release PR: Architect and Interviewer release
-  on a `-beta.N` line, while Documentation uses normal semver. The
-  `product-release-pr` matrix deploys only the product whose PR is merged.
+  on a `-beta.N` line and create a GitHub release, while Documentation and
+  networkcanvas.com use normal semver and receive a Git tag. Merging a product's
+  release PR deploys only that product to Netlify production.
 - **One release lane per changeset.** Never put a gated product and a library—or
   two gated products—in the same changeset. `pnpm check:changesets` rejects both;
   write one changeset per product or library lane.
@@ -266,9 +267,10 @@ stories.
 
 CI runs the complete Architect, Interview, and Interviewer E2E suites only for
 the generated library branch `changeset-release/main`, the generated product
-branches `changeset-release/architect`, `changeset-release/interviewer`, and
-`changeset-release/documentation`, or merge groups whose package or product
-version changes will trigger a release. The required `quality` check
+branches `changeset-release/architect`, `changeset-release/interviewer`,
+`changeset-release/documentation`, and `changeset-release/website`, or merge
+groups whose package or product version changes will trigger a release. The
+required `quality` check
 conditionally requires all three E2E jobs in those cases. Ordinary PRs skip E2E,
 and E2E results are never carried forward from an earlier commit.
 

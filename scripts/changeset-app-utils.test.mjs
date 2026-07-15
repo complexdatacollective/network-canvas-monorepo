@@ -9,6 +9,7 @@ import {
   isMixedChangeset,
   isMultiProductChangeset,
   nextBetaVersion,
+  nextStableVersion,
   parseChangeset,
   readChangesets,
   renderChangelogSection,
@@ -53,12 +54,14 @@ test('classifyChangeset splits app vs library releases', () => {
     summary: '',
     releases: [
       { name: '@codaco/architect', type: 'minor' },
+      { name: 'networkcanvas.com', type: 'patch' },
       { name: '@codaco/interview', type: 'patch' },
     ],
   };
   const { productReleases, libReleases } = classifyChangeset(cs);
   assert.deepEqual(productReleases, [
     { name: '@codaco/architect', type: 'minor' },
+    { name: 'networkcanvas.com', type: 'patch' },
   ]);
   assert.deepEqual(libReleases, [{ name: '@codaco/interview', type: 'patch' }]);
 });
@@ -83,7 +86,7 @@ test('isMultiProductChangeset: true only when gated products share one changeset
   const app = { releases: [{ name: '@codaco/architect', type: 'minor' }] };
   const lib = { releases: [{ name: '@codaco/interview', type: 'minor' }] };
   const twoApps = {
-    releases: [...app.releases, { name: '@codaco/interviewer', type: 'patch' }],
+    releases: [...app.releases, { name: 'networkcanvas.com', type: 'patch' }],
   };
   assert.equal(isMultiProductChangeset(app), false);
   assert.equal(isMultiProductChangeset(lib), false);
@@ -102,6 +105,23 @@ test('nextBetaVersion rejects a non-beta version', () => {
     () => nextBetaVersion('8.0.0-alpha.3'),
     /not on a -beta\.N line/,
   );
+});
+
+test('nextStableVersion applies the highest requested semver bump', () => {
+  assert.equal(
+    nextStableVersion('1.2.3', [{ type: 'patch' }, { type: 'minor' }]),
+    '1.3.0',
+  );
+  assert.equal(nextStableVersion('1.2.3', [{ type: 'major' }]), '2.0.0');
+  assert.equal(nextStableVersion('1.2.3', [{ type: 'patch' }]), '1.2.4');
+});
+
+test('nextStableVersion rejects invalid versions and empty releases', () => {
+  assert.throws(
+    () => nextStableVersion('1.2.3-beta.1', [{ type: 'patch' }]),
+    /not a stable semver version/,
+  );
+  assert.throws(() => nextStableVersion('1.2.3', []), /at least one changeset/);
 });
 
 test('renderChangelogSection groups entries by bump type', () => {

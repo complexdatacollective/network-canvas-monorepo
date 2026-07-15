@@ -42,7 +42,7 @@ test('fails and names the file when a changeset mixes an app and a library', () 
 
 test('fails and names the file when a changeset mixes gated products', () => {
   const cwd = fixture({
-    'coupled.md': `---\n"@codaco/architect": minor\n"@codaco/interviewer": patch\n---\n\ncoupled`,
+    'coupled.md': `---\n"@codaco/architect": minor\n"networkcanvas.com": patch\n---\n\ncoupled`,
   });
   const res = run(cwd);
   assert.equal(res.status, 1);

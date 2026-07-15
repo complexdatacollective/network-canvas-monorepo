@@ -22,6 +22,7 @@ function workspace() {
   mkdirSync(join(cwd, 'apps/architect'), { recursive: true });
   mkdirSync(join(cwd, 'apps/documentation'), { recursive: true });
   mkdirSync(join(cwd, 'apps/interviewer'), { recursive: true });
+  mkdirSync(join(cwd, 'apps/networkcanvas.com'), { recursive: true });
   writeFileSync(
     join(cwd, 'apps/architect/package.json'),
     JSON.stringify(
@@ -48,6 +49,18 @@ function workspace() {
       {
         name: '@codaco/interviewer',
         version: '8.0.0-beta.0',
+        private: true,
+      },
+      null,
+      2,
+    ),
+  );
+  writeFileSync(
+    join(cwd, 'apps/networkcanvas.com/package.json'),
+    JSON.stringify(
+      {
+        name: 'networkcanvas.com',
+        version: '0.1.1',
         private: true,
       },
       null,
@@ -149,6 +162,28 @@ test('creates a normal semver documentation release and changelog', () => {
     /## 0\.2\.0[\s\S]*Publish the reorganised documentation\./,
   );
   assert.equal(existsSync(join(cwd, '.changeset/docs.md')), false);
+});
+
+test('creates a normal semver website release without a GitHub prerelease', () => {
+  const cwd = workspace();
+  writeFileSync(
+    join(cwd, '.changeset/website.md'),
+    `---\n"networkcanvas.com": patch\n---\n\nPublish the updated website.`,
+  );
+
+  const { plans, consumed } = planProductReleases(cwd, ['networkcanvas.com']);
+  applyProductReleases(cwd, plans, consumed);
+
+  const website = JSON.parse(
+    readFileSync(join(cwd, 'apps/networkcanvas.com/package.json'), 'utf8'),
+  );
+  assert.equal(website.version, '0.1.2');
+  assert.match(
+    readFileSync(join(cwd, 'apps/networkcanvas.com/CHANGELOG.md'), 'utf8'),
+    /## 0\.1\.2[\s\S]*Publish the updated website\./,
+  );
+  assert.doesNotMatch(renderPrBody(plans), /GitHub prerelease/);
+  assert.equal(existsSync(join(cwd, '.changeset/website.md')), false);
 });
 
 test('no pending product changesets → empty plan, no writes', () => {

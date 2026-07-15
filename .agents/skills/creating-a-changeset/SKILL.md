@@ -12,19 +12,22 @@ released package or app:
 
 - A published library under `packages/*` (e.g. `@codaco/interview`,
   `@codaco/protocol-validation`) — any behaviour/API/type change consumers see.
-- An app: `@codaco/architect` or `@codaco/interviewer`.
+- A gated product: `@codaco/architect`, `@codaco/interviewer`,
+  `@codaco/documentation`, or `networkcanvas.com`.
 
-Skip it for docs-only, test-only, CI/tooling-only, or internal refactors with no
-consumer-visible effect. Don't add an empty changeset just to have one.
+Skip it for repository-docs-only, test-only, CI/tooling-only, or internal
+refactors with no consumer-visible effect. Content changes to the released
+Documentation or Website products are consumer-visible and do need a changeset.
+Don't add an empty changeset just to have one.
 
 ## Independent lanes — never mix them
 
 **A single changeset must target one release lane:** either one or more libraries,
-Architect, Interviewer, or Documentation. CI (`pnpm check:changesets`) rejects a
-gated product mixed with a library because `changeset version` hard-errors on it.
-It also rejects two gated products in one file because each product now has an
-independent release PR. If one feature affects multiple lanes, run `pnpm
-changeset` once per lane.
+Architect, Interviewer, Documentation, or Website. CI (`pnpm check:changesets`)
+rejects a gated product mixed with a library because `changeset version`
+hard-errors on it. It also rejects two gated products in one file because each
+product has an independent release PR. If one feature affects multiple lanes,
+run `pnpm changeset` once per lane.
 
 | Lane          | Bump type                                    | Ships via                                   |
 | ------------- | -------------------------------------------- | ------------------------------------------- |
@@ -32,6 +35,7 @@ changeset` once per lane.
 | Architect     | Categorises notes; `-beta.N` auto-increments | "Release Architect" PR → Netlify + GitHub   |
 | Interviewer   | Categorises notes; `-beta.N` auto-increments | "Release Interviewer" PR → Netlify + GitHub |
 | Documentation | Real semver impact                           | "Release Documentation" PR → Netlify + tag  |
+| Website       | Real semver impact                           | "Release Website" PR → Netlify + tag        |
 
 ## How to author
 
