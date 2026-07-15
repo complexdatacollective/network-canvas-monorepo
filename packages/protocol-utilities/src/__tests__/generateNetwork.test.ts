@@ -124,6 +124,7 @@ function makeInformationStage(id: string, skipLogic?: SkipLogic): Stage {
     id,
     label: id,
     type: 'Information',
+    title: id,
     items: [],
     skipLogic,
   } as Stage;

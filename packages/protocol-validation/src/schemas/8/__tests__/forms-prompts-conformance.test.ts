@@ -82,7 +82,7 @@ describe('Forms & prompts schema conformance', () => {
           type: 'NameGenerator',
           label: 'Generate Names',
           subject: { entity: 'node', type: 'person' },
-          form: { fields: [] },
+          form: { title: 'Add person', fields: [] },
           prompts: [{ id: 'p1', text: 'Who do you know?' }],
         },
       ]);
@@ -141,7 +141,10 @@ describe('Forms & prompts schema conformance', () => {
           type: 'NameGenerator',
           label: 'Generate Names',
           subject: { entity: 'node', type: 'person' },
-          form: { fields: [{ variable: 'personName', prompt: 'Enter name' }] },
+          form: {
+            title: 'Add person',
+            fields: [{ variable: 'personName', prompt: 'Enter name' }],
+          },
           prompts: [{ id: 'p1', text: 'Who do you know?' }],
         },
       ]);
@@ -365,7 +368,10 @@ describe('Forms & prompts schema conformance', () => {
       type: 'NameGenerator',
       label: 'Generate Names',
       subject: { entity: 'node', type: 'person' },
-      form: { fields: [{ variable: 'personName', prompt: 'Enter name' }] },
+      form: {
+        title: 'Add person',
+        fields: [{ variable: 'personName', prompt: 'Enter name' }],
+      },
       prompts: [{ id: 'p1', text: 'Who do you know?' }],
       behaviours,
     });

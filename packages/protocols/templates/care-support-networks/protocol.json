@@ -368,6 +368,7 @@
       ],
       "subject": { "entity": "node", "type": "supporter" },
       "form": {
+        "title": "Add Supporter",
         "fields": [
           {
             "variable": "supporter_name",

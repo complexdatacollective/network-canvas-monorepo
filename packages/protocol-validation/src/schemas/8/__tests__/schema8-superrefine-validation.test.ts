@@ -164,6 +164,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             ...baseValidProtocol.stages[0],
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'name',
@@ -190,6 +191,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             ...baseValidProtocol.stages[0],
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'nonexistentVariable',
@@ -340,6 +342,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'person',
             },
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'department', // This variable exists on 'colleague' not 'person'
@@ -855,6 +858,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'person',
             },
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'name',
@@ -893,6 +897,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'person',
             },
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'name',
@@ -2112,6 +2117,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'person',
             },
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'name',
@@ -2166,6 +2172,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'nonexistentNodeType', // Error 1: Invalid subject
             },
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'nonexistentVariable', // Error 2: Invalid form field variable

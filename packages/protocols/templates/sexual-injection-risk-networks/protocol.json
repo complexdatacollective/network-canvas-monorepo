@@ -277,6 +277,7 @@
         "type": "partner"
       },
       "form": {
+        "title": "Add Partner",
         "fields": [
           {
             "variable": "partner_label",
@@ -311,6 +312,7 @@
         "type": "partner"
       },
       "form": {
+        "title": "Add Partner",
         "fields": [
           {
             "variable": "partner_label",

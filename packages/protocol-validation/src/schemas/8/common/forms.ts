@@ -16,7 +16,7 @@ export const FormFieldSchema = z.strictObject({
 export type FormField = z.infer<typeof FormFieldSchema>;
 
 export const FormSchema = z.strictObject({
-  title: z.string().optional(),
+  title: z.string().min(1),
   fields: z.array(FormFieldSchema).min(1),
 });
 

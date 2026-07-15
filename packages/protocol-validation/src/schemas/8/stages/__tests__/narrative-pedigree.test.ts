@@ -210,7 +210,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
       label: 'Name Generator',
       type: 'NameGenerator' as const,
       subject: { entity: 'node' as const, type: 'person' },
-      form: { fields: [] },
+      form: { title: 'Add person', fields: [] },
       prompts: [{ id: 'p1', text: 'Who do you know?' }],
     };
     const result = ProtocolSchemaV8.safeParse(

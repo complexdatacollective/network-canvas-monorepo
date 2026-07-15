@@ -2513,6 +2513,73 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('NameGenerator form.title backfill', () => {
+    const buildNgFormProtocol = (form: Record<string, unknown>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                name: { name: 'Name', type: 'text' },
+              },
+            },
+          },
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ng1',
+            type: 'NameGenerator',
+            label: 'NG',
+            subject: { entity: 'node', type: 'person' },
+            prompts: [{ id: 'p1', text: 'Who do you know?' }],
+            form: {
+              fields: [{ variable: 'name', prompt: 'Name?' }],
+              ...form,
+            },
+          },
+        ],
+      }) as Protocol<7>;
+
+    it('backfills a missing form.title from the subject node type name', () => {
+      const migratedRaw = migrationV7toV8.migrate(buildNgFormProtocol({}), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'form' in stage) {
+        expect(stage.form).toHaveProperty('title', 'Add Person');
+      }
+    });
+
+    it('backfills an empty form.title', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildNgFormProtocol({ title: '' }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'form' in stage) {
+        expect(stage.form).toHaveProperty('title', 'Add Person');
+      }
+    });
+
+    it('leaves an authored form.title untouched', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildNgFormProtocol({ title: 'Add a friend' }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'form' in stage) {
+        expect(stage.form).toHaveProperty('title', 'Add a friend');
+      }
+    });
+  });
+
   describe('NameGenerator behaviours normalisation', () => {
     const buildNgProtocol = (behaviours: Record<string, unknown>) =>
       ({

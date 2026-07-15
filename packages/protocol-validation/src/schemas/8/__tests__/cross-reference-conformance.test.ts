@@ -302,7 +302,10 @@ describe('Cross-reference conformance', () => {
             type: 'NameGenerator',
             label: 'Panels',
             subject: { entity: 'node', type: 'person' },
-            form: { fields: [{ variable: 'name', prompt: 'Enter name' }] },
+            form: {
+              title: 'Add person',
+              fields: [{ variable: 'name', prompt: 'Enter name' }],
+            },
             prompts: [{ id: 'p1', text: 'who' }],
             panels: [
               {

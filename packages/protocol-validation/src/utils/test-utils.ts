@@ -119,6 +119,7 @@ export const createBaseProtocol = () => ({
         type: 'person',
       },
       form: {
+        title: 'Add person',
         fields: [
           {
             variable: 'name',

@@ -267,6 +267,7 @@
         "type": "person"
       },
       "form": {
+        "title": "Add Person",
         "fields": [
           {
             "variable": "alter_name",

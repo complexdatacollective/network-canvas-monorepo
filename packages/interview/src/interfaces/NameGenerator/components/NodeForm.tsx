@@ -29,7 +29,10 @@ import useProtocolForm from '~/forms/useProtocolForm';
 import { useCelebrate } from '~/hooks/useCelebrate';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import { getNodeIconName } from '~/selectors/name-generator';
-import { getPromptAdditionalAttributes } from '~/selectors/session';
+import {
+  getNodeTypeDefinition,
+  getPromptAdditionalAttributes,
+} from '~/selectors/session';
 import { updateNode as updateNodeAction } from '~/store/modules/session';
 import { useAppDispatch } from '~/store/store';
 
@@ -46,6 +49,7 @@ const NodeForm = (props: NodeFormProps) => {
 
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const icon = useStageSelector(getNodeIconName);
+  const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
 
   const [show, setShow] = useState(false);
 
@@ -199,7 +203,9 @@ const NodeForm = (props: NodeFormProps) => {
       </AnimatePresence>
       <Dialog
         open={show}
-        title={form.title}
+        title={
+          form.title?.trim() || `Add ${nodeTypeDefinition?.name ?? ''}`.trim()
+        }
         closeDialog={handleClose}
         footer={
           <Button

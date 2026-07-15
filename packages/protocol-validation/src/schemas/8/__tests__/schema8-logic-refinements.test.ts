@@ -473,7 +473,10 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'NameGenerator',
             label: 'Generate',
             subject: { entity: 'node', type: 'person' },
-            form: { fields: [{ variable: 'name', prompt: 'Name' }] },
+            form: {
+              title: 'Add person',
+              fields: [{ variable: 'name', prompt: 'Name' }],
+            },
             prompts: [{ id: 'p1', text: 'Who?' }],
             panels: [
               {
@@ -515,7 +518,10 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'NameGenerator',
             label: 'Generate',
             subject: { entity: 'node', type: 'person' },
-            form: { fields: [{ variable: 'name', prompt: 'Name' }] },
+            form: {
+              title: 'Add person',
+              fields: [{ variable: 'name', prompt: 'Name' }],
+            },
             prompts: [{ id: 'p1', text: 'Who?' }],
             panels: [
               {

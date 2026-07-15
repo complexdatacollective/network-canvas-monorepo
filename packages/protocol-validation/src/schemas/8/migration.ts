@@ -78,6 +78,7 @@ const migrationV7toV8 = createMigration({
 - Categorical attribute values are now stored as arrays of selected option values. Existing single-value categorical filter and skip-logic rule operands (\`is exactly\`, \`is not\`, \`includes\`, \`excludes\`) are wrapped in a single-element array to match.
 - Stage labels are now required to be non-empty. Any stage with a missing or empty label is given a default name based on its position (e.g. "Stage 3").
 - The Information stage \`title\` (page heading) is now required. Any Information stage without one is given its stage label as the title, or "Information" when no label was authored.
+- The NameGenerator \`form.title\` (heading of the add-a-person dialog) is now required. Any NameGenerator form without one is given "Add {node type name}" (e.g. "Add Person").
 - An OrdinalBin prompt \`color\` is now restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored, and is removed so the prompt uses the default colour.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored. Such orphaned properties are removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
@@ -271,6 +272,30 @@ const migrationV7toV8 = createMigration({
           ) {
             delete (typedStage.form as Record<string, unknown>).title;
           }
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          if (typedStage.type !== 'NameGenerator') return stage;
+          const form = asRecord(typedStage.form);
+          if (!form) return stage;
+          if (typeof form.title === 'string' && form.title.trim() !== '') {
+            return stage;
+          }
+          const subjectType = asRecord(typedStage.subject)?.type;
+          const entityName =
+            typeof subjectType === 'string'
+              ? asRecord(asRecord(asRecord(codebook)?.node)?.[subjectType])
+                  ?.name
+              : undefined;
+          form.title =
+            typeof entityName === 'string' && entityName.trim() !== ''
+              ? `Add ${entityName}`
+              : 'Add';
           return stage;
         },
       },
