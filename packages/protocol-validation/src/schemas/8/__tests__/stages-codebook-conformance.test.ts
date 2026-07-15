@@ -200,10 +200,45 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       const issue = result.error.issues.find((i) =>
-        i.message.includes('edges must set create and/or display'),
+        i.message.includes('edges must set create'),
       );
       expect(issue).toBeDefined();
     }
+  });
+
+  it('rejects a prompt whose edges only set an empty display array', () => {
+    const result = sociogramStage.safeParse({
+      ...baseStage,
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Edges',
+          layout: { layoutVariable: 'pos' },
+          edges: { display: [] },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('edges must set create'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
+
+  it('rejects a background with an empty-string image', () => {
+    const result = sociogramStage.safeParse({
+      id: 'soc1',
+      label: 'Sociogram',
+      type: 'Sociogram' as const,
+      subject: { entity: 'node' as const, type: 'person' },
+      background: { image: '' },
+      prompts: [
+        { id: 'p1', text: 'Position', layout: { layoutVariable: 'pos' } },
+      ],
+    });
+    expect(result.success).toBe(false);
   });
 });
 

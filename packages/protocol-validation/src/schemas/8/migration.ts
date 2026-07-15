@@ -412,22 +412,29 @@ const migrationV7toV8 = createMigration({
           ) {
             return stage;
           }
-          const background = asRecord(typedStage.background) ?? {};
-          if (typedStage.type === 'Narrative') {
-            delete background.image;
+          // Rebuild from only the recognised keys so arrays and stray keys
+          // (which the v8 strictObject rejects) never survive.
+          const source = Array.isArray(typedStage.background)
+            ? {}
+            : (asRecord(typedStage.background) ?? {});
+          const background: Record<string, unknown> = {};
+          if (typeof source.skewedTowardCenter === 'boolean') {
+            background.skewedTowardCenter = source.skewedTowardCenter;
           }
-          if (typeof background.image === 'string' && background.image !== '') {
-            delete background.concentricCircles;
+          if (
+            typedStage.type !== 'Narrative' &&
+            typeof source.image === 'string' &&
+            source.image !== ''
+          ) {
+            background.image = source.image;
           } else {
-            delete background.image;
-            const circles = background.concentricCircles;
-            if (
-              typeof circles !== 'number' ||
-              !Number.isInteger(circles) ||
-              circles < 0
-            ) {
-              background.concentricCircles = 4;
-            }
+            const circles = source.concentricCircles;
+            background.concentricCircles =
+              typeof circles === 'number' &&
+              Number.isInteger(circles) &&
+              circles >= 0
+                ? circles
+                : 4;
           }
           typedStage.background = background;
           return stage;

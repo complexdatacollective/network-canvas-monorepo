@@ -59,12 +59,12 @@ export const sociogramPromptSchema = promptSchema
     if (
       prompt.edges &&
       prompt.edges.create === undefined &&
-      prompt.edges.display === undefined
+      (prompt.edges.display === undefined || prompt.edges.display.length === 0)
     ) {
       ctx.addIssue({
         code: 'custom' as const,
         message:
-          'edges must set create and/or display; an empty edges object has no effect.',
+          'edges must set create and/or a non-empty display; an empty edges object has no effect.',
         path: ['edges'],
       });
     }

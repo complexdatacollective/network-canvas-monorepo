@@ -356,4 +356,81 @@ describe('NarrativePedigree protocol-level cross-references', () => {
       expect(issue).toBeDefined();
     }
   });
+
+  it('rejects a FamilyPedigree nodeConfig.form field whose variable has no component', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      makeProtocol({
+        stages: [
+          {
+            ...validFamilyPedigreeStage,
+            nodeConfig: {
+              ...validFamilyPedigreeStage.nodeConfig,
+              form: [{ variable: 'personLabel', prompt: 'Name?' }],
+            },
+          },
+          validNarrativePedigreeStageShape,
+        ],
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('must define a component'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
+
+  it('accepts a FamilyPedigree nodeConfig.form field whose variable has a component', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      makeProtocol({
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              shape: { default: 'circle' as const },
+              variables: {
+                egoIsEgo: { name: 'EgoIsEgo', type: 'boolean' },
+                personLabel: {
+                  name: 'PersonLabel',
+                  type: 'text',
+                  component: 'Text',
+                },
+                personRel: { name: 'PersonRel', type: 'text' },
+                personBioSex: { name: 'PersonBioSex', type: 'text' },
+                hasBreastCancer: { name: 'HasBreastCancer', type: 'boolean' },
+              },
+            },
+          },
+          edge: {
+            family: {
+              name: 'Family',
+              color: 'edge-color-seq-1',
+              variables: {
+                familyRelType: { name: 'FamilyRelType', type: 'text' },
+                familyIsActive: { name: 'FamilyIsActive', type: 'boolean' },
+                familyIsGc: { name: 'FamilyIsGc', type: 'boolean' },
+                familyGameteRole: {
+                  name: 'FamilyGameteRole',
+                  type: 'text',
+                },
+              },
+            },
+          },
+        },
+        stages: [
+          {
+            ...validFamilyPedigreeStage,
+            nodeConfig: {
+              ...validFamilyPedigreeStage.nodeConfig,
+              form: [{ variable: 'personLabel', prompt: 'Name?' }],
+            },
+          },
+          validNarrativePedigreeStageShape,
+        ],
+      }),
+    );
+    expect(result.success).toBe(true);
+  });
 });

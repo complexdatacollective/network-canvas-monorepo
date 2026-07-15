@@ -181,6 +181,31 @@ const validateFilterRules = (
   });
 };
 
+// Reject a form field whose variable cannot be rendered: layout/location types
+// have no control, and any other variable must carry a `component`. Shared by
+// the stage-level form and FamilyPedigree's nodeConfig.form.
+const validateFormFieldVariable = (
+  codebook: Codebook,
+  fieldVariable: string,
+  subject: StageSubject,
+  path: (string | number)[],
+  addIssue: IssueReporter,
+) => {
+  const variable = getVariablesForSubject(codebook, subject)[fieldVariable];
+  if (!variable) return;
+  if (NON_RENDERABLE_VARIABLE_TYPES.has(variable.type)) {
+    addIssue({
+      message: `Form field variable "${fieldVariable}" of type "${variable.type}" cannot be rendered as a form field.`,
+      path,
+    });
+  } else if (!('component' in variable) || variable.component === undefined) {
+    addIssue({
+      message: `Form field variable "${fieldVariable}" must define a component (input control) to be rendered as a form field.`,
+      path,
+    });
+  }
+};
+
 type CanonicalOption = { value: string; label: string };
 
 // True when a variable's options are exactly the canonical set (same members
@@ -282,39 +307,13 @@ const ProtocolSchema = z
           }
 
           if (subject) {
-            const variable = getVariablesForSubject(protocol.codebook, subject)[
-              field.variable
-            ];
-            if (variable && NON_RENDERABLE_VARIABLE_TYPES.has(variable.type)) {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `Form field variable "${field.variable}" of type "${variable.type}" cannot be rendered as a form field.`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'form',
-                  'fields',
-                  fieldIndex,
-                  'variable',
-                ],
-              });
-            } else if (
-              variable &&
-              (!('component' in variable) || variable.component === undefined)
-            ) {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `Form field variable "${field.variable}" must define a component (input control) to be rendered as a form field.`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'form',
-                  'fields',
-                  fieldIndex,
-                  'variable',
-                ],
-              });
-            }
+            validateFormFieldVariable(
+              protocol.codebook,
+              field.variable,
+              subject,
+              ['stages', stageIndex, 'form', 'fields', fieldIndex, 'variable'],
+              (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+            );
           }
         });
       }
@@ -555,6 +554,31 @@ const ProtocolSchema = z
               ],
             });
           }
+        });
+      }
+
+      // FamilyPedigree renders nodeConfig.form as the add-person form, so its
+      // fields carry the same renderability requirement as a stage-level form.
+      if (stage.type === 'FamilyPedigree' && stage.nodeConfig.form) {
+        const nodeSubject = {
+          entity: 'node' as const,
+          type: stage.nodeConfig.type,
+        };
+        stage.nodeConfig.form.forEach((field, fieldIndex) => {
+          validateFormFieldVariable(
+            protocol.codebook,
+            field.variable,
+            nodeSubject,
+            [
+              'stages',
+              stageIndex,
+              'nodeConfig',
+              'form',
+              fieldIndex,
+              'variable',
+            ],
+            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+          );
         });
       }
 

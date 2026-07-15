@@ -13,7 +13,7 @@ export const sociogramStage = baseStageSchema.extend({
   filter: FilterSchema.optional(),
   background: z
     .strictObject({
-      image: z.string().optional(),
+      image: z.string().min(1).optional(),
       concentricCircles: z.number().int().nonnegative().optional(),
       skewedTowardCenter: z.boolean().optional(),
     })

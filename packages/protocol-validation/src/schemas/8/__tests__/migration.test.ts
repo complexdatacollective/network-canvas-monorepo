@@ -2766,6 +2766,26 @@ describe('Migration V7 to V8', () => {
         }),
       ).toEqual({ concentricCircles: 6, skewedTowardCenter: false });
     });
+
+    it('replaces an array background with the default', () => {
+      expect(migrateAndGetBackground('Sociogram', { background: [] })).toEqual({
+        concentricCircles: 4,
+      });
+    });
+
+    it('strips unknown keys from a background', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { useImage: true, concentricCircles: 2 },
+        }),
+      ).toEqual({ concentricCircles: 2 });
+    });
+
+    it('drops an empty-string image and falls back to circles', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', { background: { image: '' } }),
+      ).toEqual({ concentricCircles: 4 });
+    });
   });
 
   describe('NameGenerator behaviours normalisation', () => {
