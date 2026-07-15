@@ -320,10 +320,7 @@ export function ScrollLinkedPageBackground({
             x: clampToViewport((focusX - layerRect.left) / layerRect.width),
             y: clampToViewport((focusY - layerRect.top) / layerRect.height),
           };
-          targetProgress =
-            finalTargetIndex <= 0
-              ? 0
-              : (passedTargetIndex + progress) / finalTargetIndex;
+          targetProgress = (passedTargetIndex + progress) / finalTargetIndex;
         }
       } else if (
         finalTargetIndex >= 0 &&
