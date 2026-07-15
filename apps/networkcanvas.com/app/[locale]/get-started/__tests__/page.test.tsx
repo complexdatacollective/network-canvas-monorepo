@@ -1,5 +1,5 @@
 import { cleanup, within } from '@testing-library/react';
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps, HTMLAttributes } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithIntl } from '~/test/renderWithIntl';
@@ -46,17 +46,13 @@ vi.mock('~/lib/i18n/navigation', () => ({
 }));
 
 vi.mock('@codaco/art', () => ({
-  PageBackground: () => null,
+  PageBackground: () => <div data-testid="page-background" />,
 }));
 
 vi.mock('~/components/ui/Reveal', () => ({
-  Reveal: ({
-    children,
-    className,
-  }: {
-    children: ReactNode;
-    className?: string;
-  }) => <div className={className}>{children}</div>,
+  Reveal: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
+    <div {...props}>{children}</div>
+  ),
 }));
 
 afterEach(cleanup);
@@ -102,6 +98,15 @@ describe('localized Get Started page', () => {
     expect(cards[1]?.parentElement).toHaveClass('tablet-landscape:col-span-6');
     expect(cards[2]?.parentElement).toHaveClass('tablet-landscape:col-span-12');
     expect(cards[1]).toHaveClass('bg-slate-blue/10', 'backdrop-blur-md');
+    expect(
+      document.querySelectorAll('[data-get-started-weave-target]'),
+    ).toHaveLength(6);
+    expect(
+      document.querySelectorAll('[data-get-started-weave-interactive-target]'),
+    ).toHaveLength(8);
+    expect(
+      document.querySelectorAll('[data-testid="page-background"]'),
+    ).toHaveLength(1);
   });
 
   it('generates Spanish metadata and language alternates', async () => {

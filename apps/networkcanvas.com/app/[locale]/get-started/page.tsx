@@ -3,10 +3,10 @@ import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
-import { PageBackground } from '@codaco/art';
 import { GetStartedIntro } from '~/components/get-started/GetStartedIntro';
 import { WorkflowPath } from '~/components/get-started/WorkflowPath';
 import { Footer } from '~/components/layout/Footer';
+import { ScrollLinkedPageBackground } from '~/components/ui/ScrollLinkedPageBackground';
 import { classicApps, webApps } from '~/lib/getStarted';
 import { routing } from '~/lib/i18n/routing';
 
@@ -53,7 +53,10 @@ export default async function GetStartedPage({ params }: GetStartedPageProps) {
 
   return (
     <main className="relative isolate">
-      <PageBackground />
+      <ScrollLinkedPageBackground
+        targetSelector="[data-get-started-weave-target]"
+        interactiveTargetSelector="[data-get-started-weave-interactive-target]"
+      />
       <div className="relative z-10">
         <GetStartedIntro />
         <WorkflowPath workflow="design" apps={designApps} />

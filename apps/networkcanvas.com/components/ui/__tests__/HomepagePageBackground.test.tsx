@@ -189,11 +189,7 @@ describe('HomepagePageBackground', () => {
     );
   });
 
-  it('raises the hero intensity, then lowers it while varying weave parameters with scroll', () => {
-    const scrollY = vi.spyOn(window, 'scrollY', 'get').mockReturnValue(0);
-    vi.spyOn(document.documentElement, 'scrollHeight', 'get').mockReturnValue(
-      4000,
-    );
+  it('raises the hero intensity, then follows a varied target-linked parameter profile', () => {
     targetRects.set(
       'hero',
       createRect({ left: 100, top: 300, width: 400, height: 300 }),
@@ -221,22 +217,42 @@ describe('HomepagePageBackground', () => {
 
     targetRects.set(
       'hero',
+      createRect({ left: 100, top: 100, width: 400, height: 300 }),
+    );
+    targetRects.set(
+      'heading',
+      createRect({ left: 500, top: 500, width: 300, height: 100 }),
+    );
+    void act(() => fireEvent.scroll(window));
+
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        intensity: 0.18,
+        flare: 2.42,
+        speedFactor: 0.68,
+      }),
+    );
+
+    targetRects.set(
+      'hero',
       createRect({ left: 100, top: -400, width: 400, height: 300 }),
     );
     targetRects.set(
       'heading',
       createRect({ left: 500, top: 350, width: 300, height: 100 }),
     );
-    scrollY.mockReturnValue(1600);
     void act(() => fireEvent.scroll(window));
 
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        intensity: 0.2,
-        flare: 1.85,
-        speedFactor: 0.39,
+        intensity: 0.27,
+        flare: 2.08,
+        speedFactor: 0.5,
       }),
     );
+    for (const [{ flare }] of pageBackgroundProps.mock.calls) {
+      expect(flare).toBeGreaterThanOrEqual(1.45);
+    }
   });
 
   it('tracks the hovered or focused team member and springs back to center', () => {

@@ -80,6 +80,7 @@ export function GetStartedIntro() {
         >
           <motion.div
             variants={entrance.itemVariants}
+            data-get-started-weave-target
             className="entrance-motion-item mx-auto max-w-4xl px-6 text-center"
           >
             <Heading
@@ -100,6 +101,7 @@ export function GetStartedIntro() {
 
           <Container
             maxWidth="wide"
+            data-get-started-weave-target
             className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 mt-14 grid gap-6"
           >
             {startingPaths.map((stage) => (
@@ -109,6 +111,7 @@ export function GetStartedIntro() {
                 target={stage.external ? '_blank' : undefined}
                 rel={stage.external ? 'noreferrer' : undefined}
                 aria-label={t(`intro.stages.${stage.id}.accessibleName`)}
+                data-get-started-weave-interactive-target
                 variants={entrance.itemVariants}
                 whileHover={reduceMotion ? undefined : { y: -5 }}
                 whileFocus={reduceMotion ? undefined : { y: -5 }}

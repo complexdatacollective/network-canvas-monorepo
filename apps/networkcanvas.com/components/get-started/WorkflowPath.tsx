@@ -28,7 +28,7 @@ export function WorkflowPath({
       id={workflow}
       className="tablet-portrait:py-24 scroll-mt-8 py-16"
     >
-      <Reveal className="max-w-3xl">
+      <Reveal data-get-started-weave-target className="max-w-3xl">
         <Paragraph
           margin="none"
           className="font-heading text-neon-coral text-sm font-bold tracking-[0.14em] uppercase"
@@ -51,7 +51,10 @@ export function WorkflowPath({
         </Paragraph>
       </Reveal>
 
-      <div className="tablet-landscape:grid-cols-12 mt-12 grid grid-cols-1 gap-6">
+      <div
+        data-get-started-weave-target
+        className="tablet-landscape:grid-cols-12 mt-12 grid grid-cols-1 gap-6"
+      >
         {apps.map((app, index) => (
           <Reveal
             key={app.id}
