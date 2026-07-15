@@ -1,5 +1,70 @@
 # @codaco/architect
 
+## 8.0.0-beta.8
+
+### Minor Changes
+
+- Let researchers choose where an interview continues when a stage is skipped:
+  the next available stage, a specific later stage, or the interview finish
+  screen.
+  Architect now shows these routes in the timeline and protocol summary and
+  protects referenced destinations from invalid deletion or reordering.
+  Preview only applies its one-stage skip override when routing could actually
+  make the selected stage unavailable.
+  The bundled Mental Health Networks and Transnational Networks templates now
+  collect explicit consent and route declined consent to the finish screen.
+
+  Interviewer follows the live route as answers change, keeps unavailable screens
+  from flashing during recovery, and allows a skipped or bypassed screen to be
+  opened once after confirmation.
+
+### Patch Changes
+
+- Show the install prompt with a warning palette, restore the Home screen action hierarchy with medium sea-green Create and slate-blue Open buttons, and keep filled Download and Finished Editing toolbar actions sea green when hovered.
+- Update Architect action toolbars to use the shared SegmentedToolbar default theme, medium sizing, restrained floating shadow treatment, and explicit colors for primary preview/download actions. Apply the same restrained shadow to the top navigation bar, remove redundant shared theme overrides, set Architect primary actions to sea-green while keeping neutral buttons visually neutral, align timeline row interaction states with the selected token, let shared dialogs keep their default white popover surface, and refactor stage editor sections onto the shared Surface nesting system.
+- Migrate Architect's dynamic list editors to fresco-ui ArrayField, preserving Redux Form state, validation, animated rounded dialogs, reordering, limits, dependent controls, and semantic Fresco fields throughout array rows.
+- Color and resize Codebook edge type icons to match the selected edge type.
+- Fix three protocol-editor bugs surfaced while building end-to-end coverage: selecting a node or edge type no longer clears when the field loses focus; creating an edge type inline within a Tie-Strength Census prompt no longer writes an invalid value that corrupts the codebook; and choosing a roster data source no longer force-expands the optional Search Options section and blocks saving.
+- Fix the Family Pedigree stage delete guard. It previously read a pruned stage list that never contained the reference field, so deleting a Family Pedigree stage that a Narrative Pedigree depends on silently did nothing; it now correctly shows a blocking dialog instead.
+- Audited and hardened Architect's migration to the fresco-ui field system, and reworked the "map variable to shape" editor.
+
+  Form fixes: clearing a numeric field (e.g. a maximum-alters limit) no longer stores an empty string over the intended empty value; integer fields reject exponent/decimal input that previously stored a silently wrong number; categorical rule operands in filters and skip logic keep their selected values instead of being dropped on save; and dialog editors no longer let a native browser validation bubble pre-empt the styled, scrollable error display. Rule editors, protocol notes and stage previews now render markdown through the shared renderer, and the query-rule editors use a lighter controlled field wrapper.
+
+  Styling and accessibility: field error states use a border cue rather than repainting whole rows, several date and relative-date inputs gained accessible names, and dead legacy styling was removed.
+
+  Map variable to shape: the threshold editor is now a fresco editable list — add, remove, and inline-edit thresholds, capped by the number of available shapes. Threshold inputs are configured per variable type (scalar variables step across their normalised 0–1 range; number variables use their own range). The default-shape row, threshold rows, and shape choosers were restyled to match, with a node-coloured selection ring on the shape and colour pickers.
+
+  Field labels: across the stage and codebook editors, a field label that merely restated its section heading (e.g. a "Prompts" list under a "Prompts" heading, or "Node type" under "Node Type") is now visually hidden while remaining the control's accessible name, so each field is named once instead of twice. Where a section holds several fields, duplicated labels were renamed to add information rather than hidden, and a couple of fields that had an empty or missing label gained a proper accessible name.
+
+- Complete the fresco form-field migration with consistent custom chooser styling and accessibility, reliable validation, and correct add, edit, remove, and reorder behavior.
+- Replace additional Architect form controls with fresco-ui field components while preserving redux-form state.
+- Move Architect heading and lead text styling onto shared fresco-ui typography components and variants, retire the local heading utility classes from the Architect theme, switch codebook variable tables to the shared DataTable, tune variable pills to match shared button sizing with surface-token colors and an animated accent border, and color the finished editing action sea-green.
+- Align the start screen library metadata with the Recent and Templates tabs, restore the panel to the base white surface, and publish that surface color so collection scroll fades match the panel background.
+- Fix creating a new layout variable from a Narrative stage preset. The handler destructured a `dispatch` prop that react-redux's object-shorthand `mapDispatchToProps` never provides, so the action threw; it now calls the already-dispatch-bound action creator directly.
+- Remove the unintended green tint from tables in printable protocol codebooks while preserving the intended row and column striping.
+- Render Resource Library media previews on the interview background so transparent image and video assets keep their interview-time contrast.
+- Fixed a range of protocol-editor UI issues:
+
+  - The install banner and the "this protocol is already open in another tab"
+    banner now both appear as strips at the top of the screen, with white,
+    intent-coloured action buttons.
+  - The "Create/Edit Field" dialog is split into distinct sections (Variable,
+    Question, Input Control, Categorical/Ordinal Options, Validation), and the
+    Validation list now uses inline editing with a collapsed summary per rule.
+  - Categorical/ordinal option rows and the protocol description field use cleaner,
+    consistent styling with no clashing background or border layers.
+  - Empty toggleable sections centre their "enable this feature" message correctly.
+  - Selecting a node type for a stage no longer clears itself when you edit another
+    field or save, so stages can no longer be saved in an invalid state.
+
+- Use the fresco-ui RichSelectGroup for choosing sociogram background types.
+- Show linked text as plain text in item previews to keep it readable against colored backgrounds.
+- Use the fresco-ui Likert scale for roster search accuracy settings.
+- Load the newest app shell on fresh online launches while preserving the precached offline startup path and keeping in-progress interviews on the active offline-safe shell.
+- Improve printed protocol summaries with neutral table colors.
+- Replace Architect alert-like panels and editor tips with the shared fresco-ui Alert component.
+- Use responsive shared dialogs throughout Architect while preserving Interviewer's purpose-built home modal sizing.
+
 ## 8.0.0-beta.7
 
 ### Minor Changes
