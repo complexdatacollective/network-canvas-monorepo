@@ -87,8 +87,12 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
           className="flex flex-col gap-1"
         >
           {themeOptions.map(({ id, icon: OptionIcon }) => (
-            <DropdownMenuRadioItem key={id} value={id} closeOnClick>
-              <OptionIcon aria-hidden />
+            <DropdownMenuRadioItem
+              key={id}
+              value={id}
+              closeOnClick
+              icon={<OptionIcon aria-hidden />}
+            >
               {t(id)}
             </DropdownMenuRadioItem>
           ))}

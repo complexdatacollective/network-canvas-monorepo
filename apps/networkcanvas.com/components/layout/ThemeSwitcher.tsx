@@ -92,9 +92,9 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
               key={id}
               value={id}
               closeOnClick
+              icon={<OptionIcon aria-hidden />}
               className={THEME_ICON_STROKE_CLASS}
             >
-              <OptionIcon aria-hidden />
               {t(id)}
             </DropdownMenuRadioItem>
           ))}
