@@ -107,6 +107,12 @@ overrides:
   cheerio: 1.0.0-rc.12
   immer: ^11.1.8
   '@types/node': 'catalog:'
+  # A single workspace-wide @types/react instance: without this, the classic
+  # apps' @material-ui auto-installed peers pull in a second @types/react@17,
+  # and fresco-ui's declaration emit (vite-plugin-dts) can bind inferred types
+  # to the wrong instance (TS2883) depending on hoisting (broke Netlify).
+  '@types/react': 'catalog:'
+  '@types/react-dom': 'catalog:'
   '@microsoft/api-extractor>typescript': npm:@typescript/typescript6@^6.0.2
   'slate>immer': '^5.3.0'
   'slate-history>immer': '^5.3.0'

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nc-site-navigation demo</title>
+    <style>
+      /* Deliberately hostile host styles — the shadow root must ignore them. */
+      body {
+        margin: 0;
+        font-family: 'Comic Sans MS', cursive;
+        background: #e8e4da;
+      }
+      a {
+        color: red !important;
+        text-decoration: underline wavy !important;
+      }
+      .controls {
+        padding: 1rem;
+        display: flex;
+        gap: 0.5rem;
+      }
+    </style>
+    <script type="module" src="/src/element.tsx"></script>
+  </head>
+  <body>
+    <nc-site-navigation
+      active-item="community"
+      theme="auto"
+    ></nc-site-navigation>
+    <div class="controls">
+      <button data-theme-value="light">Light</button>
+      <button data-theme-value="dark">Dark</button>
+      <button data-theme-value="auto">Auto</button>
+    </div>
+    <p style="padding: 1rem">
+      Host-page content. The header above is rendered by
+      <code>&lt;nc-site-navigation&gt;</code> inside a shadow root.
+    </p>
+    <script type="module">
+      const nav = document.querySelector('nc-site-navigation');
+      for (const button of document.querySelectorAll('[data-theme-value]')) {
+        button.addEventListener('click', () => {
+          nav.setAttribute('theme', button.dataset.themeValue);
+        });
+      }
+    </script>
+  </body>
+</html>

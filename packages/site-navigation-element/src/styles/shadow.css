@@ -1,0 +1,30 @@
+/*
+ * Tailwind entry for the <nc-site-navigation> shadow stylesheet.
+ * Compiled by scripts/build.mjs via @tailwindcss/cli, then post-processed:
+ * `:root` is rewritten to `:is(:root, :host)` and `@property` rules are
+ * hoisted to a document-level stylesheet (neither applies inside a shadow
+ * root as-authored).
+ *
+ * `source(none)` disables Tailwind v4's automatic content detection, which
+ * otherwise roots at the monorepo `.git` and scans the *entire* workspace —
+ * baking in every utility class used by any package (interview, architect,
+ * other fresco-ui components), not just the ones this nav renders. The
+ * `@source` globs below scope detection back down to the nav's actual render
+ * closure. They use directory/brace globs rather than single-file paths:
+ * multiple explicit single-file `@source` directives into the
+ * symlinked+gitignored `node_modules/@codaco/fresco-ui/dist/*.js` scan
+ * unreliably and order-dependently under Tailwind v4, while glob forms scan
+ * reliably.
+ *
+ * Whenever SiteNavigation (or its fresco-ui imports) gains a new
+ * component/module, or starts using another class-bearing file, the
+ * `@source` list below must be extended to match — a missed file fails
+ * SILENTLY (its classes simply don't render, with no build error).
+ */
+@import '@codaco/tailwind-config/fresco.css' source(none);
+
+@source '../../node_modules/@codaco/fresco-ui/dist/{Button,Spinner,PortalContainer}.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/navigation/*.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/typography/*.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/styles/controlVariants.js';
+@source '../*.tsx';

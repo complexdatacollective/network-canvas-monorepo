@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { PortalContainerProvider } from '../../PortalContainer';
 import SiteNavigation from '../SiteNavigation';
 
 describe('SiteNavigation', () => {
@@ -255,5 +256,58 @@ describe('SiteNavigation', () => {
       screen.getByRole('button', { name: 'Open site navigation' }),
     ).toHaveAttribute('aria-expanded', 'false');
     expect(menuButton).toHaveFocus();
+  });
+
+  it('renders every destination absolutely for external hosts', () => {
+    render(
+      <SiteNavigation
+        activeItemId="community"
+        locale="en-US"
+        site="external"
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Network Canvas home' }),
+    ).toHaveAttribute('href', 'https://networkcanvas.com/');
+    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+      'href',
+      'https://documentation.networkcanvas.com/',
+    );
+    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+      'target',
+      '_blank',
+    );
+    expect(screen.getByRole('link', { name: 'Community' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('link', { name: 'Get Started' })).toHaveAttribute(
+      'href',
+      'https://networkcanvas.com/download',
+    );
+  });
+
+  it('portals desktop menus into the app portal container when provided', () => {
+    const { baseElement } = render(
+      <PortalContainerProvider>
+        <SiteNavigation locale="en-US" site="website" />
+      </PortalContainerProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Software' }));
+    const architectLink = screen.getByRole('link', { name: 'Architect' });
+    const portalLayer = baseElement.querySelector('.z-3000');
+    if (!portalLayer) throw new Error('Expected the portal container layer.');
+
+    expect(portalLayer).toContainElement(architectLink);
+  });
+
+  it('keeps portaling to the document body without a provider', () => {
+    render(<SiteNavigation locale="en-US" site="website" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Software' }));
+
+    expect(screen.getByRole('link', { name: 'Architect' })).toBeInTheDocument();
   });
 });
