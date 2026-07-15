@@ -9,10 +9,17 @@ const corsHeaders = { 'access-control-allow-origin': '*' };
  * basemap renders as a flat background. The app's own layers (GeoJSON
  * outline/selection from the local asset server, transit from the
  * mocked TileJSON below) render on top as normal.
+ *
+ * The glyphs template is required for the app's transit-labels layer to
+ * pass style validation (a text-field layer without style glyphs is
+ * rejected with a console error). Glyph URLs resolve to the 204
+ * interceptor below, and with all transit tiles empty no glyph is ever
+ * actually requested.
  */
 const MINIMAL_STYLE = {
   version: 8,
   name: 'e2e-minimal',
+  glyphs: 'https://api.mapbox.com/fonts/v1/mapbox/{fontstack}/{range}.pbf',
   sources: {},
   layers: [
     {
@@ -71,19 +78,24 @@ export async function installMapboxMocks(page: Page): Promise<void> {
     route.fulfill({ headers: corsHeaders, json: MINIMAL_STYLE }),
   );
 
-  await page.route(
-    /https:\/\/api\.mapbox\.com\/v4\/mapbox\.mapbox-streets-v8\.json/,
-    (route) => route.fulfill({ headers: corsHeaders, json: STREETS_TILEJSON }),
-  );
-
   // Vector tiles, sprites, glyphs: 204 = "resource is empty", which
-  // mapbox-gl handles gracefully without erroring the source.
+  // mapbox-gl handles gracefully without erroring the source. The .json
+  // check reads the URL pathname because real requests carry an
+  // access_token query string.
   await page.route(
     /https:\/\/api\.mapbox\.com\/(v4|fonts|tiles)\//,
     (route, request) =>
-      request.url().endsWith('.json')
+      new URL(request.url()).pathname.endsWith('.json')
         ? route.fulfill({ headers: corsHeaders, json: STREETS_TILEJSON })
         : route.fulfill({ status: 204, headers: corsHeaders }),
+  );
+
+  // Registered after the (v4|fonts|tiles) catch-all: Playwright checks
+  // routes in reverse registration order, so the specific TileJSON mock
+  // must come later to win for this URL.
+  await page.route(
+    /https:\/\/api\.mapbox\.com\/v4\/mapbox\.mapbox-streets-v8\.json/,
+    (route) => route.fulfill({ headers: corsHeaders, json: STREETS_TILEJSON }),
   );
 
   await page.route(/https:\/\/events\.mapbox\.com\//, (route) =>
