@@ -112,10 +112,12 @@ describe('localized home sections', () => {
     expect(
       screen.getByRole('link', { name: 'canal de YouTube' }),
     ).toHaveAttribute('href', expect.stringContaining('youtube.com'));
-    expect(screen.getByTitle('Ver: ¿Qué es Network Canvas?')).toHaveAttribute(
+    const videoEmbed = screen.getByTitle('Ver: ¿Qué es Network Canvas?');
+    expect(videoEmbed).toHaveAttribute(
       'src',
       'https://www.youtube-nocookie.com/embed/XzfE6j-LnII?si=sg8osuFqwG3ZlDK1',
     );
+    expect(videoEmbed).not.toHaveAttribute('sandbox');
     expect(
       screen.getByRole('link', { name: 'artículo de documentación' }),
     ).toBeInTheDocument();

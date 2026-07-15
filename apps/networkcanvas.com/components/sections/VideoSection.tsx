@@ -1,3 +1,4 @@
+/* oxlint-disable react/iframe-missing-sandbox -- YouTube requires its normal cross-origin client identity; sandboxing the player produces error 153. */
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
@@ -35,7 +36,6 @@ export function VideoSection() {
           title={t('watchLabel')}
           loading="lazy"
           referrerPolicy="strict-origin-when-cross-origin"
-          sandbox="allow-popups allow-presentation allow-scripts"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
           className="aspect-video w-full rounded shadow-xl"
