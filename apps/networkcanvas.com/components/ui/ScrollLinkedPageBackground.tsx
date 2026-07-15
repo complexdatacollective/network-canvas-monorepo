@@ -54,8 +54,8 @@ function getFlareKeyframes(parameterProfile: ParameterProfile) {
 
 function getStaticParameters(parameterProfile: ParameterProfile) {
   return parameterProfile === 'get-started'
-    ? { intensity: 0.36, speedFactor: 0.24 }
-    : { intensity: 0.62, speedFactor: 0.28 };
+    ? { heroIntensity: 0.36, readingIntensity: 0.18, speedFactor: 0.24 }
+    : { heroIntensity: 0.62, readingIntensity: 0.26, speedFactor: 0.28 };
 }
 
 function clampToViewport(value: number) {
@@ -101,6 +101,18 @@ function getWeaveFlare(progress: number, parameterProfile: ParameterProfile) {
     heroFlare,
     interpolate(origin, target, progressWithinKeyframe),
   );
+}
+
+function getWeaveIntensity(
+  scrollY: number,
+  viewportHeight: number,
+  parameterProfile: ParameterProfile,
+) {
+  const { heroIntensity, readingIntensity } =
+    getStaticParameters(parameterProfile);
+  const progress = clampToViewport(scrollY / Math.max(1, viewportHeight));
+
+  return interpolate(heroIntensity, readingIntensity, progress);
 }
 
 function getPostTargetProgress(
@@ -198,7 +210,7 @@ export function ScrollLinkedPageBackground({
   );
   const [background, setBackground] = useState<BackgroundState>({
     convergence: CENTER_CONVERGENCE,
-    intensity: getStaticParameters(parameterProfile).intensity,
+    intensity: getStaticParameters(parameterProfile).heroIntensity,
     flare: getWeaveFlare(0, parameterProfile),
     resolved: false,
     targetChangeVersion: 0,
@@ -362,7 +374,7 @@ export function ScrollLinkedPageBackground({
       );
       const renderedIntensity = Math.min(
         1,
-        getStaticParameters(parameterProfile).intensity +
+        getWeaveIntensity(window.scrollY, layerRect.height, parameterProfile) +
           (trackedInteractiveTarget ? interactiveIntensityBoost : 0),
       );
 

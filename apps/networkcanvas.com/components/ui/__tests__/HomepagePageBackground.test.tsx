@@ -322,12 +322,14 @@ describe('HomepagePageBackground', () => {
     expect(lastProps?.convergence.x).toBeCloseTo(0.72);
     expect(lastProps?.convergence.y).toBeCloseTo(0.5);
     expect(lastProps?.complexity).toBe(20);
-    expect(lastProps?.intensity).toBeCloseTo(0.36);
+    expect(lastProps?.intensity).toBeCloseTo(0.19125);
     expect(lastProps?.flare).toBeCloseTo(2.54);
     expect(lastProps?.speedFactor).toBeCloseTo(0.24);
   });
 
-  it('only varies flare with scroll while keeping the other parameters fixed', () => {
+  it('reduces intensity and varies flare with scroll while keeping complexity and speed fixed', () => {
+    let scrollY = 0;
+    vi.spyOn(window, 'scrollY', 'get').mockImplementation(() => scrollY);
     targetRects.set(
       'hero',
       createRect({ left: 100, top: 300, width: 400, height: 300 }),
@@ -362,12 +364,13 @@ describe('HomepagePageBackground', () => {
       'heading',
       createRect({ left: 500, top: 500, width: 300, height: 100 }),
     );
+    scrollY = 400;
     void act(() => fireEvent.scroll(window));
 
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         complexity: 20,
-        intensity: 0.62,
+        intensity: 0.44,
         flare: 2.42,
         speedFactor: 0.28,
       }),
@@ -381,18 +384,21 @@ describe('HomepagePageBackground', () => {
       'heading',
       createRect({ left: 500, top: 350, width: 300, height: 100 }),
     );
+    scrollY = 800;
     void act(() => fireEvent.scroll(window));
 
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         complexity: 20,
-        intensity: 0.62,
+        intensity: 0.26,
         flare: 2.08,
         speedFactor: 0.28,
       }),
     );
-    for (const [{ flare }] of pageBackgroundProps.mock.calls) {
+    for (const [{ flare, intensity }] of pageBackgroundProps.mock.calls) {
       expect(flare).toBeGreaterThanOrEqual(1.45);
+      expect(intensity).toBeGreaterThanOrEqual(0.26);
+      expect(intensity).toBeLessThanOrEqual(0.62);
     }
   });
 
