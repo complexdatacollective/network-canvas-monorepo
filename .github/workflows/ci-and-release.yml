@@ -218,6 +218,73 @@ jobs:
             echo "pw_workers=$pw_workers"
           } >> "$GITHUB_OUTPUT"
 
+  # pick-e2e-runner snapshots availability once, but the e2e jobs are scheduled
+  # later — if the self-hosted runner dies in between (or mid-queue, since the
+  # three suites serialize on one runner), the queued jobs would sit against
+  # dead labels for GitHub's 24h backstop, blocking the `quality` gate. This
+  # watchdog polls the run's own e2e jobs: queued-while-runner-ONLINE is normal
+  # (busy runner) and waits; queued-while-runner-OFFLINE for 5 consecutive
+  # checks cancels the run with a clear error — a rerun re-picks and falls back
+  # to GitHub-hosted. Only spawned when self-hosted was picked, which implies
+  # E2E_RUNNER_STATUS_TOKEN existed for pick-e2e-runner. continue-on-error:
+  # this job must never redden CI by itself; its only lever is the cancel.
+  e2e-queue-watchdog:
+    needs: [e2e-policy, pick-e2e-runner]
+    if: >-
+      ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true'
+      && needs.pick-e2e-runner.result == 'success'
+      && contains(needs.pick-e2e-runner.outputs.runs_on, 'self-hosted') }}
+    runs-on: ubuntu-latest
+    # Outlive three serialized 45-minute suites plus queueing behind other
+    # runs sharing the runner. Past this, GitHub's 24h queued-job limit is the
+    # backstop. Watchdog minutes are free on a public repo.
+    timeout-minutes: 355
+    continue-on-error: true
+    permissions:
+      actions: write
+    steps:
+      - name: Cancel the run if e2e jobs are queued against a dead runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ADMIN_TOKEN: ${{ secrets.E2E_RUNNER_STATUS_TOKEN }}
+        run: |
+          strikes=0
+          while true; do
+            sleep 60
+            jobs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}/jobs?per_page=100" \
+              --jq '[.jobs[] | select(.name == "interview-e2e" or .name == "interviewer-e2e" or .name == "architect-e2e")]') || continue
+            total=$(jq 'length' <<< "$jobs")
+            completed=$(jq '[.[] | select(.status == "completed")] | length' <<< "$jobs")
+            queued=$(jq '[.[] | select(.status == "queued")] | length' <<< "$jobs")
+            if [ "$total" -gt 0 ] && [ "$completed" -eq "$total" ]; then
+              echo "all e2e jobs completed — watchdog done"
+              exit 0
+            fi
+            if [ "$queued" -eq 0 ]; then
+              strikes=0
+              continue
+            fi
+            online=$(curl -sf --max-time 30 \
+              -H "Authorization: Bearer $ADMIN_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners?per_page=100" \
+              | jq '[.runners[] | select(.status == "online" and ([.labels[].name] | index("e2e")))] | length' \
+              || echo "")
+            # Unknown status (API hiccup) is not evidence the runner is dead —
+            # never cancel on a blind guess.
+            if [ -z "$online" ] || [ "$online" -gt 0 ]; then
+              strikes=0
+              continue
+            fi
+            strikes=$((strikes + 1))
+            echo "$queued e2e job(s) queued with no online 'e2e' runner (strike ${strikes}/5)"
+            if [ "$strikes" -ge 5 ]; then
+              echo "::error::Self-hosted e2e runner went offline with e2e jobs still queued. Cancelling this run — rerun it to fall back to GitHub-hosted runners."
+              gh api -X POST "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/cancel"
+              exit 1
+            fi
+          done
+
   # Cache design: turbo-ci-setup runs a runner-local server speaking turbo's
   # remote-cache protocol, backed by the GitHub Actions Cache with per-task,
   # hash-addressed entries. Per-package env values (NEXT_PUBLIC_*, VITE_*) are
