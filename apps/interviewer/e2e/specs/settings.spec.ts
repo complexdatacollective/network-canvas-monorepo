@@ -1,3 +1,5 @@
+import type { Page } from '@playwright/test';
+
 import { expect, test } from '../fixtures/test.js';
 import {
   LEAN_E2E_PROTOCOL_NAME,
@@ -5,36 +7,37 @@ import {
 } from '../helpers/protocol-paths.js';
 import { settingsAboutMasks } from '../helpers/visual.js';
 
-async function openSettings(
-  page: import('@playwright/test').Page,
-): Promise<void> {
+async function openSettings(page: Page): Promise<void> {
   await page.goto('/');
   await page.getByTestId('settings-trigger').click();
   await expect(page.getByRole('dialog')).toBeVisible();
 }
 
 test.describe('settings', () => {
-  test('toggling Export CSV persists across reload', async ({
-    page,
-    capture,
-  }) => {
-    await openSettings(page);
-    await page.getByRole('tab', { name: 'Data export' }).click();
-    const csv = page.getByRole('switch', { name: 'Export CSV' });
-    const before = await csv.getAttribute('aria-checked');
-    expect(before).not.toBeNull();
-    await csv.click();
-    await expect(csv).not.toHaveAttribute('aria-checked', before ?? 'true');
-    await capture('settings-data-export');
+  test(
+    'toggling Export CSV persists across reload',
+    {
+      tag: '@visual',
+    },
+    async ({ page, capture }) => {
+      await openSettings(page);
+      await page.getByRole('tab', { name: 'Data export' }).click();
+      const csv = page.getByRole('switch', { name: 'Export CSV' });
+      const before = await csv.getAttribute('aria-checked');
+      expect(before).not.toBeNull();
+      await csv.click();
+      await expect(csv).not.toHaveAttribute('aria-checked', before ?? 'true');
+      await capture('settings-data-export');
 
-    // Reload and confirm the new value stuck (Dexie-backed, `none` mode plaintext).
-    await page.reload();
-    await openSettings(page);
-    await page.getByRole('tab', { name: 'Data export' }).click();
-    await expect(
-      page.getByRole('switch', { name: 'Export CSV' }),
-    ).not.toHaveAttribute('aria-checked', before ?? 'true');
-  });
+      // Reload and confirm the new value stuck (Dexie-backed, `none` mode plaintext).
+      await page.reload();
+      await openSettings(page);
+      await page.getByRole('tab', { name: 'Data export' }).click();
+      await expect(
+        page.getByRole('switch', { name: 'Export CSV' }),
+      ).not.toHaveAttribute('aria-checked', before ?? 'true');
+    },
+  );
 
   test('screen-layout coordinate toggle and dimensions persist', async ({
     page,
@@ -90,17 +93,20 @@ test.describe('settings', () => {
     ).not.toHaveAttribute('aria-checked', before ?? 'true');
   });
 
-  test('About section shows a version and a storage estimate', async ({
-    page,
-    capture,
-  }) => {
-    await openSettings(page);
-    await page.getByRole('tab', { name: 'About' }).click();
-    await expect(
-      page.getByRole('progressbar', { name: 'Storage usage' }),
-    ).toBeVisible();
-    await capture('settings-about', { mask: settingsAboutMasks(page) });
-  });
+  test(
+    'About section shows a version and a storage estimate',
+    {
+      tag: '@visual',
+    },
+    async ({ page, capture }) => {
+      await openSettings(page);
+      await page.getByRole('tab', { name: 'About' }).click();
+      await expect(
+        page.getByRole('progressbar', { name: 'Storage usage' }),
+      ).toBeVisible();
+      await capture('settings-about', { mask: settingsAboutMasks(page) });
+    },
+  );
 
   test('Security tab hides step-up controls when no vault is configured', async ({
     page,

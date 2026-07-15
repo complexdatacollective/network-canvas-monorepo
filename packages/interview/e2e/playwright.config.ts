@@ -5,16 +5,8 @@ export default defineConfig({
   snapshotDir: './visual-snapshots',
   snapshotPathTemplate: '{snapshotDir}/{projectName}/{arg}{ext}',
 
-  // Parallelism is per-project: the legacy silos suite stays serial, the
-  // matrix/visual projects run fullyParallel with per-test isolated pages.
-  fullyParallel: false,
+  fullyParallel: true,
   workers: process.env.PW_WORKERS ? Number(process.env.PW_WORKERS) : '50%',
-  // Retry on CI only. The legacy suite is serial (mode: 'serial'), so a retry
-  // re-runs the whole group from beforeAll and rebuilds state — recovering
-  // known transient visual flakes (e.g. SILOS stage-29, issue #844) so the
-  // gate stays green while Playwright still reports them as flaky. Matrix
-  // tests are order-independent, so a retry re-runs just the one test. Local
-  // stays 0 so flakes surface deterministically while developing.
   retries: process.env.CI ? 2 : 0,
   timeout: 30_000,
 
@@ -54,10 +46,9 @@ export default defineConfig({
       // Production preview, not the dev server. The dev server's optimizeDeps
       // re-bundles when it discovers a new @base-ui/react subpath at runtime
       // (e.g. the success toast that surfaces only after addNode), which forces
-      // a full page reload and wipes the Shell's Redux state mid-test —
-      // manifested as a stage-2-final.png mismatch on the SILOS Self-Nomination
-      // test. The host bundle is built upstream (run.sh in Docker, or
-      // test:e2e:headed locally) so this command assumes e2e/host/dist/ exists.
+      // a full page reload and wipes the Shell's Redux state mid-test. The host
+      // bundle is built upstream (run.sh in Docker, or test:e2e:headed locally)
+      // so this command assumes e2e/host/dist/ exists.
       command:
         'pnpm --filter @codaco/interview exec vite preview --config e2e/host/vite.config.ts',
       port: 4101,
@@ -74,33 +65,6 @@ export default defineConfig({
   ],
 
   projects: [
-    // Legacy: the silos serial chain. Keeps its original per-browser snapshot
-    // dirs so the committed baselines don't move.
-    {
-      name: 'chromium-legacy',
-      use: devices['Desktop Chrome'],
-      testMatch: /silos-protocol\.spec\.ts/,
-      fullyParallel: false,
-      snapshotPathTemplate: '{snapshotDir}/chromium/{arg}{ext}',
-    },
-    {
-      name: 'firefox-legacy',
-      use: devices['Desktop Firefox'],
-      testMatch: /silos-protocol\.spec\.ts/,
-      fullyParallel: false,
-      snapshotPathTemplate: '{snapshotDir}/firefox/{arg}{ext}',
-    },
-    {
-      name: 'webkit-legacy',
-      // Playwright's Linux WebKit renders in software and stalls for seconds
-      // on heavy stage transitions (video decode, map init), so the global
-      // 5s actionTimeout intermittently expires mid-click even though the
-      // interaction is sound. Triple it for webkit only.
-      use: { ...devices['Desktop Safari'], actionTimeout: 15_000 },
-      testMatch: /silos-protocol\.spec\.ts/,
-      fullyParallel: false,
-      snapshotPathTemplate: '{snapshotDir}/webkit/{arg}{ext}',
-    },
     // Matrix: functional assertions + aria snapshots. Fully parallel,
     // per-test isolation (fixtures/matrix-test.ts). Aria snapshots are
     // OS-independent text and live outside the pixel snapshotDir.
@@ -121,7 +85,10 @@ export default defineConfig({
     },
     {
       name: 'webkit-matrix',
-      // Same webkit-only actionTimeout accommodation as webkit-legacy.
+      // Playwright's Linux WebKit renders in software and stalls for seconds
+      // on heavy stage transitions (video decode, map init), so the global
+      // 5s actionTimeout intermittently expires mid-click even though the
+      // interaction is sound. Triple it for webkit only.
       use: { ...devices['Desktop Safari'], actionTimeout: 15_000 },
       testMatch: /specs\/matrix\/(?!visual).*\.spec\.ts/,
       grep: /@smoke/,
@@ -145,7 +112,7 @@ export default defineConfig({
     },
     {
       name: 'webkit-visual',
-      // Same webkit-only actionTimeout accommodation as webkit-legacy.
+      // Same webkit-only actionTimeout accommodation as webkit-matrix.
       use: { ...devices['Desktop Safari'], actionTimeout: 15_000 },
       testMatch: /specs\/matrix\/visual\.spec\.ts/,
       fullyParallel: true,

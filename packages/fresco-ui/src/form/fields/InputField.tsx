@@ -148,6 +148,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
       value,
       onChange,
       nativeOnChange,
+      onKeyDown,
       type = 'text',
       disabled,
       readOnly,
@@ -169,11 +170,12 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
     const internalRef = useRef<HTMLInputElement>(null);
     const isNumber = type === 'number';
     const isInteractive = !disabled && !readOnly;
+    const canStep = isInteractive && inputProps.step !== 'any';
 
     const handleStep = useCallback(
       (direction: 'up' | 'down') => {
         const input = internalRef.current;
-        if (!input) return;
+        if (!input || input.step === 'any') return;
 
         if (direction === 'up') {
           input.stepUp();
@@ -217,6 +219,21 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
             onChange?.(e.target.value);
             nativeOnChange?.(e);
           }}
+          onKeyDown={(event) => {
+            onKeyDown?.(event);
+
+            if (
+              event.defaultPrevented ||
+              !isNumber ||
+              !canStep ||
+              (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')
+            ) {
+              return;
+            }
+
+            event.preventDefault();
+            handleStep(event.key === 'ArrowUp' ? 'up' : 'down');
+          }}
           onWheel={(e) => {
             if (isNumber) {
               e.currentTarget.blur();
@@ -235,7 +252,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         <IconButton
           size={size}
           color="default"
-          disabled={!isInteractive}
+          disabled={!canStep}
           onClick={() => handleStep('down')}
           aria-label="Decrease value"
           tabIndex={-1}
@@ -258,7 +275,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         <IconButton
           size={size}
           color="default"
-          disabled={!isInteractive}
+          disabled={!canStep}
           onClick={() => handleStep('up')}
           aria-label="Increase value"
           tabIndex={-1}

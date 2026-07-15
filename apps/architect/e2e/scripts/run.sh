@@ -5,7 +5,7 @@
 # lock-step with the @playwright/test / playwright catalog pins.
 #
 #   ./e2e/scripts/run.sh                    # run all specs
-#   ./e2e/scripts/run.sh --update-snapshots # regenerate visual baselines
+#   ./e2e/scripts/run.sh --grep @visual --update-snapshots # regenerate PNG baselines
 #   ./e2e/scripts/run.sh specs/foo.spec.ts --update-snapshots
 #     # scoped regen — extra args pass through to playwright verbatim. Put
 #     # spec paths BEFORE --update-snapshots: playwright's -u takes an
@@ -37,7 +37,7 @@ fi
 # is non-deterministic, so it can occasionally interleave with a spec's own
 # page.evaluate/addStyleTag calls and surface as a spurious action failure.
 # Reuse the app's build-time analytics gate (already used by vitest and the
-# Netlify PR-preview deploy — see vite.config.ts / ci-and-release.yml) so the
+# Netlify PR-preview build — see vite.config.ts / netlify.toml) so the
 # build under test never initializes PostHog at all.
 # Visual baselines are amd64-truth: glyph advance widths differ subtly
 # between the image's amd64 and arm64 builds, which moves text wrap points in

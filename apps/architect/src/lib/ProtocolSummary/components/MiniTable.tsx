@@ -11,13 +11,13 @@ type MiniTableProps = {
 
 const tableVariants = cva({
   base: [
-    'my-5 break-inside-avoid overflow-hidden rounded',
+    'bg-platinum my-5 break-inside-avoid overflow-hidden rounded',
     '[&>thead>tr>th]:text-xs [&>thead>tr>th]:font-semibold [&>thead>tr>th]:tracking-widest [&>thead>tr>th]:break-keep [&>thead>tr>th]:uppercase',
     '[&_:is(td,th)]:px-5 [&_:is(td,th)]:py-2.5',
     '[&_:is(td,th)_:is(ul,ol)]:p-[inherit]',
     '[&_:is(td,th)>p:first-child]:mt-0 [&_:is(td,th)>p:last-child]:mb-0',
     '[&_tr>:is(td,th):not(:last-child)]:border-r-[3px] [&_tr>:is(td,th):not(:last-child)]:border-r-white',
-    '[&>tbody>tr:nth-child(odd)>td]:bg-table-row-tint',
+    '[&>tbody>tr:nth-child(odd)>td]:bg-platinum-dark',
   ],
   variants: {
     wide: { true: 'w-full' },
@@ -26,7 +26,7 @@ const tableVariants = cva({
         '[&_tr>:is(td,th):not(:last-child)]:border-r-0',
         '[&>tbody>tr:not(:last-child)>td]:border-b-[3px] [&>tbody>tr:not(:last-child)>td]:border-b-white',
         '[&>tbody>tr:nth-child(odd)>td]:bg-transparent',
-        '[&>tbody>tr>td:nth-child(2n)]:bg-table-row-tint',
+        '[&>tbody>tr>td:nth-child(2n)]:bg-platinum-dark',
         '[&>tbody>tr>td:first-child]:text-right [&>tbody>tr>td:first-child]:text-xs [&>tbody>tr>td:first-child]:font-semibold [&>tbody>tr>td:first-child]:tracking-widest [&>tbody>tr>td:first-child]:wrap-break-word [&>tbody>tr>td:first-child]:whitespace-nowrap [&>tbody>tr>td:first-child]:uppercase',
       ],
     },

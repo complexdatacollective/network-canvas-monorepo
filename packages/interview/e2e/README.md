@@ -11,7 +11,7 @@ that mounts `Shell` directly.
 # Run the full suite in the official Playwright Docker image
 pnpm test:e2e
 
-# Regenerate visual baselines (also Docker)
+# Regenerate pixel baselines only (the three visual projects; also Docker)
 pnpm test:e2e:update-snapshots
 
 # Run headed against a single browser for local debugging
@@ -122,18 +122,54 @@ test.describe('My protocol', () => {
 });
 ```
 
-`captureInitial()` / `captureFinal()` produce per-browser snapshots in
-`visual-snapshots/{chromium,firefox,webkit}/`. Snapshots are tolerant of
+`captureInitial()` / `captureFinal()` produce per-browser pixel snapshots for
+the matrix's `visual`-flagged scenarios in
+`visual-snapshots/{chromium,firefox,webkit}-matrix/`. Snapshots are tolerant of
 ≤250 pixel diffs (`maxDiffPixels` in `playwright.config.ts`) but font rendering
-is OS-sensitive — always regenerate baselines via `pnpm test:e2e:update-snapshots`
-(which runs in the Playwright Docker image), never locally.
+is OS-sensitive. Prefer the manual CI workflow described below; use
+`pnpm test:e2e:update-snapshots` as the pinned-Docker fallback, never a host
+Playwright run.
+
+The update command selects only the `chromium-visual`, `firefox-visual`, and
+`webkit-visual` projects. It does not run the matrix projects or update their
+ARIA snapshots.
+
+### Regenerating committed PNGs in CI
+
+Use the `regenerating-e2e-visual-snapshots` skill and dispatch the manual
+`Regenerate E2E Visual Snapshots` GitHub Actions workflow with the `interview`
+suite. The job runs only those three visual projects and uploads the
+`e2e-visual-snapshots-interview` artifact; it does not run the functional/ARIA
+matrix, unit tests, lint, typecheck, or other quality jobs.
+
+```sh
+branch=$(git branch --show-current)
+gh workflow run regenerate-e2e-visual-snapshots.yml \
+  --ref "$branch" \
+  -f suite=interview
+```
+
+Inspect every generated browser image before copying selected PNGs into the
+three committed `visual-snapshots/*-matrix/` directories. The package update
+command above is the pinned-Docker local fallback.
+
+Repository CI runs all three complete E2E suites only for the exact generated
+release branches `changeset-release/main` and `changeset-release/apps`, and for
+release-triggering merge groups. The required `quality` check conditionally
+requires their results; ordinary PRs skip them. Release automation explicitly
+dispatches CI for generated branches, so no manual trigger is needed.
+
+If Interview E2E reports a visual-snapshot failure on a release PR, CI runs only
+the three visual projects. Changed baselines open a PNG-only child PR against
+that failing release branch. Review every browser image before merging it; the
+merge accepts the baselines and retriggers the parent release PR. Functional or
+ARIA failures do not start regeneration.
 
 ## The configuration matrix
 
-Alongside the protocol-driven suites above, `e2e/matrix/` holds a
-configuration matrix that exercises **every interface and its configuration
-options**. Each option is verified functionally AND snapshotted, and the whole
-matrix runs fully parallel.
+`e2e/matrix/` holds a configuration matrix that exercises **every interface and
+its configuration options**. Each option is verified functionally AND
+snapshotted, and the whole matrix runs fully parallel.
 
 ### Two snapshot tiers
 
@@ -144,9 +180,10 @@ matrix runs fully parallel.
   takes an `initial` and a `final` aria snapshot around its interactions.
 - **Pixel snapshots** (a small `visual`-flagged subset, baselines in
   `visual-snapshots/{chromium,firefox,webkit}-matrix/`) guard the rendered
-  look of representative configurations. Pixels are OS-sensitive, so — like the
-  legacy suite — they are **only regenerated in Docker** via
-  `pnpm test:e2e:update-snapshots`, and captures are CI-only at runtime.
+  look of representative configurations. Pixels are OS-sensitive, so they are
+  **only regenerated in pinned Docker** through the manual CI workflow or the
+  `pnpm test:e2e:update-snapshots` fallback. Both run only the three visual
+  projects; regenerate ARIA snapshots separately and locally.
 
   One webkit-only quirk: the matrix fixture disables `backdrop-filter` on
   webkit (see `fixtures/matrix-test.ts`) because Playwright's Linux WebKit
@@ -194,10 +231,9 @@ Keys handled by the cross-cutting suite are recorded in
 
 ### Projects
 
-`playwright.config.ts` defines nine projects: `{chromium,firefox,webkit}` ×
-`{legacy, matrix, visual}`. The legacy silos suite stays serial; matrix and
-visual run fully parallel. To keep the browser matrix affordable, the
-`firefox-matrix` / `webkit-matrix` projects run only the `@smoke` subset (one
+`playwright.config.ts` defines six projects: `{chromium,firefox,webkit}` ×
+`{matrix, visual}`, all fully parallel. To keep the browser matrix affordable,
+the `firefox-matrix` / `webkit-matrix` projects run only the `@smoke` subset (one
 scenario per interface) while `chromium-matrix` runs the full matrix. Worker
 count is `PW_WORKERS ?? '50%'` (CI pins `PW_WORKERS=4` — high parallelism lets
 the crypto-heavy Anonymisation scenarios contend and flake).
@@ -211,9 +247,10 @@ matrix. If wall-clock ever exceeds that budget, enable sharding:
    `--shard=${{ matrix.shard }}` through to `run.sh`.
 2. Set `PW_BLOB: 1` on the job — `playwright.config.ts` then emits the `blob`
    reporter instead of line/html/json.
-3. The dormant `Merge sharded blob reports` step (already present, gated on
-   `env.PW_BLOB == '1'`) merges the per-shard `blob-report` dirs into one HTML
-   report. Give it the downloaded blob dirs.
+3. The dormant report-setup and merge steps (already present, gated on
+   `env.PW_BLOB == '1'`) install the host-side merger after the Docker run and
+   combine the downloaded per-shard `blob-report` directories into one HTML
+   report.
 
 The criterion for enabling shards is measured wall-clock over budget — not a
 guess. Caching the in-container `pnpm install`/build is a cheaper first lever.

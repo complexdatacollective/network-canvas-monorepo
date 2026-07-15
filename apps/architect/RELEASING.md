@@ -24,9 +24,9 @@ the release notes, it does not move the base while in beta.
    the prerelease GitHub release `@codaco/architect@<version>` with the
    CHANGELOG notes.
 
-Pull requests still get a preview deploy (`deploy-architect-preview`), aliased
-`pr-<number>` and posted as a comment. Production is no longer deployed on every
-push to `main` — only on a Release apps & documentation PR merge.
+Netlify's Git integration builds pull-request previews and reports their URLs
+directly on the PR. Production is no longer deployed on every push to `main` —
+only on a Release apps & documentation PR merge.
 
 ## Developer site
 
@@ -43,7 +43,7 @@ declaration bundling can exceed Node's default heap during a clean build.
 
 ## How CI builds
 
-Both the preview and release jobs run `pnpm exec turbo run build
+Netlify preview builds and the CI release job run `pnpm exec turbo run build
 --filter=@codaco/architect`. The app's `build` command runs Vite and then
 `scripts/assert-pwa-build.mjs`. That assertion fails the build if `dist/` is
 missing the service worker, manifest, or icons, or if any emitted JS chunk was

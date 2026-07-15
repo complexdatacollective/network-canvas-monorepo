@@ -4,26 +4,28 @@ const PIN = '12345678';
 const PASSPHRASE = 'correct-horse-battery-1';
 
 test.describe('vault lifecycle', () => {
-  test('PIN enrolment locks on reload and unlocks with the PIN', async ({
-    vault,
-    page,
-    capture,
-  }) => {
-    await vault.enrolPin(PIN);
-    // Reload drops the in-memory DEK → the app re-locks.
-    await page.reload();
-    await expect(
-      page.getByRole('heading', { name: 'Welcome back' }),
-    ).toBeVisible();
-    await capture('lock-screen-pin');
-    await vault.unlockPin(PIN);
-    // Unlocked → Home deck visible again.
-    await expect(
-      page.getByRole('heading', { name: 'Sample Protocol' }),
-    ).toBeVisible({
-      timeout: 15_000,
-    });
-  });
+  test(
+    'PIN enrolment locks on reload and unlocks with the PIN',
+    {
+      tag: '@visual',
+    },
+    async ({ vault, page, capture }) => {
+      await vault.enrolPin(PIN);
+      // Reload drops the in-memory DEK → the app re-locks.
+      await page.reload();
+      await expect(
+        page.getByRole('heading', { name: 'Welcome back' }),
+      ).toBeVisible();
+      await capture('lock-screen-pin');
+      await vault.unlockPin(PIN);
+      // Unlocked → Home deck visible again.
+      await expect(
+        page.getByRole('heading', { name: 'Sample Protocol' }),
+      ).toBeVisible({
+        timeout: 15_000,
+      });
+    },
+  );
 
   test('a wrong PIN is rejected', async ({ vault, page }) => {
     await vault.enrolPin(PIN);

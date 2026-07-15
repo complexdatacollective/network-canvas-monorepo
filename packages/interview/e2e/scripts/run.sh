@@ -8,7 +8,7 @@
 #
 # Usage:
 #   ./e2e/scripts/run.sh                    # run all browsers
-#   ./e2e/scripts/run.sh --update-snapshots # regenerate visual baselines
+#   pnpm test:e2e:update-snapshots           # regenerate pixel baselines only
 #   ./e2e/scripts/run.sh --project=chromium # filter to one browser
 #
 # For local UI debug iteration (skips Docker):

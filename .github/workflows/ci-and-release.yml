@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       force_run:
-        description: 'Force all conditional jobs (deploys, chromatic, e2e) to run regardless of turbo-ignore detection.'
+        description: 'Force package-scoped conditional checks to run regardless of change detection.'
         type: boolean
         default: false
       release_app:
@@ -36,33 +36,25 @@ permissions:
 # safety net if a release run is dropped anyway.
 concurrency:
   group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
-  # Cancel superseded PR runs — EXCEPT the changesets bot's release PRs
-  # (`changeset-release/*`), which get force-updated on every merge to main.
-  # Cancelling those leaves the `quality` aggregate `skipped` (it is
-  # `if: !cancelled()`), and a skipped required check blocks the PR, so the
-  # release PRs could never satisfy the merge queue. Not cancelling lets their
-  # `quality` run complete (success/failure) so they stay mergeable.
+  # Cancel superseded feature-PR runs and explicitly dispatched release-branch
+  # runs. Keep pull_request runs for the changesets bot's release PRs alive:
+  # cancelling those leaves the required `quality` aggregate skipped and can
+  # strand the PR. A release-branch dispatch targets a concrete branch head, so
+  # a newer dispatch can safely replace an obsolete one.
   cancel-in-progress: >-
-    ${{ github.event_name == 'pull_request'
-    && !startsWith(github.head_ref, 'changeset-release/') }}
+    ${{ (github.event_name == 'pull_request'
+    && !startsWith(github.head_ref, 'changeset-release/'))
+    || (github.event_name == 'workflow_dispatch'
+    && (github.ref_name == 'changeset-release/main'
+    || github.ref_name == 'changeset-release/apps')) }}
 
 jobs:
   detect:
     if: github.event_name != 'merge_group'
     runs-on: ubuntu-latest
     outputs:
-      any_app: ${{ steps.flags.outputs.any_app }}
       docs: ${{ steps.flags.outputs.docs }}
-      architect: ${{ steps.flags.outputs.architect }}
-      interviewer: ${{ steps.flags.outputs.interviewer }}
       website: ${{ steps.flags.outputs.website }}
-      fresco_ui_storybook: ${{ steps.flags.outputs.fresco_ui_storybook }}
-      interview_storybook: ${{ steps.flags.outputs.interview_storybook }}
-      interview_e2e: ${{ steps.flags.outputs.interview_e2e }}
-      interviewer_e2e: ${{ steps.flags.outputs.interviewer_e2e }}
-      architect_e2e: ${{ steps.flags.outputs.architect_e2e }}
-      interface_images: ${{ steps.flags.outputs.interface_images }}
-      interview_release_version: ${{ steps.flags.outputs.interview_release_version }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
@@ -72,8 +64,8 @@ jobs:
           node-version-file: '.nvmrc'
       - id: flags
         env:
-          # Manual runs may set force_run=true to bypass detection and run
-          # every conditional job (replaces the old per-workflow rerun buttons).
+          # Manual runs may set force_run=true to bypass package change
+          # detection (replaces the old per-workflow rerun buttons).
           FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.force_run == true }}
           EVENT_ACTION: ${{ github.event.action }}
         run: |
@@ -114,11 +106,11 @@ jobs:
 
           # A change to this CI workflow itself can alter how any conditional job
           # behaves or whether it passes, so a prior run's verdict no longer
-          # describes the new code. Treat a workflow change like FORCE_RUN: run
-          # every conditional job fresh (so the carry-forward job below carries
-          # nothing stale forward for it). Without this, a workflow-only commit
-          # leaves every flag false → jobs skipped → a now-irrelevant prior
-          # verdict gets republished against the new SHA.
+          # describes the new code. Treat a workflow change like FORCE_RUN for
+          # package-scoped conditional jobs (E2E is release-gated separately), so
+          # the carry-forward job below carries nothing stale forward for it.
+          # Without this, a workflow-only commit leaves every package flag false
+          # and republishes now-irrelevant prior verdicts against the new SHA.
           WORKFLOW_CHANGED=false
           if [[ -n "$PREV" ]] && ! git diff --quiet "$PREV" "$CURR" -- .github/workflows/ci-and-release.yml; then
             WORKFLOW_CHANGED=true
@@ -151,76 +143,43 @@ jobs:
             fi
           }
           docs=$(flag @codaco/documentation)
-          arch=$(flag @codaco/architect)
-          intvr=$(flag @codaco/interviewer)
           web=$(flag networkcanvas.com)
-          fui=$(flag @codaco/fresco-ui)
-          intv=$(flag @codaco/interview)
-
-          # Interface screenshots regenerate, and their consumers (architect,
-          # documentation) redeploy, only when the @codaco/interview RELEASE
-          # VERSION moves — its package.json version, or the pending version a
-          # changeset implies — not on arbitrary interview/fresco-ui edits. The
-          # same value is handed to turbo as INTERVIEW_RELEASE_VERSION so the
-          # `generate` cache key matches.
-          interview_release_version=$(node scripts/interview-release-version.mjs)
-
-          # ifimg: did that release-version signal change in this diff?
-          ifimg=false
-          if [[ "$FORCE_RUN" == "true" || -z "$PREV" ]]; then
-            ifimg=true
-          else
-            if ! git diff --quiet "$PREV" "$CURR" -- packages/interview/package.json; then
-              new_v=$(node -e 'process.stdout.write(require("./packages/interview/package.json").version)')
-              old_v=$(git show "$PREV:packages/interview/package.json" \
-                | node -e 'let d="";process.stdin.on("data",c=>{d+=c}).on("end",()=>{try{process.stdout.write(JSON.parse(d).version)}catch{}})')
-              [[ "$new_v" != "$old_v" ]] && ifimg=true
-            fi
-            # Match the @codaco/interview changeset frontmatter key exactly:
-            # '@codaco/interview' is a substring of '@codaco/interviewer', so a
-            # bare grep would false-trigger on unrelated interviewer changesets.
-            key_re="^[[:space:]]*['\"]?@codaco/interview['\"]?[[:space:]]*:"
-            for f in $(git diff --name-only "$PREV" "$CURR" -- '.changeset/*.md'); do
-              if git show "$CURR:$f" 2>/dev/null | grep -Eq "$key_re" \
-                || git show "$PREV:$f" 2>/dev/null | grep -Eq "$key_re"; then
-                ifimg=true
-              fi
-            done
-          fi
-
-          # An interview version bump regenerates the interface images, which both
-          # architect and documentation embed — treat it as a change to each so
-          # their deploys (and the carry-forward / any_app gating) fire.
-          if [[ "$ifimg" == "true" ]]; then docs=true; arch=true; fi
-
-          any_app=false
-          if [[ "$docs" == "true" || "$arch" == "true" || "$intvr" == "true" || "$web" == "true" ]]; then any_app=true; fi
 
           {
-            echo "any_app=$any_app"
             echo "docs=$docs"
-            echo "architect=$arch"
-            echo "interviewer=$intvr"
             echo "website=$web"
-            echo "fresco_ui_storybook=$fui"
-            echo "interview_storybook=$intv"
-            echo "interview_e2e=$intv"
-            # interviewer-e2e runs on any change in @codaco/interviewer's
-            # workspace dependency tree — the app (incl. its e2e suite/baselines),
-            # every shared package it depends on, and @codaco/protocols (which
-            # holds the e2e protocol fixture). Same value as the `interviewer`
-            # deploy flag, but a dedicated output so the e2e gate stays decoupled
-            # from the preview-deploy gate (mirrors interview_e2e).
-            echo "interviewer_e2e=$intvr"
-            # architect-e2e runs on any change in @codaco/architect's workspace
-            # dependency tree — the app (incl. its e2e suite/baselines), its
-            # shared packages, and @codaco/protocols (the e2e protocol fixture).
-            # Reuses the same `arch` flag that drives deploy-architect-preview,
-            # as a dedicated output so the e2e gate stays decoupled from the
-            # preview-deploy gate (mirrors interviewer_e2e).
-            echo "architect_e2e=$arch"
-            echo "interface_images=$ifimg"
-            echo "interview_release_version=$interview_release_version"
+          } >> "$GITHUB_OUTPUT"
+
+  e2e-policy:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.policy.outputs.required }}
+      release_ref: ${{ steps.policy.outputs.release_ref }}
+      snapshot_branch: ${{ steps.policy.outputs.snapshot_branch }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: '.nvmrc'
+      - name: Determine whether this ref triggers a release
+        id: policy
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+        run: |
+          policy=$(node scripts/release-e2e-policy.mjs)
+          echo "release E2E policy: $policy"
+          {
+            echo "required=$(jq -r '.required' <<< "$policy")"
+            echo "release_ref=$(jq -r '.releaseRef' <<< "$policy")"
+            echo "snapshot_branch=$(jq -r '.snapshotBranch' <<< "$policy")"
           } >> "$GITHUB_OUTPUT"
 
   # Cache design: every Turbo-using job restores `.turbo` from the same
@@ -326,245 +285,79 @@ jobs:
       - run: pnpm exec turbo run test
 
   quality:
-    needs: [lint, knip, check-changesets, test-scripts, build, typecheck, test]
+    needs:
+      - lint
+      - knip
+      - check-changesets
+      - test-scripts
+      - build
+      - typecheck
+      - test
+      - detect
+      - e2e-policy
+      - interview-e2e
+      - interviewer-e2e
+      - architect-e2e
     if: ${{ !cancelled() && github.event_name != 'push' }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify all quality checks passed
         env:
-          RESULTS: ${{ join(needs.*.result, ',') }}
+          EVENT_NAME: ${{ github.event_name }}
+          DETECT_RESULT: ${{ needs.detect.result }}
+          E2E_POLICY_RESULT: ${{ needs.e2e-policy.result }}
+          E2E_REQUIRED: ${{ needs.e2e-policy.outputs.required }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          KNIP_RESULT: ${{ needs.knip.result }}
+          CHANGESETS_RESULT: ${{ needs.check-changesets.result }}
+          SCRIPTS_RESULT: ${{ needs.test-scripts.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          TYPECHECK_RESULT: ${{ needs.typecheck.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+          INTERVIEW_E2E_RESULT: ${{ needs.interview-e2e.result }}
+          INTERVIEWER_E2E_RESULT: ${{ needs.interviewer-e2e.result }}
+          ARCHITECT_E2E_RESULT: ${{ needs.architect-e2e.result }}
         run: |
-          echo "sub-job results: $RESULTS"
-          IFS=',' read -ra arr <<< "$RESULTS"
-          for r in "${arr[@]}"; do
-            if [ "$r" != "success" ]; then
-              echo "::error::quality gate failed — a sub-job concluded '$r'"
-              exit 1
-            fi
-          done
+          verify_successes() {
+            local gate=$1
+            shift
+            echo "$gate results: $*"
+            for r in "$@"; do
+              if [ "$r" != "success" ]; then
+                echo "::error::$gate failed — a sub-job concluded '$r'"
+                exit 1
+              fi
+            done
+          }
+
+          verify_successes "quality gate" \
+            "$LINT_RESULT" \
+            "$KNIP_RESULT" \
+            "$CHANGESETS_RESULT" \
+            "$SCRIPTS_RESULT" \
+            "$BUILD_RESULT" \
+            "$TYPECHECK_RESULT" \
+            "$TEST_RESULT"
+
+          if [[ "$EVENT_NAME" != "merge_group" && "$DETECT_RESULT" != "success" ]]; then
+            echo "::error::quality gate failed — detect concluded '$DETECT_RESULT'"
+            exit 1
+          fi
+
+          if [[ "$E2E_POLICY_RESULT" != "success" ]]; then
+            echo "::error::quality gate failed — E2E policy concluded '$E2E_POLICY_RESULT'"
+            exit 1
+          fi
+
+          if [[ "$E2E_REQUIRED" == "true" ]]; then
+            verify_successes "release E2E gate" \
+              "$INTERVIEW_E2E_RESULT" \
+              "$INTERVIEWER_E2E_RESULT" \
+              "$ARCHITECT_E2E_RESULT"
+          else
+            echo "E2E gate is not required for this event"
+          fi
           echo "quality gate passed"
-
-  # Deploy jobs are split per-app and per-environment so:
-  #   * one app's build failure never blocks the other app's deploy
-  #   * preview deploys never wait on quality / chromatic / e2e
-  #   * production deploys are strictly gated on every check passing
-  #
-  # netlify-cli flags:
-  #   --no-build:    skip dashboard build command + plugin lifecycle hooks
-  #   --filter=<pkg>: workspace selector (required because pnpm-workspace.yaml
-  #                   is at the repo root and netlify-cli detects the monorepo)
-  #   --dir:         pre-built directory to upload
-
-  deploy-docs-preview:
-    # needs:quality (not just detect) so quality finishes first and owns the
-    # .turbo cache slot; deploy reads it back instead of racing. The
-    # `always()` and `result != 'cancelled'` clauses mean a quality failure
-    # doesn't block the preview deploy.
-    needs: [detect, quality]
-    if: |
-      always() &&
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.docs == 'true' &&
-      needs.quality.result != 'cancelled'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
-      NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
-      NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
-      NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
-      NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: ./.github/actions/turbo-ci-setup
-      - id: deploy
-        name: Build and deploy docs preview
-        run: |
-          pnpm exec turbo run build --filter=@codaco/documentation
-          cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
-          json=$(npx --yes netlify-cli@22 deploy --no-build \
-                   --filter=@codaco/documentation \
-                   --dir=apps/documentation/out \
-                   --site="${{ secrets.NETLIFY_DOCUMENTATION_SITE_ID }}" \
-                   --alias="pr-${{ github.event.number }}" --json)
-          echo "$json" | jq .
-          url=$(echo "$json" | jq -r '.deploy_url')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-  deploy-architect-preview:
-    # Runs independently of quality (quality no longer builds apps). Restores the
-    # shared `.turbo` cache so a prior run's package builds are reused when
-    # present, then builds the app itself and pushes a preview to Netlify.
-    needs: detect
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.architect == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
-      VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
-      # Preview bundles ship without analytics so PR-preview interaction
-      # doesn't pollute the production PostHog project.
-      VITE_DISABLE_ANALYTICS: 'true'
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: ./.github/actions/turbo-ci-setup
-      - id: deploy
-        name: Build and deploy architect preview
-        run: |
-          pnpm exec turbo run build --filter=@codaco/architect
-          json=$(npx --yes netlify-cli@22 deploy --no-build \
-                   --filter=@codaco/architect \
-                   --dir=apps/architect/dist \
-                   --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}" \
-                   --alias="pr-${{ github.event.number }}" --json)
-          echo "$json" | jq .
-          url=$(echo "$json" | jq -r '.deploy_url')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-  # Interviewer is a vite-plugin-pwa PWA, the same shape as architect. Its
-  # canonical build includes the post-build PWA assertion, so a broken service
-  # worker or precache manifest fails the deploy instead of shipping.
-  #
-  # NOTE(human-setup-required): needs its own Netlify site, created manually,
-  # with its site ID stored in the NETLIFY_SITE_ID_INTERVIEWER secret —
-  # see apps/interviewer/RELEASING.md.
-  deploy-interviewer-preview:
-    # Runs independently of quality (same shape as deploy-architect-preview):
-    # restores the shared `.turbo` cache to reuse prior package builds when
-    # present, then builds the app itself and pushes a preview to Netlify.
-    needs: detect
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.interviewer == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: ./.github/actions/turbo-ci-setup
-      - id: deploy
-        name: Build and deploy interviewer preview
-        run: |
-          pnpm exec turbo run build --filter=@codaco/interviewer
-          json=$(npx --yes netlify-cli@22 deploy --no-build \
-                   --filter=@codaco/interviewer \
-                   --dir=apps/interviewer/dist \
-                   --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}" \
-                   --alias="pr-${{ github.event.number }}" --json)
-          echo "$json" | jq .
-          url=$(echo "$json" | jq -r '.deploy_url')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-  deploy-website-preview:
-    # Same shape as deploy-architect-preview: wait for quality (cache +
-    # write-slot) but don't gate the preview deploy on its success.
-    needs: [detect, quality]
-    if: |
-      always() &&
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.website == 'true' &&
-      needs.quality.result != 'cancelled'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: ./.github/actions/turbo-ci-setup
-      - id: deploy
-        name: Build and deploy networkcanvas.com preview
-        run: |
-          json=$(npx --yes netlify-cli@26 deploy --build \
-                   --filter=networkcanvas.com \
-                   --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" \
-                   --alias="pr-${{ github.event.number }}" --json)
-          echo "$json" | jq .
-          url=$(echo "$json" | jq -r '.deploy_url')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-  # Single PR comment summarising whichever preview(s) deployed. Uses a hidden
-  # HTML marker to locate the existing comment on subsequent runs so we update
-  # in place rather than spamming the PR with one new comment per run.
-  comment-preview-urls:
-    needs:
-      [
-        deploy-docs-preview,
-        deploy-architect-preview,
-        deploy-interviewer-preview,
-        deploy-website-preview,
-      ]
-    if: |
-      always() &&
-      github.event_name == 'pull_request' &&
-      (needs.deploy-docs-preview.result == 'success' || needs.deploy-architect-preview.result == 'success' || needs.deploy-interviewer-preview.result == 'success' || needs.deploy-website-preview.result == 'success')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
-          ARCHITECT_URL: ${{ needs.deploy-architect-preview.outputs.url }}
-          INTERVIEWER_URL: ${{ needs.deploy-interviewer-preview.outputs.url }}
-          WEBSITE_URL: ${{ needs.deploy-website-preview.outputs.url }}
-        with:
-          script: |
-            const marker = '<!-- ci:deploy-previews -->';
-            const lines = [marker, '🚀 **Deploy previews**'];
-            const { DOCS_URL, ARCHITECT_URL, INTERVIEWER_URL, WEBSITE_URL } = process.env;
-            if (DOCS_URL) lines.push(`- documentation → ${DOCS_URL}`);
-            if (ARCHITECT_URL) lines.push(`- architect → ${ARCHITECT_URL}`);
-            if (INTERVIEWER_URL) lines.push(`- interviewer → ${INTERVIEWER_URL}`);
-            if (WEBSITE_URL) lines.push(`- networkcanvas.com → ${WEBSITE_URL}`);
-            const body = lines.join('\n');
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              per_page: 100,
-            });
-            const existing = comments.find((c) => c.body && c.body.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
 
   deploy-website-prod:
     needs: [detect]
@@ -581,7 +374,9 @@ jobs:
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - id: deploy
         name: Build and deploy networkcanvas.com production
@@ -594,40 +389,95 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
   docs-preview-checks:
-    # Run link-check + redirect-test against the preview URL only. Production
-    # deploys aren't gated on these — the equivalent checks have already
-    # passed against the preview before the change reached main.
-    needs: [deploy-docs-preview]
-    if: needs.deploy-docs-preview.result == 'success'
+    needs: detect
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      needs.detect.outputs.docs == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      statuses: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - id: netlify-preview
+        name: Wait for Netlify documentation preview
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const siteName = 'documentation-dev';
+            const statusContext = `netlify/${siteName}/deploy-preview`;
+            const headSha = context.payload.pull_request.head.sha;
+            const expectedHost = `deploy-preview-${context.issue.number}--${siteName}.netlify.app`;
+            const deadline = Date.now() + 15 * 60 * 1000;
+
+            while (Date.now() < deadline) {
+              const statuses = await github.paginate(
+                github.rest.repos.listCommitStatusesForRef,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: headSha,
+                  per_page: 100,
+                },
+              );
+              const status = statuses.find(({ context }) => context === statusContext);
+
+              if (status?.state === 'success') {
+                let previewUrl;
+                try {
+                  previewUrl = new URL(status.target_url);
+                } catch {
+                  core.setFailed(`${statusContext} did not provide a valid preview URL`);
+                  return;
+                }
+
+                if (previewUrl.protocol !== 'https:' || previewUrl.hostname !== expectedHost) {
+                  core.setFailed(
+                    `${statusContext} pointed to unexpected URL ${previewUrl.toString()}`,
+                  );
+                  return;
+                }
+
+                core.setOutput('url', previewUrl.origin);
+                return;
+              }
+
+              if (status && ['error', 'failure'].includes(status.state)) {
+                core.setFailed(`${statusContext} concluded ${status.state}`);
+                return;
+              }
+
+              await new Promise((resolve) => setTimeout(resolve, 15_000));
+            }
+
+            core.setFailed(`Timed out waiting for ${statusContext}`);
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Wait for Netlify CDN propagation
-        # netlify-cli's deploy returns as soon as the deploy is queued, but
-        # asset URLs are served from edges that may take a few seconds to
-        # propagate. The link-checker fans out many parallel requests; without
-        # this wait it hits FETCH_ERROR on assets that resolve fine moments
-        # later. Cheap and reliable.
+      - name: Confirm Netlify preview is reachable
         env:
-          DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
+          DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
         run: |
           for i in 1 2 3 4 5 6; do
             if curl -fsSL --max-time 10 -o /dev/null "$DOCS_URL/en"; then
               echo "deploy is reachable; proceeding"
-              break
+              exit 0
             fi
             echo "attempt $i: not yet, sleeping 5s"
             sleep 5
           done
+          echo "::error::Netlify documentation preview is not reachable at $DOCS_URL"
+          exit 1
       - name: Dead-link check
         env:
-          DOCS_URL: ${{ needs.deploy-docs-preview.outputs.url }}
+          DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
         # @jthrilly/dead-link-checker >=1.1.0 retries each request on transient
         # network errors (UND_ERR_SOCKET / connect timeouts), so a single flaky
         # fetch no longer fails the run. Retrying the whole crawl here was the
@@ -637,70 +487,15 @@ jobs:
       - name: Redirect test
         working-directory: apps/documentation
         env:
-          DEPLOYMENT_URL: ${{ needs.deploy-docs-preview.outputs.url }}
+          DEPLOYMENT_URL: ${{ steps.netlify-preview.outputs.url }}
         run: pnpm run test-redirects
 
-  chromatic-fresco-ui:
-    needs: [quality, detect]
-    # `quality` is needed only to order this job after it (so it reuses the
-    # .turbo cache quality writes); this job runs its own install + build and
-    # does NOT consume quality's result. `!cancelled()` opts out of the
-    # implicit needs-success gate so an unrelated quality failure can't
-    # cascade-skip a flagged run, while a superseded (cancelled) run still skips.
-    if: ${{ !cancelled() && github.event.pull_request.user.login != 'dependabot[bot]' && needs.detect.outputs.fresco_ui_storybook == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/turbo-ci-setup
-      - run: pnpm exec turbo run build-storybook --filter=@codaco/fresco-ui
-      - working-directory: packages/fresco-ui
-        env:
-          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_FRESCO_UI }}
-          # Forward PR context so the chromatic CLI doesn't fall back to the
-          # merge commit (GH Actions checks out detached HEAD on pull_request).
-          CHROMATIC_BRANCH: ${{ github.head_ref || github.ref_name }}
-          CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          CHROMATIC_SLUG: ${{ github.repository }}
-        # --storybook-build-dir points chromatic at the storybook-static
-        # directory turbo just produced (or restored from cache); without it
-        # chromatic re-runs `pnpm build-storybook` into a tmp dir and the
-        # turbo cache savings evaporate.
-        run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static
-
-  chromatic-interview:
-    needs: [quality, detect]
-    # See chromatic-fresco-ui: `quality` orders this job for cache reuse only;
-    # `!cancelled()` keeps a quality failure from cascade-skipping a flagged run.
-    if: ${{ !cancelled() && github.event.pull_request.user.login != 'dependabot[bot]' && needs.detect.outputs.interview_storybook == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/turbo-ci-setup
-      - run: pnpm exec turbo run build-storybook --filter=@codaco/interview
-      - working-directory: packages/interview
-        env:
-          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEW }}
-          # Forward PR context — see chromatic-fresco-ui for rationale.
-          CHROMATIC_BRANCH: ${{ github.head_ref || github.ref_name }}
-          CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          CHROMATIC_SLUG: ${{ github.repository }}
-        # --storybook-build-dir points chromatic at the storybook-static
-        # directory turbo just produced (or restored from cache); without it
-        # chromatic re-runs `pnpm build-storybook` into a tmp dir and the
-        # turbo cache savings evaporate.
-        run: npx --yes chromatic --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static
-
   interview-e2e:
-    needs: [quality, detect]
-    # See chromatic-fresco-ui: `quality` orders this job for cache reuse only;
-    # `!cancelled()` keeps a quality failure from cascade-skipping a flagged run.
-    if: ${{ !cancelled() && needs.detect.outputs.interview_e2e == 'true' }}
+    # Generated package/app release PRs run every E2E suite. The Dockerized
+    # suite builds its own dependency graph and cannot consume the host runner's
+    # Turbo cache, so start it as soon as the release policy completes.
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -712,9 +507,13 @@ jobs:
       PW_WORKERS: 4
     outputs:
       slug: ${{ steps.meta.outputs.slug }}
+      snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: ./.github/actions/turbo-ci-setup
+        with:
+          # The Dockerized test run mounts the workspace; don't leave the
+          # checkout token in .git/config for test/build code to read.
+          persist-credentials: false
       - id: meta
         env:
           REF: ${{ github.head_ref || github.ref_name }}
@@ -726,10 +525,20 @@ jobs:
           printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
       - name: Run E2E tests
         run: ./packages/interview/e2e/scripts/run.sh
+      - name: Classify snapshot-only failure
+        id: snapshot_failure
+        if: failure()
+        run: |
+          detected=$(node scripts/playwright-snapshot-failure.mjs packages/interview/e2e/test-results/results.json)
+          echo "snapshot-only failure: $detected"
+          echo "detected=$detected" >> "$GITHUB_OUTPUT"
       # Dormant until a shard matrix is added (spec: enable shards only if the
       # single-job wall-clock exceeds the 45-minute budget). When enabling: add
       # strategy.matrix.shard, pass --shard=${{ matrix.shard }} to run.sh, set
-      # PW_BLOB: 1, and give this step the downloaded per-shard blob dirs.
+      # PW_BLOB: 1, and give the merge step the downloaded per-shard blob dirs.
+      - name: Set up sharded report merger
+        if: ${{ env.PW_BLOB == '1' }}
+        uses: ./.github/actions/turbo-ci-setup
       - name: Merge sharded blob reports
         if: ${{ env.PW_BLOB == '1' }}
         run: pnpm --filter @codaco/interview exec playwright merge-reports --reporter html ./blob-report
@@ -755,19 +564,28 @@ jobs:
           retention-days: 14
 
   interviewer-e2e:
-    needs: [quality, detect]
-    if: ${{ !cancelled() && needs.detect.outputs.interviewer_e2e == 'true' }}
+    # See interview-e2e: this Dockerized suite owns its build too.
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           # The Dockerized test run mounts the workspace; don't leave the
           # checkout token in .git/config for test/build code to read.
           persist-credentials: false
-      - uses: ./.github/actions/turbo-ci-setup
       - name: Run E2E tests
         run: ./apps/interviewer/e2e/scripts/run.sh
+      - name: Classify snapshot-only failure
+        id: snapshot_failure
+        if: failure()
+        run: |
+          detected=$(node scripts/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
+          echo "snapshot-only failure: $detected"
+          echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim artifact ownership
         if: always()
         run: |
@@ -784,19 +602,28 @@ jobs:
           retention-days: 14
 
   architect-e2e:
-    needs: [quality, detect]
-    if: ${{ !cancelled() && needs.detect.outputs.architect_e2e == 'true' }}
+    # See interview-e2e: this Dockerized suite owns its build too.
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           # The Dockerized test run mounts the workspace; don't leave the
           # checkout token in .git/config for test/build code to read.
           persist-credentials: false
-      - uses: ./.github/actions/turbo-ci-setup
       - name: Run E2E tests
         run: ./apps/architect/e2e/scripts/run.sh
+      - name: Classify snapshot-only failure
+        id: snapshot_failure
+        if: failure()
+        run: |
+          detected=$(node scripts/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
+          echo "snapshot-only failure: $detected"
+          echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim artifact ownership
         if: always()
         run: |
@@ -811,6 +638,68 @@ jobs:
           path: apps/architect/e2e/playwright-report/
           if-no-files-found: warn
           retention-days: 14
+
+  regenerate-interview-snapshots:
+    needs: [e2e-policy, interview-e2e]
+    if: >-
+      ${{ always()
+      && needs.e2e-policy.outputs.release_ref != ''
+      && needs.interview-e2e.result == 'failure'
+      && needs.interview-e2e.outputs.snapshot_failure == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/regenerate-e2e-visual-snapshots.yml
+    with:
+      suite: interview
+
+  regenerate-interviewer-snapshots:
+    needs: [e2e-policy, interviewer-e2e]
+    if: >-
+      ${{ always()
+      && needs.e2e-policy.outputs.release_ref != ''
+      && needs.interviewer-e2e.result == 'failure'
+      && needs.interviewer-e2e.outputs.snapshot_failure == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/regenerate-e2e-visual-snapshots.yml
+    with:
+      suite: interviewer
+
+  regenerate-architect-snapshots:
+    needs: [e2e-policy, architect-e2e]
+    if: >-
+      ${{ always()
+      && needs.e2e-policy.outputs.release_ref != ''
+      && needs.architect-e2e.result == 'failure'
+      && needs.architect-e2e.outputs.snapshot_failure == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/regenerate-e2e-visual-snapshots.yml
+    with:
+      suite: architect
+
+  open-e2e-snapshot-update-pr:
+    needs:
+      - e2e-policy
+      - regenerate-interview-snapshots
+      - regenerate-interviewer-snapshots
+      - regenerate-architect-snapshots
+    if: >-
+      ${{ always()
+      && needs.e2e-policy.outputs.release_ref != ''
+      && (needs.regenerate-interview-snapshots.result == 'success'
+      || needs.regenerate-interviewer-snapshots.result == 'success'
+      || needs.regenerate-architect-snapshots.result == 'success') }}
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/open-e2e-snapshot-update-pr.yml
+    with:
+      release_ref: ${{ needs.e2e-policy.outputs.release_ref }}
+      run_head_sha: ${{ github.event.pull_request.head.sha || github.sha }}
+      snapshot_branch: ${{ needs.e2e-policy.outputs.snapshot_branch }}
+      source_run_url: ${{ format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
 
   # Publishes the Playwright report to GitHub Pages and comments the E2E result
   # on the PR. Purely informational: whether the report PUBLISHED says nothing
@@ -889,6 +778,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm-publish
     permissions:
+      actions: write
       contents: write
       pull-requests: write
       id-token: write
@@ -905,7 +795,8 @@ jobs:
         # publishes to npm. Apps (./apps/*) are private:true and don't need to
         # build successfully here; their deploy pipeline is per-app deploy jobs.
         run: pnpm exec turbo run build --filter='./packages/*'
-      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
+      - id: changesets
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
         with:
           version: pnpm run version-packages
           publish: pnpm run publish-packages
@@ -913,6 +804,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+      - name: Run CI on the Version Packages branch
+        if: steps.changesets.outputs.hasChangesets == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run ci-and-release.yml --ref changeset-release/main
 
   # Maintains a gated product-release PR (sibling of the library "Version Packages" PR).
   # On every push to main it re-runs the app version step on a fresh branch and
@@ -923,6 +819,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -941,6 +838,7 @@ jobs:
       - name: Compute product version bumps
         run: node scripts/version-beta-apps.mjs --out "${RUNNER_TEMP}/apps-release-body.md"
       - name: Open/update the Release apps and documentation PR
+        id: apps_pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           branch: changeset-release/apps
@@ -949,6 +847,13 @@ jobs:
           title: 'Release apps & documentation'
           commit-message: 'chore(release): version apps and documentation'
           body-path: ${{ runner.temp }}/apps-release-body.md
+      - name: Run CI on the app release branch
+        if: >-
+          ${{ steps.apps_pr.outputs['pull-request-operation'] == 'created'
+          || steps.apps_pr.outputs['pull-request-operation'] == 'updated' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run ci-and-release.yml --ref changeset-release/apps
 
   # On a push to main that changes an app version (i.e. the Release apps PR just
   # merged), detect which app(s) moved — mirrors detect-legacy-release.sh, but
@@ -1506,18 +1411,12 @@ jobs:
   # First push on a PR: no prior runs exist, so nothing to carry; the
   # detect logic already runs the relevant jobs at least once because
   # the push diff IS the cumulative PR diff on the first commit.
+  # E2E jobs are deliberately excluded: release PRs run all three on every
+  # push and the required quality gate checks their live results; non-release
+  # PRs must never inherit an E2E verdict from an earlier commit.
   carry-forward-statuses:
     needs:
       - detect
-      - deploy-docs-preview
-      - deploy-architect-preview
-      - deploy-interviewer-preview
-      - deploy-website-preview
-      - chromatic-fresco-ui
-      - chromatic-interview
-      - interview-e2e
-      - interviewer-e2e
-      - architect-e2e
       - docs-preview-checks
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -1528,37 +1427,20 @@ jobs:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           # Map detect flag → list of conditional jobs gated on it.
-          # docs-preview-checks depends on deploy-docs-preview, so they share a
-          # flag. interview-e2e-report is deliberately NOT here: it is a
-          # dependent, reporting-only job (publishes the Playwright report to
-          # Pages + comments) whose own `if:` already skips it whenever
-          # interview-e2e is skipped. Its verdict describes whether the report
-          # PUBLISHED, not whether the code is sound, so carrying a stale
-          # (possibly failed) report verdict onto an unrelated push would wrongly
-          # gate it — let its natural skip stand instead.
+          # interview-e2e-report is deliberately NOT here: it is a dependent,
+          # reporting-only job (publishes the Playwright report to Pages +
+          # comments) whose own `if:` already skips it whenever interview-e2e is
+          # skipped. Its verdict describes whether the report PUBLISHED, not
+          # whether the code is sound, so carrying a stale (possibly failed)
+          # report verdict onto an unrelated push would wrongly gate it — let
+          # its natural skip stand instead.
           FLAG_DOCS: ${{ needs.detect.outputs.docs }}
-          FLAG_ARCHITECT: ${{ needs.detect.outputs.architect }}
-          FLAG_INTERVIEWER: ${{ needs.detect.outputs.interviewer }}
-          FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
-          FLAG_FRESCO_UI_STORYBOOK: ${{ needs.detect.outputs.fresco_ui_storybook }}
-          FLAG_INTERVIEW_STORYBOOK: ${{ needs.detect.outputs.interview_storybook }}
-          FLAG_INTERVIEW_E2E: ${{ needs.detect.outputs.interview_e2e }}
-          FLAG_INTERVIEWER_E2E: ${{ needs.detect.outputs.interviewer_e2e }}
-          FLAG_ARCHITECT_E2E: ${{ needs.detect.outputs.architect_e2e }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         with:
           script: |
             const flagToJobs = {
-              FLAG_DOCS: ["deploy-docs-preview", "docs-preview-checks"],
-              FLAG_ARCHITECT: ["deploy-architect-preview"],
-              FLAG_INTERVIEWER: ["deploy-interviewer-preview"],
-              FLAG_WEBSITE: ["deploy-website-preview"],
-              FLAG_FRESCO_UI_STORYBOOK: ["chromatic-fresco-ui"],
-              FLAG_INTERVIEW_STORYBOOK: ["chromatic-interview"],
-              FLAG_INTERVIEW_E2E: ["interview-e2e"],
-              FLAG_INTERVIEWER_E2E: ["interviewer-e2e"],
-              FLAG_ARCHITECT_E2E: ["architect-e2e"],
+              FLAG_DOCS: ["docs-preview-checks"],
             };
 
             // Only consider jobs the current run didn't execute (flag false).

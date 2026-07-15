@@ -326,8 +326,6 @@ export const SortInteraction: Story = {
 
     await waitFor(
       async () => {
-        // Re-query the listbox each iteration — the element reference may
-        // change as the virtualized list re-renders during sort.
         const sourceListbox = canvas.getByRole('listbox', {
           name: 'Available Roster Nodes',
         });

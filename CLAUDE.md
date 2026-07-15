@@ -243,3 +243,57 @@ Network Canvas uses a protocol-based system where:
 - Tests are co-located with source files in `__tests__/` directories
 - Uses Vitest for testing framework
 - If a storybook exists for a component, consider creating interactive tests within storybook
+
+#### Chromatic and TurboSnap
+
+Chromatic runs from `.github/workflows/chromatic.yml` as three independent
+projects: `@codaco/fresco-ui`, `@codaco/interview`, and
+`@codaco/interviewer`. The workflow uses Turbo's package graph and the Git diff
+to run only affected projects, including downstream consumers (a Fresco UI
+change affects all three; an Interview change also affects Interviewer). Each
+job uses its matching `CHROMATIC_PROJECT_TOKEN_FRESCO_UI`,
+`CHROMATIC_PROJECT_TOKEN_INTERVIEW`, or
+`CHROMATIC_PROJECT_TOKEN_INTERVIEWER` repository secret.
+
+Each project's `build-storybook` script must emit `preview-stats.json` with
+Storybook's `--stats-json` option. Its `chromatic` script uploads the prebuilt
+`storybook-static` directory with `--only-changed` and the correct
+`--storybook-base-dir`; these inputs and the workflow's full Git history are
+required for TurboSnap. Keep Interview's `.storybook/static/**` directory in
+its Chromatic externals so static-asset changes invalidate the relevant
+stories.
+
+#### Release-only E2E checks
+
+CI runs the complete Architect, Interview, and Interviewer E2E suites only for
+the exact generated release branches `changeset-release/main` and
+`changeset-release/apps`, or for merge groups whose package or app version
+changes will trigger a release. The required `quality` check conditionally
+requires all three E2E jobs in those cases. Ordinary PRs skip E2E, and E2E
+results are never carried forward from an earlier commit.
+
+The release jobs explicitly dispatch `ci-and-release.yml` after creating or
+updating either generated branch. Normal release PRs therefore do not need a
+manual E2E trigger, even though GitHub does not start PR workflows for branch
+updates made with the repository token.
+
+#### E2E visual snapshot baselines
+
+When an intentional rendering change requires new committed Playwright PNGs,
+invoke the `regenerating-e2e-visual-snapshots` skill. The manual
+`Regenerate E2E Visual Snapshots` GitHub Actions workflow runs only the
+selected Architect, Interview, or Interviewer capture code and uploads its
+images; it does not run normal tests or quality jobs. Inspect every artifact
+before committing selected baselines.
+
+On a generated release PR, a visual-snapshot E2E failure automatically runs the
+same focused generation-only workflow. If it produces changed baseline PNGs, a
+trusted follow-up opens a PNG-only child PR against the failing release branch,
+not `main`. Review every image; merging the child PR accepts the baselines and
+retriggers the parent release PR. Functional failures do not start regeneration,
+and no PNG changes means no child PR.
+
+Keep Interview ARIA snapshot updates in the targeted local matrix workflow.
+Do not confuse E2E PNG baselines with `@codaco/interface-images`, whose
+committed WebP files are generated locally for stage thumbnails and
+documentation. CI and Netlify consume those files without regenerating them.

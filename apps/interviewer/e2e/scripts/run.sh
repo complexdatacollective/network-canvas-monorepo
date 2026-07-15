@@ -4,8 +4,8 @@
 # packages/interview/e2e/scripts/run.sh.
 #
 # Usage:
-#   ./e2e/scripts/run.sh                    # run
-#   ./e2e/scripts/run.sh --update-snapshots # regenerate visual baselines
+#   ./e2e/scripts/run.sh                                  # run
+#   ./e2e/scripts/run.sh --grep @visual --update-snapshots # regenerate visual baselines
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

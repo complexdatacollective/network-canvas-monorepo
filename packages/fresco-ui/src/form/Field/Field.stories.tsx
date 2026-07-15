@@ -550,11 +550,8 @@ export const SlotControllerNoStaleError: Story = {
 };
 
 /**
- * `<input type="number">` already supports ArrowUp/ArrowDown stepping while
- * focused, so the component adds no key handling of its own. Native stepping
- * responds only to trusted key events, which the synthetic test harness
- * cannot dispatch — so the play asserts that clicking the field focuses the
- * input that owns that behaviour, then drives the +/- buttons. The buttons
+ * InputField applies ArrowUp/ArrowDown through the same native stepUp/stepDown
+ * path as its +/- buttons, keeping the controlled value in sync. The buttons
  * are redundant pointer affordances (`tabIndex=-1`), and because they are
  * in-field controls, clicking them does not fire premature validation.
  */

@@ -1,0 +1,249 @@
+name: Open E2E Snapshot Update PR
+
+on:
+  workflow_call:
+    inputs:
+      release_ref:
+        description: Release branch whose E2E baselines failed
+        required: true
+        type: string
+      run_head_sha:
+        description: Exact release branch revision that generated the snapshots
+        required: true
+        type: string
+      snapshot_branch:
+        description: Branch to use for the generated baseline PR
+        required: true
+        type: string
+      source_run_url:
+        description: URL of the CI run that generated the snapshots
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  open-snapshot-update:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Validate the failing release PR
+        id: source
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          RELEASE_REF: ${{ inputs.release_ref }}
+          RUN_HEAD_SHA: ${{ inputs.run_head_sha }}
+          SNAPSHOT_BRANCH: ${{ inputs.snapshot_branch }}
+        with:
+          script: |
+            const releaseRef = process.env.RELEASE_REF;
+            const expectedSnapshotBranches = new Map([
+              ['changeset-release/main', 'e2e-snapshots/changeset-release-main'],
+              ['changeset-release/apps', 'e2e-snapshots/changeset-release-apps'],
+            ]);
+            if (expectedSnapshotBranches.get(releaseRef) !== process.env.SNAPSHOT_BRANCH) {
+              core.setFailed(
+                `Unexpected release/snapshot branch pair: ${releaseRef} -> ${process.env.SNAPSHOT_BRANCH}`,
+              );
+              return;
+            }
+
+            const head = `${context.repo.owner}:${releaseRef}`;
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              base: 'main',
+              head,
+              per_page: 10,
+            });
+
+            const source = pulls.find(
+              (pull) =>
+                pull.head.repo?.full_name === `${context.repo.owner}/${context.repo.repo}` &&
+                pull.head.ref === releaseRef,
+            );
+            if (!source) {
+              core.setFailed(`No open first-party release PR found for ${releaseRef}`);
+              return;
+            }
+            if (source.head.sha !== process.env.RUN_HEAD_SHA) {
+              core.setFailed(
+                `Ignoring stale run for ${process.env.RUN_HEAD_SHA}; ${releaseRef} is now ${source.head.sha}`,
+              );
+              return;
+            }
+
+            core.setOutput('number', String(source.number));
+            core.setOutput('url', source.html_url);
+
+      - name: Download generated snapshots
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: e2e-visual-snapshots-*
+          path: ${{ runner.temp }}/snapshot-artifacts
+          merge-multiple: true
+
+      - name: Check out the failing release revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          ref: ${{ inputs.run_head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate and copy snapshot data
+        id: changes
+        env:
+          ARTIFACT_ROOT: ${{ runner.temp }}/snapshot-artifacts
+        run: |
+          architect='^apps/architect/e2e/visual-snapshots/chromium/[A-Za-z0-9._-]+\.png$'
+          interview='^packages/interview/e2e/visual-snapshots/(chromium|firefox|webkit)-matrix/[A-Za-z0-9._-]+\.png$'
+          interviewer='^apps/interviewer/e2e/visual-snapshots/chromium/[A-Za-z0-9._-]+\.png$'
+
+          unsafe=$(find "$ARTIFACT_ROOT" -mindepth 1 ! -type d ! -type f -print -quit)
+          if [[ -n "$unsafe" ]]; then
+            echo "::error::snapshot artifact contains a non-regular entry: $unsafe"
+            exit 1
+          fi
+
+          count=$(find "$ARTIFACT_ROOT" -type f | wc -l | tr -d ' ')
+          bytes=$(find "$ARTIFACT_ROOT" -type f -exec stat -c '%s' {} + | awk '{ total += $1 } END { print total + 0 }')
+          if (( count == 0 || count > 500 || bytes > 209715200 )); then
+            echo "::error::snapshot artifact limits exceeded: $count files, $bytes bytes"
+            exit 1
+          fi
+
+          declare -A detected_suites=()
+          while IFS= read -r -d '' candidate; do
+            relative=${candidate#"$ARTIFACT_ROOT"/}
+            if [[ "$relative" =~ $architect ]]; then
+              suite=architect
+            elif [[ "$relative" =~ $interview ]]; then
+              suite=interview
+            elif [[ "$relative" =~ $interviewer ]]; then
+              suite=interviewer
+            else
+              echo "::error::unexpected snapshot path: $relative"
+              exit 1
+            fi
+            detected_suites["$suite"]=1
+            magic=$(od -An -t x1 -N8 "$candidate" | tr -d ' \n')
+            if [[ "$magic" != '89504e470d0a1a0a' ]]; then
+              echo "::error::snapshot does not have a PNG signature: $relative"
+              exit 1
+            fi
+            mkdir -p "$(dirname "$GITHUB_WORKSPACE/$relative")"
+            cp -- "$candidate" "$GITHUB_WORKSPACE/$relative"
+          done < <(find "$ARTIFACT_ROOT" -type f -print0)
+
+          changed=$(git status --porcelain=v1 --untracked-files=all)
+          if [[ -z "$changed" ]]; then
+            echo 'No baseline changes were generated.'
+            echo 'found=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          while IFS= read -r entry; do
+            status=${entry:0:2}
+            relative=${entry:3}
+            if [[ "$status" != ' M' && "$status" != 'M ' && "$status" != '??' ]]; then
+              echo "::error::unexpected git status '$status' for $relative"
+              exit 1
+            fi
+            if [[ ! "$relative" =~ $architect && ! "$relative" =~ $interview && ! "$relative" =~ $interviewer ]]; then
+              echo "::error::unexpected workspace change: $relative"
+              exit 1
+            fi
+          done <<< "$changed"
+
+          mapfile -t suites < <(printf '%s\n' "${!detected_suites[@]}" | sort)
+          suites_output=$(IFS=,; echo "${suites[*]}")
+          echo "suites=$suites_output" >> "$GITHUB_OUTPUT"
+          echo 'found=true' >> "$GITHUB_OUTPUT"
+
+      - name: Confirm the release branch has not advanced
+        id: current
+        if: steps.changes.outputs.found == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          RELEASE_REF: ${{ inputs.release_ref }}
+          RUN_HEAD_SHA: ${{ inputs.run_head_sha }}
+        with:
+          script: |
+            const { data: ref } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${process.env.RELEASE_REF}`,
+            });
+            const current = ref.object.sha === process.env.RUN_HEAD_SHA;
+            if (!current) {
+              core.notice(
+                `Skipping stale snapshot proposal; ${process.env.RELEASE_REF} is now ${ref.object.sha}`,
+              );
+            }
+            core.setOutput('matches', current ? 'true' : 'false');
+
+      - name: Open or update the snapshot PR
+        id: snapshot_pr
+        if: steps.current.outputs.matches == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: ${{ inputs.release_ref }}
+          branch: ${{ inputs.snapshot_branch }}
+          delete-branch: true
+          add-paths: |
+            apps/architect/e2e/visual-snapshots/
+            apps/interviewer/e2e/visual-snapshots/
+            packages/interview/e2e/visual-snapshots/
+          commit-message: 'test(e2e): update visual baselines'
+          title: 'test(e2e): update visual baselines for release PR #${{ steps.source.outputs.number }}'
+          body: |
+            The visual snapshot tests failed on ${{ steps.source.outputs.url }}.
+
+            This PR contains only regenerated PNG baselines from the `${{ steps.changes.outputs.suites }}` suite(s). Merging it into `${{ inputs.release_ref }}` accepts these baselines and automatically reruns the parent release PR.
+
+            Source run: ${{ inputs.source_run_url }}
+
+      - name: Link the snapshot PR from the release PR
+        if: >-
+          ${{ steps.snapshot_pr.outputs['pull-request-operation'] == 'created'
+          || steps.snapshot_pr.outputs['pull-request-operation'] == 'updated' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SOURCE_PR: ${{ steps.source.outputs.number }}
+          SNAPSHOT_PR: ${{ steps.snapshot_pr.outputs['pull-request-number'] }}
+          SNAPSHOT_URL: ${{ steps.snapshot_pr.outputs['pull-request-url'] }}
+        with:
+          script: |
+            const marker = '<!-- automated-e2e-snapshot-update -->';
+            const body = `${marker}\nA visual E2E failure generated baseline PR #${process.env.SNAPSHOT_PR}: ${process.env.SNAPSHOT_URL}\n\nMerge that PR to accept the new PNG baselines and rerun this release PR.`;
+            const issueNumber = Number(process.env.SOURCE_PR);
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+            const existing = comments.find(
+              (comment) =>
+                comment.user?.login === 'github-actions[bot]' && comment.body?.includes(marker),
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body,
+              });
+            }
