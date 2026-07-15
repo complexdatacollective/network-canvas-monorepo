@@ -154,7 +154,7 @@
     },
     "intro": {
       "heading": "Choose where to begin",
-      "introduction": "Start by clicking the card the best describes the stage you are at with your research.",
+      "introduction": "Start by clicking the card that best describes the stage you are at with your research.",
       "stages": {
         "design": {
           "label": "Design stage",

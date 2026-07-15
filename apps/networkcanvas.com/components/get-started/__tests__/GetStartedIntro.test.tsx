@@ -99,7 +99,7 @@ describe('GetStartedIntro', () => {
     expect(documentationLink.parentElement).toHaveClass('max-w-[1400px]');
     expect(
       screen.getByText(
-        'Start by clicking the card the best describes the stage you are at with your research.',
+        'Start by clicking the card that best describes the stage you are at with your research.',
       ),
     ).toBeInTheDocument();
     expect(documentationLink).toHaveClass('relative', 'pb-24');

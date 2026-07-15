@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import type * as MotionReact from 'motion/react';
 import type { Ref } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +7,15 @@ import { HomepagePageBackground } from '../HomepagePageBackground';
 import { ScrollLinkedPageBackground } from '../ScrollLinkedPageBackground';
 
 const pageBackgroundProps = vi.hoisted(() => vi.fn());
+const reducedMotionState = vi.hoisted(() => ({ reduced: false }));
+
+vi.mock('motion/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof MotionReact>();
+  return {
+    ...actual,
+    useReducedMotion: () => reducedMotionState.reduced,
+  };
+});
 
 vi.mock('@codaco/art', () => ({
   PageBackground: ({
@@ -65,6 +75,7 @@ describe('HomepagePageBackground', () => {
 
   beforeEach(() => {
     pageBackgroundProps.mockClear();
+    reducedMotionState.reduced = false;
     targetRects.clear();
     vi.stubGlobal('ResizeObserver', MockResizeObserver);
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
@@ -400,6 +411,39 @@ describe('HomepagePageBackground', () => {
       expect(intensity).toBeGreaterThanOrEqual(0.26);
       expect(intensity).toBeLessThanOrEqual(0.62);
     }
+  });
+
+  it('uses a static low-intensity background for reduced motion', () => {
+    reducedMotionState.reduced = true;
+    targetRects.set(
+      'hero',
+      createRect({ left: 100, top: 300, width: 400, height: 300 }),
+    );
+
+    render(
+      <>
+        <HomepagePageBackground />
+        <div data-homepage-weave-target data-target="hero" />
+      </>,
+    );
+
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.5, y: 0.5 },
+        intensity: 0.26,
+        flare: 1.45,
+        resolved: true,
+      }),
+    );
+    const renderCount = pageBackgroundProps.mock.calls.length;
+
+    targetRects.set(
+      'hero',
+      createRect({ left: 600, top: -300, width: 400, height: 300 }),
+    );
+    void act(() => fireEvent.scroll(window));
+
+    expect(pageBackgroundProps).toHaveBeenCalledTimes(renderCount);
   });
 
   it('tracks the hovered or focused team member and springs back to center', () => {

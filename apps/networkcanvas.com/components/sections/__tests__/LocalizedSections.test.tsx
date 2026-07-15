@@ -86,16 +86,11 @@ describe('localized home sections', () => {
         .getByRole('heading', { name: 'Principios de diseño' })
         .closest('[data-homepage-weave-target]'),
     ).toHaveAttribute('data-homepage-weave-hold-until-exit');
-    expect(
-      screen.getByRole('group', {
-        name: 'Example Researcher, Example University',
-      }),
-    ).toHaveAttribute('data-homepage-weave-interactive-target');
-    expect(
-      screen.getByRole('group', {
-        name: 'Example Researcher, Example University',
-      }),
-    ).toHaveAttribute('tabindex', '0');
+    const teamMember = screen
+      .getByText('Example Researcher')
+      .closest('[data-homepage-weave-interactive-target]');
+    expect(teamMember).toBeInTheDocument();
+    expect(teamMember).not.toHaveAttribute('tabindex');
   });
 
   it('renders Spanish rich text and calls to action', () => {

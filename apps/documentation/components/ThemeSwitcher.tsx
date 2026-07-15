@@ -19,6 +19,7 @@ const themeOptions = [
   { id: 'dark', icon: Moon },
   { id: 'system', icon: SunMoon },
 ] as const;
+const THEME_ICON_STROKE_CLASS = '[&>.lucide]:[stroke-width:3.5]';
 
 type ThemeOption = (typeof themeOptions)[number]['id'];
 
@@ -58,7 +59,7 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
               size="sm"
               variant="text"
               color="dynamic"
-              className="text-text border-transparent"
+              className={`text-text border-transparent ${THEME_ICON_STROKE_CLASS}`}
             />
           ) : (
             <Button
@@ -67,7 +68,7 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
               size="sm"
               variant="text"
               color="dynamic"
-              className="text-text justify-start border-transparent"
+              className={`text-text justify-start border-transparent ${THEME_ICON_STROKE_CLASS}`}
             />
           )
         }
@@ -92,6 +93,7 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
               value={id}
               closeOnClick
               icon={<OptionIcon aria-hidden />}
+              className={THEME_ICON_STROKE_CLASS}
             >
               {t(id)}
             </DropdownMenuRadioItem>

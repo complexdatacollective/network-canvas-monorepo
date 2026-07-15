@@ -16,6 +16,9 @@ import {
 
 const networkWeaveProps = vi.hoisted(() => vi.fn());
 const motionDivProps = vi.hoisted(() => vi.fn());
+const motionValueEventCallbacks = vi.hoisted(
+  () => [] as Array<(value: number) => void>,
+);
 const animateMock = vi.hoisted(() =>
   vi.fn(
     (
@@ -117,7 +120,13 @@ vi.mock('motion/react', () => ({
     scrollYProgress: motionState.scrollYProgress,
   }),
   useMotionValue: (initial: number) => createMotionValue(initial),
-  useMotionValueEvent: () => {},
+  useMotionValueEvent: (
+    _value: MockMotionValue,
+    event: string,
+    callback: (value: number) => void,
+  ) => {
+    if (event === 'change') motionValueEventCallbacks.push(callback);
+  },
   useTransform: (
     input: MockMotionValue,
     inputRangeOrTransformer: number[] | ((value: number) => number),
@@ -197,6 +206,7 @@ describe('PageBackground', () => {
     motionState.reduced = false;
     motionState.progress = 0;
     motionState.scroll = 0;
+    motionValueEventCallbacks.length = 0;
     resizeObservers.length = 0;
     vi.stubGlobal('ResizeObserver', MockResizeObserver);
     vi.stubGlobal('matchMedia', (query: string) => ({
@@ -324,6 +334,12 @@ describe('PageBackground', () => {
         speedFactor: 0.39,
       }),
     );
+
+    act(() => motionValueEventCallbacks.at(-1)?.(0.75));
+    const updatedProps = networkWeaveProps.mock.lastCall?.[0] as {
+      flare: number;
+    };
+    expect(updatedProps.flare).toBeCloseTo(2.4);
   });
 
   it('does not animate scroll-linked flare for reduced motion', () => {
@@ -332,6 +348,11 @@ describe('PageBackground', () => {
 
     render(<PageBackground flare={1.8} scrollFlareRange={[1.8, 2.6]} />);
 
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ flare: 1.8 }),
+    );
+
+    act(() => motionValueEventCallbacks.at(-1)?.(0.75));
     expect(networkWeaveProps).toHaveBeenLastCalledWith(
       expect.objectContaining({ flare: 1.8 }),
     );

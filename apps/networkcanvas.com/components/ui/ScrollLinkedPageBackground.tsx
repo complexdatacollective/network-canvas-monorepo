@@ -3,6 +3,7 @@
 import {
   useMotionValue,
   useMotionValueEvent,
+  useReducedMotion,
   useTransform,
 } from 'motion/react';
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -204,6 +205,7 @@ export function ScrollLinkedPageBackground({
   parameterProfile = 'homepage',
 }: ScrollLinkedPageBackgroundProps) {
   const layerRef = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
   const scrollParameterProgress = useMotionValue(0);
   const flare = useTransform(scrollParameterProgress, (progress) =>
     getScrollLinkedFlare(progress, parameterProfile),
@@ -227,6 +229,28 @@ export function ScrollLinkedPageBackground({
   useLayoutEffect(() => {
     const layer = layerRef.current;
     if (!layer) return undefined;
+
+    if (reduceMotion) {
+      const { readingIntensity } = getStaticParameters(parameterProfile);
+      const staticFlare = getWeaveFlare(0, parameterProfile);
+      scrollParameterProgress.set(0);
+      setBackground((current) =>
+        current.resolved &&
+        pointsAreEqual(current.convergence, CENTER_CONVERGENCE) &&
+        valuesAreEqual(current.intensity, readingIntensity) &&
+        valuesAreEqual(current.flare, staticFlare) &&
+        current.targetChangeVersion === 0
+          ? current
+          : {
+              convergence: CENTER_CONVERGENCE,
+              intensity: readingIntensity,
+              flare: staticFlare,
+              resolved: true,
+              targetChangeVersion: 0,
+            },
+      );
+      return undefined;
+    }
 
     const targets = Array.from(
       document.querySelectorAll<HTMLElement>(targetSelector),
@@ -474,6 +498,7 @@ export function ScrollLinkedPageBackground({
     movingTargetSelector,
     parameterProfile,
     postTargetBehavior,
+    reduceMotion,
     scrollParameterProgress,
     targetSelector,
   ]);

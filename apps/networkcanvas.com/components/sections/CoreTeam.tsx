@@ -1,4 +1,3 @@
-/* oxlint-disable jsx-a11y/prefer-tag-over-role -- Reveal renders a motion div; the group role gives each keyboard-focusable profile an accessible name. */
 import { useTranslations } from 'next-intl';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -20,15 +19,12 @@ export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
             key={member.id}
             delay={(i % 4) * 0.05}
             data-homepage-weave-interactive-target
-            role="group"
-            tabIndex={0}
-            aria-label={`${member.name}, ${member.institution}`}
-            className="focusable group spring-short flex flex-col items-center rounded p-3 text-center"
+            className="group spring-short flex flex-col items-center rounded p-3 text-center"
           >
             <img
               src={member.photo}
               alt={member.name}
-              className="effect-shadow group-hover:effect-shadow-xl group-focus-visible:effect-shadow-xl spring-short tablet-landscape:size-36 size-28 rounded-full object-cover group-hover:scale-105 group-focus-visible:scale-105 motion-reduce:transform-none"
+              className="effect-shadow group-hover:effect-shadow-xl spring-short tablet-landscape:size-36 size-28 rounded-full object-cover group-hover:scale-105 motion-reduce:transform-none"
             />
             <Paragraph
               margin="none"
