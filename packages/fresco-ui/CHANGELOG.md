@@ -1,5 +1,103 @@
 # @codaco/fresco-ui
 
+## 4.0.0
+
+### Major Changes
+
+- 179952e: Add canonical localized site navigation and footer components, a shared animated link treatment for anchors, footer links, and link-style buttons, a canonical default text color, plus a shared public-site locale definition for edge routing and translation coverage.
+
+### Minor Changes
+
+- 7ca17f5: Extend ArrayField with item indexes, item limits, stable controlled identities, interaction guards, and an accessible keyboard reorder handle.
+- 9b57c1d: Add an `appearance` prop (`solid` | `soft`) and an `accent` variant to `Alert`. `solid` (the default, unchanged) fills the alert with its intent colour; `soft` renders a low tint over the surface with surface text and an intent-coloured link, for quieter content-adjacent notices, and drops the pressed-in inset shadow so it reads flat. Role, aria-live, screen-reader label and icon are identical across appearances. The new `accent` variant is a non-semantic brand highlight for note/key-concept style callouts.
+- 436e04c: SiteNavigation accepts `site="external"` for non-Network-Canvas hosts (every destination renders as an absolute URL) and portals its desktop menus into the `PortalContainerProvider` container when one is present, so embedders can keep popups inside their own DOM scope (e.g. a shadow root).
+- c236b20: Add semantic dialog sizes with responsive container-based layout, readable descriptions, and a className escape hatch for exceptional sizing.
+- 807f0d4: Enhance Alert with illustrated default intent icons, viewport attention motion, and a compact density for banner layouts.
+- 452549c: Add a compound `Tabs` component (Base UI-backed vertical tabs: import `Tabs` and `TabsPanel`; the rail is driven by a `tabs` array and renders its own active indicator).
+
+  Add a reusable "glass" control treatment — a new `control-glass` utility and `--control-border-width` token in the Tailwind config — exposed as a Button `glass` variant and a `SegmentedSwitcher` `variant` prop (`'outline'` default, `'glass'` opt-in). `SegmentedSwitcher` now defaults to an outline-button treatment, gains an `xl` size, and has its outer height and active-pill radius harmonised with Button.
+
+  `BaseField`'s inline layout is now driven by a container query rather than a viewport breakpoint, and `Table`'s `bodyScroll` region suppresses overscroll chaining (no rubber-band).
+
+  `InputField` now applies the caller's `className` to the field wrapper only, not to the inner `<input>` — so a background/backdrop passed to the field no longer double-applies onto the input.
+
+- 2280a15: Add a `Pill` component and an `AppUpdateIndicator` (with the `useAppUpdate` hook) for surfacing app version and update state with a changelog dialog.
+- 2100c9c: Allow dialogs to receive inline styles for shared-layout animation geometry.
+- 5e1d565: Add a `component` segment type to `SegmentedToolbar` for rendering composite controls such as `SplitButton` inside the toolbar surface.
+- ed95edc: Add Architect Classic and Interviewer Classic to the shared site navigation and arrange the software destinations in a two-row grid that distinguishes Classic apps.
+- 36ba214: Add a `SplitButton` component with a Button-compatible main action API, a required split segment, and nested popover content props.
+- 9b925e9: Add theme color support to Badge via a typed `color` prop.
+
+### Patch Changes
+
+- 4d9658b: Fix `BooleanField` so its two options stack vertically instead of overflowing when the container is too narrow to show them side by side.
+- e5fcd5e: Use full intent colors for elevated alerts instead of pastel background tints.
+- 2b12bdc: Boolean fields now lay their options out side by side whenever they fit, wrapping to a stacked layout only when the container is genuinely too narrow for them. This fixes the Dyad Census interface stacking its Yes/No choices vertically even when there was room to show them side by side.
+- be60ee0: Restore proportional Lucide icon sizing for shared controls so interview navigation and map controls match established visual snapshots.
+- ef1c4b4: Fix invalid Tailwind utility classes that silently rendered nothing: the Spinner's
+  backface-visibility (now `backface-hidden`), and the encrypted background's 3D
+  transform (`transform-3d`) and monospace font (`font-monospace`).
+- 2c112ba: Improve Popover, DropdownMenu, and Tooltip arrow positioning so overlay borders remain continuous around rounded corners.
+- 5c269b3: Alert: the icon in `compact`-density alerts is now vertically centred against the
+  message text instead of top-aligned, so single-paragraph banners read correctly
+  when their text wraps. Default-density alerts keep their top alignment.
+- c6f2ad4: ArrayField now exposes each item's committed index (its position in the last committed value) to item renderers alongside the live preview index, so adapters that bind index-based field paths to a form store can keep those paths attached to the right item while a pointer reorder is only previewed. Keyboard reordering also retains focus on the drag handle after a move commits, so repeated arrow-key presses keep working instead of dropping focus to the document body. The "add item" button is now a primary button so it reads consistently across every list editor.
+
+  InputField's number variant no longer lets its +/- steppers shrink, and its middle padding scales down at `size="sm"`, so a narrow number field (e.g. a compact threshold input) keeps its value visible instead of collapsing to zero width.
+
+  The Field system (`Field`, `UnconnectedField`, and the underlying `BaseField`) gains an opt-in `labelHidden` prop that visually hides a field's label while keeping it as the control's accessible name — for use when a surrounding heading already names the field, so the redundant visible label is dropped without stripping the screen-reader name.
+
+- 1d19a1b: The rich text editor no longer drops characters when you type quickly.
+
+  The native `SelectField` now shows a placeholder option when the value matches no option, so picking the first option fires a change event.
+
+  The `DataTable` sort arrow stays visible on the active column header, and `ArrayFieldDragHandle` accepts an optional `size` prop.
+
+- c1cf1fa: Ensure `Heading` margin variants reset native and app-level heading margins so marginless dialog titles do not inherit top spacing.
+- 617c1b9: Allow native scroll chaining through `ScrollArea` and `Collection` at scroll boundaries by removing forced overscroll containment.
+- 628c018: Give SegmentedToolbar a balanced effect shadow so floating toolbars read with clear, restrained elevation. Allow dialogs to expand to fit wider content within the viewport, and let RichTextEditor toolbars contribute their full width so editing fields do not visually overflow their dialog surface.
+- ce9b549: Add a header-end slot to Tabs so top-aligned tab rails can share a row with supplementary controls or metadata, and use a compact default gap between top tabs and their panel content.
+- 486f928: Fix two Collection bugs surfaced by the interview e2e suite. `useSelectionState`
+  now clears `disabledKeys` when the prop changes to an empty or undefined set, so
+  cards re-enable once a consumer stops gating them (previously the stale disabled
+  set persisted forever). `useMeasureItems` now re-measures after a completed
+  measurement is invalidated by a collection/layout identity change that lands in
+  the same commit as the recovery pass — the reset path bumps the measurement
+  version so the effect re-runs, preventing the virtualized list from wedging at
+  zero rows (`totalHeight: 0`) after a burst of store updates.
+- e4c3d5f: Forward the redux-form field name onto the field wrapper as a `data-field-name` attribute (for reliable end-to-end targeting). The name continues to be passed to the inner field component, so no existing behaviour changes.
+- 9336312: Updated the Tiptap React and nanoid dependencies used by Fresco UI components.
+- ef02898: Add data-testid hooks to SegmentedCodeField (`segmented-code-${name}` on the fieldset) and Toast.Viewport (`toast-viewport`) to support locators in the Interviewer end-to-end test suite. No user-facing behaviour change.
+- 5e2efc3: Fix a form-store race where a field's in-flight async validation, superseded by a sibling field's value change, was silently dropped and never rescheduled. The field (and therefore the whole form) stayed invalid with no visible error until the next full form validation. `setFieldValue` now revalidates superseded sibling validations against the updated form values, while stale results from the pre-change snapshot are still discarded.
+- 6a3f5db: Add a shared app-start helper for applying a waiting service-worker update before the app mounts, with timeout fallbacks so offline launches continue.
+- fd46cd0: Allow Heading and Paragraph to render without creating client component boundaries, support custom option and selected-value rendering in Combobox, and add an extensible shared site navigation shell.
+- 2872951: Make the Links icon honor icon tone variables so consumers can apply protocol colors.
+- 3a8689f: Keep controlled number inputs in sync when they are stepped with the ArrowUp and ArrowDown keys, while leaving step-any inputs unstepped.
+- 31eacf4: Harden form fields and ArrayField operations with typed values, stable async validation, complete error state, accessible required descriptions, and metadata-safe semantic array mutations.
+- a37d0a2: Give soft alerts correctly tinted elevation shadows, replace the default success symbol with an illustrated Fresco check badge, and prevent delayed dialog cleanup after the provider unmounts.
+- bfc4303: Keep filled segmented-toolbar actions in their supplied color when hovered.
+- 9d71015: Fix shared rich text editor link controls, toolbar affordances, and input-mode content updates.
+- b467615: Add forward skip destinations to schema 8, shared skip evaluation, synthetic
+  network generation, and the interview runtime. Hidden stages can now continue
+  at a later stage or route to the interview finish screen, with live route
+  recalculation, safe Back navigation, and confirmed one-screen overrides for
+  unavailable stages.
+
+  Also keep shared Select fields correctly labelled and contained when option
+  labels are long. The bundled sample protocol now ends the interview when a
+  participant declines consent.
+
+- ebdd094: Derive default surface colors from the page background and align table headers to the bottom.
+- Updated dependencies [83dddd8]
+- Updated dependencies [452549c]
+- Updated dependencies [c16a1d9]
+- Updated dependencies [179952e]
+- Updated dependencies [a37d0a2]
+- Updated dependencies [5c269b3]
+- Updated dependencies [ebdd094]
+  - @codaco/tailwind-config@1.1.0
+  - @codaco/shared-consts@5.5.0
+
 ## 3.0.1
 
 ### Patch Changes
@@ -13,6 +111,7 @@
 - 735fb6e: Surface now derives its visual level from nesting instead of taking a manual `level` prop.
 
   Breaking changes:
+
   - The `level` prop is removed from `Surface`/`MotionSurface`. Each Surface renders one step above the Surface it is mounted inside (via React context, so portalled overlays keep their component-tree position). Depths beyond the token scale clamp to level 3 and warn in development. Remove `level={0..3}` from call sites; if the derived result looks wrong, restructure the layout rather than overriding.
   - The `'popover'` level is replaced by a new orthogonal `floating` prop, which applies the popover surface treatment at any depth and restarts the depth ladder for children. Replace `level="popover"` with `floating`.
   - `surfaceVariants`' color axis is now `{ depth, floating }`; `depth` is supplied internally by the Surface component and there is no default, so class-level consumers only use `floating`.
@@ -43,6 +142,7 @@
   canvas for building a whole personal network in one place (create nodes, draw
   multiple edge types, capture node and edge attributes, group nodes into convex
   hulls, reposition, and delete, with undo/redo and lasso selection).
+
   - `@codaco/protocol-validation`: a new additive schema-8 `NetworkComposer` stage
     (no version bump, no migration) with cross-reference validation of its
     `quickAdd` / `layoutVariable` / `nodeForm` / per-edge-type form references, and
@@ -123,6 +223,7 @@
 ### Minor Changes
 
 - 4821edc: Make a form field a single unit of focus.
+
   - **Container-scoped validation**: validate-on-blur now fires when focus leaves the whole field, not the inner `<input>`. Moving focus to an in-field control (a prefix/suffix button, a number stepper, a sibling radio…) no longer counts as leaving the field, so it no longer leaves a stale validation error (e.g. a "Generate identifier" button populating a field that still showed "cannot be empty"). Single-control fields behave identically; multi-control fields (RadioGroup, Combobox, DatePicker…) get strictly better behaviour.
   - **Focus indication**: slot controls stay real tab stops and render their own design-system focus ring (`Button`/`IconButton` already do); the field shows one ring per focused element rather than double-ringing the wrapper around an already-focused control. The `InputField` wrapper also un-clips (`overflow-visible`) while a slot control is focus-visible, so the control's offset focus ring isn't clipped by the rounded container.
   - **Slot field controller**: `InputField`'s `prefixComponent`/`suffixComponent` now also accept a render function `(field) => ReactNode` that receives a `FieldSlotController` (`{ name, value, setValue, validate, focusInput }`), so a slot control can set and validate the value without importing the form store. Delivered via the new `useFieldController` hook / `FieldController` context. The plain `ReactNode` form is unchanged.
@@ -133,6 +234,7 @@
 ### Patch Changes
 
 - dd13556: Fix form-field schema-conformance bugs found in a release audit:
+
   - Render VisualAnalogScale on the normalized 0–1 scale (matching the contract) instead of 0–100.
   - Preserve typed (number/boolean) RadioGroup option values instead of stringifying them.
   - Respect configured month/year `min`/`max` bounds in DatePicker (accept partial `YYYY` / `YYYY-MM` resolutions).
@@ -140,6 +242,7 @@
   - Source cross-variable comparison validators (`greaterThanVariable`/`sameAs`/etc.) from persisted entity attributes when the referenced variable is not a field on the current form.
 
   Further fixes from the medium/low conformance audit:
+
   - `unique` validation compares categorical/ordinal selections as order-insensitive multisets, so the same options chosen in a different order are correctly treated as duplicates.
   - The Collection sorter gains `hierarchy` (ordinal) and `categorical` sort modes that order by codebook option index; the `sortRules` prop now seeds the initial sort in uncontrolled mode, and `CollectionSortButton` / `CollectionSortSelect` carry the ranked option order so button-driven sorts rank correctly too.
 
@@ -200,6 +303,7 @@
 - New `RadioMatrixField` at `./form/fields/RadioMatrixField`: a form field that asks the same single-choice question across many rows, laid out as a matrix (rows × shared option columns). Each row is an independent radio group; the field value is an array of `{ id, value }` entries, with an optional `defaultOption` pre-selected for unanswered rows. It uses the standard input-control container and collapses to stacked per-row groups on narrow containers. `RadioItem` gains optional `className` / `labelClassName` props so callers can place a bare radio in a grid cell.
 
   Field rendering tweaks:
+
   - `BaseField` now uses a uniform `not-last:mb-8` bottom margin between fields instead of ramping the gap up on larger screens (`tablet-landscape:not-last:mb-8`, `desktop:not-last:mb-10`), giving form fields a consistent vertical rhythm across all breakpoints.
   - `Label` no longer carries the heading `label` variant's default bottom margin (`margin: 'none'`), so field labels sit tighter to their control.
   - `InputField` number steppers now use a subtle contrast-tinted hover (`hover:bg-input-contrast/10`) instead of switching to the accent color.
@@ -283,6 +387,7 @@
 - Typography: switch `Heading`, `Paragraph`, and the list components to em-based top/bottom margins. After `--spacing-base` became rem-anchored in `@codaco/tailwind-config@1.0.0-alpha.17`, `mb-*` on typography no longer scaled per element, so headings and paragraphs lost their proportional rhythm. Em-based margins fix that without re-introducing em compounding into the global spacing scale. Also drop `h4` from `font-extrabold` to `font-bold` for consistency with the other heading levels, and downsize the `h4 + all-caps` compound to `text-sm` so it reads as a label rather than a heading.
 
 - Theme cascade fixes for components that previously rendered a default-theme value inside `<ThemedRegion theme="interview">`:
+
   - `Node` selection ring: motion `boxShadow` keyframes now reference `var(--selected)` instead of `var(--color-selected)`, so the cascade picks up the interview override at the animated element. The `--color-*` alias resolves at `:root` and freezes the default-theme value, which was rendering the selection ring yellow inside the interview palette.
   - `Alert` `[--color-link:…]` variant overrides, `Button` `interview:[--component-text:…]` hover override, `Dialog` accent overrides (`[--color-primary:…]` / `[--color-primary-contrast:…]`), and `animate-pulse-glow` keyframes in `theme.css` swap to bare primitive vars for the same reason.
 
@@ -367,6 +472,7 @@
 - ff40992: Restructure the package's public surface and build setup. The public API is unchanged in behaviour, but several import paths have moved and the Tailwind theme now lives in a separate package.
 
   Changes:
+
   - **Tailwind theme moved to `@codaco/tailwind-config`.** The Fresco theme tokens, colour palette, and Tailwind plugins (elevation, inset-surface, motion-spring) are now hosted by `@codaco/tailwind-config` under the `./fresco/*` subpaths. The Nunito font is now loaded from there as well. `@codaco/fresco-ui` re-consumes them internally.
   - **Component file names standardised to PascalCase.** The lowercase files (`badge`, `dropdown-menu`, `popover`, `skeleton`, `table`, `tooltip`) and their corresponding subpath exports have been renamed.
   - **`form/components/` flattened to `form/`.** Field components are now imported one level shallower.
@@ -375,6 +481,7 @@
   - **Build internals.** `exports.config.ts` and the build-exports script have been removed — `package.json#exports` is now the single source of truth. Externals are declared inline via regex (replacing `vite-plugin-externalize-deps`). Vite plugins, including `@vitejs/plugin-react` v6, are on their latest releases.
 
   Migration:
+
   - `import … from '@codaco/fresco-ui/badge'` → `'@codaco/fresco-ui/Badge'`
   - `import … from '@codaco/fresco-ui/dropdown-menu'` → `'@codaco/fresco-ui/DropdownMenu'`
   - `import … from '@codaco/fresco-ui/popover'` → `'@codaco/fresco-ui/Popover'`

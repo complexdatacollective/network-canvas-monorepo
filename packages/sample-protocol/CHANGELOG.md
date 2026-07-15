@@ -1,5 +1,19 @@
 # @codaco/sample-protocol
 
+## 1.0.3
+
+### Patch Changes
+
+- b467615: Add forward skip destinations to schema 8, shared skip evaluation, synthetic
+  network generation, and the interview runtime. Hidden stages can now continue
+  at a later stage or route to the interview finish screen, with live route
+  recalculation, safe Back navigation, and confirmed one-screen overrides for
+  unavailable stages.
+
+  Also keep shared Select fields correctly labelled and contained when option
+  labels are long. The bundled sample protocol now ends the interview when a
+  participant declines consent.
+
 ## 1.0.2
 
 ### Patch Changes

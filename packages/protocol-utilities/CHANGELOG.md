@@ -1,5 +1,41 @@
 # @codaco/protocol-utilities
 
+## 2.2.0
+
+### Minor Changes
+
+- b467615: Add forward skip destinations to schema 8, shared skip evaluation, synthetic
+  network generation, and the interview runtime. Hidden stages can now continue
+  at a later stage or route to the interview finish screen, with live route
+  recalculation, safe Back navigation, and confirmed one-screen overrides for
+  unavailable stages.
+
+  Also keep shared Select fields correctly labelled and contained when option
+  labels are long. The bundled sample protocol now ends the interview when a
+  participant declines consent.
+
+### Patch Changes
+
+- 486f928: Extend the `SyntheticInterview` builder for the interview e2e configuration
+  matrix: stage inputs now accept `interviewScript`, `skipLogic`, `filter`, and
+  `validation`; prompt inputs accept `additionalAttributes` and `sortOrder`; and
+  variable inputs accept `encrypted` and `parameters`. Consolidate stage
+  assembly so the builder emits schema-valid output directly — form fields no
+  longer carry a stray `component` (the codebook variable supplies it), EgoForm
+  joins AlterForm/AlterEdgeForm in stripping the form `title`, and FamilyPedigree
+  no longer emits a top-level `subject`. `quickAdd` defaults now resolve to the
+  seeded name variable's id rather than its display name.
+- c36f3a5: Support the skipLogic `destination` field (targeted skip-to-stage / skip-to-finish) on `SkipLogicInput`, so synthetic protocols built with `SyntheticInterview` can exercise targeted skip routing.
+- Updated dependencies [367e702]
+- Updated dependencies [e6c58c2]
+- Updated dependencies [c16a1d9]
+- Updated dependencies [803e4e7]
+- Updated dependencies [179952e]
+- Updated dependencies [b467615]
+  - @codaco/protocol-validation@11.9.0
+  - @codaco/shared-consts@5.5.0
+  - @codaco/network-query@1.2.0
+
 ## 2.1.1
 
 ### Patch Changes
@@ -32,6 +68,7 @@
 - 37006d0: Refine the Architect stage editors for the Family Pedigree and Narrative Pedigree interfaces.
 
   **Family Pedigree editor**
+
   - The fixed-framing selector is now a styled select, and the framing section explains what the gamete-based and gendered framings mean in neutral, non-normative terms.
   - Boundary options no longer use "family tree" (always "family pedigree"), explain what off/recommended/required do, and rename "Require Children Contributors" to "Require Co-Parents' Families". Both boundary fields are now required in the editor so a missing value surfaces as a named issue rather than a raw schema error.
   - Fixed a bug where changing the node type cleared the stage-level `framing`, `boundaries`, and `introScreen`, producing a schema error on finish. A seam test now guards the preserve-list against the schema's required fields.
@@ -40,6 +77,7 @@
   - Nomination prompts show an empty-state message when no prompts exist yet.
 
   **Narrative Pedigree editor**
+
   - Corrected the new-stage dialog tags: Narrative Pedigree (read-only) is tagged Display Data only; Family Pedigree gains Capture Edge Attributes.
   - The At-Risk Statuses explanation moves from the section side column into the main column and is formatted with subheadings and lists.
 
@@ -55,6 +93,7 @@
   canvas for building a whole personal network in one place (create nodes, draw
   multiple edge types, capture node and edge attributes, group nodes into convex
   hulls, reposition, and delete, with undo/redo and lasso selection).
+
   - `@codaco/protocol-validation`: a new additive schema-8 `NetworkComposer` stage
     (no version bump, no migration) with cross-reference validation of its
     `quickAdd` / `layoutVariable` / `nodeForm` / per-edge-type form references, and
@@ -132,6 +171,7 @@
 ### Patch Changes
 
 - d0ca1be: Fix two NameGeneratorRoster bugs and remove a dead schema field.
+
   - **Roster cards no longer show a raw UID.** When the name heuristic could not
     resolve a label for an external-roster node (e.g. the asset came from a
     preview interview export whose attribute keys are variable UUIDs absent from
