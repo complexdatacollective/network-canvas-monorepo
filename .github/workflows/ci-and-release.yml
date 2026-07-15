@@ -201,7 +201,7 @@ jobs:
   # their own `^build` dependency; `lint` needs it too (below) because oxlint's
   # type-aware rules resolve workspace imports through built `.d.ts` files.
   seed-turbo-cache:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Cache warming only — the merge queue already validated this identical
     # tree, so a flake here must not fail the push run (which also carries the
     # release jobs).
@@ -324,17 +324,28 @@ jobs:
       # doesn't ship the pinned Playwright build's browsers.
       - name: Install Playwright Chromium (vitest browser mode)
         run: pnpm --filter @codaco/site-navigation-element exec playwright install --with-deps chromium
-      - name: Run tests (PRs run only packages affected by the PR diff)
+      - name: Run tests (PRs run only tasks affected by the PR diff)
         run: |
           # PR checkouts are a synthetic merge of the PR into its base, so
-          # HEAD^1 is the base tip and --affected scopes the run to the
-          # packages the PR touches plus their dependents. Anything skipped
-          # here is still covered by the full merge-queue run before it can
-          # land. A change to this workflow can alter how this job itself
-          # behaves, so it falls back to the full suite (same rule as
-          # detect's WORKFLOW_CHANGED).
+          # HEAD^1 is the base tip and --affected scopes the run to tasks
+          # whose declared inputs the PR touches, plus their dependents
+          # (turbo.json enables futureFlags.affectedUsingTaskInputs so
+          # selection matches what cache hashing considers an input).
+          # Anything skipped here is still covered by the full merge-queue
+          # run before it can land.
+          #
+          # Fail closed: a change outside the workspace package trees (this
+          # workflow, composite actions, .nvmrc, pnpm-workspace.yaml, root
+          # configs/scripts) can alter how tests run without being any turbo
+          # task's input, so any such change forces the full suite. The
+          # lockfile stays on the affected path because turbo hashes it
+          # granularly per package; docs, changesets, and markdown are inert
+          # to tests.
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
-            && git diff --quiet HEAD^1 HEAD -- .github/workflows/ci-and-release.yml; then
+            && git diff --quiet HEAD^1 HEAD -- . \
+              ':(exclude)packages' ':(exclude)apps' ':(exclude)workers' \
+              ':(exclude)tooling' ':(exclude)docs' ':(exclude).changeset' \
+              ':(exclude)pnpm-lock.yaml' ':(exclude)*.md'; then
             TURBO_SCM_BASE=$(git rev-parse HEAD^1) pnpm exec turbo run test --affected
           else
             pnpm exec turbo run test
