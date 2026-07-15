@@ -11,8 +11,8 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 
 import {
-  applyAppReleases,
-  planAppReleases,
+  applyProductReleases,
+  planProductReleases,
   renderPrBody,
 } from './version-beta-apps.mjs';
 
@@ -57,7 +57,7 @@ function workspace() {
   return cwd;
 }
 
-test('bumps only apps with pending changesets, leaving base + other app untouched', () => {
+test('bumps only the targeted product and preserves library changesets', () => {
   const cwd = workspace();
   writeFileSync(
     join(cwd, '.changeset/one.md'),
@@ -68,8 +68,8 @@ test('bumps only apps with pending changesets, leaving base + other app untouche
     `---\n"@codaco/interview": patch\n---\n\nlib only`,
   );
 
-  const { plans, consumed } = planAppReleases(cwd);
-  applyAppReleases(cwd, plans, consumed);
+  const { plans, consumed } = planProductReleases(cwd, ['@codaco/architect']);
+  applyProductReleases(cwd, plans, consumed);
 
   const arch = JSON.parse(
     readFileSync(join(cwd, 'apps/architect/package.json'), 'utf8'),
@@ -85,6 +85,30 @@ test('bumps only apps with pending changesets, leaving base + other app untouche
   );
   assert.equal(existsSync(join(cwd, '.changeset/one.md')), false); // consumed
   assert.equal(existsSync(join(cwd, '.changeset/keep.md')), true); // library changeset preserved
+});
+
+test('a targeted release preserves another product changeset', () => {
+  const cwd = workspace();
+  writeFileSync(
+    join(cwd, '.changeset/architect.md'),
+    `---\n"@codaco/architect": patch\n---\n\nFix Architect`,
+  );
+  writeFileSync(
+    join(cwd, '.changeset/interviewer.md'),
+    `---\n"@codaco/interviewer": patch\n---\n\nFix Interviewer`,
+  );
+
+  const { plans, consumed } = planProductReleases(cwd, ['@codaco/architect']);
+  applyProductReleases(cwd, plans, consumed);
+
+  assert.deepEqual(consumed, ['architect']);
+  assert.equal(existsSync(join(cwd, '.changeset/architect.md')), false);
+  assert.equal(existsSync(join(cwd, '.changeset/interviewer.md')), true);
+  assert.equal(
+    JSON.parse(readFileSync(join(cwd, 'apps/interviewer/package.json'), 'utf8'))
+      .version,
+    '8.0.0-beta.0',
+  );
 });
 
 test('renderPrBody summarises the plans', () => {
@@ -111,8 +135,10 @@ test('creates a normal semver documentation release and changelog', () => {
     `---\n"@codaco/documentation": minor\n---\n\nPublish the reorganised documentation.`,
   );
 
-  const { plans, consumed } = planAppReleases(cwd);
-  applyAppReleases(cwd, plans, consumed);
+  const { plans, consumed } = planProductReleases(cwd, [
+    '@codaco/documentation',
+  ]);
+  applyProductReleases(cwd, plans, consumed);
 
   const documentation = JSON.parse(
     readFileSync(join(cwd, 'apps/documentation/package.json'), 'utf8'),
@@ -125,9 +151,9 @@ test('creates a normal semver documentation release and changelog', () => {
   assert.equal(existsSync(join(cwd, '.changeset/docs.md')), false);
 });
 
-test('no pending app changesets → empty plan, no writes', () => {
+test('no pending product changesets → empty plan, no writes', () => {
   const cwd = workspace();
-  const { plans, consumed } = planAppReleases(cwd);
+  const { plans, consumed } = planProductReleases(cwd);
   assert.deepEqual(plans, []);
   assert.deepEqual(consumed, []);
 });

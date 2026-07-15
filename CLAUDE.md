@@ -122,17 +122,16 @@ pnpm version-packages
 pnpm publish-packages
 ```
 
-#### Changeset lanes: libraries vs apps
+#### Changeset lanes: libraries vs gated products
 
 - **Library packages** (`packages/*`) release to npm via `changesets/action` (the
   "Version Packages" PR).
-- **The two PWA apps** (`@codaco/architect`, `@codaco/interviewer`) are
-  `private` and in the changeset `ignore` list. They release on a `-beta.N` line
-  via a separate "Release apps (beta)" PR (`apps-release-pr` job) that deploys to
-  Netlify production and cuts a GitHub release on merge.
-- **Never put an app and a library in the same changeset** — `changeset version`
-  errors on mixed changesets and `pnpm check:changesets` (a quality-gate step)
-  rejects them. Write two changesets.
+- **Each gated product** has its own release PR: Architect and Interviewer release
+  on a `-beta.N` line, while Documentation uses normal semver. The
+  `product-release-pr` matrix deploys only the product whose PR is merged.
+- **One release lane per changeset.** Never put a gated product and a library—or
+  two gated products—in the same changeset. `pnpm check:changesets` rejects both;
+  write one changeset per product or library lane.
 - See the `creating-a-changeset` skill and
   `docs/superpowers/specs/2026-07-03-pwa-app-beta-releases-design.md`.
 
@@ -266,14 +265,15 @@ stories.
 #### Release-only E2E checks
 
 CI runs the complete Architect, Interview, and Interviewer E2E suites only for
-the exact generated release branches `changeset-release/main` and
-`changeset-release/apps`, or for merge groups whose package or app version
-changes will trigger a release. The required `quality` check conditionally
-requires all three E2E jobs in those cases. Ordinary PRs skip E2E, and E2E
-results are never carried forward from an earlier commit.
+the generated library branch `changeset-release/main`, the generated product
+branches `changeset-release/architect`, `changeset-release/interviewer`, and
+`changeset-release/documentation`, or merge groups whose package or product
+version changes will trigger a release. The required `quality` check
+conditionally requires all three E2E jobs in those cases. Ordinary PRs skip E2E,
+and E2E results are never carried forward from an earlier commit.
 
 The release jobs explicitly dispatch `ci-and-release.yml` after creating or
-updating either generated branch. Normal release PRs therefore do not need a
+updating a generated branch. Normal release PRs therefore do not need a
 manual E2E trigger, even though GitHub does not start PR workflows for branch
 updates made with the repository token.
 

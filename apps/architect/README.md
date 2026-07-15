@@ -71,11 +71,11 @@ only the two `@visual` capture cases and uploads the generated artifact; normal
 tests and quality checks remain separate. The local Docker fallback is
 `pnpm --filter @codaco/architect test:e2e:update-snapshots`.
 
-Repository CI runs all three E2E suites only for the exact generated release
-branches `changeset-release/main` and `changeset-release/apps`, and for
-release-triggering merge groups. The required `quality` check conditionally
-requires their results; ordinary PRs skip them. Release automation explicitly
-dispatches CI for generated branches, so no manual trigger is needed.
+Repository CI runs all three E2E suites only for the generated library release
+branch, the independent Architect, Interviewer, and Documentation release
+branches, and release-triggering merge groups. The required `quality` check
+conditionally requires their results; ordinary PRs skip them. Release automation
+explicitly dispatches CI for generated branches, so no manual trigger is needed.
 
 If Architect E2E reports a visual-snapshot failure on a release PR, CI runs only
 the two capture cases. A successful generation with changed baselines opens a

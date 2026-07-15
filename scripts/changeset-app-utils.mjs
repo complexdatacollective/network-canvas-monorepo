@@ -4,13 +4,13 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export const APP_PACKAGES = [
+export const GATED_PRODUCT_PACKAGES = [
   '@codaco/architect',
   '@codaco/documentation',
   '@codaco/interviewer',
 ];
 
-export const APP_DIRS = {
+export const GATED_PRODUCT_DIRS = {
   '@codaco/architect': 'apps/architect',
   '@codaco/documentation': 'apps/documentation',
   '@codaco/interviewer': 'apps/interviewer',
@@ -39,17 +39,31 @@ export function readChangesets(changesetDir) {
     }));
 }
 
-export function classifyChangeset(cs, appPackages = APP_PACKAGES) {
-  const apps = new Set(appPackages);
+export function classifyChangeset(
+  cs,
+  productPackages = GATED_PRODUCT_PACKAGES,
+) {
+  const products = new Set(productPackages);
   return {
-    appReleases: cs.releases.filter((r) => apps.has(r.name)),
-    libReleases: cs.releases.filter((r) => !apps.has(r.name)),
+    productReleases: cs.releases.filter((r) => products.has(r.name)),
+    libReleases: cs.releases.filter((r) => !products.has(r.name)),
   };
 }
 
-export function isMixedChangeset(cs, appPackages = APP_PACKAGES) {
-  const { appReleases, libReleases } = classifyChangeset(cs, appPackages);
-  return appReleases.length > 0 && libReleases.length > 0;
+export function isMixedChangeset(cs, productPackages = GATED_PRODUCT_PACKAGES) {
+  const { productReleases, libReleases } = classifyChangeset(
+    cs,
+    productPackages,
+  );
+  return productReleases.length > 0 && libReleases.length > 0;
+}
+
+export function isMultiProductChangeset(
+  cs,
+  productPackages = GATED_PRODUCT_PACKAGES,
+) {
+  const { productReleases } = classifyChangeset(cs, productPackages);
+  return new Set(productReleases.map((release) => release.name)).size > 1;
 }
 
 const BETA_RE = /^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/;

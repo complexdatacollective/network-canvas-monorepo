@@ -30,11 +30,12 @@ intended baseline changes. Keep generation separate from normal verification.
 
 ## Respond to a release E2E failure
 
-The complete Architect, Interview, and Interviewer E2E suites run in CI only
-for the exact generated release branches `changeset-release/main` and
-`changeset-release/apps`, and for merge groups whose package or app versions
-trigger a release. The required `quality` check conditionally waits for all
-three E2E results in those cases. Ordinary PRs skip E2E and never inherit an
+The complete Architect, Interview, and Interviewer E2E suites run in CI only for
+the generated library branch `changeset-release/main`, the independent product
+branches `changeset-release/architect`, `changeset-release/interviewer`, and
+`changeset-release/documentation`, and merge groups whose package or product
+versions trigger a release. The required `quality` check conditionally waits for
+all three E2E results in those cases. Ordinary PRs skip E2E and never inherit an
 older E2E result.
 
 The release automation explicitly dispatches CI after creating or updating a
@@ -46,8 +47,7 @@ CI invokes this workflow for that suite's focused capture cases. If generation
 succeeds and produces changed committed PNGs, a trusted follow-up job opens or
 updates a PNG-only child PR:
 
-- The child PR targets the failing `changeset-release/main` or
-  `changeset-release/apps` branch, never `main`.
+- The child PR targets the exact failing generated release branch, never `main`.
 - Its stable automation branch is reused on later failures instead of creating
   duplicate PRs.
 - Merging it accepts the reviewed baselines into the release branch and

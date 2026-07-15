@@ -41,8 +41,13 @@ jobs:
           script: |
             const releaseRef = process.env.RELEASE_REF;
             const expectedSnapshotBranches = new Map([
+              ['changeset-release/architect', 'e2e-snapshots/changeset-release-architect'],
+              [
+                'changeset-release/documentation',
+                'e2e-snapshots/changeset-release-documentation',
+              ],
+              ['changeset-release/interviewer', 'e2e-snapshots/changeset-release-interviewer'],
               ['changeset-release/main', 'e2e-snapshots/changeset-release-main'],
-              ['changeset-release/apps', 'e2e-snapshots/changeset-release-apps'],
             ]);
             if (expectedSnapshotBranches.get(releaseRef) !== process.env.SNAPSHOT_BRANCH) {
               core.setFailed(

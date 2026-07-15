@@ -1,26 +1,29 @@
 #!/usr/bin/env node
-// Version step for the gated release lane. It increments Architect and
-// Interviewer beta versions, bumps Documentation with normal semver, writes
-// CHANGELOG sections, deletes consumed changesets, and emits a PR-body summary.
+// Version step for one gated product release lane. It increments an Architect or
+// Interviewer beta version, or bumps Documentation with normal semver, writes a
+// CHANGELOG section, deletes consumed changesets, and emits a PR-body summary.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
-  APP_DIRS,
-  APP_PACKAGES,
+  GATED_PRODUCT_DIRS,
+  GATED_PRODUCT_PACKAGES,
   nextBetaVersion,
   nextDocumentationVersion,
   readChangesets,
   renderChangelogSection,
 } from './changeset-app-utils.mjs';
 
-export function planAppReleases(cwd, appPackages = APP_PACKAGES) {
+export function planProductReleases(
+  cwd,
+  productPackages = GATED_PRODUCT_PACKAGES,
+) {
   const changesets = readChangesets(join(cwd, '.changeset'));
   const consumed = new Set();
   const plans = [];
-  for (const pkg of appPackages) {
+  for (const pkg of productPackages) {
     const entries = [];
     for (const cs of changesets) {
       const rel = cs.releases.find((r) => r.name === pkg);
@@ -29,7 +32,7 @@ export function planAppReleases(cwd, appPackages = APP_PACKAGES) {
       consumed.add(cs.id);
     }
     if (entries.length === 0) continue;
-    const dir = APP_DIRS[pkg];
+    const dir = GATED_PRODUCT_DIRS[pkg];
     const current = JSON.parse(
       readFileSync(join(cwd, dir, 'package.json'), 'utf8'),
     ).version;
@@ -47,7 +50,7 @@ export function planAppReleases(cwd, appPackages = APP_PACKAGES) {
   return { plans, consumed: [...consumed] };
 }
 
-export function applyAppReleases(cwd, plans, consumed) {
+export function applyProductReleases(cwd, plans, consumed) {
   for (const plan of plans) {
     const pkgJsonPath = join(cwd, plan.dir, 'package.json');
     const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
@@ -74,12 +77,18 @@ export function applyAppReleases(cwd, plans, consumed) {
 }
 
 export function renderPrBody(plans) {
-  if (plans.length === 0) return 'No app or documentation changes pending.\n';
+  if (plans.length === 0) return 'No product changes pending.\n';
+  if (plans.length !== 1) {
+    throw new Error('Each release PR must contain exactly one gated product.');
+  }
+  const [plan] = plans;
   const lines = [
-    'Merging this PR releases the product(s) below to Netlify **production**.',
-    'Architect and Interviewer also receive a GitHub prerelease.',
+    `Merging this PR releases \`${plan.pkg}\` to Netlify **production**.`,
+    ...(plan.pkg === '@codaco/documentation'
+      ? []
+      : ['It also creates a GitHub prerelease.']),
     '',
-    '| App | From | To |',
+    '| Product | From | To |',
     '| --- | --- | --- |',
     ...plans.map((p) => `| \`${p.pkg}\` | ${p.from} | ${p.to} |`),
     '',
@@ -104,7 +113,7 @@ function formatGeneratedFiles(cwd, plans) {
     join(cwd, p.dir, 'package.json'),
   ]);
   if (files.length === 0) return;
-  const result = spawnSync('pnpm', ['exec', 'oxfmt', ...files], {
+  const result = spawnSync('pnpm', ['exec', 'oxfmt', '--write', ...files], {
     cwd,
     stdio: 'inherit',
   });
@@ -117,20 +126,29 @@ function formatGeneratedFiles(cwd, plans) {
 
 function main() {
   const cwd = process.cwd();
+  const packageIdx = process.argv.indexOf('--package');
+  const targetPackage =
+    packageIdx !== -1 ? process.argv[packageIdx + 1] : undefined;
+  if (!targetPackage || !GATED_PRODUCT_PACKAGES.includes(targetPackage)) {
+    console.error(
+      `--package must be one of: ${GATED_PRODUCT_PACKAGES.map((pkg) => `"${pkg}"`).join(', ')}`,
+    );
+    process.exit(1);
+  }
   const outIdx = process.argv.indexOf('--out');
   if (outIdx !== -1 && !process.argv[outIdx + 1]) {
     console.error('--out requires a file path');
     process.exit(1);
   }
   const outPath = outIdx !== -1 ? process.argv[outIdx + 1] : null;
-  const { plans, consumed } = planAppReleases(cwd);
-  applyAppReleases(cwd, plans, consumed);
+  const { plans, consumed } = planProductReleases(cwd, [targetPackage]);
+  applyProductReleases(cwd, plans, consumed);
   formatGeneratedFiles(cwd, plans);
   const body = renderPrBody(plans);
   if (outPath) writeFileSync(outPath, body);
   process.stdout.write(body);
   console.error(
-    `[version-beta-apps] released ${plans.length} app(s); consumed ${consumed.length} changeset(s).`,
+    `[version-beta-apps] planned ${targetPackage}: ${plans.length} release; consumed ${consumed.length} changeset(s).`,
   );
 }
 

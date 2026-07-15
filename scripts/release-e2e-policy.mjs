@@ -2,8 +2,10 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 const RELEASE_REFS = new Set([
+  'changeset-release/architect',
+  'changeset-release/documentation',
+  'changeset-release/interviewer',
   'changeset-release/main',
-  'changeset-release/apps',
 ]);
 
 const VERSIONED_MANIFESTS = [

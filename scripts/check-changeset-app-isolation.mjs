@@ -7,26 +7,55 @@ import { join } from 'node:path';
 import {
   classifyChangeset,
   isMixedChangeset,
+  isMultiProductChangeset,
   readChangesets,
 } from './changeset-app-utils.mjs';
 
 const changesets = readChangesets(join(process.cwd(), '.changeset'));
-const offenders = changesets.filter((cs) => isMixedChangeset(cs));
-
-if (offenders.length === 0) process.exit(0);
-
-console.error(
-  'Mixed changesets found — these combine an app with a library and would break\n' +
-    'the library release (`changeset version` rejects them):\n',
+const mixedOffenders = changesets.filter((cs) => isMixedChangeset(cs));
+const multiProductOffenders = changesets.filter((cs) =>
+  isMultiProductChangeset(cs),
 );
-for (const cs of offenders) {
-  const { appReleases, libReleases } = classifyChangeset(cs);
-  console.error(`  .changeset/${cs.id}.md`);
-  console.error(`    apps:      ${appReleases.map((r) => r.name).join(', ')}`);
-  console.error(`    libraries: ${libReleases.map((r) => r.name).join(', ')}`);
+
+if (mixedOffenders.length === 0 && multiProductOffenders.length === 0) {
+  process.exit(0);
 }
+
+if (mixedOffenders.length > 0) {
+  console.error(
+    'Mixed changesets found — these combine a gated product with a library and would break\n' +
+      'the library release (`changeset version` rejects them):\n',
+  );
+  for (const cs of mixedOffenders) {
+    const { productReleases, libReleases } = classifyChangeset(cs);
+    console.error(`  .changeset/${cs.id}.md`);
+    console.error(
+      `    products:  ${productReleases.map((r) => r.name).join(', ')}`,
+    );
+    console.error(
+      `    libraries: ${libReleases.map((r) => r.name).join(', ')}`,
+    );
+  }
+  console.error('');
+}
+
+if (multiProductOffenders.length > 0) {
+  console.error(
+    'Multi-product changesets found — each gated product has an independent release PR,\n' +
+      'so every product must have its own changeset:\n',
+  );
+  for (const cs of multiProductOffenders) {
+    const { productReleases } = classifyChangeset(cs);
+    console.error(`  .changeset/${cs.id}.md`);
+    console.error(
+      `    products: ${productReleases.map((r) => r.name).join(', ')}`,
+    );
+  }
+  console.error('');
+}
+
 console.error(
-  '\nSplit each into an app-only changeset and a library-only changeset ' +
-    '(run `pnpm changeset` twice).',
+  'Split each listed file into one changeset per release lane ' +
+    '(run `pnpm changeset` once for each product or library lane).',
 );
 process.exit(1);

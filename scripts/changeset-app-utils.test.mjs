@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import {
   classifyChangeset,
   isMixedChangeset,
+  isMultiProductChangeset,
   nextBetaVersion,
   parseChangeset,
   readChangesets,
@@ -55,8 +56,10 @@ test('classifyChangeset splits app vs library releases', () => {
       { name: '@codaco/interview', type: 'patch' },
     ],
   };
-  const { appReleases, libReleases } = classifyChangeset(cs);
-  assert.deepEqual(appReleases, [{ name: '@codaco/architect', type: 'minor' }]);
+  const { productReleases, libReleases } = classifyChangeset(cs);
+  assert.deepEqual(productReleases, [
+    { name: '@codaco/architect', type: 'minor' },
+  ]);
   assert.deepEqual(libReleases, [{ name: '@codaco/interview', type: 'patch' }]);
 });
 
@@ -74,6 +77,17 @@ test('isMixedChangeset: true only when an app and a library share one changeset'
   assert.equal(isMixedChangeset(lib), false);
   assert.equal(isMixedChangeset(both), true);
   assert.equal(isMixedChangeset(twoApps), false); // both ignored → not "mixed"
+});
+
+test('isMultiProductChangeset: true only when gated products share one changeset', () => {
+  const app = { releases: [{ name: '@codaco/architect', type: 'minor' }] };
+  const lib = { releases: [{ name: '@codaco/interview', type: 'minor' }] };
+  const twoApps = {
+    releases: [...app.releases, { name: '@codaco/interviewer', type: 'patch' }],
+  };
+  assert.equal(isMultiProductChangeset(app), false);
+  assert.equal(isMultiProductChangeset(lib), false);
+  assert.equal(isMultiProductChangeset(twoApps), true);
 });
 
 test('nextBetaVersion increments only the beta counter', () => {

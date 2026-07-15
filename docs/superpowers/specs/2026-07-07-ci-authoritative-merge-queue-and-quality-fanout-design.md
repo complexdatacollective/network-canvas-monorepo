@@ -35,7 +35,7 @@ single change's release lifecycle it therefore runs four times:
 
 1. Feature PR — every commit (needed).
 2. Feature PR merges → push to `main` — gates deploys; opens the bot version PRs.
-3. The bot "Version Packages" / "Release apps" PR — `pull_request` events.
+3. The bot "Version Packages" / per-product release PRs — `pull_request` events.
 4. Version PR merges → push to `main` — gates the **irreversible npm publish**
    (`release` is `needs: quality`, `if: main && push`).
 
@@ -151,7 +151,7 @@ land.
 through a green queue run, remove the push-time quality dependency from the six
 push-to-`main` jobs:
 
-- `release`, `apps-release-pr`, `apps-release-detect`, `legacy-release-detect` →
+- `release`, `product-release-pr`, `apps-release-detect`, `legacy-release-detect` →
   remove `needs: quality` (keep their `if: push && main`).
 - `deploy-docs-prod`, `deploy-website-prod` → drop `quality` from `needs` and the
   `needs.quality.result == 'success'` clause; keep `needs: detect`, the

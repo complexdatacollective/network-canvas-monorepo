@@ -3,27 +3,42 @@ import test from 'node:test';
 
 import { releaseE2EPolicy, releaseRefForEvent } from './release-e2e-policy.mjs';
 
-test('recognises only the two generated release PR refs', () => {
-  assert.equal(
-    releaseRefForEvent({
-      eventName: 'pull_request',
-      headRef: 'changeset-release/main',
-      refName: '7/merge',
-    }),
+test('recognises only the generated release PR refs', () => {
+  for (const releaseRef of [
+    'changeset-release/architect',
+    'changeset-release/documentation',
+    'changeset-release/interviewer',
     'changeset-release/main',
-  );
-  assert.equal(
-    releaseRefForEvent({
-      eventName: 'workflow_dispatch',
-      headRef: '',
-      refName: 'changeset-release/apps',
-    }),
-    'changeset-release/apps',
-  );
+  ]) {
+    assert.equal(
+      releaseRefForEvent({
+        eventName: 'pull_request',
+        headRef: releaseRef,
+        refName: '7/merge',
+      }),
+      releaseRef,
+    );
+    assert.equal(
+      releaseRefForEvent({
+        eventName: 'workflow_dispatch',
+        headRef: '',
+        refName: releaseRef,
+      }),
+      releaseRef,
+    );
+  }
   assert.equal(
     releaseRefForEvent({
       eventName: 'pull_request',
       headRef: 'changeset-release/not-a-release',
+      refName: '',
+    }),
+    '',
+  );
+  assert.equal(
+    releaseRefForEvent({
+      eventName: 'pull_request',
+      headRef: 'changeset-release/apps',
       refName: '',
     }),
     '',
@@ -39,28 +54,25 @@ test('recognises only the two generated release PR refs', () => {
 });
 
 test('release PR and dispatch policies carry the child PR target', () => {
-  assert.deepEqual(
-    releaseE2EPolicy({
-      eventName: 'pull_request',
-      headRef: 'changeset-release/main',
-    }),
-    {
-      required: true,
-      releaseRef: 'changeset-release/main',
-      snapshotBranch: 'e2e-snapshots/changeset-release-main',
-    },
-  );
-  assert.deepEqual(
-    releaseE2EPolicy({
-      eventName: 'workflow_dispatch',
-      refName: 'changeset-release/apps',
-    }),
-    {
-      required: true,
-      releaseRef: 'changeset-release/apps',
-      snapshotBranch: 'e2e-snapshots/changeset-release-apps',
-    },
-  );
+  for (const [eventName, releaseRef] of [
+    ['pull_request', 'changeset-release/main'],
+    ['workflow_dispatch', 'changeset-release/architect'],
+    ['workflow_dispatch', 'changeset-release/documentation'],
+    ['workflow_dispatch', 'changeset-release/interviewer'],
+  ]) {
+    assert.deepEqual(
+      releaseE2EPolicy({
+        eventName,
+        headRef: eventName === 'pull_request' ? releaseRef : '',
+        refName: eventName === 'workflow_dispatch' ? releaseRef : '',
+      }),
+      {
+        required: true,
+        releaseRef,
+        snapshotBranch: `e2e-snapshots/${releaseRef.replace('/', '-')}`,
+      },
+    );
+  }
 });
 
 test('merge groups require E2E only when a release version changed', () => {

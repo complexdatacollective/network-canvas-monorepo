@@ -1,5 +1,5 @@
 ---
-'@codaco/architect': minor
+'@codaco/interviewer': minor
 ---
 
 Let researchers choose where an interview continues when a stage is skipped:
