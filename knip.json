@@ -39,6 +39,15 @@
     "packages/protocol-validation": {},
     "packages/network-exporters": {},
     "packages/interface-images": {},
+    "packages/site-navigation-element": {
+      "entry": ["src/element.tsx", "scripts/build.mjs"],
+      "ignoreDependencies": [
+        "@fontsource-variable/inclusive-sans",
+        "@fontsource-variable/nunito",
+        "@tailwindcss/cli",
+        "playwright"
+      ]
+    },
     "tooling/tailwind": {
       "entry": [
         "shared/plugins/elevation/index.ts",

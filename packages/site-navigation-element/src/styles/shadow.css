@@ -1,0 +1,18 @@
+/*
+ * Tailwind entry for the <nc-site-navigation> shadow stylesheet.
+ * Compiled by scripts/build.mjs via @tailwindcss/cli, then post-processed:
+ * `:root` is rewritten to `:is(:root, :host)` and `@property` rules are
+ * hoisted to a document-level stylesheet (neither applies inside a shadow
+ * root as-authored).
+ */
+@import '@codaco/tailwind-config/fresco.css';
+
+@source '../../node_modules/@codaco/fresco-ui/dist/navigation/SiteNavigation.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/navigation/SiteNavigation.messages.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/Button.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/Spinner.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/PortalContainer.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/typography/Heading.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/typography/Paragraph.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/utils/cva.js';
+@source '../*.tsx';
