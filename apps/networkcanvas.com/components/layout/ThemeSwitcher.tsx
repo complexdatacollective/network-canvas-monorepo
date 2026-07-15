@@ -54,7 +54,7 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
           view === 'desktop' ? (
             <IconButton
               aria-label={triggerLabel}
-              icon={<SelectedIcon aria-hidden strokeWidth={2.5} />}
+              icon={<SelectedIcon aria-hidden strokeWidth={3} />}
               size="lg"
               variant="text"
               color="dynamic"
@@ -88,7 +88,7 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
         >
           {themeOptions.map(({ id, icon: OptionIcon }) => (
             <DropdownMenuRadioItem key={id} value={id} closeOnClick>
-              <OptionIcon aria-hidden strokeWidth={2.5} />
+              <OptionIcon aria-hidden strokeWidth={3} />
               {t(id)}
             </DropdownMenuRadioItem>
           ))}

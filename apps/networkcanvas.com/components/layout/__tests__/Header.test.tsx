@@ -78,7 +78,7 @@ describe('localized layout navigation', () => {
       name: 'Color theme: System',
     });
     expect(trigger).toHaveClass('h-16');
-    expect(trigger.querySelector('svg')).toHaveAttribute('stroke-width', '2.5');
+    expect(trigger.querySelector('svg')).toHaveAttribute('stroke-width', '3');
   });
 
   it('renders translated footer links and language selection', () => {
