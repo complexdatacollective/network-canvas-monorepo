@@ -188,7 +188,14 @@ describe('Cross-reference conformance', () => {
             type: 'OrdinalBin',
             label: 'Ordinal',
             subject: { entity: 'node', type: 'person' },
-            prompts: [{ id: 'p1', text: 'rank', variable: 'strength' }],
+            prompts: [
+              {
+                id: 'p1',
+                text: 'rank',
+                variable: 'strength',
+                color: 'ord-color-seq-1',
+              },
+            ],
           },
         ],
       };
@@ -206,7 +213,14 @@ describe('Cross-reference conformance', () => {
             type: 'OrdinalBin',
             label: 'Ordinal',
             subject: { entity: 'node', type: 'person' },
-            prompts: [{ id: 'p1', text: 'rank', variable: 'category' }],
+            prompts: [
+              {
+                id: 'p1',
+                text: 'rank',
+                variable: 'category',
+                color: 'ord-color-seq-1',
+              },
+            ],
           },
         ],
       };

@@ -426,7 +426,8 @@
         {
           "id": "closeness-bands",
           "text": "Drag each person into the band that best describes how close you feel to them, from **not close** to **very close**.",
-          "variable": "closeness"
+          "variable": "closeness",
+          "color": "ord-color-seq-1"
         }
       ]
     },

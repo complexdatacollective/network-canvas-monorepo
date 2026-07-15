@@ -410,6 +410,7 @@
           "id": "contactFreq",
           "text": "Contact frequency ordinal variable for close ties only",
           "variable": "1096204b-48fe-444c-b642-4ab211f7f57c",
+          "color": "ord-color-seq-1",
           "bucketSortOrder": [
             {
               "property": "0e75ec18-2cb1-4606-9f18-034d28b07c19",

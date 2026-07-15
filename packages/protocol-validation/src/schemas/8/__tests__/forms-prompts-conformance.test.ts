@@ -349,9 +349,9 @@ describe('Forms & prompts schema conformance', () => {
       expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
     });
 
-    it('accepts a prompt with no color', () => {
+    it('rejects a prompt with no color', () => {
       const protocol = createProtocol([ordinalBinStage({})]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects a color outside the ord-color-seq palette', () => {

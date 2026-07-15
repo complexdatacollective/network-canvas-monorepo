@@ -25,7 +25,10 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     type: 'NameGenerator',
     label: 'Name some people',
     subject: { entity: 'node', type: 'person' },
-    form: { fields: [{ variable: 'name', prompt: 'Name' }] },
+    form: {
+      title: 'Add person',
+      fields: [{ variable: 'name', prompt: 'Name' }],
+    },
     prompts: [{ id: 'prompt-1', text: 'Who do you know?' }],
     ...stageOverrides,
   } as Stage;

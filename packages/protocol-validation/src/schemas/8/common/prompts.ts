@@ -80,7 +80,7 @@ export const ordinalBinPromptSchema = promptSchema.extend({
   variable: entityAttributeReference({ subject: 'stageSubject' }),
   bucketSortOrder: SortOrderSchema.optional(),
   binSortOrder: SortOrderSchema.optional(),
-  color: z.enum(ordinalColorSequence).optional(),
+  color: z.enum(ordinalColorSequence),
 });
 
 export const categoricalBinPromptSchema = promptSchema

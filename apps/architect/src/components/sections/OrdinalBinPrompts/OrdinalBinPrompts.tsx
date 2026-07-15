@@ -1,6 +1,7 @@
 import { compose } from 'react-recompose';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { ordinalColorSequence } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
 import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
 import withSubject from '~/components/enhancers/withSubject';
@@ -12,7 +13,9 @@ import { PromptPreview } from '~/components/sections/NameGeneratorPrompts';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
 import PromptFields from './PromptFields';
-const template = () => ({ color: 'ord-color-seq-1' });
+const template = (index: number) => ({
+  color: ordinalColorSequence[index % ordinalColorSequence.length],
+});
 const notEmpty = (value: unknown) =>
   value && Array.isArray(value) && value.length > 0
     ? undefined

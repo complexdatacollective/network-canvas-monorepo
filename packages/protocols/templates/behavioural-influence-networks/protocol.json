@@ -355,7 +355,8 @@
         {
           "id": "p-closeness",
           "text": "Place each person by **how close you feel to them**. Closer ties tend to have a stronger influence on our behaviour.",
-          "variable": "closeness"
+          "variable": "closeness",
+          "color": "ord-color-seq-1"
         }
       ]
     },

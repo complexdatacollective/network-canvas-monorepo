@@ -80,7 +80,7 @@ const migrationV7toV8 = createMigration({
 - The Information stage \`title\` (page heading) is now required. Any Information stage without one is given its stage label as the title, or "Information" when no label was authored.
 - The NameGenerator \`form.title\` (heading of the add-a-person dialog) is now required. Any NameGenerator form without one is given "Add {node type name}" (e.g. "Add Person").
 - The Sociogram and Narrative \`background\` is now required and must be exactly one of its two variants: an image (\`image\` set, no \`concentricCircles\`) or concentric circles (\`concentricCircles\` set to a positive whole number, no \`image\`). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise \`concentricCircles\` defaults to 4, matching what the interview already rendered.
-- An OrdinalBin prompt \`color\` is now restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored, and is removed so the prompt uses the default colour.
+- An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color are assigned one from the palette by prompt position.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored. Such orphaned properties are removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 `,
@@ -361,17 +361,17 @@ const migrationV7toV8 = createMigration({
       },
       {
         // An OrdinalBin prompt color outside the ten-value ord-color-seq
-        // palette was silently ignored by the interview. V8 restricts color to
-        // that palette; drop any other value so the prompt falls back to the
-        // runtime's default colour.
+        // palette was silently ignored by the interview. V8 requires a color
+        // from that palette; drop any other value, then give colorless
+        // prompts an index-based palette colour.
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
           if (typeof stage !== 'object' || stage === null) return stage;
           const typedStage = stage as Record<string, unknown>;
           if (typedStage.type !== 'OrdinalBin') return stage;
           if (!Array.isArray(typedStage.prompts)) return stage;
-          for (const prompt of typedStage.prompts) {
-            if (typeof prompt !== 'object' || prompt === null) continue;
+          typedStage.prompts.forEach((prompt: unknown, index: number) => {
+            if (typeof prompt !== 'object' || prompt === null) return;
             const typedPrompt = prompt as Record<string, unknown>;
             if (
               'color' in typedPrompt &&
@@ -379,7 +379,11 @@ const migrationV7toV8 = createMigration({
             ) {
               delete typedPrompt.color;
             }
-          }
+            if (!('color' in typedPrompt)) {
+              typedPrompt.color =
+                ordinalColorSequence[index % ordinalColorSequence.length];
+            }
+          });
           return stage;
         },
       },

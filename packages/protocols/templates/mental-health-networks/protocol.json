@@ -524,12 +524,14 @@
         {
           "id": "bin-closeness",
           "text": "Drag each person into the band that best describes **how close you feel to them**.",
-          "variable": "closeness"
+          "variable": "closeness",
+          "color": "ord-color-seq-1"
         },
         {
           "id": "bin-contact-frequency",
           "text": "Now drag the same people into the band that best describes **how often you are usually in contact** with them.",
-          "variable": "contact_frequency"
+          "variable": "contact_frequency",
+          "color": "ord-color-seq-2"
         }
       ]
     },

@@ -2344,7 +2344,7 @@ describe('Migration V7 to V8', () => {
         ],
       }) as Protocol<7>;
 
-    it('drops a color outside the ord-color-seq palette', () => {
+    it('replaces a color outside the ord-color-seq palette', () => {
       const migratedRaw = migrationV7toV8.migrate(
         buildOrdinalProtocol({ color: 'coral' }),
         { name: 'Test Protocol' },
@@ -2352,7 +2352,7 @@ describe('Migration V7 to V8', () => {
       const parsed = ProtocolSchemaV8.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).not.toHaveProperty('color');
+        expect(stage.prompts[0]).toHaveProperty('color', 'ord-color-seq-1');
       }
     });
 
@@ -2368,14 +2368,27 @@ describe('Migration V7 to V8', () => {
       }
     });
 
-    it('leaves a prompt without color untouched', () => {
-      const migratedRaw = migrationV7toV8.migrate(buildOrdinalProtocol({}), {
+    it('assigns colorless prompts a palette color by position', () => {
+      const protocol = buildOrdinalProtocol({});
+      const typedStages = protocol.stages as Array<Record<string, unknown>>;
+      (typedStages[0]!.prompts as Array<Record<string, unknown>>).push(
+        { id: 'p2', text: 'Rate again', variable: 'rating' },
+        {
+          id: 'p3',
+          text: 'Rate once more',
+          variable: 'rating',
+          color: 'ord-color-seq-7',
+        },
+      );
+      const migratedRaw = migrationV7toV8.migrate(protocol, {
         name: 'Test Protocol',
       });
       const parsed = ProtocolSchemaV8.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).not.toHaveProperty('color');
+        expect(stage.prompts[0]).toHaveProperty('color', 'ord-color-seq-1');
+        expect(stage.prompts[1]).toHaveProperty('color', 'ord-color-seq-2');
+        expect(stage.prompts[2]).toHaveProperty('color', 'ord-color-seq-7');
       }
     });
   });

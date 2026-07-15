@@ -595,7 +595,8 @@
         {
           "id": "bin-closeness",
           "text": "Sort each person by **how close you feel** to them.",
-          "variable": "closeness"
+          "variable": "closeness",
+          "color": "ord-color-seq-1"
         }
       ]
     },

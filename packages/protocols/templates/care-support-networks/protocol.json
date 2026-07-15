@@ -449,7 +449,8 @@
         {
           "id": "p-reliance",
           "text": "Thinking about your care and the baby, **how much do you rely on each person** for support overall? Drag each person into the band that fits best.",
-          "variable": "reliance"
+          "variable": "reliance",
+          "color": "ord-color-seq-1"
         }
       ]
     },
