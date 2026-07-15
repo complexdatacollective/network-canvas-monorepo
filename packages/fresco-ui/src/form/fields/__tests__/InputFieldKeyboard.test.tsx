@@ -5,7 +5,13 @@ import { describe, expect, it } from 'vitest';
 
 import InputField from '../InputField';
 
-function ControlledNumberInput({ preventStep = false }) {
+function ControlledNumberInput({
+  preventStep = false,
+  step,
+}: {
+  preventStep?: boolean;
+  step?: number | 'any';
+}) {
   const [value, setValue] = useState('5');
 
   return (
@@ -14,6 +20,7 @@ function ControlledNumberInput({ preventStep = false }) {
       aria-label="Count"
       min={0}
       max={10}
+      step={step}
       value={value}
       onChange={(nextValue) => setValue(nextValue ?? '')}
       onKeyDown={preventStep ? (event) => event.preventDefault() : undefined}
@@ -44,5 +51,22 @@ describe('InputField number keyboard stepping', () => {
     await user.keyboard('{ArrowUp}');
 
     expect(input).toHaveValue(5);
+  });
+
+  it('leaves step-any arrow keys alone and disables discrete steppers', async () => {
+    const user = userEvent.setup();
+    render(<ControlledNumberInput step="any" />);
+    const input = screen.getByRole('spinbutton', { name: 'Count' });
+
+    await user.click(input);
+    await user.keyboard('{ArrowUp}{ArrowDown}');
+
+    expect(input).toHaveValue(5);
+    expect(
+      screen.getByRole('button', { name: 'Decrease value' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Increase value' }),
+    ).toBeDisabled();
   });
 });

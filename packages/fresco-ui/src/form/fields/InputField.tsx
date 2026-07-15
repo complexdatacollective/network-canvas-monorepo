@@ -170,11 +170,12 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
     const internalRef = useRef<HTMLInputElement>(null);
     const isNumber = type === 'number';
     const isInteractive = !disabled && !readOnly;
+    const canStep = isInteractive && inputProps.step !== 'any';
 
     const handleStep = useCallback(
       (direction: 'up' | 'down') => {
         const input = internalRef.current;
-        if (!input) return;
+        if (!input || input.step === 'any') return;
 
         if (direction === 'up') {
           input.stepUp();
@@ -224,7 +225,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
             if (
               event.defaultPrevented ||
               !isNumber ||
-              !isInteractive ||
+              !canStep ||
               (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')
             ) {
               return;
@@ -251,7 +252,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         <IconButton
           size={size}
           color="default"
-          disabled={!isInteractive}
+          disabled={!canStep}
           onClick={() => handleStep('down')}
           aria-label="Decrease value"
           tabIndex={-1}
@@ -274,7 +275,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         <IconButton
           size={size}
           color="default"
-          disabled={!isInteractive}
+          disabled={!canStep}
           onClick={() => handleStep('up')}
           aria-label="Increase value"
           tabIndex={-1}
