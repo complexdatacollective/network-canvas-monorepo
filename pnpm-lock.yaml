@@ -105,12 +105,6 @@ catalogs:
     '@testing-library/react':
       specifier: ^16.3.2
       version: 16.3.2
-    '@types/react':
-      specifier: ^19.2.17
-      version: 19.2.17
-    '@types/react-dom':
-      specifier: ^19.2.3
-      version: 19.2.3
     '@vitejs/plugin-react':
       specifier: ^6.0.3
       version: 6.0.3
@@ -231,6 +225,8 @@ overrides:
   cheerio: 1.0.0-rc.12
   immer: ^11.1.8
   '@types/node': ^24.13.3
+  '@types/react': ^19.2.17
+  '@types/react-dom': ^19.2.3
   '@microsoft/api-extractor>typescript': npm:@typescript/typescript6@^6.0.2
   slate>immer: ^5.3.0
   slate-history>immer: ^5.3.0
@@ -418,10 +414,10 @@ importers:
         specifier: ^3.7.1
         version: 3.7.1
       '@types/react':
-        specifier: 'catalog:'
+        specifier: ^19.2.17
         version: 19.2.17
       '@types/react-dom':
-        specifier: 'catalog:'
+        specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       '@types/recompose':
         specifier: ^0.30.15
@@ -510,7 +506,7 @@ importers:
         version: 5.8.6(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       '@material-ui/icons':
         specifier: ^4.11.3
-        version: 4.11.3(@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+        version: 4.11.3(@material-ui/core@4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.9.1
@@ -765,10 +761,10 @@ importers:
         specifier: ^24.13.3
         version: 24.13.3
       '@types/react':
-        specifier: 'catalog:'
+        specifier: ^19.2.17
         version: 19.2.17
       '@types/react-dom':
-        specifier: 'catalog:'
+        specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       '@types/unist':
         specifier: ^3.0.3
@@ -952,10 +948,10 @@ importers:
         specifier: ^14.6.1
         version: 14.6.1(@testing-library/dom@10.4.1)
       '@types/react':
-        specifier: 'catalog:'
+        specifier: ^19.2.17
         version: 19.2.17
       '@types/react-dom':
-        specifier: 'catalog:'
+        specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       '@vite-pwa/assets-generator':
         specifier: ^1.0.2
@@ -1095,13 +1091,13 @@ importers:
         version: 0.0.2
       '@codaco/ui':
         specifier: ~5.8.6
-        version: 5.8.6(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+        version: 5.8.6(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       '@faker-js/faker':
         specifier: ~6.0.0
         version: 6.0.0
       '@material-ui/icons':
         specifier: ^4.11.3
-        version: 4.11.3(@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+        version: 4.11.3(@material-ui/core@4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.0.3(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.23.0)(yaml@2.9.0))
@@ -1332,10 +1328,10 @@ importers:
         specifier: ^24.13.3
         version: 24.13.3
       '@types/react':
-        specifier: 'catalog:'
+        specifier: ^19.2.17
         version: 19.2.17
       '@types/react-dom':
-        specifier: 'catalog:'
+        specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       '@vitejs/plugin-react':
         specifier: 'catalog:'
@@ -1399,10 +1395,10 @@ importers:
         specifier: ^24.13.3
         version: 24.13.3
       '@types/react':
-        specifier: 'catalog:'
+        specifier: ^19.2.17
         version: 19.2.17
       '@types/react-dom':
-        specifier: 'catalog:'
+        specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       '@vitejs/plugin-react':
         specifier: 'catalog:'
@@ -1585,10 +1581,10 @@ importers:
         specifier: ^24.13.3
         version: 24.13.3
       '@types/react':
-        specifier: 'catalog:'
+        specifier: ^19.2.17
         version: 19.2.17
       '@types/react-dom':
-        specifier: 'catalog:'
+        specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       '@vitejs/plugin-react':
         specifier: 'catalog:'
@@ -1643,7 +1639,7 @@ importers:
         specifier: ^24.13.3
         version: 24.13.3
       '@types/react':
-        specifier: 'catalog:'
+        specifier: ^19.2.17
         version: 19.2.17
       jsdom:
         specifier: 'catalog:'
@@ -1803,10 +1799,10 @@ importers:
         specifier: ^24.13.3
         version: 24.13.3
       '@types/react':
-        specifier: 'catalog:'
+        specifier: ^19.2.17
         version: 19.2.17
       '@types/react-dom':
-        specifier: 'catalog:'
+        specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       '@types/redux-logger':
         specifier: ^3.0.13
@@ -2085,10 +2081,10 @@ importers:
         specifier: ^24.13.3
         version: 24.13.3
       '@types/react':
-        specifier: 'catalog:'
+        specifier: ^19.2.17
         version: 19.2.17
       '@types/react-dom':
-        specifier: 'catalog:'
+        specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       '@vitest/browser-playwright':
         specifier: 'catalog:'
@@ -2851,7 +2847,7 @@ packages:
     engines: {node: '>=14.0.0'}
     peerDependencies:
       '@date-fns/tz': ^1.2.0
-      '@types/react': ^17 || ^18 || ^19
+      '@types/react': ^19.2.17
       date-fns: ^4.0.0
       react: ^17 || ^18 || ^19
       react-dom: ^17 || ^18 || ^19
@@ -2866,7 +2862,7 @@ packages:
   '@base-ui/utils@0.2.9':
     resolution: {integrity: sha512-x/PDDCYzoqPpjrdyb3VcyylTI2IjUXEtYDGi5foh7KsnmNJIIaVwA2GLgDH1dps1GgXiJbA60hM+AyuTfQzIvw==}
     peerDependencies:
-      '@types/react': ^17 || ^18 || ^19
+      '@types/react': ^19.2.17
       react: ^17 || ^18 || ^19
       react-dom: ^17 || ^18 || ^19
     peerDependenciesMeta:
@@ -3355,7 +3351,7 @@ packages:
   '@docsearch/core@4.6.3':
     resolution: {integrity: sha512-rUOujwIpxJRgD7+kicVsI3D5sqBvdiRTquzWBpTEXZs8ZXfGbfzpus5HqumaNYTppN2HvH8E2yNuRwYdHJeOlA==}
     peerDependencies:
-      '@types/react': '>= 16.8.0 < 20.0.0'
+      '@types/react': ^19.2.17
       react: '>= 16.8.0 < 20.0.0'
       react-dom: '>= 16.8.0 < 20.0.0'
     peerDependenciesMeta:
@@ -3372,7 +3368,7 @@ packages:
   '@docsearch/react@4.6.3':
     resolution: {integrity: sha512-Bg2wdDsoQVlNCcEKuEJAU04tvHCqgx8rIu+uIoM4pRtcx3TBKJuXutJik3LTA8LRc9YEyHkrYUrmcC0D7BYf+g==}
     peerDependencies:
-      '@types/react': '>= 16.8.0 < 20.0.0'
+      '@types/react': ^19.2.17
       react: '>= 16.8.0 < 20.0.0'
       react-dom: '>= 16.8.0 < 20.0.0'
       search-insights: '>= 1 < 3'
@@ -4440,7 +4436,7 @@ packages:
     engines: {node: '>=8.0.0'}
     deprecated: Material UI v4 doesn't receive active development since September 2021. See the guide https://mui.com/material-ui/migration/migration-v4/ to upgrade to v5.
     peerDependencies:
-      '@types/react': ^16.8.6 || ^17.0.0
+      '@types/react': ^19.2.17
       react: ^16.8.0 || ^17.0.0
       react-dom: ^16.8.0 || ^17.0.0
     peerDependenciesMeta:
@@ -4452,7 +4448,7 @@ packages:
     engines: {node: '>=8.0.0'}
     peerDependencies:
       '@material-ui/core': ^4.0.0
-      '@types/react': ^16.8.6 || ^17.0.0
+      '@types/react': ^19.2.17
       react: ^16.8.0 || ^17.0.0
       react-dom: ^16.8.0 || ^17.0.0
     peerDependenciesMeta:
@@ -4464,7 +4460,7 @@ packages:
     engines: {node: '>=8.0.0'}
     deprecated: Material UI v4 doesn't receive active development since September 2021. See the guide https://mui.com/material-ui/migration/migration-v4/ to upgrade to v5.
     peerDependencies:
-      '@types/react': ^16.8.6 || ^17.0.0
+      '@types/react': ^19.2.17
       react: ^16.8.0 || ^17.0.0
       react-dom: ^16.8.0 || ^17.0.0
     peerDependenciesMeta:
@@ -4475,7 +4471,7 @@ packages:
     resolution: {integrity: sha512-6CSKu2MtmiJgcCGf6nBQpM8fLkuB9F55EKfbdTC80NND5wpTmKzwdhLYLH3zL4cLlK0gVaaltW7/wMuyTnN0Lw==}
     engines: {node: '>=8.0.0'}
     peerDependencies:
-      '@types/react': ^16.8.6 || ^17.0.0
+      '@types/react': ^19.2.17
       react: ^16.8.0 || ^17.0.0
       react-dom: ^16.8.0 || ^17.0.0
     peerDependenciesMeta:
@@ -4485,7 +4481,7 @@ packages:
   '@material-ui/types@5.1.0':
     resolution: {integrity: sha512-7cqRjrY50b8QzRSYyhSpx4WRw2YuO0KKIGQEVk5J8uoz2BanawykgZGoWEqKm7pVIbzFDN0SpPcVV4IhOFkl8A==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^19.2.17
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -4500,7 +4496,7 @@ packages:
   '@mdx-js/react@3.1.1':
     resolution: {integrity: sha512-f++rKLQgUVYDAtECQ6fn/is15GkEH9+nZPM3MS0RcxVqoTfawHvDlSCH7JbMhAM6uJ32v3eXLvLmLvjGu7PTQw==}
     peerDependencies:
-      '@types/react': '>=16'
+      '@types/react': ^19.2.17
       react: '>=16'
 
   '@microflash/rehype-figure@2.1.4':
@@ -5564,7 +5560,7 @@ packages:
   '@posthog/react@1.9.1':
     resolution: {integrity: sha512-tIGjs8WzKPrHQmSyM/2a3GoedQkttkxgmCsdn0kgy+6mIiSNk36FAFGKbWFJ7/Kln5bHwcM/MQhiGYbwQG8bQQ==}
     peerDependencies:
-      '@types/react': '>=16.8.0'
+      '@types/react': ^19.2.17
       posthog-js: '>=1.257.2'
       react: '>=16.8.0'
     peerDependenciesMeta:
@@ -5622,8 +5618,8 @@ packages:
   '@radix-ui/react-collapsible@1.1.12':
     resolution: {integrity: sha512-Uu+mSh4agx2ib1uIGPP4/CKNULyajb3p92LsVXmH2EHVMTfZWpll88XJ0j4W0z3f8NK1eYl1+Mf/szHPmcHzyA==}
     peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
+      '@types/react': ^19.2.17
+      '@types/react-dom': ^19.2.3
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
       react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
@@ -5635,7 +5631,7 @@ packages:
   '@radix-ui/react-compose-refs@1.1.2':
     resolution: {integrity: sha512-z4eqJvfiNnFMHIIvXP3CY57y2WJs5g2v3X0zm9mEJkrkNv4rDxu+sg9Jh8EkXyeqBkB7SOcboo9dMVqhyrACIg==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^19.2.17
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
@@ -5644,7 +5640,7 @@ packages:
   '@radix-ui/react-context@1.1.2':
     resolution: {integrity: sha512-jCi/QKUM2r1Ju5a3J64TH2A5SpKAgh0LpknyqdQ4m6DCV0xJ2HG1xARRwNGPQfi1SLdLWZ1OJz6F4OMBBNiGJA==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^19.2.17
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
@@ -5653,7 +5649,7 @@ packages:
   '@radix-ui/react-id@1.1.1':
     resolution: {integrity: sha512-kGkGegYIdQsOb4XjsfM97rXsiHaBwco+hFI66oO4s9LU+PLAC5oJ7khdOVFxkhsmlbpUqDAvXw11CluXP+jkHg==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^19.2.17
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
@@ -5662,8 +5658,8 @@ packages:
   '@radix-ui/react-presence@1.1.5':
     resolution: {integrity: sha512-/jfEwNDdQVBCNvjkGit4h6pMOzq8bHkopq458dPt2lMjx+eBQUohZNG9A7DtO/O5ukSbxuaNGXMjHicgwy6rQQ==}
     peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
+      '@types/react': ^19.2.17
+      '@types/react-dom': ^19.2.3
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
       react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
@@ -5675,8 +5671,8 @@ packages:
   '@radix-ui/react-primitive@2.1.3':
     resolution: {integrity: sha512-m9gTwRkhy2lvCPe6QJp4d3G1TYEUHn/FzJUtq9MjH46an1wJU+GdoGC5VLof8RX8Ft/DlpshApkhswDLZzHIcQ==}
     peerDependencies:
-      '@types/react': '*'
-      '@types/react-dom': '*'
+      '@types/react': ^19.2.17
+      '@types/react-dom': ^19.2.3
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
       react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
@@ -5688,7 +5684,7 @@ packages:
   '@radix-ui/react-slot@1.2.3':
     resolution: {integrity: sha512-aeNmHnBxbi2St0au6VBVC7JXFlhLlOnvIIlePNniyUNAClzmtAUEY8/pBiK3iHjufOlwA+c20/8jngo7xcrg8A==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^19.2.17
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
@@ -5697,7 +5693,7 @@ packages:
   '@radix-ui/react-slot@1.2.4':
     resolution: {integrity: sha512-Jl+bCv8HxKnlTLVrcDE8zTMJ09R9/ukw4qBs/oZClOfoQk/cOTbDn+NceXfV7j09YPVQUryJPHurafcSg6EVKA==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^19.2.17
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
@@ -5706,7 +5702,7 @@ packages:
   '@radix-ui/react-use-controllable-state@1.2.2':
     resolution: {integrity: sha512-BjasUjixPFdS+NKkypcyyN5Pmg83Olst0+c6vGov0diwTEo6mgdqVR6hxcEgFuh4QrAs7Rc+9KuGJ9TVCj0Zzg==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^19.2.17
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
@@ -5715,7 +5711,7 @@ packages:
   '@radix-ui/react-use-effect-event@0.0.2':
     resolution: {integrity: sha512-Qp8WbZOBe+blgpuUT+lw2xheLP8q0oatc9UpmiemEICxGvFLYmHm9QowVZGHtJlGbS6A6yJ3iViad/2cVjnOiA==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^19.2.17
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
@@ -5724,7 +5720,7 @@ packages:
   '@radix-ui/react-use-layout-effect@1.1.1':
     resolution: {integrity: sha512-RbJRS4UWQFkzHTTwVymMTUv8EqYhOp8dOOviLj2ugtTiXRaRQS7GLGxZTLL1jWhMeoSCf5zmcZkqTl9IiYfXcQ==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^19.2.17
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
@@ -6089,7 +6085,7 @@ packages:
   '@storybook/addon-docs@10.5.0':
     resolution: {integrity: sha512-kbZGdX+mysiY4xezhpcFEwzQ1zSXcMhSS3u09Qt8+w5XetCAMMSv/yAxzpi6z+YoH+EdQ53e1q3MFtPUkzkfUA==}
     peerDependencies:
-      '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      '@types/react': ^19.2.17
       storybook: ^10.5.0
     peerDependenciesMeta:
       '@types/react':
@@ -6152,8 +6148,8 @@ packages:
   '@storybook/react-dom-shim@10.5.0':
     resolution: {integrity: sha512-GwGA6zDj4Cfw6vGsdfPKfF39L0W6solNbbnjdjGa57m2ooASkidLhrXo2wgC9wh3o/jcfonmYPDRGY6sEhGDtg==}
     peerDependencies:
-      '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      '@types/react-dom': ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      '@types/react': ^19.2.17
+      '@types/react-dom': ^19.2.3
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       storybook: ^10.5.0
@@ -6178,8 +6174,8 @@ packages:
   '@storybook/react@10.5.0':
     resolution: {integrity: sha512-2IhddiREy7NqAqnFsEOfW6HBG7azIcLxhRQYploSsaemOncR29xhzvAZsG+xlWgrtvxv4h3fYQTTR4TNn8CgPQ==}
     peerDependencies:
-      '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      '@types/react-dom': ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      '@types/react': ^19.2.17
+      '@types/react-dom': ^19.2.3
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       storybook: ^10.5.0
@@ -6465,8 +6461,8 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@testing-library/dom': ^10.0.0
-      '@types/react': ^18.0.0 || ^19.0.0
-      '@types/react-dom': ^18.0.0 || ^19.0.0
+      '@types/react': ^19.2.17
+      '@types/react-dom': ^19.2.3
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
     peerDependenciesMeta:
@@ -6639,8 +6635,8 @@ packages:
     peerDependencies:
       '@tiptap/core': 3.27.3
       '@tiptap/pm': 3.27.3
-      '@types/react': ^17.0.0 || ^18.0.0 || ^19.0.0
-      '@types/react-dom': ^17.0.0 || ^18.0.0 || ^19.0.0
+      '@types/react': ^19.2.17
+      '@types/react-dom': ^19.2.3
       react: ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -6780,7 +6776,7 @@ packages:
   '@types/hoist-non-react-statics@3.3.7':
     resolution: {integrity: sha512-PQTyIulDkIDro8P+IHbKCsw7U2xxBYflVzW/FgWdCAePD9xGSidgA76/GeJ6lBKoblyhf9pBY763gbrN+1dI8g==}
     peerDependencies:
-      '@types/react': '*'
+      '@types/react': ^19.2.17
 
   '@types/http-cache-semantics@4.2.0':
     resolution: {integrity: sha512-L3LgimLHXtGkWikKnsPg0/VFx9OGZaC+eN1u4r+OB1XRqH3meBIAVC2zr1WdMH+RHmnRkqliQAOHNJ/E0j/e0Q==}
@@ -6833,7 +6829,7 @@ packages:
   '@types/react-dom@19.2.3':
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
     peerDependencies:
-      '@types/react': ^19.2.0
+      '@types/react': ^19.2.17
 
   '@types/react-redux@7.1.34':
     resolution: {integrity: sha512-GdFaVjEbYv4Fthm2ZLvj1VSCedV7TqE5y1kNwnjSdBOTXuRSgowux6J8TAct15T3CKBr63UMk+2CO7ilRhyrAQ==}
@@ -6841,10 +6837,7 @@ packages:
   '@types/react-transition-group@4.4.12':
     resolution: {integrity: sha512-8TV6R3h2j7a91c+1DXdJi3Syo69zzIZbz7Lg5tORM5LEJG7X/E6a1V3drRyBRZq7/utz7A+c4OgYLiLcYGHG6w==}
     peerDependencies:
-      '@types/react': '*'
-
-  '@types/react@17.0.93':
-    resolution: {integrity: sha512-KM4Ty/ZTLZupiYxZVAlP+InNJS3De6uBMdq0ePa6/04+eG9Y7ftnWfst1xTLQ5rwAhgHwQ4momt/O4KepdGBTw==}
+      '@types/react': ^19.2.17
 
   '@types/react@19.2.17':
     resolution: {integrity: sha512-MXfmqaVPEVgkBT/aY0aGCkRWWtByiYQXo3xdQ8r5RzuFrPiRn8Gar2tQdXSUQ2GKV3bkXckek89V8wQBY2Q/Aw==}
@@ -6866,9 +6859,6 @@ packages:
 
   '@types/responselike@1.0.3':
     resolution: {integrity: sha512-H/+L+UkTV33uf49PH5pCAUBVPNj2nDBXTN+qS1dOwyyg24l3CcicicCA7ca+HMvJBZcFgl5r8e+RR6elsb4Lyw==}
-
-  '@types/scheduler@0.16.8':
-    resolution: {integrity: sha512-WZLiwShhwLRmeV6zH+GkbOFT6Z6VklCItrDioxUnv+u4Ll+8vKeFySoFyK/0ctcRpOmwAicELfmys1sDc/Rw+A==}
 
   '@types/slice-ansi@4.0.0':
     resolution: {integrity: sha512-+OpjSaq85gvlZAYINyzKpLeiFkSC4EsC6IIiT6v6TLSU5k5U83fHGj9Lel8oKEXM0HqgrMVCjXPDPVICtxF7EQ==}
@@ -12139,13 +12129,13 @@ packages:
   react-markdown@10.1.0:
     resolution: {integrity: sha512-qKxVopLT/TyA6BX3Ue5NwabOsAzm0Q7kAPwq6L+wWDwisYs7R8vZ0nRXqq6rkueboxpkjvLGU9fWifiX/ZZFxQ==}
     peerDependencies:
-      '@types/react': '>=18'
+      '@types/react': ^19.2.17
       react: '>=18'
 
   react-markdown@6.0.3:
     resolution: {integrity: sha512-kQbpWiMoBHnj9myLlmZG9T1JdoT/OEyHK7hqM6CqFT14MAkgWiWBUYijLyBmxbntaN6dCDicPcUhWhci1QYodg==}
     peerDependencies:
-      '@types/react': '>=16'
+      '@types/react': ^19.2.17
       react: '>=16'
 
   react-merge-refs@1.1.0:
@@ -12171,7 +12161,7 @@ packages:
   react-redux@9.3.0:
     resolution: {integrity: sha512-KQopgqFo/p/fgmAs5qz6p5RWaNAzq40WAu7fJIXnQpYxFPbJYtsJPWvGeF2rOBaY/kEuV77AVsX8TsQzKm+A/g==}
     peerDependencies:
-      '@types/react': ^18.2.25 || ^19
+      '@types/react': ^19.2.17
       react: ^18.0 || ^19
       redux: ^5.0.0
     peerDependenciesMeta:
@@ -13051,7 +13041,7 @@ packages:
     resolution: {integrity: sha512-dRhM/kSSvHQR8DmZO41v5sJuz9U6zDjjR2gRBTgZN2RBSXbmF0Brvgszrvvxyx2VfxuYKzhB+xumKwWkwlBtig==}
     hasBin: true
     peerDependencies:
-      '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      '@types/react': ^19.2.17
       prettier: ^2 || ^3
       vite-plus: ^0.1.15 || ^0.2.0
     peerDependenciesMeta:
@@ -14407,7 +14397,7 @@ packages:
     resolution: {integrity: sha512-/8tAspM5LMPr28b3fwLYrtdj77ECpfZviaP75CMTnwO8ISyaE4GDIG/9rDDYq/cH9D2Xw2A2RXglLInmVBQB/g==}
     engines: {node: '>=12.20.0'}
     peerDependencies:
-      '@types/react': '>=18.0.0'
+      '@types/react': ^19.2.17
       immer: ^11.1.8
       react: '>=18.0.0'
       use-sync-external-store: '>=1.2.0'
@@ -15632,46 +15622,10 @@ snapshots:
 
   '@codaco/shared-consts@0.0.2': {}
 
-  '@codaco/ui@5.8.6(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
-    dependencies:
-      '@material-ui/core': 4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      '@productboard/slate-edit-list': 0.21.5(slate-react@0.57.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(slate@0.57.3))(slate@0.57.3)
-      '@storybook/theming': 6.5.16(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      animejs: 2.2.0
-      classnames: 2.5.1
-      emoji-dictionary: 1.0.12
-      framer-motion: 2.9.5(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      lodash: 4.18.1
-      luxon: 1.28.1
-      prop-types: 15.8.1
-      react: 16.14.0
-      react-compound-slider: 2.5.0(react@16.14.0)
-      react-dom: 16.14.0(react@16.14.0)
-      react-markdown: 6.0.3(@types/react@17.0.93)(react@16.14.0)
-      react-resize-aware: 3.1.3(react@16.14.0)
-      react-transition-group: 4.4.5(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      recompose: 0.30.0(react@16.14.0)
-      rehype-raw: 5.1.0
-      rehype-sanitize: 4.0.0
-      remark: 13.0.0
-      remark-parse: 9.0.0
-      remark-slate: 1.8.6
-      scrollparent: 2.1.0
-      slate: 0.57.3
-      slate-history: 0.59.0(slate@0.57.3)
-      slate-react: 0.57.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(slate@0.57.3)
-      strip-markdown: 4.2.0
-      unified: 9.2.2
-      uuid: 3.4.0
-    transitivePeerDependencies:
-      - '@types/react'
-      - supports-color
-
   '@codaco/ui@5.8.6(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
-      '@material-ui/core': 4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@material-ui/core': 4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       '@productboard/slate-edit-list': 0.21.5(slate-react@0.57.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(slate@0.57.3))(slate@0.57.3)
       '@storybook/theming': 6.5.16(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       animejs: 2.2.0
@@ -16888,14 +16842,14 @@ snapshots:
 
   '@mapbox/sphericalmercator@1.2.0': {}
 
-  '@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
+  '@material-ui/core@4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
       '@babel/runtime': 7.29.7
-      '@material-ui/styles': 4.11.5(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      '@material-ui/system': 4.12.2(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      '@material-ui/types': 5.1.0(@types/react@17.0.93)
+      '@material-ui/styles': 4.11.5(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@material-ui/system': 4.12.2(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@material-ui/types': 5.1.0(@types/react@19.2.17)
       '@material-ui/utils': 4.11.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      '@types/react-transition-group': 4.4.12(@types/react@17.0.93)
+      '@types/react-transition-group': 4.4.12(@types/react@19.2.17)
       clsx: 1.2.1
       hoist-non-react-statics: 3.3.2
       popper.js: 1.16.1-lts
@@ -16905,22 +16859,22 @@ snapshots:
       react-is: 17.0.2
       react-transition-group: 4.4.5(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
     optionalDependencies:
-      '@types/react': 17.0.93
+      '@types/react': 19.2.17
 
-  '@material-ui/icons@4.11.3(@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
+  '@material-ui/icons@4.11.3(@material-ui/core@4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
       '@babel/runtime': 7.29.7
-      '@material-ui/core': 4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@material-ui/core': 4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       react: 16.14.0
       react-dom: 16.14.0(react@16.14.0)
     optionalDependencies:
-      '@types/react': 17.0.93
+      '@types/react': 19.2.17
 
-  '@material-ui/styles@4.11.5(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
+  '@material-ui/styles@4.11.5(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@emotion/hash': 0.8.0
-      '@material-ui/types': 5.1.0(@types/react@17.0.93)
+      '@material-ui/types': 5.1.0(@types/react@19.2.17)
       '@material-ui/utils': 4.11.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       clsx: 1.2.1
       csstype: 2.6.21
@@ -16937,9 +16891,9 @@ snapshots:
       react: 16.14.0
       react-dom: 16.14.0(react@16.14.0)
     optionalDependencies:
-      '@types/react': 17.0.93
+      '@types/react': 19.2.17
 
-  '@material-ui/system@4.12.2(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
+  '@material-ui/system@4.12.2(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@material-ui/utils': 4.11.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
@@ -16948,11 +16902,11 @@ snapshots:
       react: 16.14.0
       react-dom: 16.14.0(react@16.14.0)
     optionalDependencies:
-      '@types/react': 17.0.93
+      '@types/react': 19.2.17
 
-  '@material-ui/types@5.1.0(@types/react@17.0.93)':
+  '@material-ui/types@5.1.0(@types/react@19.2.17)':
     optionalDependencies:
-      '@types/react': 17.0.93
+      '@types/react': 19.2.17
 
   '@material-ui/utils@4.11.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
@@ -18822,15 +18776,9 @@ snapshots:
       hoist-non-react-statics: 3.3.2
       redux: 4.2.1
 
-  '@types/react-transition-group@4.4.12(@types/react@17.0.93)':
+  '@types/react-transition-group@4.4.12(@types/react@19.2.17)':
     dependencies:
-      '@types/react': 17.0.93
-
-  '@types/react@17.0.93':
-    dependencies:
-      '@types/prop-types': 15.7.15
-      '@types/scheduler': 0.16.8
-      csstype: 3.2.3
+      '@types/react': 19.2.17
 
   '@types/react@19.2.17':
     dependencies:
@@ -18857,8 +18805,6 @@ snapshots:
   '@types/responselike@1.0.3':
     dependencies:
       '@types/node': 24.13.3
-
-  '@types/scheduler@0.16.8': {}
 
   '@types/slice-ansi@4.0.0': {}
 
@@ -25204,26 +25150,6 @@ snapshots:
       unified: 11.0.5
       unist-util-visit: 5.1.0
       vfile: 6.0.3
-    transitivePeerDependencies:
-      - supports-color
-
-  react-markdown@6.0.3(@types/react@17.0.93)(react@16.14.0):
-    dependencies:
-      '@types/hast': 2.3.10
-      '@types/react': 17.0.93
-      '@types/unist': 2.0.11
-      comma-separated-tokens: 1.0.8
-      prop-types: 15.8.1
-      property-information: 5.6.0
-      react: 16.14.0
-      react-is: 17.0.2
-      remark-parse: 9.0.0
-      remark-rehype: 8.1.0
-      space-separated-tokens: 1.1.5
-      style-to-object: 0.3.0
-      unified: 9.2.2
-      unist-util-visit: 2.0.3
-      vfile: 4.2.1
     transitivePeerDependencies:
       - supports-color
 
