@@ -4,15 +4,22 @@
  * `:root` is rewritten to `:is(:root, :host)` and `@property` rules are
  * hoisted to a document-level stylesheet (neither applies inside a shadow
  * root as-authored).
+ *
+ * `source(none)` disables Tailwind v4's automatic content detection, which
+ * otherwise roots at the monorepo `.git` and scans the *entire* workspace —
+ * baking in every utility class used by any package (interview, architect,
+ * other fresco-ui components), not just the ones this nav renders. The
+ * `@source` globs below scope detection back down to the nav's actual render
+ * closure. They use directory/brace globs rather than single-file paths:
+ * multiple explicit single-file `@source` directives into the
+ * symlinked+gitignored `node_modules/@codaco/fresco-ui/dist/*.js` scan
+ * unreliably and order-dependently under Tailwind v4, while glob forms scan
+ * reliably.
  */
-@import '@codaco/tailwind-config/fresco.css';
+@import '@codaco/tailwind-config/fresco.css' source(none);
 
-@source '../../node_modules/@codaco/fresco-ui/dist/navigation/SiteNavigation.js';
-@source '../../node_modules/@codaco/fresco-ui/dist/navigation/SiteNavigation.messages.js';
-@source '../../node_modules/@codaco/fresco-ui/dist/Button.js';
-@source '../../node_modules/@codaco/fresco-ui/dist/Spinner.js';
-@source '../../node_modules/@codaco/fresco-ui/dist/PortalContainer.js';
-@source '../../node_modules/@codaco/fresco-ui/dist/typography/Heading.js';
-@source '../../node_modules/@codaco/fresco-ui/dist/typography/Paragraph.js';
-@source '../../node_modules/@codaco/fresco-ui/dist/utils/cva.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/{Button,Spinner,PortalContainer}.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/navigation/*.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/typography/*.js';
+@source '../../node_modules/@codaco/fresco-ui/dist/styles/controlVariants.js';
 @source '../*.tsx';

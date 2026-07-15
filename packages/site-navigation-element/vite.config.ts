@@ -16,6 +16,7 @@ export default defineConfig(({ command }) => ({
       formats: ['es'],
       fileName: () => 'element.js',
     },
+    target: 'esnext',
     minify: true,
     sourcemap: true,
     emptyOutDir: true,
