@@ -144,15 +144,31 @@ describe('localized home sections', () => {
       'mx-auto',
     );
     expect(publicationCard?.closest('.max-w-none')).toBeInTheDocument();
+    const institutionsContainer = screen.getByRole('heading', {
+      name: 'Instituciones',
+    }).parentElement?.parentElement;
+    const institutionTargets = institutionsContainer?.querySelectorAll(
+      '[data-homepage-weave-target][data-homepage-weave-moving-target]',
+    );
+    expect(institutionTargets).toHaveLength(1);
     expect(
       screen
-        .getByRole('heading', { name: 'Instituciones' })
-        .closest('[data-homepage-weave-target]'),
-    ).toBeInTheDocument();
+        .getByRole('img', { name: 'University of Oxford' })
+        .closest('[data-homepage-weave-moving-target]'),
+    ).toBe(institutionTargets?.[0]);
+
+    const whatNextContainer = screen.getByRole('heading', {
+      name: '¿Qué sigue?',
+    }).parentElement;
+    expect(
+      whatNextContainer?.querySelectorAll(
+        '[data-homepage-weave-target][data-homepage-weave-moving-target]',
+      ),
+    ).toHaveLength(4);
     expect(
       screen
-        .getByRole('heading', { name: '¿Qué sigue?' })
-        .closest('[data-homepage-weave-target]'),
+        .getByRole('link', { name: 'Visitar el sitio de documentación' })
+        .closest('[data-homepage-weave-moving-target]'),
     ).toBeInTheDocument();
   });
 });

@@ -37,10 +37,7 @@ export function Institutions() {
   const t = useTranslations('Institutions');
 
   return (
-    <Container
-      data-homepage-weave-target
-      className="tablet-landscape:py-24 py-20"
-    >
+    <Container className="tablet-landscape:py-24 py-20">
       <SectionHeading title={t('heading')}>
         <Paragraph margin="none">
           {t.rich('paragraph1', {
@@ -53,7 +50,11 @@ export function Institutions() {
         </Paragraph>
       </SectionHeading>
 
-      <div className="mt-14 flex flex-wrap items-center justify-center gap-x-16 gap-y-10">
+      <div
+        data-homepage-weave-target
+        data-homepage-weave-moving-target
+        className="mt-14 flex flex-wrap items-center justify-center gap-x-16 gap-y-10"
+      >
         {institutions.map((inst) => (
           // Partner logos are fixed-colour brand assets. In dark mode they sit on
           // a light plate so dark marks (e.g. the Oxford wordmark) stay legible;
