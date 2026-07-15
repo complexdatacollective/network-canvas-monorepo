@@ -174,9 +174,12 @@ jobs:
             echo "snapshot_branch=$(jq -r '.snapshotBranch' <<< "$policy")"
           } >> "$GITHUB_OUTPUT"
 
-  # Route the e2e suites to the self-hosted runner when it is online, falling
-  # back to GitHub-hosted runners when it isn't. `runs-on` has no native
-  # fallback, so the e2e jobs consume this job's output via fromJSON().
+  # Route the @codaco/interview e2e suite — the longest of the three — to the
+  # self-hosted runner when it is online, falling back to GitHub-hosted when it
+  # isn't. Only that one suite: the runner has a single job slot, so sending
+  # all three would serialize them; interviewer-e2e and architect-e2e stay on
+  # GitHub-hosted and run in parallel. `runs-on` has no native fallback, so
+  # interview-e2e consumes this job's output via fromJSON().
   #
   # Listing self-hosted runners needs `administration:read`, which GITHUB_TOKEN
   # cannot hold, so the check uses the E2E_RUNNER_STATUS_TOKEN secret (a
@@ -218,16 +221,17 @@ jobs:
             echo "pw_workers=$pw_workers"
           } >> "$GITHUB_OUTPUT"
 
-  # pick-e2e-runner snapshots availability once, but the e2e jobs are scheduled
-  # later — if the self-hosted runner dies in between (or mid-queue, since the
-  # three suites serialize on one runner), the queued jobs would sit against
-  # dead labels for GitHub's 24h backstop, blocking the `quality` gate. This
-  # watchdog polls the run's own e2e jobs: queued-while-runner-ONLINE is normal
-  # (busy runner) and waits; queued-while-runner-OFFLINE for 5 consecutive
-  # checks cancels the run with a clear error — a rerun re-picks and falls back
-  # to GitHub-hosted. Only spawned when self-hosted was picked, which implies
-  # E2E_RUNNER_STATUS_TOKEN existed for pick-e2e-runner. continue-on-error:
-  # this job must never redden CI by itself; its only lever is the cancel.
+  # pick-e2e-runner snapshots availability once, but interview-e2e is scheduled
+  # later — if the self-hosted runner dies in between (or while the job queues
+  # behind another run's job on the single-slot runner), the queued job would
+  # sit against dead labels for GitHub's 24h backstop, blocking the `quality`
+  # gate. This watchdog polls the run's own interview-e2e job:
+  # queued-while-runner-ONLINE is normal (busy runner) and waits;
+  # queued-while-runner-OFFLINE for 5 consecutive checks cancels the run with a
+  # clear error — a rerun re-picks and falls back to GitHub-hosted. Only
+  # spawned when self-hosted was picked, which implies E2E_RUNNER_STATUS_TOKEN
+  # existed for pick-e2e-runner. continue-on-error: this job must never redden
+  # CI by itself; its only lever is the cancel.
   e2e-queue-watchdog:
     needs: [e2e-policy, pick-e2e-runner]
     if: >-
@@ -235,15 +239,15 @@ jobs:
       && needs.pick-e2e-runner.result == 'success'
       && contains(needs.pick-e2e-runner.outputs.runs_on, 'self-hosted') }}
     runs-on: ubuntu-latest
-    # Outlive three serialized 45-minute suites plus queueing behind other
-    # runs sharing the runner. Past this, GitHub's 24h queued-job limit is the
-    # backstop. Watchdog minutes are free on a public repo.
+    # Outlive the 45-minute suite plus queueing behind other runs sharing the
+    # runner. Past this, GitHub's 24h queued-job limit is the backstop.
+    # Watchdog minutes are free on a public repo.
     timeout-minutes: 355
     continue-on-error: true
     permissions:
       actions: write
     steps:
-      - name: Cancel the run if e2e jobs are queued against a dead runner
+      - name: Cancel the run if interview-e2e is queued against a dead runner
         env:
           GH_TOKEN: ${{ github.token }}
           ADMIN_TOKEN: ${{ secrets.E2E_RUNNER_STATUS_TOKEN }}
@@ -252,12 +256,12 @@ jobs:
           while true; do
             sleep 60
             jobs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}/jobs?per_page=100" \
-              --jq '[.jobs[] | select(.name == "interview-e2e" or .name == "interviewer-e2e" or .name == "architect-e2e")]') || continue
+              --jq '[.jobs[] | select(.name == "interview-e2e")]') || continue
             total=$(jq 'length' <<< "$jobs")
             completed=$(jq '[.[] | select(.status == "completed")] | length' <<< "$jobs")
             queued=$(jq '[.[] | select(.status == "queued")] | length' <<< "$jobs")
             if [ "$total" -gt 0 ] && [ "$completed" -eq "$total" ]; then
-              echo "all e2e jobs completed — watchdog done"
+              echo "interview-e2e completed — watchdog done"
               exit 0
             fi
             if [ "$queued" -eq 0 ]; then
@@ -716,11 +720,9 @@ jobs:
 
   interviewer-e2e:
     # See interview-e2e: this Dockerized suite owns its build too.
-    needs: [e2e-policy, pick-e2e-runner]
-    if: >-
-      ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true'
-      && needs.pick-e2e-runner.result == 'success' }}
-    runs-on: ${{ fromJSON(needs.pick-e2e-runner.outputs.runs_on) }}
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     outputs:
       snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
@@ -756,11 +758,9 @@ jobs:
 
   architect-e2e:
     # See interview-e2e: this Dockerized suite owns its build too.
-    needs: [e2e-policy, pick-e2e-runner]
-    if: >-
-      ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true'
-      && needs.pick-e2e-runner.result == 'success' }}
-    runs-on: ${{ fromJSON(needs.pick-e2e-runner.outputs.runs_on) }}
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     outputs:
       snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
