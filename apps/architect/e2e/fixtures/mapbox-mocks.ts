@@ -57,6 +57,16 @@ const STREETS_TILEJSON = {
  * Stub-mode browsers (firefox/webkit) never request these URLs.
  */
 export async function installMapboxMocks(page: Page): Promise<void> {
+  // Billing/session probe (mapbox-gl v3 `map-sessions/v1`). Left unmocked it
+  // reaches the real API, whose 401 for the fake e2e token makes mapbox-gl
+  // revoke auth: the painter permanently stops drawing and the canvas is
+  // cleared, while load/idle events (and data-map-idle) have already fired.
+  // Whether the 401 lands before or after a capture is a network race, so
+  // screenshots flip between a rendered map and a blank panel per attempt.
+  await page.route(/https:\/\/api\.mapbox\.com\/map-sessions\//, (route) =>
+    route.fulfill({ headers: corsHeaders, json: {} }),
+  );
+
   await page.route(/https:\/\/api\.mapbox\.com\/styles\/v1\//, (route) =>
     route.fulfill({ headers: corsHeaders, json: MINIMAL_STYLE }),
   );

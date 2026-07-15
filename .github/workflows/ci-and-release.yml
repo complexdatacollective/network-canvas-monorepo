@@ -714,7 +714,8 @@ jobs:
     continue-on-error: true
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # contents: write is for the gh-pages state branch below, not the source.
+      contents: write
       pages: write
       id-token: write
       pull-requests: write
@@ -751,6 +752,25 @@ jobs:
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: merged/
+      - name: Persist merged site to gh-pages branch
+        # deploy-pages replaces the ENTIRE Pages site with this run's artifact
+        # and maintains no branch, so the only prior content the merge step can
+        # fetch is what this step saves. Without it, the two release lanes
+        # erase each other's report subdirectory on every deploy (the report
+        # link 404s a minute after it is posted). The branch is pure derived
+        # state, so force-push a fresh single commit; the job concurrency
+        # group serialises writers.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git init -q -b gh-pages "$RUNNER_TEMP/pages-state"
+          git --git-dir="$RUNNER_TEMP/pages-state/.git" --work-tree=merged add -A
+          git --git-dir="$RUNNER_TEMP/pages-state/.git" --work-tree=merged \
+            -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "interview-e2e report site (run ${{ github.run_id }})"
+          git --git-dir="$RUNNER_TEMP/pages-state/.git" push -q --force \
+            "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" gh-pages
       - uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
       - name: Comment on PR
         # always(): still post the E2E result even if the Pages publish above
