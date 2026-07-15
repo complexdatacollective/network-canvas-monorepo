@@ -140,6 +140,8 @@ describe('localized home sections', () => {
       'laptop:grid-cols-4',
       'grid-cols-1',
       'w-full',
+      'max-w-[1200px]',
+      'mx-auto',
     );
     expect(publicationCard?.closest('.max-w-none')).toBeInTheDocument();
     expect(

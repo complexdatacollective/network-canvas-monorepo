@@ -54,7 +54,7 @@ export function Publications({
         </Paragraph>
       </SectionHeading>
 
-      <div className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 laptop:grid-cols-4 mt-14 grid w-full grid-cols-1 gap-5">
+      <div className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 laptop:grid-cols-4 mx-auto mt-14 grid w-full max-w-[1200px] grid-cols-1 gap-5">
         {publications.map((pub, i) => (
           <Reveal key={pub.id} delay={(i % 4) * 0.04}>
             <a
