@@ -19,6 +19,7 @@ const themeOptions = [
   { id: 'dark', icon: Moon },
   { id: 'system', icon: Monitor },
 ] as const;
+const THEME_ICON_STROKE_WIDTH = 3.5;
 
 type ThemeOption = (typeof themeOptions)[number]['id'];
 
@@ -54,7 +55,12 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
           view === 'desktop' ? (
             <IconButton
               aria-label={triggerLabel}
-              icon={<SelectedIcon aria-hidden strokeWidth={3} />}
+              icon={
+                <SelectedIcon
+                  aria-hidden
+                  strokeWidth={THEME_ICON_STROKE_WIDTH}
+                />
+              }
               size="lg"
               variant="text"
               color="dynamic"
@@ -63,7 +69,12 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
           ) : (
             <Button
               aria-label={triggerLabel}
-              icon={<SelectedIcon aria-hidden />}
+              icon={
+                <SelectedIcon
+                  aria-hidden
+                  strokeWidth={THEME_ICON_STROKE_WIDTH}
+                />
+              }
               size="sm"
               variant="text"
               color="dynamic"
@@ -88,7 +99,7 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
         >
           {themeOptions.map(({ id, icon: OptionIcon }) => (
             <DropdownMenuRadioItem key={id} value={id} closeOnClick>
-              <OptionIcon aria-hidden strokeWidth={3} />
+              <OptionIcon aria-hidden strokeWidth={THEME_ICON_STROKE_WIDTH} />
               {t(id)}
             </DropdownMenuRadioItem>
           ))}
