@@ -784,9 +784,11 @@ export class SyntheticInterview {
       interviewScript: opts?.interviewScript,
       skipLogic: opts?.skipLogic,
       title,
-      items: opts?.items ?? [
-        { id: this.nextId('item'), type: 'text', content: text },
-      ],
+      items:
+        opts?.items ??
+        (text
+          ? [{ id: this.nextId('item'), type: 'text', content: text }]
+          : []),
       prompts: [],
       presets: [],
       panels: [],

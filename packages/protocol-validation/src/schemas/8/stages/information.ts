@@ -8,7 +8,7 @@ const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 
 const baseItemSchema = z.strictObject({
   id: z.string(),
-  content: z.string(),
+  content: z.string().min(1),
   description: z.string().optional(),
 });
 

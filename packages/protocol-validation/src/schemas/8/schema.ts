@@ -181,9 +181,6 @@ const validateFilterRules = (
   });
 };
 
-// Reject a form field whose variable cannot be rendered: layout/location types
-// have no control, and any other variable must carry a `component`. Shared by
-// the stage-level form and FamilyPedigree's nodeConfig.form.
 const validateFormFieldVariable = (
   codebook: Codebook,
   fieldVariable: string,
@@ -557,8 +554,6 @@ const ProtocolSchema = z
         });
       }
 
-      // FamilyPedigree renders nodeConfig.form as the add-person form, so its
-      // fields carry the same renderability requirement as a stage-level form.
       if (stage.type === 'FamilyPedigree' && stage.nodeConfig.form) {
         const nodeSubject = {
           entity: 'node' as const,

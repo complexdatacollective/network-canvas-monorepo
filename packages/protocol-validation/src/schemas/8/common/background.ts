@@ -1,8 +1,5 @@
 import { z } from 'zod';
 
-// The Sociogram/NetworkComposer canvas background: exactly one of a custom
-// image or a concentric-circles count (0 or more rings). Narrative has no
-// image variant and declares its circles-only background inline.
 export const imageOrCirclesBackgroundSchema = z
   .strictObject({
     image: z.string().min(1).optional(),

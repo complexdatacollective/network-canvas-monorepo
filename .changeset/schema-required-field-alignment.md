@@ -21,9 +21,17 @@ that validates is a protocol that renders correctly:
 - A codebook variable referenced by a form field must define a `component`
   (input control) — previously a missing one crashed the interview when the
   form rendered.
+- Free-text fields the editor already requires are now required (non-empty) in
+  the schema too: a prompt's `text`, a form field's `prompt`, an introduction
+  panel's `title`/`text`, an Information item's `content`, a Narrative preset's
+  `label`, a side panel's `title`, a FamilyPedigree `censusPrompt`, an
+  Anonymisation `explanationText`, a NarrativePedigree disease's `label`/`color`,
+  and a NameGeneratorRoster `dataSource` and `searchOptions.matchProperties`.
 
 Protocols migrating from schema 7 are backfilled with the value the interview
 already displayed (stage label or "Information", "Add {node type}", 4 rings,
-the first palette color, "Other"/"Please specify"), so migrated interviews
-look identical. Synthetic interviews seed the default background for canvas
-stages.
+the first palette color, "Other"/"Please specify"); empty required text is
+backfilled from a natural source where one exists (a form field's prompt from
+its variable name, a panel title from the stage label) or a plain default
+otherwise, so migrated interviews look identical. Synthetic interviews seed the
+default background for canvas stages.

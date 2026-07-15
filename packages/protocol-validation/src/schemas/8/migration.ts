@@ -22,6 +22,30 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
+const codebookVariableName = (
+  codebook: unknown,
+  subject: unknown,
+  variableId: unknown,
+): string | undefined => {
+  if (typeof variableId !== 'string') return undefined;
+  const cb = asRecord(codebook);
+  const subj = asRecord(subject);
+  if (!cb || !subj) return undefined;
+  let variables: Record<string, unknown> | null = null;
+  if (subj.entity === 'ego') {
+    variables = asRecord(asRecord(cb.ego)?.variables);
+  } else if (
+    (subj.entity === 'node' || subj.entity === 'edge') &&
+    typeof subj.type === 'string'
+  ) {
+    variables = asRecord(
+      asRecord(asRecord(cb[subj.entity])?.[subj.type])?.variables,
+    );
+  }
+  const name = variables ? asRecord(variables[variableId])?.name : undefined;
+  return typeof name === 'string' && name.trim() !== '' ? name : undefined;
+};
+
 // Resolves whether a specific rule operand targets a categorical variable, scoped
 // to the rule's own entity. A flat codebook-wide id set would mis-handle the case
 // where two entities (or node/edge types) share an attribute id but only one
@@ -80,6 +104,7 @@ const migrationV7toV8 = createMigration({
 - The Information stage \`title\` (page heading) is now required. Any Information stage without one is given its stage label as the title, or "Information" when no label was authored.
 - The NameGenerator \`form.title\` (heading of the add-a-person dialog) is now required. Any NameGenerator form without one is given "Add {node type name}" (e.g. "Add Person").
 - A codebook variable referenced by a form field must define a \`component\` (input control). Previously this was only checked by the Architect editor; a protocol violating it crashed the interview when the form rendered.
+- Several free-text fields that the Architect editor already requires are now required (non-empty) in the schema: a prompt's \`text\`, a form field's \`prompt\`, an introduction panel's \`title\` and \`text\`, an Information item's \`content\`, a Narrative preset's \`label\`, a side panel's \`title\`, a NameGeneratorRoster \`dataSource\`, and its \`searchOptions.matchProperties\` (at least one). Any that were empty are backfilled — the form-field prompt from the variable's name, the panel title from the stage label, a preset/side-panel label by position — else a plain default. An empty \`searchOptions\` is dropped. (The FamilyPedigree \`censusPrompt\`, NarrativePedigree disease \`label\`/\`color\`, and Anonymisation \`explanationText\` are likewise required but are v8-only, so no migration is needed.)
 - The Sociogram, Narrative, and NetworkComposer \`background\` is now required and must be exactly one of its two variants: an image (\`image\` set, no \`concentricCircles\`) or concentric circles (\`concentricCircles\` set to a whole number, no \`image\`; 0 renders no rings). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise \`concentricCircles\` defaults to 4, matching what the interview already rendered.
 - An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color default to the first palette color (\`ord-color-seq-1\`), the runtime's previous fallback.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored. Such orphaned properties are removed.
@@ -375,10 +400,6 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // An OrdinalBin prompt color outside the ten-value ord-color-seq
-        // palette was silently ignored by the interview. V8 requires a color
-        // from that palette; drop any other value, then give colorless prompts
-        // the first palette color (the runtime's previous default).
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
           if (typeof stage !== 'object' || stage === null) return stage;
@@ -413,8 +434,6 @@ const migrationV7toV8 = createMigration({
           ) {
             return stage;
           }
-          // Rebuild from only the recognised keys so arrays and stray keys
-          // (which the v8 strictObject rejects) never survive.
           const source = Array.isArray(typedStage.background)
             ? {}
             : (asRecord(typedStage.background) ?? {});
@@ -438,6 +457,132 @@ const migrationV7toV8 = createMigration({
                 : 4;
           }
           typedStage.background = background;
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[].prompts[]'],
+        fn: <V>(prompt: V) => {
+          const typedPrompt = asRecord(prompt);
+          if (!typedPrompt) return prompt;
+          if (typeof typedPrompt.text !== 'string' || typedPrompt.text === '') {
+            typedPrompt.text = 'Continue';
+          }
+          return prompt;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
+          const fields = asRecord(typedStage.form)?.fields;
+          if (!Array.isArray(fields)) return stage;
+          const subject =
+            typedStage.type === 'EgoForm'
+              ? { entity: 'ego' }
+              : typedStage.subject;
+          for (const field of fields) {
+            const typedField = asRecord(field);
+            if (!typedField) continue;
+            if (
+              typeof typedField.prompt !== 'string' ||
+              typedField.prompt === ''
+            ) {
+              typedField.prompt =
+                codebookVariableName(codebook, subject, typedField.variable) ??
+                'Answer';
+            }
+          }
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
+          const panel = asRecord(typedStage.introductionPanel);
+          if (!panel) return stage;
+          if (typeof panel.title !== 'string' || panel.title === '') {
+            panel.title =
+              typeof typedStage.label === 'string' &&
+              typedStage.label.trim() !== ''
+                ? typedStage.label
+                : 'Introduction';
+          }
+          if (typeof panel.text !== 'string' || panel.text === '') {
+            panel.text = 'Welcome.';
+          }
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[].items[]'],
+        fn: <V>(item: V) => {
+          const typedItem = asRecord(item);
+          if (!typedItem) return item;
+          if (
+            typedItem.type === 'text' &&
+            (typeof typedItem.content !== 'string' || typedItem.content === '')
+          ) {
+            typedItem.content = 'Information.';
+          }
+          return item;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage || typedStage.type !== 'Narrative') return stage;
+          if (!Array.isArray(typedStage.presets)) return stage;
+          typedStage.presets.forEach((preset: unknown, index: number) => {
+            const typedPreset = asRecord(preset);
+            if (!typedPreset) return;
+            if (
+              typeof typedPreset.label !== 'string' ||
+              typedPreset.label === ''
+            ) {
+              typedPreset.label = `Preset ${index + 1}`;
+            }
+          });
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage || !Array.isArray(typedStage.panels)) return stage;
+          typedStage.panels.forEach((panel: unknown, index: number) => {
+            const typedPanel = asRecord(panel);
+            if (!typedPanel) return;
+            if (
+              typeof typedPanel.title !== 'string' ||
+              typedPanel.title === ''
+            ) {
+              typedPanel.title = `Panel ${index + 1}`;
+            }
+          });
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage || typedStage.type !== 'NameGeneratorRoster') {
+            return stage;
+          }
+          const searchOptions = asRecord(typedStage.searchOptions);
+          if (
+            searchOptions &&
+            (!Array.isArray(searchOptions.matchProperties) ||
+              searchOptions.matchProperties.length === 0)
+          ) {
+            delete typedStage.searchOptions;
+          }
           return stage;
         },
       },

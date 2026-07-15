@@ -8,7 +8,7 @@ export const FormFieldSchema = z.strictObject({
   // persisted, so the schema must tolerate it.
   id: z.string().optional(),
   variable: entityAttributeReference({ subject: 'stageSubject' }),
-  prompt: z.string(),
+  prompt: z.string().min(1),
   hint: z.string().optional(),
   showValidationHints: z.boolean().optional(),
 });

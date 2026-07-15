@@ -6,7 +6,7 @@ import { SortOrderSchema } from '../filters';
 
 export const promptSchema = z.strictObject({
   id: z.string(),
-  text: z.string(),
+  text: z.string().min(1),
 });
 
 export type BasePrompt = z.infer<typeof promptSchema>;

@@ -444,4 +444,87 @@ describe('Forms & prompts schema conformance', () => {
       expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
     });
   });
+
+  describe('prompt text non-empty', () => {
+    const nameGeneratorStage = (text: string) => ({
+      id: 'ng1',
+      type: 'NameGenerator',
+      label: 'Generate Names',
+      subject: { entity: 'node', type: 'person' },
+      form: {
+        title: 'Add person',
+        fields: [{ variable: 'personName', prompt: 'Enter name' }],
+      },
+      prompts: [{ id: 'p1', text }],
+    });
+
+    it('rejects a prompt with an empty text', () => {
+      const protocol = createProtocol([nameGeneratorStage('')]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    });
+
+    it('accepts a prompt with a non-empty text', () => {
+      const protocol = createProtocol([nameGeneratorStage('Who do you know?')]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    });
+  });
+
+  describe('form field prompt non-empty', () => {
+    const nameGeneratorStage = (prompt: string) => ({
+      id: 'ng1',
+      type: 'NameGenerator',
+      label: 'Generate Names',
+      subject: { entity: 'node', type: 'person' },
+      form: {
+        title: 'Add person',
+        fields: [{ variable: 'personName', prompt }],
+      },
+      prompts: [{ id: 'p1', text: 'Who do you know?' }],
+    });
+
+    it('rejects a form field with an empty prompt', () => {
+      const protocol = createProtocol([nameGeneratorStage('')]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    });
+
+    it('accepts a form field with a non-empty prompt', () => {
+      const protocol = createProtocol([nameGeneratorStage('Enter name')]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    });
+  });
+
+  describe('introductionPanel title/text non-empty', () => {
+    const alterFormStage = (introductionPanel: {
+      title: string;
+      text: string;
+    }) => ({
+      id: 'af1',
+      type: 'AlterForm',
+      label: 'Alter Form',
+      subject: { entity: 'node', type: 'person' },
+      form: { fields: [{ variable: 'personName', prompt: 'Their name?' }] },
+      introductionPanel,
+    });
+
+    it('rejects an introductionPanel with an empty title', () => {
+      const protocol = createProtocol([
+        alterFormStage({ title: '', text: 'Some text' }),
+      ]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    });
+
+    it('rejects an introductionPanel with an empty text', () => {
+      const protocol = createProtocol([
+        alterFormStage({ title: 'Intro', text: '' }),
+      ]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    });
+
+    it('accepts an introductionPanel with non-empty title and text', () => {
+      const protocol = createProtocol([
+        alterFormStage({ title: 'Intro', text: 'Some text' }),
+      ]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    });
+  });
 });

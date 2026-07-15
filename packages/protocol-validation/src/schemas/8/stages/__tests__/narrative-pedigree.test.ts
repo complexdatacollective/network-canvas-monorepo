@@ -164,6 +164,26 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects an empty disease label', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        { ...validNarrativePedigreeStageShape.diseases[0], label: '' },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an empty disease color', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        { ...validNarrativePedigreeStageShape.diseases[0], color: '' },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('rejects unknown keys (presets and behaviours are no longer part of the schema)', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,

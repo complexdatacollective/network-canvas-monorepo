@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { assetSchema } from '../assets';
 import { CodebookSchema } from '../codebook/codebook';
+import { panelSchema } from '../common/panels';
 import { FilterSchema } from '../filters';
+import { anonymisationStage } from '../stages/anonymisation';
 import { familyPedigreeStage } from '../stages/family-pedigree';
 import { geospatialStage } from '../stages/geospatial';
 import { informationStage } from '../stages/information';
+import { nameGeneratorRosterStage } from '../stages/name-generator-roster';
+import { narrativeStage } from '../stages/narrative';
 import { sociogramStage } from '../stages/sociogram';
 
 /**
@@ -355,6 +359,160 @@ describe('Information size and items (#676)', () => {
     }));
     const result = informationStage.safeParse({ ...baseStage, items });
     expect(result.success).toBe(true);
+  });
+});
+
+describe('Information item content non-empty', () => {
+  const baseStage = {
+    id: 'info1',
+    label: 'Information',
+    type: 'Information' as const,
+    title: 'Information',
+  };
+
+  it('rejects a text item with empty content', () => {
+    const result = informationStage.safeParse({
+      ...baseStage,
+      items: [{ id: 'i1', type: 'text', content: '' }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an asset item with empty content', () => {
+    const result = informationStage.safeParse({
+      ...baseStage,
+      items: [{ id: 'i1', type: 'asset', content: '' }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts text and asset items with non-empty content', () => {
+    const result = informationStage.safeParse({
+      ...baseStage,
+      items: [
+        { id: 'i1', type: 'text', content: 'Some text' },
+        { id: 'i2', type: 'asset', content: 'img-1' },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('Anonymisation explanationText non-empty', () => {
+  const baseStage = {
+    id: 'anon1',
+    label: 'Anonymisation',
+    type: 'Anonymisation' as const,
+    explanationText: {
+      title: 'Why we do this',
+      body: 'Your responses are encrypted.',
+    },
+  };
+
+  it('accepts non-empty explanationText title and body', () => {
+    expect(anonymisationStage.safeParse(baseStage).success).toBe(true);
+  });
+
+  it('rejects an empty explanationText title', () => {
+    expect(
+      anonymisationStage.safeParse({
+        ...baseStage,
+        explanationText: { title: '', body: 'Your responses are encrypted.' },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an empty explanationText body', () => {
+    expect(
+      anonymisationStage.safeParse({
+        ...baseStage,
+        explanationText: { title: 'Why we do this', body: '' },
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('Narrative preset label non-empty', () => {
+  const baseStage = {
+    id: 'narr1',
+    label: 'Narrative',
+    type: 'Narrative' as const,
+    subject: { entity: 'node' as const, type: 'person' },
+    background: { concentricCircles: 4 },
+  };
+
+  it('accepts a preset with a non-empty label', () => {
+    const result = narrativeStage.safeParse({
+      ...baseStage,
+      presets: [{ id: 'preset1', label: 'Overview', layoutVariable: 'pos' }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a preset with an empty label', () => {
+    const result = narrativeStage.safeParse({
+      ...baseStage,
+      presets: [{ id: 'preset1', label: '', layoutVariable: 'pos' }],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('Side panel title non-empty', () => {
+  const basePanel = {
+    id: 'panel1',
+    dataSource: 'existing' as const,
+    title: 'Previous alters',
+  };
+
+  it('accepts a panel with a non-empty title', () => {
+    expect(panelSchema.safeParse(basePanel).success).toBe(true);
+  });
+
+  it('rejects a panel with an empty title', () => {
+    expect(panelSchema.safeParse({ ...basePanel, title: '' }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
+  const baseStage = {
+    id: 'ngr1',
+    label: 'Roster',
+    type: 'NameGeneratorRoster' as const,
+    subject: { entity: 'node' as const, type: 'person' },
+    dataSource: 'roster-asset',
+    prompts: [{ id: 'p1', text: 'Pick someone' }],
+  };
+
+  it('accepts a non-empty dataSource', () => {
+    expect(nameGeneratorRosterStage.safeParse(baseStage).success).toBe(true);
+  });
+
+  it('rejects an empty dataSource', () => {
+    expect(
+      nameGeneratorRosterStage.safeParse({ ...baseStage, dataSource: '' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('accepts searchOptions with at least one matchProperty', () => {
+    expect(
+      nameGeneratorRosterStage.safeParse({
+        ...baseStage,
+        searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects searchOptions with an empty matchProperties array', () => {
+    expect(
+      nameGeneratorRosterStage.safeParse({
+        ...baseStage,
+        searchOptions: { fuzziness: 0.5, matchProperties: [] },
+      }).success,
+    ).toBe(false);
   });
 });
 

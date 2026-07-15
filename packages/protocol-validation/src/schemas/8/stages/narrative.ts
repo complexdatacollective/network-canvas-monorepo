@@ -17,7 +17,7 @@ export const narrativeStage = baseStageSchema.extend({
     .array(
       z.strictObject({
         id: z.string(),
-        label: z.string(),
+        label: z.string().min(1),
         layoutVariable: entityAttributeReference({
           subject: 'stageSubject',
         }),
