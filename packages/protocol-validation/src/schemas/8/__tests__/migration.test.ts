@@ -2727,10 +2727,18 @@ describe('Migration V7 to V8', () => {
       ).toEqual({ concentricCircles: 4, skewedTowardCenter: true });
     });
 
-    it('replaces a non-positive circle count', () => {
+    it('keeps a zero circle count (renders no rings)', () => {
       expect(
         migrateAndGetBackground('Sociogram', {
           background: { concentricCircles: 0 },
+        }),
+      ).toEqual({ concentricCircles: 0 });
+    });
+
+    it('replaces a negative circle count', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { concentricCircles: -2 },
         }),
       ).toEqual({ concentricCircles: 4 });
     });

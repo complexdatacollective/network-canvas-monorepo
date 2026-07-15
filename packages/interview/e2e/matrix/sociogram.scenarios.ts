@@ -246,7 +246,7 @@ function buildBackgroundConcentricCirclesVariants(): ScenarioDefinition {
         type: 'layout',
         name: 'sociogramLayout',
       });
-      // 2 stages sharing one personType/layoutVar; 0 nodes each — background
+      // 3 stages sharing one personType/layoutVar; 0 nodes each — background
       // rendering doesn't depend on any nodes being present.
       const stage0 = synth.addStage('Sociogram', {
         initialNodes: { count: 0 },
@@ -258,6 +258,11 @@ function buildBackgroundConcentricCirclesVariants(): ScenarioDefinition {
         background: { concentricCircles: 2, skewedTowardCenter: false },
       });
       stage1.addPrompt({ layout: { layoutVariable: layoutVar.id } });
+      const stage2 = synth.addStage('Sociogram', {
+        initialNodes: { count: 0 },
+        background: { concentricCircles: 0 },
+      });
+      stage2.addPrompt({ layout: { layoutVariable: layoutVar.id } });
       return synth;
     },
     run: async ({ page, interview }) => {
@@ -279,7 +284,7 @@ function buildBackgroundConcentricCirclesVariants(): ScenarioDefinition {
         0,
       );
 
-      // 2 single-prompt stages, so next() advances the STAGE.
+      // 3 single-prompt stages, so next() advances the STAGE each time.
       await interview.next();
       await expect(circles).toHaveCount(2);
       expect(Number(await circles.first().getAttribute('r'))).toBeCloseTo(
@@ -287,6 +292,10 @@ function buildBackgroundConcentricCirclesVariants(): ScenarioDefinition {
         0,
       );
       expect(Number(await circles.last().getAttribute('r'))).toBeCloseTo(25, 0);
+
+      await interview.next();
+      // ConcentricCircles returns null at n=0 — no radar circles render.
+      await expect(circles).toHaveCount(0);
     },
   };
 }

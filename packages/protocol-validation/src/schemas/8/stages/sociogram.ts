@@ -14,7 +14,7 @@ export const sociogramStage = baseStageSchema.extend({
   background: z
     .strictObject({
       image: z.string().optional(),
-      concentricCircles: z.number().int().positive().optional(),
+      concentricCircles: z.number().int().nonnegative().optional(),
       skewedTowardCenter: z.boolean().optional(),
     })
     .superRefine((background, ctx) => {

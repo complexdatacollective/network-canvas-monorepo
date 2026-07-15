@@ -49,7 +49,7 @@ export const narrativeStage = baseStageSchema.extend({
       }
     }),
   background: z.strictObject({
-    concentricCircles: z.number().int().positive(),
+    concentricCircles: z.number().int().nonnegative(),
     skewedTowardCenter: z.boolean().optional(),
   }),
   behaviours: canvasBehavioursSchema,

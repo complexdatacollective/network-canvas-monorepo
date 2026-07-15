@@ -11,7 +11,8 @@ that validates is a protocol that renders correctly:
 - Name Generator forms require a `title` (the add-a-person dialog heading);
   the interview also falls back to "Add {node type}" if a title is missing.
 - Sociogram and Narrative stages require a `background`, which must be exactly
-  one of an image or a positive concentric-circles count.
+  one of an image or a concentric-circles count (zero or more; 0 renders no
+  rings).
 - OrdinalBin prompts require a palette `color`.
 - CategoricalBin prompts with an "other" option require both the bin label and
   the follow-up prompt.
