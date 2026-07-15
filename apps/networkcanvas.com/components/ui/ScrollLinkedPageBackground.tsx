@@ -16,31 +16,13 @@ const PARAMETER_TOLERANCE = 0.0005;
 const DEFAULT_COMPLEXITY = 20;
 const HOLD_RELEASE_VIEWPORT_OFFSET = 32;
 
-const HOMEPAGE_PARAMETER_KEYFRAMES = [
-  { intensity: 0.62, flare: 1.45, speedFactor: 0.28 },
-  { intensity: 0.22, flare: 1.9, speedFactor: 0.52 },
-  { intensity: 0.34, flare: 1.58, speedFactor: 0.38 },
-  { intensity: 0.18, flare: 2.42, speedFactor: 0.68 },
-  { intensity: 0.3, flare: 1.72, speedFactor: 0.44 },
-  { intensity: 0.16, flare: 2.72, speedFactor: 0.74 },
-  { intensity: 0.27, flare: 2.08, speedFactor: 0.5 },
+const HOMEPAGE_FLARE_KEYFRAMES = [
+  1.45, 1.9, 1.58, 2.42, 1.72, 2.72, 2.08,
 ] as const;
 
-const GET_STARTED_PARAMETER_KEYFRAMES = [
-  { intensity: 0.36, flare: 1.45, speedFactor: 0.24 },
-  { intensity: 0.16, flare: 1.82, speedFactor: 0.44 },
-  { intensity: 0.26, flare: 2.18, speedFactor: 0.58 },
-  { intensity: 0.14, flare: 1.62, speedFactor: 0.34 },
-  { intensity: 0.24, flare: 2.5, speedFactor: 0.66 },
-  { intensity: 0.15, flare: 1.9, speedFactor: 0.42 },
-  { intensity: 0.2, flare: 2.22, speedFactor: 0.54 },
+const GET_STARTED_FLARE_KEYFRAMES = [
+  1.45, 1.82, 2.18, 1.62, 2.5, 1.9, 2.22,
 ] as const;
-
-type WeaveParameterKeyframe = {
-  intensity: number;
-  flare: number;
-  speedFactor: number;
-};
 
 type ParameterProfile = 'homepage' | 'get-started';
 
@@ -50,7 +32,6 @@ type BackgroundState = {
   convergence: NetworkWeaveConvergence;
   intensity: number;
   flare: number;
-  speedFactor: number;
   resolved: boolean;
   targetChangeVersion: number;
 };
@@ -65,12 +46,16 @@ type ScrollLinkedPageBackgroundProps = {
   parameterProfile?: ParameterProfile;
 };
 
-function getParameterKeyframes(
-  parameterProfile: ParameterProfile,
-): readonly WeaveParameterKeyframe[] {
+function getFlareKeyframes(parameterProfile: ParameterProfile) {
   return parameterProfile === 'get-started'
-    ? GET_STARTED_PARAMETER_KEYFRAMES
-    : HOMEPAGE_PARAMETER_KEYFRAMES;
+    ? GET_STARTED_FLARE_KEYFRAMES
+    : HOMEPAGE_FLARE_KEYFRAMES;
+}
+
+function getStaticParameters(parameterProfile: ParameterProfile) {
+  return parameterProfile === 'get-started'
+    ? { intensity: 0.36, speedFactor: 0.24 }
+    : { intensity: 0.62, speedFactor: 0.28 };
 }
 
 function clampToViewport(value: number) {
@@ -102,35 +87,20 @@ function interpolate(origin: number, target: number, progress: number) {
   return origin + (target - origin) * progress;
 }
 
-function getWeaveParameters(
-  progress: number,
-  parameterProfile: ParameterProfile,
-) {
-  const keyframes = getParameterKeyframes(parameterProfile);
-  const heroParameters = keyframes[0] ?? HOMEPAGE_PARAMETER_KEYFRAMES[0];
+function getWeaveFlare(progress: number, parameterProfile: ParameterProfile) {
+  const keyframes = getFlareKeyframes(parameterProfile);
+  const heroFlare = keyframes[0] ?? HOMEPAGE_FLARE_KEYFRAMES[0];
   const keyframeProgress = clampToViewport(progress) * (keyframes.length - 1);
   const originIndex = Math.floor(keyframeProgress);
   const targetIndex = Math.min(keyframes.length - 1, originIndex + 1);
-  const origin = keyframes[originIndex] ?? heroParameters;
+  const origin = keyframes[originIndex] ?? heroFlare;
   const target = keyframes[targetIndex] ?? origin;
   const progressWithinKeyframe = keyframeProgress - originIndex;
 
-  return {
-    intensity: interpolate(
-      origin.intensity,
-      target.intensity,
-      progressWithinKeyframe,
-    ),
-    flare: Math.max(
-      heroParameters.flare,
-      interpolate(origin.flare, target.flare, progressWithinKeyframe),
-    ),
-    speedFactor: interpolate(
-      origin.speedFactor,
-      target.speedFactor,
-      progressWithinKeyframe,
-    ),
-  };
+  return Math.max(
+    heroFlare,
+    interpolate(origin, target, progressWithinKeyframe),
+  );
 }
 
 function getPostTargetProgress(
@@ -163,33 +133,25 @@ function getFigureEightConvergence(progress: number) {
   };
 }
 
-function getFigureEightParameters(
+function getFigureEightFlare(
   progress: number,
   parameterProfile: ParameterProfile,
 ) {
-  const keyframes = getParameterKeyframes(parameterProfile);
-  const heroParameters = keyframes[0] ?? HOMEPAGE_PARAMETER_KEYFRAMES[0];
-  const restParameters = keyframes[keyframes.length - 1] ?? heroParameters;
-  const intensityAmplitude = parameterProfile === 'get-started' ? 0.05 : 0.07;
+  const keyframes = getFlareKeyframes(parameterProfile);
+  const heroFlare = keyframes[0] ?? HOMEPAGE_FLARE_KEYFRAMES[0];
+  const restFlare = keyframes[keyframes.length - 1] ?? heroFlare;
   const angle = progress * Math.PI * 2;
 
-  return {
-    intensity: restParameters.intensity + Math.sin(angle) * intensityAmplitude,
-    flare: Math.max(
-      heroParameters.flare,
-      restParameters.flare + (1 - Math.cos(angle)) * 0.32,
-    ),
-    speedFactor: restParameters.speedFactor + Math.sin(angle * 2) * 0.18,
-  };
+  return Math.max(heroFlare, restFlare + (1 - Math.cos(angle)) * 0.32);
 }
 
-function getScrollLinkedParameters(
+function getScrollLinkedFlare(
   progress: number,
   parameterProfile: ParameterProfile,
 ) {
   return progress <= 1
-    ? getWeaveParameters(progress, parameterProfile)
-    : getFigureEightParameters(progress - 1, parameterProfile);
+    ? getWeaveFlare(progress, parameterProfile)
+    : getFigureEightFlare(progress - 1, parameterProfile);
 }
 
 function rectIntersectsLayer(rect: DOMRect, layerRect: DOMRect) {
@@ -230,55 +192,23 @@ export function ScrollLinkedPageBackground({
   parameterProfile = 'homepage',
 }: ScrollLinkedPageBackgroundProps) {
   const layerRef = useRef<HTMLDivElement>(null);
-  const interactiveTargetTrackedRef = useRef(false);
   const scrollParameterProgress = useMotionValue(0);
-  const intensity = useTransform(
-    scrollParameterProgress,
-    (progress) =>
-      getScrollLinkedParameters(progress, parameterProfile).intensity,
-  );
-  const intensityRef = useRef(intensity);
-  intensityRef.current = intensity;
-  const flare = useTransform(
-    scrollParameterProgress,
-    (progress) => getScrollLinkedParameters(progress, parameterProfile).flare,
-  );
-  const speedFactor = useTransform(
-    scrollParameterProgress,
-    (progress) =>
-      getScrollLinkedParameters(progress, parameterProfile).speedFactor,
+  const flare = useTransform(scrollParameterProgress, (progress) =>
+    getScrollLinkedFlare(progress, parameterProfile),
   );
   const [background, setBackground] = useState<BackgroundState>({
     convergence: CENTER_CONVERGENCE,
-    ...getWeaveParameters(0, parameterProfile),
+    intensity: getStaticParameters(parameterProfile).intensity,
+    flare: getWeaveFlare(0, parameterProfile),
     resolved: false,
     targetChangeVersion: 0,
   });
 
-  useMotionValueEvent(intensity, 'change', (nextIntensity) => {
-    const renderedIntensity = Math.min(
-      1,
-      nextIntensity +
-        (interactiveTargetTrackedRef.current ? interactiveIntensityBoost : 0),
-    );
-    setBackground((current) =>
-      valuesAreEqual(current.intensity, renderedIntensity)
-        ? current
-        : { ...current, intensity: renderedIntensity },
-    );
-  });
   useMotionValueEvent(flare, 'change', (nextFlare) => {
     setBackground((current) =>
       valuesAreEqual(current.flare, nextFlare)
         ? current
         : { ...current, flare: nextFlare },
-    );
-  });
-  useMotionValueEvent(speedFactor, 'change', (nextSpeedFactor) => {
-    setBackground((current) =>
-      valuesAreEqual(current.speedFactor, nextSpeedFactor)
-        ? current
-        : { ...current, speedFactor: nextSpeedFactor },
     );
   });
 
@@ -415,8 +345,6 @@ export function ScrollLinkedPageBackground({
         rectIntersectsLayer(interactiveRect, layerRect)
           ? activeInteractiveTarget
           : null;
-      interactiveTargetTrackedRef.current = trackedInteractiveTarget !== null;
-
       if (trackedInteractiveTarget && interactiveRect) {
         const interactiveCenter = getRectCenter(interactiveRect);
         convergence = {
@@ -434,7 +362,7 @@ export function ScrollLinkedPageBackground({
       );
       const renderedIntensity = Math.min(
         1,
-        intensityRef.current.get() +
+        getStaticParameters(parameterProfile).intensity +
           (trackedInteractiveTarget ? interactiveIntensityBoost : 0),
       );
 
@@ -547,7 +475,7 @@ export function ScrollLinkedPageBackground({
       complexity={DEFAULT_COMPLEXITY}
       intensity={background.intensity}
       flare={background.flare}
-      speedFactor={background.speedFactor}
+      speedFactor={getStaticParameters(parameterProfile).speedFactor}
       layerRef={layerRef}
       motionMode="target"
       resolved={background.resolved}

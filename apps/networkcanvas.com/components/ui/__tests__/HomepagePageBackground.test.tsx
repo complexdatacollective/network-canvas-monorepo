@@ -322,12 +322,12 @@ describe('HomepagePageBackground', () => {
     expect(lastProps?.convergence.x).toBeCloseTo(0.72);
     expect(lastProps?.convergence.y).toBeCloseTo(0.5);
     expect(lastProps?.complexity).toBe(20);
-    expect(lastProps?.intensity).toBeCloseTo(0.25);
+    expect(lastProps?.intensity).toBeCloseTo(0.36);
     expect(lastProps?.flare).toBeCloseTo(2.54);
-    expect(lastProps?.speedFactor).toBeCloseTo(0.54);
+    expect(lastProps?.speedFactor).toBeCloseTo(0.24);
   });
 
-  it('keeps complexity fixed while varying the other scroll-linked parameters', () => {
+  it('only varies flare with scroll while keeping the other parameters fixed', () => {
     targetRects.set(
       'hero',
       createRect({ left: 100, top: 300, width: 400, height: 300 }),
@@ -367,9 +367,9 @@ describe('HomepagePageBackground', () => {
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         complexity: 20,
-        intensity: 0.18,
+        intensity: 0.62,
         flare: 2.42,
-        speedFactor: 0.68,
+        speedFactor: 0.28,
       }),
     );
 
@@ -386,9 +386,9 @@ describe('HomepagePageBackground', () => {
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         complexity: 20,
-        intensity: 0.27,
+        intensity: 0.62,
         flare: 2.08,
-        speedFactor: 0.5,
+        speedFactor: 0.28,
       }),
     );
     for (const [{ flare }] of pageBackgroundProps.mock.calls) {
@@ -440,7 +440,7 @@ describe('HomepagePageBackground', () => {
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         convergence: { x: 0.15, y: 0.3125 },
-        intensity: 0.49,
+        intensity: 0.84,
         targetChangeVersion: 1,
       }),
     );
@@ -449,7 +449,7 @@ describe('HomepagePageBackground', () => {
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         convergence: { x: 0.75, y: 0.5625 },
-        intensity: 0.49,
+        intensity: 0.84,
         targetChangeVersion: 2,
       }),
     );
@@ -458,7 +458,7 @@ describe('HomepagePageBackground', () => {
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         convergence: { x: 0.15, y: 0.3125 },
-        intensity: 0.49,
+        intensity: 0.84,
         targetChangeVersion: 3,
       }),
     );
@@ -467,7 +467,7 @@ describe('HomepagePageBackground', () => {
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         convergence: { x: 0.5, y: 0.5 },
-        intensity: 0.27,
+        intensity: 0.62,
         targetChangeVersion: 4,
       }),
     );

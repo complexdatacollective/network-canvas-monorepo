@@ -12,6 +12,8 @@ import WorkflowNav from '~/components/WorkflowNav';
 import DocumentationFooter from './DocumentationFooter';
 import SharedNav from './SharedNav/SharedNav';
 
+const DOCUMENTATION_FLARE_RANGE = [1.8, 2.6] as const;
+
 export function LayoutComponent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const locale = useLocale();
@@ -46,6 +48,7 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
       <PageBackgroundProvider
         intensity={isHomePage ? 0.4 : 0.1}
         motionMode="target"
+        scrollFlareRange={DOCUMENTATION_FLARE_RANGE}
         waitForTarget
       >
         <div className="relative z-10 flex min-h-dvh w-full flex-auto flex-col">

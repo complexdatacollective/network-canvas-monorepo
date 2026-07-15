@@ -117,6 +117,7 @@ vi.mock('motion/react', () => ({
     scrollYProgress: motionState.scrollYProgress,
   }),
   useMotionValue: (initial: number) => createMotionValue(initial),
+  useMotionValueEvent: () => {},
   useTransform: (
     input: MockMotionValue,
     inputRangeOrTransformer: number[] | ((value: number) => number),
@@ -296,6 +297,43 @@ describe('PageBackground', () => {
         flare: 1.8,
         speedFactor: 0.35,
       }),
+    );
+  });
+
+  it('only varies flare when a scroll flare range is configured', () => {
+    motionState.progress = 0.5;
+
+    render(
+      <PageBackground
+        convergence={{ x: 0.2, y: 0.4 }}
+        complexity={24}
+        intensity={0.2}
+        flare={1.8}
+        speedFactor={0.39}
+        motionMode="target"
+        scrollFlareRange={[1.8, 2.6]}
+      />,
+    );
+
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.2, y: 0.4 },
+        complexity: 24,
+        intensity: 0.2,
+        flare: 2.2,
+        speedFactor: 0.39,
+      }),
+    );
+  });
+
+  it('does not animate scroll-linked flare for reduced motion', () => {
+    motionState.progress = 0.5;
+    motionState.reduced = true;
+
+    render(<PageBackground flare={1.8} scrollFlareRange={[1.8, 2.6]} />);
+
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ flare: 1.8 }),
     );
   });
 
