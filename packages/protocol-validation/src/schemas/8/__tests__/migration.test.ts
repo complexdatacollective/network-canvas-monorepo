@@ -2470,6 +2470,49 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('Information title backfill', () => {
+    const buildInfoProtocol = (stage: Record<string, unknown>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: { ego: {} },
+        stages: [
+          {
+            id: 'info1',
+            type: 'Information',
+            items: [{ id: 'item1', type: 'text', content: 'Welcome' }],
+            ...stage,
+          },
+        ],
+      }) as Protocol<7>;
+
+    it('backfills a missing title from the stage label', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildInfoProtocol({ label: 'Welcome Screen' }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      expect(parsed.stages[0]).toHaveProperty('title', 'Welcome Screen');
+    });
+
+    it("backfills 'Information' when there is no usable label", () => {
+      const migratedRaw = migrationV7toV8.migrate(buildInfoProtocol({}), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      expect(parsed.stages[0]).toHaveProperty('title', 'Information');
+      expect(parsed.stages[0]).toHaveProperty('label', 'Stage 1');
+    });
+
+    it('leaves an authored title untouched', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildInfoProtocol({ label: 'Welcome Screen', title: 'Hello!' }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      expect(parsed.stages[0]).toHaveProperty('title', 'Hello!');
+    });
+  });
+
   describe('NameGenerator behaviours normalisation', () => {
     const buildNgProtocol = (behaviours: Record<string, unknown>) =>
       ({

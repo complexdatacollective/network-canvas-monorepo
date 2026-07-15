@@ -2059,6 +2059,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'informationStage',
             type: 'Information',
             label: 'Information Stage',
+            title: 'Information Stage',
             items: [
               {
                 id: 'item1',
@@ -2082,6 +2083,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'simpleStage',
             type: 'Information',
             label: 'Simple Stage',
+            title: 'Simple Stage',
             items: [
               {
                 id: 'item1',

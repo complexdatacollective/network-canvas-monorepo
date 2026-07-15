@@ -77,6 +77,7 @@ const migrationV7toV8 = createMigration({
 - A \`minValue\`, \`minLength\`, or \`minSelected\` validator no longer implies a field is required. To preserve the effective behaviour of existing protocols that relied on this coupling, any codebook variable (node, edge, or ego) with one of these validators and no explicit \`required: true\` now has \`required: true\` set.
 - Categorical attribute values are now stored as arrays of selected option values. Existing single-value categorical filter and skip-logic rule operands (\`is exactly\`, \`is not\`, \`includes\`, \`excludes\`) are wrapped in a single-element array to match.
 - Stage labels are now required to be non-empty. Any stage with a missing or empty label is given a default name based on its position (e.g. "Stage 3").
+- The Information stage \`title\` (page heading) is now required. Any Information stage without one is given its stage label as the title, or "Information" when no label was authored.
 - An OrdinalBin prompt \`color\` is now restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored, and is removed so the prompt uses the default colour.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored. Such orphaned properties are removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
@@ -269,6 +270,25 @@ const migrationV7toV8 = createMigration({
             typedStage.form !== null
           ) {
             delete (typedStage.form as Record<string, unknown>).title;
+          }
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          if (typedStage.type !== 'Information') return stage;
+          if (
+            typeof typedStage.title !== 'string' ||
+            typedStage.title.trim() === ''
+          ) {
+            typedStage.title =
+              typeof typedStage.label === 'string' &&
+              typedStage.label.trim() !== ''
+                ? typedStage.label
+                : 'Information';
           }
           return stage;
         },

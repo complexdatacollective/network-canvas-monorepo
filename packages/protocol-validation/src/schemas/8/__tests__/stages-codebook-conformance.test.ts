@@ -226,6 +226,7 @@ describe('Information size and items (#676)', () => {
     id: 'info1',
     label: 'Information',
     type: 'Information' as const,
+    title: 'Information',
   };
 
   it('accepts an asset item with an uppercase size enum value', () => {

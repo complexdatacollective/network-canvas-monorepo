@@ -32,6 +32,6 @@ export type Item = z.infer<typeof ItemSchema>;
 
 export const informationStage = baseStageSchema.extend({
   type: z.literal('Information'),
-  title: z.string().optional(),
+  title: z.string().min(1),
   items: z.array(ItemSchema).superRefine(duplicateIdRefinement('Items')),
 });
