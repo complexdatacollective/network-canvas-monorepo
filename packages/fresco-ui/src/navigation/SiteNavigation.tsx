@@ -17,6 +17,7 @@ import {
 import type { SiteLocale } from '@codaco/shared-consts';
 
 import { buttonVariants, IconButton } from '../Button';
+import { usePortalContainer } from '../PortalContainer';
 import Spinner from '../Spinner';
 import { headingVariants } from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
@@ -205,6 +206,8 @@ function ResourcesMenu({
   links: ResourceLink[];
   renderLink: (props: SiteNavigationLinkRenderProps) => ReactElement;
 }) {
+  const portalContainer = usePortalContainer();
+
   return (
     <NavigationMenu.Root
       delay={100}
@@ -265,7 +268,7 @@ function ResourcesMenu({
         </NavigationMenu.Item>
       </NavigationMenu.List>
 
-      <NavigationMenu.Portal>
+      <NavigationMenu.Portal container={portalContainer ?? undefined}>
         <NavigationMenu.Positioner
           sideOffset={14}
           align="center"
@@ -358,6 +361,8 @@ function SoftwareMenu({
   links: SoftwareLink[];
   renderLink: (props: SiteNavigationLinkRenderProps) => ReactElement;
 }) {
+  const portalContainer = usePortalContainer();
+
   return (
     <NavigationMenu.Root
       delay={100}
@@ -392,7 +397,7 @@ function SoftwareMenu({
         </NavigationMenu.Item>
       </NavigationMenu.List>
 
-      <NavigationMenu.Portal>
+      <NavigationMenu.Portal container={portalContainer ?? undefined}>
         <NavigationMenu.Positioner
           sideOffset={14}
           align="center"

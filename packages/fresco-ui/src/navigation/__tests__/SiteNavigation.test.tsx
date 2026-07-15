@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { PortalContainerProvider } from '../../PortalContainer';
 import SiteNavigation from '../SiteNavigation';
 
 describe('SiteNavigation', () => {
@@ -285,5 +286,28 @@ describe('SiteNavigation', () => {
       'href',
       'https://networkcanvas.com/download',
     );
+  });
+
+  it('portals desktop menus into the app portal container when provided', () => {
+    const { baseElement } = render(
+      <PortalContainerProvider>
+        <SiteNavigation locale="en-US" site="website" />
+      </PortalContainerProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Software' }));
+    const architectLink = screen.getByRole('link', { name: 'Architect' });
+    const portalLayer = baseElement.querySelector('.z-3000');
+    if (!portalLayer) throw new Error('Expected the portal container layer.');
+
+    expect(portalLayer).toContainElement(architectLink);
+  });
+
+  it('keeps portaling to the document body without a provider', () => {
+    render(<SiteNavigation locale="en-US" site="website" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Software' }));
+
+    expect(screen.getByRole('link', { name: 'Architect' })).toBeInTheDocument();
   });
 });
