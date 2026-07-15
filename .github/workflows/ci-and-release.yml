@@ -174,6 +174,121 @@ jobs:
             echo "snapshot_branch=$(jq -r '.snapshotBranch' <<< "$policy")"
           } >> "$GITHUB_OUTPUT"
 
+  # Route the @codaco/interview e2e suite — the longest of the three — to the
+  # self-hosted runner when it is online, falling back to GitHub-hosted when it
+  # isn't. Only that one suite: the runner has a single job slot, so sending
+  # all three would serialize them; interviewer-e2e and architect-e2e stay on
+  # GitHub-hosted and run in parallel. `runs-on` has no native fallback, so
+  # interview-e2e consumes this job's output via fromJSON().
+  #
+  # Listing self-hosted runners needs `administration:read`, which GITHUB_TOKEN
+  # cannot hold, so the check uses the E2E_RUNNER_STATUS_TOKEN secret (a
+  # fine-grained PAT, Administration:read on this repo only). Every failure
+  # mode degrades to GitHub-hosted: secret missing, API error, runner offline.
+  # Fork PRs cannot read secrets, so outside contributions always land on
+  # GitHub-hosted runners and never execute on the self-hosted machine.
+  pick-e2e-runner:
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
+    runs-on: ubuntu-latest
+    outputs:
+      runs_on: ${{ steps.pick.outputs.runs_on }}
+      pw_workers: ${{ steps.pick.outputs.pw_workers }}
+    steps:
+      - id: pick
+        env:
+          GH_TOKEN: ${{ secrets.E2E_RUNNER_STATUS_TOKEN }}
+        run: |
+          # Defaults: GitHub-hosted, and the 4-worker sweet spot measured for
+          # its 4-core machines (see interview-e2e's PW_WORKERS note).
+          runs_on='"ubuntu-latest"'
+          pw_workers=4
+          if [ -n "$GH_TOKEN" ]; then
+            online=$(curl -sf --max-time 30 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners?per_page=100" \
+              | jq '[.runners[] | select(.status == "online" and ([.labels[].name] | index("e2e")))] | length' \
+              || echo 0)
+            if [ "${online:-0}" -gt 0 ]; then
+              runs_on='["self-hosted", "e2e"]'
+              pw_workers=6
+            fi
+          fi
+          echo "picked runs-on: $runs_on (PW_WORKERS=$pw_workers)"
+          {
+            echo "runs_on=$runs_on"
+            echo "pw_workers=$pw_workers"
+          } >> "$GITHUB_OUTPUT"
+
+  # pick-e2e-runner snapshots availability once, but interview-e2e is scheduled
+  # later — if the self-hosted runner dies in between (or while the job queues
+  # behind another run's job on the single-slot runner), the queued job would
+  # sit against dead labels for GitHub's 24h backstop, blocking the `quality`
+  # gate. This watchdog polls the run's own interview-e2e job:
+  # queued-while-runner-ONLINE is normal (busy runner) and waits;
+  # queued-while-runner-OFFLINE for 5 consecutive checks cancels the run with a
+  # clear error — a rerun re-picks and falls back to GitHub-hosted. Only
+  # spawned when self-hosted was picked, which implies E2E_RUNNER_STATUS_TOKEN
+  # existed for pick-e2e-runner. continue-on-error: this job must never redden
+  # CI by itself; its only lever is the cancel.
+  e2e-queue-watchdog:
+    needs: [e2e-policy, pick-e2e-runner]
+    if: >-
+      ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true'
+      && needs.pick-e2e-runner.result == 'success'
+      && contains(needs.pick-e2e-runner.outputs.runs_on, 'self-hosted') }}
+    runs-on: ubuntu-latest
+    # Outlive the 45-minute suite plus queueing behind other runs sharing the
+    # runner. Past this, GitHub's 24h queued-job limit is the backstop.
+    # Watchdog minutes are free on a public repo.
+    timeout-minutes: 355
+    continue-on-error: true
+    permissions:
+      actions: write
+    steps:
+      - name: Cancel the run if interview-e2e is queued against a dead runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ADMIN_TOKEN: ${{ secrets.E2E_RUNNER_STATUS_TOKEN }}
+        run: |
+          strikes=0
+          while true; do
+            sleep 60
+            jobs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}/jobs?per_page=100" \
+              --jq '[.jobs[] | select(.name == "interview-e2e")]') || continue
+            total=$(jq 'length' <<< "$jobs")
+            completed=$(jq '[.[] | select(.status == "completed")] | length' <<< "$jobs")
+            queued=$(jq '[.[] | select(.status == "queued")] | length' <<< "$jobs")
+            if [ "$total" -gt 0 ] && [ "$completed" -eq "$total" ]; then
+              echo "interview-e2e completed — watchdog done"
+              exit 0
+            fi
+            if [ "$queued" -eq 0 ]; then
+              strikes=0
+              continue
+            fi
+            online=$(curl -sf --max-time 30 \
+              -H "Authorization: Bearer $ADMIN_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners?per_page=100" \
+              | jq '[.runners[] | select(.status == "online" and ([.labels[].name] | index("e2e")))] | length' \
+              || echo "")
+            # Unknown status (API hiccup) is not evidence the runner is dead —
+            # never cancel on a blind guess.
+            if [ -z "$online" ] || [ "$online" -gt 0 ]; then
+              strikes=0
+              continue
+            fi
+            strikes=$((strikes + 1))
+            echo "$queued e2e job(s) queued with no online 'e2e' runner (strike ${strikes}/5)"
+            if [ "$strikes" -ge 5 ]; then
+              echo "::error::Self-hosted e2e runner went offline with e2e jobs still queued. Cancelling this run — rerun it to fall back to GitHub-hosted runners."
+              gh api -X POST "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/cancel"
+              exit 1
+            fi
+          done
+
   # Cache design: turbo-ci-setup runs a runner-local server speaking turbo's
   # remote-cache protocol, backed by the GitHub Actions Cache with per-task,
   # hash-addressed entries. Per-package env values (NEXT_PUBLIC_*, VITE_*) are
@@ -530,17 +645,21 @@ jobs:
     # Generated package/app release PRs run every E2E suite. The Dockerized
     # suite builds its own dependency graph and cannot consume the host runner's
     # Turbo cache, so start it as soon as the release policy completes.
-    needs: e2e-policy
-    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
-    runs-on: ubuntu-latest
+    needs: [e2e-policy, pick-e2e-runner]
+    if: >-
+      ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true'
+      && needs.pick-e2e-runner.result == 'success' }}
+    runs-on: ${{ fromJSON(needs.pick-e2e-runner.outputs.runs_on) }}
     timeout-minutes: 45
     env:
-      # Cap matrix parallelism on the GitHub runner. The config default ('50%')
-      # both under-uses the box for the fully-parallel matrix projects and lets
-      # the crypto-heavy Anonymisation scenarios (PBKDF2 at write time) contend
-      # under high worker counts, which surfaces as spurious timeout flakes. 4 is
-      # the measured sweet spot for the single-job (no shard matrix) run.
-      PW_WORKERS: 4
+      # Cap matrix parallelism per runner class (see pick-e2e-runner). The
+      # config default ('50%') both under-uses the GitHub box for the
+      # fully-parallel matrix projects and lets the crypto-heavy Anonymisation
+      # scenarios (PBKDF2 at write time) contend under high worker counts,
+      # which surfaces as spurious timeout flakes. 4 is the measured sweet
+      # spot for the single-job (no shard matrix) run on GitHub's 4-core
+      # runners; the self-hosted runner (12 cores) gets 6.
+      PW_WORKERS: ${{ needs.pick-e2e-runner.outputs.pw_workers }}
     outputs:
       slug: ${{ steps.meta.outputs.slug }}
       snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
