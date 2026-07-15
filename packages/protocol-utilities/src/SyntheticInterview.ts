@@ -463,7 +463,9 @@ export class SyntheticInterview {
       presets: [],
       panels: [],
       background:
-        type === 'Sociogram' || type === 'Narrative'
+        type === 'Sociogram' ||
+        type === 'Narrative' ||
+        type === 'NetworkComposer'
           ? (opts?.background ?? { concentricCircles: 4 })
           : opts?.background,
       behaviours,

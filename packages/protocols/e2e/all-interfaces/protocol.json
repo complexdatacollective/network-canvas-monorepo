@@ -641,7 +641,10 @@
         "type": "person"
       },
       "quickAdd": "composerName",
-      "layoutVariable": "layout"
+      "layoutVariable": "layout",
+      "background": {
+        "concentricCircles": 4
+      }
     },
     {
       "id": "geospatial-1",

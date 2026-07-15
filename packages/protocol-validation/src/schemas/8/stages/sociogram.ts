@@ -2,7 +2,11 @@ import { z } from 'zod';
 
 import { findDuplicateId } from '~/utils/validation-helpers';
 
-import { NodeStageSubjectSchema, sociogramPromptSchema } from '../common';
+import {
+  imageOrCirclesBackgroundSchema,
+  NodeStageSubjectSchema,
+  sociogramPromptSchema,
+} from '../common';
 import { canvasBehavioursSchema } from '../common/behaviours';
 import { FilterSchema } from '../filters';
 import { baseStageSchema } from './base';
@@ -11,31 +15,7 @@ export const sociogramStage = baseStageSchema.extend({
   type: z.literal('Sociogram'),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
-  background: z
-    .strictObject({
-      image: z.string().min(1).optional(),
-      concentricCircles: z.number().int().nonnegative().optional(),
-      skewedTowardCenter: z.boolean().optional(),
-    })
-    .superRefine((background, ctx) => {
-      if (background.image === undefined) {
-        if (background.concentricCircles === undefined) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message:
-              'concentricCircles is required when background has no image.',
-            path: ['concentricCircles'],
-          });
-        }
-      } else if (background.concentricCircles !== undefined) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message:
-            'concentricCircles cannot be set when background has an image.',
-          path: ['concentricCircles'],
-        });
-      }
-    }),
+  background: imageOrCirclesBackgroundSchema,
   behaviours: canvasBehavioursSchema,
   prompts: z
     .array(sociogramPromptSchema)
