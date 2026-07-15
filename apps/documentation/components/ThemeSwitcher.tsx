@@ -1,6 +1,6 @@
 'use client';
 
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { Moon, Sun, SunMoon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
@@ -17,8 +17,9 @@ import {
 const themeOptions = [
   { id: 'light', icon: Sun },
   { id: 'dark', icon: Moon },
-  { id: 'system', icon: Monitor },
+  { id: 'system', icon: SunMoon },
 ] as const;
+const THEME_ICON_STROKE_CLASS = '[&>.lucide]:[stroke-width:3.5]';
 
 type ThemeOption = (typeof themeOptions)[number]['id'];
 
@@ -42,7 +43,7 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
   // the actual configured mode.
   const selectedTheme = mounted && isThemeOption(theme) ? theme : 'system';
   const SelectedIcon =
-    themeOptions.find((option) => option.id === selectedTheme)?.icon ?? Monitor;
+    themeOptions.find((option) => option.id === selectedTheme)?.icon ?? SunMoon;
   const triggerLabel = t('triggerLabel', {
     theme: t(selectedTheme),
   });
@@ -58,7 +59,7 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
               size="sm"
               variant="text"
               color="dynamic"
-              className="text-text border-transparent"
+              className={`text-text border-transparent ${THEME_ICON_STROKE_CLASS}`}
             />
           ) : (
             <Button
@@ -67,7 +68,7 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
               size="sm"
               variant="text"
               color="dynamic"
-              className="text-text justify-start border-transparent"
+              className={`text-text justify-start border-transparent ${THEME_ICON_STROKE_CLASS}`}
             />
           )
         }
@@ -87,8 +88,13 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
           className="flex flex-col gap-1"
         >
           {themeOptions.map(({ id, icon: OptionIcon }) => (
-            <DropdownMenuRadioItem key={id} value={id} closeOnClick>
-              <OptionIcon aria-hidden />
+            <DropdownMenuRadioItem
+              key={id}
+              value={id}
+              closeOnClick
+              icon={<OptionIcon aria-hidden />}
+              className={THEME_ICON_STROKE_CLASS}
+            >
               {t(id)}
             </DropdownMenuRadioItem>
           ))}

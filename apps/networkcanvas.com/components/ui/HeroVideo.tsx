@@ -4,13 +4,10 @@ import { useReducedMotion } from 'motion/react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
-import { usePageBackgroundTargetRef } from '@codaco/art';
-
 const mediaClasses = 'absolute inset-0 size-full object-cover';
 
 export function HeroVideo() {
   const shouldReduceMotion = useReducedMotion();
-  const backgroundTargetRef = usePageBackgroundTargetRef();
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -19,7 +16,7 @@ export function HeroVideo() {
 
   return (
     <div
-      ref={backgroundTargetRef}
+      data-homepage-weave-target
       aria-hidden="true"
       className="bg-cyber-grape relative aspect-4/3 w-full overflow-hidden rounded shadow-2xl"
     >

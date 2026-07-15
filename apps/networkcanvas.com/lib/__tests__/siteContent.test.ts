@@ -17,6 +17,10 @@ p2,Publication 2,Publicación 2,Journal 2,Revista 2,Author 2,https://example.com
 p3,Publication 3,Publicación 3,Journal 3,Revista 3,Author 3,https://example.com/p3
 p4,Publication 4,Publicación 4,Journal 4,Revista 4,Author 4,https://example.com/p4
 p5,Publication 5,Publicación 5,Journal 5,Revista 5,Author 5,https://example.com/p5
+p6,Publication 6,Publicación 6,Journal 6,Revista 6,Author 6,https://example.com/p6
+p7,Publication 7,Publicación 7,Journal 7,Revista 7,Author 7,https://example.com/p7
+p8,Publication 8,Publicación 8,Journal 8,Revista 8,Author 8,https://example.com/p8
+p9,Publication 9,Publicación 9,Journal 9,Revista 9,Author 9,https://example.com/p9
 `,
   'grants.csv': `id,title_en,title_es,pis_en,pis_es,description_en,description_es,logo,logo_alt_en,logo_alt_es,href
 grant,Grant,Subvención,PI: Person,IP: Persona,"Line one, with comma
@@ -56,7 +60,7 @@ describe('loadSiteContent', () => {
     ]);
   });
 
-  it('limits publications to the first four rows', async () => {
+  it('limits publications to the first eight rows', async () => {
     const content = await loadSiteContent('en-US', directory);
 
     expect(content.publications.map(({ id }) => id)).toEqual([
@@ -64,6 +68,10 @@ describe('loadSiteContent', () => {
       'p2',
       'p3',
       'p4',
+      'p5',
+      'p6',
+      'p7',
+      'p8',
     ]);
   });
 

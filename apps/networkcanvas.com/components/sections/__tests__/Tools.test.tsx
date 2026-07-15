@@ -16,10 +16,15 @@ vi.mock('~/components/ui/Reveal', () => ({
   Reveal: ({
     children,
     className,
-  }: {
+    ...props
+  }: ComponentPropsWithoutRef<'section'> & {
     children: ReactNode;
     className?: string;
-  }) => <section className={className}>{children}</section>,
+  }) => (
+    <section className={className} {...props}>
+      {children}
+    </section>
+  ),
 }));
 
 vi.mock('~/lib/i18n/navigation', () => ({
@@ -70,6 +75,7 @@ describe('Tools', () => {
       });
 
       expect(panel).toHaveClass('bg-surface/55', 'backdrop-blur-md');
+      expect(panel).toHaveAttribute('data-homepage-weave-moving-target');
       expect(previewLink).toHaveAttribute('href', app.href);
       expect(previewLink).toHaveAttribute('target', '_blank');
       expect(previewLink).toHaveClass('focusable');

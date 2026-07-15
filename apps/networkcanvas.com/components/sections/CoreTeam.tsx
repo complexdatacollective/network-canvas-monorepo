@@ -18,12 +18,13 @@ export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
           <Reveal
             key={member.id}
             delay={(i % 4) * 0.05}
-            className="flex flex-col items-center text-center"
+            data-homepage-weave-interactive-target
+            className="group spring-short flex flex-col items-center rounded p-3 text-center"
           >
             <img
               src={member.photo}
               alt={member.name}
-              className="effect-shadow tablet-landscape:size-36 size-28 rounded-full object-cover"
+              className="effect-shadow group-hover:effect-shadow-xl spring-short tablet-landscape:size-36 size-28 rounded-full object-cover group-hover:scale-105 motion-reduce:transform-none"
             />
             <Paragraph
               margin="none"

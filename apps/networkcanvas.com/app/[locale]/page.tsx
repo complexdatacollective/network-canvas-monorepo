@@ -2,7 +2,6 @@ import { hasLocale } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
-import { PageBackgroundProvider } from '@codaco/art';
 import { Footer } from '~/components/layout/Footer';
 import { CoreTeam } from '~/components/sections/CoreTeam';
 import { DesignPrinciples } from '~/components/sections/DesignPrinciples';
@@ -14,6 +13,7 @@ import { ScientificAdvisors } from '~/components/sections/ScientificAdvisors';
 import { Tools } from '~/components/sections/Tools';
 import { VideoSection } from '~/components/sections/VideoSection';
 import { WhatNext } from '~/components/sections/WhatNext';
+import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
 import { routing } from '~/lib/i18n/routing';
 import { loadSiteContent } from '~/lib/siteContent';
 
@@ -31,25 +31,24 @@ export default async function HomePage({ params }: HomePageProps) {
 
   return (
     <main className="homepage-body relative isolate">
-      <PageBackgroundProvider>
-        <div className="relative z-10">
-          <HeroIntro newsItems={newsItems} />
+      <HomepagePageBackground />
+      <div className="relative z-10">
+        <HeroIntro newsItems={newsItems} />
 
-          <Tools />
-          <VideoSection />
+        <Tools />
+        <VideoSection />
 
-          <DesignPrinciples />
+        <DesignPrinciples />
 
-          <Grants grants={grants} />
-          <Publications publications={publications} />
-          <CoreTeam members={coreTeam} />
-          <ScientificAdvisors />
-          <Institutions />
-          <WhatNext />
+        <Grants grants={grants} />
+        <Publications publications={publications} />
+        <CoreTeam members={coreTeam} />
+        <ScientificAdvisors />
+        <Institutions />
+        <WhatNext />
 
-          <Footer />
-        </div>
-      </PageBackgroundProvider>
+        <Footer />
+      </div>
     </main>
   );
 }

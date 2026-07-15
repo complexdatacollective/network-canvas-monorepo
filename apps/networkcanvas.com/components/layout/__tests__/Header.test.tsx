@@ -6,6 +6,7 @@ import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { Footer } from '../Footer';
 import { Header } from '../Header';
+import ThemeSwitcher from '../ThemeSwitcher';
 
 vi.mock('~/lib/i18n/navigation', () => ({
   Link: ({
@@ -68,6 +69,34 @@ describe('localized layout navigation', () => {
     expect(container.querySelector('header')).toHaveClass(
       'entrance-motion-item',
     );
+  });
+
+  it('uses a large, heavier-stroked desktop theme control', () => {
+    renderWithIntl(<ThemeSwitcher view="desktop" />);
+
+    const trigger = screen.getByRole('button', {
+      name: 'Color theme: System',
+    });
+    expect(trigger).toHaveClass('h-16');
+    expect(trigger).toHaveClass('[&>.lucide]:[stroke-width:3.5]');
+    expect(trigger.querySelector('.lucide-sun-moon')).toBeInTheDocument();
+  });
+
+  it('uses theme icons instead of checkmarks in the theme menu', () => {
+    renderWithIntl(<ThemeSwitcher view="desktop" />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Color theme: System' }),
+    );
+
+    const lightOption = screen.getByRole('menuitemradio', { name: 'Light' });
+    const darkOption = screen.getByRole('menuitemradio', { name: 'Dark' });
+    const systemOption = screen.getByRole('menuitemradio', { name: 'System' });
+
+    expect(lightOption.querySelector('.lucide-sun')).toBeInTheDocument();
+    expect(darkOption.querySelector('.lucide-moon')).toBeInTheDocument();
+    expect(systemOption.querySelector('.lucide-sun-moon')).toBeInTheDocument();
+    expect(document.querySelector('.lucide-check')).not.toBeInTheDocument();
   });
 
   it('renders translated footer links and language selection', () => {

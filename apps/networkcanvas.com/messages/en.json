@@ -92,7 +92,7 @@
   },
   "Publications": {
     "heading": "Recent Publications Using Network Canvas",
-    "introduction": "The following are the four most recent publications utilizing Network Canvas. For guidance on citing Network Canvas, see our <article>documentation article</article>.",
+    "introduction": "The following are the eight most recent publications utilizing Network Canvas. For guidance on citing Network Canvas, see our <article>documentation article</article>.",
     "submission": "If you would like to feature your publication, please let us know by posting in our community site <thread>thread</thread>.",
     "article": "documentation article",
     "thread": "thread"
@@ -154,7 +154,7 @@
     },
     "intro": {
       "heading": "Choose where to begin",
-      "introduction": "Choose the stage your research has reached, then select the Network Canvas app that fits your study.",
+      "introduction": "Start by clicking the card that best describes the stage you are at with your research.",
       "stages": {
         "design": {
           "label": "Design stage",
@@ -168,8 +168,8 @@
         },
         "learn": {
           "label": "Exploring Network Canvas",
-          "title": "Learn about the project",
-          "accessibleName": "Learn about the project — opens the documentation in a new tab"
+          "title": "Learn more about the project",
+          "accessibleName": "Learn more about the project — opens the documentation in a new tab"
         }
       }
     },

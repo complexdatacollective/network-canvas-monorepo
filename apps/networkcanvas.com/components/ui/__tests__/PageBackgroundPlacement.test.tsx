@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react';
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps, HTMLAttributes } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import HomePage from '~/app/[locale]/page';
@@ -16,17 +16,13 @@ vi.mock('~/lib/i18n/navigation', () => ({
 }));
 
 vi.mock('@codaco/art', () => ({
-  usePageBackgroundTargetRef: () => null,
-  PageBackgroundProvider: ({ children }: { children: ReactNode }) => (
-    <>
-      <div data-testid="page-background" />
-      {children}
-    </>
-  ),
+  PageBackground: () => <div data-testid="page-background" />,
 }));
 
 vi.mock('~/components/ui/Reveal', () => ({
-  Reveal: ({ children }: { children: ReactNode }) => children,
+  Reveal: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
+    <div {...props}>{children}</div>
+  ),
 }));
 
 describe('HomePage hero background composition', () => {
@@ -50,5 +46,13 @@ describe('HomePage hero background composition', () => {
     expect(
       container.querySelector('img[src="/images/blobs/multi-2.svg"]'),
     ).toBeNull();
+    expect(
+      container.querySelectorAll('[data-homepage-weave-target]'),
+    ).toHaveLength(14);
+    expect(
+      container.querySelectorAll(
+        '[data-homepage-weave-target][data-homepage-weave-moving-target]',
+      ),
+    ).toHaveLength(8);
   });
 });

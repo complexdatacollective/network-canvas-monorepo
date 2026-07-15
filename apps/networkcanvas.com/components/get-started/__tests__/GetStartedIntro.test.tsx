@@ -92,18 +92,29 @@ describe('GetStartedIntro', () => {
     renderWithIntl(<GetStartedIntro />);
 
     const documentationLink = screen.getByRole('link', {
-      name: 'Learn about the project — opens the documentation in a new tab',
+      name: 'Learn more about the project — opens the documentation in a new tab',
     });
 
     expect(screen.getAllByRole('link')[0]).toBe(documentationLink);
     expect(documentationLink.parentElement).toHaveClass('max-w-[1400px]');
     expect(
       screen.getByText(
-        'Choose the stage your research has reached, then select the Network Canvas app that fits your study.',
+        'Start by clicking the card that best describes the stage you are at with your research.',
       ),
     ).toBeInTheDocument();
     expect(documentationLink).toHaveClass('relative', 'pb-24');
-    expect(screen.getByText('Learn about the project')).toHaveClass('mt-8');
+    expect(screen.getByText('Learn more about the project')).toHaveClass(
+      'mt-8',
+      'text-xl',
+      'tablet-portrait:text-2xl',
+    );
+    expect(
+      screen.getByText('Design or create an interview protocol'),
+    ).toHaveClass('text-xl', 'tablet-portrait:text-2xl');
+    expect(screen.getByText('Collect data using Network Canvas')).toHaveClass(
+      'text-xl',
+      'tablet-portrait:text-2xl',
+    );
     expect(documentationLink.querySelector('svg')?.parentElement).toHaveClass(
       'absolute',
       'right-8',
@@ -176,7 +187,7 @@ describe('GetStartedIntro', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Elija la etapa que ha alcanzado su investigación y, a continuación, seleccione la aplicación de Network Canvas que mejor se adapte a su estudio.',
+        'Para empezar, haga clic en la tarjeta que mejor describa en qué etapa se encuentra su investigación y su familiaridad con Network Canvas.',
       ),
     ).toBeInTheDocument();
     expect(

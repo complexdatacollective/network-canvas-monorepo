@@ -9,7 +9,10 @@ export function ScientificAdvisors() {
   const t = useTranslations('ScientificAdvisors');
 
   return (
-    <Container className="tablet-landscape:py-28 py-20">
+    <Container
+      data-homepage-weave-target
+      className="tablet-landscape:py-28 py-20"
+    >
       <SectionHeading title={t('heading')}>
         <Paragraph
           margin="none"

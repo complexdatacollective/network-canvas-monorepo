@@ -177,7 +177,7 @@ export async function loadSiteContent(
       title: localized(locale, row.title_en, row.title_es),
       href: row.href,
     })),
-    publications: publicationRows.slice(0, 4).map((row) => ({
+    publications: publicationRows.slice(0, 8).map((row) => ({
       id: row.id,
       title: localized(locale, row.title_en, row.title_es),
       source: localized(locale, row.source_en, row.source_es),

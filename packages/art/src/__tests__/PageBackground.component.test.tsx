@@ -16,6 +16,9 @@ import {
 
 const networkWeaveProps = vi.hoisted(() => vi.fn());
 const motionDivProps = vi.hoisted(() => vi.fn());
+const motionValueEventCallbacks = vi.hoisted(
+  () => [] as Array<(value: number) => void>,
+);
 const animateMock = vi.hoisted(() =>
   vi.fn(
     (
@@ -117,6 +120,13 @@ vi.mock('motion/react', () => ({
     scrollYProgress: motionState.scrollYProgress,
   }),
   useMotionValue: (initial: number) => createMotionValue(initial),
+  useMotionValueEvent: (
+    _value: MockMotionValue,
+    event: string,
+    callback: (value: number) => void,
+  ) => {
+    if (event === 'change') motionValueEventCallbacks.push(callback);
+  },
   useTransform: (
     input: MockMotionValue,
     inputRangeOrTransformer: number[] | ((value: number) => number),
@@ -196,6 +206,7 @@ describe('PageBackground', () => {
     motionState.reduced = false;
     motionState.progress = 0;
     motionState.scroll = 0;
+    motionValueEventCallbacks.length = 0;
     resizeObservers.length = 0;
     vi.stubGlobal('ResizeObserver', MockResizeObserver);
     vi.stubGlobal('matchMedia', (query: string) => ({
@@ -233,6 +244,7 @@ describe('PageBackground', () => {
       expect.objectContaining({
         seed: 'networkcanvas.com',
         convergence: { x: 0.5, y: 0.6 },
+        complexity: 20,
         intensity: 0.4,
         flare: 1.8,
         speedFactor: 0.35,
@@ -298,11 +310,62 @@ describe('PageBackground', () => {
     );
   });
 
+  it('only varies flare when a scroll flare range is configured', () => {
+    motionState.progress = 0.5;
+
+    render(
+      <PageBackground
+        convergence={{ x: 0.2, y: 0.4 }}
+        complexity={24}
+        intensity={0.2}
+        flare={1.8}
+        speedFactor={0.39}
+        motionMode="target"
+        scrollFlareRange={[1.8, 2.6]}
+      />,
+    );
+
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.2, y: 0.4 },
+        complexity: 24,
+        intensity: 0.2,
+        flare: 2.2,
+        speedFactor: 0.39,
+      }),
+    );
+
+    act(() => motionValueEventCallbacks.at(-1)?.(0.75));
+    const updatedProps = networkWeaveProps.mock.lastCall?.[0] as {
+      flare: number;
+    };
+    expect(updatedProps.flare).toBeCloseTo(2.4);
+  });
+
+  it('does not animate scroll-linked flare for reduced motion', () => {
+    motionState.progress = 0.5;
+    motionState.reduced = true;
+
+    render(<PageBackground flare={1.8} scrollFlareRange={[1.8, 2.6]} />);
+
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ flare: 1.8 }),
+    );
+
+    act(() => motionValueEventCallbacks.at(-1)?.(0.75));
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ flare: 1.8 }),
+    );
+  });
+
   it('animates between target positions and intensities', () => {
     const { rerender } = render(
       <PageBackground
         convergence={{ x: 0.2, y: 0.4 }}
+        complexity={34}
         intensity={0.4}
+        flare={1.4}
+        speedFactor={0.25}
         motionMode="target"
         resolved
         targetChangeVersion={1}
@@ -313,7 +376,10 @@ describe('PageBackground', () => {
     rerender(
       <PageBackground
         convergence={{ x: 0.8, y: 0.7 }}
+        complexity={20}
         intensity={0.1}
+        flare={2.2}
+        speedFactor={0.5}
         motionMode="target"
         resolved
         targetChangeVersion={2}
@@ -331,10 +397,53 @@ describe('PageBackground', () => {
     );
     const latestProps = networkWeaveProps.mock.lastCall?.[0] as {
       convergence: { x: number; y: number };
+      complexity: number;
       intensity: number;
+      flare: number;
+      speedFactor: number;
     };
     expect(latestProps.convergence).toEqual({ x: 0.8, y: 0.7 });
+    expect(latestProps.complexity).toBeCloseTo(20);
     expect(latestProps.intensity).toBeCloseTo(0.1);
+    expect(latestProps.flare).toBeCloseTo(2.2);
+    expect(latestProps.speedFactor).toBeCloseTo(0.5);
+  });
+
+  it('updates scroll-linked weave parameters without starting a spring', () => {
+    const { rerender } = render(
+      <PageBackground
+        complexity={40}
+        intensity={0.62}
+        flare={1.45}
+        speedFactor={0.28}
+        motionMode="target"
+        resolved
+      />,
+    );
+
+    animateMock.mockClear();
+    rerender(
+      <PageBackground
+        complexity={24}
+        intensity={0.2}
+        flare={1.85}
+        speedFactor={0.39}
+        motionMode="target"
+        resolved
+      />,
+    );
+
+    expect(
+      animateMock.mock.calls.some(([start, end]) => start === 0 && end === 1),
+    ).toBe(false);
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        complexity: 24,
+        intensity: 0.2,
+        flare: 1.85,
+        speedFactor: 0.39,
+      }),
+    );
   });
 
   it('updates the current target position immediately during scroll', () => {
