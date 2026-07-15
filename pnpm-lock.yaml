@@ -507,10 +507,10 @@ importers:
         version: link:../interviewer-classic
       '@codaco/ui':
         specifier: ^5.8.6
-        version: 5.8.6(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+        version: 5.8.6(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       '@material-ui/icons':
         specifier: ^4.11.3
-        version: 4.11.3(@material-ui/core@4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+        version: 4.11.3(@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.9.1
@@ -1101,7 +1101,7 @@ importers:
         version: 6.0.0
       '@material-ui/icons':
         specifier: ^4.11.3
-        version: 4.11.3(@material-ui/core@4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+        version: 4.11.3(@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.0.3(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.23.0)(yaml@2.9.0))
@@ -6688,6 +6688,9 @@ packages:
     peerDependencies:
       '@types/react': '*'
 
+  '@types/react@17.0.93':
+    resolution: {integrity: sha512-KM4Ty/ZTLZupiYxZVAlP+InNJS3De6uBMdq0ePa6/04+eG9Y7ftnWfst1xTLQ5rwAhgHwQ4momt/O4KepdGBTw==}
+
   '@types/react@19.2.17':
     resolution: {integrity: sha512-MXfmqaVPEVgkBT/aY0aGCkRWWtByiYQXo3xdQ8r5RzuFrPiRn8Gar2tQdXSUQ2GKV3bkXckek89V8wQBY2Q/Aw==}
 
@@ -6708,6 +6711,9 @@ packages:
 
   '@types/responselike@1.0.3':
     resolution: {integrity: sha512-H/+L+UkTV33uf49PH5pCAUBVPNj2nDBXTN+qS1dOwyyg24l3CcicicCA7ca+HMvJBZcFgl5r8e+RR6elsb4Lyw==}
+
+  '@types/scheduler@0.16.8':
+    resolution: {integrity: sha512-WZLiwShhwLRmeV6zH+GkbOFT6Z6VklCItrDioxUnv+u4Ll+8vKeFySoFyK/0ctcRpOmwAicELfmys1sDc/Rw+A==}
 
   '@types/slice-ansi@4.0.0':
     resolution: {integrity: sha512-+OpjSaq85gvlZAYINyzKpLeiFkSC4EsC6IIiT6v6TLSU5k5U83fHGj9Lel8oKEXM0HqgrMVCjXPDPVICtxF7EQ==}
@@ -11647,10 +11653,6 @@ packages:
     resolution: {integrity: sha512-PS08Iboia9mts/2ygV3eLpY5ghnUcfLV/EXTOW1E2qYxJKGGBUtNjN76FYHnMs36RmARn41bC0AZmn+rR0OVpQ==}
     engines: {node: ^10 || ^12 || >=14}
 
-  postcss@8.5.16:
-    resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
-    engines: {node: ^10 || ^12 || >=14}
-
   postcss@8.5.17:
     resolution: {integrity: sha512-J7EF+8X+CzRPaJPOv9Ck2wNWJvGnnl3PcNPAdGg6GTLjyVpyQ0yATMSXRFRV01BviT/9Gwuc3rjEyJbDJG9a4w==}
     engines: {node: ^10 || ^12 || >=14}
@@ -15466,10 +15468,46 @@ snapshots:
 
   '@codaco/shared-consts@0.0.2': {}
 
+  '@codaco/ui@5.8.6(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
+    dependencies:
+      '@material-ui/core': 4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@productboard/slate-edit-list': 0.21.5(slate-react@0.57.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(slate@0.57.3))(slate@0.57.3)
+      '@storybook/theming': 6.5.16(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      animejs: 2.2.0
+      classnames: 2.5.1
+      emoji-dictionary: 1.0.12
+      framer-motion: 2.9.5(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      lodash: 4.18.1
+      luxon: 1.28.1
+      prop-types: 15.8.1
+      react: 16.14.0
+      react-compound-slider: 2.5.0(react@16.14.0)
+      react-dom: 16.14.0(react@16.14.0)
+      react-markdown: 6.0.3(@types/react@17.0.93)(react@16.14.0)
+      react-resize-aware: 3.1.3(react@16.14.0)
+      react-transition-group: 4.4.5(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      recompose: 0.30.0(react@16.14.0)
+      rehype-raw: 5.1.0
+      rehype-sanitize: 4.0.0
+      remark: 13.0.0
+      remark-parse: 9.0.0
+      remark-slate: 1.8.6
+      scrollparent: 2.1.0
+      slate: 0.57.3
+      slate-history: 0.59.0(slate@0.57.3)
+      slate-react: 0.57.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(slate@0.57.3)
+      strip-markdown: 4.2.0
+      unified: 9.2.2
+      uuid: 3.4.0
+    transitivePeerDependencies:
+      - '@types/react'
+      - supports-color
+
   '@codaco/ui@5.8.6(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
-      '@material-ui/core': 4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@material-ui/core': 4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@material-ui/icons': 4.11.3(@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       '@productboard/slate-edit-list': 0.21.5(slate-react@0.57.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(slate@0.57.3))(slate@0.57.3)
       '@storybook/theming': 6.5.16(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       animejs: 2.2.0
@@ -16686,14 +16724,14 @@ snapshots:
 
   '@mapbox/sphericalmercator@1.2.0': {}
 
-  '@material-ui/core@4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
+  '@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
       '@babel/runtime': 7.29.7
-      '@material-ui/styles': 4.11.5(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      '@material-ui/system': 4.12.2(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      '@material-ui/types': 5.1.0(@types/react@19.2.17)
+      '@material-ui/styles': 4.11.5(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@material-ui/system': 4.12.2(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@material-ui/types': 5.1.0(@types/react@17.0.93)
       '@material-ui/utils': 4.11.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
-      '@types/react-transition-group': 4.4.12(@types/react@19.2.17)
+      '@types/react-transition-group': 4.4.12(@types/react@17.0.93)
       clsx: 1.2.1
       hoist-non-react-statics: 3.3.2
       popper.js: 1.16.1-lts
@@ -16703,22 +16741,22 @@ snapshots:
       react-is: 17.0.2
       react-transition-group: 4.4.5(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
     optionalDependencies:
-      '@types/react': 19.2.17
+      '@types/react': 17.0.93
 
-  '@material-ui/icons@4.11.3(@material-ui/core@4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
+  '@material-ui/icons@4.11.3(@material-ui/core@4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
       '@babel/runtime': 7.29.7
-      '@material-ui/core': 4.12.4(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@material-ui/core': 4.12.4(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       react: 16.14.0
       react-dom: 16.14.0(react@16.14.0)
     optionalDependencies:
-      '@types/react': 19.2.17
+      '@types/react': 17.0.93
 
-  '@material-ui/styles@4.11.5(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
+  '@material-ui/styles@4.11.5(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@emotion/hash': 0.8.0
-      '@material-ui/types': 5.1.0(@types/react@19.2.17)
+      '@material-ui/types': 5.1.0(@types/react@17.0.93)
       '@material-ui/utils': 4.11.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       clsx: 1.2.1
       csstype: 2.6.21
@@ -16735,9 +16773,9 @@ snapshots:
       react: 16.14.0
       react-dom: 16.14.0(react@16.14.0)
     optionalDependencies:
-      '@types/react': 19.2.17
+      '@types/react': 17.0.93
 
-  '@material-ui/system@4.12.2(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
+  '@material-ui/system@4.12.2(@types/react@17.0.93)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@material-ui/utils': 4.11.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
@@ -16746,11 +16784,11 @@ snapshots:
       react: 16.14.0
       react-dom: 16.14.0(react@16.14.0)
     optionalDependencies:
-      '@types/react': 19.2.17
+      '@types/react': 17.0.93
 
-  '@material-ui/types@5.1.0(@types/react@19.2.17)':
+  '@material-ui/types@5.1.0(@types/react@17.0.93)':
     optionalDependencies:
-      '@types/react': 19.2.17
+      '@types/react': 17.0.93
 
   '@material-ui/utils@4.11.3(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:
@@ -18550,9 +18588,15 @@ snapshots:
       hoist-non-react-statics: 3.3.2
       redux: 4.2.1
 
-  '@types/react-transition-group@4.4.12(@types/react@19.2.17)':
+  '@types/react-transition-group@4.4.12(@types/react@17.0.93)':
     dependencies:
-      '@types/react': 19.2.17
+      '@types/react': 17.0.93
+
+  '@types/react@17.0.93':
+    dependencies:
+      '@types/prop-types': 15.7.15
+      '@types/scheduler': 0.16.8
+      csstype: 3.2.3
 
   '@types/react@19.2.17':
     dependencies:
@@ -18579,6 +18623,8 @@ snapshots:
   '@types/responselike@1.0.3':
     dependencies:
       '@types/node': 24.13.3
+
+  '@types/scheduler@0.16.8': {}
 
   '@types/slice-ansi@4.0.0': {}
 
@@ -24476,12 +24522,6 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postcss@8.5.16:
-    dependencies:
-      nanoid: 3.3.15
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
-
   postcss@8.5.17:
     dependencies:
       nanoid: 3.3.16
@@ -24922,6 +24962,26 @@ snapshots:
       unified: 11.0.5
       unist-util-visit: 5.1.0
       vfile: 6.0.3
+    transitivePeerDependencies:
+      - supports-color
+
+  react-markdown@6.0.3(@types/react@17.0.93)(react@16.14.0):
+    dependencies:
+      '@types/hast': 2.3.10
+      '@types/react': 17.0.93
+      '@types/unist': 2.0.11
+      comma-separated-tokens: 1.0.8
+      prop-types: 15.8.1
+      property-information: 5.6.0
+      react: 16.14.0
+      react-is: 17.0.2
+      remark-parse: 9.0.0
+      remark-rehype: 8.1.0
+      space-separated-tokens: 1.1.5
+      style-to-object: 0.3.0
+      unified: 9.2.2
+      unist-util-visit: 2.0.3
+      vfile: 4.2.1
     transitivePeerDependencies:
       - supports-color
 
@@ -27119,7 +27179,7 @@ snapshots:
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.5
-      postcss: 8.5.16
+      postcss: 8.5.17
       rolldown: 1.1.4
       tinyglobby: 0.2.17
     optionalDependencies:
