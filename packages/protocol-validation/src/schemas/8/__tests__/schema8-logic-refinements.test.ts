@@ -212,6 +212,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'Sociogram',
             label: 'Sociogram',
             subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
@@ -275,6 +276,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'Sociogram',
             label: 'Sociogram',
             subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
@@ -303,6 +305,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'Sociogram',
             label: 'Sociogram',
             subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
@@ -347,6 +350,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'Sociogram',
             label: 'Sociogram',
             subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',

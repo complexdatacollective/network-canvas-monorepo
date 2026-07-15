@@ -356,6 +356,7 @@ describe('Cross-reference conformance', () => {
             type: 'Sociogram',
             label: 'Sociogram',
             subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 4 },
             filter: {
               join: 'OR' as const,
               rules: [

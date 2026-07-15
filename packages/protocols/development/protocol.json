@@ -704,7 +704,6 @@
       },
       "background": {
         "image": "quadrant-1",
-        "concentricCircles": 4,
         "skewedTowardCenter": true
       },
       "prompts": [

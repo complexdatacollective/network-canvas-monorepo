@@ -656,6 +656,9 @@
         "entity": "node",
         "type": "person"
       },
+      "background": {
+        "concentricCircles": 4
+      },
       "behaviours": {
         "automaticLayout": true
       },

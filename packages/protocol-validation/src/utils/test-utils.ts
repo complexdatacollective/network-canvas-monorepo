@@ -142,6 +142,9 @@ export const createBaseProtocol = () => ({
         entity: 'node',
         type: 'person',
       },
+      background: {
+        concentricCircles: 4,
+      },
       prompts: [
         {
           id: 'socPrompt1',

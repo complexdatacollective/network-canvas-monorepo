@@ -48,11 +48,9 @@ export const narrativeStage = baseStageSchema.extend({
         });
       }
     }),
-  background: z
-    .strictObject({
-      concentricCircles: z.number().int().optional(),
-      skewedTowardCenter: z.boolean().optional(),
-    })
-    .optional(),
+  background: z.strictObject({
+    concentricCircles: z.number().int().positive(),
+    skewedTowardCenter: z.boolean().optional(),
+  }),
   behaviours: canvasBehavioursSchema,
 });

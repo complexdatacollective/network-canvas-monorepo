@@ -79,6 +79,7 @@ const migrationV7toV8 = createMigration({
 - Stage labels are now required to be non-empty. Any stage with a missing or empty label is given a default name based on its position (e.g. "Stage 3").
 - The Information stage \`title\` (page heading) is now required. Any Information stage without one is given its stage label as the title, or "Information" when no label was authored.
 - The NameGenerator \`form.title\` (heading of the add-a-person dialog) is now required. Any NameGenerator form without one is given "Add {node type name}" (e.g. "Add Person").
+- The Sociogram and Narrative \`background\` is now required and must be exactly one of its two variants: an image (\`image\` set, no \`concentricCircles\`) or concentric circles (\`concentricCircles\` set to a positive whole number, no \`image\`). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise \`concentricCircles\` defaults to 4, matching what the interview already rendered.
 - An OrdinalBin prompt \`color\` is now restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored, and is removed so the prompt uses the default colour.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored. Such orphaned properties are removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
@@ -379,6 +380,38 @@ const migrationV7toV8 = createMigration({
               delete typedPrompt.color;
             }
           }
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          if (
+            typedStage.type !== 'Sociogram' &&
+            typedStage.type !== 'Narrative'
+          ) {
+            return stage;
+          }
+          const background = asRecord(typedStage.background) ?? {};
+          if (typedStage.type === 'Narrative') {
+            delete background.image;
+          }
+          if (typeof background.image === 'string' && background.image !== '') {
+            delete background.concentricCircles;
+          } else {
+            delete background.image;
+            const circles = background.concentricCircles;
+            if (
+              typeof circles !== 'number' ||
+              !Number.isInteger(circles) ||
+              circles <= 0
+            ) {
+              background.concentricCircles = 4;
+            }
+          }
+          typedStage.background = background;
           return stage;
         },
       },

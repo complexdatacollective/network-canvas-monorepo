@@ -391,6 +391,9 @@
         "entity": "node",
         "type": "partner"
       },
+      "background": {
+        "concentricCircles": 4
+      },
       "behaviours": {
         "automaticLayout": true
       },

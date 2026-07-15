@@ -2580,6 +2580,124 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('Sociogram/Narrative background normalisation', () => {
+    const buildCanvasProtocol = (
+      type: 'Sociogram' | 'Narrative',
+      stage: Record<string, unknown>,
+    ) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                layout: { name: 'Layout', type: 'layout' },
+              },
+            },
+          },
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'canvas1',
+            type,
+            label: 'Canvas',
+            subject: { entity: 'node', type: 'person' },
+            ...(type === 'Sociogram'
+              ? {
+                  prompts: [
+                    {
+                      id: 'p1',
+                      text: 'Position people',
+                      layout: { layoutVariable: 'layout' },
+                    },
+                  ],
+                }
+              : {
+                  presets: [
+                    {
+                      id: 'preset1',
+                      label: 'Preset',
+                      layoutVariable: 'layout',
+                    },
+                  ],
+                }),
+            ...stage,
+          },
+        ],
+      }) as Protocol<7>;
+
+    const migrateAndGetBackground = (
+      type: 'Sociogram' | 'Narrative',
+      stage: Record<string, unknown>,
+    ) => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildCanvasProtocol(type, stage),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsedStage = parsed.stages[0];
+      if (!parsedStage || !('background' in parsedStage)) {
+        throw new Error('stage has no background');
+      }
+      return parsedStage.background;
+    };
+
+    it('adds a 4-ring background to a Sociogram with none', () => {
+      expect(migrateAndGetBackground('Sociogram', {})).toEqual({
+        concentricCircles: 4,
+      });
+    });
+
+    it('adds a 4-ring background to a Narrative with none', () => {
+      expect(migrateAndGetBackground('Narrative', {})).toEqual({
+        concentricCircles: 4,
+      });
+    });
+
+    it('backfills concentricCircles on an image-less background', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { skewedTowardCenter: true },
+        }),
+      ).toEqual({ concentricCircles: 4, skewedTowardCenter: true });
+    });
+
+    it('replaces a non-positive circle count', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { concentricCircles: 0 },
+        }),
+      ).toEqual({ concentricCircles: 4 });
+    });
+
+    it('keeps an image background and drops a leftover circle count', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { image: 'asset1', concentricCircles: 3 },
+        }),
+      ).toEqual({ image: 'asset1' });
+    });
+
+    it('strips a stray image from a Narrative background', () => {
+      expect(
+        migrateAndGetBackground('Narrative', {
+          background: { image: 'asset1', concentricCircles: 3 },
+        }),
+      ).toEqual({ concentricCircles: 3 });
+    });
+
+    it('leaves a valid circles background untouched', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { concentricCircles: 6, skewedTowardCenter: false },
+        }),
+      ).toEqual({ concentricCircles: 6, skewedTowardCenter: false });
+    });
+  });
+
   describe('NameGenerator behaviours normalisation', () => {
     const buildNgProtocol = (behaviours: Record<string, unknown>) =>
       ({

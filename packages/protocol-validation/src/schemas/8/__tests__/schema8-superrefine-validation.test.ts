@@ -779,6 +779,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               entity: 'node',
               type: 'person',
             },
+            background: {
+              concentricCircles: 4,
+            },
             prompts: [
               {
                 id: 'prompt1',
@@ -807,6 +810,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             subject: {
               entity: 'node',
               type: 'person',
+            },
+            background: {
+              concentricCircles: 4,
             },
             prompts: [
               {

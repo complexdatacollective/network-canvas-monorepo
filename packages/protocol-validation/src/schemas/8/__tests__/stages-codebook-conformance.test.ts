@@ -93,6 +93,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
     label: 'Sociogram',
     type: 'Sociogram' as const,
     subject: { entity: 'node' as const, type: 'person' },
+    background: { concentricCircles: 4 },
   };
 
   it('accepts a prompt with only edges.create set', () => {

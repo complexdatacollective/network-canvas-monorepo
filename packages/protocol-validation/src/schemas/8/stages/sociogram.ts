@@ -14,10 +14,28 @@ export const sociogramStage = baseStageSchema.extend({
   background: z
     .strictObject({
       image: z.string().optional(),
-      concentricCircles: z.number().int().optional(),
+      concentricCircles: z.number().int().positive().optional(),
       skewedTowardCenter: z.boolean().optional(),
     })
-    .optional(),
+    .superRefine((background, ctx) => {
+      if (background.image === undefined) {
+        if (background.concentricCircles === undefined) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message:
+              'concentricCircles is required when background has no image.',
+            path: ['concentricCircles'],
+          });
+        }
+      } else if (background.concentricCircles !== undefined) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message:
+            'concentricCircles cannot be set when background has an image.',
+          path: ['concentricCircles'],
+        });
+      }
+    }),
   behaviours: canvasBehavioursSchema,
   prompts: z
     .array(sociogramPromptSchema)
