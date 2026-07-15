@@ -9,7 +9,7 @@ Network Canvas uses modern security features, and has built on existing technolo
 
 How that data is stored, and therefore what security measures you need to put in place, depends on which tool you use:
 
-- **Desktop Suite (Interviewer & Architect Classic)** — data is stored only on the local device. Security relies on protecting that device.
+- **Local-device apps (Architect, Architect Classic, Interviewer, and Interviewer Classic)** — data is stored only on the local device: in the browser for the browser-based Architect and Interviewer, or within the app for the Classic desktop and tablet apps. Security relies on protecting that device.
 - **Fresco (self-hosted web app)** — data is stored centrally in a database and storage that you deploy and host. Security relies on protecting that server infrastructure.
 
 <TipBox>
@@ -18,7 +18,7 @@ This page summarizes the practical best practices for each tool. For a comprehen
 
 </TipBox>
 
-## Desktop Suite (Interviewer & Architect Classic)
+## Local-device apps (Architect, Architect Classic, Interviewer, and Interviewer Classic)
 
 <TipBox>
 
@@ -26,7 +26,7 @@ This describes **Interviewer Classic**, which is fully offline. **Interviewer** 
 
 </TipBox>
 
-The desktop applications are fully offline tools designed to run on researcher-controlled devices. Our data security approach for the Suite focuses on data transfer, since we work on the assumption that devices running the Suite will be fully controlled by researchers. This means that **data transfer (exporting data off the device) is the most vulnerable step in the workflow.**
+Interviewer Classic and Architect Classic are fully offline tools designed to run on researcher-controlled devices, and the browser-based Interviewer stores its data on the device in the same way. Our data security approach for these apps focuses on data transfer, since we work on the assumption that the devices running them will be fully controlled by researchers. This means that **data transfer (exporting data off the device) is the most vulnerable step in the workflow.**
 
 ### Data storage
 

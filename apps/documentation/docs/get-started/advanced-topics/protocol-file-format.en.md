@@ -10,7 +10,7 @@ Network Canvas uses protocol files in order to structure the interview. These ar
 
 Network Canvas is a suite of apps designed for the collection of self-reported social network data. In order to conduct a specialised study, a researcher will usually design a protocol and then deploy it.
 
-The protocol has a `.netcanvas` extension. It also references a schema. The schema dictates what sort of details we can put in the protocol. As our schemas get more complicated, we usually ask researchers to either stay on their current version of the app during a study or to carefully upgrade their protocol so they can make use of the latest schema.
+The protocol has a `.netcanvas` extension. It also references a schema. The schema dictates what sort of details we can put in the protocol. The current schema is **version 8**, produced by [Architect](/en/design-protocols/getting-started) — the browser-based designer — and run in [Fresco](/en/collect-data/fresco/about) and [Interviewer](/en/collect-data/interviewer). These apps always run the latest version and automatically migrate older protocols to schema 8 when you open or import them. The downloadable **Architect Classic** and **Interviewer Classic** apps use schema 7. As our schemas get more complicated, we usually ask researchers using the Classic apps to either stay on their current version during a study or to carefully upgrade their protocol so they can make use of the latest schema. For a full explanation, see [Protocol Schema Information](/en/get-started/advanced-topics/protocol-schema-information).
 
 ## Protocols and Schemas
 

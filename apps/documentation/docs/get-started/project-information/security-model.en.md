@@ -11,7 +11,7 @@ Security is an important consideration when handling study data.
 
 <TipBox>
 
-This overview covers the security model for the Network Canvas Desktop Suite. For information about data storage and security in Fresco, see our [Fresco FAQ](/en/collect-data/fresco/faq#is-fresco-gdpr-compliant)
+This overview covers the security model for the downloadable **Classic** desktop apps — **Architect Classic** and **Interviewer Classic** — which store data locally on the device. The browser-based **Architect** and **Interviewer** instead store their data in your web browser's local storage on the device you use; the same device-level protections (disk encryption, strong passwords, automatic locking) described below apply. For information about data storage and security in Fresco, see our [Fresco FAQ](/en/collect-data/fresco/faq#is-fresco-gdpr-compliant).
 
 </TipBox>
 
@@ -31,12 +31,12 @@ store metadata, including the date that the session was conducted which may reve
 
 Each app stores a metadata about protocols as well as application-specific settings.
 
-In Interviewer:
+In Interviewer Classic:
 
 - Information about application display settings
 - Server data, including public certificate and IP address
 
-In Architect:
+In Architect Classic:
 
 - Protocol metadata, such as which protocol was edited last.
 

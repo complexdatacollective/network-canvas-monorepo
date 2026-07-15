@@ -3,7 +3,7 @@ title: About Architect
 navOrder: 0
 ---
 
-Architect is the protocol designer for Network Canvas — the tool you use to build the interview protocols that run in Interviewer and Fresco. It comes in two versions: **Architect**, which runs in your browser with nothing to install, and **Architect Classic**, a downloadable application. They share the same interface and protocol-building workflow, but they are **not interchangeable** — each builds a different version of the protocol file format ("schema"), and that version determines which app you can run your interviews in. The table below compares them; which you should use depends mainly on where you will run your interviews.
+Architect is the protocol designer for Network Canvas — the tool you use to build the interview protocols that run in Interviewer and Fresco. It comes in two versions with similar names: **Architect** — the current app, which runs in your browser with nothing to install — and **Architect Classic**, the older downloadable application (Windows, macOS, Linux). Throughout this documentation, "Architect" on its own means the browser app, and "Architect Classic" always refers to the download. They share the same interface and protocol-building workflow, but they are **not interchangeable** — each builds a different version of the protocol file format ("schema"), and that version determines which app you can run your interviews in. The table below compares them; which you should use depends mainly on where you will run your interviews.
 
 <KeyConcept title="Not sure which to use?">
 
@@ -24,5 +24,11 @@ Choose **Architect Classic** only if you need to keep using **Interviewer Classi
 | Updates           | Always the latest, automatically                     | Download each new release yourself                                                                             |
 | Best for          | New studies (run in Fresco or Interviewer)           | Studies that must keep using the older Interviewer Classic app                                                 |
 | Status            | Actively developed                                   | Maintenance mode — bug fixes only                                                                              |
+
+<TipBox>
+
+A **PWA** (Progressive Web App) is a website you can optionally install to your device. Architect runs in any modern web browser with nothing to install; installing it as a PWA adds quick access from your device and offline use.
+
+</TipBox>
 
 Architect can open a schema 7 protocol made in Architect Classic and upgrade it to schema 8, but this is one-way — a schema 8 protocol cannot be converted back or opened in Architect Classic. For a full explanation of schema versions and compatibility, see [App compatibility by schema version](/en/get-started/release-announcements) and [Protocol Schema Information](/en/get-started/advanced-topics/protocol-schema-information).

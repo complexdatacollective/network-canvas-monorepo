@@ -16,9 +16,9 @@ This tutorial describes a protocol and data workflow for using Network Canvas to
 To follow along, you should:
 
 - Be familiar with Network Canvas and its data collection process.
-- Have access to devices running the Interviewer app.
-- Have the ability to install software or configure your devices, or the support of someone who does (e.g., institutional Information Technology (IT) department).
-- Create or obtain the protocol file that you want to deploy using Interviewer (see [building a protocol](/en/design-protocols/building-a-protocol)).
+- Have access to the devices you will use to run interviews.
+- For the desktop workflows, have the ability to install software or configure your devices, or the support of someone who does (e.g., institutional Information Technology (IT) department). The browser-based Interviewer and Fresco need only a supported web browser.
+- Create or obtain the protocol file that you want to deploy (see [building a protocol](/en/design-protocols/building-a-protocol)).
 
 </PrerequisitesSection>
 </SummaryCard>
@@ -27,7 +27,7 @@ To follow along, you should:
 
 This guide will walk you through several possible workflows for conducting research using the Network Canvas tools.
 
-The first two are **desktop workflows** built around the [Interviewer](/en/collect-data/interviewer) app, and cover both scenarios with and without network connectivity, using tablets or laptop/desktop devices:
+The first two are **desktop workflows** built around [Interviewer Classic](/en/collect-data/interviewer/installing-interviewer), the downloadable desktop and tablet app. They cover both scenarios with and without network connectivity, using tablets or laptop/desktop devices, and involve copying the protocol file to each device and collecting a separate export from each:
 
 - **Option 1: Online workflow** — deploy protocols and export data via a cloud file sharing service.
 - **Option 2: Offline workflow** — deploy protocols and export data via a USB flash drive or other external storage.
@@ -37,6 +37,12 @@ The third is a **web-based workflow** built around [Architect](/en/design-protoc
 - **Option 3: Web-based workflow** — author protocols in Architect, upload them to a Fresco dashboard, and let participants complete interviews in their browser, with all data stored centrally and exported from the dashboard.
 
 In the desktop workflows, you deploy a protocol to each device and collect an export from each device. In the web-based workflow, protocol deployment and data export are both handled centrally through the Fresco dashboard.
+
+<TipBox>
+
+The newer browser-based **[Interviewer](/en/collect-data/interviewer)** (beta) sits between these. Like the desktop app, it is guided by an interviewer and stores data on the device — but there is nothing to install: you open it in a web browser, or install it as a Progressive Web App, and import protocols and export data from within the app itself. See [Using Interviewer](/en/collect-data/interviewer/using-interviewer) for its import and export steps.
+
+</TipBox>
 
 <TipBox>
 
@@ -61,18 +67,18 @@ The two most convenient ways to deploy protocols are to use a **cloud file shari
 The preferred method for deploying protocols is to use a cloud file sharing service. This allows you to share the protocol file with others either by providing them with a link to the file or by importing it via the cloud file service's app on your device. It has the significant advantage of providing a single location for the protocol file that can be updated as needed and which can be accessed by multiple people at the same time.
 
 1. Place your `.netcanvas` file on a cloud storage service (e.g., Box, DropBox, Google Drive). You can generally accomplish this by dragging and dropping the file into a dedicated folder on the computer you are using to author the protocol. Alternatively, many providers allow you to upload files via a web interface.
-2. (Optionally) Generate a shareable link for the protocol file in the cloud service. The precise mechanism by which this is accomplished varies by provider. You can then use this link to import the protocol file on your devices running Interviewer (see "Utilizing URL import to deploy protocols", below).
-3. Alternatively, install the cloud service's app on your device and use it to import the `.netcanvas` file into the Interviewer app using the **Import from File** button on the start screen. Typically, you accomplish this by browsing to a special location in the file browser that corresponds to the cloud storage provider (e.g., "Dropbox" or "Google Drive"). If your provider is not visible in the file browser, try to copy the protocol file to the storage of your device from within the provider's app.
+2. (Optionally) Generate a shareable link for the protocol file in the cloud service. The precise mechanism by which this is accomplished varies by provider. You can then use this link to import the protocol file on your devices running Interviewer Classic (see "Utilizing URL import to deploy protocols", below).
+3. Alternatively, install the cloud service's app on your device and use it to import the `.netcanvas` file into Interviewer Classic using the **Import from File** button on the start screen. Typically, you accomplish this by browsing to a special location in the file browser that corresponds to the cloud storage provider (e.g., "Dropbox" or "Google Drive"). If your provider is not visible in the file browser, try to copy the protocol file to the storage of your device from within the provider's app.
 
 #### Utilizing URL import to deploy protocols
 
-A second option for protocol import that can work well for cases where the protocol is not likely to change frequently, or where you want to document the setup process in writing, is to use the URL import feature of the Interviewer app. This allows you to import a protocol file directly from a web link (URL).
+A second option for protocol import that can work well for cases where the protocol is not likely to change frequently, or where you want to document the setup process in writing, is to use the URL import feature of Interviewer Classic. This allows you to import a protocol file directly from a web link (URL).
 
 1. Use a web hosting service that provides file hosting capabilities to host the protocol's `.netcanvas` file (e.g., GitHub Pages, SharePoint, and so on).
 2. Once you have a hosting service, upload your `.netcanvas` file.
-3. Once the file is uploaded, determine the URL for accessing the `.netcanvas` file. The URL will typically follow the format: `https//<your website>.com/path/to/file.netcanvas`.
+3. Once the file is uploaded, determine the URL for accessing the `.netcanvas` file. The URL will typically follow the format: `https://<your website>.com/path/to/file.netcanvas`.
 4. Ensure that the URL is publicly accessible by opening it in a web browser.
-5. Once the file is hosted and the URL is accessible, you can share the web link with others. They can then use the link to access and import the protocol file into the Interviewer app using the **Import from URL** button on the start screen.
+5. Once the file is hosted and the URL is accessible, you can share the web link with others. They can then use the link to access and import the protocol file into Interviewer Classic using the **Import from URL** button on the start screen.
 
 ### Data export
 
@@ -104,32 +110,32 @@ The offline workflow assumes every interface in your protocol works offline. Som
 
 ### Protocol deployment
 
-In an offline setting, the only option for deploying protocols is to use a USB flash drive or other external storage device to transfer the protocol file physically from your computer to the device running the Interviewer.
+In an offline setting, the only option for deploying protocols is to use a USB flash drive or other external storage device to transfer the protocol file physically from your computer to the device running Interviewer Classic.
 
 1. Determine the path to your protocol file (where it is saved on your computer). It typically follows the format: `C:\Folder\Subfolder\file.netcanvas` for Windows or `/Users/Username/Folder/Subfolder/file.netcanvas` for Mac.
 2. Open the file browser on your computer and navigate to the location of the protocol file.
 3. Insert your USB flash drive or other external storage device into your computer.
 4. Copy the protocol file to the external storage device.
 5. Eject the external storage device from your computer.
-6. Insert the external storage device into the device running the Network Canvas Interviewer App.
-7. Open the Network Canvas Interviewer App and navigate to the 'Import from File' button on the start screen.
+6. Insert the external storage device into the device running Interviewer Classic.
+7. Open Interviewer Classic and navigate to the 'Import from File' button on the start screen.
 8. Navigate to the external storage device's folder, and select the protocol file.
 
 <TipBox>
 
 Refer to the documentation from your operating system or device manufacturer
 (or simply test ahead of time) to ensure that the storage device you are using
-to transfer the protocol file can be read by the device running the Network
-Canvas Interviewer App _and_ the device running Architect.
+to transfer the protocol file can be read by the device running Interviewer
+Classic _and_ the device running Architect Classic.
 
 </TipBox>
 
 ### Data Export
 
-As above, the only option for exporting data in an offline setting is to use a USB flash drive or other external storage device to transfer the data files from the device running the Network Canvas Interviewer App to a computer.
+As above, the only option for exporting data in an offline setting is to use a USB flash drive or other external storage device to transfer the data files from the device running Interviewer Classic to a computer.
 
 1. Create a dedicated folder on your external storage device to store the Network Canvas Interviewer data. Choose a location that is easily accessible and organized. If you are operating within a large team, consider creating individual folders for each person conducting interviews.
-2. Once you have conducted your interviews, navigate to the 'Manage or Export Sessions' card on the start screen of Interviewer and select the files you wish to export. You will be prompted to choose a location to save the export.
+2. Once you have conducted your interviews, navigate to the 'Manage or Export Sessions' card on the start screen of Interviewer Classic and select the files you wish to export. You will be prompted to choose a location to save the export.
    - If you are using a PC or Mac, you will be prompted to choose a location on the device's filesystem to save the export. Navigate to the external storage device's folder that you created in step 1.
    - If you are using a tablet device, you will be prompted to choose an app to handle the export. The export functionality on tablet devices works using the "share" feature built into both Android and iOS. This means that options for saving exported data are determined by which apps you have installed on your device. You therefore need to install a third-party file management app such as "[CX File Explorer](https://play.google.com/store/apps/details?id=com.cxinventor.file.explorer)". Once installed, choose the file manager app from the share menu. The app will then open and you will be prompted to choose a location to save the export. Navigate to the external storage device's folder that you created in step 1.
 
@@ -147,7 +153,7 @@ The web-based workflow requires a deployed Fresco instance. Fresco is self-hoste
 
 ### Authoring the protocol
 
-Design your protocol in [Architect](/en/design-protocols/getting-started), the browser-based version of the Architect protocol designer. There is nothing to install — it runs entirely in your web browser. Architect produces schema 8 protocols and exports a standard `.netcanvas` file, exactly like the Architect Classic.
+Design your protocol in [Architect](/en/design-protocols/getting-started), the browser-based version of the Architect protocol designer. There is nothing to install — it runs entirely in your web browser. Architect produces schema 8 protocols and exports a standard `.netcanvas` file, exactly like Architect Classic.
 
 ### Protocol deployment
 
