@@ -274,6 +274,8 @@
         "src/**",
         "__tests__/**",
         "vitest.config.*",
+        "vitest.setup.*",
+        "config/vitest/**",
         "package.json",
         ".env"
       ],
@@ -350,6 +352,24 @@
         "__tests__/**",
         "vitest.config.*",
         "vite.config.*",
+        "package.json",
+        ".env"
+      ],
+      "env": [
+        "PROTOCOL_ENCRYPTION_KEY",
+        "PROTOCOL_ENCRYPTION_IV",
+        "GITHUB_TOKEN"
+      ],
+      "outputs": []
+    },
+    "@codaco/interview#test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "__tests__/**",
+        "e2e/**",
+        "vitest.config.*",
+        "vitest.setup.*",
         "package.json",
         ".env"
       ],
