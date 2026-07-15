@@ -402,5 +402,8 @@
       "env": ["NODE_ENV"],
       "outputs": []
     }
+  },
+  "futureFlags": {
+    "affectedUsingTaskInputs": true
   }
 }
