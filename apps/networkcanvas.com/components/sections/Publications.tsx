@@ -44,7 +44,7 @@ export function Publications({
   const t = useTranslations('Publications');
 
   return (
-    <Container className="tablet-landscape:py-28 py-20">
+    <Container maxWidth="full" className="tablet-landscape:py-28 py-20">
       <SectionHeading title={t('heading')}>
         <Paragraph margin="none">
           {t.rich('introduction', { article: renderArticleLink })}
@@ -54,7 +54,7 @@ export function Publications({
         </Paragraph>
       </SectionHeading>
 
-      <div className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 desktop:grid-cols-4 mt-14 grid gap-5">
+      <div className="tablet-portrait:grid-cols-2 mt-14 grid w-full grid-cols-1 gap-5">
         {publications.map((pub, i) => (
           <Reveal key={pub.id} delay={(i % 4) * 0.04}>
             <a

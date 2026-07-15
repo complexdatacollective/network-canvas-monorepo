@@ -266,7 +266,6 @@ describe('HomepagePageBackground', () => {
           interactiveTargetSelector="[data-get-started-weave-interactive-target]"
           parameterProfile="get-started"
           postTargetBehavior="figure-eight"
-          varyComplexity
         />
         <div data-get-started-weave-target data-target="intro" />
         <div data-get-started-weave-target data-target="starting-cards" />
@@ -322,13 +321,13 @@ describe('HomepagePageBackground', () => {
     const lastProps = pageBackgroundProps.mock.lastCall?.[0];
     expect(lastProps?.convergence.x).toBeCloseTo(0.72);
     expect(lastProps?.convergence.y).toBeCloseTo(0.5);
-    expect(lastProps?.complexity).toBeCloseTo(34);
+    expect(lastProps?.complexity).toBe(20);
     expect(lastProps?.intensity).toBeCloseTo(0.25);
     expect(lastProps?.flare).toBeCloseTo(2.54);
     expect(lastProps?.speedFactor).toBeCloseTo(0.54);
   });
 
-  it('raises the hero intensity, then follows a varied target-linked parameter profile', () => {
+  it('keeps complexity fixed while varying the other scroll-linked parameters', () => {
     targetRects.set(
       'hero',
       createRect({ left: 100, top: 300, width: 400, height: 300 }),
@@ -367,7 +366,7 @@ describe('HomepagePageBackground', () => {
 
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        complexity: 24,
+        complexity: 20,
         intensity: 0.18,
         flare: 2.42,
         speedFactor: 0.68,
@@ -386,7 +385,7 @@ describe('HomepagePageBackground', () => {
 
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        complexity: 36,
+        complexity: 20,
         intensity: 0.27,
         flare: 2.08,
         speedFactor: 0.5,
@@ -441,6 +440,7 @@ describe('HomepagePageBackground', () => {
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         convergence: { x: 0.15, y: 0.3125 },
+        intensity: 0.49,
         targetChangeVersion: 1,
       }),
     );
@@ -449,6 +449,7 @@ describe('HomepagePageBackground', () => {
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         convergence: { x: 0.75, y: 0.5625 },
+        intensity: 0.49,
         targetChangeVersion: 2,
       }),
     );
@@ -457,6 +458,7 @@ describe('HomepagePageBackground', () => {
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         convergence: { x: 0.15, y: 0.3125 },
+        intensity: 0.49,
         targetChangeVersion: 3,
       }),
     );
@@ -465,8 +467,53 @@ describe('HomepagePageBackground', () => {
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         convergence: { x: 0.5, y: 0.5 },
+        intensity: 0.27,
         targetChangeVersion: 4,
       }),
     );
+  });
+
+  it('moves marked target focus points within their cards as the page scrolls', () => {
+    targetRects.set(
+      'app-card',
+      createRect({ left: 100, top: 200, width: 600, height: 400 }),
+    );
+    targetRects.set(
+      'next',
+      createRect({ left: 700, top: 1800, width: 200, height: 200 }),
+    );
+
+    render(
+      <>
+        <ScrollLinkedPageBackground
+          targetSelector="[data-moving-test-target]"
+          movingTargetSelector="[data-moving-test]"
+        />
+        <div data-moving-test-target data-moving-test data-target="app-card" />
+        <div data-moving-test-target data-target="next" />
+      </>,
+    );
+
+    const initialConvergence = pageBackgroundProps.mock.lastCall?.[0]
+      ?.convergence as { x: number; y: number };
+    expect(initialConvergence).toEqual({ x: 0.4, y: 0.4 });
+
+    targetRects.set(
+      'app-card',
+      createRect({ left: 100, top: 100, width: 600, height: 400 }),
+    );
+    targetRects.set(
+      'next',
+      createRect({ left: 700, top: 1700, width: 200, height: 200 }),
+    );
+    void act(() => fireEvent.scroll(window));
+
+    const scrolledConvergence = pageBackgroundProps.mock.lastCall?.[0]
+      ?.convergence as { x: number; y: number };
+    expect(scrolledConvergence.x).toBeGreaterThan(0.1);
+    expect(scrolledConvergence.x).toBeLessThan(0.7);
+    expect(scrolledConvergence.y).toBeGreaterThan(0.125);
+    expect(scrolledConvergence.y).toBeLessThan(0.625);
+    expect(scrolledConvergence).not.toEqual(initialConvergence);
   });
 });

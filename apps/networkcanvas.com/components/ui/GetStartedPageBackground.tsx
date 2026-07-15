@@ -11,7 +11,6 @@ export function GetStartedPageBackground() {
       interactiveTargetSelector={INTERACTIVE_TARGET_SELECTOR}
       parameterProfile="get-started"
       postTargetBehavior="figure-eight"
-      varyComplexity
     />
   );
 }

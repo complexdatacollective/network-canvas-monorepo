@@ -48,6 +48,6 @@ describe('HomePage hero background composition', () => {
     ).toBeNull();
     expect(
       container.querySelectorAll('[data-homepage-weave-target]'),
-    ).toHaveLength(8);
+    ).toHaveLength(11);
   });
 });

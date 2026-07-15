@@ -69,7 +69,10 @@ export function WhatNext() {
   ];
 
   return (
-    <Container className="tablet-landscape:py-28 py-20">
+    <Container
+      data-homepage-weave-target
+      className="tablet-landscape:py-28 py-20"
+    >
       <SectionTitle title={t('heading')} />
       <div className="mt-12 flex flex-col gap-6">
         {cards.map((card) => (

@@ -47,6 +47,7 @@ export function Tools() {
             <Reveal
               key={tool.id}
               data-homepage-weave-target
+              data-homepage-weave-moving-target
               className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 bg-surface/55 grid items-center gap-8 rounded p-6 shadow-xl backdrop-blur-md"
             >
               <div>

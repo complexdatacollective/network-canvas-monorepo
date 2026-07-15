@@ -37,7 +37,10 @@ export function Institutions() {
   const t = useTranslations('Institutions');
 
   return (
-    <Container className="tablet-landscape:py-24 py-20">
+    <Container
+      data-homepage-weave-target
+      className="tablet-landscape:py-24 py-20"
+    >
       <SectionHeading title={t('heading')}>
         <Paragraph margin="none">
           {t.rich('paragraph1', {

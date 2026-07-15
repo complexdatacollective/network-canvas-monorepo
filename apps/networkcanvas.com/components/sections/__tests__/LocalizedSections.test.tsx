@@ -74,6 +74,11 @@ describe('localized home sections', () => {
       screen.getByRole('heading', { name: 'Asesores científicos' }),
     ).toBeInTheDocument();
     expect(
+      screen
+        .getByRole('heading', { name: 'Asesores científicos' })
+        .closest('[data-homepage-weave-target]'),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole('heading', { name: 'Flexibilidad ontológica' }),
     ).toBeInTheDocument();
     expect(
@@ -127,8 +132,19 @@ describe('localized home sections', () => {
     );
     expect(publicationCard?.parentElement?.parentElement).toHaveClass(
       'tablet-portrait:grid-cols-2',
-      'tablet-landscape:grid-cols-3',
-      'desktop:grid-cols-4',
+      'grid-cols-1',
+      'w-full',
     );
+    expect(publicationCard?.closest('.max-w-none')).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole('heading', { name: 'Instituciones' })
+        .closest('[data-homepage-weave-target]'),
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole('heading', { name: '¿Qué sigue?' })
+        .closest('[data-homepage-weave-target]'),
+    ).toBeInTheDocument();
   });
 });

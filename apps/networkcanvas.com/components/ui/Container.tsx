@@ -6,7 +6,7 @@ type ContainerProps = {
   as?: ElementType;
   className?: string;
   children: ReactNode;
-  maxWidth?: 'default' | 'wide';
+  maxWidth?: 'default' | 'wide' | 'full';
 } & Omit<ComponentPropsWithoutRef<'div'>, 'children' | 'className'>;
 
 export function Container({
@@ -21,7 +21,11 @@ export function Container({
       {...props}
       className={cn(
         'tablet-landscape:px-10 mx-auto w-full px-6',
-        maxWidth === 'wide' ? 'max-w-[1400px]' : 'max-w-[1200px]',
+        maxWidth === 'full'
+          ? 'max-w-none'
+          : maxWidth === 'wide'
+            ? 'max-w-[1400px]'
+            : 'max-w-[1200px]',
         className,
       )}
     >
