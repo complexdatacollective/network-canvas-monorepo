@@ -41,10 +41,9 @@ export const PreviewRule = ({
           type="button"
           icon={<Trash2 />}
           aria-label="Delete rule"
-          size="md"
-          variant="text"
+          size="lg"
           color="destructive"
-          className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast shrink-0 text-current opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+          className="shrink-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
           onClick={onDelete}
         />
       </div>

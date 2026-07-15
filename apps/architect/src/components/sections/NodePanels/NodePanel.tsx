@@ -126,10 +126,8 @@ const NodePanel = ({
         icon={<Trash2 />}
         aria-label="Remove side panel"
         size="lg"
-        variant="text"
         color="destructive"
         disabled={interactionDisabled}
-        className="hover:enabled:bg-destructive hover:enabled:text-destructive-contrast text-current"
         onClick={handleDelete}
       />
     </div>

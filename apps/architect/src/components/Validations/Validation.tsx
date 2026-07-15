@@ -194,14 +194,14 @@ const Validation = ({
           <IconButton
             icon={<Pencil />}
             aria-label={`Edit ${label} validation rule`}
-            variant="text"
+            size="lg"
             color="dynamic"
             onClick={onEdit}
           />
           <IconButton
             icon={<Trash2 />}
             aria-label={`Delete ${label} validation rule`}
-            variant="text"
+            size="lg"
             color="destructive"
             onClick={() => onDelete(itemKey)}
           />
@@ -229,6 +229,7 @@ const Validation = ({
           <div className={MULTI_SELECT_OPTION_CLASSES}>
             <InputField
               name="validation-value"
+              className="w-36"
               value={
                 typeof draftValue === 'number'
                   ? draftValue.toString()
@@ -262,7 +263,7 @@ const Validation = ({
           aria-label={
             isNewItem ? 'Add validation rule' : 'Save validation rule'
           }
-          variant="text"
+          size="lg"
           color="success"
           disabled={!isDraftComplete(draftKey, draftValue)}
           onClick={handleSave}
@@ -270,7 +271,7 @@ const Validation = ({
         <IconButton
           icon={<X />}
           aria-label="Cancel editing validation rule"
-          variant="text"
+          size="lg"
           color="destructive"
           onClick={onCancel}
         />
