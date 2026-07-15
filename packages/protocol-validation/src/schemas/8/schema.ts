@@ -298,6 +298,22 @@ const ProtocolSchema = z
                   'variable',
                 ],
               });
+            } else if (
+              variable &&
+              (!('component' in variable) || variable.component === undefined)
+            ) {
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `Form field variable "${field.variable}" must define a component (input control) to be rendered as a form field.`,
+                path: [
+                  'stages',
+                  stageIndex,
+                  'form',
+                  'fields',
+                  fieldIndex,
+                  'variable',
+                ],
+              });
             }
           }
         });

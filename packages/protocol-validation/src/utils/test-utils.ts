@@ -12,10 +12,12 @@ export const createBaseProtocol = () => ({
         egoName: {
           name: 'EgoName',
           type: 'text',
+          component: 'Text',
         },
         egoAge: {
           name: 'EgoAge',
           type: 'number',
+          component: 'Number',
         },
       },
     },
@@ -28,10 +30,12 @@ export const createBaseProtocol = () => ({
           name: {
             name: 'Name',
             type: 'text',
+            component: 'Text',
           },
           age: {
             name: 'Age',
             type: 'number',
+            component: 'Number',
           },
           category: {
             name: 'Category',
@@ -80,6 +84,7 @@ export const createBaseProtocol = () => ({
           closeness: {
             name: 'Closeness',
             type: 'ordinal',
+            component: 'RadioGroup',
             options: [
               { label: 'Not Close', value: 1 },
               { label: 'Somewhat Close', value: 2 },
@@ -89,6 +94,7 @@ export const createBaseProtocol = () => ({
           duration: {
             name: 'Duration',
             type: 'number',
+            component: 'Number',
           },
         },
       },

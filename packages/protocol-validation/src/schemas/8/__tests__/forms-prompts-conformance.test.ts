@@ -23,7 +23,7 @@ const createProtocol = (stages: unknown[]) => ({
   codebook: {
     ego: {
       variables: {
-        egoName: { name: 'EgoName', type: 'text' },
+        egoName: { name: 'EgoName', type: 'text', component: 'Text' },
       },
     },
     node: {
@@ -32,7 +32,7 @@ const createProtocol = (stages: unknown[]) => ({
         color: 'node-color-seq-1',
         shape: { default: 'circle' } as NodeDefinition['shape'],
         variables: {
-          personName: { name: 'Name', type: 'text' },
+          personName: { name: 'Name', type: 'text', component: 'Text' },
           personOther: { name: 'Other', type: 'text' },
           personCategory: {
             name: 'Category',

@@ -577,7 +577,9 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {},
@@ -633,7 +635,9 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {},
@@ -756,6 +760,7 @@ describe('Migration V7 to V8', () => {
                 category: {
                   name: 'Category',
                   type: 'categorical',
+                  component: 'CheckboxGroup',
                   options: [
                     { label: 'A', value: 'a' },
                     { label: 'B', value: 'b' },
@@ -1041,6 +1046,7 @@ describe('Migration V7 to V8', () => {
                 name: {
                   name: 'Name',
                   type: 'text',
+                  component: 'Text',
                 },
                 isActive: {
                   name: 'IsActive',
@@ -2097,17 +2103,25 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {
             knows: {
               name: 'Knows',
               color: 'edge-color-seq-1',
-              variables: { weight: { name: 'Weight', type: 'text' } },
+              variables: {
+                weight: { name: 'Weight', type: 'text', component: 'Text' },
+              },
             },
           },
-          ego: { variables: { egoName: { name: 'EgoName', type: 'text' } } },
+          ego: {
+            variables: {
+              egoName: { name: 'EgoName', type: 'text', component: 'Text' },
+            },
+          },
         },
         stages: [
           {
@@ -2536,7 +2550,7 @@ describe('Migration V7 to V8', () => {
               name: 'Person',
               color: 'node-color-seq-1',
               variables: {
-                name: { name: 'Name', type: 'text' },
+                name: { name: 'Name', type: 'text', component: 'Text' },
               },
             },
           },
@@ -2720,7 +2734,9 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {},
@@ -3062,7 +3078,9 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {},
@@ -3106,7 +3124,9 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {},

@@ -42,7 +42,9 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
-          variables: { name: { name: 'Name', type: 'text' } },
+          variables: {
+            name: { name: 'Name', type: 'text', component: 'Text' },
+          },
         },
       },
       edge: {},
