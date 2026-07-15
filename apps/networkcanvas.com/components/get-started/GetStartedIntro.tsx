@@ -120,7 +120,7 @@ export function GetStartedIntro() {
                 <span className="font-heading text-text/65 text-xs font-bold tracking-[0.14em] uppercase">
                   {t(`intro.stages.${stage.id}.label`)}
                 </span>
-                <span className="font-heading text-text tablet-portrait:text-3xl mt-8 block max-w-lg text-2xl font-black tracking-tight text-balance">
+                <span className="font-heading text-text tablet-portrait:text-2xl mt-8 block max-w-lg text-xl font-black tracking-tight text-balance">
                   {t(`intro.stages.${stage.id}.title`)}
                 </span>
                 <span
