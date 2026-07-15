@@ -99,7 +99,7 @@ describe('GetStartedIntro', () => {
     expect(documentationLink.parentElement).toHaveClass('max-w-[1400px]');
     expect(
       screen.getByText(
-        'Choose the stage your research has reached, then select the Network Canvas app that fits your study.',
+        'Start by clicking the card that best describes the stage you are at with your research and familiarity with Network Canvas',
       ),
     ).toBeInTheDocument();
     expect(documentationLink).toHaveClass('relative', 'pb-24');
@@ -176,7 +176,7 @@ describe('GetStartedIntro', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Elija la etapa que ha alcanzado su investigación y, a continuación, seleccione la aplicación de Network Canvas que mejor se adapte a su estudio.',
+        'Para empezar, haga clic en la tarjeta que mejor describa en qué etapa se encuentra su investigación y su familiaridad con Network Canvas.',
       ),
     ).toBeInTheDocument();
     expect(
