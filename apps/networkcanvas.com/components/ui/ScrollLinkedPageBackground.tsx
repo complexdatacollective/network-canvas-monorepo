@@ -20,6 +20,11 @@ const WEAVE_PARAMETER_KEYFRAMES = [
 ] as const;
 
 const HERO_PARAMETERS = WEAVE_PARAMETER_KEYFRAMES[0];
+const REST_PARAMETERS =
+  WEAVE_PARAMETER_KEYFRAMES[WEAVE_PARAMETER_KEYFRAMES.length - 1] ??
+  HERO_PARAMETERS;
+
+type PostTargetBehavior = 'center' | 'figure-eight';
 
 type BackgroundState = {
   convergence: NetworkWeaveConvergence;
@@ -33,6 +38,7 @@ type BackgroundState = {
 type ScrollLinkedPageBackgroundProps = {
   targetSelector: string;
   interactiveTargetSelector?: string;
+  postTargetBehavior?: PostTargetBehavior;
 };
 
 function clampToViewport(value: number) {
@@ -95,9 +101,53 @@ function getWeaveParameters(progress: number) {
   };
 }
 
+function getPostTargetProgress(
+  finalTargetCenterY: number,
+  viewportCenterY: number,
+  viewportHeight: number,
+) {
+  const finalTargetDocumentY = window.scrollY + finalTargetCenterY;
+  const startScrollY = Math.max(0, finalTargetDocumentY - viewportCenterY);
+  const maxScrollY = Math.max(
+    startScrollY,
+    document.documentElement.scrollHeight - viewportHeight,
+  );
+
+  if (maxScrollY === startScrollY) {
+    return finalTargetCenterY <= viewportCenterY ? 1 : 0;
+  }
+
+  return clampToViewport(
+    (window.scrollY - startScrollY) / (maxScrollY - startScrollY),
+  );
+}
+
+function getFigureEightConvergence(progress: number) {
+  const angle = progress * Math.PI * 2;
+
+  return {
+    x: CENTER_CONVERGENCE.x + Math.sin(angle) * 0.22,
+    y: CENTER_CONVERGENCE.y + Math.sin(angle * 2) * 0.12,
+  };
+}
+
+function getFigureEightParameters(progress: number) {
+  const angle = progress * Math.PI * 2;
+
+  return {
+    intensity: REST_PARAMETERS.intensity + Math.sin(angle) * 0.07,
+    flare: Math.max(
+      HERO_PARAMETERS.flare,
+      REST_PARAMETERS.flare + (1 - Math.cos(angle)) * 0.32,
+    ),
+    speedFactor: REST_PARAMETERS.speedFactor + Math.sin(angle * 2) * 0.18,
+  };
+}
+
 export function ScrollLinkedPageBackground({
   targetSelector,
   interactiveTargetSelector,
+  postTargetBehavior = 'center',
 }: ScrollLinkedPageBackgroundProps) {
   const layerRef = useRef<HTMLDivElement>(null);
   const [background, setBackground] = useState<BackgroundState>({
@@ -132,6 +182,7 @@ export function ScrollLinkedPageBackground({
       const targetCenters = targets.map(getElementCenter);
       let convergence = CENTER_CONVERGENCE;
       let targetProgress = 0;
+      let postTargetProgress: number | null = null;
       const firstTarget = targetCenters[0];
       const finalTargetIndex = targetCenters.length - 1;
       const passedTargetIndex = targetCenters.findLastIndex(
@@ -182,6 +233,17 @@ export function ScrollLinkedPageBackground({
         passedTargetIndex >= finalTargetIndex
       ) {
         targetProgress = 1;
+        if (postTargetBehavior === 'figure-eight') {
+          const finalTarget = targetCenters[finalTargetIndex];
+          if (finalTarget) {
+            postTargetProgress = getPostTargetProgress(
+              finalTarget.y,
+              viewportCenterY,
+              layerRect.height,
+            );
+            convergence = getFigureEightConvergence(postTargetProgress);
+          }
+        }
       }
 
       const nextInteractiveTarget = focusedTarget ?? hoveredTarget;
@@ -190,8 +252,17 @@ export function ScrollLinkedPageBackground({
         targetChangeVersion += 1;
       }
 
-      if (activeInteractiveTarget) {
-        const interactiveCenter = getElementCenter(activeInteractiveTarget);
+      const trackedInteractiveTarget =
+        activeInteractiveTarget &&
+        !(
+          postTargetBehavior === 'figure-eight' &&
+          passedTargetIndex >= finalTargetIndex
+        )
+          ? activeInteractiveTarget
+          : null;
+
+      if (trackedInteractiveTarget) {
+        const interactiveCenter = getElementCenter(trackedInteractiveTarget);
         convergence = {
           x: clampToViewport(
             (interactiveCenter.x - layerRect.left) / layerRect.width,
@@ -203,7 +274,9 @@ export function ScrollLinkedPageBackground({
       }
 
       const { intensity, flare, speedFactor } =
-        getWeaveParameters(targetProgress);
+        postTargetProgress === null
+          ? getWeaveParameters(targetProgress)
+          : getFigureEightParameters(postTargetProgress);
 
       setBackground((current) => {
         if (
@@ -300,7 +373,7 @@ export function ScrollLinkedPageBackground({
       window.removeEventListener('resize', updateBackground);
       window.removeEventListener('scroll', updateBackground);
     };
-  }, [interactiveTargetSelector, targetSelector]);
+  }, [interactiveTargetSelector, postTargetBehavior, targetSelector]);
 
   return (
     <PageBackground

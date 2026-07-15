@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 import { GetStartedIntro } from '~/components/get-started/GetStartedIntro';
 import { WorkflowPath } from '~/components/get-started/WorkflowPath';
 import { Footer } from '~/components/layout/Footer';
-import { ScrollLinkedPageBackground } from '~/components/ui/ScrollLinkedPageBackground';
+import { GetStartedPageBackground } from '~/components/ui/GetStartedPageBackground';
 import { classicApps, webApps } from '~/lib/getStarted';
 import { routing } from '~/lib/i18n/routing';
 
@@ -53,10 +53,7 @@ export default async function GetStartedPage({ params }: GetStartedPageProps) {
 
   return (
     <main className="relative isolate">
-      <ScrollLinkedPageBackground
-        targetSelector="[data-get-started-weave-target]"
-        interactiveTargetSelector="[data-get-started-weave-interactive-target]"
-      />
+      <GetStartedPageBackground />
       <div className="relative z-10">
         <GetStartedIntro />
         <WorkflowPath workflow="design" apps={designApps} />

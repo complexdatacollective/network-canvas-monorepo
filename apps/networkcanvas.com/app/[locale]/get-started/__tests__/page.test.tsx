@@ -100,10 +100,10 @@ describe('localized Get Started page', () => {
     expect(cards[1]).toHaveClass('bg-slate-blue/10', 'backdrop-blur-md');
     expect(
       document.querySelectorAll('[data-get-started-weave-target]'),
-    ).toHaveLength(6);
+    ).toHaveLength(2);
     expect(
       document.querySelectorAll('[data-get-started-weave-interactive-target]'),
-    ).toHaveLength(8);
+    ).toHaveLength(3);
     expect(
       document.querySelectorAll('[data-testid="page-background"]'),
     ).toHaveLength(1);

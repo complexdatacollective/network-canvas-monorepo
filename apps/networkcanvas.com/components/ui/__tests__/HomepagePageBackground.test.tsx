@@ -3,6 +3,7 @@ import type { Ref } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HomepagePageBackground } from '../HomepagePageBackground';
+import { ScrollLinkedPageBackground } from '../ScrollLinkedPageBackground';
 
 const pageBackgroundProps = vi.hoisted(() => vi.fn());
 
@@ -187,6 +188,74 @@ describe('HomepagePageBackground', () => {
         convergence: { x: 0.5, y: 0.5 },
       }),
     );
+  });
+
+  it('traces a scroll-linked figure eight after the final get-started target', () => {
+    let scrollY = 0;
+    vi.spyOn(window, 'scrollY', 'get').mockImplementation(() => scrollY);
+    vi.spyOn(document.documentElement, 'scrollHeight', 'get').mockReturnValue(
+      3200,
+    );
+    targetRects.set(
+      'intro',
+      createRect({ left: 200, top: 50, width: 600, height: 100 }),
+    );
+    targetRects.set(
+      'starting-cards',
+      createRect({ left: 100, top: 550, width: 800, height: 100 }),
+    );
+    targetRects.set(
+      'starting-card',
+      createRect({ left: 700, top: 250, width: 100, height: 100 }),
+    );
+
+    const { getByTestId } = render(
+      <>
+        <ScrollLinkedPageBackground
+          targetSelector="[data-get-started-weave-target]"
+          interactiveTargetSelector="[data-get-started-weave-interactive-target]"
+          postTargetBehavior="figure-eight"
+        />
+        <div data-get-started-weave-target data-target="intro" />
+        <div data-get-started-weave-target data-target="starting-cards" />
+        <button
+          type="button"
+          aria-label="Starting card"
+          data-get-started-weave-interactive-target
+          data-target="starting-card"
+          data-testid="starting-card"
+        />
+      </>,
+    );
+
+    void act(() => fireEvent.pointerEnter(getByTestId('starting-card')));
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.75, y: 0.375 },
+      }),
+    );
+
+    scrollY = 750;
+    targetRects.set(
+      'intro',
+      createRect({ left: 200, top: -700, width: 600, height: 100 }),
+    );
+    targetRects.set(
+      'starting-cards',
+      createRect({ left: 100, top: -200, width: 800, height: 100 }),
+    );
+    targetRects.set(
+      'starting-card',
+      createRect({ left: 700, top: -500, width: 100, height: 100 }),
+    );
+    void act(() => fireEvent.scroll(window));
+
+    const lastProps = pageBackgroundProps.mock.lastCall?.[0];
+    expect(lastProps?.convergence.x).toBeCloseTo(0.72);
+    expect(lastProps?.convergence.y).toBeCloseTo(0.5);
+    expect(lastProps?.intensity).toBeCloseTo(0.34);
+    expect(lastProps?.flare).toBeCloseTo(2.4);
+    expect(lastProps?.speedFactor).toBeCloseTo(0.5);
   });
 
   it('raises the hero intensity, then follows a varied target-linked parameter profile', () => {
