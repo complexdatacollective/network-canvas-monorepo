@@ -136,7 +136,8 @@ describe('localized home sections', () => {
     );
     expect(publicationCard?.parentElement?.parentElement).toHaveClass(
       'tablet-portrait:grid-cols-2',
-      'tablet-landscape:grid-cols-4',
+      'tablet-landscape:grid-cols-3',
+      'laptop:grid-cols-4',
       'grid-cols-1',
       'w-full',
     );
