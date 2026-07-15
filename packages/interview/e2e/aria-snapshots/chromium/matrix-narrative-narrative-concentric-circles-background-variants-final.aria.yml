@@ -2,11 +2,10 @@
   - application "Sociogram Canvas":
     - button "Node0"
     - button "Node1"
-    - button "Node2"
   - button "Drag to reposition"
   - toolbar "Presets":
     - button "Previous preset" [disabled]
-    - button "why meh" [expanded]
+    - button "gee psst" [expanded]
     - button "Next preset" [disabled]
   - status
   - dialog:

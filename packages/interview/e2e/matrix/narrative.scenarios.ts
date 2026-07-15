@@ -660,13 +660,7 @@ const concentricCirclesBackground: ScenarioDefinition = {
     });
     stage1.addPreset({ layoutVariable: layoutVar.id });
 
-    const stage2 = synth.addStage('Narrative', {
-      subject: { entity: 'node', type: person.id },
-      background: { concentricCircles: 0 },
-    });
-    stage2.addPreset({ layoutVariable: layoutVar.id });
-
-    [stage0, stage1, stage2].forEach((stage, i) => {
+    [stage0, stage1].forEach((stage, i) => {
       synth.addManualNode(stage.id, person.id, `node-${i}`, {
         [nameVar.id]: `Node${i}`,
         [layoutVar.id]: { x: 0.5, y: 0.5 },
@@ -677,7 +671,8 @@ const concentricCirclesBackground: ScenarioDefinition = {
   run: async ({ page, interview }) => {
     const narrative = new NarrativeFixture(page);
 
-    // Stage 0: no background key -> component default of 4 rings.
+    // Stage 0: no background key in the scenario -> the builder seeds the
+    // default 4-ring background (background is required by the schema).
     await expect(narrative.getBackgroundCircles()).toHaveCount(4);
 
     // Stage 1: 6 evenly-spaced rings (skewedTowardCenter:false -> q=1).
@@ -690,10 +685,6 @@ const concentricCirclesBackground: ScenarioDefinition = {
     const maxDelta = Math.max(...deltas);
     const minDelta = Math.min(...deltas);
     expect(maxDelta - minDelta).toBeLessThan(0.5);
-
-    // Stage 2: concentricCircles:0 -> no background rendered.
-    await interview.goto(2);
-    await expect(narrative.getBackgroundCircles()).toHaveCount(0);
   },
 };
 

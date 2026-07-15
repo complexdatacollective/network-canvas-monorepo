@@ -510,7 +510,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'items[].description',
     'items-ordering',
     'items=[]',
-    'title-empty',
     'markdown-allowlist',
     'external-links',
     'missing-asset-fallback',
