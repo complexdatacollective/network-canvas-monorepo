@@ -375,7 +375,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'searchOptions',
     'searchOptions.fuzziness',
     'searchOptions.matchProperties',
-    'searchOptions.matchProperties=empty',
     'behaviours',
     'behaviours.minNodes',
     'behaviours.maxNodes',

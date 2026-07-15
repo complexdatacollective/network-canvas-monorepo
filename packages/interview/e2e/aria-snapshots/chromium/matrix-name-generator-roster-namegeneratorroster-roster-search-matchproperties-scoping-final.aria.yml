@@ -1,0 +1,16 @@
+- main:
+  - status:
+    - heading "Please add anyone you recognise." [level=2]
+  - button "Available to add":
+    - heading "Available to add" [level=3]
+  - searchbox "Filter": Drew
+  - text: 0 results
+  - button "Clear search"
+  - listbox "Available Roster Nodes": Nothing matched your search term.
+  - slider "Resize panel and node list areas"
+  - listbox "Added Nodes"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

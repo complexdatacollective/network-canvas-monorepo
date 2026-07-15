@@ -471,15 +471,15 @@ export class SyntheticInterview {
       behaviours,
       introductionPanel: opts?.introductionPanel
         ? {
-            title: opts.introductionPanel.title ?? 'Introduction',
-            text: opts.introductionPanel.text ?? '',
+            title: opts.introductionPanel.title || 'Introduction',
+            text: opts.introductionPanel.text || 'Please continue.',
           }
         : type === 'DyadCensus' || type === 'TieStrengthCensus'
-          ? { title: 'Introduction', text: '' }
+          ? { title: 'Introduction', text: 'Please continue.' }
           : type === 'AlterForm' || type === 'AlterEdgeForm'
             ? {
-                title: opts?.introductionPanel?.title ?? 'Introduction',
-                text: opts?.introductionPanel?.text ?? '',
+                title: opts?.introductionPanel?.title || 'Introduction',
+                text: opts?.introductionPanel?.text || 'Please continue.',
               }
             : undefined,
       initialEdges: opts?.initialEdges ?? [],
