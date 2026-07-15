@@ -237,6 +237,8 @@ export function ScrollLinkedPageBackground({
     (progress) =>
       getScrollLinkedParameters(progress, parameterProfile).intensity,
   );
+  const intensityRef = useRef(intensity);
+  intensityRef.current = intensity;
   const flare = useTransform(
     scrollParameterProgress,
     (progress) => getScrollLinkedParameters(progress, parameterProfile).flare,
@@ -432,7 +434,7 @@ export function ScrollLinkedPageBackground({
       );
       const renderedIntensity = Math.min(
         1,
-        intensity.get() +
+        intensityRef.current.get() +
           (trackedInteractiveTarget ? interactiveIntensityBoost : 0),
       );
 
@@ -532,7 +534,6 @@ export function ScrollLinkedPageBackground({
     holdTargetSelector,
     interactiveIntensityBoost,
     interactiveTargetSelector,
-    intensity,
     movingTargetSelector,
     parameterProfile,
     postTargetBehavior,
