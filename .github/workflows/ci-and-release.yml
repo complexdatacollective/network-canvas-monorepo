@@ -36,14 +36,12 @@ permissions:
 # safety net if a release run is dropped anyway.
 concurrency:
   group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
-  # Cancel superseded feature-PR runs and explicitly dispatched release-branch
-  # runs. Keep pull_request runs for the changesets bot's release PRs alive:
-  # cancelling those leaves the required `quality` aggregate skipped and can
-  # strand the PR. A release-branch dispatch targets a concrete branch head, so
-  # a newer dispatch can safely replace an obsolete one.
+  # Cancel every superseded PR run, including generated release PRs. Only the
+  # current head's required `quality` aggregate matters, and its replacement run
+  # will report that check. A release-branch dispatch also targets a concrete
+  # branch head, so a newer dispatch can safely replace an obsolete one.
   cancel-in-progress: >-
-    ${{ (github.event_name == 'pull_request'
-    && !startsWith(github.head_ref, 'changeset-release/'))
+    ${{ github.event_name == 'pull_request'
     || (github.event_name == 'workflow_dispatch'
     && (startsWith(github.ref_name, 'changeset-release/')
     || github.ref_name == 'e2e-snapshots/main')) }}
