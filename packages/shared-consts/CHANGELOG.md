@@ -1,5 +1,11 @@
 # @codaco/shared-consts
 
+## 5.5.0
+
+### Minor Changes
+
+- 179952e: Add canonical localized site navigation and footer components, a shared animated link treatment for anchors, footer links, and link-style buttons, a canonical default text color, plus a shared public-site locale definition for edge routing and translation coverage.
+
 ## 5.4.0
 
 ### Minor Changes
@@ -7,6 +13,7 @@
 - 37006d0: Refine the Architect stage editors for the Family Pedigree and Narrative Pedigree interfaces.
 
   **Family Pedigree editor**
+
   - The fixed-framing selector is now a styled select, and the framing section explains what the gamete-based and gendered framings mean in neutral, non-normative terms.
   - Boundary options no longer use "family tree" (always "family pedigree"), explain what off/recommended/required do, and rename "Require Children Contributors" to "Require Co-Parents' Families". Both boundary fields are now required in the editor so a missing value surfaces as a named issue rather than a raw schema error.
   - Fixed a bug where changing the node type cleared the stage-level `framing`, `boundaries`, and `introScreen`, producing a schema error on finish. A seam test now guards the preserve-list against the schema's required fields.
@@ -15,6 +22,7 @@
   - Nomination prompts show an empty-state message when no prompts exist yet.
 
   **Narrative Pedigree editor**
+
   - Corrected the new-stage dialog tags: Narrative Pedigree (read-only) is tagged Display Data only; Family Pedigree gains Capture Edge Attributes.
   - The At-Risk Statuses explanation moves from the section side column into the main column and is formatted with subheadings and lists.
 
@@ -73,6 +81,7 @@
 - 8be592d: Store categorical attribute values consistently as arrays of selected option values.
 
   Previously the CategoricalBin interface wrote a bare scalar while CheckboxGroup / ToggleButtonGroup wrote arrays, and consumers carried bridging helpers to tolerate both shapes. Categorical attributes are now always arrays (a single selection is a one-element array), and the bridges have been removed:
+
   - `interview`: `CategoricalBin` writes a single-element array; the node-shape resolver, categorical sorter, and bin matcher read the array contract directly.
   - `network-query`: `EXACTLY` / `NOT` use deep equality and `OPTIONS_*` use array length — the scalar-categorical fallbacks (`categoricalEqual`, scalar `optionsLength`) are gone.
   - `network-exporters`: `isCategoricalOptionSelected` checks array membership only.
@@ -94,6 +103,7 @@
 ### Minor Changes
 
 - Add session stage-metadata schemas as a cross-package contract for code that produces or consumes interview session state. New exports from `./stage-metadata`:
+
   - `StageMetadataSchema` (zod) — record of stage ID → either a FamilyPedigree metadata object or an array of DyadCensus/TieStrengthCensus tuples.
   - `DyadCensusMetadataItem` (type) — the `[promptIndex, fromId, toId, isPresent]` tuple shape.
   - `StageMetadata` (type) — inferred from `StageMetadataSchema`.
