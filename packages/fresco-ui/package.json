@@ -600,7 +600,7 @@
     "comlink": "^4.4.2",
     "cva": "1.0.0-beta.4",
     "es-toolkit": "catalog:",
-    "fuse.js": "^7.4.0",
+    "fuse.js": "catalog:",
     "immer": "^11.1.8",
     "lucide-react": "catalog:",
     "nanoid": "^5.1.16",
