@@ -106,11 +106,13 @@ export async function setFieldInput(
     const byValue = Array.from(options).find(
       (o) => o.getAttribute('data-value') === value,
     );
-    const scoped = within(container);
-    const byLabel =
-      scoped.queryByRole('radio', { name: value }) ??
-      scoped.queryByRole('option', { name: value });
-    const target = byValue ?? byLabel;
+    // Options carry no aria-label attribute (their name comes from the
+    // associated <label>), so the label fallback must go through the computed
+    // accessible name.
+    const target =
+      byValue ??
+      within(container).queryByRole('radio', { name: value }) ??
+      within(container).queryByRole('option', { name: value });
     if (!target)
       throw new Error(`No option matching "${value}" in "${fieldName}"`);
     await userEvent.click(target);

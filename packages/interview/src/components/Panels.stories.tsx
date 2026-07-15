@@ -130,6 +130,9 @@ export const CollapseKeepsTitle: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    // Chromatic starts play functions before webfonts finish loading; when the
+    // heading font arrives it unwraps from two lines to one, shrinking the
+    // header. Wait for fonts so both measurements see the same layout.
     await document.fonts.ready;
 
     const panel = canvas.getByTestId('panel-0');

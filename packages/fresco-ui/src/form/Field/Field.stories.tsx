@@ -583,17 +583,20 @@ export const NumberStepperKeyboard: Story = {
     const canvas = within(canvasElement);
     const input = canvas.getByRole('spinbutton');
 
-    // ArrowUp/ArrowDown step the value while the input is focused.
+    // Clicking the field focuses the native number input, which owns
+    // ArrowUp/ArrowDown stepping. Native stepping fires only for trusted key
+    // events, so it cannot be driven from here; focus targeting is what makes
+    // it reachable for real keyboards.
     await userEvent.click(input);
-    await userEvent.keyboard('{ArrowUp}');
-    await expect(input).toHaveValue(6);
-    await userEvent.keyboard('{ArrowDown}{ArrowDown}');
-    await expect(input).toHaveValue(4);
+    await expect(input).toHaveFocus();
 
-    // The +/- buttons step the value too; being in-field controls, the focus
-    // move does not trigger premature validation.
+    // The +/- buttons step the value; being in-field controls, moving focus
+    // to them does not trigger premature validation.
     await userEvent.click(canvas.getByLabelText('Increase value'));
-    await expect(input).toHaveValue(5);
+    await expect(input).toHaveValue(6);
+    await userEvent.click(canvas.getByLabelText('Decrease value'));
+    await userEvent.click(canvas.getByLabelText('Decrease value'));
+    await expect(input).toHaveValue(4);
     await expect(
       canvas.queryByText('You must answer this question before continuing.'),
     ).not.toBeInTheDocument();

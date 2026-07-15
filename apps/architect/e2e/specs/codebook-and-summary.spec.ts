@@ -21,6 +21,12 @@ test(
     const capture = makeCapture(architectPage);
     await architectPage.goto('/protocol/summary');
     await expect(architectPage.getByText('Loading protocol...')).toHaveCount(0);
+    // The Resource Library's network-asset table renders only after the roster
+    // file is fetched and parsed for its variables (Asset.tsx gates the whole
+    // table on `variables`), so wait for it or the capture races the async load.
+    await expect(
+      architectPage.locator('#asset-roster_data').getByText('Variables'),
+    ).toBeVisible();
     await architectPage.emulateMedia({ media: 'print' });
     await capture('summary-print', { fullPage: true });
   },

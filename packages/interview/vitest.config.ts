@@ -90,6 +90,12 @@ export default defineConfig({
             enabled: true,
             instances: [{ browser: 'chromium' }],
             headless: true,
+            // These stories mount full interview shells (Redux store + search
+            // web workers); running files in parallel iframes starves the
+            // worker round-trips past any timeout (Navigation / roster filter
+            // stories fail on every loaded run) and is slower overall than
+            // sequential execution. Keep files sequential.
+            fileParallelism: false,
           },
           exclude: ['**/*.test.{ts,tsx}'],
         },

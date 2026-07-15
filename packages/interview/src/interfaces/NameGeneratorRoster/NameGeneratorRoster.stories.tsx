@@ -310,11 +310,13 @@ const readSourceLabels = (sourceListbox: HTMLElement): string[] =>
   );
 
 /**
- * Interaction test: the configured name sort is applied on load, and clicking
- * "Sort by Name" toggles its direction. Regression guard for the UUID-keyed
- * attribute path in sort rules — if `useExternalData`'s UUID replacer or
- * `getNodeLabelAttribute` codebook lookup ever silently breaks again, the items
- * will not be in alphabetical order and this test will fail.
+ * Interaction test: the stage's `sortOrder` (Name asc) seeds the initial
+ * sort, so the roster loads alphabetically with the "Sort by Name" button
+ * already active; clicking it toggles to descending and back. Regression
+ * guard for the UUID-keyed attribute path in sort rules — if
+ * `useExternalData`'s UUID replacer or `getNodeLabelAttribute` codebook
+ * lookup ever silently breaks again, the items will not be in alphabetical
+ * order and this test will fail.
  */
 export const SortInteraction: Story = {
   render: (args) => <NameGeneratorRosterStoryWrapper {...args} />,
@@ -331,23 +333,23 @@ export const SortInteraction: Story = {
 
         await expect(labels.length).toBeGreaterThan(0);
 
-        // Sort must be ascending alphabetical
+        // Initial sort must be ascending alphabetical (seeded from the
+        // protocol sortOrder, not participant interaction).
         const sortedCopy = [...labels].toSorted((a, b) => a.localeCompare(b));
         await expect(labels).toEqual(sortedCopy);
 
-        // The first label must start with 'A' (otherwise the sort silently
-        // failed and items are still in their original load order).
+        // The first label must start with 'A' (otherwise the initial sort
+        // silently failed and items are still in their original load order).
         await expect(labels[0]?.[0]?.toLowerCase()).toBe('a');
       },
       { timeout: 5000 },
     );
 
+    // The button is already active (ascending), so clicking toggles the
+    // direction to descending.
     const sortByNameButton = canvas.getByRole('button', {
       name: /^Sort by Name/,
     });
-
-    // The configured initial sort is ascending, so the first click toggles it
-    // to descending.
     await userEvent.click(sortByNameButton);
 
     await waitFor(
@@ -365,6 +367,7 @@ export const SortInteraction: Story = {
       { timeout: 5000 },
     );
 
+    // Toggle back to ascending and verify the order reverses again.
     await userEvent.click(sortByNameButton);
 
     await waitFor(
@@ -376,6 +379,7 @@ export const SortInteraction: Story = {
         await expect(labels.length).toBeGreaterThan(0);
         const sortedCopy = [...labels].toSorted((a, b) => a.localeCompare(b));
         await expect(labels).toEqual(sortedCopy);
+        await expect(labels[0]?.[0]?.toLowerCase()).toBe('a');
       },
       { timeout: 5000 },
     );
