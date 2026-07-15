@@ -17,20 +17,21 @@ lane handles it instead. The base `8.0.0` is fixed (change it with a manual
 base while in beta.
 
 1. **Author a changeset.** Run `pnpm changeset` and select
-   `@codaco/interviewer` (see the `creating-a-changeset` skill). Never mix an
-   app and a library in one changeset — CI (`pnpm check:changesets`) rejects it.
-2. **The "Release apps & documentation" PR.** On every push to `main`, the
-   `apps-release-pr` job increments `-beta.N`, updates `CHANGELOG.md`, deletes the
-   consumed changesets, and opens/updates a summary PR. This PR is the release
-   gate; it is torn down automatically when no app changesets are pending.
+   `@codaco/interviewer` (see the `creating-a-changeset` skill). Select no other
+   product or library in that file—CI (`pnpm check:changesets`) rejects it.
+2. **The "Release Interviewer" PR.** On every push to `main`, the Interviewer
+   entry in the `product-release-pr` matrix increments `-beta.N`, updates
+   `CHANGELOG.md`, deletes the consumed Interviewer changesets, and opens or
+   updates its release PR. The PR is withdrawn when no Interviewer changesets are
+   pending.
 3. **Merge to release.** Merging the PR bumps `package.json` on `main`; the
    `apps-release-detect` job sees the version change and `apps-release-interviewer`
    builds, deploys to Netlify **production**, and creates the prerelease GitHub release
    `@codaco/interviewer@<version>` with the CHANGELOG notes.
 
 Netlify's Git integration builds pull-request previews and reports their URLs
-directly on the PR. Production is no longer deployed on every push to `main` —
-only on a Release apps & documentation PR merge.
+directly on the PR. Production is no longer deployed on every push to `main`—it
+is deployed only when the Release Interviewer PR merges.
 
 ## Developer site
 

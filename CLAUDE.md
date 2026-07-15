@@ -122,17 +122,17 @@ pnpm version-packages
 pnpm publish-packages
 ```
 
-#### Changeset lanes: libraries vs apps
+#### Changeset lanes: libraries vs gated products
 
 - **Library packages** (`packages/*`) release to npm via `changesets/action` (the
   "Version Packages" PR).
-- **The two PWA apps** (`@codaco/architect`, `@codaco/interviewer`) are
-  `private` and in the changeset `ignore` list. They release on a `-beta.N` line
-  via a separate "Release apps (beta)" PR (`apps-release-pr` job) that deploys to
-  Netlify production and cuts a GitHub release on merge.
-- **Never put an app and a library in the same changeset** — `changeset version`
-  errors on mixed changesets and `pnpm check:changesets` (a quality-gate step)
-  rejects them. Write two changesets.
+- **Each gated product** has its own release PR: Architect and Interviewer release
+  on a `-beta.N` line and create a GitHub release, while Documentation and
+  networkcanvas.com use normal semver and receive a Git tag. Merging a product's
+  release PR deploys only that product to Netlify production.
+- **One release lane per changeset.** Never put a gated product and a library—or
+  two gated products—in the same changeset. `pnpm check:changesets` rejects both;
+  write one changeset per product or library lane.
 - See the `creating-a-changeset` skill and
   `docs/superpowers/specs/2026-07-03-pwa-app-beta-releases-design.md`.
 
@@ -266,14 +266,16 @@ stories.
 #### Release-only E2E checks
 
 CI runs the complete Architect, Interview, and Interviewer E2E suites only for
-the exact generated release branches `changeset-release/main` and
-`changeset-release/apps`, or for merge groups whose package or app version
-changes will trigger a release. The required `quality` check conditionally
-requires all three E2E jobs in those cases. Ordinary PRs skip E2E, and E2E
-results are never carried forward from an earlier commit.
+the generated library branch `changeset-release/main`, the generated product
+branches `changeset-release/architect`, `changeset-release/interviewer`,
+`changeset-release/documentation`, and `changeset-release/website`, or merge
+groups whose package or product version changes will trigger a release. The
+required `quality` check
+conditionally requires all three E2E jobs in those cases. Ordinary PRs skip E2E,
+and E2E results are never carried forward from an earlier commit.
 
 The release jobs explicitly dispatch `ci-and-release.yml` after creating or
-updating either generated branch. Normal release PRs therefore do not need a
+updating a generated branch. Normal release PRs therefore do not need a
 manual E2E trigger, even though GitHub does not start PR workflows for branch
 updates made with the repository token.
 
@@ -288,10 +290,12 @@ before committing selected baselines.
 
 On a generated release PR, a visual-snapshot E2E failure automatically runs the
 same focused generation-only workflow. If it produces changed baseline PNGs, a
-trusted follow-up opens a PNG-only child PR against the failing release branch,
-not `main`. Review every image; merging the child PR accepts the baselines and
-retriggers the parent release PR. Functional failures do not start regeneration,
-and no PNG changes means no child PR.
+trusted follow-up opens or updates one serialized PNG-only PR against `main`.
+Failures from multiple release gates accumulate in that shared PR instead of
+creating per-product copies. Review every image; merging the snapshot PR accepts
+the baselines, refreshes every generated release branch from `main`, and reruns
+their E2E gates. Functional failures do not start regeneration, and no PNG
+changes means no snapshot PR.
 
 Keep Interview ARIA snapshot updates in the targeted local matrix workflow.
 Do not confuse E2E PNG baselines with `@codaco/interface-images`, whose

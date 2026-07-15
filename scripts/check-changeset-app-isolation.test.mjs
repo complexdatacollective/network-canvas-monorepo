@@ -39,3 +39,13 @@ test('fails and names the file when a changeset mixes an app and a library', () 
   assert.match(res.stderr, /bad\.md/);
   assert.match(res.stderr, /pnpm changeset/);
 });
+
+test('fails and names the file when a changeset mixes gated products', () => {
+  const cwd = fixture({
+    'coupled.md': `---\n"@codaco/architect": minor\n"networkcanvas.com": patch\n---\n\ncoupled`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /coupled\.md/);
+  assert.match(res.stderr, /independent release PR/);
+});

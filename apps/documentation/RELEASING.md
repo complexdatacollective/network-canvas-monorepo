@@ -1,10 +1,14 @@
 # Releasing documentation
 
-Documentation releases are gated through the generated **Release apps & documentation** pull request.
+Documentation releases are gated through the generated **Release Documentation**
+pull request, independently of Architect, Interviewer, and Website.
 
-1. Create a changeset for `@codaco/documentation`. Its patch, minor, or major level determines the next documentation version and changelog heading.
-2. After the changeset reaches `main`, CI updates the shared release PR with the version and changelog entry.
-3. Merge that release PR to deploy the documentation site to Netlify production. CI tags the deployed version as `@codaco/documentation@<version>`.
+1. Create a changeset containing only `@codaco/documentation`. Its patch, minor,
+   or major level determines the next documentation version and changelog heading.
+2. After the changeset reaches `main`, CI updates the Documentation release PR
+   with the version and changelog entry.
+3. Merge that PR to deploy only the documentation site to Netlify production. CI
+   tags the deployed version as `@codaco/documentation@<version>`.
 
 Netlify's Git integration builds pull-request previews and reports the
 `netlify/documentation-dev/deploy-preview` status on each head commit. The

@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       snapshot_branch:
-        description: Branch to use for the generated baseline PR
+        description: Shared branch to use for the generated baseline PR
         required: true
         type: string
       source_run_url:
@@ -25,8 +25,11 @@ permissions: {}
 jobs:
   open-snapshot-update:
     runs-on: ubuntu-latest
+    concurrency:
+      group: e2e-snapshot-update-main
+      cancel-in-progress: false
     permissions:
-      actions: read
+      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -40,11 +43,15 @@ jobs:
         with:
           script: |
             const releaseRef = process.env.RELEASE_REF;
-            const expectedSnapshotBranches = new Map([
-              ['changeset-release/main', 'e2e-snapshots/changeset-release-main'],
-              ['changeset-release/apps', 'e2e-snapshots/changeset-release-apps'],
+            const releaseRefs = new Set([
+              'changeset-release/architect',
+              'changeset-release/documentation',
+              'changeset-release/interviewer',
+              'changeset-release/main',
+              'changeset-release/website',
             ]);
-            if (expectedSnapshotBranches.get(releaseRef) !== process.env.SNAPSHOT_BRANCH) {
+            const snapshotBranch = 'e2e-snapshots/main';
+            if (!releaseRefs.has(releaseRef) || process.env.SNAPSHOT_BRANCH !== snapshotBranch) {
               core.setFailed(
                 `Unexpected release/snapshot branch pair: ${releaseRef} -> ${process.env.SNAPSHOT_BRANCH}`,
               );
@@ -87,15 +94,80 @@ jobs:
           path: ${{ runner.temp }}/snapshot-artifacts
           merge-multiple: true
 
-      - name: Check out the failing release revision
+      - name: Check out main for the central baseline PR
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
-          ref: ${{ inputs.run_head_sha }}
+          ref: main
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Record the main revision
+        id: main
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Confirm the failing release contains this main revision
+        id: release_base
+        env:
+          RELEASE_REF: ${{ inputs.release_ref }}
+          RUN_HEAD_SHA: ${{ inputs.run_head_sha }}
+        run: |
+          release_remote="refs/remotes/origin/$RELEASE_REF"
+          git fetch --no-tags origin "+refs/heads/$RELEASE_REF:$release_remote"
+
+          if [[ "$(git rev-parse "$release_remote")" != "$RUN_HEAD_SHA" ]]; then
+            echo "::notice::Skipping snapshot proposal because $RELEASE_REF advanced."
+            echo 'current=false' >> "$GITHUB_OUTPUT"
+          elif ! git merge-base --is-ancestor HEAD "$release_remote"; then
+            echo "::notice::Skipping snapshot proposal because $RELEASE_REF does not contain current main."
+            echo 'current=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'current=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Restore already-proposed central baseline changes
+        if: steps.release_base.outputs.current == 'true'
+        env:
+          SNAPSHOT_BRANCH: ${{ inputs.snapshot_branch }}
+        run: |
+          architect='^apps/architect/e2e/visual-snapshots/chromium/[A-Za-z0-9._-]+\.png$'
+          interview='^packages/interview/e2e/visual-snapshots/(chromium|firefox|webkit)-matrix/[A-Za-z0-9._-]+\.png$'
+          interviewer='^apps/interviewer/e2e/visual-snapshots/chromium/[A-Za-z0-9._-]+\.png$'
+          snapshot_ref="refs/remotes/origin/$SNAPSHOT_BRANCH"
+
+          if ! git ls-remote --exit-code --heads origin "refs/heads/$SNAPSHOT_BRANCH" >/dev/null 2>&1; then
+            echo 'No central snapshot branch exists yet.'
+            exit 0
+          fi
+
+          git fetch --no-tags origin "+refs/heads/$SNAPSHOT_BRANCH:$snapshot_ref"
+          merge_base=$(git merge-base origin/main "$snapshot_ref")
+          pending=()
+
+          while IFS=$'\t' read -r status relative extra; do
+            [[ -z "$status" ]] && continue
+            if [[ -n "$extra" || ("$status" != 'M' && "$status" != 'A') ]]; then
+              echo "::error::unexpected pending snapshot status '$status' for $relative"
+              exit 1
+            fi
+            if [[ ! "$relative" =~ $architect && ! "$relative" =~ $interview && ! "$relative" =~ $interviewer ]]; then
+              echo "::error::unexpected pending snapshot path: $relative"
+              exit 1
+            fi
+            if ! git diff --quiet "$merge_base" origin/main -- "$relative"; then
+              echo "::error::main changed pending snapshot path $relative; regenerate from the refreshed release branch"
+              exit 1
+            fi
+            pending+=("$relative")
+          done < <(git diff --name-status "$merge_base" "$snapshot_ref")
+
+          if ((${#pending[@]} > 0)); then
+            git restore --source="$snapshot_ref" -- "${pending[@]}"
+            echo "Restored ${#pending[@]} pending baseline file(s)."
+          fi
+
       - name: Validate and copy snapshot data
         id: changes
+        if: steps.release_base.outputs.current == 'true'
         env:
           ARTIFACT_ROOT: ${{ runner.temp }}/snapshot-artifacts
         run: |
@@ -116,20 +188,18 @@ jobs:
             exit 1
           fi
 
-          declare -A detected_suites=()
           while IFS= read -r -d '' candidate; do
             relative=${candidate#"$ARTIFACT_ROOT"/}
             if [[ "$relative" =~ $architect ]]; then
-              suite=architect
+              :
             elif [[ "$relative" =~ $interview ]]; then
-              suite=interview
+              :
             elif [[ "$relative" =~ $interviewer ]]; then
-              suite=interviewer
+              :
             else
               echo "::error::unexpected snapshot path: $relative"
               exit 1
             fi
-            detected_suites["$suite"]=1
             magic=$(od -An -t x1 -N8 "$candidate" | tr -d ' \n')
             if [[ "$magic" != '89504e470d0a1a0a' ]]; then
               echo "::error::snapshot does not have a PNG signature: $relative"
@@ -146,45 +216,62 @@ jobs:
             exit 0
           fi
 
+          declare -A changed_suites=()
           while IFS= read -r entry; do
             status=${entry:0:2}
             relative=${entry:3}
-            if [[ "$status" != ' M' && "$status" != 'M ' && "$status" != '??' ]]; then
+            if [[ "$status" != ' M' && "$status" != 'M ' && "$status" != 'A ' && "$status" != '??' ]]; then
               echo "::error::unexpected git status '$status' for $relative"
               exit 1
             fi
-            if [[ ! "$relative" =~ $architect && ! "$relative" =~ $interview && ! "$relative" =~ $interviewer ]]; then
+            if [[ "$relative" =~ $architect ]]; then
+              changed_suites[architect]=1
+            elif [[ "$relative" =~ $interview ]]; then
+              changed_suites[interview]=1
+            elif [[ "$relative" =~ $interviewer ]]; then
+              changed_suites[interviewer]=1
+            else
               echo "::error::unexpected workspace change: $relative"
               exit 1
             fi
           done <<< "$changed"
 
-          mapfile -t suites < <(printf '%s\n' "${!detected_suites[@]}" | sort)
+          mapfile -t suites < <(printf '%s\n' "${!changed_suites[@]}" | sort)
           suites_output=$(IFS=,; echo "${suites[*]}")
           echo "suites=$suites_output" >> "$GITHUB_OUTPUT"
           echo 'found=true' >> "$GITHUB_OUTPUT"
 
-      - name: Confirm the release branch has not advanced
+      - name: Confirm the release branch and main have not advanced
         id: current
         if: steps.changes.outputs.found == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           RELEASE_REF: ${{ inputs.release_ref }}
           RUN_HEAD_SHA: ${{ inputs.run_head_sha }}
+          MAIN_SHA: ${{ steps.main.outputs.sha }}
         with:
           script: |
-            const { data: ref } = await github.rest.git.getRef({
+            const { data: releaseRef } = await github.rest.git.getRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: `heads/${process.env.RELEASE_REF}`,
             });
-            const current = ref.object.sha === process.env.RUN_HEAD_SHA;
-            if (!current) {
+            const { data: mainRef } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'heads/main',
+            });
+            const releaseCurrent = releaseRef.object.sha === process.env.RUN_HEAD_SHA;
+            const mainCurrent = mainRef.object.sha === process.env.MAIN_SHA;
+            if (!releaseCurrent) {
               core.notice(
-                `Skipping stale snapshot proposal; ${process.env.RELEASE_REF} is now ${ref.object.sha}`,
+                `Skipping stale snapshot proposal; ${process.env.RELEASE_REF} is now ${releaseRef.object.sha}`,
               );
             }
-            core.setOutput('matches', current ? 'true' : 'false');
+            if (!mainCurrent) {
+              core.notice(`Skipping snapshot proposal because main is now ${mainRef.object.sha}`);
+            }
+            core.setOutput('matches', releaseCurrent && mainCurrent ? 'true' : 'false');
 
       - name: Open or update the snapshot PR
         id: snapshot_pr
@@ -192,7 +279,7 @@ jobs:
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          base: ${{ inputs.release_ref }}
+          base: main
           branch: ${{ inputs.snapshot_branch }}
           delete-branch: true
           add-paths: |
@@ -200,18 +287,26 @@ jobs:
             apps/interviewer/e2e/visual-snapshots/
             packages/interview/e2e/visual-snapshots/
           commit-message: 'test(e2e): update visual baselines'
-          title: 'test(e2e): update visual baselines for release PR #${{ steps.source.outputs.number }}'
+          title: 'test(e2e): update release visual baselines'
           body: |
-            The visual snapshot tests failed on ${{ steps.source.outputs.url }}.
+            Release E2E found changed canonical visual baselines.
 
-            This PR contains only regenerated PNG baselines from the `${{ steps.changes.outputs.suites }}` suite(s). Merging it into `${{ inputs.release_ref }}` accepts these baselines and automatically reruns the parent release PR.
+            This PR accumulates regenerated PNGs from the `${{ steps.changes.outputs.suites }}` suite(s). Merging it into `main` causes every generated release branch to refresh and rerun against the accepted baselines.
 
-            Source run: ${{ inputs.source_run_url }}
+            Latest source: ${{ steps.source.outputs.url }}
+            Latest source run: ${{ inputs.source_run_url }}
 
-      - name: Link the snapshot PR from the release PR
+      - name: Run CI on the central snapshot branch
         if: >-
           ${{ steps.snapshot_pr.outputs['pull-request-operation'] == 'created'
           || steps.snapshot_pr.outputs['pull-request-operation'] == 'updated' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SNAPSHOT_BRANCH: ${{ inputs.snapshot_branch }}
+        run: gh workflow run ci-and-release.yml --ref "$SNAPSHOT_BRANCH"
+
+      - name: Link the snapshot PR from the release PR
+        if: ${{ steps.snapshot_pr.outputs['pull-request-number'] != '' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           SOURCE_PR: ${{ steps.source.outputs.number }}
@@ -220,7 +315,7 @@ jobs:
         with:
           script: |
             const marker = '<!-- automated-e2e-snapshot-update -->';
-            const body = `${marker}\nA visual E2E failure generated baseline PR #${process.env.SNAPSHOT_PR}: ${process.env.SNAPSHOT_URL}\n\nMerge that PR to accept the new PNG baselines and rerun this release PR.`;
+            const body = `${marker}\nA visual E2E failure is tracked by the central baseline PR #${process.env.SNAPSHOT_PR}: ${process.env.SNAPSHOT_URL}\n\nMerge that PR to accept the PNGs on main. Release automation will then refresh this release branch and rerun its E2E gate.`;
             const issueNumber = Number(process.env.SOURCE_PR);
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,

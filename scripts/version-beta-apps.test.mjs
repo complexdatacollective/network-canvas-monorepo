@@ -11,8 +11,8 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 
 import {
-  applyAppReleases,
-  planAppReleases,
+  applyProductReleases,
+  planProductReleases,
   renderPrBody,
 } from './version-beta-apps.mjs';
 
@@ -22,6 +22,7 @@ function workspace() {
   mkdirSync(join(cwd, 'apps/architect'), { recursive: true });
   mkdirSync(join(cwd, 'apps/documentation'), { recursive: true });
   mkdirSync(join(cwd, 'apps/interviewer'), { recursive: true });
+  mkdirSync(join(cwd, 'apps/networkcanvas.com'), { recursive: true });
   writeFileSync(
     join(cwd, 'apps/architect/package.json'),
     JSON.stringify(
@@ -54,10 +55,22 @@ function workspace() {
       2,
     ),
   );
+  writeFileSync(
+    join(cwd, 'apps/networkcanvas.com/package.json'),
+    JSON.stringify(
+      {
+        name: 'networkcanvas.com',
+        version: '0.1.1',
+        private: true,
+      },
+      null,
+      2,
+    ),
+  );
   return cwd;
 }
 
-test('bumps only apps with pending changesets, leaving base + other app untouched', () => {
+test('bumps only the targeted product and preserves library changesets', () => {
   const cwd = workspace();
   writeFileSync(
     join(cwd, '.changeset/one.md'),
@@ -68,8 +81,8 @@ test('bumps only apps with pending changesets, leaving base + other app untouche
     `---\n"@codaco/interview": patch\n---\n\nlib only`,
   );
 
-  const { plans, consumed } = planAppReleases(cwd);
-  applyAppReleases(cwd, plans, consumed);
+  const { plans, consumed } = planProductReleases(cwd, ['@codaco/architect']);
+  applyProductReleases(cwd, plans, consumed);
 
   const arch = JSON.parse(
     readFileSync(join(cwd, 'apps/architect/package.json'), 'utf8'),
@@ -85,6 +98,30 @@ test('bumps only apps with pending changesets, leaving base + other app untouche
   );
   assert.equal(existsSync(join(cwd, '.changeset/one.md')), false); // consumed
   assert.equal(existsSync(join(cwd, '.changeset/keep.md')), true); // library changeset preserved
+});
+
+test('a targeted release preserves another product changeset', () => {
+  const cwd = workspace();
+  writeFileSync(
+    join(cwd, '.changeset/architect.md'),
+    `---\n"@codaco/architect": patch\n---\n\nFix Architect`,
+  );
+  writeFileSync(
+    join(cwd, '.changeset/interviewer.md'),
+    `---\n"@codaco/interviewer": patch\n---\n\nFix Interviewer`,
+  );
+
+  const { plans, consumed } = planProductReleases(cwd, ['@codaco/architect']);
+  applyProductReleases(cwd, plans, consumed);
+
+  assert.deepEqual(consumed, ['architect']);
+  assert.equal(existsSync(join(cwd, '.changeset/architect.md')), false);
+  assert.equal(existsSync(join(cwd, '.changeset/interviewer.md')), true);
+  assert.equal(
+    JSON.parse(readFileSync(join(cwd, 'apps/interviewer/package.json'), 'utf8'))
+      .version,
+    '8.0.0-beta.0',
+  );
 });
 
 test('renderPrBody summarises the plans', () => {
@@ -111,8 +148,10 @@ test('creates a normal semver documentation release and changelog', () => {
     `---\n"@codaco/documentation": minor\n---\n\nPublish the reorganised documentation.`,
   );
 
-  const { plans, consumed } = planAppReleases(cwd);
-  applyAppReleases(cwd, plans, consumed);
+  const { plans, consumed } = planProductReleases(cwd, [
+    '@codaco/documentation',
+  ]);
+  applyProductReleases(cwd, plans, consumed);
 
   const documentation = JSON.parse(
     readFileSync(join(cwd, 'apps/documentation/package.json'), 'utf8'),
@@ -125,9 +164,31 @@ test('creates a normal semver documentation release and changelog', () => {
   assert.equal(existsSync(join(cwd, '.changeset/docs.md')), false);
 });
 
-test('no pending app changesets → empty plan, no writes', () => {
+test('creates a normal semver website release without a GitHub prerelease', () => {
   const cwd = workspace();
-  const { plans, consumed } = planAppReleases(cwd);
+  writeFileSync(
+    join(cwd, '.changeset/website.md'),
+    `---\n"networkcanvas.com": patch\n---\n\nPublish the updated website.`,
+  );
+
+  const { plans, consumed } = planProductReleases(cwd, ['networkcanvas.com']);
+  applyProductReleases(cwd, plans, consumed);
+
+  const website = JSON.parse(
+    readFileSync(join(cwd, 'apps/networkcanvas.com/package.json'), 'utf8'),
+  );
+  assert.equal(website.version, '0.1.2');
+  assert.match(
+    readFileSync(join(cwd, 'apps/networkcanvas.com/CHANGELOG.md'), 'utf8'),
+    /## 0\.1\.2[\s\S]*Publish the updated website\./,
+  );
+  assert.doesNotMatch(renderPrBody(plans), /GitHub prerelease/);
+  assert.equal(existsSync(join(cwd, '.changeset/website.md')), false);
+});
+
+test('no pending product changesets → empty plan, no writes', () => {
+  const cwd = workspace();
+  const { plans, consumed } = planProductReleases(cwd);
   assert.deepEqual(plans, []);
   assert.deepEqual(consumed, []);
 });

@@ -30,8 +30,8 @@ permissions:
 
 # PR runs are grouped per ref so a new push cancels the previous run for that
 # branch. Push-to-main runs get a per-commit group instead: main pushes must
-# never cancel each other, or a release-carrying run (the merge of the Release
-# apps PR) can be evicted while queued during a burst of merges and the release
+# never cancel each other, or a release-carrying run (the merge of a generated
+# release PR) can be evicted while queued during a burst of merges and the release
 # is silently lost. See .github/scripts/detect-app-release.sh for the self-healing
 # safety net if a release run is dropped anyway.
 concurrency:
@@ -45,8 +45,8 @@ concurrency:
     ${{ (github.event_name == 'pull_request'
     && !startsWith(github.head_ref, 'changeset-release/'))
     || (github.event_name == 'workflow_dispatch'
-    && (github.ref_name == 'changeset-release/main'
-    || github.ref_name == 'changeset-release/apps')) }}
+    && (startsWith(github.ref_name, 'changeset-release/')
+    || github.ref_name == 'e2e-snapshots/main')) }}
 
 jobs:
   detect:
@@ -54,7 +54,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       docs: ${{ steps.flags.outputs.docs }}
-      website: ${{ steps.flags.outputs.website }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
@@ -143,12 +142,7 @@ jobs:
             fi
           }
           docs=$(flag @codaco/documentation)
-          web=$(flag networkcanvas.com)
-
-          {
-            echo "docs=$docs"
-            echo "website=$web"
-          } >> "$GITHUB_OUTPUT"
+          echo "docs=$docs" >> "$GITHUB_OUTPUT"
 
   e2e-policy:
     if: github.event_name != 'push'
@@ -358,35 +352,6 @@ jobs:
             echo "E2E gate is not required for this event"
           fi
           echo "quality gate passed"
-
-  deploy-website-prod:
-    needs: [detect]
-    if: |
-      always() &&
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      needs.detect.outputs.website == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/turbo-ci-setup
-      - id: deploy
-        name: Build and deploy networkcanvas.com production
-        run: |
-          json=$(npx --yes netlify-cli@26 deploy --build --prod \
-                   --filter=networkcanvas.com \
-                   --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
-          echo "$json" | jq .
-          url=$(echo "$json" | jq -r '.deploy_url')
-          echo "url=$url" >> "$GITHUB_OUTPUT"
 
   docs-preview-checks:
     needs: detect
@@ -691,7 +656,7 @@ jobs:
       || needs.regenerate-interviewer-snapshots.result == 'success'
       || needs.regenerate-architect-snapshots.result == 'success') }}
     permissions:
-      actions: read
+      actions: write
       contents: write
       pull-requests: write
     uses: ./.github/workflows/open-e2e-snapshot-update-pr.yml
@@ -830,14 +795,34 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh workflow run ci-and-release.yml --ref changeset-release/main
 
-  # Maintains a gated product-release PR (sibling of the library "Version Packages" PR).
-  # On every push to main it re-runs the app version step on a fresh branch and
-  # opens/updates/closes the PR. Merging the PR is the release gate (see the
-  # product deploy jobs below). Product changesets are ignored by the library release, so
-  # they persist in .changeset/ until this job consumes them.
-  apps-release-pr:
+  # Maintains one gated release PR per product (siblings of the library "Version
+  # Packages" PR). On every push to main each matrix entry re-runs the version
+  # step on its own fresh branch and opens, updates, or closes only that product's
+  # PR. Product changesets are ignored by the library release, so they persist in
+  # .changeset/ until the matching matrix entry consumes them.
+  product-release-pr:
+    name: Release PR (${{ matrix.product }})
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - product: Architect
+            slug: architect
+            package: '@codaco/architect'
+          - product: Documentation
+            slug: documentation
+            package: '@codaco/documentation'
+          - product: Interviewer
+            slug: interviewer
+            package: '@codaco/interviewer'
+          - product: Website
+            slug: website
+            package: 'networkcanvas.com'
     runs-on: ubuntu-latest
+    concurrency:
+      group: product-release-pr-${{ matrix.slug }}
+      cancel-in-progress: false
     permissions:
       actions: write
       contents: write
@@ -855,29 +840,78 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Guard against mixed changesets
         run: pnpm check:changesets
-      - name: Compute product version bumps
-        run: node scripts/version-beta-apps.mjs --out "${RUNNER_TEMP}/apps-release-body.md"
-      - name: Open/update the Release apps and documentation PR
-        id: apps_pr
+      - name: Compute ${{ matrix.product }} version bump
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: >-
+          node scripts/version-beta-apps.mjs
+          --package "$PACKAGE"
+          --out "${RUNNER_TEMP}/product-release-body.md"
+      - name: Open/update the ${{ matrix.product }} release PR
+        id: product_pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          branch: changeset-release/apps
+          branch: changeset-release/${{ matrix.slug }}
           base: main
           delete-branch: true
-          title: 'Release apps & documentation'
-          commit-message: 'chore(release): version apps and documentation'
-          body-path: ${{ runner.temp }}/apps-release-body.md
-      - name: Run CI on the app release branch
+          title: 'Release ${{ matrix.product }}'
+          commit-message: 'chore(release): version ${{ matrix.slug }}'
+          body-path: ${{ runner.temp }}/product-release-body.md
+      - name: Run CI on the ${{ matrix.product }} release branch
         if: >-
-          ${{ steps.apps_pr.outputs['pull-request-operation'] == 'created'
-          || steps.apps_pr.outputs['pull-request-operation'] == 'updated' }}
+          ${{ steps.product_pr.outputs['pull-request-operation'] == 'created'
+          || steps.product_pr.outputs['pull-request-operation'] == 'updated' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run ci-and-release.yml --ref changeset-release/apps
+          RELEASE_REF: changeset-release/${{ matrix.slug }}
+        run: gh workflow run ci-and-release.yml --ref "$RELEASE_REF"
 
-  # On a push to main that changes an app version (i.e. the Release apps PR just
-  # merged), detect which app(s) moved — mirrors detect-legacy-release.sh, but
-  # idempotency is a local git-tag check (no external repo).
+  # The combined product branch predates the independent gates. Once this change
+  # reaches main, close its parent release PR and any snapshot child that still
+  # targets it so the retired gate cannot release several products together.
+  # Branches are deliberately left intact; this is a reversible PR-state change.
+  retire-combined-release-pr:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Close PRs attached to the retired combined release branch
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const retiredRef = 'changeset-release/apps';
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const retired = pulls.filter(
+              (pull) =>
+                pull.head.repo?.full_name === `${context.repo.owner}/${context.repo.repo}` &&
+                (pull.head.ref === retiredRef || pull.base.ref === retiredRef),
+            );
+
+            for (const pull of retired) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pull.number,
+                body:
+                  'This PR was closed because the combined product release gate has been replaced by independent Architect, Interviewer, Documentation, and Website release PRs. Pending changesets will be proposed again in the matching product PR.',
+              });
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pull.number,
+                state: 'closed',
+              });
+            }
+
+  # On a push to main that changes a gated product version (i.e. one product's
+  # release PR just merged), detect which product moved. Idempotency is a local
+  # git-tag check (no external repo).
   apps-release-detect:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -889,6 +923,8 @@ jobs:
       documentation_version: ${{ steps.documentation.outputs.version }}
       interviewer_released: ${{ steps.interviewer.outputs.released }}
       interviewer_version: ${{ steps.interviewer.outputs.version }}
+      website_released: ${{ steps.website.outputs.released }}
+      website_version: ${{ steps.website.outputs.version }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
@@ -913,6 +949,12 @@ jobs:
         env:
           PKG_JSON: apps/interviewer/package.json
           PKG_NAME: '@codaco/interviewer'
+        run: bash .github/scripts/detect-app-release.sh
+      - id: website
+        env:
+          PKG_JSON: apps/networkcanvas.com/package.json
+          PKG_NAME: 'networkcanvas.com'
+          RELEASE_CHANNEL: stable
         run: bash .github/scripts/detect-app-release.sh
 
   # Build, deploy to Netlify production, and cut a GitHub release for architect
@@ -1111,6 +1153,60 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           TAG: '@codaco/documentation@${{ needs.apps-release-detect.outputs.documentation_version }}'
+        with:
+          script: |
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${process.env.TAG}`,
+              sha: context.sha,
+            });
+
+  # networkcanvas.com follows the same stable generated-release-PR gate as the
+  # documentation site. A successful deploy is recorded with a git tag; websites
+  # do not create GitHub Releases.
+  apps-release-website:
+    needs: apps-release-detect
+    if: needs.apps-release-detect.outputs.website_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: apps-release-networkcanvas.com@${{ needs.apps-release-detect.outputs.website_version }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-tags: true
+          persist-credentials: false
+      - name: Skip if this version was already deployed
+        id: guard
+        env:
+          TAG: networkcanvas.com@${{ needs.apps-release-detect.outputs.website_version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG already deployed — nothing to do"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: ./.github/actions/turbo-ci-setup
+      - name: Build and deploy networkcanvas.com to production
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          json=$(npx --yes netlify-cli@26 deploy --build --prod \
+                   --filter=networkcanvas.com \
+                   --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
+          echo "$json" | jq .
+      - name: Tag deployed website version
+        if: steps.guard.outputs.skip != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          TAG: networkcanvas.com@${{ needs.apps-release-detect.outputs.website_version }}
         with:
           script: |
             await github.rest.git.createRef({

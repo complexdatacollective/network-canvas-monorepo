@@ -3,6 +3,12 @@
 **Date:** 2026-07-03
 **Status:** Implemented (PR #747)
 
+> **Superseded release-gate topology (2026-07-15):** the combined app release PR
+> described below was split into independent Architect, Interviewer, and
+> Documentation gates. See
+> `2026-07-15-independent-product-release-gates-design.md`. The beta-versioning
+> rationale and ignored-package behaviour documented here still apply.
+
 ## Problem
 
 `@codaco/architect-web` and `@codaco/interviewer-v8` are becoming released,

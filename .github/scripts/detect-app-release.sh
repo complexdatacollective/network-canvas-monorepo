@@ -8,9 +8,9 @@
 # push. The release job creates the matching tag after a successful deploy.
 #
 # Beta releases are tag-driven so they self-heal when a prior release run was
-# dropped: an untagged beta is picked up on the next push. Stable documentation
-# releases are intentionally diff-driven so only the generated release PR's
-# version bump can trigger production deployment.
+# dropped: an untagged beta is picked up on the next push. Stable website
+# releases are intentionally diff-driven so only a generated release PR's
+# version bump can trigger its production deployment.
 #
 # Beta detection deliberately does NOT fire on the initial X.Y.Z-beta.0 seed
 # (N == 0) or a non-beta version — those are setup states, not releases.

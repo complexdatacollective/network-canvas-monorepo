@@ -7,10 +7,10 @@ find the full documentation for it [in our repository](https://github.com/change
 We have a quick list of common questions to get you started engaging with this project in
 [our documentation](https://github.com/changesets/changesets/blob/main/docs/common-questions.md)
 
-## Gated product changesets (architect / interviewer / documentation)
+## Gated product changesets
 
 These private workspaces are in the `ignore` list, so `changeset version`
 preserves their changesets. Architect and Interviewer release on `-beta.N`;
-Documentation releases with normal semver. The generated "Release apps &
-documentation" PR is the production deployment gate. Do not combine a gated
-product and a library in one changeset (`pnpm check:changesets` rejects it).
+Documentation and networkcanvas.com release with normal semver. Each has its own
+generated production release PR. Do not combine a gated product with a library
+or another gated product in one changeset (`pnpm check:changesets` rejects it).

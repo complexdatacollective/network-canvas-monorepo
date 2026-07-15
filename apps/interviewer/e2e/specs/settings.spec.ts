@@ -5,7 +5,7 @@ import {
   LEAN_E2E_PROTOCOL_NAME,
   LEAN_E2E_PROTOCOL_PATH,
 } from '../helpers/protocol-paths.js';
-import { settingsAboutMasks } from '../helpers/visual.js';
+import { APP_VERSION_PATTERN, settingsAboutMasks } from '../helpers/visual.js';
 
 async function openSettings(page: Page): Promise<void> {
   await page.goto('/');
@@ -101,6 +101,8 @@ test.describe('settings', () => {
     async ({ page, capture }) => {
       await openSettings(page);
       await page.getByRole('tab', { name: 'About' }).click();
+      const versionValue = page.getByText(APP_VERSION_PATTERN, { exact: true });
+      await expect(versionValue).toHaveText(APP_VERSION_PATTERN);
       await expect(
         page.getByRole('progressbar', { name: 'Storage usage' }),
       ).toBeVisible();

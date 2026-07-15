@@ -87,4 +87,7 @@ The app is designed to be used with no network connection at all. Protocol impor
 
 ## Deploying
 
-Netlify's Git integration builds a preview for every pull request. Production deploys are versioned and occur when the generated Release apps & documentation PR is merged. See [`RELEASING.md`](./RELEASING.md) for the full pipeline, the one-time Netlify setup, and how service-worker updates propagate to already-open tabs.
+Netlify's Git integration builds a preview for every pull request. Production
+deploys are versioned and occur when the generated Release Interviewer PR is
+merged. See [`RELEASING.md`](./RELEASING.md) for the full pipeline, the one-time
+Netlify setup, and how service-worker updates propagate to already-open tabs.

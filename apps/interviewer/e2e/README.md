@@ -72,17 +72,18 @@ Snapshots` with `suite=interviewer`. It runs only the tagged visual capture
 cases and uploads `e2e-visual-snapshots-interviewer`; it does not run the full
 E2E suite, lint, typecheck, unit tests, or other quality checks.
 
-Repository CI runs all three complete E2E suites only for the exact generated
-release branches `changeset-release/main` and `changeset-release/apps`, and for
-release-triggering merge groups. The required `quality` check conditionally
-requires their results; ordinary PRs skip them. Release automation explicitly
-dispatches CI for generated branches, so no manual trigger is needed.
+Repository CI runs all three complete E2E suites only for the generated library
+release branch, the independent Architect, Interviewer, Documentation, and
+Website release branches, and release-triggering merge groups. The required `quality`
+check conditionally requires their results; ordinary PRs skip them. Release
+automation explicitly dispatches CI for generated branches, so no manual trigger
+is needed.
 
 If Interviewer E2E reports a visual-snapshot failure on a release PR, CI runs
-the same focused generator. Changed baselines open a PNG-only child PR against
-that failing release branch. Review the images before merging it; the merge
-accepts the baselines and retriggers the parent release PR. Functional failures
-do not start regeneration.
+the same focused generator. Changed baselines open or update the shared PNG-only
+snapshot PR against `main`. Review the images before merging it; the merge
+refreshes all generated release branches and reruns their E2E gates. Functional
+failures do not start regeneration.
 
 ## Running tests in CI vs locally
 

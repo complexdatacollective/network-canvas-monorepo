@@ -2,8 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 const RELEASE_REFS = new Set([
+  'changeset-release/architect',
+  'changeset-release/documentation',
+  'changeset-release/interviewer',
   'changeset-release/main',
-  'changeset-release/apps',
+  'changeset-release/website',
 ]);
 
 const VERSIONED_MANIFESTS = [
@@ -11,6 +14,7 @@ const VERSIONED_MANIFESTS = [
   'apps/architect/package.json',
   'apps/interviewer/package.json',
   'apps/documentation/package.json',
+  'apps/networkcanvas.com/package.json',
 ];
 
 export function releaseRefForEvent({ eventName, headRef, refName }) {
@@ -23,9 +27,10 @@ export function releaseRefForEvent({ eventName, headRef, refName }) {
   return RELEASE_REFS.has(candidate) ? candidate : '';
 }
 
-function readVersionAt(revision, manifest) {
+function readVersionAt(revision, manifest, cwd) {
   try {
     const contents = execFileSync('git', ['show', `${revision}:${manifest}`], {
+      cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     });
@@ -36,7 +41,7 @@ function readVersionAt(revision, manifest) {
   }
 }
 
-function mergeGroupChangesReleaseVersion(baseSha, headSha) {
+export function mergeGroupChangesReleaseVersion(baseSha, headSha, cwd) {
   if (!baseSha || !headSha) {
     throw new Error(
       'merge_group release detection requires base and head SHAs',
@@ -46,14 +51,15 @@ function mergeGroupChangesReleaseVersion(baseSha, headSha) {
   const changedManifests = execFileSync(
     'git',
     ['diff', '--name-only', baseSha, headSha, '--', ...VERSIONED_MANIFESTS],
-    { encoding: 'utf8' },
+    { cwd, encoding: 'utf8' },
   )
     .split('\n')
     .filter(Boolean);
 
   return changedManifests.some(
     (manifest) =>
-      readVersionAt(baseSha, manifest) !== readVersionAt(headSha, manifest),
+      readVersionAt(baseSha, manifest, cwd) !==
+      readVersionAt(headSha, manifest, cwd),
   );
 }
 
@@ -66,7 +72,7 @@ export function releaseE2EPolicy(
     return {
       required: true,
       releaseRef,
-      snapshotBranch: `e2e-snapshots/${releaseRef.replaceAll('/', '-')}`,
+      snapshotBranch: 'e2e-snapshots/main',
     };
   }
 

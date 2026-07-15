@@ -30,12 +30,13 @@ intended baseline changes. Keep generation separate from normal verification.
 
 ## Respond to a release E2E failure
 
-The complete Architect, Interview, and Interviewer E2E suites run in CI only
-for the exact generated release branches `changeset-release/main` and
-`changeset-release/apps`, and for merge groups whose package or app versions
-trigger a release. The required `quality` check conditionally waits for all
-three E2E results in those cases. Ordinary PRs skip E2E and never inherit an
-older E2E result.
+The complete Architect, Interview, and Interviewer E2E suites run in CI only for
+the generated library branch `changeset-release/main`, the independent product
+branches `changeset-release/architect`, `changeset-release/interviewer`,
+`changeset-release/documentation`, and `changeset-release/website`, and merge
+groups whose package or product versions trigger a release. The required
+`quality` check conditionally waits for all three E2E results in those cases.
+Ordinary PRs skip E2E and never inherit an older E2E result.
 
 The release automation explicitly dispatches CI after creating or updating a
 generated release branch, so a normal release PR does not need a manual E2E
@@ -44,19 +45,25 @@ trigger.
 When an E2E suite reports a visual-snapshot failure on a generated release PR,
 CI invokes this workflow for that suite's focused capture cases. If generation
 succeeds and produces changed committed PNGs, a trusted follow-up job opens or
-updates a PNG-only child PR:
+updates one repository-wide PNG-only PR:
 
-- The child PR targets the failing `changeset-release/main` or
-  `changeset-release/apps` branch, never `main`.
-- Its stable automation branch is reused on later failures instead of creating
-  duplicate PRs.
-- Merging it accepts the reviewed baselines into the release branch and
-  retriggers the parent release PR.
+- The snapshot PR targets `main` from the stable `e2e-snapshots/main` branch.
+- A repository-wide concurrency group serialises updates, and each run restores
+  already-proposed PNGs before adding another suite so concurrent release gates
+  accumulate in one PR instead of replacing or duplicating changes.
+- Every affected release PR links to the shared snapshot PR.
+- Merging it accepts the reviewed baselines on `main`; release automation then
+  refreshes every generated release branch and reruns its E2E gate.
 
-Inspect every changed image before merging the child PR. Functional or
+Canonical captures must not encode values that differ only because a generated
+release branch bumped package metadata. Mask such a value while asserting it
+semantically before capture; otherwise a baseline produced for one product gate
+can make a sibling gate fail after the shared PR merges.
+
+Inspect every changed image before merging the snapshot PR. Functional or
 environmental failures do not start regeneration. If the focused generator
 produces no PNG changes, CI does not open a PR. Merge-group failures do not open
-child PRs because there is no generated release branch to target.
+snapshot PRs because they are not tied to an open generated release PR.
 
 ## Generate manually in CI
 

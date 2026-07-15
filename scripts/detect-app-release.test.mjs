@@ -137,3 +137,26 @@ test('does not re-release a tagged stable documentation version', () => {
   });
   assert.equal(out.released, 'false');
 });
+
+test('releases a stable website version changed by its release PR', () => {
+  const out = detect({
+    previousVersion: '0.1.1',
+    version: '0.1.2',
+    pkgName: 'networkcanvas.com',
+    pkgJson: 'apps/networkcanvas.com/package.json',
+    releaseChannel: 'stable',
+  });
+  assert.equal(out.version, '0.1.2');
+  assert.equal(out.released, 'true');
+});
+
+test('does not deploy an unchanged stable website version', () => {
+  const out = detect({
+    previousVersion: '0.1.1',
+    version: '0.1.1',
+    pkgName: 'networkcanvas.com',
+    pkgJson: 'apps/networkcanvas.com/package.json',
+    releaseChannel: 'stable',
+  });
+  assert.equal(out.released, 'false');
+});
