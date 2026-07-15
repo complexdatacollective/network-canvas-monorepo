@@ -87,7 +87,7 @@
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "^1.15.8",
     "framer-motion": "^2.9.1",
-    "fuse.js": "~7.4.0",
+    "fuse.js": "catalog:",
     "fuse.js-legacy": "npm:fuse.js@3.4.6",
     "history": "^4.7.2",
     "is-hotkey": "^0.2.0",

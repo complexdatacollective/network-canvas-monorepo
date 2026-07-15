@@ -35,7 +35,7 @@
     "cva": "1.0.0-beta.4",
     "dexie": "^4.4.4",
     "es-toolkit": "catalog:",
-    "fuse.js": "^7.4.0",
+    "fuse.js": "catalog:",
     "jszip": "catalog:",
     "lucide-react": "catalog:",
     "luxon": "^3.7.2",
