@@ -193,7 +193,8 @@
         "scripts/**",
         "tsconfig*.json",
         "vite.config.*",
-        "package.json"
+        "package.json",
+        "$TURBO_ROOT$/tooling/tailwind/**"
       ],
       "env": ["NODE_ENV"],
       "outputs": ["dist/**", ".generated/**"]
@@ -206,7 +207,8 @@
         "vitest.config.*",
         "vite.config.*",
         "tsconfig*.json",
-        "package.json"
+        "package.json",
+        "$TURBO_ROOT$/tooling/tailwind/**"
       ],
       "outputs": []
     },

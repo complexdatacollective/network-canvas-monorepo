@@ -13,7 +13,10 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./dist/element.js"
+    ".": {
+      "types": "./dist/element.d.ts",
+      "default": "./dist/element.js"
+    }
   },
   "publishConfig": {
     "access": "public"

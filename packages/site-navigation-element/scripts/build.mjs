@@ -23,7 +23,17 @@ const mode = process.argv.includes('--css-only')
     : 'build';
 
 function run(command, args) {
-  const result = spawnSync(command, args, { cwd: pkgRoot, stdio: 'inherit' });
+  const result = spawnSync(command, args, {
+    cwd: pkgRoot,
+    stdio: 'inherit',
+    // pnpm resolves to a .cmd shim on Windows, which Node can't exec without
+    // a shell (mirrors scripts/with-turbo.mjs).
+    shell: process.platform === 'win32',
+  });
+  if (result.error) {
+    console.error(`Failed to spawn ${command}: ${result.error.message}`);
+    process.exit(1);
+  }
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
@@ -131,4 +141,9 @@ if (mode === 'dev') {
 } else {
   run('pnpm', ['exec', 'vite', 'build']);
   copyFonts(join(pkgRoot, 'dist', 'fonts'));
+  // The bundle is a side-effect module; its public types are hand-authored.
+  cpSync(
+    join(pkgRoot, 'src', 'public-types.d.ts'),
+    join(pkgRoot, 'dist', 'element.d.ts'),
+  );
 }
