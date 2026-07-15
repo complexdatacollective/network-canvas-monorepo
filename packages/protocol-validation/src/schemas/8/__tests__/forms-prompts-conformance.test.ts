@@ -324,6 +324,23 @@ describe('Forms & prompts schema conformance', () => {
       ]);
       expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
     });
+
+    it('rejects otherVariable set without otherOptionLabel', () => {
+      const protocol = createProtocol([
+        categoricalBinStage({
+          otherVariable: 'personOther',
+          otherVariablePrompt: 'Please specify',
+        }),
+      ]);
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((i) =>
+          i.message.includes('otherOptionLabel is required'),
+        );
+        expect(issue).toBeDefined();
+      }
+    });
   });
 
   describe('OrdinalBin prompt color', () => {

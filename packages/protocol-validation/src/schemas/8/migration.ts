@@ -83,6 +83,7 @@ const migrationV7toV8 = createMigration({
 - The Sociogram and Narrative \`background\` is now required and must be exactly one of its two variants: an image (\`image\` set, no \`concentricCircles\`) or concentric circles (\`concentricCircles\` set to a positive whole number, no \`image\`). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise \`concentricCircles\` defaults to 4, matching what the interview already rendered.
 - An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color are assigned one from the palette by prompt position.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored. Such orphaned properties are removed.
+- A CategoricalBin prompt with \`otherVariable\` set now requires both \`otherVariablePrompt\` and \`otherOptionLabel\` (previously a missing label silently dropped the whole "other" bin). A missing value is backfilled from the other authored one, else "Please specify" / "Other".
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 `,
   migrate: (doc, deps) => {
@@ -322,22 +323,34 @@ const migrationV7toV8 = createMigration({
       },
       {
         // A CategoricalBin 'other' follow-up needs otherVariablePrompt as its
-        // dialog label. Backfill it (from otherOptionLabel, else a default) when
-        // otherVariable is set but the prompt is missing.
+        // dialog label and otherOptionLabel as its bin caption; v8 requires
+        // both when otherVariable is set. Backfill each missing one from the
+        // other authored value, else a default.
         paths: ['stages[].prompts[]'],
         fn: <V>(prompt: V) => {
           if (typeof prompt !== 'object' || prompt === null) return prompt;
           const typedPrompt = prompt as Record<string, unknown>;
           if (
-            typeof typedPrompt.otherVariable === 'string' &&
-            typedPrompt.otherVariable &&
-            !typedPrompt.otherVariablePrompt
+            typeof typedPrompt.otherVariable !== 'string' ||
+            !typedPrompt.otherVariable
           ) {
-            typedPrompt.otherVariablePrompt =
-              typeof typedPrompt.otherOptionLabel === 'string' &&
-              typedPrompt.otherOptionLabel
-                ? typedPrompt.otherOptionLabel
-                : 'Please specify';
+            return prompt;
+          }
+          const authoredPrompt =
+            typeof typedPrompt.otherVariablePrompt === 'string' &&
+            typedPrompt.otherVariablePrompt
+              ? typedPrompt.otherVariablePrompt
+              : undefined;
+          const authoredLabel =
+            typeof typedPrompt.otherOptionLabel === 'string' &&
+            typedPrompt.otherOptionLabel
+              ? typedPrompt.otherOptionLabel
+              : undefined;
+          if (!authoredPrompt) {
+            typedPrompt.otherVariablePrompt = authoredLabel ?? 'Please specify';
+          }
+          if (!authoredLabel) {
+            typedPrompt.otherOptionLabel = authoredPrompt ?? 'Other';
           }
           return prompt;
         },

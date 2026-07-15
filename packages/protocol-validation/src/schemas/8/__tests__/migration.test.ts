@@ -2227,19 +2227,54 @@ describe('Migration V7 to V8', () => {
       }
     });
 
-    it("defaults otherVariablePrompt to 'Please specify' when no label", () => {
-      // No otherOptionLabel is present, so the migrated protocol still trips a
-      // separate Stage A cross-ref (otherOptionLabel required); assert on the
-      // migrated shape directly to isolate the otherVariablePrompt backfill.
+    it("defaults otherVariablePrompt to 'Please specify' and otherOptionLabel to 'Other' when neither is set", () => {
       const migratedRaw = migrationV7toV8.migrate(
         buildBinProtocol({ otherVariable: 'other' }),
         { name: 'Test Protocol' },
-      ) as unknown as {
-        stages: { prompts?: { otherVariablePrompt?: unknown }[] }[];
-      };
-      expect(migratedRaw.stages[0]?.prompts?.[0]?.otherVariablePrompt).toBe(
-        'Please specify',
       );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherVariablePrompt',
+          'Please specify',
+        );
+        expect(stage.prompts[0]).toHaveProperty('otherOptionLabel', 'Other');
+      }
+    });
+
+    it('backfills otherOptionLabel from an authored otherVariablePrompt', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherVariable: 'other',
+          otherVariablePrompt: 'Which other category?',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherOptionLabel',
+          'Which other category?',
+        );
+      }
+    });
+
+    it('leaves an authored otherOptionLabel untouched', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherVariable: 'other',
+          otherVariablePrompt: 'My prompt',
+          otherOptionLabel: 'My label',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty('otherOptionLabel', 'My label');
+      }
     });
 
     it('leaves an existing otherVariablePrompt untouched', () => {

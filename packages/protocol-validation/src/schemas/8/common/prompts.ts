@@ -112,6 +112,13 @@ export const categoricalBinPromptSchema = promptSchema
         path: ['otherVariablePrompt'],
       });
     }
+    if (prompt.otherVariable && !prompt.otherOptionLabel) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'otherOptionLabel is required when otherVariable is set.',
+        path: ['otherOptionLabel'],
+      });
+    }
     // The runtime only renders an 'other' bin when otherVariable is set, so
     // otherOptionLabel/otherVariablePrompt without it are silently ignored.
     if (!prompt.otherVariable && prompt.otherOptionLabel) {

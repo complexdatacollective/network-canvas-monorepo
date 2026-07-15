@@ -407,26 +407,6 @@ const ProtocolSchema = z
               });
             }
           }
-
-          // CategoricalBin: otherOptionLabel required when otherVariable set
-          if (
-            'otherVariable' in prompt &&
-            prompt.otherVariable &&
-            !('otherOptionLabel' in prompt && prompt.otherOptionLabel)
-          ) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message:
-                'otherOptionLabel is required when otherVariable is set.',
-              path: [
-                'stages',
-                stageIndex,
-                'prompts',
-                promptIndex,
-                'otherOptionLabel',
-              ],
-            });
-          }
         });
       }
 
