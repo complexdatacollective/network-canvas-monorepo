@@ -1,0 +1,14 @@
+{
+  "extends": "@codaco/tsconfig/dev.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node", "vite/client"]
+  },
+  "include": [
+    "vite.config.ts",
+    "vitest.config.ts",
+    "src/__tests__/**/*.ts",
+    "src/__tests__/**/*.tsx",
+    "src/*.d.ts"
+  ]
+}

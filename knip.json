@@ -39,6 +39,14 @@
     "packages/protocol-validation": {},
     "packages/network-exporters": {},
     "packages/interface-images": {},
+    "packages/site-navigation-element": {
+      "entry": ["src/styles/shadow.css"],
+      "ignoreDependencies": [
+        "@fontsource-variable/inclusive-sans",
+        "@fontsource-variable/nunito",
+        "@tailwindcss/cli"
+      ]
+    },
     "tooling/tailwind": {
       "entry": [
         "shared/plugins/elevation/index.ts",

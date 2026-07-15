@@ -1,0 +1,10 @@
+{
+  "extends": "@codaco/tsconfig/web.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "types": ["vite/client"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "src/__tests__"]
+}

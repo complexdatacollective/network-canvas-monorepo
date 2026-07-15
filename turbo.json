@@ -181,6 +181,32 @@
       ],
       "outputs": ["out/**", "dist/**"]
     },
+    "@codaco/site-navigation-element#build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "tsconfig*.json",
+        "vite.config.*",
+        "package.json",
+        "$TURBO_ROOT$/tooling/tailwind/**"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": ["dist/**", ".generated/**"]
+    },
+    "@codaco/site-navigation-element#test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "vitest.config.*",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json",
+        "$TURBO_ROOT$/tooling/tailwind/**"
+      ],
+      "outputs": []
+    },
     "build-storybook": {
       "dependsOn": ["^build"],
       "inputs": [
