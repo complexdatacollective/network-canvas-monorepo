@@ -31,7 +31,7 @@ import type {
 const DEFAULT_CONVERGENCE: NetworkWeaveConvergence = { x: 0.5, y: 0.6 };
 const POSITION_TOLERANCE = 0.0005;
 const PARAMETER_TOLERANCE = 0.0005;
-const DEFAULT_COMPLEXITY = 28;
+const DEFAULT_COMPLEXITY = 20;
 const INITIAL_INTENSITY = 0.4;
 const DEFAULT_FLARE = 1.8;
 const DEFAULT_SPEED_FACTOR = 0.35;

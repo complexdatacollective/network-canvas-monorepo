@@ -9,7 +9,9 @@ export function GetStartedPageBackground() {
     <ScrollLinkedPageBackground
       targetSelector={TARGET_SELECTOR}
       interactiveTargetSelector={INTERACTIVE_TARGET_SELECTOR}
+      parameterProfile="get-started"
       postTargetBehavior="figure-eight"
+      varyComplexity
     />
   );
 }

@@ -13,12 +13,12 @@ import type { NetworkWeaveConvergence } from '@codaco/art/NetworkWeaveBackground
 const CENTER_CONVERGENCE: NetworkWeaveConvergence = { x: 0.5, y: 0.5 };
 const POSITION_TOLERANCE = 0.0005;
 const PARAMETER_TOLERANCE = 0.0005;
-const DEFAULT_COMPLEXITY = 28;
+const DEFAULT_COMPLEXITY = 20;
 const HOLD_RELEASE_VIEWPORT_OFFSET = 32;
 
-const WEAVE_PARAMETER_KEYFRAMES = [
-  { complexity: 40, intensity: 0.62, flare: 1.45, speedFactor: 0.28 },
-  { complexity: 20, intensity: 0.22, flare: 1.9, speedFactor: 0.52 },
+const HOMEPAGE_PARAMETER_KEYFRAMES = [
+  { complexity: 20, intensity: 0.62, flare: 1.45, speedFactor: 0.28 },
+  { complexity: 16, intensity: 0.22, flare: 1.9, speedFactor: 0.52 },
   { complexity: 34, intensity: 0.34, flare: 1.58, speedFactor: 0.38 },
   { complexity: 24, intensity: 0.18, flare: 2.42, speedFactor: 0.68 },
   { complexity: 44, intensity: 0.3, flare: 1.72, speedFactor: 0.44 },
@@ -26,10 +26,24 @@ const WEAVE_PARAMETER_KEYFRAMES = [
   { complexity: 36, intensity: 0.27, flare: 2.08, speedFactor: 0.5 },
 ] as const;
 
-const HERO_PARAMETERS = WEAVE_PARAMETER_KEYFRAMES[0];
-const REST_PARAMETERS =
-  WEAVE_PARAMETER_KEYFRAMES[WEAVE_PARAMETER_KEYFRAMES.length - 1] ??
-  HERO_PARAMETERS;
+const GET_STARTED_PARAMETER_KEYFRAMES = [
+  { complexity: 20, intensity: 0.36, flare: 1.45, speedFactor: 0.24 },
+  { complexity: 16, intensity: 0.16, flare: 1.82, speedFactor: 0.44 },
+  { complexity: 28, intensity: 0.26, flare: 2.18, speedFactor: 0.58 },
+  { complexity: 18, intensity: 0.14, flare: 1.62, speedFactor: 0.34 },
+  { complexity: 32, intensity: 0.24, flare: 2.5, speedFactor: 0.66 },
+  { complexity: 20, intensity: 0.15, flare: 1.9, speedFactor: 0.42 },
+  { complexity: 26, intensity: 0.2, flare: 2.22, speedFactor: 0.54 },
+] as const;
+
+type WeaveParameterKeyframe = {
+  complexity: number;
+  intensity: number;
+  flare: number;
+  speedFactor: number;
+};
+
+type ParameterProfile = 'homepage' | 'get-started';
 
 type PostTargetBehavior = 'center' | 'figure-eight';
 
@@ -48,8 +62,17 @@ type ScrollLinkedPageBackgroundProps = {
   interactiveTargetSelector?: string;
   holdTargetSelector?: string;
   postTargetBehavior?: PostTargetBehavior;
+  parameterProfile?: ParameterProfile;
   varyComplexity?: boolean;
 };
+
+function getParameterKeyframes(
+  parameterProfile: ParameterProfile,
+): readonly WeaveParameterKeyframe[] {
+  return parameterProfile === 'get-started'
+    ? GET_STARTED_PARAMETER_KEYFRAMES
+    : HOMEPAGE_PARAMETER_KEYFRAMES;
+}
 
 function clampToViewport(value: number) {
   return Math.min(1, Math.max(0, value));
@@ -80,16 +103,18 @@ function interpolate(origin: number, target: number, progress: number) {
   return origin + (target - origin) * progress;
 }
 
-function getWeaveParameters(progress: number, varyComplexity: boolean) {
-  const keyframeProgress =
-    clampToViewport(progress) * (WEAVE_PARAMETER_KEYFRAMES.length - 1);
+function getWeaveParameters(
+  progress: number,
+  varyComplexity: boolean,
+  parameterProfile: ParameterProfile,
+) {
+  const keyframes = getParameterKeyframes(parameterProfile);
+  const heroParameters = keyframes[0] ?? HOMEPAGE_PARAMETER_KEYFRAMES[0];
+  const keyframeProgress = clampToViewport(progress) * (keyframes.length - 1);
   const originIndex = Math.floor(keyframeProgress);
-  const targetIndex = Math.min(
-    WEAVE_PARAMETER_KEYFRAMES.length - 1,
-    originIndex + 1,
-  );
-  const origin = WEAVE_PARAMETER_KEYFRAMES[originIndex] ?? HERO_PARAMETERS;
-  const target = WEAVE_PARAMETER_KEYFRAMES[targetIndex] ?? origin;
+  const targetIndex = Math.min(keyframes.length - 1, originIndex + 1);
+  const origin = keyframes[originIndex] ?? heroParameters;
+  const target = keyframes[targetIndex] ?? origin;
   const progressWithinKeyframe = keyframeProgress - originIndex;
 
   return {
@@ -106,7 +131,7 @@ function getWeaveParameters(progress: number, varyComplexity: boolean) {
       progressWithinKeyframe,
     ),
     flare: Math.max(
-      HERO_PARAMETERS.flare,
+      heroParameters.flare,
       interpolate(origin.flare, target.flare, progressWithinKeyframe),
     ),
     speedFactor: interpolate(
@@ -147,26 +172,47 @@ function getFigureEightConvergence(progress: number) {
   };
 }
 
-function getFigureEightParameters(progress: number, varyComplexity: boolean) {
+function getFigureEightParameters(
+  progress: number,
+  varyComplexity: boolean,
+  parameterProfile: ParameterProfile,
+) {
+  const keyframes = getParameterKeyframes(parameterProfile);
+  const heroParameters = keyframes[0] ?? HOMEPAGE_PARAMETER_KEYFRAMES[0];
+  const restParameters = keyframes[keyframes.length - 1] ?? heroParameters;
+  const intensityAmplitude = parameterProfile === 'get-started' ? 0.05 : 0.07;
   const angle = progress * Math.PI * 2;
 
   return {
     complexity: varyComplexity
-      ? REST_PARAMETERS.complexity + Math.sin(angle) * 8
+      ? restParameters.complexity + Math.sin(angle) * 8
       : DEFAULT_COMPLEXITY,
-    intensity: REST_PARAMETERS.intensity + Math.sin(angle) * 0.07,
+    intensity: restParameters.intensity + Math.sin(angle) * intensityAmplitude,
     flare: Math.max(
-      HERO_PARAMETERS.flare,
-      REST_PARAMETERS.flare + (1 - Math.cos(angle)) * 0.32,
+      heroParameters.flare,
+      restParameters.flare + (1 - Math.cos(angle)) * 0.32,
     ),
-    speedFactor: REST_PARAMETERS.speedFactor + Math.sin(angle * 2) * 0.18,
+    speedFactor: restParameters.speedFactor + Math.sin(angle * 2) * 0.18,
   };
 }
 
-function getScrollLinkedParameters(progress: number, varyComplexity: boolean) {
+function getScrollLinkedParameters(
+  progress: number,
+  varyComplexity: boolean,
+  parameterProfile: ParameterProfile,
+) {
   return progress <= 1
-    ? getWeaveParameters(progress, varyComplexity)
-    : getFigureEightParameters(progress - 1, varyComplexity);
+    ? getWeaveParameters(progress, varyComplexity, parameterProfile)
+    : getFigureEightParameters(progress - 1, varyComplexity, parameterProfile);
+}
+
+function rectIntersectsLayer(rect: DOMRect, layerRect: DOMRect) {
+  return (
+    rect.bottom > layerRect.top &&
+    rect.top < layerRect.bottom &&
+    rect.right > layerRect.left &&
+    rect.left < layerRect.right
+  );
 }
 
 export function ScrollLinkedPageBackground({
@@ -174,6 +220,7 @@ export function ScrollLinkedPageBackground({
   interactiveTargetSelector,
   holdTargetSelector,
   postTargetBehavior = 'center',
+  parameterProfile = 'homepage',
   varyComplexity = false,
 }: ScrollLinkedPageBackgroundProps) {
   const layerRef = useRef<HTMLDivElement>(null);
@@ -181,24 +228,30 @@ export function ScrollLinkedPageBackground({
   const complexity = useTransform(
     scrollParameterProgress,
     (progress) =>
-      getScrollLinkedParameters(progress, varyComplexity).complexity,
+      getScrollLinkedParameters(progress, varyComplexity, parameterProfile)
+        .complexity,
   );
   const intensity = useTransform(
     scrollParameterProgress,
-    (progress) => getScrollLinkedParameters(progress, varyComplexity).intensity,
+    (progress) =>
+      getScrollLinkedParameters(progress, varyComplexity, parameterProfile)
+        .intensity,
   );
   const flare = useTransform(
     scrollParameterProgress,
-    (progress) => getScrollLinkedParameters(progress, varyComplexity).flare,
+    (progress) =>
+      getScrollLinkedParameters(progress, varyComplexity, parameterProfile)
+        .flare,
   );
   const speedFactor = useTransform(
     scrollParameterProgress,
     (progress) =>
-      getScrollLinkedParameters(progress, varyComplexity).speedFactor,
+      getScrollLinkedParameters(progress, varyComplexity, parameterProfile)
+        .speedFactor,
   );
   const [background, setBackground] = useState<BackgroundState>({
     convergence: CENTER_CONVERGENCE,
-    ...getWeaveParameters(0, varyComplexity),
+    ...getWeaveParameters(0, varyComplexity, parameterProfile),
     resolved: false,
     targetChangeVersion: 0,
   });
@@ -349,19 +402,17 @@ export function ScrollLinkedPageBackground({
         targetChangeVersion += 1;
       }
 
+      const interactiveRect =
+        activeInteractiveTarget?.getBoundingClientRect() ?? null;
       const trackedInteractiveTarget =
         activeInteractiveTarget &&
-        !(
-          postTargetBehavior === 'figure-eight' &&
-          passedTargetIndex >= finalTargetIndex
-        )
+        interactiveRect &&
+        rectIntersectsLayer(interactiveRect, layerRect)
           ? activeInteractiveTarget
           : null;
 
-      if (trackedInteractiveTarget) {
-        const interactiveCenter = getRectCenter(
-          trackedInteractiveTarget.getBoundingClientRect(),
-        );
+      if (trackedInteractiveTarget && interactiveRect) {
+        const interactiveCenter = getRectCenter(interactiveRect);
         convergence = {
           x: clampToViewport(
             (interactiveCenter.x - layerRect.left) / layerRect.width,
@@ -469,6 +520,7 @@ export function ScrollLinkedPageBackground({
   }, [
     holdTargetSelector,
     interactiveTargetSelector,
+    parameterProfile,
     postTargetBehavior,
     scrollParameterProgress,
     targetSelector,

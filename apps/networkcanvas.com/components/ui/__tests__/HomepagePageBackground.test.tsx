@@ -264,7 +264,9 @@ describe('HomepagePageBackground', () => {
         <ScrollLinkedPageBackground
           targetSelector="[data-get-started-weave-target]"
           interactiveTargetSelector="[data-get-started-weave-interactive-target]"
+          parameterProfile="get-started"
           postTargetBehavior="figure-eight"
+          varyComplexity
         />
         <div data-get-started-weave-target data-target="intro" />
         <div data-get-started-weave-target data-target="starting-cards" />
@@ -279,6 +281,23 @@ describe('HomepagePageBackground', () => {
     );
 
     void act(() => fireEvent.pointerEnter(getByTestId('starting-card')));
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.75, y: 0.375 },
+      }),
+    );
+
+    scrollY = 250;
+    targetRects.set(
+      'intro',
+      createRect({ left: 200, top: -200, width: 600, height: 100 }),
+    );
+    targetRects.set(
+      'starting-cards',
+      createRect({ left: 100, top: 100, width: 800, height: 100 }),
+    );
+    void act(() => fireEvent.scroll(window));
+
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
         convergence: { x: 0.75, y: 0.375 },
@@ -303,9 +322,10 @@ describe('HomepagePageBackground', () => {
     const lastProps = pageBackgroundProps.mock.lastCall?.[0];
     expect(lastProps?.convergence.x).toBeCloseTo(0.72);
     expect(lastProps?.convergence.y).toBeCloseTo(0.5);
-    expect(lastProps?.intensity).toBeCloseTo(0.34);
-    expect(lastProps?.flare).toBeCloseTo(2.4);
-    expect(lastProps?.speedFactor).toBeCloseTo(0.5);
+    expect(lastProps?.complexity).toBeCloseTo(34);
+    expect(lastProps?.intensity).toBeCloseTo(0.25);
+    expect(lastProps?.flare).toBeCloseTo(2.54);
+    expect(lastProps?.speedFactor).toBeCloseTo(0.54);
   });
 
   it('raises the hero intensity, then follows a varied target-linked parameter profile', () => {
@@ -328,7 +348,7 @@ describe('HomepagePageBackground', () => {
 
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        complexity: 40,
+        complexity: 20,
         intensity: 0.62,
         flare: 1.45,
         speedFactor: 0.28,

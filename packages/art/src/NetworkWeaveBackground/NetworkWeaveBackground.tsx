@@ -15,7 +15,7 @@ export type {
   NetworkWeaveOrientation,
 } from './networkWeaveScene';
 
-const DEFAULT_COMPLEXITY = 28;
+const DEFAULT_COMPLEXITY = 20;
 const DEFAULT_STRANDS = 4;
 const RIBBON_FLOW_DURATION = 9;
 const TRIBUTARY_FLOW_DURATION = 4.5;

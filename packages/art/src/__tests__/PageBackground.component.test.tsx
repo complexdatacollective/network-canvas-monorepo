@@ -233,7 +233,7 @@ describe('PageBackground', () => {
       expect.objectContaining({
         seed: 'networkcanvas.com',
         convergence: { x: 0.5, y: 0.6 },
-        complexity: 28,
+        complexity: 20,
         intensity: 0.4,
         flare: 1.8,
         speedFactor: 0.35,

@@ -19,7 +19,7 @@ const themeOptions = [
   { id: 'dark', icon: Moon },
   { id: 'system', icon: Monitor },
 ] as const;
-const THEME_ICON_STROKE_WIDTH = 3.5;
+const THEME_ICON_STROKE_CLASS = '[&>.lucide]:[stroke-width:3.5]';
 
 type ThemeOption = (typeof themeOptions)[number]['id'];
 
@@ -55,30 +55,20 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
           view === 'desktop' ? (
             <IconButton
               aria-label={triggerLabel}
-              icon={
-                <SelectedIcon
-                  aria-hidden
-                  strokeWidth={THEME_ICON_STROKE_WIDTH}
-                />
-              }
+              icon={<SelectedIcon aria-hidden />}
               size="lg"
               variant="text"
               color="dynamic"
-              className="text-text border-transparent"
+              className={`text-text border-transparent ${THEME_ICON_STROKE_CLASS}`}
             />
           ) : (
             <Button
               aria-label={triggerLabel}
-              icon={
-                <SelectedIcon
-                  aria-hidden
-                  strokeWidth={THEME_ICON_STROKE_WIDTH}
-                />
-              }
+              icon={<SelectedIcon aria-hidden />}
               size="sm"
               variant="text"
               color="dynamic"
-              className="text-text justify-start border-transparent"
+              className={`text-text justify-start border-transparent ${THEME_ICON_STROKE_CLASS}`}
             />
           )
         }
@@ -98,8 +88,13 @@ export default function ThemeSwitcher({ view }: ThemeSwitcherProps) {
           className="flex flex-col gap-1"
         >
           {themeOptions.map(({ id, icon: OptionIcon }) => (
-            <DropdownMenuRadioItem key={id} value={id} closeOnClick>
-              <OptionIcon aria-hidden strokeWidth={THEME_ICON_STROKE_WIDTH} />
+            <DropdownMenuRadioItem
+              key={id}
+              value={id}
+              closeOnClick
+              className={THEME_ICON_STROKE_CLASS}
+            >
+              <OptionIcon aria-hidden />
               {t(id)}
             </DropdownMenuRadioItem>
           ))}
