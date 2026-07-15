@@ -53,9 +53,11 @@ fi
 # so native binaries never mix.
 PLATFORM_FLAG=""
 VOLUME="architect-e2e-node-modules"
+TURBO_VOLUME="architect-e2e-turbo-cache"
 if [[ " $* " == *"--update-snapshots"* ]]; then
   PLATFORM_FLAG="--platform linux/amd64"
   VOLUME="architect-e2e-node-modules-amd64"
+  TURBO_VOLUME="architect-e2e-turbo-cache-amd64"
 fi
 # Forwarded args are spliced into the container's `sh -c` string, so each one
 # must be shell-quoted or characters like the `|` in `--grep "A|B"` are
@@ -73,6 +75,7 @@ docker run --rm \
   -e VITE_DISABLE_ANALYTICS=true \
   -v "$(pwd)":/workspace \
   -v "${VOLUME}":/workspace/node_modules \
+  -v "${TURBO_VOLUME}":/workspace/.turbo/cache \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \

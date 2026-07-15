@@ -697,12 +697,15 @@ jobs:
       - name: Merge sharded blob reports
         if: ${{ env.PW_BLOB == '1' }}
         run: pnpm --filter @codaco/interview exec playwright merge-reports --reporter html ./blob-report
-      - name: Reclaim artifact ownership
+      - name: Reclaim workspace ownership
+        # The Dockerized run executes as container root, so everything it
+        # writes into the bind-mounted workspace (dist trees, reports, volume
+        # mountpoints) lands root-owned. Reclaim the WHOLE checkout, not just
+        # the report dirs: on a self-hosted runner the workspace persists
+        # between runs, and the next checkout's `git clean` cannot remove
+        # root-owned files. (Ephemeral GitHub-hosted VMs never noticed.)
         if: always()
-        run: |
-          sudo chown -R "$(id -u):$(id -g)" \
-            packages/interview/e2e/playwright-report \
-            packages/interview/e2e/test-results 2>/dev/null || true
+        run: sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
       - name: Flag flaky tests
         # Reporting only — never gate the job on it (belt-and-suspenders with the
         # script's own guards).
@@ -741,12 +744,10 @@ jobs:
           detected=$(node scripts/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
-      - name: Reclaim artifact ownership
+      - name: Reclaim workspace ownership
+        # See interview-e2e: reclaim the whole checkout for self-hosted runs.
         if: always()
-        run: |
-          sudo chown -R "$(id -u):$(id -g)" \
-            apps/interviewer/e2e/playwright-report \
-            apps/interviewer/e2e/test-results 2>/dev/null || true
+        run: sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -779,12 +780,10 @@ jobs:
           detected=$(node scripts/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
-      - name: Reclaim artifact ownership
+      - name: Reclaim workspace ownership
+        # See interview-e2e: reclaim the whole checkout for self-hosted runs.
         if: always()
-        run: |
-          sudo chown -R "$(id -u):$(id -g)" \
-            apps/architect/e2e/playwright-report \
-            apps/architect/e2e/test-results 2>/dev/null || true
+        run: sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -20,6 +20,14 @@
 # runs so subsequent installs are no-ops; wipe with:
 #   docker volume rm interview-e2e-node-modules
 #
+# A second named volume backs Turbo's local cache (.turbo/cache) so the
+# `turbo build` of unchanged workspace deps restores instead of rebuilding.
+# This matters on hosts where the checkout is cleaned between runs (the
+# self-hosted CI runner) or the repo dir is fresh; Turbo's cache is
+# content-addressed, so persisting it across branches/commits is safe. Wipe
+# with:
+#   docker volume rm interview-e2e-turbo-cache
+#
 # Build @codaco/interview and its workspace deps before launching the vite
 # host. Sibling workspace packages ship dist-only (their package.json `exports`
 # point at ./dist/*), so the dist trees must exist before the host can resolve
@@ -65,6 +73,7 @@ docker run --rm \
   -e PW_WORKERS \
   -v "$(pwd)":/workspace \
   -v interview-e2e-node-modules:/workspace/node_modules \
+  -v interview-e2e-turbo-cache:/workspace/.turbo/cache \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \
