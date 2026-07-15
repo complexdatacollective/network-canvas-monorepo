@@ -18,6 +18,7 @@ const mockProtocol = {
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
+        shape: { default: 'circle' },
         displayVariable: 'name',
         iconVariant: 'add-a-person',
         variables: {

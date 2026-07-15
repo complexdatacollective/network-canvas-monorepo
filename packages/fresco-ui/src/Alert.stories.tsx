@@ -36,7 +36,7 @@ const meta = {
       control: 'select',
       options: ['solid', 'soft'],
       description:
-        'solid fills the alert with its intent colour (high emphasis); soft is a low tint over the surface for quieter notices. Role, aria-live, screen-reader label and icon are identical either way.',
+        'Both appearances use the full intent colour. solid uses an inset treatment; soft uses an elevated treatment. Role, aria-live, screen-reader label and icon are identical either way.',
     },
     density: {
       control: 'select',
@@ -126,7 +126,7 @@ export const SoftAppearance: Story = {
     docs: {
       description: {
         story:
-          'appearance="soft" tints the surface with the intent colour instead of filling it, keeping surface text and colouring the link with the intent. Use for quieter, content-adjacent notices (docs callouts, tips) where a solid block would be too loud. Role, aria-live, screen-reader label and icon are identical to the solid appearance.',
+          'appearance="soft" keeps the full intent colour and replaces the inset treatment with elevation. Role, aria-live, screen-reader label and icon are identical to the solid appearance.',
       },
     },
   },
@@ -135,7 +135,7 @@ export const SoftAppearance: Story = {
       <Alert variant="info" appearance="soft">
         <AlertTitle>Information</AlertTitle>
         <AlertDescription>
-          A soft info notice tints the surface and colours the link.
+          A soft info notice uses the full info colour with elevation.
         </AlertDescription>
       </Alert>
 

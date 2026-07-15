@@ -24,11 +24,15 @@ const MobileNavBar = () => {
         setOpen={setOpen}
         openerRef={documentationMenuButtonRef}
       />
-      <DocSearchComponent className="min-w-0" />
+      <DocSearchComponent
+        backgroundTarget={showDocumentationMenu}
+        className="min-w-0"
+      />
       {showDocumentationMenu ? (
         <IconButton
           ref={documentationMenuButtonRef}
           onClick={() => setOpen(true)}
+          size="lg"
           variant="text"
           color="dynamic"
           aria-label={t('openDocumentationMenu')}

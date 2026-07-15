@@ -483,7 +483,7 @@ export const SameSexMothers: ScenarioStory = {
     await clickNext();
 
     // AdditionalParentsStep: Patricia
-    await setFieldInput('additional-parent[0].role', 'Parent who raised me');
+    await setFieldInput('additional-parent[0].role', 'raised-me');
     await setFieldInput('additional-parent[0].name', 'Patricia');
     await setFieldInput('additional-parent[0].gender_identity', 'woman');
     await clickNext();
@@ -524,7 +524,7 @@ export const SpermDonor: ScenarioStory = {
     await setFieldInput('otherParentCount', 1);
     await clickNext();
 
-    await setFieldInput('additional-parent[0].role', 'Parent who raised me');
+    await setFieldInput('additional-parent[0].role', 'raised-me');
     await setFieldInput('additional-parent[0].name', 'Patricia');
     await setFieldInput('additional-parent[0].gender_identity', 'woman');
     await clickNext();
@@ -567,7 +567,7 @@ export const BlendedFamily: ScenarioStory = {
     await clickNext();
 
     // AdditionalParentsStep: Karen
-    await setFieldInput('additional-parent[0].role', 'Step-parent');
+    await setFieldInput('additional-parent[0].role', 'step-parent');
     await setFieldInput('additional-parent[0].name', 'Karen');
     await setFieldInput('additional-parent[0].gender_identity', 'woman');
     await clickNext();
@@ -610,7 +610,7 @@ export const TransParent: ScenarioStory = {
     await clickNext();
 
     // AdditionalParentsStep: Priya
-    await setFieldInput('additional-parent[0].role', 'Parent who raised me');
+    await setFieldInput('additional-parent[0].role', 'raised-me');
     await setFieldInput('additional-parent[0].name', 'Priya');
     await setFieldInput('additional-parent[0].gender_identity', 'woman');
     await clickNext();
@@ -702,11 +702,11 @@ export const AdoptedIn: ScenarioStory = {
     await clickNext();
 
     // AdditionalParentsStep: James and Barbara
-    await setFieldInput('additional-parent[0].role', 'Adoptive parent');
+    await setFieldInput('additional-parent[0].role', 'adoptive-parent');
     await setFieldInput('additional-parent[0].name', 'James');
     await setFieldInput('additional-parent[0].gender_identity', 'man');
 
-    await setFieldInput('additional-parent[1].role', 'Adoptive parent');
+    await setFieldInput('additional-parent[1].role', 'adoptive-parent');
     await setFieldInput('additional-parent[1].name', 'Barbara');
     await setFieldInput('additional-parent[1].gender_identity', 'woman');
     await clickNext();

@@ -304,7 +304,10 @@ export function Sidebar({ className }: { className?: string }) {
   if (!sidebarData) {
     return (
       <nav className={cx('flex w-full grow flex-col', className)}>
-        <DocSearchComponent className="tablet-landscape:flex hidden" />
+        <DocSearchComponent
+          backgroundTarget
+          className="tablet-landscape:flex hidden"
+        />
         <div className="flex-1 p-2">Loading...</div>
       </nav>
     );
@@ -319,7 +322,10 @@ export function Sidebar({ className }: { className?: string }) {
 
   return (
     <nav className={cx('flex w-full grow flex-col', className)}>
-      <DocSearchComponent className="tablet-landscape:flex hidden" />
+      <DocSearchComponent
+        backgroundTarget
+        className="tablet-landscape:flex hidden"
+      />
 
       <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
         {sortedSidebarItems.map((item) =>
