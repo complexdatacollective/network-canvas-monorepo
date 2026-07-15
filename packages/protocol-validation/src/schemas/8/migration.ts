@@ -84,6 +84,7 @@ const migrationV7toV8 = createMigration({
 - An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color are assigned one from the palette by prompt position.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored. Such orphaned properties are removed.
 - A CategoricalBin prompt with \`otherVariable\` set now requires both \`otherVariablePrompt\` and \`otherOptionLabel\` (previously a missing label silently dropped the whole "other" bin). A missing value is backfilled from the other authored one, else "Please specify" / "Other".
+- A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean variable to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 `,
   migrate: (doc, deps) => {
@@ -517,6 +518,32 @@ const migrationV7toV8 = createMigration({
             delete typedPrompt.highlight;
           }
           return prompt;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          if (typedStage.type !== 'Sociogram') return stage;
+          if (!Array.isArray(typedStage.prompts)) return stage;
+          for (const prompt of typedStage.prompts) {
+            const typedPrompt = asRecord(prompt);
+            if (!typedPrompt) continue;
+            const highlight = asRecord(typedPrompt.highlight);
+            if (highlight?.allowHighlighting === true && !highlight.variable) {
+              highlight.allowHighlighting = false;
+            }
+            const edges = asRecord(typedPrompt.edges);
+            if (
+              edges &&
+              edges.create === undefined &&
+              edges.display === undefined
+            ) {
+              delete typedPrompt.edges;
+            }
+          }
+          return stage;
         },
       },
       {

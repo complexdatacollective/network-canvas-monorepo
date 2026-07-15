@@ -2920,18 +2920,21 @@ describe('Migration V7 to V8', () => {
       }
     });
 
-    it('keeps highlight when edges.create is absent', () => {
-      const v7Protocol = {
+    const buildSociogramProtocol = (prompt: Record<string, unknown>) =>
+      ({
         schemaVersion: 7 as const,
         codebook: {
           node: {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { layoutPos: { name: 'LayoutPos', type: 'layout' } },
+              variables: {
+                layoutPos: { name: 'LayoutPos', type: 'layout' },
+                isClose: { name: 'Close', type: 'boolean' },
+              },
             },
           },
-          edge: {},
+          edge: { knows: { name: 'Knows', color: 'edge-color-seq-1' } },
           ego: {},
         },
         stages: [
@@ -2945,16 +2948,20 @@ describe('Migration V7 to V8', () => {
                 id: 'p1',
                 text: 'Position',
                 layout: { layoutVariable: 'layoutPos' },
-                highlight: { allowHighlighting: true },
+                ...prompt,
               },
             ],
           },
         ],
-      } as Protocol<7>;
+      }) as Protocol<7>;
 
-      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
-        name: 'Test Protocol',
-      });
+    it('keeps highlight when edges.create is absent', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildSociogramProtocol({
+          highlight: { allowHighlighting: true, variable: 'isClose' },
+        }),
+        { name: 'Test Protocol' },
+      );
       const parsed = ProtocolSchemaV8.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
@@ -2962,6 +2969,45 @@ describe('Migration V7 to V8', () => {
           'highlight.allowHighlighting',
           true,
         );
+      }
+    });
+
+    it('turns highlighting off when no highlight variable is set', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildSociogramProtocol({ highlight: { allowHighlighting: true } }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty(
+          'highlight.allowHighlighting',
+          false,
+        );
+      }
+    });
+
+    it('drops an edges object with neither create nor display', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildSociogramProtocol({ edges: {} }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('edges');
+      }
+    });
+
+    it('keeps a display-only edges object', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildSociogramProtocol({ edges: { display: ['knows'] } }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty('edges.display', ['knows']);
       }
     });
   });

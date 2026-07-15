@@ -24,28 +24,51 @@ export const nameGeneratorPromptSchema = promptSchema.extend({
   additionalAttributes: AdditionalAttributesSchema.optional(),
 });
 
-export const sociogramPromptSchema = promptSchema.extend({
-  sortOrder: SortOrderSchema.optional(),
-  layout: z.strictObject({
-    layoutVariable: entityAttributeReference({
-      subject: 'stageSubject',
-    }),
-  }),
-  edges: z
-    .strictObject({
-      display: z.array(entityTypeReference({ entity: 'edge' })).optional(),
-      create: entityTypeReference({ entity: 'edge' }).optional(),
-    })
-    .optional(),
-  highlight: z
-    .strictObject({
-      allowHighlighting: z.boolean().optional(),
-      variable: entityAttributeReference({
+export const sociogramPromptSchema = promptSchema
+  .extend({
+    sortOrder: SortOrderSchema.optional(),
+    layout: z.strictObject({
+      layoutVariable: entityAttributeReference({
         subject: 'stageSubject',
-      }).optional(),
-    })
-    .optional(),
-});
+      }),
+    }),
+    edges: z
+      .strictObject({
+        display: z.array(entityTypeReference({ entity: 'edge' })).optional(),
+        create: entityTypeReference({ entity: 'edge' }).optional(),
+      })
+      .optional(),
+    highlight: z
+      .strictObject({
+        allowHighlighting: z.boolean().optional(),
+        variable: entityAttributeReference({
+          subject: 'stageSubject',
+        }).optional(),
+      })
+      .optional(),
+  })
+  .superRefine((prompt, ctx) => {
+    if (prompt.highlight?.allowHighlighting && !prompt.highlight.variable) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message:
+          'highlight.variable is required when allowHighlighting is enabled.',
+        path: ['highlight', 'variable'],
+      });
+    }
+    if (
+      prompt.edges &&
+      prompt.edges.create === undefined &&
+      prompt.edges.display === undefined
+    ) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message:
+          'edges must set create and/or display; an empty edges object has no effect.',
+        path: ['edges'],
+      });
+    }
+  });
 
 export const dyadCensusPromptSchema = promptSchema.extend({
   createEdge: entityTypeReference({ entity: 'edge' }),

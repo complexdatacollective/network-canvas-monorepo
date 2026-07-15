@@ -163,6 +163,48 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it('rejects a prompt with allowHighlighting enabled but no highlight variable', () => {
+    const result = sociogramStage.safeParse({
+      ...baseStage,
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Highlight',
+          layout: { layoutVariable: 'pos' },
+          highlight: { allowHighlighting: true },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('highlight.variable is required'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
+
+  it('rejects a prompt with an empty edges object', () => {
+    const result = sociogramStage.safeParse({
+      ...baseStage,
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Edges',
+          layout: { layoutVariable: 'pos' },
+          edges: {},
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('edges must set create and/or display'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
 });
 
 describe('Geospatial targetFeatureProperty (#674)', () => {
