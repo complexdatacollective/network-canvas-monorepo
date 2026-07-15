@@ -131,12 +131,20 @@ const openAndAssertMenu = async (
 
   const filter = canvas.getByRole('searchbox', { name: /filter/i });
   await userEvent.type(filter, 'complete');
-  await waitFor(() => expect(scoped.getAllByRole('option')).toHaveLength(1));
+  // Filtering round-trips a web worker (index + search); under full-suite
+  // load that can outlive the 1s default waitFor window, so allow headroom.
+  await waitFor(() => expect(scoped.getAllByRole('option')).toHaveLength(1), {
+    timeout: 10_000,
+  });
 
   await userEvent.click(scoped.getByRole('option', { name: /complete/i }));
 
-  await waitFor(() =>
-    expect(canvas.getByText(/thank you for taking part/i)).toBeInTheDocument(),
+  await waitFor(
+    () =>
+      expect(
+        canvas.getByText(/thank you for taking part/i),
+      ).toBeInTheDocument(),
+    { timeout: 10_000 },
   );
 };
 

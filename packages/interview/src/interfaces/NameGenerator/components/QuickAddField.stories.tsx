@@ -24,6 +24,7 @@ const buildMockProtocol = (icon: string) => ({
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
+        shape: { default: 'circle' },
         displayVariable: 'name',
         icon,
         variables: {
