@@ -89,7 +89,7 @@ export type SiteNavigationProps = {
   mobileAccessory?: ReactNode;
   renderLink?: (props: SiteNavigationLinkRenderProps) => ReactElement;
   renderUtility?: (props: SiteNavigationUtilityRenderProps) => ReactNode;
-  site: 'documentation' | 'website';
+  site: 'documentation' | 'external' | 'website';
   className?: string;
   containerClassName?: string;
   style?: CSSProperties;

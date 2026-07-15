@@ -256,4 +256,34 @@ describe('SiteNavigation', () => {
     ).toHaveAttribute('aria-expanded', 'false');
     expect(menuButton).toHaveFocus();
   });
+
+  it('renders every destination absolutely for external hosts', () => {
+    render(
+      <SiteNavigation
+        activeItemId="community"
+        locale="en-US"
+        site="external"
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Network Canvas home' }),
+    ).toHaveAttribute('href', 'https://networkcanvas.com/');
+    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+      'href',
+      'https://documentation.networkcanvas.com/',
+    );
+    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+      'target',
+      '_blank',
+    );
+    expect(screen.getByRole('link', { name: 'Community' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('link', { name: 'Get Started' })).toHaveAttribute(
+      'href',
+      'https://networkcanvas.com/download',
+    );
+  });
 });

@@ -7,12 +7,17 @@ import SiteNavigation from './SiteNavigation';
 import type { SiteNavigationLocale } from './SiteNavigation';
 
 type StoryArgs = {
-  activeItemId: 'home' | 'documentation' | 'resources' | 'getStarted';
+  activeItemId:
+    | 'home'
+    | 'community'
+    | 'documentation'
+    | 'resources'
+    | 'getStarted';
   containerWidth: number;
   locale: SiteNavigationLocale;
   showMobileAccessory: boolean;
   showUtility: boolean;
-  site: 'documentation' | 'website';
+  site: 'documentation' | 'external' | 'website';
 };
 
 const widths = [320, 480, 768, 1024, 1280, 1536];
@@ -39,7 +44,8 @@ import SiteNavigation from '@codaco/fresco-ui/navigation/SiteNavigation';
   table is checked against that same union, so adding a supported locale also
   requires navigation copy at compile time.
 - **\`site\`** selects routing context only; menu items and destinations are
-  not configurable.
+  not configurable. \`external\` is for non-Network-Canvas hosts (e.g. the
+  community forum): every destination renders as an absolute URL.
 - **\`activeItemId\`** applies the current-page state to a canonical
   destination.
 - **\`mobileAccessory\`** injects compact-only UI beside the menu trigger,
@@ -70,7 +76,13 @@ const meta = {
   argTypes: {
     activeItemId: {
       control: 'select',
-      options: ['home', 'documentation', 'resources', 'getStarted'],
+      options: [
+        'home',
+        'community',
+        'documentation',
+        'resources',
+        'getStarted',
+      ],
     },
     containerWidth: {
       control: 'select',
@@ -82,7 +94,7 @@ const meta = {
     },
     site: {
       control: 'radio',
-      options: ['website', 'documentation'],
+      options: ['website', 'documentation', 'external'],
     },
   },
   args: {
@@ -135,6 +147,13 @@ export const Website: Story = {};
 export const Spanish: Story = {
   args: {
     locale: 'es',
+  },
+};
+
+export const ExternalHost: Story = {
+  args: {
+    activeItemId: 'community',
+    site: 'external',
   },
 };
 
