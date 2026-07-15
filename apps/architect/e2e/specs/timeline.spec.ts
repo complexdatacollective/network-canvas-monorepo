@@ -37,6 +37,26 @@ function stagesOf(protocol: Record<string, unknown>): Stage[] {
   return stages.map((value: unknown) => toStage(value));
 }
 
+test('shows the skip-logic icon without a destination note', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const firstStage = protocol.stages[0];
+  if (!firstStage) throw new Error('fixture has no stages');
+  firstStage.skipLogic = {
+    action: 'SKIP',
+    filter: { join: 'AND', rules: [] },
+  };
+
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const row = new Timeline(architectPage).stageRowByLabel(firstStage.label);
+  await expect(row.getByRole('img', { name: 'Has skip logic' })).toBeVisible();
+  await expect(row.getByText(/^If skipped:/)).toHaveCount(0);
+});
+
 test('reorders stages via drag and commits one moveStage', async ({
   architectPage,
   seed,

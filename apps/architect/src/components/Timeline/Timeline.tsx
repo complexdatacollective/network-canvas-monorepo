@@ -21,7 +21,6 @@ import { cx } from '~/utils/cva';
 import NewStageScreen from '../Screens/NewStageScreen';
 import StageTypeImage from '../StageTypeImage';
 import InsertButton from './InsertButton';
-import SkipDestinationBadge from './SkipDestinationBadge';
 import {
   getSkipDestinationDeleteWarning,
   getSkipDestinationReorderGuard,
@@ -290,20 +289,12 @@ const Timeline = () => {
                         />
                       )}
                       {stage.hasSkipLogic && (
-                        <>
-                          <img
-                            src={skipLogicIcon}
-                            alt="Has skip logic"
-                            title="Has skip logic"
-                            className="h-5 w-5"
-                          />
-                          <SkipDestinationBadge
-                            destinationLabel={
-                              stage.skipLogicDestinationLabel ??
-                              'Next available stage'
-                            }
-                          />
-                        </>
+                        <img
+                          src={skipLogicIcon}
+                          alt="Has skip logic"
+                          title="Has skip logic"
+                          className="h-5 w-5"
+                        />
                       )}
                     </div>
                   )}
