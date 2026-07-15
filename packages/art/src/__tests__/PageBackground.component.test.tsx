@@ -303,6 +303,8 @@ describe('PageBackground', () => {
       <PageBackground
         convergence={{ x: 0.2, y: 0.4 }}
         intensity={0.4}
+        flare={1.4}
+        speedFactor={0.25}
         motionMode="target"
         resolved
         targetChangeVersion={1}
@@ -314,6 +316,8 @@ describe('PageBackground', () => {
       <PageBackground
         convergence={{ x: 0.8, y: 0.7 }}
         intensity={0.1}
+        flare={2.2}
+        speedFactor={0.5}
         motionMode="target"
         resolved
         targetChangeVersion={2}
@@ -332,9 +336,47 @@ describe('PageBackground', () => {
     const latestProps = networkWeaveProps.mock.lastCall?.[0] as {
       convergence: { x: number; y: number };
       intensity: number;
+      flare: number;
+      speedFactor: number;
     };
     expect(latestProps.convergence).toEqual({ x: 0.8, y: 0.7 });
     expect(latestProps.intensity).toBeCloseTo(0.1);
+    expect(latestProps.flare).toBeCloseTo(2.2);
+    expect(latestProps.speedFactor).toBeCloseTo(0.5);
+  });
+
+  it('updates scroll-linked weave parameters without starting a spring', () => {
+    const { rerender } = render(
+      <PageBackground
+        intensity={0.62}
+        flare={1.45}
+        speedFactor={0.28}
+        motionMode="target"
+        resolved
+      />,
+    );
+
+    animateMock.mockClear();
+    rerender(
+      <PageBackground
+        intensity={0.2}
+        flare={1.85}
+        speedFactor={0.39}
+        motionMode="target"
+        resolved
+      />,
+    );
+
+    expect(
+      animateMock.mock.calls.some(([start, end]) => start === 0 && end === 1),
+    ).toBe(false);
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        intensity: 0.2,
+        flare: 1.85,
+        speedFactor: 0.39,
+      }),
+    );
   });
 
   it('updates the current target position immediately during scroll', () => {

@@ -36,7 +36,10 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
           icon={<ChevronLeft aria-hidden className="size-6" />}
         />
 
-        <div className="relative min-h-[22rem] flex-1">
+        <div
+          data-homepage-weave-target
+          className="relative min-h-[22rem] flex-1"
+        >
           <div className="pointer-events-none absolute -inset-8 overflow-hidden p-8">
             <AnimatePresence custom={direction} initial={false} mode="wait">
               <motion.a

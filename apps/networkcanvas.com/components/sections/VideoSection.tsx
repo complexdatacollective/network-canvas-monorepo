@@ -31,7 +31,7 @@ export function VideoSection() {
         {t.rich('description', { channel: renderChannelLink })}
       </SectionHeading>
 
-      <Reveal className="mx-auto mt-12 max-w-3xl">
+      <Reveal data-homepage-weave-target className="mx-auto mt-12 max-w-3xl">
         <a
           href={externalLinks.youtubeChannel}
           target="_blank"

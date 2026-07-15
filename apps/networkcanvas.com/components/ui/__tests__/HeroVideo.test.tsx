@@ -5,20 +5,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HeroVideo } from '../HeroVideo';
 
 const motionPreference = vi.hoisted(() => ({ reduced: false }));
-const backgroundTargetRef = vi.hoisted(() => vi.fn());
 
 vi.mock('motion/react', () => ({
   useReducedMotion: () => motionPreference.reduced,
 }));
 
-vi.mock('@codaco/art', () => ({
-  usePageBackgroundTargetRef: () => backgroundTargetRef,
-}));
-
 describe('HeroVideo', () => {
   beforeEach(() => {
     motionPreference.reduced = false;
-    backgroundTargetRef.mockClear();
   });
 
   it('renders the poster before client effects run', () => {
@@ -44,11 +38,11 @@ describe('HeroVideo', () => {
     );
   });
 
-  it('registers its stable outer frame as the background target', () => {
+  it('marks its stable outer frame as a homepage weave target', () => {
     const { container } = render(<HeroVideo />);
 
-    expect(backgroundTargetRef).toHaveBeenCalledWith(
-      container.firstElementChild,
+    expect(container.firstElementChild).toHaveAttribute(
+      'data-homepage-weave-target',
     );
   });
 

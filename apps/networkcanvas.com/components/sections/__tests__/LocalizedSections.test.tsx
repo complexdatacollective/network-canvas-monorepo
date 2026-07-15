@@ -14,7 +14,14 @@ import { VideoSection } from '../VideoSection';
 import { WhatNext } from '../WhatNext';
 
 vi.mock('~/components/ui/Reveal', () => ({
-  Reveal: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Reveal: ({
+    children,
+    delay: _delay,
+    ...props
+  }: ComponentPropsWithoutRef<'div'> & {
+    children: ReactNode;
+    delay?: number;
+  }) => <div {...props}>{children}</div>,
 }));
 
 vi.mock('~/lib/i18n/navigation', () => ({
@@ -69,6 +76,16 @@ describe('localized home sections', () => {
     expect(
       screen.getByRole('heading', { name: 'Flexibilidad ontológica' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', {
+        name: 'Example Researcher, Example University',
+      }),
+    ).toHaveAttribute('data-homepage-weave-interactive-target');
+    expect(
+      screen.getByRole('group', {
+        name: 'Example Researcher, Example University',
+      }),
+    ).toHaveAttribute('tabindex', '0');
   });
 
   it('renders Spanish rich text and calls to action', () => {

@@ -394,6 +394,8 @@ function useResponsiveOrientation(): NetworkWeaveOrientation {
 export function PageBackground({
   convergence = DEFAULT_CONVERGENCE,
   intensity = INITIAL_INTENSITY,
+  flare = DEFAULT_FLARE,
+  speedFactor = DEFAULT_SPEED_FACTOR,
   motionMode = 'scroll',
   resolved,
   scrollFadeEnd,
@@ -402,6 +404,8 @@ export function PageBackground({
 }: {
   convergence?: NetworkWeaveConvergence;
   intensity?: number;
+  flare?: number;
+  speedFactor?: number;
   motionMode?: 'scroll' | 'target';
   resolved?: boolean;
   scrollFadeEnd?: number;
@@ -438,12 +442,11 @@ export function PageBackground({
   const [weaveSettings, setWeaveSettings] = useState<WeaveSettings>({
     convergence,
     intensity,
-    flare: DEFAULT_FLARE,
-    speedFactor: DEFAULT_SPEED_FACTOR,
+    flare,
+    speedFactor,
   });
   const weaveSettingsRef = useRef(weaveSettings);
   const hasResolvedTargetRef = useRef(resolved === true);
-  const lastIntensityRef = useRef(intensity);
   const lastTargetChangeVersionRef = useRef(targetChangeVersion);
   const commitWeaveSettings = useCallback((settings: WeaveSettings) => {
     if (weaveSettingsAreEqual(weaveSettingsRef.current, settings)) return;
@@ -457,26 +460,23 @@ export function PageBackground({
     const nextSettings: WeaveSettings = {
       convergence,
       intensity,
-      flare: DEFAULT_FLARE,
-      speedFactor: DEFAULT_SPEED_FACTOR,
+      flare,
+      speedFactor,
     };
     const isFirstResolvedTarget =
       resolved === true && !hasResolvedTargetRef.current;
-    const intensityChanged =
-      Math.abs(lastIntensityRef.current - intensity) >= PARAMETER_TOLERANCE;
     const targetChanged =
       lastTargetChangeVersionRef.current !== targetChangeVersion;
 
     if (resolved === false) hasResolvedTargetRef.current = false;
     if (resolved === true) hasResolvedTargetRef.current = true;
-    lastIntensityRef.current = intensity;
     lastTargetChangeVersionRef.current = targetChangeVersion;
 
     if (
       reduceMotion !== false ||
       resolved === false ||
       isFirstResolvedTarget ||
-      (!intensityChanged && !targetChanged)
+      !targetChanged
     ) {
       commitWeaveSettings(nextSettings);
       return undefined;
@@ -505,8 +505,12 @@ export function PageBackground({
           intensity:
             startSettings.intensity +
             (nextSettings.intensity - startSettings.intensity) * progress,
-          flare: DEFAULT_FLARE,
-          speedFactor: DEFAULT_SPEED_FACTOR,
+          flare:
+            startSettings.flare +
+            (nextSettings.flare - startSettings.flare) * progress,
+          speedFactor:
+            startSettings.speedFactor +
+            (nextSettings.speedFactor - startSettings.speedFactor) * progress,
         });
       },
     });
@@ -515,10 +519,12 @@ export function PageBackground({
   }, [
     commitWeaveSettings,
     convergence,
+    flare,
     intensity,
     motionMode,
     reduceMotion,
     resolved,
+    speedFactor,
     targetChangeVersion,
   ]);
 
@@ -532,8 +538,8 @@ export function PageBackground({
       ? {
           convergence,
           intensity,
-          flare: DEFAULT_FLARE,
-          speedFactor: DEFAULT_SPEED_FACTOR,
+          flare,
+          speedFactor,
         }
       : weaveSettings;
   const maskStyle = masked

@@ -13,7 +13,10 @@ export function DesignPrinciples() {
   return (
     <Container className="tablet-landscape:py-28 py-20">
       <div className="tablet-landscape:grid-cols-[0.85fr_1.15fr] tablet-landscape:gap-16 grid gap-12">
-        <div className="tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:self-start">
+        <div
+          data-homepage-weave-target
+          className="tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:self-start"
+        >
           <Heading
             level="h2"
             margin="none"

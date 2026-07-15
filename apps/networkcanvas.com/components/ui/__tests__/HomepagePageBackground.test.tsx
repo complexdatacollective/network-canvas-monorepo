@@ -1,0 +1,314 @@
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import type { Ref } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { HomepagePageBackground } from '../HomepagePageBackground';
+
+const pageBackgroundProps = vi.hoisted(() => vi.fn());
+
+vi.mock('@codaco/art', () => ({
+  PageBackground: ({
+    layerRef,
+    ...props
+  }: {
+    layerRef: Ref<HTMLDivElement>;
+    convergence: { x: number; y: number };
+    intensity: number;
+    flare: number;
+    speedFactor: number;
+    motionMode: string;
+    resolved: boolean;
+    targetChangeVersion: number;
+  }) => {
+    pageBackgroundProps(props);
+    return <div ref={layerRef} data-testid="page-background-layer" />;
+  },
+}));
+
+class MockResizeObserver implements ResizeObserver {
+  callback: ResizeObserverCallback;
+  observe = vi.fn((_target: Element) => {});
+  unobserve = vi.fn((_target: Element) => {});
+  disconnect = vi.fn(() => {});
+
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback;
+  }
+}
+
+const createRect = ({
+  left = 0,
+  top,
+  width = 200,
+  height = 200,
+}: {
+  left?: number;
+  top: number;
+  width?: number;
+  height?: number;
+}): DOMRect => ({
+  x: left,
+  y: top,
+  left,
+  top,
+  width,
+  height,
+  right: left + width,
+  bottom: top + height,
+  toJSON: () => ({}),
+});
+
+describe('HomepagePageBackground', () => {
+  const targetRects = new Map<string, DOMRect>();
+
+  beforeEach(() => {
+    pageBackgroundProps.mockClear();
+    targetRects.clear();
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        const element = this as HTMLElement;
+        if (element.dataset.testid === 'page-background-layer') {
+          return createRect({ top: 0, width: 1000, height: 800 });
+        }
+
+        return (
+          targetRects.get(element.dataset.target ?? '') ??
+          createRect({ top: 1000 })
+        );
+      },
+    );
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('links each target handoff to its progress across the viewport midpoint', () => {
+    targetRects.set(
+      'hero',
+      createRect({ left: 100, top: 300, width: 400, height: 300 }),
+    );
+    targetRects.set(
+      'heading',
+      createRect({ left: 500, top: 900, width: 300, height: 100 }),
+    );
+    targetRects.set(
+      'carousel',
+      createRect({ left: 200, top: 1800, width: 600, height: 350 }),
+    );
+
+    render(
+      <>
+        <HomepagePageBackground />
+        <div data-homepage-weave-target data-target="hero" />
+        <div data-homepage-weave-target data-target="heading" />
+        <div data-homepage-weave-target data-target="carousel" />
+      </>,
+    );
+
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.3, y: 0.5625 },
+        motionMode: 'target',
+        resolved: true,
+      }),
+    );
+
+    targetRects.set(
+      'hero',
+      createRect({ left: 100, top: 100, width: 400, height: 300 }),
+    );
+    targetRects.set(
+      'heading',
+      createRect({ left: 500, top: 600, width: 300, height: 100 }),
+    );
+    void act(() => fireEvent.scroll(window));
+
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.43125, y: 0.5 },
+      }),
+    );
+
+    targetRects.set(
+      'heading',
+      createRect({ left: 500, top: 350, width: 300, height: 100 }),
+    );
+    targetRects.set(
+      'carousel',
+      createRect({ left: 200, top: 750, width: 600, height: 350 }),
+    );
+    void act(() => fireEvent.scroll(window));
+
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.65, y: 0.5 },
+      }),
+    );
+  });
+
+  it('stays centered once the final target reaches the viewport midpoint', () => {
+    targetRects.set(
+      'hero',
+      createRect({ left: 100, top: -1000, width: 400, height: 300 }),
+    );
+    targetRects.set(
+      'carousel',
+      createRect({ left: 200, top: 225, width: 600, height: 350 }),
+    );
+
+    render(
+      <>
+        <HomepagePageBackground />
+        <div data-homepage-weave-target data-target="hero" />
+        <div data-homepage-weave-target data-target="carousel" />
+      </>,
+    );
+
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.5, y: 0.5 },
+        motionMode: 'target',
+        resolved: true,
+      }),
+    );
+
+    targetRects.set(
+      'carousel',
+      createRect({ left: 200, top: -400, width: 600, height: 350 }),
+    );
+    void act(() => fireEvent.scroll(window));
+
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.5, y: 0.5 },
+      }),
+    );
+  });
+
+  it('raises the hero intensity, then lowers it while varying weave parameters with scroll', () => {
+    const scrollY = vi.spyOn(window, 'scrollY', 'get').mockReturnValue(0);
+    vi.spyOn(document.documentElement, 'scrollHeight', 'get').mockReturnValue(
+      4000,
+    );
+    targetRects.set(
+      'hero',
+      createRect({ left: 100, top: 300, width: 400, height: 300 }),
+    );
+    targetRects.set(
+      'heading',
+      createRect({ left: 500, top: 900, width: 300, height: 100 }),
+    );
+
+    render(
+      <>
+        <HomepagePageBackground />
+        <div data-homepage-weave-target data-target="hero" />
+        <div data-homepage-weave-target data-target="heading" />
+      </>,
+    );
+
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        intensity: 0.62,
+        flare: 1.45,
+        speedFactor: 0.28,
+      }),
+    );
+
+    targetRects.set(
+      'hero',
+      createRect({ left: 100, top: -400, width: 400, height: 300 }),
+    );
+    targetRects.set(
+      'heading',
+      createRect({ left: 500, top: 350, width: 300, height: 100 }),
+    );
+    scrollY.mockReturnValue(1600);
+    void act(() => fireEvent.scroll(window));
+
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        intensity: 0.2,
+        flare: 1.85,
+        speedFactor: 0.39,
+      }),
+    );
+  });
+
+  it('tracks the hovered or focused team member and springs back to center', () => {
+    targetRects.set(
+      'hero',
+      createRect({ left: 100, top: -1000, width: 400, height: 300 }),
+    );
+    targetRects.set(
+      'carousel',
+      createRect({ left: 200, top: -400, width: 600, height: 350 }),
+    );
+    targetRects.set(
+      'first-member',
+      createRect({ left: 100, top: 200, width: 100, height: 100 }),
+    );
+    targetRects.set(
+      'second-member',
+      createRect({ left: 700, top: 400, width: 100, height: 100 }),
+    );
+
+    const { getByTestId } = render(
+      <>
+        <HomepagePageBackground />
+        <div data-homepage-weave-target data-target="hero" />
+        <div data-homepage-weave-target data-target="carousel" />
+        <button
+          type="button"
+          aria-label="First member"
+          data-homepage-weave-interactive-target
+          data-target="first-member"
+          data-testid="first-member"
+        />
+        <button
+          type="button"
+          aria-label="Second member"
+          data-homepage-weave-interactive-target
+          data-target="second-member"
+          data-testid="second-member"
+        />
+      </>,
+    );
+
+    void act(() => fireEvent.pointerEnter(getByTestId('first-member')));
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.15, y: 0.3125 },
+        targetChangeVersion: 1,
+      }),
+    );
+
+    act(() => getByTestId('second-member').focus());
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.75, y: 0.5625 },
+        targetChangeVersion: 2,
+      }),
+    );
+
+    act(() => getByTestId('second-member').blur());
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.15, y: 0.3125 },
+        targetChangeVersion: 3,
+      }),
+    );
+
+    void act(() => fireEvent.pointerLeave(getByTestId('first-member')));
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.5, y: 0.5 },
+        targetChangeVersion: 4,
+      }),
+    );
+  });
+});
