@@ -9,3 +9,8 @@ declare global {
     'nc-site-navigation': HTMLElement;
   }
 }
+
+// Load-bearing, not useless: without an export this file is a script, and
+// `declare global` is illegal outside a module (TS2669 for every consumer).
+// oxlint-disable-next-line unicorn/require-module-specifiers
+export {};
