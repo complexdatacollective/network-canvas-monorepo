@@ -38,6 +38,7 @@ docker run --rm \
   -e VITE_DISABLE_ANALYTICS=true \
   -v "$(pwd)":/workspace \
   -v interviewer-e2e-node-modules:/workspace/node_modules \
+  -v interviewer-e2e-turbo-cache:/workspace/.turbo/cache \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \
