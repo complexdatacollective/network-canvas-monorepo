@@ -1,11 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalDependencies": [
-    "pnpm-lock.yaml",
-    "pnpm-workspace.yaml",
-    "packages/protocols/e2e/all-interfaces/**"
-  ],
   "globalPassThroughEnv": [
     "NC_PREVIEW_HOST",
     "NEXT_PUBLIC_ALGOLIA_APPLICATION_ID",
@@ -279,6 +274,8 @@
         "src/**",
         "__tests__/**",
         "vitest.config.*",
+        "vitest.setup.*",
+        "config/vitest/**",
         "package.json",
         ".env"
       ],
@@ -365,6 +362,41 @@
       ],
       "outputs": []
     },
+    "@codaco/interview#test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "__tests__/**",
+        "e2e/**",
+        "vitest.config.*",
+        "vitest.setup.*",
+        "package.json",
+        ".env"
+      ],
+      "env": [
+        "PROTOCOL_ENCRYPTION_KEY",
+        "PROTOCOL_ENCRYPTION_IV",
+        "GITHUB_TOKEN"
+      ],
+      "outputs": []
+    },
+    "@codaco/protocol-validation#test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_ROOT$/packages/protocols/e2e/all-interfaces/**",
+        "src/**",
+        "__tests__/**",
+        "vitest.config.*",
+        "package.json",
+        ".env"
+      ],
+      "env": [
+        "PROTOCOL_ENCRYPTION_KEY",
+        "PROTOCOL_ENCRYPTION_IV",
+        "GITHUB_TOKEN"
+      ],
+      "outputs": []
+    },
     "@codaco/interviewer#test": {
       "dependsOn": ["^build"],
       "inputs": [
@@ -390,5 +422,8 @@
       "env": ["NODE_ENV"],
       "outputs": []
     }
+  },
+  "futureFlags": {
+    "affectedUsingTaskInputs": true
   }
 }

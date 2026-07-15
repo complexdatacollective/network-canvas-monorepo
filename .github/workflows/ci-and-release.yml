@@ -174,11 +174,22 @@ jobs:
             echo "snapshot_branch=$(jq -r '.snapshotBranch' <<< "$policy")"
           } >> "$GITHUB_OUTPUT"
 
-  # Cache design: every Turbo-using job restores `.turbo` from the same
-  # `${{ runner.os }}-turbo-*` keyspace. Whichever job finishes its build first
-  # writes the SHA-specific slot; subsequent jobs read it via `restore-keys`
-  # fallback. Per-package env values (NEXT_PUBLIC_*, VITE_*) are part of each
-  # build task's `env:` list in turbo.json so they participate in the cache key.
+  # Cache design: turbo-ci-setup runs a runner-local server speaking turbo's
+  # remote-cache protocol, backed by the GitHub Actions Cache with per-task,
+  # hash-addressed entries. Per-package env values (NEXT_PUBLIC_*, VITE_*) are
+  # part of each build task's `env:` list in turbo.json so they participate in
+  # the cache key. The lockfile is deliberately NOT in turbo.json's
+  # `globalDependencies`: turbo hashes each package's resolved dependencies
+  # (including pnpm catalog entries) granularly, so a dependency bump only
+  # invalidates the packages that use it — listing pnpm-lock.yaml globally
+  # would invalidate every task on every bump.
+  #
+  # GitHub's cache is branch-scoped: PR and merge-queue runs can restore main's
+  # entries plus their own branch's, but entries written on ephemeral
+  # merge-queue refs die with the ref, and the quality jobs skip `push` — so
+  # without the `seed-turbo-cache` job below, main's tree would never have
+  # cache entries and every run after a merge would re-run everything that
+  # merge changed.
   #
   # `quality` used to be a single job running everything serially; it is now a
   # fan-out of independent sub-jobs behind the `quality` aggregator below, so
@@ -187,6 +198,35 @@ jobs:
   # (where `detect` is skipped). `typecheck`/`test` restore `build`'s output via
   # their own `^build` dependency; `lint` needs it too (below) because oxlint's
   # type-aware rules resolve workspace imports through built `.d.ts` files.
+  seed-turbo-cache:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Cache warming only — the merge queue already validated this identical
+    # tree, so a flake here must not fail the push run (which also carries the
+    # release jobs).
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Write protocol-validation .env (test fixture)
+        env:
+          PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
+          PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
+          TEST_PROTOCOL_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
+        run: |
+          {
+            echo "PROTOCOL_ENCRYPTION_KEY=$PROTOCOL_ENCRYPTION_KEY"
+            echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
+            echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
+          } > packages/protocol-validation/.env
+      # Same requirement as the test job below: site-navigation-element's
+      # test script runs vitest browser mode against real Chromium.
+      - name: Install Playwright Chromium (vitest browser mode)
+        run: pnpm --filter @codaco/site-navigation-element exec playwright install --with-deps chromium
+      - run: pnpm exec turbo run test typecheck
+
   lint:
     needs: build
     if: github.event_name != 'push'
@@ -262,6 +302,9 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
           persist-credentials: false
+          # `--affected` diffs against the PR base; on a shallow clone turbo
+          # treats every package as changed.
+          fetch-depth: 0
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         env:
@@ -279,7 +322,32 @@ jobs:
       # doesn't ship the pinned Playwright build's browsers.
       - name: Install Playwright Chromium (vitest browser mode)
         run: pnpm --filter @codaco/site-navigation-element exec playwright install --with-deps chromium
-      - run: pnpm exec turbo run test
+      - name: Run tests (PRs run only tasks affected by the PR diff)
+        run: |
+          # PR checkouts are a synthetic merge of the PR into its base, so
+          # HEAD^1 is the base tip and --affected scopes the run to tasks
+          # whose declared inputs the PR touches, plus their dependents
+          # (turbo.json enables futureFlags.affectedUsingTaskInputs so
+          # selection matches what cache hashing considers an input).
+          # Anything skipped here is still covered by the full merge-queue
+          # run before it can land.
+          #
+          # Fail closed: a change outside the workspace package trees (this
+          # workflow, composite actions, .nvmrc, pnpm-workspace.yaml, root
+          # configs/scripts) can alter how tests run without being any turbo
+          # task's input, so any such change forces the full suite. The
+          # lockfile stays on the affected path because turbo hashes it
+          # granularly per package; docs, changesets, and markdown are inert
+          # to tests.
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
+            && git diff --quiet HEAD^1 HEAD -- . \
+              ':(exclude)packages' ':(exclude)apps' ':(exclude)workers' \
+              ':(exclude)tooling' ':(exclude)docs' ':(exclude).changeset' \
+              ':(exclude)pnpm-lock.yaml' ':(exclude)*.md'; then
+            TURBO_SCM_BASE=$(git rev-parse HEAD^1) pnpm exec turbo run test --affected
+          else
+            pnpm exec turbo run test
+          fi
 
   quality:
     needs:
