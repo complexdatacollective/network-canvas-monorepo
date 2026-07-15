@@ -970,6 +970,12 @@ jobs:
         # publishes to npm. Apps (./apps/*) are private:true and don't need to
         # build successfully here; their deploy pipeline is per-app deploy jobs.
         run: pnpm exec turbo run build --filter='./packages/*'
+      - name: Hide gated-product changesets from the library release
+        # Product changesets persist until their release PR consumes them, but
+        # changesets/action counts them as pending: it would push an empty
+        # Version Packages branch (PR creation 422s) and never reach its
+        # publish path. Working-tree-only deletion; see the script header.
+        run: node scripts/prune-ignored-changesets.mjs
       - id: changesets
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
         with:
