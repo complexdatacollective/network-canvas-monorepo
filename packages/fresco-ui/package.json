@@ -156,6 +156,10 @@
       "types": "./dist/navigation/SiteNavigation.d.ts",
       "default": "./dist/navigation/SiteNavigation.js"
     },
+    "./navigation/ThemeSwitcher": {
+      "types": "./dist/navigation/ThemeSwitcher.d.ts",
+      "default": "./dist/navigation/ThemeSwitcher.js"
+    },
     "./navigation/SiteFooter": {
       "types": "./dist/navigation/SiteFooter.d.ts",
       "default": "./dist/navigation/SiteFooter.js"
