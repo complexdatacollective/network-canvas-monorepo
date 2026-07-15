@@ -81,7 +81,7 @@ const migrationV7toV8 = createMigration({
 - The NameGenerator \`form.title\` (heading of the add-a-person dialog) is now required. Any NameGenerator form without one is given "Add {node type name}" (e.g. "Add Person").
 - A codebook variable referenced by a form field must define a \`component\` (input control). Previously this was only checked by the Architect editor; a protocol violating it crashed the interview when the form rendered.
 - The Sociogram and Narrative \`background\` is now required and must be exactly one of its two variants: an image (\`image\` set, no \`concentricCircles\`) or concentric circles (\`concentricCircles\` set to a whole number, no \`image\`; 0 renders no rings). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise \`concentricCircles\` defaults to 4, matching what the interview already rendered.
-- An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color are assigned one from the palette by prompt position.
+- An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color default to the first palette color (\`ord-color-seq-1\`), the runtime's previous fallback.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored. Such orphaned properties are removed.
 - A CategoricalBin prompt with \`otherVariable\` set now requires both \`otherVariablePrompt\` and \`otherOptionLabel\` (previously a missing label silently dropped the whole "other" bin). A missing value is backfilled from the other authored one, else "Please specify" / "Other".
 - A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean variable to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
@@ -377,16 +377,16 @@ const migrationV7toV8 = createMigration({
       {
         // An OrdinalBin prompt color outside the ten-value ord-color-seq
         // palette was silently ignored by the interview. V8 requires a color
-        // from that palette; drop any other value, then give colorless
-        // prompts an index-based palette colour.
+        // from that palette; drop any other value, then give colorless prompts
+        // the first palette color (the runtime's previous default).
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
           if (typeof stage !== 'object' || stage === null) return stage;
           const typedStage = stage as Record<string, unknown>;
           if (typedStage.type !== 'OrdinalBin') return stage;
           if (!Array.isArray(typedStage.prompts)) return stage;
-          typedStage.prompts.forEach((prompt: unknown, index: number) => {
-            if (typeof prompt !== 'object' || prompt === null) return;
+          for (const prompt of typedStage.prompts) {
+            if (typeof prompt !== 'object' || prompt === null) continue;
             const typedPrompt = prompt as Record<string, unknown>;
             if (
               'color' in typedPrompt &&
@@ -395,10 +395,9 @@ const migrationV7toV8 = createMigration({
               delete typedPrompt.color;
             }
             if (!('color' in typedPrompt)) {
-              typedPrompt.color =
-                ordinalColorSequence[index % ordinalColorSequence.length];
+              typedPrompt.color = ordinalColorSequence[0];
             }
-          });
+          }
           return stage;
         },
       },

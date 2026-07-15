@@ -24,6 +24,6 @@ that validates is a protocol that renders correctly:
 
 Protocols migrating from schema 7 are backfilled with the value the interview
 already displayed (stage label or "Information", "Add {node type}", 4 rings,
-position-cycled palette colours, "Other"/"Please specify"), so migrated
-interviews look identical. Synthetic interviews seed the default background
-for canvas stages.
+the first palette color, "Other"/"Please specify"), so migrated interviews
+look identical. Synthetic interviews seed the default background for canvas
+stages.

@@ -160,7 +160,7 @@ type ArrayFieldCustomProps<T extends Record<string, unknown>> = {
    * Function that returns a new item template when adding a new item.
    * Note: You don't need to include an 'id' property - ArrayField handles ID generation internally.
    */
-  itemTemplate: (index: number) => Partial<T>;
+  itemTemplate: () => Partial<T>;
   addButtonLabel?: string;
   emptyStateMessage?: string;
   confirmDelete?: boolean;
@@ -722,13 +722,13 @@ export default function ArrayField<T extends Record<string, unknown>>({
             color="primary"
             onClick={() => {
               if (immediateAdd) {
-                addItem(itemTemplate(confirmedItemCount) as T);
+                addItem(itemTemplate() as T);
                 announce(
                   `Added item at position ${confirmedItemCount + 1} of ${confirmedItemCount + 1}.`,
                 );
                 return;
               }
-              startAdding(itemTemplate(confirmedItemCount) as T);
+              startAdding(itemTemplate() as T);
             }}
             icon={<PlusIcon />}
             disabled={isInteractionDisabled || (!immediateAdd && !!editingItem)}

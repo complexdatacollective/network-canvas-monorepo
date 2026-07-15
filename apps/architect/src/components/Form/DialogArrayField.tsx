@@ -269,7 +269,7 @@ type DialogArrayFieldOwnProps<T extends ArrayItem> = Omit<
   editorTitle: string;
   itemLabel?: string;
   itemSelector?: ItemSelector;
-  itemTemplate?: (index: number) => Partial<T>;
+  itemTemplate?: () => Partial<T>;
   normalizeItem?: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
   previewComponent: Renderer;
@@ -299,8 +299,8 @@ function DialogArrayFieldBase<T extends ArrayItem>({
   itemClasses,
   ...fieldProps
 }: DialogArrayFieldProps<T>) {
-  const createItem = (index: number) => {
-    const item = itemTemplate(index);
+  const createItem = () => {
+    const item = itemTemplate();
     return {
       ...item,
       id: typeof item.id === 'string' && item.id.length > 0 ? item.id : uuid(),
