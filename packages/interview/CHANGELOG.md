@@ -1,5 +1,128 @@
 # @codaco/interview
 
+## 3.0.0
+
+### Minor Changes
+
+- 0e233da: Network Composer stages now render a background image when the stage configures one, matching the Sociogram: the image replaces the concentric-circles background and never intercepts pointer input.
+- 7b096c1: Add an optional `navigationClassnames` prop to `Shell`. It accepts per-orientation class strings (`{ vertical?, horizontal? }`) that are merged onto the interview navigation surface, letting a host apply device-specific styling — e.g. safe-area padding for an installed PWA — without the shared component owning it. Omitting the prop leaves the navigation exactly as before, so existing consumers are unaffected.
+- 3925154: NarrativePedigree now models mitochondrial donation. The genetics engine infers
+  each child's mitochondrial-DNA source from the egg-cytoplasm edge rather than
+  assuming it always follows the female parent, so a child conceived with a donor
+  egg inherits the donor's mitochondrial line while still inheriting the intended
+  parents' nuclear genome. Protocols that record a `gameteRole` on their pedigree
+  edges get this automatically; those that don't are unaffected (the engine falls
+  back to the previous female-parent rule, so existing data is unchanged).
+
+  Disease-status symbols follow standardized pedigree nomenclature: a solid fill is
+  reserved for individuals who are affected, and relatives who are only at risk are
+  shown with the standard hatched carrier symbol rather than a filled marker, keeping
+  the display consistent with established clinical and research practice.
+
+  The comprehensive example pedigree is rebuilt around a single, realistic,
+  ego-centric family in which all six conditions reach the participant's own
+  household. The mitochondrial-donation branch (not authorable through the
+  participant interface) is shown in a dedicated example, while the default preview
+  reflects a participant-reachable pedigree.
+
+- 8954630: Add zoom in, zoom out and reset controls to the NarrativePedigree interface via a floating toolbar.
+- 57335b8: Sociogram quality-of-life improvements (#887):
+
+  - Placed nodes can now be removed from the sociogram again: drag a node onto the drawer at the bottom of the screen (which highlights and expands to receive it), or focus a node and press Delete/Backspace. Removals are announced to screen readers.
+  - The drawer of unplaced nodes can now be expanded while empty, revealing the drop area.
+  - The sociogram's floating prompt panel can be collapsed behind a chevron tab so the prompt text no longer occludes the drop area, and it re-opens automatically when the prompt changes. A grip icon now signals that the panel is draggable (also on the Geospatial stage, where the prompt is the core task and stays visible rather than being collapsible).
+
+- b467615: Add forward skip destinations to schema 8, shared skip evaluation, synthetic
+  network generation, and the interview runtime. Hidden stages can now continue
+  at a later stage or route to the interview finish screen, with live route
+  recalculation, safe Back navigation, and confirmed one-screen overrides for
+  unavailable stages.
+
+  Also keep shared Select fields correctly labelled and contained when option
+  labels are long. The bundled sample protocol now ends the interview when a
+  participant declines consent.
+
+### Patch Changes
+
+- 367e702: Harden protocol import/validation and make interview autosave failures recoverable:
+
+  - **Zip-bomb protection:** `extractProtocol` now caps the _actual_ inflated output incrementally as it decompresses, instead of trusting the archive's declared uncompressed size. A crafted `.netcanvas` (deflate bomb) can no longer exhaust memory; the new `NetcanvasInflationLimitError` is thrown when the limit is exceeded.
+  - **Locked value sets** (biological sex / gamete role / relationship type) are now enforced for read-only **ordinal** variables, not only categorical ones, so their canonical options can't be silently altered.
+  - Form-field and composer-field schemas tolerate a persisted stable `id`, so editors can keep durable field identity across reorder and delete.
+  - **Autosave durability:** the interview sync middleware no longer advances its "last synced" marker before the write resolves. A failed autosave (e.g. a locked vault or storage quota) is now retried on the next debounce instead of silently dropping just-added network data.
+
+- 2b12bdc: Boolean fields now lay their options out side by side whenever they fit, wrapping to a stacked layout only when the container is genuinely too narrow for them. This fixes the Dyad Census interface stacking its Yes/No choices vertically even when there was room to show them side by side.
+- 37a454c: Ask for confirmation before exiting an interview in progress, and regroup the horizontal navigation bar so previous/next sit together on the right with the progress bar filling the middle.
+- ef1c4b4: Fix invalid Tailwind utility classes that silently rendered nothing: the Spinner's
+  backface-visibility (now `backface-hidden`), and the encrypted background's 3D
+  transform (`transform-3d`) and monospace font (`font-monospace`).
+- 08797b5: Fix the Anonymisation stage blocking a valid direct-Next attempt: forward navigation now awaits form validation against the current values instead of reading the render-time validity, which was stale while a field validation was still in flight and forced an extra Next click.
+- 486f928: Fix two data-integrity bugs surfaced by the interview e2e suite. The
+  `encryptedVariables` experiment is now the single master switch for name
+  encryption: `NameGenerator`/`NameGeneratorRoster` no longer write ciphertext
+  when the experiment is off, keeping the write path aligned with the
+  experiment-gated decrypt path (previously an encrypted variable produced
+  undecryptable stored values). `Anonymisation`'s before-next gate now calls
+  `form.requestSubmit()` instead of the native `form.submit()`, so validation runs
+  and the SPA is not GET-navigated to `/?passphrase=…` — which had ejected the
+  participant from the interview whenever they pressed Next on an invalid form.
+- c16a1d9: Emit NodeNext-compatible relative module specifiers in generated declaration files so TypeScript consumers can resolve package types without a bundled declaration rollup.
+- beb5882: Fixed the quick add name generator closing its input after each name in Safari when the protocol uses encrypted variables and a passphrase has been set. The input now stays open so multiple people can be added in a row, matching the behaviour without encryption.
+- 007cee6: Node labels now resolve synchronously on first render whenever the label attribute is not encrypted. Previously every label — encrypted or not — was resolved through an asynchronous effect, which briefly exposed the node type's fallback name to assistive technology (and to name-based queries) each time a node mounted. The asynchronous path is now used only when an anonymisation-encrypted label genuinely needs decryption.
+- Updated dependencies [367e702]
+- Updated dependencies [4d9658b]
+- Updated dependencies [e5fcd5e]
+- Updated dependencies [7ca17f5]
+- Updated dependencies [83dddd8]
+- Updated dependencies [2b12bdc]
+- Updated dependencies [e6c58c2]
+- Updated dependencies [be60ee0]
+- Updated dependencies [ef1c4b4]
+- Updated dependencies [2c112ba]
+- Updated dependencies [5c269b3]
+- Updated dependencies [c6f2ad4]
+- Updated dependencies [1d19a1b]
+- Updated dependencies [c1cf1fa]
+- Updated dependencies [617c1b9]
+- Updated dependencies [628c018]
+- Updated dependencies [ce9b549]
+- Updated dependencies [9b57c1d]
+- Updated dependencies [486f928]
+- Updated dependencies [e4c3d5f]
+- Updated dependencies [9336312]
+- Updated dependencies [ef02898]
+- Updated dependencies [436e04c]
+- Updated dependencies [5e2efc3]
+- Updated dependencies [6a3f5db]
+- Updated dependencies [c236b20]
+- Updated dependencies [807f0d4]
+- Updated dependencies [452549c]
+- Updated dependencies [fd46cd0]
+- Updated dependencies [2872951]
+- Updated dependencies [c16a1d9]
+- Updated dependencies [3a8689f]
+- Updated dependencies [2280a15]
+- Updated dependencies [803e4e7]
+- Updated dependencies [2100c9c]
+- Updated dependencies [5e1d565]
+- Updated dependencies [ed95edc]
+- Updated dependencies [179952e]
+- Updated dependencies [31eacf4]
+- Updated dependencies [a37d0a2]
+- Updated dependencies [a37d0a2]
+- Updated dependencies [bfc4303]
+- Updated dependencies [36ba214]
+- Updated dependencies [9d71015]
+- Updated dependencies [5c269b3]
+- Updated dependencies [b467615]
+- Updated dependencies [9b925e9]
+- Updated dependencies [ebdd094]
+  - @codaco/protocol-validation@11.9.0
+  - @codaco/fresco-ui@4.0.0
+  - @codaco/tailwind-config@1.1.0
+  - @codaco/shared-consts@5.5.0
+  - @codaco/network-query@1.2.0
+
 ## 2.0.1
 
 ### Patch Changes
@@ -10,6 +133,7 @@
   `@codaco/interface-images` is a private, source-only workspace package (raw TSX + generated `.webp` screenshots, `version: 0.0.0`, never published to npm) consumed only by the stage-navigation menu. The Vite `external` predicate treated it like a publishable peer and externalized it, so the published `dist/index.js` carried a bare `import '@codaco/interface-images/…'` and `package.json` listed it as a runtime dependency (`workspace:*`, rewritten to `0.0.0` at publish). Because that version does not exist on npm, `pnpm add @codaco/interview` failed with `ERR_PNPM_FETCH_404` for `@codaco/interface-images`.
 
   The build now bundles the interface-images source into `dist/index.js` and emits its ~4.5 MB of `.webp` screenshots as separate hashed files under `dist/assets/` (referenced via `new URL('./assets/…', import.meta.url)`, keeping `dist/index.js` small and letting the images load on demand), and the package is reclassified as a `devDependency`, so the published package is self-contained with no dangling runtime dependency. No runtime or type API changes.
+
   - @codaco/network-query@1.1.2
 
 ## 2.0.0
@@ -17,6 +141,7 @@
 ### Minor Changes
 
 - 11e1055: Family Pedigree: capture **consanguineous unions** — partner with an existing relative (e.g. ego with a first cousin) and attribute children to that union — and make the Narrative Pedigree genetics engine consanguinity-correct for the resulting recessive-homozygosity risk.
+
   - Add-partner now offers an existing-or-new picker (existing candidates exclude only first-degree relatives); choosing an existing person creates a partner edge without duplicating the node (preserving the mating loop). The already-built NSGC double-line / loop rendering is exercised end-to-end.
   - A new, non-lattice `atRiskHomozygous` flag surfaces the autozygosity/compound-het risk for the child of two carrier parents (autosomal recessive) and the daughter of an affected father + carrier mother (X-linked recessive), shown distinctly in the Sticker and Classic notation nodes. Genetic edges are de-duplicated at ingestion so carrier counts stay correct.
 
@@ -25,6 +150,7 @@
 - 37006d0: Refine the Architect stage editors for the Family Pedigree and Narrative Pedigree interfaces.
 
   **Family Pedigree editor**
+
   - The fixed-framing selector is now a styled select, and the framing section explains what the gamete-based and gendered framings mean in neutral, non-normative terms.
   - Boundary options no longer use "family tree" (always "family pedigree"), explain what off/recommended/required do, and rename "Require Children Contributors" to "Require Co-Parents' Families". Both boundary fields are now required in the editor so a missing value surfaces as a named issue rather than a raw schema error.
   - Fixed a bug where changing the node type cleared the stage-level `framing`, `boundaries`, and `introScreen`, producing a schema error on finish. A seam test now guards the preserve-list against the schema's required fields.
@@ -33,15 +159,18 @@
   - Nomination prompts show an empty-state message when no prompts exist yet.
 
   **Narrative Pedigree editor**
+
   - Corrected the new-stage dialog tags: Narrative Pedigree (read-only) is tagged Display Data only; Family Pedigree gains Capture Edge Attributes.
   - The At-Risk Statuses explanation moves from the section side column into the main column and is formatted with subheadings and lists.
 
 - fd2a7e2: Family Pedigree redesign (three features):
+
   - **Configurable FamilyPedigree framing** — swappable parent terminology (gamete-based "Egg/Sperm Parent" vs gendered "Mother/Father"), either researcher-fixed or participant-chosen; an optional video+text intro step; and two author-set boundary rules (require grandparents; require children's genetic contributors). Persists `gameteRole` as a network edge variable and captures biological sex for non-parent people.
   - **Interface fixes** — "Add sibling" is now always discoverable (rendered disabled with an inline hint when it cannot apply, keeping the shared-parent rule), plus first-cousin representation/creation demonstration stories.
   - **Narrative Pedigree** — a new read-only interface that renders a captured pedigree, computes faithful Mendelian carrier/at-risk status per disease (autosomal dominant/recessive, X-linked recessive/dominant, Y-linked, mitochondrial, multifactorial), highlights a focal node's affected genetic lineage under participant-switchable presets, renders status as edge stickers or classic pedigree notation, and exports a PNG snapshot.
 
 - 9f7c890: Add offline-awareness and a more resilient stage error boundary.
+
   - New `useOnline` hook (exported from the package root) — a single
     `useSyncExternalStore`-based source of online/offline state.
   - The Geospatial stage now shows a persistent offline indicator when reached
@@ -68,6 +197,7 @@
   canvas for building a whole personal network in one place (create nodes, draw
   multiple edge types, capture node and edge attributes, group nodes into convex
   hulls, reposition, and delete, with undo/redo and lasso selection).
+
   - `@codaco/protocol-validation`: a new additive schema-8 `NetworkComposer` stage
     (no version bump, no migration) with cross-reference validation of its
     `quickAdd` / `layoutVariable` / `nodeForm` / per-edge-type form references, and
@@ -130,6 +260,7 @@
 ### Patch Changes
 
 - 7fdfdb9: Fix two layout bugs in name-generator side panels:
+
   - When two panels are open they now share the rail evenly (~50/50) instead of
     the panel with more content taking almost all the space and leaving its
     sibling a sliver.
@@ -177,6 +308,7 @@
 - 8be592d: Store categorical attribute values consistently as arrays of selected option values.
 
   Previously the CategoricalBin interface wrote a bare scalar while CheckboxGroup / ToggleButtonGroup wrote arrays, and consumers carried bridging helpers to tolerate both shapes. Categorical attributes are now always arrays (a single selection is a one-element array), and the bridges have been removed:
+
   - `interview`: `CategoricalBin` writes a single-element array; the node-shape resolver, categorical sorter, and bin matcher read the array contract directly.
   - `network-query`: `EXACTLY` / `NOT` use deep equality and `OPTIONS_*` use array length — the scalar-categorical fallbacks (`categoricalEqual`, scalar `optionsLength`) are gone.
   - `network-exporters`: `isCategoricalOptionSelected` checks array membership only.
@@ -202,12 +334,14 @@
 - 495eff7: Expose participant-facing interview progress through the step-change contract.
 
   `@codaco/interview` appends a synthetic `FinishSession` stage to every interview, so the host-controlled `currentStep` indexes a list of length `P + 1`. Hosts that wanted to show progress had to re-derive it and independently account for that appended stage, which drifted from what the participant actually saw (complexdatacollective/Fresco#801).
+
   - `onStepChange` now receives a second argument, `StepChangeMeta` (`{ progress, totalSteps }`), carrying the 0–100 participant-facing progress and the true total step count (including the finish stage). Existing single-argument handlers remain compatible.
   - A new pure helper `getInterviewProgress(stages, currentStep)` computes the same `{ progress, totalSteps }` from a protocol's stages, for hosts that need progress offline (e.g. synthetic data) without knowing about the appended finish stage.
 
 ### Patch Changes
 
 - dd13556: Fix interview-runtime schema-conformance bugs found in a release audit:
+
   - Look up edge attributes against the edge codebook (not the node codebook) in `updateEdge`, so AlterEdgeForm / TieStrengthCensus answers are no longer silently dropped.
   - Stop negating boolean `additionalAttributes` when a node is removed from a NameGenerator prompt; recompute from the prompts the node still belongs to.
   - Scope a TieStrengthCensus prompt's answered-state to its own `edgeVariable` so a shared edge from a sibling prompt doesn't skip data collection.
@@ -218,6 +352,7 @@
   - Inject the computed relationship-to-ego on FamilyPedigree finalize, supply a concrete stage subject for pedigree form validators, and stop duplicating pre-existing nodes/edges on finalize.
 
   Further interview-runtime fixes from the medium/low conformance audit:
+
   - DyadCensus: scope each prompt's answered-state per prompt so a sibling prompt sharing the same `createEdge` no longer auto-skips data collection on a later prompt. The shared edge is still reflected (the later prompt pre-selects "Yes" from the network), but the participant must still answer it. Edge creation is idempotent so re-selecting "Yes" cannot append a duplicate edge.
   - TieStrengthCensus: replace the `'__none__'` decline sentinel with a collision-free key so an ordinal option whose value is literally `'__none__'` is recorded as a value rather than treated as a decline.
   - OneToManyDyadCensus: backward navigation across a prompt boundary lands on the destination prompt's last focal node instead of the first.
@@ -248,6 +383,7 @@
 - 818bbe1: Respect the codebook node shape everywhere nodes are rendered: per-alter and per-alter-edge form headers no longer force a circle, the categorical bin "specify other" dialog, the roster drag preview, and the roster drop overlay now resolve the node shape, and the quick-add toggle previews the shape of the node being created.
 - cdc8a2f: Fix `ActionButton` icons rendering off-centre (e.g. the rotate/refresh icons): Lucide SVGs carry intrinsic `width`/`height` attributes, so the old `w-auto` sizing left the browser to back-derive the width inconsistently and could produce a non-square icon box. Lucide icons are now given an explicit square size so any icon centres reliably. Improve the visibility of the "missing" bin on the Ordinal Bin interface, which previously blended into the background; it now uses visible neutral surface tokens.
 - d0ca1be: Fix two NameGeneratorRoster bugs and remove a dead schema field.
+
   - **Roster cards no longer show a raw UID.** When the name heuristic could not
     resolve a label for an external-roster node (e.g. the asset came from a
     preview interview export whose attribute keys are variable UUIDs absent from
@@ -309,10 +445,12 @@ First stable release of `@codaco/interview`, the host-pluggable Network Canvas i
 - `FamilyPedigree`: grandparents (a parent's own parents) are no longer a hard requirement for finalizing the pedigree, and the checklist no longer prompts for them on parents who are not genetic relatives of the participant.
 
   Previously the requirement was computed in two places that disagreed and neither matched the genetic model in `computeBioRelatives` (only `biological` and `donor` edges are genetic):
+
   - The finalize gate (`validatePedigreeCompleteness`) treated every parent except `partner`/`social` as biological, so it demanded grandparents for **adoptive** and **surrogate** parents. An adopted participant was blocked from continuing because the checklist asked for the adoptive parents' own parents — information that carries no genetic signal about the participant.
   - The checklist required grandparents for `biological` and `adoptive` parents while skipping `donor`/`surrogate`, contradicting the gate (a `donor` parent could read as "done" in the checklist and then be blocked by the gate).
 
   Now:
+
   - The finalize gate only requires that ego has at least two parents defined (adoptive included, so adopted participants can finalize). The grandparent requirement is gone.
   - The checklist shows an **optional**, non-blocking "Add parents for …" nudge **only** for genetic parents (`biological`/`donor`). Adoptive and surrogate parents are never prompted for grandparents. A genetic parent's ancestry may still be genuinely unknown — anonymous gamete donors being the common case — so it is never forced.
 
@@ -323,6 +461,7 @@ First stable release of `@codaco/interview`, the host-pluggable Network Canvas i
   The quick-start wizard previously asked only "do you have a partner?" and "how many children do you have with this partner?", then recorded a `biological` parent edge from **both** the participant and the partner to **every** child. That silently assumed both were the child's genetic parents — so the data model could not represent donor conception, surrogacy, same-sex couples, or social co-parents created during the quick-start, and the "Add parent" menu offered impossible options (e.g. "biological"/"donor") on a child whose two genetic parents were already known.
 
   Now:
+
   - Every child-creation path captures the child's egg parent, sperm parent, and (when different) gestational carrier through one shared `BioTriad` model — the same one the "Add child" wizard already used. Donor and surrogate parents are generated as needed, and the partner is only recorded as a parent of a child when the participant actually selects them as the egg or sperm source.
   - The "Add parent" dialog now counts a node's genetic parents (`biological`/`donor` edges) and, once both genetic slots are filled, offers only non-genetic parent types — removing the impossible options.
 
@@ -421,16 +560,19 @@ First stable release of `@codaco/interview`, the host-pluggable Network Canvas i
 - Markdown rendering fix for intro/explanation bodies. `RenderMarkdown` now receives `ALLOWED_MARKDOWN_SECTION_TAGS` so plain-text content renders inside `<p>` instead of being unwrapped, and `IntroPanel` drops the wrapping `<span>` (which was invalid markup around block content).
 
 - Synthetic data improvements:
+
   - `addNodeType` now auto-adds a `'name'` text variable to every node type it creates. The existing `getNetwork` attribute-fill path already populates text variables with faker `firstNames` via `ValueGenerator`, and `getNodeLabelAttribute` already prefers a variable named `'name'`, so synthetic nodes now get realistic seed-deterministic labels in stories and tests instead of the `'Person'`-typed fallback.
   - `addStage`'s `initialNodes: number` is now `{ count, promptIndex? }`. The optional `promptIndex` resolves to a real `promptID` at `getNetwork()` time, so panel nodes carry a realistic prior promptID and the existing-panel round-trip works on every demo prompt. All in-tree callers are updated.
 
 - Theme cascade and `Shell` consolidation:
+
   - Extract a `theme-base` utility (`bg-background`/`text-text`/`publish-colors`/`font-body`) and apply it inside `ThemedRegion` so descendants re-resolve themed values at the themed cascade context; `<body>` uses `theme-base` too.
   - Mount `DndStoreProvider` and the interview `Toast.Provider` inside `Shell`, so hosts no longer need to mount them. Drops the now-unused `InterviewToastViewport` and `interviewToastManager` public exports — consumers that previously imported them can delete those references.
   - `ProgressBar`, `Spinner`, `NodeBin`, and `PassphrasePrompter` switch from `rem` to `var(--theme-root-size)` so sizes scale with the theme's root size at breakpoints.
   - Indirect `--radius` through `--radius-base` so the bare `rounded` utility keeps a `var()` reference and resolves at use-site instead of snapshotting the default-theme radius at `:root`.
 
 - Spacing/container tokens now scale with `--theme-root-size` (via `@codaco/tailwind-config@1.0.0-alpha.17`'s rebased `--spacing-base` and `--container-*`). Consequent component cleanup:
+
   - `Node`: drop per-breakpoint `size-XX` variants — the themed `--theme-root-size` handles it now.
   - `Collection` layouts now express `gap` in Tailwind spacing units instead of pixels; the layouts' internal pixel math for virtualization rows resolves the same `calc(N * var(--spacing-base, 0.25rem))` expression via a hidden measurement element on the container.
   - Spacing tweaks across `NodeList`, `Panel`, `Prompt`, `FamilyPedigree` placeholder/node, `NameGenerator` `QuickAddField`/`Roster`, and `OneToManyDyadCensus` to fit the new scale.
@@ -441,6 +583,7 @@ First stable release of `@codaco/interview`, the host-pluggable Network Canvas i
 - `ResizableFlexPanel` (and the interview's flex panel callers) only applies `overflow: hidden` during collapse, so content isn't clipped at rest. Mirrors the matching fix in `@codaco/fresco-ui@2.10.0`.
 
 - Storybook/dev fixes:
+
   - Repair the theme switcher: the `withTheme` decorator now also wraps stories in `ThemedRegion`, so the canvas tab reflects interview theming (regressed when `withTheme` was previously replaced with `persistTheme`).
   - Restore `data-theme-interview` on `document.body` so story padding/chrome/scrollbars render in the themed palette when stories aren't fullscreen.
   - `NameGenerator` quick-add now wires to the real codebook variable id (the synthetic's `"name"` default doesn't match the auto-generated key, which was causing `NETWORK/ADD_NODE/rejected`).

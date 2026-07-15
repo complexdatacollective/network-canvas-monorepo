@@ -1,6 +1,6 @@
 {
   "name": "@codaco/site-navigation-element",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "The canonical Network Canvas site header as a self-contained <nc-site-navigation> web component for non-React hosts",
   "license": "MIT",
   "repository": {

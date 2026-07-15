@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interface-images",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "Generated screenshots of Network Canvas interview interfaces, with React components for responsive display",
   "type": "module",

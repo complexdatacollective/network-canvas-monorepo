@@ -1,5 +1,30 @@
 # @codaco/network-query
 
+## 1.2.0
+
+### Minor Changes
+
+- b467615: Add forward skip destinations to schema 8, shared skip evaluation, synthetic
+  network generation, and the interview runtime. Hidden stages can now continue
+  at a later stage or route to the interview finish screen, with live route
+  recalculation, safe Back navigation, and confirmed one-screen overrides for
+  unavailable stages.
+
+  Also keep shared Select fields correctly labelled and contained when option
+  labels are long. The bundled sample protocol now ends the interview when a
+  participant declines consent.
+
+### Patch Changes
+
+- Updated dependencies [367e702]
+- Updated dependencies [e6c58c2]
+- Updated dependencies [c16a1d9]
+- Updated dependencies [803e4e7]
+- Updated dependencies [179952e]
+- Updated dependencies [b467615]
+  - @codaco/protocol-validation@11.9.0
+  - @codaco/shared-consts@5.5.0
+
 ## 1.1.2
 
 ### Patch Changes
@@ -29,6 +54,7 @@
 - 8be592d: Store categorical attribute values consistently as arrays of selected option values.
 
   Previously the CategoricalBin interface wrote a bare scalar while CheckboxGroup / ToggleButtonGroup wrote arrays, and consumers carried bridging helpers to tolerate both shapes. Categorical attributes are now always arrays (a single selection is a one-element array), and the bridges have been removed:
+
   - `interview`: `CategoricalBin` writes a single-element array; the node-shape resolver, categorical sorter, and bin matcher read the array contract directly.
   - `network-query`: `EXACTLY` / `NOT` use deep equality and `OPTIONS_*` use array length — the scalar-categorical fallbacks (`categoricalEqual`, scalar `optionsLength`) are gone.
   - `network-exporters`: `isCategoricalOptionSelected` checks array membership only.
@@ -42,6 +68,7 @@
 ### Patch Changes
 
 - dd13556: Fix query-predicate schema-conformance bugs found in a release audit:
+
   - Treat absent/undefined attributes the same as `null` for `EXISTS` / `NOT_EXISTS`.
   - Guard numeric comparison operators against null and non-numeric values: datetime values are compared chronologically, and an unanswered value is no longer coerced to `0` (so `LESS_THAN` stops wrongly matching unanswered nodes).
   - Treat an invalid `CONTAINS` / `DOES_NOT_CONTAIN` regular expression as a non-match instead of throwing (the operators remain regular-expression matches, matching the architect rule editor's regex value input).

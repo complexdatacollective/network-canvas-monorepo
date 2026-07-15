@@ -1,5 +1,38 @@
 # @codaco/protocol-validation
 
+## 11.9.0
+
+### Minor Changes
+
+- b467615: Add forward skip destinations to schema 8, shared skip evaluation, synthetic
+  network generation, and the interview runtime. Hidden stages can now continue
+  at a later stage or route to the interview finish screen, with live route
+  recalculation, safe Back navigation, and confirmed one-screen overrides for
+  unavailable stages.
+
+  Also keep shared Select fields correctly labelled and contained when option
+  labels are long. The bundled sample protocol now ends the interview when a
+  participant declines consent.
+
+### Patch Changes
+
+- 367e702: Harden protocol import/validation and make interview autosave failures recoverable:
+
+  - **Zip-bomb protection:** `extractProtocol` now caps the _actual_ inflated output incrementally as it decompresses, instead of trusting the archive's declared uncompressed size. A crafted `.netcanvas` (deflate bomb) can no longer exhaust memory; the new `NetcanvasInflationLimitError` is thrown when the limit is exceeded.
+  - **Locked value sets** (biological sex / gamete role / relationship type) are now enforced for read-only **ordinal** variables, not only categorical ones, so their canonical options can't be silently altered.
+  - Form-field and composer-field schemas tolerate a persisted stable `id`, so editors can keep durable field identity across reorder and delete.
+  - **Autosave durability:** the interview sync middleware no longer advances its "last synced" marker before the write resolves. A failed autosave (e.g. a locked vault or storage quota) is now retried on the next debounce instead of silently dropping just-added network data.
+
+- e6c58c2: Validate Family Pedigree ego identifier variables against the configured node type.
+- c16a1d9: Emit NodeNext-compatible relative module specifiers in generated declaration files so TypeScript consumers can resolve package types without a bundled declaration rollup.
+- 803e4e7: Tighten two schema-8 coherence gaps where silently-ignored configuration was accepted:
+
+  - OrdinalBin `prompts[].color` is now restricted to the ten `ord-color-seq-1`–`ord-color-seq-10` palette values the interface can render; any other string was a silent no-op. The v7→v8 migration drops out-of-palette values so migrated prompts fall back to the default colour.
+  - CategoricalBin `otherOptionLabel` or `otherVariablePrompt` set without `otherVariable` is now rejected; without `otherVariable` no 'other' bin renders, so the properties were silently ignored. The v7→v8 migration drops the orphaned properties.
+
+- Updated dependencies [179952e]
+  - @codaco/shared-consts@5.5.0
+
 ## 11.8.1
 
 ### Patch Changes
@@ -37,6 +70,7 @@
 - 37006d0: Refine the Architect stage editors for the Family Pedigree and Narrative Pedigree interfaces.
 
   **Family Pedigree editor**
+
   - The fixed-framing selector is now a styled select, and the framing section explains what the gamete-based and gendered framings mean in neutral, non-normative terms.
   - Boundary options no longer use "family tree" (always "family pedigree"), explain what off/recommended/required do, and rename "Require Children Contributors" to "Require Co-Parents' Families". Both boundary fields are now required in the editor so a missing value surfaces as a named issue rather than a raw schema error.
   - Fixed a bug where changing the node type cleared the stage-level `framing`, `boundaries`, and `introScreen`, producing a schema error on finish. A seam test now guards the preserve-list against the schema's required fields.
@@ -45,10 +79,12 @@
   - Nomination prompts show an empty-state message when no prompts exist yet.
 
   **Narrative Pedigree editor**
+
   - Corrected the new-stage dialog tags: Narrative Pedigree (read-only) is tagged Display Data only; Family Pedigree gains Capture Edge Attributes.
   - The At-Risk Statuses explanation moves from the section side column into the main column and is formatted with subheadings and lists.
 
 - fd2a7e2: Family Pedigree redesign (three features):
+
   - **Configurable FamilyPedigree framing** — swappable parent terminology (gamete-based "Egg/Sperm Parent" vs gendered "Mother/Father"), either researcher-fixed or participant-chosen; an optional video+text intro step; and two author-set boundary rules (require grandparents; require children's genetic contributors). Persists `gameteRole` as a network edge variable and captures biological sex for non-parent people.
   - **Interface fixes** — "Add sibling" is now always discoverable (rendered disabled with an inline hint when it cannot apply, keeping the shared-parent rule), plus first-cousin representation/creation demonstration stories.
   - **Narrative Pedigree** — a new read-only interface that renders a captured pedigree, computes faithful Mendelian carrier/at-risk status per disease (autosomal dominant/recessive, X-linked recessive/dominant, Y-linked, mitochondrial, multifactorial), highlights a focal node's affected genetic lineage under participant-switchable presets, renders status as edge stickers or classic pedigree notation, and exports a PNG snapshot.
@@ -59,6 +95,7 @@
   canvas for building a whole personal network in one place (create nodes, draw
   multiple edge types, capture node and edge attributes, group nodes into convex
   hulls, reposition, and delete, with undo/redo and lasso selection).
+
   - `@codaco/protocol-validation`: a new additive schema-8 `NetworkComposer` stage
     (no version bump, no migration) with cross-reference validation of its
     `quickAdd` / `layoutVariable` / `nodeForm` / per-edge-type form references, and
@@ -129,6 +166,7 @@
 ### Minor Changes
 
 - dd13556: Tighten the protocol schema and add migrations to fix conformance gaps found in a release audit of the interview module:
+
   - Reject form fields that reference a variable with no renderable `component` (or a `layout`/`location` variable).
   - Validate that a NameGeneratorQuickAdd `quickAdd` references an existing text variable on the subject node type.
   - Require `otherOptionLabel` when a CategoricalBin prompt sets `otherVariable`.
@@ -137,6 +175,7 @@
   - A `minValue`, `minLength`, or `minSelected` validator no longer implies a field is required. A migration sets `required: true` on every existing codebook variable (node, edge, or ego) that has one of these validators without an explicit `required: true`, preserving the effective behaviour of protocols authored before the change.
 
   Further schema tightening and migrations from the medium/low conformance audit:
+
   - Variables: ordinal/categorical option lists require at least two options and may no longer use boolean values (a migration coerces legacy boolean values to strings); ordinal variables no longer accept `minSelected`/`maxSelected`; `encrypted` is permitted only on node text variables (rejected on other node types and on all ego/edge variables); ego variables may not declare `unique` validation. Migrations strip the now-invalid properties from existing protocols.
   - Forms: Alter/AlterEdge/NameGenerator forms require at least one field; the unused `form.title` on EgoForm/AlterForm/AlterEdgeForm is dropped by migration.
   - Filters & skip-logic: empty `rules` arrays are rejected (and dropped by migration); operator-by-type / value-type validation now also runs on `skipLogic.filter` and `panels[].filter`; ego rules are rejected inside a stage node/edge filter; attribute-less ego type-level rules are rejected.
@@ -146,6 +185,7 @@
 - 8be592d: Store categorical attribute values consistently as arrays of selected option values.
 
   Previously the CategoricalBin interface wrote a bare scalar while CheckboxGroup / ToggleButtonGroup wrote arrays, and consumers carried bridging helpers to tolerate both shapes. Categorical attributes are now always arrays (a single selection is a one-element array), and the bridges have been removed:
+
   - `interview`: `CategoricalBin` writes a single-element array; the node-shape resolver, categorical sorter, and bin matcher read the array contract directly.
   - `network-query`: `EXACTLY` / `NOT` use deep equality and `OPTIONS_*` use array length — the scalar-categorical fallbacks (`categoricalEqual`, scalar `optionsLength`) are gone.
   - `network-exporters`: `isCategoricalOptionSelected` checks array membership only.
@@ -165,6 +205,7 @@
 ### Patch Changes
 
 - d0ca1be: Fix two NameGeneratorRoster bugs and remove a dead schema field.
+
   - **Roster cards no longer show a raw UID.** When the name heuristic could not
     resolve a label for an external-roster node (e.g. the asset came from a
     preview interview export whose attribute keys are variable UUIDs absent from
@@ -203,7 +244,7 @@
 
   ```ts
   export type VariableOption = VariableOptions[number];
-  export type VariableOptionValue = VariableOption['value'];
+  export type VariableOptionValue = VariableOption["value"];
   ```
 
   Consumers that previously hand-rolled equivalent shims (`@codaco/interview`'s `utils/codebook.ts`, `@codaco/protocol-utilities`'s `types.ts`) should import from here instead. Both shims have been deleted in their respective packages' next releases.
@@ -237,6 +278,7 @@
 ### Minor Changes
 
 - 273bcbe: Add optional showTransit and allowSearch configuration options to geospatial interface mapOptions:
+
   - showTransit: When enabled, Fresco displays transit layers on the map
   - allowSearch: When enabled, participants can search the map for locations
 
@@ -271,9 +313,11 @@
 - cc2adc3: Add required `name` property to protocol schema (breaking change)
 
   **Schema changes:**
+
   - Protocol schema now requires a `name` property (`string`, min 1 character)
 
   **Migration changes (v7 → v8):**
+
   - Migration now requires a `name` dependency to be provided when migrating from v7
 
 ## 8.0.2
@@ -379,12 +423,14 @@
 
   #### Key Changes:
   - **New Stage Types Added**:
+
     - `Geospatial`
     - `Anonymisation`
     - `OneToManyDyadCensus`
     - `FamilyTreeCensus`
 
   - **Expanded `assetManifest` Schema**:
+
     - Added a new `apiAssetSchema`, enabling support for API keys.
     - Expanded `fileAssetSchema` with the addition of the `geojson` type, enabling support for geospatial data.
 
@@ -484,12 +530,14 @@
 
   #### Key Changes:
   - **New Stage Types Added**:
+
     - `Geospatial`
     - `Anonymisation`
     - `OneToManyDyadCensus`
     - `FamilyTreeCensus`
 
   - **Expanded `assetManifest` Schema**:
+
     - Added a new `apiAssetSchema`, enabling support for API keys.
     - Expanded `fileAssetSchema` with the addition of the `geojson` type, enabling support for geospatial data.
 
