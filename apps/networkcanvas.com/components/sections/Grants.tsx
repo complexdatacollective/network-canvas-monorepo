@@ -29,18 +29,19 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
     <Container className="tablet-landscape:py-28 py-20">
       <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
-      <div className="tablet-landscape:gap-6 mx-auto mt-14 flex max-w-3xl items-center gap-3">
+      <div className="tablet-portrait:flex tablet-portrait:gap-6 tablet-landscape:gap-10 mx-auto mt-16 grid max-w-5xl grid-cols-[auto_1fr_auto] items-center gap-4">
         <CarouselButton
           label={t('previous')}
           onClick={() => paginate(-1)}
-          icon={<ChevronLeft aria-hidden className="size-6" />}
+          icon={<ChevronLeft aria-hidden className="size-8" />}
+          className="col-start-1 row-start-2"
         />
 
         <div
           data-homepage-weave-target
-          className="relative min-h-[22rem] flex-1"
+          className="tablet-portrait:col-auto tablet-portrait:row-auto col-span-3 col-start-1 row-start-1 min-w-0 flex-1"
         >
-          <div className="pointer-events-none absolute -inset-8 overflow-hidden p-8">
+          <div className="tablet-portrait:p-8 pointer-events-none overflow-hidden p-4">
             <AnimatePresence custom={direction} initial={false} mode="wait">
               <motion.a
                 key={index}
@@ -52,32 +53,34 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: direction >= 0 ? -60 : 60 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="focusable bg-surface tablet-landscape:p-10 pointer-events-auto flex h-full flex-col rounded p-8 shadow-xl"
+                className="focusable bg-surface tablet-portrait:p-12 tablet-landscape:p-14 pointer-events-auto flex min-h-[30rem] flex-col rounded p-10 shadow-xl"
               >
                 <Heading
                   level="h3"
                   margin="none"
-                  className="font-heading text-text text-xl font-bold"
+                  className="font-heading text-text tablet-portrait:text-3xl text-2xl font-bold"
                 >
                   {active.title}
                 </Heading>
                 <Paragraph
                   margin="none"
-                  className="text-text/55 mt-3 text-sm font-bold"
+                  className="text-text/55 mt-5 text-base font-bold"
                 >
                   {active.pis}
                 </Paragraph>
                 <Paragraph
                   margin="none"
-                  className="text-text/80 mt-4 text-base leading-relaxed"
+                  className="text-text/80 tablet-portrait:text-lg mt-6 text-base leading-relaxed"
                 >
                   {active.description}
                 </Paragraph>
-                <img
-                  src={active.logo}
-                  alt={active.logoAlt}
-                  className="mt-auto h-12 w-auto self-start pt-6"
-                />
+                <div className="mt-auto pt-10">
+                  <img
+                    src={active.logo}
+                    alt={active.logoAlt}
+                    className="tablet-portrait:h-28 h-24 w-auto max-w-full object-contain object-left"
+                  />
+                </div>
               </motion.a>
             </AnimatePresence>
           </div>
@@ -86,11 +89,12 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
         <CarouselButton
           label={t('next')}
           onClick={() => paginate(1)}
-          icon={<ChevronRight aria-hidden className="size-6" />}
+          icon={<ChevronRight aria-hidden className="size-8" />}
+          className="col-start-3 row-start-2"
         />
       </div>
 
-      <div className="mt-8 flex justify-center gap-2.5">
+      <div className="mt-10 flex justify-center gap-4">
         {grants.map((grant, i) => {
           const current = ((index % count) + count) % count;
           const isActive = current === i;
@@ -101,8 +105,8 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
               aria-label={t('show', { number: i + 1 })}
               onClick={() => setState([i, i > current ? 1 : -1])}
               className={cn(
-                'h-2.5 rounded-full transition-all',
-                isActive ? 'bg-neon-coral w-7' : 'bg-cyber-grape/20 w-2.5',
+                'h-3 rounded-full transition-all',
+                isActive ? 'bg-neon-coral w-10' : 'bg-cyber-grape/20 w-3',
               )}
             />
           );
@@ -116,10 +120,12 @@ function CarouselButton({
   icon,
   label,
   onClick,
+  className,
 }: {
   icon: ReactNode;
   label: string;
   onClick: () => void;
+  className?: string;
 }) {
   return (
     <IconButton
@@ -127,8 +133,11 @@ function CarouselButton({
       aria-label={label}
       onClick={onClick}
       color="dynamic"
-      size="sm"
-      className="bg-surface text-text hover:bg-cyber-grape size-11 border-transparent shadow-lg transition-colors hover:text-white"
+      size="lg"
+      className={cn(
+        'bg-surface text-text hover:bg-cyber-grape tablet-portrait:size-16 size-12 border-transparent shadow-lg transition-colors hover:text-white',
+        className,
+      )}
     />
   );
 }

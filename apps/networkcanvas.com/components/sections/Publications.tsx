@@ -54,14 +54,14 @@ export function Publications({
         </Paragraph>
       </SectionHeading>
 
-      <div className="tablet-landscape:grid-cols-2 mt-14 grid gap-6">
+      <div className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 desktop:grid-cols-4 mt-14 grid gap-5">
         {publications.map((pub, i) => (
-          <Reveal key={pub.id} delay={(i % 2) * 0.06}>
+          <Reveal key={pub.id} delay={(i % 4) * 0.04}>
             <a
               href={pub.href}
               target="_blank"
               rel="noreferrer"
-              className="focusable bg-cyber-grape tablet-landscape:p-10 flex h-full flex-col rounded p-8 text-white shadow-lg transition-transform hover:-translate-y-1"
+              className="focusable bg-surface-3 text-surface-3-contrast tablet-portrait:p-7 flex h-full flex-col rounded p-6 shadow-lg transition-transform hover:-translate-y-1"
             >
               <Heading
                 level="h3"
@@ -72,11 +72,14 @@ export function Publications({
               </Heading>
               <Paragraph
                 margin="none"
-                className="font-heading mt-4 text-xs font-bold tracking-[0.15em] text-white/55 uppercase"
+                className="font-heading text-surface-3-contrast/55 mt-4 text-xs font-bold tracking-[0.15em] uppercase"
               >
                 {pub.source}
               </Paragraph>
-              <Paragraph margin="none" className="mt-3 text-sm text-white/70">
+              <Paragraph
+                margin="none"
+                className="text-surface-3-contrast/70 mt-3 text-sm"
+              >
                 {pub.authors}
               </Paragraph>
             </a>

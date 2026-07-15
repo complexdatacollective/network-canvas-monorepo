@@ -75,7 +75,8 @@ describe('Grants', () => {
     expect(heading).toHaveClass(
       'font-heading',
       'text-text',
-      'text-xl',
+      'text-2xl',
+      'tablet-portrait:text-3xl',
       'font-bold',
     );
 
@@ -85,11 +86,12 @@ describe('Grants', () => {
       expect(paragraph.tagName).toBe('P');
     }
 
-    expect(pis).toHaveClass('text-text/55', 'mt-3', 'text-sm', 'font-bold');
+    expect(pis).toHaveClass('text-text/55', 'mt-5', 'text-base', 'font-bold');
     expect(description).toHaveClass(
       'text-text/80',
-      'mt-4',
+      'mt-6',
       'text-base',
+      'tablet-portrait:text-lg',
       'leading-relaxed',
     );
     expect(
@@ -107,7 +109,8 @@ describe('Grants', () => {
       expect(control).toHaveClass(
         'aspect-square',
         'p-0!',
-        'size-11',
+        'size-12',
+        'tablet-portrait:size-16',
         'bg-surface',
         'shadow-lg',
       );
@@ -120,13 +123,13 @@ describe('Grants', () => {
     fireEvent.click(next);
 
     expect(screen.getByRole('button', { name: 'Show grant 2' })).toHaveClass(
-      'w-7',
+      'w-10',
     );
 
     fireEvent.click(previous);
 
     expect(screen.getByRole('button', { name: 'Show grant 1' })).toHaveClass(
-      'w-7',
+      'w-10',
     );
   });
 
@@ -135,14 +138,14 @@ describe('Grants', () => {
 
     const secondGrant = screen.getByRole('button', { name: 'Show grant 2' });
 
-    expect(secondGrant).toHaveClass('h-2.5', 'w-2.5');
+    expect(secondGrant).toHaveClass('h-3', 'w-3');
     expect(secondGrant).not.toHaveClass('aspect-square', 'elevation-low');
 
     fireEvent.click(secondGrant);
 
-    expect(secondGrant).toHaveClass('w-7');
+    expect(secondGrant).toHaveClass('w-10');
     expect(screen.getByRole('button', { name: 'Show grant 1' })).toHaveClass(
-      'w-2.5',
+      'w-3',
     );
   });
 
@@ -155,16 +158,18 @@ describe('Grants', () => {
     const viewport = card?.parentElement;
     const frame = viewport?.parentElement;
 
-    expect(frame).toHaveClass('relative', 'min-h-[22rem]', 'flex-1');
-    expect(frame).not.toHaveClass('overflow-hidden');
+    expect(frame).toHaveClass('col-span-3', 'row-start-1', 'min-w-0', 'flex-1');
     expect(viewport).toHaveClass(
-      'absolute',
-      '-inset-8',
       'overflow-hidden',
-      'p-8',
+      'p-4',
+      'tablet-portrait:p-8',
       'pointer-events-none',
     );
-    expect(card).toHaveClass('pointer-events-auto');
+    expect(card).toHaveClass('pointer-events-auto', 'min-h-[30rem]');
+    expect(screen.getByAltText(grants[0]?.logoAlt ?? '')).toHaveClass(
+      'h-24',
+      'tablet-portrait:h-28',
+    );
   });
 
   it('translates grant controls and section copy into Spanish', () => {

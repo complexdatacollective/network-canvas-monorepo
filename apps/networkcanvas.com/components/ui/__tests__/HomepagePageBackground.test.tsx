@@ -14,6 +14,7 @@ vi.mock('@codaco/art', () => ({
   }: {
     layerRef: Ref<HTMLDivElement>;
     convergence: { x: number; y: number };
+    complexity: number;
     intensity: number;
     flare: number;
     speedFactor: number;
@@ -190,6 +191,55 @@ describe('HomepagePageBackground', () => {
     );
   });
 
+  it('holds the design-principles focus until the sticky card nears the viewport edge', () => {
+    targetRects.set(
+      'hero',
+      createRect({ left: 100, top: -1000, width: 400, height: 300 }),
+    );
+    targetRects.set(
+      'principles',
+      createRect({ left: 100, top: 40, width: 300, height: 200 }),
+    );
+    targetRects.set(
+      'grants',
+      createRect({ left: 600, top: 1200, width: 300, height: 300 }),
+    );
+
+    render(
+      <>
+        <HomepagePageBackground />
+        <div data-homepage-weave-target data-target="hero" />
+        <div
+          data-homepage-weave-target
+          data-homepage-weave-hold-until-exit
+          data-target="principles"
+        />
+        <div data-homepage-weave-target data-target="grants" />
+      </>,
+    );
+
+    expect(pageBackgroundProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.25, y: 0.175 },
+      }),
+    );
+
+    targetRects.set(
+      'principles',
+      createRect({ left: 100, top: -200, width: 300, height: 200 }),
+    );
+    targetRects.set(
+      'grants',
+      createRect({ left: 600, top: 960, width: 300, height: 300 }),
+    );
+    void act(() => fireEvent.scroll(window));
+
+    const releasedConvergence = pageBackgroundProps.mock.lastCall?.[0]
+      ?.convergence as { x: number; y: number } | undefined;
+    expect(releasedConvergence?.x).toBeGreaterThan(0.25);
+    expect(releasedConvergence?.y).toBeGreaterThan(0.165);
+  });
+
   it('traces a scroll-linked figure eight after the final get-started target', () => {
     let scrollY = 0;
     vi.spyOn(window, 'scrollY', 'get').mockImplementation(() => scrollY);
@@ -278,6 +328,7 @@ describe('HomepagePageBackground', () => {
 
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
+        complexity: 40,
         intensity: 0.62,
         flare: 1.45,
         speedFactor: 0.28,
@@ -296,6 +347,7 @@ describe('HomepagePageBackground', () => {
 
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
+        complexity: 24,
         intensity: 0.18,
         flare: 2.42,
         speedFactor: 0.68,
@@ -314,6 +366,7 @@ describe('HomepagePageBackground', () => {
 
     expect(pageBackgroundProps).toHaveBeenLastCalledWith(
       expect.objectContaining({
+        complexity: 36,
         intensity: 0.27,
         flare: 2.08,
         speedFactor: 0.5,

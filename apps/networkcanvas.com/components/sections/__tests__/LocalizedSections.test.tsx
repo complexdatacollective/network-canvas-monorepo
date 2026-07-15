@@ -77,6 +77,11 @@ describe('localized home sections', () => {
       screen.getByRole('heading', { name: 'Flexibilidad ontológica' }),
     ).toBeInTheDocument();
     expect(
+      screen
+        .getByRole('heading', { name: 'Principios de diseño' })
+        .closest('[data-homepage-weave-target]'),
+    ).toHaveAttribute('data-homepage-weave-hold-until-exit');
+    expect(
       screen.getByRole('group', {
         name: 'Example Researcher, Example University',
       }),
@@ -112,5 +117,18 @@ describe('localized home sections', () => {
     expect(
       screen.getByRole('button', { name: 'Unirse a la lista' }),
     ).toBeInTheDocument();
+
+    const publicationCard = screen
+      .getByRole('heading', { name: 'Localized fixture publication' })
+      .closest('a');
+    expect(publicationCard).toHaveClass(
+      'bg-surface-3',
+      'text-surface-3-contrast',
+    );
+    expect(publicationCard?.parentElement?.parentElement).toHaveClass(
+      'tablet-portrait:grid-cols-2',
+      'tablet-landscape:grid-cols-3',
+      'desktop:grid-cols-4',
+    );
   });
 });

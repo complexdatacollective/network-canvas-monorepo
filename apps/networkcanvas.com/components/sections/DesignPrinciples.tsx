@@ -15,6 +15,7 @@ export function DesignPrinciples() {
       <div className="tablet-landscape:grid-cols-[0.85fr_1.15fr] tablet-landscape:gap-16 grid gap-12">
         <div
           data-homepage-weave-target
+          data-homepage-weave-hold-until-exit
           className="tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:self-start"
         >
           <Heading

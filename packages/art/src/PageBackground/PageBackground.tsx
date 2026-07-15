@@ -31,6 +31,7 @@ import type {
 const DEFAULT_CONVERGENCE: NetworkWeaveConvergence = { x: 0.5, y: 0.6 };
 const POSITION_TOLERANCE = 0.0005;
 const PARAMETER_TOLERANCE = 0.0005;
+const DEFAULT_COMPLEXITY = 28;
 const INITIAL_INTENSITY = 0.4;
 const DEFAULT_FLARE = 1.8;
 const DEFAULT_SPEED_FACTOR = 0.35;
@@ -65,6 +66,7 @@ type TargetMeasurement = {
 
 type WeaveSettings = {
   convergence: NetworkWeaveConvergence;
+  complexity: number;
   intensity: number;
   flare: number;
   speedFactor: number;
@@ -89,6 +91,8 @@ function weaveSettingsAreEqual(
       currentSettings.convergence,
       nextSettings.convergence,
     ) &&
+    Math.abs(currentSettings.complexity - nextSettings.complexity) <
+      PARAMETER_TOLERANCE &&
     Math.abs(currentSettings.intensity - nextSettings.intensity) <
       PARAMETER_TOLERANCE &&
     Math.abs(currentSettings.flare - nextSettings.flare) <
@@ -393,6 +397,7 @@ function useResponsiveOrientation(): NetworkWeaveOrientation {
 
 export function PageBackground({
   convergence = DEFAULT_CONVERGENCE,
+  complexity = DEFAULT_COMPLEXITY,
   intensity = INITIAL_INTENSITY,
   flare = DEFAULT_FLARE,
   speedFactor = DEFAULT_SPEED_FACTOR,
@@ -403,6 +408,7 @@ export function PageBackground({
   layerRef,
 }: {
   convergence?: NetworkWeaveConvergence;
+  complexity?: number;
   intensity?: number;
   flare?: number;
   speedFactor?: number;
@@ -441,6 +447,7 @@ export function PageBackground({
     scrollFadeEnd === undefined ? pageScrollScale : targetScrollScale;
   const [weaveSettings, setWeaveSettings] = useState<WeaveSettings>({
     convergence,
+    complexity,
     intensity,
     flare,
     speedFactor,
@@ -459,6 +466,7 @@ export function PageBackground({
 
     const nextSettings: WeaveSettings = {
       convergence,
+      complexity,
       intensity,
       flare,
       speedFactor,
@@ -502,6 +510,9 @@ export function PageBackground({
               (nextSettings.convergence.y - startSettings.convergence.y) *
                 progress,
           },
+          complexity:
+            startSettings.complexity +
+            (nextSettings.complexity - startSettings.complexity) * progress,
           intensity:
             startSettings.intensity +
             (nextSettings.intensity - startSettings.intensity) * progress,
@@ -518,6 +529,7 @@ export function PageBackground({
     return () => controls.stop();
   }, [
     commitWeaveSettings,
+    complexity,
     convergence,
     flare,
     intensity,
@@ -537,6 +549,7 @@ export function PageBackground({
     motionMode === 'scroll'
       ? {
           convergence,
+          complexity,
           intensity,
           flare,
           speedFactor,
@@ -564,6 +577,7 @@ export function PageBackground({
       <NetworkWeaveBackground
         seed="networkcanvas.com"
         convergence={renderedSettings.convergence}
+        complexity={renderedSettings.complexity}
         intensity={renderedSettings.intensity}
         flare={renderedSettings.flare}
         speedFactor={renderedSettings.speedFactor}

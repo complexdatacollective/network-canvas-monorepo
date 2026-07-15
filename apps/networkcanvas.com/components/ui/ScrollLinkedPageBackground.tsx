@@ -1,5 +1,10 @@
 'use client';
 
+import {
+  useMotionValue,
+  useMotionValueEvent,
+  useTransform,
+} from 'motion/react';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import { PageBackground } from '@codaco/art';
@@ -8,15 +13,17 @@ import type { NetworkWeaveConvergence } from '@codaco/art/NetworkWeaveBackground
 const CENTER_CONVERGENCE: NetworkWeaveConvergence = { x: 0.5, y: 0.5 };
 const POSITION_TOLERANCE = 0.0005;
 const PARAMETER_TOLERANCE = 0.0005;
+const DEFAULT_COMPLEXITY = 28;
+const HOLD_RELEASE_VIEWPORT_OFFSET = 32;
 
 const WEAVE_PARAMETER_KEYFRAMES = [
-  { intensity: 0.62, flare: 1.45, speedFactor: 0.28 },
-  { intensity: 0.22, flare: 1.9, speedFactor: 0.52 },
-  { intensity: 0.34, flare: 1.58, speedFactor: 0.38 },
-  { intensity: 0.18, flare: 2.42, speedFactor: 0.68 },
-  { intensity: 0.3, flare: 1.72, speedFactor: 0.44 },
-  { intensity: 0.16, flare: 2.72, speedFactor: 0.74 },
-  { intensity: 0.27, flare: 2.08, speedFactor: 0.5 },
+  { complexity: 40, intensity: 0.62, flare: 1.45, speedFactor: 0.28 },
+  { complexity: 20, intensity: 0.22, flare: 1.9, speedFactor: 0.52 },
+  { complexity: 34, intensity: 0.34, flare: 1.58, speedFactor: 0.38 },
+  { complexity: 24, intensity: 0.18, flare: 2.42, speedFactor: 0.68 },
+  { complexity: 44, intensity: 0.3, flare: 1.72, speedFactor: 0.44 },
+  { complexity: 18, intensity: 0.16, flare: 2.72, speedFactor: 0.74 },
+  { complexity: 36, intensity: 0.27, flare: 2.08, speedFactor: 0.5 },
 ] as const;
 
 const HERO_PARAMETERS = WEAVE_PARAMETER_KEYFRAMES[0];
@@ -28,6 +35,7 @@ type PostTargetBehavior = 'center' | 'figure-eight';
 
 type BackgroundState = {
   convergence: NetworkWeaveConvergence;
+  complexity: number;
   intensity: number;
   flare: number;
   speedFactor: number;
@@ -38,7 +46,9 @@ type BackgroundState = {
 type ScrollLinkedPageBackgroundProps = {
   targetSelector: string;
   interactiveTargetSelector?: string;
+  holdTargetSelector?: string;
   postTargetBehavior?: PostTargetBehavior;
+  varyComplexity?: boolean;
 };
 
 function clampToViewport(value: number) {
@@ -59,8 +69,7 @@ function valuesAreEqual(current: number, next: number) {
   return Math.abs(current - next) < PARAMETER_TOLERANCE;
 }
 
-function getElementCenter(element: HTMLElement) {
-  const rect = element.getBoundingClientRect();
+function getRectCenter(rect: DOMRect) {
   return {
     x: rect.left + rect.width / 2,
     y: rect.top + rect.height / 2,
@@ -71,7 +80,7 @@ function interpolate(origin: number, target: number, progress: number) {
   return origin + (target - origin) * progress;
 }
 
-function getWeaveParameters(progress: number) {
+function getWeaveParameters(progress: number, varyComplexity: boolean) {
   const keyframeProgress =
     clampToViewport(progress) * (WEAVE_PARAMETER_KEYFRAMES.length - 1);
   const originIndex = Math.floor(keyframeProgress);
@@ -84,6 +93,13 @@ function getWeaveParameters(progress: number) {
   const progressWithinKeyframe = keyframeProgress - originIndex;
 
   return {
+    complexity: varyComplexity
+      ? interpolate(
+          origin.complexity,
+          target.complexity,
+          progressWithinKeyframe,
+        )
+      : DEFAULT_COMPLEXITY,
     intensity: interpolate(
       origin.intensity,
       target.intensity,
@@ -131,10 +147,13 @@ function getFigureEightConvergence(progress: number) {
   };
 }
 
-function getFigureEightParameters(progress: number) {
+function getFigureEightParameters(progress: number, varyComplexity: boolean) {
   const angle = progress * Math.PI * 2;
 
   return {
+    complexity: varyComplexity
+      ? REST_PARAMETERS.complexity + Math.sin(angle) * 8
+      : DEFAULT_COMPLEXITY,
     intensity: REST_PARAMETERS.intensity + Math.sin(angle) * 0.07,
     flare: Math.max(
       HERO_PARAMETERS.flare,
@@ -144,17 +163,73 @@ function getFigureEightParameters(progress: number) {
   };
 }
 
+function getScrollLinkedParameters(progress: number, varyComplexity: boolean) {
+  return progress <= 1
+    ? getWeaveParameters(progress, varyComplexity)
+    : getFigureEightParameters(progress - 1, varyComplexity);
+}
+
 export function ScrollLinkedPageBackground({
   targetSelector,
   interactiveTargetSelector,
+  holdTargetSelector,
   postTargetBehavior = 'center',
+  varyComplexity = false,
 }: ScrollLinkedPageBackgroundProps) {
   const layerRef = useRef<HTMLDivElement>(null);
+  const scrollParameterProgress = useMotionValue(0);
+  const complexity = useTransform(
+    scrollParameterProgress,
+    (progress) =>
+      getScrollLinkedParameters(progress, varyComplexity).complexity,
+  );
+  const intensity = useTransform(
+    scrollParameterProgress,
+    (progress) => getScrollLinkedParameters(progress, varyComplexity).intensity,
+  );
+  const flare = useTransform(
+    scrollParameterProgress,
+    (progress) => getScrollLinkedParameters(progress, varyComplexity).flare,
+  );
+  const speedFactor = useTransform(
+    scrollParameterProgress,
+    (progress) =>
+      getScrollLinkedParameters(progress, varyComplexity).speedFactor,
+  );
   const [background, setBackground] = useState<BackgroundState>({
     convergence: CENTER_CONVERGENCE,
-    ...HERO_PARAMETERS,
+    ...getWeaveParameters(0, varyComplexity),
     resolved: false,
     targetChangeVersion: 0,
+  });
+
+  useMotionValueEvent(complexity, 'change', (nextComplexity) => {
+    setBackground((current) =>
+      valuesAreEqual(current.complexity, nextComplexity)
+        ? current
+        : { ...current, complexity: nextComplexity },
+    );
+  });
+  useMotionValueEvent(intensity, 'change', (nextIntensity) => {
+    setBackground((current) =>
+      valuesAreEqual(current.intensity, nextIntensity)
+        ? current
+        : { ...current, intensity: nextIntensity },
+    );
+  });
+  useMotionValueEvent(flare, 'change', (nextFlare) => {
+    setBackground((current) =>
+      valuesAreEqual(current.flare, nextFlare)
+        ? current
+        : { ...current, flare: nextFlare },
+    );
+  });
+  useMotionValueEvent(speedFactor, 'change', (nextSpeedFactor) => {
+    setBackground((current) =>
+      valuesAreEqual(current.speedFactor, nextSpeedFactor)
+        ? current
+        : { ...current, speedFactor: nextSpeedFactor },
+    );
   });
 
   useLayoutEffect(() => {
@@ -179,7 +254,10 @@ export function ScrollLinkedPageBackground({
       if (layerRect.width <= 0 || layerRect.height <= 0) return;
 
       const viewportCenterY = layerRect.top + layerRect.height / 2;
-      const targetCenters = targets.map(getElementCenter);
+      const targetRects = targets.map((target) =>
+        target.getBoundingClientRect(),
+      );
+      const targetCenters = targetRects.map(getRectCenter);
       let convergence = CENTER_CONVERGENCE;
       let targetProgress = 0;
       let postTargetProgress: number | null = null;
@@ -204,20 +282,39 @@ export function ScrollLinkedPageBackground({
       ) {
         const origin = targetCenters[passedTargetIndex];
         const target = targetCenters[passedTargetIndex + 1];
+        const originElement = targets[passedTargetIndex];
+        const originRect = targetRects[passedTargetIndex];
+        const holdsUntilExit =
+          holdTargetSelector !== undefined &&
+          originElement?.matches(holdTargetSelector) === true;
 
-        if (origin && target) {
-          // The handoff begins as the origin crosses the viewport midpoint and
-          // finishes as the next target reaches it. Tying progress to those two
-          // positions keeps the transition fully reversible and scroll-linked.
+        if (origin && target && originRect) {
+          // Standard handoffs begin at the viewport midpoint. A held target
+          // instead releases near the viewport edge, then catches up by the
+          // time the next target reaches the midpoint. Both paths remain fully
+          // reversible and scroll-linked.
+          const holdReleaseTop = layerRect.top + HOLD_RELEASE_VIEWPORT_OFFSET;
+          const scrollPastHoldRelease = Math.max(
+            0,
+            holdReleaseTop - originRect.top,
+          );
+          const heldTransitionDistance =
+            target.y + scrollPastHoldRelease - viewportCenterY;
           const transitionDistance = target.y - origin.y;
-          const progress =
-            transitionDistance <= 0
+          const progress = holdsUntilExit
+            ? heldTransitionDistance <= 0
+              ? 1
+              : clampToViewport(scrollPastHoldRelease / heldTransitionDistance)
+            : transitionDistance <= 0
               ? 1
               : clampToViewport(
                   (viewportCenterY - origin.y) / transitionDistance,
                 );
+          const heldOriginY = origin.y + scrollPastHoldRelease;
           const focusX = origin.x + (target.x - origin.x) * progress;
-          const focusY = origin.y + (target.y - origin.y) * progress;
+          const focusY =
+            (holdsUntilExit ? heldOriginY : origin.y) +
+            (target.y - (holdsUntilExit ? heldOriginY : origin.y)) * progress;
 
           convergence = {
             x: clampToViewport((focusX - layerRect.left) / layerRect.width),
@@ -262,7 +359,9 @@ export function ScrollLinkedPageBackground({
           : null;
 
       if (trackedInteractiveTarget) {
-        const interactiveCenter = getElementCenter(trackedInteractiveTarget);
+        const interactiveCenter = getRectCenter(
+          trackedInteractiveTarget.getBoundingClientRect(),
+        );
         convergence = {
           x: clampToViewport(
             (interactiveCenter.x - layerRect.left) / layerRect.width,
@@ -273,28 +372,22 @@ export function ScrollLinkedPageBackground({
         };
       }
 
-      const { intensity, flare, speedFactor } =
-        postTargetProgress === null
-          ? getWeaveParameters(targetProgress)
-          : getFigureEightParameters(postTargetProgress);
+      scrollParameterProgress.set(
+        postTargetProgress === null ? targetProgress : 1 + postTargetProgress,
+      );
 
       setBackground((current) => {
         if (
           current.resolved &&
           pointsAreEqual(current.convergence, convergence) &&
-          valuesAreEqual(current.intensity, intensity) &&
-          valuesAreEqual(current.flare, flare) &&
-          valuesAreEqual(current.speedFactor, speedFactor) &&
           current.targetChangeVersion === targetChangeVersion
         ) {
           return current;
         }
 
         return {
+          ...current,
           convergence,
-          intensity,
-          flare,
-          speedFactor,
           resolved: true,
           targetChangeVersion,
         };
@@ -373,11 +466,18 @@ export function ScrollLinkedPageBackground({
       window.removeEventListener('resize', updateBackground);
       window.removeEventListener('scroll', updateBackground);
     };
-  }, [interactiveTargetSelector, postTargetBehavior, targetSelector]);
+  }, [
+    holdTargetSelector,
+    interactiveTargetSelector,
+    postTargetBehavior,
+    scrollParameterProgress,
+    targetSelector,
+  ]);
 
   return (
     <PageBackground
       convergence={background.convergence}
+      complexity={background.complexity}
       intensity={background.intensity}
       flare={background.flare}
       speedFactor={background.speedFactor}
