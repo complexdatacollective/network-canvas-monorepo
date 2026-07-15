@@ -76,6 +76,7 @@ docker run --rm \
   -v "$(pwd)":/workspace \
   -v "${VOLUME}":/workspace/node_modules \
   -v "${TURBO_VOLUME}":/workspace/.turbo/cache \
+  -v architect-e2e-pnpm-store:/workspace/.pnpm-store \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \
