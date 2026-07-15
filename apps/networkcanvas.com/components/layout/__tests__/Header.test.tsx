@@ -6,6 +6,7 @@ import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { Footer } from '../Footer';
 import { Header } from '../Header';
+import ThemeSwitcher from '../ThemeSwitcher';
 
 vi.mock('~/lib/i18n/navigation', () => ({
   Link: ({
@@ -68,6 +69,16 @@ describe('localized layout navigation', () => {
     expect(container.querySelector('header')).toHaveClass(
       'entrance-motion-item',
     );
+  });
+
+  it('uses a large, heavier-stroked desktop theme control', () => {
+    renderWithIntl(<ThemeSwitcher view="desktop" />);
+
+    const trigger = screen.getByRole('button', {
+      name: 'Color theme: System',
+    });
+    expect(trigger).toHaveClass('h-16');
+    expect(trigger.querySelector('svg')).toHaveAttribute('stroke-width', '2.5');
   });
 
   it('renders translated footer links and language selection', () => {
