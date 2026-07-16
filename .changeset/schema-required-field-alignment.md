@@ -19,13 +19,6 @@ that validates is a protocol that renders correctly:
   label/prompt set to an empty string without one, is now rejected too.
 - A Sociogram prompt with highlighting enabled must name the variable to
   toggle, and an `edges` object must set `create` and/or `display`.
-
-The conditional rules are also encoded in the inferred TypeScript types: the
-background is a two-variant union (image or circles), and checking a Sociogram
-prompt's `highlight.allowHighlighting` or a CategoricalBin prompt's
-`otherVariable` narrows the dependent fields to present, so consumers need no
-runtime fallbacks or non-null assertions.
-
 - A codebook variable referenced by a form field must define a `component`
   (input control) — previously a missing one crashed the interview when the
   form rendered.
@@ -35,6 +28,12 @@ runtime fallbacks or non-null assertions.
   `label`, a side panel's `title`, a FamilyPedigree `censusPrompt`, an
   Anonymisation `explanationText`, a NarrativePedigree disease's `label`/`color`,
   and a NameGeneratorRoster `dataSource` and `searchOptions.matchProperties`.
+
+The conditional rules are also encoded in the inferred TypeScript types: the
+background is a two-variant union (image or circles), and checking a Sociogram
+prompt's `highlight.allowHighlighting` or a CategoricalBin prompt's
+`otherVariable` narrows the dependent fields to present, so consumers need no
+runtime fallbacks or non-null assertions.
 
 Protocols migrating from schema 7 are backfilled with the value the interview
 already displayed (stage label or "Information", "Add {node type}", 4 rings,
