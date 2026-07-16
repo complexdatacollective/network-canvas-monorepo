@@ -31,9 +31,11 @@ export function composeStageName(parts: {
   typeName: string;
   qualifier?: string | null;
 }): string {
-  return [parts.subjectName, parts.typeName, parts.qualifier]
+  const stageName = [parts.subjectName, parts.typeName, parts.qualifier]
     .filter((part): part is string => Boolean(part && part.trim()))
     .join(' ');
+
+  return stageName.charAt(0).toUpperCase() + stageName.slice(1);
 }
 
 export function dedupeStageLabel(

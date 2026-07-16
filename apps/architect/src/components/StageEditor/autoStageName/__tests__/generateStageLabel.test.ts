@@ -29,6 +29,15 @@ describe('composeStageName', () => {
       }),
     ).toBe('Ego Form');
   });
+  it('capitalises a lowercase user-defined subject without changing other casing', () => {
+    expect(
+      composeStageName({
+        subjectName: 'person',
+        typeName: 'Form Name Generator',
+        qualifier: null,
+      }),
+    ).toBe('Person Form Name Generator');
+  });
 });
 
 describe('dedupeStageLabel', () => {
