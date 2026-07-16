@@ -23,7 +23,7 @@ import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import type { Form } from '@codaco/protocol-validation';
+import type { TitlelessForm } from '@codaco/protocol-validation';
 import {
   type EntityAttributesProperty,
   entityAttributesProperty,
@@ -87,7 +87,7 @@ function buildFieldErrors(
 }
 
 type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
-  form: Form;
+  form: TitlelessForm;
   items: T[];
   subject: Subject;
   updateItem: (
@@ -119,7 +119,7 @@ type SlideHandle = {
 
 type SlideContentProps = {
   item: NcNode | NcEdge;
-  form: Form;
+  form: TitlelessForm;
   subject: Subject;
   header: ReactNode;
   submitButton: ReactNode;

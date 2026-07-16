@@ -519,11 +519,8 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
     },
 
     {
-      id: 'roster-search-matchProperties-scoping-and-empty',
-      covers: [
-        'searchOptions.matchProperties',
-        'searchOptions.matchProperties=empty',
-      ],
+      id: 'roster-search-matchProperties-scoping',
+      covers: ['searchOptions.matchProperties'],
       build: () => {
         const synth = new SyntheticInterview();
         const personType = synth.addNodeType({ name: 'Person' });
@@ -536,7 +533,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           source: 'roster-small.json',
         });
 
-        // Stage A: search scoped to 'location' only.
+        // Search scoped to 'location' only.
         synth
           .addStage('NameGeneratorRoster', {
             label: 'Match location only',
@@ -546,40 +543,17 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           })
           .addPrompt({ text: 'Please add anyone you recognise.' });
 
-        // Stage B: empty matchProperties → searchbox renders but nothing matches.
-        synth
-          .addStage('NameGeneratorRoster', {
-            label: 'Match nothing',
-            subject: { entity: 'node', type: personType.id },
-            dataSource: 'jsonRoster',
-            searchOptions: { fuzziness: 0.2, matchProperties: [] },
-          })
-          .addPrompt({ text: 'Please add anyone you recognise.' });
-
         return synth;
       },
       assets: [rosterSmallAsset('jsonRoster')],
-      run: async ({ page, interview }) => {
+      run: async ({ page }) => {
         const roster = new NameGeneratorRosterFixture(page);
 
-        // Stage A: 'Drew' exists only in the name column, so a location-scoped
-        // search finds nothing.
+        // 'Drew' exists only in the name column, so a location-scoped search
+        // finds nothing.
         await expect(roster.sourceListbox.getByRole('option')).toHaveCount(6);
         await roster.search('Drew');
         await expect(roster.emptyState).toBeVisible();
-
-        await interview.next();
-
-        // Stage B: an empty matchProperties array resolves to zero filter keys.
-        // Observed behaviour (useFilterState.ts:44 gates filtering on
-        // `filterKeys.length > 0`): with no keys, Collection filtering is
-        // disabled entirely and CollectionFilterInput renders nothing, so NO
-        // search input appears even though `searchOptions` is configured. This
-        // is the observable proof that empty matchProperties yields no filter
-        // keys. (The plan expected a rendered searchbox + empty results; pinned
-        // to the real behaviour instead.)
-        await expect(roster.sourceListbox.getByRole('option')).toHaveCount(6);
-        await expect(roster.filterInput).toHaveCount(0);
       },
     },
 

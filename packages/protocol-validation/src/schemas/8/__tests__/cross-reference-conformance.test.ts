@@ -188,7 +188,14 @@ describe('Cross-reference conformance', () => {
             type: 'OrdinalBin',
             label: 'Ordinal',
             subject: { entity: 'node', type: 'person' },
-            prompts: [{ id: 'p1', text: 'rank', variable: 'strength' }],
+            prompts: [
+              {
+                id: 'p1',
+                text: 'rank',
+                variable: 'strength',
+                color: 'ord-color-seq-1',
+              },
+            ],
           },
         ],
       };
@@ -206,7 +213,14 @@ describe('Cross-reference conformance', () => {
             type: 'OrdinalBin',
             label: 'Ordinal',
             subject: { entity: 'node', type: 'person' },
-            prompts: [{ id: 'p1', text: 'rank', variable: 'category' }],
+            prompts: [
+              {
+                id: 'p1',
+                text: 'rank',
+                variable: 'category',
+                color: 'ord-color-seq-1',
+              },
+            ],
           },
         ],
       };
@@ -302,7 +316,10 @@ describe('Cross-reference conformance', () => {
             type: 'NameGenerator',
             label: 'Panels',
             subject: { entity: 'node', type: 'person' },
-            form: { fields: [{ variable: 'name', prompt: 'Enter name' }] },
+            form: {
+              title: 'Add person',
+              fields: [{ variable: 'name', prompt: 'Enter name' }],
+            },
             prompts: [{ id: 'p1', text: 'who' }],
             panels: [
               {
@@ -353,6 +370,7 @@ describe('Cross-reference conformance', () => {
             type: 'Sociogram',
             label: 'Sociogram',
             subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 4 },
             filter: {
               join: 'OR' as const,
               rules: [

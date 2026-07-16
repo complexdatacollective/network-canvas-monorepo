@@ -677,7 +677,8 @@ const concentricCirclesBackground: ScenarioDefinition = {
   run: async ({ page, interview }) => {
     const narrative = new NarrativeFixture(page);
 
-    // Stage 0: no background key -> component default of 4 rings.
+    // Stage 0: no background key in the scenario -> the builder seeds the
+    // default 4-ring background (background is required by the schema).
     await expect(narrative.getBackgroundCircles()).toHaveCount(4);
 
     // Stage 1: 6 evenly-spaced rings (skewedTowardCenter:false -> q=1).

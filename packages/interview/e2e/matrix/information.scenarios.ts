@@ -381,14 +381,13 @@ export const informationScenarios: InterfaceScenarios = {
       },
     },
     {
-      id: 'empty-items-and-empty-title',
-      covers: ['items=[]', 'title-empty'],
+      id: 'empty-items',
+      covers: ['items=[]'],
       build: () => {
         const synth = new SyntheticInterview();
-        // label must be non-empty (schema); title-empty is the case under test
         synth.addInformationStage({
           label: 'Empty stage',
-          title: '',
+          title: 'Empty stage',
           items: [],
         });
         return synth;

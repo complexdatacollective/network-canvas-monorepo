@@ -17,8 +17,8 @@ export const narrativePedigreeStage = baseStageSchema.extend({
     .array(
       z.strictObject({
         id: z.string(),
-        label: z.string(),
-        color: z.string(),
+        label: z.string().min(1),
+        color: z.string().min(1),
         variable: entityAttributeReference({ subject: 'stageSubject' }),
         inheritancePattern: z.enum([...INHERITANCE_PATTERNS]),
       }),

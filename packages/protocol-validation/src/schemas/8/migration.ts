@@ -22,6 +22,30 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
+const codebookVariableName = (
+  codebook: unknown,
+  subject: unknown,
+  variableId: unknown,
+): string | undefined => {
+  if (typeof variableId !== 'string') return undefined;
+  const cb = asRecord(codebook);
+  const subj = asRecord(subject);
+  if (!cb || !subj) return undefined;
+  let variables: Record<string, unknown> | null = null;
+  if (subj.entity === 'ego') {
+    variables = asRecord(asRecord(cb.ego)?.variables);
+  } else if (
+    (subj.entity === 'node' || subj.entity === 'edge') &&
+    typeof subj.type === 'string'
+  ) {
+    variables = asRecord(
+      asRecord(asRecord(cb[subj.entity])?.[subj.type])?.variables,
+    );
+  }
+  const name = variables ? asRecord(variables[variableId])?.name : undefined;
+  return typeof name === 'string' && name.trim() !== '' ? name : undefined;
+};
+
 // Resolves whether a specific rule operand targets a categorical variable, scoped
 // to the rule's own entity. A flat codebook-wide id set would mis-handle the case
 // where two entities (or node/edge types) share an attribute id but only one
@@ -77,8 +101,15 @@ const migrationV7toV8 = createMigration({
 - A \`minValue\`, \`minLength\`, or \`minSelected\` validator no longer implies a field is required. To preserve the effective behaviour of existing protocols that relied on this coupling, any codebook variable (node, edge, or ego) with one of these validators and no explicit \`required: true\` now has \`required: true\` set.
 - Categorical attribute values are now stored as arrays of selected option values. Existing single-value categorical filter and skip-logic rule operands (\`is exactly\`, \`is not\`, \`includes\`, \`excludes\`) are wrapped in a single-element array to match.
 - Stage labels are now required to be non-empty. Any stage with a missing or empty label is given a default name based on its position (e.g. "Stage 3").
-- An OrdinalBin prompt \`color\` is now restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored, and is removed so the prompt uses the default colour.
-- A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored. Such orphaned properties are removed.
+- The Information stage \`title\` (page heading) is now required. Any Information stage without one is given its stage label as the title, or "Information" when no label was authored.
+- The NameGenerator \`form.title\` (heading of the add-a-person dialog) is now required. Any NameGenerator form without one is given "Add {node type name}" (e.g. "Add Person").
+- A codebook variable referenced by a form field must define a \`component\` (input control). Previously this was only checked by the Architect editor; a protocol violating it crashed the interview when the form rendered.
+- Several free-text fields that the Architect editor already requires are now required (non-empty) in the schema: a prompt's \`text\`, a form field's \`prompt\`, an introduction panel's \`title\` and \`text\`, an Information item's \`content\`, a Narrative preset's \`label\`, a side panel's \`title\`, a NameGeneratorRoster \`dataSource\`, and its \`searchOptions.matchProperties\` (at least one). Any that were empty are backfilled — the form-field prompt from the variable's name, the panel title from the stage label, a preset/side-panel label by position — else a plain default. An empty \`searchOptions\`, and an Information asset item with no asset id (a broken reference), are dropped. (The FamilyPedigree \`censusPrompt\`, NarrativePedigree disease \`label\`/\`color\`, and Anonymisation \`explanationText\` are likewise required but are v8-only, so no migration is needed.)
+- The Sociogram, Narrative, and NetworkComposer \`background\` is now required and must be exactly one of its two variants: an image (\`image\` set, no \`concentricCircles\`) or concentric circles (\`concentricCircles\` set to a whole number, no \`image\`; 0 renders no rings). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise \`concentricCircles\` defaults to 4, matching what the interview already rendered.
+- An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color default to the first palette color (\`ord-color-seq-1\`), the runtime's previous fallback.
+- A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored, as was an empty-string \`otherVariable\`. Such orphaned properties are removed.
+- A CategoricalBin prompt with \`otherVariable\` set now requires both \`otherVariablePrompt\` and \`otherOptionLabel\` (previously a missing label silently dropped the whole "other" bin). A missing value is backfilled from the other authored one, else "Please specify" / "Other".
+- A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean variable to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 `,
   migrate: (doc, deps) => {
@@ -274,31 +305,53 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // A CategoricalBin 'other' follow-up needs otherVariablePrompt as its
-        // dialog label. Backfill it (from otherOptionLabel, else a default) when
-        // otherVariable is set but the prompt is missing.
-        paths: ['stages[].prompts[]'],
-        fn: <V>(prompt: V) => {
-          if (typeof prompt !== 'object' || prompt === null) return prompt;
-          const typedPrompt = prompt as Record<string, unknown>;
-          if (
-            typeof typedPrompt.otherVariable === 'string' &&
-            typedPrompt.otherVariable &&
-            !typedPrompt.otherVariablePrompt
-          ) {
-            typedPrompt.otherVariablePrompt =
-              typeof typedPrompt.otherOptionLabel === 'string' &&
-              typedPrompt.otherOptionLabel
-                ? typedPrompt.otherOptionLabel
-                : 'Please specify';
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          if (typedStage.type !== 'NameGenerator') return stage;
+          const form = asRecord(typedStage.form);
+          if (!form) return stage;
+          if (typeof form.title === 'string' && form.title.trim() !== '') {
+            return stage;
           }
-          return prompt;
+          const subjectType = asRecord(typedStage.subject)?.type;
+          const entityName =
+            typeof subjectType === 'string'
+              ? asRecord(asRecord(asRecord(codebook)?.node)?.[subjectType])
+                  ?.name
+              : undefined;
+          form.title =
+            typeof entityName === 'string' && entityName.trim() !== ''
+              ? `Add ${entityName}`
+              : 'Add';
+          return stage;
         },
       },
       {
-        // The 'other' bin only exists when otherVariable is set, so a
-        // CategoricalBin otherOptionLabel/otherVariablePrompt without it was
-        // silently ignored. V8 rejects the orphaned properties; drop them.
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          if (typedStage.type !== 'Information') return stage;
+          if (
+            typeof typedStage.title !== 'string' ||
+            typedStage.title.trim() === ''
+          ) {
+            typedStage.title =
+              typeof typedStage.label === 'string' &&
+              typedStage.label.trim() !== ''
+                ? typedStage.label
+                : 'Information';
+          }
+          return stage;
+        },
+      },
+      {
+        // A CategoricalBin 'other' follow-up needs otherVariablePrompt as its
+        // dialog label and otherOptionLabel as its bin caption; v8 requires
+        // both when otherVariable is set. Backfill each missing one from the
+        // other authored value, else a default.
         paths: ['stages[].prompts[]'],
         fn: <V>(prompt: V) => {
           if (typeof prompt !== 'object' || prompt === null) return prompt;
@@ -307,6 +360,43 @@ const migrationV7toV8 = createMigration({
             typeof typedPrompt.otherVariable !== 'string' ||
             !typedPrompt.otherVariable
           ) {
+            return prompt;
+          }
+          const authoredPrompt =
+            typeof typedPrompt.otherVariablePrompt === 'string' &&
+            typedPrompt.otherVariablePrompt
+              ? typedPrompt.otherVariablePrompt
+              : undefined;
+          const authoredLabel =
+            typeof typedPrompt.otherOptionLabel === 'string' &&
+            typedPrompt.otherOptionLabel
+              ? typedPrompt.otherOptionLabel
+              : undefined;
+          if (!authoredPrompt) {
+            typedPrompt.otherVariablePrompt = authoredLabel ?? 'Please specify';
+          }
+          if (!authoredLabel) {
+            typedPrompt.otherOptionLabel = authoredPrompt ?? 'Other';
+          }
+          return prompt;
+        },
+      },
+      {
+        // The 'other' bin only exists when otherVariable is set, so a
+        // CategoricalBin otherOptionLabel/otherVariablePrompt without it was
+        // silently ignored, as was an empty-string otherVariable. V8 rejects
+        // the orphaned properties; drop them all.
+        paths: ['stages[].prompts[]'],
+        fn: <V>(prompt: V) => {
+          if (typeof prompt !== 'object' || prompt === null) return prompt;
+          const typedPrompt = prompt as Record<string, unknown>;
+          if (
+            typeof typedPrompt.otherVariable !== 'string' ||
+            !typedPrompt.otherVariable
+          ) {
+            if (typedPrompt.otherVariable === '') {
+              delete typedPrompt.otherVariable;
+            }
             delete typedPrompt.otherOptionLabel;
             delete typedPrompt.otherVariablePrompt;
           }
@@ -314,10 +404,6 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // An OrdinalBin prompt color outside the ten-value ord-color-seq
-        // palette was silently ignored by the interview. V8 restricts color to
-        // that palette; drop any other value so the prompt falls back to the
-        // runtime's default colour.
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
           if (typeof stage !== 'object' || stage === null) return stage;
@@ -333,6 +419,180 @@ const migrationV7toV8 = createMigration({
             ) {
               delete typedPrompt.color;
             }
+            if (!('color' in typedPrompt)) {
+              typedPrompt.color = ordinalColorSequence[0];
+            }
+          }
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          if (
+            typedStage.type !== 'Sociogram' &&
+            typedStage.type !== 'Narrative' &&
+            typedStage.type !== 'NetworkComposer'
+          ) {
+            return stage;
+          }
+          const source = Array.isArray(typedStage.background)
+            ? {}
+            : (asRecord(typedStage.background) ?? {});
+          const background: Record<string, unknown> = {};
+          if (typeof source.skewedTowardCenter === 'boolean') {
+            background.skewedTowardCenter = source.skewedTowardCenter;
+          }
+          if (
+            typedStage.type !== 'Narrative' &&
+            typeof source.image === 'string' &&
+            source.image !== ''
+          ) {
+            background.image = source.image;
+          } else {
+            const circles = source.concentricCircles;
+            background.concentricCircles =
+              typeof circles === 'number' &&
+              Number.isInteger(circles) &&
+              circles >= 0
+                ? circles
+                : 4;
+          }
+          typedStage.background = background;
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[].prompts[]'],
+        fn: <V>(prompt: V) => {
+          const typedPrompt = asRecord(prompt);
+          if (!typedPrompt) return prompt;
+          if (typeof typedPrompt.text !== 'string' || typedPrompt.text === '') {
+            typedPrompt.text = 'Continue';
+          }
+          return prompt;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
+          const fields = asRecord(typedStage.form)?.fields;
+          if (!Array.isArray(fields)) return stage;
+          const subject =
+            typedStage.type === 'EgoForm'
+              ? { entity: 'ego' }
+              : typedStage.subject;
+          for (const field of fields) {
+            const typedField = asRecord(field);
+            if (!typedField) continue;
+            if (
+              typeof typedField.prompt !== 'string' ||
+              typedField.prompt === ''
+            ) {
+              typedField.prompt =
+                codebookVariableName(codebook, subject, typedField.variable) ??
+                'Answer';
+            }
+          }
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
+          const panel = asRecord(typedStage.introductionPanel);
+          if (!panel) return stage;
+          if (typeof panel.title !== 'string' || panel.title === '') {
+            panel.title =
+              typeof typedStage.label === 'string' &&
+              typedStage.label.trim() !== ''
+                ? typedStage.label
+                : 'Introduction';
+          }
+          if (typeof panel.text !== 'string' || panel.text === '') {
+            panel.text = 'Welcome.';
+          }
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage || typedStage.type !== 'Information') return stage;
+          if (!Array.isArray(typedStage.items)) return stage;
+          typedStage.items = typedStage.items.filter((item) => {
+            const typedItem = asRecord(item);
+            if (!typedItem) return true;
+            const emptyContent =
+              typeof typedItem.content !== 'string' || typedItem.content === '';
+            if (!emptyContent) return true;
+            if (typedItem.type === 'text') {
+              typedItem.content = 'Information.';
+              return true;
+            }
+            return typedItem.type !== 'asset';
+          });
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage || typedStage.type !== 'Narrative') return stage;
+          if (!Array.isArray(typedStage.presets)) return stage;
+          typedStage.presets.forEach((preset: unknown, index: number) => {
+            const typedPreset = asRecord(preset);
+            if (!typedPreset) return;
+            if (
+              typeof typedPreset.label !== 'string' ||
+              typedPreset.label === ''
+            ) {
+              typedPreset.label = `Preset ${index + 1}`;
+            }
+          });
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage || !Array.isArray(typedStage.panels)) return stage;
+          typedStage.panels.forEach((panel: unknown, index: number) => {
+            const typedPanel = asRecord(panel);
+            if (!typedPanel) return;
+            if (
+              typeof typedPanel.title !== 'string' ||
+              typedPanel.title === ''
+            ) {
+              typedPanel.title = `Panel ${index + 1}`;
+            }
+          });
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage || typedStage.type !== 'NameGeneratorRoster') {
+            return stage;
+          }
+          const searchOptions = asRecord(typedStage.searchOptions);
+          if (
+            searchOptions &&
+            (!Array.isArray(searchOptions.matchProperties) ||
+              searchOptions.matchProperties.length === 0)
+          ) {
+            delete typedStage.searchOptions;
           }
           return stage;
         },
@@ -421,6 +681,33 @@ const migrationV7toV8 = createMigration({
             delete typedPrompt.highlight;
           }
           return prompt;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = stage as Record<string, unknown>;
+          if (typedStage.type !== 'Sociogram') return stage;
+          if (!Array.isArray(typedStage.prompts)) return stage;
+          for (const prompt of typedStage.prompts) {
+            const typedPrompt = asRecord(prompt);
+            if (!typedPrompt) continue;
+            const highlight = asRecord(typedPrompt.highlight);
+            if (highlight?.allowHighlighting === true && !highlight.variable) {
+              highlight.allowHighlighting = false;
+            }
+            const edges = asRecord(typedPrompt.edges);
+            if (
+              edges &&
+              edges.create === undefined &&
+              (edges.display === undefined ||
+                (Array.isArray(edges.display) && edges.display.length === 0))
+            ) {
+              delete typedPrompt.edges;
+            }
+          }
+          return stage;
         },
       },
       {

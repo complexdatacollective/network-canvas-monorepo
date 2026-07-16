@@ -58,15 +58,12 @@ export function isUncategorised(
 
 export function useCategoricalBins() {
   const stageNodes = useStageSelector(getNetworkNodesForType);
+  const { prompt } = usePrompts<CategoricalBinPrompts>();
   const {
-    prompt: {
-      variable: activePromptVariable,
-      otherVariable,
-      otherOptionLabel,
-      bucketSortOrder,
-      binSortOrder,
-    },
-  } = usePrompts<CategoricalBinPrompts>();
+    variable: activePromptVariable,
+    bucketSortOrder,
+    binSortOrder,
+  } = prompt;
 
   const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
   const getVariableDefinition = useStageSelector(makeGetCodebookVariableById);
@@ -83,7 +80,7 @@ export function useCategoricalBins() {
     isUncategorised(
       node[entityAttributesProperty],
       activePromptVariable,
-      otherVariable,
+      prompt.otherVariable,
     ),
   );
 
@@ -121,8 +118,10 @@ export function useCategoricalBins() {
     };
   });
 
-  // Handle 'other' bin
-  if (otherVariable && otherOptionLabel) {
+  // Handle 'other' bin: the schema's prompt union proves otherOptionLabel
+  // exists whenever otherVariable is set.
+  if (prompt.otherVariable !== undefined) {
+    const { otherVariable, otherOptionLabel } = prompt;
     const otherNodes = stageNodes.filter(
       (node) => !isNil(get(node, [entityAttributesProperty, otherVariable])),
     );

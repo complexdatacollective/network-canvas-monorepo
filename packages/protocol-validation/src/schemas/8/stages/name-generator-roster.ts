@@ -10,7 +10,7 @@ import { nameGeneratorBehavioursSchema } from './name-generator';
 export const nameGeneratorRosterStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorRoster'),
   subject: NodeStageSubjectSchema,
-  dataSource: z.string(),
+  dataSource: z.string().min(1),
   cardOptions: z
     .strictObject({
       additionalProperties: z
@@ -42,7 +42,7 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
     .strictObject({
       fuzziness: z.number(),
       // External data-source (roster CSV) column names, not codebook variables.
-      matchProperties: z.array(z.string()),
+      matchProperties: z.array(z.string()).min(1),
     })
     .optional(),
   prompts: z

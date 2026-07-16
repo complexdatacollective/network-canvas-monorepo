@@ -1,3 +1,4 @@
+export * from './background';
 export * from './experiments';
 export * from './forms';
 export * from './introductionPanel';

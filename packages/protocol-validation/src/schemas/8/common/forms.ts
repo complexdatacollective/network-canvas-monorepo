@@ -8,7 +8,7 @@ export const FormFieldSchema = z.strictObject({
   // persisted, so the schema must tolerate it.
   id: z.string().optional(),
   variable: entityAttributeReference({ subject: 'stageSubject' }),
-  prompt: z.string(),
+  prompt: z.string().min(1),
   hint: z.string().optional(),
   showValidationHints: z.boolean().optional(),
 });
@@ -16,7 +16,7 @@ export const FormFieldSchema = z.strictObject({
 export type FormField = z.infer<typeof FormFieldSchema>;
 
 export const FormSchema = z.strictObject({
-  title: z.string().optional(),
+  title: z.string().min(1),
   fields: z.array(FormFieldSchema).min(1),
 });
 

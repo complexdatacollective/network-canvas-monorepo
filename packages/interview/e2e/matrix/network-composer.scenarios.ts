@@ -575,13 +575,8 @@ export const networkComposerScenarios: InterfaceScenarios = {
           subject: { entity: 'node', type: person.id },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
-          // background.image wins over concentricCircles when both are set
-          // (NetworkComposer.tsx renders the <img> in place of
-          // ConcentricCircles whenever the asset resolves) — set both to pin
-          // that precedence.
           background: {
             image: backgroundImageAsset.assetId,
-            concentricCircles: 6,
           },
         });
         synth.addInformationStage({ title: 'Complete' });

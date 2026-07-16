@@ -577,7 +577,9 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {},
@@ -633,7 +635,9 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {},
@@ -756,6 +760,7 @@ describe('Migration V7 to V8', () => {
                 category: {
                   name: 'Category',
                   type: 'categorical',
+                  component: 'CheckboxGroup',
                   options: [
                     { label: 'A', value: 'a' },
                     { label: 'B', value: 'b' },
@@ -1041,6 +1046,7 @@ describe('Migration V7 to V8', () => {
                 name: {
                   name: 'Name',
                   type: 'text',
+                  component: 'Text',
                 },
                 isActive: {
                   name: 'IsActive',
@@ -2097,17 +2103,25 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {
             knows: {
               name: 'Knows',
               color: 'edge-color-seq-1',
-              variables: { weight: { name: 'Weight', type: 'text' } },
+              variables: {
+                weight: { name: 'Weight', type: 'text', component: 'Text' },
+              },
             },
           },
-          ego: { variables: { egoName: { name: 'EgoName', type: 'text' } } },
+          ego: {
+            variables: {
+              egoName: { name: 'EgoName', type: 'text', component: 'Text' },
+            },
+          },
         },
         stages: [
           {
@@ -2213,19 +2227,54 @@ describe('Migration V7 to V8', () => {
       }
     });
 
-    it("defaults otherVariablePrompt to 'Please specify' when no label", () => {
-      // No otherOptionLabel is present, so the migrated protocol still trips a
-      // separate Stage A cross-ref (otherOptionLabel required); assert on the
-      // migrated shape directly to isolate the otherVariablePrompt backfill.
+    it("defaults otherVariablePrompt to 'Please specify' and otherOptionLabel to 'Other' when neither is set", () => {
       const migratedRaw = migrationV7toV8.migrate(
         buildBinProtocol({ otherVariable: 'other' }),
         { name: 'Test Protocol' },
-      ) as unknown as {
-        stages: { prompts?: { otherVariablePrompt?: unknown }[] }[];
-      };
-      expect(migratedRaw.stages[0]?.prompts?.[0]?.otherVariablePrompt).toBe(
-        'Please specify',
       );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherVariablePrompt',
+          'Please specify',
+        );
+        expect(stage.prompts[0]).toHaveProperty('otherOptionLabel', 'Other');
+      }
+    });
+
+    it('backfills otherOptionLabel from an authored otherVariablePrompt', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherVariable: 'other',
+          otherVariablePrompt: 'Which other category?',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherOptionLabel',
+          'Which other category?',
+        );
+      }
+    });
+
+    it('leaves an authored otherOptionLabel untouched', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherVariable: 'other',
+          otherVariablePrompt: 'My prompt',
+          otherOptionLabel: 'My label',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty('otherOptionLabel', 'My label');
+      }
     });
 
     it('leaves an existing otherVariablePrompt untouched', () => {
@@ -2283,6 +2332,24 @@ describe('Migration V7 to V8', () => {
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).not.toHaveProperty('otherOptionLabel');
+      }
+    });
+
+    it('drops an empty-string otherVariable along with its orphans', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherVariable: '',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('otherVariable');
+        expect(stage.prompts[0]).not.toHaveProperty('otherOptionLabel');
+        expect(stage.prompts[0]).not.toHaveProperty('otherVariablePrompt');
       }
     });
 
@@ -2344,7 +2411,7 @@ describe('Migration V7 to V8', () => {
         ],
       }) as Protocol<7>;
 
-    it('drops a color outside the ord-color-seq palette', () => {
+    it('replaces a color outside the ord-color-seq palette', () => {
       const migratedRaw = migrationV7toV8.migrate(
         buildOrdinalProtocol({ color: 'coral' }),
         { name: 'Test Protocol' },
@@ -2352,7 +2419,7 @@ describe('Migration V7 to V8', () => {
       const parsed = ProtocolSchemaV8.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).not.toHaveProperty('color');
+        expect(stage.prompts[0]).toHaveProperty('color', 'ord-color-seq-1');
       }
     });
 
@@ -2368,14 +2435,27 @@ describe('Migration V7 to V8', () => {
       }
     });
 
-    it('leaves a prompt without color untouched', () => {
-      const migratedRaw = migrationV7toV8.migrate(buildOrdinalProtocol({}), {
+    it('defaults colorless prompts to the first palette color and keeps authored ones', () => {
+      const protocol = buildOrdinalProtocol({});
+      const typedStages = protocol.stages as Array<Record<string, unknown>>;
+      (typedStages[0]!.prompts as Array<Record<string, unknown>>).push(
+        { id: 'p2', text: 'Rate again', variable: 'rating' },
+        {
+          id: 'p3',
+          text: 'Rate once more',
+          variable: 'rating',
+          color: 'ord-color-seq-7',
+        },
+      );
+      const migratedRaw = migrationV7toV8.migrate(protocol, {
         name: 'Test Protocol',
       });
       const parsed = ProtocolSchemaV8.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).not.toHaveProperty('color');
+        expect(stage.prompts[0]).toHaveProperty('color', 'ord-color-seq-1');
+        expect(stage.prompts[1]).toHaveProperty('color', 'ord-color-seq-1');
+        expect(stage.prompts[2]).toHaveProperty('color', 'ord-color-seq-7');
       }
     });
   });
@@ -2470,6 +2550,262 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('Information title backfill', () => {
+    const buildInfoProtocol = (stage: Record<string, unknown>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: { ego: {} },
+        stages: [
+          {
+            id: 'info1',
+            type: 'Information',
+            items: [{ id: 'item1', type: 'text', content: 'Welcome' }],
+            ...stage,
+          },
+        ],
+      }) as Protocol<7>;
+
+    it('backfills a missing title from the stage label', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildInfoProtocol({ label: 'Welcome Screen' }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      expect(parsed.stages[0]).toHaveProperty('title', 'Welcome Screen');
+    });
+
+    it("backfills 'Information' when there is no usable label", () => {
+      const migratedRaw = migrationV7toV8.migrate(buildInfoProtocol({}), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      expect(parsed.stages[0]).toHaveProperty('title', 'Information');
+      expect(parsed.stages[0]).toHaveProperty('label', 'Stage 1');
+    });
+
+    it('leaves an authored title untouched', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildInfoProtocol({ label: 'Welcome Screen', title: 'Hello!' }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      expect(parsed.stages[0]).toHaveProperty('title', 'Hello!');
+    });
+  });
+
+  describe('NameGenerator form.title backfill', () => {
+    const buildNgFormProtocol = (form: Record<string, unknown>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
+            },
+          },
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ng1',
+            type: 'NameGenerator',
+            label: 'NG',
+            subject: { entity: 'node', type: 'person' },
+            prompts: [{ id: 'p1', text: 'Who do you know?' }],
+            form: {
+              fields: [{ variable: 'name', prompt: 'Name?' }],
+              ...form,
+            },
+          },
+        ],
+      }) as Protocol<7>;
+
+    it('backfills a missing form.title from the subject node type name', () => {
+      const migratedRaw = migrationV7toV8.migrate(buildNgFormProtocol({}), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'form' in stage) {
+        expect(stage.form).toHaveProperty('title', 'Add Person');
+      }
+    });
+
+    it('backfills an empty form.title', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildNgFormProtocol({ title: '' }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'form' in stage) {
+        expect(stage.form).toHaveProperty('title', 'Add Person');
+      }
+    });
+
+    it('leaves an authored form.title untouched', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildNgFormProtocol({ title: 'Add a friend' }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'form' in stage) {
+        expect(stage.form).toHaveProperty('title', 'Add a friend');
+      }
+    });
+  });
+
+  describe('Sociogram/Narrative background normalisation', () => {
+    const buildCanvasProtocol = (
+      type: 'Sociogram' | 'Narrative',
+      stage: Record<string, unknown>,
+    ) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                layout: { name: 'Layout', type: 'layout' },
+              },
+            },
+          },
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'canvas1',
+            type,
+            label: 'Canvas',
+            subject: { entity: 'node', type: 'person' },
+            ...(type === 'Sociogram'
+              ? {
+                  prompts: [
+                    {
+                      id: 'p1',
+                      text: 'Position people',
+                      layout: { layoutVariable: 'layout' },
+                    },
+                  ],
+                }
+              : {
+                  presets: [
+                    {
+                      id: 'preset1',
+                      label: 'Preset',
+                      layoutVariable: 'layout',
+                    },
+                  ],
+                }),
+            ...stage,
+          },
+        ],
+      }) as Protocol<7>;
+
+    const migrateAndGetBackground = (
+      type: 'Sociogram' | 'Narrative',
+      stage: Record<string, unknown>,
+    ) => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildCanvasProtocol(type, stage),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsedStage = parsed.stages[0];
+      if (!parsedStage || !('background' in parsedStage)) {
+        throw new Error('stage has no background');
+      }
+      return parsedStage.background;
+    };
+
+    it('adds a 4-ring background to a Sociogram with none', () => {
+      expect(migrateAndGetBackground('Sociogram', {})).toEqual({
+        concentricCircles: 4,
+      });
+    });
+
+    it('adds a 4-ring background to a Narrative with none', () => {
+      expect(migrateAndGetBackground('Narrative', {})).toEqual({
+        concentricCircles: 4,
+      });
+    });
+
+    it('backfills concentricCircles on an image-less background', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { skewedTowardCenter: true },
+        }),
+      ).toEqual({ concentricCircles: 4, skewedTowardCenter: true });
+    });
+
+    it('keeps a zero circle count (renders no rings)', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { concentricCircles: 0 },
+        }),
+      ).toEqual({ concentricCircles: 0 });
+    });
+
+    it('replaces a negative circle count', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { concentricCircles: -2 },
+        }),
+      ).toEqual({ concentricCircles: 4 });
+    });
+
+    it('keeps an image background and drops a leftover circle count', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { image: 'asset1', concentricCircles: 3 },
+        }),
+      ).toEqual({ image: 'asset1' });
+    });
+
+    it('strips a stray image from a Narrative background', () => {
+      expect(
+        migrateAndGetBackground('Narrative', {
+          background: { image: 'asset1', concentricCircles: 3 },
+        }),
+      ).toEqual({ concentricCircles: 3 });
+    });
+
+    it('leaves a valid circles background untouched', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { concentricCircles: 6, skewedTowardCenter: false },
+        }),
+      ).toEqual({ concentricCircles: 6, skewedTowardCenter: false });
+    });
+
+    it('replaces an array background with the default', () => {
+      expect(migrateAndGetBackground('Sociogram', { background: [] })).toEqual({
+        concentricCircles: 4,
+      });
+    });
+
+    it('strips unknown keys from a background', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', {
+          background: { useImage: true, concentricCircles: 2 },
+        }),
+      ).toEqual({ concentricCircles: 2 });
+    });
+
+    it('drops an empty-string image and falls back to circles', () => {
+      expect(
+        migrateAndGetBackground('Sociogram', { background: { image: '' } }),
+      ).toEqual({ concentricCircles: 4 });
+    });
+  });
+
   describe('NameGenerator behaviours normalisation', () => {
     const buildNgProtocol = (behaviours: Record<string, unknown>) =>
       ({
@@ -2479,7 +2815,9 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {},
@@ -2628,18 +2966,21 @@ describe('Migration V7 to V8', () => {
       }
     });
 
-    it('keeps highlight when edges.create is absent', () => {
-      const v7Protocol = {
+    const buildSociogramProtocol = (prompt: Record<string, unknown>) =>
+      ({
         schemaVersion: 7 as const,
         codebook: {
           node: {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { layoutPos: { name: 'LayoutPos', type: 'layout' } },
+              variables: {
+                layoutPos: { name: 'LayoutPos', type: 'layout' },
+                isClose: { name: 'Close', type: 'boolean' },
+              },
             },
           },
-          edge: {},
+          edge: { knows: { name: 'Knows', color: 'edge-color-seq-1' } },
           ego: {},
         },
         stages: [
@@ -2653,16 +2994,20 @@ describe('Migration V7 to V8', () => {
                 id: 'p1',
                 text: 'Position',
                 layout: { layoutVariable: 'layoutPos' },
-                highlight: { allowHighlighting: true },
+                ...prompt,
               },
             ],
           },
         ],
-      } as Protocol<7>;
+      }) as Protocol<7>;
 
-      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
-        name: 'Test Protocol',
-      });
+    it('keeps highlight when edges.create is absent', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildSociogramProtocol({
+          highlight: { allowHighlighting: true, variable: 'isClose' },
+        }),
+        { name: 'Test Protocol' },
+      );
       const parsed = ProtocolSchemaV8.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
@@ -2670,6 +3015,57 @@ describe('Migration V7 to V8', () => {
           'highlight.allowHighlighting',
           true,
         );
+      }
+    });
+
+    it('turns highlighting off when no highlight variable is set', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildSociogramProtocol({ highlight: { allowHighlighting: true } }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty(
+          'highlight.allowHighlighting',
+          false,
+        );
+      }
+    });
+
+    it('drops an edges object with neither create nor display', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildSociogramProtocol({ edges: {} }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('edges');
+      }
+    });
+
+    it('keeps a display-only edges object', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildSociogramProtocol({ edges: { display: ['knows'] } }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).toHaveProperty('edges.display', ['knows']);
+      }
+    });
+
+    it('drops an edges object whose display is an empty array', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildSociogramProtocol({ edges: { display: [] } }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('edges');
       }
     });
   });
@@ -2821,7 +3217,9 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {},
@@ -2865,7 +3263,9 @@ describe('Migration V7 to V8', () => {
             person: {
               name: 'Person',
               color: 'node-color-seq-1',
-              variables: { name: { name: 'Name', type: 'text' } },
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
             },
           },
           edge: {},
@@ -2968,6 +3368,360 @@ describe('Migration V7 to V8', () => {
       expect(migrated.stages[1]?.label).toBe('Stage 2');
       expect(migrated.stages[2]?.label).toBe('Stage 3');
       expect(migrated.stages[3]?.label).toBe('Stage 4');
+    });
+  });
+
+  describe('required free-text field backfills', () => {
+    it("backfills an empty prompt text with 'Continue'", () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { pos: { name: 'Pos', type: 'layout' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'socio1',
+            type: 'Sociogram',
+            label: 'Sociogram',
+            subject: { entity: 'node', type: 'person' },
+            prompts: [
+              { id: 'p1', text: '', layout: { layoutVariable: 'pos' } },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      const stage = (
+        migratedRaw as unknown as {
+          stages: { prompts?: { text?: unknown }[] }[];
+        }
+      ).stages[0];
+      expect(stage?.prompts?.[0]?.text).toBe('Continue');
+    });
+
+    it("backfills an empty form-field prompt from the referenced variable's name", () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                nickname: { name: 'Nickname', type: 'text', component: 'Text' },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ng1',
+            type: 'NameGenerator',
+            label: 'Generate',
+            subject: { entity: 'node', type: 'person' },
+            form: {
+              title: 'Add',
+              fields: [{ variable: 'nickname', prompt: '' }],
+            },
+            prompts: [{ id: 'p1', text: 'Who?' }],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      const stage = (
+        migratedRaw as unknown as {
+          stages: { form?: { fields?: { prompt?: unknown }[] } }[];
+        }
+      ).stages[0];
+      expect(stage?.form?.fields?.[0]?.prompt).toBe('Nickname');
+    });
+
+    it("backfills an empty form-field prompt with 'Answer' when the variable is unresolvable", () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                nickname: { name: 'Nickname', type: 'text', component: 'Text' },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ng1',
+            type: 'NameGenerator',
+            label: 'Generate',
+            subject: { entity: 'node', type: 'person' },
+            form: {
+              title: 'Add',
+              fields: [{ variable: 'ghostVar', prompt: '' }],
+            },
+            prompts: [{ id: 'p1', text: 'Who?' }],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const stage = (
+        migratedRaw as unknown as {
+          stages: { form?: { fields?: { prompt?: unknown }[] } }[];
+        }
+      ).stages[0];
+      expect(stage?.form?.fields?.[0]?.prompt).toBe('Answer');
+    });
+
+    it('backfills an empty introductionPanel title from the stage label and text with a generic', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                nickname: { name: 'Nickname', type: 'text', component: 'Text' },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'af1',
+            type: 'AlterForm',
+            label: 'About this person',
+            subject: { entity: 'node', type: 'person' },
+            form: { fields: [{ variable: 'nickname', prompt: 'Name?' }] },
+            introductionPanel: { title: '', text: '' },
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      const stage = (
+        migratedRaw as unknown as {
+          stages: { introductionPanel?: { title?: unknown; text?: unknown } }[];
+        }
+      ).stages[0];
+      expect(stage?.introductionPanel?.title).toBe('About this person');
+      expect(stage?.introductionPanel?.text).toBe('Welcome.');
+    });
+
+    it("backfills an empty Information text item content with 'Information.'", () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [
+          {
+            id: 'info1',
+            type: 'Information',
+            label: 'Intro',
+            title: 'Welcome page',
+            items: [{ id: 'i1', type: 'text', content: '' }],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      const stage = (
+        migratedRaw as unknown as {
+          stages: { items?: { content?: unknown }[] }[];
+        }
+      ).stages[0];
+      expect(stage?.items?.[0]?.content).toBe('Information.');
+    });
+
+    it('drops an Information asset item whose content (asset id) is empty', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [
+          {
+            id: 'info1',
+            type: 'Information',
+            label: 'Intro',
+            title: 'Welcome page',
+            items: [
+              { id: 'i1', type: 'asset', content: '' },
+              { id: 'i2', type: 'text', content: 'Kept' },
+            ],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      const stage = (
+        migratedRaw as unknown as {
+          stages: { items?: { id?: unknown }[] }[];
+        }
+      ).stages[0];
+      expect(stage?.items).toHaveLength(1);
+      expect(stage?.items?.[0]?.id).toBe('i2');
+    });
+
+    it("backfills an empty Narrative preset label by position ('Preset 1')", () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { pos: { name: 'Pos', type: 'layout' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'narr1',
+            type: 'Narrative',
+            label: 'Narrative',
+            subject: { entity: 'node', type: 'person' },
+            presets: [{ id: 'preset1', label: '', layoutVariable: 'pos' }],
+            background: { concentricCircles: 4 },
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      const stage = (
+        migratedRaw as unknown as {
+          stages: { presets?: { label?: unknown }[] }[];
+        }
+      ).stages[0];
+      expect(stage?.presets?.[0]?.label).toBe('Preset 1');
+    });
+
+    it("backfills an empty side-panel title by position ('Panel 1')", () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                nickname: { name: 'Nickname', type: 'text', component: 'Text' },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ng1',
+            type: 'NameGenerator',
+            label: 'Generate',
+            subject: { entity: 'node', type: 'person' },
+            form: {
+              title: 'Add person',
+              fields: [{ variable: 'nickname', prompt: 'Name?' }],
+            },
+            prompts: [{ id: 'p1', text: 'Who?' }],
+            panels: [{ id: 'panel1', dataSource: 'existing', title: '' }],
+          },
+        ],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      const stage = (
+        migratedRaw as unknown as {
+          stages: { panels?: { title?: unknown }[] }[];
+        }
+      ).stages[0];
+      expect(stage?.panels?.[0]?.title).toBe('Panel 1');
+    });
+
+    it('drops a NameGeneratorRoster searchOptions with an empty matchProperties array', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: { nickname: { name: 'Nickname', type: 'text' } },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        assetManifest: {
+          roster1: {
+            id: 'roster1',
+            name: 'roster.csv',
+            type: 'network',
+            source: 'roster.csv',
+          },
+        },
+        stages: [
+          {
+            id: 'ngr1',
+            type: 'NameGeneratorRoster',
+            label: 'Roster',
+            subject: { entity: 'node', type: 'person' },
+            dataSource: 'roster1',
+            prompts: [{ id: 'p1', text: 'Pick someone' }],
+            searchOptions: { fuzziness: 0.5, matchProperties: [] },
+          },
+        ],
+      } as unknown as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      const stage = (
+        migratedRaw as unknown as {
+          stages: Record<string, unknown>[];
+        }
+      ).stages[0];
+      expect(stage).not.toHaveProperty('searchOptions');
     });
   });
 

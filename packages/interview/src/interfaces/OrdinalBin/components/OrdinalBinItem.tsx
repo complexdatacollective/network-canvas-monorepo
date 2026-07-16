@@ -4,7 +4,7 @@ import { memo, useRef } from 'react';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import type { SortOrder } from '@codaco/protocol-validation';
+import type { SortOrder, Stage } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import NodeList from '~/components/NodeList';
@@ -47,7 +47,12 @@ export const isMissingValue = (value: OrdinalBinItemType['value']): boolean => {
   return !Number.isNaN(numeric) && numeric < 0;
 };
 
-const getPromptColorClass = (color: string | undefined) => {
+type OrdinalBinPrompt = Extract<
+  Stage,
+  { type: 'OrdinalBin' }
+>['prompts'][number];
+
+const getPromptColorClass = (color: OrdinalBinPrompt['color']) => {
   return cx(
     color === 'ord-color-seq-1' && '[--prompt-color:var(--ord-1)]',
     color === 'ord-color-seq-2' && '[--prompt-color:var(--ord-2)]',
@@ -59,7 +64,6 @@ const getPromptColorClass = (color: string | undefined) => {
     color === 'ord-color-seq-8' && '[--prompt-color:var(--ord-8)]',
     color === 'ord-color-seq-9' && '[--prompt-color:var(--ord-9)]',
     color === 'ord-color-seq-10' && '[--prompt-color:var(--ord-10)]',
-    !color && '[--prompt-color:var(--ord-1)]',
   );
 };
 
@@ -76,7 +80,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
 
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
-  const { prompt } = usePrompts();
+  const { prompt } = usePrompts<OrdinalBinPrompt>();
   const isPortrait = useMediaQuery('(orientation: portrait)');
   const track = useTrack();
   const lastBinIndexRef = useRef<Map<string, number>>(new Map());
@@ -86,9 +90,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   const isFirst = index === 0;
   const isLast = index === totalBins - 1;
 
-  const promptColorClass = getPromptColorClass(
-    (prompt as { color?: string }).color,
-  );
+  const promptColorClass = getPromptColorClass(prompt.color);
 
   const handleDrop = (metadata?: Record<string, unknown>) => {
     const meta = metadata as NcNode | undefined;

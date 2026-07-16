@@ -1,6 +1,5 @@
 'use client';
 
-import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -56,21 +55,22 @@ const Sociogram = (stageProps: SociogramProps) => {
   const interfaceRef = useRef<HTMLDivElement>(null);
 
   // Behaviour Configuration
-  const allowHighlighting = get(prompt, 'highlight.allowHighlighting', false);
-  const createEdge = get(prompt, 'edges.create', null);
+  const createEdge = prompt.edges?.create ?? null;
 
   // Display Properties
-  const layoutVariable = get(prompt, 'layout.layoutVariable');
-  const highlightAttribute = get(prompt, 'highlight.variable');
+  const layoutVariable = prompt.layout.layoutVariable;
+  // The schema's highlight union proves a variable exists whenever
+  // highlighting is enabled, so one narrowed read replaces the paired guards.
+  const highlightAttribute = prompt.highlight?.allowHighlighting
+    ? prompt.highlight.variable
+    : undefined;
   const layoutMode: 'AUTOMATIC' | 'MANUAL' = stage.behaviours?.automaticLayout
     ? 'AUTOMATIC'
     : 'MANUAL';
 
   // Background Configuration
-  const bgImageId = get(stage, 'background.image', '') || undefined;
-  const { url: backgroundImage } = useAssetUrl(bgImageId);
-  const concentricCircles = get(stage, 'background.concentricCircles');
-  const skewedTowardCenter = get(stage, 'background.skewedTowardCenter');
+  const stageBackground = stage.background;
+  const { url: backgroundImage } = useAssetUrl(stageBackground.image);
 
   const { currentStep } = useCurrentStep();
   const track = useTrack();
@@ -203,7 +203,7 @@ const Sociogram = (stageProps: SociogramProps) => {
           );
           store.getState().selectNode(null);
         }
-      } else if (allowHighlighting && highlightAttribute) {
+      } else if (highlightAttribute) {
         const node = canvasNodes.find(
           (n) => n[entityPrimaryKeyProperty] === nodeId,
         );
@@ -226,7 +226,6 @@ const Sociogram = (stageProps: SociogramProps) => {
       createEdge,
       store,
       dispatch,
-      allowHighlighting,
       highlightAttribute,
       canvasNodes,
       track,
@@ -333,15 +332,24 @@ const Sociogram = (stageProps: SociogramProps) => {
     [handleUnplaceNode],
   );
 
-  const background = backgroundImage ? (
-    <img
-      src={backgroundImage}
-      className="size-full object-cover"
-      alt="Background"
-    />
-  ) : (
-    <ConcentricCircles n={concentricCircles} skewed={skewedTowardCenter} />
-  );
+  // Branch on the schema's image/circles union: in the circles variant
+  // concentricCircles is proven present. An image renders nothing until its
+  // asset URL resolves.
+  const background =
+    stageBackground.image !== undefined ? (
+      backgroundImage ? (
+        <img
+          src={backgroundImage}
+          className="size-full object-cover"
+          alt="Background"
+        />
+      ) : null
+    ) : (
+      <ConcentricCircles
+        n={stageBackground.concentricCircles}
+        skewed={stageBackground.skewedTowardCenter}
+      />
+    );
 
   const simulationHandlers =
     layoutMode === 'AUTOMATIC'

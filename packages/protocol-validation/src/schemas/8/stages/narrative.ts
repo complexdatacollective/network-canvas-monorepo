@@ -17,7 +17,7 @@ export const narrativeStage = baseStageSchema.extend({
     .array(
       z.strictObject({
         id: z.string(),
-        label: z.string(),
+        label: z.string().min(1),
         layoutVariable: entityAttributeReference({
           subject: 'stageSubject',
         }),
@@ -48,11 +48,9 @@ export const narrativeStage = baseStageSchema.extend({
         });
       }
     }),
-  background: z
-    .strictObject({
-      concentricCircles: z.number().int().optional(),
-      skewedTowardCenter: z.boolean().optional(),
-    })
-    .optional(),
+  background: z.strictObject({
+    concentricCircles: z.number().int().nonnegative(),
+    skewedTowardCenter: z.boolean().optional(),
+  }),
   behaviours: canvasBehavioursSchema,
 });
