@@ -30,7 +30,9 @@ function git(cwd, ...args) {
 
 function initRepo() {
   const cwd = mkdtempSync(join(tmpdir(), 'release-e2e-'));
-  git(cwd, 'init', '-q');
+  // -b main: the merge-queue tests check out `main` by name, which must not
+  // depend on the host's init.defaultBranch (CI runners default to master).
+  git(cwd, 'init', '-q', '-b', 'main');
   git(cwd, 'config', 'user.email', 'ci@example.com');
   git(cwd, 'config', 'user.name', 'ci');
   return cwd;
