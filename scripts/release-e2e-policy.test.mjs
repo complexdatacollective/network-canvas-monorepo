@@ -305,6 +305,8 @@ function fakeGitHub({ jobs, failRuns = false }) {
   return async (url) => {
     if (failRuns) return { ok: false };
     if (url.includes('/actions/workflows/')) {
+      assert.match(url, /[?&]event=pull_request(?:&|$)/);
+      assert.doesNotMatch(url, /[?&]event=workflow_dispatch(?:&|$)/);
       return {
         ok: true,
         json: async () => ({
@@ -316,7 +318,7 @@ function fakeGitHub({ jobs, failRuns = false }) {
   };
 }
 
-test('merge-queue skip validates suites from the dispatched run', async () => {
+test('merge-queue skip validates suites from the native PR run', async () => {
   const { cwd, branchTip } = initMergeQueueRepo();
   git(
     cwd,

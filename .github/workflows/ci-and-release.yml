@@ -146,7 +146,7 @@ jobs:
 
   # Decides per suite whether release E2E must run for this ref: each release
   # lane requires only the suites whose subject package ships in its deploy,
-  # and a merge-group run skips suites already validated by the dispatched run
+  # and a merge-group run skips suites already validated by the native PR run
   # on an identical tree (see scripts/release-e2e-policy.mjs).
   e2e-policy:
     if: github.event_name != 'push'
