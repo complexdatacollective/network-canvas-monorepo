@@ -24,8 +24,8 @@
   "scripts": {
     "build": "node ../../scripts/with-turbo.mjs node scripts/build.mjs",
     "dev": "node ../../scripts/with-turbo.mjs --watch-deps node scripts/build.mjs --dev",
-    "test": "node scripts/build.mjs --css-only && vitest run",
-    "test:watch": "node scripts/build.mjs --css-only && vitest",
+    "test": "playwright install --with-deps chromium && node scripts/build.mjs --css-only && vitest run",
+    "test:watch": "playwright install --with-deps chromium && node scripts/build.mjs --css-only && vitest",
     "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit",
     "prepublishOnly": "pnpm build",
     "clean": "rm -rf .turbo node_modules dist .generated public/fonts"
