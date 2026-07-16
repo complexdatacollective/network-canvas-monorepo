@@ -15,7 +15,7 @@ Two failure modes this guards against: **rebuilding things that already exist**,
 
 Any feature, fix, or change in the monorepo, before writing code. **Steps 1 and 2 apply to everything** — packages, schemas, workers, utilities, UI. The **Building UI** section adds depth for anything that renders an interface.
 
-Read the repository root `AGENTS.md` at the start of Network Canvas repository tasks for the repo's current commands, architecture map, committing/PR expectations, and code standards.
+Read the repository root `AGENTS.md` (a symlink to `CLAUDE.md` — the same instructions; Claude Code loads it automatically) at the start of Network Canvas repository tasks for the repo's current commands, architecture map, committing/PR expectations, and code standards.
 
 ## Step 1 — Reuse before you build (every feature)
 
