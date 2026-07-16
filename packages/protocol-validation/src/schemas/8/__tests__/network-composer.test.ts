@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { stageSchema } from '../stages';
-import { networkComposerStage } from '../stages/network-composer';
-import { ComponentTypes } from '../variables/types';
+import { stageSchema } from '../stages/index.ts';
+import { networkComposerStage } from '../stages/network-composer.ts';
+import { ComponentTypes } from '../variables/types.ts';
 
 const validStage = {
   id: 'nc1',

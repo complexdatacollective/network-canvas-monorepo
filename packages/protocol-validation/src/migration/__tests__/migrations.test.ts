@@ -1,19 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { VersionedProtocolSchema } from '~/schemas';
-import migrationV1toV2 from '~/schemas/2/migration';
-import migrationV2toV3 from '~/schemas/3/migration';
-import migrationV4toV5 from '~/schemas/5/migration';
-import migrationV6toV7 from '~/schemas/7/migration';
-
-import { SchemaVersionDetectionError } from '../errors';
-import { MigrationChain, type ProtocolDocument } from '../index';
+import migrationV1toV2 from '../../schemas/2/migration.ts';
+import migrationV2toV3 from '../../schemas/3/migration.ts';
+import migrationV4toV5 from '../../schemas/5/migration.ts';
+import migrationV6toV7 from '../../schemas/7/migration.ts';
+import { VersionedProtocolSchema } from '../../schemas/index.ts';
+import { SchemaVersionDetectionError } from '../errors.ts';
+import { MigrationChain, type ProtocolDocument } from '../index.ts';
 import {
   detectSchemaVersion,
   getMigrationInfo,
   migrateProtocol,
   protocolMigrator,
-} from '../migrate-protocol';
+} from '../migrate-protocol.ts';
 
 describe('Protocol Migrations', () => {
   describe('detectSchemaVersion', () => {

@@ -12,53 +12,69 @@
     "dist"
   ],
   "type": "module",
-  "main": "./dist/pipeline.js",
-  "types": "./dist/pipeline.d.ts",
+  "main": "./src/pipeline.ts",
+  "types": "./src/pipeline.ts",
   "exports": {
-    "./pipeline": {
-      "types": "./dist/pipeline.d.ts",
-      "import": "./dist/pipeline.js"
+    "./pipeline": "./src/pipeline.ts",
+    "./options": "./src/options.ts",
+    "./input": "./src/input.ts",
+    "./output": "./src/output.ts",
+    "./events": "./src/events.ts",
+    "./errors": "./src/errors.ts",
+    "./services/InterviewRepository": "./src/services/InterviewRepository.ts",
+    "./services/ProtocolRepository": "./src/services/ProtocolRepository.ts",
+    "./services/Output": "./src/services/Output.ts",
+    "./layers/ZipOutput": "./src/layers/ZipOutput.ts"
+  },
+  "publishConfig": {
+    "main": "./dist/pipeline.js",
+    "types": "./dist/pipeline.d.ts",
+    "exports": {
+      "./pipeline": {
+        "types": "./dist/pipeline.d.ts",
+        "import": "./dist/pipeline.js"
+      },
+      "./options": {
+        "types": "./dist/options.d.ts",
+        "import": "./dist/options.js"
+      },
+      "./input": {
+        "types": "./dist/input.d.ts",
+        "import": "./dist/input.js"
+      },
+      "./output": {
+        "types": "./dist/output.d.ts",
+        "import": "./dist/output.js"
+      },
+      "./events": {
+        "types": "./dist/events.d.ts",
+        "import": "./dist/events.js"
+      },
+      "./errors": {
+        "types": "./dist/errors.d.ts",
+        "import": "./dist/errors.js"
+      },
+      "./services/InterviewRepository": {
+        "types": "./dist/services/InterviewRepository.d.ts",
+        "import": "./dist/services/InterviewRepository.js"
+      },
+      "./services/ProtocolRepository": {
+        "types": "./dist/services/ProtocolRepository.d.ts",
+        "import": "./dist/services/ProtocolRepository.js"
+      },
+      "./services/Output": {
+        "types": "./dist/services/Output.d.ts",
+        "import": "./dist/services/Output.js"
+      },
+      "./layers/ZipOutput": {
+        "types": "./dist/layers/ZipOutput.d.ts",
+        "import": "./dist/layers/ZipOutput.js"
+      }
     },
-    "./options": {
-      "types": "./dist/options.d.ts",
-      "import": "./dist/options.js"
-    },
-    "./input": {
-      "types": "./dist/input.d.ts",
-      "import": "./dist/input.js"
-    },
-    "./output": {
-      "types": "./dist/output.d.ts",
-      "import": "./dist/output.js"
-    },
-    "./events": {
-      "types": "./dist/events.d.ts",
-      "import": "./dist/events.js"
-    },
-    "./errors": {
-      "types": "./dist/errors.d.ts",
-      "import": "./dist/errors.js"
-    },
-    "./services/InterviewRepository": {
-      "types": "./dist/services/InterviewRepository.d.ts",
-      "import": "./dist/services/InterviewRepository.js"
-    },
-    "./services/ProtocolRepository": {
-      "types": "./dist/services/ProtocolRepository.d.ts",
-      "import": "./dist/services/ProtocolRepository.js"
-    },
-    "./services/Output": {
-      "types": "./dist/services/Output.d.ts",
-      "import": "./dist/services/Output.js"
-    },
-    "./layers/ZipOutput": {
-      "types": "./dist/layers/ZipOutput.d.ts",
-      "import": "./dist/layers/ZipOutput.js"
-    }
+    "access": "public"
   },
   "scripts": {
-    "build": "node ../../scripts/with-turbo.mjs vite build",
-    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite build --watch",
+    "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest"

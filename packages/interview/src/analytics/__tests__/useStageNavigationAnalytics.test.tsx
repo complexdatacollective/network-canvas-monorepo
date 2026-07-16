@@ -4,10 +4,9 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
-import protocol from '~/store/modules/protocol';
-import session from '~/store/modules/session';
-import ui from '~/store/modules/ui';
-
+import protocol from '../../store/modules/protocol';
+import session from '../../store/modules/session';
+import ui from '../../store/modules/ui';
 import { AnalyticsContext } from '../AnalyticsContext';
 import type { Tracker } from '../tracker';
 import { useStageNavigationAnalytics } from '../useStageNavigationAnalytics';

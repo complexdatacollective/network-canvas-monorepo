@@ -5,15 +5,15 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import { FamilyPedigreeStoreBridge } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
+
+import { FamilyPedigreeStoreBridge } from '../../FamilyPedigreeContext';
 import type {
   CommitBatch,
   FamilyPedigreeStoreApi,
   VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
-import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
-import { inferGameteProviders } from '~/interfaces/FamilyPedigree/utils/inferGameteProviders';
-
+} from '../../store';
+import { getEdgeRelationshipType } from '../../utils/edgeUtils';
+import { inferGameteProviders } from '../../utils/inferGameteProviders';
 import PersonFields from '../quickStartWizard/PersonFields';
 import { buildNodeOptions } from './buildNodeOptions';
 import {

@@ -7,20 +7,17 @@ import { type ComponentType, type ReactNode, useContext } from 'react';
 import type { SkipContext } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { FRAMING_TERMS, type FramingTerms } from '@codaco/shared-consts';
-import { useTrack } from '~/analytics/useTrack';
-import ActionButton from '~/components/ActionButton';
-import { useStageSelector } from '~/hooks/useStageSelector';
+
+import { useTrack } from '../../../../analytics/useTrack';
+import ActionButton from '../../../../components/ActionButton';
+import { useStageSelector } from '../../../../hooks/useStageSelector';
 import {
   FamilyPedigreeContext,
   FamilyPedigreeStoreBridge,
   useFamilyPedigreeStore,
-} from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
-import {
-  getFramingConfig,
-  getIntroScreen,
-} from '~/interfaces/FamilyPedigree/utils/stageConfig';
-
+} from '../../FamilyPedigreeContext';
+import type { VariableConfig } from '../../store';
+import { getFramingConfig, getIntroScreen } from '../../utils/stageConfig';
 import AdditionalParentsStep from '../quickStartWizard/AdditionalParentsStep';
 import ChildrenDetailStep from '../quickStartWizard/ChildrenDetailStep';
 import EggParentStep from '../quickStartWizard/EggParentStep';

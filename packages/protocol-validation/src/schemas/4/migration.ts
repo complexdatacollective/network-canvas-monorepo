@@ -1,4 +1,7 @@
-import { createMigration, type ProtocolDocument } from '~/migration';
+import {
+  createMigration,
+  type ProtocolDocument,
+} from '../../migration/index.ts';
 
 type NamedRecord = Record<string, { name: string; [key: string]: unknown }>;
 type OptionEntry = { value: unknown; [key: string]: unknown };

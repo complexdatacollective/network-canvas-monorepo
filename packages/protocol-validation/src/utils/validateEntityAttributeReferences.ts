@@ -1,10 +1,13 @@
-import type { Protocol } from '../schemas';
-import type { Codebook } from '../schemas/8/schema';
+import type { Codebook } from '../schemas/8/schema.ts';
+import type { Protocol } from '../schemas/index.ts';
 import {
   collectEntityAttributeReferences,
   type EntityAttributeReferenceHit,
-} from './collectEntityAttributeReferences';
-import { getVariablesForSubject, variableExists } from './validation-helpers';
+} from './collectEntityAttributeReferences.ts';
+import {
+  getVariablesForSubject,
+  variableExists,
+} from './validation-helpers.ts';
 
 export type ReferenceIssue = {
   code: 'custom';

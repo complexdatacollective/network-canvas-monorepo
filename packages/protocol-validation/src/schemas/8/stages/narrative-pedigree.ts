@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
-import { findDuplicateId } from '~/utils/validation-helpers';
 
-import { entityAttributeReference } from '../entity-attribute-reference';
-import { baseStageSchema } from './base';
+import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { baseStageSchema } from './base.ts';
 
 export const narrativePedigreeStage = baseStageSchema.extend({
   type: z.literal('NarrativePedigree'),

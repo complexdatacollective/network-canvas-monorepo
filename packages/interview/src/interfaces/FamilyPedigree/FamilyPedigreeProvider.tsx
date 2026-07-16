@@ -2,11 +2,11 @@ import { useRef } from 'react';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getStageMetadata } from '~/selectors/session';
-import { useAppDispatch } from '~/store/store';
 
+import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { useStageSelector } from '../../hooks/useStageSelector';
+import { getStageMetadata } from '../../selectors/session';
+import { useAppDispatch } from '../../store/store';
 import { FamilyPedigreeContext } from './FamilyPedigreeContext';
 import {
   createFamilyPedigreeStore,

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { baseStageSchema } from './base';
+import { baseStageSchema } from './base.ts';
 
 export const anonymisationStage = baseStageSchema.extend({
   type: z.literal('Anonymisation'),

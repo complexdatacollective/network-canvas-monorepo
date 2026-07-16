@@ -4,9 +4,9 @@ import { type CSSProperties, forwardRef, type ReactNode } from 'react';
 
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
-import PedigreeLayout from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeLayout';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
+import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
+import type { VariableConfig } from '../../FamilyPedigree/store';
 import { NotationKey } from '../components/NotationKey';
 
 type PedigreeSnapshotDocumentProps = {

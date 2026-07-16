@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { type z } from 'zod';
 import type * as core from 'zod/v4/core';
 
-import { CurrentProtocolSchema } from '../../schemas';
-import { getEntityAttributeReferenceDescriptor } from '../../schemas/8/entity-attribute-reference';
+import { getEntityAttributeReferenceDescriptor } from '../../schemas/8/entity-attribute-reference.ts';
+import { CurrentProtocolSchema } from '../../schemas/index.ts';
 
 // Count every meta-tagged node reachable by the same traversal the extractor uses.
 const countTagged = (

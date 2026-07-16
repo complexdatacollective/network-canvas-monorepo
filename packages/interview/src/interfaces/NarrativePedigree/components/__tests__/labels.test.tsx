@@ -5,8 +5,9 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import { computeNodeDisplayLabels } from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeNode';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
+
+import { computeNodeDisplayLabels } from '../../../FamilyPedigree/pedigree-layout/components/PedigreeNode';
+import type { VariableConfig } from '../../../FamilyPedigree/store';
 
 // ---------------------------------------------------------------------------
 // Constants matching the story setup (NarrativePedigree.stories.tsx)

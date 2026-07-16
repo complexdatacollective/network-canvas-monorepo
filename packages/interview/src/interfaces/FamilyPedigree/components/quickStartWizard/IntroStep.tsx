@@ -1,9 +1,10 @@
 'use client';
 
 import type { Item } from '@codaco/protocol-validation';
-import ContentItem from '~/components/ContentItem';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getIntroScreen } from '~/interfaces/FamilyPedigree/utils/stageConfig';
+
+import ContentItem from '../../../../components/ContentItem';
+import { useStageSelector } from '../../../../hooks/useStageSelector';
+import { getIntroScreen } from '../../utils/stageConfig';
 
 // The wizard chrome heading is an h2, so the intro screen's own headings must
 // sit beneath it. Allowing only h3/h4 (plus prose/lists/links) means an author's

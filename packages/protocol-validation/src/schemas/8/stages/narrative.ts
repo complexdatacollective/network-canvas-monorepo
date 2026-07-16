@@ -1,13 +1,12 @@
 import { z } from 'zod';
 
-import { findDuplicateId } from '~/utils/validation-helpers';
-
-import { NodeStageSubjectSchema } from '../common';
-import { canvasBehavioursSchema } from '../common/behaviours';
-import { entityAttributeReference } from '../entity-attribute-reference';
-import { entityTypeReference } from '../entity-type-reference';
-import { FilterSchema } from '../filters';
-import { baseStageSchema } from './base';
+import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { canvasBehavioursSchema } from '../common/behaviours.ts';
+import { NodeStageSubjectSchema } from '../common/index.ts';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { entityTypeReference } from '../entity-type-reference.ts';
+import { FilterSchema } from '../filters/index.ts';
+import { baseStageSchema } from './base.ts';
 
 export const narrativeStage = baseStageSchema.extend({
   type: z.literal('Narrative'),

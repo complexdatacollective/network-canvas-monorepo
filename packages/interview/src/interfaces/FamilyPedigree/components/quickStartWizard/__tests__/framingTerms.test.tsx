@@ -3,17 +3,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import type { FramingId } from '@codaco/shared-consts';
-import { FamilyPedigreeContext } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
-import {
-  createFamilyPedigreeStore,
-  type VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
 
-vi.mock('~/hooks/useStageSelector', () => ({
+import { FamilyPedigreeContext } from '../../../FamilyPedigreeContext';
+import { createFamilyPedigreeStore, type VariableConfig } from '../../../store';
+
+vi.mock('../../../../../hooks/useStageSelector', () => ({
   useStageSelector: () => undefined,
 }));
 
-vi.mock('~/forms/useProtocolForm', () => ({
+vi.mock('../../../../../forms/useProtocolForm', () => ({
   default: () => ({ fieldComponents: null }),
 }));
 

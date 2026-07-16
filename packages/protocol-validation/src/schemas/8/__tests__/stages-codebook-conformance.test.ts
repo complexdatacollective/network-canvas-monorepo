@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { assetSchema } from '../assets';
-import { CodebookSchema } from '../codebook/codebook';
-import { FilterSchema } from '../filters';
-import { familyPedigreeStage } from '../stages/family-pedigree';
-import { geospatialStage } from '../stages/geospatial';
-import { informationStage } from '../stages/information';
-import { sociogramStage } from '../stages/sociogram';
+import { assetSchema } from '../assets/index.ts';
+import { CodebookSchema } from '../codebook/codebook.ts';
+import { FilterSchema } from '../filters/index.ts';
+import { familyPedigreeStage } from '../stages/family-pedigree.ts';
+import { geospatialStage } from '../stages/geospatial.ts';
+import { informationStage } from '../stages/information.ts';
+import { sociogramStage } from '../stages/sociogram.ts';
 
 /**
  * Schema-conformance tests for the stage/codebook/filter/asset schemas owned by

@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Protocol } from '~/schemas';
-
-import migrationV7toV8 from '../migration';
-import ProtocolSchemaV8 from '../schema';
+import type { Protocol } from '../../index.ts';
+import migrationV7toV8 from '../migration.ts';
+import ProtocolSchemaV8 from '../schema.ts';
 
 /**
  * Comprehensive tests for V7 to V8 migration

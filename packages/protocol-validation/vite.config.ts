@@ -1,11 +1,10 @@
 /// <reference types="vitest" />
 
-import { execSync } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
-import path, { dirname, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -15,6 +14,7 @@ const relativeDeclarationSpecifier =
 const relativeDynamicDeclarationSpecifier =
   /\b(import\(\s*['"])(\.[^'"]+)(['"]\s*\))/g;
 const runtimeDeclarationExtension = /\.(?:cjs|css|js|json|mjs)$/;
+const sourceDeclarationExtension = /\.tsx?$/;
 const distSrcRoot = resolve(__dirname, 'dist/src');
 const srcRoot = resolve(__dirname, 'src');
 
@@ -38,10 +38,22 @@ const declarationTargetPath = (filePath: string, specifier: string) => {
     : `${specifier}.js`;
 };
 
-const appendJsExtension = (filePath: string, specifier: string) =>
-  runtimeDeclarationExtension.test(specifier)
-    ? specifier
-    : declarationTargetPath(filePath, specifier);
+const appendJsExtension = (filePath: string, specifier: string) => {
+  // Source now uses explicit '.ts'/'.tsx' specifiers (so Node's native ESM
+  // loader can resolve them); the published d.ts must still point at the
+  // '.js' files that ship in dist, so rewrite the extension rather than
+  // appending a second one.
+  if (runtimeDeclarationExtension.test(specifier)) {
+    return specifier;
+  }
+
+  if (sourceDeclarationExtension.test(specifier)) {
+    return specifier.replace(sourceDeclarationExtension, '.js');
+  }
+
+  // Fallback for any (unexpected) extensionless specifier.
+  return declarationTargetPath(filePath, specifier);
+};
 
 const addJsExtensionsToDeclarationSpecifiers = (
   filePath: string,
@@ -59,31 +71,7 @@ const addJsExtensionsToDeclarationSpecifiers = (
         `${prefix}${appendJsExtension(filePath, specifier)}${suffix}`,
     );
 
-const schemaPlugin = (): Plugin => {
-  return {
-    name: 'schema',
-
-    // watches the schema files for changes
-    buildStart() {
-      this.addWatchFile(path.resolve('src/schemas/'));
-    },
-    // runs when a file changes
-    watchChange(file) {
-      if (file.endsWith('zod.ts')) {
-        execSync('pnpm run zod-to-json src/schemas/8.zod.ts');
-      }
-
-      if (file.endsWith('.json')) {
-        execSync('pnpm run compile-schemas');
-      }
-    },
-  };
-};
-
 export default defineConfig({
-  resolve: {
-    tsconfigPaths: true,
-  },
   build: {
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
@@ -94,7 +82,6 @@ export default defineConfig({
     },
   },
   plugins: [
-    schemaPlugin(),
     dts({
       insertTypesEntry: true,
       beforeWriteFile: (filePath, content) => ({

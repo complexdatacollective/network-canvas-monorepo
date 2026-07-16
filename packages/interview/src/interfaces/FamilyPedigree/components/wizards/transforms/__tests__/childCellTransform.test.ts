@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
+import type { VariableConfig } from '../../../../store';
 import { childCellTransform } from '../childCellTransform';
 
 const variableConfig: VariableConfig = {

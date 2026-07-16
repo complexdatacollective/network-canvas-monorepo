@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { FilterSchema } from '../filters';
+import { FilterSchema } from '../filters/index.ts';
 
 const SkipLogicActionSchema = z.enum(['SHOW', 'SKIP']);
 export type SkipLogicAction = z.infer<typeof SkipLogicActionSchema>;

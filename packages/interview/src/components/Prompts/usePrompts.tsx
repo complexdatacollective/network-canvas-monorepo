@@ -2,9 +2,10 @@ import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import type { Prompt } from '@codaco/protocol-validation';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getPromptIndex, getPrompts } from '~/selectors/session';
-import { updatePrompt } from '~/store/modules/session';
+
+import { useStageSelector } from '../../hooks/useStageSelector';
+import { getPromptIndex, getPrompts } from '../../selectors/session';
+import { updatePrompt } from '../../store/modules/session';
 
 /**
  * @typedef {Object} Prompt

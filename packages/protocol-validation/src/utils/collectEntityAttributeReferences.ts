@@ -1,14 +1,14 @@
 import { type z } from 'zod';
 import type * as core from 'zod/v4/core';
 
-import { CurrentProtocolSchema } from '../schemas';
-import type { StageSubject } from '../schemas/8/common';
+import type { StageSubject } from '../schemas/8/common/index.ts';
 import {
   getEntityAttributeReferenceDescriptor,
   type SubjectResolution,
-} from '../schemas/8/entity-attribute-reference';
-import { getEntityTypeReferenceDescriptor } from '../schemas/8/entity-type-reference';
-import type { VariableType } from '../schemas/8/variables/types';
+} from '../schemas/8/entity-attribute-reference.ts';
+import { getEntityTypeReferenceDescriptor } from '../schemas/8/entity-type-reference.ts';
+import type { VariableType } from '../schemas/8/variables/types.ts';
+import { CurrentProtocolSchema } from '../schemas/index.ts';
 
 export type EntityAttributeReferenceHit = {
   path: (string | number)[];

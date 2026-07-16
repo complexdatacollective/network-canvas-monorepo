@@ -1,7 +1,9 @@
-import { createMigration, type ProtocolDocument } from '~/migration';
-import { traverseAndTransform } from '~/utils/traverse-and-transform';
-
-import { ordinalColorSequence } from './common/prompts';
+import {
+  createMigration,
+  type ProtocolDocument,
+} from '../../migration/index.ts';
+import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
+import { ordinalColorSequence } from './common/prompts.ts';
 
 // Operators whose operand is a categorical option value (as opposed to a count,
 // like OPTIONS_*, or a regex). Their legacy scalar operands are wrapped in a

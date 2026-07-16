@@ -11,11 +11,11 @@ import {
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
-import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
-import protocol from '~/store/modules/protocol';
-import session from '~/store/modules/session';
-import type { StageProps } from '~/types';
 
+import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import protocol from '../../../store/modules/protocol';
+import session from '../../../store/modules/session';
+import type { StageProps } from '../../../types';
 import NarrativePedigreeView from './NarrativePedigreeView';
 
 const NODE_TYPE = 'person';

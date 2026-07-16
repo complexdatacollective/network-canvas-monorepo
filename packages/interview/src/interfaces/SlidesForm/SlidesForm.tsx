@@ -31,13 +31,14 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import { useTrack } from '~/analytics/useTrack';
-import useProtocolForm from '~/forms/useProtocolForm';
-import useBeforeNext from '~/hooks/useBeforeNext';
-import useReadyForNextStage from '~/hooks/useReadyForNextStage';
-import { useScrolledToBottom } from '~/hooks/useScrolledToBottom';
-import type { Subject } from '~/selectors/forms';
-import type { BeforeNextFunction, Direction } from '~/types';
+
+import { useTrack } from '../../analytics/useTrack';
+import useProtocolForm from '../../forms/useProtocolForm';
+import useBeforeNext from '../../hooks/useBeforeNext';
+import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
+import type { Subject } from '../../selectors/forms';
+import type { BeforeNextFunction, Direction } from '../../types';
 
 type FormKind = 'alter' | 'alter_edge' | 'ego' | 'slides';
 

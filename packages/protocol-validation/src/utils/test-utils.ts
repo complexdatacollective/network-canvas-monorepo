@@ -1,4 +1,4 @@
-import type { NodeDefinition } from '~/schemas/8/codebook/definitions';
+import type { NodeDefinition } from '../schemas/8/codebook/definitions.ts';
 
 /**
  * Creates a base valid protocol for testing variations

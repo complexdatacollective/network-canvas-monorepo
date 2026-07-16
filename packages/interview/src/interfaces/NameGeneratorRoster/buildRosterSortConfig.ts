@@ -5,9 +5,9 @@ import type {
   SortType as CollectionSortType,
 } from '@codaco/fresco-ui/collection/sorting/types';
 import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { getNodeVariables } from '~/selectors/interface';
-import { mapNCType } from '~/utils/createSorter';
 
+import type { getNodeVariables } from '../../selectors/interface';
+import { mapNCType } from '../../utils/createSorter';
 import { convertNamesToUUIDs } from './helpers';
 
 type NodeVariables = ReturnType<typeof getNodeVariables>;

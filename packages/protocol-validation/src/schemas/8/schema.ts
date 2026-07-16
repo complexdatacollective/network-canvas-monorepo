@@ -5,8 +5,9 @@ import {
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
 } from '@codaco/shared-consts';
-import { collectEntityAttributeReferencesFromSchema } from '~/utils/collectEntityAttributeReferences';
-import { validateReferences } from '~/utils/validateEntityAttributeReferences';
+
+import { collectEntityAttributeReferencesFromSchema } from '../../utils/collectEntityAttributeReferences.ts';
+import { validateReferences } from '../../utils/validateEntityAttributeReferences.ts';
 import {
   entityExists,
   filterRuleAttributeExists,
@@ -15,24 +16,31 @@ import {
   getFilterRuleVariableType,
   getVariablesForSubject,
   variableExists,
-} from '~/utils/validation-helpers';
-
-import { OperatorsByVariableType } from './filters';
+} from '../../utils/validation-helpers.ts';
+import { OperatorsByVariableType } from './filters/index.ts';
 
 // Re-export all the split schemas
-export * from './assets';
-export * from './codebook';
-export * from './common';
-export * from './filters';
-export * from './stages';
-export * from './variables';
+export * from './assets/index.ts';
+export * from './codebook/index.ts';
+export * from './common/index.ts';
+export * from './filters/index.ts';
+export * from './stages/index.ts';
+export * from './variables/index.ts';
 
 // Import what we need for the ProtocolSchema
-import { assetSchema } from './assets';
-import { type Codebook, CodebookSchema, type NodeDefinition } from './codebook';
-import { ExperimentsSchema, type FormField, type StageSubject } from './common';
-import type { FilterRule } from './filters';
-import { type Prompt, stageSchema } from './stages';
+import { assetSchema } from './assets/index.ts';
+import {
+  type Codebook,
+  CodebookSchema,
+  type NodeDefinition,
+} from './codebook/index.ts';
+import {
+  ExperimentsSchema,
+  type FormField,
+  type StageSubject,
+} from './common/index.ts';
+import type { FilterRule } from './filters/index.ts';
+import { type Prompt, stageSchema } from './stages/index.ts';
 
 // Variable types that have no renderable form `component` and therefore
 // cannot be referenced by a form field.

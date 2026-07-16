@@ -7,7 +7,7 @@ import {
   SchemaVersionDetectionError,
   ValidationError,
   VersionMismatchError,
-} from '../errors';
+} from '../errors.ts';
 
 describe('Migration Errors', () => {
   describe('MigrationError', () => {

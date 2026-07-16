@@ -4,11 +4,8 @@ import type {
   RelationshipType,
   VariableValue,
 } from '@codaco/shared-consts';
-import type {
-  CommitBatch,
-  VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
 
+import type { CommitBatch, VariableConfig } from '../../../store';
 import { gameteRoleForRole } from './buildChildParentage';
 import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 

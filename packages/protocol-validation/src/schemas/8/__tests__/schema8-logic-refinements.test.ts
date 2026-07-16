@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '~/utils/test-utils';
-
-import ProtocolSchemaV8 from '../schema';
+import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import ProtocolSchemaV8 from '../schema.ts';
 
 /**
  * Tests for the schema-conformance logic-validation refinements:

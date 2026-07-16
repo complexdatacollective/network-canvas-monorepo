@@ -1,13 +1,13 @@
 import { z } from 'zod';
 
 import { VariableNameSchema } from '@codaco/shared-consts';
+
 import {
   findDuplicateName,
   getVariableNames,
-} from '~/utils/validation-helpers';
-
-import { ComponentTypes, VariableTypes } from './types';
-import { validations } from './validation';
+} from '../../../utils/validation-helpers.ts';
+import { ComponentTypes, VariableTypes } from './types.ts';
+import { validations } from './validation.ts';
 
 export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 export type VariableOption = VariableOptions[number];

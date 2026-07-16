@@ -6,7 +6,7 @@ import {
   extractProtocolFromZip,
   MAX_INFLATED_BYTES,
   NetcanvasInflationLimitError,
-} from '../extractProtocol';
+} from '../extractProtocol.ts';
 
 const buildZip = async (entries: Record<string, string>): Promise<Buffer> => {
   const zip = new JSZip();

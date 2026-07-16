@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('~/hooks/useAssetUrl', () => ({
+vi.mock('../../../hooks/useAssetUrl', () => ({
   useAssetUrl: vi.fn(),
 }));
 
@@ -12,15 +12,15 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
-import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
-import { StageMetadataContext } from '~/contexts/StageMetadataContext';
-import { ContractProvider } from '~/contract/context';
-import { useAssetUrl } from '~/hooks/useAssetUrl';
-import protocol from '~/store/modules/protocol';
-import session from '~/store/modules/session';
-import ui from '~/store/modules/ui';
-import type { RegisterBeforeNext, StageProps } from '~/types';
 
+import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
+import { ContractProvider } from '../../../contract/context';
+import { useAssetUrl } from '../../../hooks/useAssetUrl';
+import protocol from '../../../store/modules/protocol';
+import session from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
+import type { RegisterBeforeNext, StageProps } from '../../../types';
 import NetworkComposer from '../NetworkComposer';
 
 // jsdom does not implement ResizeObserver; provide a no-op stub.

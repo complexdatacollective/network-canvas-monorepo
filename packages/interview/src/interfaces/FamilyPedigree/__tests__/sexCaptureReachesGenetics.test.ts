@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
-import { resolveSex } from '~/interfaces/NarrativePedigree/genetics/resolveSex';
 
+import { resolveSex } from '../../NarrativePedigree/genetics/resolveSex';
 import { childCellTransform } from '../components/wizards/transforms/childCellTransform';
 import { egoCellTransform } from '../components/wizards/transforms/egoCellTransform';
 import { withInferredBiologicalSex } from '../deriveBiologicalSex';

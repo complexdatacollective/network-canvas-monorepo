@@ -1,5 +1,12 @@
 import { type ColumnDef } from '@tanstack/react-table';
 
+// Type-only side-effect import (erased entirely, so it never reaches Vite's
+// runtime resolver) so the `ColumnMeta` module augmentation reaches every
+// consumer of this file (directly or transitively, e.g. `ColumnHeader.tsx`
+// via `filters/types.ts`) — see the comment in ./tanstack-table.d.ts for why
+// this can't just rely on fresco-ui's own tsconfig `include`.
+import type * as _tanstackTable from './tanstack-table';
+
 export type Option = {
   label: string;
   value: string;

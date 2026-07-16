@@ -1,11 +1,13 @@
 import { z } from 'zod';
 
-import { findDuplicateName } from '~/utils/validation-helpers';
-
-import { EdgeStageSubjectSchema, NodeStageSubjectSchema } from '../common';
-import { entityAttributeReference } from '../entity-attribute-reference';
-import { ComponentTypes } from '../variables/types';
-import { baseStageSchema } from './base';
+import { findDuplicateName } from '../../../utils/validation-helpers.ts';
+import {
+  EdgeStageSubjectSchema,
+  NodeStageSubjectSchema,
+} from '../common/index.ts';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { ComponentTypes } from '../variables/types.ts';
+import { baseStageSchema } from './base.ts';
 
 // Every input control the form system can render. Layout/location variables
 // have no participant-facing control, so they are intentionally absent.

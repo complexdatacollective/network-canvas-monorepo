@@ -2,9 +2,10 @@ import { createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 
 import type { Codebook } from '@codaco/protocol-validation';
-import { getCurrentStage } from '~/selectors/session';
-import { getCodebook } from '~/store/modules/protocol';
-import type { RootState } from '~/store/store';
+
+import { getCurrentStage } from '../../../selectors/session';
+import { getCodebook } from '../../../store/modules/protocol';
+import type { RootState } from '../../../store/store';
 
 type ResolvedNodeFormField = {
   variableId: string;

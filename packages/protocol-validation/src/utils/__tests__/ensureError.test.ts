@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ensureError } from '../ensureError';
+import { ensureError } from '../ensureError.ts';
 
 describe('ensureError', () => {
   it('should return the error if value is already an Error instance', () => {

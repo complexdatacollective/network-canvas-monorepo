@@ -13,8 +13,11 @@
     "VITE_DISABLE_ANALYTICS"
   ],
   "tasks": {
+    "topo": {
+      "dependsOn": ["^topo"]
+    },
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "tsconfig*.json",
@@ -27,7 +30,7 @@
       "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
     },
     "@codaco/documentation#build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/documentation/**",
         "app/**",
@@ -62,7 +65,7 @@
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
     "@codaco/architect#build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
         "src/**",
@@ -84,7 +87,7 @@
       "outputs": ["dist/**"]
     },
     "@codaco/interviewer#build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
@@ -101,7 +104,7 @@
       "outputs": ["dist/**"]
     },
     "networkcanvas.com#build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "app/**",
         "components/**",
@@ -122,7 +125,7 @@
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
     "networkcanvas.com#typecheck": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "app/**",
         "components/**",
@@ -139,7 +142,7 @@
       "outputs": []
     },
     "networkcanvas.com#test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "app/**",
         "components/**",
@@ -156,7 +159,7 @@
       "outputs": []
     },
     "@codaco/interviewer-classic#build:web": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "index.html",
@@ -167,7 +170,7 @@
       "outputs": ["dist-web/**"]
     },
     "@codaco/architect-classic#build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "public/**",
@@ -182,7 +185,7 @@
       "outputs": ["out/**", "dist/**"]
     },
     "@codaco/site-navigation-element#build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "scripts/**",
@@ -195,7 +198,7 @@
       "outputs": ["dist/**", ".generated/**"]
     },
     "@codaco/site-navigation-element#test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "scripts/**",
@@ -208,7 +211,7 @@
       "outputs": []
     },
     "build-storybook": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/tooling/tailwind/**",
         "src/**",
@@ -221,7 +224,6 @@
       "outputs": ["storybook-static/**"]
     },
     "storybook": {
-      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
@@ -254,22 +256,19 @@
       "outputs": []
     },
     "dev": {
-      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
     "@codaco/architect#dev": {
-      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
     "@codaco/documentation#dev": {
-      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "__tests__/**",
@@ -299,7 +298,7 @@
       "cache": false
     },
     "@codaco/documentation#typecheck": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "app/**",
         "components/**",
@@ -317,7 +316,7 @@
       "outputs": []
     },
     "@codaco/architect#typecheck": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
         "src/**",
@@ -330,7 +329,7 @@
       "outputs": []
     },
     "@codaco/interviewer#typecheck": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
@@ -344,7 +343,7 @@
       "outputs": []
     },
     "@codaco/architect#test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
         "src/**",
@@ -363,7 +362,7 @@
       "outputs": []
     },
     "@codaco/interview#test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "__tests__/**",
@@ -381,7 +380,7 @@
       "outputs": []
     },
     "@codaco/protocol-validation#test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/e2e/all-interfaces/**",
         "src/**",
@@ -398,7 +397,7 @@
       "outputs": []
     },
     "@codaco/interviewer#test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
@@ -417,7 +416,7 @@
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^topo"],
       "inputs": ["src/**", "tsconfig*.json", "package.json"],
       "env": ["NODE_ENV"],
       "outputs": []

@@ -1,8 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { migrateProtocol, type VersionedProtocol, validateProtocol } from '..';
-import { extractProtocol } from '../utils/extractProtocol';
-import { downloadAndDecryptProtocols } from './utils';
+import {
+  migrateProtocol,
+  type VersionedProtocol,
+  validateProtocol,
+} from '../index.ts';
+import { extractProtocol } from '../utils/extractProtocol.ts';
+import { downloadAndDecryptProtocols } from './utils.ts';
 
 // Store protocols and their filenames separately
 const protocols: VersionedProtocol[] = [];

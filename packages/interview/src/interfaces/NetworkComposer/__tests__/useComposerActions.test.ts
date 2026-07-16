@@ -10,10 +10,10 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import protocol from '~/store/modules/protocol';
-import session, { updateNode } from '~/store/modules/session';
-import ui from '~/store/modules/ui';
 
+import protocol from '../../../store/modules/protocol';
+import session, { updateNode } from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
 import { useComposerActions } from '../useComposerActions';
 import { createUndoStore } from '../useUndoStore';
 

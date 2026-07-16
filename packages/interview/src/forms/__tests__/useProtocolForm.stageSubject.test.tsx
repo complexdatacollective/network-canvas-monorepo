@@ -9,11 +9,11 @@ import {
   type FormField,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
-import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
-import protocol from '~/store/modules/protocol';
-import session from '~/store/modules/session';
-import ui from '~/store/modules/ui';
 
+import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
+import protocol from '../../store/modules/protocol';
+import session from '../../store/modules/session';
+import ui from '../../store/modules/ui';
 import useProtocolForm from '../useProtocolForm';
 
 const NODE_TYPE = 'person';

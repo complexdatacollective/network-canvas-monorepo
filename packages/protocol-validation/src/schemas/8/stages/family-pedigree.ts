@@ -1,18 +1,18 @@
 import { z } from 'zod';
 
 import { FRAMING_IDS } from '@codaco/shared-consts';
+
 import {
   duplicateIdRefinement,
   findDuplicateId,
-} from '~/utils/validation-helpers';
-
+} from '../../../utils/validation-helpers.ts';
 import {
   FormFieldSchema,
   familyPedigreeNominationPromptSchema,
-} from '../common';
-import { entityAttributeReference } from '../entity-attribute-reference';
-import { entityTypeReference } from '../entity-type-reference';
-import { baseStageSchema } from './base';
+} from '../common/index.ts';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { entityTypeReference } from '../entity-type-reference.ts';
+import { baseStageSchema } from './base.ts';
 
 // Reserved id used by the interview for the synthetic census/scaffolding prompt;
 // an author-supplied nomination prompt may not reuse it (collides at runtime).

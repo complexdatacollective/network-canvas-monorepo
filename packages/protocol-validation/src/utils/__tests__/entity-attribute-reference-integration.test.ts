@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 // union variants with many required fields). Casting through `unknown` once at
 // the fixture boundary avoids verbose inline construction while keeping the
 // actual data shape correct for the paths under test.
-import type { Protocol } from '../../schemas';
-import { collectEntityAttributeReferences } from '../collectEntityAttributeReferences';
-import { validateEntityAttributeReferences } from '../validateEntityAttributeReferences';
+import type { Protocol } from '../../schemas/index.ts';
+import { collectEntityAttributeReferences } from '../collectEntityAttributeReferences.ts';
+import { validateEntityAttributeReferences } from '../validateEntityAttributeReferences.ts';
 
 const protocol = {
   schemaVersion: 8,

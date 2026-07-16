@@ -1,11 +1,13 @@
 import { z } from 'zod';
 
-import { findDuplicateId } from '~/utils/validation-helpers';
-
-import { NodeStageSubjectSchema, sociogramPromptSchema } from '../common';
-import { canvasBehavioursSchema } from '../common/behaviours';
-import { FilterSchema } from '../filters';
-import { baseStageSchema } from './base';
+import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { canvasBehavioursSchema } from '../common/behaviours.ts';
+import {
+  NodeStageSubjectSchema,
+  sociogramPromptSchema,
+} from '../common/index.ts';
+import { FilterSchema } from '../filters/index.ts';
+import { baseStageSchema } from './base.ts';
 
 export const sociogramStage = baseStageSchema.extend({
   type: z.literal('Sociogram'),

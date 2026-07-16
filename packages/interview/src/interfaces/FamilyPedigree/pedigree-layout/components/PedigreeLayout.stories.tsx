@@ -8,9 +8,9 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
+import { useNodeMeasurement } from '../../../../hooks/useNodeMeasurement';
+import type { VariableConfig } from '../../store';
 import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 import PedigreeKey from '../components/PedigreeKey';
 import PedigreeLayout from '../components/PedigreeLayout';

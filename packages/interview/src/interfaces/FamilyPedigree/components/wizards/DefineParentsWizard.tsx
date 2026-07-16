@@ -1,13 +1,13 @@
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
-import { FamilyPedigreeStoreBridge } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
+
+import { FamilyPedigreeStoreBridge } from '../../FamilyPedigreeContext';
 import type {
   CommitBatch,
   FamilyPedigreeStoreApi,
   VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
-
+} from '../../store';
 import { buildNodeOptions } from './buildNodeOptions';
 import { derivePreselection } from './derivePreselection';
 import {

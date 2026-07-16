@@ -22,8 +22,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "node ../../scripts/with-turbo.mjs node scripts/build.mjs",
-    "dev": "node ../../scripts/with-turbo.mjs --watch-deps node scripts/build.mjs --dev",
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --dev",
     "test": "playwright install --with-deps chromium && node scripts/build.mjs --css-only && vitest run",
     "test:watch": "playwright install --with-deps chromium && node scripts/build.mjs --css-only && vitest",
     "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit",

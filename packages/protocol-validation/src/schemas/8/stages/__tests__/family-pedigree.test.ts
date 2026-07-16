@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { familyPedigreeStage } from '../family-pedigree';
+import { familyPedigreeStage } from '../family-pedigree.ts';
 
 /**
  * Minimal valid FamilyPedigree stage base — after framing/boundaries become

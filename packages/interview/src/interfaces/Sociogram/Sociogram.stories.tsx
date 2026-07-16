@@ -4,7 +4,8 @@ import { expect, userEvent, waitFor } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
+
+import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
 
 function createSociogramInterview(seed: number) {
   const si = new SyntheticInterview(seed);

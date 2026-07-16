@@ -10,13 +10,13 @@ import {
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
-import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
-import { StageMetadataProvider } from '~/contexts/StageMetadataContext';
-import useInterviewNavigation from '~/hooks/useInterviewNavigation';
-import protocol from '~/store/modules/protocol';
-import session from '~/store/modules/session';
-import ui from '~/store/modules/ui';
 
+import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
+import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
+import protocol from '../../../store/modules/protocol';
+import session from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
 import SlidesForm from '../SlidesForm';
 
 class StubResizeObserver {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { baseStageSchema } from '../stages/base';
+import { baseStageSchema } from '../stages/base.ts';
 
 /**
  * Guard test locking the intentional divergence documented in #663.

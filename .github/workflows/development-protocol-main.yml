@@ -32,12 +32,11 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      # Build protocol-validation and dependencies
+      # Build protocol-validation (its CLI reads its own dist; dependency types
+      # resolve from src, so no dependency build is needed).
       - name: Build protocol validation
         run: |
           pnpm install --frozen-lockfile
-          # Build shared-consts first, then protocol-validation
-          pnpm --filter @codaco/shared-consts build
           pnpm build
 
       - name: Validate protocol

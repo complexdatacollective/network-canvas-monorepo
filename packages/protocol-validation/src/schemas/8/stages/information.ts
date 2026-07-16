@@ -1,8 +1,7 @@
 import { z } from 'zod';
 
-import { duplicateIdRefinement } from '~/utils/validation-helpers';
-
-import { baseStageSchema } from './base';
+import { duplicateIdRefinement } from '../../../utils/validation-helpers.ts';
+import { baseStageSchema } from './base.ts';
 
 const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 

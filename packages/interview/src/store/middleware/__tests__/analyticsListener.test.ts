@@ -2,8 +2,9 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it, vi } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { Tracker } from '~/analytics/tracker';
-import protocol from '~/store/modules/protocol';
+
+import type { Tracker } from '../../../analytics/tracker';
+import protocol from '../../modules/protocol';
 import session, {
   addEdge,
   addNode,
@@ -11,9 +12,8 @@ import session, {
   deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
-} from '~/store/modules/session';
-import ui, { setPassphrase, setPassphraseInvalid } from '~/store/modules/ui';
-
+} from '../../modules/session';
+import ui, { setPassphrase, setPassphraseInvalid } from '../../modules/ui';
 import { createAnalyticsListenerMiddleware } from '../analyticsListener';
 
 function makeTracker() {

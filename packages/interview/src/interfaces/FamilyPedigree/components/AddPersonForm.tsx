@@ -3,11 +3,11 @@ import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
-import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
-import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
-import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
+import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
+import { getNodeLabel } from '../pedigree-layout/utils/getDisplayLabel';
 import type { VariableConfig } from '../store';
+import { getEdgeRelationshipType } from '../utils/edgeUtils';
 import PersonFields from './quickStartWizard/PersonFields';
 import { buildNodeOptions } from './wizards/buildNodeOptions';
 import { partnerCandidates } from './wizards/parentCandidates';

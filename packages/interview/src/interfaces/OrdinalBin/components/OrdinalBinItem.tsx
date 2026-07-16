@@ -6,16 +6,16 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { SortOrder } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
-import { useTrack } from '~/analytics/useTrack';
-import NodeList from '~/components/NodeList';
-import { usePrompts } from '~/components/Prompts/usePrompts';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
-import useMediaQuery from '~/hooks/useMediaQuery';
-import useSortedNodeList from '~/hooks/useSortedNodeList';
-import { updateNode } from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
-import { getEntityAttributes } from '~/utils/networkEntities';
 
+import { useTrack } from '../../../analytics/useTrack';
+import NodeList from '../../../components/NodeList';
+import { usePrompts } from '../../../components/Prompts/usePrompts';
+import { useCurrentStep } from '../../../contexts/CurrentStepContext';
+import useMediaQuery from '../../../hooks/useMediaQuery';
+import useSortedNodeList from '../../../hooks/useSortedNodeList';
+import { updateNode } from '../../../store/modules/session';
+import { useAppDispatch } from '../../../store/store';
+import { getEntityAttributes } from '../../../utils/networkEntities';
 import type { OrdinalBinItem as OrdinalBinItemType } from '../useOrdinalBins';
 
 type OrdinalBinItemProps = {
