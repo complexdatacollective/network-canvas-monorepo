@@ -112,6 +112,25 @@ artifact. Do not temporarily add generation to the normal quality workflow.
 
 ## Inspect and adopt
 
+The workflow re-captures EVERY snapshot in the suite, so most artifact files
+are byte-identical to the committed baselines. List what actually changed by
+running a byte comparison from the suite's `visual-snapshots/` parent (a
+`CHANGED` file with no committed counterpart is a new snapshot; a committed
+PNG absent from the artifact belongs to a removed capture — delete it
+deliberately):
+
+```sh
+cd <suite>/e2e/visual-snapshots
+for f in $(cd "$artifact_dir"/<suite>/e2e/visual-snapshots && find . -name '*.png'); do
+  cmp -s "$f" "$artifact_dir"/<suite>/e2e/visual-snapshots/"$f" || echo "CHANGED: $f"
+done
+```
+
+Interview's map-based Geospatial captures come back byte-different on every
+run — sub-threshold Mapbox render noise that still passes `toHaveScreenshot`.
+Do not adopt them unless the Geospatial interface itself intentionally
+changed.
+
 Inspect every generated image against its committed baseline. Check the region
 that was expected to change and scan the rest for shifted layout, missing
 assets, fallback fonts, loading states, or browser-specific regressions.
