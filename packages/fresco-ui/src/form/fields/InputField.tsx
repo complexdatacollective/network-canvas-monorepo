@@ -150,6 +150,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
       nativeOnChange,
       onKeyDown,
       type = 'text',
+      inputMode,
       disabled,
       readOnly,
       ...inputProps
@@ -214,6 +215,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           // field (e.g. the glass treatment) would double-apply onto the input.
           className={inputVariants()}
           type={type}
+          inputMode={inputMode ?? (isNumber ? 'decimal' : undefined)}
           {...inputProps}
           onChange={(e) => {
             onChange?.(e.target.value);
