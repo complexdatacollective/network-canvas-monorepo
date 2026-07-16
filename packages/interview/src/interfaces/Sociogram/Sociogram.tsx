@@ -10,33 +10,37 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
-import { useTrack } from '~/analytics/useTrack';
-import Canvas from '~/canvas/Canvas';
-import { useAutoLayout } from '~/canvas/useAutoLayout';
-import { createCanvasStore, useCanvasStore } from '~/canvas/useCanvasStore';
-import ConcentricCircles from '~/components/ConcentricCircles';
-import NodeDrawer from '~/components/NodeDrawer';
-import { usePrompts } from '~/components/Prompts/usePrompts';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
-import { useAssetUrl } from '~/hooks/useAssetUrl';
-import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
-import useSortedNodeList from '~/hooks/useSortedNodeList';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getEdges, getPlacedNodes, getUnplacedNodes } from '~/selectors/canvas';
-import { makeGetCodebookForNodeType } from '~/selectors/protocol';
+
+import { useTrack } from '../../analytics/useTrack';
+import Canvas from '../../canvas/Canvas';
+import { useAutoLayout } from '../../canvas/useAutoLayout';
+import { createCanvasStore, useCanvasStore } from '../../canvas/useCanvasStore';
+import ConcentricCircles from '../../components/ConcentricCircles';
+import NodeDrawer from '../../components/NodeDrawer';
+import { usePrompts } from '../../components/Prompts/usePrompts';
+import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { useAssetUrl } from '../../hooks/useAssetUrl';
+import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
+import useSortedNodeList from '../../hooks/useSortedNodeList';
+import { useStageSelector } from '../../hooks/useStageSelector';
+import {
+  getEdges,
+  getPlacedNodes,
+  getUnplacedNodes,
+} from '../../selectors/canvas';
+import { makeGetCodebookForNodeType } from '../../selectors/protocol';
 import {
   getNetworkNodesForType,
   getPromptSortOrder,
-} from '~/selectors/session';
+} from '../../selectors/session';
 import {
   toggleEdge,
   toggleNodeAttributes,
   updateNode,
-} from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
-import type { StageProps } from '~/types';
-import { getNodeLabelAttribute } from '~/utils/getNodeLabelAttribute';
-
+} from '../../store/modules/session';
+import { useAppDispatch } from '../../store/store';
+import type { StageProps } from '../../types';
+import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
 import CollapsablePrompts from './CollapsablePrompts';
 import SimulationPanel from './SimulationPanel';
 

@@ -1,49 +1,49 @@
 import { z } from 'zod';
 
 // Export base stage schema
-export * from './base';
+export * from './base.ts';
 
 // Import all stage types
-import { alterEdgeFormStage } from './alter-edge-form';
-import { alterFormStage } from './alter-form';
-import { anonymisationStage } from './anonymisation';
-import { categoricalBinStage } from './categorical-bin';
-import { dyadCensusStage } from './dyad-census';
-import { egoFormStage } from './ego-form';
-import { familyPedigreeStage } from './family-pedigree';
-import { geospatialStage } from './geospatial';
-import { informationStage } from './information';
-import { nameGeneratorStage } from './name-generator';
-import { nameGeneratorQuickAddStage } from './name-generator-quick-add';
-import { nameGeneratorRosterStage } from './name-generator-roster';
-import { narrativeStage } from './narrative';
-import { narrativePedigreeStage } from './narrative-pedigree';
-import { networkComposerStage } from './network-composer';
-import { oneToManyDyadCensusStage } from './one-to-many-dyad-census';
-import { ordinalBinStage } from './ordinal-bin';
-import { sociogramStage } from './sociogram';
-import { tieStrengthCensusStage } from './tie-strength-census';
+import { alterEdgeFormStage } from './alter-edge-form.ts';
+import { alterFormStage } from './alter-form.ts';
+import { anonymisationStage } from './anonymisation.ts';
+import { categoricalBinStage } from './categorical-bin.ts';
+import { dyadCensusStage } from './dyad-census.ts';
+import { egoFormStage } from './ego-form.ts';
+import { familyPedigreeStage } from './family-pedigree.ts';
+import { geospatialStage } from './geospatial.ts';
+import { informationStage } from './information.ts';
+import { nameGeneratorQuickAddStage } from './name-generator-quick-add.ts';
+import { nameGeneratorRosterStage } from './name-generator-roster.ts';
+import { nameGeneratorStage } from './name-generator.ts';
+import { narrativePedigreeStage } from './narrative-pedigree.ts';
+import { narrativeStage } from './narrative.ts';
+import { networkComposerStage } from './network-composer.ts';
+import { oneToManyDyadCensusStage } from './one-to-many-dyad-census.ts';
+import { ordinalBinStage } from './ordinal-bin.ts';
+import { sociogramStage } from './sociogram.ts';
+import { tieStrengthCensusStage } from './tie-strength-census.ts';
 
 // Re-export individual stages
-export * from './alter-edge-form';
-export * from './alter-form';
-export * from './anonymisation';
-export * from './categorical-bin';
-export * from './dyad-census';
-export * from './ego-form';
-export * from './family-pedigree';
-export * from './geospatial';
-export * from './information';
-export * from './name-generator';
-export * from './name-generator-quick-add';
-export * from './name-generator-roster';
-export * from './narrative-pedigree';
-export * from './narrative';
-export * from './network-composer';
-export * from './one-to-many-dyad-census';
-export * from './ordinal-bin';
-export * from './sociogram';
-export * from './tie-strength-census';
+export * from './alter-edge-form.ts';
+export * from './alter-form.ts';
+export * from './anonymisation.ts';
+export * from './categorical-bin.ts';
+export * from './dyad-census.ts';
+export * from './ego-form.ts';
+export * from './family-pedigree.ts';
+export * from './geospatial.ts';
+export * from './information.ts';
+export * from './name-generator.ts';
+export * from './name-generator-quick-add.ts';
+export * from './name-generator-roster.ts';
+export * from './narrative-pedigree.ts';
+export * from './narrative.ts';
+export * from './network-composer.ts';
+export * from './one-to-many-dyad-census.ts';
+export * from './ordinal-bin.ts';
+export * from './sociogram.ts';
+export * from './tie-strength-census.ts';
 
 // Combine all stage types
 const stageSchemas = [

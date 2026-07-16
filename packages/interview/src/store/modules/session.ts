@@ -18,19 +18,19 @@ import {
   type StageMetadata,
   type VariableValue,
 } from '@codaco/shared-consts';
-import { generateSecureAttributes } from '~/interfaces/Anonymisation/utils';
+
+import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
 import {
   makeGetCodebookVariablesForEdgeType,
   makeGetCodebookVariablesForNodeType,
-} from '~/selectors/protocol';
+} from '../../selectors/protocol';
 import {
   getCurrentStageId,
   getPromptId,
   getPrompts,
   makeGetNodeById,
-} from '~/selectors/session';
-import { getDefaultAttributesForEntityType } from '~/utils/getDefaultAttributesForEntityType';
-
+} from '../../selectors/session';
+import { getDefaultAttributesForEntityType } from '../../utils/getDefaultAttributesForEntityType';
 import { createAppAsyncThunk } from '../createAppAsyncThunk';
 import { getShouldEncryptNames } from './protocol';
 

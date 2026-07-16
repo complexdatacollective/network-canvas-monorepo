@@ -3,8 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type {
   InterviewAnalyticsMetadata,
   InterviewPayload,
-} from '~/contract/types';
-
+} from '../../contract/types';
 import { computeSuperProperties } from '../superProperties';
 
 const fixturePayload = {

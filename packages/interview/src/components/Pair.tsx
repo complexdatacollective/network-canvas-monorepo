@@ -5,9 +5,10 @@ import { motion } from 'motion/react';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { EdgeColor } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
-import Node from '~/components/ConnectedNode';
-import { useNodeLabel } from '~/interfaces/Anonymisation/useNodeLabel';
-import { edgeColorMap } from '~/utils/edgeColorMap';
+
+import { useNodeLabel } from '../interfaces/Anonymisation/useNodeLabel';
+import { edgeColorMap } from '../utils/edgeColorMap';
+import Node from './ConnectedNode';
 
 const pairVariants = {
   initial: (isForwards: boolean) => ({

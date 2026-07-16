@@ -5,20 +5,19 @@ import Form from '@codaco/fresco-ui/form/Form';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FramingId } from '@codaco/shared-consts';
 
-vi.mock('~/hooks/useStageSelector', () => ({
+vi.mock('../../../../../../hooks/useStageSelector', () => ({
   useStageSelector: () => undefined,
 }));
 
-vi.mock('~/forms/useProtocolForm', () => ({
+vi.mock('../../../../../../forms/useProtocolForm', () => ({
   default: () => ({ fieldComponents: null }),
 }));
 
-import { FamilyPedigreeContext } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
+import { FamilyPedigreeContext } from '../../../../FamilyPedigreeContext';
 import {
   createFamilyPedigreeStore,
   type VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
-
+} from '../../../../store';
 import BioTriadStep, { BioTriadConfigProvider } from '../BioTriadStep';
 
 const testConfig: VariableConfig = {

@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { CurrentProtocolSchema, validateProtocol } from '..';
+import { CurrentProtocolSchema, validateProtocol } from '../index.ts';
 
 // packages/protocols is a pure-data package with no test runner, so this test
 // is co-located here (which already runs vitest) and reads the e2e fixture by

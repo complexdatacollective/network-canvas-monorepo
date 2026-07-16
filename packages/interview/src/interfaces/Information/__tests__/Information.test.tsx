@@ -5,11 +5,11 @@ import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { Item } from '@codaco/protocol-validation';
-import { ContractProvider } from '~/contract/context';
-import type { ResolvedAsset } from '~/contract/types';
-import protocol from '~/store/modules/protocol';
-import type { StageProps } from '~/types';
 
+import { ContractProvider } from '../../../contract/context';
+import type { ResolvedAsset } from '../../../contract/types';
+import protocol from '../../../store/modules/protocol';
+import type { StageProps } from '../../../types';
 import Information from '../Information';
 
 type InformationStage = StageProps<'Information'>['stage'];

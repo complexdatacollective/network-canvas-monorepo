@@ -3,11 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 
-vi.mock('~/hooks/useStageSelector', () => ({
+vi.mock('../../../../../hooks/useStageSelector', () => ({
   useStageSelector: () => undefined,
 }));
 
-vi.mock('~/forms/useProtocolForm', () => ({
+vi.mock('../../../../../forms/useProtocolForm', () => ({
   default: () => ({ fieldComponents: null }),
 }));
 

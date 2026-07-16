@@ -23,8 +23,8 @@ import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { entityAttributesProperty } from '@codaco/shared-consts';
-import { useStageSelector } from '~/hooks/useStageSelector';
 
+import { useStageSelector } from '../../../hooks/useStageSelector';
 import { buildPedigreeDialog } from '../buildPedigreeDialog';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
 import type { VariableConfig } from '../store';

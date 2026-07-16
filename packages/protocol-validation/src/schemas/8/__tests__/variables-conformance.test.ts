@@ -5,7 +5,7 @@ import {
   EgoVariablesSchema,
   VariableSchema,
   VariablesSchema,
-} from '../variables/variable';
+} from '../variables/variable.ts';
 
 /**
  * Schema-conformance tests for the variable SHAPE refinements surfaced by the

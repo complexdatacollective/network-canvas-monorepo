@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { BIOLOGICAL_SEX_VALUES } from '../family-pedigree';
 import {
   FRAMING_IDS,
   FRAMING_AUTHOR_LABELS,
   FRAMING_TERMS,
-} from '../family-pedigree-framing';
+} from '../family-pedigree-framing.ts';
+import { BIOLOGICAL_SEX_VALUES } from '../family-pedigree.ts';
 
 describe('family-pedigree-framing', () => {
   it('has exactly two framings with author labels', () => {

@@ -6,11 +6,12 @@ import {
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
-import { usePrompts } from '~/components/Prompts/usePrompts';
-import useSortedNodeList from '~/hooks/useSortedNodeList';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { makeGetCodebookVariableById } from '~/selectors/protocol';
-import { getNetworkNodesForType } from '~/selectors/session';
+
+import { usePrompts } from '../../components/Prompts/usePrompts';
+import useSortedNodeList from '../../hooks/useSortedNodeList';
+import { useStageSelector } from '../../hooks/useStageSelector';
+import { makeGetCodebookVariableById } from '../../selectors/protocol';
+import { getNetworkNodesForType } from '../../selectors/session';
 
 export type OrdinalBinItem = {
   label: string;

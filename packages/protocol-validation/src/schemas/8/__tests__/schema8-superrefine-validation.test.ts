@@ -5,9 +5,9 @@ import {
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
 } from '@codaco/shared-consts';
-import { createBaseProtocol } from '~/utils/test-utils';
 
-import ProtocolSchemaV8 from '../schema';
+import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import ProtocolSchemaV8 from '../schema.ts';
 
 /**
  * Comprehensive tests for Protocol Schema V8 superrefine validation behavior

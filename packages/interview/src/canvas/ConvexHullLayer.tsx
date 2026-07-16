@@ -6,8 +6,9 @@ import type {
   VariableOptionValue,
 } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
-import { getGroupKeys } from '~/canvas/groupMembership';
-import type { CanvasStoreApi } from '~/canvas/useCanvasStore';
+
+import { getGroupKeys } from './groupMembership';
+import type { CanvasStoreApi } from './useCanvasStore';
 
 type ConvexHullLayerProps = {
   store: CanvasStoreApi;

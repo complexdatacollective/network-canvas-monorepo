@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { type z } from 'zod';
 import type * as core from 'zod/v4/core';
 
-import { CurrentProtocolSchema } from '../../schemas';
-import { getEntityTypeReferenceDescriptor } from '../../schemas/8/entity-type-reference';
+import { getEntityTypeReferenceDescriptor } from '../../schemas/8/entity-type-reference.ts';
+import { CurrentProtocolSchema } from '../../schemas/index.ts';
 
 // Count every meta-tagged node reachable by the same traversal the extractor
 // uses (mirrors entity-attribute-reference-coverage).

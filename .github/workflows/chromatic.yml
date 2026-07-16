@@ -61,7 +61,6 @@ jobs:
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
-            scripts/with-turbo.mjs
             tooling/tailwind
             turbo.json
           )

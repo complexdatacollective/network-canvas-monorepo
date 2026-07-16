@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { entityAttributeReference } from '~/schemas/8/entity-attribute-reference';
-import { entityTypeReference } from '~/schemas/8/entity-type-reference';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { entityTypeReference } from '../entity-type-reference.ts';
 
 // Operators valid when checking entity type existence (no attribute specified)
 export const TypeLevelOperators = z.enum(['EXISTS', 'NOT_EXISTS']);

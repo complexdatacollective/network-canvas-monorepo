@@ -8,21 +8,21 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
-import { useTrack } from '~/analytics/useTrack';
-import Canvas from '~/canvas/Canvas';
-import ConvexHullLayer from '~/canvas/ConvexHullLayer';
-import { useAutoLayout } from '~/canvas/useAutoLayout';
-import { createCanvasStore } from '~/canvas/useCanvasStore';
-import ConcentricCircles from '~/components/ConcentricCircles';
-import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
-import { useStageSelector } from '~/hooks/useStageSelector';
+
+import { useTrack } from '../../analytics/useTrack';
+import Canvas from '../../canvas/Canvas';
+import ConvexHullLayer from '../../canvas/ConvexHullLayer';
+import { useAutoLayout } from '../../canvas/useAutoLayout';
+import { createCanvasStore } from '../../canvas/useCanvasStore';
+import ConcentricCircles from '../../components/ConcentricCircles';
+import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
+import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   getCategoricalOptions,
   getNetworkEdges,
   getNetworkNodes,
-} from '~/selectors/session';
-import type { StageProps } from '~/types';
-
+} from '../../selectors/session';
+import type { StageProps } from '../../types';
 import Annotations, { type AnnotationsHandle } from './Annotations';
 import BehavioursPanel from './BehavioursPanel';
 import PresetSwitcher from './PresetSwitcher';

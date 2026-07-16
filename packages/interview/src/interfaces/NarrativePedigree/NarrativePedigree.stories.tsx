@@ -2,8 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
-import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
-
+import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
 import { buildComprehensivePedigree } from './comprehensivePedigreeFixture';
 
 // The NarrativePedigree stage sits at index 1 (its FamilyPedigree source is index

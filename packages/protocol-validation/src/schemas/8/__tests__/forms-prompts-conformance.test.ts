@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { NodeDefinition } from '~/schemas/8/codebook/definitions';
-
-import ProtocolSchemaV8 from '../schema';
+import type { NodeDefinition } from '../codebook/definitions.ts';
+import ProtocolSchemaV8 from '../schema.ts';
 
 /**
  * Schema-conformance refinements for forms and prompts:

@@ -44,8 +44,8 @@ consumers import them in order:
 ```css
 /* styles/globals.css */
 @import '@codaco/tailwind-config/fresco.css'; /* Tailwind v4 + theme + plugins + fonts */
-@import '@codaco/fresco-ui/styles.css'; /* @source for fresco-ui's dist */
-@import '@codaco/interview/styles.css'; /* @source for interview's dist */
+@import '@codaco/fresco-ui/styles.css'; /* @source glue for fresco-ui's classes */
+@import '@codaco/interview/styles.css'; /* @source glue for interview's classes */
 ```
 
 **Do not also `@import "tailwindcss"` yourself.** That import lives
@@ -55,10 +55,13 @@ utilities.
 
 Each of `@codaco/fresco-ui/styles.css` and `@codaco/interview/styles.css`
 is a tiny file containing only a `@source "./**/*.{js,ts,tsx}"`
-directive scoped to that package's compiled JS in `dist/`. With both
-imported, Tailwind's class scanner walks both packages' output and
-emits every utility class the components reference. Hosts no longer
-need to write `@source '../node_modules/...'` lines themselves.
+directive scoped to that package's own module files. The glob resolves
+relative to wherever the imported `styles.css` sits — the package's
+`src/` tree when consumed from source (as workspace hosts do), or the
+mirrored `dist/` copy for an npm install. With both imported, Tailwind's
+class scanner walks both packages and emits every utility class the
+components reference. Hosts no longer need to write
+`@source '../node_modules/...'` lines themselves.
 
 `@codaco/tailwind-config/fresco.css` bundles both the default and
 interview theme variants. Shell renders `<main data-theme-interview>`

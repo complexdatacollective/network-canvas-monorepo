@@ -6,7 +6,8 @@ import {
   type NcEdge,
   type RelationshipType,
 } from '@codaco/shared-consts';
-import { getCurrentStage } from '~/selectors/session';
+
+import { getCurrentStage } from '../../../selectors/session';
 
 /**
  * Reads the relationship type from an edge. `relationshipType` is a categorical

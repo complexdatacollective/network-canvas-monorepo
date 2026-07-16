@@ -3,14 +3,15 @@
  *
  * Import order matters:
  *   1. Fresco foundation (Tailwind runtime + theme + plugins + variants)
- *   2. Explicit @source for the fresco-ui compiled output so Tailwind's
- *      class scanner emits the utilities those components reference.
+ *   2. Explicit @source for the fresco-ui source so Tailwind's class
+ *      scanner emits the utilities those components reference.
  */
 @import '@codaco/tailwind-config/fresco.css';
 
-/* The package's own styles.css uses a dist-relative @source that can't be
-   resolved from here, so point Tailwind at the compiled output directly. */
-@source '../node_modules/@codaco/fresco-ui/dist/**/*.js';
+/* The package's own styles.css uses a self-relative @source that resolves
+   against packages/fresco-ui/src, not this app's node_modules, so point
+   Tailwind at the source tree directly. */
+@source '../node_modules/@codaco/fresco-ui/src/**/*.{ts,tsx}';
 
 /* The Fresco theme resets the text scale; re-add the slightly-smaller-than
    -base size used for secondary and meta copy. */

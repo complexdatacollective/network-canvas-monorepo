@@ -5,7 +5,8 @@ import { useId } from 'react';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { FramingId } from '@codaco/shared-consts';
-import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
+
+import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
 
 type FramingConfig =
   | { mode: 'fixed'; value: FramingId }

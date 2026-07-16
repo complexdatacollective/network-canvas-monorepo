@@ -4,20 +4,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { SortRule } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
-import { useTrack } from '~/analytics/useTrack';
-import { ConnectedMotionNode } from '~/components/ConnectedNode';
-import NodeList from '~/components/NodeList';
-import Panel from '~/components/Panel';
-import Prompts from '~/components/Prompts';
-import { usePrompts } from '~/components/Prompts/usePrompts';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
-import useBeforeNext from '~/hooks/useBeforeNext';
-import useSortedNodeList from '~/hooks/useSortedNodeList';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getNetworkEdges, getNetworkNodesForType } from '~/selectors/session';
-import { edgeExists, toggleEdge } from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
-import type { StageProps } from '~/types';
+
+import { useTrack } from '../../analytics/useTrack';
+import { ConnectedMotionNode } from '../../components/ConnectedNode';
+import NodeList from '../../components/NodeList';
+import Panel from '../../components/Panel';
+import Prompts from '../../components/Prompts';
+import { usePrompts } from '../../components/Prompts/usePrompts';
+import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import useBeforeNext from '../../hooks/useBeforeNext';
+import useSortedNodeList from '../../hooks/useSortedNodeList';
+import { useStageSelector } from '../../hooks/useStageSelector';
+import {
+  getNetworkEdges,
+  getNetworkNodesForType,
+} from '../../selectors/session';
+import { edgeExists, toggleEdge } from '../../store/modules/session';
+import { useAppDispatch } from '../../store/store';
+import type { StageProps } from '../../types';
 
 type OneToManyDyadCensusProps = StageProps<'OneToManyDyadCensus'>;
 

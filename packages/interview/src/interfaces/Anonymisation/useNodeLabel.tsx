@@ -9,9 +9,9 @@ import {
   entitySecureAttributesMeta,
   type NcNode,
 } from '@codaco/shared-consts';
-import { makeGetCodebookForNodeType } from '~/selectors/protocol';
-import { getNodeLabelAttribute } from '~/utils/getNodeLabelAttribute';
 
+import { makeGetCodebookForNodeType } from '../../selectors/protocol';
+import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
 import { useNodeAttributes } from './useNodeAttributes';
 import { usePassphrase } from './usePassphrase';
 import { UnauthorizedError } from './utils';

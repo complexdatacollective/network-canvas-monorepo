@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
-import { findDuplicateId } from '~/utils/validation-helpers';
-
-import { geospatialPromptSchema, NodeStageSubjectSchema } from '../common';
-import { FilterSchema } from '../filters';
-import { baseStageSchema } from './base';
+import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import {
+  geospatialPromptSchema,
+  NodeStageSubjectSchema,
+} from '../common/index.ts';
+import { FilterSchema } from '../filters/index.ts';
+import { baseStageSchema } from './base.ts';
 
 const mapboxStyleOptions = [
   { label: 'Standard', value: 'mapbox://styles/mapbox/standard' },

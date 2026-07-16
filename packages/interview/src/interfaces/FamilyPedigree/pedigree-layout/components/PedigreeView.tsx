@@ -7,24 +7,25 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Node from '@codaco/fresco-ui/Node';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
-import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import AddPersonFields from '~/interfaces/FamilyPedigree/components/AddPersonForm';
-import PersonFields from '~/interfaces/FamilyPedigree/components/quickStartWizard/PersonFields';
-import { openAddChildWizard } from '~/interfaces/FamilyPedigree/components/wizards/AddChildWizard';
-import { openAddParentWizard } from '~/interfaces/FamilyPedigree/components/wizards/AddParentWizard';
-import { openAddSiblingWizard } from '~/interfaces/FamilyPedigree/components/wizards/AddSiblingWizard';
-import { openDefineParentsWizard } from '~/interfaces/FamilyPedigree/components/wizards/DefineParentsWizard';
+
+import { useNodeMeasurement } from '../../../../hooks/useNodeMeasurement';
+import { useStageSelector } from '../../../../hooks/useStageSelector';
+import AddPersonFields from '../../components/AddPersonForm';
+import PersonFields from '../../components/quickStartWizard/PersonFields';
+import { openAddChildWizard } from '../../components/wizards/AddChildWizard';
+import { openAddParentWizard } from '../../components/wizards/AddParentWizard';
+import { openAddSiblingWizard } from '../../components/wizards/AddSiblingWizard';
+import { openDefineParentsWizard } from '../../components/wizards/DefineParentsWizard';
 import {
   addableParentTypeOptions,
   countGeneticParents,
-} from '~/interfaces/FamilyPedigree/components/wizards/parentTypeOptions';
+} from '../../components/wizards/parentTypeOptions';
 import {
   FamilyPedigreeContext,
   FamilyPedigreeStoreBridge,
   useFamilyPedigreeStore,
-} from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
+} from '../../FamilyPedigreeContext';
+import type { VariableConfig } from '../../store';
 import {
   getEdgeRelationshipType,
   getEdgeTypeKey,
@@ -32,7 +33,7 @@ import {
   getIsActiveVariable,
   getIsGestationalCarrierVariable,
   getRelationshipTypeVariable,
-} from '~/interfaces/FamilyPedigree/utils/edgeUtils';
+} from '../../utils/edgeUtils';
 import {
   getBiologicalSexVariable,
   getEgoVariable,
@@ -40,8 +41,7 @@ import {
   getNodeTypeKey,
   getRelationshipVariable,
   getResolvedNodeFormFields,
-} from '~/interfaces/FamilyPedigree/utils/nodeUtils';
-
+} from '../../utils/nodeUtils';
 import NodeContextMenu, { type NodeContextMenuAction } from './NodeContextMenu';
 import PedigreeLayout from './PedigreeLayout';
 import PedigreeNode, { computeNodeDisplayLabels } from './PedigreeNode';

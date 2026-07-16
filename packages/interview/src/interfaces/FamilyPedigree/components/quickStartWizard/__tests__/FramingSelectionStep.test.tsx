@@ -2,13 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { FramingId } from '@codaco/shared-consts';
-import { FamilyPedigreeContext } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
-import {
-  createFamilyPedigreeStore,
-  type VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
 
-vi.mock('~/hooks/useStageSelector', () => ({
+import { FamilyPedigreeContext } from '../../../FamilyPedigreeContext';
+import { createFamilyPedigreeStore, type VariableConfig } from '../../../store';
+
+vi.mock('../../../../../hooks/useStageSelector', () => ({
   useStageSelector: () => undefined,
 }));
 

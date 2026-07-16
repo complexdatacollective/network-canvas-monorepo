@@ -1029,11 +1029,11 @@ importers:
         specifier: 'catalog:'
         version: 8.0.2(@capacitor/core@8.4.0)
       '@codaco/network-exporters':
-        specifier: workspace:*
-        version: link:../../packages/network-exporters
+        specifier: npm:@codaco/network-exporters@^1.1.3
+        version: 1.1.3
       '@codaco/network-query':
-        specifier: workspace:*
-        version: link:../../packages/network-query
+        specifier: npm:@codaco/network-query@^1.2.0
+        version: 1.2.0
       archiver:
         specifier: ^7.0.1
         version: 7.0.1
@@ -3051,11 +3051,25 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@codaco/network-exporters@1.1.3':
+    resolution: {integrity: sha512-f7ar+UFPkT9BDN9N+tlIir2Hvbu4uEjmMNrjE7uEbtfvieCdfuIJmlx1joHE/960QZYu96+NEOSNpt9L/sAfBA==}
+
+  '@codaco/network-query@1.2.0':
+    resolution: {integrity: sha512-1r7hQVTBma3/TYG6wPLtztuSbu7oJXbmm7e8BEvBhsUGHAjB3RsSWZw5DbyfXxagiz3vSiCe6Oq1uBydA5GGrQ==}
+
+  '@codaco/protocol-validation@11.9.0':
+    resolution: {integrity: sha512-AMSU9nf3Bf8bxvPNW0BdxGVmE5t0vNpnGc5XuWr6OldCUxMUqDponO/YiY+x/AYnE/6KdQDQHvYgYk8nk502Iw==}
+    hasBin: true
+
   '@codaco/protocol-validation@3.0.0':
     resolution: {integrity: sha512-23/nKuVKyKzHfEzQKVFFpCIibe+j3biLPuYKK+Ly7kyNygeEO/MydMGHWYTQUoAKUjIlBXRryGhdHt5uen9/8A==}
 
   '@codaco/shared-consts@0.0.2':
     resolution: {integrity: sha512-qPmZQm50NhIuQGznQx00kdCxXJ/rOW8UkCrLPQObmPFjq3iIOTwBjAWddq7gRBsDByRfdB/gMCwcd7Pay2aOFQ==}
+
+  '@codaco/shared-consts@5.5.0':
+    resolution: {integrity: sha512-n2GJiGcZm8X+ZAtU27RY07zKL2l5nLakdoT+3kX/jnDw+E8JGSOAB+/RdqkAzbihFgi2272eWBwvHpsho6v4dg==}
+    engines: {node: '>=20.0.0'}
 
   '@codaco/ui@5.8.6':
     resolution: {integrity: sha512-vjrAI2YPvzg55F5EpVXae7RAZzIpqTsUSjUcQ/laPaH3ZWjVgMeiMEFPCE+C85Oe16rNh0iOMN/XU7kxGaK4Vg==}
@@ -15621,9 +15635,37 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20260526.1':
     optional: true
 
+  '@codaco/network-exporters@1.1.3':
+    dependencies:
+      '@codaco/protocol-validation': 11.9.0
+      '@codaco/shared-consts': 5.5.0
+      '@xmldom/xmldom': 0.9.10
+      effect: 3.21.2
+      es-toolkit: 1.47.0
+      fflate: 0.8.3
+      ohash: 2.0.11
+      sanitize-filename: 1.6.4
+      zod: 4.4.3
+
+  '@codaco/network-query@1.2.0':
+    dependencies:
+      '@codaco/protocol-validation': 11.9.0
+      '@codaco/shared-consts': 5.5.0
+      es-toolkit: 1.47.0
+
+  '@codaco/protocol-validation@11.9.0':
+    dependencies:
+      '@codaco/shared-consts': 5.5.0
+      ohash: 2.0.11
+      zod: 4.4.3
+
   '@codaco/protocol-validation@3.0.0': {}
 
   '@codaco/shared-consts@0.0.2': {}
+
+  '@codaco/shared-consts@5.5.0':
+    dependencies:
+      zod: 4.4.3
 
   '@codaco/ui@5.8.6(@types/react@19.2.17)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)':
     dependencies:

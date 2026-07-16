@@ -10,7 +10,7 @@ import {
 
 const externalDataMock = vi.fn();
 
-vi.mock('~/hooks/useExternalData', () => ({
+vi.mock('../../../../hooks/useExternalData', () => ({
   default: (...args: unknown[]) => externalDataMock(...args),
 }));
 
@@ -19,22 +19,22 @@ vi.mock('~/hooks/useExternalData', () => ({
 const stageSubject = { entity: 'node', type: 'person' };
 const panelNodesSelector = vi.fn();
 
-vi.mock('~/hooks/useStageSelector', () => ({
+vi.mock('../../../../hooks/useStageSelector', () => ({
   useStageSelector: (selector: unknown) =>
     selector === panelNodesSelector ? panelNodesSelector() : stageSubject,
 }));
 
-vi.mock('~/selectors/session', () => ({
+vi.mock('../../../../selectors/session', () => ({
   getStageSubject: 'getStageSubject',
 }));
 
-vi.mock('~/selectors/name-generator', () => ({
+vi.mock('../../../../selectors/name-generator', () => ({
   getPanelNodes: () => panelNodesSelector,
 }));
 
 // NodeList pulls in heavy dnd/collection machinery; stub it to a marker that
 // reports the number of items it was asked to render.
-vi.mock('~/components/NodeList', () => ({
+vi.mock('../../../../components/NodeList', () => ({
   default: ({ items }: { items: NcNode[] }) => (
     <div data-testid="node-list">{items.length}</div>
   ),

@@ -4,16 +4,17 @@ import { useSelector } from 'react-redux';
 
 import type { Stage } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
-import { usePrompts } from '~/components/Prompts/usePrompts';
+
+import { usePrompts } from '../../components/Prompts/usePrompts';
 import useSortedNodeList, {
   getSortedNodeList,
-} from '~/hooks/useSortedNodeList';
-import { useStageSelector } from '~/hooks/useStageSelector';
+} from '../../hooks/useSortedNodeList';
+import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   getAllVariableUUIDsByEntity,
   makeGetCodebookVariableById,
-} from '~/selectors/protocol';
-import { getNetworkNodesForType } from '~/selectors/session';
+} from '../../selectors/protocol';
+import { getNetworkNodesForType } from '../../selectors/session';
 
 const matchVariableValue = (
   node: NcNode,

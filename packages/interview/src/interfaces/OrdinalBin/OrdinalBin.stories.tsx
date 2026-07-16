@@ -4,7 +4,8 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import type { VariableOption } from '@codaco/protocol-validation';
-import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
+
+import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
 
 const ORDINAL_LABELS = [
   'Strongly Disagree',

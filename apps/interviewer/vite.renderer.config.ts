@@ -122,10 +122,9 @@ export function createRendererConfig({
       // resolves both against the same React instance. Without this, a
       // stale dep cache can carry over a separately-bundled copy.
       include: ['swiper', 'swiper/react'],
-      // Workspace libraries are consumed as built `dist` and kept fresh by
-      // their `dev` watchers (`with-turbo --with-deps`); exclude them from
-      // pre-bundling so the dev server resolves the current `dist` rather than
-      // a stale pre-bundle.
+      // Workspace packages resolve to raw TypeScript source; excluded from
+      // pre-bundling so Vite transforms them through its own pipeline rather
+      // than attempting to pre-bundle them.
       exclude: [
         '@codaco/fresco-ui',
         '@codaco/interview',

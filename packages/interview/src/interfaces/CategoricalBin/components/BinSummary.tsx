@@ -1,6 +1,7 @@
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NcNode } from '@codaco/shared-consts';
-import { useNodeLabel } from '~/interfaces/Anonymisation/useNodeLabel';
+
+import { useNodeLabel } from '../../Anonymisation/useNodeLabel';
 
 type BinSummaryProps = {
   nodes: NcNode[];

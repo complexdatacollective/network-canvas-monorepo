@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { entityAttributeReference } from '../entity-attribute-reference';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
 
 export const FormFieldSchema = z.strictObject({
   // Architect assigns a stable id (uuid) on creation so the editor's

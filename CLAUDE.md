@@ -54,55 +54,59 @@ pnpm typecheck
 pnpm knip
 ```
 
-### Running tasks through turbo
+### Source-first workspace packages
 
-Turbo's dependency graph (`dependsOn: ["^build"]`) and cache only apply when a task
-is invoked via `turbo run` — running a package script directly with `pnpm <script>`
-bypasses both, so workspace dependencies may be unbuilt or stale. The root scripts
-above (`build`, `test`, `typecheck`, `dev`) already wrap `turbo run`, so prefer them.
+Internal consumption of workspace packages is **source-first**: every
+`packages/*` package's `exports` map points at raw TypeScript under `src/`, and
+consumers (Vite apps, Next.js apps, vitest, tsc, Storybook) compile that source
+through their own pipelines. There are no dependency dist builds, no dev
+watchers, and no wrapper scripts — run any package or app script directly
+(`pnpm --filter <pkg> dev`, `pnpm --filter <pkg> test`); edits to a dependency's
+source are picked up live (HMR across packages).
 
-For a per-package task that requires its workspace dependencies to be built first
-(e.g. a native module or an app that consumes one), wrap its command with
-`scripts/with-turbo.mjs`. When run directly it prints a notice and self-routes
-through turbo so dependencies are satisfied first.
+`dist/` output still exists for exactly four purposes: app product builds, the
+npm publish lane, the site-navigation-element CDN bundle, and
+protocol-validation's CLI (`scripts/cli.js` imports its own `dist`; run
+`pnpm --filter @codaco/protocol-validation build` before using it).
 
-#### Dev servers and dependency watchers
+Rules that keep this working:
 
-`scripts/with-turbo.mjs` takes an optional leading flag selecting how workspace
-dependencies are satisfied when a wrapped script is run directly:
+- **Publishing** — each published package keeps its live `exports` on `src/` and
+  carries a dist-pointing override in `publishConfig`; `changeset publish`
+  delegates to `pnpm publish`, which applies the swap at pack time.
+  `scripts/verify-publish-exports.mjs` (run in the release job, or manually
+  after `pnpm build`) asserts every packed tarball resolves into `dist/`.
+  fresco-ui's 140-entry map pair is generated: after adding/removing a subpath
+  in `exports`, run `pnpm --filter @codaco/fresco-ui sync-exports`; a vitest
+  guard fails if the maps drift.
+- **No `~/` path aliases in package source.** Consumers typecheck package
+  source inside their own TS program, where the consumer's `paths` win — an
+  alias inside a consumed package resolves against the wrong root. Apps may
+  keep their own `~/` aliases (their source is never consumed).
+- **Ambient declarations must be imported to be seen.** A `.d.ts` module
+  augmentation that a package pulls in via its own tsconfig `include` is
+  invisible to consumers; put augmentations in (or type-import them from) a
+  module that using code imports.
+- **Node-loaded contexts need explicit `.ts` extensions.** Anything loaded by
+  Node's own ESM loader rather than a bundler (a `vite.config.ts` import chain,
+  scripts) can load package source only if relative specifiers carry explicit
+  `.ts` extensions (Node 24 type-stripping + `erasableSyntaxOnly`).
+  protocol-validation and shared-consts are extension-explicit for this reason
+  (architect's `vite.config.ts` → protocol-source-authoring plugin loads them);
+  keep them that way, and treat any new "config imports a workspace package"
+  chain the same.
 
-- **(no flag)** — one-shot tasks (`build`, `build-storybook`, `electron:build`).
-  Re-dispatches `turbo run <task> --filter=<pkg>`; dependencies are built once via
-  `^build`.
-- **`--with-deps`** — non-Electron dev servers (`dev`). Re-dispatches
-  `turbo run dev --filter=...<pkg>`, running the package's dev server and every
-  dependency's `dev` watcher in one turbo process.
-- **`--watch-deps`** — Storybook and every Electron dev server. Builds the
-  dependency closure once, runs the dependencies' `dev` watchers in the background
-  (`turbo run dev --filter=<pkg>^... --ui=stream`), and runs the server in the
-  foreground, stopping the watchers on exit. (Used where `--filter=...<pkg>` would
-  wrongly fan the task out onto dependencies that share its name, e.g. Storybook.)
+#### Turbo graph
 
-```jsonc
-// in the package's package.json
-"dev": "node ../../scripts/with-turbo.mjs --with-deps vite",
-"storybook": "node ../../scripts/with-turbo.mjs --watch-deps storybook dev -p 6006",
-"electron:dev": "node ../../scripts/with-turbo.mjs --watch-deps electron-vite dev",
-"build": "node ../../scripts/with-turbo.mjs vite build"
-```
-
-Equivalent manual commands:
-
-```bash
-turbo run dev --filter=...<pkg>     # a dev server plus its dependencies' watchers
-pnpm dev                            # (root) turbo watch dev — every package
-turbo run dev --filter=<pkg>^...    # only a package's dependencies' watchers
-```
-
-Only wrap a script whose task name is a real turbo task (`build`, `dev`,
-`storybook`, `build-storybook`, or a package-specific task like
-`electron:dev`/`electron:build`); the guard re-dispatches `turbo run <task>`, which
-must exist.
+Cross-package cache invalidation uses a synthetic, input-less transit task:
+`"topo": { "dependsOn": ["^topo"] }`. Tasks that used to depend on `^build`
+(`build`, `test`, `typecheck`, `build-storybook`, …) now depend on `^topo`, so
+a dependency **source** change still re-hashes and re-selects consumers
+(including under `--affected`) without building anything. `dev`/`storybook`
+have no dependency edge at all. `test:e2e*` keeps `dependsOn: ["build"]`
+(same-package app build). Don't add `inputs` to `topo` — the all-files default
+is the conservative fail-safe against under-invalidation across the dependency
+edge.
 
 ### Code Quality (Always Run Before Committing)
 

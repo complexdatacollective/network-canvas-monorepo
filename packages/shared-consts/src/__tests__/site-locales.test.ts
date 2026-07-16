@@ -5,7 +5,7 @@ import {
   isSiteLocale,
   siteLocales,
   supportedSiteLocales,
-} from '../site-locales';
+} from '../site-locales.ts';
 
 describe('site locales', () => {
   it('keeps locale identifiers, definitions, and the default in sync', () => {

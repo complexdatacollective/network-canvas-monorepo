@@ -1,8 +1,8 @@
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, RelationshipType } from '@codaco/shared-consts';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
-import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
+import type { VariableConfig } from '../../store';
+import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 import {
   PARENT_EDGE_TYPE_OPTIONS_ALTER,
   type ParentEdgeTypeOption,

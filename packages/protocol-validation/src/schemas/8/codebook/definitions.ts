@@ -4,7 +4,7 @@ import {
   EdgeVariablesSchema,
   EgoVariablesSchema,
   VariablesSchema,
-} from '../variables';
+} from '../variables/index.ts';
 
 export const NodeColorSequence = [
   'node-color-seq-1',

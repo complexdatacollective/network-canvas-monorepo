@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import ProtocolSchemaV7 from './7/schema';
-import ProtocolSchemaV8 from './8/schema';
+import ProtocolSchemaV7 from './7/schema.ts';
+import ProtocolSchemaV8 from './8/schema.ts';
 
 export const SchemaVersionSchema = z.union([
   z.literal(1),
@@ -38,5 +38,5 @@ export type Protocol<V extends SchemaVersion> = Extract<
   { schemaVersion: V }
 >;
 
-export * from './7/schema';
-export * from './8/schema';
+export * from './7/schema.ts';
+export * from './8/schema.ts';

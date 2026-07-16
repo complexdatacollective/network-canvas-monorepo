@@ -13,15 +13,15 @@ import type {
   RelationshipType,
   VariableValue,
 } from '@codaco/shared-consts';
-import { FamilyPedigreeStoreBridge } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
-import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
+
+import { FamilyPedigreeStoreBridge } from '../../FamilyPedigreeContext';
+import { getNodeLabel } from '../../pedigree-layout/utils/getDisplayLabel';
 import type {
   CommitBatch,
   FamilyPedigreeStoreApi,
   VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
-import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
-
+} from '../../store';
+import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 import type { ParentEdgeTypeOption } from '../quickStartWizard/fieldOptions';
 import PersonFields from '../quickStartWizard/PersonFields';
 import { socialParentCandidates } from './parentCandidates';

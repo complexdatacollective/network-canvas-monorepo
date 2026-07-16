@@ -26,11 +26,10 @@ export default defineMain({
         tsconfigPaths: true,
       },
       optimizeDeps: {
-        // Workspace libraries are consumed as built `dist` and kept fresh by
-        // their `dev` watchers (run via `with-turbo --watch-deps`). Exclude
-        // them from Vite's dependency pre-bundling so Storybook resolves the
-        // current `dist` instead of a stale pre-bundle cached under
-        // `.cache/storybook/**/sb-vite/deps`.
+        // Workspace packages resolve to raw TypeScript source (symlinked
+        // outside node_modules' real path), so Vite never prebundles them
+        // anyway; excluded here so Storybook transforms them through its own
+        // pipeline rather than attempting to pre-bundle.
         exclude: [
           '@codaco/art',
           '@codaco/fresco-ui',

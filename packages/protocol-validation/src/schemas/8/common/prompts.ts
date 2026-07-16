@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { entityAttributeReference } from '../entity-attribute-reference';
-import { entityTypeReference } from '../entity-type-reference';
-import { SortOrderSchema } from '../filters';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { entityTypeReference } from '../entity-type-reference.ts';
+import { SortOrderSchema } from '../filters/index.ts';
 
 export const promptSchema = z.strictObject({
   id: z.string(),
