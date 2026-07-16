@@ -77,33 +77,16 @@ afterEach(() => {
 });
 
 describe('InstallBanner', () => {
-  it('uses warning styling and the Architect warning illustration palette', () => {
-    stubBrowser({ chromium: true });
-    mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
-    render(<InstallBanner />);
-
-    const banner = screen.getByRole('status', { name: 'Install Architect' });
-    expect(banner).not.toHaveClass('bg-surface-1!');
-    expect(banner).not.toHaveClass('text-surface-1-contrast!');
-
-    const warningIcon = screen.getByTitle('Warning').parentElement;
-    expect(warningIcon?.querySelector('.fill-platinum')).toBeInTheDocument();
-    expect(
-      warningIcon?.querySelector('.fill-platinum-dark'),
-    ).toBeInTheDocument();
-    expect(warningIcon).toHaveStyle({
-      '--warning-icon-accent': 'oklch(var(--neon-coral))',
-      '--warning-icon-accent-dark': 'oklch(var(--neon-coral--dark))',
-    });
-  });
-
   it('Chromium with a prompt: generic eviction copy and a one-tap Install', () => {
     stubBrowser({ chromium: true });
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<InstallBanner />);
 
-    expect(screen.getByText(/deleted by the browser/i)).toBeInTheDocument();
+    expect(screen.getByText(/rarely delete site data/i)).toBeInTheDocument();
     expect(screen.queryByText(/7 days/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Install Architect' }),
+    ).toHaveClass('bg-info');
 
     fireEvent.click(screen.getByRole('button', { name: /install/i }));
     expect(mockPromptInstall).toHaveBeenCalledTimes(1);
@@ -127,6 +110,9 @@ describe('InstallBanner', () => {
 
     expect(screen.getByText(/7 days/i)).toBeInTheDocument();
     expect(screen.getByText(/add to dock/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('alert', { name: 'Install Architect' }),
+    ).toHaveClass('bg-destructive');
   });
 
   it('Safari on an iPad: Add to Home Screen', () => {
@@ -142,7 +128,11 @@ describe('InstallBanner', () => {
     mockGetDeferredPrompt.mockReturnValue(null);
     render(<InstallBanner />);
 
-    expect(screen.getByText(/chrome, edge, or safari/i)).toBeInTheDocument();
+    expect(screen.getByText(/runs low on storage/i)).toBeInTheDocument();
+    expect(screen.getByText(/allow persistent storage/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Install Architect' }),
+    ).toHaveClass('bg-warning');
   });
 
   it('renders nothing when running as an installed app', () => {
@@ -158,12 +148,12 @@ describe('InstallBanner', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<InstallBanner />);
 
-    expect(screen.getByText(/deleted by the browser/i)).toBeInTheDocument();
+    expect(screen.getByText(/rarely delete site data/i)).toBeInTheDocument();
 
     act(() => setInstalled(true));
 
     expect(
-      screen.queryByText(/deleted by the browser/i),
+      screen.queryByText(/rarely delete site data/i),
     ).not.toBeInTheDocument();
   });
 

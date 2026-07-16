@@ -149,6 +149,7 @@ const alertIconGraphicVariants = cva({
 type AlertProps = React.HTMLAttributes<HTMLDivElement> &
   VariantProps<typeof alertVariants> & {
     icon?: AlertIcon | null | false;
+    contextLabel?: string | undefined;
   };
 
 const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
@@ -159,6 +160,7 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
       appearance,
       density,
       icon,
+      contextLabel,
       children,
       ...props
     },
@@ -210,7 +212,9 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
           </motion.span>
         )}
         <div className="min-w-0 flex-1">
-          <span className="sr-only">{variantContextLabels[variant]}: </span>
+          <span className="sr-only">
+            {contextLabel ?? variantContextLabels[variant]}:{' '}
+          </span>
           {children}
         </div>
       </Surface>

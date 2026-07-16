@@ -36,6 +36,8 @@ const stubEnvironment = ({
 }) => {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: standalone && query === '(display-mode: standalone)',
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
   }));
   vi.stubGlobal('navigator', {
     ...navigator,
@@ -60,8 +62,11 @@ describe('InstallBanner', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<InstallBanner />);
 
-    expect(screen.getByText(/deleted by the browser/i)).toBeInTheDocument();
+    expect(screen.getByText(/rarely delete site data/i)).toBeInTheDocument();
     expect(screen.queryByText(/7 days/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Install Interviewer' }),
+    ).toHaveClass('bg-info');
 
     fireEvent.click(screen.getByRole('button', { name: /^install$/i }));
     expect(mockPromptInstall).toHaveBeenCalledTimes(1);
@@ -85,6 +90,9 @@ describe('InstallBanner', () => {
 
     expect(screen.getByText(/7 days/i)).toBeInTheDocument();
     expect(screen.getByText(/add to dock/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('alert', { name: 'Install Interviewer' }),
+    ).toHaveClass('bg-destructive');
   });
 
   it('Safari on an iPad: Add to Home Screen', () => {
@@ -100,7 +108,11 @@ describe('InstallBanner', () => {
     mockGetDeferredPrompt.mockReturnValue(null);
     render(<InstallBanner />);
 
-    expect(screen.getByText(/chrome, edge, or safari/i)).toBeInTheDocument();
+    expect(screen.getByText(/runs low on storage/i)).toBeInTheDocument();
+    expect(screen.getByText(/allow persistent storage/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Install Interviewer' }),
+    ).toHaveClass('bg-warning');
     expect(
       screen.queryByRole('button', { name: /^install$/i }),
     ).not.toBeInTheDocument();
@@ -118,7 +130,7 @@ describe('InstallBanner', () => {
     mockGetDeferredPrompt.mockReturnValue(null);
     render(<InstallBanner />);
 
-    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
 
     expect(screen.queryByText(/7 days/i)).not.toBeInTheDocument();
     expect(sessionStorage.getItem(SESSION_DISMISS_KEY)).toBe('true');

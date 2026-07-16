@@ -38,7 +38,6 @@ initFileLaunchCapture();
 const warmCaches = () => {
   preloadTimelineImages();
   if (isRunningAsInstalledPwa()) {
-    void requestPersistentStorage();
     void warmBundledTemplateAssets();
   }
 };
@@ -52,6 +51,12 @@ async function startApp(): Promise<void> {
   ) {
     return;
   }
+
+  // Protocols live in IndexedDB even in a browser tab. Firefox asks the user
+  // before making that storage non-evictable; Chromium and WebKit decide
+  // silently. Request for every session so browser-tab work receives the same
+  // best-effort durability upgrade as installed sessions.
+  void requestPersistentStorage();
 
   const root = document.getElementById('root');
   if (!root) {

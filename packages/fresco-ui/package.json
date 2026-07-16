@@ -72,6 +72,10 @@
       "types": "./dist/Spinner.d.ts",
       "default": "./dist/Spinner.js"
     },
+    "./StorageRiskBanner": {
+      "types": "./dist/StorageRiskBanner.d.ts",
+      "default": "./dist/StorageRiskBanner.js"
+    },
     "./TimeAgo": {
       "types": "./dist/TimeAgo.d.ts",
       "default": "./dist/TimeAgo.js"
