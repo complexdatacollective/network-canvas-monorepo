@@ -68,6 +68,36 @@ test('imports a .netcanvas via the home dropzone', async ({
   await expect(architectPage).toHaveURL(/\/protocol$/);
 });
 
+test('does not leave a cleared protocol in browser history', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'Browser History Seed' });
+  // The seed writes directly to IndexedDB after the start screen has already
+  // rendered. Reload so the Recent collection reads the new library row.
+  await architectPage.reload();
+
+  await architectPage
+    .getByText('Browser History Seed', { exact: true })
+    .click();
+  await expect(architectPage).toHaveURL(/\/protocol$/);
+
+  const toolbar = new Toolbar(architectPage);
+  await toolbar.returnToStart();
+  await architectPage.getByTestId('dialog-primary').click();
+  await expect(architectPage).toHaveURL(/\/$/);
+
+  await architectPage.goBack();
+  await expect(architectPage).toHaveURL(/\/$/);
+  await expect(
+    architectPage.getByText('Browser History Seed', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    architectPage.getByRole('textbox', { name: 'Protocol name' }),
+  ).toHaveCount(0);
+});
+
 test('undoes and redoes a protocol-name edit', async ({
   architectPage,
   seed,

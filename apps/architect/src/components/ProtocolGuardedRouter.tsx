@@ -35,7 +35,12 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
         return;
       }
 
-      void promptLeaveEditor(dispatch, openDialog, () => nav(to, opts));
+      // Leaving clears the active protocol, so the editor route must not stay
+      // directly behind the start screen in browser history. Otherwise Back
+      // would revisit /protocol without the protocol that route needs.
+      void promptLeaveEditor(dispatch, openDialog, () =>
+        nav(to, { ...opts, replace: true }),
+      );
     },
     [dispatch, openDialog],
   );

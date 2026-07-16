@@ -210,7 +210,7 @@ export const useProtocolNavGuard = () => {
         void promptLeaveEditor(
           dispatch,
           openDialog,
-          () => setLocation('/'),
+          () => setLocation('/', { replace: true }),
           draftDirty,
         );
         return;
