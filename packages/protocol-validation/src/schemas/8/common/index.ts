@@ -1,3 +1,4 @@
+export * from './background.ts';
 export * from './experiments.ts';
 export * from './forms.ts';
 export * from './introductionPanel.ts';

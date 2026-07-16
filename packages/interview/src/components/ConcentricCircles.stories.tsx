@@ -9,13 +9,17 @@ const meta: Meta<typeof ConcentricCircles> = {
     layout: 'fullscreen',
   },
   tags: ['autodocs'],
+  // n is required (the schema always supplies a ring count; 0 renders
+  // nothing), so every story must provide it.
+  args: {
+    n: 4,
+  },
   argTypes: {
     n: {
-      control: { type: 'range', min: 1, max: 10, step: 1 },
-      description: 'Number of concentric circles',
+      control: { type: 'range', min: 0, max: 10, step: 1 },
+      description: 'Number of concentric circles (0 renders nothing)',
       table: {
         type: { summary: 'number' },
-        defaultValue: { summary: '4' },
       },
     },
     skewed: {

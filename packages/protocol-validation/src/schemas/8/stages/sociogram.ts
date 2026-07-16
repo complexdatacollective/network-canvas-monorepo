@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { canvasBehavioursSchema } from '../common/behaviours.ts';
 import {
+  imageOrCirclesBackgroundSchema,
   NodeStageSubjectSchema,
   sociogramPromptSchema,
 } from '../common/index.ts';
@@ -13,13 +14,7 @@ export const sociogramStage = baseStageSchema.extend({
   type: z.literal('Sociogram'),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
-  background: z
-    .strictObject({
-      image: z.string().optional(),
-      concentricCircles: z.number().int().optional(),
-      skewedTowardCenter: z.boolean().optional(),
-    })
-    .optional(),
+  background: imageOrCirclesBackgroundSchema,
   behaviours: canvasBehavioursSchema,
   prompts: z
     .array(sociogramPromptSchema)

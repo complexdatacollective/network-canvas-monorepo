@@ -189,6 +189,28 @@ const validateFilterRules = (
   });
 };
 
+const validateFormFieldVariable = (
+  codebook: Codebook,
+  fieldVariable: string,
+  subject: StageSubject,
+  path: (string | number)[],
+  addIssue: IssueReporter,
+) => {
+  const variable = getVariablesForSubject(codebook, subject)[fieldVariable];
+  if (!variable) return;
+  if (NON_RENDERABLE_VARIABLE_TYPES.has(variable.type)) {
+    addIssue({
+      message: `Form field variable "${fieldVariable}" of type "${variable.type}" cannot be rendered as a form field.`,
+      path,
+    });
+  } else if (!('component' in variable) || variable.component === undefined) {
+    addIssue({
+      message: `Form field variable "${fieldVariable}" must define a component (input control) to be rendered as a form field.`,
+      path,
+    });
+  }
+};
+
 type CanonicalOption = { value: string; label: string };
 
 // True when a variable's options are exactly the canonical set (same members
@@ -290,23 +312,13 @@ const ProtocolSchema = z
           }
 
           if (subject) {
-            const variable = getVariablesForSubject(protocol.codebook, subject)[
-              field.variable
-            ];
-            if (variable && NON_RENDERABLE_VARIABLE_TYPES.has(variable.type)) {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `Form field variable "${field.variable}" of type "${variable.type}" cannot be rendered as a form field.`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'form',
-                  'fields',
-                  fieldIndex,
-                  'variable',
-                ],
-              });
-            }
+            validateFormFieldVariable(
+              protocol.codebook,
+              field.variable,
+              subject,
+              ['stages', stageIndex, 'form', 'fields', fieldIndex, 'variable'],
+              (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+            );
           }
         });
       }
@@ -398,26 +410,6 @@ const ProtocolSchema = z
                 ],
               });
             }
-          }
-
-          // CategoricalBin: otherOptionLabel required when otherVariable set
-          if (
-            'otherVariable' in prompt &&
-            prompt.otherVariable &&
-            !('otherOptionLabel' in prompt && prompt.otherOptionLabel)
-          ) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message:
-                'otherOptionLabel is required when otherVariable is set.',
-              path: [
-                'stages',
-                stageIndex,
-                'prompts',
-                promptIndex,
-                'otherOptionLabel',
-              ],
-            });
           }
         });
       }
@@ -567,6 +559,29 @@ const ProtocolSchema = z
               ],
             });
           }
+        });
+      }
+
+      if (stage.type === 'FamilyPedigree' && stage.nodeConfig.form) {
+        const nodeSubject = {
+          entity: 'node' as const,
+          type: stage.nodeConfig.type,
+        };
+        stage.nodeConfig.form.forEach((field, fieldIndex) => {
+          validateFormFieldVariable(
+            protocol.codebook,
+            field.variable,
+            nodeSubject,
+            [
+              'stages',
+              stageIndex,
+              'nodeConfig',
+              'form',
+              fieldIndex,
+              'variable',
+            ],
+            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+          );
         });
       }
 

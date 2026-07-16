@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { findDuplicateName } from '../../../utils/validation-helpers.ts';
 import {
   EdgeStageSubjectSchema,
+  imageOrCirclesBackgroundSchema,
   NodeStageSubjectSchema,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
@@ -73,13 +74,7 @@ export const networkComposerStage = baseStageSchema.extend({
   convexHullVariable: entityAttributeReference({
     subject: 'stageSubject',
   }).optional(),
-  background: z
-    .strictObject({
-      image: z.string().optional(),
-      concentricCircles: z.number().int().optional(),
-      skewedTowardCenter: z.boolean().optional(),
-    })
-    .optional(),
+  background: imageOrCirclesBackgroundSchema,
   behaviours: z
     .strictObject({
       // Whether automatic (force-directed) layout is ON when the stage first

@@ -19,7 +19,11 @@ import {
   initFileLaunchCapture,
 } from './utils/fileLaunchQueue';
 import { initInstallPromptCapture } from './utils/installPrompt';
-import { isRunningAsInstalledPwa, requestPersistentStorage } from './utils/pwa';
+import {
+  isRunningAsInstalledPwa,
+  requestPersistentStorage,
+  requestPersistentStorageOnFirstInteraction,
+} from './utils/pwa';
 
 // Capture the PWA install prompt before React mounts — the event fires early and
 // is one-shot.
@@ -38,7 +42,6 @@ initFileLaunchCapture();
 const warmCaches = () => {
   preloadTimelineImages();
   if (isRunningAsInstalledPwa()) {
-    void requestPersistentStorage();
     void warmBundledTemplateAssets();
   }
 };
@@ -52,6 +55,20 @@ async function startApp(): Promise<void> {
   ) {
     return;
   }
+
+  // Protocols live in IndexedDB even in a browser tab, so request the durability
+  // upgrade there as well as in installed sessions. Do not request at startup:
+  // Firefox may show a permission prompt, while WebKit and Chromium judge silent
+  // grants using interaction/engagement signals. The first gesture is a better
+  // time for both behaviours.
+  requestPersistentStorageOnFirstInteraction();
+
+  // Installation can newly qualify this origin for a silent grant, so retry
+  // when the install completes rather than leaving storage evictable.
+  window.addEventListener(
+    'appinstalled',
+    () => void requestPersistentStorage(),
+  );
 
   const root = document.getElementById('root');
   if (!root) {

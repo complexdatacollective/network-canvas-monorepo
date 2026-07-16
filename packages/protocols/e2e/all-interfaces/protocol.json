@@ -493,7 +493,8 @@
         {
           "id": "ordinal-bin-prompt-1",
           "text": "How often do you have contact with this person?",
-          "variable": "contactFreq"
+          "variable": "contactFreq",
+          "color": "ord-color-seq-1"
         }
       ]
     },
@@ -640,7 +641,10 @@
         "type": "person"
       },
       "quickAdd": "composerName",
-      "layoutVariable": "layout"
+      "layoutVariable": "layout",
+      "background": {
+        "concentricCircles": 4
+      }
     },
     {
       "id": "geospatial-1",

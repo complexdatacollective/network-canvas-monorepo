@@ -462,19 +462,24 @@ export class SyntheticInterview {
       prompts: [],
       presets: [],
       panels: [],
-      background: opts?.background,
+      background:
+        type === 'Sociogram' ||
+        type === 'Narrative' ||
+        type === 'NetworkComposer'
+          ? (opts?.background ?? { concentricCircles: 4 })
+          : opts?.background,
       behaviours,
       introductionPanel: opts?.introductionPanel
         ? {
-            title: opts.introductionPanel.title ?? 'Introduction',
-            text: opts.introductionPanel.text ?? '',
+            title: opts.introductionPanel.title || 'Introduction',
+            text: opts.introductionPanel.text || 'Please continue.',
           }
         : type === 'DyadCensus' || type === 'TieStrengthCensus'
-          ? { title: 'Introduction', text: '' }
+          ? { title: 'Introduction', text: 'Please continue.' }
           : type === 'AlterForm' || type === 'AlterEdgeForm'
             ? {
-                title: opts?.introductionPanel?.title ?? 'Introduction',
-                text: opts?.introductionPanel?.text ?? '',
+                title: opts?.introductionPanel?.title || 'Introduction',
+                text: opts?.introductionPanel?.text || 'Please continue.',
               }
             : undefined,
       initialEdges: opts?.initialEdges ?? [],
@@ -779,9 +784,11 @@ export class SyntheticInterview {
       interviewScript: opts?.interviewScript,
       skipLogic: opts?.skipLogic,
       title,
-      items: opts?.items ?? [
-        { id: this.nextId('item'), type: 'text', content: text },
-      ],
+      items:
+        opts?.items ??
+        (text
+          ? [{ id: this.nextId('item'), type: 'text', content: text }]
+          : []),
       prompts: [],
       presets: [],
       panels: [],
@@ -1450,13 +1457,21 @@ export class SyntheticInterview {
       variable = ref.id;
     }
 
+    // The schema requires both 'other' labels whenever otherVariable is set;
+    // default them (matching the migration's defaults) so builder output
+    // stays schema-valid without every caller spelling them out.
+    const otherVariable = opts?.otherVariable;
     return {
       id: promptId,
       text: opts?.text ?? this.valueGen.generatePromptText('CategoricalBin'),
       variable,
-      otherVariable: opts?.otherVariable,
-      otherVariablePrompt: opts?.otherVariablePrompt,
-      otherOptionLabel: opts?.otherOptionLabel,
+      otherVariable,
+      otherVariablePrompt: otherVariable
+        ? (opts?.otherVariablePrompt ?? 'Please specify')
+        : opts?.otherVariablePrompt,
+      otherOptionLabel: otherVariable
+        ? (opts?.otherOptionLabel ?? 'Other')
+        : opts?.otherOptionLabel,
       bucketSortOrder: opts?.bucketSortOrder,
       binSortOrder: opts?.binSortOrder,
     };

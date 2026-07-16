@@ -277,6 +277,7 @@
         "type": "partner"
       },
       "form": {
+        "title": "Add Partner",
         "fields": [
           {
             "variable": "partner_label",
@@ -311,6 +312,7 @@
         "type": "partner"
       },
       "form": {
+        "title": "Add Partner",
         "fields": [
           {
             "variable": "partner_label",
@@ -388,6 +390,9 @@
       "subject": {
         "entity": "node",
         "type": "partner"
+      },
+      "background": {
+        "concentricCircles": 4
       },
       "behaviours": {
         "automaticLayout": true

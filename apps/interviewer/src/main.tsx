@@ -14,6 +14,7 @@ import {
 import { initInstallPromptCapture } from './lib/pwa/installPrompt';
 import { removeLoadingScreen } from './lib/pwa/loadingScreen';
 import { initSwipeNavigationGuard } from './lib/pwa/swipeNavigationGuard';
+import { initVisualViewportSizing } from './lib/pwa/visualViewportSizing';
 import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
@@ -24,6 +25,14 @@ import {
 initInstallPromptCapture();
 
 initSwipeNavigationGuard();
+
+// Safari keeps the layout viewport behind its browser chrome and software
+// keyboard. Align the full-screen app root to VisualViewport before React
+// mounts so critical interview content is never laid out in the hidden region.
+const disposeVisualViewportSizing = initVisualViewportSizing();
+if (import.meta.hot) {
+  import.meta.hot.dispose(disposeVisualViewportSizing);
+}
 
 // OS-launched .netcanvas files (installed-PWA file handler) can arrive before
 // React mounts; capture them for Home to import after unlock.
@@ -40,17 +49,14 @@ async function startApp(): Promise<void> {
     return;
   }
 
-  void requestPersistentStorage();
-
-  // The startup request above runs before any interaction, which WebKit and
-  // Chromium routinely deny (their heuristics key on interaction history) — ask
-  // once more on the user's first gesture.
+  // Do not request at startup: Firefox may show a permission prompt, while
+  // WebKit and Chromium judge silent grants using interaction/engagement
+  // signals. The first gesture is a better time for both behaviours.
   requestPersistentStorageOnFirstInteraction();
 
   // Installing the PWA newly qualifies the origin for persistent storage, but
   // the box is only made non-evictable on an actual persist() call — request it
-  // again when the install completes rather than leaving storage evictable until
-  // the next reload re-runs the startup request above.
+  // again when the install completes rather than leaving storage evictable.
   window.addEventListener(
     'appinstalled',
     () => void requestPersistentStorage(),

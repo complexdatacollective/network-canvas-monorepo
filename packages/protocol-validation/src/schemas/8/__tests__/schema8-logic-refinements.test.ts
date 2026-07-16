@@ -63,6 +63,47 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       const result = ProtocolSchemaV8.safeParse(createBaseProtocol());
       expect(result.success).toBe(true);
     });
+
+    it('rejects a form field referencing a variable without a component', () => {
+      const base = createBaseProtocol();
+      const protocol = {
+        ...base,
+        codebook: {
+          ...base.codebook,
+          node: {
+            ...base.codebook.node,
+            person: {
+              ...base.codebook.node.person,
+              variables: {
+                ...base.codebook.node.person.variables,
+                nickname: { name: 'Nickname', type: 'text' },
+              },
+            },
+          },
+        },
+        stages: [
+          {
+            id: 'alterForm1',
+            type: 'AlterForm',
+            label: 'Alter Form',
+            subject: { entity: 'node', type: 'person' },
+            form: {
+              fields: [{ variable: 'nickname', prompt: 'Nickname?' }],
+            },
+            introductionPanel: { title: 'Intro', text: 'text' },
+          },
+        ],
+      };
+
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((i) =>
+          i.message.includes('must define a component'),
+        );
+        expect(issue).toBeDefined();
+      }
+    });
   });
 
   describe('quickAdd cross-reference', () => {
@@ -211,6 +252,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'Sociogram',
             label: 'Sociogram',
             subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
@@ -274,6 +316,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'Sociogram',
             label: 'Sociogram',
             subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
@@ -302,6 +345,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'Sociogram',
             label: 'Sociogram',
             subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
@@ -346,6 +390,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'Sociogram',
             label: 'Sociogram',
             subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
@@ -472,7 +517,10 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'NameGenerator',
             label: 'Generate',
             subject: { entity: 'node', type: 'person' },
-            form: { fields: [{ variable: 'name', prompt: 'Name' }] },
+            form: {
+              title: 'Add person',
+              fields: [{ variable: 'name', prompt: 'Name' }],
+            },
             prompts: [{ id: 'p1', text: 'Who?' }],
             panels: [
               {
@@ -514,7 +562,10 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'NameGenerator',
             label: 'Generate',
             subject: { entity: 'node', type: 'person' },
-            form: { fields: [{ variable: 'name', prompt: 'Name' }] },
+            form: {
+              title: 'Add person',
+              fields: [{ variable: 'name', prompt: 'Name' }],
+            },
             prompts: [{ id: 'p1', text: 'Who?' }],
             panels: [
               {

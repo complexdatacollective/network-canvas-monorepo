@@ -163,6 +163,26 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects an empty disease label', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        { ...validNarrativePedigreeStageShape.diseases[0], label: '' },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an empty disease color', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        { ...validNarrativePedigreeStageShape.diseases[0], color: '' },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('rejects unknown keys (presets and behaviours are no longer part of the schema)', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,
@@ -204,19 +224,18 @@ describe('NarrativePedigree protocol-level cross-references', () => {
   });
 
   it('rejects when sourceStageId references a non-FamilyPedigree stage', () => {
-    const nameGenStage = {
-      id: 'ng1',
-      label: 'Name Generator',
-      type: 'NameGenerator' as const,
-      subject: { entity: 'node' as const, type: 'person' },
-      form: { fields: [] },
-      prompts: [{ id: 'p1', text: 'Who do you know?' }],
+    const informationStage = {
+      id: 'info1',
+      label: 'Information',
+      type: 'Information' as const,
+      title: 'Welcome',
+      items: [{ id: 'i1', type: 'text' as const, content: 'Hello' }],
     };
     const result = ProtocolSchemaV8.safeParse(
       makeProtocol({
         stages: [
-          nameGenStage,
-          { ...validNarrativePedigreeStageShape, sourceStageId: 'ng1' },
+          informationStage,
+          { ...validNarrativePedigreeStageShape, sourceStageId: 'info1' },
         ],
       }),
     );
@@ -354,5 +373,82 @@ describe('NarrativePedigree protocol-level cross-references', () => {
       );
       expect(issue).toBeDefined();
     }
+  });
+
+  it('rejects a FamilyPedigree nodeConfig.form field whose variable has no component', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      makeProtocol({
+        stages: [
+          {
+            ...validFamilyPedigreeStage,
+            nodeConfig: {
+              ...validFamilyPedigreeStage.nodeConfig,
+              form: [{ variable: 'personLabel', prompt: 'Name?' }],
+            },
+          },
+          validNarrativePedigreeStageShape,
+        ],
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('must define a component'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
+
+  it('accepts a FamilyPedigree nodeConfig.form field whose variable has a component', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      makeProtocol({
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              shape: { default: 'circle' as const },
+              variables: {
+                egoIsEgo: { name: 'EgoIsEgo', type: 'boolean' },
+                personLabel: {
+                  name: 'PersonLabel',
+                  type: 'text',
+                  component: 'Text',
+                },
+                personRel: { name: 'PersonRel', type: 'text' },
+                personBioSex: { name: 'PersonBioSex', type: 'text' },
+                hasBreastCancer: { name: 'HasBreastCancer', type: 'boolean' },
+              },
+            },
+          },
+          edge: {
+            family: {
+              name: 'Family',
+              color: 'edge-color-seq-1',
+              variables: {
+                familyRelType: { name: 'FamilyRelType', type: 'text' },
+                familyIsActive: { name: 'FamilyIsActive', type: 'boolean' },
+                familyIsGc: { name: 'FamilyIsGc', type: 'boolean' },
+                familyGameteRole: {
+                  name: 'FamilyGameteRole',
+                  type: 'text',
+                },
+              },
+            },
+          },
+        },
+        stages: [
+          {
+            ...validFamilyPedigreeStage,
+            nodeConfig: {
+              ...validFamilyPedigreeStage.nodeConfig,
+              form: [{ variable: 'personLabel', prompt: 'Name?' }],
+            },
+          },
+          validNarrativePedigreeStageShape,
+        ],
+      }),
+    );
+    expect(result.success).toBe(true);
   });
 });

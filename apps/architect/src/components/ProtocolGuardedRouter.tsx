@@ -7,6 +7,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAppDispatch } from '~/ducks/hooks';
 import { store } from '~/ducks/store';
 import {
+  collapseProtocolHistory,
   guardState,
   isProtocolPath,
   promptLeaveEditor,
@@ -40,7 +41,10 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
       void promptLeaveEditor(
         dispatch,
         openDialog,
-        () => nav(to, opts),
+        () =>
+          collapseProtocolHistory(to, () =>
+            nav(to, { ...opts, replace: true }),
+          ),
         getStageDraftDirty(store.getState()),
       );
     },

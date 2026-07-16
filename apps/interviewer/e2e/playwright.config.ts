@@ -58,5 +58,12 @@ export default defineConfig({
     timeout: 60_000,
   },
 
-  projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }],
+  projects: [
+    { name: 'chromium', use: devices['Desktop Chrome'] },
+    {
+      name: 'webkit-visual-viewport',
+      use: devices['Desktop Safari'],
+      testMatch: /visual-viewport\.spec\.ts/,
+    },
+  ],
 });

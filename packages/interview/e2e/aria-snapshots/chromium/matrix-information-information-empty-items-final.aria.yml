@@ -1,0 +1,7 @@
+- main:
+  - heading "Empty stage" [level=1]
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

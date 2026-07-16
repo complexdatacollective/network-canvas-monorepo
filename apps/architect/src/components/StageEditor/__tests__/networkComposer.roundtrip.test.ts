@@ -9,6 +9,7 @@ const stage = {
   subject: { entity: 'node', type: 'person' },
   quickAdd: 'name',
   layoutVariable: 'layoutPosition',
+  background: { concentricCircles: 4 },
   nodeForm: {
     fields: [{ variable: 'age', component: 'Number', label: 'Age?' }],
   },

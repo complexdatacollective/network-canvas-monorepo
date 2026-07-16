@@ -145,6 +145,10 @@ describe('ManageAuthenticator — change PIN', () => {
     // digit advances focus through the rest. Two groups exist (New PIN and
     // Confirm new PIN), so target each group's first digit by index.
     const firstDigitInputs = screen.getAllByLabelText(/digit 1 of 8/i);
+    expect(firstDigitInputs).toHaveLength(2);
+    firstDigitInputs.forEach((input) =>
+      expect(input).toHaveAttribute('inputmode', 'numeric'),
+    );
     await user.type(firstDigitInputs[0]!, '87654321');
     await user.type(firstDigitInputs[1]!, '87654321');
     await user.click(screen.getByRole('button', { name: /save new pin/i }));

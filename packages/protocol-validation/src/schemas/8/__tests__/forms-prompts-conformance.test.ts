@@ -22,7 +22,7 @@ const createProtocol = (stages: unknown[]) => ({
   codebook: {
     ego: {
       variables: {
-        egoName: { name: 'EgoName', type: 'text' },
+        egoName: { name: 'EgoName', type: 'text', component: 'Text' },
       },
     },
     node: {
@@ -31,7 +31,7 @@ const createProtocol = (stages: unknown[]) => ({
         color: 'node-color-seq-1',
         shape: { default: 'circle' } as NodeDefinition['shape'],
         variables: {
-          personName: { name: 'Name', type: 'text' },
+          personName: { name: 'Name', type: 'text', component: 'Text' },
           personOther: { name: 'Other', type: 'text' },
           personCategory: {
             name: 'Category',
@@ -81,7 +81,7 @@ describe('Forms & prompts schema conformance', () => {
           type: 'NameGenerator',
           label: 'Generate Names',
           subject: { entity: 'node', type: 'person' },
-          form: { fields: [] },
+          form: { title: 'Add person', fields: [] },
           prompts: [{ id: 'p1', text: 'Who do you know?' }],
         },
       ]);
@@ -140,7 +140,10 @@ describe('Forms & prompts schema conformance', () => {
           type: 'NameGenerator',
           label: 'Generate Names',
           subject: { entity: 'node', type: 'person' },
-          form: { fields: [{ variable: 'personName', prompt: 'Enter name' }] },
+          form: {
+            title: 'Add person',
+            fields: [{ variable: 'personName', prompt: 'Enter name' }],
+          },
           prompts: [{ id: 'p1', text: 'Who do you know?' }],
         },
       ]);
@@ -320,6 +323,80 @@ describe('Forms & prompts schema conformance', () => {
       ]);
       expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
     });
+
+    it('rejects otherVariable set without otherOptionLabel', () => {
+      const protocol = createProtocol([
+        categoricalBinStage({
+          otherVariable: 'personOther',
+          otherVariablePrompt: 'Please specify',
+        }),
+      ]);
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((i) =>
+          i.message.includes('otherOptionLabel is required'),
+        );
+        expect(issue).toBeDefined();
+      }
+    });
+
+    it('rejects an empty-string otherVariable with a targeted message', () => {
+      const protocol = createProtocol([
+        categoricalBinStage({ otherVariable: '' }),
+      ]);
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((i) =>
+          i.message.includes('otherVariable must name a variable'),
+        );
+        expect(issue).toBeDefined();
+      }
+    });
+
+    it('rejects an empty-string otherOptionLabel without otherVariable', () => {
+      const protocol = createProtocol([
+        categoricalBinStage({ otherOptionLabel: '' }),
+      ]);
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((i) =>
+          i.message.includes('otherOptionLabel requires otherVariable'),
+        );
+        expect(issue).toBeDefined();
+      }
+    });
+
+    it('parses the other-option fields into the narrowed variant', () => {
+      const protocol = createProtocol([
+        categoricalBinStage({
+          otherVariable: 'personOther',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        }),
+      ]);
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const stage = result.data.stages[0];
+        if (stage?.type !== 'CategoricalBin') {
+          throw new Error('expected a CategoricalBin stage');
+        }
+        const prompt = stage.prompts[0];
+        // The pipe narrows the static type: proving otherVariable is set
+        // proves the label and follow-up prompt exist, with no cast.
+        if (prompt && prompt.otherVariable !== undefined) {
+          const label: string = prompt.otherOptionLabel;
+          const followUp: string = prompt.otherVariablePrompt;
+          expect(label).toBe('Other');
+          expect(followUp).toBe('Please specify');
+        } else {
+          throw new Error('expected the other-option variant');
+        }
+      }
+    });
   });
 
   describe('OrdinalBin prompt color', () => {
@@ -345,9 +422,9 @@ describe('Forms & prompts schema conformance', () => {
       expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
     });
 
-    it('accepts a prompt with no color', () => {
+    it('rejects a prompt with no color', () => {
       const protocol = createProtocol([ordinalBinStage({})]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects a color outside the ord-color-seq palette', () => {
@@ -364,7 +441,10 @@ describe('Forms & prompts schema conformance', () => {
       type: 'NameGenerator',
       label: 'Generate Names',
       subject: { entity: 'node', type: 'person' },
-      form: { fields: [{ variable: 'personName', prompt: 'Enter name' }] },
+      form: {
+        title: 'Add person',
+        fields: [{ variable: 'personName', prompt: 'Enter name' }],
+      },
       prompts: [{ id: 'p1', text: 'Who do you know?' }],
       behaviours,
     });
@@ -417,6 +497,89 @@ describe('Forms & prompts schema conformance', () => {
 
     it('accepts NameGeneratorQuickAdd with only maxNodes set', () => {
       const protocol = createProtocol([quickAddStage({ maxNodes: 5 })]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    });
+  });
+
+  describe('prompt text non-empty', () => {
+    const nameGeneratorStage = (text: string) => ({
+      id: 'ng1',
+      type: 'NameGenerator',
+      label: 'Generate Names',
+      subject: { entity: 'node', type: 'person' },
+      form: {
+        title: 'Add person',
+        fields: [{ variable: 'personName', prompt: 'Enter name' }],
+      },
+      prompts: [{ id: 'p1', text }],
+    });
+
+    it('rejects a prompt with an empty text', () => {
+      const protocol = createProtocol([nameGeneratorStage('')]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    });
+
+    it('accepts a prompt with a non-empty text', () => {
+      const protocol = createProtocol([nameGeneratorStage('Who do you know?')]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    });
+  });
+
+  describe('form field prompt non-empty', () => {
+    const nameGeneratorStage = (prompt: string) => ({
+      id: 'ng1',
+      type: 'NameGenerator',
+      label: 'Generate Names',
+      subject: { entity: 'node', type: 'person' },
+      form: {
+        title: 'Add person',
+        fields: [{ variable: 'personName', prompt }],
+      },
+      prompts: [{ id: 'p1', text: 'Who do you know?' }],
+    });
+
+    it('rejects a form field with an empty prompt', () => {
+      const protocol = createProtocol([nameGeneratorStage('')]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    });
+
+    it('accepts a form field with a non-empty prompt', () => {
+      const protocol = createProtocol([nameGeneratorStage('Enter name')]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    });
+  });
+
+  describe('introductionPanel title/text non-empty', () => {
+    const alterFormStage = (introductionPanel: {
+      title: string;
+      text: string;
+    }) => ({
+      id: 'af1',
+      type: 'AlterForm',
+      label: 'Alter Form',
+      subject: { entity: 'node', type: 'person' },
+      form: { fields: [{ variable: 'personName', prompt: 'Their name?' }] },
+      introductionPanel,
+    });
+
+    it('rejects an introductionPanel with an empty title', () => {
+      const protocol = createProtocol([
+        alterFormStage({ title: '', text: 'Some text' }),
+      ]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    });
+
+    it('rejects an introductionPanel with an empty text', () => {
+      const protocol = createProtocol([
+        alterFormStage({ title: 'Intro', text: '' }),
+      ]);
+      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    });
+
+    it('accepts an introductionPanel with non-empty title and text', () => {
+      const protocol = createProtocol([
+        alterFormStage({ title: 'Intro', text: 'Some text' }),
+      ]);
       expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
     });
   });

@@ -29,6 +29,24 @@ function ControlledNumberInput({
 }
 
 describe('InputField number keyboard stepping', () => {
+  it('requests a decimal numeric keyboard by default', () => {
+    render(<InputField type="number" aria-label="Count" />);
+
+    expect(screen.getByRole('spinbutton', { name: 'Count' })).toHaveAttribute(
+      'inputmode',
+      'decimal',
+    );
+  });
+
+  it('allows consumers to override the numeric keyboard mode', () => {
+    render(<InputField type="number" inputMode="numeric" aria-label="Count" />);
+
+    expect(screen.getByRole('spinbutton', { name: 'Count' })).toHaveAttribute(
+      'inputmode',
+      'numeric',
+    );
+  });
+
   it('keeps the controlled value in sync with ArrowUp and ArrowDown', async () => {
     const user = userEvent.setup();
     render(<ControlledNumberInput />);

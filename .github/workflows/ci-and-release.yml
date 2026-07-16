@@ -47,8 +47,10 @@ concurrency:
     || github.ref_name == 'e2e-snapshots/main')) }}
 
 jobs:
+  # Skipped on push: its only consumers (docs-preview-checks, the quality
+  # aggregate, carry-forward-statuses) never run on push-to-main.
   detect:
-    if: github.event_name != 'merge_group'
+    if: github.event_name != 'merge_group' && github.event_name != 'push'
     runs-on: ubuntu-latest
     outputs:
       docs: ${{ steps.flags.outputs.docs }}
@@ -142,11 +144,17 @@ jobs:
           docs=$(flag @codaco/documentation)
           echo "docs=$docs" >> "$GITHUB_OUTPUT"
 
+  # Decides per suite whether release E2E must run for this ref: each release
+  # lane requires only the suites whose subject package ships in its deploy,
+  # and a merge-group run skips suites already validated by the dispatched run
+  # on an identical tree (see scripts/release-e2e-policy.mjs).
   e2e-policy:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     outputs:
-      required: ${{ steps.policy.outputs.required }}
+      interview: ${{ steps.policy.outputs.interview }}
+      interviewer: ${{ steps.policy.outputs.interviewer }}
+      architect: ${{ steps.policy.outputs.architect }}
       release_ref: ${{ steps.policy.outputs.release_ref }}
       snapshot_branch: ${{ steps.policy.outputs.snapshot_branch }}
     steps:
@@ -157,7 +165,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version-file: '.nvmrc'
-      - name: Determine whether this ref triggers a release
+      - name: Determine which release E2E suites this ref requires
         id: policy
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -165,11 +173,15 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           BASE_SHA: ${{ github.event.merge_group.base_sha }}
           HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+          # Read-only, for the merge-queue already-validated lookup.
+          GH_TOKEN: ${{ github.token }}
         run: |
           policy=$(node scripts/release-e2e-policy.mjs)
           echo "release E2E policy: $policy"
           {
-            echo "required=$(jq -r '.required' <<< "$policy")"
+            echo "interview=$(jq -r '.interview' <<< "$policy")"
+            echo "interviewer=$(jq -r '.interviewer' <<< "$policy")"
+            echo "architect=$(jq -r '.architect' <<< "$policy")"
             echo "release_ref=$(jq -r '.releaseRef' <<< "$policy")"
             echo "snapshot_branch=$(jq -r '.snapshotBranch' <<< "$policy")"
           } >> "$GITHUB_OUTPUT"
@@ -189,7 +201,7 @@ jobs:
   # GitHub-hosted runners and never execute on the self-hosted machine.
   pick-e2e-runner:
     needs: e2e-policy
-    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.interview == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       runs_on: ${{ steps.pick.outputs.runs_on }}
@@ -235,7 +247,7 @@ jobs:
   e2e-queue-watchdog:
     needs: [e2e-policy, pick-e2e-runner]
     if: >-
-      ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true'
+      ${{ !cancelled() && needs.e2e-policy.outputs.interview == 'true'
       && needs.pick-e2e-runner.result == 'success'
       && contains(needs.pick-e2e-runner.outputs.runs_on, 'self-hosted') }}
     runs-on: ubuntu-latest
@@ -476,7 +488,9 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           DETECT_RESULT: ${{ needs.detect.result }}
           E2E_POLICY_RESULT: ${{ needs.e2e-policy.result }}
-          E2E_REQUIRED: ${{ needs.e2e-policy.outputs.required }}
+          E2E_INTERVIEW_REQUIRED: ${{ needs.e2e-policy.outputs.interview }}
+          E2E_INTERVIEWER_REQUIRED: ${{ needs.e2e-policy.outputs.interviewer }}
+          E2E_ARCHITECT_REQUIRED: ${{ needs.e2e-policy.outputs.architect }}
           LINT_RESULT: ${{ needs.lint.result }}
           KNIP_RESULT: ${{ needs.knip.result }}
           CHANGESETS_RESULT: ${{ needs.check-changesets.result }}
@@ -519,14 +533,22 @@ jobs:
             exit 1
           fi
 
-          if [[ "$E2E_REQUIRED" == "true" ]]; then
-            verify_successes "release E2E gate" \
-              "$INTERVIEW_E2E_RESULT" \
-              "$INTERVIEWER_E2E_RESULT" \
-              "$ARCHITECT_E2E_RESULT"
-          else
-            echo "E2E gate is not required for this event"
-          fi
+          verify_required_e2e() {
+            local suite=$1 required=$2 result=$3
+            if [[ "$required" != "true" ]]; then
+              echo "$suite is not required for this event (result: $result)"
+              return
+            fi
+            if [[ "$result" != "success" ]]; then
+              echo "::error::release E2E gate failed — $suite concluded '$result'"
+              exit 1
+            fi
+            echo "$suite passed"
+          }
+
+          verify_required_e2e interview-e2e "$E2E_INTERVIEW_REQUIRED" "$INTERVIEW_E2E_RESULT"
+          verify_required_e2e interviewer-e2e "$E2E_INTERVIEWER_REQUIRED" "$INTERVIEWER_E2E_RESULT"
+          verify_required_e2e architect-e2e "$E2E_ARCHITECT_REQUIRED" "$ARCHITECT_E2E_RESULT"
           echo "quality gate passed"
 
   docs-preview-checks:
@@ -632,12 +654,13 @@ jobs:
         run: pnpm run test-redirects
 
   interview-e2e:
-    # Generated package/app release PRs run every E2E suite. The Dockerized
-    # suite builds its own dependency graph and cannot consume the host runner's
-    # Turbo cache, so start it as soon as the release policy completes.
+    # Runs when the release policy requires the interview suite (the lane
+    # ships @codaco/interview). The Dockerized suite builds its own dependency
+    # graph and cannot consume the host runner's Turbo cache, so start it as
+    # soon as the release policy completes.
     needs: [e2e-policy, pick-e2e-runner]
     if: >-
-      ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true'
+      ${{ !cancelled() && needs.e2e-policy.outputs.interview == 'true'
       && needs.pick-e2e-runner.result == 'success' }}
     runs-on: ${{ fromJSON(needs.pick-e2e-runner.outputs.runs_on) }}
     timeout-minutes: 45
@@ -714,7 +737,7 @@ jobs:
   interviewer-e2e:
     # See interview-e2e: this Dockerized suite owns its build too.
     needs: e2e-policy
-    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.interviewer == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     outputs:
@@ -750,7 +773,7 @@ jobs:
   architect-e2e:
     # See interview-e2e: this Dockerized suite owns its build too.
     needs: e2e-policy
-    if: ${{ !cancelled() && needs.e2e-policy.outputs.required == 'true' }}
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.architect == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     outputs:
@@ -1057,49 +1080,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_REF: changeset-release/${{ matrix.slug }}
         run: gh workflow run ci-and-release.yml --ref "$RELEASE_REF"
-
-  # The combined product branch predates the independent gates. Once this change
-  # reaches main, close its parent release PR and any snapshot child that still
-  # targets it so the retired gate cannot release several products together.
-  # Branches are deliberately left intact; this is a reversible PR-state change.
-  retire-combined-release-pr:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-    steps:
-      - name: Close PRs attached to the retired combined release branch
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const retiredRef = 'changeset-release/apps';
-            const pulls = await github.paginate(github.rest.pulls.list, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              per_page: 100,
-            });
-            const retired = pulls.filter(
-              (pull) =>
-                pull.head.repo?.full_name === `${context.repo.owner}/${context.repo.repo}` &&
-                (pull.head.ref === retiredRef || pull.base.ref === retiredRef),
-            );
-
-            for (const pull of retired) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pull.number,
-                body:
-                  'This PR was closed because the combined product release gate has been replaced by independent Architect, Interviewer, Documentation, and Website release PRs. Pending changesets will be proposed again in the matching product PR.',
-              });
-              await github.rest.pulls.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: pull.number,
-                state: 'closed',
-              });
-            }
 
   # On a push to main that changes a gated product version (i.e. one product's
   # release PR just merged), detect which product moved. Idempotency is a local

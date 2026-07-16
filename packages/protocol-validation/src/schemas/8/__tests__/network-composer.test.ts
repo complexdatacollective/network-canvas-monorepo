@@ -11,6 +11,7 @@ const validStage = {
   subject: { entity: 'node', type: 'person' },
   quickAdd: 'name',
   layoutVariable: 'layoutPosition',
+  background: { concentricCircles: 4 },
   edges: [{ id: 'edge-1', subject: { entity: 'edge', type: 'knows' } }],
 };
 
@@ -80,7 +81,7 @@ describe('networkComposerStage schema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('accepts optional forms, background (including image) and behaviours', () => {
+  it('accepts optional forms, an image background, and behaviours', () => {
     const result = networkComposerStage.safeParse({
       ...validStage,
       nodeForm: {
@@ -105,12 +106,26 @@ describe('networkComposerStage schema', () => {
       ],
       background: {
         image: 'assets/background.png',
-        concentricCircles: 4,
         skewedTowardCenter: true,
       },
       behaviours: { automaticLayout: false },
     });
     expect(result.success).toBe(true);
+  });
+
+  it('rejects a background that sets both an image and concentricCircles', () => {
+    const result = networkComposerStage.safeParse({
+      ...validStage,
+      background: { image: 'assets/background.png', concentricCircles: 4 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a missing background', () => {
+    const { background: _background, ...withoutBackground } = validStage;
+    expect(networkComposerStage.safeParse(withoutBackground).success).toBe(
+      false,
+    );
   });
 });
 
@@ -131,6 +146,7 @@ const baseStageWithComponent = {
   subject: { entity: 'node' as const, type: 'person' },
   quickAdd: 'name',
   layoutVariable: 'layout',
+  background: { concentricCircles: 4 },
   edges: [],
 };
 

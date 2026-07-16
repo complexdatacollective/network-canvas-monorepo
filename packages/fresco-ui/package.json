@@ -30,6 +30,7 @@
     "./SegmentedToolbar": "./src/SegmentedToolbar/SegmentedToolbar.tsx",
     "./Skeleton": "./src/Skeleton.tsx",
     "./Spinner": "./src/Spinner.tsx",
+    "./StorageRiskBanner": "./src/StorageRiskBanner.tsx",
     "./TimeAgo": "./src/TimeAgo.tsx",
     "./Button": "./src/Button.tsx",
     "./SplitButton": "./src/SplitButton.tsx",
@@ -214,6 +215,10 @@
       "./Spinner": {
         "types": "./dist/Spinner.d.ts",
         "default": "./dist/Spinner.js"
+      },
+      "./StorageRiskBanner": {
+        "types": "./dist/StorageRiskBanner.d.ts",
+        "default": "./dist/StorageRiskBanner.js"
       },
       "./TimeAgo": {
         "types": "./dist/TimeAgo.d.ts",

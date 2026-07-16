@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { assetSchema } from '../assets/index.ts';
 import { CodebookSchema } from '../codebook/codebook.ts';
+import { panelSchema } from '../common/panels.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { anonymisationStage } from '../stages/anonymisation.ts';
 import { familyPedigreeStage } from '../stages/family-pedigree.ts';
 import { geospatialStage } from '../stages/geospatial.ts';
 import { informationStage } from '../stages/information.ts';
+import { nameGeneratorRosterStage } from '../stages/name-generator-roster.ts';
+import { narrativeStage } from '../stages/narrative.ts';
 import { sociogramStage } from '../stages/sociogram.ts';
 
 /**
@@ -93,6 +97,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
     label: 'Sociogram',
     type: 'Sociogram' as const,
     subject: { entity: 'node' as const, type: 'person' },
+    background: { concentricCircles: 4 },
   };
 
   it('accepts a prompt with only edges.create set', () => {
@@ -162,6 +167,83 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it('rejects a prompt with allowHighlighting enabled but no highlight variable', () => {
+    const result = sociogramStage.safeParse({
+      ...baseStage,
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Highlight',
+          layout: { layoutVariable: 'pos' },
+          highlight: { allowHighlighting: true },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('highlight.variable is required'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
+
+  it('rejects a prompt with an empty edges object', () => {
+    const result = sociogramStage.safeParse({
+      ...baseStage,
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Edges',
+          layout: { layoutVariable: 'pos' },
+          edges: {},
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('edges must set create'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
+
+  it('rejects a prompt whose edges only set an empty display array', () => {
+    const result = sociogramStage.safeParse({
+      ...baseStage,
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Edges',
+          layout: { layoutVariable: 'pos' },
+          edges: { display: [] },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('edges must set create'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
+
+  it('rejects a background with an empty-string image', () => {
+    const result = sociogramStage.safeParse({
+      id: 'soc1',
+      label: 'Sociogram',
+      type: 'Sociogram' as const,
+      subject: { entity: 'node' as const, type: 'person' },
+      background: { image: '' },
+      prompts: [
+        { id: 'p1', text: 'Position', layout: { layoutVariable: 'pos' } },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('Geospatial targetFeatureProperty (#674)', () => {
@@ -226,6 +308,7 @@ describe('Information size and items (#676)', () => {
     id: 'info1',
     label: 'Information',
     type: 'Information' as const,
+    title: 'Information',
   };
 
   it('accepts an asset item with an uppercase size enum value', () => {
@@ -276,6 +359,160 @@ describe('Information size and items (#676)', () => {
     }));
     const result = informationStage.safeParse({ ...baseStage, items });
     expect(result.success).toBe(true);
+  });
+});
+
+describe('Information item content non-empty', () => {
+  const baseStage = {
+    id: 'info1',
+    label: 'Information',
+    type: 'Information' as const,
+    title: 'Information',
+  };
+
+  it('rejects a text item with empty content', () => {
+    const result = informationStage.safeParse({
+      ...baseStage,
+      items: [{ id: 'i1', type: 'text', content: '' }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an asset item with empty content', () => {
+    const result = informationStage.safeParse({
+      ...baseStage,
+      items: [{ id: 'i1', type: 'asset', content: '' }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts text and asset items with non-empty content', () => {
+    const result = informationStage.safeParse({
+      ...baseStage,
+      items: [
+        { id: 'i1', type: 'text', content: 'Some text' },
+        { id: 'i2', type: 'asset', content: 'img-1' },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('Anonymisation explanationText non-empty', () => {
+  const baseStage = {
+    id: 'anon1',
+    label: 'Anonymisation',
+    type: 'Anonymisation' as const,
+    explanationText: {
+      title: 'Why we do this',
+      body: 'Your responses are encrypted.',
+    },
+  };
+
+  it('accepts non-empty explanationText title and body', () => {
+    expect(anonymisationStage.safeParse(baseStage).success).toBe(true);
+  });
+
+  it('rejects an empty explanationText title', () => {
+    expect(
+      anonymisationStage.safeParse({
+        ...baseStage,
+        explanationText: { title: '', body: 'Your responses are encrypted.' },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an empty explanationText body', () => {
+    expect(
+      anonymisationStage.safeParse({
+        ...baseStage,
+        explanationText: { title: 'Why we do this', body: '' },
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('Narrative preset label non-empty', () => {
+  const baseStage = {
+    id: 'narr1',
+    label: 'Narrative',
+    type: 'Narrative' as const,
+    subject: { entity: 'node' as const, type: 'person' },
+    background: { concentricCircles: 4 },
+  };
+
+  it('accepts a preset with a non-empty label', () => {
+    const result = narrativeStage.safeParse({
+      ...baseStage,
+      presets: [{ id: 'preset1', label: 'Overview', layoutVariable: 'pos' }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a preset with an empty label', () => {
+    const result = narrativeStage.safeParse({
+      ...baseStage,
+      presets: [{ id: 'preset1', label: '', layoutVariable: 'pos' }],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('Side panel title non-empty', () => {
+  const basePanel = {
+    id: 'panel1',
+    dataSource: 'existing' as const,
+    title: 'Previous alters',
+  };
+
+  it('accepts a panel with a non-empty title', () => {
+    expect(panelSchema.safeParse(basePanel).success).toBe(true);
+  });
+
+  it('rejects a panel with an empty title', () => {
+    expect(panelSchema.safeParse({ ...basePanel, title: '' }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
+  const baseStage = {
+    id: 'ngr1',
+    label: 'Roster',
+    type: 'NameGeneratorRoster' as const,
+    subject: { entity: 'node' as const, type: 'person' },
+    dataSource: 'roster-asset',
+    prompts: [{ id: 'p1', text: 'Pick someone' }],
+  };
+
+  it('accepts a non-empty dataSource', () => {
+    expect(nameGeneratorRosterStage.safeParse(baseStage).success).toBe(true);
+  });
+
+  it('rejects an empty dataSource', () => {
+    expect(
+      nameGeneratorRosterStage.safeParse({ ...baseStage, dataSource: '' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('accepts searchOptions with at least one matchProperty', () => {
+    expect(
+      nameGeneratorRosterStage.safeParse({
+        ...baseStage,
+        searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects searchOptions with an empty matchProperties array', () => {
+    expect(
+      nameGeneratorRosterStage.safeParse({
+        ...baseStage,
+        searchOptions: { fuzziness: 0.5, matchProperties: [] },
+      }).success,
+    ).toBe(false);
   });
 });
 

@@ -32,11 +32,28 @@ export const requestPersistentStorage = async (): Promise<boolean> => {
   // persisted()/persist() usually resolve to a boolean, but the Storage spec
   // allows them to reject (e.g. opaque origin, storage disabled); catch so a
   // fire-and-forget `void requestPersistentStorage()` can't become an unhandled
-  // startup rejection.
+  // rejection.
   try {
     if (await navigator.storage.persisted()) return true;
     return await navigator.storage.persist();
   } catch {
     return false;
   }
+};
+
+// Request from a user gesture rather than at startup. WebKit and Chromium use
+// interaction/engagement heuristics for their silent decision, while Firefox
+// can show a permission prompt. Deferring gives every browser the strongest
+// useful context and avoids surprising Firefox users during page load.
+export const requestPersistentStorageOnFirstInteraction = (): void => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return;
+  }
+  const request = () => {
+    window.removeEventListener('pointerdown', request);
+    window.removeEventListener('keydown', request);
+    void requestPersistentStorage();
+  };
+  window.addEventListener('pointerdown', request);
+  window.addEventListener('keydown', request);
 };

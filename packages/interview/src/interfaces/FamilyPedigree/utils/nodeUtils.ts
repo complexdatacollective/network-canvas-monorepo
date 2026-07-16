@@ -77,7 +77,12 @@ export const getResolvedNodeFormFields: (
   },
 );
 
-export const getNodeShapeDefinition = createSelector(
+// Explicit signature: the enlarged stage union makes the inferred selector
+// type too large for TS to serialize (TS7056).
+export const getNodeShapeDefinition: (
+  state: RootState,
+  currentStep: number,
+) => NonNullable<Codebook['node']>[string]['shape'] | null = createSelector(
   getCodebook,
   getNodeType,
   (codebook, nodeType) => {

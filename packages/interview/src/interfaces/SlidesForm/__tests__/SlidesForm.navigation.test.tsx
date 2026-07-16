@@ -4,7 +4,7 @@ import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import type { Form } from '@codaco/protocol-validation';
+import type { TitlelessForm } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -54,7 +54,7 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', ImmediateIntersectionObserver);
 });
 
-const form: Form = {
+const form: TitlelessForm = {
   fields: [{ variable: 'name' as never, prompt: 'Person name' }],
 };
 

@@ -1,8 +1,10 @@
-import { MonitorDown } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
-import CloseButton from '@codaco/fresco-ui/CloseButton';
+import {
+  type BrowserStorageProfile,
+  getBrowserStorageProfile,
+  StorageRiskBanner,
+} from '@codaco/fresco-ui/StorageRiskBanner';
 import {
   getDeferredPrompt,
   promptInstall,
@@ -33,67 +35,69 @@ const readSessionDismissed = () => {
   }
 };
 
-// Browser-specific message: each engine sees only its own eviction reality
-// and its own install path. Whole strings per branch so each can localise.
-const bannerMessage = (canPromptInstall: boolean): string => {
-  const isChromium = 'userAgentData' in navigator;
-  if (isChromium) {
+// Risk selects both intent and copy. The Interviewer wording deliberately
+// foregrounds unexported research data, whose loss is irreversible.
+const bannerMessage = (
+  profile: BrowserStorageProfile,
+  canPromptInstall: boolean,
+): string => {
+  const { browserName, engine, risk } = profile;
+  if (risk === 3) {
     return canPromptInstall
-      ? 'Interviews stored in a browser tab can be deleted by the browser. Install Interviewer to keep data safe on this device.'
-      : "Interviews stored in a browser tab can be deleted by the browser. To keep data safe, install Interviewer using the install icon in the browser's address bar.";
+      ? `${browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Install Interviewer now, before collecting data, to protect your interview data from being deleted.`
+      : `${browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Before collecting data, use the install icon in the browser's address bar to install Interviewer and protect your interview data from being deleted.`;
   }
-  const isFirefox = navigator.userAgent.includes('Firefox');
-  if (isFirefox) {
-    return "Interviews stored in a browser tab can be deleted by the browser, and Firefox can't install web apps. To keep data safe, install Interviewer from Chrome, Edge, or Safari on this device.";
+  if (risk === 2) {
+    return `${browserName} may remove Network Canvas data when this device runs low on storage. Before collecting data, allow persistent storage when ${browserName} asks and install Interviewer if your device supports it to protect your interview data from being deleted.`;
   }
-  // Safari: the 7-day eviction is its documented behaviour, and the install
-  // path depends on the device. iPadOS reports 'MacIntel' in desktop mode;
-  // real Macs have no touchscreen.
+  // WebKit: the 7-day eviction is its documented behaviour, and the install
+  // path depends on the device. This also covers Chrome/Firefox on iOS, where
+  // Apple requires WebKit. iPadOS reports 'MacIntel' in desktop mode; real Macs
+  // have no touchscreen.
   const isMac =
     navigator.platform.startsWith('Mac') && navigator.maxTouchPoints === 0;
+  const storagePolicyDescription =
+    engine === 'webkit' && browserName !== 'Safari'
+      ? `${browserName} uses WebKit, which is known to remove Network Canvas data`
+      : `${browserName} is known to remove Network Canvas data`;
   return isMac
-    ? 'Safari deletes data stored by a browser tab after about 7 days without use. To keep interview data safe, install Interviewer: choose Share → Add to Dock.'
-    : 'Safari deletes data stored by a browser tab after about 7 days without use. To keep interview data safe, install Interviewer: choose Share → Add to Home Screen.';
+    ? `${storagePolicyDescription} after 7 days of inactivity. Install Interviewer now, before collecting data, to protect your interview data from being deleted: choose Share → Add to Dock.`
+    : `${storagePolicyDescription} after 7 days of inactivity. Install Interviewer now, before collecting data, to protect your interview data from being deleted: choose Share → Add to Home Screen.`;
 };
 
 // Pure presentation: a quiet full-width strip urging install, with an
 // optional one-tap Install action when the browser offered a deferred
-// prompt. It exists for data safety, not convenience — browsers can evict
-// a website's stored data, while installed apps are exempt.
+// prompt. It exists for data safety, not convenience — browsers can evict a
+// website's stored data, while installation protects against routine cleanup.
 export function InstallBannerView({
-  message,
+  profile,
   canPromptInstall,
   onInstall,
   onDismiss,
 }: {
-  message: string;
+  profile: BrowserStorageProfile;
   canPromptInstall: boolean;
   onInstall: () => void;
   onDismiss: () => void;
 }) {
   return (
-    <aside
+    <StorageRiskBanner
       aria-label="Install Interviewer"
-      className="bg-surface-1 text-surface-1-contrast border-outline/40 flex w-full items-center gap-3 border-b px-6 py-2 text-sm"
+      risk={profile.risk}
+      installAction={canPromptInstall ? onInstall : undefined}
+      onDismiss={onDismiss}
     >
-      <MonitorDown className="text-warning size-4 shrink-0" aria-hidden />
-      <p className="m-0 flex-1">{message}</p>
-      {canPromptInstall && (
-        <Button color="primary" size="sm" onClick={onInstall}>
-          Install
-        </Button>
-      )}
-      <CloseButton size="sm" onClick={onDismiss} />
-    </aside>
+      {bannerMessage(profile, canPromptInstall)}
+    </StorageRiskBanner>
   );
 }
 
 // A quiet full-width strip at the top of the dashboard whenever the app is
 // running in a browser tab rather than as an installed app. It exists for
 // data safety, not convenience: browsers can evict a website's stored data,
-// while installed apps are exempt — so researchers should install before
-// collecting interviews. Dismissal lasts one session; the risk persists, so
-// it returns next launch.
+// while installation protects against routine cleanup — so researchers should
+// install before collecting interviews. Dismissal lasts one session; the risk
+// persists, so it returns next launch.
 export function InstallBanner() {
   const deferredPrompt = useSyncExternalStore(
     subscribeInstallPrompt,
@@ -116,10 +120,11 @@ export function InstallBanner() {
   };
 
   const canPromptInstall = deferredPrompt !== null;
+  const profile = getBrowserStorageProfile();
 
   return (
     <InstallBannerView
-      message={bannerMessage(canPromptInstall)}
+      profile={profile}
       canPromptInstall={canPromptInstall}
       onInstall={() => void promptInstall()}
       onDismiss={dismiss}

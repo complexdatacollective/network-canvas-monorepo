@@ -106,7 +106,7 @@ export const familyPedigreeStage = baseStageSchema.extend({
     })
     .optional(),
   // Prompt shown during the family building phase
-  censusPrompt: z.string(),
+  censusPrompt: z.string().min(1),
   // Optional attribute nomination steps (e.g. disease nomination)
   nominationPrompts: z
     .array(familyPedigreeNominationPromptSchema)

@@ -318,10 +318,9 @@ function buildBackgroundImage(): ScenarioDefinition {
       });
       const stage = synth.addStage('Sociogram', {
         initialNodes: { count: 3 },
-        // background.image wins over concentricCircles when both are set
-        // (Sociogram.tsx renders the <img> whenever the asset resolves) — set
-        // both to pin that precedence.
-        background: { image: bgAssetId, concentricCircles: 4 },
+        // The image variant excludes concentricCircles (schema XOR); the run()
+        // asserts no radar circles render alongside the image.
+        background: { image: bgAssetId },
       });
       stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
       synth.addAsset({

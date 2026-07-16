@@ -170,7 +170,7 @@
       "outputs": ["dist-web/**"]
     },
     "@codaco/architect-classic#build": {
-      "dependsOn": ["^topo"],
+      "dependsOn": ["^topo", "@codaco/interviewer-classic#build"],
       "inputs": [
         "src/**",
         "public/**",

@@ -7,7 +7,7 @@ const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 
 const baseItemSchema = z.strictObject({
   id: z.string(),
-  content: z.string(),
+  content: z.string().min(1),
   description: z.string().optional(),
 });
 
@@ -31,6 +31,6 @@ export type Item = z.infer<typeof ItemSchema>;
 
 export const informationStage = baseStageSchema.extend({
   type: z.literal('Information'),
-  title: z.string().optional(),
+  title: z.string().min(1),
   items: z.array(ItemSchema).superRefine(duplicateIdRefinement('Items')),
 });

@@ -15,8 +15,20 @@ const protocol = {
   codebook: { node: {}, edge: {}, ego: {} },
   assetManifest: {},
   stages: [
-    { id: 'source', type: 'Information', label: 'Source', items: [] },
-    { id: 'debrief', type: 'Information', label: 'Debrief', items: [] },
+    {
+      id: 'source',
+      type: 'Information',
+      label: 'Source',
+      title: 'Source',
+      items: [],
+    },
+    {
+      id: 'debrief',
+      type: 'Information',
+      label: 'Debrief',
+      title: 'Debrief',
+      items: [],
+    },
   ],
 } satisfies CurrentProtocol;
 

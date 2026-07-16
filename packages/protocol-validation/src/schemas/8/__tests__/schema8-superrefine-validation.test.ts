@@ -164,6 +164,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             ...baseValidProtocol.stages[0],
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'name',
@@ -190,6 +191,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             ...baseValidProtocol.stages[0],
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'nonexistentVariable',
@@ -340,6 +342,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'person',
             },
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'department', // This variable exists on 'colleague' not 'person'
@@ -429,6 +432,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 id: 'prompt1',
                 text: 'Sort by strength',
                 variable: 'strength',
+                color: 'ord-color-seq-1',
               },
             ],
           },
@@ -456,6 +460,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 id: 'prompt1',
                 text: 'Sort by something',
                 variable: 'nonexistentVariable',
+                color: 'ord-color-seq-1',
               },
             ],
           },
@@ -776,6 +781,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               entity: 'node',
               type: 'person',
             },
+            background: {
+              concentricCircles: 4,
+            },
             prompts: [
               {
                 id: 'prompt1',
@@ -804,6 +812,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             subject: {
               entity: 'node',
               type: 'person',
+            },
+            background: {
+              concentricCircles: 4,
             },
             prompts: [
               {
@@ -855,6 +866,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'person',
             },
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'name',
@@ -893,6 +905,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'person',
             },
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'name',
@@ -2059,6 +2072,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'informationStage',
             type: 'Information',
             label: 'Information Stage',
+            title: 'Information Stage',
             items: [
               {
                 id: 'item1',
@@ -2082,6 +2096,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'simpleStage',
             type: 'Information',
             label: 'Simple Stage',
+            title: 'Simple Stage',
             items: [
               {
                 id: 'item1',
@@ -2110,6 +2125,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'person',
             },
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'name',
@@ -2164,6 +2180,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'nonexistentNodeType', // Error 1: Invalid subject
             },
             form: {
+              title: 'Add person',
               fields: [
                 {
                   variable: 'nonexistentVariable', // Error 2: Invalid form field variable

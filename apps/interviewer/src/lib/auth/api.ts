@@ -63,9 +63,9 @@ async function applyInitialEnrol(
   if (!unlocked.ok) return unlocked;
   // Enabling encryption commits sensitive data to this device, so ask the
   // browser to make storage non-evictable now (an installed PWA is granted this
-  // without a prompt). Persistence is otherwise only requested at startup
-  // (main.tsx); without this a user who installs and then secures the device
-  // stays on evictable storage until the next reload re-runs that request.
+  // without a prompt). The general request is deferred until the first user
+  // interaction (main.tsx); retrying at enrolment ties another request to the
+  // moment the app first commits sensitive data to this device.
   // Fire-and-forget: the grant resolves during the awaited sweep below, and a
   // failure must not fail enrolment (the durability label just stays a reload
   // behind). StatusRow re-reads the result on mode change / next mount.

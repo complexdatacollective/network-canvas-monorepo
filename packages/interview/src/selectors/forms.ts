@@ -10,6 +10,7 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { getCodebook } from '../store/modules/protocol';
+import type { RootState } from '../store/store';
 import { getNetwork, getStageSubject } from './session';
 
 export type Subject = {
@@ -152,19 +153,18 @@ export const selectFieldMetadataWithSubject = createSelector(
   createFieldMetadata,
 );
 
-export const getValidationContext = createSelector(
+// Explicit signature: naming `Codebook` keeps the type short enough for TS to
+// serialize (the enlarged stage union otherwise trips TS7056).
+export const getValidationContext: (
+  state: RootState,
+  currentStep: number,
+) => {
+  codebook: Codebook;
+  network: ReturnType<typeof getNetwork>;
+  stageSubject: ReturnType<typeof getStageSubject>;
+} = createSelector(
   [getCodebook, getNetwork, getStageSubject],
-  // Explicit return type: naming `Codebook` keeps the inferred type short enough
-  // for TS to serialize (the enlarged stage union otherwise trips TS7056).
-  (
-    codebook,
-    network,
-    stageSubject,
-  ): {
-    codebook: Codebook;
-    network: ReturnType<typeof getNetwork>;
-    stageSubject: ReturnType<typeof getStageSubject>;
-  } => ({
+  (codebook, network, stageSubject) => ({
     codebook,
     network,
     stageSubject,

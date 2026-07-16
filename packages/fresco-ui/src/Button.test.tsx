@@ -5,6 +5,20 @@ import { describe, expect, it } from 'vitest';
 import Button from './Button';
 
 describe('Button', () => {
+  it('supports a contrast-background default-inverted variant', () => {
+    render(
+      <Button variant="default-inverted" color="warning">
+        Install
+      </Button>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Install' })).toHaveClass(
+      'bg-white',
+      'text-(--component-text)',
+      'focus:outline-warning',
+    );
+  });
+
   it('uses the NativeLink appearance for the link variant', () => {
     render(<Button variant="link">Clear selection</Button>);
 

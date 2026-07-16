@@ -131,9 +131,8 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     };
   }, [expandedBinIndex]);
 
-  const {
-    prompt: { id, otherVariable, otherVariablePrompt, variable },
-  } = usePrompts<CategoricalBinPrompts>();
+  const { prompt } = usePrompts<CategoricalBinPrompts>();
+  const { id, variable } = prompt;
 
   const { bins, uncategorisedNodes } = useCategoricalBins();
 
@@ -187,8 +186,11 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     }
     lastBinIndexRef.current.set(nodeId, binIndex);
 
-    // If the node is being dropped into the 'other' bin, show a dialog to specify the value for the other variable
-    if (bin.isOther && otherVariable) {
+    // If the node is being dropped into the 'other' bin, show a dialog to
+    // specify the value for the other variable. The schema's prompt union
+    // proves otherVariablePrompt exists whenever otherVariable is set.
+    if (bin.isOther && prompt.otherVariable !== undefined) {
+      const { otherVariable, otherVariablePrompt } = prompt;
       const result = await openDialog({
         type: 'form',
         title: 'Specify other',
@@ -209,7 +211,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               />
             </div>
             <Field
-              label={otherVariablePrompt!}
+              label={otherVariablePrompt}
               placeholder="Enter your response here..."
               component={InputField}
               name="otherVariable"
@@ -247,7 +249,9 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       updateNode({
         nodeId,
         newAttributeData: {
-          ...(otherVariable ? { [otherVariable]: null } : {}),
+          ...(prompt.otherVariable !== undefined
+            ? { [prompt.otherVariable]: null }
+            : {}),
           // Categorical attributes are stored as arrays of selected option
           // values; a single bin membership is a one-element array.
           [variable]: [bin.value],

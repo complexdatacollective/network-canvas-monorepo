@@ -51,6 +51,11 @@ const meta = {
       description:
         'Custom icon to display. The default info, success, and warning/destructive variants use illustrated Fresco icons. Use "none" to hide the icon entirely.',
     },
+    contextLabel: {
+      control: 'text',
+      description:
+        'Optional visually hidden semantic label announced before the content. Defaults to the selected variant label.',
+    },
   },
 } satisfies Meta<typeof Alert>;
 

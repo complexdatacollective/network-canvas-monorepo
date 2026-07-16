@@ -269,14 +269,25 @@ stories.
 
 #### Release-only E2E checks
 
-CI runs the complete Architect, Interview, and Interviewer E2E suites only for
-the generated library branch `changeset-release/main`, the generated product
-branches `changeset-release/architect`, `changeset-release/interviewer`,
-`changeset-release/documentation`, and `changeset-release/website`, or merge
-groups whose package or product version changes will trigger a release. The
-required `quality` check
-conditionally requires all three E2E jobs in those cases. Ordinary PRs skip E2E,
-and E2E results are never carried forward from an earlier commit.
+CI runs the Architect, Interview, and Interviewer E2E suites only for
+generated release branches (`changeset-release/*`) and merge groups whose
+package or product version changes will trigger a release — and only the
+suites whose subject ships in that release lane: the library lane
+(`changeset-release/main`) runs all three; the Architect and Interviewer lanes
+run their own suite plus Interview (both apps bundle the interview runtime);
+the Documentation and Website lanes run none. The mapping lives in
+`scripts/release-e2e-policy.mjs`, and its test derives the expected lanes from
+the real package.json dependency graph so the table cannot silently drift.
+The required `quality` check requires exactly the suites the policy selects.
+Ordinary PRs skip E2E, and E2E verdicts are never carried forward from an
+earlier commit.
+
+A merge-queue run skips a suite only in one narrow case: the queued merge
+commit's tree is byte-identical to the tip of a generated release branch, and
+a dispatched run of this workflow already ran that suite successfully at that
+exact SHA. Every guard fails closed (tree mismatch, non-release tip, or any
+Actions-API doubt reruns the suite), so batched merge groups and moved `main`
+always re-run E2E.
 
 The release jobs explicitly dispatch `ci-and-release.yml` after creating or
 updating a generated branch. Normal release PRs therefore do not need a

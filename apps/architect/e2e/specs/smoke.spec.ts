@@ -42,7 +42,15 @@ test('reads a seeded stage back from the store', async ({
   // interface specs, not here.
   const protocol: CurrentProtocol = {
     ...emptyProtocol(),
-    stages: [{ id: 'info-1', label: 'Info', type: 'Information', items: [] }],
+    stages: [
+      {
+        id: 'info-1',
+        label: 'Info',
+        type: 'Information',
+        title: 'Info',
+        items: [],
+      },
+    ],
   };
   await seed(protocol);
   await gotoProtocol(architectPage);

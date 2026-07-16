@@ -123,4 +123,19 @@ describe('familyPedigreeStage framing/boundaries/introScreen', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('rejects an empty censusPrompt', () => {
+    expect(
+      familyPedigreeStage.safeParse({ ...base, censusPrompt: '' }).success,
+    ).toBe(false);
+  });
+
+  it('accepts a non-empty censusPrompt', () => {
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        censusPrompt: 'Build your family',
+      }).success,
+    ).toBe(true);
+  });
 });
