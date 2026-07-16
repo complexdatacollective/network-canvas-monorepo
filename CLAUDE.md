@@ -284,15 +284,15 @@ earlier commit.
 
 A merge-queue run skips a suite only in one narrow case: the queued merge
 commit's tree is byte-identical to the tip of a generated release branch, and
-a dispatched run of this workflow already ran that suite successfully at that
+a native pull-request run of this workflow already ran that suite successfully at that
 exact SHA. Every guard fails closed (tree mismatch, non-release tip, or any
 Actions-API doubt reruns the suite), so batched merge groups and moved `main`
 always re-run E2E.
 
-The release jobs explicitly dispatch `ci-and-release.yml` after creating or
-updating a generated branch. Normal release PRs therefore do not need a
-manual E2E trigger, even though GitHub does not start PR workflows for branch
-updates made with the repository token.
+The release jobs create and update generated branches with the fine-grained PAT
+stored as `RELEASE_PR_TOKEN`. That causes the normal `pull_request` workflow to
+start without manual approval. Do not add a separate workflow dispatch: it would
+duplicate the native CI run and its release-only E2E suites.
 
 #### E2E visual snapshot baselines
 

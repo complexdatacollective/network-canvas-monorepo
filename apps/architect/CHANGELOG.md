@@ -1,5 +1,21 @@
 # @codaco/architect
 
+## 8.0.0-beta.9
+
+### Patch Changes
+
+- Prevent the browser Back button from opening an empty, invalid protocol after returning to the start screen.
+- Bundled template protocols now set an explicit dialog title on their name
+  generators ("Add Person") and an explicit scale color and canvas background
+  where these were previously implicit defaults, so they satisfy the tightened
+  protocol schema.
+- Ensure automatically generated stage names start with a capital letter when they begin with user-defined text.
+- Add a “Return and download now” option when leaving the protocol editor, so researchers can download the active protocol and return to the start screen in one step.
+- Remove the redundant skip-destination note from timeline stages while retaining the skip-logic icon.
+- Show browser-specific protocol storage risk in the install banner, request
+  persistent storage after the first user interaction, and keep the Install action
+  matched to the warning level.
+
 ## 8.0.0-beta.8
 
 ### Minor Changes
