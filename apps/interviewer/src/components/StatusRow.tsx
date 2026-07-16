@@ -238,12 +238,11 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
     read();
 
     // A persist() grant can land after this component mounts: main.tsx requests
-    // it at startup, on the first user gesture, and on install, and the auth
-    // enrol path requests it when encryption is enabled. Re-read on the events
-    // that follow such a grant so the durability label updates without a
-    // reload — focus/visibility for a late startup grant, appinstalled for the
-    // install grant, and the storage module's own event for any fresh grant it
-    // observes directly.
+    // it on the first user gesture and on install, and the auth enrol path
+    // requests it when encryption is enabled. Re-read on the events that follow
+    // such a grant so the durability label updates without a reload —
+    // focus/visibility after a permission decision, appinstalled for the install
+    // grant, and the storage module's own event for any fresh grant it observes.
     window.addEventListener('focus', read);
     document.addEventListener('visibilitychange', read);
     window.addEventListener('appinstalled', read);

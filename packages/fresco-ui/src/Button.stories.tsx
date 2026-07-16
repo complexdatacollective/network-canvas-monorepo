@@ -38,7 +38,14 @@ const meta = {
   argTypes: {
     variant: {
       control: 'select',
-      options: ['default', 'outline', 'text', 'dashed', 'link'],
+      options: [
+        'default',
+        'default-inverted',
+        'outline',
+        'text',
+        'dashed',
+        'link',
+      ],
     },
     color: {
       control: 'select',
@@ -95,6 +102,9 @@ export const Variants: Story = {
       <div className="flex gap-4">
         <Button {...args} variant="default">
           Default
+        </Button>
+        <Button {...args} variant="default-inverted">
+          Default inverted
         </Button>
         <Button {...args} variant="outline">
           Outline
@@ -344,10 +354,13 @@ export const MotionVariant: Story = {
 
 export const ColorVariantCombinations: Story = {
   render: () => (
-    <div className="grid grid-cols-[auto_repeat(6,1fr)] gap-4">
+    <div className="grid grid-cols-[auto_repeat(7,1fr)] gap-4">
       <span className="text-sm font-medium" />
       <span className="text-center text-xs font-medium text-current/70">
         Default
+      </span>
+      <span className="text-center text-xs font-medium text-current/70">
+        Default inverted
       </span>
       <span className="text-center text-xs font-medium text-current/70">
         Outline
@@ -369,6 +382,9 @@ export const ColorVariantCombinations: Story = {
           <span className="text-sm font-medium capitalize">{color}:</span>
           <Button variant="default" color={color}>
             Default
+          </Button>
+          <Button variant="default-inverted" color={color}>
+            Inverted
           </Button>
           <Button variant="outline" color={color}>
             Outline

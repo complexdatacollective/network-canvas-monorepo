@@ -95,9 +95,9 @@ describe('requestPersistentStorageOnFirstInteraction', () => {
     await vi.waitFor(() => expect(persistMock).toHaveBeenCalledTimes(1));
   });
 
-  // Firefox pops a permission dialog on persist(); the startup request already
-  // asked once this session, so an automatic second ask would nag the user.
-  it('does not arm on Firefox', async () => {
+  // Firefox can show a permission dialog, so it must wait for a gesture just as
+  // the browsers with silent interaction heuristics do.
+  it('waits for a gesture before requesting on Firefox', async () => {
     const { persistMock } = stubStorageManager({
       persisted: false,
       persist: true,
@@ -106,8 +106,8 @@ describe('requestPersistentStorageOnFirstInteraction', () => {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:128.0) Gecko/20100101 Firefox/128.0',
     );
     requestPersistentStorageOnFirstInteraction();
-    window.dispatchEvent(new Event('pointerdown'));
-    await Promise.resolve();
     expect(persistMock).not.toHaveBeenCalled();
+    window.dispatchEvent(new Event('pointerdown'));
+    await vi.waitFor(() => expect(persistMock).toHaveBeenCalledTimes(1));
   });
 });

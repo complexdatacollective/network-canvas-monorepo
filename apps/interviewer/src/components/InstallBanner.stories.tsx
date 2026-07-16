@@ -1,43 +1,50 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
+import type {
+  BrowserStorageProfile,
+  StorageRisk,
+} from '@codaco/fresco-ui/StorageRiskBanner';
+
 import { InstallBannerView } from './InstallBanner';
 
 // The top-of-dashboard install nudge. InstallBanner (the container) reads
 // the deferred beforeinstallprompt event and the installed-display-mode /
-// per-session-dismissal state; InstallBannerView is the pure presentation,
-// storied here with the browser-specific copy passed in directly.
-
-const CHROMIUM_WITH_PROMPT =
-  'Interviews stored in a browser tab can be deleted by the browser. Install Interviewer to keep data safe on this device.';
-const CHROMIUM_NO_PROMPT =
-  "Interviews stored in a browser tab can be deleted by the browser. To keep data safe, install Interviewer using the install icon in the browser's address bar.";
-const SAFARI_MAC =
-  'Safari deletes data stored by a browser tab after about 7 days without use. To keep interview data safe, install Interviewer: choose Share → Add to Dock.';
-const FIREFOX =
-  "Interviews stored in a browser tab can be deleted by the browser, and Firefox can't install web apps. To keep data safe, install Interviewer from Chrome, Edge, or Safari on this device.";
+// per-session-dismissal state; InstallBannerView is the pure presentation.
+// Its risk prop selects both the product-specific copy and the shared intent.
 
 type StoryArgs = {
-  message: string;
+  risk: StorageRisk;
   canPromptInstall: boolean;
+};
+
+const profileByRisk: Record<StorageRisk, BrowserStorageProfile> = {
+  1: { browserName: 'Safari', engine: 'webkit', risk: 1 },
+  2: { browserName: 'Firefox', engine: 'gecko', risk: 2 },
+  3: { browserName: 'Chrome', engine: 'chromium', risk: 3 },
 };
 
 const meta: Meta<StoryArgs> = {
   title: 'Components/InstallBanner',
   parameters: { layout: 'fullscreen' },
   args: {
-    message: CHROMIUM_WITH_PROMPT,
+    risk: 3,
     canPromptInstall: true,
   },
   argTypes: {
-    message: { control: 'text' },
+    risk: {
+      control: 'select',
+      options: [1, 2, 3],
+      description:
+        'Browser-storage danger: 1 Safari/high, 2 Firefox/medium, 3 Chromium/low.',
+    },
     canPromptInstall: {
       control: 'boolean',
       description: 'Whether a one-tap Install button is available',
     },
   },
-  render: ({ message, canPromptInstall }) => (
+  render: ({ risk, canPromptInstall }) => (
     <InstallBannerView
-      message={message}
+      profile={profileByRisk[risk]}
       canPromptInstall={canPromptInstall}
       onInstall={() => {}}
       onDismiss={() => {}}
@@ -51,13 +58,13 @@ type Story = StoryObj<StoryArgs>;
 export const Default: Story = {};
 
 export const ChromiumWithoutPrompt: Story = {
-  args: { message: CHROMIUM_NO_PROMPT, canPromptInstall: false },
+  args: { risk: 3, canPromptInstall: false },
 };
 
 export const SafariOnMac: Story = {
-  args: { message: SAFARI_MAC, canPromptInstall: false },
+  args: { risk: 1, canPromptInstall: false },
 };
 
 export const Firefox: Story = {
-  args: { message: FIREFOX, canPromptInstall: false },
+  args: { risk: 2, canPromptInstall: false },
 };

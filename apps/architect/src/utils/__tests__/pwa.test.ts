@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { isRunningAsInstalledPwa, requestPersistentStorage } from '../pwa';
+import {
+  isRunningAsInstalledPwa,
+  requestPersistentStorage,
+  requestPersistentStorageOnFirstInteraction,
+} from '../pwa';
 
 const stubMatchMedia = (matchingModes: string[]) => {
   vi.stubGlobal('matchMedia', (query: string) => ({
@@ -89,5 +93,36 @@ describe('requestPersistentStorage', () => {
       persist: vi.fn(),
     });
     await expect(requestPersistentStorage()).resolves.toBe(false);
+  });
+});
+
+describe('requestPersistentStorageOnFirstInteraction', () => {
+  it('requests persistence once on the first pointer interaction only', async () => {
+    const persist = vi.fn().mockResolvedValue(false);
+    setStorageManager({
+      persisted: vi.fn().mockResolvedValue(false),
+      persist,
+    });
+    requestPersistentStorageOnFirstInteraction();
+    expect(persist).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new Event('pointerdown'));
+    await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
+
+    window.dispatchEvent(new Event('pointerdown'));
+    window.dispatchEvent(new Event('keydown'));
+    await Promise.resolve();
+    expect(persist).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a key press as the first interaction too', async () => {
+    const persist = vi.fn().mockResolvedValue(false);
+    setStorageManager({
+      persisted: vi.fn().mockResolvedValue(false),
+      persist,
+    });
+    requestPersistentStorageOnFirstInteraction();
+    window.dispatchEvent(new Event('keydown'));
+    await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
   });
 });

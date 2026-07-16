@@ -25,26 +25,38 @@ const stubEnvironment = ({
   standalone = false,
   chromium = false,
   firefox = false,
+  iosChrome = false,
   platform = '',
   touchPoints = 0,
 }: {
   standalone?: boolean;
   chromium?: boolean;
   firefox?: boolean;
+  iosChrome?: boolean;
   platform?: string;
   touchPoints?: number;
 }) => {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: standalone && query === '(display-mode: standalone)',
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
   }));
   vi.stubGlobal('navigator', {
     ...navigator,
     platform,
     maxTouchPoints: touchPoints,
-    userAgent: firefox
-      ? 'Mozilla/5.0 (X11; Linux) Gecko/20100101 Firefox/141.0'
-      : 'Mozilla/5.0 AppleWebKit/605.1.15 Safari/605.1.15',
-    ...(chromium ? { userAgentData: {} } : {}),
+    userAgent: iosChrome
+      ? 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 CriOS/140.0 Mobile/15E148 Safari/604.1'
+      : firefox
+        ? 'Mozilla/5.0 (X11; Linux) Gecko/20100101 Firefox/141.0'
+        : 'Mozilla/5.0 AppleWebKit/605.1.15 Safari/605.1.15',
+    ...(chromium
+      ? {
+          userAgentData: {
+            brands: [{ brand: 'Google Chrome', version: '140' }],
+          },
+        }
+      : {}),
   });
 };
 
@@ -55,13 +67,21 @@ afterEach(() => {
 });
 
 describe('InstallBanner', () => {
-  it('Chromium with a prompt: generic eviction copy and a one-tap Install', () => {
+  it('Chrome with a prompt: browser-specific low-risk copy and a one-tap Install', () => {
     stubEnvironment({ chromium: true });
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<InstallBanner />);
 
-    expect(screen.getByText(/deleted by the browser/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Chrome rarely removes Network Canvas data/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/protect your interview data from being deleted/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/7 days/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Install Interviewer' }),
+    ).toHaveClass('bg-info');
 
     fireEvent.click(screen.getByRole('button', { name: /^install$/i }));
     expect(mockPromptInstall).toHaveBeenCalledTimes(1);
@@ -84,7 +104,16 @@ describe('InstallBanner', () => {
     render(<InstallBanner />);
 
     expect(screen.getByText(/7 days/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Safari is known to remove Network Canvas data/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/protect your interview data from being deleted/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/add to dock/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('alert', { name: 'Install Interviewer' }),
+    ).toHaveClass('bg-destructive');
   });
 
   it('Safari on an iPad: Add to Home Screen', () => {
@@ -93,6 +122,19 @@ describe('InstallBanner', () => {
     render(<InstallBanner />);
 
     expect(screen.getByText(/add to home screen/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Safari is known to remove Network Canvas data/i),
+    ).toBeInTheDocument();
+  });
+
+  it('Chrome on iOS: names Chrome and explains its WebKit risk', () => {
+    stubEnvironment({ iosChrome: true, platform: 'iPhone', touchPoints: 5 });
+    mockGetDeferredPrompt.mockReturnValue(null);
+    render(<InstallBanner />);
+
+    expect(
+      screen.getByText(/Chrome on iOS uses WebKit, which is known to remove/i),
+    ).toBeInTheDocument();
   });
 
   it('Firefox: recommends an installable browser', () => {
@@ -100,7 +142,14 @@ describe('InstallBanner', () => {
     mockGetDeferredPrompt.mockReturnValue(null);
     render(<InstallBanner />);
 
-    expect(screen.getByText(/chrome, edge, or safari/i)).toBeInTheDocument();
+    expect(screen.getByText(/runs low on storage/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Firefox may remove Network Canvas data/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/allow persistent storage/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Install Interviewer' }),
+    ).toHaveClass('bg-warning');
     expect(
       screen.queryByRole('button', { name: /^install$/i }),
     ).not.toBeInTheDocument();
@@ -118,7 +167,7 @@ describe('InstallBanner', () => {
     mockGetDeferredPrompt.mockReturnValue(null);
     render(<InstallBanner />);
 
-    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
 
     expect(screen.queryByText(/7 days/i)).not.toBeInTheDocument();
     expect(sessionStorage.getItem(SESSION_DISMISS_KEY)).toBe('true');

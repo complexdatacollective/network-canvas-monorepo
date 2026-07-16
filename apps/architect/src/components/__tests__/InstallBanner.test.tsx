@@ -51,21 +51,31 @@ const FAKE_PROMPT = {};
 const stubBrowser = ({
   chromium = false,
   firefox = false,
+  iosChrome = false,
   platform = '',
   touchPoints = 0,
 }: {
   chromium?: boolean;
   firefox?: boolean;
+  iosChrome?: boolean;
   platform?: string;
   touchPoints?: number;
 }) => {
   vi.stubGlobal('navigator', {
     platform,
     maxTouchPoints: touchPoints,
-    userAgent: firefox
-      ? 'Mozilla/5.0 (X11; Linux) Gecko/20100101 Firefox/141.0'
-      : 'Mozilla/5.0 AppleWebKit/605.1.15 Safari/605.1.15',
-    ...(chromium ? { userAgentData: {} } : {}),
+    userAgent: iosChrome
+      ? 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 CriOS/140.0 Mobile/15E148 Safari/604.1'
+      : firefox
+        ? 'Mozilla/5.0 (X11; Linux) Gecko/20100101 Firefox/141.0'
+        : 'Mozilla/5.0 AppleWebKit/605.1.15 Safari/605.1.15',
+    ...(chromium
+      ? {
+          userAgentData: {
+            brands: [{ brand: 'Google Chrome', version: '140' }],
+          },
+        }
+      : {}),
   });
 };
 
@@ -77,33 +87,21 @@ afterEach(() => {
 });
 
 describe('InstallBanner', () => {
-  it('uses warning styling and the Architect warning illustration palette', () => {
+  it('Chrome with a prompt: browser-specific low-risk copy and a one-tap Install', () => {
     stubBrowser({ chromium: true });
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<InstallBanner />);
 
-    const banner = screen.getByRole('status', { name: 'Install Architect' });
-    expect(banner).not.toHaveClass('bg-surface-1!');
-    expect(banner).not.toHaveClass('text-surface-1-contrast!');
-
-    const warningIcon = screen.getByTitle('Warning').parentElement;
-    expect(warningIcon?.querySelector('.fill-platinum')).toBeInTheDocument();
     expect(
-      warningIcon?.querySelector('.fill-platinum-dark'),
+      screen.getByText(/Chrome rarely removes Network Canvas data/i),
     ).toBeInTheDocument();
-    expect(warningIcon).toHaveStyle({
-      '--warning-icon-accent': 'oklch(var(--neon-coral))',
-      '--warning-icon-accent-dark': 'oklch(var(--neon-coral--dark))',
-    });
-  });
-
-  it('Chromium with a prompt: generic eviction copy and a one-tap Install', () => {
-    stubBrowser({ chromium: true });
-    mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
-    render(<InstallBanner />);
-
-    expect(screen.getByText(/deleted by the browser/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/protect your protocols from being deleted/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/7 days/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Install Architect' }),
+    ).toHaveClass('bg-info');
 
     fireEvent.click(screen.getByRole('button', { name: /install/i }));
     expect(mockPromptInstall).toHaveBeenCalledTimes(1);
@@ -126,7 +124,16 @@ describe('InstallBanner', () => {
     render(<InstallBanner />);
 
     expect(screen.getByText(/7 days/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Safari is known to remove Network Canvas data/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/protect your protocols from being deleted/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/add to dock/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('alert', { name: 'Install Architect' }),
+    ).toHaveClass('bg-destructive');
   });
 
   it('Safari on an iPad: Add to Home Screen', () => {
@@ -135,6 +142,19 @@ describe('InstallBanner', () => {
     render(<InstallBanner />);
 
     expect(screen.getByText(/add to home screen/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Safari is known to remove Network Canvas data/i),
+    ).toBeInTheDocument();
+  });
+
+  it('Chrome on iOS: names Chrome and explains its WebKit risk', () => {
+    stubBrowser({ iosChrome: true, platform: 'iPhone', touchPoints: 5 });
+    mockGetDeferredPrompt.mockReturnValue(null);
+    render(<InstallBanner />);
+
+    expect(
+      screen.getByText(/Chrome on iOS uses WebKit, which is known to remove/i),
+    ).toBeInTheDocument();
   });
 
   it('Firefox: recommends an installable browser', () => {
@@ -142,7 +162,14 @@ describe('InstallBanner', () => {
     mockGetDeferredPrompt.mockReturnValue(null);
     render(<InstallBanner />);
 
-    expect(screen.getByText(/chrome, edge, or safari/i)).toBeInTheDocument();
+    expect(screen.getByText(/runs low on storage/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Firefox may remove Network Canvas data/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/allow persistent storage/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: 'Install Architect' }),
+    ).toHaveClass('bg-warning');
   });
 
   it('renders nothing when running as an installed app', () => {
@@ -158,12 +185,14 @@ describe('InstallBanner', () => {
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
     render(<InstallBanner />);
 
-    expect(screen.getByText(/deleted by the browser/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Chrome rarely removes Network Canvas data/i),
+    ).toBeInTheDocument();
 
     act(() => setInstalled(true));
 
     expect(
-      screen.queryByText(/deleted by the browser/i),
+      screen.queryByText(/Chrome rarely removes Network Canvas data/i),
     ).not.toBeInTheDocument();
   });
 
