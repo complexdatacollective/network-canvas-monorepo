@@ -6,6 +6,7 @@ import type { AroundNavHandler } from 'wouter';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
+  collapseProtocolHistory,
   guardState,
   isProtocolPath,
   promptLeaveEditor,
@@ -35,11 +36,8 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
         return;
       }
 
-      // Leaving clears the active protocol, so the editor route must not stay
-      // directly behind the start screen in browser history. Otherwise Back
-      // would revisit /protocol without the protocol that route needs.
       void promptLeaveEditor(dispatch, openDialog, () =>
-        nav(to, { ...opts, replace: true }),
+        collapseProtocolHistory(to, () => nav(to, { ...opts, replace: true })),
       );
     },
     [dispatch, openDialog],

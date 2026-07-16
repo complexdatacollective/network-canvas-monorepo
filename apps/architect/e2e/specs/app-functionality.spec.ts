@@ -83,6 +83,17 @@ test('does not leave a cleared protocol in browser history', async ({
     .click();
   await expect(architectPage).toHaveURL(/\/protocol$/);
 
+  await architectPage.getByRole('link', { name: 'Resources' }).click();
+  await expect(architectPage).toHaveURL(/\/protocol\/assets$/);
+  await architectPage.getByRole('link', { name: 'Codebook' }).click();
+  await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
+
+  // Protocol routes keep their normal Back/Forward behavior while editing.
+  await architectPage.goBack();
+  await expect(architectPage).toHaveURL(/\/protocol\/assets$/);
+  await architectPage.goForward();
+  await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
+
   const toolbar = new Toolbar(architectPage);
   await toolbar.returnToStart();
   await architectPage.getByTestId('dialog-primary').click();
