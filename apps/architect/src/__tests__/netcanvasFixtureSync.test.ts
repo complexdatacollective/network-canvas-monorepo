@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { extractProtocol } from '@codaco/protocol-validation';
 import { expect, it } from 'vitest';
+
+import { extractProtocol } from '@codaco/protocol-validation';
 
 // The committed archive is a zip of packages/protocols/e2e/all-interfaces and
 // has silently drifted behind that source fixture twice (schema-tightening PRs
