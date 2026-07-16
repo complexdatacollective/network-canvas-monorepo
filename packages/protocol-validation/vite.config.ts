@@ -73,6 +73,14 @@ const addJsExtensionsToDeclarationSpecifiers = (
 
 export default defineConfig({
   build: {
+    // No rollup `external` config on purpose: the published bundle is fully
+    // self-contained (every runtime import — jszip, zod, ohash,
+    // @codaco/shared-consts — is inlined into dist/index.js), so the artifact
+    // runs in CLI/browser/worker contexts with nothing to install. Under this
+    // design, `dependencies` lists only what the published TYPE surface needs
+    // consumers to resolve; bundled runtime-only libs (jszip) are deliberately
+    // devDependencies. Adding an external here without reclassifying the
+    // dependency would publish a broken artifact.
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'ProtocolValidation',
