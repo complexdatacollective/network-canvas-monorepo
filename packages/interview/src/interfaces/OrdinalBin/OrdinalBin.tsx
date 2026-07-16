@@ -2,14 +2,14 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect } from 'react';
 
 import type { Stage } from '@codaco/protocol-validation';
-import NodeDrawer from '~/components/NodeDrawer';
-import Prompts from '~/components/Prompts';
-import { usePrompts } from '~/components/Prompts/usePrompts';
-import useReadyForNextStage from '~/hooks/useReadyForNextStage';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getCurrentStageId } from '~/selectors/session';
-import type { StageProps } from '~/types';
 
+import NodeDrawer from '../../components/NodeDrawer';
+import Prompts from '../../components/Prompts';
+import { usePrompts } from '../../components/Prompts/usePrompts';
+import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import { useStageSelector } from '../../hooks/useStageSelector';
+import { getCurrentStageId } from '../../selectors/session';
+import type { StageProps } from '../../types';
 import OrdinalBinItem from './components/OrdinalBinItem';
 import { useOrdinalBins } from './useOrdinalBins';
 

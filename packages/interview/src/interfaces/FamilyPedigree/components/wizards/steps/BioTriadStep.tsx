@@ -21,10 +21,10 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { FRAMING_TERMS } from '@codaco/shared-consts';
-import PersonFields from '~/interfaces/FamilyPedigree/components/quickStartWizard/PersonFields';
-import { useFramedTerms } from '~/interfaces/FamilyPedigree/hooks/useFramedTerms';
-import type { GameteRole } from '~/interfaces/FamilyPedigree/store';
 
+import { useFramedTerms } from '../../../hooks/useFramedTerms';
+import type { GameteRole } from '../../../store';
+import PersonFields from '../../quickStartWizard/PersonFields';
 import type { BioTriadOption } from './bioTriadOptions';
 
 type NodeOption = BioTriadOption;

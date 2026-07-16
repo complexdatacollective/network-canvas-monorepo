@@ -5,7 +5,9 @@
   // invokes the electron-builder binary, which is a devDependency of the
   // legacy architect app rather than the root, so knip sees it as unlisted.
   // xcrun is the macOS simulator tool used by the Capacitor dev helper.
-  "ignoreBinaries": ["electron-builder", "xcrun"],
+  // taskkill is the Windows process-termination tool used by
+  // apps/architect-classic/scripts/dev.mjs to tear down dev-server processes.
+  "ignoreBinaries": ["electron-builder", "xcrun", "taskkill"],
   "tags": ["-public"],
   "workspaces": {
     "apps/networkcanvas.com": {

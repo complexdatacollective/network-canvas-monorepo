@@ -1,8 +1,7 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { InterviewPayload } from '~/contract/types';
-
+import type { InterviewPayload } from '../../contract/types';
 import { AnalyticsProvider } from '../AnalyticsProvider';
 import { useTrack } from '../useTrack';
 

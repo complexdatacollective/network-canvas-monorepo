@@ -9,17 +9,17 @@ import {
   entityPrimaryKeyProperty,
   type NcEdge,
 } from '@codaco/shared-consts';
-import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
-import { StageMetadataContext } from '~/contexts/StageMetadataContext';
-import protocol from '~/store/modules/protocol';
-import session, { updatePrompt } from '~/store/modules/session';
-import ui from '~/store/modules/ui';
+
+import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
+import protocol from '../../../store/modules/protocol';
+import session, { updatePrompt } from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
 import type {
   BeforeNextFunction,
   RegisterBeforeNext,
   StageProps,
-} from '~/types';
-
+} from '../../../types';
 import OneToManyDyadCensus from '../OneToManyDyadCensus';
 
 const NODE_TYPE = 'person';

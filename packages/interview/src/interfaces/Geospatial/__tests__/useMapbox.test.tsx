@@ -26,11 +26,11 @@ vi.mock('mapbox-gl/esm', () => ({
   Map: MapConstructor,
 }));
 
-vi.mock('~/contract/context', () => ({
+vi.mock('../../../contract/context', () => ({
   useContractFlags: () => ({ isE2E: false }),
 }));
 
-vi.mock('~/selectors/protocol', () => ({
+vi.mock('../../../selectors/protocol', () => ({
   // `useSelector(makeGetApiKeyAssetValue)` resolves to the
   // `(tokenAssetId) => value` reader the hook then calls.
   makeGetApiKeyAssetValue: () => () => 'test-access-token',

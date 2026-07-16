@@ -17,21 +17,22 @@ import {
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
-import { useTrack } from '~/analytics/useTrack';
+
+import { useTrack } from '../../../analytics/useTrack';
 import {
   actionCircleVariants,
   actionIconClass,
   actionPlusBadgeVariants,
   actionPlusIconClass,
-} from '~/components/actionButtonVariants';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
-import useProtocolForm from '~/forms/useProtocolForm';
-import { useCelebrate } from '~/hooks/useCelebrate';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getNodeIconName } from '~/selectors/name-generator';
-import { getPromptAdditionalAttributes } from '~/selectors/session';
-import { updateNode as updateNodeAction } from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
+} from '../../../components/actionButtonVariants';
+import { useCurrentStep } from '../../../contexts/CurrentStepContext';
+import useProtocolForm from '../../../forms/useProtocolForm';
+import { useCelebrate } from '../../../hooks/useCelebrate';
+import { useStageSelector } from '../../../hooks/useStageSelector';
+import { getNodeIconName } from '../../../selectors/name-generator';
+import { getPromptAdditionalAttributes } from '../../../selectors/session';
+import { updateNode as updateNodeAction } from '../../../store/modules/session';
+import { useAppDispatch } from '../../../store/store';
 
 type NodeFormProps = {
   selectedNode: NcNode | null;

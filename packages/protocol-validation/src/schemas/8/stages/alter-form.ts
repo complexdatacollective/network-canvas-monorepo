@@ -4,9 +4,9 @@ import {
   IntroductionPanelSchema,
   NodeStageSubjectSchema,
   TitlelessFormSchema,
-} from '../common';
-import { FilterSchema } from '../filters';
-import { baseStageSchema } from './base';
+} from '../common/index.ts';
+import { FilterSchema } from '../filters/index.ts';
+import { baseStageSchema } from './base.ts';
 
 export const alterFormStage = baseStageSchema.extend({
   type: z.literal('AlterForm'),

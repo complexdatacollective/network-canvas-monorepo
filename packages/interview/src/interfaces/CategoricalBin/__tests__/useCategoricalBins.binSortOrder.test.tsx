@@ -9,11 +9,11 @@ import {
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
-import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
-import protocol from '~/store/modules/protocol';
-import session from '~/store/modules/session';
-import ui from '~/store/modules/ui';
 
+import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import protocol from '../../../store/modules/protocol';
+import session from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
 import { useCategoricalBins } from '../useCategoricalBins';
 
 const NODE_TYPE = 'person';

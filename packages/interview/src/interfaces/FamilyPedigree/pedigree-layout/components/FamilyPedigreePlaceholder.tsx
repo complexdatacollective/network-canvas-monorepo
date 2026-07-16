@@ -34,8 +34,9 @@ import { motion, useReducedMotion } from 'motion/react';
 import type { Easing, Transition } from 'motion/react';
 
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getNodeColorSelector } from '~/selectors/session';
+
+import { useStageSelector } from '../../../../hooks/useStageSelector';
+import { getNodeColorSelector } from '../../../../selectors/session';
 
 // ---- Loop timing (seconds) ------------------------------------------------
 const BASE = 8.6; // length of the base timeline (seconds)

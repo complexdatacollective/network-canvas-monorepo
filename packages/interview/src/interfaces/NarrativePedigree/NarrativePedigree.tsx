@@ -1,5 +1,4 @@
-import type { StageProps } from '~/types';
-
+import type { StageProps } from '../../types';
 import NarrativePedigreeView from './components/NarrativePedigreeView';
 
 /**

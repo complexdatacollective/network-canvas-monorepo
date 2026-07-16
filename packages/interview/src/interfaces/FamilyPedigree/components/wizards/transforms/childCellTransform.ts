@@ -1,9 +1,6 @@
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
-import type {
-  CommitBatch,
-  VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
 
+import type { CommitBatch, VariableConfig } from '../../../store';
 import { buildParentageBatch } from './buildParentageBatch';
 import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 

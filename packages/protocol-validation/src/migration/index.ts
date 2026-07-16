@@ -1,14 +1,14 @@
 // Import the actual protocol types for each version
 import type { z } from 'zod';
 
-import type { SchemaVersion } from '../schemas';
-import type ProtocolSchemaV7 from '../schemas/7/schema';
-import type ProtocolSchemaV8 from '../schemas/8/schema';
+import type ProtocolSchemaV7 from '../schemas/7/schema.ts';
+import type ProtocolSchemaV8 from '../schemas/8/schema.ts';
+import type { SchemaVersion } from '../schemas/index.ts';
 import {
   MigrationNotPossibleError,
   MigrationStepError,
   VersionMismatchError,
-} from './errors';
+} from './errors.ts';
 
 // Map schema versions to their inferred types
 type ProtocolTypeMap = {

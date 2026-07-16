@@ -5,8 +5,8 @@ import { type ReactNode, useMemo } from 'react';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
+import type { VariableConfig } from '../../store';
 import { alignPedigree } from '../alignPedigree';
 import {
   computeLayoutMetrics,

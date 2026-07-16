@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import type { Network } from '../validateExternalData';
+import type { Network } from '../validateExternalData.ts';
 import {
   getVariableNamesFromNetwork,
   validateNames,
-} from '../validateExternalData';
+} from '../validateExternalData.ts';
 
 describe('validateExternalData', () => {
   describe('getVariableNamesFromNetwork', () => {

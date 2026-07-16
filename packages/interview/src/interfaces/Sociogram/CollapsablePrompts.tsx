@@ -11,8 +11,9 @@ import {
 import usePrevious from '@codaco/fresco-ui/hooks/usePrevious';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import Prompts from '~/components/Prompts';
-import { usePrompts } from '~/components/Prompts/usePrompts';
+
+import Prompts from '../../components/Prompts';
+import { usePrompts } from '../../components/Prompts/usePrompts';
 
 const MotionChevron = motion.create(ChevronUp);
 

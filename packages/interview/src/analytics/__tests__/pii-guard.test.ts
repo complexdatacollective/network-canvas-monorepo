@@ -2,16 +2,16 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it, vi } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
-import { createAnalyticsListenerMiddleware } from '~/store/middleware/analyticsListener';
-import protocol from '~/store/modules/protocol';
+
+import { createAnalyticsListenerMiddleware } from '../../store/middleware/analyticsListener';
+import protocol from '../../store/modules/protocol';
 import session, {
   addEdge,
   addNode,
   deleteEdge,
   deleteNode,
-} from '~/store/modules/session';
-import ui from '~/store/modules/ui';
-
+} from '../../store/modules/session';
+import ui from '../../store/modules/ui';
 import type { Tracker } from '../tracker';
 
 const SENTINELS = [

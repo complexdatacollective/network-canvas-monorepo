@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { FilterSchema } from '../filters';
+import { FilterSchema } from '../filters/index.ts';
 
 export const panelSchema = z.strictObject({
   id: z.string(),

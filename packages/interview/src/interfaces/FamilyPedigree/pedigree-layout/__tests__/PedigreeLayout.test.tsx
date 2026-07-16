@@ -3,8 +3,8 @@ import { describe, expect, test } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
+import type { VariableConfig } from '../../store';
 import PedigreeLayout from '../components/PedigreeLayout';
 
 const variableConfig: VariableConfig = {

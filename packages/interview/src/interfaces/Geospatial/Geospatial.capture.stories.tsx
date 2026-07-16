@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+
 import CaptureStory, {
   type CaptureParameters,
-} from '~/.storybook/CaptureStory';
+} from '../../../.storybook/CaptureStory';
 
 // Requires STORYBOOK_MAPBOX_TOKEN env var to be set at storybook build time.
 const MAPBOX_TOKEN = import.meta.env.STORYBOOK_MAPBOX_TOKEN as string;

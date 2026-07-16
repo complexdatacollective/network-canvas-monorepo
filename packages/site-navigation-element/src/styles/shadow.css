@@ -12,9 +12,11 @@
  * `@source` globs below scope detection back down to the nav's actual render
  * closure. They use directory/brace globs rather than single-file paths:
  * multiple explicit single-file `@source` directives into the
- * symlinked+gitignored `node_modules/@codaco/fresco-ui/dist/*.js` scan
- * unreliably and order-dependently under Tailwind v4, while glob forms scan
- * reliably.
+ * symlinked `node_modules/@codaco/fresco-ui/src/*.tsx` scan unreliably and
+ * order-dependently under Tailwind v4, while glob forms scan reliably.
+ * `navigation/` and `typography/` also hold `.stories.tsx`/`.test.tsx` files
+ * that fresco-ui's build never shipped, so those two globs name each real
+ * component/module file explicitly instead of using a bare `*` wildcard.
  *
  * Whenever SiteNavigation (or its fresco-ui imports) gains a new
  * component/module, or starts using another class-bearing file, the
@@ -23,8 +25,8 @@
  */
 @import '@codaco/tailwind-config/fresco.css' source(none);
 
-@source '../../node_modules/@codaco/fresco-ui/dist/{Button,Spinner,PortalContainer}.js';
-@source '../../node_modules/@codaco/fresco-ui/dist/navigation/*.js';
-@source '../../node_modules/@codaco/fresco-ui/dist/typography/*.js';
-@source '../../node_modules/@codaco/fresco-ui/dist/styles/controlVariants.js';
+@source '../../node_modules/@codaco/fresco-ui/src/{Button,Spinner,PortalContainer}.tsx';
+@source '../../node_modules/@codaco/fresco-ui/src/navigation/{SiteFooter,SiteNavigation,SiteNavigation.messages,ThemeSwitcher}.{ts,tsx}';
+@source '../../node_modules/@codaco/fresco-ui/src/typography/{Heading,PageHeader,Paragraph,UnorderedList}.tsx';
+@source '../../node_modules/@codaco/fresco-ui/src/styles/controlVariants.ts';
 @source '../*.tsx';

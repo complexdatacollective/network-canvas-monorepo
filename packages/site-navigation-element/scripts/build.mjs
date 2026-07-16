@@ -1,11 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +21,7 @@ function run(command, args) {
     cwd: pkgRoot,
     stdio: 'inherit',
     // pnpm resolves to a .cmd shim on Windows, which Node can't exec without
-    // a shell (mirrors scripts/with-turbo.mjs).
+    // a shell.
     shell: process.platform === 'win32',
   });
   if (result.error) {
@@ -35,20 +29,6 @@ function run(command, args) {
     process.exit(1);
   }
   if (result.status !== 0) process.exit(result.status ?? 1);
-}
-
-// The Tailwind @source directives scan fresco-ui's dist; fail early with a
-// clear message instead of silently emitting a stylesheet with no utilities.
-const frescoDist = dirname(
-  require.resolve('@codaco/fresco-ui/navigation/SiteNavigation'),
-);
-if (!existsSync(join(frescoDist, 'SiteNavigation.js'))) {
-  console.error(
-    '@codaco/fresco-ui dist is missing. Build it first (turbo does this ' +
-      'automatically: `pnpm build`/`pnpm test` from the repo root, or ' +
-      '`pnpm --filter @codaco/fresco-ui build`).',
-  );
-  process.exit(1);
 }
 
 mkdirSync(generated, { recursive: true });

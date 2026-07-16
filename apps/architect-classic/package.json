@@ -11,7 +11,7 @@
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "build": "node ../../scripts/with-turbo.mjs electron-vite build",
+    "build": "electron-vite build",
     "preview": "electron-vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

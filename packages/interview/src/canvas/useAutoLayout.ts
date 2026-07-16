@@ -30,9 +30,9 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import { useContractFlags } from '~/contract/context';
-import type { AppDispatch } from '~/store/store';
 
+import { useContractFlags } from '../contract/context';
+import type { AppDispatch } from '../store/store';
 import type { AutoLayoutForceOptions } from './autoLayout.worker';
 // Workers are imported with `?worker&inline` so Vite emits a self-contained
 // Worker constructor backed by an inlined blob URL. This sidesteps the

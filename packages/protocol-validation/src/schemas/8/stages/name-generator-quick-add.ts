@@ -1,15 +1,14 @@
 import { z } from 'zod';
 
-import { findDuplicateId } from '~/utils/validation-helpers';
-
+import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import {
   NodeStageSubjectSchema,
   nameGeneratorPromptSchema,
   panelSchema,
-} from '../common';
-import { entityAttributeReference } from '../entity-attribute-reference';
-import { baseStageSchema } from './base';
-import { nameGeneratorBehavioursSchema } from './name-generator';
+} from '../common/index.ts';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { baseStageSchema } from './base.ts';
+import { nameGeneratorBehavioursSchema } from './name-generator.ts';
 
 export const nameGeneratorQuickAddStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorQuickAdd'),

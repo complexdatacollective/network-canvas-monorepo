@@ -9,10 +9,11 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { Item } from '@codaco/protocol-validation';
-import { useCaptureException } from '~/analytics/useTrack';
-import { useContractFlags } from '~/contract/context';
-import { useAssetUrl } from '~/hooks/useAssetUrl';
-import { getAssetManifest } from '~/store/modules/protocol';
+
+import { useCaptureException } from '../analytics/useTrack';
+import { useContractFlags } from '../contract/context';
+import { useAssetUrl } from '../hooks/useAssetUrl';
+import { getAssetManifest } from '../store/modules/protocol';
 
 // UploadThing's CDN serves files uploaded via the `blob` router with an invalid
 // Content-Type (e.g. `video` instead of `video/mp4`). Safari strictly requires

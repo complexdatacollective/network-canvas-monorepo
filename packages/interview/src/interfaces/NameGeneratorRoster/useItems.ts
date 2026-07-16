@@ -8,14 +8,17 @@ import {
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
-import useExternalData from '~/hooks/useExternalData';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getStageCardOptions } from '~/selectors/name-generator';
-import { getNetworkNodes, getNodeTypeDefinition } from '~/selectors/session';
-import getParentKeyByNameValue from '~/utils/getParentKeyByNameValue';
-import { getEntityAttributes } from '~/utils/networkEntities';
-import { resolveRosterNodeLabel } from '~/utils/resolveRosterNodeLabel';
 
+import useExternalData from '../../hooks/useExternalData';
+import { useStageSelector } from '../../hooks/useStageSelector';
+import { getStageCardOptions } from '../../selectors/name-generator';
+import {
+  getNetworkNodes,
+  getNodeTypeDefinition,
+} from '../../selectors/session';
+import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
+import { getEntityAttributes } from '../../utils/networkEntities';
+import { resolveRosterNodeLabel } from '../../utils/resolveRosterNodeLabel';
 import type { NameGeneratorRosterProps } from './helpers';
 
 /**

@@ -167,19 +167,19 @@ export function releaseE2EPolicy(
 }
 
 // Merge-queue fast path: a release PR's branch head was already fully
-// E2E-validated by the workflow_dispatch run fired when the branch was
+// E2E-validated by the native pull_request run fired when the branch was
 // created/updated (the required `quality` check means the PR could not have
 // been enqueued otherwise). When the queue's merge commit has the SAME TREE
 // as that branch tip — main did not move and nothing else was batched — the
 // queue would re-run the suites against byte-identical code, so each suite
-// whose dispatched job succeeded on that exact SHA can be skipped.
+// whose PR job succeeded on that exact SHA can be skipped.
 //
 // Every guard fails closed (the suite runs):
 //  * the merge commit's tree must equal its second parent's (the PR tip's);
 //  * the PR tip must be the current head of a generated changeset-release/*
 //    branch, so only trusted generated branches — never an arbitrary PR that
 //    happens to bump a version — can satisfy the fast path;
-//  * the succeeded job must belong to a workflow_dispatch run of THIS
+//  * the succeeded job must belong to a pull_request run of THIS
 //    workflow at that SHA, looked up via the Actions API; any API error
 //    counts as not validated.
 export async function alreadyValidatedSuites({
@@ -211,7 +211,7 @@ export async function alreadyValidatedSuites({
   };
   try {
     const runsResponse = await fetcher(
-      `https://api.github.com/repos/${repository}/actions/workflows/ci-and-release.yml/runs?event=workflow_dispatch&head_sha=${prTip}&per_page=100`,
+      `https://api.github.com/repos/${repository}/actions/workflows/ci-and-release.yml/runs?event=pull_request&head_sha=${prTip}&per_page=100`,
       apiOptions,
     );
     if (!runsResponse.ok) return validated;

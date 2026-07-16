@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import ProtocolSchemaV8 from '~/schemas/8/schema';
-
-import { narrativePedigreeStage } from '../narrative-pedigree';
+import ProtocolSchemaV8 from '../../schema.ts';
+import { narrativePedigreeStage } from '../narrative-pedigree.ts';
 
 // Minimal valid FamilyPedigree stage (source).
 // Node variables are on 'person', edge variables are on 'family' (distinct keys).

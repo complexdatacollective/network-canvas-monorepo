@@ -1,5 +1,6 @@
 @import '@codaco/tailwind-config/fresco.css';
-/* Class-scanner glue: fresco-ui's own @source is relative to its dist and
-   can't be resolved from a consumer, so import its styles.css re-export. */
+/* Class-scanner glue: fresco-ui's own styles.css carries a self-relative
+   @source that resolves against its src/ tree, so importing it here is
+   enough to pull that scan in. */
 @import '@codaco/fresco-ui/styles.css';
 @import './architect-theme.css';

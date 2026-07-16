@@ -33,10 +33,13 @@ module.exports = {
       to: 'icons',
     },
     // The preview window renders the Interviewer app. Bundle its built renderer
-    // and preload (produced by `@codaco/interviewer-classic#build`, on which
-    // Architect's build depends via the workspace dependency) into
+    // and preload (produced by `@codaco/interviewer-classic#build`) into
     // resources/interviewer; createPreviewWindow.js loads them from
-    // process.resourcesPath in packaged builds.
+    // process.resourcesPath in packaged builds. This consumes interviewer-
+    // classic's BUILD OUTPUT, not its source, so turbo.json gives
+    // `@codaco/architect-classic#build` an explicit dependsOn entry for
+    // `@codaco/interviewer-classic#build` — the source-first `^topo` edge
+    // alone would not build it.
     {
       from: '../interviewer-classic/out/renderer',
       to: 'interviewer/renderer',

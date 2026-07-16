@@ -27,9 +27,10 @@ import type {
   VariableOptionValue,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getNetworkNodes, getSubjectType } from '~/selectors/session';
-import { getCodebook } from '~/store/modules/protocol';
+
+import { useStageSelector } from '../../hooks/useStageSelector';
+import { getNetworkNodes, getSubjectType } from '../../selectors/session';
+import { getCodebook } from '../../store/modules/protocol';
 
 type NarrativeStage = Extract<Stage, { type: 'Narrative' }>;
 type Preset = NarrativeStage['presets'][number];

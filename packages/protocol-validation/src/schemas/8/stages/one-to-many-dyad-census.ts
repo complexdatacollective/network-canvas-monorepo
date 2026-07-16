@@ -1,13 +1,12 @@
 import { z } from 'zod';
 
-import { findDuplicateId } from '~/utils/validation-helpers';
-
+import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import {
   NodeStageSubjectSchema,
   oneToManyDyadCensusPromptSchema,
-} from '../common';
-import { FilterSchema } from '../filters';
-import { baseStageSchema } from './base';
+} from '../common/index.ts';
+import { FilterSchema } from '../filters/index.ts';
+import { baseStageSchema } from './base.ts';
 
 export const oneToManyDyadCensusStage = baseStageSchema.extend({
   type: z.literal('OneToManyDyadCensus'),

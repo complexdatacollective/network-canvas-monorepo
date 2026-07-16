@@ -130,3 +130,8 @@ minimumReleaseAge: 1440
 # `--no-frozen-lockfile` step.) CI's frozen-lockfile verification pass still
 # enforces the 24h gate exactly as the implicit default does today.
 minimumReleaseAgeStrict: false
+minimumReleaseAgeExclude:
+  - '@codaco/network-exporters@1.1.3'
+  - '@codaco/network-query@1.2.0'
+  - '@codaco/protocol-validation@11.9.0'
+  - '@codaco/shared-consts@5.5.0'

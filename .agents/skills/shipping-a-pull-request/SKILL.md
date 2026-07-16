@@ -12,10 +12,10 @@ mergeable — CI green, no unresolved review feedback. Don't open a PR and walk
 away; a red check or a review comment left unanswered is unfinished work.
 
 **Precondition:** verification already passed (types, lint, `knip`, tests) per
-this repo's `AGENTS.md` and the current Codex instructions. If verification
-hasn't run yet, do that first; this skill starts from "ready to ship." Commit,
-push, and open the PR when the user has asked to ship/open a PR or the current
-thread context clearly authorizes those actions.
+this repo's `AGENTS.md`/`CLAUDE.md` (the same file) — that document also
+authorizes committing and opening the PR without asking first once verified.
+If verification hasn't run yet, do that first; this skill starts from "ready
+to ship."
 
 ## Phase 1 — Open the PR
 
@@ -49,9 +49,11 @@ thread context clearly authorizes those actions.
 ## Phase 2 — Monitor until mergeable
 
 Loop the two checks below until both are clear, fixing anything that surfaces.
-Use available Codex automation/thread-wakeup tooling between polls when present,
-or report pending external state and stop rather than running a busy `sleep`
-loop. Poll at reasonable intervals while checks are actively running.
+Use your harness's wakeup/scheduling tooling between polls (Claude Code:
+`ScheduleWakeup` or a background watcher; Codex: automation/thread-wakeup
+tooling), or report pending external state and stop, rather than running a
+busy `sleep` loop. Poll at reasonable intervals while checks are actively
+running.
 
 ### Check CI
 
@@ -61,7 +63,8 @@ gh pr checks <number> --json name,state,bucket,link
 
 - All `bucket: pass` (or `skipping`) → CI is clear.
 - Any `bucket: fail` → pull the failing job's log and diagnose the _root
-  cause_. Do not guess-and-check:
+  cause_ (Claude Code: invoke `superpowers:systematic-debugging` if it's not
+  immediately obvious). Do not guess-and-check:
   ```bash
   gh run view <run-id> --log-failed
   ```
@@ -77,8 +80,9 @@ gh api repos/{owner}/{repo}/pulls/<number>/comments
 ```
 
 - A review with `state: CHANGES_REQUESTED`, or unresolved inline comments →
-  take a code-review stance before touching code: verify each piece of feedback
-  is technically correct rather than implementing it reflexively.
+  take a code-review stance before touching code (Claude Code: invoke
+  `superpowers:receiving-code-review`): verify each piece of feedback is
+  technically correct rather than implementing it reflexively.
   Apply the fixes that hold up, reply to (or resolve) the threads, push.
 - `APPROVED` with no unresolved threads and CI green → the PR is mergeable.
   Report this to the user and stop — **do not merge it yourself**; merging is

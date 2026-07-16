@@ -22,22 +22,22 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import PedigreeLayout from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeLayout';
-import { computeNodeDisplayLabels } from '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeNode';
-import { dimColor } from '~/interfaces/FamilyPedigree/pedigree-layout/dimColor';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
-import { pedigreeMemberIds } from '~/interfaces/FamilyPedigree/utils/pedigreeMembership';
+
+import { useNodeMeasurement } from '../../../hooks/useNodeMeasurement';
+import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   getActiveSession,
   getNetworkEdges,
   getNetworkNodes,
   resolveNodeShape,
-} from '~/selectors/session';
-import { getCodebook, getStages } from '~/store/modules/protocol';
-import type { StageProps } from '~/types';
-
+} from '../../../selectors/session';
+import { getCodebook, getStages } from '../../../store/modules/protocol';
+import type { StageProps } from '../../../types';
+import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
+import { computeNodeDisplayLabels } from '../../FamilyPedigree/pedigree-layout/components/PedigreeNode';
+import { dimColor } from '../../FamilyPedigree/pedigree-layout/dimColor';
+import type { VariableConfig } from '../../FamilyPedigree/store';
+import { pedigreeMemberIds } from '../../FamilyPedigree/utils/pedigreeMembership';
 import { PedigreeSnapshotDocument } from '../export/PedigreeSnapshotDocument';
 import { exportSnapshot } from '../export/snapshot';
 import { computeStatuses } from '../genetics/computeStatuses';

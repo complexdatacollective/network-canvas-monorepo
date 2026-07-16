@@ -9,16 +9,16 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import Node from '~/components/ConnectedNode';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
-import useBeforeNext from '~/hooks/useBeforeNext';
-import useReadyForNextStage from '~/hooks/useReadyForNextStage';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getNetworkNodesForType } from '~/selectors/session';
-import { updateNode } from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
-import type { StageProps } from '~/types';
 
+import Node from '../../components/ConnectedNode';
+import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import useBeforeNext from '../../hooks/useBeforeNext';
+import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import { useStageSelector } from '../../hooks/useStageSelector';
+import { getNetworkNodesForType } from '../../selectors/session';
+import { updateNode } from '../../store/modules/session';
+import { useAppDispatch } from '../../store/store';
+import type { StageProps } from '../../types';
 import IntroPanel from '../SlidesForm/IntroPanel';
 import SlidesForm from '../SlidesForm/SlidesForm';
 

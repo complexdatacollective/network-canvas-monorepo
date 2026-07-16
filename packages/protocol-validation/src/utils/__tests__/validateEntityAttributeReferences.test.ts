@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Codebook } from '../../schemas/8/schema';
-import { validateReferences } from '../validateEntityAttributeReferences';
+import type { Codebook } from '../../schemas/8/schema.ts';
+import { validateReferences } from '../validateEntityAttributeReferences.ts';
 
 // Minimal fixture: Variable discriminated-union requires many optional fields
 // (e.g. ordinal requires `options`); building a fully-valid Codebook inline is

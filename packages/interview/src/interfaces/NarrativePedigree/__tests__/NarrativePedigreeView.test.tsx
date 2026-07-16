@@ -13,10 +13,11 @@ import {
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
-import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
-import protocol from '~/store/modules/protocol';
-import session from '~/store/modules/session';
-import type { StageProps } from '~/types';
+
+import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import protocol from '../../../store/modules/protocol';
+import session from '../../../store/modules/session';
+import type { StageProps } from '../../../types';
 
 const exportSnapshotMock =
   vi.fn<(element: HTMLElement, filename: string) => Promise<void>>();

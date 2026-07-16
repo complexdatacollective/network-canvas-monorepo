@@ -1,6 +1,6 @@
 {
   "name": "@codaco/network-query",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Network filtering and querying for Network Canvas",
   "license": "GPL-3.0-or-later",
   "repository": {
@@ -12,14 +12,19 @@
     "dist"
   ],
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js"
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": "./dist/index.js"
+    },
+    "access": "public"
   },
   "scripts": {
-    "build": "node ../../scripts/with-turbo.mjs vite build",
-    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite build --watch",
+    "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

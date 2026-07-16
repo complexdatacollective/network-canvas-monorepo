@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { traverseAndTransform } from '../traverse-and-transform';
+import { traverseAndTransform } from '../traverse-and-transform.ts';
 
 describe('traverseAndTransform', () => {
   it('should process multiple transformations in sequence', () => {

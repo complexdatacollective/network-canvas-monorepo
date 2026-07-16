@@ -1,4 +1,4 @@
-import type { SchemaVersion } from '../schemas';
+import type { SchemaVersion } from '../schemas/index.ts';
 
 export class MigrationError extends Error {
   constructor(message: string) {

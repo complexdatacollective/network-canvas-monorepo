@@ -4,7 +4,8 @@ import {
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
-import { ConnectedMotionNode } from '~/components/ConnectedNode';
+
+import { ConnectedMotionNode } from '../../components/ConnectedNode';
 
 type DrawerNodeProps = {
   node: NcNode;

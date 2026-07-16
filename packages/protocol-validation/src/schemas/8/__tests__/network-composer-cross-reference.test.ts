@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '~/utils/test-utils';
-
-import ProtocolSchemaV8 from '../schema';
-import { ComponentTypes } from '../variables/types';
+import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import ProtocolSchemaV8 from '../schema.ts';
+import { ComponentTypes } from '../variables/types.ts';
 
 const baseStage = {
   id: 'nc1',

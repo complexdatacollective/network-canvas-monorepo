@@ -6,6 +6,7 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
+
 import {
   addEdge,
   addNode,
@@ -13,9 +14,8 @@ import {
   deleteNode,
   updateEdge,
   updateNode,
-} from '~/store/modules/session';
-import type { AppDispatch } from '~/store/store';
-
+} from '../../store/modules/session';
+import type { AppDispatch } from '../../store/store';
 import type { UndoStoreApi } from './useUndoStore';
 
 type Position = { x: number; y: number };

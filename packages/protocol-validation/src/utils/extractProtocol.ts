@@ -1,7 +1,7 @@
 import type Zip from 'jszip';
 import JSZip from 'jszip';
 
-import type { VersionedProtocol } from '~/schemas';
+import type { VersionedProtocol } from '../schemas/index.ts';
 
 // A .netcanvas is a zip of protocol.json plus media assets. Inflating an entry
 // with JSZip's `.async()` pipes the whole DEFLATE stream through pako and only
@@ -40,7 +40,11 @@ const createInflationBudget = (limit: number): InflationBudget => ({
 const inflateEntryWithinBudget = (
   entry: Zip.JSZipObject,
   budget: InflationBudget,
-): Promise<Uint8Array> =>
+  // Annotated with the ArrayBuffer-backed generic (not the bare `Uint8Array`
+  // alias, which defaults to `ArrayBufferLike`) because `out` below is a fresh
+  // `new Uint8Array(length)` allocation, and `Blob`'s constructor requires that
+  // more specific type.
+): Promise<Uint8Array<ArrayBuffer>> =>
   new Promise((resolve, reject) => {
     const chunks: Array<Uint8Array> = [];
     let entryBytes = 0;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { entityAttributeReference } from '~/schemas/8/entity-attribute-reference';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
 
 export const validations = {
   required: z.boolean().optional(),
