@@ -677,6 +677,23 @@ jobs:
       slug: ${{ steps.meta.outputs.slug }}
       snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
     steps:
+      - name: Ensure workspace is a healthy git repo
+        # On the self-hosted runner the workspace persists between jobs, and a
+        # job cancelled mid-checkout can leave it without a usable .git;
+        # actions/checkout then hard-fails ("--local can only be used inside a
+        # git repository") on every subsequent run until the directory is
+        # wiped (observed 2026-07-16). If the workspace is non-empty but not a
+        # valid repo, wipe it so checkout falls back to a fresh clone. The
+        # chown reuses the runner's scoped sudo rule to make root-owned
+        # leftovers (Dockerized runs execute as container root) deletable.
+        # No-op on ephemeral GitHub-hosted VMs: the directory starts empty.
+        run: |
+          if [ -n "$(ls -A . 2>/dev/null)" ] \
+            && ! git rev-parse --resolve-git-dir "$PWD/.git" >/dev/null 2>&1; then
+            echo "workspace is not a valid git repo — wiping for a fresh checkout"
+            sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
+            find . -mindepth 1 -delete
+          fi
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           # The Dockerized test run mounts the workspace; don't leave the
