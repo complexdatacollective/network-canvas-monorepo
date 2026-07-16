@@ -12,17 +12,34 @@ import { guardState, promptLeaveEditor } from '../useProtocolNavGuard';
 // Intercepts the fresco dialog request so the test can read the config shown to
 // the user and auto-confirm it. Records every dispatched action (resetDraft is a
 // thunk, i.e. a function, so we can detect it by type).
-const setup = () => {
+const setup = (
+  dialogAction:
+    | 'leave'
+    | 'download-and-leave'
+    | 'discard-and-leave'
+    | null = 'leave',
+  downloadResult: 'success' | 'failure' = 'success',
+) => {
   const dispatched: unknown[] = [];
-  let captured: AnyDialog | undefined;
+  const captured: AnyDialog[] = [];
 
   const openDialog = (async (config: AnyDialog) => {
-    captured = config;
-    return true;
+    captured.push(config);
+    return dialogAction;
   }) as DialogContextType['openDialog'];
 
   const dispatch = ((action: unknown) => {
     dispatched.push(action);
+    if (typeof action === 'function') {
+      return {
+        unwrap: async () => {
+          if (downloadResult === 'failure') {
+            throw new Error('Export failed');
+          }
+          return { skippedAssets: [] };
+        },
+      };
+    }
     return action;
   }) as unknown as AppDispatch;
 
@@ -30,7 +47,8 @@ const setup = () => {
     dispatch,
     dispatched,
     openDialog,
-    getCaptured: () => captured,
+    getCaptured: () => captured[0],
+    getCapturedDialogs: () => captured,
   };
 };
 
@@ -41,8 +59,9 @@ describe('promptLeaveEditor', () => {
     vi.restoreAllMocks();
   });
 
-  it('warns about data loss and resets the dirty stage draft when leaving to the start screen', async () => {
-    const { dispatch, dispatched, openDialog, getCaptured } = setup();
+  it('uses a separate discard dialog and resets a dirty stage draft when returning to the start screen', async () => {
+    const { dispatch, dispatched, openDialog, getCaptured } =
+      setup('discard-and-leave');
     const performLeave = vi.fn();
 
     await promptLeaveEditor(dispatch, openDialog, performLeave, true);
@@ -53,8 +72,17 @@ describe('promptLeaveEditor', () => {
     if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
     expect(captured.intent).toBe('warning');
     expect(captured.size).toBe('readable');
+    expect(captured.title).toBe('Discard unsaved stage changes?');
     expect(captured.description).not.toMatch(/saved automatically/i);
-    expect(captured.description).toMatch(/unsaved changes/i);
+    expect(captured.description).toMatch(
+      /have not been saved to the protocol/i,
+    );
+    expect(captured.description).toMatch(/last saved version/i);
+    expect(captured.actions.primary).toEqual({
+      label: 'Discard Changes and Return',
+      value: 'discard-and-leave',
+    });
+    expect(captured.actions.secondary).toBeUndefined();
 
     // resetDraft is a thunk, so a function is dispatched to clear the draft.
     expect(dispatched.some((action) => typeof action === 'function')).toBe(
@@ -83,5 +111,46 @@ describe('promptLeaveEditor', () => {
     );
     expect(dispatched).toContainEqual(clearActiveProtocol());
     expect(performLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it('downloads the protocol before returning to the start screen', async () => {
+    const { dispatch, dispatched, openDialog, getCaptured } =
+      setup('download-and-leave');
+    const performLeave = vi.fn();
+
+    await promptLeaveEditor(dispatch, openDialog, performLeave, false);
+
+    const captured = getCaptured();
+    expect(captured?.type).toBe('choice');
+    if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
+    expect(captured.actions.secondary).toEqual({
+      label: 'Return and download now',
+      value: 'download-and-leave',
+    });
+    expect(
+      dispatched.filter((action) => typeof action === 'function'),
+    ).toHaveLength(1);
+    expect(dispatched).toContainEqual(clearActiveProtocol());
+    expect(performLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays in the editor and reports an export failure', async () => {
+    const { dispatch, dispatched, openDialog, getCapturedDialogs } = setup(
+      'download-and-leave',
+      'failure',
+    );
+    const performLeave = vi.fn();
+
+    await promptLeaveEditor(dispatch, openDialog, performLeave, false);
+
+    expect(dispatched).not.toContainEqual(clearActiveProtocol());
+    expect(performLeave).not.toHaveBeenCalled();
+    expect(getCapturedDialogs()).toHaveLength(2);
+    expect(getCapturedDialogs()[1]).toMatchObject({
+      type: 'acknowledge',
+      intent: 'destructive',
+      title: 'Failed to export protocol',
+      description: 'Export failed',
+    });
   });
 });
