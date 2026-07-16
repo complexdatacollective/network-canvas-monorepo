@@ -25,17 +25,14 @@ export async function requestPersistentStorage(): Promise<boolean> {
   }
 }
 
-// WebKit and Chromium decide persist() silently from the user's interaction
-// history, so the startup request — made before any interaction, and for a
-// freshly installed app in a data store with no history at all — is routinely
-// denied (#886). Ask once more on the first gesture, when there is finally
-// interaction history to judge. Firefox is excluded: it pops a permission
-// dialog on every ask, and the startup request already asked this session.
+// Request from a user gesture rather than at startup. WebKit and Chromium use
+// interaction/engagement heuristics for their silent decision, while Firefox
+// can show a permission prompt. Deferring gives every browser the strongest
+// useful context and avoids surprising Firefox users during page load (#886).
 export function requestPersistentStorageOnFirstInteraction(): void {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     return;
   }
-  if (navigator.userAgent.includes('Firefox')) return;
   const request = () => {
     window.removeEventListener('pointerdown', request);
     window.removeEventListener('keydown', request);

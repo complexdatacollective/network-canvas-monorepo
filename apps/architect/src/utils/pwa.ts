@@ -40,3 +40,20 @@ export const requestPersistentStorage = async (): Promise<boolean> => {
     return false;
   }
 };
+
+// Request from a user gesture rather than at startup. WebKit and Chromium use
+// interaction/engagement heuristics for their silent decision, while Firefox
+// can show a permission prompt. Deferring gives every browser the strongest
+// useful context and avoids surprising Firefox users during page load.
+export const requestPersistentStorageOnFirstInteraction = (): void => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return;
+  }
+  const request = () => {
+    window.removeEventListener('pointerdown', request);
+    window.removeEventListener('keydown', request);
+    void requestPersistentStorage();
+  };
+  window.addEventListener('pointerdown', request);
+  window.addEventListener('keydown', request);
+};
