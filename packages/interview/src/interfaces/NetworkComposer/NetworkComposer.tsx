@@ -1,6 +1,5 @@
 'use client';
 
-import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -69,10 +68,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const layoutVariable = stage.layoutVariable;
 
   // Background Configuration
-  const bgImageId = get(stage, 'background.image', '') || undefined;
-  const { url: backgroundImage } = useAssetUrl(bgImageId);
-  const concentricCircles = get(stage, 'background.concentricCircles');
-  const skewedTowardCenter = get(stage, 'background.skewedTowardCenter');
+  const { url: backgroundImage } = useAssetUrl(stage.background.image);
+  const concentricCircles = stage.background.concentricCircles;
+  const skewedTowardCenter = stage.background.skewedTowardCenter;
 
   // Automatic layout is an interview-time choice, not a fixed stage config. The
   // schema's automaticLayout boolean only seeds the initial value; the

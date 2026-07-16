@@ -67,10 +67,9 @@ const Sociogram = (stageProps: SociogramProps) => {
     : 'MANUAL';
 
   // Background Configuration
-  const bgImageId = get(stage, 'background.image', '') || undefined;
-  const { url: backgroundImage } = useAssetUrl(bgImageId);
-  const concentricCircles = get(stage, 'background.concentricCircles');
-  const skewedTowardCenter = get(stage, 'background.skewedTowardCenter');
+  const { url: backgroundImage } = useAssetUrl(stage.background.image);
+  const concentricCircles = stage.background.concentricCircles;
+  const skewedTowardCenter = stage.background.skewedTowardCenter;
 
   const { currentStep } = useCurrentStep();
   const track = useTrack();

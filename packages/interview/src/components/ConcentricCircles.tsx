@@ -11,10 +11,7 @@ type RadarProps = {
   skewed?: boolean;
 };
 
-export default function ConcentricCircles({
-  n = 4,
-  skewed = true,
-}: RadarProps) {
+export default function ConcentricCircles({ n, skewed = true }: RadarProps) {
   if (!n) {
     return null;
   }

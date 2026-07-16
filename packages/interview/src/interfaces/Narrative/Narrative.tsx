@@ -167,8 +167,8 @@ const Narrative = ({ stage }: NarrativeProps) => {
     : '';
 
   // Background Configuration
-  const concentricCircles = get(stage, 'background.concentricCircles');
-  const skewedTowardCenter = get(stage, 'background.skewedTowardCenter');
+  const concentricCircles = stage.background.concentricCircles;
+  const skewedTowardCenter = stage.background.skewedTowardCenter;
 
   // Only include nodes that have the layout variable set
   const nodesWithLayout = useMemo(

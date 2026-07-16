@@ -54,6 +54,7 @@ const makeStage = (defaultEnabled: boolean) => ({
   layoutVariable: LAYOUT_VAR,
   quickAdd: QUICK_ADD_VAR,
   edges: [{ subject: { entity: 'edge' as const, type: EDGE_TYPE } }],
+  background: { concentricCircles: 4 },
   behaviours: { automaticLayout: defaultEnabled },
 });
 
