@@ -120,9 +120,13 @@ PNG absent from the artifact belongs to a removed capture — delete it
 deliberately):
 
 ```sh
-cd <suite>/e2e/visual-snapshots
-for f in $(cd "$artifact_dir"/<suite>/e2e/visual-snapshots && find . -name '*.png'); do
-  cmp -s "$f" "$artifact_dir"/<suite>/e2e/visual-snapshots/"$f" || echo "CHANGED: $f"
+# from the repo root; shown for Interview — for the other suites substitute
+# the package dir from the canonical-location list below (apps/architect,
+# apps/interviewer)
+snapshots=packages/interview/e2e/visual-snapshots
+cd "$snapshots"
+for f in $(cd "$artifact_dir/$snapshots" && find . -name '*.png'); do
+  cmp -s "$f" "$artifact_dir/$snapshots/$f" || echo "CHANGED: $f"
 done
 ```
 
