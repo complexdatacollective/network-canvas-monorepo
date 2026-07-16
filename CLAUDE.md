@@ -18,18 +18,20 @@ deleting branches, publishing releases).
 # Install all dependencies
 pnpm install
 
-# Start all applications in development mode
+# Start every workspace that has a development task
 pnpm dev
 
 # Start specific applications
 pnpm --filter @codaco/architect dev
-pnpm --filter analytics-web dev  # Next.js with turbopack
+pnpm --filter @codaco/interviewer dev
+pnpm --filter @codaco/documentation dev
+pnpm --filter networkcanvas.com dev
 ```
 
 ### Building & Testing
 
 ```bash
-# Build all packages and applications
+# Build the workspace through Turbo's dependency graph
 pnpm build
 
 # Run all tests
@@ -38,12 +40,11 @@ pnpm test
 # Run tests in watch mode
 pnpm test:watch
 
-# Type check all packages (always run before committing)
+# Type check the workspace (always run before committing)
 pnpm typecheck
 
-# Check for dead code and unused dependencies
+# Check for unused files, exports, and dependencies
 pnpm knip
-
 ```
 
 ### Running tasks through turbo
@@ -124,8 +125,9 @@ pnpm publish-packages
 
 #### Changeset lanes: libraries vs gated products
 
-- **Library packages** (`packages/*`) release to npm via `changesets/action` (the
-  "Version Packages" PR).
+- **Publishable library packages** under `packages/*` release to npm via
+  `changesets/action` (the "Version Packages" PR). Private packages stay in the
+  same dependency graph but are not published.
 - **Each gated product** has its own release PR: Architect and Interviewer release
   on a `-beta.N` line and create a GitHub release, while Documentation and
   networkcanvas.com use normal semver and receive a Git tag. Merging a product's
@@ -140,33 +142,47 @@ pnpm publish-packages
 
 ### Monorepo Structure
 
-This is a **pnpm workspace** monorepo with catalog dependencies for version consistency:
+This is a **pnpm workspace** monorepo with catalog dependencies for version
+consistency:
 
-- **Apps**: End-user applications
-  - `architect` - Protocol designer (Vite + Redux)
-  - `documentation` - Documentation site
-- **Packages**: Shared libraries and utilities
-  - `protocol-validation` - Zod schemas for protocol validation and migration
+- **Apps**: Products and websites
+  - `architect` - Offline-capable Vite/React PWA for designing, validating, and previewing protocols
+  - `architect-classic` - Maintenance-mode Electron version of the original Architect
+  - `documentation` - Localized Next.js documentation site built from Markdown/MDX
+  - `interviewer` - Offline-first Vite/React PWA for protocol management, local interviews, and data export
+  - `interviewer-classic` - Maintenance-mode Interviewer for Electron desktop and Capacitor mobile
+  - `networkcanvas.com` - Localized Next.js project website
+- **Packages**: Shared libraries, generated assets, and protocol content
+  - `art` - Shared animated backgrounds, blobs, patterns, and network-weave visuals
+  - `development-protocol` - Published compatibility package for the canonical development protocol
+  - `fresco-ui` - React component system, forms, dialogs, styles, and utilities
+  - `interface-images` - Generated responsive interview-interface screenshots and display component
+  - `interview` - Embeddable participant-facing interview engine and host session contract
+  - `network-exporters` - CSV and GraphML interview-data export pipeline
+  - `network-query` - Network filtering and querying utilities
   - `protocol-utilities` - Synthetic network generation and interview-payload builder
+  - `protocol-validation` - Protocol schemas, validation, hashing, and migration
+  - `protocols` - Private canonical source for bundled protocols, templates, downloads, and fixtures
+  - `sample-protocol` - Published compatibility package for the canonical sample protocol
   - `shared-consts` - Shared constants and TypeScript definitions
-  - `analytics` - PostHog analytics wrapper with installation ID tracking
-  - `ui` - React components (built on shadcn/ui and Tailwind CSS)
-  - `art` - Visual design components using blobs and d3-interpolate-path
-  - `development-protocol` - Development protocol assets for testing
-- **Tooling**: Build configuration
-  - `tailwind` - Shared Tailwind CSS configurations
+  - `site-navigation-element` - Self-contained Network Canvas navigation web component
+- **Tooling**: Shared build and code-quality configuration
+  - `tailwind` - Shared Tailwind theme, design tokens, fonts, and plugins
   - `typescript` - Shared TypeScript configurations
-- **Workers**: Cloudflare Workers for specific backend tasks
-  - `development-protocol` - Development protocol worker
-  - `posthog-proxy` - PostHog proxy worker
+  - `oxlint` - Shared React and accessibility lint rules
+- **Workers**: Cloudflare Workers
+  - `development-protocol` - Resolves and serves the latest released development protocol
+  - `posthog-proxy` - Proxies PostHog API and static-asset requests with CORS support
 
 ### Key Technologies
 
-- **Build**: Vite for apps, custom build scripts for packages
+- **Workspace orchestration**: pnpm workspaces and Turborepo
+- **Builds**: Vite for current web apps and libraries, Next.js for websites,
+  Electron Vite for classic desktop apps, and Wrangler for Cloudflare Workers
 - **Validation**: Zod with complex cross-reference validation patterns
-- **Frontend**: React with various stacks (Vite + Redux for desktop apps and architect, Next.js for documentation and others)
-- **Styling**: Tailwind CSS with shared configurations
-- **Testing**: Vitest across all packages
+- **Frontend**: React, with Redux or Zustand where application state requires it
+- **Styling**: Tailwind CSS, Base UI, and the shared Fresco design system
+- **Testing**: Vitest, Storybook/Chromatic, and Playwright
 
 #### @codaco/protocol-validation
 
@@ -190,21 +206,41 @@ Synthetic network generation and interview-payload builder for Network Canvas pr
 - **`generateNetwork`**: a pure function that produces an `NcNetwork` (plus stage metadata and step state) for a given codebook and stages, with optional seeding for deterministic output. Used by `architect`'s PreviewHost and by tests that need a deterministic network shape.
 - **`SyntheticInterview`**: a fluent builder for codebooks, stages, prompts, forms, and full interview payloads. Used by `@codaco/interview`'s Storybook stories.
 
+#### @codaco/interview
+
+Embeddable React interview engine containing the participant-facing interfaces,
+stage navigation, state management, analytics hooks, and the contract a host
+uses to synchronize and finish sessions. It is hosted by the current Interviewer
+app, Architect previews, and external consumers such as Fresco.
+
+#### @codaco/fresco-ui
+
+The shared React design system. It provides accessible Base UI-backed
+components, forms, dialogs, collection primitives, typography, layout, themes,
+and motion utilities. Its `package.json` exports and co-located Storybook stories
+are the authoritative component API.
+
 #### @codaco/shared-consts
 
 Shared constants and type definitions used across the ecosystem. Place shared code, types, and constants here to avoid circular dependencies between packages.
 
-#### @codaco/analytics
-
-PostHog analytics wrapper for Network Canvas applications with installation ID tracking and error reporting. Provides both client-side and server-side exports.
-
 #### @codaco/art
 
-Visual design components using blobs and d3-interpolate-path for animated blob graphics used throughout the Network Canvas UI.
+Animated backgrounds, blobs, patterns, and network-weave visuals shared across
+Network Canvas applications and websites.
 
-#### @codaco/development-protocol
+#### @codaco/network-exporters and @codaco/network-query
 
-Development protocol (protocol.json and assets/) for testing Network Canvas applications during development; it can be zipped into a .netcanvas file.
+`@codaco/network-exporters` provides the Effect pipeline for exporting interview
+data as CSV and GraphML. `@codaco/network-query` provides filtering and querying
+utilities shared by interview runtimes and applications.
+
+#### @codaco/protocols and compatibility packages
+
+`@codaco/protocols` is the private canonical source for development and sample
+protocols, Architect templates, documentation downloads, and E2E fixtures.
+`@codaco/development-protocol` and `@codaco/sample-protocol` are published
+compatibility packages synchronized from that canonical content.
 
 ### Protocol System
 
@@ -217,9 +253,10 @@ Network Canvas uses a protocol-based system where:
 
 ### Data Flow
 
-1. Protocols are designed in Architect (protocol builder)
-2. Validated using @codaco/protocol-validation
-3. Executed in Interviewer applications
+1. Protocols are designed in Architect.
+2. They are validated and migrated by `@codaco/protocol-validation`.
+3. The `@codaco/interview` runtime executes them in Interviewer or another host.
+4. Completed interview data can be transformed by `@codaco/network-exporters`.
 
 ## Development Guidelines
 
@@ -230,6 +267,10 @@ Network Canvas uses a protocol-based system where:
 - **NO `any` types** - explicitly forbidden, always use proper TypeScript typing
 - **No barrel files** - avoid index.js/ts except in exceptional circumstances
 - **Workspace dependencies**: Use `workspace:*` for dependencies used by multiple packages, or tooling dependencies. Use regular versioning for app-specific dependencies.
+- **Classic app dependencies**: Keep `architect-classic` on its GitHub
+  `protocol-validation` dependency and `interviewer-classic` on its external npm
+  `@codaco/protocol-validation` dependency. Do not migrate either to the
+  workspace package unless the task explicitly modernizes the classic apps.
 
 ### TypeScript
 
@@ -240,8 +281,9 @@ Network Canvas uses a protocol-based system where:
 ### Testing
 
 - Test files use `.test.ts` or `.test.tsx` extensions
-- Tests are co-located with source files in `__tests__/` directories
-- Uses Vitest for testing framework
+- Tests are co-located with the source they cover, either adjacent to it or in a
+  nearby `__tests__/` directory
+- Vitest is the default unit and component test framework; Playwright covers E2E
 - If a storybook exists for a component, consider creating interactive tests within storybook
 
 #### Chromatic and TurboSnap
