@@ -31,6 +31,29 @@ test('downloads the active protocol as a .netcanvas', async ({
   await toolbar.expectLabel('download', 'Downloaded');
 });
 
+test('downloads the active protocol while returning to the start screen', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'Download On Exit', assets });
+  await gotoProtocol(architectPage);
+
+  const toolbar = new Toolbar(architectPage);
+  await toolbar.returnToStart();
+
+  const [download] = await Promise.all([
+    architectPage.waitForEvent('download'),
+    architectPage.getByTestId('dialog-secondary').click(),
+  ]);
+
+  expect(download.suggestedFilename()).toMatch(
+    /^Download_On_Exit-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}\.netcanvas$/,
+  );
+  await expect(architectPage).toHaveURL(/\/$/);
+  await expect(architectPage.getByText('Download On Exit')).toBeVisible();
+});
+
 test('clears all stored protocols', async ({ architectPage, seed }) => {
   const { protocol } = loadAllInterfacesFixture();
   await seed(protocol, { name: 'To Be Cleared' });

@@ -9,6 +9,7 @@ import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import type { AppDispatch } from '~/ducks/store';
 import { store } from '~/ducks/store';
 import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
+import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 
 // Shared mutable state read by this hook and the Router's aroundNav.
 // - bypass: flipped on while we're performing the confirmed navigation so the
@@ -73,7 +74,7 @@ export const promptLeaveEditor = async (
           confirmLabel: 'Return to Start Screen',
         };
 
-    const confirmed = await openDialog({
+    const action = await openDialog({
       type: 'choice',
       title: dialogConfig.title,
       description: dialogConfig.description,
@@ -82,16 +83,25 @@ export const promptLeaveEditor = async (
       actions: {
         primary: {
           label: dialogConfig.confirmLabel,
-          value: true,
+          value: 'leave' as const,
+        },
+        secondary: {
+          label: 'Return and download now',
+          value: 'download-and-leave' as const,
         },
         cancel: {
           label: 'Cancel',
-          value: false,
+          value: null,
         },
       },
     });
 
-    if (confirmed !== true) return;
+    if (action !== 'leave' && action !== 'download-and-leave') return;
+
+    if (action === 'download-and-leave') {
+      const downloaded = await downloadActiveProtocol(dispatch, openDialog);
+      if (!downloaded) return;
+    }
 
     guardState.bypass = true;
     try {
