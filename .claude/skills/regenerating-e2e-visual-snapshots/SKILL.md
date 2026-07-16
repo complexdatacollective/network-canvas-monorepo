@@ -48,11 +48,11 @@ shipping, so the new baselines land in the same PR as the change.
    The artifact contains repo-relative paths, so `<artifact>/<baseline dir>`
    mirrors the committed layout:
 
-   | suite       | baseline dir                                                              |
-   | ----------- | ------------------------------------------------------------------------- |
-   | architect   | `apps/architect/e2e/visual-snapshots/chromium/`                           |
+   | suite       | baseline dir                                                                |
+   | ----------- | --------------------------------------------------------------------------- |
+   | architect   | `apps/architect/e2e/visual-snapshots/chromium/`                             |
    | interview   | `packages/interview/e2e/visual-snapshots/{chromium,firefox,webkit}-matrix/` |
-   | interviewer | `apps/interviewer/e2e/visual-snapshots/chromium/`                         |
+   | interviewer | `apps/interviewer/e2e/visual-snapshots/chromium/`                           |
 
 3. **Diff against the committed baselines and adopt only intended changes.**
    The workflow re-captures EVERY snapshot in the suite, so most artifact
