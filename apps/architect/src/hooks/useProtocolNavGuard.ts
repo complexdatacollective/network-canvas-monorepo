@@ -47,8 +47,9 @@ const isStageEditorPath = (path: string) => path.startsWith('/protocol/stage/');
 //
 // `draftDirty` reflects whether the stage editor holds uncommitted edits. The
 // stage draft is not persisted (see rememberedKeys in store.ts), so leaving with
-// a dirty draft loses those edits: warn accordingly and reset the draft on
-// confirm. A pristine editor keeps the reassuring "saved automatically" copy.
+// a dirty draft uses a separate discard dialog and resets the draft on confirm.
+// A pristine editor keeps the reassuring "saved automatically" copy and offers
+// the download-and-leave action.
 export const promptLeaveEditor = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
@@ -58,47 +59,54 @@ export const promptLeaveEditor = async (
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
-    const dialogConfig = draftDirty
-      ? {
-          intent: 'warning' as const,
-          title: 'Return to start screen?',
+    const action = draftDirty
+      ? await openDialog({
+          type: 'choice',
+          title: 'Discard unsaved stage changes?',
           description:
-            'You have unsaved changes in the stage editor that will be lost if you leave now. Are you sure you want to return to the start screen?',
-          confirmLabel: 'Discard Changes and Leave',
-        }
-      : {
-          intent: 'default' as const,
+            'Changes made in this stage have not been saved to the protocol. If you return to the start screen now, those changes will be discarded and the last saved version of the protocol will remain available.',
+          intent: 'warning',
+          size: 'readable',
+          actions: {
+            primary: {
+              label: 'Discard Changes and Return',
+              value: 'discard-and-leave' as const,
+            },
+            cancel: {
+              label: 'Cancel',
+              value: null,
+            },
+          },
+        })
+      : await openDialog({
+          type: 'choice',
           title: 'Return to start screen?',
           description:
             "Your work is saved automatically in your browser, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
-          confirmLabel: 'Return to Start Screen',
-        };
-
-    const action = await openDialog({
-      type: 'choice',
-      title: dialogConfig.title,
-      description: dialogConfig.description,
-      intent: dialogConfig.intent,
-      size: 'readable',
-      actions: {
-        primary: {
-          label: dialogConfig.confirmLabel,
-          value: 'leave' as const,
-        },
-        ...(!draftDirty && {
-          secondary: {
-            label: 'Return and download now',
-            value: 'download-and-leave' as const,
+          intent: 'default',
+          size: 'readable',
+          actions: {
+            primary: {
+              label: 'Return to Start Screen',
+              value: 'leave' as const,
+            },
+            secondary: {
+              label: 'Return and download now',
+              value: 'download-and-leave' as const,
+            },
+            cancel: {
+              label: 'Cancel',
+              value: null,
+            },
           },
-        }),
-        cancel: {
-          label: 'Cancel',
-          value: null,
-        },
-      },
-    });
+        });
 
-    if (action !== 'leave' && action !== 'download-and-leave') return;
+    if (draftDirty && action !== 'discard-and-leave') {
+      return;
+    }
+    if (!draftDirty && action !== 'leave' && action !== 'download-and-leave') {
+      return;
+    }
 
     if (action === 'download-and-leave') {
       const downloaded = await downloadActiveProtocol(dispatch, openDialog);

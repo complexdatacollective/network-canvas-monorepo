@@ -13,7 +13,11 @@ import { guardState, promptLeaveEditor } from '../useProtocolNavGuard';
 // the user and auto-confirm it. Records every dispatched action (resetDraft is a
 // thunk, i.e. a function, so we can detect it by type).
 const setup = (
-  dialogAction: 'leave' | 'download-and-leave' | null = 'leave',
+  dialogAction:
+    | 'leave'
+    | 'download-and-leave'
+    | 'discard-and-leave'
+    | null = 'leave',
   downloadResult: 'success' | 'failure' = 'success',
 ) => {
   const dispatched: unknown[] = [];
@@ -55,8 +59,9 @@ describe('promptLeaveEditor', () => {
     vi.restoreAllMocks();
   });
 
-  it('warns about data loss and resets the dirty stage draft when leaving to the start screen', async () => {
-    const { dispatch, dispatched, openDialog, getCaptured } = setup();
+  it('uses a separate discard dialog and resets a dirty stage draft when returning to the start screen', async () => {
+    const { dispatch, dispatched, openDialog, getCaptured } =
+      setup('discard-and-leave');
     const performLeave = vi.fn();
 
     await promptLeaveEditor(dispatch, openDialog, performLeave, true);
@@ -67,8 +72,16 @@ describe('promptLeaveEditor', () => {
     if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
     expect(captured.intent).toBe('warning');
     expect(captured.size).toBe('readable');
+    expect(captured.title).toBe('Discard unsaved stage changes?');
     expect(captured.description).not.toMatch(/saved automatically/i);
-    expect(captured.description).toMatch(/unsaved changes/i);
+    expect(captured.description).toMatch(
+      /have not been saved to the protocol/i,
+    );
+    expect(captured.description).toMatch(/last saved version/i);
+    expect(captured.actions.primary).toEqual({
+      label: 'Discard Changes and Return',
+      value: 'discard-and-leave',
+    });
     expect(captured.actions.secondary).toBeUndefined();
 
     // resetDraft is a thunk, so a function is dispatched to clear the draft.

@@ -1,6 +1,9 @@
+import { validateProtocol } from '@codaco/protocol-validation';
+
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
+import { Timeline } from '../pageobjects/timeline.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
 test('downloads the active protocol as a .netcanvas', async ({
@@ -52,6 +55,53 @@ test('downloads the active protocol while returning to the start screen', async 
   );
   await expect(architectPage).toHaveURL(/\/$/);
   await expect(architectPage.getByText('Download On Exit')).toBeVisible();
+});
+
+test('discards an invalid stage draft before returning to the start screen', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const informationStage = protocol.stages.find(
+    (stage) => stage.type === 'Information',
+  );
+  if (!informationStage) throw new Error('fixture has no Information stage');
+
+  await seed(protocol, { name: 'Discard Invalid Draft', assets });
+  await gotoProtocol(architectPage);
+  await new Timeline(architectPage).openStage(informationStage.label);
+
+  // Clearing Information's required page heading makes the in-progress stage
+  // invalid. The stage editor keeps this in its separate draft until the user
+  // chooses "Finished Editing", so it must never replace the durable protocol
+  // shown on the start screen.
+  await architectPage.getByRole('textbox', { name: 'Page heading' }).fill('');
+
+  // The stage editor replaces ProjectActions with StageEditorNav, so leaving
+  // the protocol from here uses Brand's app-header button rather than the
+  // overview toolbar action.
+  await architectPage
+    .getByRole('button', { name: 'Return to start screen', exact: true })
+    .click();
+  const dialog = architectPage.getByRole('dialog', {
+    name: 'Discard unsaved stage changes?',
+  });
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByRole('button', { name: 'Return and download now' }),
+  ).toHaveCount(0);
+  await dialog
+    .getByRole('button', { name: 'Discard Changes and Return' })
+    .click();
+
+  await expect(architectPage).toHaveURL(/\/$/);
+  await expect(architectPage.getByText('Discard Invalid Draft')).toBeVisible();
+
+  const persistedProtocol = await readProtocolJson(architectPage);
+  expect(
+    persistedProtocol.stages.find((stage) => stage.id === informationStage.id),
+  ).toEqual(informationStage);
+  expect((await validateProtocol(persistedProtocol)).success).toBe(true);
 });
 
 test('clears all stored protocols', async ({ architectPage, seed }) => {

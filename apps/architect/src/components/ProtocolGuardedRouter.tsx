@@ -5,12 +5,14 @@ import type { AroundNavHandler } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAppDispatch } from '~/ducks/hooks';
+import { store } from '~/ducks/store';
 import {
   guardState,
   isProtocolPath,
   promptLeaveEditor,
   useProtocolNavGuard,
 } from '~/hooks/useProtocolNavGuard';
+import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
 
 const NavGuardListener = () => {
   useProtocolNavGuard();
@@ -35,7 +37,12 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
         return;
       }
 
-      void promptLeaveEditor(dispatch, openDialog, () => nav(to, opts));
+      void promptLeaveEditor(
+        dispatch,
+        openDialog,
+        () => nav(to, opts),
+        getStageDraftDirty(store.getState()),
+      );
     },
     [dispatch, openDialog],
   );
