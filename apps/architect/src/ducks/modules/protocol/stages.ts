@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
-import { compact, omit } from 'es-toolkit/compat';
+import { compact } from 'es-toolkit/compat';
 import { v1 as uuid } from 'uuid';
 
 import type { SkipLogicDestination, Stage } from '@codaco/protocol-validation';
@@ -173,11 +173,7 @@ const deleteStageAsync = createAppAsyncThunk(
       await Promise.all(
         encryptedVariables.map((variable) =>
           dispatch(
-            updateVariableByUUID(
-              variable.id,
-              omit(variable, ['encrypted', 'id']),
-              false,
-            ),
+            updateVariableByUUID(variable.id, {}, ['encrypted']),
           ).unwrap(),
         ),
       );

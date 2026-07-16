@@ -1,4 +1,3 @@
-import { omit } from 'es-toolkit/compat';
 import { useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -45,11 +44,12 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
     (state: RootState) => getNodeTypes(state) as Record<string, NodeType>,
   );
   const handleEncryptionToggle = useCallback(
-    (variableId: string, encrypted: boolean, variable: Variable) => {
-      const properties = encrypted
-        ? { ...variable, encrypted: true }
-        : omit(variable, 'encrypted');
-      void dispatch(updateVariableByUUID(variableId, properties, false));
+    (variableId: string, encrypted: boolean) => {
+      void dispatch(
+        updateVariableByUUID(variableId, encrypted ? { encrypted: true } : {}, [
+          'encrypted',
+        ]),
+      );
     },
     [dispatch],
   );
@@ -74,7 +74,7 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
         Object.entries(nodeType.variables || {}).forEach(
           ([variableId, variable]) => {
             if (variable?.encrypted) {
-              handleEncryptionToggle(variableId, false, variable);
+              handleEncryptionToggle(variableId, false);
             }
           },
         );
@@ -158,11 +158,7 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
                     ([variableId, variable]) => {
                       const shouldEncrypt = nextValueArray.includes(variableId);
                       if (variable?.encrypted !== shouldEncrypt) {
-                        handleEncryptionToggle(
-                          variableId,
-                          shouldEncrypt,
-                          variable,
-                        );
+                        handleEncryptionToggle(variableId, shouldEncrypt);
                       }
                     },
                   );

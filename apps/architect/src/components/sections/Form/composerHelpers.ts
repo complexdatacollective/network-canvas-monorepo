@@ -1,12 +1,16 @@
 import { get, omit } from 'es-toolkit/compat';
 import { formValueSelector } from 'redux-form';
 
+import type { VariablePropertyKey } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
 
 // Codebook props that, for NetworkComposer, stay on the codebook variable.
 // `component`/`parameters` are intentionally NOT here — they live on the field.
-const COMPOSER_CODEBOOK_PROPERTIES = ['options', 'validation'] as const;
+export const COMPOSER_CODEBOOK_PROPERTIES = [
+  'options',
+  'validation',
+] as const satisfies readonly VariablePropertyKey[];
 
 export const composerNormalizeField = (field: Record<string, unknown>) => {
   // Keep `id` so the list item retains a stable, unique React key.

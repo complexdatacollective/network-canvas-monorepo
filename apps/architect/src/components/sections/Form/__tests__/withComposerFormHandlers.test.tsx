@@ -38,13 +38,16 @@ const Wrapped: ComponentType<Record<string, unknown>> =
   withComposerFormHandlers(Probe as never);
 
 type UpdateVariableArg = {
-  merge: boolean;
-  configuration: { encrypted?: boolean };
+  replaceProperties: readonly string[];
+  configuration: Record<string, unknown>;
 };
 const updateVariable = vi.fn((_arg: UpdateVariableArg) => ({
   unwrap: () => Promise.resolve({}),
 }));
-const createVariable = vi.fn();
+type CreateVariableArg = { configuration: Record<string, unknown> };
+const createVariable = vi.fn((_arg?: CreateVariableArg) => ({
+  unwrap: () => Promise.resolve({ variable: 'new-v' }),
+}));
 const changeForm = vi.fn();
 const getVariable = vi.fn();
 
@@ -66,20 +69,46 @@ const renderHandler = () =>
   render(<Wrapped type="person" entity="node" form="edit-stage" />);
 
 describe('withComposerFormHandlers', () => {
-  it('preserves the encrypted flag when saving a field edit (merge:false)', async () => {
+  it('only claims options and validation, so the codebook keeps every property the composer does not own', async () => {
     getVariable.mockReturnValue({
       type: 'text',
       name: 'secret',
+      component: 'Text',
       encrypted: true,
+      readOnly: true,
     });
     renderHandler();
 
-    await capturedHandler({ variable: 'v1', component: 'Text', label: 'x' });
+    await capturedHandler({
+      variable: 'v1',
+      component: 'TextArea',
+      label: 'x',
+    });
 
     expect(updateVariable).toHaveBeenCalledTimes(1);
     const arg = updateVariable.mock.calls[0]![0];
-    expect(arg.merge).toBe(false);
-    expect(arg.configuration.encrypted).toBe(true);
+    expect(arg.replaceProperties).toEqual(['options', 'validation']);
+    expect(arg.replaceProperties).not.toContain('component');
+    expect(arg.replaceProperties).not.toContain('encrypted');
+    expect(arg.replaceProperties).not.toContain('readOnly');
+    expect(arg.configuration).not.toHaveProperty('component');
+  });
+
+  it('seeds component on a variable it creates, so a form field can reference it later', async () => {
+    renderHandler();
+
+    await capturedHandler({
+      _createNewVariable: 'age',
+      component: 'Number',
+    });
+
+    expect(createVariable).toHaveBeenCalledTimes(1);
+    const arg = createVariable.mock.calls[0]![0]!;
+    expect(arg.configuration).toMatchObject({
+      name: 'age',
+      type: 'number',
+      component: 'Number',
+    });
   });
 
   it('surfaces a friendly error (not a TypeError) when variable creation rejects', async () => {
