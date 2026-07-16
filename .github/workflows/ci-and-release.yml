@@ -336,10 +336,6 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
-      # Same requirement as the test job below: site-navigation-element's
-      # test script runs vitest browser mode against real Chromium.
-      - name: Install Playwright Chromium (vitest browser mode)
-        run: pnpm --filter @codaco/site-navigation-element exec playwright install --with-deps chromium
       - run: pnpm exec turbo run test typecheck
 
   lint:
@@ -432,11 +428,6 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
-      # site-navigation-element's test script runs vitest browser mode
-      # (real Chromium via @vitest/browser-playwright); the runner image
-      # doesn't ship the pinned Playwright build's browsers.
-      - name: Install Playwright Chromium (vitest browser mode)
-        run: pnpm --filter @codaco/site-navigation-element exec playwright install --with-deps chromium
       - name: Run tests (PRs run only tasks affected by the PR diff)
         run: |
           # PR checkouts are a synthetic merge of the PR into its base, so
