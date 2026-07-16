@@ -69,10 +69,7 @@ describe('promptLeaveEditor', () => {
     expect(captured.size).toBe('readable');
     expect(captured.description).not.toMatch(/saved automatically/i);
     expect(captured.description).toMatch(/unsaved changes/i);
-    expect(captured.actions.secondary).toEqual({
-      label: 'Return and download now',
-      value: 'download-and-leave',
-    });
+    expect(captured.actions.secondary).toBeUndefined();
 
     // resetDraft is a thunk, so a function is dispatched to clear the draft.
     expect(dispatched.some((action) => typeof action === 'function')).toBe(

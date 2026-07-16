@@ -85,10 +85,12 @@ export const promptLeaveEditor = async (
           label: dialogConfig.confirmLabel,
           value: 'leave' as const,
         },
-        secondary: {
-          label: 'Return and download now',
-          value: 'download-and-leave' as const,
-        },
+        ...(!draftDirty && {
+          secondary: {
+            label: 'Return and download now',
+            value: 'download-and-leave' as const,
+          },
+        }),
         cancel: {
           label: 'Cancel',
           value: null,
