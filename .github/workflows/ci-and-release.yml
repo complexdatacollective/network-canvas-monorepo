@@ -146,7 +146,7 @@ jobs:
 
   # Decides per suite whether release E2E must run for this ref: each release
   # lane requires only the suites whose subject package ships in its deploy,
-  # and a merge-group run skips suites already validated by the dispatched run
+  # and a merge-group run skips suites already validated by the native PR run
   # on an identical tree (see scripts/release-e2e-policy.mjs).
   e2e-policy:
     if: github.event_name != 'push'
@@ -966,7 +966,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm-publish
     permissions:
-      actions: write
       contents: write
       pull-requests: write
       id-token: write
@@ -996,13 +995,11 @@ jobs:
           publish: pnpm run publish-packages
           createGithubReleases: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A fine-grained PAT makes the generated PR's pull_request event run
+          # normally. GITHUB_TOKEN-created PR events always require manual
+          # workflow approval, which previously forced a duplicate dispatch.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
-      - name: Run CI on the Version Packages branch
-        if: steps.changesets.outputs.hasChangesets == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run ci-and-release.yml --ref changeset-release/main
 
   # Maintains one gated release PR per product (siblings of the library "Version
   # Packages" PR). On every push to main each matrix entry re-runs the version
@@ -1033,7 +1030,6 @@ jobs:
       group: product-release-pr-${{ matrix.slug }}
       cancel-in-progress: false
     permissions:
-      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -1060,20 +1056,15 @@ jobs:
         id: product_pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
+          # Use the dedicated PAT so the generated PR triggers its native
+          # pull_request CI run without an approval prompt.
+          token: ${{ secrets.RELEASE_PR_TOKEN }}
           branch: changeset-release/${{ matrix.slug }}
           base: main
           delete-branch: true
           title: 'Release ${{ matrix.product }}'
           commit-message: 'chore(release): version ${{ matrix.slug }}'
           body-path: ${{ runner.temp }}/product-release-body.md
-      - name: Run CI on the ${{ matrix.product }} release branch
-        if: >-
-          ${{ steps.product_pr.outputs['pull-request-operation'] == 'created'
-          || steps.product_pr.outputs['pull-request-operation'] == 'updated' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_REF: changeset-release/${{ matrix.slug }}
-        run: gh workflow run ci-and-release.yml --ref "$RELEASE_REF"
 
   # On a push to main that changes a gated product version (i.e. one product's
   # release PR just merged), detect which product moved. Idempotency is a local
