@@ -1,9 +1,9 @@
 import { useState, useSyncExternalStore } from 'react';
 
 import {
-  getBrowserStorageRisk,
+  type BrowserStorageProfile,
+  getBrowserStorageProfile,
   StorageRiskBanner,
-  type StorageRisk,
 } from '@codaco/fresco-ui/StorageRiskBanner';
 import {
   getDeferredPrompt,
@@ -26,16 +26,17 @@ const readSessionDismissed = () => {
 // Risk selects both intent and copy. Architect's wording focuses on protocols,
 // which can be exported and backed up independently of the app.
 const bannerMessage = (
-  risk: StorageRisk,
+  profile: BrowserStorageProfile,
   canPromptInstall: boolean,
 ): string => {
+  const { browserName, engine, risk } = profile;
   if (risk === 3) {
     return canPromptInstall
-      ? 'Chrome and Edge rarely delete site data, but protocols stored in a browser tab are not guaranteed. Install Architect to protect your work on this device.'
-      : "Chrome and Edge rarely delete site data, but protocols stored in a browser tab are not guaranteed. Install Architect using the install icon in the browser's address bar.";
+      ? `${browserName} rarely removes Network Canvas data automatically, but data stored in a browser tab is not guaranteed. Install Architect now to protect your protocols from being deleted.`
+      : `${browserName} rarely removes Network Canvas data automatically, but data stored in a browser tab is not guaranteed. Use the install icon in the browser's address bar to install Architect now and protect your protocols from being deleted.`;
   }
   if (risk === 2) {
-    return 'Firefox can delete protocols stored in this tab if this device runs low on storage. Allow persistent storage when Firefox asks, and export backups regularly. Install Architect if your browser and device support it.';
+    return `${browserName} may remove Network Canvas data when this device runs low on storage. Allow persistent storage when ${browserName} asks, and install Architect if your device supports it to protect your protocols from being deleted.`;
   }
   // WebKit: the 7-day eviction is its documented behaviour, and the install
   // path depends on the device. This also covers Chrome/Firefox on iOS, where
@@ -43,18 +44,22 @@ const bannerMessage = (
   // have no touchscreen.
   const isMac =
     navigator.platform.startsWith('Mac') && navigator.maxTouchPoints === 0;
+  const storagePolicyDescription =
+    engine === 'webkit' && browserName !== 'Safari'
+      ? `${browserName} uses WebKit, which is known to remove Network Canvas data`
+      : `${browserName} is known to remove Network Canvas data`;
   return isMac
-    ? 'Safari can delete protocols stored in this tab after about 7 days without interaction. Install Architect: choose Share → Add to Dock, and export backups regularly.'
-    : 'On this device, the browser can delete protocols stored in this tab after about 7 days without interaction. Install Architect: choose Share → Add to Home Screen, and export backups regularly.';
+    ? `${storagePolicyDescription} after 7 days of inactivity. Install Architect now to protect your protocols from being deleted: choose Share → Add to Dock.`
+    : `${storagePolicyDescription} after 7 days of inactivity. Install Architect now to protect your protocols from being deleted: choose Share → Add to Home Screen.`;
 };
 
 function InstallBannerView({
-  risk,
+  profile,
   canPromptInstall,
   onInstall,
   onDismiss,
 }: {
-  risk: StorageRisk;
+  profile: BrowserStorageProfile;
   canPromptInstall: boolean;
   onInstall: () => void;
   onDismiss: () => void;
@@ -62,11 +67,11 @@ function InstallBannerView({
   return (
     <StorageRiskBanner
       aria-label="Install Architect"
-      risk={risk}
+      risk={profile.risk}
       installAction={canPromptInstall ? onInstall : undefined}
       onDismiss={onDismiss}
     >
-      {bannerMessage(risk, canPromptInstall)}
+      {bannerMessage(profile, canPromptInstall)}
     </StorageRiskBanner>
   );
 }
@@ -87,7 +92,7 @@ const InstallBanner = () => {
 
   if (installed || dismissed) return null;
 
-  const risk = getBrowserStorageRisk();
+  const profile = getBrowserStorageProfile();
 
   const dismiss = () => {
     try {
@@ -100,7 +105,7 @@ const InstallBanner = () => {
 
   return (
     <InstallBannerView
-      risk={risk}
+      profile={profile}
       canPromptInstall={deferredPrompt !== null}
       onInstall={() => void promptInstall()}
       onDismiss={dismiss}

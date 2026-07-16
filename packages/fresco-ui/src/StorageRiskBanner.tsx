@@ -17,6 +17,18 @@ import { cx } from './utils/cva';
  */
 export type StorageRisk = 1 | 2 | 3;
 
+export type BrowserStorageProfile = {
+  browserName: string;
+  engine: 'chromium' | 'gecko' | 'webkit' | 'unknown';
+  risk: StorageRisk;
+};
+
+type NavigatorWithUserAgentData = Navigator & {
+  userAgentData?: {
+    brands?: readonly { brand: string; version: string }[];
+  };
+};
+
 type StorageRiskIntent = Extract<
   ButtonProps['color'],
   'destructive' | 'warning' | 'info'
@@ -39,18 +51,55 @@ const contextLabelByRisk: Record<StorageRisk, string> = {
  * requires third-party iOS browsers to use WebKit, so they correctly receive
  * WebKit's high-risk policy rather than their desktop brand's policy.
  */
-export function getBrowserStorageRisk(): StorageRisk {
-  if (typeof navigator === 'undefined') return 2;
-  if ('userAgentData' in navigator) return 3;
-  if (navigator.userAgent.includes('Firefox')) return 2;
-  if (
-    navigator.userAgent.includes('Safari') ||
-    navigator.userAgent.includes('AppleWebKit')
-  ) {
-    return 1;
+export function getBrowserStorageProfile(): BrowserStorageProfile {
+  if (typeof navigator === 'undefined') {
+    return { browserName: 'Browser', engine: 'unknown', risk: 2 };
   }
-  return 2;
+
+  const userAgent = navigator.userAgent;
+
+  // Brand-specific iOS tokens must win over their desktop names: Apple requires
+  // all iOS browsers to use WebKit and therefore its high-risk storage policy.
+  if (userAgent.includes('CriOS')) {
+    return { browserName: 'Chrome on iOS', engine: 'webkit', risk: 1 };
+  }
+  if (userAgent.includes('FxiOS')) {
+    return { browserName: 'Firefox on iOS', engine: 'webkit', risk: 1 };
+  }
+  if (userAgent.includes('EdgiOS')) {
+    return { browserName: 'Edge on iOS', engine: 'webkit', risk: 1 };
+  }
+
+  if (userAgent.includes('Firefox')) {
+    return { browserName: 'Firefox', engine: 'gecko', risk: 2 };
+  }
+
+  const userAgentData = (navigator as NavigatorWithUserAgentData).userAgentData;
+  if (userAgentData) {
+    const brands = userAgentData.brands?.map(({ brand }) => brand) ?? [];
+    const browserName = brands.some((brand) => brand.includes('Microsoft Edge'))
+      ? 'Edge'
+      : brands.some((brand) => brand.includes('Google Chrome'))
+        ? 'Chrome'
+        : 'Chromium';
+    return { browserName, engine: 'chromium', risk: 3 };
+  }
+
+  if (userAgent.includes('Edg/')) {
+    return { browserName: 'Edge', engine: 'chromium', risk: 3 };
+  }
+  if (userAgent.includes('Chrome/')) {
+    return { browserName: 'Chrome', engine: 'chromium', risk: 3 };
+  }
+  if (userAgent.includes('Safari') || userAgent.includes('AppleWebKit')) {
+    return { browserName: 'Safari', engine: 'webkit', risk: 1 };
+  }
+
+  return { browserName: 'Browser', engine: 'unknown', risk: 2 };
 }
+
+export const getBrowserStorageRisk = (): StorageRisk =>
+  getBrowserStorageProfile().risk;
 
 export type StorageRiskBannerProps = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -94,6 +143,7 @@ export function StorageRiskBanner({
         {installAction && (
           <Button
             color={intent}
+            variant="default-inverted"
             size="sm"
             icon={<Download />}
             onClick={installAction}
@@ -101,7 +151,13 @@ export function StorageRiskBanner({
             {installLabel}
           </Button>
         )}
-        <CloseButton size="sm" title="Dismiss" onClick={onDismiss} />
+        <CloseButton
+          color={intent}
+          variant="default-inverted"
+          size="sm"
+          title="Dismiss"
+          onClick={onDismiss}
+        />
       </AlertDescription>
     </Alert>
   );

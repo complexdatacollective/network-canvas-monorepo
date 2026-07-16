@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import type { StorageRisk } from '@codaco/fresco-ui/StorageRiskBanner';
+import type {
+  BrowserStorageProfile,
+  StorageRisk,
+} from '@codaco/fresco-ui/StorageRiskBanner';
 
 import { InstallBannerView } from './InstallBanner';
 
@@ -12,6 +15,12 @@ import { InstallBannerView } from './InstallBanner';
 type StoryArgs = {
   risk: StorageRisk;
   canPromptInstall: boolean;
+};
+
+const profileByRisk: Record<StorageRisk, BrowserStorageProfile> = {
+  1: { browserName: 'Safari', engine: 'webkit', risk: 1 },
+  2: { browserName: 'Firefox', engine: 'gecko', risk: 2 },
+  3: { browserName: 'Chrome', engine: 'chromium', risk: 3 },
 };
 
 const meta: Meta<StoryArgs> = {
@@ -35,7 +44,7 @@ const meta: Meta<StoryArgs> = {
   },
   render: ({ risk, canPromptInstall }) => (
     <InstallBannerView
-      risk={risk}
+      profile={profileByRisk[risk]}
       canPromptInstall={canPromptInstall}
       onInstall={() => {}}
       onDismiss={() => {}}

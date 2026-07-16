@@ -31,15 +31,17 @@ const buttonSpecificVariants = cva({
   ),
   variants: {
     variant: {
-      default: 'bg-(--component-text) text-(--component-bg)',
-      outline:
+      'default': 'bg-(--component-text) text-(--component-bg)',
+      'default-inverted': 'bg-white text-(--component-text)',
+      'outline':
         'border-2 border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
-      text: 'text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
-      dashed:
+      'text':
+        'text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
+      'dashed':
         'border-2 border-dashed border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
-      glass:
+      'glass':
         'control-glass border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
-      link: cx(
+      'link': cx(
         NATIVE_LINK_ROOT_CLASS_NAME,
         'font-body elevation-none hover:elevation-none! h-auto! p-0! tracking-normal hover:translate-none! active:translate-none! disabled:[&>span]:bg-[length:0%_2px]!',
       ),

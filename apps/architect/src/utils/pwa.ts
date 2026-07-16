@@ -32,7 +32,7 @@ export const requestPersistentStorage = async (): Promise<boolean> => {
   // persisted()/persist() usually resolve to a boolean, but the Storage spec
   // allows them to reject (e.g. opaque origin, storage disabled); catch so a
   // fire-and-forget `void requestPersistentStorage()` can't become an unhandled
-  // startup rejection.
+  // rejection.
   try {
     if (await navigator.storage.persisted()) return true;
     return await navigator.storage.persist();

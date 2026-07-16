@@ -1,9 +1,9 @@
 import { useState, useSyncExternalStore } from 'react';
 
 import {
-  getBrowserStorageRisk,
+  type BrowserStorageProfile,
+  getBrowserStorageProfile,
   StorageRiskBanner,
-  type StorageRisk,
 } from '@codaco/fresco-ui/StorageRiskBanner';
 import {
   getDeferredPrompt,
@@ -38,16 +38,17 @@ const readSessionDismissed = () => {
 // Risk selects both intent and copy. The Interviewer wording deliberately
 // foregrounds unexported research data, whose loss is irreversible.
 const bannerMessage = (
-  risk: StorageRisk,
+  profile: BrowserStorageProfile,
   canPromptInstall: boolean,
 ): string => {
+  const { browserName, engine, risk } = profile;
   if (risk === 3) {
     return canPromptInstall
-      ? 'Chrome and Edge rarely delete site data, but unexported interviews stored in a browser tab are not guaranteed. Before collecting data, install Interviewer on this device.'
-      : "Chrome and Edge rarely delete site data, but unexported interviews stored in a browser tab are not guaranteed. Before collecting data, install Interviewer using the install icon in the browser's address bar.";
+      ? `${browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Install Interviewer now, before collecting data, to protect your interview data from being deleted.`
+      : `${browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Before collecting data, use the install icon in the browser's address bar to install Interviewer and protect your interview data from being deleted.`;
   }
   if (risk === 2) {
-    return 'Firefox can permanently delete unexported interviews if this device runs low on storage. Allow persistent storage when Firefox asks. Before collecting data, install Interviewer if your browser and device support it.';
+    return `${browserName} may remove Network Canvas data when this device runs low on storage. Before collecting data, allow persistent storage when ${browserName} asks and install Interviewer if your device supports it to protect your interview data from being deleted.`;
   }
   // WebKit: the 7-day eviction is its documented behaviour, and the install
   // path depends on the device. This also covers Chrome/Firefox on iOS, where
@@ -55,9 +56,13 @@ const bannerMessage = (
   // have no touchscreen.
   const isMac =
     navigator.platform.startsWith('Mac') && navigator.maxTouchPoints === 0;
+  const storagePolicyDescription =
+    engine === 'webkit' && browserName !== 'Safari'
+      ? `${browserName} uses WebKit, which is known to remove Network Canvas data`
+      : `${browserName} is known to remove Network Canvas data`;
   return isMac
-    ? 'Safari can permanently delete unexported interviews stored in this tab after about 7 days without interaction. Before collecting data, install Interviewer: choose Share → Add to Dock.'
-    : 'On this device, the browser can permanently delete unexported interviews stored in this tab after about 7 days without interaction. Before collecting data, install Interviewer: choose Share → Add to Home Screen.';
+    ? `${storagePolicyDescription} after 7 days of inactivity. Install Interviewer now, before collecting data, to protect your interview data from being deleted: choose Share → Add to Dock.`
+    : `${storagePolicyDescription} after 7 days of inactivity. Install Interviewer now, before collecting data, to protect your interview data from being deleted: choose Share → Add to Home Screen.`;
 };
 
 // Pure presentation: a quiet full-width strip urging install, with an
@@ -65,12 +70,12 @@ const bannerMessage = (
 // prompt. It exists for data safety, not convenience — browsers can evict a
 // website's stored data, while installation protects against routine cleanup.
 export function InstallBannerView({
-  risk,
+  profile,
   canPromptInstall,
   onInstall,
   onDismiss,
 }: {
-  risk: StorageRisk;
+  profile: BrowserStorageProfile;
   canPromptInstall: boolean;
   onInstall: () => void;
   onDismiss: () => void;
@@ -78,11 +83,11 @@ export function InstallBannerView({
   return (
     <StorageRiskBanner
       aria-label="Install Interviewer"
-      risk={risk}
+      risk={profile.risk}
       installAction={canPromptInstall ? onInstall : undefined}
       onDismiss={onDismiss}
     >
-      {bannerMessage(risk, canPromptInstall)}
+      {bannerMessage(profile, canPromptInstall)}
     </StorageRiskBanner>
   );
 }
@@ -115,11 +120,11 @@ export function InstallBanner() {
   };
 
   const canPromptInstall = deferredPrompt !== null;
-  const risk = getBrowserStorageRisk();
+  const profile = getBrowserStorageProfile();
 
   return (
     <InstallBannerView
-      risk={risk}
+      profile={profile}
       canPromptInstall={canPromptInstall}
       onInstall={() => void promptInstall()}
       onDismiss={dismiss}
