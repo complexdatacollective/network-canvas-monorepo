@@ -1,5 +1,20 @@
 # @codaco/fresco-ui
 
+## 4.1.0
+
+### Minor Changes
+
+- 1172a44: Add a reusable, accessible colour-theme switcher for public-site navigation.
+  Hosts can provide their own theme persistence and translated labels while using
+  the same light, dark, and system-mode picker.
+
+### Patch Changes
+
+- a6d037a: Add a shared storage-risk banner that maps high, medium, and low data-loss risk
+  to matching alert and action intents, plus a white-background inverted button
+  variant for actions on intent-colored surfaces.
+- fc7e279: Show a numeric keyboard on iOS and Android when InputField uses type="number".
+
 ## 4.0.0
 
 ### Major Changes
