@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code and Codex when working with code in this repository. `AGENTS.md` is a symlink to this file for Codex compatibility.
 
+Repository agent skills live canonically in `.agents/skills/<name>/` (each with
+a `SKILL.md` plus Codex's `agents/openai.yaml`); every `.claude/skills/<name>`
+entry is a directory symlink to its `.agents` counterpart so both harnesses
+read one copy. Edit the canonical `.agents` file only — never break a symlink
+by writing a separate `.claude` copy — and keep harness-specific instructions
+inline as parentheticals (e.g. "Claude Code: invoke X").
+
 ## Committing and opening PRs
 
 When a change is complete and verified — types, lint, `knip`, and the relevant
