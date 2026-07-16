@@ -62,7 +62,9 @@ export class Toolbar {
   // the at-rest label.
   async expectLabel(id: string, text: string) {
     await expect(
-      this.page.getByRole('button', { name: text, exact: true }),
+      this.page
+        .getByRole('toolbar')
+        .getByRole('button', { name: text, exact: true }),
       `expected toolbar item "${id}" to show label "${text}"`,
     ).toBeVisible();
   }

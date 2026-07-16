@@ -26,15 +26,121 @@ import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 const getFullPath = () =>
   window.location.pathname + window.location.search + window.location.hash;
 
-export const guardState = {
-  bypass: false,
-  prompting: false,
-  prevPath: getFullPath(),
-};
-
 // path may include a search/hash suffix; pathname always comes first, so a
 // prefix check still correctly identifies protocol routes.
 export const isProtocolPath = (path: string) => path.startsWith('/protocol');
+
+const PROTOCOL_HISTORY_KEY = '__architectProtocolHistory';
+
+type ProtocolHistoryMarker = {
+  depth: number;
+  hasAppEntryBeforeProtocol: boolean;
+};
+
+const readProtocolHistoryMarker = (): ProtocolHistoryMarker | null => {
+  const state: unknown = history.state;
+  if (typeof state !== 'object' || state === null || Array.isArray(state)) {
+    return null;
+  }
+
+  const marker = (state as Record<string, unknown>)[PROTOCOL_HISTORY_KEY];
+  if (typeof marker !== 'object' || marker === null) return null;
+
+  const depth = (marker as Record<string, unknown>).depth;
+  const hasAppEntryBeforeProtocol = (marker as Record<string, unknown>)
+    .hasAppEntryBeforeProtocol;
+  if (
+    typeof depth !== 'number' ||
+    !Number.isInteger(depth) ||
+    depth < 1 ||
+    typeof hasAppEntryBeforeProtocol !== 'boolean'
+  ) {
+    return null;
+  }
+
+  return { depth, hasAppEntryBeforeProtocol };
+};
+
+const initialPath = getFullPath();
+const initialHistoryMarker = isProtocolPath(initialPath)
+  ? readProtocolHistoryMarker()
+  : null;
+
+export const guardState = {
+  bypass: false,
+  prompting: false,
+  prevPath: initialPath,
+  protocolHistoryDepth: isProtocolPath(initialPath)
+    ? (initialHistoryMarker?.depth ?? 1)
+    : 0,
+  hasAppEntryBeforeProtocol:
+    initialHistoryMarker?.hasAppEntryBeforeProtocol ?? false,
+  taggingHistory: false,
+  restoringProtocolHistory: null as ProtocolHistoryMarker | null,
+};
+
+const tagCurrentProtocolHistoryEntry = (marker: ProtocolHistoryMarker) => {
+  const state: unknown = history.state;
+  const stateRecord =
+    typeof state === 'object' && state !== null && !Array.isArray(state)
+      ? (state as Record<string, unknown>)
+      : {};
+
+  guardState.taggingHistory = true;
+  try {
+    history.replaceState(
+      { ...stateRecord, [PROTOCOL_HISTORY_KEY]: marker },
+      '',
+      getFullPath(),
+    );
+  } finally {
+    guardState.taggingHistory = false;
+  }
+};
+
+const syncProtocolHistoryMarker = (
+  path: string,
+  marker: ProtocolHistoryMarker | null,
+) => {
+  guardState.prevPath = path;
+  guardState.protocolHistoryDepth = marker?.depth ?? 0;
+  guardState.hasAppEntryBeforeProtocol =
+    marker?.hasAppEntryBeforeProtocol ?? false;
+};
+
+// Keep normal browser history while editing, then remove the entire protocol
+// session only after the user confirms the exit. Rewinding to the entry before
+// the protocol and pushing the target path truncates all protocol entries from
+// the forward stack. A direct-load session has no in-app entry before it, so
+// its first protocol entry is replaced before the final push instead.
+export const collapseProtocolHistory = (
+  targetPath: string,
+  replaceCurrentEntry: () => void,
+): void | Promise<void> => {
+  const depth = guardState.protocolHistoryDepth;
+  const hasAppEntryBeforeProtocol = guardState.hasAppEntryBeforeProtocol;
+  const stepsBack = hasAppEntryBeforeProtocol ? depth : depth - 1;
+
+  if (stepsBack <= 0) {
+    replaceCurrentEntry();
+    return;
+  }
+
+  return new Promise<void>((resolve) => {
+    window.addEventListener(
+      'popstate',
+      () => {
+        if (!hasAppEntryBeforeProtocol) {
+          history.replaceState(null, '', targetPath);
+        }
+        history.pushState(null, '', targetPath);
+        resolve();
+      },
+      { once: true },
+    );
+    history.go(-stepsBack);
+  });
+};
 
 // The stage editor lives under /protocol/stage/, so leaving it can be intra-
 // /protocol nav (e.g. Back to the overview) that isProtocolPath() alone misses.
@@ -53,7 +159,7 @@ const isStageEditorPath = (path: string) => path.startsWith('/protocol/stage/');
 export const promptLeaveEditor = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
-  performLeave: () => void,
+  performLeave: () => void | Promise<void>,
   draftDirty = false,
 ) => {
   if (guardState.prompting) return;
@@ -119,7 +225,7 @@ export const promptLeaveEditor = async (
         dispatch(resetDraft(null));
       }
       dispatch(clearActiveProtocol());
-      performLeave();
+      await performLeave();
     } finally {
       guardState.bypass = false;
     }
@@ -183,16 +289,60 @@ export const useProtocolNavGuard = () => {
     // wouter/use-browser-location used by Redux thunks) fires the synthetic
     // event wouter dispatches from its monkey-patch. Use it to keep prevPath
     // in sync with the URL at all times.
-    const updatePrevPath = () => {
-      guardState.prevPath = getFullPath();
+    const onPushState = () => {
+      if (guardState.taggingHistory) return;
+
+      const newPath = getFullPath();
+      if (!isProtocolPath(newPath)) {
+        guardState.restoringProtocolHistory = null;
+        syncProtocolHistoryMarker(newPath, null);
+        return;
+      }
+
+      const marker =
+        guardState.restoringProtocolHistory ??
+        (isProtocolPath(guardState.prevPath)
+          ? {
+              depth: guardState.protocolHistoryDepth + 1,
+              hasAppEntryBeforeProtocol: guardState.hasAppEntryBeforeProtocol,
+            }
+          : { depth: 1, hasAppEntryBeforeProtocol: true });
+      guardState.restoringProtocolHistory = null;
+      tagCurrentProtocolHistoryEntry(marker);
+      syncProtocolHistoryMarker(newPath, marker);
+    };
+
+    const onReplaceState = () => {
+      if (guardState.taggingHistory) return;
+
+      const newPath = getFullPath();
+      if (!isProtocolPath(newPath)) {
+        syncProtocolHistoryMarker(newPath, null);
+        return;
+      }
+
+      const marker = isProtocolPath(guardState.prevPath)
+        ? {
+            depth: Math.max(guardState.protocolHistoryDepth, 1),
+            hasAppEntryBeforeProtocol: guardState.hasAppEntryBeforeProtocol,
+          }
+        : { depth: 1, hasAppEntryBeforeProtocol: false };
+      tagCurrentProtocolHistoryEntry(marker);
+      syncProtocolHistoryMarker(newPath, marker);
     };
 
     const onPop = () => {
       const newPath = getFullPath();
       const oldPath = guardState.prevPath;
+      const destinationMarker = isProtocolPath(newPath)
+        ? (readProtocolHistoryMarker() ?? {
+            depth: 1,
+            hasAppEntryBeforeProtocol: false,
+          })
+        : null;
 
       if (guardState.bypass) {
-        guardState.prevPath = newPath;
+        syncProtocolHistoryMarker(newPath, destinationMarker);
         return;
       }
 
@@ -212,13 +362,20 @@ export const useProtocolNavGuard = () => {
         getStageDraftDirty(store.getState());
 
       if (!leavingProtocol && !leavingDirtyStageEditor) {
-        guardState.prevPath = newPath;
+        syncProtocolHistoryMarker(newPath, destinationMarker);
         return;
       }
 
       // Push the user back to where they were. pushState does not fire popstate,
       // so we don't re-enter this handler. (Our pushState listener will update
       // prevPath to oldPath, which is correct.)
+      guardState.restoringProtocolHistory = destinationMarker
+        ? {
+            depth: destinationMarker.depth + 1,
+            hasAppEntryBeforeProtocol:
+              destinationMarker.hasAppEntryBeforeProtocol,
+          }
+        : { depth: 1, hasAppEntryBeforeProtocol: true };
       history.pushState(null, '', oldPath);
 
       if (leavingProtocol) {
@@ -230,7 +387,10 @@ export const useProtocolNavGuard = () => {
         void promptLeaveEditor(
           dispatch,
           openDialog,
-          () => setLocation('/'),
+          () =>
+            collapseProtocolHistory('/', () =>
+              setLocation('/', { replace: true }),
+            ),
           draftDirty,
         );
         return;
@@ -240,12 +400,26 @@ export const useProtocolNavGuard = () => {
     };
 
     window.addEventListener('popstate', onPop);
-    window.addEventListener('pushState', updatePrevPath);
-    window.addEventListener('replaceState', updatePrevPath);
+    const currentPath = getFullPath();
+    if (isProtocolPath(currentPath)) {
+      const marker = readProtocolHistoryMarker() ?? {
+        depth: 1,
+        hasAppEntryBeforeProtocol: false,
+      };
+      if (!readProtocolHistoryMarker()) {
+        tagCurrentProtocolHistoryEntry(marker);
+      }
+      syncProtocolHistoryMarker(currentPath, marker);
+    } else {
+      syncProtocolHistoryMarker(currentPath, null);
+    }
+
+    window.addEventListener('pushState', onPushState);
+    window.addEventListener('replaceState', onReplaceState);
     return () => {
       window.removeEventListener('popstate', onPop);
-      window.removeEventListener('pushState', updatePrevPath);
-      window.removeEventListener('replaceState', updatePrevPath);
+      window.removeEventListener('pushState', onPushState);
+      window.removeEventListener('replaceState', onReplaceState);
     };
   }, [dispatch, openDialog, setLocation]);
 };
