@@ -19,7 +19,9 @@ export class Toolbar {
   button(id: string) {
     // ActionToolbar (SegmentedToolbar) renders items with aria-label = label
     // (icon-only) or visible text; target by accessible name either way.
-    return this.page.getByRole('button', { name: this.labelFor(id) });
+    return this.page
+      .getByRole('toolbar')
+      .getByRole('button', { name: this.labelFor(id) });
   }
 
   private labelFor(id: string): string {

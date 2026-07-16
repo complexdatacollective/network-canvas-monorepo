@@ -13,7 +13,6 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
-import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 import { useScopedUndoRedo } from '~/hooks/useScopedUndoRedo';
 import { getProtocol } from '~/selectors/protocol';
 import type { ProtocolSourceRef } from '~/templates';
@@ -21,6 +20,7 @@ import {
   isProtocolSourceAuthoringEnabled,
   saveProtocolSource,
 } from '~/templates/source-authoring';
+import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 import { getStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 
@@ -61,31 +61,11 @@ const ProjectActions = ({
   const handleRedo = useCallback(() => scopedRedo(), [scopedRedo]);
 
   const handleDownload = useCallback(async () => {
+    setIsExporting(true);
     try {
-      setIsExporting(true);
-      const { skippedAssets } = await dispatch(exportNetcanvas()).unwrap();
-      if (skippedAssets.length > 0) {
-        const assetList = skippedAssets.map((asset) => asset.name).join(', ');
-        void openDialog({
-          type: 'acknowledge',
-          intent: 'warning',
-          title: 'Some assets could not be exported',
-          description:
-            'Your protocol was downloaded, but these assets could not be ' +
-            `included and are missing from the file: ${assetList}.`,
-          actions: { primary: { label: 'OK', value: true } },
-        });
-      }
+      const downloaded = await downloadActiveProtocol(dispatch, openDialog);
+      if (!downloaded) return;
       setDownloadSuccess(true);
-    } catch (error) {
-      const { message } = reportError(error);
-      void openDialog({
-        type: 'acknowledge',
-        intent: 'destructive',
-        title: 'Failed to export protocol',
-        description: message,
-        actions: { primary: { label: 'OK', value: true } },
-      });
     } finally {
       setIsExporting(false);
     }
