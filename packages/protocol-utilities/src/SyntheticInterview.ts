@@ -1457,13 +1457,21 @@ export class SyntheticInterview {
       variable = ref.id;
     }
 
+    // The schema requires both 'other' labels whenever otherVariable is set;
+    // default them (matching the migration's defaults) so builder output
+    // stays schema-valid without every caller spelling them out.
+    const otherVariable = opts?.otherVariable;
     return {
       id: promptId,
       text: opts?.text ?? this.valueGen.generatePromptText('CategoricalBin'),
       variable,
-      otherVariable: opts?.otherVariable,
-      otherVariablePrompt: opts?.otherVariablePrompt,
-      otherOptionLabel: opts?.otherOptionLabel,
+      otherVariable,
+      otherVariablePrompt: otherVariable
+        ? (opts?.otherVariablePrompt ?? 'Please specify')
+        : opts?.otherVariablePrompt,
+      otherOptionLabel: otherVariable
+        ? (opts?.otherOptionLabel ?? 'Other')
+        : opts?.otherOptionLabel,
       bucketSortOrder: opts?.bucketSortOrder,
       binSortOrder: opts?.binSortOrder,
     };
