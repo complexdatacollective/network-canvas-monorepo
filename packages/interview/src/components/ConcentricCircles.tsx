@@ -7,12 +7,13 @@ const computeRadii = (n: number, q: number) =>
     .reverse();
 
 type RadarProps = {
-  n?: number;
+  n: number;
   skewed?: boolean;
 };
 
 export default function ConcentricCircles({ n, skewed = true }: RadarProps) {
-  if (!n) {
+  // The schema admits zero circles: a deliberate blank background.
+  if (n === 0) {
     return null;
   }
 

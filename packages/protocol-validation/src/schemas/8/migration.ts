@@ -107,7 +107,7 @@ const migrationV7toV8 = createMigration({
 - Several free-text fields that the Architect editor already requires are now required (non-empty) in the schema: a prompt's \`text\`, a form field's \`prompt\`, an introduction panel's \`title\` and \`text\`, an Information item's \`content\`, a Narrative preset's \`label\`, a side panel's \`title\`, a NameGeneratorRoster \`dataSource\`, and its \`searchOptions.matchProperties\` (at least one). Any that were empty are backfilled — the form-field prompt from the variable's name, the panel title from the stage label, a preset/side-panel label by position — else a plain default. An empty \`searchOptions\`, and an Information asset item with no asset id (a broken reference), are dropped. (The FamilyPedigree \`censusPrompt\`, NarrativePedigree disease \`label\`/\`color\`, and Anonymisation \`explanationText\` are likewise required but are v8-only, so no migration is needed.)
 - The Sociogram, Narrative, and NetworkComposer \`background\` is now required and must be exactly one of its two variants: an image (\`image\` set, no \`concentricCircles\`) or concentric circles (\`concentricCircles\` set to a whole number, no \`image\`; 0 renders no rings). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise \`concentricCircles\` defaults to 4, matching what the interview already rendered.
 - An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color default to the first palette color (\`ord-color-seq-1\`), the runtime's previous fallback.
-- A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored. Such orphaned properties are removed.
+- A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored, as was an empty-string \`otherVariable\`. Such orphaned properties are removed.
 - A CategoricalBin prompt with \`otherVariable\` set now requires both \`otherVariablePrompt\` and \`otherOptionLabel\` (previously a missing label silently dropped the whole "other" bin). A missing value is backfilled from the other authored one, else "Please specify" / "Other".
 - A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean variable to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
@@ -384,7 +384,8 @@ const migrationV7toV8 = createMigration({
       {
         // The 'other' bin only exists when otherVariable is set, so a
         // CategoricalBin otherOptionLabel/otherVariablePrompt without it was
-        // silently ignored. V8 rejects the orphaned properties; drop them.
+        // silently ignored, as was an empty-string otherVariable. V8 rejects
+        // the orphaned properties; drop them all.
         paths: ['stages[].prompts[]'],
         fn: <V>(prompt: V) => {
           if (typeof prompt !== 'object' || prompt === null) return prompt;
@@ -393,6 +394,9 @@ const migrationV7toV8 = createMigration({
             typeof typedPrompt.otherVariable !== 'string' ||
             !typedPrompt.otherVariable
           ) {
+            if (typedPrompt.otherVariable === '') {
+              delete typedPrompt.otherVariable;
+            }
             delete typedPrompt.otherOptionLabel;
             delete typedPrompt.otherVariablePrompt;
           }

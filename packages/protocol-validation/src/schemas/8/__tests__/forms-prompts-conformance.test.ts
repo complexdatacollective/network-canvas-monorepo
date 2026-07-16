@@ -341,6 +341,63 @@ describe('Forms & prompts schema conformance', () => {
         expect(issue).toBeDefined();
       }
     });
+
+    it('rejects an empty-string otherVariable with a targeted message', () => {
+      const protocol = createProtocol([
+        categoricalBinStage({ otherVariable: '' }),
+      ]);
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((i) =>
+          i.message.includes('otherVariable must name a variable'),
+        );
+        expect(issue).toBeDefined();
+      }
+    });
+
+    it('rejects an empty-string otherOptionLabel without otherVariable', () => {
+      const protocol = createProtocol([
+        categoricalBinStage({ otherOptionLabel: '' }),
+      ]);
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((i) =>
+          i.message.includes('otherOptionLabel requires otherVariable'),
+        );
+        expect(issue).toBeDefined();
+      }
+    });
+
+    it('parses the other-option fields into the narrowed variant', () => {
+      const protocol = createProtocol([
+        categoricalBinStage({
+          otherVariable: 'personOther',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        }),
+      ]);
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const stage = result.data.stages[0];
+        if (stage?.type !== 'CategoricalBin') {
+          throw new Error('expected a CategoricalBin stage');
+        }
+        const prompt = stage.prompts[0];
+        // The pipe narrows the static type: proving otherVariable is set
+        // proves the label and follow-up prompt exist, with no cast.
+        if (prompt && prompt.otherVariable !== undefined) {
+          const label: string = prompt.otherOptionLabel;
+          const followUp: string = prompt.otherVariablePrompt;
+          expect(label).toBe('Other');
+          expect(followUp).toBe('Please specify');
+        } else {
+          throw new Error('expected the other-option variant');
+        }
+      }
+    });
   });
 
   describe('OrdinalBin prompt color', () => {

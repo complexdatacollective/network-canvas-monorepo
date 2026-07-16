@@ -68,9 +68,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const layoutVariable = stage.layoutVariable;
 
   // Background Configuration
-  const { url: backgroundImage } = useAssetUrl(stage.background.image);
-  const concentricCircles = stage.background.concentricCircles;
-  const skewedTowardCenter = stage.background.skewedTowardCenter;
+  const stageBackground = stage.background;
+  const { url: backgroundImage } = useAssetUrl(stageBackground.image);
 
   // Automatic layout is an interview-time choice, not a fixed stage config. The
   // schema's automaticLayout boolean only seeds the initial value; the
@@ -481,15 +480,24 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     return [];
   })();
 
-  const background = backgroundImage ? (
-    <img
-      src={backgroundImage}
-      className="size-full object-cover"
-      alt="Background"
-    />
-  ) : (
-    <ConcentricCircles n={concentricCircles} skewed={skewedTowardCenter} />
-  );
+  // Branch on the schema's image/circles union: in the circles variant
+  // concentricCircles is proven present. An image renders nothing until its
+  // asset URL resolves.
+  const background =
+    stageBackground.image !== undefined ? (
+      backgroundImage ? (
+        <img
+          src={backgroundImage}
+          className="size-full object-cover"
+          alt="Background"
+        />
+      ) : null
+    ) : (
+      <ConcentricCircles
+        n={stageBackground.concentricCircles}
+        skewed={stageBackground.skewedTowardCenter}
+      />
+    );
 
   const simulationHandlers =
     layoutMode === 'AUTOMATIC'

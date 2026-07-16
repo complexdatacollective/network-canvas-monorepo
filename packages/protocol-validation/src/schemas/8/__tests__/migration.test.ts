@@ -2335,6 +2335,24 @@ describe('Migration V7 to V8', () => {
       }
     });
 
+    it('drops an empty-string otherVariable along with its orphans', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherVariable: '',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('otherVariable');
+        expect(stage.prompts[0]).not.toHaveProperty('otherOptionLabel');
+        expect(stage.prompts[0]).not.toHaveProperty('otherVariablePrompt');
+      }
+    });
+
     it('keeps otherOptionLabel and otherVariablePrompt when otherVariable is set', () => {
       const migratedRaw = migrationV7toV8.migrate(
         buildBinProtocol({

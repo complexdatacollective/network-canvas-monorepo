@@ -23,6 +23,10 @@ const countTagged = (
       (def as core.$ZodOptionalDef).innerType as z.ZodType,
       seen,
     );
+  } else if (def.type === 'pipe') {
+    // Mirror the extractor: a pipe is peeled to its input side, so tags in a
+    // pipe's narrowing output union are intentionally not counted.
+    count += countTagged((def as core.$ZodPipeDef).in as z.ZodType, seen);
   } else if (def.type === 'object') {
     for (const child of Object.values(
       (def as core.$ZodObjectDef).shape,

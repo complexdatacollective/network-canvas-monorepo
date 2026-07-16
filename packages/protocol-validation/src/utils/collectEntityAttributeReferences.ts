@@ -40,6 +40,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 // Peel optional / nullable / default wrappers to reach the meaningful node.
+// A pipe (loose-shape-with-refine piped into a narrowing union) is peeled to
+// its INPUT side: it carries the same reference tags at the same paths as the
+// union branches, and — being the permissive stage — still matches in-progress
+// edits that the narrowed union would reject.
 const unwrap = (schema: z.ZodType): z.ZodType => {
   let current = schema;
   for (;;) {
@@ -47,6 +51,10 @@ const unwrap = (schema: z.ZodType): z.ZodType => {
     if (type === 'optional' || type === 'nullable' || type === 'default') {
       current = (current._zod.def as core.$ZodOptionalDef)
         .innerType as z.ZodType;
+      continue;
+    }
+    if (type === 'pipe') {
+      current = (current._zod.def as core.$ZodPipeDef).in as z.ZodType;
       continue;
     }
     return current;

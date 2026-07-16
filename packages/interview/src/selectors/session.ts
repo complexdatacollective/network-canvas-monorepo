@@ -6,6 +6,7 @@ import type { NodeColorSequence, NodeShape } from '@codaco/fresco-ui/Node';
 import { filter as customFilter } from '@codaco/network-query';
 import type {
   Codebook,
+  EdgeColor,
   NodeDefinition,
   StageSubject,
   VariableOption,
@@ -338,7 +339,12 @@ export const getNodeTypeDefinition: (
   },
 );
 
-export const getNodeColorSelector = createSelector(
+// Explicit signature: the enlarged stage union makes the inferred selector
+// type too large for TS to serialize (TS7056).
+export const getNodeColorSelector: (
+  state: RootState,
+  currentStep: number,
+) => NodeColorSequence = createSelector(
   getCodebook,
   getSubjectType,
   (codebook, nodeType): NodeColorSequence => {
@@ -388,10 +394,10 @@ export function resolveNodeShape(
   return shapeDef.default;
 }
 
-const getEdgeColor = createSelector(
-  getCodebook,
-  getStageSubject,
-  (codebook, stageSubject) => {
+// Explicit signature: the enlarged stage union makes the inferred selector
+// type too large for TS to serialize (TS7056) via the makeGetEdgeColor export.
+const getEdgeColor: (state: RootState, currentStep: number) => EdgeColor =
+  createSelector(getCodebook, getStageSubject, (codebook, stageSubject) => {
     if (stageSubject?.entity !== 'edge') {
       return 'edge-color-seq-1';
     }
@@ -401,8 +407,7 @@ const getEdgeColor = createSelector(
     return (
       (codebook as Codebook)?.edge?.[edgeType]?.color ?? 'edge-color-seq-1'
     );
-  },
-);
+  });
 
 export const getEdgeColorForType = (
   type: Extract<StageSubject, { entity: 'edge' }>['type'],

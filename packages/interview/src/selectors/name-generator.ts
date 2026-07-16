@@ -28,7 +28,12 @@ export const getStageCardOptions = createSelector(getCurrentStage, (stage) => {
   return stage.cardOptions ?? {};
 });
 
-export const getNodeIconName = createSelector(
+// Explicit signature: the enlarged stage union makes the inferred selector
+// type too large for TS to serialize (TS7056).
+export const getNodeIconName: (
+  state: RootState,
+  currentStep: number,
+) => string = createSelector(
   getCodebook,
   getSubjectType,
   (codebook, nodeType) => {

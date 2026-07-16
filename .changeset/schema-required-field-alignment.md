@@ -8,17 +8,24 @@ Align schema 8 with the fields Architect has always required, so a protocol
 that validates is a protocol that renders correctly:
 
 - Information stages require a `title` (the page heading).
-- Name Generator forms require a `title` (the add-a-person dialog heading);
-  the interview also falls back to "Add {node type}" if a title is missing.
+- Name Generator forms require a `title` (the add-a-person dialog heading).
 - Sociogram and NetworkComposer stages require a `background`, which must be
   exactly one of an image or a concentric-circles count (zero or more; 0
   renders no rings). Narrative stages require a concentric-circles `background`
   (it has no image variant).
 - OrdinalBin prompts require a palette `color`.
 - CategoricalBin prompts with an "other" option require both the bin label and
-  the follow-up prompt.
+  the follow-up prompt; a lone empty-string `otherVariable`, or an "other"
+  label/prompt set to an empty string without one, is now rejected too.
 - A Sociogram prompt with highlighting enabled must name the variable to
   toggle, and an `edges` object must set `create` and/or `display`.
+
+The conditional rules are also encoded in the inferred TypeScript types: the
+background is a two-variant union (image or circles), and checking a Sociogram
+prompt's `highlight.allowHighlighting` or a CategoricalBin prompt's
+`otherVariable` narrows the dependent fields to present, so consumers need no
+runtime fallbacks or non-null assertions.
+
 - A codebook variable referenced by a form field must define a `component`
   (input control) — previously a missing one crashed the interview when the
   form rendered.
