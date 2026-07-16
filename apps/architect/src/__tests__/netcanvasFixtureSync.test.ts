@@ -23,10 +23,33 @@ const SOURCE_DIR = path.resolve(
 
 it('committed all-interfaces.netcanvas embeds the current source fixture', async () => {
   // extractProtocol also throws when a manifest-referenced asset file is
-  // missing from the archive, so asset drift fails here too.
-  const { protocol } = await extractProtocol(readFileSync(ARCHIVE_PATH));
+  // missing from the archive, so absent assets fail here too.
+  const { protocol, assets } = await extractProtocol(
+    readFileSync(ARCHIVE_PATH),
+  );
   const source: unknown = JSON.parse(
     readFileSync(path.join(SOURCE_DIR, 'protocol.json'), 'utf8'),
   );
   expect(protocol).toEqual(source);
+
+  // Missing assets throw above, but stale asset BYTES would not — compare each
+  // file-backed asset against its source file. (The protocol equality above
+  // makes the archive's manifest authoritative for the source manifest too;
+  // apikey assets carry their value inside protocol.json.)
+  for (const [assetId, definition] of Object.entries(
+    protocol.assetManifest ?? {},
+  )) {
+    if (definition.type === 'apikey') continue;
+    const extracted = assets.find((asset) => asset.id === assetId);
+    expect(extracted, `asset ${assetId} missing from archive`).toBeDefined();
+    if (!extracted || typeof extracted.data === 'string') continue;
+    const archived = new Uint8Array(await extracted.data.arrayBuffer());
+    const expected = Uint8Array.from(
+      readFileSync(path.join(SOURCE_DIR, 'assets', definition.source)),
+    );
+    expect(
+      archived,
+      `asset ${definition.source} differs from the source fixture`,
+    ).toEqual(expected);
+  }
 });
