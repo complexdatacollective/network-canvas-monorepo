@@ -32,7 +32,8 @@ export function composeStageName(parts: {
   qualifier?: string | null;
 }): string {
   const stageName = [parts.subjectName, parts.typeName, parts.qualifier]
-    .filter((part): part is string => Boolean(part && part.trim()))
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part))
     .join(' ');
 
   return stageName.charAt(0).toUpperCase() + stageName.slice(1);
