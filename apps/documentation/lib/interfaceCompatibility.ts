@@ -13,6 +13,7 @@ export type AppRole = 'configure' | 'run';
 export type AppId =
   | 'architect-classic'
   | 'architect'
+  | 'interviewer-classic'
   | 'interviewer'
   | 'fresco';
 
@@ -27,6 +28,11 @@ const APPS: Record<AppId, { label: string; role: AppRole; maxSchema: number }> =
       label: 'Architect',
       role: 'configure',
       maxSchema: 8,
+    },
+    'interviewer-classic': {
+      label: 'Interviewer Classic',
+      role: 'run',
+      maxSchema: 7,
     },
     'interviewer': { label: 'Interviewer', role: 'run', maxSchema: 8 },
     'fresco': { label: 'Fresco', role: 'run', maxSchema: 8 },
