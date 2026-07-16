@@ -60,14 +60,18 @@ describe('RelativeDatePicker parameters', () => {
   );
 
   it.each(['Days before', 'Days after'])(
-    'accepts a non-negative %s offset',
+    'clears the error once %s is corrected to zero',
     async (label) => {
       renderPicker();
       const input = screen.getByRole('spinbutton', { name: label });
 
-      fireEvent.change(input, { target: { value: '30' } });
+      fireEvent.change(input, { target: { value: '-5' } });
       fireEvent.blur(input);
+      await waitFor(() => {
+        expect(screen.getByText('Must be at least 0')).toBeInTheDocument();
+      });
 
+      fireEvent.change(input, { target: { value: '0' } });
       await waitFor(() => {
         expect(
           screen.queryByText('Must be at least 0'),
