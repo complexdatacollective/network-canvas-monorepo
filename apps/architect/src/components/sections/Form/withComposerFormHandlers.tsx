@@ -12,6 +12,7 @@ import type { RootState } from '~/ducks/modules/root';
 import { ensureError } from '~/utils/ensureError';
 
 import { makeGetVariable } from '../../../selectors/codebook';
+import { COMPOSER_CODEBOOK_PROPERTIES } from './composerHelpers';
 
 type Entity = 'node' | 'edge' | 'ego';
 
@@ -52,12 +53,9 @@ const composerFormHandlers = withHandlers({
           [key: string]: unknown;
         };
 
-      const variableType = getTypeForComponent(
-        rest.component as string | undefined,
-      );
-      // Codebook keeps type/options/validation only — NOT component/parameters.
+      const component = rest.component as string | undefined;
+      const variableType = getTypeForComponent(component);
       const codebookConfiguration = {
-        type: variableType,
         ...(options !== undefined ? { options } : {}),
         ...(validation !== undefined ? { validation } : {}),
       };
@@ -68,25 +66,12 @@ const composerFormHandlers = withHandlers({
         const current = props.getVariable(variable ?? '');
         if (!current)
           throw new SubmissionError({ _error: 'Variable not found' });
-        const currentVar = current as {
-          type?: string;
-          name?: string;
-          encrypted?: boolean;
-        };
         await props.updateVariable({
           entity: props.entity as Entity,
           type: props.type,
           variable: variable ?? '',
-          configuration: {
-            ...codebookConfiguration,
-            type: currentVar.type,
-            name: currentVar.name,
-            // `encrypted` is a data-protection flag set by the Anonymisation
-            // stage, not an editable form field. Because merge is false, it must
-            // be carried over explicitly or saving a field edit would strip it.
-            encrypted: currentVar.encrypted,
-          } as Record<string, unknown>,
-          merge: false,
+          configuration: codebookConfiguration as Record<string, unknown>,
+          replaceProperties: COMPOSER_CODEBOOK_PROPERTIES,
         });
         return { variable, ...rest }; // rest retains component + parameters
       }
@@ -101,6 +86,8 @@ const composerFormHandlers = withHandlers({
             type: props.type,
             configuration: {
               ...codebookConfiguration,
+              type: variableType,
+              component,
               name: _createNewVariable,
             } as Record<string, unknown>,
           })

@@ -111,8 +111,8 @@ vi.mock('~/components/Form/DialogArrayField', () => ({
 import NodeConfiguration from '../NodeConfiguration';
 
 type UpdateVariableArg = {
-  merge: boolean;
-  configuration: { encrypted?: boolean };
+  replaceProperties: readonly string[];
+  configuration: Record<string, unknown>;
 };
 const updateVariable = vi.fn((_arg: UpdateVariableArg) => ({
   unwrap: () => Promise.resolve({}),
@@ -149,12 +149,13 @@ const renderSection = () =>
   );
 
 describe('FamilyPedigree NodeConfiguration handleChangeFields', () => {
-  it('preserves the encrypted flag when saving a field edit (merge:false)', async () => {
+  it('does not claim readOnly, so a pedigree-owned option set survives a field edit', async () => {
     getVariable.mockReturnValue({
       component: 'Text',
       type: 'text',
       name: 'secret',
       encrypted: true,
+      readOnly: true,
     });
     renderSection();
     expect(screen.getByTestId('dialog-array-field')).toBeInTheDocument();
@@ -167,8 +168,14 @@ describe('FamilyPedigree NodeConfiguration handleChangeFields', () => {
 
     expect(updateVariable).toHaveBeenCalledTimes(1);
     const arg = updateVariable.mock.calls[0]![0];
-    expect(arg.merge).toBe(false);
-    expect(arg.configuration.encrypted).toBe(true);
+    expect(arg.replaceProperties).toEqual([
+      'options',
+      'parameters',
+      'component',
+      'validation',
+    ]);
+    expect(arg.replaceProperties).not.toContain('readOnly');
+    expect(arg.replaceProperties).not.toContain('encrypted');
   });
 
   it('surfaces a friendly error (not a TypeError) when variable creation rejects', async () => {

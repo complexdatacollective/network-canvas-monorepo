@@ -19,6 +19,7 @@ const FrescoRadioGroupField = RadioGroupField as ComponentType<
 >;
 type RulesProps = {
   type?: 'filter' | 'query';
+  allowEdgeRules?: boolean;
   rules?: Rule[];
   join?: string | null;
   error?: string | null;
@@ -36,6 +37,7 @@ type RulesProps = {
 };
 const Rules = ({
   type = 'filter',
+  allowEdgeRules = true,
   rules = [],
   join = null,
   error = null,
@@ -167,13 +169,15 @@ const Rules = ({
         <Button type="button" color="info" onClick={handleCreateAlterRule}>
           Add alter rule
         </Button>
-        <Button
-          type="button"
-          color="destructive"
-          onClick={handleCreateEdgeRule}
-        >
-          Add edge rule
-        </Button>
+        {allowEdgeRules && (
+          <Button
+            type="button"
+            color="destructive"
+            onClick={handleCreateEdgeRule}
+          >
+            Add edge rule
+          </Button>
+        )}
         {type === 'query' && (
           <Button type="button" color="warning" onClick={handleCreateEgoRule}>
             Add ego rule
@@ -208,6 +212,7 @@ export default compose<
     onChange?: (value: unknown) => void;
     codebook?: Record<string, unknown>;
     type?: 'filter' | 'query';
+    allowEdgeRules?: boolean;
     error?: string | null;
     meta?: Record<string, unknown>;
   }

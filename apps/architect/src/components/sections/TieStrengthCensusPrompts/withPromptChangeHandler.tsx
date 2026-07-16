@@ -52,7 +52,6 @@ const handlers = withHandlers<
         type: createEdge,
         variable: edgeVariable,
         configuration: { options: variableOptions },
-        merge: true,
       });
       return { edgeVariable, createEdge, ...rest };
     },

@@ -27,6 +27,7 @@ import NewVariableWindow, {
 import EntitySelectField from '~/components/sections/fields/EntitySelectField/EntitySelectField';
 import FieldFields from '~/components/sections/Form/FieldFields';
 import {
+  CODEBOOK_PROPERTIES,
   getCodebookProperties,
   itemSelector,
   normalizeField,
@@ -365,30 +366,12 @@ const formHandlers = withHandlers({
         if (!current) {
           throw new SubmissionError({ _error: 'Variable not found' });
         }
-        const currentVar = current as {
-          component?: string;
-          type?: string;
-          name?: string;
-          encrypted?: boolean;
-        };
-        const baseProps = {
-          component: currentVar.component,
-          type: currentVar.type,
-          name: currentVar.name,
-          // `encrypted` is a data-protection flag set by the Anonymisation
-          // stage, not an editable form field. Because merge is false, it must
-          // be carried over explicitly or saving a field edit would strip it.
-          encrypted: currentVar.encrypted,
-        };
         await props.updateVariable({
           entity: 'node',
           type: nodeType ?? '',
           variable: variable ?? '',
-          configuration: { ...baseProps, ...configuration } as Record<
-            string,
-            unknown
-          >,
-          merge: false,
+          configuration: configuration as Record<string, unknown>,
+          replaceProperties: CODEBOOK_PROPERTIES,
         });
         return { variable, ...rest };
       }

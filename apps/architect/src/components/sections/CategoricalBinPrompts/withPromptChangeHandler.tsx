@@ -37,7 +37,6 @@ const handlers = withHandlers({
         type: props.type,
         variable,
         configuration: { options: variableOptions } as Record<string, unknown>,
-        merge: true,
       });
 
       return { variable, ...rest };
