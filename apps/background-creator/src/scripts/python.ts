@@ -1,4 +1,5 @@
-import type { BackgroundDocument, Zone } from '../model/types';
+import { zonesOf } from '../geometry/zones';
+import type { BackgroundDocument, ZoneElement } from '../model/types';
 
 function formatNumber(value: number): string {
   return String(value);
@@ -43,13 +44,13 @@ function pyString(value: string): string {
   return `${out}"`;
 }
 
-function pyZoneLiteral(zone: Zone): string {
-  const label = pyString(zone.label);
-  if (zone.shape === 'rect') {
+function pyZoneLiteral(zone: ZoneElement): string {
+  const label = pyString(zone.zoneLabel ?? '');
+  if (zone.kind === 'rect') {
     return `    {"label": ${label}, "shape": "rect", "x": ${formatNumber(zone.x)}, "y": ${formatNumber(zone.y)}, "width": ${formatNumber(zone.width)}, "height": ${formatNumber(zone.height)}},`;
   }
-  if (zone.shape === 'circle') {
-    return `    {"label": ${label}, "shape": "circle", "cx": ${formatNumber(zone.cx)}, "cy": ${formatNumber(zone.cy)}, "r": ${formatNumber(zone.r)}},`;
+  if (zone.kind === 'ellipse') {
+    return `    {"label": ${label}, "shape": "ellipse", "cx": ${formatNumber(zone.cx)}, "cy": ${formatNumber(zone.cy)}, "rx": ${formatNumber(zone.rx)}, "ry": ${formatNumber(zone.ry)}},`;
   }
   const points = zone.points
     .map((p) => `[${formatNumber(p.x)}, ${formatNumber(p.y)}]`)
@@ -65,7 +66,7 @@ export function generatePythonScript(
   doc: BackgroundDocument,
   opts: { layoutVariable: string; outputVariable: string },
 ): string {
-  const zones = doc.zones.map(pyZoneLiteral).join('\n');
+  const zones = zonesOf(doc).map(pyZoneLiteral).join('\n');
   const title = commentLine(doc.title);
   const layoutDefault = pyString(opts.layoutVariable);
   const outputDefault = pyString(opts.outputVariable);
@@ -126,13 +127,13 @@ def point_in_zone(x, y, zone):
             zone["x"] <= x <= zone["x"] + zone["width"]
             and zone["y"] <= y <= zone["y"] + zone["height"]
         )
-    if shape == "circle":
-        # A zero- or negative-radius circle contains nothing; guard before
+    if shape == "ellipse":
+        # A zero- or negative-radius ellipse contains nothing; guard before
         # dividing so this never raises ZeroDivisionError.
-        if zone["r"] <= 0:
+        if zone["rx"] <= 0 or zone["ry"] <= 0:
             return False
-        dx = (x - zone["cx"]) / zone["r"]
-        dy = (y - zone["cy"]) / zone["r"]
+        dx = (x - zone["cx"]) / zone["rx"]
+        dy = (y - zone["cy"]) / zone["ry"]
         return dx * dx + dy * dy <= 1
     if shape == "polygon":
         return point_in_polygon(x, y, zone["points"])
@@ -143,8 +144,8 @@ def zone_area(zone):
     shape = zone["shape"]
     if shape == "rect":
         return zone["width"] * zone["height"]
-    if shape == "circle":
-        return math.pi * zone["r"] * zone["r"]
+    if shape == "ellipse":
+        return math.pi * zone["rx"] * zone["ry"]
     if shape == "polygon":
         points = zone["points"]
         total = 0.0

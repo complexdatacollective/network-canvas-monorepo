@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { assignZone, zonesOf } from '~/geometry/zones';
 import { backgroundDocumentSchema } from '~/model/schema';
 import {
   createBlankDocument,
@@ -20,7 +21,7 @@ describe('templates', () => {
     }
   });
 
-  it('political compass models the sample-protocol asset with full zone coverage', () => {
+  it('political compass models the sample-protocol asset with five zone fills', () => {
     const doc = createPoliticalCompassDocument();
     expect(doc.title).toBe('Responsive political compass');
     const rects = doc.elements.filter((element) => element.kind === 'rect');
@@ -31,7 +32,8 @@ describe('templates', () => {
       '#bee7b5',
       '#e5c0df',
     ]);
-    const labels = doc.zones.map((zone) => zone.label);
+    const zones = zonesOf(doc);
+    const labels = zones.map((zone) => zone.zoneLabel);
     expect(labels).toEqual([
       'unsure',
       'authoritarian-left',
@@ -40,33 +42,30 @@ describe('templates', () => {
       'libertarian-right',
     ]);
     expect(new Set(labels).size).toBe(labels.length);
-    // Zones tile the whole canvas: every sampled point is assigned somewhere.
-    const rectZones = doc.zones.filter((zone) => zone.shape === 'rect');
-    for (const x of [0.01, 0.21, 0.22, 0.5, 0.61, 0.62, 0.99]) {
-      for (const y of [0.01, 0.49, 0.51, 0.99]) {
-        const covered = rectZones.some(
-          (zone) =>
-            x >= zone.x &&
-            x <= zone.x + zone.width &&
-            y >= zone.y &&
-            y <= zone.y + zone.height,
-        );
-        expect(covered).toBe(true);
-      }
+
+    // Sampled points inside the fills are assigned to the expected zone.
+    const inside: Array<[{ x: number; y: number }, string]> = [
+      [{ x: 0.1, y: 0.5 }, 'unsure'],
+      [{ x: 0.4, y: 0.25 }, 'authoritarian-left'],
+      [{ x: 0.8, y: 0.25 }, 'authoritarian-right'],
+      [{ x: 0.4, y: 0.75 }, 'libertarian-left'],
+      [{ x: 0.8, y: 0.75 }, 'libertarian-right'],
+    ];
+    for (const [point, expected] of inside) {
+      expect(assignZone(point, zones)).toBe(expected);
+    }
+
+    // The 0.21–0.23 visual gutter is honestly unassigned.
+    for (const y of [0.25, 0.75]) {
+      expect(assignZone({ x: 0.22, y }, zones)).toBeNull();
     }
   });
 
   it('mints fresh UUIDs on every call', () => {
     const first = createQuadrantsTemplate();
     const second = createQuadrantsTemplate();
-    const firstIds = [
-      ...first.elements.map((element) => element.id),
-      ...first.zones.map((zone) => zone.id),
-    ];
-    const secondIds = new Set([
-      ...second.elements.map((element) => element.id),
-      ...second.zones.map((zone) => zone.id),
-    ]);
+    const firstIds = first.elements.map((element) => element.id);
+    const secondIds = new Set(second.elements.map((element) => element.id));
     expect(firstIds.every((id) => !secondIds.has(id))).toBe(true);
     expect(new Set(firstIds).size).toBe(firstIds.length);
   });
@@ -74,14 +73,18 @@ describe('templates', () => {
   it('blank document is empty', () => {
     const blank = createBlankDocument();
     expect(blank.elements).toHaveLength(0);
-    expect(blank.zones).toHaveLength(0);
+    expect(zonesOf(blank)).toHaveLength(0);
   });
 
-  it('quadrants template has four rect zones with the specified labels', () => {
+  it('quadrants template marks four rects as zones with the specified labels', () => {
     const doc = createQuadrantsTemplate();
-    expect(doc.zones).toHaveLength(4);
-    expect(doc.zones.every((zone) => zone.shape === 'rect')).toBe(true);
-    expect(doc.zones.map((zone) => zone.label).toSorted()).toEqual([
+    const zones = zonesOf(doc);
+    expect(zones).toHaveLength(4);
+    expect(zones.every((zone) => zone.kind === 'rect')).toBe(true);
+    const labels = zones
+      .map((zone) => zone.zoneLabel)
+      .filter((label): label is string => label !== null);
+    expect(labels.toSorted()).toEqual([
       'bottom-left',
       'bottom-right',
       'top-left',
@@ -103,29 +106,26 @@ describe('templates', () => {
     }
   });
 
-  it('concentric template has three nested circle zones with strictly increasing r', () => {
+  it('concentric template marks three nested ellipse zones, label matching radius', () => {
     const doc = createConcentricCirclesTemplate();
-    expect(doc.zones).toHaveLength(3);
-    const radii: number[] = [];
-    const labels: string[] = [];
-    for (const zone of doc.zones) {
-      expect(zone.shape).toBe('circle');
-      if (zone.shape === 'circle') {
-        radii.push(zone.r);
+    const zones = zonesOf(doc);
+    expect(zones).toHaveLength(3);
+    // Document (paint) order runs outermost-first so the smallest ring paints on
+    // top; each ring's label matches its own radius.
+    const byLabel = new Map<string, number>();
+    for (const zone of zones) {
+      expect(zone.kind).toBe('ellipse');
+      if (zone.kind === 'ellipse') {
+        expect(zone.rx).toBe(zone.ry);
+        if (zone.zoneLabel !== null) byLabel.set(zone.zoneLabel, zone.rx);
       }
-      labels.push(zone.label);
     }
-    expect(labels).toEqual(['inner', 'middle', 'outer']);
-    expect(radii).toHaveLength(3);
-    let previous = Number.NEGATIVE_INFINITY;
-    let strictlyIncreasing = true;
-    for (const radius of radii) {
-      if (!(radius > previous)) {
-        strictlyIncreasing = false;
-      }
-      previous = radius;
-    }
-    expect(strictlyIncreasing).toBe(true);
+    expect(byLabel.get('outer')).toBe(0.45);
+    expect(byLabel.get('middle')).toBe(0.3);
+    expect(byLabel.get('inner')).toBe(0.15);
+
+    // Smallest-wins: the centre resolves to the innermost ring.
+    expect(assignZone({ x: 0.5, y: 0.5 }, zones)).toBe('inner');
   });
 
   it('concentric template rings are centred and stroke-only', () => {

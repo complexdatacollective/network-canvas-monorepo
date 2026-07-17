@@ -14,11 +14,8 @@ function renderedBody(svg: string): string {
   return svg.slice(svg.indexOf('</metadata>') + '</metadata>'.length);
 }
 
-function docWith(
-  elements: BackgroundDocument['elements'],
-  zones: BackgroundDocument['zones'] = [],
-): BackgroundDocument {
-  return { version: 1, title: 'T', description: 'D', elements, zones };
+function docWith(elements: BackgroundDocument['elements']): BackgroundDocument {
+  return { version: 1, title: 'T', description: 'D', elements };
 }
 
 describe('serializeDocument root element', () => {
@@ -37,7 +34,6 @@ describe('serializeDocument root element', () => {
       title: 'A & B <x>',
       description: 'quote " here',
       elements: [],
-      zones: [],
     });
     expect(svg).toContain('<title id="title">A &amp; B &lt;x&gt;</title>');
     expect(svg).toContain('<desc id="description">quote " here</desc>');
@@ -59,6 +55,7 @@ describe('serializeDocument percentage formatting', () => {
           fillOpacity: 1,
           stroke: null,
           strokeWidth: 1,
+          zoneLabel: null,
         },
       ]),
     );
@@ -84,6 +81,7 @@ describe('serializeDocument stroke handling', () => {
           fillOpacity: 1,
           stroke: null,
           strokeWidth: 4,
+          zoneLabel: null,
         },
       ]),
     );
@@ -108,6 +106,7 @@ describe('serializeDocument stroke handling', () => {
           fillOpacity: 0.5,
           stroke: '#ffffff',
           strokeWidth: 2,
+          zoneLabel: null,
         },
         {
           id: 'e',
@@ -120,6 +119,7 @@ describe('serializeDocument stroke handling', () => {
           fillOpacity: 0,
           stroke: '#ffffff',
           strokeWidth: 2,
+          zoneLabel: null,
         },
         {
           id: 'p',
@@ -133,6 +133,7 @@ describe('serializeDocument stroke handling', () => {
           fillOpacity: 1,
           stroke: '#ffffff',
           strokeWidth: 2,
+          zoneLabel: null,
         },
       ]),
     );
@@ -223,6 +224,7 @@ describe('serializeDocument polygon', () => {
           fillOpacity: 1,
           stroke: null,
           strokeWidth: 1,
+          zoneLabel: null,
         },
       ]),
     );
@@ -367,7 +369,6 @@ describe('serializeDocument XML-invalid characters', () => {
           opacity: 1,
         },
       ],
-      zones: [],
     };
     const svg = serializeDocument(doc);
 
@@ -391,49 +392,79 @@ describe('serializeDocument XML-invalid characters', () => {
   });
 });
 
-describe('serializeDocument zones', () => {
-  it('never renders zones and keeps their data in metadata only', () => {
+describe('serializeDocument ellipse', () => {
+  it('emits a warping ellipse as <ellipse cx cy rx ry> in percentages', () => {
     const svg = serializeDocument(
-      docWith(
-        [],
-        [
-          {
-            id: 'z1',
-            label: 'ZONELABEL_UNIQUE',
-            shape: 'circle',
-            cx: 0.5,
-            cy: 0.5,
-            r: 0.3,
-          },
-        ],
-      ),
+      docWith([
+        {
+          id: 'e',
+          kind: 'ellipse',
+          cx: 0.5,
+          cy: 0.25,
+          rx: 0.3,
+          ry: 0.1,
+          fill: '#000000',
+          fillOpacity: 1,
+          stroke: null,
+          strokeWidth: 1,
+          zoneLabel: null,
+        },
+      ]),
+    );
+    expect(svg).toContain(
+      '<ellipse cx="50%" cy="25%" rx="30%" ry="10%" fill="#000000" />',
+    );
+  });
+});
+
+describe('serializeDocument zone-marked shapes', () => {
+  it('renders a zone-marked shape as ordinary artwork and keeps its label in metadata only', () => {
+    const svg = serializeDocument(
+      docWith([
+        {
+          id: 'r',
+          kind: 'rect',
+          x: 0,
+          y: 0,
+          width: 0.5,
+          height: 0.5,
+          fill: '#112233',
+          fillOpacity: 1,
+          stroke: null,
+          strokeWidth: 1,
+          zoneLabel: 'ZONELABEL_UNIQUE',
+        },
+      ]),
     );
     // The label exists in the embedded document JSON...
     expect(svg.slice(0, svg.indexOf('</metadata>'))).toContain(
       'ZONELABEL_UNIQUE',
     );
-    // ...but never appears as a rendered element.
+    // ...but the shape renders as an ordinary rect and the label itself is not painted.
     const body = renderedBody(svg);
+    expect(body).toContain(
+      '<rect x="0%" y="0%" width="50%" height="50%" fill="#112233" />',
+    );
     expect(body).not.toContain('ZONELABEL_UNIQUE');
-    expect(body).not.toContain('<circle');
   });
 
   it('escapes XML-hostile zone labels inside the metadata JSON', () => {
     const svg = serializeDocument(
-      docWith(
-        [],
-        [
-          {
-            id: 'z1',
-            label: 'A & B <"quotes">',
-            shape: 'rect',
-            x: 0,
-            y: 0,
-            width: 0.5,
-            height: 0.5,
-          },
-        ],
-      ),
+      docWith([
+        {
+          id: 'r',
+          kind: 'rect',
+          x: 0,
+          y: 0,
+          width: 0.5,
+          height: 0.5,
+          fill: '#000000',
+          fillOpacity: 1,
+          stroke: null,
+          strokeWidth: 1,
+          zoneLabel: 'A & B <"quotes">',
+        },
+      ]),
     );
     expect(svg).toContain('A &amp; B &lt;');
     expect(svg).not.toContain('<"quotes">');

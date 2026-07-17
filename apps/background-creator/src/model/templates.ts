@@ -4,7 +4,6 @@ import type {
   LineElement,
   RectElement,
   TextElement,
-  Zone,
 } from '~/model/types';
 
 function makeSoftRect(
@@ -13,6 +12,7 @@ function makeSoftRect(
   width: number,
   height: number,
   fill: string,
+  zoneLabel: string | null,
 ): RectElement {
   return {
     id: crypto.randomUUID(),
@@ -25,6 +25,7 @@ function makeSoftRect(
     fillOpacity: 0.25,
     stroke: null,
     strokeWidth: 1,
+    zoneLabel,
   };
 }
 
@@ -70,9 +71,11 @@ function makeLabel(props: {
   };
 }
 
-function makeRing(r: number): EllipseElement {
-  // Stroke-only ring: the model has no `fill: 'none'`, so a fully transparent
-  // fill (fillOpacity 0) gives the same visual result.
+// A stroke-only ring that is both the visible artwork and its own zone. rx = ry
+// keeps it round at a 1:1 preview; it warps with the canvas like any ellipse.
+// The model has no `fill: 'none'`, so a fully transparent fill (fillOpacity 0)
+// gives the same visual result.
+function makeRing(r: number, zoneLabel: string): EllipseElement {
   return {
     id: crypto.randomUUID(),
     kind: 'ellipse',
@@ -84,27 +87,7 @@ function makeRing(r: number): EllipseElement {
     fillOpacity: 0,
     stroke: '#ffffff',
     strokeWidth: 2,
-  };
-}
-
-function makeRectZone(
-  label: string,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-): Zone {
-  return { id: crypto.randomUUID(), label, shape: 'rect', x, y, width, height };
-}
-
-function makeCircleZone(label: string, r: number): Zone {
-  return {
-    id: crypto.randomUUID(),
-    label,
-    shape: 'circle',
-    cx: 0.5,
-    cy: 0.5,
-    r,
+    zoneLabel,
   };
 }
 
@@ -114,7 +97,6 @@ export function createBlankDocument(): BackgroundDocument {
     title: 'Untitled background',
     description: 'A responsive Network Canvas background.',
     elements: [],
-    zones: [],
   };
 }
 
@@ -125,10 +107,10 @@ export function createQuadrantsTemplate(): BackgroundDocument {
     description:
       'Two crossed axes divide the canvas into four labelled quadrant regions.',
     elements: [
-      makeSoftRect(0, 0, 0.5, 0.5, '#ef4444'),
-      makeSoftRect(0.5, 0, 0.5, 0.5, '#3b82f6'),
-      makeSoftRect(0, 0.5, 0.5, 0.5, '#22c55e'),
-      makeSoftRect(0.5, 0.5, 0.5, 0.5, '#a855f7'),
+      makeSoftRect(0, 0, 0.5, 0.5, '#ef4444', 'top-left'),
+      makeSoftRect(0.5, 0, 0.5, 0.5, '#3b82f6', 'top-right'),
+      makeSoftRect(0, 0.5, 0.5, 0.5, '#22c55e', 'bottom-left'),
+      makeSoftRect(0.5, 0.5, 0.5, 0.5, '#a855f7', 'bottom-right'),
       makeAxisLine(0, 0.5, 1, 0.5),
       makeAxisLine(0.5, 0, 0.5, 1),
       makeLabel({ x: 0.015, y: 0.5, lines: ['Low X'], anchor: 'start' }),
@@ -160,19 +142,14 @@ export function createQuadrantsTemplate(): BackgroundDocument {
         anchor: 'middle',
       }),
     ],
-    zones: [
-      makeRectZone('top-left', 0, 0, 0.5, 0.5),
-      makeRectZone('top-right', 0.5, 0, 0.5, 0.5),
-      makeRectZone('bottom-left', 0, 0.5, 0.5, 0.5),
-      makeRectZone('bottom-right', 0.5, 0.5, 0.5, 0.5),
-    ],
   };
 }
 
 // Faithful model of the sample protocol's responsive political-compass asset
-// (packages/protocols/sample/assets/2946e670-3e45-11eb-ac1c-7b8de3fada93.svg),
-// with zones added for the unsure band and the four quadrants. Used as the
-// document the editor opens with.
+// (packages/protocols/sample/assets/2946e670-3e45-11eb-ac1c-7b8de3fada93.svg).
+// The five solid fills are the zones; the 0.21–0.23 visual gutter between the
+// unsure band and the quadrants is honestly unassigned. Used as the document the
+// editor opens with.
 export function createPoliticalCompassDocument(): BackgroundDocument {
   const ink = '#17142f';
 
@@ -182,6 +159,7 @@ export function createPoliticalCompassDocument(): BackgroundDocument {
     width: number,
     height: number,
     fill: string,
+    zoneLabel: string | null,
   ): RectElement => ({
     id: crypto.randomUUID(),
     kind: 'rect',
@@ -193,6 +171,7 @@ export function createPoliticalCompassDocument(): BackgroundDocument {
     fillOpacity: 1,
     stroke: null,
     strokeWidth: 1,
+    zoneLabel,
   });
 
   const axis = (
@@ -238,11 +217,11 @@ export function createPoliticalCompassDocument(): BackgroundDocument {
     description:
       'An unsure area and four political compass quadrants divided by economic and social axes.',
     elements: [
-      solidRect(0, 0, 0.21, 1, '#f1f5f6'),
-      solidRect(0.23, 0, 0.385, 0.5, '#ffafb3'),
-      solidRect(0.615, 0, 0.385, 0.5, '#71cef0'),
-      solidRect(0.23, 0.5, 0.385, 0.5, '#bee7b5'),
-      solidRect(0.615, 0.5, 0.385, 0.5, '#e5c0df'),
+      solidRect(0, 0, 0.21, 1, '#f1f5f6', 'unsure'),
+      solidRect(0.23, 0, 0.385, 0.5, '#ffafb3', 'authoritarian-left'),
+      solidRect(0.615, 0, 0.385, 0.5, '#71cef0', 'authoritarian-right'),
+      solidRect(0.23, 0.5, 0.385, 0.5, '#bee7b5', 'libertarian-left'),
+      solidRect(0.615, 0.5, 0.385, 0.5, '#e5c0df', 'libertarian-right'),
       axis(0.23, 0.5, 1, 0.5),
       axis(0.615, 0, 0.615, 1),
       {
@@ -264,15 +243,6 @@ export function createPoliticalCompassDocument(): BackgroundDocument {
       quadrantLabel(0.4225, 0.75, ['Libertarian', 'Left']),
       quadrantLabel(0.8075, 0.75, ['Libertarian', 'Right']),
     ],
-    zones: [
-      // The unsure zone spans through the visual gutter (band ends at 0.21,
-      // quadrants start at 0.23) so no canvas position is unassigned.
-      makeRectZone('unsure', 0, 0, 0.22, 1),
-      makeRectZone('authoritarian-left', 0.22, 0, 0.395, 0.5),
-      makeRectZone('authoritarian-right', 0.615, 0, 0.385, 0.5),
-      makeRectZone('libertarian-left', 0.22, 0.5, 0.395, 0.5),
-      makeRectZone('libertarian-right', 0.615, 0.5, 0.385, 0.5),
-    ],
   };
 }
 
@@ -283,17 +253,12 @@ export function createConcentricCirclesTemplate(): BackgroundDocument {
     description:
       'Three nested rings classify positions by distance from the centre.',
     elements: [
-      makeRing(0.45),
-      makeRing(0.3),
-      makeRing(0.15),
+      makeRing(0.45, 'outer'),
+      makeRing(0.3, 'middle'),
+      makeRing(0.15, 'inner'),
       makeLabel({ x: 0.5, y: 0.5, lines: ['Inner'], anchor: 'middle' }),
       makeLabel({ x: 0.5, y: 0.66, lines: ['Middle'], anchor: 'middle' }),
       makeLabel({ x: 0.5, y: 0.82, lines: ['Outer'], anchor: 'middle' }),
-    ],
-    zones: [
-      makeCircleZone('inner', 0.15),
-      makeCircleZone('middle', 0.3),
-      makeCircleZone('outer', 0.45),
     ],
   };
 }

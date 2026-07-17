@@ -205,16 +205,19 @@ describe.skipIf(rscriptMissing)('generated R script executes', () => {
       version: 1,
       title: 'Nul',
       description: '',
-      elements: [],
-      zones: [
+      elements: [
         {
           id: 'n',
-          label: `a${nul}b`,
-          shape: 'rect',
+          kind: 'rect',
           x: 0,
           y: 0,
           width: 1,
           height: 1,
+          fill: '#ffffff',
+          fillOpacity: 0.25,
+          stroke: null,
+          strokeWidth: 1,
+          zoneLabel: `a${nul}b`,
         },
       ],
     };
@@ -245,16 +248,19 @@ describe.skipIf(rscriptMissing)('generated R script executes', () => {
       version: 1,
       title: 'Hostile',
       description: '',
-      elements: [],
-      zones: [
+      elements: [
         {
           id: 'h',
-          label: hostileLabel,
-          shape: 'rect',
+          kind: 'rect',
           x: 0,
           y: 0,
           width: 1,
           height: 1,
+          fill: '#ffffff',
+          fillOpacity: 0.25,
+          stroke: null,
+          strokeWidth: 1,
+          zoneLabel: hostileLabel,
         },
       ],
     };

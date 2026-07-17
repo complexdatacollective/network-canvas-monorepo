@@ -2,6 +2,8 @@ export type Vec = { x: number; y: number };
 
 type BaseElement = { id: string };
 
+// rect/ellipse/polygon can be marked as zones; the label becomes the exported
+// variable value. null = not a zone.
 export type RectElement = BaseElement & {
   kind: 'rect';
   x: number;
@@ -12,6 +14,7 @@ export type RectElement = BaseElement & {
   fillOpacity: number; // 0..1
   stroke: string | null;
   strokeWidth: number; // px, non-scaling
+  zoneLabel: string | null;
 };
 
 export type EllipseElement = BaseElement & {
@@ -24,6 +27,7 @@ export type EllipseElement = BaseElement & {
   fillOpacity: number;
   stroke: string | null;
   strokeWidth: number;
+  zoneLabel: string | null;
 };
 
 export type LineElement = BaseElement & {
@@ -45,6 +49,7 @@ export type PolygonElement = BaseElement & {
   fillOpacity: number;
   stroke: string | null;
   strokeWidth: number;
+  zoneLabel: string | null;
 };
 
 export type TextElement = BaseElement & {
@@ -68,17 +73,11 @@ export type SvgElement =
   | PolygonElement
   | TextElement;
 
-export type ZoneShape =
-  | { shape: 'rect'; x: number; y: number; width: number; height: number }
-  | { shape: 'circle'; cx: number; cy: number; r: number }
-  | { shape: 'polygon'; points: Vec[] };
-
-export type Zone = { id: string; label: string } & ZoneShape;
+export type ZoneElement = RectElement | EllipseElement | PolygonElement;
 
 export type BackgroundDocument = {
   version: 1;
   title: string; // → <title>, a11y
   description: string; // → <desc>, a11y
-  elements: SvgElement[]; // paint order = array order
-  zones: Zone[];
+  elements: SvgElement[]; // paint order = array order; zones = zoneLabel ≠ null
 };

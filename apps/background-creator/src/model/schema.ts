@@ -18,6 +18,7 @@ const colour = z
 const identifier = z.string();
 const fontPx = z.number().finite().positive();
 const fontVmin = z.number().finite().nonnegative();
+const zoneLabel = z.string().nullable();
 
 const vecSchema = z.strictObject({ x: normalized, y: normalized });
 
@@ -32,6 +33,7 @@ const rectElementSchema = z.strictObject({
   fillOpacity: opacity,
   stroke: colour.nullable(),
   strokeWidth,
+  zoneLabel,
 });
 
 const ellipseElementSchema = z.strictObject({
@@ -45,6 +47,7 @@ const ellipseElementSchema = z.strictObject({
   fillOpacity: opacity,
   stroke: colour.nullable(),
   strokeWidth,
+  zoneLabel,
 });
 
 const lineElementSchema = z.strictObject({
@@ -68,6 +71,7 @@ const polygonElementSchema = z.strictObject({
   fillOpacity: opacity,
   stroke: colour.nullable(),
   strokeWidth,
+  zoneLabel,
 });
 
 const textElementSchema = z.strictObject({
@@ -98,44 +102,11 @@ const svgElementSchema = z.discriminatedUnion('kind', [
   textElementSchema,
 ]);
 
-const rectZoneSchema = z.strictObject({
-  id: identifier,
-  label: z.string(),
-  shape: z.literal('rect'),
-  x: normalized,
-  y: normalized,
-  width: normalized,
-  height: normalized,
-});
-
-const circleZoneSchema = z.strictObject({
-  id: identifier,
-  label: z.string(),
-  shape: z.literal('circle'),
-  cx: normalized,
-  cy: normalized,
-  r: normalized,
-});
-
-const polygonZoneSchema = z.strictObject({
-  id: identifier,
-  label: z.string(),
-  shape: z.literal('polygon'),
-  points: z.array(vecSchema).min(3),
-});
-
-const zoneSchema = z.discriminatedUnion('shape', [
-  rectZoneSchema,
-  circleZoneSchema,
-  polygonZoneSchema,
-]);
-
 export const backgroundDocumentSchema = z.strictObject({
   version: z.literal(1),
   title: z.string(),
   description: z.string(),
   elements: z.array(svgElementSchema),
-  zones: z.array(zoneSchema),
 });
 
 // Compile-time guarantee that the schema stays a faithful mirror of the

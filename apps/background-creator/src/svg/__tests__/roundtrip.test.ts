@@ -10,11 +10,11 @@ import { parseDocument } from '~/svg/parse';
 import { serializeDocument } from '~/svg/serialize';
 
 // A document that exercises every element kind and every optional branch:
-// stroked + unstroked rect/ellipse/polygon; a line with both arrows, a line
-// with one arrow reusing that colour's marker, a line with no arrows, and a
-// line whose arrow uses a second distinct colour; single-, two-, and three-line
-// text with varied opacity, anchor, and weight; rect/circle/polygon zones; and
-// XML-hostile characters in the title, description, and a zone label.
+// stroked + unstroked rect/ellipse/polygon (some marked as zones, some not);
+// a line with both arrows, a line with one arrow reusing that colour's marker, a
+// line with no arrows, and a line whose arrow uses a second distinct colour;
+// single-, two-, and three-line text with varied opacity, anchor, and weight;
+// and XML-hostile characters in the title, description, and a zone label.
 const kitchenSink: BackgroundDocument = {
   version: 1,
   title: 'Round & trip <test>',
@@ -31,6 +31,7 @@ const kitchenSink: BackgroundDocument = {
       fillOpacity: 0.5,
       stroke: '#abcdef',
       strokeWidth: 2.5,
+      zoneLabel: 'A & B <"quotes">',
     },
     {
       id: 'rect-plain',
@@ -43,6 +44,7 @@ const kitchenSink: BackgroundDocument = {
       fillOpacity: 1,
       stroke: null,
       strokeWidth: 1,
+      zoneLabel: null,
     },
     {
       id: 'ellipse-stroked',
@@ -55,6 +57,7 @@ const kitchenSink: BackgroundDocument = {
       fillOpacity: 0,
       stroke: '#ff0000',
       strokeWidth: 3,
+      zoneLabel: null,
     },
     {
       id: 'ellipse-plain',
@@ -67,6 +70,7 @@ const kitchenSink: BackgroundDocument = {
       fillOpacity: 0.75,
       stroke: null,
       strokeWidth: 0.25,
+      zoneLabel: 'ring',
     },
     {
       id: 'line-both-arrows',
@@ -128,6 +132,7 @@ const kitchenSink: BackgroundDocument = {
       fillOpacity: 0.4,
       stroke: '#ffffff',
       strokeWidth: 1.5,
+      zoneLabel: null,
     },
     {
       id: 'polygon-plain',
@@ -142,6 +147,7 @@ const kitchenSink: BackgroundDocument = {
       fillOpacity: 1,
       stroke: null,
       strokeWidth: 1,
+      zoneLabel: 'triangle',
     },
     {
       id: 'text-two-lines',
@@ -184,35 +190,6 @@ const kitchenSink: BackgroundDocument = {
       fontWeight: 500,
       anchor: 'end',
       opacity: 0.9,
-    },
-  ],
-  zones: [
-    {
-      id: 'zone-rect',
-      label: 'A & B <"quotes">',
-      shape: 'rect',
-      x: 0,
-      y: 0,
-      width: 0.5,
-      height: 0.5,
-    },
-    {
-      id: 'zone-circle',
-      label: 'ring',
-      shape: 'circle',
-      cx: 0.5,
-      cy: 0.5,
-      r: 0.3,
-    },
-    {
-      id: 'zone-polygon',
-      label: 'triangle',
-      shape: 'polygon',
-      points: [
-        { x: 0, y: 0 },
-        { x: 1, y: 0 },
-        { x: 1, y: 1 },
-      ],
     },
   ],
 };

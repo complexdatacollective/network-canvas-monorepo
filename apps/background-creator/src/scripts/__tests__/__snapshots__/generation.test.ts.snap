@@ -30,15 +30,16 @@ import math
 import sys
 
 ZONES = [
-    {"label": "outer", "shape": "circle", "cx": 0.5, "cy": 0.5, "r": 0.45},
-    {"label": "middle", "shape": "circle", "cx": 0.5, "cy": 0.5, "r": 0.3},
-    {"label": "inner", "shape": "circle", "cx": 0.5, "cy": 0.5, "r": 0.15},
+    {"label": "outer", "shape": "ellipse", "cx": 0.5, "cy": 0.5, "rx": 0.45, "ry": 0.45},
+    {"label": "middle", "shape": "ellipse", "cx": 0.5, "cy": 0.5, "rx": 0.3, "ry": 0.3},
+    {"label": "inner", "shape": "ellipse", "cx": 0.5, "cy": 0.5, "rx": 0.15, "ry": 0.15},
     {"label": "corner-rect", "shape": "rect", "x": 0, "y": 0, "width": 0.2, "height": 0.2},
     {"label": "top-rect", "shape": "rect", "x": 0.4, "y": 0.02, "width": 0.2, "height": 0.2},
     {"label": "triangle", "shape": "polygon", "points": [[0.7, 0.7], [0.95, 0.7], [0.95, 0.95]]},
     {"label": "tie-a", "shape": "rect", "x": 0.05, "y": 0.6, "width": 0.3, "height": 0.2},
     {"label": "tie-b", "shape": "rect", "x": 0.15, "y": 0.55, "width": 0.2, "height": 0.3},
-    {"label": "degenerate", "shape": "circle", "cx": 0.02, "cy": 0.98, "r": 0},
+    {"label": "wide-ellipse", "shape": "ellipse", "cx": 0.85, "cy": 0.12, "rx": 0.12, "ry": 0.05},
+    {"label": "degenerate", "shape": "ellipse", "cx": 0.02, "cy": 0.98, "rx": 0, "ry": 0},
 ]
 
 
@@ -65,13 +66,13 @@ def point_in_zone(x, y, zone):
             zone["x"] <= x <= zone["x"] + zone["width"]
             and zone["y"] <= y <= zone["y"] + zone["height"]
         )
-    if shape == "circle":
-        # A zero- or negative-radius circle contains nothing; guard before
+    if shape == "ellipse":
+        # A zero- or negative-radius ellipse contains nothing; guard before
         # dividing so this never raises ZeroDivisionError.
-        if zone["r"] <= 0:
+        if zone["rx"] <= 0 or zone["ry"] <= 0:
             return False
-        dx = (x - zone["cx"]) / zone["r"]
-        dy = (y - zone["cy"]) / zone["r"]
+        dx = (x - zone["cx"]) / zone["rx"]
+        dy = (y - zone["cy"]) / zone["ry"]
         return dx * dx + dy * dy <= 1
     if shape == "polygon":
         return point_in_polygon(x, y, zone["points"])
@@ -82,8 +83,8 @@ def zone_area(zone):
     shape = zone["shape"]
     if shape == "rect":
         return zone["width"] * zone["height"]
-    if shape == "circle":
-        return math.pi * zone["r"] * zone["r"]
+    if shape == "ellipse":
+        return math.pi * zone["rx"] * zone["ry"]
     if shape == "polygon":
         points = zone["points"]
         total = 0.0
@@ -222,15 +223,16 @@ exports[`golden script snapshots > generates the R script 1`] = `
 # Base R only - no packages required.
 
 zones <- list(
-  list(label = "outer", shape = "circle", cx = 0.5, cy = 0.5, r = 0.45),
-  list(label = "middle", shape = "circle", cx = 0.5, cy = 0.5, r = 0.3),
-  list(label = "inner", shape = "circle", cx = 0.5, cy = 0.5, r = 0.15),
+  list(label = "outer", shape = "ellipse", cx = 0.5, cy = 0.5, rx = 0.45, ry = 0.45),
+  list(label = "middle", shape = "ellipse", cx = 0.5, cy = 0.5, rx = 0.3, ry = 0.3),
+  list(label = "inner", shape = "ellipse", cx = 0.5, cy = 0.5, rx = 0.15, ry = 0.15),
   list(label = "corner-rect", shape = "rect", x = 0, y = 0, width = 0.2, height = 0.2),
   list(label = "top-rect", shape = "rect", x = 0.4, y = 0.02, width = 0.2, height = 0.2),
   list(label = "triangle", shape = "polygon", points = list(c(0.7, 0.7), c(0.95, 0.7), c(0.95, 0.95))),
   list(label = "tie-a", shape = "rect", x = 0.05, y = 0.6, width = 0.3, height = 0.2),
   list(label = "tie-b", shape = "rect", x = 0.15, y = 0.55, width = 0.2, height = 0.3),
-  list(label = "degenerate", shape = "circle", cx = 0.02, cy = 0.98, r = 0)
+  list(label = "wide-ellipse", shape = "ellipse", cx = 0.85, cy = 0.12, rx = 0.12, ry = 0.05),
+  list(label = "degenerate", shape = "ellipse", cx = 0.02, cy = 0.98, rx = 0, ry = 0)
 )
 
 point_in_polygon <- function(x, y, points) {
@@ -259,15 +261,15 @@ point_in_zone <- function(x, y, zone) {
     return(x >= zone$x && x <= zone$x + zone$width &&
       y >= zone$y && y <= zone$y + zone$height)
   }
-  if (zone$shape == "circle") {
-    # A zero- or negative-radius circle contains nothing; guard before dividing
+  if (zone$shape == "ellipse") {
+    # A zero- or negative-radius ellipse contains nothing; guard before dividing
     # so 0 / 0 does not yield NA and halt the caller's if() with "missing value
     # where TRUE/FALSE needed".
-    if (zone$r <= 0) {
+    if (zone$rx <= 0 || zone$ry <= 0) {
       return(FALSE)
     }
-    dx <- (x - zone$cx) / zone$r
-    dy <- (y - zone$cy) / zone$r
+    dx <- (x - zone$cx) / zone$rx
+    dy <- (y - zone$cy) / zone$ry
     return(dx * dx + dy * dy <= 1)
   }
   if (zone$shape == "polygon") {
@@ -280,8 +282,8 @@ zone_area <- function(zone) {
   if (zone$shape == "rect") {
     return(zone$width * zone$height)
   }
-  if (zone$shape == "circle") {
-    return(pi * zone$r * zone$r)
+  if (zone$shape == "ellipse") {
+    return(pi * zone$rx * zone$ry)
   }
   if (zone$shape == "polygon") {
     points <- zone$points

@@ -1,4 +1,5 @@
-import type { BackgroundDocument, Zone } from '../model/types';
+import { zonesOf } from '../geometry/zones';
+import type { BackgroundDocument, ZoneElement } from '../model/types';
 
 function formatNumber(value: number): string {
   return String(value);
@@ -43,13 +44,13 @@ function rString(value: string): string {
   return `${out}"`;
 }
 
-function rZoneLiteral(zone: Zone): string {
-  const label = rString(zone.label);
-  if (zone.shape === 'rect') {
+function rZoneLiteral(zone: ZoneElement): string {
+  const label = rString(zone.zoneLabel ?? '');
+  if (zone.kind === 'rect') {
     return `  list(label = ${label}, shape = "rect", x = ${formatNumber(zone.x)}, y = ${formatNumber(zone.y)}, width = ${formatNumber(zone.width)}, height = ${formatNumber(zone.height)})`;
   }
-  if (zone.shape === 'circle') {
-    return `  list(label = ${label}, shape = "circle", cx = ${formatNumber(zone.cx)}, cy = ${formatNumber(zone.cy)}, r = ${formatNumber(zone.r)})`;
+  if (zone.kind === 'ellipse') {
+    return `  list(label = ${label}, shape = "ellipse", cx = ${formatNumber(zone.cx)}, cy = ${formatNumber(zone.cy)}, rx = ${formatNumber(zone.rx)}, ry = ${formatNumber(zone.ry)})`;
   }
   const points = zone.points
     .map((p) => `c(${formatNumber(p.x)}, ${formatNumber(p.y)})`)
@@ -65,7 +66,7 @@ export function generateRScript(
   doc: BackgroundDocument,
   opts: { layoutVariable: string; outputVariable: string },
 ): string {
-  const zones = doc.zones.map(rZoneLiteral).join(',\n');
+  const zones = zonesOf(doc).map(rZoneLiteral).join(',\n');
   const title = commentLine(doc.title);
   const layoutDefault = rString(opts.layoutVariable);
   const outputDefault = rString(opts.outputVariable);
@@ -123,15 +124,15 @@ point_in_zone <- function(x, y, zone) {
     return(x >= zone$x && x <= zone$x + zone$width &&
       y >= zone$y && y <= zone$y + zone$height)
   }
-  if (zone$shape == "circle") {
-    # A zero- or negative-radius circle contains nothing; guard before dividing
+  if (zone$shape == "ellipse") {
+    # A zero- or negative-radius ellipse contains nothing; guard before dividing
     # so 0 / 0 does not yield NA and halt the caller's if() with "missing value
     # where TRUE/FALSE needed".
-    if (zone$r <= 0) {
+    if (zone$rx <= 0 || zone$ry <= 0) {
       return(FALSE)
     }
-    dx <- (x - zone$cx) / zone$r
-    dy <- (y - zone$cy) / zone$r
+    dx <- (x - zone$cx) / zone$rx
+    dy <- (y - zone$cy) / zone$ry
     return(dx * dx + dy * dy <= 1)
   }
   if (zone$shape == "polygon") {
@@ -144,8 +145,8 @@ zone_area <- function(zone) {
   if (zone$shape == "rect") {
     return(zone$width * zone$height)
   }
-  if (zone$shape == "circle") {
-    return(pi * zone$r * zone$r)
+  if (zone$shape == "ellipse") {
+    return(pi * zone$rx * zone$ry)
   }
   if (zone$shape == "polygon") {
     points <- zone$points

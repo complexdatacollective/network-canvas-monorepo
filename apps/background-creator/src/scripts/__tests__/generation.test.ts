@@ -14,16 +14,19 @@ const hostileDocument: BackgroundDocument = {
   version: 1,
   title: 'Hostile labels',
   description: 'Escaping exercise.',
-  elements: [],
-  zones: [
+  elements: [
     {
       id: 'h',
-      label: hostileLabel,
-      shape: 'rect',
+      kind: 'rect',
       x: 0,
       y: 0,
       width: 1,
       height: 1,
+      fill: '#ffffff',
+      fillOpacity: 0.25,
+      stroke: null,
+      strokeWidth: 1,
+      zoneLabel: hostileLabel,
     },
   ],
 };
@@ -80,16 +83,19 @@ describe('nul (U+0000) handling', () => {
     version: 1,
     title: 'Nul labels',
     description: '',
-    elements: [],
-    zones: [
+    elements: [
       {
         id: 'n',
-        label: `a${nul}b`,
-        shape: 'rect',
+        kind: 'rect',
         x: 0,
         y: 0,
         width: 1,
         height: 1,
+        fill: '#ffffff',
+        fillOpacity: 0.25,
+        stroke: null,
+        strokeWidth: 1,
+        zoneLabel: `a${nul}b`,
       },
     ],
   };

@@ -55,9 +55,11 @@ function escapeAttr(value: string): string {
 }
 
 // Returns a copy of the document with XML-invalid control characters stripped
-// from every free-text field. Serialization derives both the painted markup and
-// the embedded JSON from this copy, so reopening a saved file restores the
-// stripped form instead of reintroducing the original control characters.
+// from every painted free-text field (title, description, text lines).
+// Serialization derives both the painted markup and the embedded JSON from this
+// copy, so reopening a saved file restores the stripped form instead of
+// reintroducing the original control characters. Zone labels are not painted and
+// JSON.stringify already escapes control characters, so they round-trip losslessly.
 function sanitizeDocument(doc: BackgroundDocument): BackgroundDocument {
   return {
     ...doc,
@@ -68,10 +70,6 @@ function sanitizeDocument(doc: BackgroundDocument): BackgroundDocument {
         ? { ...element, lines: element.lines.map(stripXmlInvalid) }
         : element,
     ),
-    zones: doc.zones.map((zone) => ({
-      ...zone,
-      label: stripXmlInvalid(zone.label),
-    })),
   };
 }
 

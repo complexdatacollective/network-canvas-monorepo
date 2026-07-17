@@ -158,16 +158,19 @@ describe.skipIf(pythonMissing)('generated Python script executes', () => {
       version: 1,
       title: 'Hostile',
       description: '',
-      elements: [],
-      zones: [
+      elements: [
         {
           id: 'h',
-          label: hostileLabel,
-          shape: 'rect',
+          kind: 'rect',
           x: 0,
           y: 0,
           width: 1,
           height: 1,
+          fill: '#ffffff',
+          fillOpacity: 0.25,
+          stroke: null,
+          strokeWidth: 1,
+          zoneLabel: hostileLabel,
         },
       ],
     };

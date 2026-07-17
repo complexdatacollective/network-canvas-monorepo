@@ -17,10 +17,11 @@ const baseRect = {
   fillOpacity: 1,
   stroke: null,
   strokeWidth: 1,
+  zoneLabel: null,
 };
 
-function docWith(elements: unknown[], zones: unknown[] = []): unknown {
-  return { version: 1, title: 't', description: 'd', elements, zones };
+function docWith(elements: unknown[]): unknown {
+  return { version: 1, title: 't', description: 'd', elements };
 }
 
 describe('backgroundDocumentSchema', () => {
@@ -85,6 +86,7 @@ describe('backgroundDocumentSchema', () => {
             fillOpacity: 1,
             stroke: null,
             strokeWidth: 1,
+            zoneLabel: null,
           },
         ]),
       ).success,
@@ -152,33 +154,67 @@ describe('backgroundDocumentSchema', () => {
         title: 't',
         description: 'd',
         elements: [],
-        zones: [],
       }).success,
     ).toBe(false);
   });
 
-  it('rejects unknown keys (strict object)', () => {
+  it('rejects unknown keys at the document level (strict object)', () => {
     expect(
       backgroundDocumentSchema.safeParse({
         version: 1,
         title: 't',
         description: 'd',
         elements: [],
-        zones: [],
         extra: true,
       }).success,
     ).toBe(false);
   });
 
-  it('rejects a zone circle radius outside [0, 1]', () => {
+  it('rejects unknown keys on an element (strict object)', () => {
     expect(
       backgroundDocumentSchema.safeParse(
-        docWith(
-          [],
-          [{ id: 'z1', label: 'z', shape: 'circle', cx: 0.5, cy: 0.5, r: 1.4 }],
-        ),
+        docWith([{ ...baseRect, extra: true }]),
       ).success,
     ).toBe(false);
+  });
+
+  it('rejects a rect that is missing its zoneLabel', () => {
+    const { zoneLabel: _omit, ...rectWithoutLabel } = baseRect;
+    expect(
+      backgroundDocumentSchema.safeParse(docWith([rectWithoutLabel])).success,
+    ).toBe(false);
+  });
+
+  it('accepts a null or string zoneLabel on a rect', () => {
+    for (const zoneLabel of [null, '', 'top-left']) {
+      expect(
+        backgroundDocumentSchema.safeParse(
+          docWith([{ ...baseRect, zoneLabel }]),
+        ).success,
+      ).toBe(true);
+    }
+  });
+
+  it('accepts a warping ellipse with rx != ry', () => {
+    expect(
+      backgroundDocumentSchema.safeParse(
+        docWith([
+          {
+            id: 'e1',
+            kind: 'ellipse',
+            cx: 0.5,
+            cy: 0.5,
+            rx: 0.3,
+            ry: 0.1,
+            fill: '#ffffff',
+            fillOpacity: 1,
+            stroke: null,
+            strokeWidth: 1,
+            zoneLabel: 'oval',
+          },
+        ]),
+      ).success,
+    ).toBe(true);
   });
 
   it('rejects a fill that references an external url', () => {
