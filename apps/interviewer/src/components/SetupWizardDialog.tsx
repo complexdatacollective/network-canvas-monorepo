@@ -8,7 +8,7 @@ import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 import type { IdleTimeoutMinutes } from '~/lib/auth/AuthContext';
-import { updateSettings } from '~/lib/db/api';
+import { getSettings, updateSettings } from '~/lib/db/api';
 
 import { ExternalLink } from './ExternalLink';
 import AuthorisationGlyph from './SetupWizard/AuthorisationGlyph';
@@ -30,7 +30,8 @@ export type SetupWizardData = {
     requireUnlockOnExit: boolean;
     requireUnlockOnExport: boolean;
   };
-  // Undefined when the user never touched the toggle — defaults to enabled.
+  // Undefined when the user never touched the toggle. The wizard launch mode
+  // supplies the preference that should be preserved in that case.
   analyticsEnabled?: boolean;
 };
 
@@ -69,9 +70,26 @@ export function useSetupWizard({
   const toast = useToast();
 
   const openSetupWizard = async (): Promise<void> => {
-    const initialAnalyticsEnabled = preserveExistingData
-      ? analytics.enabled
-      : true;
+    let initialAnalyticsEnabled = true;
+    if (preserveExistingData) {
+      // Settings are readable before vault enrolment. Use the persisted row
+      // rather than AnalyticsProvider's safe pre-unlock fallback so an
+      // untouched toggle preserves the user's actual preference.
+      try {
+        initialAnalyticsEnabled = (await getSettings()).analyticsEnabled;
+      } catch (cause) {
+        toast.add({
+          title: 'Setup could not be opened',
+          description:
+            cause instanceof Error
+              ? cause.message
+              : 'Stored settings could not be read. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     const result = await openDialog({
       type: 'wizard',
       title: '🔑 Secure this device',
@@ -216,13 +234,10 @@ export function useSetupWizard({
     // welcome screen with no feedback — they stay on /welcome and can retry.
     try {
       if (!result) {
-        // Dismissed.
-        if (preserveExistingData) {
-          const status = await authApi.status();
-          if (!status.configured || status.mode === 'none') {
-            await authApi.enrolWithoutLock();
-          }
-        } else {
+        // The Settings wizard is optional. Dismissing it must leave the vault
+        // exactly as it was so a fresh browser remains unconfigured and still
+        // receives mandatory setup if it is later installed.
+        if (!preserveExistingData) {
           await enrolWithoutSecurity();
         }
       } else {
