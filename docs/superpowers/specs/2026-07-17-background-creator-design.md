@@ -53,34 +53,24 @@ consistent with what the participant saw, no transformation needed anywhere.
 
 Consequences:
 
-- A warping ellipse is an ellipse in _normalized_ space — it stretches with the
+- An ellipse is an ellipse in _normalized_ space — it stretches with the
   canvas exactly like percentage rects. Membership:
-  `((x−cx)/rx)² + ((y−cy)/ry)² ≤ 1` in normalized space, aspect-independent.
-- An ellipse with **`keepCircular`** renders as a true `<circle>` with a
-  percentage-positioned (fully dynamic) centre and a `vmin`-based radius
-  (`cx="<cx%>" cy="<cy%>" style="r: <r×100>vmin"` — the same
-  viewport-relative CSS mechanism the format already uses for text sizing), so
-  it never warps while its centre stays responsive.
-- **Locked-circle zone rule (aspect-free by design):** membership is the
-  normalized disk `(x−cx)² + (y−cy)² ≤ r²`, computable from the exported
-  `_x`/`_y` columns alone. Centre-independent: a percentage-positioned centre
-  occupies the same normalized position at every aspect, and for a node at
-  screen offset `(dx, dy)` from the centre that is visually inside the circle,
-  `(dx/W)² + (dy/H)² ≤ (dx² + dy²)/min(W,H)² ≤ r²` — so **every node dropped
-  visually inside the circle is inside the zone** on every device, wherever
-  the circle sits. The only error is bounded over-inclusion (a band beside the
-  circle on non-square screens also classifies inside — horizontal on wide
-  screens, vertical on tall ones; zero on square screens). Nested rings
-  sharing a centre preserve their ordering, so ordinal ring assignment stays
-  monotone; locked circles with different centres each carry their own
-  one-sided band. Scripts and docs state this plainly; no aspect-ratio input
-  exists anywhere. (Exact two-sided membership for a screen-round circle is
-  impossible without the device aspect — the one-sided rule is the deliberate
-  trade.)
+  `((x−cx)/rx)² + ((y−cy)/ry)² ≤ 1` in normalized space, aspect-independent
+  and exact in both directions (the zone is always precisely the shape the
+  participant saw, at every aspect).
+- **There is no aspect-locked circle primitive.** A screen-round circle cannot
+  have exact normalized membership at more than one aspect (a single radius
+  measured against two different canvas dimensions), so instead of a special
+  rendering mode, roundness is a **draw-time constraint**: holding Shift while
+  drawing (or corner-resizing) an ellipse or rect constrains it to be visually
+  regular — a circle or square — **at the currently previewed aspect**
+  (`ry = rx·(stageW/stageH)`). Researchers set the preview to the aspect they
+  are designing for and draw circles that are round there, choosing explicitly
+  where any skew appears on other screens. The stored data stays a plain
+  warping ellipse, so scripts remain exact everywhere.
 - "Most specific" zone = smallest area in normalized space (rect `w·h`,
-  polygon shoelace, warping ellipse `π·rx·ry`, locked circle `πr²`). Ties
-  break to the later element in document order; nested concentric zones
-  resolve to the innermost ring.
+  polygon shoelace, ellipse `π·rx·ry`). Ties break to the later element in
+  document order; nested concentric zones resolve to the innermost ring.
 
 ## Revision 2 — zones are marked shapes (2026-07-17)
 
@@ -121,11 +111,6 @@ export type EllipseElement = BaseElement & {
   fill: string; fillOpacity: number;
   stroke: string | null; strokeWidth: number;
   zoneLabel: string | null;
-  // Render as a true vmin-radius circle at the (dynamic, percentage-positioned)
-  // centre instead of stretching. When true: rx = ry (enforced by schema
-  // refinement; enabling it in the editor sets r := rx). See §2 for the
-  // aspect-free membership rule and its one-sided guarantee.
-  keepCircular: boolean;
 };
 
 export type LineElement = BaseElement & {
@@ -183,9 +168,6 @@ standalone SVG:
   and when stroked `stroke`, `stroke-width`, `vector-effect="non-scaling-stroke"`.
 - `ellipse` → `<ellipse cx cy rx ry>` in % (`rx` resolves against width, `ry`
   against height per SVG, matching normalized semantics), same paint attrs.
-  With `keepCircular`: `<circle cx cy>` in % with `style="r: <rx×100>vmin"`
-  (geometry-as-CSS; the radius tracks the smaller canvas dimension so the
-  circle never warps — same viewport-relative mechanism as text sizing).
 - `line` → `<line x1 y1 x2 y2>` in %, `stroke`, `stroke-width`,
   `vector-effect="non-scaling-stroke"`, plus `marker-start`/`marker-end`
   referencing a single shared `<marker id="arrow" markerUnits="userSpaceOnUse"
@@ -232,12 +214,12 @@ Zones are the document's elements with `zoneLabel ≠ null` (`ZoneElement`). All
 tests are pure functions of normalized coordinates — aspect-free:
 
 - `pointInZone(p: Vec, zone: ZoneElement): boolean` — rect: inclusive bounds;
-  warping ellipse: normalized-ellipse test (`rx`/`ry`); `keepCircular`
-  ellipse: the §2 disk rule `(x−0.5)² + (y−0.5)² ≤ r²` (`r <= 0` contains
-  nothing); polygon: ray casting (the `ComposerCanvas.tsx` algorithm),
-  boundary treated as inside-ish (ray-cast parity; no epsilon games).
+  ellipse: normalized-ellipse test (`rx`/`ry`; `rx <= 0` or `ry <= 0`
+  contains nothing); polygon: ray casting (the `ComposerCanvas.tsx`
+  algorithm), boundary treated as inside-ish (ray-cast parity; no epsilon
+  games).
 - `zoneArea(zone: ZoneElement): number` — normalized area: rect `w·h`,
-  warping ellipse `π·rx·ry`, locked circle `πr²`, polygon shoelace.
+  ellipse `π·rx·ry`, polygon shoelace.
 - `assignZone(p: Vec, zones: ZoneElement[]): string | null` — filter
   containing zones, return label of smallest area; tie → later in document
   order; none → `null`.
@@ -334,19 +316,18 @@ a comment). Slices:
 - Top layer: absolutely-positioned SVG overlay (percentage-positioned) carrying
   selection outlines, resize/vertex handles, draft shapes, and zone chrome —
   dashed outline + label pill on every `zoneLabel`-marked element, editor-only,
-  hidden when `zonesVisible` off (pills for locked circles sit at the top inner
-  edge so nested rings don't stack their pills).
+  hidden when `zonesVisible` off (pills for concentric same-centre shapes sit
+  at the top inner edge so nested rings don't stack their pills).
 - Pointer interactions (pointer capture, 5px drag threshold, `touchAction:
 'none'` — the `useCanvasDrag` idiom): draw by drag (rect/ellipse/line),
   polygon by click-to-add-vertex + double-click/Enter to close, Escape cancels,
   text tool click places then opens the inline text editor. Select tool: click
   selects topmost hit, drag moves, handles resize (rect/ellipse corners; line
-  endpoints; polygon vertices). Shift-drag constrains lines to 45° increments.
+  endpoints; polygon vertices). **Shift while drawing/resizing** constrains:
+  lines to 45° increments, ellipses/rects to visually-regular shapes (circle /
+  square) at the current stage aspect (`ry = rx·stageW/stageH`).
 - Hover inspection: with zones visible, a small readout chip shows
-  `assignZone(cursor, zones)` — live proof of the zone semantics. Zone chrome
-  for a locked circle draws the _zone's_ normalized disk (dashed) distinctly
-  from the visual circle, making the §2 over-inclusion band visible in the
-  editor at non-square aspects.
+  `assignZone(cursor, zones)` — live proof of the zone semantics.
 - **Keyboard**: canvas is focusable; Tab cycles selectable items (roving
   selection), arrows nudge ±0.01 (Shift ±0.05), Delete removes, Escape
   deselects/cancels draft, Enter on a zone opens its label editor. Every state
@@ -368,9 +349,7 @@ One floating draggable `SegmentedToolbar` (`@codaco/fresco-ui/SegmentedToolbar`)
   native `<input type="color">` + "none" for stroke), fill opacity, stroke
   width (InputField stepper), line arrow toggles, text lines/anchor/weight/font
   clamp; for rect/ellipse/polygon a **Use as zone** toggle + label field
-  (live-validated for empty/duplicate labels); for ellipses a **Keep circular**
-  toggle (enabling sets `r := rx`; the centre stays freely movable, and while
-  enabled a single radius field replaces the rx/ry pair).
+  (live-validated for empty/duplicate labels).
 - Undo / Redo buttons (⌘Z / ⇧⌘Z shortcuts too).
 - Menu: **File** (action menu) — New (Blank / Quadrants / Concentric circles /
   Political compass), Open SVG…, Download SVG, Export Python script…, Export R
@@ -400,10 +379,12 @@ drag/popovers are Base-UI/fresco built-ins already compliant).
   soft-fill rects **marked as the zones** (`top-left` … `bottom-right`), four
   two-line quadrant labels + four axis labels (placeholder wording:
   "High/Low X", "High/Low Y").
-- **Concentric circles** — three stroked `keepCircular` ellipses
-  (`r ≈ 0.15/0.30/0.45`, non-scaling stroke, no fill) **marked as the zones**
+- **Concentric circles** — three stroked ellipses (`rx = ry` at
+  `0.15/0.30/0.45`, non-scaling stroke, no fill) **marked as the zones**
   `inner` / `middle` / `outer`, centre labels — demonstrating smallest-wins
-  layering, round-locked rendering, and aspect-aware assignment.
+  layering. The rings warp with the canvas exactly as their zones do; a
+  researcher wanting rings round at a particular aspect redraws them with
+  Shift at that preview aspect.
 - **Political compass** — the startup document: a faithful model of the sample
   protocol's responsive compass asset (unsure band, four solid quadrant fills,
   arrowed axes, quadrant labels), the five fills marked as zones (`unsure`,
