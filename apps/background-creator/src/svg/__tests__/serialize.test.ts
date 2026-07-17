@@ -418,28 +418,25 @@ describe('serializeDocument ellipse', () => {
 });
 
 describe('serializeDocument zone-marked shapes', () => {
-  it('renders a zone-marked shape as ordinary artwork and keeps its label in metadata only', () => {
-    const svg = serializeDocument(
-      docWith([
-        {
-          id: 'r',
-          kind: 'rect',
-          x: 0,
-          y: 0,
-          width: 0.5,
-          height: 0.5,
-          fill: '#112233',
-          fillOpacity: 1,
-          stroke: null,
-          strokeWidth: 1,
-          zoneLabel: 'ZONELABEL_UNIQUE',
-        },
-      ]),
-    );
-    // The label exists in the embedded document JSON...
-    expect(svg.slice(0, svg.indexOf('</metadata>'))).toContain(
-      'ZONELABEL_UNIQUE',
-    );
+  it('renders a zone-marked shape as ordinary artwork and keeps its label out of painted markup', () => {
+    const doc = docWith([
+      {
+        id: 'r',
+        kind: 'rect',
+        x: 0,
+        y: 0,
+        width: 0.5,
+        height: 0.5,
+        fill: '#112233',
+        fillOpacity: 1,
+        stroke: null,
+        strokeWidth: 1,
+        zoneLabel: 'ZONELABEL_UNIQUE',
+      },
+    ]);
+    const svg = serializeDocument(doc);
+    // The label round-trips through the embedded (base64) document JSON...
+    expect(parseDocument(svg)).toEqual(doc);
     // ...but the shape renders as an ordinary rect and the label itself is not painted.
     const body = renderedBody(svg);
     expect(body).toContain(
@@ -448,25 +445,32 @@ describe('serializeDocument zone-marked shapes', () => {
     expect(body).not.toContain('ZONELABEL_UNIQUE');
   });
 
-  it('escapes XML-hostile zone labels inside the metadata JSON', () => {
-    const svg = serializeDocument(
-      docWith([
-        {
-          id: 'r',
-          kind: 'rect',
-          x: 0,
-          y: 0,
-          width: 0.5,
-          height: 0.5,
-          fill: '#000000',
-          fillOpacity: 1,
-          stroke: null,
-          strokeWidth: 1,
-          zoneLabel: 'A & B <"quotes">',
-        },
-      ]),
-    );
-    expect(svg).toContain('A &amp; B &lt;');
+  it('keeps XML-hostile zone labels out of the raw markup entirely and round-trips them', () => {
+    const doc = docWith([
+      {
+        id: 'r',
+        kind: 'rect',
+        x: 0,
+        y: 0,
+        width: 0.5,
+        height: 0.5,
+        fill: '#000000',
+        fillOpacity: 1,
+        stroke: null,
+        strokeWidth: 1,
+        zoneLabel: 'A & B <"quotes">',
+      },
+    ]);
+    const svg = serializeDocument(doc);
+    // The label is embedded as base64, not XML-escaped text, so none of its
+    // raw XML meta-characters appear anywhere in the serialized file.
+    expect(svg).not.toContain('A & B <"quotes">');
     expect(svg).not.toContain('<"quotes">');
+    const [, payload = ''] =
+      /<nc:document[^>]*>\s*([^<]+?)\s*<\/nc:document>/.exec(svg) ?? [];
+    expect(payload).not.toBe('');
+    expect(payload).toMatch(/^[A-Za-z0-9+/=]+$/);
+    // ...and the label survives byte-exactly on reopen.
+    expect(parseDocument(svg)).toEqual(doc);
   });
 });

@@ -194,12 +194,53 @@ const kitchenSink: BackgroundDocument = {
   ],
 };
 
+// Exercises the base64-of-UTF-8 metadata encoding with multi-byte characters
+// (emoji are surrogate pairs in UTF-16, 4-byte sequences in UTF-8; CJK
+// characters are 3-byte UTF-8 sequences) in title, description, a zone label,
+// and painted text lines, to prove the round trip is byte-exact, not just
+// ASCII-safe.
+const unicodeDocument: BackgroundDocument = {
+  version: 1,
+  title: 'ネットワーク 🕸️ Canvas',
+  description: '多字节字符 emoji 🎉 round-trip',
+  elements: [
+    {
+      id: 'zone-unicode',
+      kind: 'rect',
+      x: 0.1,
+      y: 0.1,
+      width: 0.2,
+      height: 0.2,
+      fill: '#123456',
+      fillOpacity: 1,
+      stroke: null,
+      strokeWidth: 1,
+      zoneLabel: '区域 🏷️',
+    },
+    {
+      id: 'text-unicode',
+      kind: 'text',
+      x: 0.5,
+      y: 0.5,
+      lines: ['こんにちは', '🎉🎊', '中文标签'],
+      fill: '#ffffff',
+      fontMinPx: 14,
+      fontVmin: 2.6,
+      fontMaxPx: 32,
+      fontWeight: 600,
+      anchor: 'middle',
+      opacity: 1,
+    },
+  ],
+};
+
 describe('serialize/parse round trip', () => {
   const cases: Array<[string, BackgroundDocument]> = [
     ['blank template', createBlankDocument()],
     ['quadrants template', createQuadrantsTemplate()],
     ['concentric circles template', createConcentricCirclesTemplate()],
     ['kitchen-sink document', kitchenSink],
+    ['unicode document (emoji + CJK)', unicodeDocument],
   ];
 
   for (const [name, doc] of cases) {

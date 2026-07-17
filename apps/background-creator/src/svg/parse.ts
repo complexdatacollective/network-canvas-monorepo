@@ -2,13 +2,10 @@ import { parseBackgroundDocument } from '~/model/schema';
 import type { BackgroundDocument } from '~/model/types';
 
 export class DocumentParseError extends Error {
-  readonly reason:
-    | 'not-background-creator'
-    | 'invalid-metadata'
-    | 'invalid-svg';
+  readonly reason: 'not-background-creator' | 'invalid-metadata';
 
   constructor(
-    reason: 'not-background-creator' | 'invalid-metadata' | 'invalid-svg',
+    reason: 'not-background-creator' | 'invalid-metadata',
     message: string,
   ) {
     super(message);
@@ -17,35 +14,48 @@ export class DocumentParseError extends Error {
   }
 }
 
+// Anchored to serializeDocument's own output shape, so opened files never go
+// through DOMParser (parsing untrusted file contents as markup is the
+// js/xss-through-dom sink this replaces): a `<metadata id="nc-background-creator">`
+// element wraps a single `<nc:document>` element whose text content is a
+// base64 payload. Isolating the metadata block first, then the document tag
+// within it, keeps the match anchored without depending on attribute order or
+// incidental whitespace elsewhere in the file.
+const METADATA_BLOCK_PATTERN =
+  /<metadata\s+id="nc-background-creator"[^>]*>([\s\S]*?)<\/metadata>/;
+const DOCUMENT_TAG_PATTERN =
+  /<nc:document[^>]*>\s*([A-Za-z0-9+/=\s]+?)\s*<\/nc:document>/;
+
 export function parseDocument(svgText: string): BackgroundDocument {
-  const parsed = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-
-  if (parsed.querySelector('parsererror') !== null) {
-    throw new DocumentParseError(
-      'invalid-svg',
-      'The file could not be read as an SVG image.',
-    );
-  }
-
-  const metadata = parsed.querySelector('[id="nc-background-creator"]');
-  if (metadata === null) {
+  const metadataBlock = METADATA_BLOCK_PATTERN.exec(svgText)?.[1] ?? '';
+  const documentMatch = DOCUMENT_TAG_PATTERN.exec(metadataBlock);
+  if (documentMatch === null) {
     throw new DocumentParseError(
       'not-background-creator',
       'This SVG does not contain Background Creator metadata, so it cannot be reopened for editing.',
     );
   }
 
-  const payload = metadata.firstElementChild?.textContent;
-  if (payload === null || payload === undefined || payload.trim() === '') {
+  const [, rawPayload = ''] = documentMatch;
+  const base64 = rawPayload.replace(/\s+/g, '');
+
+  let json: string;
+  try {
+    const bytes = Uint8Array.from(
+      atob(base64),
+      (char) => char.codePointAt(0) ?? 0,
+    );
+    json = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
     throw new DocumentParseError(
       'invalid-metadata',
-      'The Background Creator metadata is empty.',
+      'The Background Creator metadata is not valid base64 data.',
     );
   }
 
   let data: unknown;
   try {
-    data = JSON.parse(payload);
+    data = JSON.parse(json);
   } catch {
     throw new DocumentParseError(
       'invalid-metadata',

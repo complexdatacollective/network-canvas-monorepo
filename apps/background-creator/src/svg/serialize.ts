@@ -54,6 +54,21 @@ function escapeAttr(value: string): string {
   return escapeText(value).replaceAll('"', '&quot;');
 }
 
+// btoa only accepts a "binary string" (one UTF-16 code unit per byte), and
+// spreading a large byte array onto String.fromCharCode risks the engine's
+// call-stack/argument-count limit, so bytes are converted in bounded chunks.
+const BASE64_CHUNK_SIZE = 0x8000;
+
+function base64EncodeUtf8(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += BASE64_CHUNK_SIZE) {
+    const chunk = bytes.subarray(offset, offset + BASE64_CHUNK_SIZE);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
 // Returns a copy of the document with XML-invalid control characters stripped
 // from every painted free-text field (title, description, text lines).
 // Serialization derives both the painted markup and the embedded JSON from this
@@ -264,7 +279,14 @@ export function serializeDocument(doc: BackgroundDocument): string {
     `  <title id="title">${escapeText(sanitized.title)}</title>`,
     `  <desc id="description">${escapeText(sanitized.description)}</desc>`,
     `  <metadata id="nc-background-creator">`,
-    `    <nc:document xmlns:nc="${NC_NAMESPACE}">${escapeText(JSON.stringify(sanitized))}</nc:document>`,
+    // The document is embedded as base64 of its UTF-8 JSON rather than
+    // XML-escaped text. Base64's alphabet contains no XML meta-characters, so
+    // the payload needs no escaping and can't break the surrounding markup;
+    // more importantly, it lets parseDocument recover the document by
+    // scanning the raw file text instead of parsing untrusted file contents
+    // as markup (the reopened-file DOM-XSS sink), while still round-tripping
+    // any JSON content — including XML-hostile characters — byte-exactly.
+    `    <nc:document xmlns:nc="${NC_NAMESPACE}">${base64EncodeUtf8(JSON.stringify(sanitized))}</nc:document>`,
     `  </metadata>`,
   ];
 

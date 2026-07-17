@@ -7,6 +7,17 @@ import { serializeDocument } from '~/svg/serialize';
 const NC_NAMESPACE =
   'https://documentation.networkcanvas.com/xmlns/background-creator';
 
+// Mirrors serialize.ts's base64EncodeUtf8 so fixtures exercise the same
+// encoding the app produces, without importing an unexported helper.
+function base64Utf8(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
 function svgWithMetadata(payload: string): string {
   return [
     '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">',
@@ -34,9 +45,9 @@ describe('parseDocument', () => {
     expect(parseDocument(serializeDocument(doc))).toEqual(doc);
   });
 
-  it('reports invalid-svg for non-SVG text', () => {
+  it('reports not-background-creator for text with no metadata marker at all', () => {
     expect(parseReason('this is just plain text, definitely not <markup')).toBe(
-      'invalid-svg',
+      'not-background-creator',
     );
   });
 
@@ -48,15 +59,20 @@ describe('parseDocument', () => {
     ).toBe('not-background-creator');
   });
 
-  it('reports invalid-metadata for corrupt JSON', () => {
-    expect(parseReason(svgWithMetadata('{ this is not valid json }'))).toBe(
-      'invalid-metadata',
-    );
+  it('reports invalid-metadata for corrupt base64', () => {
+    // Single-character payload: valid base64 alphabet, invalid base64 length.
+    expect(parseReason(svgWithMetadata('A'))).toBe('invalid-metadata');
+  });
+
+  it('reports invalid-metadata for corrupt JSON inside otherwise-valid base64', () => {
+    expect(
+      parseReason(svgWithMetadata(base64Utf8('{ this is not valid json }'))),
+    ).toBe('invalid-metadata');
   });
 
   it('reports invalid-metadata for JSON that fails the schema', () => {
-    expect(parseReason(svgWithMetadata('{"version":2,"title":"x"}'))).toBe(
-      'invalid-metadata',
-    );
+    expect(
+      parseReason(svgWithMetadata(base64Utf8('{"version":2,"title":"x"}'))),
+    ).toBe('invalid-metadata');
   });
 });
