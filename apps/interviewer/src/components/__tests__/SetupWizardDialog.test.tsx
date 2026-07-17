@@ -1,9 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockEnrolWithoutLock,
+  mockGetSettings,
   mockOpenDialog,
   mockRefresh,
   mockRevoke,
@@ -13,6 +14,7 @@ const {
   mockUpdateSettings,
 } = vi.hoisted(() => ({
   mockEnrolWithoutLock: vi.fn(),
+  mockGetSettings: vi.fn(),
   mockOpenDialog: vi.fn(),
   mockRefresh: vi.fn(),
   mockRevoke: vi.fn(),
@@ -48,6 +50,7 @@ vi.mock('~/lib/auth/api', () => ({
 }));
 
 vi.mock('~/lib/db/api', () => ({
+  getSettings: mockGetSettings,
   updateSettings: mockUpdateSettings,
 }));
 
@@ -61,6 +64,10 @@ function SetupLauncher() {
     </button>
   );
 }
+
+beforeEach(() => {
+  mockGetSettings.mockResolvedValue({ analyticsEnabled: true });
+});
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -91,23 +98,20 @@ describe('settings-launched setup wizard', () => {
     );
   });
 
-  it('continues without a lock when dismissed before enrolment', async () => {
+  it('leaves the vault unconfigured when dismissed before enrolment', async () => {
     mockOpenDialog.mockResolvedValue(null);
-    mockStatus.mockResolvedValue({
-      configured: false,
-      locked: false,
-    });
-    mockEnrolWithoutLock.mockResolvedValue({ ok: true });
 
     render(<SetupLauncher />);
     await userEvent.click(screen.getByRole('button', { name: 'Launch setup' }));
 
     await waitFor(() => expect(mockRefresh).toHaveBeenCalledOnce());
-    expect(mockEnrolWithoutLock).toHaveBeenCalledOnce();
+    expect(mockStatus).not.toHaveBeenCalled();
+    expect(mockEnrolWithoutLock).not.toHaveBeenCalled();
     expect(mockRevoke).not.toHaveBeenCalled();
   });
 
   it('preserves an existing analytics opt-out when the toggle is untouched', async () => {
+    mockGetSettings.mockResolvedValue({ analyticsEnabled: false });
     mockOpenDialog.mockResolvedValue({
       selectedMethod: 'pin',
       enrolmentCommitted: true,
@@ -118,6 +122,20 @@ describe('settings-launched setup wizard', () => {
 
     await waitFor(() => expect(mockRefresh).toHaveBeenCalledOnce());
     expect(mockSetAnalyticsEnabled).toHaveBeenCalledWith(false);
+  });
+
+  it('preserves stored analytics opt-in before the provider has loaded it', async () => {
+    mockOpenDialog.mockResolvedValue({
+      selectedMethod: 'pin',
+      enrolmentCommitted: true,
+    });
+
+    render(<SetupLauncher />);
+    await userEvent.click(screen.getByRole('button', { name: 'Launch setup' }));
+
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledOnce());
+    expect(mockGetSettings).toHaveBeenCalledOnce();
+    expect(mockSetAnalyticsEnabled).toHaveBeenCalledWith(true);
   });
 
   it('refreshes auth when a post-enrolment settings write fails', async () => {
