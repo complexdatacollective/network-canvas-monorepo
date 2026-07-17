@@ -74,7 +74,7 @@ const Sociogram = (stageProps: SociogramProps) => {
 
   // Background Configuration
   const stageBackground = stage.background;
-  const { url: backgroundImage } = useAssetUrl(stageBackground.image);
+  const { url: backgroundImageUrl } = useAssetUrl(stageBackground.image);
 
   const { currentStep } = useCurrentStep();
   const track = useTrack();
@@ -340,17 +340,18 @@ const Sociogram = (stageProps: SociogramProps) => {
   // Branch on the schema's image/circles union: in the circles variant
   // concentricCircles is proven present. An image renders nothing until its
   // asset URL resolves.
-  const background =
-    stageBackground.image !== undefined ? (
-      backgroundImage ? (
-        <CanvasBackgroundImage src={backgroundImage} />
-      ) : null
-    ) : (
+  const backgroundImageLayer =
+    stageBackground.image !== undefined && backgroundImageUrl ? (
+      <CanvasBackgroundImage src={backgroundImageUrl} />
+    ) : null;
+
+  const canvasBackground =
+    stageBackground.image === undefined ? (
       <ConcentricCircles
         n={stageBackground.concentricCircles}
         skewed={stageBackground.skewedTowardCenter}
       />
-    );
+    ) : null;
 
   const simulationHandlers =
     layoutMode === 'AUTOMATIC'
@@ -362,15 +363,16 @@ const Sociogram = (stageProps: SociogramProps) => {
 
   return (
     <div
-      className="interface h-dvh overflow-hidden"
+      className="interface size-full overflow-hidden"
       ref={interfaceRef}
       data-testid="sociogram"
       data-layout-mode={layoutMode}
       data-simulation-running={simulation.isRunning}
     >
+      {backgroundImageLayer}
       {measurementContainer}
       <Canvas
-        background={background}
+        background={canvasBackground}
         nodes={canvasNodes}
         edges={edges}
         store={store}

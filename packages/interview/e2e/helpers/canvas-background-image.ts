@@ -5,6 +5,8 @@ type BackgroundImageStyle = {
   objectPosition: string;
 };
 
+type Orientation = 'landscape' | 'portrait';
+
 const getBackgroundImageStyle = (
   image: Locator,
 ): Promise<BackgroundImageStyle> =>
@@ -16,10 +18,48 @@ const getBackgroundImageStyle = (
     };
   });
 
+const getFullBleedChecks = (image: Locator, orientation: Orientation) =>
+  image.evaluate((element, expectedOrientation) => {
+    const interfaceRoot = element.closest('.interface');
+    const navigation = document.querySelector('[role="navigation"]');
+
+    if (!(interfaceRoot instanceof HTMLElement)) {
+      throw new Error('Background image is not inside an interface root.');
+    }
+
+    if (!(navigation instanceof HTMLElement)) {
+      throw new Error('Interview navigation was not found.');
+    }
+
+    const imageRect = element.getBoundingClientRect();
+    const interfaceRect = interfaceRoot.getBoundingClientRect();
+    const navigationRect = navigation.getBoundingClientRect();
+    const close = (first: number, second: number) =>
+      Math.abs(first - second) <= 1;
+
+    return {
+      fillsInterface:
+        close(imageRect.left, interfaceRect.left) &&
+        close(imageRect.top, interfaceRect.top) &&
+        close(imageRect.right, interfaceRect.right) &&
+        close(imageRect.bottom, interfaceRect.bottom),
+      excludesOnlyNavigation:
+        expectedOrientation === 'landscape'
+          ? close(imageRect.left, navigationRect.right) &&
+            close(imageRect.top, 0) &&
+            close(imageRect.right, window.innerWidth) &&
+            close(imageRect.bottom, window.innerHeight)
+          : close(imageRect.left, 0) &&
+            close(imageRect.top, 0) &&
+            close(imageRect.right, window.innerWidth) &&
+            close(imageRect.bottom, navigationRect.top),
+    };
+  }, orientation);
+
 /**
- * Canvas backgrounds retain the existing edge-to-edge crop in landscape, but
- * portrait screens must show the whole image and keep it centred on both axes.
- * Leave the page in portrait so visual scenarios capture the requested state.
+ * Canvas backgrounds must show the whole image and keep it centred on both
+ * axes in every orientation. Leave the page in portrait so visual scenarios
+ * capture both landscape (initial) and portrait (final) states.
  */
 export async function expectResponsiveCanvasBackgroundImage(
   page: Page,
@@ -29,8 +69,14 @@ export async function expectResponsiveCanvasBackgroundImage(
   await expect
     .poll(() => getBackgroundImageStyle(image))
     .toEqual({
-      objectFit: 'cover',
+      objectFit: 'contain',
       objectPosition: '50% 50%',
+    });
+  await expect
+    .poll(() => getFullBleedChecks(image, 'landscape'))
+    .toEqual({
+      fillsInterface: true,
+      excludesOnlyNavigation: true,
     });
 
   await page.setViewportSize({ width: 768, height: 1024 });
@@ -39,5 +85,11 @@ export async function expectResponsiveCanvasBackgroundImage(
     .toEqual({
       objectFit: 'contain',
       objectPosition: '50% 50%',
+    });
+  await expect
+    .poll(() => getFullBleedChecks(image, 'portrait'))
+    .toEqual({
+      fillsInterface: true,
+      excludesOnlyNavigation: true,
     });
 }

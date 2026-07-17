@@ -70,7 +70,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   // Background Configuration
   const stageBackground = stage.background;
-  const { url: backgroundImage } = useAssetUrl(stageBackground.image);
+  const { url: backgroundImageUrl } = useAssetUrl(stageBackground.image);
 
   // Automatic layout is an interview-time choice, not a fixed stage config. The
   // schema's automaticLayout boolean only seeds the initial value; the
@@ -484,17 +484,18 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // Branch on the schema's image/circles union: in the circles variant
   // concentricCircles is proven present. An image renders nothing until its
   // asset URL resolves.
-  const background =
-    stageBackground.image !== undefined ? (
-      backgroundImage ? (
-        <CanvasBackgroundImage src={backgroundImage} />
-      ) : null
-    ) : (
+  const backgroundImageLayer =
+    stageBackground.image !== undefined && backgroundImageUrl ? (
+      <CanvasBackgroundImage src={backgroundImageUrl} />
+    ) : null;
+
+  const canvasBackground =
+    stageBackground.image === undefined ? (
       <ConcentricCircles
         n={stageBackground.concentricCircles}
         skewed={stageBackground.skewedTowardCenter}
       />
-    );
+    ) : null;
 
   const simulationHandlers =
     layoutMode === 'AUTOMATIC'
@@ -568,12 +569,13 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     // tabIndex makes the div focusable so keydown events reach it.
     <div
       ref={rootRef}
-      className="interface relative h-dvh overflow-hidden"
+      className="interface size-full overflow-hidden"
       data-testid="network-composer"
       data-layout-mode={layoutMode}
       tabIndex={-1}
       onKeyDown={handleKeyDown}
     >
+      {backgroundImageLayer}
       {measurementContainer}
       <ToolPalette
         composerStore={composerStore}
@@ -615,7 +617,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         composerStore={composerStore}
         nodes={nodes}
         edges={edges}
-        background={background}
+        background={canvasBackground}
         hulls={hulls}
         lassoInSelectMode={groupVariable !== null}
         simulation={simulationHandlers}

@@ -1,6 +1,9 @@
 - main:
+  - img "Background"
   - application "Sociogram Canvas":
-    - img "Background"
+    - button "Mohammad"
+    - button "Charlie"
+    - button "Laury"
   - button "Expand drawer": 0 unplaced
   - text: Drop here to remove
   - button "Hide instructions" [expanded]

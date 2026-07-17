@@ -130,6 +130,14 @@ test('creates a valid Narrative stage from scratch', async ({
     .section('Background')
     .getByRole('option', { name: /^Image/ })
     .click();
+  await expect(
+    editor.section('Background').getByRole('link', {
+      name: 'Learn how to create a responsive SVG background',
+    }),
+  ).toHaveAttribute(
+    'href',
+    'https://documentation.networkcanvas.com/en/design-protocols/key-concepts/responsive-svg-backgrounds/',
+  );
   await editor
     .field('background.image')
     .getByRole('button', { name: 'Select resource' })

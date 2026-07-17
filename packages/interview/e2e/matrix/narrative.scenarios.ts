@@ -8,17 +8,17 @@ import { expectResponsiveCanvasBackgroundImage } from '../helpers/canvas-backgro
 import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
 
-const DEV_PROTOCOL_ASSETS_DIR = path.resolve(
+const BACKGROUND_IMAGE_FIXTURE = path.resolve(
   import.meta.dirname,
-  '../../../development-protocol/assets',
+  '../../../../apps/documentation/public/assets/responsive-svg-background.svg',
 );
 
 const backgroundImageAsset: SyntheticAssetSpec = {
   assetId: 'narrative-bg-1',
   name: 'Background',
   type: 'image',
-  source: 'quadrant.png',
-  localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
+  source: 'responsive-svg-background.svg',
+  localPath: BACKGROUND_IMAGE_FIXTURE,
 };
 
 /**
@@ -745,7 +745,10 @@ const imageBackground: ScenarioDefinition = {
     const image = narrative.getBackgroundImage();
 
     await expect(image).toBeVisible();
-    await expect(image).toHaveAttribute('src', /quadrant\.png/);
+    await expect(image).toHaveAttribute(
+      'src',
+      /responsive-svg-background\.svg/,
+    );
     await expect
       .poll(() =>
         image.evaluate((element) =>

@@ -9,9 +9,9 @@ import { expectResponsiveCanvasBackgroundImage } from '../helpers/canvas-backgro
 import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
 
-const DEV_PROTOCOL_ASSETS_DIR = path.resolve(
+const BACKGROUND_IMAGE_FIXTURE = path.resolve(
   import.meta.dirname,
-  '../../../development-protocol/assets',
+  '../../../../apps/documentation/public/assets/responsive-svg-background.svg',
 );
 
 /** Narrow an unknown attribute value to a canvas {x,y} position. */
@@ -47,8 +47,8 @@ const backgroundImageAsset: SyntheticAssetSpec = {
   assetId: 'network-composer-bg-1',
   name: 'Background',
   type: 'image',
-  source: 'quadrant.png',
-  localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
+  source: 'responsive-svg-background.svg',
+  localPath: BACKGROUND_IMAGE_FIXTURE,
 };
 const drawRefs = { friendship: '' };
 const multiEdgeRefs = { friendship: '', advice: '', reciprocated: '' };
@@ -587,7 +587,10 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const composer = new NetworkComposerFixture(page);
         const img = composer.root.locator('img[alt="Background"]');
         await expect(img).toBeVisible();
-        await expect(img).toHaveAttribute('src', /quadrant\.png/);
+        await expect(img).toHaveAttribute(
+          'src',
+          /responsive-svg-background\.svg/,
+        );
         // Actually loaded from the asset server, not a broken image.
         await expect
           .poll(() =>

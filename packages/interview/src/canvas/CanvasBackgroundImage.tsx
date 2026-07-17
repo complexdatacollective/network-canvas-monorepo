@@ -8,7 +8,7 @@ export default function CanvasBackgroundImage({
   return (
     <img
       src={src}
-      className="size-full object-cover object-center portrait:object-contain"
+      className="pointer-events-none absolute inset-0 size-full object-contain object-center"
       alt="Background"
     />
   );

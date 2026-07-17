@@ -170,7 +170,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
 
   // Background Configuration
   const stageBackground = stage.background;
-  const { url: backgroundImage } = useAssetUrl(stageBackground.image);
+  const { url: backgroundImageUrl } = useAssetUrl(stageBackground.image);
 
   // Only include nodes that have the layout variable set
   const nodesWithLayout = useMemo(
@@ -279,17 +279,18 @@ const Narrative = ({ stage }: NarrativeProps) => {
     ? (highlight[highlightIndex] ?? undefined)
     : undefined;
 
-  const background =
-    stageBackground.image !== undefined ? (
-      backgroundImage ? (
-        <CanvasBackgroundImage src={backgroundImage} />
-      ) : null
-    ) : (
+  const backgroundImageLayer =
+    stageBackground.image !== undefined && backgroundImageUrl ? (
+      <CanvasBackgroundImage src={backgroundImageUrl} />
+    ) : null;
+
+  const canvasBackground =
+    stageBackground.image === undefined ? (
       <ConcentricCircles
         n={stageBackground.concentricCircles}
         skewed={stageBackground.skewedTowardCenter}
       />
-    );
+    ) : null;
 
   const underlays = convexHullVariable ? (
     <ConvexHullLayer
@@ -307,14 +308,15 @@ const Narrative = ({ stage }: NarrativeProps) => {
 
   return (
     <div
-      className="interface relative h-dvh overflow-hidden"
+      className="interface size-full overflow-hidden"
       ref={interfaceRef}
       data-testid="narrative"
       data-simulation-running={layout.isRunning}
     >
+      {backgroundImageLayer}
       {measurementContainer}
       <Canvas
-        background={background}
+        background={canvasBackground}
         underlays={underlays}
         foreground={foreground}
         nodes={nodesWithLayout}

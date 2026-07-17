@@ -1,0 +1,47 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="100%"
+  height="100%"
+  role="img"
+  aria-labelledby="title description"
+>
+  <title id="title">Responsive political compass quadrants</title>
+  <desc id="description">
+    Four labelled quadrants divided by horizontal and vertical axes.
+  </desc>
+  <style>
+    .axis {
+      stroke: white;
+      stroke-width: 3;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .label {
+      fill: white;
+      font-family: system-ui, sans-serif;
+      font-size: clamp(16px, 3vmin, 32px);
+      font-weight: 600;
+      text-anchor: middle;
+    }
+  </style>
+
+  <line class="axis" x1="0" y1="50%" x2="100%" y2="50%" />
+  <line class="axis" x1="50%" y1="0" x2="50%" y2="100%" />
+
+  <text class="label" x="25%" y="25%">
+    <tspan x="25%" dy="-0.2em">Authoritarian</tspan>
+    <tspan x="25%" dy="1.2em">Left</tspan>
+  </text>
+  <text class="label" x="75%" y="25%">
+    <tspan x="75%" dy="-0.2em">Authoritarian</tspan>
+    <tspan x="75%" dy="1.2em">Right</tspan>
+  </text>
+  <text class="label" x="25%" y="75%">
+    <tspan x="25%" dy="-0.2em">Libertarian</tspan>
+    <tspan x="25%" dy="1.2em">Left</tspan>
+  </text>
+  <text class="label" x="75%" y="75%">
+    <tspan x="75%" dy="-0.2em">Libertarian</tspan>
+    <tspan x="75%" dy="1.2em">Right</tspan>
+  </text>
+</svg>

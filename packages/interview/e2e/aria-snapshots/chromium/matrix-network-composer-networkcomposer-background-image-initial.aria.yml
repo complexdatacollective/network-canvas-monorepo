@@ -1,4 +1,5 @@
 - main:
+  - img "Background"
   - toolbar "Network composer tools":
     - button "Select" [pressed]
     - button "Add node"
@@ -7,8 +8,7 @@
     - separator
     - button "Undo" [disabled]
     - button "Redo" [disabled]
-  - application:
-    - img "Background"
+  - application
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

@@ -1,0 +1,186 @@
+---
+title: Responsive SVG Backgrounds
+---
+
+<Definition>
+  A responsive SVG background adapts its geometry to the available canvas
+  while keeping text and line weights readable in both portrait and landscape
+  orientations.
+</Definition>
+
+## Why use a responsive SVG?
+
+Background images on the Narrative, Network Composer, and Sociogram Interfaces
+are contained and centred so that ordinary images are always shown in full.
+When the image and screen have different aspect ratios, this can leave empty
+space on two sides.
+
+A specially authored SVG can use the whole canvas instead. Its lines and labels
+are positioned with percentages, so the layout expands independently along
+both axes. Because labels remain SVG text rather than outlined paths, their
+letterforms are not stretched or distorted.
+
+<ResponsiveSvgPreview src="/assets/responsive-svg-background.svg" alt="A transparent political compass background with four labelled quadrants"></ResponsiveSvgPreview>
+
+<DownloadLink href="/assets/responsive-svg-background.svg">
+  Download the responsive quadrant example
+</DownloadLink>
+
+## How the example works
+
+The example has four important properties:
+
+1. The root `<svg>` has `width="100%"` and `height="100%"`, but no `viewBox`.
+   This gives it no fixed intrinsic aspect ratio, allowing its viewport to
+   follow the canvas.
+2. Lines and labels use percentage coordinates such as `x="25%"` and
+   `y="75%"`. Their positions therefore remain relative to the current width
+   and height.
+3. Labels remain `<text>` elements. Their font size uses `clamp()` and viewport
+   units, so the text can respond to available space without non-uniformly
+   stretching its glyphs.
+4. The axes use `vector-effect: non-scaling-stroke`, which keeps their stroke
+   weight consistent. There is no background rectangle, so the SVG remains
+   transparent and the Interface theme shows through.
+
+Here is the complete source of the downloadable example:
+
+```xml
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="100%"
+  height="100%"
+  role="img"
+  aria-labelledby="title description"
+>
+  <title id="title">Responsive political compass quadrants</title>
+  <desc id="description">
+    Four labelled quadrants divided by horizontal and vertical axes.
+  </desc>
+  <style>
+    .axis {
+      stroke: white;
+      stroke-width: 3;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .label {
+      fill: white;
+      font-family: system-ui, sans-serif;
+      font-size: clamp(16px, 3vmin, 32px);
+      font-weight: 600;
+      text-anchor: middle;
+    }
+  </style>
+
+  <line class="axis" x1="0" y1="50%" x2="100%" y2="50%" />
+  <line class="axis" x1="50%" y1="0" x2="50%" y2="100%" />
+
+  <text class="label" x="25%" y="25%">
+    <tspan x="25%" dy="-0.2em">Authoritarian</tspan>
+    <tspan x="25%" dy="1.2em">Left</tspan>
+  </text>
+  <text class="label" x="75%" y="25%">
+    <tspan x="75%" dy="-0.2em">Authoritarian</tspan>
+    <tspan x="75%" dy="1.2em">Right</tspan>
+  </text>
+  <text class="label" x="25%" y="75%">
+    <tspan x="25%" dy="-0.2em">Libertarian</tspan>
+    <tspan x="25%" dy="1.2em">Left</tspan>
+  </text>
+  <text class="label" x="75%" y="75%">
+    <tspan x="75%" dy="-0.2em">Libertarian</tspan>
+    <tspan x="75%" dy="1.2em">Right</tspan>
+  </text>
+</svg>
+```
+
+## Adapting the example
+
+- Change each label by editing the text inside its `<tspan>` elements.
+- Reposition a label by changing the matching percentage values on both the
+  `<text>` and its `<tspan>` elements.
+- Add zones with percentage-based shapes, such as
+  `<rect x="0" y="0" width="50%" height="50%" />`. Leave their fill unset if
+  the background should remain transparent.
+- Use system fonts so the labels work offline and look consistent across
+  devices. Do not reference external web fonts, images, stylesheets, or scripts.
+- Test both portrait and landscape orientations in
+  [Preview Mode](/en/design-protocols/key-concepts/preview-mode) before fieldwork.
+
+<TipBox danger>
+
+Do not add a `viewBox` to this particular pattern. A `viewBox` introduces an
+intrinsic aspect ratio, which causes the SVG to be contained like an ordinary
+image instead of expanding along both axes.
+
+Graphics editors often add a `viewBox` and absolute coordinates when they save
+an SVG. Keep the editable source file, then check and adjust the exported copy
+in a text editor before importing it into Architect.
+
+</TipBox>
+
+## Adobe Illustrator
+
+Adobe's [SVG export
+options](https://helpx.adobe.com/illustrator/using/exporting-artwork.html#svg)
+include a **Responsive** setting that omits absolute output dimensions. Use it
+as the starting point:
+
+1. Create the artwork on an artboard with any convenient dimensions. Do not
+   draw a background rectangle if the final SVG should be transparent.
+2. Keep labels as live text. Do not convert them to outlines, because outlined
+   glyphs become geometry and will distort when the layout expands
+   non-uniformly.
+3. Choose **File → Export → Export As**, select **SVG**, enable **Use
+   Artboards**, and choose the **Responsive** option. Preserve the labels as
+   text and embed any raster images if your artwork contains them.
+4. Open the exported SVG in a text editor. Set the root width and height to
+   `100%`, remove the `viewBox`, convert layout coordinates to percentages, and
+   add `vector-effect: non-scaling-stroke` to lines that should retain their
+   weight.
+5. Compare the result with the downloadable example and test it in Architect.
+   Keep editing the original `.ai` file; after each new export, repeat the
+   responsive markup adjustments on the exported copy.
+
+## Inkscape
+
+Inkscape's guide recommends keeping an editable **Inkscape SVG** and using
+**Plain SVG** for sharing. Its [Document Properties
+guide](https://inkscape-manuals.readthedocs.io/en/latest/managing-workspace.html#document-properties-dialog)
+also explains that the page is transparent unless an opaque object is added.
+
+1. Set up a page of any convenient size in **File → Document Properties**.
+   Leave the page transparent and do not add a background rectangle.
+2. Draw the axes to the page edges and keep labels as text. Do not use **Object
+   to Path** on the labels.
+3. Save the editable master as **Inkscape SVG**. Then use **File → Save a Copy**
+   and choose **Plain SVG**, as described in Inkscape's [saving
+   guide](https://inkscape-manuals.readthedocs.io/en/latest/saving.html).
+4. Open the Plain SVG copy in Inkscape's XML Editor or a text editor. Set the
+   root width and height to `100%`, remove the `viewBox`, replace fixed layout
+   coordinates with percentages, and apply
+   `vector-effect: non-scaling-stroke` where needed.
+5. Test the exported copy in Architect. Continue editing the Inkscape master,
+   because reopening and saving the responsive copy may restore fixed document
+   dimensions.
+
+## Accessibility and field testing
+
+Treat labels in a background image as visual reinforcement, not as the only
+instructions for completing the activity. Repeat essential meanings in the
+stage instructions so participants using assistive technology receive the same
+information.
+
+Check the background on every device orientation you plan to use. Make sure
+labels are not obscured by nodes, toolbars, instructions, or the navigation
+bar, and leave enough space for translated text to expand.
+
+## Related concepts
+
+- [Resources](/en/design-protocols/key-concepts/resources) — Add the SVG to a
+  protocol and manage it in the resource library
+- [Preview Mode](/en/design-protocols/key-concepts/preview-mode) — Test the
+  background before data collection
+- [Interfaces](/en/design-protocols/key-concepts/interfaces) — Compare the
+  Interfaces that can use a responsive background

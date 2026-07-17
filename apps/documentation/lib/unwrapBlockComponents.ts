@@ -16,6 +16,7 @@ const BLOCK_COMPONENTS = new Set([
   'appcompatibilitytable',
   'appswitch',
   'apponly',
+  'responsivesvgpreview',
 ]);
 
 const isMeaningful = (child: Node) =>

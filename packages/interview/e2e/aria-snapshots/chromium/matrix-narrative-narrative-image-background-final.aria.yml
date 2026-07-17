@@ -1,6 +1,6 @@
 - main:
+  - img "Background"
   - application "Sociogram Canvas":
-    - img "Background"
     - button "Node0"
   - button "Drag to reposition"
   - toolbar "Presets":
