@@ -225,6 +225,13 @@ alter_id,name,x,y
 2,Sarah,1440,724
 ```
 
+If you drew your background in the [Background
+Creator](/en/design-protocols/key-concepts/responsive-svg-backgrounds#use-the-background-creator)
+and defined zones there, its exported Python or R zone-assignment script reads
+these same normalized `_x`/`_y` columns and adds a categorical variable naming
+the zone each node falls in, so you do not have to write that classification
+by hand.
+
 ### Additional export considerations
 
 **Unique identifiers:** Network Canvas generates unique identifiers (UUIDs) for all entities:
