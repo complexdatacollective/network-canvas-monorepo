@@ -5,13 +5,9 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { NetworkComposerFixture } from '../fixtures/network-composer-fixture.js';
+import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
 import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
-
-const DEV_PROTOCOL_ASSETS_DIR = path.resolve(
-  import.meta.dirname,
-  '../../../development-protocol/assets',
-);
 
 /** Narrow an unknown attribute value to a canvas {x,y} position. */
 function isPosition(value: unknown): value is { x: number; y: number } {

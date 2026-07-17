@@ -55,10 +55,16 @@ export function collectWorkspacePackages(cwd) {
       packages.set(manifest.name, {
         dir: `${group}/${entry.name}`,
         // devDependencies participate: they carry Playwright configs, e2e
-        // helpers, and build tooling that shape suite outcomes.
+        // helpers, and build tooling that shape suite outcomes. peer and
+        // optional edges participate too: this repo declares some workspace
+        // edges (e.g. the styling/theme packages an e2e host renders with)
+        // as peerDependencies rather than dependencies or devDependencies.
+        // Non-workspace names harmlessly miss the package map below.
         workspaceDeps: [
           ...Object.keys(manifest.dependencies ?? {}),
           ...Object.keys(manifest.devDependencies ?? {}),
+          ...Object.keys(manifest.peerDependencies ?? {}),
+          ...Object.keys(manifest.optionalDependencies ?? {}),
         ],
       });
     }
@@ -149,7 +155,8 @@ export async function equivalentValidatedSuites({
     const trustedRuns = runs
       .filter((run) => run.head_repository?.full_name === repository)
       .toSorted(
-        (a, b) => Date.parse(b.created_at ?? 0) - Date.parse(a.created_at ?? 0),
+        (a, b) =>
+          Date.parse(b.created_at ?? '') - Date.parse(a.created_at ?? ''),
       );
 
     const jobsByRun = new Map();
@@ -182,8 +189,12 @@ export async function equivalentValidatedSuites({
       }
       if (!candidate?.head_sha) continue;
       if (!ensureCommit(candidate.head_sha, cwd)) continue;
+      // --no-renames: with rename detection on, git lists only a renamed
+      // file's destination path. A relevant file moved to an inert path
+      // (e.g. out of a package directory) would then vanish from the diff
+      // entirely instead of surfacing its source path as changed.
       const diff = tryGit(
-        ['diff', '--name-only', candidate.head_sha, headSha],
+        ['diff', '--no-renames', '--name-only', candidate.head_sha, headSha],
         cwd,
       );
       if (diff === null) continue;

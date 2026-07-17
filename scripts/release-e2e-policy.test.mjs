@@ -150,6 +150,28 @@ test('release lane suites match the workspace dependency graph', () => {
   }
 });
 
+test('interview relevance closure covers peer-declared and asset-only workspace edges', () => {
+  // Anti-drift guard for two review findings: tooling/tailwind is a
+  // peerDependency of @codaco/interview (the theme tokens the e2e host
+  // renders with) rather than a dependency/devDependency, and
+  // @codaco/development-protocol is a devDependency the e2e matrix scenarios
+  // resolve by package name to reach fixture assets. Reading the real
+  // package.json graph means a future edge-type or dependency drop is caught
+  // here instead of silently classifying a relevant change as irrelevant.
+  const dirs = relevanceDirsForSubject(
+    '@codaco/interview',
+    collectWorkspacePackages(REPO_ROOT),
+  );
+  assert.ok(
+    dirs.has('tooling/tailwind'),
+    'tooling/tailwind (peerDependency) is in the interview closure',
+  );
+  assert.ok(
+    dirs.has('packages/development-protocol'),
+    'packages/development-protocol (devDependency) is in the interview closure',
+  );
+});
+
 test('all release policies share the central snapshot PR target', () => {
   for (const [eventName, releaseRef] of [
     ['pull_request', 'changeset-release/main'],
@@ -414,9 +436,14 @@ function writeWorkspaceFixture() {
       name: '@codaco/interview',
       version: '1.0.0',
       devDependencies: { '@codaco/e2e-helpers': 'workspace:*' },
+      peerDependencies: { '@codaco/theme-peer': 'workspace:*' },
     },
     'packages/e2e-helpers/package.json': {
       name: '@codaco/e2e-helpers',
+      version: '1.0.0',
+    },
+    'packages/theme-peer/package.json': {
+      name: '@codaco/theme-peer',
       version: '1.0.0',
     },
     'apps/interviewer/package.json': {
@@ -437,21 +464,27 @@ function writeWorkspaceFixture() {
   return cwd;
 }
 
-test('relevance closure follows dependencies and devDependencies', () => {
+test('relevance closure follows dependencies, devDependencies, and peerDependencies', () => {
   const cwd = writeWorkspaceFixture();
   const packages = collectWorkspacePackages(cwd);
   assert.deepEqual(
     [...relevanceDirsForSubject('@codaco/interviewer', packages)].toSorted(
       (a, b) => a.localeCompare(b),
     ),
-    ['apps/interviewer', 'packages/e2e-helpers', 'packages/interview'],
+    [
+      'apps/interviewer',
+      'packages/e2e-helpers',
+      'packages/interview',
+      'packages/theme-peer',
+    ],
   );
-  // devDependency edge: interview pulls in its e2e helpers.
+  // devDependency edge: interview pulls in its e2e helpers. peerDependency
+  // edge: interview pulls in its peer theme package.
   assert.deepEqual(
     [...relevanceDirsForSubject('@codaco/interview', packages)].toSorted(
       (a, b) => a.localeCompare(b),
     ),
-    ['packages/e2e-helpers', 'packages/interview'],
+    ['packages/e2e-helpers', 'packages/interview', 'packages/theme-peer'],
   );
 });
 
@@ -809,4 +842,51 @@ test('equivalence reuse trusts only same-repo runs and healthy inputs', async ()
     }),
     none,
   );
+});
+
+test('a relevant file renamed to an inert path still forces the suite to run', async () => {
+  const { cwd } = initReleaseBranchRepo();
+  // Force rename detection on for this repo so the assertion below proves
+  // --no-renames overrides it, rather than merely relying on whatever this
+  // machine's git defaults to.
+  git(cwd, 'config', 'diff.renames', 'true');
+
+  const preRenameSha = commitManifest(
+    cwd,
+    'packages/interview/src/feature.ts',
+    'export {};\n',
+    'add feature file',
+  );
+  mkdirSync(join(cwd, 'docs'), { recursive: true });
+  git(cwd, 'mv', 'packages/interview/src/feature.ts', 'docs/feature.ts');
+  git(cwd, 'commit', '-qm', 'move feature file out of interview');
+  const headSha = git(cwd, 'rev-parse', 'HEAD');
+
+  // With rename detection, `git diff --name-only` would report only
+  // docs/feature.ts (inert) and hide that the source lived inside the
+  // interview package's closure. --no-renames must surface the deleted
+  // packages/interview/src/feature.ts path too, keeping both suites required.
+  assert.deepEqual(
+    await interviewerLaneCall(
+      cwd,
+      headSha,
+      fakeActionsApi({
+        runs: [fakeRun(1, preRenameSha)],
+        jobsByRun: { 1: INTERVIEWER_LANE_SUCCESS_JOBS },
+      }),
+    ),
+    { interview: false, interviewer: false, architect: false },
+  );
+
+  // Sanity check: confirm this repo's git actually would have collapsed the
+  // rename to a single destination path without --no-renames, so the
+  // assertion above is exercising the guard and not a no-op.
+  const renameCollapsed = git(
+    cwd,
+    'diff',
+    '--name-only',
+    preRenameSha,
+    headSha,
+  );
+  assert.equal(renameCollapsed, 'docs/feature.ts');
 });

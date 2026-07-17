@@ -71,19 +71,26 @@ pagination cap — means "run the suite".
    skips collapse onto the original native run without provenance tracking).
    Only a `success` at that run's head SHA **X** can qualify; a conclusive
    failure means the suite runs — never walk past a failure to an older green.
-3. **The delta cannot affect S.** `git diff --name-only X H` (fetching X by
-   SHA; force-pushed commits remain fetchable) contains only paths that are
-   either
+3. **The delta cannot affect S.** `git diff --no-renames --name-only X H`
+   (fetching X by SHA; force-pushed commits remain fetchable) contains only
+   paths that are either
    - inside a workspace package directory that is **not** in S's relevance
      closure — the subject package plus its transitive workspace
-     `dependencies` **and** `devDependencies` (dev edges carry Playwright
-     configs and e2e helpers) — or
+     `dependencies`, `devDependencies`, `peerDependencies`, **and**
+     `optionalDependencies` (dev edges carry Playwright configs and e2e
+     helpers; this repo also declares some workspace edges — e.g. the
+     styling/theme packages an e2e host renders with — as peerDependencies
+     rather than dependencies or devDependencies, so peer edges must be
+     walked too) — or
    - in the inert set the `test` job already uses: `docs/`, `.changeset/`,
      `*.md`.
 
    Anything else is relevant and forces a run: root configs, `.github/`,
    `scripts/`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`,
-   `.nvmrc`, and any path not positively recognised.
+   `.nvmrc`, and any path not positively recognised. `--no-renames` matters
+   here: with rename detection on, `git diff --name-only` reports only a
+   renamed file's destination path, so a relevant file moved to an inert path
+   would otherwise vanish from the diff instead of surfacing its source path.
 
 4. **Correction (2026-07-17): no separate baseline guard.** An earlier draft
    required `e2e-snapshots/main` not to have moved since run X. That branch
@@ -132,7 +139,8 @@ extra changes are irrelevant to S now also skips; anything relevant runs.
 Extend `scripts/release-e2e-policy.test.mjs`:
 
 - Relevance closures derived from the real package.json workspace graph (the
-  existing anti-drift pattern), including dev-dependency edges.
+  existing anti-drift pattern), including dev-dependency and
+  peer-dependency edges.
 - Skip: diff confined to a non-subject package dir; diff confined to the
   inert set; empty diff (byte-identical queue case).
 - Run (fail closed): subject-graph path; any root/`.github/`/`scripts/`/

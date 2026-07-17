@@ -335,10 +335,11 @@ Generated release branches and their merge groups use equivalence reuse: a
 suite is skipped when a prior successful native pull-request run of it exists
 on the same branch and the diff since that commit touches only paths that
 provably cannot affect the suite — files in workspace packages outside the
-suite subject's dependency+devDependency closure, or the inert `docs/`,
-`.changeset/`, `*.md` set. Every guard fails closed: an unfetchable commit,
-Actions-API doubt, a fork head, a conclusive failure as the newest verdict,
-or any unrecognised path (root configs, `.github/`, `scripts/`, the
+suite subject's declared workspace dependency closure (dependencies,
+devDependencies, peerDependencies, optionalDependencies), or the inert
+`docs/`, `.changeset/`, `*.md` set. Every guard fails closed: an unfetchable
+commit, Actions-API doubt, a fork head, a conclusive failure as the newest
+verdict, or any unrecognised path (root configs, `.github/`, `scripts/`, the
 lockfile) re-runs the suite. Force-pushed refreshes of a release PR after
 unrelated merges to `main` therefore keep their E2E verdicts without
 re-running, while any change that ships in the lane re-runs as before (see

@@ -153,6 +153,7 @@ jobs:
   e2e-policy:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       interview: ${{ steps.policy.outputs.interview }}
       interviewer: ${{ steps.policy.outputs.interviewer }}
@@ -180,7 +181,8 @@ jobs:
           # for fork PRs.
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-          # Read-only, for the merge-queue already-validated lookup.
+          # Read-only, feeds both the PR-time and merge-queue equivalence
+          # lookups.
           GH_TOKEN: ${{ github.token }}
         run: |
           policy=$(node scripts/release-e2e-policy.mjs)
