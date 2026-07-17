@@ -51,7 +51,18 @@ async function enrolWithoutSecurity() {
   await authApi.enrolWithoutLock();
 }
 
-export function useSetupWizard() {
+type UseSetupWizardOptions = {
+  /**
+   * A Settings-launched wizard may be securing an already-populated database.
+   * Once enrolment has re-encrypted those records, leaving or changing methods
+   * must not revoke the new vault because revoke() also wipes the database.
+   */
+  preserveExistingData?: boolean;
+};
+
+export function useSetupWizard({
+  preserveExistingData = false,
+}: UseSetupWizardOptions = {}) {
   const { openDialog } = useDialog();
   const { refresh } = useAuth();
   const analytics = useAnalytics();
@@ -62,14 +73,17 @@ export function useSetupWizard() {
       type: 'wizard',
       title: '🔑 Secure this device',
       confirmCancel: {
-        intent: 'destructive',
-        title: 'Skip the wizard?',
-        description:
-          'Your device will be left unsecured, and default preferences will be assumed. Are you sure you want to skip the setup wizard?',
-        primaryLabel: 'Use app without security',
+        intent: preserveExistingData ? 'warning' : 'destructive',
+        title: preserveExistingData ? 'Exit setup?' : 'Skip the wizard?',
+        description: preserveExistingData
+          ? 'If you have already configured a device lock, it will remain active. Otherwise, Interviewer will continue without app security.'
+          : 'Your device will be left unsecured, and default preferences will be assumed. Are you sure you want to skip the setup wizard?',
+        primaryLabel: preserveExistingData
+          ? 'Exit setup'
+          : 'Use app without security',
         cancelLabel: 'Go back to wizard',
       },
-      cancelLabel: 'Skip Wizard',
+      cancelLabel: preserveExistingData ? 'Exit setup' : 'Skip Wizard',
       steps: [
         {
           title: 'Setting up your device',
@@ -169,11 +183,13 @@ export function useSetupWizard() {
           title: 'Choose an authentication method',
           description:
             'Choose between the options below to determine how you will be prompted to unlock the app.',
-          content: Step2MethodPicker,
+          content: () => (
+            <Step2MethodPicker lockCommittedMethod={preserveExistingData} />
+          ),
         },
         {
           title: 'Set up your method',
-          content: Step3Configure,
+          content: () => <Step3Configure allowChange={!preserveExistingData} />,
           skip: ({ data }) => data.selectedMethod === 'none',
         },
         {
@@ -196,7 +212,14 @@ export function useSetupWizard() {
     try {
       if (!result) {
         // Dismissed.
-        await enrolWithoutSecurity();
+        if (preserveExistingData) {
+          const status = await authApi.status();
+          if (!status.configured || status.mode === 'none') {
+            await authApi.enrolWithoutLock();
+          }
+        } else {
+          await enrolWithoutSecurity();
+        }
       } else {
         const data = result as SetupWizardData;
         if (data.selectedMethod === 'none') {

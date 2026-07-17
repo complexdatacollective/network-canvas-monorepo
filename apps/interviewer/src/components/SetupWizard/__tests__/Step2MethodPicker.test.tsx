@@ -82,4 +82,19 @@ describe('Step2MethodPicker — method change clears prior enrolment', () => {
       expect.objectContaining({ enrolmentCommitted: false }),
     );
   });
+
+  it('locks a committed method when preserving an existing database', async () => {
+    wizardData.selectedMethod = 'pin';
+    wizardData.enrolmentCommitted = true;
+    render(<Step2MethodPicker lockCommittedMethod />);
+
+    expect(screen.getByText('Passphrase').closest('button')).toBeDisabled();
+    expect(
+      screen.getByText(/already protecting stored data/i),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText('Passphrase'));
+
+    expect(setStepDataMock).not.toHaveBeenCalled();
+  });
 });

@@ -153,11 +153,21 @@ test.describe('settings', () => {
       page.getByRole('heading', { name: 'Device lock' }),
     ).toBeVisible();
     await expect(
+      page.getByText(
+        /Use the Get started wizard below to enable app security/i,
+      ),
+    ).toBeVisible();
+    await expect(
       page.getByRole('button', { name: 'Reset device' }),
     ).toBeVisible();
     await expect(
       page.getByRole('button', { name: 'Revoke', exact: true }),
     ).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Get started' }).click();
+    await expect(page.getByRole('dialog')).toContainText(
+      'Setting up your device',
+    );
   });
 
   test('Synthetic data tab sees a protocol imported just before Settings opened', async ({

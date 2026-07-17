@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useBiometric } from '~/lib/auth/useBiometric';
 import {
   hasPasskeyWindowLimitation,
@@ -22,13 +23,18 @@ function isWizardSelectedMethod(value: unknown): value is WizardSelectedMethod {
   return typeof value === 'string' && WIZARD_METHODS.some((m) => m === value);
 }
 
-export default function Step2MethodPicker() {
+export default function Step2MethodPicker({
+  lockCommittedMethod = false,
+}: {
+  lockCommittedMethod?: boolean;
+}) {
   const { data, setStepData, setNextEnabled } = useWizard();
   const { confirm } = useDialog();
   const biometric = useBiometric();
 
   const rawMethod = data.selectedMethod;
   const selectedMethod = isWizardSelectedMethod(rawMethod) ? rawMethod : null;
+  const methodLocked = lockCommittedMethod && data.enrolmentCommitted === true;
 
   useEffect(() => {
     setNextEnabled(selectedMethod !== null);
@@ -61,27 +67,37 @@ export default function Step2MethodPicker() {
       : `Use Face ID, Touch ID, Windows Hello, or another biometric sensor on this device.${macInstallCaveat}`;
 
   return (
-    <Step2MethodPickerView
-      value={selectedMethod}
-      onChange={(value) => {
-        if (value === 'none') {
-          void confirm({
-            title: 'Continue without security?',
-            description:
-              'Your data will not be protected by an app lock or encryption managed by this app. Anyone with access to this device may be able to view collected data.',
-            confirmLabel: 'Continue without security',
-            intent: 'warning',
-            onConfirm: () => {
-              commitMethod('none');
-            },
-          });
-          return;
-        }
-        commitMethod(value);
-      }}
-      biometricDisabled={biometricDisabled}
-      biometricDescription={biometricDescription}
-    />
+    <>
+      {methodLocked ? (
+        <Paragraph intent="smallText" emphasis="muted">
+          This device lock is already protecting stored data. Finish setup
+          before changing it from the Security settings.
+        </Paragraph>
+      ) : null}
+      <Step2MethodPickerView
+        value={selectedMethod}
+        onChange={(value) => {
+          if (methodLocked && value !== selectedMethod) return;
+          if (value === 'none') {
+            void confirm({
+              title: 'Continue without security?',
+              description:
+                'Your data will not be protected by an app lock or encryption managed by this app. Anyone with access to this device may be able to view collected data.',
+              confirmLabel: 'Continue without security',
+              intent: 'warning',
+              onConfirm: () => {
+                commitMethod('none');
+              },
+            });
+            return;
+          }
+          commitMethod(value);
+        }}
+        biometricDisabled={biometricDisabled}
+        biometricDescription={biometricDescription}
+        lockedMethod={methodLocked ? selectedMethod : null}
+      />
+    </>
   );
 }
 
@@ -90,30 +106,34 @@ export function Step2MethodPickerView({
   onChange,
   biometricDisabled,
   biometricDescription,
+  lockedMethod = null,
 }: {
   value: WizardSelectedMethod | null;
   onChange: (value: WizardSelectedMethod) => void;
   biometricDisabled: boolean;
   biometricDescription: string;
+  lockedMethod?: WizardSelectedMethod | null;
 }) {
   const options = [
     {
       value: 'biometric' as const,
       label: 'Biometric authentication',
       description: biometricDescription,
-      disabled: biometricDisabled,
+      disabled:
+        biometricDisabled ||
+        (lockedMethod !== null && lockedMethod !== 'biometric'),
     },
     {
       value: 'pin' as const,
       label: 'PIN code',
       description: 'An 8-digit numeric PIN.',
-      disabled: false,
+      disabled: lockedMethod !== null && lockedMethod !== 'pin',
     },
     {
       value: 'passphrase' as const,
       label: 'Passphrase',
       description: 'A password of at least 12 characters.',
-      disabled: false,
+      disabled: lockedMethod !== null && lockedMethod !== 'passphrase',
     },
     { type: 'spacer' as const },
     {
@@ -121,6 +141,7 @@ export function Step2MethodPickerView({
       label: 'No security (not recommended)',
       description:
         'Skip app security. Your data will not be protected by the app.',
+      disabled: lockedMethod !== null && lockedMethod !== 'none',
     },
   ];
   return (

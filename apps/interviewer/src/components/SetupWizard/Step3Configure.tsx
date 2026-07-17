@@ -23,7 +23,11 @@ function asSelectedMethod(v: unknown): WizardSelectedMethod | null {
   return null;
 }
 
-export default function Step3Configure() {
+export default function Step3Configure({
+  allowChange = true,
+}: {
+  allowChange?: boolean;
+}) {
   const wizard = useWizard();
   const method = asSelectedMethod(wizard.data.selectedMethod);
   const enrolmentCommitted = Boolean(wizard.data.enrolmentCommitted);
@@ -33,7 +37,11 @@ export default function Step3Configure() {
 
   if (enrolmentCommitted && !editing) {
     return (
-      <ReadOnlySummary method={method} onChange={() => setEditing(true)} />
+      <ReadOnlySummary
+        method={method}
+        allowChange={allowChange}
+        onChange={() => setEditing(true)}
+      />
     );
   }
 
@@ -57,9 +65,11 @@ export default function Step3Configure() {
 // into the configure form so Next actually re-enrols.
 function ReadOnlySummary({
   method,
+  allowChange,
   onChange,
 }: {
   method: WizardSelectedMethod;
+  allowChange: boolean;
   onChange: () => void;
 }) {
   const wizard = useWizard();
@@ -116,9 +126,11 @@ function ReadOnlySummary({
   return (
     <>
       <Paragraph>{label}</Paragraph>
-      <Button type="button" color="primary" onClick={onChange}>
-        Change
-      </Button>
+      {allowChange ? (
+        <Button type="button" color="primary" onClick={onChange}>
+          Change
+        </Button>
+      ) : null}
     </>
   );
 }
