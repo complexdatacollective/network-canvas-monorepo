@@ -142,11 +142,10 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
     setIsEditing(false);
   };
 
+  // Ego variables live at `codebook.ego.variables`, so `type` must stay
+  // undefined for them rather than defaulting to an entity type name.
   const subject = useMemo(
-    () => ({
-      entity: (entity || '') as 'node' | 'edge' | 'ego',
-      type: (entityType || 'node') as 'node' | 'edge' | 'ego',
-    }),
+    () => ({ entity: entity ?? 'node', type: entityType ?? undefined }),
     [entity, entityType],
   );
   const existingVariables = useAppSelector((state: RootState) =>
@@ -155,9 +154,9 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 
   const existingVariableNames = useMemo(
     () =>
-      Object.keys(existingVariables)
-        .filter((variableId) => variableId !== uuid) // Exclude current variable being edited
-        .map((variableId) => get(existingVariables[variableId], 'name')),
+      Object.entries(existingVariables)
+        .filter(([variableId]) => variableId !== uuid) // Exclude current variable being edited
+        .map(([, existingVariable]) => get(existingVariable, 'name')),
     [existingVariables, uuid],
   );
 
