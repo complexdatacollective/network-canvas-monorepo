@@ -3,12 +3,8 @@ import path from 'node:path';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
 import { expect } from '../fixtures/matrix-test.js';
+import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
 import type { InterfaceScenarios } from './types.js';
-
-const DEV_PROTOCOL_ASSETS = path.resolve(
-  import.meta.dirname,
-  '../../../development-protocol/assets',
-);
 
 export const informationScenarios: InterfaceScenarios = {
   interfaceType: 'Information',
@@ -119,7 +115,7 @@ export const informationScenarios: InterfaceScenarios = {
           name: 'quadrant',
           type: 'image',
           source: 'quadrant.png',
-          localPath: path.join(DEV_PROTOCOL_ASSETS, 'quadrant.png'),
+          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
         },
       ],
       run: async ({ page }) => {
@@ -186,7 +182,7 @@ export const informationScenarios: InterfaceScenarios = {
           name: 'clip',
           type: 'audio',
           source: 'click_the_thing.mp3',
-          localPath: path.join(DEV_PROTOCOL_ASSETS, 'click_the_thing.mp3'),
+          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'click_the_thing.mp3'),
         },
       ],
       run: async ({ page }) => {
@@ -233,7 +229,7 @@ export const informationScenarios: InterfaceScenarios = {
           name: 'intro',
           type: 'video',
           source: 'withSound.mp4',
-          localPath: path.join(DEV_PROTOCOL_ASSETS, 'withSound.mp4'),
+          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'withSound.mp4'),
         },
       ],
       run: async ({ page }) => {
@@ -313,7 +309,7 @@ export const informationScenarios: InterfaceScenarios = {
           name: 'quadrant',
           type: 'image',
           source: 'quadrant.png',
-          localPath: path.join(DEV_PROTOCOL_ASSETS, 'quadrant.png'),
+          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
         },
       ],
       run: async ({ page }) => {
