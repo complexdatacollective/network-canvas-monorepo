@@ -13,7 +13,8 @@
     "@codaco/documentation",
     "networkcanvas.com",
     "@codaco/architect",
-    "@codaco/interviewer"
+    "@codaco/interviewer",
+    "@codaco/background-creator"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true

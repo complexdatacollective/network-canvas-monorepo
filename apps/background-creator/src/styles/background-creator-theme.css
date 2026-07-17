@@ -1,0 +1,16 @@
+/*
+ * Background Creator app theme — layered over @codaco/tailwind-config/fresco.css.
+ * This is a researcher-facing app chrome, not participant-facing, so it leans
+ * on the canonical shared dark palette (tooling/tailwind/fresco/themes/default.css
+ * `[data-theme='dark']`) activated by `data-theme="dark"` on <html> in
+ * index.html — no brand-specific variable overrides needed here.
+ */
+@layer base {
+  html,
+  body {
+    @apply h-full w-full;
+  }
+  body {
+    @apply overflow-hidden;
+  }
+}
