@@ -5,11 +5,6 @@ import { Field } from 'redux-form';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-/**
- * The Narrative stage schema forbids a background image (its background is a
- * strict object of only concentricCircles/skewedTowardCenter). The shared
- * Background section must not offer the image option for Narrative stages.
- */
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
@@ -41,8 +36,14 @@ const backgroundTypeOptions = [
   },
 ];
 
+const interfacesWithBackgroundImages: readonly StageType[] = [
+  'Narrative',
+  'Sociogram',
+  'NetworkComposer',
+];
+
 export const allowsBackgroundImage = (interfaceType: StageType): boolean =>
-  interfaceType !== 'Narrative';
+  interfacesWithBackgroundImages.includes(interfaceType);
 type BackgroundProps = StageEditorSectionProps & {
   handleChooseBackgroundType: (value: boolean) => void;
   useImage: boolean;

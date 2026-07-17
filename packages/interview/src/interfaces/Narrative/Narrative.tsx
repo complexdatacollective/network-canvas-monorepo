@@ -10,10 +10,12 @@ import {
 } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import Canvas from '~/canvas/Canvas';
+import CanvasBackgroundImage from '~/canvas/CanvasBackgroundImage';
 import ConvexHullLayer from '~/canvas/ConvexHullLayer';
 import { useAutoLayout } from '~/canvas/useAutoLayout';
 import { createCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
+import { useAssetUrl } from '~/hooks/useAssetUrl';
 import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
 import { useStageSelector } from '~/hooks/useStageSelector';
 import {
@@ -167,8 +169,8 @@ const Narrative = ({ stage }: NarrativeProps) => {
     : '';
 
   // Background Configuration
-  const concentricCircles = stage.background.concentricCircles;
-  const skewedTowardCenter = stage.background.skewedTowardCenter;
+  const stageBackground = stage.background;
+  const { url: backgroundImage } = useAssetUrl(stageBackground.image);
 
   // Only include nodes that have the layout variable set
   const nodesWithLayout = useMemo(
@@ -277,9 +279,17 @@ const Narrative = ({ stage }: NarrativeProps) => {
     ? (highlight[highlightIndex] ?? undefined)
     : undefined;
 
-  const background = (
-    <ConcentricCircles n={concentricCircles} skewed={skewedTowardCenter} />
-  );
+  const background =
+    stageBackground.image !== undefined ? (
+      backgroundImage ? (
+        <CanvasBackgroundImage src={backgroundImage} />
+      ) : null
+    ) : (
+      <ConcentricCircles
+        n={stageBackground.concentricCircles}
+        skewed={stageBackground.skewedTowardCenter}
+      />
+    );
 
   const underlays = convexHullVariable ? (
     <ConvexHullLayer

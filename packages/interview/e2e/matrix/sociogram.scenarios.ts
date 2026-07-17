@@ -11,6 +11,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
+import { expectResponsiveCanvasBackgroundImage } from '../helpers/canvas-background-image.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
 
 const DEV_PROTOCOL_ASSETS_DIR = path.resolve(
@@ -358,6 +359,7 @@ function buildBackgroundImage(): ScenarioDefinition {
       await expect(sociogram.locator('circle.canvas-radar__range')).toHaveCount(
         0,
       );
+      await expectResponsiveCanvasBackgroundImage(page, img);
     },
   };
 }

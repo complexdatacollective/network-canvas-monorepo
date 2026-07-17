@@ -12,6 +12,7 @@ import {
 } from '@codaco/shared-consts';
 import { useTrack } from '~/analytics/useTrack';
 import Canvas from '~/canvas/Canvas';
+import CanvasBackgroundImage from '~/canvas/CanvasBackgroundImage';
 import { useAutoLayout } from '~/canvas/useAutoLayout';
 import { createCanvasStore, useCanvasStore } from '~/canvas/useCanvasStore';
 import ConcentricCircles from '~/components/ConcentricCircles';
@@ -338,11 +339,7 @@ const Sociogram = (stageProps: SociogramProps) => {
   const background =
     stageBackground.image !== undefined ? (
       backgroundImage ? (
-        <img
-          src={backgroundImage}
-          className="size-full object-cover"
-          alt="Background"
-        />
+        <CanvasBackgroundImage src={backgroundImage} />
       ) : null
     ) : (
       <ConcentricCircles

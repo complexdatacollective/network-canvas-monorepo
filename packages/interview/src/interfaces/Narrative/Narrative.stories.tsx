@@ -193,6 +193,29 @@ const buildConcentricCirclesBackground = () => {
   return si;
 };
 
+const buildBackgroundImage = () => {
+  const { si, layoutVar1 } = createNarrativeInterview(114);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const backgroundAssetId = 'narrative-background';
+  si.addStage('Narrative', {
+    initialNodes: { count: 8 },
+    background: { image: backgroundAssetId },
+    behaviours: { automaticLayout: true },
+  }).addPreset({
+    label: 'Social Network',
+    layoutVariable: layoutVar1.id,
+  });
+  si.addAsset({
+    assetId: backgroundAssetId,
+    url: 'https://picsum.photos/seed/narrative/1200/800',
+  });
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+  return si;
+};
+
 const buildWithEdges = () => {
   const { si, layoutVar1, friendshipEt } = createNarrativeInterview(103);
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
@@ -1069,6 +1092,10 @@ export const ConcentricCirclesBackground: Story = {
   render: () => (
     <NarrativeStoryWrapper buildFn={buildConcentricCirclesBackground} />
   ),
+};
+
+export const BackgroundImage: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildBackgroundImage} />,
 };
 
 export const WithEdges: Story = {

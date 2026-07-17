@@ -374,6 +374,19 @@ describe('SyntheticInterview', () => {
       expect(behaviours.freeDraw).toBe(true);
       expect(behaviours.allowRepositioning).toBe(true);
     });
+
+    it('creates Narrative with an image background', () => {
+      const si = new SyntheticInterview();
+      si.addStage('Narrative', {
+        background: { image: 'narrative-background' },
+      });
+
+      const protocol = si.getProtocol();
+      const stageConfig = protocol.stages[0] as Record<string, unknown>;
+      expect(stageConfig.background).toEqual({
+        image: 'narrative-background',
+      });
+    });
   });
 
   describe('node attributes (deferred fill)', () => {

@@ -12,6 +12,7 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
+import CanvasBackgroundImage from '~/canvas/CanvasBackgroundImage';
 import ConvexHullLayer from '~/canvas/ConvexHullLayer';
 import { useAutoLayout } from '~/canvas/useAutoLayout';
 import { createCanvasStore } from '~/canvas/useCanvasStore';
@@ -486,11 +487,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const background =
     stageBackground.image !== undefined ? (
       backgroundImage ? (
-        <img
-          src={backgroundImage}
-          className="size-full object-cover"
-          alt="Background"
-        />
+        <CanvasBackgroundImage src={backgroundImage} />
       ) : null
     ) : (
       <ConcentricCircles

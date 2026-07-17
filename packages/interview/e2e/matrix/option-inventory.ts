@@ -295,6 +295,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'presets[].groupVariable',
     'presets[].edges.display',
     'presets[].highlight',
+    'background.image',
     'background.concentricCircles',
     'background.skewedTowardCenter',
     'behaviours.automaticLayout',

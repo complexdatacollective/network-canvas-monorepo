@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 import { findDuplicateId } from '~/utils/validation-helpers';
 
-import { NodeStageSubjectSchema } from '../common';
+import {
+  imageOrCirclesBackgroundSchema,
+  NodeStageSubjectSchema,
+} from '../common';
 import { canvasBehavioursSchema } from '../common/behaviours';
 import { entityAttributeReference } from '../entity-attribute-reference';
 import { entityTypeReference } from '../entity-type-reference';
@@ -48,9 +51,6 @@ export const narrativeStage = baseStageSchema.extend({
         });
       }
     }),
-  background: z.strictObject({
-    concentricCircles: z.number().int().nonnegative(),
-    skewedTowardCenter: z.boolean().optional(),
-  }),
+  background: imageOrCirclesBackgroundSchema,
   behaviours: canvasBehavioursSchema,
 });

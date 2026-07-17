@@ -5,6 +5,7 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { NetworkComposerFixture } from '../fixtures/network-composer-fixture.js';
+import { expectResponsiveCanvasBackgroundImage } from '../helpers/canvas-background-image.js';
 import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
 
@@ -599,6 +600,8 @@ export const networkComposerScenarios: InterfaceScenarios = {
         // background.image wins: it replaces ConcentricCircles rather than
         // layering with it.
         await expect(composer.backgroundCircles).toHaveCount(0);
+
+        await expectResponsiveCanvasBackgroundImage(page, img);
 
         // The image does not intercept pointer events: the add-node popover
         // still opens on top of it.
