@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import { asEntityAttributeReference } from '../entity-attribute-reference.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 
 describe('Shape Mapping Validation', () => {
@@ -36,7 +37,7 @@ describe('Shape Mapping Validation', () => {
     protocol.codebook.node.person.shape = {
       default: 'circle',
       dynamic: {
-        variable: 'category',
+        variable: asEntityAttributeReference('category'),
         type: 'discrete',
         map: [
           { value: 'friend', shape: 'circle' },
@@ -62,7 +63,7 @@ describe('Shape Mapping Validation', () => {
     protocol.codebook.node.person.shape = {
       default: 'square',
       dynamic: {
-        variable: 'is_person',
+        variable: asEntityAttributeReference('is_person'),
         type: 'discrete',
         map: [{ value: true, shape: 'circle' }],
       },
@@ -77,7 +78,7 @@ describe('Shape Mapping Validation', () => {
     protocol.codebook.node.person.shape = {
       default: 'circle',
       dynamic: {
-        variable: 'age',
+        variable: asEntityAttributeReference('age'),
         type: 'breakpoints',
         thresholds: [{ value: 30, shape: 'square' }],
       },
@@ -92,7 +93,7 @@ describe('Shape Mapping Validation', () => {
     protocol.codebook.node.person.shape = {
       default: 'circle',
       dynamic: {
-        variable: 'age',
+        variable: asEntityAttributeReference('age'),
         type: 'breakpoints',
         thresholds: [
           { value: 20, shape: 'square' },
@@ -110,7 +111,7 @@ describe('Shape Mapping Validation', () => {
     protocol.codebook.node.person.shape = {
       default: 'circle',
       dynamic: {
-        variable: 'age',
+        variable: asEntityAttributeReference('age'),
         type: 'breakpoints',
         thresholds: [],
       },
@@ -125,7 +126,7 @@ describe('Shape Mapping Validation', () => {
     protocol.codebook.node.person.shape = {
       default: 'circle',
       dynamic: {
-        variable: 'age',
+        variable: asEntityAttributeReference('age'),
         type: 'breakpoints',
         thresholds: [
           { value: 10, shape: 'circle' },
@@ -153,7 +154,7 @@ describe('Shape Mapping Validation', () => {
     protocol.codebook.node.person.shape = {
       default: 'circle',
       dynamic: {
-        variable: 'category',
+        variable: asEntityAttributeReference('category'),
         type: 'discrete',
         map: [
           { value: 'friend', shape: 'circle' },
@@ -171,7 +172,7 @@ describe('Shape Mapping Validation', () => {
     protocol.codebook.node.person.shape = {
       default: 'circle',
       dynamic: {
-        variable: 'age',
+        variable: asEntityAttributeReference('age'),
         type: 'breakpoints',
         thresholds: [
           { value: 40, shape: 'square' },

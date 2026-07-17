@@ -3732,6 +3732,377 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('external-data panel edge-rule removal (ext-panel-edge-rule)', () => {
+    const buildV7 = (panel: Record<string, unknown>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
+            },
+          },
+          edge: { knows: { name: 'Knows', color: 'edge-color-seq-1' } },
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'stage1',
+            type: 'NameGenerator',
+            label: 'Generate',
+            subject: { entity: 'node', type: 'person' },
+            form: {
+              title: 'Add',
+              fields: [{ variable: 'name', prompt: 'Name' }],
+            },
+            prompts: [{ id: 'p1', text: 'Who?' }],
+            panels: [panel],
+          },
+        ],
+      }) as unknown as Protocol<7>;
+
+    const migratedPanel = (panel: Record<string, unknown>) => {
+      const migrated = migrationV7toV8.migrate(buildV7(panel), {
+        name: 'Test Protocol',
+      }) as unknown as {
+        stages: { panels?: { filter?: unknown }[] }[];
+      };
+      return migrated.stages[0]?.panels?.[0];
+    };
+
+    it('drops an edge rule from a non-existing panel filter but keeps node rules and join', () => {
+      const panel = migratedPanel({
+        id: 'panel1',
+        title: 'External',
+        dataSource: 'external1',
+        filter: {
+          join: 'AND',
+          rules: [
+            {
+              type: 'edge',
+              id: 'r1',
+              options: { type: 'knows', operator: 'EXISTS' },
+            },
+            {
+              type: 'alter',
+              id: 'r2',
+              options: { type: 'person', operator: 'EXISTS' },
+            },
+          ],
+        },
+      }) as { filter?: { join?: string; rules?: { type?: string }[] } };
+      expect(panel.filter?.rules).toHaveLength(1);
+      expect(panel.filter?.rules?.[0]?.type).toBe('node');
+      expect(panel.filter?.join).toBe('AND');
+    });
+
+    it('removes the filter entirely when only edge rules remain', () => {
+      const panel = migratedPanel({
+        id: 'panel1',
+        title: 'External',
+        dataSource: 'external1',
+        filter: {
+          rules: [
+            {
+              type: 'edge',
+              id: 'r1',
+              options: { type: 'knows', operator: 'EXISTS' },
+            },
+          ],
+        },
+      });
+      expect(panel).not.toHaveProperty('filter');
+    });
+
+    it('leaves edge rules on an existing-data panel untouched', () => {
+      const panel = migratedPanel({
+        id: 'panel1',
+        title: 'Existing',
+        dataSource: 'existing',
+        filter: {
+          rules: [
+            {
+              type: 'edge',
+              id: 'r1',
+              options: { type: 'knows', operator: 'EXISTS' },
+            },
+          ],
+        },
+      }) as { filter?: { rules?: { type?: string }[] } };
+      expect(panel.filter?.rules?.[0]?.type).toBe('edge');
+    });
+
+    it('migrates an external-panel edge-rule protocol to valid schema-8 output', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildV7({
+          id: 'panel1',
+          title: 'External',
+          dataSource: 'external1',
+          filter: {
+            rules: [
+              {
+                type: 'edge',
+                id: 'r1',
+                options: { type: 'knows', operator: 'EXISTS' },
+              },
+            ],
+          },
+        }),
+        { name: 'Test Protocol' },
+      );
+      expect(ProtocolSchemaV8.safeParse(migratedRaw).success).toBe(true);
+    });
+  });
+
+  describe('multi-rule filter join backfill (filter-rule-count)', () => {
+    const twoNodeRules = {
+      rules: [
+        {
+          type: 'alter',
+          id: 'r1',
+          options: { type: 'person', operator: 'EXISTS' },
+        },
+        {
+          type: 'alter',
+          id: 'r2',
+          options: { type: 'person', operator: 'NOT_EXISTS' },
+        },
+      ],
+    };
+
+    const buildV7 = (stage: Record<string, unknown>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+                pos: { name: 'Pos', type: 'layout' },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [stage],
+      }) as unknown as Protocol<7>;
+
+    it('backfills join:OR on a multi-rule stage filter with no join', () => {
+      const migrated = migrationV7toV8.migrate(
+        buildV7({
+          id: 'stage1',
+          type: 'Sociogram',
+          label: 'Sociogram',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            { id: 'p1', text: 'Position', layout: { layoutVariable: 'pos' } },
+          ],
+          filter: { ...twoNodeRules },
+        }),
+        { name: 'Test Protocol' },
+      ) as unknown as { stages: { filter?: { join?: string } }[] };
+      expect(migrated.stages[0]?.filter?.join).toBe('OR');
+      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+    });
+
+    it('backfills join:OR on a multi-rule skipLogic filter with no join', () => {
+      const migrated = migrationV7toV8.migrate(
+        buildV7({
+          id: 'stage1',
+          type: 'Sociogram',
+          label: 'Sociogram',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            { id: 'p1', text: 'Position', layout: { layoutVariable: 'pos' } },
+          ],
+          skipLogic: { action: 'SKIP', filter: { ...twoNodeRules } },
+        }),
+        { name: 'Test Protocol' },
+      ) as unknown as {
+        stages: { skipLogic?: { filter?: { join?: string } } }[];
+      };
+      expect(migrated.stages[0]?.skipLogic?.filter?.join).toBe('OR');
+      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+    });
+
+    it('backfills join:OR on a multi-rule panel filter with no join', () => {
+      const migrated = migrationV7toV8.migrate(
+        buildV7({
+          id: 'stage1',
+          type: 'NameGenerator',
+          label: 'Generate',
+          subject: { entity: 'node', type: 'person' },
+          form: {
+            title: 'Add',
+            fields: [{ variable: 'name', prompt: 'Name' }],
+          },
+          prompts: [{ id: 'p1', text: 'Who?' }],
+          panels: [
+            {
+              id: 'panel1',
+              title: 'Existing',
+              dataSource: 'existing',
+              filter: { ...twoNodeRules },
+            },
+          ],
+        }),
+        { name: 'Test Protocol' },
+      ) as unknown as {
+        stages: { panels?: { filter?: { join?: string } }[] }[];
+      };
+      expect(migrated.stages[0]?.panels?.[0]?.filter?.join).toBe('OR');
+      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+    });
+
+    it('leaves a single-rule filter join undefined', () => {
+      const migrated = migrationV7toV8.migrate(
+        buildV7({
+          id: 'stage1',
+          type: 'Sociogram',
+          label: 'Sociogram',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            { id: 'p1', text: 'Position', layout: { layoutVariable: 'pos' } },
+          ],
+          filter: {
+            rules: [
+              {
+                type: 'alter',
+                id: 'r1',
+                options: { type: 'person', operator: 'EXISTS' },
+              },
+            ],
+          },
+        }),
+        { name: 'Test Protocol' },
+      ) as unknown as { stages: { filter?: { join?: string } }[] };
+      expect(migrated.stages[0]?.filter?.join).toBeUndefined();
+      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+    });
+  });
+
+  describe('non-renderable form-field removal (formfield-nonrenderable)', () => {
+    const buildAlterForm = (fields: Record<string, unknown>[]) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+                homeLoc: { name: 'Home', type: 'location' },
+                pos: { name: 'Pos', type: 'layout' },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'stage1',
+            type: 'AlterForm',
+            label: 'About',
+            subject: { entity: 'node', type: 'person' },
+            form: { fields },
+            introductionPanel: { title: 'Intro', text: 'Welcome.' },
+          },
+        ],
+      }) as unknown as Protocol<7>;
+
+    it('drops layout/location fields but keeps renderable fields and validates', () => {
+      const migrated = migrationV7toV8.migrate(
+        buildAlterForm([
+          { variable: 'name', prompt: 'Name' },
+          { variable: 'homeLoc', prompt: 'Home' },
+          { variable: 'pos', prompt: 'Pos' },
+        ]),
+        { name: 'Test Protocol' },
+      ) as unknown as {
+        stages: { form?: { fields?: { variable?: string }[] } }[];
+      };
+      const fields = migrated.stages[0]?.form?.fields;
+      expect(fields).toHaveLength(1);
+      expect(fields?.[0]?.variable).toBe('name');
+      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+    });
+  });
+
+  describe('empty-form stage removal (form-fields-min1)', () => {
+    const buildProtocol = (formStage: Record<string, unknown>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+                homeLoc: { name: 'Home', type: 'location' },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          formStage,
+          {
+            id: 'keep',
+            type: 'NameGenerator',
+            label: 'Generate',
+            subject: { entity: 'node', type: 'person' },
+            form: {
+              title: 'Add',
+              fields: [{ variable: 'name', prompt: 'Name' }],
+            },
+            prompts: [{ id: 'p1', text: 'Who?' }],
+          },
+        ],
+      }) as unknown as Protocol<7>;
+
+    it('drops an authored EgoForm with no fields and validates', () => {
+      const migrated = migrationV7toV8.migrate(
+        buildProtocol({
+          id: 'empty',
+          type: 'EgoForm',
+          label: 'Ego',
+          form: { fields: [] },
+          introductionPanel: { title: 'Intro', text: 'Welcome.' },
+        }),
+        { name: 'Test Protocol' },
+      ) as unknown as { stages: { id?: string }[] };
+      expect(migrated.stages.map((s) => s.id)).toEqual(['keep']);
+      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+    });
+
+    it('drops an AlterForm emptied by non-renderable field removal (gap 9 -> gap 10)', () => {
+      const migrated = migrationV7toV8.migrate(
+        buildProtocol({
+          id: 'onlyLocation',
+          type: 'AlterForm',
+          label: 'About',
+          subject: { entity: 'node', type: 'person' },
+          form: { fields: [{ variable: 'homeLoc', prompt: 'Home' }] },
+          introductionPanel: { title: 'Intro', text: 'Welcome.' },
+        }),
+        { name: 'Test Protocol' },
+      ) as unknown as { stages: { id?: string }[] };
+      expect(migrated.stages.map((s) => s.id)).toEqual(['keep']);
+      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+    });
+  });
+
   describe('migration metadata', () => {
     it('has correct from and to versions', () => {
       expect(migrationV7toV8.from).toBe(7);

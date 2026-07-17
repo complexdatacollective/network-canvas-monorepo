@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import {
   EdgeVariablesSchema,
   EgoVariablesSchema,
@@ -23,7 +24,7 @@ export const NodeShapes = ['circle', 'square', 'diamond'] as const;
 export type NodeShape = (typeof NodeShapes)[number];
 
 const DiscreteShapeMappingSchema = z.strictObject({
-  variable: z.string(),
+  variable: entityAttributeReference({ subject: 'owningVariable' }),
   type: z.literal('discrete'),
   map: z
     .array(
@@ -42,7 +43,7 @@ const DiscreteShapeMappingSchema = z.strictObject({
 });
 
 const BreakpointShapeMappingSchema = z.strictObject({
-  variable: z.string(),
+  variable: entityAttributeReference({ subject: 'owningVariable' }),
   type: z.literal('breakpoints'),
   thresholds: z
     .array(

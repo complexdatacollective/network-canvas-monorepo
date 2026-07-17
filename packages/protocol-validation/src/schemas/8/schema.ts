@@ -41,10 +41,10 @@ import {
 } from './common/index.ts';
 import type { FilterRule } from './filters/index.ts';
 import { type Prompt, stageSchema } from './stages/index.ts';
-
-// Variable types that have no renderable form `component` and therefore
-// cannot be referenced by a form field.
-const NON_RENDERABLE_VARIABLE_TYPES = new Set(['layout', 'location']);
+// NON_RENDERABLE_VARIABLE_TYPES lives in the leaf variables/types module (and is
+// re-exported above via `export * from './variables/index.ts'`) so the v7→v8
+// migration can share the same reject-list without importing this heavy module.
+import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/index.ts';
 
 // Operators that expect numeric values for comparison
 const NUMERIC_COMPARISON_OPERATORS = [
