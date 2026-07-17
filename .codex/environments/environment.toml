@@ -4,8 +4,11 @@ name = "network-canvas"
 
 [setup]
 script = '''
-bash "$CODEX_WORKTREE_PATH/.codex/scripts/setup.sh"'''
+cd "$CODEX_WORKTREE_PATH"
+pnpm install'''
 
 [cleanup]
 script = '''
-bash "$CODEX_WORKTREE_PATH/.codex/scripts/cleanup.sh"'''
+# Dependencies are installed inside the Codex-managed worktree, which Codex
+# removes after this hook runs. No external resources need cleanup.
+true'''
