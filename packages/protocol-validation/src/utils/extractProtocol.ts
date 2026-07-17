@@ -2,6 +2,7 @@ import type Zip from 'jszip';
 import JSZip from 'jszip';
 
 import type { VersionedProtocol } from '../schemas/index.ts';
+import { getAssetMimeType } from './asset-mime-type.ts';
 
 // A .netcanvas is a zip of protocol.json plus media assets. Inflating an entry
 // with JSZip's `.async()` pipes the whole DEFLATE stream through pako and only
@@ -112,9 +113,10 @@ const inflateEntryToString = async (
 const inflateEntryToBlob = async (
   entry: Zip.JSZipObject,
   budget: InflationBudget,
+  mimeType: string,
 ): Promise<Blob> => {
   const bytes = await inflateEntryWithinBudget(entry, budget);
-  return new Blob([bytes]);
+  return new Blob([bytes], { type: mimeType });
 };
 
 const getProtocolJsonAsObject = async (
@@ -172,7 +174,11 @@ const extractProtocolAssets = async (
         );
       }
 
-      const fileData = await inflateEntryToBlob(entry, budget);
+      const fileData = await inflateEntryToBlob(
+        entry,
+        budget,
+        getAssetMimeType(assetDefinition.source),
+      );
       assets.push({ id: assetId, name: assetDefinition.name, data: fileData });
       continue;
     }

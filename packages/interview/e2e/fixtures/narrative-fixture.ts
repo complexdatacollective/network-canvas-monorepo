@@ -82,7 +82,7 @@ export class NarrativeFixture {
 
   /** Image background rendered in place of concentric circles. */
   getBackgroundImage(): Locator {
-    return this.root().locator('img[alt="Background"]');
+    return this.root().locator('img[alt=""]');
   }
 
   /** The r attribute of every background circle, in DOM order. */

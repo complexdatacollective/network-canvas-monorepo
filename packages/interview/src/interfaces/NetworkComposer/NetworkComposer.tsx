@@ -484,17 +484,14 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // Branch on the schema's image/circles union: in the circles variant
   // concentricCircles is proven present. An image renders nothing until its
   // asset URL resolves.
-  const backgroundImageLayer =
-    stageBackground.image !== undefined && backgroundImageUrl ? (
-      <CanvasBackgroundImage src={backgroundImageUrl} />
-    ) : null;
-
   const canvasBackground =
     stageBackground.image === undefined ? (
       <ConcentricCircles
         n={stageBackground.concentricCircles}
         skewed={stageBackground.skewedTowardCenter}
       />
+    ) : backgroundImageUrl ? (
+      <CanvasBackgroundImage src={backgroundImageUrl} />
     ) : null;
 
   const simulationHandlers =
@@ -569,13 +566,12 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     // tabIndex makes the div focusable so keydown events reach it.
     <div
       ref={rootRef}
-      className="interface size-full overflow-hidden"
+      className="interface h-full overflow-hidden p-0"
       data-testid="network-composer"
       data-layout-mode={layoutMode}
       tabIndex={-1}
       onKeyDown={handleKeyDown}
     >
-      {backgroundImageLayer}
       {measurementContainer}
       <ToolPalette
         composerStore={composerStore}

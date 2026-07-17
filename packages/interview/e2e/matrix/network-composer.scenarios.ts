@@ -585,7 +585,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       },
       run: async ({ page }) => {
         const composer = new NetworkComposerFixture(page);
-        const img = composer.root.locator('img[alt="Background"]');
+        const img = composer.root.locator('img[alt=""]');
         await expect(img).toBeVisible();
         await expect(img).toHaveAttribute(
           'src',

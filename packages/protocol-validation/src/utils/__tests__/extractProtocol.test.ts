@@ -66,6 +66,27 @@ describe('extractProtocol', () => {
     expect(await (result.assets[0]!.data as Blob).text()).toBe('PNGDATA');
   });
 
+  it('restores the SVG MIME type from the manifest source filename', async () => {
+    const protocol = {
+      schemaVersion: 8,
+      assetManifest: {
+        background: {
+          type: 'image',
+          name: 'Responsive background',
+          source: 'BACKGROUND.SVG',
+        },
+      },
+    };
+    const buffer = await buildZip({
+      'protocol.json': JSON.stringify(protocol),
+      'assets/BACKGROUND.SVG': '<svg xmlns="http://www.w3.org/2000/svg" />',
+    });
+
+    const result = await extractProtocol(buffer);
+    expect(result.assets[0]!.data).toBeInstanceOf(Blob);
+    expect((result.assets[0]!.data as Blob).type).toBe('image/svg+xml');
+  });
+
   it('passes through apikey assets without inflating a file', async () => {
     const protocol = {
       schemaVersion: 8,

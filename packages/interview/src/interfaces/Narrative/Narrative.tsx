@@ -279,17 +279,14 @@ const Narrative = ({ stage }: NarrativeProps) => {
     ? (highlight[highlightIndex] ?? undefined)
     : undefined;
 
-  const backgroundImageLayer =
-    stageBackground.image !== undefined && backgroundImageUrl ? (
-      <CanvasBackgroundImage src={backgroundImageUrl} />
-    ) : null;
-
   const canvasBackground =
     stageBackground.image === undefined ? (
       <ConcentricCircles
         n={stageBackground.concentricCircles}
         skewed={stageBackground.skewedTowardCenter}
       />
+    ) : backgroundImageUrl ? (
+      <CanvasBackgroundImage src={backgroundImageUrl} />
     ) : null;
 
   const underlays = convexHullVariable ? (
@@ -308,12 +305,11 @@ const Narrative = ({ stage }: NarrativeProps) => {
 
   return (
     <div
-      className="interface size-full overflow-hidden"
+      className="interface h-full overflow-hidden p-0"
       ref={interfaceRef}
       data-testid="narrative"
       data-simulation-running={layout.isRunning}
     >
-      {backgroundImageLayer}
       {measurementContainer}
       <Canvas
         background={canvasBackground}

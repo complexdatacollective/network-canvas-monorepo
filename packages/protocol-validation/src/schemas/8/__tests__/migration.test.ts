@@ -2678,6 +2678,14 @@ describe('Migration V7 to V8', () => {
           },
           ego: {},
         },
+        assetManifest: {
+          asset1: {
+            id: 'asset1',
+            name: 'Background',
+            type: 'image',
+            source: 'background.svg',
+          },
+        },
         stages: [
           {
             id: 'canvas1',

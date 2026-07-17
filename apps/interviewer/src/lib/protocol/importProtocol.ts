@@ -4,6 +4,7 @@ import {
   type CurrentProtocol,
   detectSchemaVersion,
   type ExtractedAsset,
+  extractProtocolFromZip,
   getMigrationInfo,
   hashProtocol,
   migrateProtocol,
@@ -51,39 +52,8 @@ type ValidationIssue = {
   message: string;
 };
 
-type AssetManifestEntry = {
-  type: string;
-  name: string;
-  source?: string;
-  value?: string;
-};
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isAssetManifestEntry(value: unknown): value is AssetManifestEntry {
-  if (!isRecord(value)) return false;
-  const { type, name, source, value: entryValue } = value;
-  return (
-    typeof type === 'string' &&
-    typeof name === 'string' &&
-    (source === undefined || typeof source === 'string') &&
-    (entryValue === undefined || typeof entryValue === 'string')
-  );
-}
-
-function getAssetManifest(
-  protocol: unknown,
-): Record<string, AssetManifestEntry> {
-  if (!isRecord(protocol) || !isRecord(protocol.assetManifest)) return {};
-
-  return Object.fromEntries(
-    Object.entries(protocol.assetManifest).filter(
-      (entry): entry is [string, AssetManifestEntry] =>
-        isAssetManifestEntry(entry[1]),
-    ),
-  );
 }
 
 function formatValidationIssues(
@@ -117,26 +87,7 @@ async function extractZip(
   buffer: Uint8Array,
 ): Promise<{ protocol: unknown; assets: ExtractedAsset[] }> {
   const zip = await JSZip.loadAsync(buffer);
-  const protocolJson = await zip.file('protocol.json')?.async('string');
-  if (!protocolJson) {
-    throw new Error('protocol.json not found in archive');
-  }
-  const protocol: unknown = JSON.parse(protocolJson);
-  const manifest = getAssetManifest(protocol);
-  const assets: ExtractedAsset[] = [];
-  for (const [assetId, def] of Object.entries(manifest)) {
-    if (def.type === 'apikey') {
-      assets.push({ id: assetId, name: def.name, data: def.value ?? '' });
-      continue;
-    }
-    if (!def.source) continue;
-    const fileData = await zip.file(`assets/${def.source}`)?.async('blob');
-    if (!fileData) {
-      throw new Error(`Asset file "${def.source}" not found for "${assetId}"`);
-    }
-    assets.push({ id: assetId, name: def.name, data: fileData });
-  }
-  return { protocol, assets };
+  return extractProtocolFromZip(zip);
 }
 
 async function importParsedProtocol(

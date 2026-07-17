@@ -1,5 +1,4 @@
 - main:
-  - img "Background"
   - toolbar "Network composer tools":
     - button "Select"
     - button "Add node" [expanded]

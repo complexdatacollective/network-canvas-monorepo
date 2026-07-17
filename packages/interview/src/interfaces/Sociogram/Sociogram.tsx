@@ -340,17 +340,14 @@ const Sociogram = (stageProps: SociogramProps) => {
   // Branch on the schema's image/circles union: in the circles variant
   // concentricCircles is proven present. An image renders nothing until its
   // asset URL resolves.
-  const backgroundImageLayer =
-    stageBackground.image !== undefined && backgroundImageUrl ? (
-      <CanvasBackgroundImage src={backgroundImageUrl} />
-    ) : null;
-
   const canvasBackground =
     stageBackground.image === undefined ? (
       <ConcentricCircles
         n={stageBackground.concentricCircles}
         skewed={stageBackground.skewedTowardCenter}
       />
+    ) : backgroundImageUrl ? (
+      <CanvasBackgroundImage src={backgroundImageUrl} />
     ) : null;
 
   const simulationHandlers =
@@ -363,13 +360,12 @@ const Sociogram = (stageProps: SociogramProps) => {
 
   return (
     <div
-      className="interface size-full overflow-hidden"
+      className="interface h-full overflow-hidden p-0"
       ref={interfaceRef}
       data-testid="sociogram"
       data-layout-mode={layoutMode}
       data-simulation-running={simulation.isRunning}
     >
-      {backgroundImageLayer}
       {measurementContainer}
       <Canvas
         background={canvasBackground}

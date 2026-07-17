@@ -1,4 +1,7 @@
-import type { ExtractedAsset } from '@codaco/protocol-validation';
+import {
+  type ExtractedAsset,
+  getAssetMimeType,
+} from '@codaco/protocol-validation';
 
 export type BundledProtocol = {
   document: unknown;
@@ -79,7 +82,11 @@ export function resolveAssets(
         `Missing bundled asset "${entry.source}" for ${entry.id}`,
       );
     }
-    assets.push({ id: entry.id, name: entry.name, data: new Blob([bytes]) });
+    assets.push({
+      id: entry.id,
+      name: entry.name,
+      data: new Blob([bytes], { type: getAssetMimeType(entry.source) }),
+    });
   }
   return assets;
 }

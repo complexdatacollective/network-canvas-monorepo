@@ -35,6 +35,14 @@ describe('bundled sample protocol', () => {
         true,
       );
     }
+    const responsiveBackground = bundled.assets.find(
+      (asset) => asset.name === 'responsive-political-compass.svg',
+    );
+    expect(responsiveBackground?.data).toBeInstanceOf(Blob);
+    if (!(responsiveBackground?.data instanceof Blob)) {
+      throw new Error('Expected the responsive background to be a Blob');
+    }
+    expect(responsiveBackground.data.type).toBe('image/svg+xml');
   });
 
   it('installs through the real detect→validate→save pipeline, no fetch', async () => {
