@@ -134,17 +134,9 @@ describe('AppChoiceCard', () => {
     }
   });
 
-  it('keeps the Classic tablet download options available', () => {
+  it('keeps the Classic Android download option available', () => {
     renderWithIntl(<AppChoiceCard app={interviewerClassic} />);
 
-    expect(
-      screen.getByRole('link', {
-        name: 'iPhone and iPad for Interviewer Classic',
-      }),
-    ).toHaveAttribute(
-      'href',
-      'https://apps.apple.com/us/app/network-canvas-interviewer/id1538673677',
-    );
     expect(
       screen.getByRole('link', {
         name: 'Android for Interviewer Classic',

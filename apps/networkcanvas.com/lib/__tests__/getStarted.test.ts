@@ -36,7 +36,7 @@ describe('get started content', () => {
       ({ id }) => id === 'interviewer-classic',
     );
     expect(interviewer?.platforms.map(({ id }) => id)).toEqual(
-      expect.arrayContaining(['ios', 'android']),
+      expect.arrayContaining(['android']),
     );
   });
 
