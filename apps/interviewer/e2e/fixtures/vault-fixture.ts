@@ -89,6 +89,13 @@ export class VaultFixture {
     await this.typeSegmented('pin', pin);
   }
 
+  async confirmPin(pin: string): Promise<void> {
+    await expect(
+      this.page.getByRole('heading', { name: 'Confirm your identity' }),
+    ).toBeVisible();
+    await this.typeSegmented('pin', pin);
+  }
+
   async unlockPassphrase(phrase: string): Promise<void> {
     await expect(
       this.page.getByRole('heading', { name: 'Welcome back' }),

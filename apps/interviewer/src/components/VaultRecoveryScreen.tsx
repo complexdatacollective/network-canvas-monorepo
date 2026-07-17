@@ -1,10 +1,12 @@
 import { motion } from 'motion/react';
+import { useState } from 'react';
 
 import { BackgroundLights } from '@codaco/art';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { useResetAppData } from '~/lib/auth/useResetAppData';
+
+import { RecoverByResettingDialog } from './UnlockForms/RecoverByResettingDialog';
 
 // Shown when the vault record exists but can't be read (corrupt, or written by a
 // newer app version than the one now running — e.g. a service-worker rollback on
@@ -13,7 +15,7 @@ import { useResetAppData } from '~/lib/auth/useResetAppData';
 // forever. Instead we offer a non-destructive reload (a newer build may read the
 // record) and, only behind an explicit confirmation, a full reset.
 export function VaultRecoveryScreen() {
-  const requestReset = useResetAppData();
+  const [resetOpen, setResetOpen] = useState(false);
 
   return (
     <>
@@ -32,13 +34,13 @@ export function VaultRecoveryScreen() {
         />
       </motion.div>
       <Dialog
-        open
+        open={!resetOpen}
         dismissible={false}
         title="Can't read this device's security settings"
         footer={
           <div className="flex gap-3">
             <Button onClick={() => window.location.reload()}>Reload</Button>
-            <Button color="destructive" onClick={() => void requestReset()}>
+            <Button color="destructive" onClick={() => setResetOpen(true)}>
               Reset all app data
             </Button>
           </div>
@@ -56,6 +58,11 @@ export function VaultRecoveryScreen() {
           already on this device will be lost.
         </Paragraph>
       </Dialog>
+      <RecoverByResettingDialog
+        open={resetOpen}
+        onCancel={() => setResetOpen(false)}
+        onReset={() => setResetOpen(false)}
+      />
     </>
   );
 }

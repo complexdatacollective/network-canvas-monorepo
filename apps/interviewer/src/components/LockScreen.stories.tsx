@@ -25,26 +25,29 @@ const meta: Meta<StoryArgs> = {
     outcome: { control: 'inline-radio', options: ['success', 'failure'] },
   },
   render: ({ mode, outcome }) => (
-    <MockAuthProvider>
-      <LockScreenView
-        mode={mode}
-        unlockWithPin={async () => {
+    <MockAuthProvider
+      value={{
+        kind: 'locked',
+        mode,
+        unlockWithPin: async () => {
           await wait(120);
           return result(outcome, 'Incorrect PIN.');
-        }}
-        unlockWithPassphrase={async () => {
+        },
+        unlockWithPassphrase: async () => {
           await wait(120);
           return result(outcome, 'Incorrect passphrase.');
-        }}
-        unlockWithBiometric={async () => {
+        },
+        unlockWithBiometric: async () => {
           await wait(120);
           return result(outcome, 'Biometric attempt failed.');
-        }}
-        unlockWithRecovery={async () => {
+        },
+        unlockWithRecovery: async () => {
           await wait(120);
           return result(outcome, 'Incorrect passphrase.');
-        }}
-      />
+        },
+      }}
+    >
+      <LockScreenView />
     </MockAuthProvider>
   ),
 };
