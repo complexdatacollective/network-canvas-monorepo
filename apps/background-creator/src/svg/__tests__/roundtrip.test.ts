@@ -1,0 +1,234 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  createBlankDocument,
+  createConcentricCirclesTemplate,
+  createQuadrantsTemplate,
+} from '~/model/templates';
+import type { BackgroundDocument } from '~/model/types';
+import { parseDocument } from '~/svg/parse';
+import { serializeDocument } from '~/svg/serialize';
+
+// A document that exercises every element kind and every optional branch:
+// stroked + unstroked rect/ellipse/polygon; a line with both arrows, a line
+// with one arrow reusing that colour's marker, a line with no arrows, and a
+// line whose arrow uses a second distinct colour; single-, two-, and three-line
+// text with varied opacity, anchor, and weight; rect/circle/polygon zones; and
+// XML-hostile characters in the title, description, and a zone label.
+const kitchenSink: BackgroundDocument = {
+  version: 1,
+  title: 'Round & trip <test>',
+  description: 'Exercises "every" branch & <edge> case',
+  elements: [
+    {
+      id: 'rect-stroked',
+      kind: 'rect',
+      x: 0.1,
+      y: 0.2,
+      width: 0.3,
+      height: 0.4,
+      fill: '#123456',
+      fillOpacity: 0.5,
+      stroke: '#abcdef',
+      strokeWidth: 2.5,
+    },
+    {
+      id: 'rect-plain',
+      kind: 'rect',
+      x: 0,
+      y: 0,
+      width: 1,
+      height: 0.235,
+      fill: '#000000',
+      fillOpacity: 1,
+      stroke: null,
+      strokeWidth: 1,
+    },
+    {
+      id: 'ellipse-stroked',
+      kind: 'ellipse',
+      cx: 0.5,
+      cy: 0.5,
+      rx: 0.25,
+      ry: 0.1,
+      fill: '#ffffff',
+      fillOpacity: 0,
+      stroke: '#ff0000',
+      strokeWidth: 3,
+    },
+    {
+      id: 'ellipse-plain',
+      kind: 'ellipse',
+      cx: 0.2,
+      cy: 0.8,
+      rx: 0.1,
+      ry: 0.1,
+      fill: '#00ff00',
+      fillOpacity: 0.75,
+      stroke: null,
+      strokeWidth: 0.25,
+    },
+    {
+      id: 'line-both-arrows',
+      kind: 'line',
+      x1: 0,
+      y1: 0,
+      x2: 1,
+      y2: 1,
+      stroke: '#ffffff',
+      strokeWidth: 3,
+      startArrow: true,
+      endArrow: true,
+    },
+    {
+      id: 'line-one-arrow-same-colour',
+      kind: 'line',
+      x1: 0,
+      y1: 1,
+      x2: 1,
+      y2: 0,
+      stroke: '#ffffff',
+      strokeWidth: 2,
+      startArrow: false,
+      endArrow: true,
+    },
+    {
+      id: 'line-no-arrows',
+      kind: 'line',
+      x1: 0.5,
+      y1: 0,
+      x2: 0.5,
+      y2: 1,
+      stroke: '#888888',
+      strokeWidth: 1,
+      startArrow: false,
+      endArrow: false,
+    },
+    {
+      id: 'line-second-colour',
+      kind: 'line',
+      x1: 0,
+      y1: 0.5,
+      x2: 1,
+      y2: 0.5,
+      stroke: '#ff8800',
+      strokeWidth: 2,
+      startArrow: true,
+      endArrow: false,
+    },
+    {
+      id: 'polygon-stroked',
+      kind: 'polygon',
+      points: [
+        { x: 0.1, y: 0.1 },
+        { x: 0.9, y: 0.1 },
+        { x: 0.5, y: 0.9 },
+      ],
+      fill: '#334455',
+      fillOpacity: 0.4,
+      stroke: '#ffffff',
+      strokeWidth: 1.5,
+    },
+    {
+      id: 'polygon-plain',
+      kind: 'polygon',
+      points: [
+        { x: 0, y: 0 },
+        { x: 0.5, y: 0 },
+        { x: 0.25, y: 0.5 },
+        { x: 0, y: 0.5 },
+      ],
+      fill: '#654321',
+      fillOpacity: 1,
+      stroke: null,
+      strokeWidth: 1,
+    },
+    {
+      id: 'text-two-lines',
+      kind: 'text',
+      x: 0.3,
+      y: 0.3,
+      lines: ['Line & one', 'Line <two>'],
+      fill: '#ffffff',
+      fontMinPx: 16,
+      fontVmin: 3,
+      fontMaxPx: 40,
+      fontWeight: 700,
+      anchor: 'start',
+      opacity: 0.5,
+    },
+    {
+      id: 'text-single-line',
+      kind: 'text',
+      x: 0.7,
+      y: 0.7,
+      lines: ['Solo "line"'],
+      fill: '#eeeeee',
+      fontMinPx: 12,
+      fontVmin: 2,
+      fontMaxPx: 24,
+      fontWeight: 400,
+      anchor: 'middle',
+      opacity: 1,
+    },
+    {
+      id: 'text-three-lines',
+      kind: 'text',
+      x: 0.9,
+      y: 0.2,
+      lines: ['A', 'B', 'C'],
+      fill: '#cccccc',
+      fontMinPx: 10,
+      fontVmin: 1.5,
+      fontMaxPx: 20,
+      fontWeight: 500,
+      anchor: 'end',
+      opacity: 0.9,
+    },
+  ],
+  zones: [
+    {
+      id: 'zone-rect',
+      label: 'A & B <"quotes">',
+      shape: 'rect',
+      x: 0,
+      y: 0,
+      width: 0.5,
+      height: 0.5,
+    },
+    {
+      id: 'zone-circle',
+      label: 'ring',
+      shape: 'circle',
+      cx: 0.5,
+      cy: 0.5,
+      r: 0.3,
+    },
+    {
+      id: 'zone-polygon',
+      label: 'triangle',
+      shape: 'polygon',
+      points: [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+      ],
+    },
+  ],
+};
+
+describe('serialize/parse round trip', () => {
+  const cases: Array<[string, BackgroundDocument]> = [
+    ['blank template', createBlankDocument()],
+    ['quadrants template', createQuadrantsTemplate()],
+    ['concentric circles template', createConcentricCirclesTemplate()],
+    ['kitchen-sink document', kitchenSink],
+  ];
+
+  for (const [name, doc] of cases) {
+    it(`preserves the ${name}`, () => {
+      const restored = parseDocument(serializeDocument(doc));
+      expect(restored).toEqual(doc);
+    });
+  }
+});
