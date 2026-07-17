@@ -132,24 +132,6 @@ from working as an image.
 5. Open [Preview Mode](/en/design-protocols/key-concepts/preview-mode) and
    inspect the stage in portrait and landscape orientations.
 
-## Test it as a research instrument
-
-Do not evaluate only whether the image looks correct. Confirm that it elicits
-the data you intend to collect.
-
-- Ask pilot participants to explain what positions and boundaries mean in their
-  own words.
-- Check whether nodes obscure labels or important boundaries.
-- Confirm that the prompt panel and navigation bar do not cover essential
-  information.
-- Compare the task in portrait and landscape orientations. Decide whether a
-  position has the same substantive interpretation in both.
-- Leave room for translated labels and longer participant-facing terminology.
-- Repeat all essential meanings in the stage instructions for participants who
-  cannot perceive the background image.
-- Test on the actual screen sizes and orientations that will be used in the
-  field.
-
 ## Classify nodes from their coordinates
 
 When a participant positions a node, Network Canvas stores the center of that
@@ -195,22 +177,10 @@ silently.
 One approach is to define a boundary tolerance. A tolerance of `0.02` classifies
 any node within two percentage points of either axis as **Boundary**:
 
-```r
-boundary_tolerance <- 0.02
+Choose R or Python below to see how to create a `context` column from the
+exported coordinates. The R example is shown by default.
 
-alters |>
-  dplyr::mutate(
-    context = dplyr::case_when(
-      is.na(box_layout_x) | is.na(box_layout_y) ~ NA_character_,
-      abs(box_layout_x - 0.5) <= boundary_tolerance |
-        abs(box_layout_y - 0.5) <= boundary_tolerance ~ "Boundary",
-      box_layout_x < 0.5 & box_layout_y < 0.5 ~ "Family",
-      box_layout_x > 0.5 & box_layout_y < 0.5 ~ "Friends",
-      box_layout_x < 0.5 & box_layout_y > 0.5 ~ "Work or study",
-      box_layout_x > 0.5 & box_layout_y > 0.5 ~ "Community"
-    )
-  )
-```
+<CoordinateClassificationExample />
 
 Choose the tolerance based on node size, screen size, the instructions given to
 participants, and the substantive meaning of the boundary. Alternatives include
