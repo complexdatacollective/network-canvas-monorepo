@@ -3,6 +3,9 @@ import { useEffect } from 'react';
 import { EditorCanvas } from '~/canvas/EditorCanvas';
 import { useEditorStore } from '~/state/editorStore';
 
+import { FileDropzone } from './toolbar/FileDropzone';
+import { Toolbar } from './toolbar/Toolbar';
+
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName;
@@ -34,9 +37,11 @@ function App() {
   return (
     <div className="bg-background text-text relative flex h-full w-full flex-col">
       <main className="relative min-h-0 flex-1">
-        <EditorCanvas />
+        <FileDropzone>
+          <EditorCanvas />
+          <Toolbar />
+        </FileDropzone>
       </main>
-      {/* Phase D mounts the floating <Toolbar /> here, over the canvas. */}
       {/* Single polite live region for editor announcements. The trailing space
           toggles with the sequence so identical consecutive messages (e.g. two
           "Undo"s) still register as a DOM change and are re-announced. */}

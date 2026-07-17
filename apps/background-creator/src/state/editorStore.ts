@@ -57,7 +57,7 @@ export type Draft =
   | { mode: 'polygon'; tool: PolygonDraftTool; points: Vec[]; current: Vec };
 
 export type PreviewAspect = 'fill' | '16:9' | '9:16' | '4:3' | '3:4' | '1:1';
-type PreviewSurface = 'interview' | 'light' | 'checker';
+export type PreviewSurface = 'interview' | 'light' | 'checker';
 
 type Announcement = { message: string; seq: number };
 
