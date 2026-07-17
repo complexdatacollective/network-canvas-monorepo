@@ -56,21 +56,27 @@ Consequences:
 - A warping ellipse is an ellipse in _normalized_ space — it stretches with the
   canvas exactly like percentage rects. Membership:
   `((x−cx)/rx)² + ((y−cy)/ry)² ≤ 1` in normalized space, aspect-independent.
-- An ellipse with **`keepCircular`** renders as a true `<circle>` **centred at
-  (0.5, 0.5)** with a `vmin`-based radius (`cx="50%" cy="50%"
-style="r: <r×100>vmin"` — the same viewport-relative CSS mechanism the
-  format already uses for text sizing), so it never warps. The centre lock is a
-  deliberate simplifying constraint (enforced in the model and editor).
+- An ellipse with **`keepCircular`** renders as a true `<circle>` with a
+  percentage-positioned (fully dynamic) centre and a `vmin`-based radius
+  (`cx="<cx%>" cy="<cy%>" style="r: <r×100>vmin"` — the same
+  viewport-relative CSS mechanism the format already uses for text sizing), so
+  it never warps while its centre stays responsive.
 - **Locked-circle zone rule (aspect-free by design):** membership is the
-  normalized disk `(x−0.5)² + (y−0.5)² ≤ r²`, computable from the exported
-  `_x`/`_y` columns alone. This carries a one-sided guarantee: for any canvas
-  `W×H`, the visual circle's normalized footprint is an ellipse with semi-axes
-  `r·min(W,H)/W` and `r·min(W,H)/H`, both `≤ r`, so **every node dropped
-  visually inside the circle is inside the zone** on every device. The only
-  error is bounded over-inclusion (a band beside the circle on non-square
-  screens also classifies inside; zero on square screens). Nested rings
-  preserve their ordering, so ordinal ring assignment stays monotone. Scripts
-  and docs state this plainly; no aspect-ratio input exists anywhere.
+  normalized disk `(x−cx)² + (y−cy)² ≤ r²`, computable from the exported
+  `_x`/`_y` columns alone. Centre-independent: a percentage-positioned centre
+  occupies the same normalized position at every aspect, and for a node at
+  screen offset `(dx, dy)` from the centre that is visually inside the circle,
+  `(dx/W)² + (dy/H)² ≤ (dx² + dy²)/min(W,H)² ≤ r²` — so **every node dropped
+  visually inside the circle is inside the zone** on every device, wherever
+  the circle sits. The only error is bounded over-inclusion (a band beside the
+  circle on non-square screens also classifies inside — horizontal on wide
+  screens, vertical on tall ones; zero on square screens). Nested rings
+  sharing a centre preserve their ordering, so ordinal ring assignment stays
+  monotone; locked circles with different centres each carry their own
+  one-sided band. Scripts and docs state this plainly; no aspect-ratio input
+  exists anywhere. (Exact two-sided membership for a screen-round circle is
+  impossible without the device aspect — the one-sided rule is the deliberate
+  trade.)
 - "Most specific" zone = smallest area in normalized space (rect `w·h`,
   polygon shoelace, warping ellipse `π·rx·ry`, locked circle `πr²`). Ties
   break to the later element in document order; nested concentric zones
@@ -115,10 +121,10 @@ export type EllipseElement = BaseElement & {
   fill: string; fillOpacity: number;
   stroke: string | null; strokeWidth: number;
   zoneLabel: string | null;
-  // Render as a true vmin-radius circle centred at (0.5, 0.5) instead of
-  // stretching. When true: cx = cy = 0.5 and rx = ry (enforced by schema
-  // refinement; enabling it in the editor re-centres and sets r := rx).
-  // See §2 for the aspect-free membership rule and its guarantee.
+  // Render as a true vmin-radius circle at the (dynamic, percentage-positioned)
+  // centre instead of stretching. When true: rx = ry (enforced by schema
+  // refinement; enabling it in the editor sets r := rx). See §2 for the
+  // aspect-free membership rule and its one-sided guarantee.
   keepCircular: boolean;
 };
 
@@ -363,8 +369,8 @@ One floating draggable `SegmentedToolbar` (`@codaco/fresco-ui/SegmentedToolbar`)
   width (InputField stepper), line arrow toggles, text lines/anchor/weight/font
   clamp; for rect/ellipse/polygon a **Use as zone** toggle + label field
   (live-validated for empty/duplicate labels); for ellipses a **Keep circular**
-  toggle (enabling re-centres to (0.5, 0.5) and sets `r := rx`; while enabled,
-  position editing is locked and only the radius is adjustable).
+  toggle (enabling sets `r := rx`; the centre stays freely movable, and while
+  enabled a single radius field replaces the rx/ry pair).
 - Undo / Redo buttons (⌘Z / ⇧⌘Z shortcuts too).
 - Menu: **File** (action menu) — New (Blank / Quadrants / Concentric circles /
   Political compass), Open SVG…, Download SVG, Export Python script…, Export R
