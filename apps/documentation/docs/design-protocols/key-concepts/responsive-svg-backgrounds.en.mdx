@@ -150,6 +150,87 @@ the data you intend to collect.
 - Test on the actual screen sizes and orientations that will be used in the
   field.
 
+## Classify nodes from their coordinates
+
+When a participant positions a node, Network Canvas stores the center of that
+node as two normalized coordinates in the prompt's layout variable:
+
+- `x = 0` is the left edge and `x = 1` is the right edge.
+- `y = 0` is the top edge and `y = 1` is the bottom edge.
+
+The downward direction of the y-axis is worth noting because it is the opposite
+of a conventional Cartesian graph.
+
+When exporting data, leave **Use screen layout coordinates** disabled. The
+normalized values are device-independent and correspond directly to the
+percentage positions used by a responsive SVG. See [Data
+Export](/en/analyze-data/data-export#use-screen-layout-coordinates) for more
+about this option.
+
+In a CSV export, a layout variable called `box_layout` produces columns called
+`box_layout_x` and `box_layout_y`. Nodes that were not placed have missing
+values. GraphML exports contain the equivalent `_X` and `_Y` values.
+
+### Apply the template's quadrant rules
+
+The template divides the canvas at 50% in both directions. This is equivalent to
+cutting the normalized coordinates at `0.5`.
+
+| Quadrant    | Template label | Coordinate rule         |
+| ----------- | -------------- | ----------------------- |
+| Upper-left  | Family         | `x < 0.5` and `y < 0.5` |
+| Upper-right | Friends        | `x > 0.5` and `y < 0.5` |
+| Lower-left  | Work or study  | `x < 0.5` and `y > 0.5` |
+| Lower-right | Community      | `x > 0.5` and `y > 0.5` |
+
+For example, a node at `(0.25, 0.33)` is in the upper-left quadrant. A node at
+`(0.75, 0.67)` is in the lower-right quadrant.
+
+### Decide how to treat boundaries
+
+A node can be centered exactly on an axis or close enough that its visual area
+overlaps two regions. Specify this case before analysis rather than assigning it
+silently.
+
+One approach is to define a boundary tolerance. A tolerance of `0.02` classifies
+any node within two percentage points of either axis as **Boundary**:
+
+```r
+boundary_tolerance <- 0.02
+
+alters |>
+  dplyr::mutate(
+    context = dplyr::case_when(
+      is.na(box_layout_x) | is.na(box_layout_y) ~ NA_character_,
+      abs(box_layout_x - 0.5) <= boundary_tolerance |
+        abs(box_layout_y - 0.5) <= boundary_tolerance ~ "Boundary",
+      box_layout_x < 0.5 & box_layout_y < 0.5 ~ "Family",
+      box_layout_x > 0.5 & box_layout_y < 0.5 ~ "Friends",
+      box_layout_x < 0.5 & box_layout_y > 0.5 ~ "Work or study",
+      box_layout_x > 0.5 & box_layout_y > 0.5 ~ "Community"
+    )
+  )
+```
+
+Choose the tolerance based on node size, screen size, the instructions given to
+participants, and the substantive meaning of the boundary. Alternatives include
+assigning axis values consistently to one side or reviewing boundary cases
+manually.
+
+### Use other boundaries
+
+For a custom responsive SVG, divide the percentage shown in the image source by
+100 to obtain the normalized cutpoint. A vertical boundary at 60%, for example,
+corresponds to `x = 0.60`.
+
+This direct conversion works because the responsive regions span the same canvas
+used for node coordinates. It does not apply without adjustment when an
+ordinary image is contained inside the canvas with empty bands around it.
+
+If several prompts should produce separate spatial measures, give each prompt a
+different layout variable. Reusing a layout variable causes later positioning
+to replace the earlier coordinates.
+
 ## Changing more than the labels
 
 The template is designed to make simple wording changes safe. Changing the
@@ -312,5 +393,7 @@ A responsive Network Canvas background should:
   protocol and manage it in the resource library
 - [Preview Mode](/en/design-protocols/key-concepts/preview-mode) — Test the
   background before data collection
+- [Data Export](/en/analyze-data/data-export) — Export normalized layout
+  coordinates for analysis
 - [Interfaces](/en/design-protocols/key-concepts/interfaces) — Compare the
   Interfaces that can use a responsive background
