@@ -101,8 +101,8 @@ Here is the complete source of the downloadable example:
 - Reposition a label by changing the matching percentage values on both the
   `<text>` and its `<tspan>` elements.
 - Add zones with percentage-based shapes, such as
-  `<rect x="0" y="0" width="50%" height="50%" />`. Leave their fill unset if
-  the background should remain transparent.
+  `<rect x="0" y="0" width="50%" height="50%" />`. Set `fill="none"` for
+  transparent zones, or use a colour with partial opacity.
 - Use system fonts so the labels work offline and look consistent across
   devices. Do not reference external web fonts, images, stylesheets, or scripts.
 - Test both portrait and landscape orientations in
@@ -122,10 +122,10 @@ in a text editor before importing it into Architect.
 
 ## Adobe Illustrator
 
-Adobe's [SVG export
-options](https://helpx.adobe.com/illustrator/using/exporting-artwork.html#svg)
-include a **Responsive** setting that omits absolute output dimensions. Use it
-as the starting point:
+Adobe's [responsive SVG export
+tutorial](https://www.adobe.com/learn/illustrator/web/export-css?ntd=1)
+demonstrates the **Responsive** setting, which omits absolute output dimensions.
+Use it as the starting point:
 
 1. Create the artwork on an artboard with any convenient dimensions. Do not
    draw a background rectangle if the final SVG should be transparent.
