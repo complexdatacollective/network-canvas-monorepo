@@ -185,7 +185,7 @@ const NodeForm = (props: NodeFormProps) => {
               )}
               style={{ backgroundColor: 'var(--primary)' }}
             >
-              <motion.div className="h-full">
+              <motion.div className="flex h-full items-center justify-center">
                 <Icon
                   name={icon as InterviewerIconName}
                   className={actionIconClass}
