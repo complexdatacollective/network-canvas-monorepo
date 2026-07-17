@@ -16,6 +16,7 @@ import {
   alreadyValidatedSuites,
   collectWorkspacePackages,
   diffIrrelevantToSuite,
+  equivalentValidatedSuites,
   E2E_SUITE_SUBJECTS,
   mergeGroupRequiredSuites,
   releaseE2EPolicy,
@@ -543,4 +544,296 @@ test('diff classification is fail-closed', () => {
 
   // An empty diff is trivially irrelevant (byte-identical case).
   assert.equal(diffIrrelevantToSuite([], relevance, packages), true);
+});
+
+// A fake Actions REST API: one runs-listing endpoint plus per-run jobs
+// endpoints, keyed by run id embedded in jobs_url.
+function fakeActionsApi({
+  runs,
+  jobsByRun,
+  failRuns = false,
+  failJobs = false,
+}) {
+  return async (url) => {
+    if (url.includes('/actions/workflows/')) {
+      if (failRuns) return { ok: false };
+      assert.match(url, /[?&]event=pull_request(?:&|$)/);
+      assert.match(url, /[?&]branch=changeset-release%2F/);
+      return { ok: true, json: async () => ({ workflow_runs: runs }) };
+    }
+    if (failJobs) return { ok: false };
+    const runId = url.match(/\/fake-jobs\/(\d+)\?/)?.[1];
+    return { ok: true, json: async () => ({ jobs: jobsByRun[runId] ?? [] }) };
+  };
+}
+
+// Higher id = newer run (created_at day tracks the id).
+function fakeRun(
+  id,
+  headSha,
+  createdAt = `2026-07-${String(id).padStart(2, '0')}T00:00:00Z`,
+) {
+  return {
+    id,
+    head_sha: headSha,
+    created_at: createdAt,
+    head_repository: { full_name: 'example/repo' },
+    jobs_url: `https://api.example.com/fake-jobs/${id}`,
+  };
+}
+
+// Release-branch history with a real workspace graph committed, so the
+// primitive can classify diffs: interviewer + architect apps both depend on
+// the interview package.
+function initReleaseBranchRepo() {
+  const cwd = initRepo();
+  commitManifest(
+    cwd,
+    'packages/interview/package.json',
+    '{"name":"@codaco/interview","version":"1.0.0"}\n',
+    'add interview',
+  );
+  commitManifest(
+    cwd,
+    'apps/interviewer/package.json',
+    '{"name":"@codaco/interviewer","version":"1.0.0","dependencies":{"@codaco/interview":"workspace:*"}}\n',
+    'add interviewer',
+  );
+  const validatedSha = commitManifest(
+    cwd,
+    'apps/architect/package.json',
+    '{"name":"@codaco/architect","version":"1.0.0","dependencies":{"@codaco/interview":"workspace:*"}}\n',
+    'add architect',
+  );
+  return { cwd, validatedSha };
+}
+
+const INTERVIEWER_LANE = {
+  interview: true,
+  interviewer: true,
+  architect: false,
+};
+
+function interviewerLaneCall(cwd, headSha, fetcher) {
+  return equivalentValidatedSuites({
+    cwd,
+    repository: 'example/repo',
+    token: 'token',
+    branch: 'changeset-release/interviewer',
+    headSha,
+    requiredSuites: INTERVIEWER_LANE,
+    fetcher,
+  });
+}
+
+const INTERVIEWER_LANE_SUCCESS_JOBS = [
+  { name: 'interview-e2e', conclusion: 'success' },
+  { name: 'interviewer-e2e', conclusion: 'success' },
+  { name: 'quality', conclusion: 'success' },
+];
+
+test('equivalence reuse skips suites when the delta cannot affect them', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  // Sibling release merge shape: architect bump + consumed changeset + docs.
+  commitManifest(
+    cwd,
+    'apps/architect/package.json',
+    '{"name":"@codaco/architect","version":"1.0.1","dependencies":{"@codaco/interview":"workspace:*"}}\n',
+    'sibling release',
+  );
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/config.md',
+    'consumed\n',
+    'changesets',
+  );
+
+  const fetcher = fakeActionsApi({
+    runs: [fakeRun(1, validatedSha)],
+    jobsByRun: { 1: INTERVIEWER_LANE_SUCCESS_JOBS },
+  });
+  assert.deepEqual(await interviewerLaneCall(cwd, headSha, fetcher), {
+    interview: true,
+    interviewer: true,
+    architect: false,
+  });
+
+  // Byte-identical head (re-run at the validated SHA) is the trivial case.
+  assert.deepEqual(await interviewerLaneCall(cwd, validatedSha, fetcher), {
+    interview: true,
+    interviewer: true,
+    architect: false,
+  });
+});
+
+test('equivalence reuse fails closed on relevant or unrecognised deltas', async () => {
+  const relevant = initReleaseBranchRepo();
+  const relevantHead = commitManifest(
+    relevant.cwd,
+    'packages/interview/src/index.ts',
+    'export {};\n',
+    'interview change',
+  );
+  assert.deepEqual(
+    await interviewerLaneCall(
+      relevant.cwd,
+      relevantHead,
+      fakeActionsApi({
+        runs: [fakeRun(1, relevant.validatedSha)],
+        jobsByRun: { 1: INTERVIEWER_LANE_SUCCESS_JOBS },
+      }),
+    ),
+    { interview: false, interviewer: false, architect: false },
+  );
+
+  const unrecognised = initReleaseBranchRepo();
+  const unrecognisedHead = commitManifest(
+    unrecognised.cwd,
+    'scripts/new-tool.mjs',
+    'export {};\n',
+    'root script',
+  );
+  assert.deepEqual(
+    await interviewerLaneCall(
+      unrecognised.cwd,
+      unrecognisedHead,
+      fakeActionsApi({
+        runs: [fakeRun(1, unrecognised.validatedSha)],
+        jobsByRun: { 1: INTERVIEWER_LANE_SUCCESS_JOBS },
+      }),
+    ),
+    { interview: false, interviewer: false, architect: false },
+  );
+});
+
+test('the newest conclusive verdict is authoritative', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'refresh',
+  );
+
+  // Newest conclusive run FAILED interviewer-e2e: never walk past it to the
+  // older green, even though the diff is irrelevant.
+  const failedThenGreen = fakeActionsApi({
+    runs: [fakeRun(2, headSha), fakeRun(1, validatedSha)],
+    jobsByRun: {
+      2: [
+        { name: 'interview-e2e', conclusion: 'success' },
+        { name: 'interviewer-e2e', conclusion: 'failure' },
+      ],
+      1: INTERVIEWER_LANE_SUCCESS_JOBS,
+    },
+  });
+  assert.deepEqual(await interviewerLaneCall(cwd, headSha, failedThenGreen), {
+    interview: true,
+    interviewer: false,
+    architect: false,
+  });
+
+  // Non-conclusive runs (cancelled / in-flight / policy-skipped) are walked
+  // past to the older native success.
+  const cancelledThenGreen = fakeActionsApi({
+    runs: [fakeRun(2, headSha), fakeRun(1, validatedSha)],
+    jobsByRun: {
+      2: [
+        { name: 'interview-e2e', conclusion: 'cancelled' },
+        { name: 'interviewer-e2e', conclusion: 'skipped' },
+      ],
+      1: INTERVIEWER_LANE_SUCCESS_JOBS,
+    },
+  });
+  assert.deepEqual(
+    await interviewerLaneCall(cwd, headSha, cancelledThenGreen),
+    {
+      interview: true,
+      interviewer: true,
+      architect: false,
+    },
+  );
+});
+
+test('equivalence reuse trusts only same-repo runs and healthy inputs', async () => {
+  const none = { interview: false, interviewer: false, architect: false };
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'refresh',
+  );
+
+  // Fork runs sharing the branch name never vouch for ours.
+  const forkRun = {
+    ...fakeRun(1, validatedSha),
+    head_repository: { full_name: 'attacker/fork' },
+  };
+  assert.deepEqual(
+    await interviewerLaneCall(
+      cwd,
+      headSha,
+      fakeActionsApi({
+        runs: [forkRun],
+        jobsByRun: { 1: INTERVIEWER_LANE_SUCCESS_JOBS },
+      }),
+    ),
+    none,
+  );
+
+  // An unfetchable validated commit fails closed (no origin remote here, so
+  // the fetch fallback cannot resolve it).
+  assert.deepEqual(
+    await interviewerLaneCall(
+      cwd,
+      headSha,
+      fakeActionsApi({
+        runs: [fakeRun(1, '0123456789abcdef0123456789abcdef01234567')],
+        jobsByRun: { 1: INTERVIEWER_LANE_SUCCESS_JOBS },
+      }),
+    ),
+    none,
+  );
+
+  // Actions API failures (runs listing or jobs listing) fail closed.
+  assert.deepEqual(
+    await interviewerLaneCall(
+      cwd,
+      headSha,
+      fakeActionsApi({ runs: [], jobsByRun: {}, failRuns: true }),
+    ),
+    none,
+  );
+  assert.deepEqual(
+    await interviewerLaneCall(
+      cwd,
+      headSha,
+      fakeActionsApi({
+        runs: [fakeRun(1, validatedSha)],
+        jobsByRun: { 1: INTERVIEWER_LANE_SUCCESS_JOBS },
+        failJobs: true,
+      }),
+    ),
+    none,
+  );
+  assert.deepEqual(
+    await interviewerLaneCall(cwd, headSha, async () => {
+      throw new Error('network down');
+    }),
+    none,
+  );
+
+  // Missing inputs fail closed.
+  assert.deepEqual(
+    await equivalentValidatedSuites({
+      cwd,
+      repository: '',
+      token: '',
+      branch: '',
+      headSha: '',
+      requiredSuites: INTERVIEWER_LANE,
+    }),
+    none,
+  );
 });

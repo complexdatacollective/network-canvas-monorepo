@@ -95,6 +95,113 @@ export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
   });
 }
 
+const CONCLUSIVE = new Set(['success', 'failure', 'timed_out']);
+// One bounded page of the branch's runs. A verdict older than this is stale
+// enough that re-running is the right call anyway (fail closed past the cap).
+const MAX_RUNS_SCANNED = 50;
+
+function ensureCommit(sha, cwd) {
+  if (tryGit(['rev-parse', '--verify', `${sha}^{commit}`], cwd)) return true;
+  // Force-pushed-away release tips stay fetchable by SHA on GitHub.
+  tryGit(['fetch', '--depth=1', 'origin', sha], cwd);
+  return tryGit(['rev-parse', '--verify', `${sha}^{commit}`], cwd) !== null;
+}
+
+// Equivalence reuse: suite S may be skipped at head H when the newest
+// conclusive native pull_request run of S on this generated release branch
+// succeeded at commit X and diff(X→H) touches only paths that provably
+// cannot affect S (see diffIrrelevantToSuite). Every failure mode — missing
+// input, API error, unfetchable commit, conclusive failure, fork run —
+// leaves the suite required (fail closed). Visual baselines are committed
+// in-tree inside the subject packages, so the diff covers them too.
+export async function equivalentValidatedSuites({
+  cwd,
+  repository,
+  token,
+  branch,
+  headSha,
+  requiredSuites,
+  fetcher = fetch,
+}) {
+  const validated = suites();
+  if (!repository || !token || !branch || !headSha) return validated;
+  const required = SUITE_KEYS.filter((key) => requiredSuites[key]);
+  if (required.length === 0) return validated;
+  if (!ensureCommit(headSha, cwd)) return validated;
+
+  const apiOptions = {
+    headers: {
+      accept: 'application/vnd.github+json',
+      authorization: `Bearer ${token}`,
+    },
+  };
+  try {
+    const runsResponse = await fetcher(
+      `https://api.github.com/repos/${repository}/actions/workflows/ci-and-release.yml/runs?event=pull_request&branch=${encodeURIComponent(branch)}&per_page=${MAX_RUNS_SCANNED}`,
+      apiOptions,
+    );
+    if (!runsResponse.ok) return validated;
+    const { workflow_runs: runs = [] } = await runsResponse.json();
+
+    // Same-repo runs only: a fork branch may share the generated branch's
+    // name, but its runs must never vouch for ours. Sort defensively even
+    // though the API returns newest-first.
+    const trustedRuns = runs
+      .filter((run) => run.head_repository?.full_name === repository)
+      .toSorted(
+        (a, b) => Date.parse(b.created_at ?? 0) - Date.parse(a.created_at ?? 0),
+      );
+
+    const jobsByRun = new Map();
+    const jobsFor = async (run) => {
+      if (!jobsByRun.has(run.id)) {
+        const jobsResponse = await fetcher(
+          `${run.jobs_url}?per_page=100`,
+          apiOptions,
+        );
+        jobsByRun.set(
+          run.id,
+          jobsResponse.ok ? ((await jobsResponse.json()).jobs ?? []) : null,
+        );
+      }
+      return jobsByRun.get(run.id);
+    };
+
+    const packages = collectWorkspacePackages(cwd);
+    for (const key of required) {
+      // The newest conclusive verdict is authoritative: a failure is never
+      // walked past to an older green.
+      let candidate = null;
+      for (const run of trustedRuns) {
+        const jobs = await jobsFor(run);
+        if (jobs === null) break;
+        const job = jobs.find((j) => j.name === E2E_JOB_NAMES[key]);
+        if (!job || !CONCLUSIVE.has(job.conclusion)) continue;
+        if (job.conclusion === 'success') candidate = run;
+        break;
+      }
+      if (!candidate?.head_sha) continue;
+      if (!ensureCommit(candidate.head_sha, cwd)) continue;
+      const diff = tryGit(
+        ['diff', '--name-only', candidate.head_sha, headSha],
+        cwd,
+      );
+      if (diff === null) continue;
+      const changedPaths = diff.split('\n').filter(Boolean);
+      const relevanceDirs = relevanceDirsForSubject(
+        E2E_SUITE_SUBJECTS[key],
+        packages,
+      );
+      if (diffIrrelevantToSuite(changedPaths, relevanceDirs, packages)) {
+        validated[key] = true;
+      }
+    }
+  } catch {
+    return suites();
+  }
+  return validated;
+}
+
 function suites(...keys) {
   return Object.fromEntries(SUITE_KEYS.map((key) => [key, keys.includes(key)]));
 }
