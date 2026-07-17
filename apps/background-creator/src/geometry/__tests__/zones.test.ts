@@ -138,6 +138,41 @@ describe('pointInZone circle boundary', () => {
   });
 });
 
+describe('pointInZone zero-radius circle', () => {
+  // A circle with r = 0 is schema-valid. It must contain nothing, and the
+  // membership test must never divide by the radius (which would give NaN at
+  // the centre and Infinity elsewhere), mirroring the guards in the generated
+  // Python and R.
+  const degenerate: Zone = {
+    id: 'z',
+    label: 'z',
+    shape: 'circle',
+    cx: 0.5,
+    cy: 0.5,
+    r: 0,
+  };
+
+  it('contains nothing, including its exact centre', () => {
+    expect(pointInZone({ x: 0.5, y: 0.5 }, degenerate)).toBe(false);
+    expect(pointInZone({ x: 0.1, y: 0.1 }, degenerate)).toBe(false);
+  });
+
+  it('is skipped by assignZone so a surrounding zone still wins', () => {
+    const surrounding: Zone = {
+      id: 'big',
+      label: 'big',
+      shape: 'rect',
+      x: 0,
+      y: 0,
+      width: 1,
+      height: 1,
+    };
+    expect(assignZone({ x: 0.5, y: 0.5 }, [degenerate, surrounding])).toBe(
+      'big',
+    );
+  });
+});
+
 describe('validateZoneLabels', () => {
   it('accepts unique, non-empty labels', () => {
     expect(validateZoneLabels(fixtureZones)).toEqual({ ok: true });

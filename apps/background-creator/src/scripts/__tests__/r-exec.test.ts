@@ -106,6 +106,139 @@ describe.skipIf(rscriptMissing)('generated R script executes', () => {
     expect(result.stderr).toContain('foo_x');
   });
 
+  it('passes non-coordinate columns through byte-faithfully', () => {
+    const scriptPath = join(dir, 'passthrough.R');
+    const inputPath = join(dir, 'passthrough-in.csv');
+    const outputPath = join(dir, 'passthrough-out.csv');
+    writeFileSync(scriptPath, script);
+    // Values that read.csv's type inference would otherwise corrupt: a
+    // zero-padded id, a literal string "NA", a scientific-notation token, and a
+    // full-precision double.
+    writeFileSync(
+      inputPath,
+      [
+        'id,name,location_x,location_y',
+        '007,NA,0.5,0.5',
+        '00042,1e5,0.5,0.99',
+        '0.30000000000000004,plain,0.5,0.5',
+        '',
+      ].join('\n'),
+    );
+
+    const result = spawnSync('Rscript', [scriptPath, inputPath, outputPath], {
+      encoding: 'utf-8',
+    });
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+
+    const { header, records } = toRecords(
+      parseCsv(readFileSync(outputPath, 'utf-8')),
+    );
+    expect(header).toEqual(['id', 'name', 'location_x', 'location_y', 'zone']);
+    expect(records[0]?.id).toBe('007');
+    expect(records[0]?.name).toBe('NA');
+    expect(records[1]?.id).toBe('00042');
+    expect(records[1]?.name).toBe('1e5');
+    expect(records[1]?.location_y).toBe('0.99');
+    expect(records[2]?.id).toBe('0.30000000000000004');
+    // Zones are still assigned from the parsed numeric coordinates.
+    expect(records[0]?.zone).toBe('inner');
+    expect(records[1]?.zone).toBe('');
+  });
+
+  it('fails loudly (non-zero exit) when a row has more cells than the header', () => {
+    const scriptPath = join(dir, 'ragged.R');
+    const inputPath = join(dir, 'ragged-in.csv');
+    const outputPath = join(dir, 'ragged-out.csv');
+    writeFileSync(scriptPath, script);
+    writeFileSync(
+      inputPath,
+      'id,name,location_x,location_y\nn0,Node 0,0.5,0.5,EXTRA,MORE\n',
+    );
+
+    const result = spawnSync('Rscript', [scriptPath, inputPath, outputPath], {
+      encoding: 'utf-8',
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('more columns than column names');
+  });
+
+  it('rejects a space-separated flag with a non-zero exit and helpful message', () => {
+    const scriptPath = join(dir, 'space-flag.R');
+    const inputPath = join(dir, 'space-flag-in.csv');
+    const outputPath = join(dir, 'space-flag-out.csv');
+    writeFileSync(scriptPath, script);
+    writeFileSync(inputPath, 'id,pos_x,pos_y\nn0,0.5,0.5\n');
+
+    // The Python script accepts "--layout-variable pos"; the R script must not
+    // silently drop it and fall back to the default variable.
+    const result = spawnSync(
+      'Rscript',
+      [scriptPath, inputPath, outputPath, '--layout-variable', 'pos'],
+      { encoding: 'utf-8' },
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('--flag=value');
+    expect(result.stderr).toContain('--layout-variable');
+  });
+
+  it('rejects more than two positional arguments', () => {
+    const scriptPath = join(dir, 'extra-positional.R');
+    const inputPath = join(dir, 'extra-in.csv');
+    const outputPath = join(dir, 'extra-out.csv');
+    writeFileSync(scriptPath, script);
+    writeFileSync(inputPath, 'id,location_x,location_y\nn0,0.5,0.5\n');
+
+    const result = spawnSync(
+      'Rscript',
+      [scriptPath, inputPath, outputPath, 'surprise.csv'],
+      { encoding: 'utf-8' },
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('too many arguments');
+  });
+
+  it('parses a label containing a nul character without emitting an illegal R escape', () => {
+    const nul = String.fromCharCode(0);
+    const replacement = String.fromCharCode(0xfffd);
+    const nulDocument: BackgroundDocument = {
+      version: 1,
+      title: 'Nul',
+      description: '',
+      elements: [],
+      zones: [
+        {
+          id: 'n',
+          label: `a${nul}b`,
+          shape: 'rect',
+          x: 0,
+          y: 0,
+          width: 1,
+          height: 1,
+        },
+      ],
+    };
+    const nulScript = generateRScript(nulDocument, defaultOpts);
+    // A literal nul is illegal in R strings; the emitter must not produce \x00.
+    expect(nulScript).not.toContain('\\x00');
+
+    const scriptPath = join(dir, 'nul.R');
+    const inputPath = join(dir, 'nul-in.csv');
+    const outputPath = join(dir, 'nul-out.csv');
+    writeFileSync(scriptPath, nulScript);
+    writeFileSync(inputPath, 'id,location_x,location_y\nn0,0.5,0.5\n');
+
+    const result = spawnSync('Rscript', [scriptPath, inputPath, outputPath], {
+      encoding: 'utf-8',
+    });
+    // Rscript would halt with "nul character not allowed" if \x00 were emitted.
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+
+    const { records } = toRecords(parseCsv(readFileSync(outputPath, 'utf-8')));
+    expect(records[0]?.zone).toBe(`a${replacement}b`);
+  });
+
   it('round-trips a hostile zone label through the generated script', () => {
     const hostileLabel = 'He said "hi" \\ O\'Brien';
     const hostileDocument: BackgroundDocument = {

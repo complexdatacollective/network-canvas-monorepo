@@ -29,6 +29,10 @@ export function pointInZone(p: Vec, zone: Zone): boolean {
     );
   }
   if (zone.shape === 'circle') {
+    // A zero- or negative-radius circle (schema-valid) contains nothing. Guard
+    // before dividing so we never produce NaN/Infinity here or ZeroDivisionError
+    // in the generated Python and R.
+    if (zone.r <= 0) return false;
     const dx = (p.x - zone.cx) / zone.r;
     const dy = (p.y - zone.cy) / zone.r;
     return dx * dx + dy * dy <= 1;

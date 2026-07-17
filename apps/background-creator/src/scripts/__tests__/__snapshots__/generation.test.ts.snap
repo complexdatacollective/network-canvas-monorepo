@@ -38,6 +38,7 @@ ZONES = [
     {"label": "triangle", "shape": "polygon", "points": [[0.7, 0.7], [0.95, 0.7], [0.95, 0.95]]},
     {"label": "tie-a", "shape": "rect", "x": 0.05, "y": 0.6, "width": 0.3, "height": 0.2},
     {"label": "tie-b", "shape": "rect", "x": 0.15, "y": 0.55, "width": 0.2, "height": 0.3},
+    {"label": "degenerate", "shape": "circle", "cx": 0.02, "cy": 0.98, "r": 0},
 ]
 
 
@@ -65,6 +66,10 @@ def point_in_zone(x, y, zone):
             and zone["y"] <= y <= zone["y"] + zone["height"]
         )
     if shape == "circle":
+        # A zero- or negative-radius circle contains nothing; guard before
+        # dividing so this never raises ZeroDivisionError.
+        if zone["r"] <= 0:
+            return False
         dx = (x - zone["cx"]) / zone["r"]
         dy = (y - zone["cy"]) / zone["r"]
         return dx * dx + dy * dy <= 1
@@ -141,7 +146,9 @@ def main(argv):
     x_column = f"{args.layout_variable}_x"
     y_column = f"{args.layout_variable}_y"
 
-    with open(args.input, newline="", encoding="utf-8") as handle:
+    # utf-8-sig transparently strips a leading UTF-8 BOM if present, so the
+    # first column name is not silently prefixed with U+FEFF.
+    with open(args.input, newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         fieldnames = list(reader.fieldnames or [])
         missing = [name for name in (x_column, y_column) if name not in fieldnames]
@@ -166,7 +173,17 @@ def main(argv):
     with open(args.output, "w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=output_fieldnames)
         writer.writeheader()
-        for row in rows:
+        for index, row in enumerate(rows, start=1):
+            # DictReader collects any cells beyond the header under the None
+            # restkey; fail cleanly rather than letting DictWriter raise a raw
+            # ValueError on the unexpected field.
+            if None in row:
+                print(
+                    f"Error: row {index} has more cells than the header "
+                    f"({len(fieldnames)} columns).",
+                    file=sys.stderr,
+                )
+                return 1
             x = parse_coordinate(row.get(x_column))
             y = parse_coordinate(row.get(y_column))
             label = assign_zone(x, y) if x is not None and y is not None else None
@@ -212,7 +229,8 @@ zones <- list(
   list(label = "top-rect", shape = "rect", x = 0.4, y = 0.02, width = 0.2, height = 0.2),
   list(label = "triangle", shape = "polygon", points = list(c(0.7, 0.7), c(0.95, 0.7), c(0.95, 0.95))),
   list(label = "tie-a", shape = "rect", x = 0.05, y = 0.6, width = 0.3, height = 0.2),
-  list(label = "tie-b", shape = "rect", x = 0.15, y = 0.55, width = 0.2, height = 0.3)
+  list(label = "tie-b", shape = "rect", x = 0.15, y = 0.55, width = 0.2, height = 0.3),
+  list(label = "degenerate", shape = "circle", cx = 0.02, cy = 0.98, r = 0)
 )
 
 point_in_polygon <- function(x, y, points) {
@@ -242,6 +260,12 @@ point_in_zone <- function(x, y, zone) {
       y >= zone$y && y <= zone$y + zone$height)
   }
   if (zone$shape == "circle") {
+    # A zero- or negative-radius circle contains nothing; guard before dividing
+    # so 0 / 0 does not yield NA and halt the caller's if() with "missing value
+    # where TRUE/FALSE needed".
+    if (zone$r <= 0) {
+      return(FALSE)
+    }
     dx <- (x - zone$cx) / zone$r
     dy <- (y - zone$cy) / zone$r
     return(dx * dx + dy * dy <= 1)
@@ -318,6 +342,22 @@ for (arg in args) {
     layout_variable <- substring(arg, nchar("--layout-variable=") + 1)
   } else if (startsWith(arg, "--output-variable=")) {
     output_variable <- substring(arg, nchar("--output-variable=") + 1)
+  } else if (startsWith(arg, "--")) {
+    # Unlike the Python script, this R script only understands options in
+    # --flag=value form. Reject any other "--" token (including the
+    # space-separated "--layout-variable value" form) instead of silently
+    # treating it as a positional path and using the default variable.
+    cat(
+      sprintf(
+        paste0(
+          "Error: unrecognized option \\"%s\\". This R script requires options ",
+          "in --flag=value form, e.g. --layout-variable=location.\\n"
+        ),
+        arg
+      ),
+      file = stderr()
+    )
+    quit(status = 1)
   } else {
     positional <- c(positional, arg)
   }
@@ -331,13 +371,33 @@ if (length(positional) < 2) {
   )
   quit(status = 1)
 }
+if (length(positional) > 2) {
+  cat(
+    sprintf(
+      "Error: too many arguments; expected input.csv and output.csv but got %d positional arguments.\\n",
+      length(positional)
+    ),
+    file = stderr()
+  )
+  quit(status = 1)
+}
 
 input_path <- positional[1]
 output_path <- positional[2]
 x_column <- paste0(layout_variable, "_x")
 y_column <- paste0(layout_variable, "_y")
 
-data <- read.csv(input_path, stringsAsFactors = FALSE, check.names = FALSE)
+# Read every column as a character string so read.csv's type inference cannot
+# rewrite passthrough data: '007' stays "007", '00042' stays "00042", '1e5' is
+# not reformatted, doubles keep full precision, and the literal string "NA" is
+# preserved (na.strings = character(0) disables NA parsing on input). Only the
+# two coordinate columns are converted, by parse_coordinate's as.numeric.
+data <- read.csv(
+  input_path,
+  colClasses = "character",
+  na.strings = character(0),
+  check.names = FALSE
+)
 columns <- names(data)
 missing <- setdiff(c(x_column, y_column), columns)
 if (length(missing) > 0) {

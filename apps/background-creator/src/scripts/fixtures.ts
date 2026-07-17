@@ -12,7 +12,12 @@ import type { BackgroundDocument, Vec, Zone } from '../model/types';
 //     the outer circle to exercise a smaller different-shape zone winning,
 //   - `triangle` is a polygon in the bottom-right corner,
 //   - `tie-a` and `tie-b` are two distinct rects of identical area whose
-//     overlap exercises the later-in-document-order tie-break.
+//     overlap exercises the later-in-document-order tie-break,
+//   - `degenerate` is a schema-valid circle with r = 0. It must contain
+//     nothing in all three implementations. Its presence proves the generated
+//     Python does not raise ZeroDivisionError on every row, and the generated
+//     R does not halt with "missing value where TRUE/FALSE needed" at the exact
+//     centre, when a zero-radius circle is present.
 export const fixtureZones: Zone[] = [
   {
     id: 'zone-outer',
@@ -84,6 +89,14 @@ export const fixtureZones: Zone[] = [
     width: 0.2,
     height: 0.3,
   },
+  {
+    id: 'zone-degenerate',
+    label: 'degenerate',
+    shape: 'circle',
+    cx: 0.02,
+    cy: 0.98,
+    r: 0,
+  },
 ];
 
 export const fixtureDocument: BackgroundDocument = {
@@ -145,6 +158,13 @@ export const fixturePoints: FixturePoint[] = [
     name: 'tie resolved to later zone',
     point: { x: 0.2, y: 0.7 },
     expected: 'tie-b',
+  },
+  // Zero-radius circle contains nothing: its exact centre resolves to no zone
+  // (and must not crash the generated Python or R at the division).
+  {
+    name: 'centre of zero-radius circle resolves to no zone',
+    point: { x: 0.02, y: 0.98 },
+    expected: null,
   },
   // No containing zone.
   { name: 'below every zone', point: { x: 0.5, y: 0.99 }, expected: null },

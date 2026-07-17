@@ -8,6 +8,8 @@ function formatNumber(value: number): string {
 // deliberately (rather than trusting JSON.stringify, whose output is only
 // coincidentally valid Python) so backslashes, quotes, newlines and other
 // control characters cannot break out of the literal or the surrounding source.
+// Python string literals accept a literal nul, but for parity with the R
+// emitter (where "\x00" is a hard error) U+0000 is replaced with U+FFFD in both.
 function pyString(value: string): string {
   let out = '"';
   for (const ch of value) {
@@ -29,7 +31,13 @@ function pyString(value: string): string {
         out += '\\t';
         break;
       default:
-        out += code < 0x20 ? `\\x${code.toString(16).padStart(2, '0')}` : ch;
+        if (code === 0) {
+          out += '�';
+        } else if (code < 0x20) {
+          out += `\\x${code.toString(16).padStart(2, '0')}`;
+        } else {
+          out += ch;
+        }
     }
   }
   return `${out}"`;
@@ -119,6 +127,10 @@ def point_in_zone(x, y, zone):
             and zone["y"] <= y <= zone["y"] + zone["height"]
         )
     if shape == "circle":
+        # A zero- or negative-radius circle contains nothing; guard before
+        # dividing so this never raises ZeroDivisionError.
+        if zone["r"] <= 0:
+            return False
         dx = (x - zone["cx"]) / zone["r"]
         dy = (y - zone["cy"]) / zone["r"]
         return dx * dx + dy * dy <= 1
@@ -195,7 +207,9 @@ def main(argv):
     x_column = f"{args.layout_variable}_x"
     y_column = f"{args.layout_variable}_y"
 
-    with open(args.input, newline="", encoding="utf-8") as handle:
+    # utf-8-sig transparently strips a leading UTF-8 BOM if present, so the
+    # first column name is not silently prefixed with U+FEFF.
+    with open(args.input, newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         fieldnames = list(reader.fieldnames or [])
         missing = [name for name in (x_column, y_column) if name not in fieldnames]
@@ -220,7 +234,17 @@ def main(argv):
     with open(args.output, "w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=output_fieldnames)
         writer.writeheader()
-        for row in rows:
+        for index, row in enumerate(rows, start=1):
+            # DictReader collects any cells beyond the header under the None
+            # restkey; fail cleanly rather than letting DictWriter raise a raw
+            # ValueError on the unexpected field.
+            if None in row:
+                print(
+                    f"Error: row {index} has more cells than the header "
+                    f"({len(fieldnames)} columns).",
+                    file=sys.stderr,
+                )
+                return 1
             x = parse_coordinate(row.get(x_column))
             y = parse_coordinate(row.get(y_column))
             label = assign_zone(x, y) if x is not None and y is not None else None

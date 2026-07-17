@@ -72,3 +72,37 @@ describe('label escaping', () => {
     );
   });
 });
+
+describe('nul (U+0000) handling', () => {
+  const nul = String.fromCharCode(0);
+  const replacement = String.fromCharCode(0xfffd);
+  const nulDocument: BackgroundDocument = {
+    version: 1,
+    title: 'Nul labels',
+    description: '',
+    elements: [],
+    zones: [
+      {
+        id: 'n',
+        label: `a${nul}b`,
+        shape: 'rect',
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+      },
+    ],
+  };
+
+  it('Python replaces U+0000 with U+FFFD and emits no \\x00 escape', () => {
+    const script = generatePythonScript(nulDocument, defaultOpts);
+    expect(script).not.toContain('\\x00');
+    expect(script).toContain(`"a${replacement}b"`);
+  });
+
+  it('R replaces U+0000 with U+FFFD and emits no illegal \\x00 escape', () => {
+    const script = generateRScript(nulDocument, defaultOpts);
+    expect(script).not.toContain('\\x00');
+    expect(script).toContain(`"a${replacement}b"`);
+  });
+});

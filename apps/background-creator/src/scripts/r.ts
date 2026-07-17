@@ -6,8 +6,10 @@ function formatNumber(value: number): string {
 
 // Escape an arbitrary label into an R double-quoted string literal. Built
 // deliberately so backslashes, quotes, newlines and control characters cannot
-// break out of the literal; R accepts the same \\ \" \n \r \t and \xNN escapes
-// used here.
+// break out of the literal; R accepts the \\ \" \n \r \t and \xNN escapes used
+// here for every control character EXCEPT U+0000: a literal nul is illegal in R
+// ("nul character not allowed"), so "\x00" would fail to parse. U+0000 is
+// therefore replaced with U+FFFD (matched in the Python emitter for parity).
 function rString(value: string): string {
   let out = '"';
   for (const ch of value) {
@@ -29,7 +31,13 @@ function rString(value: string): string {
         out += '\\t';
         break;
       default:
-        out += code < 0x20 ? `\\x${code.toString(16).padStart(2, '0')}` : ch;
+        if (code === 0) {
+          out += '�';
+        } else if (code < 0x20) {
+          out += `\\x${code.toString(16).padStart(2, '0')}`;
+        } else {
+          out += ch;
+        }
     }
   }
   return `${out}"`;
@@ -116,6 +124,12 @@ point_in_zone <- function(x, y, zone) {
       y >= zone$y && y <= zone$y + zone$height)
   }
   if (zone$shape == "circle") {
+    # A zero- or negative-radius circle contains nothing; guard before dividing
+    # so 0 / 0 does not yield NA and halt the caller's if() with "missing value
+    # where TRUE/FALSE needed".
+    if (zone$r <= 0) {
+      return(FALSE)
+    }
     dx <- (x - zone$cx) / zone$r
     dy <- (y - zone$cy) / zone$r
     return(dx * dx + dy * dy <= 1)
@@ -192,6 +206,22 @@ for (arg in args) {
     layout_variable <- substring(arg, nchar("--layout-variable=") + 1)
   } else if (startsWith(arg, "--output-variable=")) {
     output_variable <- substring(arg, nchar("--output-variable=") + 1)
+  } else if (startsWith(arg, "--")) {
+    # Unlike the Python script, this R script only understands options in
+    # --flag=value form. Reject any other "--" token (including the
+    # space-separated "--layout-variable value" form) instead of silently
+    # treating it as a positional path and using the default variable.
+    cat(
+      sprintf(
+        paste0(
+          "Error: unrecognized option \\"%s\\". This R script requires options ",
+          "in --flag=value form, e.g. --layout-variable=location.\\n"
+        ),
+        arg
+      ),
+      file = stderr()
+    )
+    quit(status = 1)
   } else {
     positional <- c(positional, arg)
   }
@@ -205,13 +235,33 @@ if (length(positional) < 2) {
   )
   quit(status = 1)
 }
+if (length(positional) > 2) {
+  cat(
+    sprintf(
+      "Error: too many arguments; expected input.csv and output.csv but got %d positional arguments.\\n",
+      length(positional)
+    ),
+    file = stderr()
+  )
+  quit(status = 1)
+}
 
 input_path <- positional[1]
 output_path <- positional[2]
 x_column <- paste0(layout_variable, "_x")
 y_column <- paste0(layout_variable, "_y")
 
-data <- read.csv(input_path, stringsAsFactors = FALSE, check.names = FALSE)
+# Read every column as a character string so read.csv's type inference cannot
+# rewrite passthrough data: '007' stays "007", '00042' stays "00042", '1e5' is
+# not reformatted, doubles keep full precision, and the literal string "NA" is
+# preserved (na.strings = character(0) disables NA parsing on input). Only the
+# two coordinate columns are converted, by parse_coordinate's as.numeric.
+data <- read.csv(
+  input_path,
+  colClasses = "character",
+  na.strings = character(0),
+  check.names = FALSE
+)
 columns <- names(data)
 missing <- setdiff(c(x_column, y_column), columns)
 if (length(missing) > 0) {
