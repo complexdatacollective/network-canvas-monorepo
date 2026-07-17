@@ -4086,7 +4086,7 @@ describe('Migration V7 to V8', () => {
       expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
     });
 
-    it('drops an AlterForm emptied by non-renderable field removal (gap 9 -> gap 10)', () => {
+    it('drops an AlterForm emptied by non-renderable field removal', () => {
       const migrated = migrationV7toV8.migrate(
         buildProtocol({
           id: 'onlyLocation',

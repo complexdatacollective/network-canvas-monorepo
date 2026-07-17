@@ -494,11 +494,6 @@ const migrationV7toV8 = createMigration({
             typedStage.type === 'EgoForm'
               ? { entity: 'ego' }
               : typedStage.subject;
-          // Drop fields whose variable resolves to a non-renderable type
-          // (layout/location) before backfilling prompts — the v8 schema
-          // rejects such fields. The shared reject-list keeps this in step with
-          // the schema. A form emptied here is removed whole by the
-          // post-traverse form-fields-min1 pass below (which runs after this).
           const renderable = fields.filter((field) => {
             const type = codebookVariable(
               codebook,
@@ -763,11 +758,6 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // An external-data side panel contains only nodes, so an edge rule in
-        // its filter can never apply and v8 rejects it. Mirror the editor's
-        // stripEdgeRules: for every panel whose dataSource is not 'existing',
-        // drop edge rules, and remove the filter entirely when no rules remain
-        // (preserving filter.join when rules survive).
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
           const typedStage = asRecord(stage);
@@ -836,12 +826,6 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // A filter with more than one rule requires an explicit `join` in v8
-        // (only the multi-rule union arm carries it). Legacy protocols relied on
-        // the runtime default of 'OR', so backfill it wherever a multi-rule
-        // filter has no join. Single-rule filters leave `join` legitimately
-        // optional. Runs after the empty-rules step so dropped filters are not
-        // considered.
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
           const typedStage = asRecord(stage);
@@ -1060,13 +1044,6 @@ const migrationV7toV8 = createMigration({
     const result = transformed;
     result.name = deps.name;
 
-    // Drop Ego/Alter/AlterEdge form stages whose form has no fields — v8
-    // requires at least one. This post-traverse pass also removes any such form
-    // left empty by the non-renderable field drop above (traverseAndTransform
-    // element fns cannot remove array elements). NameGenerator is intentionally
-    // excluded. Safe from orphaning: nothing in v7 input references a stage id
-    // (skip-logic destinations are v8-only; filters reference codebook
-    // attributes, not stages).
     if (Array.isArray(result.stages)) {
       const droppableFormStageTypes = new Set([
         'EgoForm',

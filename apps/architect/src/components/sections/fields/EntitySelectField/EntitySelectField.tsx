@@ -77,8 +77,6 @@ export const EntitySelectControl = ({
     [entityType, edgeOptions, nodeOptions],
   );
 
-  // A dependent stage relies on the current type, so the change is refused
-  // outright (unlike promptBeforeChange, which lets the researcher proceed).
   const refuseBlockedChange = useCallback(() => {
     if (!value || !blockChangeReason) return false;
 

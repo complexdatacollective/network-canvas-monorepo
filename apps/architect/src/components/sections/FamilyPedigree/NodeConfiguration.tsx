@@ -147,9 +147,6 @@ const NodeConfigurationInner = ({
   const stages = useSelector(
     (state: RootState) => getProtocol(state)?.stages ?? [],
   );
-  // A NarrativePedigree binds its diseases to variables on this stage's node
-  // type, so changing the node type would dangle those references. Block the
-  // change while such dependents exist, mirroring the deletion guard.
   const dependentNarrativeStages = stageId
     ? getFamilyPedigreeNodeTypeChangeBlock(stages, stageId)
     : [];

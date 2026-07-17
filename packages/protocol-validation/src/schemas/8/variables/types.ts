@@ -25,10 +25,6 @@ export const VariableTypes = {
   location: 'location',
 } as const;
 
-// Variable types that have no renderable form `component` and therefore cannot
-// be referenced by a form field. Lives in this leaf module so both the schema's
-// form-field reject-list and the v7→v8 migration's field drop share one source
-// and cannot drift (importing it from schema.ts would create a module cycle).
 export const NON_RENDERABLE_VARIABLE_TYPES = new Set<string>([
   VariableTypes.layout,
   VariableTypes.location,

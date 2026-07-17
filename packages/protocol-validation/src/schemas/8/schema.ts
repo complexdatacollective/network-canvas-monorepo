@@ -41,9 +41,6 @@ import {
 } from './common/index.ts';
 import type { FilterRule } from './filters/index.ts';
 import { type Prompt, stageSchema } from './stages/index.ts';
-// NON_RENDERABLE_VARIABLE_TYPES lives in the leaf variables/types module (and is
-// re-exported above via `export * from './variables/index.ts'`) so the v7→v8
-// migration can share the same reject-list without importing this heavy module.
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/index.ts';
 
 // Operators that expect numeric values for comparison

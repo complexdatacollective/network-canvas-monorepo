@@ -37,7 +37,6 @@ describe('validateEntityType()', () => {
     ).toEqual({});
   });
 
-  // Gap 6: toggled on but no variable/type selected (`shape.dynamic = {}`).
   it('flags a dynamic mapping with no variable selected', () => {
     const errors = validateEntityType({
       shape: { default: 'circle', dynamic: {} },
@@ -46,7 +45,6 @@ describe('validateEntityType()', () => {
     expect(errors.shape?.dynamic?.thresholds).toBeUndefined();
   });
 
-  // Gap 4: a breakpoints mapping saved with zero thresholds.
   it('flags a breakpoints mapping with no thresholds', () => {
     const errors = validateEntityType({
       shape: {
@@ -58,7 +56,6 @@ describe('validateEntityType()', () => {
     expect(errors.shape?.dynamic?.variable).toBeUndefined();
   });
 
-  // Gap 5: duplicate / descending threshold values.
   it('flags duplicate threshold values', () => {
     const errors = validateEntityType({
       shape: {

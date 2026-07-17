@@ -44,9 +44,6 @@ type MapOptionsProps = StageEditorSectionProps & {
 const NO_SELECTABLE_PROPERTIES_MESSAGE =
   'The selected GeoJSON has no feature properties available for map selection. Choose a GeoJSON file whose features include properties.';
 
-// Always-failing validator used when the chosen GeoJSON exposes no feature
-// properties. Mounting a required control here blocks Save with an actionable
-// message instead of letting the opaque whole-protocol validation error fire.
 const noSelectablePropertiesGuard = () => NO_SELECTABLE_PROPERTIES_MESSAGE;
 
 const defaultMapOptions = {
@@ -71,8 +68,6 @@ const MapOptions = ({
       'geojson',
     );
   const dataSourceAssetId = mapOptions?.dataSourceAssetId;
-  // A data source is chosen and its variables have finished loading, but no
-  // feature in the GeoJSON exposes any properties to select on.
   const noSelectableProperties =
     Boolean(dataSourceAssetId) &&
     !isVariablesLoading &&

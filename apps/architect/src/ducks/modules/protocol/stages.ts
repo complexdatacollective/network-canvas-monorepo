@@ -61,10 +61,6 @@ export const getFamilyPedigreeDependentStages = <
       candidate.sourceStageId === stageId,
   );
 
-// A NarrativePedigree's diseases bind variables on the source FamilyPedigree
-// stage's nodeConfig.type, so changing that node type would leave those
-// references dangling against the new type. Returns the dependent stages that
-// block the change, mirroring the deletion guard above.
 export const getFamilyPedigreeNodeTypeChangeBlock = <
   T extends StageDependencyCandidate,
 >(

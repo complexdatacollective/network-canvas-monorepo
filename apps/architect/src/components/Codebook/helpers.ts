@@ -40,8 +40,6 @@ const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {
   return variables;
 });
 
-// Node/edge type id -> name, so type-level usage references (e.g. a node type's
-// shape mapping) can be labelled with the type's name rather than its id.
 const getTypeMetaByIndex = createSelector([getCodebook], (codebook) => {
   const typeNames: Record<string, string> = {};
   if (!codebook) return typeNames;
@@ -128,9 +126,6 @@ export const getUsageAsStageMeta = (
           : undefined;
         codebookVariableNames.add(variable?.name || 'unknown');
       } else if (segments.includes('shape')) {
-        // A type-level shape mapping reference — `codebook.<entity>.<typeId>.
-        // shape.dynamic.variable` — has no `variables` segment because the
-        // reference lives on the type, not inside a variable definition.
         const typeId = segments[2];
         const typeName = typeId ? typeMetaByIndex[typeId] : undefined;
         shapeMappingTypeNames.add(typeName || 'unknown');

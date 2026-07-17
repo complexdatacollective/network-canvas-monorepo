@@ -212,9 +212,6 @@ const ShapeVariableMapping = ({
   const selectedVar =
     selectedVarId && variables ? variables[selectedVarId] : undefined;
   const thresholdConfig = getThresholdInputConfig(selectedVar);
-  // Surface the type-editor's synchronous validation once a save has been
-  // attempted, so a blocked submit explains itself rather than silently
-  // no-op-ing. Before the first submit the guidance below stays out of the way.
   const submitFailed = useAppSelector((state: RootState) =>
     hasSubmitFailed(form)(state),
   );
@@ -224,9 +221,6 @@ const ShapeVariableMapping = ({
           ?.shape?.dynamic
       : undefined,
   );
-  // New thresholds seed one step above the current maximum (bounded by the
-  // variable's range) so successive "Add threshold" clicks stay strictly
-  // ascending instead of stacking duplicate zeros.
   const getNextThresholdValue = (): number => {
     const existing = dynamic?.thresholds ?? [];
     const step =

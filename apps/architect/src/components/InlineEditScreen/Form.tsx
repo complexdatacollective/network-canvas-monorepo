@@ -45,9 +45,6 @@ type WrappedFormProps = {
   id?: string;
   onSubmit?: (values: unknown) => void | Promise<void>;
   initialValues?: unknown;
-  // Optional redux-form synchronous validator. reduxForm reads `validate` from
-  // props, so consumers can supply a form-specific one without baking it into
-  // this shared HOC (which also backs NewVariableWindow and others).
   validate?: (values: Record<string, unknown>) => Record<string, unknown>;
 };
 

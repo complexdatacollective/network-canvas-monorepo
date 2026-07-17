@@ -195,10 +195,6 @@ export const getGeoJsonVariables = async (assetId: string) => {
     features?: { properties?: Record<string, unknown> }[];
   };
 
-  // Union property keys across every feature. A GeoJSON feature may legitimately
-  // omit `properties` (RFC 7946), so inspecting only the first feature would
-  // miss keys that appear on later features and leave the map-selection control
-  // (and its required validator) unmounted.
   const keys = new Set<string>();
   for (const feature of geoJson?.features ?? []) {
     if (feature?.properties) {
