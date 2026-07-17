@@ -263,6 +263,34 @@ export const WithLongContent: Story = {
   ),
 };
 
+export const WithLongWrappingHeader: Story = {
+  render: () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead className="w-48 whitespace-normal">
+            Current role and access level for this workspace
+          </TableHead>
+          <TableHead>Status</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow>
+          <TableCell>Alice Johnson</TableCell>
+          <TableCell>Administrator</TableCell>
+          <TableCell>Active</TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell>Bob Smith</TableCell>
+          <TableCell>Standard user</TableCell>
+          <TableCell>Active</TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+  ),
+};
+
 export const EmptyTable: Story = {
   render: () => (
     <Table>
