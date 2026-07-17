@@ -26,7 +26,7 @@ export type AuthenticationDialogCopy = {
   limitedRecoveryDescription: string;
 };
 
-type AuthenticationDialogProps = {
+export type AuthenticationDialogProps = {
   mode: AuthMode | undefined;
   open?: boolean;
   copy: AuthenticationDialogCopy;
