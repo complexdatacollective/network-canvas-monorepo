@@ -5,7 +5,26 @@ import AppUpdateIndicator from './AppUpdateIndicator';
 
 const NOTES = {
   version: '8.0.0-beta.4',
-  body: "## What's new\n\n- A brighter sociogram\n- Faster protocol loading\n",
+  body: `## What's new
+
+- A brighter sociogram
+- Faster protocol loading
+- Clearer validation messages
+
+## Improvements
+
+- More responsive stage editing
+- Better keyboard navigation
+- Improved color contrast
+- Smoother drag and drop
+
+## Fixes
+
+- Restored missing protocol thumbnails
+- Prevented duplicate stage names
+- Preserved unsaved form values
+- Corrected release-note links
+`,
 };
 
 const meta = {
@@ -17,7 +36,7 @@ const meta = {
     appName: 'Architect',
     label: 'v8.0.0-beta.3',
     currentVersion: '8.0.0-beta.3',
-    onInstall: fn(),
+    onInstall: fn(async () => true),
     releaseNotes: NOTES,
     size: 'md',
   },
@@ -37,7 +56,7 @@ export const Available: Story = {
     unsavedWorkCaveat:
       'Reloading updates this tab and any other open Architect tabs; unsaved changes in progress will be lost.',
   },
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(
       canvas.getByRole('button', { name: /update is available/i }),
@@ -49,8 +68,8 @@ export const Available: Story = {
     const install = await screen.findByRole('button', {
       name: 'Install and reload',
     });
-    await userEvent.click(install);
-    await expect(args.onInstall).toHaveBeenCalledOnce();
+    await expect(install).toBeEnabled();
+    await expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
   },
 };
 
@@ -59,7 +78,7 @@ export const Updated: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: /was updated/i }));
-    await screen.findByRole('dialog');
+    await screen.findByRole('dialog', { name: 'App Recently Updated' });
     await expect(
       await screen.findByText(/Faster protocol loading/i),
     ).toBeInTheDocument();

@@ -12,13 +12,14 @@ import {
 export type { AppId, ReleaseNotes };
 
 export type UpdateStatus = 'idle' | 'available' | 'updated';
+export type InstallAppUpdate = () => boolean | void | Promise<boolean | void>;
 
 export type UseAppUpdateOptions = {
   app: AppId;
   currentVersion: string;
   needRefresh: boolean;
   hasUnsavedWork: boolean;
-  installUpdate: () => void;
+  installUpdate: InstallAppUpdate;
   /**
    * How long after mount an update may still be auto-applied. Auto-apply is for
    * updates present at (or detected shortly after) a fresh load; an update the
@@ -33,7 +34,7 @@ export type UseAppUpdateResult = {
   status: UpdateStatus;
   availableVersion?: string;
   releaseNotes: ReleaseNotes | 'loading' | null;
-  install: () => void;
+  install: InstallAppUpdate;
 };
 
 // Auto-apply is a fresh-load affordance: an update already waiting when the app
@@ -103,7 +104,11 @@ export default function useAppUpdate({
     if (!needRefresh || autoAppliedRef.current) return;
     autoAppliedRef.current = true;
     if (freshLoadWindowOpenRef.current && !hasUnsavedWorkRef.current) {
-      installUpdate();
+      void Promise.resolve()
+        .then(installUpdate)
+        .catch(() => {
+          // Leave needRefresh unchanged so the user can retry manually.
+        });
     }
   }, [needRefresh, installUpdate]);
 

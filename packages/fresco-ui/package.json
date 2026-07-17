@@ -156,6 +156,7 @@
     "./form/hooks/useForm": "./src/form/hooks/useForm.ts",
     "./appUpdate/useAppUpdate": "./src/appUpdate/useAppUpdate.ts",
     "./appUpdate/applyFreshLoadServiceWorkerUpdate": "./src/appUpdate/applyFreshLoadServiceWorkerUpdate.ts",
+    "./appUpdate/serviceWorkerUpdate": "./src/appUpdate/applyFreshLoadServiceWorkerUpdate.ts",
     "./appUpdate/AppUpdateIndicator": "./src/appUpdate/AppUpdateIndicator.tsx"
   },
   "publishConfig": {
@@ -714,6 +715,10 @@
         "default": "./dist/appUpdate/useAppUpdate.js"
       },
       "./appUpdate/applyFreshLoadServiceWorkerUpdate": {
+        "types": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.d.ts",
+        "default": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.js"
+      },
+      "./appUpdate/serviceWorkerUpdate": {
         "types": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.d.ts",
         "default": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.js"
       },
