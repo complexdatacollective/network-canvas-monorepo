@@ -56,23 +56,25 @@ Consequences:
 - A warping ellipse is an ellipse in _normalized_ space — it stretches with the
   canvas exactly like percentage rects. Membership:
   `((x−cx)/rx)² + ((y−cy)/ry)² ≤ 1` in normalized space, aspect-independent.
-- An ellipse with **`keepCircular`** renders as a true `<circle>` whose radius is
-  `vmin`-based (`style="r: <r×100>vmin"` — the same viewport-relative CSS
-  mechanism the format already uses for text sizing), so it never warps; its
-  centre remains percentage-positioned. Its membership is therefore
-  **aspect-dependent**: with canvas width `W`, height `H`,
-  `((x−cx)·W)² + ((y−cy)·H)² ≤ (r·min(W,H))²`. Only the ratio `W:H` matters.
-- The document carries an optional **`intendedAspect`** (`{ w, h } | null`,
-  edited in Document details): the deployment aspect the researcher designs
-  for. The editor preview defaults to it, and generated scripts embed it as
-  their default for resolving `keepCircular` zones (`--aspect-ratio` overrides
-  at run time). When a document has locked-circle zones and no intended aspect,
-  script export asks for one, so the script can always infer membership.
-- "Most specific" zone = smallest **screen-space** area at the resolving aspect
-  (normalized area × `W·H` for warping shapes; `π(r·min(W,H))²` for locked
-  circles). For aspect-independent documents this reduces to normalized-area
-  comparison. Ties break to the later element in document order; nested
-  concentric zones resolve to the innermost ring.
+- An ellipse with **`keepCircular`** renders as a true `<circle>` **centred at
+  (0.5, 0.5)** with a `vmin`-based radius (`cx="50%" cy="50%"
+style="r: <r×100>vmin"` — the same viewport-relative CSS mechanism the
+  format already uses for text sizing), so it never warps. The centre lock is a
+  deliberate simplifying constraint (enforced in the model and editor).
+- **Locked-circle zone rule (aspect-free by design):** membership is the
+  normalized disk `(x−0.5)² + (y−0.5)² ≤ r²`, computable from the exported
+  `_x`/`_y` columns alone. This carries a one-sided guarantee: for any canvas
+  `W×H`, the visual circle's normalized footprint is an ellipse with semi-axes
+  `r·min(W,H)/W` and `r·min(W,H)/H`, both `≤ r`, so **every node dropped
+  visually inside the circle is inside the zone** on every device. The only
+  error is bounded over-inclusion (a band beside the circle on non-square
+  screens also classifies inside; zero on square screens). Nested rings
+  preserve their ordering, so ordinal ring assignment stays monotone. Scripts
+  and docs state this plainly; no aspect-ratio input exists anywhere.
+- "Most specific" zone = smallest area in normalized space (rect `w·h`,
+  polygon shoelace, warping ellipse `π·rx·ry`, locked circle `πr²`). Ties
+  break to the later element in document order; nested concentric zones
+  resolve to the innermost ring.
 
 ## Revision 2 — zones are marked shapes (2026-07-17)
 
@@ -113,8 +115,10 @@ export type EllipseElement = BaseElement & {
   fill: string; fillOpacity: number;
   stroke: string | null; strokeWidth: number;
   zoneLabel: string | null;
-  // Render as a true circle (radius = rx of the min canvas dimension, vmin
-  // units) instead of stretching. See §2 for the membership consequences.
+  // Render as a true vmin-radius circle centred at (0.5, 0.5) instead of
+  // stretching. When true: cx = cy = 0.5 and rx = ry (enforced by schema
+  // refinement; enabling it in the editor re-centres and sets r := rx).
+  // See §2 for the aspect-free membership rule and its guarantee.
   keepCircular: boolean;
 };
 
@@ -153,7 +157,6 @@ export type BackgroundDocument = {
   version: 1;
   title: string;       // → <title>, a11y
   description: string; // → <desc>, a11y
-  intendedAspect: { w: number; h: number } | null; // deployment aspect, §2
   elements: SvgElement[]; // paint order = array order; zones = zoneLabel ≠ null
 };
 ```
@@ -219,22 +222,19 @@ corrupt metadata / unsupported version) surfaced via dialog.
 
 ### Geometry (`src/geometry/zones.ts`, pure TS, unit-tested)
 
-Zones are the document's elements with `zoneLabel ≠ null` (`ZoneElement`).
-Membership and area take the resolving aspect `{ w, h }` (only the ratio
-matters; pass the stage box in the editor, the intended/CLI aspect in scripts):
+Zones are the document's elements with `zoneLabel ≠ null` (`ZoneElement`). All
+tests are pure functions of normalized coordinates — aspect-free:
 
-- `pointInZone(p: Vec, zone: ZoneElement, aspect: Aspect): boolean` — rect:
-  inclusive bounds; warping ellipse: normalized-ellipse test (`rx`/`ry`),
-  aspect-ignoring; `keepCircular` ellipse: the aspect-aware round test from §2
-  (`r <= 0` contains nothing); polygon: ray casting (the `ComposerCanvas.tsx`
-  algorithm), boundary treated as inside-ish (ray-cast parity; no epsilon
-  games).
-- `zoneArea(zone: ZoneElement, aspect: Aspect): number` — screen-space area at
-  the given aspect (§2): rect/polygon/warping-ellipse = normalized area × `w·h`;
-  locked circle = `π(r·min(w,h))²`.
-- `assignZone(p: Vec, zones: ZoneElement[], aspect: Aspect): string | null` —
-  filter containing zones, return label of smallest area; tie → later in
-  document order; none → `null`.
+- `pointInZone(p: Vec, zone: ZoneElement): boolean` — rect: inclusive bounds;
+  warping ellipse: normalized-ellipse test (`rx`/`ry`); `keepCircular`
+  ellipse: the §2 disk rule `(x−0.5)² + (y−0.5)² ≤ r²` (`r <= 0` contains
+  nothing); polygon: ray casting (the `ComposerCanvas.tsx` algorithm),
+  boundary treated as inside-ish (ray-cast parity; no epsilon games).
+- `zoneArea(zone: ZoneElement): number` — normalized area: rect `w·h`,
+  warping ellipse `π·rx·ry`, locked circle `πr²`, polygon shoelace.
+- `assignZone(p: Vec, zones: ZoneElement[]): string | null` — filter
+  containing zones, return label of smallest area; tie → later in document
+  order; none → `null`.
 
 The generated Python/R implement **identical** semantics; TS unit tests and the
 generated-script tests share fixture points/expectations so drift is caught.
@@ -242,12 +242,10 @@ generated-script tests share fixture points/expectations so drift is caught.
 ### Script generation (`src/scripts/python.ts`, `src/scripts/r.ts`)
 
 `generatePythonScript(doc, opts)` / `generateRScript(doc, opts)` where
-`opts = { layoutVariable: string; outputVariable: string; aspect: { w: number; h: number } | null }`
-(collected at export time via a form dialog; defaults `location` / `zone` /
-the document's `intendedAspect`). Scripts embed the aspect as their default and
-accept `--aspect-ratio W:H` as an override; documents whose zones are all
-aspect-independent run identically at any aspect (the embedded default is then
-cosmetic). Export requires an aspect when locked-circle zones exist.
+`opts = { layoutVariable: string; outputVariable: string }` (collected at
+export time via a form dialog; defaults `location` / `zone`). When the
+document contains locked-circle zones, the script header states the one-sided
+guarantee from §2 in plain language.
 
 Both scripts:
 
@@ -339,8 +337,10 @@ a comment). Slices:
   selects topmost hit, drag moves, handles resize (rect/ellipse corners; line
   endpoints; polygon vertices). Shift-drag constrains lines to 45° increments.
 - Hover inspection: with zones visible, a small readout chip shows
-  `assignZone(cursor, zones, stageAspect)` — live proof of the zone semantics
-  at the previewed aspect.
+  `assignZone(cursor, zones)` — live proof of the zone semantics. Zone chrome
+  for a locked circle draws the _zone's_ normalized disk (dashed) distinctly
+  from the visual circle, making the §2 over-inclusion band visible in the
+  editor at non-square aspects.
 - **Keyboard**: canvas is focusable; Tab cycles selectable items (roving
   selection), arrows nudge ±0.01 (Shift ±0.05), Delete removes, Escape
   deselects/cancels draft, Enter on a zone opens its label editor. Every state
@@ -363,13 +363,13 @@ One floating draggable `SegmentedToolbar` (`@codaco/fresco-ui/SegmentedToolbar`)
   width (InputField stepper), line arrow toggles, text lines/anchor/weight/font
   clamp; for rect/ellipse/polygon a **Use as zone** toggle + label field
   (live-validated for empty/duplicate labels); for ellipses a **Keep circular**
-  toggle.
+  toggle (enabling re-centres to (0.5, 0.5) and sets `r := rx`; while enabled,
+  position editing is locked and only the radius is adjustable).
 - Undo / Redo buttons (⌘Z / ⇧⌘Z shortcuts too).
 - Menu: **File** (action menu) — New (Blank / Quadrants / Concentric circles /
   Political compass), Open SVG…, Download SVG, Export Python script…, Export R
-  script…, Document details… (title, description, intended aspect ratio).
-  Destructive replacement (New/Open over unsaved work) confirms via
-  `useDialog().confirm`.
+  script…, Document details… (title, description). Destructive replacement
+  (New/Open over unsaved work) confirms via `useDialog().confirm`.
 
 Files: save via the interviewer `saveBlob` capability ladder generalized for
 MIME/extension (`image/svg+xml` / `.svg`, `text/x-python` / `.py`,
