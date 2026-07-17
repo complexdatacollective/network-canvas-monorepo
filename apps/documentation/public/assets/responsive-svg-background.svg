@@ -5,9 +5,9 @@
   role="img"
   aria-labelledby="title description"
 >
-  <title id="title">Responsive political compass quadrants</title>
+  <title id="title">Responsive tie-strength map</title>
   <desc id="description">
-    Four labelled quadrants divided by horizontal and vertical axes.
+    Four labelled quadrants compare time spent together and emotional closeness.
   </desc>
   <style>
     .axis {
@@ -29,19 +29,19 @@
   <line class="axis" x1="50%" y1="0" x2="50%" y2="100%" />
 
   <text class="label" x="25%" y="25%">
-    <tspan x="25%" dy="-0.2em">Authoritarian</tspan>
-    <tspan x="25%" dy="1.2em">Left</tspan>
+    <tspan x="25%" dy="-0.2em">More time</tspan>
+    <tspan x="25%" dy="1.2em">Lower closeness</tspan>
   </text>
   <text class="label" x="75%" y="25%">
-    <tspan x="75%" dy="-0.2em">Authoritarian</tspan>
-    <tspan x="75%" dy="1.2em">Right</tspan>
+    <tspan x="75%" dy="-0.2em">More time</tspan>
+    <tspan x="75%" dy="1.2em">Higher closeness</tspan>
   </text>
   <text class="label" x="25%" y="75%">
-    <tspan x="25%" dy="-0.2em">Libertarian</tspan>
-    <tspan x="25%" dy="1.2em">Left</tspan>
+    <tspan x="25%" dy="-0.2em">Less time</tspan>
+    <tspan x="25%" dy="1.2em">Lower closeness</tspan>
   </text>
   <text class="label" x="75%" y="75%">
-    <tspan x="75%" dy="-0.2em">Libertarian</tspan>
-    <tspan x="75%" dy="1.2em">Right</tspan>
+    <tspan x="75%" dy="-0.2em">Less time</tspan>
+    <tspan x="75%" dy="1.2em">Higher closeness</tspan>
   </text>
 </svg>
