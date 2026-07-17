@@ -82,9 +82,21 @@ const defaultMarkdownRenderers = {
     <Heading level="h4">{children}</Heading>
   ),
   p: Paragraph,
-  ul: UnorderedList,
-  ol: OrderedList,
-};
+  ul: ({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) => <UnorderedList className={className}>{children}</UnorderedList>,
+  ol: ({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) => <OrderedList className={className}>{children}</OrderedList>,
+} satisfies Components;
 
 type RenderMarkdownProps = Options & {
   render?: ReactElement;
@@ -103,7 +115,10 @@ const RenderMarkdown = ({
   const markdownContent = (
     <ReactMarkdown
       allowedElements={allowedElements ?? ALLOWED_MARKDOWN_LABEL_TAGS}
-      components={(components ?? defaultMarkdownRenderers) as Components}
+      components={{
+        ...defaultMarkdownRenderers,
+        ...components,
+      }}
       remarkPlugins={remarkPlugins ?? [remarkGemoji, remarkGfm]}
       rehypePlugins={rehypePlugins ?? [rehypeRaw, rehypeSanitize]}
       unwrapDisallowed={unwrapDisallowed ?? true}
