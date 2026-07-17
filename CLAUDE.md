@@ -328,15 +328,23 @@ the Documentation and Website lanes run none. The mapping lives in
 `scripts/release-e2e-policy.mjs`, and its test derives the expected lanes from
 the real package.json dependency graph so the table cannot silently drift.
 The required `quality` check requires exactly the suites the policy selects.
-Ordinary PRs skip E2E, and E2E verdicts are never carried forward from an
-earlier commit.
+Ordinary PRs skip E2E and never inherit an E2E verdict from an earlier
+commit.
 
-A merge-queue run skips a suite only in one narrow case: the queued merge
-commit's tree is byte-identical to the tip of a generated release branch, and
-a native pull-request run of this workflow already ran that suite successfully at that
-exact SHA. Every guard fails closed (tree mismatch, non-release tip, or any
-Actions-API doubt reruns the suite), so batched merge groups and moved `main`
-always re-run E2E.
+Generated release branches and their merge groups use equivalence reuse: a
+suite is skipped when a prior successful native pull-request run of it exists
+on the same branch and the diff since that commit touches only paths that
+provably cannot affect the suite — files in workspace packages outside the
+suite subject's declared workspace dependency closure (dependencies,
+devDependencies, peerDependencies, optionalDependencies), or the inert
+`docs/`, `.changeset/`, `*.md` set. Every guard fails closed: an unfetchable
+commit, Actions-API doubt, a fork head, a conclusive failure as the newest
+verdict, or any unrecognised path (root configs, `.github/`, `scripts/`, the
+lockfile) re-runs the suite. Force-pushed refreshes of a release PR after
+unrelated merges to `main` therefore keep their E2E verdicts without
+re-running, while any change that ships in the lane re-runs as before (see
+`scripts/release-e2e-policy.mjs` and
+`docs/superpowers/specs/2026-07-17-release-e2e-equivalence-reuse-design.md`).
 
 The release jobs create and update generated branches with the fine-grained PAT
 stored as `RELEASE_PR_TOKEN`. That causes the normal `pull_request` workflow to

@@ -117,3 +117,18 @@ test('generated release PRs use the dedicated PAT and rely on native PR CI', () 
   assert.doesNotMatch(productReleaseJob, /gh workflow run ci-and-release\.yml/);
   assert.doesNotMatch(productReleaseJob, /actions: write/);
 });
+
+test('e2e-policy receives the equivalence-reuse inputs', () => {
+  const policyJob = job('e2e-policy');
+  assert.ok(policyJob, 'e2e-policy job exists');
+  assert.match(
+    policyJob,
+    /HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.event\.merge_group\.head_sha \}\}/,
+    'policy step receives the PR tip (or merge-group head) as HEAD_SHA',
+  );
+  assert.match(
+    policyJob,
+    /HEAD_REPO: \$\{\{ github\.event\.pull_request\.head\.repo\.full_name \}\}/,
+    'policy step receives the head repo for the fork guard',
+  );
+});

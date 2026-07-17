@@ -11,12 +11,8 @@ import {
 } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
+import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
-
-const DEV_PROTOCOL_ASSETS_DIR = path.resolve(
-  import.meta.dirname,
-  '../../../development-protocol/assets',
-);
 
 // --- module-private helpers ------------------------------------------------
 

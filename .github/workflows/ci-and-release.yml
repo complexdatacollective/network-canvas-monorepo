@@ -146,11 +146,14 @@ jobs:
 
   # Decides per suite whether release E2E must run for this ref: each release
   # lane requires only the suites whose subject package ships in its deploy,
-  # and a merge-group run skips suites already validated by the native PR run
-  # on an identical tree (see scripts/release-e2e-policy.mjs).
+  # and both release-PR refreshes and merge-group runs skip suites already
+  # validated by an earlier native PR run whose commit differs only in paths
+  # that cannot affect the suite (equivalence reuse — see
+  # scripts/release-e2e-policy.mjs; every guard fails closed).
   e2e-policy:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       interview: ${{ steps.policy.outputs.interview }}
       interviewer: ${{ steps.policy.outputs.interviewer }}
@@ -172,8 +175,14 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
           REF_NAME: ${{ github.ref_name }}
           BASE_SHA: ${{ github.event.merge_group.base_sha }}
-          HEAD_SHA: ${{ github.event.merge_group.head_sha }}
-          # Read-only, for the merge-queue already-validated lookup.
+          # On PRs, HEAD_SHA is the branch tip the equivalence reuse diffs
+          # against prior validated runs; on merge groups it stays the
+          # group's head for release detection. HEAD_REPO guards reuse off
+          # for fork PRs.
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          # Read-only, feeds both the PR-time and merge-queue equivalence
+          # lookups.
           GH_TOKEN: ${{ github.token }}
         run: |
           policy=$(node scripts/release-e2e-policy.mjs)
@@ -1707,9 +1716,10 @@ jobs:
   # First push on a PR: no prior runs exist, so nothing to carry; the
   # detect logic already runs the relevant jobs at least once because
   # the push diff IS the cumulative PR diff on the first commit.
-  # E2E jobs are deliberately excluded: release PRs run all three on every
-  # push and the required quality gate checks their live results; non-release
-  # PRs must never inherit an E2E verdict from an earlier commit.
+  # E2E jobs are deliberately excluded: on release PRs the e2e-policy job
+  # itself decides when a refresh may skip a suite (equivalence reuse) and
+  # the required quality gate checks its decision; non-release PRs must
+  # never inherit an E2E verdict from an earlier commit.
   carry-forward-statuses:
     needs:
       - detect

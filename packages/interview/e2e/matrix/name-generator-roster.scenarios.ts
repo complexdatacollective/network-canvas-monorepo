@@ -5,14 +5,11 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { NameGeneratorRosterFixture } from '../fixtures/name-generator-roster-fixture.js';
+import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
 import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
 
 const DATA_DIR = path.resolve(import.meta.dirname, '../fixtures/data');
-const DEV_PROTOCOL_ASSETS = path.resolve(
-  import.meta.dirname,
-  '../../../development-protocol/assets',
-);
 
 const rosterSmallAsset = (assetId: string): SyntheticAssetSpec => ({
   assetId,
@@ -193,7 +190,10 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           name: 'Previous Interview CSV',
           type: 'network',
           source: 'previousInterview.csv',
-          localPath: path.join(DEV_PROTOCOL_ASSETS, 'previousInterview.csv'),
+          localPath: path.join(
+            DEV_PROTOCOL_ASSETS_DIR,
+            'previousInterview.csv',
+          ),
         },
         {
           assetId: 'csvRosterCoercion',
