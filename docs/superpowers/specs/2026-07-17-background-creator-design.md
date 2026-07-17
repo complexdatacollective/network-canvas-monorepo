@@ -53,12 +53,38 @@ consistent with what the participant saw, no transformation needed anywhere.
 
 Consequences:
 
-- A zone "circle" is a circle in _normalized_ space, i.e. an **ellipse on screen**
-  when the canvas is not square — matching how a drawn ellipse (`rx`/`ry` in %)
-  stretches. Membership: `((x−cx)/r)² + ((y−cy)/r)² ≤ 1`.
-- "Most specific" zone = smallest area in normalized space
-  (shoelace for polygons, `πr²` for circles). Ties break to the later zone in
-  document order. This resolves nested concentric zones to the innermost ring.
+- A warping ellipse is an ellipse in _normalized_ space — it stretches with the
+  canvas exactly like percentage rects. Membership:
+  `((x−cx)/rx)² + ((y−cy)/ry)² ≤ 1` in normalized space, aspect-independent.
+- An ellipse with **`keepCircular`** renders as a true `<circle>` whose radius is
+  `vmin`-based (`style="r: <r×100>vmin"` — the same viewport-relative CSS
+  mechanism the format already uses for text sizing), so it never warps; its
+  centre remains percentage-positioned. Its membership is therefore
+  **aspect-dependent**: with canvas width `W`, height `H`,
+  `((x−cx)·W)² + ((y−cy)·H)² ≤ (r·min(W,H))²`. Only the ratio `W:H` matters.
+- The document carries an optional **`intendedAspect`** (`{ w, h } | null`,
+  edited in Document details): the deployment aspect the researcher designs
+  for. The editor preview defaults to it, and generated scripts embed it as
+  their default for resolving `keepCircular` zones (`--aspect-ratio` overrides
+  at run time). When a document has locked-circle zones and no intended aspect,
+  script export asks for one, so the script can always infer membership.
+- "Most specific" zone = smallest **screen-space** area at the resolving aspect
+  (normalized area × `W·H` for warping shapes; `π(r·min(W,H))²` for locked
+  circles). For aspect-independent documents this reduces to normalized-area
+  comparison. Ties break to the later element in document order; nested
+  concentric zones resolve to the innermost ring.
+
+## Revision 2 — zones are marked shapes (2026-07-17)
+
+The original design carried zones as a parallel entity list. Revised: **any
+rect, ellipse, or polygon element can be marked as a zone** via
+`zoneLabel: string | null`. A zone is ordinary visible artwork (an invisible
+zone is a fully transparent shape); lines and text cannot be zones. This
+removes duplicate geometry (the compass fills _are_ its zones; the concentric
+rings _are_ the rings' zones), and zone identification for external tooling is
+"elements with a `zoneLabel`" in the embedded metadata JSON. The zone drawing
+tools are removed; marking happens in Properties. Sections below are written
+against this revision.
 
 ## 3. Document model (verbatim contract — `src/model/types.ts`)
 
@@ -71,11 +97,14 @@ export type Vec = { x: number; y: number };
 
 type BaseElement = { id: string };
 
+// rect/ellipse/polygon can be marked as zones; the label becomes the exported
+// variable value. null = not a zone.
 export type RectElement = BaseElement & {
   kind: 'rect';
   x: number; y: number; width: number; height: number;
   fill: string; fillOpacity: number; // 0..1
   stroke: string | null; strokeWidth: number; // px, non-scaling
+  zoneLabel: string | null;
 };
 
 export type EllipseElement = BaseElement & {
@@ -83,6 +112,10 @@ export type EllipseElement = BaseElement & {
   cx: number; cy: number; rx: number; ry: number;
   fill: string; fillOpacity: number;
   stroke: string | null; strokeWidth: number;
+  zoneLabel: string | null;
+  // Render as a true circle (radius = rx of the min canvas dimension, vmin
+  // units) instead of stretching. See §2 for the membership consequences.
+  keepCircular: boolean;
 };
 
 export type LineElement = BaseElement & {
@@ -97,6 +130,7 @@ export type PolygonElement = BaseElement & {
   points: Vec[]; // ≥ 3
   fill: string; fillOpacity: number;
   stroke: string | null; strokeWidth: number;
+  zoneLabel: string | null;
 };
 
 export type TextElement = BaseElement & {
@@ -113,19 +147,14 @@ export type TextElement = BaseElement & {
 export type SvgElement =
   | RectElement | EllipseElement | LineElement | PolygonElement | TextElement;
 
-export type ZoneShape =
-  | { shape: 'rect'; x: number; y: number; width: number; height: number }
-  | { shape: 'circle'; cx: number; cy: number; r: number }
-  | { shape: 'polygon'; points: Vec[] };
-
-export type Zone = { id: string; label: string } & ZoneShape;
+export type ZoneElement = RectElement | EllipseElement | PolygonElement;
 
 export type BackgroundDocument = {
   version: 1;
   title: string;       // → <title>, a11y
   description: string; // → <desc>, a11y
-  elements: SvgElement[]; // paint order = array order
-  zones: Zone[];
+  intendedAspect: { w: number; h: number } | null; // deployment aspect, §2
+  elements: SvgElement[]; // paint order = array order; zones = zoneLabel ≠ null
 };
 ```
 
@@ -145,6 +174,9 @@ standalone SVG:
   and when stroked `stroke`, `stroke-width`, `vector-effect="non-scaling-stroke"`.
 - `ellipse` → `<ellipse cx cy rx ry>` in % (`rx` resolves against width, `ry`
   against height per SVG, matching normalized semantics), same paint attrs.
+  With `keepCircular`: `<circle cx cy>` in % with `style="r: <rx×100>vmin"`
+  (geometry-as-CSS; the radius tracks the smaller canvas dimension so the
+  circle never warps — same viewport-relative mechanism as text sizing).
 - `line` → `<line x1 y1 x2 y2>` in %, `stroke`, `stroke-width`,
   `vector-effect="non-scaling-stroke"`, plus `marker-start`/`marker-end`
   referencing a single shared `<marker id="arrow" markerUnits="userSpaceOnUse"
@@ -163,7 +195,8 @@ non-scaling-stroke` keeps polygon strokes uniform under the non-uniform scale.
   `opacity` (omit when 1). Multi-line: one `<tspan x="<x%>" dy="…">` per line —
   first `dy` centres the block on `y` (`-((n−1)/2 − 0.35)em` ≈ the sample's
   `-0.2em` for two lines), subsequent `dy="1.2em"`.
-- Zones are **not rendered**. The full document (including zones) is embedded as
+- Zone-marked shapes render exactly like unmarked ones (a zone is ordinary
+  artwork; invisibility is a styling choice). The full document is embedded as
   JSON in a metadata element after `<desc>`:
 
   ```xml
@@ -186,13 +219,22 @@ corrupt metadata / unsupported version) surfaced via dialog.
 
 ### Geometry (`src/geometry/zones.ts`, pure TS, unit-tested)
 
-- `pointInZone(p: Vec, zone: Zone): boolean` — rect: inclusive bounds; circle:
-  normalized-ellipse test above; polygon: ray casting (the
-  `ComposerCanvas.tsx` algorithm), boundary treated as inside-ish (ray-cast
-  parity; no epsilon games).
-- `zoneArea(zone: Zone): number` — rect `w·h`, circle `πr²`, polygon shoelace.
-- `assignZone(p: Vec, zones: Zone[]): string | null` — filter containing zones,
-  return label of smallest area; tie → later in `zones` order; none → `null`.
+Zones are the document's elements with `zoneLabel ≠ null` (`ZoneElement`).
+Membership and area take the resolving aspect `{ w, h }` (only the ratio
+matters; pass the stage box in the editor, the intended/CLI aspect in scripts):
+
+- `pointInZone(p: Vec, zone: ZoneElement, aspect: Aspect): boolean` — rect:
+  inclusive bounds; warping ellipse: normalized-ellipse test (`rx`/`ry`),
+  aspect-ignoring; `keepCircular` ellipse: the aspect-aware round test from §2
+  (`r <= 0` contains nothing); polygon: ray casting (the `ComposerCanvas.tsx`
+  algorithm), boundary treated as inside-ish (ray-cast parity; no epsilon
+  games).
+- `zoneArea(zone: ZoneElement, aspect: Aspect): number` — screen-space area at
+  the given aspect (§2): rect/polygon/warping-ellipse = normalized area × `w·h`;
+  locked circle = `π(r·min(w,h))²`.
+- `assignZone(p: Vec, zones: ZoneElement[], aspect: Aspect): string | null` —
+  filter containing zones, return label of smallest area; tie → later in
+  document order; none → `null`.
 
 The generated Python/R implement **identical** semantics; TS unit tests and the
 generated-script tests share fixture points/expectations so drift is caught.
@@ -200,8 +242,12 @@ generated-script tests share fixture points/expectations so drift is caught.
 ### Script generation (`src/scripts/python.ts`, `src/scripts/r.ts`)
 
 `generatePythonScript(doc, opts)` / `generateRScript(doc, opts)` where
-`opts = { layoutVariable: string; outputVariable: string }` (collected at export
-time via a form dialog; sensible defaults `location` / `zone`).
+`opts = { layoutVariable: string; outputVariable: string; aspect: { w: number; h: number } | null }`
+(collected at export time via a form dialog; defaults `location` / `zone` /
+the document's `intendedAspect`). Scripts embed the aspect as their default and
+accept `--aspect-ratio W:H` as an override; documents whose zones are all
+aspect-independent run identically at any aspect (the embedded default is then
+cosmetic). Export requires an aspect when locked-circle zones exist.
 
 Both scripts:
 
@@ -263,8 +309,8 @@ per-stage factory stores in `packages/interview`; note the deviation and why in
 a comment). Slices:
 
 - `doc: BackgroundDocument`
-- `selection: { id: string; type: 'element' | 'zone' } | null`
-- `activeTool: 'select' | 'rect' | 'ellipse' | 'line' | 'polygon' | 'text' | 'zone-rect' | 'zone-circle' | 'zone-polygon'`
+- `selection: { id: string } | null` (elements only — zones are elements)
+- `activeTool: 'select' | 'rect' | 'ellipse' | 'line' | 'polygon' | 'text'`
 - `draft` — in-progress drawing state (drag rect/ellipse/line; polygon vertex list)
 - `zonesVisible: boolean` (default true), `previewAspect: 'fill' | '16:9' | '9:16' | '4:3' | '3:4' | '1:1'`,
   `previewSurface: 'interview' | 'light' | 'checker'` (default `interview`)
@@ -282,18 +328,19 @@ a comment). Slices:
   byte-faithful to what Interviewer renders (same `<img>` hosting, so `vmin`
   text sizing behaves identically). Regenerate on doc change; revoke stale URLs.
 - Top layer: absolutely-positioned SVG overlay (percentage-positioned) carrying
-  selection outlines, resize/vertex handles, draft shapes, and zone chrome
-  (dashed outlines + label pills, editor-only, hidden when `zonesVisible` off).
-  Zones render with a distinct hue and the label pill at the shape centroid.
+  selection outlines, resize/vertex handles, draft shapes, and zone chrome —
+  dashed outline + label pill on every `zoneLabel`-marked element, editor-only,
+  hidden when `zonesVisible` off (pills for locked circles sit at the top inner
+  edge so nested rings don't stack their pills).
 - Pointer interactions (pointer capture, 5px drag threshold, `touchAction:
-'none'` — the `useCanvasDrag` idiom): draw by drag (rect/ellipse/line/zone),
+'none'` — the `useCanvasDrag` idiom): draw by drag (rect/ellipse/line),
   polygon by click-to-add-vertex + double-click/Enter to close, Escape cancels,
-  text tool click places then opens the text form dialog. Select tool: click
-  selects topmost hit (elements and, when visible, zones), drag moves, handles
-  resize (rect/ellipse/zone-rect/zone-circle corners; line endpoints; polygon
-  vertices). Shift-drag constrains lines to 45° increments.
+  text tool click places then opens the inline text editor. Select tool: click
+  selects topmost hit, drag moves, handles resize (rect/ellipse corners; line
+  endpoints; polygon vertices). Shift-drag constrains lines to 45° increments.
 - Hover inspection: with zones visible, a small readout chip shows
-  `assignZone(cursor)` — live proof of the zone semantics.
+  `assignZone(cursor, zones, stageAspect)` — live proof of the zone semantics
+  at the previewed aspect.
 - **Keyboard**: canvas is focusable; Tab cycles selectable items (roving
   selection), arrows nudge ±0.01 (Shift ±0.05), Delete removes, Escape
   deselects/cancels draft, Enter on a zone opens its label editor. Every state
@@ -306,18 +353,23 @@ One floating draggable `SegmentedToolbar` (`@codaco/fresco-ui/SegmentedToolbar`)
 — the only chrome besides the canvas:
 
 - Group (single-select): Select, Rect, Ellipse, Line, Polygon, Text.
-- Group (single-select, zone-tinted): Zone rect, Zone circle, Zone polygon.
 - Toggle: show/hide zones. Popover: preview options (aspect preset ×
   surface).
-- Popover: **Properties** (contextual for current selection): colour (swatch
-  grid from the app palette + native `<input type="color">` + "none" for
-  stroke/fill), fill opacity, stroke width (InputField stepper), line arrow
-  toggles, text lines/anchor/weight/font clamp, zone label, z-order
-  (backward/forward), delete. Disabled state when nothing is selected.
+- Popover: **Properties** (auto-opens on pointer click-selection; the trigger
+  is disabled with nothing selected and the panel closes when selection
+  clears): always-visible action row (item name, z-order backward/forward,
+  delete), then contextual fields — colour (swatch grid from the app palette +
+  native `<input type="color">` + "none" for stroke), fill opacity, stroke
+  width (InputField stepper), line arrow toggles, text lines/anchor/weight/font
+  clamp; for rect/ellipse/polygon a **Use as zone** toggle + label field
+  (live-validated for empty/duplicate labels); for ellipses a **Keep circular**
+  toggle.
 - Undo / Redo buttons (⌘Z / ⇧⌘Z shortcuts too).
-- Menu: **File** — New (Blank / Quadrants / Concentric circles), Open SVG…,
-  Download SVG, Export Python script…, Export R script…. Destructive
-  replacement (New/Open over unsaved work) confirms via `useDialog().confirm`.
+- Menu: **File** (action menu) — New (Blank / Quadrants / Concentric circles /
+  Political compass), Open SVG…, Download SVG, Export Python script…, Export R
+  script…, Document details… (title, description, intended aspect ratio).
+  Destructive replacement (New/Open over unsaved work) confirms via
+  `useDialog().confirm`.
 
 Files: save via the interviewer `saveBlob` capability ladder generalized for
 MIME/extension (`image/svg+xml` / `.svg`, `text/x-python` / `.py`,
@@ -338,14 +390,18 @@ drag/popovers are Base-UI/fresco built-ins already compliant).
 ## 7. Templates (`model/templates.ts`)
 
 - **Blank** — empty document.
-- **Quadrants** — modelled on the #1018 political-compass sample: horizontal +
-  vertical axis lines (arrowheads both ends), four soft-fill rects, four
+- **Quadrants** — horizontal + vertical axis lines (arrowheads both ends), four
+  soft-fill rects **marked as the zones** (`top-left` … `bottom-right`), four
   two-line quadrant labels + four axis labels (placeholder wording:
-  "High/Low X", "High/Low Y"), four rect zones labelled `top-left`,
-  `top-right`, `bottom-left`, `bottom-right`.
-- **Concentric circles** — three stroked ellipses (`r ≈ 0.15/0.30/0.45`,
-  non-scaling stroke, no fill), centre labels, three nested circle zones
-  `inner` / `middle` / `outer` demonstrating smallest-wins layering.
+  "High/Low X", "High/Low Y").
+- **Concentric circles** — three stroked `keepCircular` ellipses
+  (`r ≈ 0.15/0.30/0.45`, non-scaling stroke, no fill) **marked as the zones**
+  `inner` / `middle` / `outer`, centre labels — demonstrating smallest-wins
+  layering, round-locked rendering, and aspect-aware assignment.
+- **Political compass** — the startup document: a faithful model of the sample
+  protocol's responsive compass asset (unsure band, four solid quadrant fills,
+  arrowed axes, quadrant labels), the five fills marked as zones (`unsure`,
+  `authoritarian-left/right`, `libertarian-left/right`).
 
 ## 8. Documentation updates (`apps/documentation`)
 
