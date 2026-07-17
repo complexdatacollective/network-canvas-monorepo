@@ -43,14 +43,34 @@ export function collectWorkspacePackages(cwd) {
     }
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
+      // ENOENT (no package.json) means this directory is simply not a pnpm
+      // workspace member — continue silently, matching pnpm's own glob
+      // semantics. Any other read failure, or a parse failure on a manifest
+      // that IS present, means the workspace graph is broken and must not be
+      // silently treated as empty: that would misclassify every path inside
+      // it as "outside every workspace package", which fails OPEN for
+      // equivalence reuse. Propagate so the caller fails closed instead.
+      const manifestPath = join(cwd, group, entry.name, 'package.json');
+      let raw;
+      try {
+        raw = readFileSync(manifestPath, 'utf8');
+      } catch (error) {
+        if (error.code === 'ENOENT') continue;
+        throw error;
+      }
       let manifest;
       try {
-        manifest = JSON.parse(
-          readFileSync(join(cwd, group, entry.name, 'package.json'), 'utf8'),
+        manifest = JSON.parse(raw);
+      } catch (error) {
+        throw new Error(
+          `Unable to read workspace manifest ${group}/${entry.name}/package.json`,
+          { cause: error },
         );
-      } catch {
-        continue;
       }
+      // pnpm tolerates nameless private workspace members. Such a package can
+      // never be depended on, and the fail-closed diff path already treats
+      // its directory as unrecognised (and therefore relevant), so skipping
+      // it here does not weaken equivalence reuse.
       if (typeof manifest.name !== 'string') continue;
       packages.set(manifest.name, {
         dir: `${group}/${entry.name}`,
@@ -166,16 +186,27 @@ export async function equivalentValidatedSuites({
           `${run.jobs_url}?per_page=100`,
           apiOptions,
         );
-        jobsByRun.set(
-          run.id,
-          jobsResponse.ok ? ((await jobsResponse.json()).jobs ?? []) : null,
-        );
+        if (!jobsResponse.ok) {
+          jobsByRun.set(run.id, null);
+        } else {
+          // A run with more than one page of jobs could hide a conclusive
+          // FAILURE beyond this page, letting the walk wrongly continue to an
+          // older green. Treat a truncated listing as API doubt (null; fails
+          // closed) rather than trusting the partial page.
+          const { jobs = [], total_count: totalCount = jobs.length } =
+            await jobsResponse.json();
+          jobsByRun.set(run.id, totalCount > jobs.length ? null : jobs);
+        }
       }
       return jobsByRun.get(run.id);
     };
 
     const packages = collectWorkspacePackages(cwd);
     for (const key of required) {
+      // If the suite's own subject package isn't in the discovered graph, no
+      // relevance judgment about it can be trusted — fail closed rather than
+      // reason about a closure that's missing its own root.
+      if (!packages.has(E2E_SUITE_SUBJECTS[key])) continue;
       // The newest conclusive verdict is authoritative: a failure is never
       // walked past to an older green.
       let candidate = null;

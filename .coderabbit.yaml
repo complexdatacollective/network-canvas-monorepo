@@ -11,3 +11,8 @@ reviews:
   path_filters:
     - '!packages/interview/e2e/aria-snapshots/**'
     - '!packages/interview/e2e/visual-snapshots/**'
+    # Implementation plans are point-in-time execution artifacts for
+    # agent-driven task execution, not living documentation — the spec and
+    # CLAUDE.md are the reviewed sources of truth — so reviewing them
+    # generates noise about intentionally frozen historical snippets.
+    - '!docs/superpowers/plans/**'

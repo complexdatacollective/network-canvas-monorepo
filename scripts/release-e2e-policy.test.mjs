@@ -308,6 +308,15 @@ test('ordinary events do not require release E2E', () => {
 // Returns the branch tip so tests can point origin/changeset-release/* at it.
 function initMergeQueueRepo({ advanceMainWith = '' } = {}) {
   const cwd = initRepo();
+  // @codaco/interview must be a real discovered package: equivalence reuse
+  // now refuses to trust a relevance judgment about a suite whose subject is
+  // missing from the graph entirely.
+  commitManifest(
+    cwd,
+    'packages/interview/package.json',
+    '{"name":"@codaco/interview","version":"1.0.0"}\n',
+    'add interview',
+  );
   commitManifest(
     cwd,
     'apps/architect/package.json',
@@ -467,12 +476,20 @@ function writeWorkspaceFixture() {
     mkdirSync(join(cwd, file, '..'), { recursive: true });
     writeFileSync(join(cwd, file), `${JSON.stringify(contents)}\n`);
   }
+  // A workspace group can contain a directory with no package.json at all
+  // (e.g. a scratch or generated directory). pnpm's own glob semantics
+  // tolerate this, so discovery must too: ENOENT reading the manifest is not
+  // a broken workspace member, just a directory that isn't one.
+  mkdirSync(join(cwd, 'packages/no-manifest'), { recursive: true });
   return cwd;
 }
 
 test('relevance closure follows dependencies, devDependencies, and peerDependencies', () => {
   const cwd = writeWorkspaceFixture();
   const packages = collectWorkspacePackages(cwd);
+  // The fixture's packages/no-manifest directory (no package.json) is
+  // tolerated silently and does not appear as a discovered package.
+  assert.equal(packages.size, 5);
   assert.deepEqual(
     [...relevanceDirsForSubject('@codaco/interviewer', packages)].toSorted(
       (a, b) => a.localeCompare(b),
@@ -559,10 +576,13 @@ test('diff classification is fail-closed', () => {
 });
 
 // A fake Actions REST API: one runs-listing endpoint plus per-run jobs
-// endpoints, keyed by run id embedded in jobs_url.
+// endpoints, keyed by run id embedded in jobs_url. totalCountByRun defaults
+// each run's total_count to its own jobs array length, matching a
+// single-page response, so existing callers are unaffected.
 function fakeActionsApi({
   runs,
   jobsByRun,
+  totalCountByRun = {},
   failRuns = false,
   failJobs = false,
 }) {
@@ -575,7 +595,14 @@ function fakeActionsApi({
     }
     if (failJobs) return { ok: false };
     const runId = url.match(/\/fake-jobs\/(\d+)\?/)?.[1];
-    return { ok: true, json: async () => ({ jobs: jobsByRun[runId] ?? [] }) };
+    const jobs = jobsByRun[runId] ?? [];
+    return {
+      ok: true,
+      json: async () => ({
+        jobs,
+        total_count: totalCountByRun[runId] ?? jobs.length,
+      }),
+    };
   };
 }
 
@@ -895,4 +922,120 @@ test('a relevant file renamed to an inert path still forces the suite to run', a
     headSha,
   );
   assert.equal(renameCollapsed, 'docs/feature.ts');
+});
+
+test('equivalence reuse fails closed when a workspace manifest is malformed', async () => {
+  const cwd = initRepo();
+  commitManifest(
+    cwd,
+    'packages/interview/package.json',
+    '{"name":"@codaco/interview","version":"1.0.0"}\n',
+    'add interview',
+  );
+  commitManifest(
+    cwd,
+    'apps/interviewer/package.json',
+    '{"name":"@codaco/interviewer","version":"1.0.0","dependencies":{"@codaco/interview":"workspace:*"}}\n',
+    'add interviewer',
+  );
+  commitManifest(
+    cwd,
+    'apps/architect/package.json',
+    '{"name":"@codaco/architect","version":"1.0.0","dependencies":{"@codaco/interview":"workspace:*"}}\n',
+    'add architect',
+  );
+  // The broken manifest is committed BEFORE the validated SHA is captured,
+  // so it is unchanged between validatedSha and headSha — the scenario where
+  // the old silent-skip in collectWorkspacePackages could go fail-open even
+  // though nothing in the actual diff touches it.
+  const validatedSha = commitManifest(
+    cwd,
+    'packages/broken/package.json',
+    'not json',
+    'add malformed manifest',
+  );
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'refresh',
+  );
+
+  assert.deepEqual(
+    await interviewerLaneCall(
+      cwd,
+      headSha,
+      fakeActionsApi({
+        runs: [fakeRun(1, validatedSha)],
+        jobsByRun: { 1: INTERVIEWER_LANE_SUCCESS_JOBS },
+      }),
+    ),
+    { interview: false, interviewer: false, architect: false },
+  );
+});
+
+test('equivalence reuse rejects a suite whose subject package is missing from the workspace graph', async () => {
+  const cwd = initRepo();
+  const validatedSha = commitManifest(
+    cwd,
+    'packages/other/package.json',
+    '{"name":"@codaco/other","version":"1.0.0"}\n',
+    'add unrelated package',
+  );
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'refresh',
+  );
+
+  // The graph never contains @codaco/interview at all, so no relevance
+  // judgment about the interview suite can be trusted — reuse must be
+  // rejected even though the diff itself is inert and the fake API reports a
+  // conclusive success.
+  assert.deepEqual(
+    await equivalentValidatedSuites({
+      cwd,
+      repository: 'example/repo',
+      token: 'token',
+      branch: 'changeset-release/interviewer',
+      headSha,
+      requiredSuites: {
+        interview: true,
+        interviewer: false,
+        architect: false,
+      },
+      fetcher: fakeActionsApi({
+        runs: [fakeRun(1, validatedSha)],
+        jobsByRun: { 1: [{ name: 'interview-e2e', conclusion: 'success' }] },
+      }),
+    }),
+    { interview: false, interviewer: false, architect: false },
+  );
+});
+
+test('equivalence reuse fails closed when a jobs listing is truncated', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'refresh',
+  );
+
+  // The jobs page reports fewer jobs than total_count claims: a conclusive
+  // FAILURE for interviewer-e2e could be sitting beyond this page, so the
+  // listing must be treated as API doubt rather than trusted as-is.
+  assert.deepEqual(
+    await interviewerLaneCall(
+      cwd,
+      headSha,
+      fakeActionsApi({
+        runs: [fakeRun(1, validatedSha)],
+        jobsByRun: { 1: INTERVIEWER_LANE_SUCCESS_JOBS },
+        totalCountByRun: { 1: INTERVIEWER_LANE_SUCCESS_JOBS.length + 1 },
+      }),
+    ),
+    { interview: false, interviewer: false, architect: false },
+  );
 });
