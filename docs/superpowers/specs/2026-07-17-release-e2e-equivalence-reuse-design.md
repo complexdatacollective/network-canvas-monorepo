@@ -85,10 +85,12 @@ pagination cap — means "run the suite".
    `scripts/`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`,
    `.nvmrc`, and any path not positively recognised.
 
-4. **Baselines have not moved.** The last commit on `e2e-snapshots/main`
-   predates run X's start time (suites read visual baselines from that
-   branch, so its movement invalidates equivalence). Missing or unreadable
-   ref data fails closed.
+4. **Correction (2026-07-17): no separate baseline guard.** An earlier draft
+   required `e2e-snapshots/main` not to have moved since run X. That branch
+   is only the accumulation target for the snapshot-update PR flow; the
+   suites read visual baselines committed in-tree, inside their subject
+   packages' own directories. Baseline movement is therefore already covered
+   by guard 3's diff, and no branch-time guard exists.
 
 ### PR time (the fix)
 
@@ -135,8 +137,8 @@ Extend `scripts/release-e2e-policy.test.mjs`:
   inert set; empty diff (byte-identical queue case).
 - Run (fail closed): subject-graph path; any root/`.github/`/`scripts/`/
   lockfile/workspace-config path; unfetchable X; Actions API error or
-  pagination cap; newest conclusive verdict is a failure; snapshot branch
-  moved after X's run started; fork head repo; non-release ref.
+  pagination cap; newest conclusive verdict is a failure; fork head repo;
+  non-release ref.
 - Chained refreshes: skipped-suite runs are walked past to the older native
   success and the diff is taken from there.
 
