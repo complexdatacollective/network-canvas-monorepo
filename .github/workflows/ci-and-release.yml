@@ -146,11 +146,14 @@ jobs:
 
   # Decides per suite whether release E2E must run for this ref: each release
   # lane requires only the suites whose subject package ships in its deploy,
-  # and a merge-group run skips suites already validated by the native PR run
-  # on an identical tree (see scripts/release-e2e-policy.mjs).
+  # and both release-PR refreshes and merge-group runs skip suites already
+  # validated by an earlier native PR run whose commit differs only in paths
+  # that cannot affect the suite (equivalence reuse — see
+  # scripts/release-e2e-policy.mjs; every guard fails closed).
   e2e-policy:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       interview: ${{ steps.policy.outputs.interview }}
       interviewer: ${{ steps.policy.outputs.interviewer }}
@@ -172,8 +175,14 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
           REF_NAME: ${{ github.ref_name }}
           BASE_SHA: ${{ github.event.merge_group.base_sha }}
-          HEAD_SHA: ${{ github.event.merge_group.head_sha }}
-          # Read-only, for the merge-queue already-validated lookup.
+          # On PRs, HEAD_SHA is the branch tip the equivalence reuse diffs
+          # against prior validated runs; on merge groups it stays the
+          # group's head for release detection. HEAD_REPO guards reuse off
+          # for fork PRs.
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          # Read-only, feeds both the PR-time and merge-queue equivalence
+          # lookups.
           GH_TOKEN: ${{ github.token }}
         run: |
           policy=$(node scripts/release-e2e-policy.mjs)
@@ -679,19 +688,29 @@ jobs:
     steps:
       - name: Ensure workspace is a healthy git repo
         # On the self-hosted runner the workspace persists between jobs, and a
-        # job cancelled mid-checkout can leave it without a usable .git;
-        # actions/checkout then hard-fails ("--local can only be used inside a
-        # git repository") on every subsequent run until the directory is
-        # wiped (observed 2026-07-16). If the workspace is non-empty but not a
-        # valid repo, wipe it so checkout falls back to a fresh clone. The
-        # chown reuses the runner's scoped sudo rule to make root-owned
-        # leftovers (Dockerized runs execute as container root) deletable.
-        # No-op on ephemeral GitHub-hosted VMs: the directory starts empty.
+        # CANCELLED predecessor leaves two hazards behind (observed
+        # 2026-07-16/17 breaking every release-lane run):
+        # 1) Its Dockerized test run outlives the job — cancellation kills the
+        #    `docker run` client, not the container — and keeps writing
+        #    root-owned files into the bind-mounted workspace. Remove it by
+        #    name BEFORE touching the tree, or the wipe below races a live
+        #    writer and checkout's delete-everything fallback throws EACCES
+        #    (which actions/checkout's finally-block then masks as "--local
+        #    can only be used inside a git repository").
+        # 2) Root-owned files it already wrote make `git clean` fail even
+        #    once the container is gone. The chown reuses the runner's scoped
+        #    sudo rule to reclaim them unconditionally — a valid repo with
+        #    root-owned leftovers is just as fatal to checkout as a broken
+        #    one.
+        # If the tree is non-empty but has no usable .git, wipe it so checkout
+        # falls back to a fresh clone. No-op on ephemeral GitHub-hosted VMs:
+        # the directory starts empty and no container pre-exists.
         run: |
+          docker rm -f interview-e2e-run 2>/dev/null || true
+          sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
           if [ -n "$(ls -A . 2>/dev/null)" ] \
             && ! git rev-parse --resolve-git-dir "$PWD/.git" >/dev/null 2>&1; then
             echo "workspace is not a valid git repo — wiping for a fresh checkout"
-            sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
             find . -mindepth 1 -delete
           fi
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
@@ -710,6 +729,15 @@ jobs:
           printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
       - name: Run E2E tests
         run: ./packages/interview/e2e/scripts/run.sh
+      - name: Stop the e2e container
+        # Cancellation kills the `docker run` client but not the container;
+        # left alive it keeps writing root-owned files into the persistent
+        # workspace and corrupts the next job's checkout. Must run BEFORE the
+        # ownership reclaim below so the chown covers everything the container
+        # wrote. No-op when the run exited normally (`--rm` already removed
+        # it) and on ephemeral GitHub-hosted VMs.
+        if: always()
+        run: docker rm -f interview-e2e-run 2>/dev/null || true
       - name: Classify snapshot-only failure
         id: snapshot_failure
         if: failure()
@@ -1707,9 +1735,10 @@ jobs:
   # First push on a PR: no prior runs exist, so nothing to carry; the
   # detect logic already runs the relevant jobs at least once because
   # the push diff IS the cumulative PR diff on the first commit.
-  # E2E jobs are deliberately excluded: release PRs run all three on every
-  # push and the required quality gate checks their live results; non-release
-  # PRs must never inherit an E2E verdict from an earlier commit.
+  # E2E jobs are deliberately excluded: on release PRs the e2e-policy job
+  # itself decides when a refresh may skip a suite (equivalence reuse) and
+  # the required quality gate checks its decision; non-release PRs must
+  # never inherit an E2E verdict from an earlier commit.
   carry-forward-statuses:
     needs:
       - detect

@@ -1808,6 +1808,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.2.1(storybook@10.5.0(@types/react@19.2.17)(prettier@2.8.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))
+      '@codaco/development-protocol':
+        specifier: workspace:*
+        version: link:../development-protocol
       '@codaco/fresco-ui':
         specifier: workspace:*
         version: link:../fresco-ui
@@ -1817,6 +1820,9 @@ importers:
       '@codaco/protocol-utilities':
         specifier: workspace:*
         version: link:../protocol-utilities
+      '@codaco/protocols':
+        specifier: workspace:*
+        version: link:../protocols
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript

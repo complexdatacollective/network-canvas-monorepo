@@ -76,7 +76,19 @@ for arg in "$@"; do
   FORWARDED_ARGS="${FORWARDED_ARGS} $(printf '%q' "$arg")"
 done
 
-docker run --rm \
+# The container carries a fixed name so it can be found and removed after the
+# fact: cancelling a CI job kills the `docker run` client but NOT the
+# container, which otherwise keeps writing root-owned artifacts into the
+# bind-mounted workspace for the rest of the suite (observed 2026-07-17
+# breaking every subsequent checkout on the persistent self-hosted runner).
+# CI removes strays by this name before checkout and after the test step; the
+# pre-remove here keeps local reruns idempotent. `--init` gives the container
+# a signal-forwarding PID 1, so a proxied SIGTERM from a graceful cancel
+# tears the whole container down instead of being swallowed by `sh`.
+CONTAINER_NAME="interview-e2e-run"
+docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+
+docker run --rm --init --name "$CONTAINER_NAME" \
   -e CI=true \
   -e PW_WORKERS \
   -v "$(pwd)":/workspace \

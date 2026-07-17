@@ -7,12 +7,8 @@ import {
 } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
+import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
 import type { InterfaceScenarios } from './types.js';
-
-const DEV_PROTOCOL_ASSETS = path.resolve(
-  import.meta.dirname,
-  '../../../development-protocol/assets',
-);
 
 export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
   interfaceType: 'NameGeneratorQuickAdd',
@@ -298,7 +294,10 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           name: 'previousInterview.json',
           type: 'network',
           source: 'previousInterview.json',
-          localPath: path.join(DEV_PROTOCOL_ASSETS, 'previousInterview.json'),
+          localPath: path.join(
+            DEV_PROTOCOL_ASSETS_DIR,
+            'previousInterview.json',
+          ),
         },
       ],
       run: async ({ page, stage, protocol, interview }) => {

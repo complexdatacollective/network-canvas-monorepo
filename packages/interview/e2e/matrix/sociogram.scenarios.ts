@@ -343,7 +343,7 @@ function buildBackgroundImage(): ScenarioDefinition {
     ],
     run: async ({ page }) => {
       const sociogram = page.getByTestId('sociogram');
-      const img = sociogram.locator('img[alt="Background"]');
+      const img = sociogram.locator('img[alt=""]');
       await expect(img).toBeVisible();
       await expect(img).toHaveAttribute(
         'src',

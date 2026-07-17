@@ -11,12 +11,10 @@ import {
 
 import { useTrack } from '../../analytics/useTrack';
 import Canvas from '../../canvas/Canvas';
-import CanvasBackgroundImage from '../../canvas/CanvasBackgroundImage';
 import ConvexHullLayer from '../../canvas/ConvexHullLayer';
+import StageBackground from '../../canvas/StageBackground';
 import { useAutoLayout } from '../../canvas/useAutoLayout';
 import { createCanvasStore } from '../../canvas/useCanvasStore';
-import ConcentricCircles from '../../components/ConcentricCircles';
-import { useAssetUrl } from '../../hooks/useAssetUrl';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
@@ -170,7 +168,6 @@ const Narrative = ({ stage }: NarrativeProps) => {
 
   // Background Configuration
   const stageBackground = stage.background;
-  const { url: backgroundImageUrl } = useAssetUrl(stageBackground.image);
 
   // Only include nodes that have the layout variable set
   const nodesWithLayout = useMemo(
@@ -279,19 +276,6 @@ const Narrative = ({ stage }: NarrativeProps) => {
     ? (highlight[highlightIndex] ?? undefined)
     : undefined;
 
-  const backgroundImageLayer =
-    stageBackground.image !== undefined && backgroundImageUrl ? (
-      <CanvasBackgroundImage src={backgroundImageUrl} />
-    ) : null;
-
-  const canvasBackground =
-    stageBackground.image === undefined ? (
-      <ConcentricCircles
-        n={stageBackground.concentricCircles}
-        skewed={stageBackground.skewedTowardCenter}
-      />
-    ) : null;
-
   const underlays = convexHullVariable ? (
     <ConvexHullLayer
       store={store}
@@ -308,15 +292,16 @@ const Narrative = ({ stage }: NarrativeProps) => {
 
   return (
     <div
-      className="interface size-full overflow-hidden"
+      className={`interface relative h-full overflow-hidden${
+        stageBackground.image === undefined ? '' : ' p-0'
+      }`}
       ref={interfaceRef}
       data-testid="narrative"
       data-simulation-running={layout.isRunning}
     >
-      {backgroundImageLayer}
       {measurementContainer}
       <Canvas
-        background={canvasBackground}
+        background={<StageBackground background={stageBackground} />}
         underlays={underlays}
         foreground={foreground}
         nodes={nodesWithLayout}

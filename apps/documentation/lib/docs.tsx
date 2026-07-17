@@ -52,6 +52,7 @@ import {
   BadPractice,
   GoodPractice,
 } from '~/components/customComponents/BestPractices';
+import CoordinateClassificationExample from '~/components/customComponents/CoordinateClassificationExample';
 import ImageFullWidth from '~/components/customComponents/ImageFullWidth';
 import {
   InterfaceMeta,
@@ -289,6 +290,7 @@ const createMarkdownComponents = (docSlug?: string) => ({
   responsivesvgpreview: (props: ResponsiveSvgPreviewProps) => (
     <ResponsiveSvgPreview {...props} />
   ),
+  coordinateclassificationexample: () => <CoordinateClassificationExample />,
   // Generated interface screenshots from @codaco/interface-images, e.g.
   // <interfacepicture type="Sociogram" ratio="16:9" alt="..." />
   interfacepicture: (props: InterfacePictureProps) => (

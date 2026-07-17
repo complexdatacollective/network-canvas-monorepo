@@ -143,6 +143,7 @@ class Background extends PureComponent<BackgroundProps> {
                 componentProps={{
                   label: 'Background image',
                   labelHidden: true,
+                  canvasBackgroundPreview: true,
                 }}
               />
             </Row>

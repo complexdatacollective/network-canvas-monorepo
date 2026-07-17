@@ -8,8 +8,9 @@ export default function CanvasBackgroundImage({
   return (
     <img
       src={src}
-      className="pointer-events-none absolute inset-0 size-full object-contain object-center"
-      alt="Background"
+      className="pointer-events-none size-full object-contain object-center"
+      alt=""
+      aria-hidden="true"
     />
   );
 }

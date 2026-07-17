@@ -299,6 +299,32 @@ const ProtocolSchema = z
         }
       }
 
+      // Canvas image backgrounds must resolve to image assets. The stage-level
+      // schema enforces the background shape; this protocol-level check binds
+      // the referenced id to the manifest.
+      if (
+        'background' in stage &&
+        stage.background &&
+        'image' in stage.background &&
+        typeof stage.background.image === 'string'
+      ) {
+        const imageAssetId = stage.background.image;
+        const asset = protocol.assetManifest?.[imageAssetId];
+        if (!asset) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Canvas background image "${imageAssetId}" does not reference an asset in the manifest.`,
+            path: ['stages', stageIndex, 'background', 'image'],
+          });
+        } else if (asset.type !== 'image') {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Canvas background image "${imageAssetId}" must reference an 'image' asset, but is of type "${asset.type}".`,
+            path: ['stages', stageIndex, 'background', 'image'],
+          });
+        }
+      }
+
       // Form field type validation: existence is covered by the
       // entity-attribute reference validator above; here we additionally reject
       // variables whose type cannot be rendered as a form field (layout/location).

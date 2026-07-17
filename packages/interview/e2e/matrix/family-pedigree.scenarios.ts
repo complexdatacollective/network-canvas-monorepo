@@ -12,12 +12,8 @@ import {
 import { FamilyPedigreeFixture } from '../fixtures/family-pedigree-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
 import type { ProtocolFixture } from '../fixtures/protocol-fixture.js';
+import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
-
-const DEV_PROTOCOL_ASSETS = path.resolve(
-  import.meta.dirname,
-  '../../../development-protocol/assets',
-);
 
 const ATTR = entityAttributesProperty;
 const PK = entityPrimaryKeyProperty;
@@ -539,7 +535,7 @@ function introScreenAssetImage(): ScenarioDefinition {
         name: 'quadrant',
         type: 'image',
         source: 'quadrant.png',
-        localPath: path.join(DEV_PROTOCOL_ASSETS, 'quadrant.png'),
+        localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
       },
     ],
     build: () => si,
