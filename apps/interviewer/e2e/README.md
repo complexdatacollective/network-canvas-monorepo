@@ -14,13 +14,13 @@ pnpm --filter @codaco/interviewer test:e2e
 # Regenerate visual baselines (also Docker — never regenerate locally)
 pnpm --filter @codaco/interviewer test:e2e:update-snapshots
 
-# Run headed against your local Chromium for debugging — functional
+# Run headed against your local Playwright browsers for debugging — functional
 # assertions only, no baseline regeneration
 pnpm --filter @codaco/interviewer test:e2e:headed
 ```
 
-`test:e2e:headed` may need a local Chromium binary installed once first:
-`pnpm --filter @codaco/interviewer exec playwright install chromium`.
+`test:e2e:headed` may need local Chromium and WebKit binaries installed once
+first: `pnpm --filter @codaco/interviewer exec playwright install chromium webkit`.
 
 ## Layout
 
@@ -93,6 +93,6 @@ runs Playwright with `CI=true` (so visual capture is active). `run.sh`
 forwards any extra arguments (e.g. `--update-snapshots`, a spec path).
 
 `pnpm test:e2e:headed` skips Docker: it builds locally, then runs Playwright
-headed against your own Chromium install. Useful for stepping through a spec,
-but visual assertions are skipped (see above) and results won't match the
-Docker/CI environment for anything font-sensitive.
+headed against your own Chromium and WebKit installs. Useful for stepping
+through a spec, but visual assertions are skipped (see above) and results won't
+match the Docker/CI environment for anything font-sensitive.

@@ -1,2 +1,2 @@
-export * from './codebook';
-export * from './definitions';
+export * from './codebook.ts';
+export * from './definitions.ts';

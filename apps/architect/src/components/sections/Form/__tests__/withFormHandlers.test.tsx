@@ -39,8 +39,8 @@ const Wrapped: ComponentType<Record<string, unknown>> = withFormHandlers(
 );
 
 type UpdateVariableArg = {
-  merge: boolean;
-  configuration: { encrypted?: boolean };
+  replaceProperties: readonly string[];
+  configuration: Record<string, unknown>;
 };
 const updateVariable = vi.fn((_arg: UpdateVariableArg) => ({
   unwrap: () => Promise.resolve({}),
@@ -67,12 +67,13 @@ const renderHandler = () =>
   render(<Wrapped type="person" entity="node" form="edit-stage" />);
 
 describe('withFormHandlers', () => {
-  it('preserves the encrypted flag when saving a field edit (merge:false)', async () => {
+  it('only claims the codebook properties it edits, leaving protection flags to the reducer', async () => {
     getVariable.mockReturnValue({
       component: 'Text',
       type: 'text',
       name: 'secret',
       encrypted: true,
+      readOnly: true,
     });
     renderHandler();
 
@@ -80,8 +81,14 @@ describe('withFormHandlers', () => {
 
     expect(updateVariable).toHaveBeenCalledTimes(1);
     const arg = updateVariable.mock.calls[0]![0];
-    expect(arg.merge).toBe(false);
-    expect(arg.configuration.encrypted).toBe(true);
+    expect(arg.replaceProperties).toEqual([
+      'options',
+      'parameters',
+      'component',
+      'validation',
+    ]);
+    expect(arg.replaceProperties).not.toContain('encrypted');
+    expect(arg.replaceProperties).not.toContain('readOnly');
   });
 
   it('surfaces a friendly error (not a TypeError) when variable creation rejects', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { INHERITANCE_PATTERNS } from '../narrative-pedigree';
+import { INHERITANCE_PATTERNS } from '../narrative-pedigree.ts';
 
 describe('narrative-pedigree', () => {
   it('has the canonical inheritance patterns', () => {

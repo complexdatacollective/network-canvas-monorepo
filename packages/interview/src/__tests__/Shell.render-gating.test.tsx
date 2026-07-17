@@ -10,9 +10,9 @@ import {
 import type { InterviewPayload } from '../contract/types';
 import Shell from '../Shell';
 
-vi.mock('~/hooks/useMediaQuery', () => ({ default: () => false }));
+vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
-vi.mock('~/interfaces', () => {
+vi.mock('../interfaces', () => {
   const ObservedInterface = ({ stage }: { stage: { id: string } }) => (
     <div data-stage-interface={stage.id} />
   );

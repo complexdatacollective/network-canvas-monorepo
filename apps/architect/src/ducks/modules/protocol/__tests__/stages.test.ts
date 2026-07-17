@@ -372,16 +372,15 @@ describe('protocol.stages', () => {
           dispatched.some((a) => a.type === 'PROTOCOL/UPDATE_VARIABLE'),
         ).toBe(false);
 
-        // The cleanup config must drop both the synthetic `id` and the
-        // `encrypted` flag rather than writing them back into the codebook.
-        const configuration = (
-          updateVariableAction?.payload as
-            | { configuration: Record<string, unknown> }
-            | undefined
-        )?.configuration;
-        expect(configuration).not.toHaveProperty('id');
-        expect(configuration).not.toHaveProperty('encrypted');
-        expect(configuration).toMatchObject({ name: 'ssn', type: 'text' });
+        const payload = updateVariableAction?.payload as
+          | {
+              configuration: Record<string, unknown>;
+              replaceProperties: readonly string[];
+            }
+          | undefined;
+        expect(payload?.replaceProperties).toEqual(['encrypted']);
+        expect(payload?.configuration).not.toHaveProperty('id');
+        expect(payload?.configuration).not.toHaveProperty('encrypted');
 
         expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
           true,

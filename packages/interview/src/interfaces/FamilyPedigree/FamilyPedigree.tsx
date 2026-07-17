@@ -9,21 +9,21 @@ import {
   entityAttributesProperty,
   isFamilyPedigreeStageMetadata,
 } from '@codaco/shared-consts';
-import { useTrack } from '~/analytics/useTrack';
-import Prompts from '~/components/Prompts/Prompts';
-import { useContractFlags } from '~/contract/context';
-import useBeforeNext from '~/hooks/useBeforeNext';
-import useReadyForNextStage from '~/hooks/useReadyForNextStage';
-import { useStageSelector } from '~/hooks/useStageSelector';
+
+import { useTrack } from '../../analytics/useTrack';
+import Prompts from '../../components/Prompts/Prompts';
+import { useContractFlags } from '../../contract/context';
+import useBeforeNext from '../../hooks/useBeforeNext';
+import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   getNetworkEdges,
   getNetworkNodes,
   getStageMetadata,
-} from '~/selectors/session';
-import { toggleNodeAttributes } from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
-import type { StageProps } from '~/types';
-
+} from '../../selectors/session';
+import { toggleNodeAttributes } from '../../store/modules/session';
+import { useAppDispatch } from '../../store/store';
+import type { StageProps } from '../../types';
 import { buildPedigreeDialog } from './buildPedigreeDialog';
 import PedigreeChecklist from './components/PedigreeChecklist';
 import EgoCellWizard from './components/wizards/EgoCellWizard';

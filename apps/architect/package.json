@@ -1,12 +1,12 @@
 {
   "name": "@codaco/architect",
-  "version": "8.0.0-beta.8",
+  "version": "8.0.0-beta.9",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite",
-    "dev:protocols": "VITE_PROTOCOL_SOURCE_AUTHORING=true npm_lifecycle_event=dev node ../../scripts/with-turbo.mjs --with-deps vite",
-    "build": "node ../../scripts/with-turbo.mjs node scripts/build.mjs",
+    "dev": "vite",
+    "dev:protocols": "VITE_PROTOCOL_SOURCE_AUTHORING=true vite",
+    "build": "node scripts/build.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --build --noEmit && tsc -p e2e/tsconfig.json --noEmit",

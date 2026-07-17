@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { assetSchema } from '../assets';
-import { CodebookSchema } from '../codebook/codebook';
-import { panelSchema } from '../common/panels';
-import { FilterSchema } from '../filters';
-import { anonymisationStage } from '../stages/anonymisation';
-import { familyPedigreeStage } from '../stages/family-pedigree';
-import { geospatialStage } from '../stages/geospatial';
-import { informationStage } from '../stages/information';
-import { nameGeneratorRosterStage } from '../stages/name-generator-roster';
-import { narrativeStage } from '../stages/narrative';
-import { sociogramStage } from '../stages/sociogram';
+import { assetSchema } from '../assets/index.ts';
+import { CodebookSchema } from '../codebook/codebook.ts';
+import { panelSchema } from '../common/panels.ts';
+import { FilterSchema } from '../filters/index.ts';
+import { anonymisationStage } from '../stages/anonymisation.ts';
+import { familyPedigreeStage } from '../stages/family-pedigree.ts';
+import { geospatialStage } from '../stages/geospatial.ts';
+import { informationStage } from '../stages/information.ts';
+import { nameGeneratorRosterStage } from '../stages/name-generator-roster.ts';
+import { narrativeStage } from '../stages/narrative.ts';
+import { sociogramStage } from '../stages/sociogram.ts';
 
 /**
  * Schema-conformance tests for the stage/codebook/filter/asset schemas owned by

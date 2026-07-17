@@ -13,8 +13,7 @@ import {
   vi,
 } from 'vitest';
 
-import type { SessionState } from '~/store/modules/session';
-
+import type { SessionState } from '../../modules/session';
 import { createSyncMiddleware } from '../syncMiddleware';
 
 // --- Helpers ---

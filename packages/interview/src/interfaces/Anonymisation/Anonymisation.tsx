@@ -16,12 +16,12 @@ import {
 } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import EncryptionBackground from '~/components/EncryptedBackground';
-import useBeforeNext from '~/hooks/useBeforeNext';
-import { useCelebrate } from '~/hooks/useCelebrate';
-import useReadyForNextStage from '~/hooks/useReadyForNextStage';
-import type { StageProps } from '~/types';
 
+import EncryptionBackground from '../../components/EncryptedBackground';
+import useBeforeNext from '../../hooks/useBeforeNext';
+import { useCelebrate } from '../../hooks/useCelebrate';
+import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import type { StageProps } from '../../types';
 import { usePassphrase } from './usePassphrase';
 
 type AnonymisationProps = StageProps<'Anonymisation'>;

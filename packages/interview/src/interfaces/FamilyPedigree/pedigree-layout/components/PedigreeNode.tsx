@@ -4,11 +4,14 @@ import { useDragSource } from '@codaco/fresco-ui/dnd/dnd';
 import Node from '@codaco/fresco-ui/Node';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
-import { getNodeShapeDefinition } from '~/interfaces/FamilyPedigree/utils/nodeUtils';
-import { getNodeColorSelector, resolveNodeShape } from '~/selectors/session';
 
+import { useStageSelector } from '../../../../hooks/useStageSelector';
+import {
+  getNodeColorSelector,
+  resolveNodeShape,
+} from '../../../../selectors/session';
+import type { VariableConfig } from '../../store';
+import { getNodeShapeDefinition } from '../../utils/nodeUtils';
 import { useClickUnlessDragged } from '../useClickUnlessDragged';
 import { computeAllDisplayLabels } from '../utils/getDisplayLabel';
 

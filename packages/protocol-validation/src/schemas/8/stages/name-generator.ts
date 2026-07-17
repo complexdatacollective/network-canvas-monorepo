@@ -1,14 +1,13 @@
 import { z } from 'zod';
 
-import { findDuplicateId } from '~/utils/validation-helpers';
-
+import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import {
   FormSchema,
   NodeStageSubjectSchema,
   nameGeneratorPromptSchema,
   panelSchema,
-} from '../common';
-import { baseStageSchema } from './base';
+} from '../common/index.ts';
+import { baseStageSchema } from './base.ts';
 
 // Shared by NameGenerator and NameGeneratorQuickAdd: a node-count window must be
 // satisfiable (maxNodes >= minNodes), allow at least one node (maxNodes >= 1),

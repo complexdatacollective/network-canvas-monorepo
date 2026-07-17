@@ -7,8 +7,8 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
+import type { VariableConfig } from '../../../FamilyPedigree/store';
 import { PedigreeSnapshotDocument } from '../PedigreeSnapshotDocument';
 
 const variableConfig: VariableConfig = {

@@ -5,8 +5,7 @@ import {
   type TypedStartListening,
 } from '@reduxjs/toolkit';
 
-import type { Tracker } from '~/analytics/tracker';
-
+import type { Tracker } from '../../analytics/tracker';
 import {
   addEdge,
   addNode,

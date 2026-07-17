@@ -6,9 +6,9 @@ import {
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
-import { makeGetCodebookVariablesForNodeType } from '~/selectors/protocol';
-import { getEntityAttributes } from '~/utils/networkEntities';
 
+import { makeGetCodebookVariablesForNodeType } from '../../selectors/protocol';
+import { getEntityAttributes } from '../../utils/networkEntities';
 import { usePassphrase } from './usePassphrase';
 import { decryptData, UnauthorizedError } from './utils';
 

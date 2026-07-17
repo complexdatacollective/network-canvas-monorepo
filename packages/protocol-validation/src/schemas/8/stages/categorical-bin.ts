@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
-import { findDuplicateId } from '~/utils/validation-helpers';
-
-import { categoricalBinPromptSchema, NodeStageSubjectSchema } from '../common';
-import { FilterSchema } from '../filters';
-import { baseStageSchema } from './base';
+import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import {
+  categoricalBinPromptSchema,
+  NodeStageSubjectSchema,
+} from '../common/index.ts';
+import { FilterSchema } from '../filters/index.ts';
+import { baseStageSchema } from './base.ts';
 
 export const categoricalBinStage = baseStageSchema.extend({
   type: z.literal('CategoricalBin'),

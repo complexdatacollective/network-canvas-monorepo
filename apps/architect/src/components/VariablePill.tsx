@@ -136,7 +136,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
   };
 
   const onEditComplete = () => {
-    const action = updateVariableByUUID(uuid, { name: newName }, true);
+    const action = updateVariableByUUID(uuid, { name: newName });
     void dispatch(action);
     setValidation(null);
     setIsEditing(false);

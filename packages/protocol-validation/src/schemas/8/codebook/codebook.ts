@@ -1,16 +1,16 @@
 import { z } from 'zod';
 
 import { VariableNameSchema } from '@codaco/shared-consts';
+
 import {
   findDuplicateName,
   getAllEntityNames,
-} from '~/utils/validation-helpers';
-
+} from '../../../utils/validation-helpers.ts';
 import {
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
   NodeDefinitionSchema,
-} from './definitions';
+} from './definitions.ts';
 
 export const CodebookSchema = z
   .strictObject({

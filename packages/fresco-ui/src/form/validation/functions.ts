@@ -9,6 +9,12 @@ import compareVariables from './utils/compareVariables';
 import { getComparisonValue } from './utils/getComparisonValue';
 import { getVariableDefinition } from './utils/getVariableDefinition';
 import isMatchingValue from './utils/isMatchingValue';
+// Type-only side-effect import (erased entirely, so it never reaches Vite's
+// runtime resolver) so the `GlobalMeta` module augmentation below reaches
+// every consumer of this file's `z.meta({ hint })` calls (and `helpers.tsx`,
+// which reads them back out) — see the comment in ./zod.d.ts for why this
+// can't just rely on fresco-ui's own tsconfig `include`.
+import type * as _zod from './zod';
 
 export type ValidationParameter =
   | string

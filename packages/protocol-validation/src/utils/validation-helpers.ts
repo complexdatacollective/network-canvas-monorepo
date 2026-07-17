@@ -6,7 +6,7 @@ import type {
   FilterRule,
   StageSubject,
   Variable,
-} from '../schemas/8/schema';
+} from '../schemas/8/schema.ts';
 
 /**
  * Check if an entity (node/edge type) exists in the codebook

@@ -15,14 +15,14 @@ import {
   entityPrimaryKeyProperty,
   type NcEdge,
 } from '@codaco/shared-consts';
-import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
-import { StageMetadataContext } from '~/contexts/StageMetadataContext';
-import { ContractProvider } from '~/contract/context';
-import protocol from '~/store/modules/protocol';
-import session from '~/store/modules/session';
-import ui from '~/store/modules/ui';
-import type { RegisterBeforeNext, StageProps } from '~/types';
 
+import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
+import { ContractProvider } from '../../../contract/context';
+import protocol from '../../../store/modules/protocol';
+import session from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
+import type { RegisterBeforeNext, StageProps } from '../../../types';
 import NetworkComposer from '../NetworkComposer';
 
 beforeAll(() => {

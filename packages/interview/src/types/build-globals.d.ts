@@ -1,5 +1,3 @@
-declare const __PACKAGE_VERSION__: string;
-
 // Set by Storybook and the e2e host before mounting Shell, to suppress
 // Base UI's CSS-animation waits during automated runs (Chromatic /
 // Playwright). Read by base-ui's runtime; we only assign it. Declared

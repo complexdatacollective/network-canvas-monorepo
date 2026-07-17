@@ -1,12 +1,8 @@
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { RelationshipType } from '@codaco/shared-consts';
-import type {
-  FamilyEdge,
-  GameteRole,
-  VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
-import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
 
+import type { FamilyEdge, GameteRole, VariableConfig } from '../../store';
+import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 import type { BioTriadConfig } from './steps/BioTriadStep';
 
 function readGameteRole(value: unknown): GameteRole | undefined {

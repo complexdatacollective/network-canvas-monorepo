@@ -1,4 +1,7 @@
-import { createMigration, type ProtocolDocument } from '~/migration';
+import {
+  createMigration,
+  type ProtocolDocument,
+} from '../../migration/index.ts';
 
 const migrationV4toV5 = createMigration({
   from: 4,

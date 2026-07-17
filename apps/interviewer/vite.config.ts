@@ -218,7 +218,7 @@ export default defineConfig(() =>
     // The interview engine is large; splitting it into its own named chunk
     // keeps the precached entry well under MAX_PRECACHE_BYTES. `@codaco/interview`
     // is a pnpm workspace package symlinked into node_modules; Vite/rolldown
-    // resolve module ids to the symlink's real path (`packages/interview/dist/...`),
+    // resolve module ids to the symlink's real path (`packages/interview/src/...`),
     // not the package-name path, so the id never contains the string
     // "@codaco/interview" — match the workspace path segment instead.
     build: {

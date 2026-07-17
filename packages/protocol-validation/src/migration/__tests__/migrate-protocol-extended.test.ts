@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { SchemaVersionDetectionError, ValidationError } from '../errors';
+import { SchemaVersionDetectionError, ValidationError } from '../errors.ts';
 import {
   detectSchemaVersion,
   getMigrationInfo,
   migrateProtocol,
   protocolMigrator,
-} from '../migrate-protocol';
+} from '../migrate-protocol.ts';
 
 describe('Protocol Migration - Extended Tests', () => {
   describe('detectSchemaVersion - edge cases', () => {

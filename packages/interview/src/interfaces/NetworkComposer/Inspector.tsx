@@ -14,8 +14,9 @@ import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
-import useProtocolForm from '~/forms/useProtocolForm';
-import type { Subject } from '~/selectors/forms';
+
+import useProtocolForm from '../../forms/useProtocolForm';
+import type { Subject } from '../../selectors/forms';
 
 type Attributes = NcNode[typeof entityAttributesProperty];
 

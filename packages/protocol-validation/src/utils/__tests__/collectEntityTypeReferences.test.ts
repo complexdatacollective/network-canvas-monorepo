@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { collectEntityTypeReferences } from '../collectEntityAttributeReferences';
+import { collectEntityTypeReferences } from '../collectEntityAttributeReferences.ts';
 
 // Walks the REAL protocol schema, so this covers both the walker and the
 // entityTypeReference tagging of each schema spot. Stage fixtures are minimal:

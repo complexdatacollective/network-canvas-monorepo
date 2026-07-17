@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ProtocolDocument } from '~/migration';
-
-import migrationV5toV6 from '../migration';
+import type { ProtocolDocument } from '../../../migration/index.ts';
+import migrationV5toV6 from '../migration.ts';
 
 function getStages(result: ProtocolDocument<6>): Array<{ type: string }> {
   return (result as Record<string, unknown>).stages as Array<{ type: string }>;

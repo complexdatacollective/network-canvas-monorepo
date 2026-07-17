@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { Provider } from 'react-redux';
 import { reducer as formReducer, reduxForm } from 'redux-form';
@@ -43,4 +43,40 @@ describe('RelativeDatePicker parameters', () => {
       screen.getByRole('spinbutton', { name: 'Days after' }),
     ).toBeInTheDocument();
   });
+
+  it.each(['Days before', 'Days after'])(
+    'rejects a negative %s offset',
+    async (label) => {
+      renderPicker();
+      const input = screen.getByRole('spinbutton', { name: label });
+
+      fireEvent.change(input, { target: { value: '-5' } });
+      fireEvent.blur(input);
+
+      await waitFor(() => {
+        expect(screen.getByText('Must be at least 0')).toBeInTheDocument();
+      });
+    },
+  );
+
+  it.each(['Days before', 'Days after'])(
+    'clears the error once %s is corrected to zero',
+    async (label) => {
+      renderPicker();
+      const input = screen.getByRole('spinbutton', { name: label });
+
+      fireEvent.change(input, { target: { value: '-5' } });
+      fireEvent.blur(input);
+      await waitFor(() => {
+        expect(screen.getByText('Must be at least 0')).toBeInTheDocument();
+      });
+
+      fireEvent.change(input, { target: { value: '0' } });
+      await waitFor(() => {
+        expect(
+          screen.queryByText('Must be at least 0'),
+        ).not.toBeInTheDocument();
+      });
+    },
+  );
 });

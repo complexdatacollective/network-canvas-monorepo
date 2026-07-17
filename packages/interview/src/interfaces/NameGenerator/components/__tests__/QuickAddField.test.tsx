@@ -10,24 +10,24 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 
-vi.mock('~/hooks/useCelebrate', () => ({
+vi.mock('../../../../hooks/useCelebrate', () => ({
   useCelebrate: () => vi.fn(),
 }));
 
 // QuickAddField reads node presentation state through useStageSelector.
 // Dispatch on the selector sentinel exported by the (mocked) selector modules.
-vi.mock('~/selectors/session', () => ({
+vi.mock('../../../../selectors/session', () => ({
   getNodeColorSelector: 'getNodeColorSelector',
   getNodeTypeDefinition: 'getNodeTypeDefinition',
   getPromptAdditionalAttributes: 'getPromptAdditionalAttributes',
   resolveNodeShape: () => 'circle',
 }));
 
-vi.mock('~/selectors/name-generator', () => ({
+vi.mock('../../../../selectors/name-generator', () => ({
   getNodeIconName: 'getNodeIconName',
 }));
 
-vi.mock('~/hooks/useStageSelector', () => ({
+vi.mock('../../../../hooks/useStageSelector', () => ({
   useStageSelector: (selector: unknown) => {
     switch (selector) {
       case 'getNodeColorSelector':

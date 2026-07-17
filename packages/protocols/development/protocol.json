@@ -1158,6 +1158,88 @@
           ]
         }
       }
+    },
+    {
+      "id": "network-composer-dev",
+      "type": "NetworkComposer",
+      "label": "Network Composer",
+      "subject": {
+        "entity": "node",
+        "type": "person_node_type"
+      },
+      "quickAdd": "name_variable",
+      "layoutVariable": "layout_variable",
+      "background": {
+        "concentricCircles": 4
+      }
+    },
+    {
+      "id": "geospatial-dev",
+      "type": "Geospatial",
+      "label": "Geospatial",
+      "subject": {
+        "entity": "node",
+        "type": "venue_node_type"
+      },
+      "mapOptions": {
+        "tokenAssetId": "mapbox_token",
+        "style": "mapbox://styles/mapbox/standard",
+        "center": [-74.0, 40.7],
+        "initialZoom": 10,
+        "dataSourceAssetId": "geo_data",
+        "color": "#3399ff",
+        "targetFeatureProperty": "name"
+      },
+      "prompts": [
+        {
+          "id": "geospatial-prompt-dev",
+          "text": "Where is this place located?",
+          "variable": "7316d500-6c1e-4188-a531-b2ef587721e0"
+        }
+      ]
+    },
+    {
+      "id": "family-pedigree-dev",
+      "type": "FamilyPedigree",
+      "label": "Family Pedigree",
+      "nodeConfig": {
+        "type": "family_member",
+        "nodeLabelVariable": "fm_name",
+        "egoVariable": "is_ego",
+        "relationshipVariable": "fm_relationship_to_ego",
+        "biologicalSexVariable": "biologicalSex"
+      },
+      "edgeConfig": {
+        "type": "family_edge",
+        "relationshipTypeVariable": "relationshipType",
+        "isActiveVariable": "isActive",
+        "isGestationalCarrierVariable": "isGestationalCarrier",
+        "gameteRoleVariable": "gameteRole"
+      },
+      "framing": {
+        "mode": "fixed",
+        "value": "gamete"
+      },
+      "boundaries": {
+        "requireGrandparents": "off",
+        "requireChildrenContributors": "off"
+      },
+      "censusPrompt": "Who is in your family?"
+    },
+    {
+      "id": "narrative-pedigree-dev",
+      "type": "NarrativePedigree",
+      "label": "Narrative Pedigree",
+      "sourceStageId": "family-pedigree-dev",
+      "diseases": [
+        {
+          "id": "disease-conditionx",
+          "label": "Condition X",
+          "color": "#cc0000",
+          "variable": "hasConditionX",
+          "inheritancePattern": "autosomalDominant"
+        }
+      ]
     }
   ],
   "codebook": {
@@ -1735,6 +1817,62 @@
             "type": "layout"
           }
         }
+      },
+      "family_member": {
+        "name": "family member",
+        "color": "node-color-seq-2",
+        "icon": "add-a-person",
+        "shape": { "default": "circle" },
+        "variables": {
+          "fm_name": {
+            "name": "fm_name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "unique": true
+            }
+          },
+          "is_ego": {
+            "name": "is_ego",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "fm_relationship_to_ego": {
+            "name": "fm_relationship_to_ego",
+            "type": "text",
+            "component": "Text"
+          },
+          "biologicalSex": {
+            "name": "biologicalSex",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "female",
+                "label": "Female"
+              },
+              {
+                "value": "male",
+                "label": "Male"
+              },
+              {
+                "value": "intersex",
+                "label": "Intersex or a variation in sex characteristics"
+              },
+              {
+                "value": "unknown",
+                "label": "Don’t know"
+              },
+              {
+                "value": "preferNotToSay",
+                "label": "Prefer not to say"
+              }
+            ]
+          },
+          "hasConditionX": {
+            "name": "hasConditionX",
+            "type": "boolean"
+          }
+        }
       }
     },
     "ego": {
@@ -2083,6 +2221,64 @@
       "visits_edge_type": {
         "name": "visits",
         "color": "edge-color-seq-3"
+      },
+      "family_edge": {
+        "name": "family_edge",
+        "color": "edge-color-seq-1",
+        "variables": {
+          "relationshipType": {
+            "name": "relationshipType",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "biological",
+                "label": "Biological"
+              },
+              {
+                "value": "social",
+                "label": "Social"
+              },
+              {
+                "value": "donor",
+                "label": "Donor"
+              },
+              {
+                "value": "surrogate",
+                "label": "Surrogate"
+              },
+              {
+                "value": "adoptive",
+                "label": "Adoptive"
+              },
+              {
+                "value": "partner",
+                "label": "Partner"
+              }
+            ]
+          },
+          "isActive": {
+            "name": "isActive",
+            "type": "boolean"
+          },
+          "isGestationalCarrier": {
+            "name": "isGestationalCarrier",
+            "type": "boolean"
+          },
+          "gameteRole": {
+            "name": "gameteRole",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "egg",
+                "label": "Egg"
+              },
+              {
+                "value": "sperm",
+                "label": "Sperm"
+              }
+            ]
+          }
+        }
       }
     }
   },
@@ -2131,6 +2327,16 @@
       "type": "image",
       "name": "quadrant.png",
       "source": "quadrant.png"
+    },
+    "mapbox_token": {
+      "name": "Mapbox Token",
+      "type": "apikey",
+      "value": "pk.eyJ1IjoibmV0d29ya2NhbnZhcyIsImEiOiJjbTZmaDJ0cTcwNTVpMmtvbDZhcXJneG1hIn0.wI5ooUHDWwFsH4jLXo3CVw"
+    },
+    "geo_data": {
+      "name": "Regions",
+      "type": "geojson",
+      "source": "regions.geojson"
     }
   },
   "description": "The Network Canvas development protocol is designed for our team to test new features. It is not intended for general use.",

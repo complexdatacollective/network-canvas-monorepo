@@ -7,6 +7,8 @@ import { globSync } from 'tinyglobby';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
+import { BUILD_GLOB_PATTERNS } from './scripts/exportsMap.mjs';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const srcRoot = resolve(here, 'src');
 
@@ -67,24 +69,18 @@ export default defineConfig({
       // still its own entry, so the 1:1 `dist/<path>.js` layout the package
       // exports map points at is preserved.
       input: Object.fromEntries(
-        globSync(
-          [
-            'src/**/*.{ts,tsx}',
-            '!src/**/*.{stories,test,spec}.{ts,tsx}',
-            // Story-only helpers (e.g. sliderTestHelpers) import `storybook/test`,
-            // which isn't externalized, so shipping them as entries inlines the
-            // whole test runtime (~874 kB) into dist. They're never imported from
-            // dist — only by *.stories.tsx, which resolve them from src.
-            '!src/**/*TestHelpers.{ts,tsx}',
-            '!src/**/__tests__/**',
+        // Story-only helpers (e.g. sliderTestHelpers) import `storybook/test`,
+        // which isn't externalized, so shipping them as entries inlines the
+        // whole test runtime (~874 kB) into dist. They're never imported from
+        // dist — only by *.stories.tsx, which resolve them from src.
+        globSync(BUILD_GLOB_PATTERNS, { cwd: here, absolute: true }).map(
+          (abs) => [
+            relative(srcRoot, abs)
+              .replace(/\\/g, '/')
+              .replace(/\.[jt]sx?$/, ''),
+            abs,
           ],
-          { cwd: here, absolute: true },
-        ).map((abs) => [
-          relative(srcRoot, abs)
-            .replace(/\\/g, '/')
-            .replace(/\.[jt]sx?$/, ''),
-          abs,
-        ]),
+        ),
       ),
       external: [externalRegex, /^node:/],
       output: {

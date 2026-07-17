@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { hashProtocol } from '../hashProtocol';
+import { hashProtocol } from '../hashProtocol.ts';
 
 describe('hashProtocol', () => {
   it('produces a stable string for the same codebook+stages', () => {

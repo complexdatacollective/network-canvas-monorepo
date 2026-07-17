@@ -1,7 +1,7 @@
 import { WifiOff } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
-import useOnline from '~/hooks/useOnline';
+import useOnline from '../hooks/useOnline';
 
 // Persistent banner shown while a Geospatial stage is on screen and the device
 // is offline. The map will not load without a connection, so this is a

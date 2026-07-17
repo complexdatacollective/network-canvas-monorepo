@@ -6,8 +6,6 @@ import { globSync } from 'tinyglobby';
 import { defineConfig, type Plugin } from 'vite';
 import dts from 'vite-plugin-dts';
 
-import pkg from './package.json' with { type: 'json' };
-
 // Tailwind v4 source CSS (`@source` directives, `@theme`, etc.) is meant to
 // reach the consumer's Tailwind compile untouched — routing it through Vite's
 // PostCSS pipe risks stripping or rewriting the directives. Mirror the
@@ -118,9 +116,6 @@ const addJsExtensionsToDeclarationSpecifiers = (content: string) =>
     );
 
 export default defineConfig({
-  resolve: {
-    tsconfigPaths: true,
-  },
   plugins: [
     interfaceImagesNoInlinePlugin(),
     react(),
@@ -141,9 +136,6 @@ export default defineConfig({
       }),
     cssCopyPlugin(),
   ],
-  define: {
-    __PACKAGE_VERSION__: JSON.stringify(pkg.version),
-  },
   // Emit asset URLs relative to the importing module rather than prefixed with
   // the default `/` base. The screenshots are referenced via
   // `new URL('./assets/…', import.meta.url)`, so a relative base keeps them

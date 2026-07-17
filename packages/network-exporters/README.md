@@ -449,21 +449,21 @@ This package lives in the `network-canvas-monorepo` and follows the standard scr
 
 ```bash
 # from monorepo root
-pnpm --filter @codaco/network-exporters build       # tsc --noEmit && vite build
+pnpm --filter @codaco/network-exporters build       # vite build
 pnpm --filter @codaco/network-exporters test        # vitest --run
 pnpm --filter @codaco/network-exporters test:watch
 pnpm --filter @codaco/network-exporters typecheck   # tsc --noEmit
-pnpm --filter @codaco/network-exporters dev         # vite build --watch
 ```
 
-The build emits `dist/<entry>.{js,d.ts}` per public sub-path defined in `vite.config.ts` and `package.json#exports`. All runtime dependencies (`effect`, `fflate`, `@codaco/shared-consts`, `@codaco/protocol-validation`, `es-toolkit`, `sanitize-filename`, `zod`, `@xmldom/xmldom`, `ohash`) are externalised at build time.
+Internal consumers resolve `package.json#exports` directly against `src/*.ts` — no build step is required to pick up source changes. The `build` script still runs `vite build`, which emits `dist/<entry>.{js,d.ts}` per public sub-path defined in `vite.config.ts`; that output is consumed only by the published npm artifact, via `package.json#publishConfig.exports` swapped in at pack time. All runtime dependencies (`effect`, `fflate`, `@codaco/shared-consts`, `@codaco/protocol-validation`, `es-toolkit`, `sanitize-filename`, `zod`, `@xmldom/xmldom`, `ohash`) are externalised at build time.
 
 ### Adding a new entry point
 
 1. Add the source file under `src/<path>.ts`.
-2. Add the entry to `vite.config.ts` `build.lib.entry`.
-3. Add the corresponding sub-path to `package.json#exports`.
-4. Run `pnpm --filter @codaco/network-exporters build` and verify a matching `dist/<path>.js` + `.d.ts` lands.
+2. Add the entry to `vite.config.ts` `build.lib.entry` (needed for the published `dist/` build).
+3. Add the corresponding sub-path to `package.json#exports`, pointing at the new `src/<path>.ts` file.
+4. Add the matching sub-path to `package.json#publishConfig.exports`, pointing at `./dist/<path>.js`/`.d.ts`, so the published artifact keeps exposing it.
+5. Run `pnpm --filter @codaco/network-exporters build` and verify a matching `dist/<path>.js` + `.d.ts` lands (this validates the publish artifact only — internal consumers already see the new entry via `src/`).
 
 ### Adding a runtime dependency
 

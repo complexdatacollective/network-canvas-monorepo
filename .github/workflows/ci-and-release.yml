@@ -146,7 +146,7 @@ jobs:
 
   # Decides per suite whether release E2E must run for this ref: each release
   # lane requires only the suites whose subject package ships in its deploy,
-  # and a merge-group run skips suites already validated by the dispatched run
+  # and a merge-group run skips suites already validated by the native PR run
   # on an identical tree (see scripts/release-e2e-policy.mjs).
   e2e-policy:
     if: github.event_name != 'push'
@@ -322,9 +322,12 @@ jobs:
   # fan-out of independent sub-jobs behind the `quality` aggregator below, so
   # they run in parallel runners instead of one after another. Sub-jobs
   # deliberately do NOT `needs: detect` so they still run under `merge_group`
-  # (where `detect` is skipped). `typecheck`/`test` restore `build`'s output via
-  # their own `^build` dependency; `lint` needs it too (below) because oxlint's
-  # type-aware rules resolve workspace imports through built `.d.ts` files.
+  # (where `detect` is skipped). `build`/`typecheck`/`test`/`lint` are now
+  # independent: workspace packages are consumed as raw `src` (exports point at
+  # source), so typecheck/test/lint resolve dependency types directly and need
+  # neither the `build` job nor any restored `.d.ts`. Because they no longer
+  # build, this seed job runs `build` explicitly so the release and app-deploy
+  # jobs still find a warm `build` cache on main.
   seed-turbo-cache:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Cache warming only — the merge queue already validated this identical
@@ -348,10 +351,9 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
-      - run: pnpm exec turbo run test typecheck
+      - run: pnpm exec turbo run build test typecheck
 
   lint:
-    needs: build
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
@@ -359,10 +361,9 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
-      # Restore the shared-package builds (cache hit from the `build` job) so
-      # oxlint-tsgolint has the workspace types; otherwise it emits false-positive
-      # type errors (`//#lint` has no `^build` dependency of its own).
-      - run: pnpm exec turbo run build --filter='./packages/*'
+      # oxlint-tsgolint's type-aware rules resolve workspace types directly from
+      # each package's `src` (exports point at source), so no built `.d.ts` is
+      # needed and the job runs without a prior package build.
       - run: pnpm exec turbo run //#lint
 
   knip:
@@ -407,7 +408,6 @@ jobs:
         run: pnpm exec turbo run build --filter='./packages/*'
 
   typecheck:
-    needs: build
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
@@ -418,7 +418,6 @@ jobs:
       - run: pnpm exec turbo run typecheck
 
   test:
-    needs: build
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
@@ -678,6 +677,23 @@ jobs:
       slug: ${{ steps.meta.outputs.slug }}
       snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
     steps:
+      - name: Ensure workspace is a healthy git repo
+        # On the self-hosted runner the workspace persists between jobs, and a
+        # job cancelled mid-checkout can leave it without a usable .git;
+        # actions/checkout then hard-fails ("--local can only be used inside a
+        # git repository") on every subsequent run until the directory is
+        # wiped (observed 2026-07-16). If the workspace is non-empty but not a
+        # valid repo, wipe it so checkout falls back to a fresh clone. The
+        # chown reuses the runner's scoped sudo rule to make root-owned
+        # leftovers (Dockerized runs execute as container root) deletable.
+        # No-op on ephemeral GitHub-hosted VMs: the directory starts empty.
+        run: |
+          if [ -n "$(ls -A . 2>/dev/null)" ] \
+            && ! git rev-parse --resolve-git-dir "$PWD/.git" >/dev/null 2>&1; then
+            echo "workspace is not a valid git repo — wiping for a fresh checkout"
+            sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
+            find . -mindepth 1 -delete
+          fi
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           # The Dockerized test run mounts the workspace; don't leave the
@@ -966,7 +982,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm-publish
     permissions:
-      actions: write
       contents: write
       pull-requests: write
       id-token: write
@@ -983,6 +998,13 @@ jobs:
         # publishes to npm. Apps (./apps/*) are private:true and don't need to
         # build successfully here; their deploy pipeline is per-app deploy jobs.
         run: pnpm exec turbo run build --filter='./packages/*'
+      - name: Verify publish exports
+        # Internal consumption reads each package's `src`; npm tarballs must ship
+        # `dist` via pnpm's publishConfig field-swap. Pack each publishable
+        # package and assert no packed export/main/module/types path points into
+        # `src` and every referenced file exists — guarding the swap before the
+        # changesets/action publish below.
+        run: node scripts/verify-publish-exports.mjs
       - name: Hide gated-product changesets from the library release
         # Product changesets persist until their release PR consumes them, but
         # changesets/action counts them as pending: it would push an empty
@@ -996,13 +1018,11 @@ jobs:
           publish: pnpm run publish-packages
           createGithubReleases: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A fine-grained PAT makes the generated PR's pull_request event run
+          # normally. GITHUB_TOKEN-created PR events always require manual
+          # workflow approval, which previously forced a duplicate dispatch.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
-      - name: Run CI on the Version Packages branch
-        if: steps.changesets.outputs.hasChangesets == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run ci-and-release.yml --ref changeset-release/main
 
   # Maintains one gated release PR per product (siblings of the library "Version
   # Packages" PR). On every push to main each matrix entry re-runs the version
@@ -1033,7 +1053,6 @@ jobs:
       group: product-release-pr-${{ matrix.slug }}
       cancel-in-progress: false
     permissions:
-      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -1060,20 +1079,15 @@ jobs:
         id: product_pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
+          # Use the dedicated PAT so the generated PR triggers its native
+          # pull_request CI run without an approval prompt.
+          token: ${{ secrets.RELEASE_PR_TOKEN }}
           branch: changeset-release/${{ matrix.slug }}
           base: main
           delete-branch: true
           title: 'Release ${{ matrix.product }}'
           commit-message: 'chore(release): version ${{ matrix.slug }}'
           body-path: ${{ runner.temp }}/product-release-body.md
-      - name: Run CI on the ${{ matrix.product }} release branch
-        if: >-
-          ${{ steps.product_pr.outputs['pull-request-operation'] == 'created'
-          || steps.product_pr.outputs['pull-request-operation'] == 'updated' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_REF: changeset-release/${{ matrix.slug }}
-        run: gh workflow run ci-and-release.yml --ref "$RELEASE_REF"
 
   # On a push to main that changes a gated product version (i.e. one product's
   # release PR just merged), detect which product moved. Idempotency is a local

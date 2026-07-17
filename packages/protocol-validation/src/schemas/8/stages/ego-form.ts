@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
-import { IntroductionPanelSchema, TitlelessFormSchema } from '../common';
-import { baseStageSchema } from './base';
+import {
+  IntroductionPanelSchema,
+  TitlelessFormSchema,
+} from '../common/index.ts';
+import { baseStageSchema } from './base.ts';
 
 export const egoFormStage = baseStageSchema.extend({
   type: z.literal('EgoForm'),

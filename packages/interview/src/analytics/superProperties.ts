@@ -1,3 +1,4 @@
+import { version } from '../../package.json';
 import type {
   InterviewAnalyticsMetadata,
   InterviewPayload,
@@ -11,7 +12,7 @@ export function computeSuperProperties(
   const props: SuperProperties = {
     [SUPER_PROPS.APP]: metadata.hostApp,
     [SUPER_PROPS.INSTALLATION_ID]: metadata.installationId,
-    [SUPER_PROPS.PACKAGE_VERSION]: __PACKAGE_VERSION__,
+    [SUPER_PROPS.PACKAGE_VERSION]: version,
     [SUPER_PROPS.PROTOCOL_HASH]: payload.protocol.hash,
   };
   if (metadata.hostVersion !== undefined) {

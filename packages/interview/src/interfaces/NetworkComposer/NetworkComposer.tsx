@@ -12,26 +12,26 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import CanvasBackgroundImage from '~/canvas/CanvasBackgroundImage';
-import ConvexHullLayer from '~/canvas/ConvexHullLayer';
-import { useAutoLayout } from '~/canvas/useAutoLayout';
-import { createCanvasStore } from '~/canvas/useCanvasStore';
-import ConcentricCircles from '~/components/ConcentricCircles';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
-import { useAssetUrl } from '~/hooks/useAssetUrl';
-import { useNodeMeasurement } from '~/hooks/useNodeMeasurement';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import type { Subject } from '~/selectors/forms';
+
+import CanvasBackgroundImage from '../../canvas/CanvasBackgroundImage';
+import ConvexHullLayer from '../../canvas/ConvexHullLayer';
+import { useAutoLayout } from '../../canvas/useAutoLayout';
+import { createCanvasStore } from '../../canvas/useCanvasStore';
+import ConcentricCircles from '../../components/ConcentricCircles';
+import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { useAssetUrl } from '../../hooks/useAssetUrl';
+import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
+import { useStageSelector } from '../../hooks/useStageSelector';
+import type { Subject } from '../../selectors/forms';
 import {
   getNetworkEdges,
   getNetworkNodesForType,
   getStageMetadata,
-} from '~/selectors/session';
-import { getCodebook } from '~/store/modules/protocol';
-import { updateNode, updateStageMetadata } from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
-import type { StageProps } from '~/types';
-
+} from '../../selectors/session';
+import { getCodebook } from '../../store/modules/protocol';
+import { updateNode, updateStageMetadata } from '../../store/modules/session';
+import { useAppDispatch } from '../../store/store';
+import type { StageProps } from '../../types';
 import ComposerCanvas, { type NodeTapModifiers } from './ComposerCanvas';
 import ComposerDrawer from './ComposerDrawer';
 import { nextGridPosition } from './gridPlacement';

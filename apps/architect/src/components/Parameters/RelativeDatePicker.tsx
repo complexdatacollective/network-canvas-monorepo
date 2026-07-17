@@ -3,7 +3,7 @@ import type { ComponentType } from 'react';
 import { useState } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
-import { change, Field, formValueSelector } from 'redux-form';
+import { change, formValueSelector } from 'redux-form';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -73,28 +73,36 @@ const RelativeDatePickerParameters = ({
         Days before is the number of days prior to the anchor date that can be
         selected from. Defaults to 180 days if left blank.
       </Paragraph>
-      <Field
+      <ValidatedField
         label="Days before"
         component={FrescoReduxField}
         name={`${name}.before`}
-        placeholder="180"
-        fieldComponent={FrescoInputField}
-        type="number"
-        {...reduxIntegerValue}
+        validation={{ minValue: 0 }}
+        componentProps={{
+          placeholder: '180',
+          fieldComponent: FrescoInputField,
+          type: 'number',
+          min: 0,
+          ...reduxIntegerValue,
+        }}
       />
       <Heading level="h4">Days After</Heading>
       <Paragraph>
         Days after is the number of days after the anchor date that can be
         selected from. Defaults to 0 days if left blank.
       </Paragraph>
-      <Field
+      <ValidatedField
         label="Days after"
         component={FrescoReduxField}
         name={`${name}.after`}
-        placeholder="0"
-        fieldComponent={FrescoInputField}
-        type="number"
-        {...reduxIntegerValue}
+        validation={{ minValue: 0 }}
+        componentProps={{
+          placeholder: '0',
+          fieldComponent: FrescoInputField,
+          type: 'number',
+          min: 0,
+          ...reduxIntegerValue,
+        }}
       />
     </>
   );

@@ -2,6 +2,7 @@
 'use no memo';
 
 import { Toast } from '@base-ui/react/toast';
+import type { Store } from '@reduxjs/toolkit';
 import { AnimatePresence, motion } from 'motion/react';
 import type { PostHog } from 'posthog-js';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
@@ -32,12 +33,22 @@ import type {
 } from './contract/types';
 import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
-import { store } from './store/store';
+import { store, type RootState } from './store/store';
 import {
   InterviewToastProvider,
   InterviewToastViewport,
 } from './toast/InterviewToast';
 import { interviewToastManager } from './toast/interviewToastManager';
+
+// `interface` is required (not `type`) so this declaration MERGES with the
+// global Window from lib.dom.d.ts instead of replacing it. Exposes the live
+// Redux store to Playwright e2e tests (see the effect below).
+declare global {
+  // oxlint-disable-next-line typescript/consistent-type-definitions -- declaration merging with the global Window requires `interface`, not `type`
+  interface Window {
+    __interviewStore?: Store<RootState>;
+  }
+}
 
 const variants = {
   initial: { opacity: 0 },

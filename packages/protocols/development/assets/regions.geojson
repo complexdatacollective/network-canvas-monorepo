@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Downtown" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-74.02, 40.7],
+            [-73.98, 40.7],
+            [-73.98, 40.73],
+            [-74.02, 40.73],
+            [-74.02, 40.7]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Uptown" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-73.98, 40.75],
+            [-73.94, 40.75],
+            [-73.94, 40.78],
+            [-73.98, 40.78],
+            [-73.98, 40.75]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import migrationV3toV4 from '../migration';
+import migrationV3toV4 from '../migration.ts';
 
 describe('Migration V3 to V4', () => {
   const makeProtocol = (overrides: Record<string, unknown> = {}) => ({

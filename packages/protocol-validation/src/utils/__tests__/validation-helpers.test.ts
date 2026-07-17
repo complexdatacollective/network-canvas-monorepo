@@ -1,7 +1,7 @@
 // @ts-nocheck - This test file uses mock data that doesn't conform to strict types
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '../test-utils';
+import { createBaseProtocol } from '../test-utils.ts';
 import {
   createValidationMessage,
   entityExists,
@@ -15,7 +15,7 @@ import {
   getVariablesForSubject,
   variableExists,
   variableHasType,
-} from '../validation-helpers';
+} from '../validation-helpers.ts';
 
 /**
  * Tests for validation helper functions used in superrefine validation

@@ -6,7 +6,7 @@ import {
   asEntityAttributeReference,
   entityAttributeReference,
   getEntityAttributeReferenceDescriptor,
-} from '../entity-attribute-reference';
+} from '../entity-attribute-reference.ts';
 
 describe('entityAttributeReference', () => {
   it('exports the marker constant', () => {

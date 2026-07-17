@@ -15,8 +15,8 @@ Storage is Dexie 4 / IndexedDB, encrypted at rest by an in-app Web Crypto vault 
 All commands run from this directory unless noted. The monorepo-wide `pnpm lint` / `pnpm typecheck` from the repo root also cover this app.
 
 ```bash
-pnpm dev              # Vite dev server (self-routes through turbo for workspace deps)
-pnpm build            # production build + PWA integrity check (turbo-wrapped)
+pnpm dev              # Vite dev server (workspace deps consumed as raw src, no build step)
+pnpm build            # production build + PWA integrity check (node scripts/build.mjs)
 pnpm preview           # preview the production build locally
 pnpm typecheck         # tsc --build --noEmit
 pnpm test              # vitest run --project=unit

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { VariableType } from './variables/types';
+import type { VariableType } from './variables/types.ts';
 
 export const ENTITY_ATTRIBUTE_REFERENCE = 'entityAttributeReference' as const;
 
