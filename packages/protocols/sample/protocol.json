@@ -422,9 +422,9 @@
     },
     "ed673344-caac-4702-b029-7fa4b842af75": {
       "id": "ed673344-caac-4702-b029-7fa4b842af75",
-      "name": "political-compass@4x.png",
+      "name": "responsive-political-compass.svg",
       "type": "image",
-      "source": "2946e670-3e45-11eb-ac1c-7b8de3fada93.png"
+      "source": "2946e670-3e45-11eb-ac1c-7b8de3fada93.svg"
     },
     "9e85e738-ebd3-40d5-952e-62f6aef95615": {
       "id": "9e85e738-ebd3-40d5-952e-62f6aef95615",
@@ -864,7 +864,7 @@
         {
           "id": "dab3ed09-8b8b-4bd0-a9aa-550e29fac2c4",
           "type": "text",
-          "content": "The next interface we will introduce is the **Sociogram**. Participants use this interface to position their alters on the screen, create ties between them, and to nominate alters as having a given attribute. \n\nOn the next two screens you will be asked to position alters onto the Sociogram screen, first onto a default image of concentric circles, placing folks who know each other closer together and those who do not know each other farther away. On the second screen, you will see an example of a customized background image, using the political compass diagram. We included this image by adding it as a resource when we were building the protocol within Architect. This allows the researcher immense flexibility in how the Sociogram might be utilized. "
+          "content": "The next interface we will introduce is the **Sociogram**. Participants use this interface to position their alters on the screen, create ties between them, and to nominate alters as having a given attribute. \n\nOn the next two screens you will be asked to position alters onto the Sociogram screen, first onto a default image of concentric circles, placing folks who know each other closer together and those who do not know each other farther away. On the second screen, you will see an example of a customized responsive background image, using the political compass diagram. We included this image by adding it as a resource when we were building the protocol within Architect. This allows the researcher immense flexibility in how the Sociogram might be utilized. "
         },
         {
           "id": "6acf6657-b16a-4ac2-bca9-50a831ff83c3",

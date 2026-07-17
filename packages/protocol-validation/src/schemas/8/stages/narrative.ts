@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { canvasBehavioursSchema } from '../common/behaviours.ts';
-import { NodeStageSubjectSchema } from '../common/index.ts';
+import {
+  imageOrCirclesBackgroundSchema,
+  NodeStageSubjectSchema,
+} from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { FilterSchema } from '../filters/index.ts';
@@ -47,9 +50,6 @@ export const narrativeStage = baseStageSchema.extend({
         });
       }
     }),
-  background: z.strictObject({
-    concentricCircles: z.number().int().nonnegative(),
-    skewedTowardCenter: z.boolean().optional(),
-  }),
+  background: imageOrCirclesBackgroundSchema,
   behaviours: canvasBehavioursSchema,
 });

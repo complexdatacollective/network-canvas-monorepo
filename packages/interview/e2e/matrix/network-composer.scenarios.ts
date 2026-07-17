@@ -5,9 +5,14 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { NetworkComposerFixture } from '../fixtures/network-composer-fixture.js';
-import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
+import { expectResponsiveCanvasBackgroundImage } from '../helpers/canvas-background-image.js';
 import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
+
+const BACKGROUND_IMAGE_FIXTURE = path.resolve(
+  import.meta.dirname,
+  '../../../../apps/documentation/public/assets/responsive-svg-background.svg',
+);
 
 /** Narrow an unknown attribute value to a canvas {x,y} position. */
 function isPosition(value: unknown): value is { x: number; y: number } {
@@ -42,8 +47,8 @@ const backgroundImageAsset: SyntheticAssetSpec = {
   assetId: 'network-composer-bg-1',
   name: 'Background',
   type: 'image',
-  source: 'quadrant.png',
-  localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
+  source: 'responsive-svg-background.svg',
+  localPath: BACKGROUND_IMAGE_FIXTURE,
 };
 const drawRefs = { friendship: '' };
 const multiEdgeRefs = { friendship: '', advice: '', reciprocated: '' };
@@ -580,9 +585,12 @@ export const networkComposerScenarios: InterfaceScenarios = {
       },
       run: async ({ page }) => {
         const composer = new NetworkComposerFixture(page);
-        const img = composer.root.locator('img[alt="Background"]');
+        const img = composer.root.locator('img[alt=""]');
         await expect(img).toBeVisible();
-        await expect(img).toHaveAttribute('src', /quadrant\.png/);
+        await expect(img).toHaveAttribute(
+          'src',
+          /responsive-svg-background\.svg/,
+        );
         // Actually loaded from the asset server, not a broken image.
         await expect
           .poll(() =>
@@ -595,6 +603,8 @@ export const networkComposerScenarios: InterfaceScenarios = {
         // background.image wins: it replaces ConcentricCircles rather than
         // layering with it.
         await expect(composer.backgroundCircles).toHaveCount(0);
+
+        await expectResponsiveCanvasBackgroundImage(page, img);
 
         // The image does not intercept pointer events: the add-node popover
         // still opens on top of it.

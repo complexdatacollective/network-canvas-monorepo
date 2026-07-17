@@ -1,15 +1,17 @@
+import path from 'node:path';
+
 import { expect, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 
-// A tiny (4x4, 74-byte) raw-RGB PNG committed at this path purely so the
-// dropzone has a real file to import — its pixel content is irrelevant, only
-// that it satisfies `.png`'s entry in SUPPORTED_EXTENSION_TYPE_MAP
-// (~/config/index.ts). importAssetAsync (assetManifest.ts) names the
-// resulting asset after `file.name`, so the imported asset is always listed
-// as "test-image.png".
-const TEST_IMAGE_PATH = 'e2e/fixtures/files/test-image.png';
-const TEST_IMAGE_NAME = 'test-image.png';
+// Use the same responsive SVG that readers can download from the documentation
+// article. This proves the Architect dropzone accepts `.svg` as an image
+// resource and keeps the tested fixture aligned with the documented example.
+const TEST_IMAGE_PATH = path.resolve(
+  import.meta.dirname,
+  '../../../documentation/public/assets/responsive-svg-background.svg',
+);
+const TEST_IMAGE_NAME = 'responsive-svg-background.svg';
 
 type AssetManifestEntry = { name: string };
 

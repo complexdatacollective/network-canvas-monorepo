@@ -16,6 +16,8 @@ const BLOCK_COMPONENTS = new Set([
   'appcompatibilitytable',
   'appswitch',
   'apponly',
+  'responsivesvgpreview',
+  'coordinateclassificationexample',
 ]);
 
 const isMeaningful = (child: Node) =>

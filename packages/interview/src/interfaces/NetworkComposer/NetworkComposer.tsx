@@ -14,11 +14,10 @@ import {
 } from '@codaco/shared-consts';
 
 import ConvexHullLayer from '../../canvas/ConvexHullLayer';
+import StageBackground from '../../canvas/StageBackground';
 import { useAutoLayout } from '../../canvas/useAutoLayout';
 import { createCanvasStore } from '../../canvas/useCanvasStore';
-import ConcentricCircles from '../../components/ConcentricCircles';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
-import { useAssetUrl } from '../../hooks/useAssetUrl';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import type { Subject } from '../../selectors/forms';
@@ -69,7 +68,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   // Background Configuration
   const stageBackground = stage.background;
-  const { url: backgroundImage } = useAssetUrl(stageBackground.image);
 
   // Automatic layout is an interview-time choice, not a fixed stage config. The
   // schema's automaticLayout boolean only seeds the initial value; the
@@ -480,25 +478,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     return [];
   })();
 
-  // Branch on the schema's image/circles union: in the circles variant
-  // concentricCircles is proven present. An image renders nothing until its
-  // asset URL resolves.
-  const background =
-    stageBackground.image !== undefined ? (
-      backgroundImage ? (
-        <img
-          src={backgroundImage}
-          className="size-full object-cover"
-          alt="Background"
-        />
-      ) : null
-    ) : (
-      <ConcentricCircles
-        n={stageBackground.concentricCircles}
-        skewed={stageBackground.skewedTowardCenter}
-      />
-    );
-
   const simulationHandlers =
     layoutMode === 'AUTOMATIC'
       ? {
@@ -571,7 +550,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     // tabIndex makes the div focusable so keydown events reach it.
     <div
       ref={rootRef}
-      className="interface relative h-dvh overflow-hidden"
+      className={`interface relative h-full overflow-hidden${
+        stageBackground.image === undefined ? '' : ' p-0'
+      }`}
       data-testid="network-composer"
       data-layout-mode={layoutMode}
       tabIndex={-1}
@@ -618,7 +599,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         composerStore={composerStore}
         nodes={nodes}
         edges={edges}
-        background={background}
+        background={<StageBackground background={stageBackground} />}
         hulls={hulls}
         lassoInSelectMode={groupVariable !== null}
         simulation={simulationHandlers}

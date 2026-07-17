@@ -456,6 +456,24 @@ describe('Narrative preset label non-empty', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('accepts an image background', () => {
+    const result = narrativeStage.safeParse({
+      ...baseStage,
+      background: { image: 'background-image' },
+      presets: [{ id: 'preset1', label: 'Overview', layoutVariable: 'pos' }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a background with both an image and concentric circles', () => {
+    const result = narrativeStage.safeParse({
+      ...baseStage,
+      background: { image: 'background-image', concentricCircles: 4 },
+      presets: [{ id: 'preset1', label: 'Overview', layoutVariable: 'pos' }],
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('Side panel title non-empty', () => {

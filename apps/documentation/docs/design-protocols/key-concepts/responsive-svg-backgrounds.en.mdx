@@ -1,0 +1,369 @@
+---
+title: Responsive SVG Backgrounds
+---
+
+<Definition>
+  An SVG is an image made from shapes, lines, and text rather than a fixed grid
+  of pixels. A responsive SVG rearranges those elements to fit the available
+  canvas in both portrait and landscape orientations.
+</Definition>
+
+## Why use a responsive background?
+
+A canvas background can be part of the measurement instrument. It might divide
+a Sociogram into social contexts, show two independent dimensions, or provide
+regions that give spatial placement a specific meaning.
+
+Ordinary PNG and JPEG images have a fixed shape. Network Canvas shows the whole
+image without cropping it, so an image designed for a landscape screen will
+leave empty space when it is shown on a portrait screen.
+
+A responsive SVG behaves differently. Its lines and labels are positioned
+relative to the available canvas, allowing the layout to expand in both
+directions. Text remains readable rather than being stretched with the rest of
+the image.
+
+## Is a responsive SVG appropriate for your measure?
+
+Responsive backgrounds are most appropriate when horizontal and vertical
+positions represent separate dimensions, or when regions should always extend
+to the edges of the canvas.
+
+| Research design                                                             | Recommended approach                                     |
+| --------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Two independent axes, quadrants, categories, or social contexts             | Use a responsive SVG                                     |
+| Relative horizontal and vertical positions will be analysed independently   | Use a responsive SVG                                     |
+| Euclidean distance, angle, or the shape of a circle has substantive meaning | Use a contained image or keep devices in one orientation |
+| A photograph, map, anatomical diagram, or other image must not be distorted | Use a contained image                                    |
+
+This distinction matters analytically. A responsive background preserves each
+position as a proportion of the horizontal and vertical space, but it does not
+preserve angles or distances when the screen changes shape. For example,
+concentric circles would become ellipses in portrait mode and should therefore
+remain a contained image.
+
+## Start with the template
+
+You do not need to create an SVG from scratch. The easiest approach is to
+download this template and replace its four labels with terms from your own
+study.
+
+<ResponsiveSvgPreview src="/assets/responsive-svg-background.svg" alt="A transparent social-context map with areas for family, friends, work or study, and community"></ResponsiveSvgPreview>
+
+<DownloadLink href="/assets/responsive-svg-background.svg">
+  Download the responsive social-context template
+</DownloadLink>
+
+The template uses a contextual name-generator example. [Bidart and Charbonneau
+describe a contextual name
+generator](https://journals.sagepub.com/doi/10.1177/1525822X11408513) for
+building a broad view of someone's network from the social contexts of everyday
+life.
+
+The four example areas—Family, Friends, Work or study, and Community—are only
+illustrative. Contexts are not necessarily exhaustive or mutually exclusive. A
+person may be both a friend and a coworker, so your prompt should explain how
+participants should handle overlaps.
+
+## Adapt the template for your study
+
+### 1. Plan the spatial task
+
+Before editing the image, write down what placement in each region will mean.
+Keep labels short and use the same terms in the stage instructions. Consider:
+
+- whether regions overlap conceptually;
+- whether participants can use an “other” or “unsure” area;
+- whether placement within a region has additional meaning;
+- how nodes placed near a boundary should be interpreted; and
+- whether the resulting positions will be analysed as categories, coordinates,
+  or both.
+
+### 2. Download and copy the template
+
+Download the template above and keep the original unchanged. Make a copy with a
+descriptive name such as `support-contexts.svg`.
+
+The `.svg` ending is important. It tells Architect and the operating system that
+the file is an SVG image.
+
+### 3. Change the labels
+
+An SVG is an image, but its labels are stored as ordinary words inside the file.
+You can change them with a plain-text editor:
+
+- **Windows:** Notepad
+- **macOS:** TextEdit, after choosing **Format → Make Plain Text**
+- **Linux:** a plain-text editor such as Gedit or Kate
+
+Open the copied SVG. It will look unfamiliar because you are seeing the
+instructions used to draw the image. You only need to use **Find and Replace**
+to change these visible terms:
+
+| Find        | Replace with                          |
+| ----------- | ------------------------------------- |
+| `Family`    | Your first context                    |
+| `Friends`   | Your second context                   |
+| `Work or`   | The first line of your third context  |
+| `study`     | The second line of your third context |
+| `Community` | Your fourth context                   |
+
+Do not change punctuation or symbols such as `<`, `>`, `"`, `/`, `=`, or `%`.
+Save the file as plain text using UTF-8 encoding, and make sure its name still
+ends in `.svg` rather than `.svg.txt`.
+
+<TipBox danger>
+
+Do not edit the SVG in Microsoft Word, Apple Pages, Google Docs, or another word
+processor. These applications add document formatting that will stop the file
+from working as an image.
+
+</TipBox>
+
+### 4. Add the background in Architect
+
+1. Open the Narrative, Network Composer, or Sociogram stage that will use the
+   background.
+2. In the **Background** section, choose **Image**.
+3. Browse for your edited `.svg` file, or select it from the resource library
+   if you have already added it.
+4. Write stage instructions that explain the meaning of the regions or axes.
+   The background should reinforce those instructions, not replace them.
+5. Open [Preview Mode](/en/design-protocols/key-concepts/preview-mode) and
+   inspect the stage in portrait and landscape orientations.
+
+## Classify nodes from their coordinates
+
+When a participant positions a node, Network Canvas stores the center of that
+node as two normalized coordinates in the prompt's layout variable:
+
+- `x = 0` is the left edge and `x = 1` is the right edge.
+- `y = 0` is the top edge and `y = 1` is the bottom edge.
+
+The downward direction of the y-axis is worth noting because it is the opposite
+of a conventional Cartesian graph.
+
+When exporting data, leave **Use screen layout coordinates** disabled. The
+normalized values are device-independent and correspond directly to the
+percentage positions used by a responsive SVG. See [Data
+Export](/en/analyze-data/data-export#use-screen-layout-coordinates) for more
+about this option.
+
+In a CSV export, a layout variable called `box_layout` produces columns called
+`box_layout_x` and `box_layout_y`. Nodes that were not placed have missing
+values. GraphML exports contain the equivalent `_X` and `_Y` values.
+
+### Apply the template's quadrant rules
+
+The template divides the canvas at 50% in both directions. This is equivalent to
+cutting the normalized coordinates at `0.5`.
+
+| Quadrant    | Template label | Coordinate rule         |
+| ----------- | -------------- | ----------------------- |
+| Upper-left  | Family         | `x < 0.5` and `y < 0.5` |
+| Upper-right | Friends        | `x > 0.5` and `y < 0.5` |
+| Lower-left  | Work or study  | `x < 0.5` and `y > 0.5` |
+| Lower-right | Community      | `x > 0.5` and `y > 0.5` |
+
+For example, a node at `(0.25, 0.33)` is in the upper-left quadrant. A node at
+`(0.75, 0.67)` is in the lower-right quadrant.
+
+### Decide how to treat boundaries
+
+A node can be centered exactly on an axis or close enough that its visual area
+overlaps two regions. Specify this case before analysis rather than assigning it
+silently.
+
+One approach is to define a boundary tolerance. A tolerance of `0.02` classifies
+any node within two percentage points of either axis as **Boundary**:
+
+Choose R or Python below to see how to create a `context` column from the
+exported coordinates. The R example is shown by default.
+
+<CoordinateClassificationExample />
+
+Choose the tolerance based on node size, screen size, the instructions given to
+participants, and the substantive meaning of the boundary. Alternatives include
+assigning axis values consistently to one side or reviewing boundary cases
+manually.
+
+### Use other boundaries
+
+For a custom responsive SVG, divide the percentage shown in the image source by
+100 to obtain the normalized cutpoint. A vertical boundary at 60%, for example,
+corresponds to `x = 0.60`.
+
+This direct conversion works because the responsive regions span the same canvas
+used for node coordinates. It does not apply without adjustment when an
+ordinary image is contained inside the canvas with empty bands around it.
+
+If several prompts should produce separate spatial measures, give each prompt a
+different layout variable. Reusing a layout variable causes later positioning
+to replace the earlier coordinates.
+
+## Changing more than the labels
+
+The template is designed to make simple wording changes safe. Changing the
+number of regions, adding colored areas, moving boundaries, or creating a new
+layout requires more care.
+
+You can sketch the intended layout in a familiar drawing application and give
+the sketch, labels, and the [technical handoff checklist](#technical-handoff-checklist)
+below to a designer or technical collaborator. The downloadable template gives
+them a working example to follow.
+
+If you use a graphics editor yourself, keep two files:
+
+1. an **editable master**, which you continue to change in the graphics editor;
+   and
+2. a **responsive export**, which you add to Architect.
+
+Do not reopen and save the responsive export in the graphics editor. Many
+editors restore a fixed page shape when saving, which can remove the responsive
+behavior.
+
+## Adobe Illustrator
+
+Adobe Illustrator is useful for designing the visual layout, choosing colors,
+and positioning labels. Adobe's [responsive SVG export
+tutorial](https://www.adobe.com/learn/illustrator/web/export-css?ntd=1)
+describes the relevant export option.
+
+1. Create the artwork on an artboard with any convenient dimensions.
+2. Draw lines and regions all the way to the appropriate artboard edges.
+3. Keep labels as editable text. Do not choose **Create Outlines** for the
+   labels.
+4. Do not draw a page-sized background rectangle if the Interface theme should
+   remain visible.
+5. Choose **File → Export → Export As**, select **SVG**, enable **Use
+   Artboards**, and choose the **Responsive** option.
+6. Keep the Illustrator file as your editable master.
+7. Have the exported SVG prepared using the
+   [technical handoff checklist](#technical-handoff-checklist) before importing
+   it into Architect.
+
+Illustrator's **Responsive** option is a useful starting point, but it does not
+by itself produce the special edge-to-edge behavior required here. The exported
+file still needs percentage-based positions and must not have a fixed page
+proportion.
+
+## Inkscape
+
+Inkscape is a free application for designing SVG images. Its [Document
+Properties
+guide](https://inkscape-manuals.readthedocs.io/en/latest/managing-workspace.html#document-properties-dialog)
+explains how to manage the page and its background.
+
+1. Create a page of any convenient size using **File → Document Properties**.
+2. Leave the page transparent unless an opaque background is part of the
+   research design.
+3. Draw lines and regions to the appropriate page edges.
+4. Keep labels as text. Do not use **Object to Path** on them.
+5. Save the editable master as an **Inkscape SVG**.
+6. Choose **File → Save a Copy** and save a **Plain SVG**, as described in
+   Inkscape's [saving
+   guide](https://inkscape-manuals.readthedocs.io/en/latest/saving.html).
+7. Have the Plain SVG prepared using the
+   [technical handoff checklist](#technical-handoff-checklist) before importing
+   it into Architect.
+
+For minor wording changes, editing the downloadable template is safer than
+opening and resaving it in Inkscape.
+
+## Technical handoff checklist
+
+This section is intended for a designer, developer, or researcher who is
+comfortable inspecting SVG source. It is not necessary when you only replace
+the labels in the supplied template.
+
+A responsive Network Canvas background should:
+
+- set the outer SVG width and height to `100%`;
+- omit the outer `viewBox`, so the image has no fixed proportion;
+- position boundaries and labels using percentages;
+- keep labels as text rather than converting them to shapes;
+- use `vector-effect: non-scaling-stroke` for lines that should keep a
+  consistent weight;
+- omit a page-sized background shape when transparency is required;
+- use system fonts that are available offline; and
+- avoid external fonts, images, stylesheets, and scripts.
+
+<details>
+
+<summary>
+
+#### View the complete template source
+
+</summary>
+
+```xml
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="100%"
+  height="100%"
+  role="img"
+  aria-labelledby="title description"
+>
+  <title id="title">Responsive social-context map</title>
+  <desc id="description">
+    Four labelled quadrants organise people by family, friends, work or study,
+    and community contexts.
+  </desc>
+  <style>
+    .axis {
+      stroke: white;
+      stroke-width: 3;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .label {
+      fill: white;
+      font-family: system-ui, sans-serif;
+      font-size: clamp(16px, 3vmin, 32px);
+      font-weight: 600;
+      text-anchor: middle;
+    }
+  </style>
+
+  <line class="axis" x1="0" y1="50%" x2="100%" y2="50%" />
+  <line class="axis" x1="50%" y1="0" x2="50%" y2="100%" />
+
+  <text class="label" x="25%" y="25%">
+    <tspan x="25%">Family</tspan>
+  </text>
+  <text class="label" x="75%" y="25%">
+    <tspan x="75%">Friends</tspan>
+  </text>
+  <text class="label" x="25%" y="75%">
+    <tspan x="25%" dy="-0.2em">Work or</tspan>
+    <tspan x="25%" dy="1.2em">study</tspan>
+  </text>
+  <text class="label" x="75%" y="75%">
+    <tspan x="75%">Community</tspan>
+  </text>
+</svg>
+```
+
+</details>
+
+## Troubleshooting
+
+| Problem                                           | Likely cause and next step                                                                                   |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| The file is rejected or appears as text           | Check that the filename ends in `.svg`, not `.svg.txt`, and that it was saved as plain text                  |
+| Empty bands appear in portrait or landscape mode  | The SVG probably has a fixed page proportion; compare it with the technical handoff checklist                |
+| Labels stretch or change shape                    | The labels may have been converted to outlines or paths; return to the editable master and keep them as text |
+| Lines become very thick or thin                   | Ask for `vector-effect: non-scaling-stroke` to be added to those lines                                       |
+| The Interface background does not show through    | The SVG probably contains a page-sized background rectangle; remove it from the responsive export            |
+| Labels are covered by nodes or Interface controls | Shorten or reposition the labels, then repeat field-device testing                                           |
+
+## Related concepts
+
+- [Resources](/en/design-protocols/key-concepts/resources) — Add the SVG to a
+  protocol and manage it in the resource library
+- [Preview Mode](/en/design-protocols/key-concepts/preview-mode) — Test the
+  background before data collection
+- [Data Export](/en/analyze-data/data-export) — Export normalized layout
+  coordinates for analysis
+- [Interfaces](/en/design-protocols/key-concepts/interfaces) — Compare the
+  Interfaces that can use a responsive background

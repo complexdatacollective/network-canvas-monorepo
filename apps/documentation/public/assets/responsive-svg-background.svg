@@ -1,0 +1,45 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="100%"
+  height="100%"
+  role="img"
+  aria-labelledby="title description"
+>
+  <title id="title">Responsive social-context map</title>
+  <desc id="description">
+    Four labelled quadrants organise people by family, friends, work or study,
+    and community contexts.
+  </desc>
+  <style>
+    .axis {
+      stroke: white;
+      stroke-width: 3;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .label {
+      fill: white;
+      font-family: system-ui, sans-serif;
+      font-size: clamp(16px, 3vmin, 32px);
+      font-weight: 600;
+      text-anchor: middle;
+    }
+  </style>
+
+  <line class="axis" x1="0" y1="50%" x2="100%" y2="50%" />
+  <line class="axis" x1="50%" y1="0" x2="50%" y2="100%" />
+
+  <text class="label" x="25%" y="25%">
+    <tspan x="25%">Family</tspan>
+  </text>
+  <text class="label" x="75%" y="25%">
+    <tspan x="75%">Friends</tspan>
+  </text>
+  <text class="label" x="25%" y="75%">
+    <tspan x="25%" dy="-0.2em">Work or</tspan>
+    <tspan x="25%" dy="1.2em">study</tspan>
+  </text>
+  <text class="label" x="75%" y="75%">
+    <tspan x="75%">Community</tspan>
+  </text>
+</svg>

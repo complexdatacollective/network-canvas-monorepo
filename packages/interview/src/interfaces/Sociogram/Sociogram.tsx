@@ -13,13 +13,12 @@ import {
 
 import { useTrack } from '../../analytics/useTrack';
 import Canvas from '../../canvas/Canvas';
+import StageBackground from '../../canvas/StageBackground';
 import { useAutoLayout } from '../../canvas/useAutoLayout';
 import { createCanvasStore, useCanvasStore } from '../../canvas/useCanvasStore';
-import ConcentricCircles from '../../components/ConcentricCircles';
 import NodeDrawer from '../../components/NodeDrawer';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
-import { useAssetUrl } from '../../hooks/useAssetUrl';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useSortedNodeList from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -73,7 +72,6 @@ const Sociogram = (stageProps: SociogramProps) => {
 
   // Background Configuration
   const stageBackground = stage.background;
-  const { url: backgroundImage } = useAssetUrl(stageBackground.image);
 
   const { currentStep } = useCurrentStep();
   const track = useTrack();
@@ -336,25 +334,6 @@ const Sociogram = (stageProps: SociogramProps) => {
     [handleUnplaceNode],
   );
 
-  // Branch on the schema's image/circles union: in the circles variant
-  // concentricCircles is proven present. An image renders nothing until its
-  // asset URL resolves.
-  const background =
-    stageBackground.image !== undefined ? (
-      backgroundImage ? (
-        <img
-          src={backgroundImage}
-          className="size-full object-cover"
-          alt="Background"
-        />
-      ) : null
-    ) : (
-      <ConcentricCircles
-        n={stageBackground.concentricCircles}
-        skewed={stageBackground.skewedTowardCenter}
-      />
-    );
-
   const simulationHandlers =
     layoutMode === 'AUTOMATIC'
       ? {
@@ -365,7 +344,9 @@ const Sociogram = (stageProps: SociogramProps) => {
 
   return (
     <div
-      className="interface h-dvh overflow-hidden"
+      className={`interface h-full overflow-hidden${
+        stageBackground.image === undefined ? '' : ' p-0'
+      }`}
       ref={interfaceRef}
       data-testid="sociogram"
       data-layout-mode={layoutMode}
@@ -373,7 +354,7 @@ const Sociogram = (stageProps: SociogramProps) => {
     >
       {measurementContainer}
       <Canvas
-        background={background}
+        background={<StageBackground background={stageBackground} />}
         nodes={canvasNodes}
         edges={edges}
         store={store}

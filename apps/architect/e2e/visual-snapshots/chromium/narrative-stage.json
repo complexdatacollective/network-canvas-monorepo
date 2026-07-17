@@ -2,7 +2,7 @@
   "label": "Explore Your Network",
   "type": "Narrative",
   "background": {
-    "concentricCircles": 4
+    "image": "narrative_background"
   },
   "subject": {
     "type": "id-1",

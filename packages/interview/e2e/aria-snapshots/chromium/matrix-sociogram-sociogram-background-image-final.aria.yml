@@ -1,6 +1,5 @@
 - main:
   - application "Sociogram Canvas":
-    - img "Background"
     - button "Mohammad"
     - button "Charlie"
     - button "Laury"

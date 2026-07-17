@@ -1,8 +1,25 @@
+import path from 'node:path';
+
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { NarrativeFixture } from '../fixtures/narrative-fixture.js';
+import { expectResponsiveCanvasBackgroundImage } from '../helpers/canvas-background-image.js';
+import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
+
+const BACKGROUND_IMAGE_FIXTURE = path.resolve(
+  import.meta.dirname,
+  '../../../../apps/documentation/public/assets/responsive-svg-background.svg',
+);
+
+const backgroundImageAsset: SyntheticAssetSpec = {
+  assetId: 'narrative-bg-1',
+  name: 'Background',
+  type: 'image',
+  source: 'responsive-svg-background.svg',
+  localPath: BACKGROUND_IMAGE_FIXTURE,
+};
 
 /**
  * Base Narrative builder: a Person node type with a real "name" text variable
@@ -698,6 +715,52 @@ const concentricCirclesBackground: ScenarioDefinition = {
   },
 };
 
+const imageBackground: ScenarioDefinition = {
+  id: 'image-background',
+  covers: ['background.image'],
+  visual: true,
+  seedNetwork: true,
+  assets: [backgroundImageAsset],
+  build: () => {
+    const { synth, person, nameVar, layoutVar } = buildBaseNarrative();
+    synth.addAsset({
+      id: backgroundImageAsset.assetId,
+      name: backgroundImageAsset.name,
+      type: 'image',
+      source: backgroundImageAsset.source,
+    });
+    const stage = synth.addStage('Narrative', {
+      subject: { entity: 'node', type: person.id },
+      background: { image: backgroundImageAsset.assetId },
+    });
+    stage.addPreset({ layoutVariable: layoutVar.id });
+    synth.addManualNode(stage.id, person.id, 'node-0', {
+      [nameVar.id]: 'Node0',
+      [layoutVar.id]: { x: 0.5, y: 0.5 },
+    });
+    return synth;
+  },
+  run: async ({ page }) => {
+    const narrative = new NarrativeFixture(page);
+    const image = narrative.getBackgroundImage();
+
+    await expect(image).toBeVisible();
+    await expect(image).toHaveAttribute(
+      'src',
+      /responsive-svg-background\.svg/,
+    );
+    await expect
+      .poll(() =>
+        image.evaluate((element) =>
+          element instanceof HTMLImageElement ? element.naturalWidth : 0,
+        ),
+      )
+      .toBeGreaterThan(0);
+    await expect(narrative.getBackgroundCircles()).toHaveCount(0);
+    await expectResponsiveCanvasBackgroundImage(page, image);
+  },
+};
+
 const filterDisplayScoping: ScenarioDefinition = {
   id: 'filter-stage-level-display-scoping',
   covers: ['filter'],
@@ -842,6 +905,7 @@ export const narrativeScenarios: InterfaceScenarios = {
     automaticLayoutPauseResume,
     freeDrawAnnotate,
     concentricCirclesBackground,
+    imageBackground,
     filterDisplayScoping,
     subjectCodebookLookupAndScoping,
   ],

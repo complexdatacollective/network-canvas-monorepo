@@ -80,6 +80,11 @@ export class NarrativeFixture {
     return this.page.locator('circle.canvas-radar__range');
   }
 
+  /** Image background rendered in place of concentric circles. */
+  getBackgroundImage(): Locator {
+    return this.root().locator('img[alt=""]');
+  }
+
   /** The r attribute of every background circle, in DOM order. */
   async getBackgroundCircleRadii(): Promise<number[]> {
     const circles = await this.getBackgroundCircles().all();

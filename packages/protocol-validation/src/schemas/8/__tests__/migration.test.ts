@@ -2678,6 +2678,14 @@ describe('Migration V7 to V8', () => {
           },
           ego: {},
         },
+        assetManifest: {
+          asset1: {
+            id: 'asset1',
+            name: 'Background',
+            type: 'image',
+            source: 'background.svg',
+          },
+        },
         stages: [
           {
             id: 'canvas1',
@@ -2768,12 +2776,12 @@ describe('Migration V7 to V8', () => {
       ).toEqual({ image: 'asset1' });
     });
 
-    it('strips a stray image from a Narrative background', () => {
+    it('keeps a Narrative image background and drops a leftover circle count', () => {
       expect(
         migrateAndGetBackground('Narrative', {
           background: { image: 'asset1', concentricCircles: 3 },
         }),
-      ).toEqual({ concentricCircles: 3 });
+      ).toEqual({ image: 'asset1' });
     });
 
     it('leaves a valid circles background untouched', () => {

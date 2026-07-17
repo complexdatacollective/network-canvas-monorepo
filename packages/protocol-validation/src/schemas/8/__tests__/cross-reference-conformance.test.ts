@@ -9,6 +9,86 @@ import ProtocolSchemaV8 from '../schema.ts';
  * filter-rule operator/value/ego constraints across every filter location.
  */
 describe('Cross-reference conformance', () => {
+  describe('Canvas background image assets', () => {
+    const narrativeProtocol = (
+      image: string,
+      assetManifest?: Record<string, unknown>,
+    ) => {
+      const base = createBaseProtocol();
+      return {
+        ...base,
+        ...(assetManifest ? { assetManifest } : {}),
+        stages: [
+          {
+            id: 'narrative1',
+            type: 'Narrative',
+            label: 'Narrative',
+            subject: { entity: 'node', type: 'person' },
+            background: { image },
+            presets: [
+              {
+                id: 'preset1',
+                label: 'Overview',
+                layoutVariable: 'layoutPosition',
+              },
+            ],
+          },
+        ],
+      };
+    };
+
+    it('accepts a Narrative background referencing an image asset', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        narrativeProtocol('background-image', {
+          'background-image': {
+            id: 'background-image',
+            type: 'image',
+            name: 'Background',
+            source: 'background.svg',
+          },
+        }),
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects a Narrative background absent from the manifest', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        narrativeProtocol('missing-image'),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((candidate) =>
+          candidate.message.includes(
+            'Canvas background image "missing-image" does not reference an asset in the manifest.',
+          ),
+        );
+        expect(issue?.path).toEqual(['stages', 0, 'background', 'image']);
+      }
+    });
+
+    it('rejects a Narrative background referencing a non-image asset', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        narrativeProtocol('roster-asset', {
+          'roster-asset': {
+            id: 'roster-asset',
+            type: 'network',
+            name: 'Roster',
+            source: 'roster.csv',
+          },
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((candidate) =>
+          candidate.message.includes(
+            `Canvas background image "roster-asset" must reference an 'image' asset`,
+          ),
+        );
+        expect(issue?.path).toEqual(['stages', 0, 'background', 'image']);
+      }
+    });
+  });
+
   describe('NameGeneratorRoster dataSource', () => {
     const rosterProtocol = (dataSource: string) => {
       const base = createBaseProtocol();

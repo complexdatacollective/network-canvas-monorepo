@@ -3,23 +3,21 @@ import { PureComponent } from 'react';
 import { compose } from 'react-recompose';
 import { Field } from 'redux-form';
 
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-/**
- * The Narrative stage schema forbids a background image (its background is a
- * strict object of only concentricCircles/skewedTowardCenter). The shared
- * Background section must not offer the image option for Narrative stages.
- */
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
+import ExternalLink from '~/components/ExternalLink';
 import Toggle from '~/components/Form/Fields/Toggle';
 import FrescoReduxField, {
   reduxIntegerValue,
 } from '~/components/Form/FrescoReduxField';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { documentationLinks } from '~/utils/documentationLinks';
 
 import Image from '../../Form/Fields/Image';
 import ValidatedField from '../../Form/ValidatedField';
@@ -41,8 +39,14 @@ const backgroundTypeOptions = [
   },
 ];
 
+const interfacesWithBackgroundImages: readonly StageType[] = [
+  'Narrative',
+  'Sociogram',
+  'NetworkComposer',
+];
+
 export const allowsBackgroundImage = (interfaceType: StageType): boolean =>
-  interfaceType !== 'Narrative';
+  interfacesWithBackgroundImages.includes(interfaceType);
 type BackgroundProps = StageEditorSectionProps & {
   handleChooseBackgroundType: (value: boolean) => void;
   useImage: boolean;
@@ -111,21 +115,39 @@ class Background extends PureComponent<BackgroundProps> {
           </>
         )}
         {showImage && (
-          <Row>
-            <IssueAnchor
-              fieldName="background.image"
-              description="Background > Image"
-            />
-            <ValidatedField
-              name="background.image"
-              component={Image as React.ComponentType<Record<string, unknown>>}
-              validation={{ required: true }}
-              componentProps={{
-                label: 'Background image',
-                labelHidden: true,
-              }}
-            />
-          </Row>
+          <>
+            <Alert variant="info" className="my-7">
+              <AlertTitle>Make the background responsive</AlertTitle>
+              <AlertDescription>
+                A responsive SVG can span the canvas in portrait and landscape
+                while keeping labels readable.{' '}
+                <ExternalLink
+                  href={documentationLinks.responsiveSvgBackgrounds}
+                >
+                  Learn how to create a responsive SVG background
+                </ExternalLink>
+                .
+              </AlertDescription>
+            </Alert>
+            <Row>
+              <IssueAnchor
+                fieldName="background.image"
+                description="Background > Image"
+              />
+              <ValidatedField
+                name="background.image"
+                component={
+                  Image as React.ComponentType<Record<string, unknown>>
+                }
+                validation={{ required: true }}
+                componentProps={{
+                  label: 'Background image',
+                  labelHidden: true,
+                  canvasBackgroundPreview: true,
+                }}
+              />
+            </Row>
+          </>
         )}
       </Section>
     );

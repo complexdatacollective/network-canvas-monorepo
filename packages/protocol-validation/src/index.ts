@@ -1,4 +1,5 @@
 import { asEntityAttributeReference } from './schemas/8/entity-attribute-reference.ts';
+import { getAssetMimeType } from './utils/asset-mime-type.ts';
 import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
@@ -47,6 +48,7 @@ export {
   type ExtractedAsset,
   extractProtocol,
   extractProtocolFromZip,
+  getAssetMimeType,
   getVariableNamesFromNetwork,
   hashProtocol,
   MAX_INFLATED_BYTES,

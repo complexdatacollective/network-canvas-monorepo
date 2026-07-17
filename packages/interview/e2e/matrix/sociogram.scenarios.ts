@@ -11,8 +11,13 @@ import {
 } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
-import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
+import { expectResponsiveCanvasBackgroundImage } from '../helpers/canvas-background-image.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
+
+const BACKGROUND_IMAGE_FIXTURE = path.resolve(
+  import.meta.dirname,
+  '../../../../apps/documentation/public/assets/responsive-svg-background.svg',
+);
 
 // --- module-private helpers ------------------------------------------------
 
@@ -323,7 +328,7 @@ function buildBackgroundImage(): ScenarioDefinition {
         id: bgAssetId,
         name: 'Background',
         type: 'image',
-        source: 'quadrant.png',
+        source: 'responsive-svg-background.svg',
       });
       return synth;
     },
@@ -332,15 +337,18 @@ function buildBackgroundImage(): ScenarioDefinition {
         assetId: bgAssetId,
         name: 'Background',
         type: 'image',
-        source: 'quadrant.png',
-        localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
+        source: 'responsive-svg-background.svg',
+        localPath: BACKGROUND_IMAGE_FIXTURE,
       },
     ],
     run: async ({ page }) => {
       const sociogram = page.getByTestId('sociogram');
-      const img = sociogram.locator('img[alt="Background"]');
+      const img = sociogram.locator('img[alt=""]');
       await expect(img).toBeVisible();
-      await expect(img).toHaveAttribute('src', /quadrant\.png/);
+      await expect(img).toHaveAttribute(
+        'src',
+        /responsive-svg-background\.svg/,
+      );
       // Actually loaded from the asset server, not a broken image.
       await expect
         .poll(() =>
@@ -354,6 +362,7 @@ function buildBackgroundImage(): ScenarioDefinition {
       await expect(sociogram.locator('circle.canvas-radar__range')).toHaveCount(
         0,
       );
+      await expectResponsiveCanvasBackgroundImage(page, img);
     },
   };
 }

@@ -447,11 +447,7 @@ const migrationV7toV8 = createMigration({
           if (typeof source.skewedTowardCenter === 'boolean') {
             background.skewedTowardCenter = source.skewedTowardCenter;
           }
-          if (
-            typedStage.type !== 'Narrative' &&
-            typeof source.image === 'string' &&
-            source.image !== ''
-          ) {
+          if (typeof source.image === 'string' && source.image !== '') {
             background.image = source.image;
           } else {
             const circles = source.concentricCircles;

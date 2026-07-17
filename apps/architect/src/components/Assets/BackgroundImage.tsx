@@ -6,11 +6,13 @@ import withAssetUrl from './withAssetUrl';
 
 type BackgroundImageProps = {
   url?: string;
+  imageClassName?: string;
 } & React.HTMLAttributes<HTMLDivElement>;
 
 const BackgroundImage = ({
   url,
   className,
+  imageClassName,
   ...props
 }: BackgroundImageProps) => {
   if (!url) {
@@ -22,7 +24,11 @@ const BackgroundImage = ({
       className={cx('flex items-center justify-center', className)}
       {...props}
     >
-      <img src={url} alt="" className="max-h-full max-w-full object-contain" />
+      <img
+        src={url}
+        alt=""
+        className={cx('max-h-full max-w-full object-contain', imageClassName)}
+      />
     </div>
   );
 };

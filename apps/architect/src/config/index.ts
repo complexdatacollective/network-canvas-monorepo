@@ -20,7 +20,7 @@ export const APP_SCHEMA_VERSION = 8 as const;
 // Maps for supported asset types within the app. Used by asset chooser.
 export const SUPPORTED_EXTENSION_TYPE_MAP = {
   network: ['.csv', '.json'],
-  image: ['.jpg', '.jpeg', '.gif', '.png'],
+  image: ['.jpg', '.jpeg', '.gif', '.png', '.svg'],
   audio: ['.mp3', '.aiff', '.m4a'],
   video: ['.mov', '.mp4'],
   geojson: ['.geojson'],

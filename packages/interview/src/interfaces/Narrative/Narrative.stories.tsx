@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { expect, waitFor } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -186,6 +187,29 @@ const buildConcentricCirclesBackground = () => {
   }).addPreset({
     label: 'Social Network',
     layoutVariable: layoutVar1.id,
+  });
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+  return si;
+};
+
+const buildBackgroundImage = () => {
+  const { si, layoutVar1 } = createNarrativeInterview(114);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const backgroundAssetId = 'narrative-background';
+  si.addStage('Narrative', {
+    initialNodes: { count: 8 },
+    background: { image: backgroundAssetId },
+    behaviours: { automaticLayout: true },
+  }).addPreset({
+    label: 'Social Network',
+    layoutVariable: layoutVar1.id,
+  });
+  si.addAsset({
+    assetId: backgroundAssetId,
+    url: 'https://picsum.photos/seed/narrative/1200/800',
   });
   si.addInformationStage({
     title: 'Complete',
@@ -1070,6 +1094,25 @@ export const ConcentricCirclesBackground: Story = {
   render: () => (
     <NarrativeStoryWrapper buildFn={buildConcentricCirclesBackground} />
   ),
+};
+
+export const BackgroundImage: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildBackgroundImage} />,
+  play: async ({ canvasElement }) => {
+    const backgroundImage = await waitFor(() => {
+      const image = canvasElement.querySelector<HTMLImageElement>(
+        '[data-testid="narrative"] [role="application"] img[aria-hidden="true"][alt=""]',
+      );
+      expect(image).not.toBeNull();
+      return image;
+    });
+
+    expect(backgroundImage).toHaveClass(
+      'size-full',
+      'object-contain',
+      'object-center',
+    );
+  },
 };
 
 export const WithEdges: Story = {

@@ -196,6 +196,17 @@ When enabled, this converts normalized coordinates to pixel coordinates based on
 
 Enable this option when you want to recreate the exact visual layout as it appeared during the interview, when you're importing into visualization software that expects pixel coordinates, or when you need coordinates that match specific screen dimensions. Disable it when you want device-independent coordinates that work on any canvas size, when you're comparing layouts created on different screen sizes, or when you want maximum flexibility for visualization.
 
+<TipBox>
+
+If a Sociogram uses a responsive background with quadrants or other regions,
+leave **Use screen layout coordinates** disabled. You can compare the normalized
+`x` and `y` values directly with the percentage boundaries in the image. See
+[Classify nodes from their
+coordinates](/en/design-protocols/key-concepts/responsive-svg-backgrounds#classify-nodes-from-their-coordinates)
+for quadrant rules, boundary handling, and an R example.
+
+</TipBox>
+
 **Example:**
 
 **Normalized (default):**
