@@ -8,13 +8,19 @@ import type { AuthStateKind } from '~/lib/auth/AuthContext';
 import { DEFAULT_SETTINGS } from '~/lib/db/types';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
-const { mockEstimateStorage, mockIsPersisted, mockUseAuth, mockListProtocols } =
-  vi.hoisted(() => ({
-    mockEstimateStorage: vi.fn(),
-    mockIsPersisted: vi.fn(),
-    mockUseAuth: vi.fn(),
-    mockListProtocols: vi.fn(),
-  }));
+const {
+  mockEstimateStorage,
+  mockIsPersisted,
+  mockUseAuth,
+  mockListProtocols,
+  mockOpenSetupWizard,
+} = vi.hoisted(() => ({
+  mockEstimateStorage: vi.fn(),
+  mockIsPersisted: vi.fn(),
+  mockUseAuth: vi.fn(),
+  mockListProtocols: vi.fn(),
+  mockOpenSetupWizard: vi.fn(),
+}));
 
 vi.mock('~/lib/storage', async () => {
   const actual =
@@ -36,6 +42,10 @@ vi.mock('~/lib/db/api', () => ({
 
 vi.mock('~/lib/auth/AuthContext', () => ({
   useAuth: () => mockUseAuth(),
+}));
+
+vi.mock('~/components/SetupWizardDialog', () => ({
+  useSetupWizard: () => ({ openSetupWizard: mockOpenSetupWizard }),
 }));
 
 vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
@@ -216,6 +226,40 @@ describe('SettingsDialog Security tab — step-up controls gating', () => {
       }
     },
   );
+
+  it('opens the Get started wizard from an unconfigured Security tab', async () => {
+    mockAuth('unconfigured');
+    mockOpenSetupWizard.mockResolvedValue(undefined);
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(<SettingsDialog open onClose={onClose} />);
+
+    await user.click(screen.getByRole('tab', { name: 'Security' }));
+
+    expect(
+      await screen.findByText(
+        /Use the Get started wizard below to enable app security/i,
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Get started' }));
+
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(mockOpenSetupWizard).toHaveBeenCalledOnce();
+  });
+
+  it('does not offer the Get started wizard when a lock is configured', async () => {
+    mockAuth('unlocked', 'pin');
+    const user = userEvent.setup();
+    render(<SettingsDialog open onClose={vi.fn()} />);
+
+    await user.click(screen.getByRole('tab', { name: 'Security' }));
+
+    await screen.findByRole('heading', { name: 'Authenticator' });
+    expect(
+      screen.queryByRole('button', { name: 'Get started' }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe('SettingsDialog synthetic tab — protocol import race', () => {

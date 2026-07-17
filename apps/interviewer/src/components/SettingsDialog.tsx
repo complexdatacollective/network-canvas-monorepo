@@ -33,6 +33,7 @@ import SecurityBehaviorControls, {
   type Behavior,
 } from '~/components/SecurityBehaviorControls';
 import { SettingsRow } from '~/components/SettingsRow';
+import { useSetupWizard } from '~/components/SetupWizardDialog';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { APP_VERSION } from '~/lib/appVersion';
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -99,6 +100,7 @@ export function SettingsDialog({
   const analytics = useAnalytics();
   const toast = useToast();
   const { confirm } = useDialog();
+  const { openSetupWizard } = useSetupWizard({ preserveExistingData: true });
   const [section, setSection] = useState<Section>('about');
   const [settings, setSettings] = useState<StoredSettings | null>(null);
   const [storage, setStorage] = useState<StorageEstimate>({
@@ -300,6 +302,14 @@ export function SettingsDialog({
     requireUnlockOnEnter: settings?.requireUnlockOnEnter ?? true,
     requireUnlockOnExit: settings?.requireUnlockOnExit ?? false,
     requireUnlockOnExport: settings?.requireUnlockOnExport ?? false,
+  };
+  const hasNoDeviceLock =
+    auth.kind === 'unconfigured' ||
+    (auth.kind === 'unlocked' && auth.mode === 'none');
+
+  const handleStartSetup = () => {
+    onClose();
+    void openSetupWizard();
   };
 
   return (
@@ -537,6 +547,22 @@ export function SettingsDialog({
             {settings ? (
               <>
                 <ManageAuthenticator />
+                {hasNoDeviceLock ? (
+                  <SettingsRow
+                    title="Enable app security"
+                    desc="Run the Get started wizard to configure a device lock and choose your security preferences."
+                    control={
+                      <Button
+                        onClick={handleStartSetup}
+                        icon={
+                          <ShieldCheck className="size-4" aria-hidden="true" />
+                        }
+                      >
+                        Get started
+                      </Button>
+                    }
+                  />
+                ) : null}
                 {auth.kind === 'unlocked' && auth.mode !== 'none' ? (
                   <>
                     <Alert variant="info">

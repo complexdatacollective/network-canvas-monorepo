@@ -6,15 +6,23 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-// Analytics defaults to on. The wizard reads `data.analyticsEnabled`; an
-// undefined value (the user never touched the toggle) is treated as enabled.
-function asAnalyticsEnabled(value: unknown): boolean {
-  return typeof value === 'boolean' ? value : true;
+// First-run setup defaults analytics to on. A Settings-launched wizard supplies
+// the user's current preference instead, so leaving the toggle untouched cannot
+// silently opt an existing user back in.
+function asAnalyticsEnabled(value: unknown, initialEnabled: boolean): boolean {
+  return typeof value === 'boolean' ? value : initialEnabled;
 }
 
-export default function Step5Analytics() {
+export default function Step5Analytics({
+  initialEnabled = true,
+}: {
+  initialEnabled?: boolean;
+}) {
   const wizard = useWizard();
-  const enabled = asAnalyticsEnabled(wizard.data.analyticsEnabled);
+  const enabled = asAnalyticsEnabled(
+    wizard.data.analyticsEnabled,
+    initialEnabled,
+  );
 
   useEffect(() => {
     wizard.setNextEnabled(true);
