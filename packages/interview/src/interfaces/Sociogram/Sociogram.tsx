@@ -360,7 +360,9 @@ const Sociogram = (stageProps: SociogramProps) => {
 
   return (
     <div
-      className="interface h-full overflow-hidden p-0"
+      className={`interface h-full overflow-hidden${
+        stageBackground.image === undefined ? '' : ' p-0'
+      }`}
       ref={interfaceRef}
       data-testid="sociogram"
       data-layout-mode={layoutMode}

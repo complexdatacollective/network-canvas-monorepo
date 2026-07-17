@@ -566,7 +566,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     // tabIndex makes the div focusable so keydown events reach it.
     <div
       ref={rootRef}
-      className="interface h-full overflow-hidden p-0"
+      className={`interface relative h-full overflow-hidden${
+        stageBackground.image === undefined ? '' : ' p-0'
+      }`}
       data-testid="network-composer"
       data-layout-mode={layoutMode}
       tabIndex={-1}
