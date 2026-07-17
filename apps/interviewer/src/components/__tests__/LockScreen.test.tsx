@@ -9,7 +9,10 @@ const useAuthMock = vi.fn();
 vi.mock('~/lib/auth/AuthContext', () => ({ useAuth: () => useAuthMock() }));
 
 import { LockScreen, LockScreenView } from '../LockScreen';
-import { BiometricLockBody } from '../UnlockForms/BiometricLockBody';
+import {
+  AuthenticationDialog,
+  type AuthenticationDialogCopy,
+} from '../UnlockForms/AuthenticationDialog';
 
 const noop = vi.fn(async () => ({ ok: true }));
 const revoke = vi.fn(async () => undefined);
@@ -140,7 +143,17 @@ describe('LockScreen — biometric vault', () => {
   });
 });
 
-describe('BiometricLockBody — best-effort auto-unlock', () => {
+const biometricDialogCopy: AuthenticationDialogCopy = {
+  title: 'Welcome back',
+  pinDescription: 'Enter your PIN to unlock.',
+  passphraseDescription: 'Enter your passphrase to unlock.',
+  biometricDescription: 'Authenticate to unlock.',
+  recoveryDescription: 'Enter your recovery passphrase to unlock.',
+  limitedRecoveryDescription:
+    'Biometrics are unavailable. Enter your recovery passphrase to unlock.',
+};
+
+describe('AuthenticationDialog — best-effort biometric authentication', () => {
   beforeEach(() => {
     // ResetAppDataButton reads useAuth().revoke; the body drives biometric
     // unlock purely through props, so a minimal auth stub suffices here.
@@ -150,10 +163,15 @@ describe('BiometricLockBody — best-effort auto-unlock', () => {
   it('auto-calls unlockWithBiometric exactly once on mount when available', async () => {
     const unlockWithBiometric = vi.fn(async () => ({ ok: false }));
     renderInProviders(
-      <BiometricLockBody
+      <AuthenticationDialog
+        mode="biometric"
+        copy={biometricDialogCopy}
         limited={false}
-        unlockWithBiometric={unlockWithBiometric}
-        unlockWithRecovery={noop}
+        autoAttemptBiometric
+        authenticateWithPin={noop}
+        authenticateWithPassphrase={noop}
+        authenticateBiometric={unlockWithBiometric}
+        authenticateWithRecovery={noop}
       />,
     );
 
@@ -166,10 +184,15 @@ describe('BiometricLockBody — best-effort auto-unlock', () => {
   it('keeps the "Unlock with biometrics" button as a fallback', async () => {
     const unlockWithBiometric = vi.fn(async () => ({ ok: false }));
     renderInProviders(
-      <BiometricLockBody
+      <AuthenticationDialog
+        mode="biometric"
+        copy={biometricDialogCopy}
         limited={false}
-        unlockWithBiometric={unlockWithBiometric}
-        unlockWithRecovery={noop}
+        autoAttemptBiometric
+        authenticateWithPin={noop}
+        authenticateWithPassphrase={noop}
+        authenticateBiometric={unlockWithBiometric}
+        authenticateWithRecovery={noop}
       />,
     );
 
@@ -185,10 +208,15 @@ describe('BiometricLockBody — best-effort auto-unlock', () => {
   it('does NOT auto-call when limited (starts in recovery)', async () => {
     const unlockWithBiometric = vi.fn(async () => ({ ok: true }));
     renderInProviders(
-      <BiometricLockBody
+      <AuthenticationDialog
+        mode="biometric"
+        copy={biometricDialogCopy}
         limited
-        unlockWithBiometric={unlockWithBiometric}
-        unlockWithRecovery={noop}
+        autoAttemptBiometric
+        authenticateWithPin={noop}
+        authenticateWithPassphrase={noop}
+        authenticateBiometric={unlockWithBiometric}
+        authenticateWithRecovery={noop}
       />,
     );
 
@@ -201,10 +229,15 @@ describe('BiometricLockBody — best-effort auto-unlock', () => {
   it('does NOT auto-call while in the recovery state', async () => {
     const unlockWithBiometric = vi.fn(async () => ({ ok: false }));
     renderInProviders(
-      <BiometricLockBody
+      <AuthenticationDialog
+        mode="biometric"
+        copy={biometricDialogCopy}
         limited={false}
-        unlockWithBiometric={unlockWithBiometric}
-        unlockWithRecovery={noop}
+        autoAttemptBiometric
+        authenticateWithPin={noop}
+        authenticateWithPassphrase={noop}
+        authenticateBiometric={unlockWithBiometric}
+        authenticateWithRecovery={noop}
       />,
     );
 

@@ -59,7 +59,7 @@ describe('StepUpAuthDialog', () => {
     render(<StepUpAuthDialog open onResolve={onResolve} />);
 
     await userEvent.click(
-      screen.getByRole('button', { name: /verify identity/i }),
+      screen.getByRole('button', { name: /unlock with biometrics/i }),
     );
     await waitFor(() => expect(verifyBiometricMock).toHaveBeenCalledTimes(1));
     expect(onResolve).toHaveBeenCalledWith({ ok: true });
@@ -83,7 +83,7 @@ describe('StepUpAuthDialog', () => {
       screen.getByLabelText(/passphrase/i),
       'Recovery-Phrase-7!',
     );
-    await userEvent.click(screen.getByRole('button', { name: /^verify$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^unlock$/i }));
 
     await waitFor(() =>
       expect(verifyWithRecoveryMock).toHaveBeenCalledWith('Recovery-Phrase-7!'),
