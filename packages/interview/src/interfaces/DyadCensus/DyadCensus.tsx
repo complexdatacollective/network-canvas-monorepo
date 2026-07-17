@@ -5,30 +5,30 @@ import { useSelector } from 'react-redux';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
-import { useTrack } from '~/analytics/useTrack';
-import Pair from '~/components/Pair';
-import Prompts from '~/components/Prompts';
-import { usePrompts } from '~/components/Prompts/usePrompts';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
-import useBeforeNext from '~/hooks/useBeforeNext';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import useStageValidation from '~/hooks/useStageValidation';
-import { getNodePairs } from '~/selectors/dyad-census';
+
+import { useTrack } from '../../analytics/useTrack';
+import Pair from '../../components/Pair';
+import Prompts from '../../components/Prompts';
+import { usePrompts } from '../../components/Prompts/usePrompts';
+import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import useBeforeNext from '../../hooks/useBeforeNext';
+import { useStageSelector } from '../../hooks/useStageSelector';
+import useStageValidation from '../../hooks/useStageValidation';
+import { getNodePairs } from '../../selectors/dyad-census';
 import {
   getEdgeColorForType,
   getNetworkEdges,
   getNetworkNodesForType,
   getStageMetadata,
-} from '~/selectors/session';
+} from '../../selectors/session';
 import {
   addEdge,
   deleteEdge,
   edgeExists,
   updateStageMetadata,
-} from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
-import type { StageProps } from '~/types';
-
+} from '../../store/modules/session';
+import { useAppDispatch } from '../../store/store';
+import type { StageProps } from '../../types';
 import IntroPanel from '../SlidesForm/IntroPanel';
 import {
   getNodePair,

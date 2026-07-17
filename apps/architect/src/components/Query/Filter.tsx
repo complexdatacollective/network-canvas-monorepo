@@ -7,6 +7,7 @@ type FilterProps = {
   codebook: Record<string, unknown>;
   join?: string;
   error?: string;
+  allowEdgeRules?: boolean;
 };
 
 const Filter = ({
@@ -15,6 +16,7 @@ const Filter = ({
   codebook,
   onChange,
   error,
+  allowEdgeRules,
 }: FilterProps) => (
   <Rules
     rules={rules}
@@ -22,6 +24,7 @@ const Filter = ({
     onChange={onChange}
     codebook={codebook}
     error={error}
+    allowEdgeRules={allowEdgeRules}
   />
 );
 

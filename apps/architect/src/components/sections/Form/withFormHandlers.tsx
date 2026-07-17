@@ -15,7 +15,7 @@ import type { RootState } from '~/ducks/modules/root';
 import { ensureError } from '~/utils/ensureError';
 
 import { makeGetVariable } from '../../../selectors/codebook';
-import { getCodebookProperties } from './helpers';
+import { CODEBOOK_PROPERTIES, getCodebookProperties } from './helpers';
 
 const mapDispatchToProps = {
   changeForm: change as (
@@ -72,33 +72,12 @@ const formHandlers = withHandlers({
           });
         }
 
-        const currentVar = current as {
-          component?: string;
-          type?: string;
-          name?: string;
-          encrypted?: boolean;
-        };
-        // `encrypted` is a data-protection flag set by the Anonymisation stage,
-        // not an editable form field. Because merge is false below, it must be
-        // carried over explicitly or saving a field edit would strip it.
-        const baseProps = {
-          component: currentVar.component,
-          type: currentVar.type,
-          name: currentVar.name,
-          encrypted: currentVar.encrypted,
-        };
-
-        // Merge is set to false below so that properties that were removed, such
-        // as 'options: []' and 'parameters: {}' get deleted.
         await props.updateVariable({
           entity: props.entity as Entity,
           type: props.type,
           variable: variable ?? '',
-          configuration: { ...baseProps, ...configuration } as Record<
-            string,
-            unknown
-          >,
-          merge: false,
+          configuration: configuration as Record<string, unknown>,
+          replaceProperties: CODEBOOK_PROPERTIES,
         });
 
         return {

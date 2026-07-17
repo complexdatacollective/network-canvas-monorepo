@@ -6,13 +6,11 @@ import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { FRAMING_TERMS, type FramingId } from '@codaco/shared-consts';
-import useProtocolForm from '~/forms/useProtocolForm';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
-import {
-  getNodeForm,
-  getNodeType,
-} from '~/interfaces/FamilyPedigree/utils/nodeUtils';
+
+import useProtocolForm from '../../../../forms/useProtocolForm';
+import { useStageSelector } from '../../../../hooks/useStageSelector';
+import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
+import { getNodeForm, getNodeType } from '../../utils/nodeUtils';
 
 const INTRO_COPY: Record<FramingId, string> = {
   gamete:

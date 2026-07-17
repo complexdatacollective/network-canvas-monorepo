@@ -6,14 +6,14 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Panel as PanelType } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
-import Loading from '~/components/Loading';
-import NodeList from '~/components/NodeList';
-import Panel from '~/components/Panel';
-import useExternalData from '~/hooks/useExternalData';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getPanelNodes } from '~/selectors/name-generator';
-import { getStageSubject } from '~/selectors/session';
 
+import Loading from '../../../components/Loading';
+import NodeList from '../../../components/NodeList';
+import Panel from '../../../components/Panel';
+import useExternalData from '../../../hooks/useExternalData';
+import { useStageSelector } from '../../../hooks/useStageSelector';
+import { getPanelNodes } from '../../../selectors/name-generator';
+import { getStageSubject } from '../../../selectors/session';
 import ExternalNodeItem from './ExternalNodeItem';
 
 type NodePanelProps = {

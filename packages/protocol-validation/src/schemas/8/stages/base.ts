@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { SkipLogicSchema } from '../common';
+import { SkipLogicSchema } from '../common/index.ts';
 
 /**
  * Base schema for all stages.

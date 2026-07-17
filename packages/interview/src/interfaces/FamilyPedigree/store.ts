@@ -11,14 +11,14 @@ import type {
   RelationshipType,
   VariableValue,
 } from '@codaco/shared-consts';
+
 import {
   addEdge as addEdgeToNetwork,
   addNode as addNodeToNetwork,
   deleteNode,
   updateStageMetadata,
-} from '~/store/modules/session';
-import type { useAppDispatch } from '~/store/store';
-
+} from '../../store/modules/session';
+import type { useAppDispatch } from '../../store/store';
 import { withInferredBiologicalSex } from './deriveBiologicalSex';
 import {
   computeAllDisplayLabels,

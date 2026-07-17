@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+
 import CaptureStory, {
   type CaptureParameters,
-} from '~/.storybook/CaptureStory';
+} from '../../../.storybook/CaptureStory';
 
 /**
  * Screenshot-capture story for the Information interface. Consumed by the

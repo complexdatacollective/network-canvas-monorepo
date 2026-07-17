@@ -5,11 +5,9 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
-import { FamilyPedigreeContext } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
-import {
-  createFamilyPedigreeStore,
-  type VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
+
+import { FamilyPedigreeContext } from '../../../FamilyPedigreeContext';
+import { createFamilyPedigreeStore, type VariableConfig } from '../../../store';
 
 // -----------------------------------------------------------------------
 // ResizeObserver stub — jsdom lacks it; useNodeMeasurement needs it.
@@ -79,7 +77,7 @@ vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
 
 // nodeUtils and edgeUtils export RTK createSelector chains that depend on Redux
 // slice selectors. Mock them entirely so no Redux store context is needed.
-vi.mock('~/interfaces/FamilyPedigree/utils/nodeUtils', () => ({
+vi.mock('../../../utils/nodeUtils', () => ({
   getNodeTypeKey: () => 'person',
   getNodeType: () => 'person',
   getNodeLabelVariable: () => 'label',
@@ -92,7 +90,7 @@ vi.mock('~/interfaces/FamilyPedigree/utils/nodeUtils', () => ({
   getNodeColorSelector: () => 'node-color-seq-1',
 }));
 
-vi.mock('~/interfaces/FamilyPedigree/utils/edgeUtils', () => ({
+vi.mock('../../../utils/edgeUtils', () => ({
   getEdgeTypeKey: () => 'family',
   getRelationshipTypeVariable: () => 'relationshipType',
   getIsActiveVariable: () => 'isActive',
@@ -109,7 +107,7 @@ vi.mock('~/interfaces/FamilyPedigree/utils/edgeUtils', () => ({
 
 // useStageSelector wraps useSelector + useCurrentStep; stub it to call the
 // mocked selector functions (which return constant strings, not RTK state).
-vi.mock('~/hooks/useStageSelector', () => ({
+vi.mock('../../../../../hooks/useStageSelector', () => ({
   useStageSelector: (selector: () => unknown) => selector(),
 }));
 
@@ -136,48 +134,38 @@ vi.mock('@codaco/fresco-ui/Node', () => ({
 }));
 
 // Stub AddPersonFields — dialog content is irrelevant to the routing test.
-vi.mock('~/interfaces/FamilyPedigree/components/AddPersonForm', () => ({
+vi.mock('../../../components/AddPersonForm', () => ({
   default: () => null,
 }));
 
 // Stub wizard openers — they pull in wizard step components with Redux selectors.
-vi.mock(
-  '~/interfaces/FamilyPedigree/components/wizards/AddChildWizard',
-  () => ({
-    openAddChildWizard: vi.fn(),
-  }),
-);
-vi.mock(
-  '~/interfaces/FamilyPedigree/components/wizards/AddParentWizard',
-  () => ({ openAddParentWizard: vi.fn() }),
-);
-vi.mock(
-  '~/interfaces/FamilyPedigree/components/wizards/AddSiblingWizard',
-  () => ({ openAddSiblingWizard: vi.fn() }),
-);
-vi.mock(
-  '~/interfaces/FamilyPedigree/components/wizards/DefineParentsWizard',
-  () => ({ openDefineParentsWizard: vi.fn() }),
-);
-vi.mock(
-  '~/interfaces/FamilyPedigree/components/wizards/parentTypeOptions',
-  () => ({
-    addableParentTypeOptions: () => [],
-    countGeneticParents: () => 0,
-  }),
-);
+vi.mock('../../../components/wizards/AddChildWizard', () => ({
+  openAddChildWizard: vi.fn(),
+}));
+vi.mock('../../../components/wizards/AddParentWizard', () => ({
+  openAddParentWizard: vi.fn(),
+}));
+vi.mock('../../../components/wizards/AddSiblingWizard', () => ({
+  openAddSiblingWizard: vi.fn(),
+}));
+vi.mock('../../../components/wizards/DefineParentsWizard', () => ({
+  openDefineParentsWizard: vi.fn(),
+}));
+vi.mock('../../../components/wizards/parentTypeOptions', () => ({
+  addableParentTypeOptions: () => [],
+  countGeneticParents: () => 0,
+}));
 
 // PersonFields also pulls in Redux via useStageSelector; stub it.
-vi.mock(
-  '~/interfaces/FamilyPedigree/components/quickStartWizard/PersonFields',
-  () => ({ default: () => null }),
-);
+vi.mock('../../../components/quickStartWizard/PersonFields', () => ({
+  default: () => null,
+}));
 
 // The store modules (protocol, session) export RTK slice selectors that call
 // selectSlice at runtime. Mock the whole modules with stub selectors so
 // anything imported transitively (selectors/session, selectors/protocol, etc.)
 // doesn't trigger "selectSlice returned undefined".
-vi.mock('~/store/modules/protocol', () => ({
+vi.mock('../../../../../store/modules/protocol', () => ({
   getCodebook: () => ({}),
   getProtocol: () => ({}),
   getShouldEncryptNames: () => false,
@@ -186,7 +174,7 @@ vi.mock('~/store/modules/protocol', () => ({
   default: (state = {}) => state,
 }));
 
-vi.mock('~/store/modules/session', () => ({
+vi.mock('../../../../../store/modules/session', () => ({
   addNode: vi.fn(),
   addEdge: vi.fn(),
   deleteNode: vi.fn(),
@@ -197,32 +185,27 @@ vi.mock('~/store/modules/session', () => ({
 // PedigreeNode uses Redux selectors (getNodeColorSelector, getNodeShapeDefinition)
 // via useStageSelector. Stub it with a button that forwards all props so
 // BaseUI's DropdownMenuTrigger (render=) can inject its click handler.
-vi.mock(
-  '~/interfaces/FamilyPedigree/pedigree-layout/components/PedigreeNode',
-  () => ({
-    default: function PedigreeNodeStub({
-      node,
-      ...rest
-    }: {
-      node: { id: string };
-      displayLabel: string;
-      [key: string]: unknown;
-    }) {
-      return (
-        <button type="button" data-node-id={node.id} {...rest}>
-          {node.id}
-        </button>
-      );
-    },
-    // Return id → id labels so PedigreeView passes the node id as displayLabel.
-    computeNodeDisplayLabels: (nodes: Map<string, unknown>) =>
-      new Map([...nodes.keys()].map((id) => [id, id])),
-    AdoptionBrackets: ({ children }: { children: ReactNode }) => (
-      <>{children}</>
-    ),
-    EgoIcon: () => null,
-  }),
-);
+vi.mock('../PedigreeNode', () => ({
+  default: function PedigreeNodeStub({
+    node,
+    ...rest
+  }: {
+    node: { id: string };
+    displayLabel: string;
+    [key: string]: unknown;
+  }) {
+    return (
+      <button type="button" data-node-id={node.id} {...rest}>
+        {node.id}
+      </button>
+    );
+  },
+  // Return id → id labels so PedigreeView passes the node id as displayLabel.
+  computeNodeDisplayLabels: (nodes: Map<string, unknown>) =>
+    new Map([...nodes.keys()].map((id) => [id, id])),
+  AdoptionBrackets: ({ children }: { children: ReactNode }) => <>{children}</>,
+  EgoIcon: () => null,
+}));
 
 // -----------------------------------------------------------------------
 // Import component under test (after all mocks are registered)

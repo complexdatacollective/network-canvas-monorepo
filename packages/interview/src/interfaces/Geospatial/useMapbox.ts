@@ -11,9 +11,19 @@ import * as mapboxgl from 'mapbox-gl/esm';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import { useCaptureException } from '~/analytics/useTrack';
-import { useContractFlags } from '~/contract/context';
-import { makeGetApiKeyAssetValue } from '~/selectors/protocol';
+import { useCaptureException } from '../../analytics/useTrack';
+import { useContractFlags } from '../../contract/context';
+import { makeGetApiKeyAssetValue } from '../../selectors/protocol';
+
+// `interface` is required (not `type`) so this declaration MERGES with the
+// global Window from lib.dom.d.ts instead of replacing it. Exposes the live
+// map instance to Playwright e2e tests (see the assignment below).
+declare global {
+  // oxlint-disable-next-line typescript/consistent-type-definitions -- declaration merging with the global Window requires `interface`, not `type`
+  interface Window {
+    __e2eMap?: mapboxgl.Map;
+  }
+}
 
 const MAP_CONSTS = {
   FILL_OPACITY: 0.5,

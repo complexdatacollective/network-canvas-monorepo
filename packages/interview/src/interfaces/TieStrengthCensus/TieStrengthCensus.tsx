@@ -18,32 +18,32 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
-import { useTrack } from '~/analytics/useTrack';
-import Pair from '~/components/Pair';
-import Prompts from '~/components/Prompts';
-import { usePrompts } from '~/components/Prompts/usePrompts';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
-import useBeforeNext from '~/hooks/useBeforeNext';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import useStageValidation from '~/hooks/useStageValidation';
-import { getNodePairs } from '~/selectors/dyad-census';
+
+import { useTrack } from '../../analytics/useTrack';
+import Pair from '../../components/Pair';
+import Prompts from '../../components/Prompts';
+import { usePrompts } from '../../components/Prompts/usePrompts';
+import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import useBeforeNext from '../../hooks/useBeforeNext';
+import { useStageSelector } from '../../hooks/useStageSelector';
+import useStageValidation from '../../hooks/useStageValidation';
+import { getNodePairs } from '../../selectors/dyad-census';
 import {
   getEdgeColorForType,
   getNetworkEdges,
   getNetworkNodesForType,
   getStageMetadata,
-} from '~/selectors/session';
-import { getCodebook } from '~/store/modules/protocol';
+} from '../../selectors/session';
+import { getCodebook } from '../../store/modules/protocol';
 import {
   addEdge,
   deleteEdge,
   edgeExists,
   updateEdge,
   updateStageMetadata,
-} from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
-import type { StageProps } from '~/types';
-
+} from '../../store/modules/session';
+import { useAppDispatch } from '../../store/store';
+import type { StageProps } from '../../types';
 import {
   getNodePair,
   getStageMetadataResponse,

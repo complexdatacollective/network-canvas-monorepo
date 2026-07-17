@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { VariableNameSchema } from './variables';
+import { VariableNameSchema } from './variables.ts';
 
 // When values are encrypted, this is the resulting type.
 const encryptedValueSchema = z.array(z.number());

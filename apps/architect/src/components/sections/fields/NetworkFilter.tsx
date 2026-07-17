@@ -29,11 +29,13 @@ type NetworkFilterProps = {
   form: string;
   name?: string;
   variant?: 'contrast';
+  allowEdgeRules?: boolean;
 };
 const NetworkFilter = ({
   form,
   name = 'filter',
   variant,
+  allowEdgeRules,
 }: NetworkFilterProps) => {
   const dispatch = useAppDispatch();
   const { confirm } = useDialog();
@@ -87,7 +89,12 @@ const NetworkFilter = ({
       handleToggleChange={handleToggleChange}
       {...contrastProps}
     >
-      <Field name={name} component={FilterField} validate={ruleValidator} />
+      <Field
+        name={name}
+        component={FilterField}
+        validate={ruleValidator}
+        allowEdgeRules={allowEdgeRules}
+      />
     </Section>
   );
 };

@@ -7,8 +7,8 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { FRAMING_TERMS } from '@codaco/shared-consts';
-import { useFramedTerms } from '~/interfaces/FamilyPedigree/hooks/useFramedTerms';
 
+import { useFramedTerms } from '../../../hooks/useFramedTerms';
 import { BioTriadConfigContext } from './BioTriadStep';
 
 const partnershipOptions = [

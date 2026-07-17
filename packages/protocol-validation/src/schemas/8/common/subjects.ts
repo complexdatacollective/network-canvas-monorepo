@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { entityTypeReference } from '../entity-type-reference';
+import { entityTypeReference } from '../entity-type-reference.ts';
 
 export const NodeStageSubjectSchema = z.strictObject({
   entity: z.literal('node'),

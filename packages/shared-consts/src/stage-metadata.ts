@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { FRAMING_IDS } from './family-pedigree-framing';
+import { FRAMING_IDS } from './family-pedigree-framing.ts';
 
 const FamilyPedigreeStageMetadataSchema = z.object({
   isNetworkCommitted: z.boolean(),

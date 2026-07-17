@@ -4,27 +4,26 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('~/hooks/useStageSelector', () => ({
+vi.mock('../../../../../hooks/useStageSelector', () => ({
   useStageSelector: vi.fn(),
 }));
 
-vi.mock('~/hooks/useAssetUrl', () => ({
+vi.mock('../../../../../hooks/useAssetUrl', () => ({
   useAssetUrl: vi.fn(),
 }));
 
-vi.mock('~/analytics/useTrack', () => ({
+vi.mock('../../../../../analytics/useTrack', () => ({
   useCaptureException: () => vi.fn(),
 }));
 
-vi.mock('~/contract/context', () => ({
+vi.mock('../../../../../contract/context', () => ({
   useContractFlags: () => ({ isE2E: false }),
 }));
 
-import type { ResolvedAsset } from '~/contract/types';
-import { useAssetUrl } from '~/hooks/useAssetUrl';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import protocol from '~/store/modules/protocol';
-
+import type { ResolvedAsset } from '../../../../../contract/types';
+import { useAssetUrl } from '../../../../../hooks/useAssetUrl';
+import { useStageSelector } from '../../../../../hooks/useStageSelector';
+import protocol from '../../../../../store/modules/protocol';
 import IntroStep, { shouldSkipIntroStep } from '../IntroStep';
 
 function renderIntroStep(assets: ResolvedAsset[] = []) {

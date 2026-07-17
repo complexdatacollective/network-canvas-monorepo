@@ -97,3 +97,23 @@ test('release job prunes ignored-lane changesets before changesets/action', () =
     'prune step must run before changesets/action reads changeset state',
   );
 });
+
+test('generated release PRs use the dedicated PAT and rely on native PR CI', () => {
+  const releaseJob = job('release');
+  assert.ok(releaseJob, 'release job exists');
+  assert.match(
+    releaseJob,
+    /GITHUB_TOKEN: \$\{\{ secrets\.RELEASE_PR_TOKEN \}\}/,
+  );
+  assert.doesNotMatch(releaseJob, /gh workflow run ci-and-release\.yml/);
+  assert.doesNotMatch(releaseJob, /actions: write/);
+
+  const productReleaseJob = job('product-release-pr');
+  assert.ok(productReleaseJob, 'product release PR job exists');
+  assert.match(
+    productReleaseJob,
+    /token: \$\{\{ secrets\.RELEASE_PR_TOKEN \}\}/,
+  );
+  assert.doesNotMatch(productReleaseJob, /gh workflow run ci-and-release\.yml/);
+  assert.doesNotMatch(productReleaseJob, /actions: write/);
+});

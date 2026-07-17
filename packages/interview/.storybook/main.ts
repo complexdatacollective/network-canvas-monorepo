@@ -1,14 +1,6 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { defineMain } from '@storybook/react-vite/node';
 import tailwindcss from '@tailwindcss/vite';
 import { mergeConfig } from 'vite';
-
-// This file lives in packages/interview/.storybook, so its directory is the
-// storybook root and its parent is the package root.
-const storybookDir = path.dirname(fileURLToPath(import.meta.url));
-const srcDir = path.join(storybookDir, '..', 'src');
 
 export default defineMain({
   addons: [
@@ -31,16 +23,6 @@ export default defineMain({
   viteFinal: (config) =>
     mergeConfig(config, {
       plugins: [tailwindcss()],
-      resolve: {
-        // tsconfig.json excludes story files, so Vite's native
-        // resolve.tsconfigPaths won't map `~/` for them (see vitest.config.ts).
-        // Alias explicitly. `.storybook` is first because `~/.storybook/…` also
-        // matches the bare `~/` pattern and Vite uses the first match.
-        alias: [
-          { find: /^~\/\.storybook\//, replacement: `${storybookDir}/` },
-          { find: /^~\//, replacement: `${srcDir}/` },
-        ],
-      },
       // mapbox-gl's worker bundle contains import.meta; the default classic
       // (iife) worker emission loads it as a non-module script and the worker
       // dies with "Cannot use 'import.meta' outside a module", leaving the
@@ -51,11 +33,12 @@ export default defineMain({
       },
       optimizeDeps: {
         include: ['d3-force'],
-        // Workspace libraries are consumed as built `dist` and kept fresh by
-        // their `dev` watchers (run via `with-turbo --watch-deps`). Exclude them
-        // from Vite's dependency pre-bundling so Storybook resolves the current
-        // `dist` instead of a stale pre-bundle cached under
-        // `.cache/storybook/**/sb-vite/deps`.
+        // These workspace libraries are consumed as raw TypeScript source
+        // (their package `exports` point at `src/`), so Vite resolves them
+        // through its own module graph. Linked workspace packages are never
+        // pre-bundled anyway, so these entries are inert — kept explicit to
+        // document that Storybook must see their live source, not a cached
+        // pre-bundle under `.cache/storybook/**/sb-vite/deps`.
         exclude: [
           '@codaco/fresco-ui',
           '@codaco/shared-consts',

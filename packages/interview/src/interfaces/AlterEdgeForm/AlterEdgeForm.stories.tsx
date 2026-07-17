@@ -4,7 +4,8 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import type { ComponentType } from '@codaco/protocol-validation';
-import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
+
+import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
 
 const FIELD_PRESETS: { component: ComponentType; prompt: string }[] = [
   { component: 'RadioGroup', prompt: 'How close is this relationship?' },

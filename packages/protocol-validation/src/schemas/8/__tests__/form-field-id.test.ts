@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { FormFieldSchema } from '../common/forms';
-import { ComposerFormFieldSchema } from '../stages/network-composer';
+import { FormFieldSchema } from '../common/forms.ts';
+import { ComposerFormFieldSchema } from '../stages/network-composer.ts';
 
 /**
  * Architect assigns every editable form field a stable `id` (uuid) on creation

@@ -14,10 +14,10 @@ import exportFile, { type GenerationResult } from './exportFile';
 import { partitionByType } from './partitionByType';
 
 // node:os sits behind a runtime-assembled specifier so browser bundlers
-// (interviewer / interviewer-classic re-bundling dist/pipeline.js) don't try to
-// resolve it and emit an "externalized for browser compatibility" warning. This
-// Node-only branch is unreachable in the browser, which always takes the
-// navigator.hardwareConcurrency path above.
+// (interviewer / interviewer-classic re-bundling pipeline.ts directly) don't
+// try to resolve it and emit an "externalized for browser compatibility"
+// warning. This Node-only branch is unreachable in the browser, which always
+// takes the navigator.hardwareConcurrency path above.
 const loadNodeOs = (): Promise<typeof NodeOs> =>
   import(['node', 'os'].join(':'));
 

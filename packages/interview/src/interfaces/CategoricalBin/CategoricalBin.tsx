@@ -12,24 +12,24 @@ import {
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
-import { useTrack } from '~/analytics/useTrack';
-import NodeDrawer from '~/components/NodeDrawer';
-import Prompts from '~/components/Prompts';
-import { usePrompts } from '~/components/Prompts/usePrompts';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
-import useReadyForNextStage from '~/hooks/useReadyForNextStage';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { makeGetCodebookForNodeType } from '~/selectors/protocol';
+
+import { useTrack } from '../../analytics/useTrack';
+import NodeDrawer from '../../components/NodeDrawer';
+import Prompts from '../../components/Prompts';
+import { usePrompts } from '../../components/Prompts/usePrompts';
+import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import { useStageSelector } from '../../hooks/useStageSelector';
+import { makeGetCodebookForNodeType } from '../../selectors/protocol';
 import {
   getNodeColorSelector,
   getNodeTypeDefinition,
   resolveNodeShape,
-} from '~/selectors/session';
-import { updateNode } from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
-import type { StageProps } from '~/types';
-import { getNodeLabelAttribute } from '~/utils/getNodeLabelAttribute';
-
+} from '../../selectors/session';
+import { updateNode } from '../../store/modules/session';
+import { useAppDispatch } from '../../store/store';
+import type { StageProps } from '../../types';
+import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
 import CategoricalBinItem from './components/CategoricalBinItem';
 import { useCategoricalBins } from './useCategoricalBins';
 

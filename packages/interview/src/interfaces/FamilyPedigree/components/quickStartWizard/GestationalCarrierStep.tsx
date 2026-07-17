@@ -5,13 +5,11 @@ import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { FramingId } from '@codaco/shared-consts';
-import useProtocolForm from '~/forms/useProtocolForm';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { useFamilyPedigreeStore } from '~/interfaces/FamilyPedigree/FamilyPedigreeContext';
-import {
-  getNodeForm,
-  getNodeType,
-} from '~/interfaces/FamilyPedigree/utils/nodeUtils';
+
+import useProtocolForm from '../../../../forms/useProtocolForm';
+import { useStageSelector } from '../../../../hooks/useStageSelector';
+import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
+import { getNodeForm, getNodeType } from '../../utils/nodeUtils';
 
 // "Gestational Carrier" is framing-invariant, but the explanatory body must not
 // leak gamete wording under the gendered framing — mirror EggParentStep/

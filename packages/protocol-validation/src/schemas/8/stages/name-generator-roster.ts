@@ -1,11 +1,13 @@
 import { z } from 'zod';
 
-import { findDuplicateId } from '~/utils/validation-helpers';
-
-import { NodeStageSubjectSchema, nameGeneratorPromptSchema } from '../common';
-import { SortOrderSchema } from '../filters';
-import { baseStageSchema } from './base';
-import { nameGeneratorBehavioursSchema } from './name-generator';
+import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import {
+  NodeStageSubjectSchema,
+  nameGeneratorPromptSchema,
+} from '../common/index.ts';
+import { SortOrderSchema } from '../filters/index.ts';
+import { baseStageSchema } from './base.ts';
+import { nameGeneratorBehavioursSchema } from './name-generator.ts';
 
 export const nameGeneratorRosterStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorRoster'),

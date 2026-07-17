@@ -4,9 +4,9 @@ import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import useOnline from '~/hooks/useOnline';
 
 import { useCaptureException } from '../analytics/useTrack';
+import useOnline from '../hooks/useOnline';
 import CopyDebugInfoButton from './CopyDebugInfoButton';
 
 // Build the copyable debug string. The stack alone is not enough: Firefox's

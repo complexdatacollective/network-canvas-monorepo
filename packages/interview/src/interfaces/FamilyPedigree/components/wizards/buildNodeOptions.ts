@@ -1,7 +1,8 @@
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
-import { getNodeLabel } from '~/interfaces/FamilyPedigree/pedigree-layout/utils/getDisplayLabel';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
+
+import { getNodeLabel } from '../../pedigree-layout/utils/getDisplayLabel';
+import type { VariableConfig } from '../../store';
 
 /** Wizard candidate options: ego as "You", others via the relationship labeller,
  *  filtered to the supplied candidate id set. */

@@ -1,6 +1,6 @@
 {
   "name": "@codaco/protocol-validation",
-  "version": "11.9.0",
+  "version": "11.10.0",
   "description": "Utilities for validating and migrating Network Canvas protocol files.",
   "license": "GPL-3.0-or-later",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
@@ -15,14 +15,22 @@
     "dist"
   ],
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    },
     "access": "public"
   },
   "scripts": {
-    "build": "node ../../scripts/with-turbo.mjs vite build",
-    "dev": "node ../../scripts/with-turbo.mjs --with-deps vite build --watch",
+    "build": "vite build",
     "test": "vitest --run",
     "test:watch": "vitest",
     "typecheck": "tsc --build --noEmit"

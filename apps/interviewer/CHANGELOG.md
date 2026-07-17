@@ -1,5 +1,16 @@
 # @codaco/interviewer
 
+## 8.0.0-beta.8
+
+### Patch Changes
+
+- Show a numeric keyboard for number entry on iOS and Android.
+- Warn clearly when unexported interview data is at risk in Safari or Firefox,
+  while using a calmer notice for low-risk Chromium storage and matching the Install
+  action to each warning level. Persistent storage is now requested after the first
+  user interaction instead of during page load.
+- Keep interview prompts, Quick Add fields, and newly added nodes visible above Safari chrome and the iOS software keyboard.
+
 ## 8.0.0-beta.7
 
 ### Minor Changes

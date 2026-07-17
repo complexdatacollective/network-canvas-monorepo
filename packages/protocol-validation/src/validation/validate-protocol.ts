@@ -1,5 +1,8 @@
-import { type VersionedProtocol, VersionedProtocolSchema } from '../schemas';
-import { ensureError } from '../utils/ensureError';
+import {
+  type VersionedProtocol,
+  VersionedProtocolSchema,
+} from '../schemas/index.ts';
+import { ensureError } from '../utils/ensureError.ts';
 
 /**
  * Enhanced validateProtocol that uses Zod 4 with integrated cross-reference validation.

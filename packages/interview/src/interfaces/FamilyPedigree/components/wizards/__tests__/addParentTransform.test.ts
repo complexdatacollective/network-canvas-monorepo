@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import type { NcEdge } from '@codaco/shared-consts';
-import type { VariableConfig } from '~/interfaces/FamilyPedigree/store';
 
+import type { VariableConfig } from '../../../store';
 import { transformToCommitBatch } from '../AddParentWizard';
 
 const variableConfig: VariableConfig = {

@@ -9,6 +9,7 @@ import type {
   EdgeDefinition,
   EntityDefinition,
   Variable,
+  VariablePropertyKey,
 } from '@codaco/protocol-validation';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import {
@@ -50,7 +51,7 @@ type CreateVariablePayload = {
 type UpdateVariablePayload = {
   variable: string;
   configuration: Partial<Variable>;
-  merge?: boolean;
+  replaceProperties?: readonly VariablePropertyKey[];
 };
 
 type DeleteVariablePayload = {
@@ -201,13 +202,13 @@ export const updateVariableAsync = createAppAsyncThunk(
       type,
       variable,
       configuration,
-      merge = false,
+      replaceProperties = [],
     }: {
       entity?: Entity;
       type?: string;
       variable: string;
       configuration: Partial<Variable>;
-      merge?: boolean;
+      replaceProperties?: readonly VariablePropertyKey[];
     },
     { dispatch, getState },
   ) => {
@@ -231,7 +232,7 @@ export const updateVariableAsync = createAppAsyncThunk(
     const payload: UpdateVariablePayload = {
       variable,
       configuration: prune(configuration),
-      merge,
+      replaceProperties,
     };
 
     dispatch(codebookSlice.actions.updateVariable(payload));
@@ -301,7 +302,7 @@ const getStateWithUpdatedVariable = (
   type: string | undefined,
   variable: string,
   configuration: Partial<Variable>,
-  merge = false,
+  replaceProperties: readonly VariablePropertyKey[] = [],
 ): Codebook => {
   if (entity !== 'ego' && !type) {
     throw Error('Type must be specified for non ego nodes');
@@ -310,14 +311,14 @@ const getStateWithUpdatedVariable = (
   const entityPath = entity === 'ego' ? [entity] : [entity, type as string];
 
   const existingVariable = get(state, [...entityPath, 'variables', variable]);
-  const variableConfiguration: Variable = merge
-    ? ({
-        ...(existingVariable && typeof existingVariable === 'object'
-          ? (existingVariable as Partial<Variable>)
-          : {}),
-        ...configuration,
-      } as Variable)
-    : (configuration as Variable);
+  const preservedProperties =
+    existingVariable && typeof existingVariable === 'object'
+      ? omit(existingVariable as Partial<Variable>, replaceProperties)
+      : {};
+  const variableConfiguration = {
+    ...preservedProperties,
+    ...configuration,
+  } as Variable;
 
   const existingVariables = get(state, [...entityPath, 'variables']);
   const newVariables: Record<string, Variable> = {
@@ -372,11 +373,14 @@ const codebookSlice = createSlice({
         type,
         variable,
         configuration,
-        false,
       );
     },
     updateVariable: (state, action: PayloadAction<UpdateVariablePayload>) => {
-      const { variable, configuration, merge = false } = action.payload;
+      const {
+        variable,
+        configuration,
+        replaceProperties = [],
+      } = action.payload;
 
       // Use current() to get a non-draft version of state for the selector
       const currentState = current(state);
@@ -394,7 +398,7 @@ const codebookSlice = createSlice({
         entityType ?? undefined,
         variable,
         configuration,
-        merge,
+        replaceProperties,
       );
     },
     deleteVariable: (state, action: PayloadAction<DeleteVariablePayload>) => {
@@ -418,8 +422,18 @@ const codebookSlice = createSlice({
 export const updateVariableByUUID = (
   variable: string,
   properties: Partial<Variable>,
-  merge = false,
-) => updateVariableAsync({ variable, configuration: properties, merge });
+  replaceProperties: readonly VariablePropertyKey[] = [],
+) =>
+  updateVariableAsync({
+    variable,
+    configuration: properties,
+    replaceProperties,
+  });
+
+export const test = {
+  updateVariable: (payload: UpdateVariablePayload) =>
+    codebookSlice.actions.updateVariable(payload),
+};
 
 // Export the reducer as default
 export default codebookSlice.reducer;

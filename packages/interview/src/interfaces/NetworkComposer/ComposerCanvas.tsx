@@ -8,10 +8,10 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
-import CanvasNode from '~/canvas/CanvasNode';
-import EdgeLayer from '~/canvas/EdgeLayer';
-import { type CanvasStoreApi } from '~/canvas/useCanvasStore';
 
+import CanvasNode from '../../canvas/CanvasNode';
+import EdgeLayer from '../../canvas/EdgeLayer';
+import { type CanvasStoreApi } from '../../canvas/useCanvasStore';
 import { type ComposerStoreApi, useComposerStore } from './useComposerStore';
 
 type Position = { x: number; y: number };

@@ -1,16 +1,16 @@
 import { get, omit, reduce } from 'es-toolkit/compat';
 import { formValueSelector } from 'redux-form';
 
+import type { VariablePropertyKey } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
 
-// Internal config - not exported
-const CODEBOOK_PROPERTIES = [
+export const CODEBOOK_PROPERTIES = [
   'options',
   'parameters',
   'component',
   'validation',
-];
+] as const satisfies readonly VariablePropertyKey[];
 
 export const getCodebookProperties = (
   properties: Record<string, unknown>,

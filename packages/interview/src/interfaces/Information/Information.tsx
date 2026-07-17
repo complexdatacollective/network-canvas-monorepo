@@ -1,8 +1,9 @@
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import ContentItem from '~/components/ContentItem';
-import type { StageProps } from '~/types';
+
+import ContentItem from '../../components/ContentItem';
+import type { StageProps } from '../../types';
 
 type InformationProps = StageProps<'Information'>;
 

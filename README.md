@@ -1,86 +1,102 @@
 # Network Canvas
 
-Network Canvas is a suite of applications for conducting network research interviews and data collection. This monorepo contains the core packages and applications that power the Network Canvas ecosystem.
+Network Canvas is a suite of tools for designing and conducting network
+research interviews. This monorepo contains the current browser applications,
+maintenance-mode desktop and mobile applications, shared libraries, websites,
+and supporting services used across the Network Canvas ecosystem.
 
-## Overview
-
-Network Canvas helps researchers collect data about social, personal, and professional networks through intuitive interfaces and powerful data management tools.
+Architect creates `.netcanvas` interview protocols. Interviewer installs and
+runs those protocols locally, stores interview data offline, and exports the
+resulting networks for analysis. The shared packages provide the protocol
+schema, interview runtime, design system, data utilities, and canonical protocol
+content used by those applications.
 
 ## Repository Structure
 
-This monorepo is organized into four main categories:
+The pnpm workspace is organized into four main categories.
 
 ### Apps
 
-| App                                                 | Description                                                                                          |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| [`architect`](./apps/architect)                     | Protocol designer application (Vite + React + Redux) for creating Network Canvas interview protocols |
-| [`architect-classic`](./apps/architect-classic)     | Legacy Electron build of Architect, the Network Canvas protocol designer (maintenance mode)          |
-| [`interviewer`](./apps/interviewer)                 | Network Canvas Interviewer — offline-first PWA used to conduct interviews                            |
-| [`interviewer-classic`](./apps/interviewer-classic) | Legacy Network Canvas Interviewer (Electron + Cordova), maintenance mode                             |
-| [`documentation`](./apps/documentation)             | Next.js documentation website with MDX support and search functionality                              |
+| App                                                 | Description                                                                                                                                        |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`architect`](./apps/architect)                     | Offline-capable Vite/React PWA for designing, validating, and previewing Network Canvas interview protocols                                        |
+| [`architect-classic`](./apps/architect-classic)     | Maintenance-mode Electron version of the original Architect protocol designer                                                                      |
+| [`documentation`](./apps/documentation)             | Localized Next.js documentation site built from Markdown/MDX, with DocSearch and generated protocol downloads                                      |
+| [`interviewer`](./apps/interviewer)                 | Offline-first Vite/React PWA for managing protocols, conducting interviews, storing local sessions with optional encryption, and exporting data    |
+| [`interviewer-classic`](./apps/interviewer-classic) | Maintenance-mode Interviewer application for desktop (Electron) and native mobile (Capacitor)                                                      |
+| [`networkcanvas.com`](./apps/networkcanvas.com)     | Localized Next.js project website, including product information, research resources, publications, team information, and getting-started guidance |
 
 ### Packages
 
-| Package                                                           | Description                                                                                          |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| [`@codaco/protocol-validation`](./packages/protocol-validation)   | Zod schemas for validating and migrating Network Canvas protocol files                               |
-| [`@codaco/shared-consts`](./packages/shared-consts)               | Shared constants and TypeScript definitions for the Network Canvas project                           |
-| [`@codaco/interview`](./packages/interview)                       | Network Canvas interview engine — Shell component, synthetic network generator, and session contract |
-| [`@codaco/network-exporters`](./packages/network-exporters)       | Effect-TS pipeline for exporting Network Canvas interview data as CSV and GraphML                    |
-| [`@codaco/network-query`](./packages/network-query)               | Network filtering and querying utilities for Network Canvas                                          |
-| [`@codaco/fresco-ui`](./packages/fresco-ui)                       | Fresco UI components, styles, and utilities built on Base UI and Tailwind CSS                        |
-| [`@codaco/art`](./packages/art)                                   | Visual design components using blobs and d3-interpolate-path for animated graphics                   |
-| [`@codaco/interface-images`](./packages/interface-images)         | Generated responsive screenshots of every interview interface, with a React `<picture>` component    |
-| [`@codaco/development-protocol`](./packages/development-protocol) | Development protocol assets for testing Network Canvas applications                                  |
+| Package                                                                 | Description                                                                                                                             |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@codaco/art`](./packages/art)                                         | Shared animated backgrounds, blobs, patterns, and network-weave visuals                                                                 |
+| [`@codaco/development-protocol`](./packages/development-protocol)       | Published compatibility package for the canonical development protocol in `@codaco/protocols`                                           |
+| [`@codaco/fresco-ui`](./packages/fresco-ui)                             | Reusable React components, forms, dialogs, styles, and utilities built with Base UI and Tailwind CSS                                    |
+| [`@codaco/interface-images`](./packages/interface-images)               | Generated responsive screenshots of the interview interfaces, plus the React component used to display them                             |
+| [`@codaco/interview`](./packages/interview)                             | Embeddable React interview engine containing the participant-facing interfaces, navigation, state management, and host session contract |
+| [`@codaco/network-exporters`](./packages/network-exporters)             | Effect pipeline for exporting Network Canvas interview data as CSV and GraphML                                                          |
+| [`@codaco/network-query`](./packages/network-query)                     | Network filtering and querying utilities                                                                                                |
+| [`@codaco/protocol-utilities`](./packages/protocol-utilities)           | Deterministic synthetic-network generation and a fluent interview-payload builder                                                       |
+| [`@codaco/protocol-validation`](./packages/protocol-validation)         | Zod schemas and utilities for validating, hashing, and migrating Network Canvas protocol files                                          |
+| [`@codaco/protocols`](./packages/protocols)                             | Private canonical source for development and sample protocols, Architect templates, documentation downloads, and E2E fixtures           |
+| [`@codaco/sample-protocol`](./packages/sample-protocol)                 | Published compatibility package for the canonical sample protocol in `@codaco/protocols`                                                |
+| [`@codaco/shared-consts`](./packages/shared-consts)                     | Shared constants and TypeScript definitions                                                                                             |
+| [`@codaco/site-navigation-element`](./packages/site-navigation-element) | Self-contained `<nc-site-navigation>` web component for non-React websites                                                              |
 
 ### Workers
 
-| Worker                                                          | Description                                                          |
-| --------------------------------------------------------------- | -------------------------------------------------------------------- |
-| [`development-protocol-worker`](./workers/development-protocol) | Cloudflare Worker for serving development protocol files from GitHub |
-| [`posthog-proxy-worker`](./workers/posthog-proxy)               | Cloudflare Worker for proxying PostHog analytics requests            |
+| Worker                                                          | Description                                                                                     |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| [`development-protocol-worker`](./workers/development-protocol) | Cloudflare Worker that resolves and serves the latest released `Development.netcanvas` artifact |
+| [`posthog-proxy-worker`](./workers/posthog-proxy)               | Cloudflare Worker that proxies PostHog API and static-asset requests with CORS support          |
 
 ### Tooling
 
-| Config                                          | Description                                                                           |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------- |
-| [`@codaco/tailwind-config`](./tooling/tailwind) | Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps |
-| [`@codaco/tsconfig`](./tooling/typescript)      | Shared TypeScript configurations                                                      |
-| [`oxlint`](./tooling/oxlint)                    | Shared oxlint configurations (React and Tailwind rule sets) extended by workspaces    |
+| Tooling                                         | Description                                                                                                  |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| [`@codaco/tailwind-config`](./tooling/tailwind) | Shared Tailwind theme, design tokens, fonts, and plugins, with v3 compatibility and the preferred v4 surface |
+| [`@codaco/tsconfig`](./tooling/typescript)      | Shared TypeScript configurations                                                                             |
+| [`oxlint`](./tooling/oxlint)                    | Shared oxlint rule sets for React and accessibility                                                          |
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js >= 20.0.0
-- pnpm >= 10.0.0
+- Node.js 24, using the exact version in [`.nvmrc`](./.nvmrc)
+- pnpm 11, using the exact version pinned by `packageManager` in
+  [`package.json`](./package.json)
 
 ### Installation
 
 ```bash
 git clone https://github.com/complexdatacollective/network-canvas-monorepo.git
 cd network-canvas-monorepo
+corepack enable
 pnpm install
 ```
 
 ### Development
 
 ```bash
-# Start all applications in development mode
+# Start every workspace that has a development task
 pnpm dev
 
-# Build all packages and applications
+# Build the workspace through Turborepo's dependency graph
 pnpm build
 
-# Run tests across all packages
+# Run tests across the workspace
 pnpm test
 ```
 
-### Working with Individual Packages
+The root scripts invoke `turbo run`/`turbo watch`, so workspace dependencies are
+built or watched in the correct order. Prefer them over calling a package script
+directly when that task consumes another workspace package.
+
+### Working with Individual Workspaces
 
 ```bash
-# Work with a specific package
+# Work with a specific app or package
 pnpm --filter @codaco/protocol-validation build
 pnpm --filter @codaco/architect dev
 pnpm --filter @codaco/documentation dev
@@ -104,17 +120,21 @@ pnpm --filter posthog-proxy-worker deploy
 
 ## Development Tools
 
-- **Build System**: Vite for fast builds and development
-- **Package Manager**: pnpm with workspace support
-- **Code Formatting**: oxfmt for formatting and oxlint for linting
-- **Type Checking**: TypeScript with shared configurations
-- **Edge Computing**: Cloudflare Workers for serverless functions
-- **CI/CD**: GitHub Actions with optimized workflows
-- **Change Management**: Changesets for version management
+- **Workspace orchestration:** pnpm workspaces and Turborepo
+- **Application builds:** Vite for the current web apps and shared libraries,
+  Next.js for the websites, Electron Vite for the classic desktop apps, and
+  Wrangler for Cloudflare Workers
+- **UI:** React, Tailwind CSS, Base UI, and the shared Fresco design system
+- **Code quality:** TypeScript, oxlint, oxfmt, and knip
+- **Testing:** Vitest, Storybook/Chromatic, and Playwright
+- **CI/CD and releases:** GitHub Actions, Changesets, Netlify, npm, and
+  Cloudflare Workers
 
 ## Code Style
 
-This project uses [oxlint](https://oxc.rs/docs/guide/usage/linter) for linting and [oxfmt](https://github.com/oxc-project/oxfmt) for formatting. Style settings: 2-space indentation, 80-character line width, and single quotes.
+This project uses [oxlint](https://oxc.rs/docs/guide/usage/linter) for linting
+and [oxfmt](https://github.com/oxc-project/oxfmt) for formatting. Style settings:
+2-space indentation, 80-character line width, and single quotes.
 
 ```bash
 # Check formatting and linting
@@ -144,20 +164,28 @@ pnpm --filter @codaco/protocol-validation test
 # Run tests in watch mode
 pnpm test:watch
 
-# Type check all packages
+# Type check the workspace
 pnpm typecheck
+
+# Check for unused files, exports, and dependencies
+pnpm knip
 ```
 
 ## Version Management
 
-This project uses [Changesets](https://github.com/changesets/changesets) for version management and automated releases.
+This project uses [Changesets](https://github.com/changesets/changesets) for
+version management and automated releases.
 
 ```bash
 # Add a changeset for your changes
 pnpm changeset
 ```
 
-After merging a PR with changesets, a release PR will be created that bumps package versions. Merge that PR to publish the updated packages.
+Publishable library packages under `packages/*` share the npm release lane.
+Architect, Interviewer, Documentation, and networkcanvas.com each have an
+independent gated product release PR. Keep each changeset to one release lane:
+do not mix a gated product with libraries, or two gated products, in the same
+changeset. Classic apps are maintained and released separately.
 
 ## Interface Screenshots
 
@@ -195,8 +223,9 @@ the `regenerating-e2e-visual-snapshots` skill and the manual
 2. Create a feature branch
 3. Make your changes
 4. Add tests if applicable
-5. Run `pnpm lint:fix` and `pnpm typecheck`
-6. Submit a pull request
+5. Add a changeset when the change affects a releasable package or product
+6. Run `pnpm lint:fix`, `pnpm knip`, `pnpm typecheck`, and the relevant tests
+7. Submit a pull request
 
 ## Links
 

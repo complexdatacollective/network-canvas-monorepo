@@ -5,20 +5,20 @@ import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
-import { CurrentStepProvider } from '~/contexts/CurrentStepContext';
-import { StageMetadataContext } from '~/contexts/StageMetadataContext';
-import { ContractProvider } from '~/contract/context';
-import protocol from '~/store/modules/protocol';
-import session from '~/store/modules/session';
-import ui from '~/store/modules/ui';
-import type { RegisterBeforeNext, StageProps } from '~/types';
 
+import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
+import { ContractProvider } from '../../../contract/context';
+import protocol from '../../../store/modules/protocol';
+import session from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
+import type { RegisterBeforeNext, StageProps } from '../../../types';
 import NetworkComposer from '../NetworkComposer';
 
 // jsdom has no Worker, and automatic mode would otherwise construct the shared
 // auto-layout worker. These tests cover the metadata-driven layout toggle, not
 // the simulation, so stub the engine out.
-vi.mock('~/canvas/useAutoLayout', () => ({
+vi.mock('../../../canvas/useAutoLayout', () => ({
   useAutoLayout: () => ({
     isRunning: false,
     start: vi.fn(),

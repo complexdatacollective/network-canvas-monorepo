@@ -1,5 +1,8 @@
 import { Trash2 } from 'lucide-react';
 import type { ComponentType } from 'react';
+import { useCallback } from 'react';
+import { useSelector } from 'react-redux';
+import { change, formValueSelector } from 'redux-form';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -11,11 +14,28 @@ import type { FrescoReduxArrayFieldItemProps } from '~/components/Form/FrescoRed
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import NetworkFilter from '~/components/sections/fields/NetworkFilter';
+import { useAppDispatch } from '~/ducks/hooks';
+import type { RootState } from '~/ducks/modules/root';
 import { getFieldId } from '~/utils/issues';
 
 import Section from '../../EditorLayout/Section';
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+
+const EXISTING_DATA_SOURCE = 'existing';
+
+type PanelFilter = { join?: string; rules?: { type?: string }[] } | null;
+
+export const hasEdgeRules = (filter: PanelFilter): boolean =>
+  (filter?.rules ?? []).some((rule) => rule.type === 'edge');
+
+export const stripEdgeRules = (filter: PanelFilter): PanelFilter => {
+  const remaining = (filter?.rules ?? []).filter(
+    (rule) => rule.type !== 'edge',
+  );
+  if (remaining.length === 0) return null;
+  return { ...filter, rules: remaining };
+};
 
 export type NodePanelValue = Record<string, unknown> & {
   id: string;
@@ -39,6 +59,7 @@ const NodePanel = ({
   readOnly,
 }: NodePanelProps) => {
   const { confirm } = useDialog();
+  const dispatch = useAppDispatch();
   const interactionDisabled = disabled || readOnly;
   const handleDelete = () => {
     void confirm({
@@ -50,6 +71,41 @@ const NodePanel = ({
       onConfirm: onDelete,
     });
   };
+
+  const dataSource = useSelector((state: RootState) =>
+    formValueSelector(form)(state, `${fieldName}.dataSource`),
+  ) as string | undefined;
+  const filter = useSelector((state: RootState) =>
+    formValueSelector(form)(state, `${fieldName}.filter`),
+  ) as PanelFilter;
+
+  const handleDataSourceChange = useCallback(
+    (_raw: unknown, newValue: string, previousValue: string) => {
+      if (newValue === previousValue || newValue === EXISTING_DATA_SOURCE) {
+        return;
+      }
+      if (!hasEdgeRules(filter)) return;
+
+      void (async () => {
+        const confirmed = await confirm({
+          title: 'This will remove your edge rules',
+          description:
+            'An external data file contains only nodes, so edge rules cannot be applied to it. Switching will delete the edge rules in this panel’s filter. Do you want to continue?',
+          confirmLabel: 'Remove edge rules',
+          cancelLabel: 'Cancel',
+          intent: 'warning',
+          onConfirm: () => {},
+        });
+
+        dispatch(
+          confirmed
+            ? change(form, `${fieldName}.filter`, stripEdgeRules(filter))
+            : change(form, `${fieldName}.dataSource`, previousValue),
+        );
+      })();
+    },
+    [confirm, dispatch, filter, form, fieldName],
+  );
 
   return (
     <div className="flex w-full items-center gap-4">
@@ -113,6 +169,7 @@ const NodePanel = ({
             validation={{ required: true }}
             componentProps={{
               canUseExisting: true,
+              onChange: handleDataSourceChange,
             }}
           />
         </Section>
@@ -120,6 +177,7 @@ const NodePanel = ({
           form={form}
           variant="contrast"
           name={`${fieldName}.filter`}
+          allowEdgeRules={dataSource === EXISTING_DATA_SOURCE}
         />
       </div>
       <IconButton

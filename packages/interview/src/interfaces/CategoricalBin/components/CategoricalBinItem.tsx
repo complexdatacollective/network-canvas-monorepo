@@ -7,12 +7,12 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { Stage } from '@codaco/protocol-validation';
 import type { NcNode } from '@codaco/shared-consts';
-import NodeList from '~/components/NodeList';
-import { usePrompts } from '~/components/Prompts/usePrompts';
-import { useCelebrate } from '~/hooks/useCelebrate';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getCurrentStageId } from '~/selectors/session';
 
+import NodeList from '../../../components/NodeList';
+import { usePrompts } from '../../../components/Prompts/usePrompts';
+import { useCelebrate } from '../../../hooks/useCelebrate';
+import { useStageSelector } from '../../../hooks/useStageSelector';
+import { getCurrentStageId } from '../../../selectors/session';
 import BinSummary from './BinSummary';
 
 type CategoricalBinItemProps = {

@@ -1,10 +1,11 @@
 /*
  * Storybook tailwind entry. Mirrors the app's `src/styles/globals.css`:
- * fresco-ui and @codaco/interview are consumed as built `dist` (kept fresh by
- * their `dev` watchers), so we import their compiled stylesheets — the
- * documented consumption pattern — rather than @source-ing their source. The
- * app's own components under `src/` are picked up by tailwind's automatic
- * source detection (this file lives inside the app), so they need no @source.
+ * fresco-ui and @codaco/interview resolve to raw TypeScript source, and each
+ * package's own styles.css carries a self-relative @source that resolves
+ * against its src/ tree, so importing their stylesheets here is enough —
+ * no separate @source override is needed. The app's own components under
+ * `src/` are picked up by tailwind's automatic source detection (this file
+ * lives inside the app), so they need no @source either.
  *
  * Fonts are imported in JS (see preview.tsx) so url() paths resolve through
  * the Vite bundler.

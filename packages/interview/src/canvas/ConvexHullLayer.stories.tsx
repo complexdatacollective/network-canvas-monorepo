@@ -6,9 +6,9 @@ import {
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
-import { createCanvasStore } from '~/canvas/useCanvasStore';
 
 import ConvexHullLayer from './ConvexHullLayer';
+import { createCanvasStore } from './useCanvasStore';
 
 type CategoricalValue = string | number | boolean;
 

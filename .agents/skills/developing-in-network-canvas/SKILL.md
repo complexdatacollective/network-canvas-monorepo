@@ -15,7 +15,7 @@ Two failure modes this guards against: **rebuilding things that already exist**,
 
 Any feature, fix, or change in the monorepo, before writing code. **Steps 1 and 2 apply to everything** — packages, schemas, workers, utilities, UI. The **Building UI** section adds depth for anything that renders an interface.
 
-Read the repository root `AGENTS.md` at the start of Network Canvas repository tasks for the repo's current commands, architecture map, committing/PR expectations, and code standards.
+Read the repository root `AGENTS.md` (a symlink to `CLAUDE.md` — the same instructions; Claude Code loads it automatically) at the start of Network Canvas repository tasks for the repo's current commands, architecture map, committing/PR expectations, and code standards.
 
 ## Step 1 — Reuse before you build (every feature)
 
@@ -75,7 +75,7 @@ If you must build a new component, it is **founded on a Base-UI primitive** and 
 
 When the reuse ladder bottoms out and you add a new `@codaco/fresco-ui` component:
 
-- **Mirror the existing export style.** Compound components are **named exports from one file** (see `DropdownMenu`), named after the underlying Base-UI parts (`Tabs`, `TabsList`, `TabsTab`, `TabsPanel`, `TabsIndicator`) — not a barrel, not a `.`-namespace. Add the subpath to `packages/fresco-ui/package.json` `exports`, and rebuild the package (`pnpm --filter @codaco/fresco-ui build`) before a consuming app's typecheck will see it — apps resolve fresco-ui from `dist`, not `src`.
+- **Mirror the existing export style.** Compound components are **named exports from one file** (see `DropdownMenu`), named after the underlying Base-UI parts (`Tabs`, `TabsList`, `TabsTab`, `TabsPanel`, `TabsIndicator`) — not a barrel, not a `.`-namespace. Add the subpath to `packages/fresco-ui/package.json` `exports` pointing at the `src/` file, then run `pnpm --filter @codaco/fresco-ui sync-exports` to regenerate the dist-pointing `publishConfig.exports` pair (a vitest guard fails if the maps drift). No rebuild is needed — apps resolve fresco-ui from `src` directly.
 - **Size with container queries, never viewport breakpoints.** A shared component doesn't know the viewport, only its container — key responsive layout off `@container` + `@min-[…]`, and make the component (or the relevant part) an `@container` so its own descendants can query it. Give size-flexible parts a floor **and** a cap that _both_ step up across breakpoints, so the part gains presence as its container grows and only wraps/clips once content exceeds the cap (e.g. a rail that is `w-fit` between a per-breakpoint `min-w`/`max-w`).
 - **Never fix a height/size that clips content.** Let content flow; a fixed `h-*`/`max-w` that cuts off items or wraps a label unexpectedly is a bug, not a constraint.
 

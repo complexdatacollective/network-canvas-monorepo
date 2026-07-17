@@ -1,8 +1,4 @@
-import type {
-  CommitBatch,
-  VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
-
+import type { CommitBatch, VariableConfig } from '../../../store';
 import { buildParentageBatch } from './buildParentageBatch';
 
 /**

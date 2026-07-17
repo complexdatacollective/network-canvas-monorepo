@@ -1,11 +1,8 @@
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode, RelationshipType } from '@codaco/shared-consts';
-import type {
-  FamilyEdge,
-  GameteRole,
-  VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
-import { getEdgeRelationshipType } from '~/interfaces/FamilyPedigree/utils/edgeUtils';
+
+import type { FamilyEdge, GameteRole, VariableConfig } from '../../store';
+import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 
 function readGameteRole(value: unknown): GameteRole | undefined {
   // Stored as a single-element categorical array; also tolerate a bare string.

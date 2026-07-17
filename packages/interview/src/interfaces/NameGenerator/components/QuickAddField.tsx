@@ -21,21 +21,22 @@ import {
 } from '@codaco/fresco-ui/Tooltip';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+
 import {
   actionCircleVariants,
   actionIconClass,
   actionPlusBadgeVariants,
   actionPlusIconClass,
-} from '~/components/actionButtonVariants';
-import { useCelebrate } from '~/hooks/useCelebrate';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getNodeIconName } from '~/selectors/name-generator';
+} from '../../../components/actionButtonVariants';
+import { useCelebrate } from '../../../hooks/useCelebrate';
+import { useStageSelector } from '../../../hooks/useStageSelector';
+import { getNodeIconName } from '../../../selectors/name-generator';
 import {
   getNodeColorSelector,
   getNodeTypeDefinition,
   getPromptAdditionalAttributes,
   resolveNodeShape,
-} from '~/selectors/session';
+} from '../../../selectors/session';
 
 function convertToNodeColor(color: NodeColorSequence): string {
   switch (color) {

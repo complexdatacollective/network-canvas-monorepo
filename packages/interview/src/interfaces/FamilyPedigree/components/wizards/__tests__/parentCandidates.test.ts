@@ -2,11 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
-import type {
-  FamilyEdge,
-  VariableConfig,
-} from '~/interfaces/FamilyPedigree/store';
 
+import type { FamilyEdge, VariableConfig } from '../../../store';
 import {
   geneticParentCandidates,
   nominatedGameteRoles,

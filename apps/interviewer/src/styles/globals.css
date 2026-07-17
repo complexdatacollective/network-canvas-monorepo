@@ -40,6 +40,26 @@ body {
   height: 100%;
 }
 
+/* Safari's browser chrome and software keyboard resize/offset VisualViewport
+   without changing the large layout viewport that 100vh represents. The
+   pre-React visualViewportSizing initializer opts #root into this frame in a
+   browser tab and while an installed PWA keyboard is open.
+
+   Keep #root in normal document flow: its border box reaches the visual
+   viewport's bottom/right edge, while padding reserves the hidden top/left
+   region. Because border-box sizing subtracts that padding, the h-full child
+   chain receives exactly the visible width and height. This preserves the
+   static 100vh edge-to-edge paint without turning #root into a transformed
+   containing block for fixed dialogs and backdrops. */
+#root[data-visual-viewport='active'] {
+  box-sizing: border-box;
+  width: calc(var(--app-viewport-left) + var(--app-viewport-width));
+  height: calc(var(--app-viewport-top) + var(--app-viewport-height));
+  padding-top: var(--app-viewport-top);
+  padding-left: var(--app-viewport-left);
+  overflow: hidden;
+}
+
 /* Disable the two-finger swipe-back/forward navigation gesture. Chromium
    reads this from the ROOT element (the body declaration below does not
    propagate to the viewport). Safari ignores it for the history swipe

@@ -3,7 +3,8 @@ import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import StoryInterviewShell from '~/.storybook/StoryInterviewShell';
+
+import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
 
 type StoryArgs = {
   title: string;

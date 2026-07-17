@@ -5,16 +5,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
 import type { Panel } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
-import Panels from '~/components/Panels';
-import { useCurrentStep } from '~/contexts/CurrentStepContext';
-import { useStageSelector } from '~/hooks/useStageSelector';
-import { getPanelConfiguration } from '~/selectors/name-generator';
+
+import Panels from '../../../components/Panels';
+import { useCurrentStep } from '../../../contexts/CurrentStepContext';
+import { useStageSelector } from '../../../hooks/useStageSelector';
+import { getPanelConfiguration } from '../../../selectors/name-generator';
 import {
   deleteNode as deleteNodeAction,
   removeNodeFromPrompt as removeNodeFromPromptAction,
-} from '~/store/modules/session';
-import { useAppDispatch } from '~/store/store';
-
+} from '../../../store/modules/session';
+import { useAppDispatch } from '../../../store/store';
 import NodePanel from './NodePanel';
 
 /**
