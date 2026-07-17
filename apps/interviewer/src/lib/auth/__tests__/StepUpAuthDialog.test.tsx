@@ -1,22 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useAuthMock = vi.fn();
 vi.mock('../AuthContext', () => ({ useAuth: () => useAuthMock() }));
-
-const verifyBiometricMock = vi.fn(async () => ({ ok: true }));
-const verifyWithPinMock = vi.fn(async () => ({ ok: true }));
-const verifyWithPassphraseMock = vi.fn(async () => ({ ok: true }));
-const verifyWithRecoveryMock = vi.fn(async (_phrase: string) => ({
-  ok: true,
-}));
-vi.mock('../api', () => ({
-  verifyBiometric: () => verifyBiometricMock(),
-  verifyWithPin: () => verifyWithPinMock(),
-  verifyWithPassphrase: () => verifyWithPassphraseMock(),
-  verifyWithRecovery: (phrase: string) => verifyWithRecoveryMock(phrase),
-}));
 
 const hasPasskeyWindowLimitationMock = vi.fn(() => false);
 vi.mock('~/lib/pwa/passkeyWindowLimitation', () => ({
@@ -25,84 +12,150 @@ vi.mock('~/lib/pwa/passkeyWindowLimitation', () => ({
 
 import StepUpAuthDialog, { StepUpAuthDialogView } from '../StepUpAuthDialog';
 
-afterEach(() => {
-  useAuthMock.mockReset();
-  verifyBiometricMock.mockClear().mockResolvedValue({ ok: true });
-  verifyWithRecoveryMock.mockClear().mockResolvedValue({ ok: true });
-  hasPasskeyWindowLimitationMock.mockClear().mockReturnValue(false);
+const verifyBiometric = vi.fn(async () => ({ ok: true }));
+const verifyWithPin = vi.fn(async () => ({ ok: true }));
+const verifyWithPassphrase = vi.fn(async () => ({ ok: true }));
+const verifyWithRecovery = vi.fn(async () => ({ ok: true }));
+const revoke = vi.fn(async () => undefined);
+
+const authValue = {
+  kind: 'unlocked' as const,
+  mode: 'pin' as const,
+  verifyBiometric,
+  verifyWithPin,
+  verifyWithPassphrase,
+  verifyWithRecovery,
+  revoke,
+};
+
+beforeEach(() => {
+  useAuthMock.mockReturnValue(authValue);
+  hasPasskeyWindowLimitationMock.mockReturnValue(false);
 });
 
-const ok = vi.fn(async () => ({ ok: true }) as const);
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('StepUpAuthDialogView', () => {
-  it('renders the PIN verify body for mode="pin"', () => {
+  it('renders the authentication UI selected by context', () => {
     render(
-      <StepUpAuthDialogView
-        mode="pin"
-        open
-        onResolve={vi.fn()}
-        onCancel={vi.fn()}
-        verifyWithPin={ok}
-        verifyWithPassphrase={ok}
-        verifyBiometric={ok}
-        verifyWithRecovery={ok}
-      />,
+      <StepUpAuthDialogView open onResolve={vi.fn()} onCancel={vi.fn()} />,
     );
     expect(screen.getByText('Confirm your identity')).toBeInTheDocument();
+    expect(screen.getByText('Authenticate to continue.')).toBeInTheDocument();
+    expect(screen.getByText('PIN')).toBeInTheDocument();
   });
 });
 
 describe('StepUpAuthDialog', () => {
-  it('biometric mode resolves via a fresh verifyBiometric (no gate change)', async () => {
-    useAuthMock.mockReturnValue({ mode: 'biometric' });
+  it('automatically resolves biometric mode via fresh verification without changing the gate', async () => {
+    useAuthMock.mockReturnValue({
+      ...authValue,
+      mode: 'biometric',
+    });
     const onResolve = vi.fn();
     render(<StepUpAuthDialog open onResolve={onResolve} />);
 
-    await userEvent.click(
-      screen.getByRole('button', { name: /unlock with biometrics/i }),
-    );
-    await waitFor(() => expect(verifyBiometricMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(verifyBiometric).toHaveBeenCalledTimes(1));
     expect(onResolve).toHaveBeenCalledWith({ ok: true });
   });
 
   it('renders nothing for mode none', () => {
-    useAuthMock.mockReturnValue({ mode: 'none' });
+    useAuthMock.mockReturnValue({ ...authValue, mode: 'none' });
     const { container } = render(<StepUpAuthDialog open onResolve={vi.fn()} />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('biometric mode offers a recovery-passphrase fallback that verifies without a gate change', async () => {
-    useAuthMock.mockReturnValue({ mode: 'biometric' });
+  it('verifies a biometric recovery passphrase without changing the gate', async () => {
+    verifyBiometric.mockResolvedValueOnce({ ok: false });
+    useAuthMock.mockReturnValue({
+      ...authValue,
+      mode: 'biometric',
+    });
     const onResolve = vi.fn();
+    const user = userEvent.setup();
     render(<StepUpAuthDialog open onResolve={onResolve} />);
 
-    await userEvent.click(
-      screen.getByRole('button', { name: /use recovery passphrase/i }),
+    await waitFor(() => expect(verifyBiometric).toHaveBeenCalledTimes(1));
+    await user.click(
+      screen.getByRole('button', { name: 'Recover with passphrase' }),
     );
-    await userEvent.type(
-      screen.getByLabelText(/passphrase/i),
+    await user.type(
+      await screen.findByTestId('passphrase-input'),
       'Recovery-Phrase-7!',
     );
-    await userEvent.click(screen.getByRole('button', { name: /^unlock$/i }));
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
 
     await waitFor(() =>
-      expect(verifyWithRecoveryMock).toHaveBeenCalledWith('Recovery-Phrase-7!'),
+      expect(verifyWithRecovery).toHaveBeenCalledWith('Recovery-Phrase-7!'),
     );
     expect(onResolve).toHaveBeenCalledWith({ ok: true });
-    expect(verifyBiometricMock).not.toHaveBeenCalled();
   });
 
-  it('defaults biometric step-up to recovery in a limited PWA window (crbug.com/364926914)', async () => {
+  it('starts with passphrase recovery in a limited PWA window', async () => {
     hasPasskeyWindowLimitationMock.mockReturnValue(true);
-    useAuthMock.mockReturnValue({ mode: 'biometric' });
+    useAuthMock.mockReturnValue({
+      ...authValue,
+      mode: 'biometric',
+    });
+    const user = userEvent.setup();
     render(<StepUpAuthDialog open onResolve={vi.fn()} />);
 
     expect(
-      screen.getByText(/isn't available in the installed app/i),
+      screen.getByText(/isn't available in this installed app/i),
     ).toBeInTheDocument();
-    // Biometrics stays reachable as an explicit escape hatch, not the default.
     expect(
-      screen.getByRole('button', { name: /try biometrics anyway/i }),
+      await screen.findByRole('button', { name: 'Recover by resetting' }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Unlock' })).toBeInTheDocument();
+    expect(verifyBiometric).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(
+      screen.getByRole('button', { name: 'Unlock with biometrics' }),
+    ).toBeInTheDocument();
+  });
+
+  it('resolves cancellation through the shared dialog callback', async () => {
+    const onResolve = vi.fn();
+    render(<StepUpAuthDialog open onResolve={onResolve} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onResolve).toHaveBeenCalledWith({
+      ok: false,
+      reason: 'cancelled',
+    });
+  });
+
+  it('ignores a pending automatic biometric result after cancellation', async () => {
+    let resolveBiometric: (result: { ok: boolean }) => void = () => {};
+    verifyBiometric.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveBiometric = resolve;
+        }),
+    );
+    useAuthMock.mockReturnValue({
+      ...authValue,
+      mode: 'biometric',
+    });
+    const onResolve = vi.fn();
+    const { rerender } = render(
+      <StepUpAuthDialog open onResolve={onResolve} />,
+    );
+
+    await waitFor(() => expect(verifyBiometric).toHaveBeenCalledTimes(1));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    rerender(<StepUpAuthDialog open={false} onResolve={onResolve} />);
+    await act(async () => {
+      resolveBiometric({ ok: true });
+    });
+
+    expect(onResolve).toHaveBeenCalledTimes(1);
+    expect(onResolve).toHaveBeenCalledWith({
+      ok: false,
+      reason: 'cancelled',
+    });
   });
 });

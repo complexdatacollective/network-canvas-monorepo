@@ -1,258 +1,399 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
 const useAuthMock = vi.fn();
 vi.mock('~/lib/auth/AuthContext', () => ({ useAuth: () => useAuthMock() }));
 
+const hasPasskeyWindowLimitationMock = vi.fn(() => false);
+vi.mock('~/lib/pwa/passkeyWindowLimitation', () => ({
+  hasPasskeyWindowLimitation: () => hasPasskeyWindowLimitationMock(),
+}));
+
 import { LockScreen, LockScreenView } from '../LockScreen';
-import {
-  AuthenticationDialog,
-  type AuthenticationDialogCopy,
-} from '../UnlockForms/AuthenticationDialog';
+import { AuthenticationDialog } from '../UnlockForms/AuthenticationDialog';
 
-const noop = vi.fn(async () => ({ ok: true }));
-const revoke = vi.fn(async () => undefined);
+const unlockWithPin = vi.fn(async () => ({ ok: true }));
+const unlockWithPassphrase = vi.fn(async () => ({ ok: true }));
+const unlockWithBiometric = vi.fn(async () => ({ ok: false }));
+const unlockWithRecovery = vi.fn(async () => ({ ok: true }));
+const verifyWithPin = vi.fn(async () => ({ ok: true }));
+const verifyWithPassphrase = vi.fn(async () => ({ ok: true }));
+const verifyBiometric = vi.fn(async () => ({ ok: false }));
+const verifyWithRecovery = vi.fn(async () => ({ ok: true }));
+const revoke = vi.fn<() => Promise<void>>(async () => undefined);
 
-// Every lock body now renders the shared ResetAppDataButton, which reads
-// useAuth().revoke and useDialog(); wrap renders so both resolve.
-function renderInProviders(ui: ReactElement) {
-  return render(<DialogProvider>{ui}</DialogProvider>);
-}
-
-describe('LockScreenView', () => {
-  beforeEach(() => {
-    useAuthMock.mockReturnValue({ revoke });
-  });
-
-  it('renders the PIN unlock body for mode="pin"', () => {
-    renderInProviders(
-      <LockScreenView
-        mode="pin"
-        unlockWithPin={noop}
-        unlockWithPassphrase={noop}
-        unlockWithBiometric={noop}
-        unlockWithRecovery={noop}
-      />,
-    );
-    expect(screen.getByText('Welcome back')).toBeInTheDocument();
-  });
-
-  it('renders the passphrase unlock body for mode="passphrase"', () => {
-    renderInProviders(
-      <LockScreenView
-        mode="passphrase"
-        unlockWithPin={noop}
-        unlockWithPassphrase={noop}
-        unlockWithBiometric={noop}
-        unlockWithRecovery={noop}
-      />,
-    );
-    expect(screen.getByText('Welcome back')).toBeInTheDocument();
-  });
-
-  it('renders the biometric unlock body for mode="biometric"', () => {
-    renderInProviders(
-      <LockScreenView
-        mode="biometric"
-        unlockWithPin={noop}
-        unlockWithPassphrase={noop}
-        unlockWithBiometric={noop}
-        unlockWithRecovery={noop}
-      />,
-    );
-    expect(screen.getByText('Welcome back')).toBeInTheDocument();
-  });
-
-  it('renders nothing for mode="none"', () => {
-    const { container } = renderInProviders(
-      <LockScreenView
-        mode="none"
-        unlockWithPin={noop}
-        unlockWithPassphrase={noop}
-        unlockWithBiometric={noop}
-        unlockWithRecovery={noop}
-      />,
-    );
-    expect(container).toBeEmptyDOMElement();
-  });
-});
-
-const base = {
+const authValue = {
   kind: 'locked' as const,
+  mode: 'pin' as const,
+  unlockWithPin,
+  unlockWithPassphrase,
+  unlockWithBiometric,
+  unlockWithRecovery,
+  verifyWithPin,
+  verifyWithPassphrase,
+  verifyBiometric,
+  verifyWithRecovery,
   revoke,
-  unlockWithPin: vi.fn(async () => ({ ok: true })),
-  unlockWithPassphrase: vi.fn(async () => ({ ok: true })),
-  unlockWithBiometric: vi.fn(async () => ({ ok: true })),
-  unlockWithRecovery: vi.fn(async () => ({ ok: true })),
 };
+
+beforeEach(() => {
+  useAuthMock.mockReturnValue(authValue);
+  hasPasskeyWindowLimitationMock.mockReturnValue(false);
+});
 
 afterEach(() => {
-  useAuthMock.mockReset();
-  revoke.mockClear().mockResolvedValue(undefined);
-  base.unlockWithBiometric.mockClear().mockResolvedValue({ ok: true });
-  base.unlockWithRecovery.mockClear().mockResolvedValue({ ok: true });
+  vi.clearAllMocks();
 });
 
-describe('LockScreen — biometric vault', () => {
-  it('offers biometric unlock and a recovery-passphrase fallback', async () => {
-    // Keep the auto-attempt from resolving to a lockable state so the dialog
-    // stays put and we can exercise the explicit button + recovery flow.
-    base.unlockWithBiometric.mockResolvedValue({ ok: false });
-    useAuthMock.mockReturnValue({ ...base, mode: 'biometric' });
-    renderInProviders(<LockScreen />);
+describe('LockScreenView', () => {
+  it.each([
+    ['pin', 'PIN'],
+    ['passphrase', 'Passphrase'],
+    ['biometric', 'Unlock with biometrics'],
+  ] as const)(
+    'renders the %s authentication UI from context',
+    (mode, label) => {
+      useAuthMock.mockReturnValue({ ...authValue, mode });
+      render(<LockScreenView />);
 
-    // The body auto-attempts biometric unlock once on mount; the explicit
-    // button press is a further, second call.
-    await waitFor(() =>
-      expect(base.unlockWithBiometric).toHaveBeenCalledTimes(1),
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: /unlock with biometrics/i }),
-    );
-    expect(base.unlockWithBiometric).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Welcome back')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Authenticate to unlock and pick up where you left off.',
+        ),
+      ).toBeInTheDocument();
+      if (mode === 'pin') {
+        expect(screen.getByTestId('segmented-code-pin')).toBeInTheDocument();
+      } else if (mode === 'passphrase') {
+        expect(screen.getByLabelText(/passphrase/i)).toBeInTheDocument();
+      } else {
+        expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+      }
+    },
+  );
 
-    await userEvent.click(
-      screen.getByRole('button', { name: /use recovery passphrase/i }),
-    );
-    await userEvent.type(
-      screen.getByLabelText(/passphrase/i),
-      'Tr0ub4dor&3-clever',
-    );
-    await userEvent.click(screen.getByRole('button', { name: /unlock/i }));
-    await waitFor(() =>
-      expect(base.unlockWithRecovery).toHaveBeenCalledWith(
-        'Tr0ub4dor&3-clever',
-      ),
-    );
-  });
-
-  it('renders the PIN form for a pin vault', () => {
-    useAuthMock.mockReturnValue({ ...base, mode: 'pin' });
-    renderInProviders(<LockScreen />);
-    expect(screen.getByText(/enter your pin/i)).toBeInTheDocument();
-  });
-
-  it('renders nothing when unlocked', () => {
-    useAuthMock.mockReturnValue({ ...base, kind: 'unlocked', mode: 'pin' });
-    const { container } = renderInProviders(<LockScreen />);
+  it('renders nothing when the enrolled mode is none', () => {
+    useAuthMock.mockReturnValue({ ...authValue, mode: 'none' });
+    const { container } = render(<LockScreenView />);
     expect(container).toBeEmptyDOMElement();
   });
 });
 
-const biometricDialogCopy: AuthenticationDialogCopy = {
-  title: 'Welcome back',
-  pinDescription: 'Enter your PIN to unlock.',
-  passphraseDescription: 'Enter your passphrase to unlock.',
-  biometricDescription: 'Authenticate to unlock.',
-  recoveryDescription: 'Enter your recovery passphrase to unlock.',
-  limitedRecoveryDescription:
-    'Biometrics are unavailable. Enter your recovery passphrase to unlock.',
-};
+describe('LockScreen', () => {
+  it('renders only while auth is locked', () => {
+    const { rerender } = render(<LockScreen />);
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
 
-describe('AuthenticationDialog — best-effort biometric authentication', () => {
-  beforeEach(() => {
-    // ResetAppDataButton reads useAuth().revoke; the body drives biometric
-    // unlock purely through props, so a minimal auth stub suffices here.
-    useAuthMock.mockReturnValue({ revoke });
+    useAuthMock.mockReturnValue({
+      ...authValue,
+      kind: 'unlocked',
+    });
+    rerender(<LockScreen />);
+    expect(screen.queryByText('Welcome back')).not.toBeInTheDocument();
   });
+});
 
-  it('auto-calls unlockWithBiometric exactly once on mount when available', async () => {
-    const unlockWithBiometric = vi.fn(async () => ({ ok: false }));
-    renderInProviders(
+describe('AuthenticationDialog', () => {
+  it('automatically attempts biometrics once per open cycle', async () => {
+    useAuthMock.mockReturnValue({ ...authValue, mode: 'biometric' });
+    const { rerender } = render(
       <AuthenticationDialog
-        mode="biometric"
-        copy={biometricDialogCopy}
-        limited={false}
-        autoAttemptBiometric
-        authenticateWithPin={noop}
-        authenticateWithPassphrase={noop}
-        authenticateBiometric={unlockWithBiometric}
-        authenticateWithRecovery={noop}
+        open
+        title="Welcome back"
+        description="Authenticate to continue."
       />,
     );
 
     await waitFor(() => expect(unlockWithBiometric).toHaveBeenCalledTimes(1));
-    // A React re-render / StrictMode double-mount must not re-fire the prompt.
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(unlockWithBiometric).toHaveBeenCalledTimes(1);
-  });
-
-  it('keeps the "Unlock with biometrics" button as a fallback', async () => {
-    const unlockWithBiometric = vi.fn(async () => ({ ok: false }));
-    renderInProviders(
+    rerender(
       <AuthenticationDialog
-        mode="biometric"
-        copy={biometricDialogCopy}
-        limited={false}
-        autoAttemptBiometric
-        authenticateWithPin={noop}
-        authenticateWithPassphrase={noop}
-        authenticateBiometric={unlockWithBiometric}
-        authenticateWithRecovery={noop}
+        open={false}
+        title="Welcome back"
+        description="Authenticate to continue."
+      />,
+    );
+    rerender(
+      <AuthenticationDialog
+        open
+        title="Welcome back"
+        description="Authenticate to continue."
       />,
     );
 
-    const button = await screen.findByRole('button', {
-      name: /unlock with biometrics/i,
+    await waitFor(() => expect(unlockWithBiometric).toHaveBeenCalledTimes(2));
+  });
+
+  it('routes an unlocked passphrase challenge through verification', async () => {
+    useAuthMock.mockReturnValue({
+      ...authValue,
+      kind: 'unlocked',
+      mode: 'passphrase',
     });
-    expect(button).toBeInTheDocument();
-
-    await userEvent.click(button);
-    expect(unlockWithBiometric).toHaveBeenCalledTimes(2);
-  });
-
-  it('does NOT auto-call when limited (starts in recovery)', async () => {
-    const unlockWithBiometric = vi.fn(async () => ({ ok: true }));
-    renderInProviders(
+    const user = userEvent.setup();
+    render(
       <AuthenticationDialog
-        mode="biometric"
-        copy={biometricDialogCopy}
-        limited
-        autoAttemptBiometric
-        authenticateWithPin={noop}
-        authenticateWithPassphrase={noop}
-        authenticateBiometric={unlockWithBiometric}
-        authenticateWithRecovery={noop}
+        title="Confirm your identity"
+        description="Authenticate to continue."
       />,
     );
 
-    // Let any mount effects flush, then assert no attempt was made.
-    await screen.findByLabelText(/passphrase/i);
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await user.type(screen.getByLabelText(/passphrase/i), 'correct horse');
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+
+    await waitFor(() =>
+      expect(verifyWithPassphrase).toHaveBeenCalledWith('correct horse'),
+    );
+    expect(unlockWithPassphrase).not.toHaveBeenCalled();
+  });
+
+  it('shows cancellation controls only when requested', async () => {
+    const onCancel = vi.fn();
+    const { rerender } = render(
+      <AuthenticationDialog
+        title="Welcome back"
+        description="Authenticate to continue."
+      />,
+    );
+
+    expect(
+      screen.queryByRole('button', { name: 'Cancel' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Close' }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <AuthenticationDialog
+        title="Welcome back"
+        description="Authenticate to continue."
+        showCancel
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+  });
+
+  it('associates the visible description with the dialog', () => {
+    render(
+      <AuthenticationDialog
+        title="Welcome back"
+        description="Authenticate to continue."
+      />,
+    );
+
+    expect(screen.getByRole('dialog')).toHaveAccessibleDescription(
+      'Authenticate to continue.',
+    );
+  });
+
+  it('clears a passphrase when the dialog closes and reopens', async () => {
+    useAuthMock.mockReturnValue({ ...authValue, mode: 'passphrase' });
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <AuthenticationDialog
+        open
+        title="Confirm your identity"
+        description="Authenticate to continue."
+        showCancel
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/passphrase/i), 'do not retain me');
+    rerender(
+      <AuthenticationDialog
+        open={false}
+        title="Confirm your identity"
+        description="Authenticate to continue."
+        showCancel
+        onCancel={vi.fn()}
+      />,
+    );
+    rerender(
+      <AuthenticationDialog
+        open
+        title="Confirm your identity"
+        description="Authenticate to continue."
+        showCancel
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText(/passphrase/i)).toHaveValue('');
+  });
+
+  it('offers passphrase recovery for biometric authentication', async () => {
+    useAuthMock.mockReturnValue({ ...authValue, mode: 'biometric' });
+    const user = userEvent.setup();
+    render(
+      <AuthenticationDialog
+        title="Welcome back"
+        description="Authenticate to continue."
+        allowRecovery
+      />,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Recover with passphrase' }),
+    );
+    expect(
+      screen.getByRole('heading', { name: 'Recover with passphrase' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Recover by resetting' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+
+    await user.type(
+      await screen.findByTestId('passphrase-input'),
+      'recovery phrase',
+    );
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+    await waitFor(() =>
+      expect(unlockWithRecovery).toHaveBeenCalledWith('recovery phrase'),
+    );
+  });
+
+  it('clears a recovery passphrase after returning to the main dialog', async () => {
+    useAuthMock.mockReturnValue({ ...authValue, mode: 'biometric' });
+    const user = userEvent.setup();
+    render(
+      <AuthenticationDialog
+        title="Welcome back"
+        description="Authenticate to continue."
+        allowRecovery
+      />,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Recover with passphrase' }),
+    );
+    await user.type(screen.getByTestId('passphrase-input'), 'do not retain me');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Recover with passphrase' }),
+    );
+
+    expect(screen.getByTestId('passphrase-input')).toHaveValue('');
+  });
+
+  it('offers destructive reset recovery for PIN authentication', () => {
+    render(
+      <AuthenticationDialog
+        title="Welcome back"
+        description="Authenticate to continue."
+        allowRecovery
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Recover by resetting' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Recover with passphrase' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides recovery actions when recovery is not allowed', () => {
+    render(
+      <AuthenticationDialog
+        title="Welcome back"
+        description="Authenticate to continue."
+      />,
+    );
+
+    expect(
+      screen.queryByRole('button', { name: 'Recover by resetting' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Recover with passphrase' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens passphrase recovery immediately in a limited biometric window', () => {
+    hasPasskeyWindowLimitationMock.mockReturnValue(true);
+    useAuthMock.mockReturnValue({ ...authValue, mode: 'biometric' });
+    render(
+      <AuthenticationDialog
+        title="Welcome back"
+        description="Authenticate to continue."
+        allowRecovery
+      />,
+    );
+
+    expect(
+      screen.getByText(/isn't available in this installed app/i),
+    ).toBeInTheDocument();
     expect(unlockWithBiometric).not.toHaveBeenCalled();
   });
 
-  it('does NOT auto-call while in the recovery state', async () => {
-    const unlockWithBiometric = vi.fn(async () => ({ ok: false }));
-    renderInProviders(
+  it('keeps destructive reset open and disables cancellation while deleting', async () => {
+    let finishReset!: () => void;
+    revoke.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishReset = resolve;
+        }),
+    );
+    const user = userEvent.setup();
+    render(
       <AuthenticationDialog
-        mode="biometric"
-        copy={biometricDialogCopy}
-        limited={false}
-        autoAttemptBiometric
-        authenticateWithPin={noop}
-        authenticateWithPassphrase={noop}
-        authenticateBiometric={unlockWithBiometric}
-        authenticateWithRecovery={noop}
+        title="Welcome back"
+        description="Authenticate to continue."
+        allowRecovery
       />,
     );
 
-    // One auto-attempt on the biometric state.
-    await waitFor(() => expect(unlockWithBiometric).toHaveBeenCalledTimes(1));
+    await user.click(
+      screen.getByRole('button', { name: 'Recover by resetting' }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Permanently delete' }),
+    );
 
-    // Toggle to recovery and back; neither transition may re-fire the prompt.
-    await userEvent.click(
-      screen.getByRole('button', { name: /use recovery passphrase/i }),
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    await user.keyboard('{Escape}');
+    expect(
+      screen.getByRole('heading', { name: 'Reset all app data?' }),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      finishReset();
+    });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: 'Reset all app data?' }),
+      ).not.toBeInTheDocument(),
     );
-    await screen.findByLabelText(/passphrase/i);
-    await userEvent.click(
-      screen.getByRole('button', { name: /back to biometrics/i }),
+  });
+
+  it('clears a reset error when the confirmation is reopened', async () => {
+    revoke.mockRejectedValueOnce(new Error('Reset failed.'));
+    const user = userEvent.setup();
+    render(
+      <AuthenticationDialog
+        title="Welcome back"
+        description="Authenticate to continue."
+        allowRecovery
+      />,
     );
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(unlockWithBiometric).toHaveBeenCalledTimes(1);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Recover by resetting' }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Permanently delete' }),
+    );
+    expect(await screen.findByText('Reset failed.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Recover by resetting' }),
+    );
+
+    expect(screen.queryByText('Reset failed.')).not.toBeInTheDocument();
   });
 });

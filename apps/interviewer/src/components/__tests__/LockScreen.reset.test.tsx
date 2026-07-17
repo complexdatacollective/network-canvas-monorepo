@@ -34,12 +34,12 @@ function renderLockScreen() {
 }
 
 describe('LockScreen — reset app data escape hatch', () => {
-  it('offers a "Reset app data" control in the PIN body', () => {
+  it('offers a "Recover by resetting" control in the PIN body', () => {
     useAuthMock.mockReturnValue({ ...base, mode: 'pin' });
     renderLockScreen();
 
     expect(
-      screen.getByRole('button', { name: /reset app data/i }),
+      screen.getByRole('button', { name: /recover by resetting/i }),
     ).toBeInTheDocument();
   });
 
@@ -48,7 +48,9 @@ describe('LockScreen — reset app data escape hatch', () => {
     const user = userEvent.setup();
     renderLockScreen();
 
-    await user.click(screen.getByRole('button', { name: /reset app data/i }));
+    await user.click(
+      screen.getByRole('button', { name: /recover by resetting/i }),
+    );
 
     expect(
       await screen.findByText(/reset all app data\?/i),

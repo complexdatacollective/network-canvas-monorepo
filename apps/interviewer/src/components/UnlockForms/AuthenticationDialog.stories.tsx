@@ -1,38 +1,18 @@
-import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import { fn } from 'storybook/test';
 
-import Button from '@codaco/fresco-ui/Button';
+import type { AuthMode } from '~/lib/auth/api';
+import { MockAuthProvider } from '~/lib/auth/MockAuthProvider';
 
-import {
-  AuthenticationDialog,
-  type AuthenticationDialogCopy,
-} from './AuthenticationDialog';
+import { AuthenticationDialog } from './AuthenticationDialog';
 
-const welcomeBackCopy: AuthenticationDialogCopy = {
-  title: 'Welcome back',
-  pinDescription: 'Enter your PIN to unlock and pick up where you left off.',
-  passphraseDescription:
-    'Enter your passphrase to unlock and pick up where you left off.',
-  biometricDescription:
-    'Authenticate to unlock and pick up where you left off.',
-  recoveryDescription: 'Enter your recovery passphrase to unlock.',
-  limitedRecoveryDescription:
-    "Biometric unlock isn't available in the installed app on macOS. Enter your recovery passphrase to unlock.",
-};
-
-const confirmIdentityCopy: AuthenticationDialogCopy = {
-  title: 'Confirm your identity',
-  pinDescription: 'Enter your PIN to continue.',
-  passphraseDescription: 'Enter your passphrase to continue.',
-  biometricDescription: 'Authenticate to continue.',
-  recoveryDescription: 'Enter your recovery passphrase to continue.',
-  limitedRecoveryDescription:
-    "Biometric unlock isn't available in the installed app on macOS. Enter your recovery passphrase to continue.",
-};
-
-const authenticateSuccessfully = async () => {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  return { ok: true } as const;
-};
+const withAuthMode =
+  (mode: AuthMode, kind: 'locked' | 'unlocked' = 'locked'): Decorator =>
+  (Story) => (
+    <MockAuthProvider value={{ kind, mode }}>
+      <Story />
+    </MockAuthProvider>
+  );
 
 const meta = {
   title: 'Auth/AuthenticationDialog',
@@ -41,101 +21,89 @@ const meta = {
   parameters: {
     layout: 'fullscreen',
     docs: {
+      story: {
+        inline: false,
+        height: '42rem',
+      },
       description: {
         component: `
-The single authentication dialog used for both the mandatory first-load unlock and cancellable identity checks.
+The shared authentication dialog used for both mandatory app unlocks and cancellable identity checks. It reads the enrolled authentication method and lock state from \`AuthContext\`, so callers provide only contextual copy and recovery/cancellation policy.
 
 \`\`\`tsx
 <AuthenticationDialog
-  mode="pin"
-  open
-  copy={copy}
-  authenticateWithPin={verifyWithPin}
-  authenticateWithPassphrase={verifyWithPassphrase}
-  authenticateBiometric={verifyBiometric}
-  authenticateWithRecovery={verifyWithRecovery}
+  title="Welcome back"
+  description="Authenticate to unlock and pick up where you left off."
+  allowRecovery
 />
 \`\`\`
 
-- \`mode\` selects the PIN, passphrase, or biometric/recovery controls.
-- \`copy\` changes only the contextual title and descriptions.
-- Supplying \`onCancel\` makes the dialog dismissible; omitting it creates the mandatory lock screen.
-- \`secondaryAction\` occupies the fixed left footer slot used for reset or cancellation.
-- \`autoAttemptBiometric\` enables the first-load best-effort biometric prompt.
-- \`limited\` starts biometric mode on recovery when the installed app cannot reach the enrolled passkey.
+- \`title\` and \`description\` are the only context-specific copy.
+- \`showCancel\` adds an explicit Cancel action and enables all standard dialog dismissal paths.
+- \`allowRecovery\` offers passphrase recovery for biometric authentication, or destructive reset recovery for PIN/passphrase authentication.
+- Biometric authentication is attempted automatically when the platform supports it.
         `,
       },
     },
   },
   args: {
-    mode: 'pin',
     open: true,
-    copy: welcomeBackCopy,
-    authenticateWithPin: authenticateSuccessfully,
-    authenticateWithPassphrase: authenticateSuccessfully,
-    authenticateBiometric: authenticateSuccessfully,
-    authenticateWithRecovery: authenticateSuccessfully,
-    autoAttemptBiometric: false,
-    limited: false,
-    secondaryAction: (
-      <Button type="button" color="secondary" className="mr-auto">
-        Reset app data
-      </Button>
-    ),
+    title: 'Welcome back',
+    description: 'Authenticate to unlock and pick up where you left off.',
+    showCancel: false,
+    allowRecovery: true,
   },
   argTypes: {
-    mode: {
-      control: 'inline-radio',
-      options: ['pin', 'passphrase', 'biometric', 'none'],
+    showCancel: {
+      description:
+        'Show a Cancel action and allow Escape, close-button, and backdrop dismissal.',
+      table: { type: { summary: 'boolean' } },
     },
-    copy: { control: 'object' },
-    onCancel: { control: false },
+    onCancel: {
+      control: false,
+      description:
+        'Handles every dismissal path. Required when showCancel is true.',
+      table: { type: { summary: '() => void' } },
+    },
     onAuthenticated: { control: false },
-    authenticateWithPin: { control: false },
-    authenticateWithPassphrase: { control: false },
-    authenticateBiometric: { control: false },
-    authenticateWithRecovery: { control: false },
-    secondaryAction: { control: false },
   },
-  render: (args) => (
-    <AuthenticationDialog
-      key={`${args.mode}-${String(args.limited)}-${args.copy.title}`}
-      {...args}
-    />
-  ),
 } satisfies Meta<typeof AuthenticationDialog>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const WelcomeBack: Story = {};
+export const WelcomeBack: Story = {
+  decorators: [withAuthMode('pin')],
+};
 
 export const ConfirmIdentity: Story = {
   args: {
-    copy: confirmIdentityCopy,
-    onCancel: () => {},
-    secondaryAction: (
-      <Button type="button" color="secondary" className="mr-auto">
-        Cancel
-      </Button>
-    ),
+    title: 'Confirm your identity',
+    description: 'Authenticate to continue.',
+    showCancel: true,
+    onCancel: fn(),
   },
+  decorators: [withAuthMode('pin', 'unlocked')],
+};
+
+export const Passphrase: Story = {
+  decorators: [withAuthMode('passphrase')],
 };
 
 export const Biometric: Story = {
-  args: { mode: 'biometric' },
+  decorators: [withAuthMode('biometric')],
 };
 
-export const RecoveryFallback: Story = {
-  args: { mode: 'biometric', limited: true },
+export const WithoutRecovery: Story = {
+  args: {
+    allowRecovery: false,
+  },
+  decorators: [withAuthMode('pin')],
 };
 
 export const LongDescription: Story = {
   args: {
-    copy: {
-      ...welcomeBackCopy,
-      pinDescription:
-        'Enter your PIN to unlock this device and return to your work. Your interview data remains stored locally and is not sent anywhere when you authenticate.',
-    },
+    description:
+      'Authenticate to unlock this device and return to your work. Your interview data remains stored locally and is not sent anywhere when you authenticate.',
   },
+  decorators: [withAuthMode('pin')],
 };

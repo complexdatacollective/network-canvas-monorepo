@@ -2,4 +2,4 @@
 '@codaco/interviewer': patch
 ---
 
-Use a consistent layout for authentication dialogs throughout Interviewer.
+Use a consistent authentication and recovery dialog throughout Interviewer, and avoid a duplicate identity check when refreshing an active interview.
