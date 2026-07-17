@@ -21,6 +21,7 @@ import {
 import { Badge, type BadgeColor } from '@codaco/fresco-ui/Badge';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { getBundledAssetUrl } from '~/templates/bundled-asset-url';
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
@@ -165,7 +166,7 @@ const AssetPreview = ({
         <img
           src={previewUrl}
           alt={name}
-          className="max-h-full max-w-full object-contain"
+          className="size-full object-contain object-center"
           draggable={false}
         />
       </div>
@@ -299,12 +300,16 @@ const AssetCard = ({
   );
 
   return (
-    <article
+    <Surface
+      as="article"
+      noContainer
+      spacing="none"
+      shadow="sm"
       {...itemProps}
       data-current={isCurrent || undefined}
       className={cx(
-        'focusable group bg-surface-1 text-surface-1-contrast flex h-80 flex-col overflow-hidden rounded border-2 border-transparent',
-        'effect-shadow-sm transition-[border-color,background-color,box-shadow,translate] duration-200',
+        'focusable group flex h-80 flex-col overflow-hidden! border-2 border-transparent',
+        'transition-[border-color,background-color,box-shadow,translate] duration-200',
         'data-current:border-primary data-focused:border-primary data-selected:border-primary data-selected:bg-selected',
       )}
     >
@@ -344,7 +349,7 @@ const AssetCard = ({
           )}
         </div>
       </div>
-    </article>
+    </Surface>
   );
 };
 

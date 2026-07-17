@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { expect, waitFor } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -1097,6 +1098,21 @@ export const ConcentricCirclesBackground: Story = {
 
 export const BackgroundImage: Story = {
   render: () => <NarrativeStoryWrapper buildFn={buildBackgroundImage} />,
+  play: async ({ canvasElement }) => {
+    const backgroundImage = await waitFor(() => {
+      const image = canvasElement.querySelector<HTMLImageElement>(
+        '[data-testid="narrative"] [role="application"] img[aria-hidden="true"][alt=""]',
+      );
+      expect(image).not.toBeNull();
+      return image;
+    });
+
+    expect(backgroundImage).toHaveClass(
+      'size-full',
+      'object-contain',
+      'object-center',
+    );
+  },
 };
 
 export const WithEdges: Story = {

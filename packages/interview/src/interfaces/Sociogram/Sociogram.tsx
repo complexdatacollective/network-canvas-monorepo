@@ -13,14 +13,12 @@ import {
 
 import { useTrack } from '../../analytics/useTrack';
 import Canvas from '../../canvas/Canvas';
-import CanvasBackgroundImage from '../../canvas/CanvasBackgroundImage';
+import StageBackground from '../../canvas/StageBackground';
 import { useAutoLayout } from '../../canvas/useAutoLayout';
 import { createCanvasStore, useCanvasStore } from '../../canvas/useCanvasStore';
-import ConcentricCircles from '../../components/ConcentricCircles';
 import NodeDrawer from '../../components/NodeDrawer';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
-import { useAssetUrl } from '../../hooks/useAssetUrl';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useSortedNodeList from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -74,7 +72,6 @@ const Sociogram = (stageProps: SociogramProps) => {
 
   // Background Configuration
   const stageBackground = stage.background;
-  const { url: backgroundImageUrl } = useAssetUrl(stageBackground.image);
 
   const { currentStep } = useCurrentStep();
   const track = useTrack();
@@ -337,19 +334,6 @@ const Sociogram = (stageProps: SociogramProps) => {
     [handleUnplaceNode],
   );
 
-  // Branch on the schema's image/circles union: in the circles variant
-  // concentricCircles is proven present. An image renders nothing until its
-  // asset URL resolves.
-  const canvasBackground =
-    stageBackground.image === undefined ? (
-      <ConcentricCircles
-        n={stageBackground.concentricCircles}
-        skewed={stageBackground.skewedTowardCenter}
-      />
-    ) : backgroundImageUrl ? (
-      <CanvasBackgroundImage src={backgroundImageUrl} />
-    ) : null;
-
   const simulationHandlers =
     layoutMode === 'AUTOMATIC'
       ? {
@@ -370,7 +354,7 @@ const Sociogram = (stageProps: SociogramProps) => {
     >
       {measurementContainer}
       <Canvas
-        background={canvasBackground}
+        background={<StageBackground background={stageBackground} />}
         nodes={canvasNodes}
         edges={edges}
         store={store}

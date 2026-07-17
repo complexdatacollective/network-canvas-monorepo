@@ -13,13 +13,11 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import CanvasBackgroundImage from '../../canvas/CanvasBackgroundImage';
 import ConvexHullLayer from '../../canvas/ConvexHullLayer';
+import StageBackground from '../../canvas/StageBackground';
 import { useAutoLayout } from '../../canvas/useAutoLayout';
 import { createCanvasStore } from '../../canvas/useCanvasStore';
-import ConcentricCircles from '../../components/ConcentricCircles';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
-import { useAssetUrl } from '../../hooks/useAssetUrl';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import type { Subject } from '../../selectors/forms';
@@ -70,7 +68,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   // Background Configuration
   const stageBackground = stage.background;
-  const { url: backgroundImageUrl } = useAssetUrl(stageBackground.image);
 
   // Automatic layout is an interview-time choice, not a fixed stage config. The
   // schema's automaticLayout boolean only seeds the initial value; the
@@ -481,19 +478,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     return [];
   })();
 
-  // Branch on the schema's image/circles union: in the circles variant
-  // concentricCircles is proven present. An image renders nothing until its
-  // asset URL resolves.
-  const canvasBackground =
-    stageBackground.image === undefined ? (
-      <ConcentricCircles
-        n={stageBackground.concentricCircles}
-        skewed={stageBackground.skewedTowardCenter}
-      />
-    ) : backgroundImageUrl ? (
-      <CanvasBackgroundImage src={backgroundImageUrl} />
-    ) : null;
-
   const simulationHandlers =
     layoutMode === 'AUTOMATIC'
       ? {
@@ -615,7 +599,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         composerStore={composerStore}
         nodes={nodes}
         edges={edges}
-        background={canvasBackground}
+        background={<StageBackground background={stageBackground} />}
         hulls={hulls}
         lassoInSelectMode={groupVariable !== null}
         simulation={simulationHandlers}
