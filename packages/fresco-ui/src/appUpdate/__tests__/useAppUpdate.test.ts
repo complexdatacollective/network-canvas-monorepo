@@ -83,6 +83,22 @@ describe('auto-apply', () => {
     expect(result.current.status).toBe('available');
   });
 
+  it('keeps the manual update available when auto-apply rejects', async () => {
+    const installUpdate = vi.fn().mockRejectedValue(new Error('activation'));
+    const { result } = renderHook(() =>
+      useAppUpdate({
+        app: 'interviewer',
+        currentVersion: '2.0.0',
+        needRefresh: true,
+        hasUnsavedWork: false,
+        installUpdate,
+      }),
+    );
+
+    await waitFor(() => expect(installUpdate).toHaveBeenCalledOnce());
+    expect(result.current.status).toBe('available');
+  });
+
   it('defers to the manual button when work is in progress', async () => {
     const installUpdate = vi.fn().mockResolvedValue(true);
     const { result } = renderHook(() =>

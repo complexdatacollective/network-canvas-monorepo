@@ -104,7 +104,11 @@ export default function useAppUpdate({
     if (!needRefresh || autoAppliedRef.current) return;
     autoAppliedRef.current = true;
     if (freshLoadWindowOpenRef.current && !hasUnsavedWorkRef.current) {
-      void installUpdate();
+      void Promise.resolve()
+        .then(installUpdate)
+        .catch(() => {
+          // Leave needRefresh unchanged so the user can retry manually.
+        });
     }
   }, [needRefresh, installUpdate]);
 
