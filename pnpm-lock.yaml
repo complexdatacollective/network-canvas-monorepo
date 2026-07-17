@@ -715,9 +715,6 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 29.1.1(@noble/hashes@2.2.0)
-      oxfmt:
-        specifier: ^0.58.0
-        version: 0.58.0
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.2
