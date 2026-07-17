@@ -180,6 +180,44 @@ describe('backgroundDocumentSchema', () => {
       ).success,
     ).toBe(false);
   });
+
+  it('rejects a fill that references an external url', () => {
+    expect(
+      backgroundDocumentSchema.safeParse(
+        docWith([{ ...baseRect, fill: 'url(https://evil.example/x.svg)' }]),
+      ).success,
+    ).toBe(false);
+  });
+
+  it('rejects a named colour that is not a hex value', () => {
+    expect(
+      backgroundDocumentSchema.safeParse(
+        docWith([{ ...baseRect, fill: 'red' }]),
+      ).success,
+    ).toBe(false);
+    expect(
+      backgroundDocumentSchema.safeParse(
+        docWith([{ ...baseRect, stroke: 'currentColor', strokeWidth: 1 }]),
+      ).success,
+    ).toBe(false);
+  });
+
+  it('accepts 3-, 4-, 6-, and 8-digit hex colours', () => {
+    for (const fill of ['#fff', '#ffff', '#ffffff', '#ffffff80']) {
+      expect(
+        backgroundDocumentSchema.safeParse(docWith([{ ...baseRect, fill }]))
+          .success,
+      ).toBe(true);
+    }
+  });
+
+  it('rejects a hex colour of an unsupported length', () => {
+    expect(
+      backgroundDocumentSchema.safeParse(
+        docWith([{ ...baseRect, fill: '#fffff' }]),
+      ).success,
+    ).toBe(false);
+  });
 });
 
 describe('parseBackgroundDocument', () => {

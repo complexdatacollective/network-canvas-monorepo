@@ -23,8 +23,28 @@ function coord100(value: number): string {
   return `${round2(value * 100)}`;
 }
 
+// XML 1.0 forbids the C0 control characters other than tab (0x09), line feed
+// (0x0A), and carriage return (0x0D). Such characters arrive routinely when
+// pasting from Word or a PDF (U+000B, U+000C) and would make the whole SVG
+// unparseable, so they are stripped from every serialized string. A code-point
+// filter is used rather than a regex because a control-character character
+// class is itself a lint hazard.
+function stripXmlInvalid(value: string): string {
+  return [...value]
+    .filter((char) => {
+      const code = char.codePointAt(0) ?? 0;
+      const forbidden =
+        code <= 0x08 ||
+        code === 0x0b ||
+        code === 0x0c ||
+        (code >= 0x0e && code <= 0x1f);
+      return !forbidden;
+    })
+    .join('');
+}
+
 function escapeText(value: string): string {
-  return value
+  return stripXmlInvalid(value)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
@@ -32,6 +52,27 @@ function escapeText(value: string): string {
 
 function escapeAttr(value: string): string {
   return escapeText(value).replaceAll('"', '&quot;');
+}
+
+// Returns a copy of the document with XML-invalid control characters stripped
+// from every free-text field. Serialization derives both the painted markup and
+// the embedded JSON from this copy, so reopening a saved file restores the
+// stripped form instead of reintroducing the original control characters.
+function sanitizeDocument(doc: BackgroundDocument): BackgroundDocument {
+  return {
+    ...doc,
+    title: stripXmlInvalid(doc.title),
+    description: stripXmlInvalid(doc.description),
+    elements: doc.elements.map((element) =>
+      element.kind === 'text'
+        ? { ...element, lines: element.lines.map(stripXmlInvalid) }
+        : element,
+    ),
+    zones: doc.zones.map((zone) => ({
+      ...zone,
+      label: stripXmlInvalid(zone.label),
+    })),
+  };
 }
 
 // Assigns a marker id to each distinct arrow stroke colour, in order of first
@@ -181,11 +222,16 @@ function serializeText(element: TextElement): string {
 
   const lineCount = element.lines.length;
   // First tspan lifts the multi-line block so it stays vertically centred on the
-  // element's y anchor; each following line advances one line-height (1.2em).
-  const firstDy = round2(-((lineCount - 1) / 2 - 0.35));
+  // element's y anchor; each following line advances one line-height (1.2em), so
+  // the lift must be measured in the same 1.2em steps (0.35em nudges the block
+  // onto the visual baseline).
+  const firstDy = round2(-((1.2 * (lineCount - 1)) / 2 - 0.35));
   const tspans = element.lines.map((line, index) => {
     const dy = index === 0 ? `${firstDy}em` : '1.2em';
-    return `    <tspan x="${pct(element.x)}" dy="${dy}">${escapeText(line)}</tspan>`;
+    // An empty <tspan> applies no dy and collapses the line; a non-breaking
+    // space keeps blank lines rendering so they still advance the block.
+    const content = line === '' ? '\u00A0' : escapeText(line);
+    return `    <tspan x="${pct(element.x)}" dy="${dy}">${content}</tspan>`;
   });
   return [open, ...tspans, `  </text>`].join('\n');
 }
@@ -211,13 +257,16 @@ function serializeElement(
 }
 
 export function serializeDocument(doc: BackgroundDocument): string {
-  const markers = collectArrowMarkers(doc.elements);
+  // Both the painted markup and the embedded JSON are derived from the sanitized
+  // copy so the file is valid XML and reopening it restores the stripped form.
+  const sanitized = sanitizeDocument(doc);
+  const markers = collectArrowMarkers(sanitized.elements);
   const lines: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" role="img" aria-labelledby="title description">`,
-    `  <title id="title">${escapeText(doc.title)}</title>`,
-    `  <desc id="description">${escapeText(doc.description)}</desc>`,
+    `  <title id="title">${escapeText(sanitized.title)}</title>`,
+    `  <desc id="description">${escapeText(sanitized.description)}</desc>`,
     `  <metadata id="nc-background-creator">`,
-    `    <nc:document xmlns:nc="${NC_NAMESPACE}">${escapeText(JSON.stringify(doc))}</nc:document>`,
+    `    <nc:document xmlns:nc="${NC_NAMESPACE}">${escapeText(JSON.stringify(sanitized))}</nc:document>`,
     `  </metadata>`,
   ];
 
@@ -229,7 +278,7 @@ export function serializeDocument(doc: BackgroundDocument): string {
     lines.push(`  </defs>`);
   }
 
-  for (const element of doc.elements) {
+  for (const element of sanitized.elements) {
     lines.push(serializeElement(element, markers));
   }
 

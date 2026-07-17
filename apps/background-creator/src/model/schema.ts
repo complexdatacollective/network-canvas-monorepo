@@ -8,7 +8,13 @@ import type { BackgroundDocument } from '~/model/types';
 const normalized = z.number().finite().min(0).max(1);
 const opacity = z.number().finite().min(0).max(1);
 const strokeWidth = z.number().finite().min(0.25).max(20);
-const colour = z.string();
+// Colours are baked into the exported SVG as literal fill/stroke values, so the
+// contract accepts only hex colours (3/4/6/8 digit). This blocks a hand-edited
+// metadata payload from smuggling `url(...)` or other external references back
+// out under the tool's own metadata banner.
+const colour = z
+  .string()
+  .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/);
 const identifier = z.string();
 const fontPx = z.number().finite().positive();
 const fontVmin = z.number().finite().nonnegative();

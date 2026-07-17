@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createQuadrantsTemplate } from '~/model/templates';
 import type { BackgroundDocument } from '~/model/types';
+import { parseDocument } from '~/svg/parse';
 import { serializeDocument } from '~/svg/serialize';
 
 function rootTag(svg: string): string {
@@ -282,8 +283,111 @@ describe('serializeDocument text', () => {
       ]),
     );
     expect(svg).toContain('opacity="0.5"');
-    expect(svg).toContain('<tspan x="25%" dy="-0.15em">Work &amp;</tspan>');
+    // Two lines lift by half of one 1.2em step less the 0.35em baseline nudge:
+    // -(1.2 * 1 / 2 - 0.35) = -0.25em.
+    expect(svg).toContain('<tspan x="25%" dy="-0.25em">Work &amp;</tspan>');
     expect(svg).toContain('<tspan x="25%" dy="1.2em">study</tspan>');
+  });
+
+  it('lifts a three-line block by a full 1.2em step less the baseline nudge', () => {
+    const svg = serializeDocument(
+      docWith([
+        {
+          id: 't',
+          kind: 'text',
+          x: 0.5,
+          y: 0.5,
+          lines: ['One', 'Two', 'Three'],
+          fill: '#ffffff',
+          fontMinPx: 14,
+          fontVmin: 2.6,
+          fontMaxPx: 32,
+          fontWeight: 600,
+          anchor: 'middle',
+          opacity: 1,
+        },
+      ]),
+    );
+    // -(1.2 * 2 / 2 - 0.35) = -0.85em.
+    expect(svg).toContain('<tspan x="50%" dy="-0.85em">One</tspan>');
+    expect(svg).toContain('<tspan x="50%" dy="1.2em">Two</tspan>');
+    expect(svg).toContain('<tspan x="50%" dy="1.2em">Three</tspan>');
+  });
+
+  it('renders a blank line as a non-breaking space so it still advances', () => {
+    const svg = serializeDocument(
+      docWith([
+        {
+          id: 't',
+          kind: 'text',
+          x: 0.5,
+          y: 0.5,
+          lines: ['Top', '', 'Bottom'],
+          fill: '#ffffff',
+          fontMinPx: 14,
+          fontVmin: 2.6,
+          fontMaxPx: 32,
+          fontWeight: 600,
+          anchor: 'middle',
+          opacity: 1,
+        },
+      ]),
+    );
+    const tspans = svg.match(/<tspan /g) ?? [];
+    expect(tspans).toHaveLength(3);
+    // The middle line is empty in the model but renders a non-breaking space so
+    // its <tspan> is not collapsed and the dy advance is preserved.
+    const nbsp = String.fromCharCode(0x00a0);
+    expect(svg).toContain(`<tspan x="50%" dy="1.2em">${nbsp}</tspan>`);
+  });
+});
+
+describe('serializeDocument XML-invalid characters', () => {
+  it('strips C0 control characters from painted text and metadata', () => {
+    // U+000B and U+000C arrive routinely when pasting from Word or a PDF.
+    const vt = String.fromCharCode(0x0b);
+    const ff = String.fromCharCode(0x0c);
+    const doc: BackgroundDocument = {
+      version: 1,
+      title: `Ti${vt}tle`,
+      description: `De${ff}sc`,
+      elements: [
+        {
+          id: 't',
+          kind: 'text',
+          x: 0.5,
+          y: 0.5,
+          lines: [`Li${vt}ne`, 'plain'],
+          fill: '#ffffff',
+          fontMinPx: 14,
+          fontVmin: 2.6,
+          fontMaxPx: 32,
+          fontWeight: 600,
+          anchor: 'middle',
+          opacity: 1,
+        },
+      ],
+      zones: [],
+    };
+    const svg = serializeDocument(doc);
+
+    // No raw control character survives anywhere in the output (painted markup
+    // or embedded JSON), so the whole SVG stays valid XML.
+    expect(svg).not.toContain(vt);
+    expect(svg).not.toContain(ff);
+
+    // DOMParser reads it back without a parser error...
+    const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    expect(parsed.querySelector('parsererror')).toBeNull();
+    expect(parsed.querySelector('title')?.textContent).toBe('Title');
+
+    // ...and reopening restores the stripped (sanitized) form, not the original
+    // control characters.
+    const restored = parseDocument(svg);
+    expect(restored.title).toBe('Title');
+    expect(restored.description).toBe('Desc');
+    const [text] = restored.elements;
+    expect(text?.kind === 'text' ? text.lines : []).toEqual(['Line', 'plain']);
   });
 });
 
