@@ -17,7 +17,7 @@ const meta = {
     appName: 'Architect',
     label: 'v8.0.0-beta.3',
     currentVersion: '8.0.0-beta.3',
-    onInstall: fn(),
+    onInstall: fn(async () => true),
     releaseNotes: NOTES,
     size: 'md',
   },

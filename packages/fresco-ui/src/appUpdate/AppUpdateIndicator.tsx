@@ -16,7 +16,11 @@ import {
 } from '../Tooltip';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
-import type { ReleaseNotes, UpdateStatus } from './useAppUpdate';
+import type {
+  InstallAppUpdate,
+  ReleaseNotes,
+  UpdateStatus,
+} from './useAppUpdate';
 
 type AppUpdateIndicatorProps = {
   status: UpdateStatus;
@@ -25,7 +29,7 @@ type AppUpdateIndicatorProps = {
   currentVersion: string;
   availableVersion?: string;
   releaseNotes: ReleaseNotes | 'loading' | null;
-  onInstall: () => void;
+  onInstall: InstallAppUpdate;
   unsavedWorkCaveat?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
@@ -46,6 +50,9 @@ export default function AppUpdateIndicator({
   idleIcon,
 }: AppUpdateIndicatorProps) {
   const [open, setOpen] = useState(false);
+  const [installState, setInstallState] = useState<
+    'idle' | 'installing' | 'failed'
+  >('idle');
 
   if (status === 'idle') {
     return (
@@ -97,13 +104,49 @@ export default function AppUpdateIndicator({
 
   const shownVersion = isAvailable ? availableVersion : currentVersion;
 
+  const handleInstall = async () => {
+    if (installState === 'installing') return;
+    setInstallState('installing');
+
+    try {
+      if ((await onInstall()) !== false) return;
+    } catch {
+      // The actionable failure state below covers registration and activation
+      // errors without exposing service-worker internals to the researcher.
+    }
+
+    setInstallState('failed');
+  };
+
   const footer = isAvailable ? (
     <>
-      {unsavedWorkCaveat && (
-        <div className="mr-auto max-w-sm text-sm">{unsavedWorkCaveat}</div>
-      )}
-      <Button color="primary" onClick={onInstall}>
-        Install and reload
+      <div className="mr-auto max-w-sm text-sm" aria-live="polite">
+        {installState === 'installing' ? (
+          <span>Installing the update…</span>
+        ) : installState === 'failed' ? (
+          <span role="alert">
+            The update could not be applied. Try again, or close and reopen the
+            app.
+          </span>
+        ) : (
+          unsavedWorkCaveat
+        )}
+      </div>
+      <Button
+        color="primary"
+        disabled={installState === 'installing'}
+        icon={
+          installState === 'installing' ? (
+            <Icon name="LoaderCircle" className="size-4 animate-spin" />
+          ) : undefined
+        }
+        onClick={() => void handleInstall()}
+      >
+        {installState === 'installing'
+          ? 'Installing…'
+          : installState === 'failed'
+            ? 'Try again'
+            : 'Install and reload'}
       </Button>
     </>
   ) : (

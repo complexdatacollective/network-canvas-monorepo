@@ -573,6 +573,10 @@
       "types": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.d.ts",
       "default": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.js"
     },
+    "./appUpdate/serviceWorkerUpdate": {
+      "types": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.d.ts",
+      "default": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.js"
+    },
     "./appUpdate/AppUpdateIndicator": {
       "types": "./dist/appUpdate/AppUpdateIndicator.d.ts",
       "default": "./dist/appUpdate/AppUpdateIndicator.js"
