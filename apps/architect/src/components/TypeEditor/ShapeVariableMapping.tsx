@@ -1,6 +1,11 @@
 import { Trash2 } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { change, formValueSelector } from 'redux-form';
+import {
+  change,
+  formValueSelector,
+  getFormSyncErrors,
+  hasSubmitFailed,
+} from 'redux-form';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -17,6 +22,7 @@ import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 
 import { ShapePickerControl, SHAPES } from './ShapePicker';
+import type { EntityTypeFormErrors } from './validateEntityType';
 const DISCRETE_TYPES = new Set(['categorical', 'ordinal', 'boolean']);
 const BREAKPOINT_TYPES = new Set(['number', 'scalar']);
 const ELIGIBLE_TYPES = new Set([...DISCRETE_TYPES, ...BREAKPOINT_TYPES]);
@@ -205,6 +211,34 @@ const ShapeVariableMapping = ({
   const selectedVarId = dynamic?.variable;
   const selectedVar =
     selectedVarId && variables ? variables[selectedVarId] : undefined;
+  const thresholdConfig = getThresholdInputConfig(selectedVar);
+  // Surface the type-editor's synchronous validation once a save has been
+  // attempted, so a blocked submit explains itself rather than silently
+  // no-op-ing. Before the first submit the guidance below stays out of the way.
+  const submitFailed = useAppSelector((state: RootState) =>
+    hasSubmitFailed(form)(state),
+  );
+  const dynamicErrors = useAppSelector((state: RootState) =>
+    submitFailed
+      ? (getFormSyncErrors(form)(state) as EntityTypeFormErrors | undefined)
+          ?.shape?.dynamic
+      : undefined,
+  );
+  // New thresholds seed one step above the current maximum (bounded by the
+  // variable's range) so successive "Add threshold" clicks stay strictly
+  // ascending instead of stacking duplicate zeros.
+  const getNextThresholdValue = (): number => {
+    const existing = dynamic?.thresholds ?? [];
+    const step =
+      typeof thresholdConfig.step === 'number' ? thresholdConfig.step : 1;
+    const base =
+      existing.length > 0
+        ? Math.max(...existing.map((threshold) => threshold.value)) + step
+        : (thresholdConfig.min ?? 0);
+    return thresholdConfig.max !== undefined
+      ? Math.min(base, thresholdConfig.max)
+      : base;
+  };
   const handleToggle = () => {
     if (enabled) {
       dispatch(change(form, 'shape.dynamic', undefined));
@@ -313,6 +347,11 @@ const ShapeVariableMapping = ({
             options={variableOptions}
             disallowCreation
           />
+          {dynamicErrors?.variable && (
+            <Paragraph className="text-destructive mt-1 text-sm">
+              {dynamicErrors.variable}
+            </Paragraph>
+          )}
 
           {selectedVar && dynamic?.type === 'discrete' && (
             <div className="flex flex-col gap-3">
@@ -385,7 +424,7 @@ const ShapeVariableMapping = ({
               </Surface>
               <ThresholdItemContext.Provider
                 value={{
-                  config: getThresholdInputConfig(selectedVar),
+                  config: thresholdConfig,
                   nodeColor,
                 }}
               >
@@ -399,12 +438,20 @@ const ShapeVariableMapping = ({
                   value={dynamic.thresholds ?? []}
                   onChange={(next) => handleThresholdsChange(next ?? [])}
                   itemComponent={ThresholdItem}
-                  itemTemplate={() => ({ value: 0, shape: 'square' })}
+                  itemTemplate={() => ({
+                    value: getNextThresholdValue(),
+                    shape: 'square',
+                  })}
                   addButtonLabel="Add threshold"
                   emptyStateMessage="No thresholds yet — every value uses the default shape."
                   itemClasses={ITEM_ROW_CLASSES}
                 />
               </ThresholdItemContext.Provider>
+              {dynamicErrors?.thresholds && (
+                <Paragraph className="text-destructive mt-1 text-sm">
+                  {dynamicErrors.thresholds}
+                </Paragraph>
+              )}
             </div>
           )}
         </div>

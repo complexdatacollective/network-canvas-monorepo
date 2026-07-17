@@ -7,6 +7,7 @@ import InlineEditScreen from '~/components/InlineEditScreen/InlineEditScreen';
 import { format, parse } from '~/components/TypeEditor/convert';
 import getNewTypeTemplate from '~/components/TypeEditor/getNewTypeTemplate';
 import TypeEditor from '~/components/TypeEditor/TypeEditor';
+import validateEntityType from '~/components/TypeEditor/validateEntityType';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   createTypeAsync,
@@ -168,6 +169,7 @@ const EntityTypeDialog = ({
       onSubmit={handleSubmit as (values: unknown) => void}
       onCancel={handleCancel}
       initialValues={initialValues}
+      validate={validateEntityType}
     >
       <TypeEditor form={formName} entity={entity} type={type} isNew={isNew} />
     </InlineEditScreen>

@@ -40,6 +40,23 @@ const getVariableMetaByIndex = createSelector([getCodebook], (codebook) => {
   return variables;
 });
 
+// Node/edge type id -> name, so type-level usage references (e.g. a node type's
+// shape mapping) can be labelled with the type's name rather than its id.
+const getTypeMetaByIndex = createSelector([getCodebook], (codebook) => {
+  const typeNames: Record<string, string> = {};
+  if (!codebook) return typeNames;
+  for (const entity of ['node', 'edge'] as const) {
+    const types = codebook[entity];
+    if (!types) continue;
+    for (const [id, definition] of Object.entries(types)) {
+      if (definition && typeof definition.name === 'string') {
+        typeNames[id] = definition.name;
+      }
+    }
+  }
+  return typeNames;
+});
+
 /**
  * Takes an object in the format of `{[path]: variableID}` and a variableID to
  * search for. Returns an array of paths that match the variableID.
@@ -89,8 +106,10 @@ export const getUsageAsStageMeta = (
   stageMetaByIndex: StageMeta[],
   variableMetaByIndex: Variables,
   usageArray: string[],
+  typeMetaByIndex: Record<string, string> = {},
 ): UsageMeta[] => {
   const codebookVariableNames = new Set<string>();
+  const shapeMappingTypeNames = new Set<string>();
   const stageIndexSet = new Set<number>();
 
   for (const key of usageArray) {
@@ -102,15 +121,29 @@ export const getUsageAsStageMeta = (
       }
     } else if (segments[0] === 'codebook') {
       const variablesPos = segments.indexOf('variables');
-      const variableId =
-        variablesPos !== -1 ? segments[variablesPos + 1] : undefined;
-      const variable = variableId ? variableMetaByIndex[variableId] : undefined;
-      codebookVariableNames.add(variable?.name || 'unknown');
+      if (variablesPos !== -1) {
+        const variableId = segments[variablesPos + 1];
+        const variable = variableId
+          ? variableMetaByIndex[variableId]
+          : undefined;
+        codebookVariableNames.add(variable?.name || 'unknown');
+      } else if (segments.includes('shape')) {
+        // A type-level shape mapping reference — `codebook.<entity>.<typeId>.
+        // shape.dynamic.variable` — has no `variables` segment because the
+        // reference lives on the type, not inside a variable definition.
+        const typeId = segments[2];
+        const typeName = typeId ? typeMetaByIndex[typeId] : undefined;
+        shapeMappingTypeNames.add(typeName || 'unknown');
+      }
     }
   }
 
   const codebookVariablesWithMeta: UsageMeta[] = [...codebookVariableNames].map(
     (name) => ({ label: `Used as validation for "${name}"` }),
+  );
+
+  const shapeMappingsWithMeta: UsageMeta[] = [...shapeMappingTypeNames].map(
+    (name) => ({ label: `Used in shape settings for "${name}"` }),
   );
 
   const stageVariablesWithMeta = compact(
@@ -119,7 +152,11 @@ export const getUsageAsStageMeta = (
     ),
   );
 
-  return [...stageVariablesWithMeta, ...codebookVariablesWithMeta];
+  return [
+    ...stageVariablesWithMeta,
+    ...codebookVariablesWithMeta,
+    ...shapeMappingsWithMeta,
+  ];
 };
 
 /**
@@ -151,8 +188,8 @@ export const makeGetEntityWithUsage = (
   mergeProps: Record<string, unknown>,
 ) =>
   createSelector(
-    [getStageMetaByIndex, getVariableMetaByIndex],
-    (stageMetaByIndex, variableMetaByIndex) => {
+    [getStageMetaByIndex, getVariableMetaByIndex, getTypeMetaByIndex],
+    (stageMetaByIndex, variableMetaByIndex, typeMetaByIndex) => {
       const search = utils.buildSearch([index]);
 
       return (_: unknown, id: string) => {
@@ -162,6 +199,7 @@ export const makeGetEntityWithUsage = (
               stageMetaByIndex,
               variableMetaByIndex,
               getUsage(index, id),
+              typeMetaByIndex,
             )
           : [];
 
@@ -234,6 +272,7 @@ export const getEntityProperties = (
 
   const variableIndex = getVariableIndex(state);
   const variableMeta = getVariableMetaByIndex(state);
+  const typeMeta = getTypeMetaByIndex(state);
   const stageMetaByIndex = getStageMetaByIndex(state);
   const isUsedIndex = makeGetIsUsed({ formNames: [] })(state);
 
@@ -257,6 +296,7 @@ export const getEntityProperties = (
       stageMetaByIndex,
       variableMeta,
       getUsage(variableIndex, id),
+      typeMeta,
     ).toSorted(sortByLabel);
 
     const usageString = usage

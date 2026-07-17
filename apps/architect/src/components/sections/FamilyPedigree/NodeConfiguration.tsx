@@ -39,11 +39,13 @@ import {
   createVariableAsync,
   updateVariableAsync,
 } from '~/ducks/modules/protocol/codebook';
+import { getFamilyPedigreeNodeTypeChangeBlock } from '~/ducks/modules/protocol/stages';
 import type { RootState } from '~/ducks/store';
 import {
   getVariableOptionsForSubject,
   makeGetVariable,
 } from '~/selectors/codebook';
+import { getProtocol } from '~/selectors/protocol';
 import { ensureError } from '~/utils/ensureError';
 import { optionsMatch } from '~/utils/variables';
 
@@ -139,6 +141,26 @@ const NodeConfigurationInner = ({
   const formValues = useSelector((state: RootState) =>
     getFormValues(form)(state),
   );
+  const stageId = useSelector(
+    (state: RootState) => formSelector(state, 'id') as string | undefined,
+  );
+  const stages = useSelector(
+    (state: RootState) => getProtocol(state)?.stages ?? [],
+  );
+  // A NarrativePedigree binds its diseases to variables on this stage's node
+  // type, so changing the node type would dangle those references. Block the
+  // change while such dependents exist, mirroring the deletion guard.
+  const dependentNarrativeStages = stageId
+    ? getFamilyPedigreeNodeTypeChangeBlock(stages, stageId)
+    : [];
+  const nodeTypeChangeBlockReason =
+    dependentNarrativeStages.length > 0
+      ? `This Family Pedigree stage's network is used by the following Narrative Pedigree stage(s): ${dependentNarrativeStages
+          .map((dependent) => `"${dependent.label || 'Untitled'}"`)
+          .join(
+            ', ',
+          )}. Change or remove those stage(s) before changing its node type.`
+      : null;
   const formFields = keys(formValues);
   const handleResetStage = useCallback(() => {
     const fieldsToReset = difference(formFields, PRESERVE_ON_NODE_TYPE_CHANGE);
@@ -229,6 +251,7 @@ const NodeConfigurationInner = ({
             name="nodeConfig.type"
             entityType="node"
             promptBeforeChange="You attempted to change the node type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
+            blockChangeReason={nodeTypeChangeBlockReason}
             component={EntitySelectField}
             onChange={handleResetStage}
             validation={{ required: true }}

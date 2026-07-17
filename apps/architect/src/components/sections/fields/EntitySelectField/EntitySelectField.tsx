@@ -40,6 +40,7 @@ type EntitySelectControlProps = {
   'onBlur'?: FocusEventHandler;
   'onFocus'?: FocusEventHandler;
   'promptBeforeChange'?: string | null;
+  'blockChangeReason'?: string | null;
   'disabled'?: boolean;
   'readOnly'?: boolean;
   'required'?: boolean;
@@ -58,6 +59,7 @@ export const EntitySelectControl = ({
   onBlur,
   onFocus,
   promptBeforeChange = null,
+  blockChangeReason = null,
   disabled = false,
   readOnly = false,
   required = false,
@@ -66,7 +68,7 @@ export const EntitySelectControl = ({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: EntitySelectControlProps) => {
-  const { confirm } = useDialog();
+  const { confirm, openDialog } = useDialog();
   const edgeOptions = useSelector(getEdgeOptions);
   const nodeOptions = useSelector(getNodeOptions);
   const [showNewTypeDialog, setShowNewTypeDialog] = useState(false);
@@ -75,9 +77,26 @@ export const EntitySelectControl = ({
     [entityType, edgeOptions, nodeOptions],
   );
 
+  // A dependent stage relies on the current type, so the change is refused
+  // outright (unlike promptBeforeChange, which lets the researcher proceed).
+  const refuseBlockedChange = useCallback(() => {
+    if (!value || !blockChangeReason) return false;
+
+    void openDialog({
+      type: 'acknowledge',
+      intent: 'warning',
+      title: `Cannot change ${entityType} type`,
+      description: blockChangeReason,
+      actions: { primary: { label: 'OK', value: true } },
+    });
+    return true;
+  }, [value, blockChangeReason, openDialog, entityType]);
+
   const handleSelectItem = useCallback(
     (selectedItem: string) => {
       if (disabled || readOnly || selectedItem === value) return;
+
+      if (refuseBlockedChange()) return;
 
       if (!value || !promptBeforeChange) {
         onChange?.(selectedItem);
@@ -97,6 +116,7 @@ export const EntitySelectControl = ({
       disabled,
       readOnly,
       value,
+      refuseBlockedChange,
       promptBeforeChange,
       confirm,
       entityType,
@@ -107,9 +127,11 @@ export const EntitySelectControl = ({
   const handleNewTypeComplete = useCallback(
     (newTypeId?: string) => {
       setShowNewTypeDialog(false);
-      if (newTypeId && !disabled && !readOnly) onChange?.(newTypeId);
+      if (!newTypeId || disabled || readOnly) return;
+      if (refuseBlockedChange()) return;
+      onChange?.(newTypeId);
     },
-    [disabled, onChange, readOnly],
+    [disabled, readOnly, refuseBlockedChange, onChange],
   );
 
   return (
@@ -212,6 +234,7 @@ type EntitySelectFieldProps = WrappedFieldProps & {
   entityType: 'node' | 'edge';
   label?: string | null;
   promptBeforeChange?: string | null;
+  blockChangeReason?: string | null;
   disabled?: boolean;
   readOnly?: boolean;
 };
