@@ -66,6 +66,8 @@ export function HomeRoute() {
   // When it does, the pill occupies the band just below the header in
   // portrait, so the protocols column reserves top space to clear it.
   const hasResumableSession = sessions.some((s) => s.finishedAt === null);
+  const showResumePill =
+    view === 'protocols' && !newSessionActive && hasResumableSession;
 
   // Default the active card to the user's last-used protocol; fall back to
   // the most-recently-imported one if they've never opened a protocol (or
@@ -197,7 +199,7 @@ export function HomeRoute() {
             breakpoint and pull the pill up into the header. */}
         <div className="tablet-landscape:px-11 tablet-landscape:pt-9 pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-6 landscape:translate-y-0">
           <AnimatePresence>
-            {view === 'protocols' ? (
+            {showResumePill ? (
               <ResumePill key="resume-pill" sessions={sessions} />
             ) : null}
           </AnimatePresence>
@@ -217,7 +219,7 @@ export function HomeRoute() {
             // protocol deck starts below it — only in portrait, and only when a
             // resumable session actually renders the pill (pill is h-20 = 80px).
             className={`flex min-h-0 w-full flex-1 flex-col gap-8 ${
-              hasResumableSession ? 'portrait:pt-24' : ''
+              showResumePill ? 'portrait:pt-24' : ''
             }`}
           >
             <ProtocolDeck

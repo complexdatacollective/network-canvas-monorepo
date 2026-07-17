@@ -70,6 +70,28 @@ test.describe('protocol import & delete', () => {
     });
   });
 
+  test('hides the resume notification while the case ID form is open', async ({
+    protocol,
+    interviewNav,
+    page,
+  }) => {
+    await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+    await interviewNav.startNewSession('P-resume');
+    await page.goto('/');
+
+    const resumeNotification = page.getByRole('button', {
+      name: /Resume last interview/,
+    });
+    await expect(resumeNotification).toBeVisible();
+
+    await page.getByRole('button', { name: 'Start new interview' }).click();
+    await expect(page.getByTestId('new-session-case-id')).toBeVisible();
+    await expect(resumeNotification).not.toBeVisible();
+
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(resumeNotification).toBeVisible();
+  });
+
   test(
     'deletes a protocol via the confirm dialog',
     {
