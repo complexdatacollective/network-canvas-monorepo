@@ -320,7 +320,7 @@ export default function QuickAddField({
                     initial={{ y: '100%' }}
                     animate={{ y: 0 }}
                     exit={{ y: '100%' }}
-                    className="h-full"
+                    className="flex h-full items-center justify-center"
                   >
                     <Icon
                       name={icon as InterviewerIconName}

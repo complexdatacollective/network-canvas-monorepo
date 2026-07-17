@@ -402,6 +402,24 @@ export const CreateNewNode: Story = {
   },
 };
 
+export const CreateNewNodeWithLucideIcon: Story = {
+  args: {
+    selectedNode: null,
+    form: basicForm,
+    disabled: false,
+    icon: 'Smartphone',
+  },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        story:
+          'Create-new-node button whose node type uses a Lucide icon (`Smartphone`) instead of a custom kebab-case icon. Verifies the icon stays vertically centred inside the toggle circle.',
+      },
+    },
+  },
+};
+
 export const EditExistingNode: Story = {
   args: {
     selectedNode: {
