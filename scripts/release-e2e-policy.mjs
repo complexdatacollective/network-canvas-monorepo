@@ -350,75 +350,17 @@ export function releaseE2EPolicy(
   return { ...suites(), releaseRef: '', snapshotBranch: '' };
 }
 
-// Merge-queue fast path: a release PR's branch head was already fully
-// E2E-validated by the native pull_request run fired when the branch was
-// created/updated (the required `quality` check means the PR could not have
-// been enqueued otherwise). When the queue's merge commit has the SAME TREE
-// as that branch tip — main did not move and nothing else was batched — the
-// queue would re-run the suites against byte-identical code, so each suite
-// whose PR job succeeded on that exact SHA can be skipped.
-//
-// Every guard fails closed (the suite runs):
-//  * the merge commit's tree must equal its second parent's (the PR tip's);
-//  * the PR tip must be the current head of a generated changeset-release/*
-//    branch, so only trusted generated branches — never an arbitrary PR that
-//    happens to bump a version — can satisfy the fast path;
-//  * the succeeded job must belong to a pull_request run of THIS
-//    workflow at that SHA, looked up via the Actions API; any API error
-//    counts as not validated.
-export async function alreadyValidatedSuites({
-  cwd,
-  repository,
-  token,
-  fetcher = fetch,
-}) {
-  const validated = suites();
-
-  const headTree = tryGit(['rev-parse', 'HEAD^{tree}'], cwd);
+// Trust guard for merge-queue reuse: the queued merge's second parent must be
+// the current tip of a generated release branch — never an arbitrary PR that
+// happens to bump a version.
+export function releaseBranchForMergeQueue(cwd) {
   const prTip = tryGit(['rev-parse', 'HEAD^2'], cwd);
-  const prTree = tryGit(['rev-parse', 'HEAD^2^{tree}'], cwd);
-  if (!headTree || !prTip || !prTree || headTree !== prTree) {
-    return validated;
-  }
-
-  const isReleaseBranchTip = Object.keys(SUITES_BY_RELEASE_REF).some(
-    (ref) => tryGit(['rev-parse', `origin/${ref}`], cwd) === prTip,
+  if (!prTip) return '';
+  return (
+    Object.keys(SUITES_BY_RELEASE_REF).find(
+      (ref) => tryGit(['rev-parse', `origin/${ref}`], cwd) === prTip,
+    ) ?? ''
   );
-  if (!isReleaseBranchTip) return validated;
-  if (!repository || !token) return validated;
-
-  const apiOptions = {
-    headers: {
-      accept: 'application/vnd.github+json',
-      authorization: `Bearer ${token}`,
-    },
-  };
-  try {
-    const runsResponse = await fetcher(
-      `https://api.github.com/repos/${repository}/actions/workflows/ci-and-release.yml/runs?event=pull_request&head_sha=${prTip}&per_page=100`,
-      apiOptions,
-    );
-    if (!runsResponse.ok) return validated;
-    const { workflow_runs: runs = [] } = await runsResponse.json();
-
-    for (const run of runs) {
-      const jobsResponse = await fetcher(
-        `${run.jobs_url}?per_page=100`,
-        apiOptions,
-      );
-      if (!jobsResponse.ok) continue;
-      const { jobs = [] } = await jobsResponse.json();
-      for (const job of jobs) {
-        if (job.conclusion !== 'success') continue;
-        for (const key of SUITE_KEYS) {
-          if (job.name === E2E_JOB_NAMES[key]) validated[key] = true;
-        }
-      }
-    }
-  } catch {
-    return suites();
-  }
-  return validated;
 }
 
 async function main() {
@@ -431,18 +373,39 @@ async function main() {
     headSha: process.env.HEAD_SHA ?? '',
   });
 
-  if (eventName === 'merge_group' && SUITE_KEYS.some((key) => policy[key])) {
-    const validated = await alreadyValidatedSuites({
-      cwd: process.cwd(),
-      repository: process.env.GITHUB_REPOSITORY ?? '',
-      token: process.env.GH_TOKEN ?? '',
-    });
-    for (const key of SUITE_KEYS) {
-      if (policy[key] && validated[key]) {
-        policy[key] = false;
-        console.error(
-          `${E2E_JOB_NAMES[key]}: skipping — this merge group's tree is identical to a release branch tip it already passed on.`,
-        );
+  if (SUITE_KEYS.some((key) => policy[key])) {
+    const cwd = process.cwd();
+    const repository = process.env.GITHUB_REPOSITORY ?? '';
+    let reuse = null;
+    if (eventName === 'pull_request' && policy.releaseRef) {
+      // Fork PRs never reuse; dispatches are explicit rerun requests and are
+      // not eligible either (eventName gate above).
+      if (
+        (process.env.HEAD_REPO ?? '') === repository &&
+        process.env.HEAD_SHA
+      ) {
+        reuse = { branch: policy.releaseRef, headSha: process.env.HEAD_SHA };
+      }
+    } else if (eventName === 'merge_group') {
+      const branch = releaseBranchForMergeQueue(cwd);
+      const headSha = tryGit(['rev-parse', 'HEAD'], cwd);
+      if (branch && headSha) reuse = { branch, headSha };
+    }
+    if (reuse) {
+      const validated = await equivalentValidatedSuites({
+        cwd,
+        repository,
+        token: process.env.GH_TOKEN ?? '',
+        requiredSuites: policy,
+        ...reuse,
+      });
+      for (const key of SUITE_KEYS) {
+        if (policy[key] && validated[key]) {
+          policy[key] = false;
+          console.error(
+            `${E2E_JOB_NAMES[key]}: skipping — an earlier successful run on ${reuse.branch} validated this suite and nothing relevant to it has changed since.`,
+          );
+        }
       }
     }
   }

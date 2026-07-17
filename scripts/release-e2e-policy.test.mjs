@@ -13,12 +13,12 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
-  alreadyValidatedSuites,
   collectWorkspacePackages,
   diffIrrelevantToSuite,
   equivalentValidatedSuites,
   E2E_SUITE_SUBJECTS,
   mergeGroupRequiredSuites,
+  releaseBranchForMergeQueue,
   releaseE2EPolicy,
   releaseRefForEvent,
   relevanceDirsForSubject,
@@ -49,10 +49,6 @@ function commitManifest(cwd, manifest, contents, message) {
   git(cwd, 'add', '.');
   git(cwd, 'commit', '-qm', message);
   return git(cwd, 'rev-parse', 'HEAD');
-}
-
-function suiteFlags(policy) {
-  return Object.fromEntries(SUITE_KEYS.map((key) => [key, policy[key]]));
 }
 
 test('recognises only the generated release PR refs', () => {
@@ -282,7 +278,7 @@ test('ordinary events do not require release E2E', () => {
 // Build a repo shaped like a merge-queue checkout: main, a release branch
 // with a version bump, and a merge commit of the branch into main (HEAD).
 // Returns the branch tip so tests can point origin/changeset-release/* at it.
-function initMergeQueueRepo({ advanceMainBeforeMerge = false } = {}) {
+function initMergeQueueRepo({ advanceMainWith = '' } = {}) {
   const cwd = initRepo();
   commitManifest(
     cwd,
@@ -298,31 +294,45 @@ function initMergeQueueRepo({ advanceMainBeforeMerge = false } = {}) {
     'version architect',
   );
   git(cwd, 'checkout', '-q', 'main');
-  if (advanceMainBeforeMerge) {
-    commitManifest(cwd, 'README.md', 'moved\n', 'main moved');
+  if (advanceMainWith) {
+    commitManifest(cwd, advanceMainWith, 'moved\n', 'main moved');
   }
   git(cwd, 'merge', '-q', '--no-ff', '--no-edit', 'release');
   return { cwd, branchTip };
 }
 
-function fakeGitHub({ jobs, failRuns = false }) {
-  return async (url) => {
-    if (failRuns) return { ok: false };
-    if (url.includes('/actions/workflows/')) {
-      assert.match(url, /[?&]event=pull_request(?:&|$)/);
-      assert.doesNotMatch(url, /[?&]event=workflow_dispatch(?:&|$)/);
-      return {
-        ok: true,
-        json: async () => ({
-          workflow_runs: [{ jobs_url: 'https://api.example.com/jobs' }],
-        }),
-      };
-    }
-    return { ok: true, json: async () => ({ jobs }) };
-  };
+function architectLaneQueueCall(cwd, fetcher) {
+  const branch = releaseBranchForMergeQueue(cwd);
+  return equivalentValidatedSuites({
+    cwd,
+    repository: 'example/repo',
+    token: 'token',
+    branch,
+    headSha: git(cwd, 'rev-parse', 'HEAD'),
+    requiredSuites: { interview: true, interviewer: false, architect: true },
+    fetcher,
+  });
 }
 
-test('merge-queue skip validates suites from the native PR run', async () => {
+const ARCHITECT_LANE_SUCCESS_JOBS = [
+  { name: 'architect-e2e', conclusion: 'success' },
+  { name: 'interview-e2e', conclusion: 'success' },
+  { name: 'quality', conclusion: 'success' },
+];
+
+test('merge queue identifies the release lane from the merge second parent', () => {
+  const { cwd, branchTip } = initMergeQueueRepo();
+  assert.equal(releaseBranchForMergeQueue(cwd), '');
+  git(
+    cwd,
+    'update-ref',
+    'refs/remotes/origin/changeset-release/architect',
+    branchTip,
+  );
+  assert.equal(releaseBranchForMergeQueue(cwd), 'changeset-release/architect');
+});
+
+test('merge-queue reuse skips suites validated at the branch tip', async () => {
   const { cwd, branchTip } = initMergeQueueRepo();
   git(
     cwd,
@@ -330,105 +340,68 @@ test('merge-queue skip validates suites from the native PR run', async () => {
     'refs/remotes/origin/changeset-release/architect',
     branchTip,
   );
+  // The merge added nothing beyond the branch: empty diff, trivial case.
   assert.deepEqual(
-    await alreadyValidatedSuites({
+    await architectLaneQueueCall(
       cwd,
-      repository: 'example/repo',
-      token: 'token',
-      fetcher: fakeGitHub({
-        jobs: [
-          { name: 'architect-e2e', conclusion: 'success' },
-          { name: 'interview-e2e', conclusion: 'success' },
-          { name: 'interviewer-e2e', conclusion: 'failure' },
-          { name: 'quality', conclusion: 'success' },
-        ],
+      fakeActionsApi({
+        runs: [fakeRun(1, branchTip)],
+        jobsByRun: { 1: ARCHITECT_LANE_SUCCESS_JOBS },
       }),
-    }),
+    ),
     { interview: true, interviewer: false, architect: true },
   );
 });
 
-test('merge-queue skip fails closed', async () => {
-  const none = { interview: false, interviewer: false, architect: false };
-  const validatedJobs = [
-    { name: 'architect-e2e', conclusion: 'success' },
-    { name: 'interview-e2e', conclusion: 'success' },
-    { name: 'interviewer-e2e', conclusion: 'success' },
-  ];
-
-  // Main moved under the release PR: the merge tree no longer matches the
-  // validated branch tip.
-  const moved = initMergeQueueRepo({ advanceMainBeforeMerge: true });
+test('merge-queue reuse classifies batched main movement by relevance', async () => {
+  // Main moved with a file inside the architect subject: the architect suite
+  // re-runs. The interview suite may still skip — apps/architect is outside
+  // the interview package's closure, so its e2e outcome cannot change.
+  const relevant = initMergeQueueRepo({
+    advanceMainWith: 'apps/architect/src/main.tsx',
+  });
   git(
-    moved.cwd,
+    relevant.cwd,
     'update-ref',
     'refs/remotes/origin/changeset-release/architect',
-    moved.branchTip,
+    relevant.branchTip,
   );
   assert.deepEqual(
-    await alreadyValidatedSuites({
-      cwd: moved.cwd,
-      repository: 'example/repo',
-      token: 'token',
-      fetcher: fakeGitHub({ jobs: validatedJobs }),
-    }),
-    none,
-  );
-
-  // The PR tip is not a generated release branch head: an ordinary PR that
-  // bumps a version must never satisfy the fast path.
-  const untrusted = initMergeQueueRepo();
-  assert.deepEqual(
-    await alreadyValidatedSuites({
-      cwd: untrusted.cwd,
-      repository: 'example/repo',
-      token: 'token',
-      fetcher: fakeGitHub({ jobs: validatedJobs }),
-    }),
-    none,
-  );
-
-  // API errors count as not validated.
-  const apiDown = initMergeQueueRepo();
-  git(
-    apiDown.cwd,
-    'update-ref',
-    'refs/remotes/origin/changeset-release/architect',
-    apiDown.branchTip,
-  );
-  assert.deepEqual(
-    await alreadyValidatedSuites({
-      cwd: apiDown.cwd,
-      repository: 'example/repo',
-      token: 'token',
-      fetcher: fakeGitHub({ jobs: [], failRuns: true }),
-    }),
-    none,
-  );
-  assert.deepEqual(
-    await alreadyValidatedSuites({
-      cwd: apiDown.cwd,
-      repository: 'example/repo',
-      token: 'token',
-      fetcher: async () => {
-        throw new Error('network down');
-      },
-    }),
-    none,
-  );
-
-  // Missing credentials count as not validated.
-  assert.deepEqual(
-    suiteFlags(
-      await alreadyValidatedSuites({
-        cwd: apiDown.cwd,
-        repository: '',
-        token: '',
-        fetcher: fakeGitHub({ jobs: validatedJobs }),
+    await architectLaneQueueCall(
+      relevant.cwd,
+      fakeActionsApi({
+        runs: [fakeRun(1, relevant.branchTip)],
+        jobsByRun: { 1: ARCHITECT_LANE_SUCCESS_JOBS },
       }),
     ),
-    none,
+    { interview: true, interviewer: false, architect: false },
   );
+
+  // Main moved with an inert file (README): the batched merge still cannot
+  // affect the suites, so reuse holds. (Old byte-identical semantics re-ran
+  // here; relevance classification is the intended improvement.)
+  const inert = initMergeQueueRepo({ advanceMainWith: 'README.md' });
+  git(
+    inert.cwd,
+    'update-ref',
+    'refs/remotes/origin/changeset-release/architect',
+    inert.branchTip,
+  );
+  assert.deepEqual(
+    await architectLaneQueueCall(
+      inert.cwd,
+      fakeActionsApi({
+        runs: [fakeRun(1, inert.branchTip)],
+        jobsByRun: { 1: ARCHITECT_LANE_SUCCESS_JOBS },
+      }),
+    ),
+    { interview: true, interviewer: false, architect: true },
+  );
+
+  // An ordinary PR that bumps a version must never satisfy reuse: without a
+  // matching origin/changeset-release/* tip there is no branch to walk.
+  const untrusted = initMergeQueueRepo();
+  assert.equal(releaseBranchForMergeQueue(untrusted.cwd), '');
 });
 
 // Scaffold a repo-shaped directory tree (no git needed for these tests):
