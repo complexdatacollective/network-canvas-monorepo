@@ -1,4 +1,6 @@
 import { execFileSync } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const SUITE_KEYS = ['interview', 'interviewer', 'architect'];
@@ -17,6 +19,81 @@ const E2E_JOB_NAMES = {
   interviewer: 'interviewer-e2e',
   architect: 'architect-e2e',
 };
+
+const WORKSPACE_GROUPS = ['packages', 'apps', 'tooling', 'workers'];
+
+// Mirrors the `test` job's inert set: docs, changesets, and markdown cannot
+// change what an E2E suite executes or asserts.
+function isInertPath(path) {
+  return (
+    path.startsWith('docs/') ||
+    path.startsWith('.changeset/') ||
+    path.endsWith('.md')
+  );
+}
+
+export function collectWorkspacePackages(cwd) {
+  const packages = new Map();
+  for (const group of WORKSPACE_GROUPS) {
+    let entries;
+    try {
+      entries = readdirSync(join(cwd, group), { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      let manifest;
+      try {
+        manifest = JSON.parse(
+          readFileSync(join(cwd, group, entry.name, 'package.json'), 'utf8'),
+        );
+      } catch {
+        continue;
+      }
+      if (typeof manifest.name !== 'string') continue;
+      packages.set(manifest.name, {
+        dir: `${group}/${entry.name}`,
+        // devDependencies participate: they carry Playwright configs, e2e
+        // helpers, and build tooling that shape suite outcomes.
+        workspaceDeps: [
+          ...Object.keys(manifest.dependencies ?? {}),
+          ...Object.keys(manifest.devDependencies ?? {}),
+        ],
+      });
+    }
+  }
+  return packages;
+}
+
+export function relevanceDirsForSubject(subjectName, packages) {
+  const dirs = new Set();
+  const seen = new Set();
+  const queue = [subjectName];
+  while (queue.length > 0) {
+    const name = queue.pop();
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const pkg = packages.get(name);
+    if (!pkg) continue;
+    dirs.add(pkg.dir);
+    queue.push(...pkg.workspaceDeps);
+  }
+  return dirs;
+}
+
+// True only when EVERY changed path provably cannot affect the suite: it is
+// inert, or it lives inside a workspace package outside the suite's relevance
+// closure. Any other path — root configs, .github/, scripts/, the lockfile,
+// anything unrecognised — is relevant, so the suite runs (fail closed).
+export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
+  const packageDirs = [...packages.values()].map((pkg) => pkg.dir);
+  return changedPaths.every((changedPath) => {
+    if (isInertPath(changedPath)) return true;
+    const owner = packageDirs.find((dir) => changedPath.startsWith(`${dir}/`));
+    return owner !== undefined && !relevanceDirs.has(owner);
+  });
+}
 
 function suites(...keys) {
   return Object.fromEntries(SUITE_KEYS.map((key) => [key, keys.includes(key)]));

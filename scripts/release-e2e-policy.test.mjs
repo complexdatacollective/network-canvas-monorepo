@@ -14,10 +14,13 @@ import { fileURLToPath } from 'node:url';
 
 import {
   alreadyValidatedSuites,
+  collectWorkspacePackages,
+  diffIrrelevantToSuite,
   E2E_SUITE_SUBJECTS,
   mergeGroupRequiredSuites,
   releaseE2EPolicy,
   releaseRefForEvent,
+  relevanceDirsForSubject,
   SUITE_KEYS,
   SUITES_BY_RELEASE_REF,
 } from './release-e2e-policy.mjs';
@@ -425,4 +428,119 @@ test('merge-queue skip fails closed', async () => {
     ),
     none,
   );
+});
+
+// Scaffold a repo-shaped directory tree (no git needed for these tests):
+// interviewer app depends on the interview package; architect app is a
+// sibling product that also depends on interview.
+function writeWorkspaceFixture() {
+  const cwd = mkdtempSync(join(tmpdir(), 'release-e2e-graph-'));
+  const manifests = {
+    'packages/interview/package.json': {
+      name: '@codaco/interview',
+      version: '1.0.0',
+      devDependencies: { '@codaco/e2e-helpers': 'workspace:*' },
+    },
+    'packages/e2e-helpers/package.json': {
+      name: '@codaco/e2e-helpers',
+      version: '1.0.0',
+    },
+    'apps/interviewer/package.json': {
+      name: '@codaco/interviewer',
+      version: '1.0.0',
+      dependencies: { '@codaco/interview': 'workspace:*' },
+    },
+    'apps/architect/package.json': {
+      name: '@codaco/architect',
+      version: '1.0.0',
+      dependencies: { '@codaco/interview': 'workspace:*' },
+    },
+  };
+  for (const [file, contents] of Object.entries(manifests)) {
+    mkdirSync(join(cwd, file, '..'), { recursive: true });
+    writeFileSync(join(cwd, file), `${JSON.stringify(contents)}\n`);
+  }
+  return cwd;
+}
+
+test('relevance closure follows dependencies and devDependencies', () => {
+  const cwd = writeWorkspaceFixture();
+  const packages = collectWorkspacePackages(cwd);
+  assert.deepEqual(
+    [...relevanceDirsForSubject('@codaco/interviewer', packages)].toSorted(
+      (a, b) => a.localeCompare(b),
+    ),
+    ['apps/interviewer', 'packages/e2e-helpers', 'packages/interview'],
+  );
+  // devDependency edge: interview pulls in its e2e helpers.
+  assert.deepEqual(
+    [...relevanceDirsForSubject('@codaco/interview', packages)].toSorted(
+      (a, b) => a.localeCompare(b),
+    ),
+    ['packages/e2e-helpers', 'packages/interview'],
+  );
+});
+
+test('diff classification is fail-closed', () => {
+  const cwd = writeWorkspaceFixture();
+  const packages = collectWorkspacePackages(cwd);
+  const relevance = relevanceDirsForSubject('@codaco/interviewer', packages);
+
+  // Sibling-product and inert paths cannot affect the interviewer suite.
+  assert.equal(
+    diffIrrelevantToSuite(
+      [
+        'apps/architect/package.json',
+        'apps/architect/CHANGELOG.md',
+        '.changeset/lucky-pandas-dance.md',
+        'docs/superpowers/specs/example.md',
+        'README.md',
+      ],
+      relevance,
+      packages,
+    ),
+    true,
+  );
+
+  // Anything in the closure is relevant — including non-markdown baselines.
+  for (const relevantPath of [
+    'apps/interviewer/src/main.tsx',
+    'packages/interview/e2e/baseline.png',
+    'packages/e2e-helpers/src/index.ts',
+  ]) {
+    assert.equal(
+      diffIrrelevantToSuite([relevantPath], relevance, packages),
+      false,
+      `${relevantPath} must be relevant`,
+    );
+  }
+
+  // Paths outside every workspace package fail closed.
+  for (const unrecognised of [
+    '.github/workflows/ci-and-release.yml',
+    'scripts/release-e2e-policy.mjs',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'turbo.json',
+    '.nvmrc',
+  ]) {
+    assert.equal(
+      diffIrrelevantToSuite([unrecognised], relevance, packages),
+      false,
+      `${unrecognised} must be relevant`,
+    );
+  }
+
+  // One relevant path among many irrelevant ones is enough to run.
+  assert.equal(
+    diffIrrelevantToSuite(
+      ['apps/architect/package.json', 'pnpm-lock.yaml'],
+      relevance,
+      packages,
+    ),
+    false,
+  );
+
+  // An empty diff is trivially irrelevant (byte-identical case).
+  assert.equal(diffIrrelevantToSuite([], relevance, packages), true);
 });
