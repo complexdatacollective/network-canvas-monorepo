@@ -409,6 +409,7 @@ export const CreateNewNodeWithLucideIcon: Story = {
     disabled: false,
     icon: 'Smartphone',
   },
+  render: ({ icon: _icon, ...args }) => <NodeForm {...args} />,
   parameters: {
     layout: 'fullscreen',
     docs: {
