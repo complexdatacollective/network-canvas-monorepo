@@ -81,7 +81,9 @@ export function ColorControl({
         <label
           className={cx(
             swatchBase,
-            'overflow-hidden p-0',
+            // The focus lives on the nested native colour input, so surface its
+            // keyboard focus ring on the label (which is what the user sees).
+            'focusable-within overflow-hidden p-0',
             selectedRing(isCustom),
           )}
           style={isCustom ? { backgroundColor: value ?? undefined } : undefined}

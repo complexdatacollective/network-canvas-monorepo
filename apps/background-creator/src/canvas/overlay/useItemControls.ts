@@ -1,10 +1,6 @@
 import { type KeyboardEvent as ReactKeyboardEvent, useRef } from 'react';
 
-import {
-  boundsCentre,
-  elementBounds,
-  zoneBounds,
-} from '~/state/documentGeometry';
+import { boundsCentre, elementBounds } from '~/state/documentGeometry';
 import { useEditorStore } from '~/state/editorStore';
 
 const STEP = 0.01;
@@ -19,25 +15,21 @@ const isArrow = (key: string): boolean =>
 export function announceSelectionPosition(): void {
   const { doc, selection, announce } = useEditorStore.getState();
   if (!selection) return;
-  let centre: { x: number; y: number } | null = null;
-  if (selection.type === 'element') {
-    const el = doc.elements.find((e) => e.id === selection.id);
-    if (el) centre = boundsCentre(elementBounds(el));
-  } else {
-    const zone = doc.zones.find((z) => z.id === selection.id);
-    if (zone) centre = boundsCentre(zoneBounds(zone));
-  }
-  if (!centre) return;
+  const el = doc.elements.find((e) => e.id === selection.id);
+  if (!el) return;
+  const centre = boundsCentre(elementBounds(el));
   announce(
     `Moved to x ${Math.round(centre.x * 100)}%, y ${Math.round(centre.y * 100)}%`,
   );
 }
 
-// Keyboard editing shared by the element targets and the zone pills. Acts on the
-// currently-selected item (focusing a control selects it), so one set of handlers
-// serves every control. Arrow-key nudges coalesce into a single undo step in the
-// store; the final position is announced once on key release, not per repeat.
-export function useItemControls(): {
+// Keyboard editing shared by every element's focusable control. Acts on the
+// currently-selected item (focusing a control selects it), so one set of
+// handlers serves every control. Arrow-key nudges coalesce into a single undo
+// step in the store; the final position is announced once on key release, not
+// per repeat. `onActivate` fires on Enter/Space so the caller can open the
+// relevant editor (inline text, zone-label dialog) for the focused element.
+export function useItemControls(onActivate?: () => void): {
   onKeyDown: (e: ReactKeyboardEvent) => void;
   onKeyUp: (e: ReactKeyboardEvent) => void;
 } {
@@ -74,8 +66,10 @@ export function useItemControls(): {
         break;
       case 'Enter':
       case ' ':
-        // Focus already selected the item; the key just confirms it.
+        // Focus already selected the item; activate opens its editor (text →
+        // inline editor, zone → label dialog) or is a no-op for plain shapes.
         e.preventDefault();
+        onActivate?.();
         break;
       default:
         break;

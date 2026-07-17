@@ -24,8 +24,12 @@ import { documentFilename } from './filename';
 // owns the DialogProvider context.
 type Dialogs = Pick<DialogContextType, 'openDialog' | 'confirm'>;
 
-type NewTemplateChoice = 'blank' | 'quadrants' | 'concentric';
+type NewTemplateChoice = 'blank' | 'quadrants' | 'concentric' | 'compass';
 type ScriptLanguage = 'python' | 'r';
+
+const NOT_SVG_TITLE = 'Not a Background Creator file';
+const NOT_SVG_DESCRIPTION =
+  'That file is not an SVG. Choose a background SVG created with this tool.';
 
 const REPLACE_TITLE = 'Replace the current design?';
 const REPLACE_DESCRIPTION =
@@ -73,11 +77,7 @@ async function loadSvgFile(dialogs: Dialogs, file: File): Promise<void> {
   const store = useEditorStore.getState();
 
   if (!isSvgFile(file)) {
-    await acknowledge(
-      dialogs,
-      'Not a Background Creator file',
-      'That file is not an SVG. Choose a background SVG created with this tool.',
-    );
+    await acknowledge(dialogs, NOT_SVG_TITLE, NOT_SVG_DESCRIPTION);
     return;
   }
 
@@ -148,6 +148,12 @@ export async function openDroppedFileFlow(
 ): Promise<void> {
   if (!(await confirmReplace(dialogs))) return;
   await loadSvgFile(dialogs, file);
+}
+
+// A non-SVG drop is rejected by the dropzone before it reaches loadSvgFile, so
+// surface the same "not an SVG" acknowledgement the file picker would.
+export async function openRejectedDropFlow(dialogs: Dialogs): Promise<void> {
+  await acknowledge(dialogs, NOT_SVG_TITLE, NOT_SVG_DESCRIPTION);
 }
 
 export async function downloadSvgFlow(): Promise<void> {

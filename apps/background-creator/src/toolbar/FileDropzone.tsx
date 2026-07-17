@@ -4,7 +4,7 @@ import { useDropzone } from 'react-dropzone';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 
-import { openDroppedFileFlow } from './fileActions';
+import { openDroppedFileFlow, openRejectedDropFlow } from './fileActions';
 
 // Wraps the canvas region so a background SVG can be opened by dropping it
 // anywhere over the editor. The drop handlers live on the region itself (not a
@@ -25,8 +25,13 @@ export function FileDropzone({
     [dialogs],
   );
 
+  const onDropRejected = useCallback(() => {
+    void openRejectedDropFlow(dialogs);
+  }, [dialogs]);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: { 'image/svg+xml': ['.svg'] },
     multiple: false,
     noClick: true,

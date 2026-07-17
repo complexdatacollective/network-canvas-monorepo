@@ -8,6 +8,7 @@ import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { zonesOf } from '~/geometry/zones';
 import type {
   EllipseElement,
   LineElement,
@@ -15,10 +16,10 @@ import type {
   RectElement,
   SvgElement,
   TextElement,
-  Zone,
+  ZoneElement,
 } from '~/model/types';
 import { assertNever } from '~/state/assertNever';
-import { useEditorStore } from '~/state/editorStore';
+import { nextZoneLabel, useEditorStore } from '~/state/editorStore';
 import { elementKindLabel } from '~/state/labels';
 
 import { ColorControl } from './ColorControl';
@@ -46,15 +47,18 @@ function pickAnchor(value: unknown): TextElement['anchor'] | null {
   return ANCHOR_OPTIONS.find((option) => option.value === value)?.value ?? null;
 }
 
-// Mirrors validateZoneLabels' rules for a single zone so the inline warning and
-// the export gate agree on what a valid label is.
-function zoneLabelIssue(zone: Zone, zones: Zone[]): string | null {
-  const label = zone.label.trim();
+// Mirrors validateZoneLabels' rules for a single zone element so the inline
+// warning and the export gate agree on what a valid label is.
+function zoneLabelIssue(
+  zone: ZoneElement,
+  zones: ZoneElement[],
+): string | null {
+  const label = (zone.zoneLabel ?? '').trim();
   if (label === '') {
     return 'Every zone needs a label; it becomes the assigned variable’s value.';
   }
   const duplicated = zones.some(
-    (other) => other.id !== zone.id && other.label.trim() === label,
+    (other) => other.id !== zone.id && (other.zoneLabel ?? '').trim() === label,
   );
   if (duplicated) {
     return 'Another zone already uses this label. Zone labels must be unique.';
@@ -62,23 +66,59 @@ function zoneLabelIssue(zone: Zone, zones: Zone[]): string | null {
   return null;
 }
 
-function shapeSummary(zone: Zone): string {
-  switch (zone.shape) {
-    case 'rect':
-      return 'Rectangle zone';
-    case 'circle':
-      return 'Circle zone';
-    case 'polygon':
-      return `Polygon zone (${zone.points.length} points)`;
-    default:
-      return assertNever(zone);
-  }
-}
-
 // Vertical rhythm: fresco fields self-space via `not-last:mb-8`; non-field
 // blocks (colour controls) get a matching margin so the stack reads evenly.
 function Block({ children }: { children: ReactNode }): ReactElement {
   return <div className="not-last:mb-8">{children}</div>;
+}
+
+// A rect/ellipse/polygon can be marked as a zone; enabling prefills the next
+// free `zone-N` label, and the label is live-validated for empty/duplicate.
+function ZoneMarkControls({
+  element,
+}: {
+  element: RectElement | EllipseElement | PolygonElement;
+}): ReactElement {
+  const doc = useEditorStore((s) => s.doc);
+  const updateElement = useEditorStore((s) => s.updateElement);
+  const id = element.id;
+  const marked = element.zoneLabel !== null;
+  const issue = marked ? zoneLabelIssue(element, zonesOf(doc)) : null;
+
+  return (
+    <>
+      <UnconnectedField
+        label="Use as zone"
+        name="use-as-zone"
+        inline
+        hint="Zones classify each node’s layout position; the label becomes the assigned variable’s value."
+        component={ToggleField}
+        value={marked}
+        onChange={(value) =>
+          updateElement(id, {
+            zoneLabel: value === true ? nextZoneLabel(zonesOf(doc)) : null,
+          })
+        }
+      />
+      {marked && (
+        <UnconnectedField
+          label="Zone label"
+          name="zone-label"
+          component={InputField}
+          value={element.zoneLabel ?? ''}
+          errors={issue ? [issue] : undefined}
+          showErrors={Boolean(issue)}
+          onChange={(value) =>
+            updateElement(
+              id,
+              { zoneLabel: value ?? '' },
+              { coalesceKey: `zone-label:${id}` },
+            )
+          }
+        />
+      )}
+    </>
+  );
 }
 
 function FillControls({
@@ -136,6 +176,7 @@ function FillControls({
         step={0.25}
         onCommit={(value) => updateElement(id, { strokeWidth: value })}
       />
+      <ZoneMarkControls element={element} />
     </>
   );
 }
@@ -299,57 +340,17 @@ function ElementControls({ element }: { element: SvgElement }): ReactElement {
   }
 }
 
-function ZoneControls({
-  zone,
-  zones,
-}: {
-  zone: Zone;
-  zones: Zone[];
-}): ReactElement {
-  const updateZone = useEditorStore((s) => s.updateZone);
-  const issue = zoneLabelIssue(zone, zones);
-  return (
-    <>
-      <UnconnectedField
-        label="Label"
-        name="zone-label"
-        component={InputField}
-        value={zone.label}
-        errors={issue ? [issue] : undefined}
-        showErrors={Boolean(issue)}
-        onChange={(value) =>
-          updateZone(
-            zone.id,
-            { label: value ?? '' },
-            { coalesceKey: `zone-label:${zone.id}` },
-          )
-        }
-      />
-      <Block>
-        <Paragraph intent="smallText" emphasis="muted" margin="none">
-          {shapeSummary(zone)}
-        </Paragraph>
-      </Block>
-    </>
-  );
-}
-
 export function PropertiesPanel(): ReactElement {
   const selection = useEditorStore((s) => s.selection);
   const doc = useEditorStore((s) => s.doc);
   const reorderSelected = useEditorStore((s) => s.reorderSelected);
   const deleteSelected = useEditorStore((s) => s.deleteSelected);
 
-  const element =
-    selection?.type === 'element'
-      ? doc.elements.find((candidate) => candidate.id === selection.id)
-      : undefined;
-  const zone =
-    selection?.type === 'zone'
-      ? doc.zones.find((candidate) => candidate.id === selection.id)
-      : undefined;
+  const element = selection
+    ? doc.elements.find((candidate) => candidate.id === selection.id)
+    : undefined;
 
-  if (!element && !zone) {
+  if (!element) {
     return (
       <div className="w-64">
         <Paragraph intent="smallText" emphasis="muted" margin="none">
@@ -359,12 +360,6 @@ export function PropertiesPanel(): ReactElement {
     );
   }
 
-  const itemLabel = element
-    ? elementKindLabel(element)
-    : zone
-      ? `Zone “${zone.label.trim() === '' ? 'unlabelled' : zone.label}”`
-      : '';
-
   return (
     <div className="flex max-h-[min(70vh,34rem)] w-64 flex-col">
       {/* Compact action row pinned above the scroll area so the item's identity,
@@ -372,26 +367,22 @@ export function PropertiesPanel(): ReactElement {
           sat below the fold at the bottom of the scrollable fields. */}
       <div className="border-outline/40 mb-3 flex items-center gap-1 border-b pb-3">
         <span className="text-text min-w-0 flex-1 truncate text-sm font-semibold">
-          {itemLabel}
+          {elementKindLabel(element)}
         </span>
-        {element && (
-          <>
-            <IconButton
-              variant="text"
-              size="sm"
-              aria-label="Send backward"
-              icon={<SendToBack />}
-              onClick={() => reorderSelected('backward')}
-            />
-            <IconButton
-              variant="text"
-              size="sm"
-              aria-label="Bring forward"
-              icon={<BringToFront />}
-              onClick={() => reorderSelected('forward')}
-            />
-          </>
-        )}
+        <IconButton
+          variant="text"
+          size="sm"
+          aria-label="Send backward"
+          icon={<SendToBack />}
+          onClick={() => reorderSelected('backward')}
+        />
+        <IconButton
+          variant="text"
+          size="sm"
+          aria-label="Bring forward"
+          icon={<BringToFront />}
+          onClick={() => reorderSelected('forward')}
+        />
         <Button
           variant="text"
           color="destructive"
@@ -405,8 +396,7 @@ export function PropertiesPanel(): ReactElement {
       {/* Capped, scrollable field area: a text element exposes many fields, more
           than fit a popover on a short viewport. */}
       <div className="flex min-h-0 flex-col overflow-y-auto pr-1">
-        {element && <ElementControls element={element} />}
-        {zone && <ZoneControls zone={zone} zones={doc.zones} />}
+        <ElementControls element={element} />
       </div>
     </div>
   );

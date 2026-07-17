@@ -1,6 +1,5 @@
 import {
   Circle,
-  CircleDashed,
   Download,
   Eye,
   EyeOff,
@@ -8,20 +7,18 @@ import {
   FilePlus,
   FileText,
   FolderOpen,
-  Hexagon,
   Minus,
   Monitor,
   MousePointer2,
   Pentagon,
+  Redo2,
   Settings2,
   SlidersHorizontal,
   Square,
-  SquareDashed,
   Type,
   Undo2,
-  Redo2,
 } from 'lucide-react';
-import { type ReactElement, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
@@ -48,23 +45,16 @@ const DRAW_TOOLS: EditorTool[] = [
   'polygon',
   'text',
 ];
-const ZONE_TOOLS: EditorTool[] = ['zone-rect', 'zone-circle', 'zone-polygon'];
-const ALL_TOOLS: EditorTool[] = [...DRAW_TOOLS, ...ZONE_TOOLS];
 
 // The single-select toggle group hands back a string array; recover the typed
 // tool without an assertion by matching the known tool list.
 function toEditorTool(value: string | undefined): EditorTool | null {
-  return ALL_TOOLS.find((tool) => tool === value) ?? null;
+  return DRAW_TOOLS.find((tool) => tool === value) ?? null;
 }
 
-function selectedFor(tools: EditorTool[], active: EditorTool): string[] {
-  return tools.includes(active) ? [active] : [];
+function selectedFor(active: EditorTool): string[] {
+  return DRAW_TOOLS.includes(active) ? [active] : [];
 }
-
-// Zone tools share a tint (info-coloured icons) so they read as a distinct group
-// from the drawing tools; the pressed highlight (text-selected-contrast) wins
-// over it, so there is no colour conflict on the active segment.
-const ZONE_TINT = 'text-info';
 
 export function Toolbar(): ReactElement {
   const dialogs = useDialog();
@@ -72,6 +62,7 @@ export function Toolbar(): ReactElement {
   const activeTool = useEditorStore((s) => s.activeTool);
   const zonesVisible = useEditorStore((s) => s.zonesVisible);
   const selection = useEditorStore((s) => s.selection);
+  const propertiesRequestSeq = useEditorStore((s) => s.propertiesRequestSeq);
   const canUndo = useEditorStore((s) => s.canUndo());
   const canRedo = useEditorStore((s) => s.canRedo());
   const setTool = useEditorStore((s) => s.setTool);
@@ -81,6 +72,17 @@ export function Toolbar(): ReactElement {
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [propertiesOpen, setPropertiesOpen] = useState(false);
+
+  // Auto-open Properties on a clean pointer click-selection (the store bumps the
+  // sequence). The initial 0 doesn't open it.
+  useEffect(() => {
+    if (propertiesRequestSeq > 0) setPropertiesOpen(true);
+  }, [propertiesRequestSeq]);
+
+  // Clearing the selection closes and disables the panel (nothing to edit).
+  useEffect(() => {
+    if (selection === null) setPropertiesOpen(false);
+  }, [selection]);
 
   const handleToolChange = (values: string[]) => {
     const tool = toEditorTool(values[values.length - 1]);
@@ -97,6 +99,9 @@ export function Toolbar(): ReactElement {
         break;
       case 'new-concentric':
         void newDocumentFlow(dialogs, 'concentric');
+        break;
+      case 'new-compass':
+        void newDocumentFlow(dialogs, 'compass');
         break;
       case 'open':
         void openSvgFlow(dialogs);
@@ -123,7 +128,7 @@ export function Toolbar(): ReactElement {
       type: 'group',
       id: 'draw-tools',
       mode: 'single',
-      value: selectedFor(DRAW_TOOLS, activeTool),
+      value: selectedFor(activeTool),
       onValueChange: handleToolChange,
       options: [
         { value: 'select', label: 'Select', icon: <MousePointer2 /> },
@@ -135,34 +140,6 @@ export function Toolbar(): ReactElement {
       ],
     },
     { type: 'separator', id: 'sep-tools' },
-    {
-      type: 'group',
-      id: 'zone-tools',
-      mode: 'single',
-      value: selectedFor(ZONE_TOOLS, activeTool),
-      onValueChange: handleToolChange,
-      options: [
-        {
-          value: 'zone-rect',
-          label: 'Rectangle zone',
-          icon: <SquareDashed />,
-          className: ZONE_TINT,
-        },
-        {
-          value: 'zone-circle',
-          label: 'Circle zone',
-          icon: <CircleDashed />,
-          className: ZONE_TINT,
-        },
-        {
-          value: 'zone-polygon',
-          label: 'Polygon zone',
-          icon: <Hexagon />,
-          className: ZONE_TINT,
-        },
-      ],
-    },
-    { type: 'separator', id: 'sep-zones' },
     {
       type: 'toggle',
       id: 'toggle-zones',
@@ -189,9 +166,13 @@ export function Toolbar(): ReactElement {
       label: 'Properties',
       icon: <SlidersHorizontal />,
       side: 'top',
+      // Controlled: disabled with nothing selected, auto-opens on click-select,
+      // and closes when the selection clears (Escape/outside-click via
+      // onOpenChange still work).
+      disabled: selection === null,
       open: propertiesOpen,
       onOpenChange: setPropertiesOpen,
-      pressed: propertiesOpen || selection !== null,
+      pressed: propertiesOpen,
       children: <PropertiesPanel />,
     },
     { type: 'separator', id: 'sep-history' },
@@ -217,6 +198,7 @@ export function Toolbar(): ReactElement {
       id: 'file',
       label: 'File',
       icon: <FolderOpen />,
+      kind: 'actions',
       onSelect: handleFileSelect,
       options: [
         { value: 'new-blank', label: 'New — Blank', icon: <FilePlus /> },
@@ -228,6 +210,11 @@ export function Toolbar(): ReactElement {
         {
           value: 'new-concentric',
           label: 'New — Concentric circles template',
+          icon: <FilePlus />,
+        },
+        {
+          value: 'new-compass',
+          label: 'New — Political compass',
           icon: <FilePlus />,
         },
         { value: 'open', label: 'Open SVG…', icon: <FolderOpen /> },

@@ -11,14 +11,12 @@ import {
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
-import { assignZone } from '~/geometry/zones';
-import type { BackgroundDocument } from '~/model/types';
+import { assignZone, zonesOf } from '~/geometry/zones';
+import type { BackgroundDocument, SvgElement } from '~/model/types';
 import {
   type Bounds,
   elementBounds,
   translateElement,
-  translateZone,
-  zoneBounds,
 } from '~/state/documentGeometry';
 import {
   type DragDraftTool,
@@ -27,13 +25,13 @@ import {
   type Selection,
   useEditorStore,
 } from '~/state/editorStore';
+import { isZoneElement } from '~/state/labels';
 import { serializeDocument } from '~/svg/serialize';
-import {
-  editTextElementFlow,
-  editZoneLabelFlow,
-} from '~/toolbar/textEditDialog';
+import { editZoneLabelFlow } from '~/toolbar/textEditDialog';
+import { linesToText, textToLines } from '~/toolbar/textLines';
 
 import { hitTestDocument } from './canvasGeometry';
+import { InlineTextEditor } from './InlineTextEditor';
 import { KeyboardTargets } from './overlay/KeyboardTargets';
 import { OverlaySvg } from './overlay/OverlaySvg';
 import { ResizeHandles } from './overlay/ResizeHandles';
@@ -55,15 +53,12 @@ const ASPECT_RATIOS: Record<Exclude<PreviewAspect, 'fill'>, number> = {
 };
 
 const TOOL_LABELS: Record<EditorTool, string> = {
-  'select': 'Select',
-  'rect': 'Rectangle',
-  'ellipse': 'Ellipse',
-  'line': 'Line',
-  'polygon': 'Polygon',
-  'text': 'Text',
-  'zone-rect': 'Rectangle zone',
-  'zone-circle': 'Circle zone',
-  'zone-polygon': 'Polygon zone',
+  select: 'Select',
+  rect: 'Rectangle',
+  ellipse: 'Ellipse',
+  line: 'Line',
+  polygon: 'Polygon',
+  text: 'Text',
 };
 
 const CHECKER_STYLE: CSSProperties = {
@@ -74,14 +69,10 @@ const CHECKER_STYLE: CSSProperties = {
   backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0',
 };
 
+type TextEdit = { id: string; isNew: boolean };
+
 function isDragTool(tool: EditorTool): tool is DragDraftTool {
-  return (
-    tool === 'rect' ||
-    tool === 'ellipse' ||
-    tool === 'line' ||
-    tool === 'zone-rect' ||
-    tool === 'zone-circle'
-  );
+  return tool === 'rect' || tool === 'ellipse' || tool === 'line';
 }
 
 function cursorForTool(tool: EditorTool): string {
@@ -96,18 +87,10 @@ function moveInDoc(
   dx: number,
   dy: number,
 ): BackgroundDocument {
-  if (sel.type === 'element') {
-    return {
-      ...doc,
-      elements: doc.elements.map((el) =>
-        el.id === sel.id ? translateElement(el, dx, dy) : el,
-      ),
-    };
-  }
   return {
     ...doc,
-    zones: doc.zones.map((zone) =>
-      zone.id === sel.id ? translateZone(zone, dx, dy) : zone,
+    elements: doc.elements.map((el) =>
+      el.id === sel.id ? translateElement(el, dx, dy) : el,
     ),
   };
 }
@@ -162,16 +145,34 @@ export function EditorCanvas(): ReactElement {
   const hoverRafRef = useRef<number | null>(null);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
 
+  // In-place text editing state. `editingRef` mirrors it for the imperative
+  // stage listeners (see below), which are attached once and must read the
+  // latest value without re-binding.
+  const [editing, setEditing] = useState<TextEdit | null>(null);
+  const editingRef = useRef<TextEdit | null>(null);
+  editingRef.current = editing;
+
   // The stage's pointer/dblclick handlers are stable (attached imperatively
-  // below); keep the dialog context in a ref so they can open the text editor
-  // without re-binding the listeners each time the dialog store re-renders.
+  // below); keep the dialog context in a ref so they can open the zone-label
+  // editor without re-binding the listeners each time the dialog store renders.
   const dialogs = useDialog();
   const dialogsRef = useRef(dialogs);
   dialogsRef.current = dialogs;
 
   const stageSize = useStageSize(previewAspect, containerRef);
 
-  const svg = useMemo(() => serializeDocument(doc), [doc]);
+  // While a text element is being edited in place it is omitted from the
+  // serialized preview, so the live textarea is the only rendering of it.
+  const svg = useMemo(() => {
+    const source = editing
+      ? {
+          ...doc,
+          elements: doc.elements.filter((el) => el.id !== editing.id),
+        }
+      : doc;
+    return serializeDocument(source);
+  }, [doc, editing]);
+
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   useEffect(() => {
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
@@ -184,14 +185,50 @@ export function EditorCanvas(): ReactElement {
     [],
   );
 
+  const beginTextEdit = useCallback((id: string, isNew: boolean) => {
+    setEditing({ id, isNew });
+  }, []);
+
+  const commitTextEdit = useCallback((value: string) => {
+    const current = editingRef.current;
+    setEditing(null);
+    stageRef.current?.focus();
+    if (!current) return;
+    const store = useEditorStore.getState();
+    const el = store.doc.elements.find(
+      (candidate) => candidate.id === current.id,
+    );
+    if (!el || el.kind !== 'text') return;
+
+    const lines = textToLines(value);
+    const isEmpty = lines.every((line) => line.trim() === '');
+    if (current.isNew && isEmpty) {
+      store.discardNewText(current.id);
+      return;
+    }
+    if (linesToText(el.lines) !== value) {
+      store.updateElement(current.id, { lines });
+      store.announce('Text updated');
+    }
+  }, []);
+
+  const activateElement = useCallback(
+    (el: SvgElement) => {
+      if (el.kind === 'text') {
+        beginTextEdit(el.id, false);
+        return;
+      }
+      if (isZoneElement(el)) {
+        void editZoneLabelFlow(dialogsRef.current, el.id);
+      }
+    },
+    [beginTextEdit],
+  );
+
   const selectionBounds = useMemo<Bounds | null>(() => {
     if (!selection) return null;
-    if (selection.type === 'element') {
-      const el = doc.elements.find((e) => e.id === selection.id);
-      return el ? elementBounds(el) : null;
-    }
-    const zone = doc.zones.find((z) => z.id === selection.id);
-    return zone ? zoneBounds(zone) : null;
+    const el = doc.elements.find((e) => e.id === selection.id);
+    return el ? elementBounds(el) : null;
   }, [selection, doc]);
 
   // The stage's pointer/keyboard handlers are attached imperatively (below)
@@ -210,7 +247,7 @@ export function EditorCanvas(): ReactElement {
 
       if (tool === 'select') {
         const tol = HIT_TOLERANCE_PX / Math.min(rect.width, rect.height);
-        const hit = hitTestDocument(pt, store.doc, tol, store.zonesVisible);
+        const hit = hitTestDocument(pt, store.doc, tol);
         if (!hit) {
           startPointerGesture(e, el, getStageRect, {
             onEnd: ({ moved }) => {
@@ -234,30 +271,29 @@ export function EditorCanvas(): ReactElement {
             last = current;
           },
           onEnd: ({ moved, cancelled }) => {
-            if (!began) return;
             if (cancelled) {
-              store.cancelGesture();
+              if (began) store.cancelGesture();
+              return;
+            }
+            if (!moved) {
+              // A clean click-selection (no drag) auto-opens Properties.
+              store.requestProperties();
               return;
             }
             store.endGesture();
-            if (moved) announceSelectionPosition();
+            announceSelectionPosition();
           },
         });
         return;
       }
 
       if (tool === 'text') {
-        store.createTextAt(pt);
-        // Prompt for content right away so the user isn't left hunting for where
-        // to type; cancelling keeps the placeholder the store just placed.
-        const created = useEditorStore.getState().selection;
-        if (created?.type === 'element') {
-          void editTextElementFlow(dialogsRef.current, created.id);
-        }
+        const id = store.createTextAt(pt);
+        beginTextEdit(id, true);
         return;
       }
 
-      if (tool === 'polygon' || tool === 'zone-polygon') {
+      if (tool === 'polygon') {
         const current = store.draft;
         if (!current || current.mode !== 'polygon') {
           store.beginDraft(tool, pt);
@@ -270,7 +306,13 @@ export function EditorCanvas(): ReactElement {
       if (isDragTool(tool)) {
         store.beginDraft(tool, pt);
         startPointerGesture(e, el, getStageRect, {
-          onDrag: (currentPt) => store.updateDraft(currentPt),
+          onDrag: (currentPt, _start, shiftKey) => {
+            const r = getStageRect();
+            store.updateDraft(
+              currentPt,
+              shiftKey && r ? { width: r.width, height: r.height } : null,
+            );
+          },
           onEnd: ({ cancelled }) => {
             if (cancelled) store.cancelDraft();
             else store.commitDraft();
@@ -278,7 +320,7 @@ export function EditorCanvas(): ReactElement {
         });
       }
     },
-    [getStageRect],
+    [getStageRect, beginTextEdit],
   );
 
   const handlePointerMove = useCallback((e: PointerEvent) => {
@@ -291,12 +333,14 @@ export function EditorCanvas(): ReactElement {
       store.updateDraft(pt);
     }
 
-    if (store.zonesVisible && store.doc.zones.length > 0) {
+    if (store.zonesVisible) {
+      const zones = zonesOf(store.doc);
+      if (zones.length === 0) return;
       // rAF-throttled so the hover readout updates at most once per frame.
       if (hoverRafRef.current !== null) return;
       hoverRafRef.current = requestAnimationFrame(() => {
         hoverRafRef.current = null;
-        const label = assignZone(pt, useEditorStore.getState().doc.zones);
+        const label = assignZone(pt, zonesOf(useEditorStore.getState().doc));
         setHoverLabel(label ?? 'no zone');
       });
     }
@@ -310,53 +354,81 @@ export function EditorCanvas(): ReactElement {
     setHoverLabel(null);
   }, []);
 
-  const handleDoubleClick = useCallback((e: MouseEvent) => {
-    const store = useEditorStore.getState();
-    if (store.draft?.mode === 'polygon') {
-      store.closeDraftPolygon();
-      return;
-    }
-    // A zone label pill sits over its zone centroid and often over a text label,
-    // so decide by the topmost painted element at the cursor rather than the
-    // hit-test (which ranks elements above zones). `elementFromPoint` returns the
-    // pill button when one is under the cursor; that zone's label editor wins.
-    const overlay = document.elementFromPoint(e.clientX, e.clientY);
-    const pill = overlay?.closest('[data-zone-id]');
-    if (pill instanceof HTMLElement && pill.dataset.zoneId) {
-      const zoneId = pill.dataset.zoneId;
-      store.select({ id: zoneId, type: 'zone' });
-      void editZoneLabelFlow(dialogsRef.current, zoneId);
-      return;
-    }
-    // Otherwise, double-clicking a text element opens its editor (any tool),
-    // using the selection hit-test so a shape stacked over the text wins.
-    const rect = stageRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const pt = clientToNormalized(rect, e.clientX, e.clientY);
-    const tol = HIT_TOLERANCE_PX / Math.min(rect.width, rect.height);
-    const hit = hitTestDocument(pt, store.doc, tol, store.zonesVisible);
-    if (hit?.type !== 'element') return;
-    const el = store.doc.elements.find((candidate) => candidate.id === hit.id);
-    if (el?.kind !== 'text') return;
-    store.select(hit);
-    void editTextElementFlow(dialogsRef.current, el.id);
-  }, []);
-
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const store = useEditorStore.getState();
-    if (e.key === 'Escape') {
-      if (store.draft) {
-        store.cancelDraft();
-        e.preventDefault();
-      } else if (store.selection) {
-        store.select(null);
-        e.preventDefault();
+  const handleDoubleClick = useCallback(
+    (e: MouseEvent) => {
+      // The in-place editor owns clicks on itself while open.
+      if (editingRef.current) return;
+      const store = useEditorStore.getState();
+      if (store.draft?.mode === 'polygon') {
+        store.closeDraftPolygon();
+        return;
       }
-    } else if (e.key === 'Enter' && store.draft?.mode === 'polygon') {
-      store.closeDraftPolygon();
+      // A zone pill sits over its zone's top edge and often over a text label,
+      // so decide by the topmost painted element at the cursor rather than the
+      // hit-test. `elementFromPoint` returns the pill button when one is under
+      // the cursor; that zone element's label editor wins.
+      const overlay = document.elementFromPoint(e.clientX, e.clientY);
+      const pill = overlay?.closest('[data-zone-id]');
+      if (pill instanceof HTMLElement && pill.dataset.zoneId) {
+        const zoneId = pill.dataset.zoneId;
+        store.select({ id: zoneId });
+        void editZoneLabelFlow(dialogsRef.current, zoneId);
+        return;
+      }
+      // Otherwise, double-clicking a text element opens its in-place editor.
+      const rect = stageRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const pt = clientToNormalized(rect, e.clientX, e.clientY);
+      const tol = HIT_TOLERANCE_PX / Math.min(rect.width, rect.height);
+      const hit = hitTestDocument(pt, store.doc, tol);
+      if (!hit) return;
+      const el = store.doc.elements.find(
+        (candidate) => candidate.id === hit.id,
+      );
+      if (el?.kind !== 'text') return;
+      store.select(hit);
+      beginTextEdit(el.id, false);
+    },
+    [beginTextEdit],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      // The in-place editor owns the keyboard while it is open.
+      if (editingRef.current) return;
+      const store = useEditorStore.getState();
+      if (e.key === 'Escape') {
+        if (store.draft) {
+          store.cancelDraft();
+          e.preventDefault();
+        } else if (store.selection) {
+          store.select(null);
+          e.preventDefault();
+        }
+        return;
+      }
+      if (e.key !== 'Enter') return;
+      if (store.draft?.mode === 'polygon') {
+        store.closeDraftPolygon();
+        e.preventDefault();
+        return;
+      }
+      // Keyboard shape creation only when the stage itself is focused, so an
+      // Enter on a focused element control (handled by useItemControls) is not
+      // duplicated here.
+      if (e.target !== stageRef.current) return;
+      const tool = store.activeTool;
+      if (tool === 'select') return;
       e.preventDefault();
-    }
-  }, []);
+      if (tool === 'text') {
+        const id = store.createTextAt({ x: 0.5, y: 0.5 });
+        beginTextEdit(id, true);
+      } else {
+        store.insertDefaultShape(tool);
+      }
+    },
+    [beginTextEdit],
+  );
 
   useEffect(() => {
     const el = stageRef.current;
@@ -382,6 +454,13 @@ export function EditorCanvas(): ReactElement {
     handleKeyDown,
   ]);
 
+  const editingElement =
+    editing &&
+    doc.elements.find(
+      (el): el is Extract<SvgElement, { kind: 'text' }> =>
+        el.id === editing.id && el.kind === 'text',
+    );
+
   const stageStyle: CSSProperties = {
     width: stageSize?.width ?? '100%',
     height: stageSize?.height ?? '100%',
@@ -389,7 +468,7 @@ export function EditorCanvas(): ReactElement {
     touchAction: 'none',
   };
 
-  const stageLabel = `Background canvas. Active tool: ${TOOL_LABELS[activeTool]}. Draw with the pointer; select an item and press Delete to remove it, or double-click text to edit it.`;
+  const stageLabel = `Background canvas. Active tool: ${TOOL_LABELS[activeTool]}. Draw with the pointer, or press Enter to add a shape at the centre. Hold Shift while drawing to keep ellipses and rectangles regular. Select an item and press Delete to remove it, or double-click text to edit it.`;
 
   return (
     <div
@@ -438,7 +517,17 @@ export function EditorCanvas(): ReactElement {
         />
         <ZonePills />
         <ResizeHandles getRect={getStageRect} />
-        <KeyboardTargets />
+        <KeyboardTargets onActivate={activateElement} />
+
+        {editingElement && stageSize && (
+          <InlineTextEditor
+            key={editingElement.id}
+            element={editingElement}
+            stage={stageSize}
+            isNew={editing?.isNew ?? false}
+            onCommit={commitTextEdit}
+          />
+        )}
 
         {zonesVisible && hoverLabel !== null && (
           <div

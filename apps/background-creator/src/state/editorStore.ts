@@ -8,17 +8,23 @@ import {
 } from '~/model/templates';
 import type {
   BackgroundDocument,
+  EllipseElement,
   LineElement,
   PolygonElement,
   RectElement,
   SvgElement,
   TextElement,
   Vec,
-  Zone,
+  ZoneElement,
 } from '~/model/types';
 
 import { assertNever } from './assertNever';
-import { translateElement, translateZone } from './documentGeometry';
+import {
+  constrainLine45,
+  constrainRegular,
+  type StageBox,
+  translateElement,
+} from './documentGeometry';
 import { elementKindLabel } from './labels';
 
 // Single module-level store via zustand `create()`. The interview package uses
@@ -31,8 +37,12 @@ const HISTORY_CAP = 100;
 // Discarded as degenerate below this normalized extent (both drawn drags and
 // created shapes); matches the resize minimum enforced by the canvas.
 const MIN_EXTENT = 0.01;
+// Default centred extent for a keyboard-inserted shape (see insertDefaultShape).
+const DEFAULT_EXTENT = 0.2;
 
-export type Selection = { id: string; type: 'element' | 'zone' };
+// Elements only — zones are ordinary elements carrying a zoneLabel, so a single
+// selection shape covers both.
+export type Selection = { id: string };
 
 export type EditorTool =
   | 'select'
@@ -40,31 +50,22 @@ export type EditorTool =
   | 'ellipse'
   | 'line'
   | 'polygon'
-  | 'text'
-  | 'zone-rect'
-  | 'zone-circle'
-  | 'zone-polygon';
+  | 'text';
 
-export type DragDraftTool =
-  | 'rect'
-  | 'ellipse'
-  | 'line'
-  | 'zone-rect'
-  | 'zone-circle';
-type PolygonDraftTool = 'polygon' | 'zone-polygon';
+export type DragDraftTool = 'rect' | 'ellipse' | 'line';
 
 export type Draft =
   | { mode: 'drag'; tool: DragDraftTool; start: Vec; current: Vec }
-  | { mode: 'polygon'; tool: PolygonDraftTool; points: Vec[]; current: Vec };
+  | { mode: 'polygon'; tool: 'polygon'; points: Vec[]; current: Vec };
 
 export type PreviewAspect = 'fill' | '16:9' | '9:16' | '4:3' | '3:4' | '1:1';
 export type PreviewSurface = 'interview' | 'light' | 'checker';
 
 type Announcement = { message: string; seq: number };
 
-// Flat optional records: every element/zone field, all optional. The union of
-// per-kind partials would collapse to shared keys only, so the patch is applied
-// through an explicit per-kind switch that only reads fields valid for the kind.
+// Flat optional record: every element field, all optional. The union of per-kind
+// partials would collapse to shared keys only, so the patch is applied through
+// an explicit per-kind switch that only reads fields valid for the kind.
 type ElementPatch = {
   x?: number;
   y?: number;
@@ -92,23 +93,13 @@ type ElementPatch = {
   fontWeight?: TextElement['fontWeight'];
   anchor?: TextElement['anchor'];
   opacity?: number;
-};
-
-type ZonePatch = {
-  label?: string;
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  cx?: number;
-  cy?: number;
-  r?: number;
-  points?: Vec[];
+  // null unmarks the element as a zone; a string marks/renames it.
+  zoneLabel?: string | null;
 };
 
 type CommitOptions = { coalesceKey?: string };
 
-type NewTemplate = 'blank' | 'quadrants' | 'concentric';
+type NewTemplate = 'blank' | 'quadrants' | 'concentric' | 'compass';
 
 type EditorState = {
   doc: BackgroundDocument;
@@ -121,12 +112,16 @@ type EditorState = {
   past: BackgroundDocument[];
   future: BackgroundDocument[];
   announcement: Announcement;
+  // Bumped on a clean pointer click-selection so the toolbar can auto-open the
+  // Properties popover (never on keyboard focus-selection or shape creation).
+  propertiesRequestSeq: number;
   // Bookkeeping (not part of the acted-on surface).
   lastCoalesceKey: string | null;
   gestureSnapshot: BackgroundDocument | null;
 
   setTool: (tool: EditorTool) => void;
   select: (selection: Selection | null) => void;
+  requestProperties: () => void;
   announce: (message: string) => void;
 
   commitDoc: (next: BackgroundDocument, opts?: CommitOptions) => void;
@@ -135,7 +130,6 @@ type EditorState = {
     patch: ElementPatch,
     opts?: CommitOptions,
   ) => void;
-  updateZone: (id: string, patch: ZonePatch, opts?: CommitOptions) => void;
   moveSelectedBy: (dx: number, dy: number) => void;
   deleteSelected: () => void;
   reorderSelected: (direction: 'forward' | 'backward') => void;
@@ -147,13 +141,15 @@ type EditorState = {
   endGesture: () => void;
   cancelGesture: () => void;
 
-  beginDraft: (tool: DragDraftTool | PolygonDraftTool, at: Vec) => void;
-  updateDraft: (at: Vec) => void;
+  beginDraft: (tool: DragDraftTool | 'polygon', at: Vec) => void;
+  updateDraft: (at: Vec, constrain?: StageBox | null) => void;
   commitDraft: () => void;
   addDraftPoint: (at: Vec) => void;
   closeDraftPolygon: () => void;
   cancelDraft: () => void;
-  createTextAt: (at: Vec) => void;
+  createTextAt: (at: Vec) => string;
+  insertDefaultShape: (tool: Exclude<EditorTool, 'select' | 'text'>) => void;
+  discardNewText: (id: string) => void;
 
   undo: () => void;
   redo: () => void;
@@ -175,12 +171,9 @@ function findElement(
   return doc.elements.find((el) => el.id === id);
 }
 
-function findZone(doc: BackgroundDocument, id: string): Zone | undefined {
-  return doc.zones.find((zone) => zone.id === id);
-}
-
-function nextZoneLabel(zones: Zone[]): string {
-  const used = new Set(zones.map((zone) => zone.label));
+// The lowest unused `zone-N` label, used to prefill a freshly-marked zone.
+export function nextZoneLabel(zones: ZoneElement[]): string {
+  const used = new Set(zones.map((zone) => zone.zoneLabel));
   let n = 1;
   while (used.has(`zone-${n}`)) n += 1;
   return `zone-${n}`;
@@ -236,6 +229,7 @@ function applyElementPatch(el: SvgElement, p: ElementPatch): SvgElement {
         ...(p.strokeWidth !== undefined
           ? { strokeWidth: p.strokeWidth }
           : null),
+        ...(p.zoneLabel !== undefined ? { zoneLabel: p.zoneLabel } : null),
       };
     case 'ellipse':
       return {
@@ -252,6 +246,7 @@ function applyElementPatch(el: SvgElement, p: ElementPatch): SvgElement {
         ...(p.strokeWidth !== undefined
           ? { strokeWidth: p.strokeWidth }
           : null),
+        ...(p.zoneLabel !== undefined ? { zoneLabel: p.zoneLabel } : null),
       };
     case 'line':
       return {
@@ -281,6 +276,7 @@ function applyElementPatch(el: SvgElement, p: ElementPatch): SvgElement {
         ...(p.strokeWidth !== undefined
           ? { strokeWidth: p.strokeWidth }
           : null),
+        ...(p.zoneLabel !== undefined ? { zoneLabel: p.zoneLabel } : null),
       };
     case 'text':
       return {
@@ -301,52 +297,16 @@ function applyElementPatch(el: SvgElement, p: ElementPatch): SvgElement {
   }
 }
 
-function applyZonePatch(zone: Zone, p: ZonePatch): Zone {
-  const base = p.label !== undefined ? { ...zone, label: p.label } : zone;
-  switch (base.shape) {
-    case 'rect':
-      return {
-        ...base,
-        ...(p.x !== undefined ? { x: p.x } : null),
-        ...(p.y !== undefined ? { y: p.y } : null),
-        ...(p.width !== undefined ? { width: p.width } : null),
-        ...(p.height !== undefined ? { height: p.height } : null),
-      };
-    case 'circle':
-      return {
-        ...base,
-        ...(p.cx !== undefined ? { cx: p.cx } : null),
-        ...(p.cy !== undefined ? { cy: p.cy } : null),
-        ...(p.r !== undefined ? { r: p.r } : null),
-      };
-    case 'polygon':
-      return {
-        ...base,
-        ...(p.points !== undefined ? { points: p.points } : null),
-      };
-    default:
-      return assertNever(base);
-  }
-}
-
 function translateSelected(
   doc: BackgroundDocument,
   selection: Selection,
   dx: number,
   dy: number,
 ): BackgroundDocument {
-  if (selection.type === 'element') {
-    return {
-      ...doc,
-      elements: doc.elements.map((el) =>
-        el.id === selection.id ? translateElement(el, dx, dy) : el,
-      ),
-    };
-  }
   return {
     ...doc,
-    zones: doc.zones.map((zone) =>
-      zone.id === selection.id ? translateZone(zone, dx, dy) : zone,
+    elements: doc.elements.map((el) =>
+      el.id === selection.id ? translateElement(el, dx, dy) : el,
     ),
   };
 }
@@ -354,14 +314,9 @@ function translateSelected(
 const sortedPair = (a: number, b: number): [number, number] =>
   a <= b ? [a, b] : [b, a];
 
-type BuiltItem =
-  | { target: 'element'; element: SvgElement }
-  | { target: 'zone'; zone: Zone };
-
 function buildDragItem(
   draft: Extract<Draft, { mode: 'drag' }>,
-  zones: Zone[],
-): BuiltItem | null {
+): SvgElement | null {
   const { start, current, tool } = draft;
   if (tool === 'line') {
     const length = Math.hypot(current.x - start.x, current.y - start.y);
@@ -378,65 +333,31 @@ function buildDragItem(
       startArrow: false,
       endArrow: false,
     };
-    return { target: 'element', element };
+    return element;
   }
 
-  if (tool === 'zone-circle') {
-    // Circle centred at the drag start; radius = normalized drag distance, so
-    // the user drags outward from the centre. Clamped to a valid [0, 1] radius.
-    const r = Math.min(Math.hypot(current.x - start.x, current.y - start.y), 1);
-    if (r < MIN_EXTENT / 2) return null;
-    const zone: Zone = {
-      id: crypto.randomUUID(),
-      label: nextZoneLabel(zones),
-      shape: 'circle',
-      cx: start.x,
-      cy: start.y,
-      r,
-    };
-    return { target: 'zone', zone };
-  }
-
-  // rect / ellipse / zone-rect: corner drag → normalized, sorted bounding box.
+  // rect / ellipse: corner drag → normalized, sorted bounding box.
   const [x0, x1] = sortedPair(start.x, current.x);
   const [y0, y1] = sortedPair(start.y, current.y);
   const width = x1 - x0;
   const height = y1 - y0;
-
-  if (tool === 'ellipse') {
-    if (width < MIN_EXTENT || height < MIN_EXTENT) return null;
-    return {
-      target: 'element',
-      element: {
-        id: crypto.randomUUID(),
-        kind: 'ellipse',
-        cx: (x0 + x1) / 2,
-        cy: (y0 + y1) / 2,
-        rx: width / 2,
-        ry: height / 2,
-        fill: '#ffffff',
-        fillOpacity: 0.25,
-        stroke: null,
-        strokeWidth: 3,
-      },
-    };
-  }
-
   if (width < MIN_EXTENT || height < MIN_EXTENT) return null;
 
-  if (tool === 'zone-rect') {
-    return {
-      target: 'zone',
-      zone: {
-        id: crypto.randomUUID(),
-        label: nextZoneLabel(zones),
-        shape: 'rect',
-        x: x0,
-        y: y0,
-        width,
-        height,
-      },
+  if (tool === 'ellipse') {
+    const element: EllipseElement = {
+      id: crypto.randomUUID(),
+      kind: 'ellipse',
+      cx: (x0 + x1) / 2,
+      cy: (y0 + y1) / 2,
+      rx: width / 2,
+      ry: height / 2,
+      fill: '#ffffff',
+      fillOpacity: 0.25,
+      stroke: null,
+      strokeWidth: 3,
+      zoneLabel: null,
     };
+    return element;
   }
 
   const element: RectElement = {
@@ -450,8 +371,76 @@ function buildDragItem(
     fillOpacity: 0.25,
     stroke: null,
     strokeWidth: 3,
+    zoneLabel: null,
   };
-  return { target: 'element', element };
+  return element;
+}
+
+// The default centred shape a keyboard insert (Enter with a draw tool) creates.
+function buildDefaultShape(
+  tool: Exclude<EditorTool, 'select' | 'text'>,
+): SvgElement {
+  const half = DEFAULT_EXTENT / 2;
+  switch (tool) {
+    case 'rect':
+      return {
+        id: crypto.randomUUID(),
+        kind: 'rect',
+        x: 0.5 - half,
+        y: 0.5 - half,
+        width: DEFAULT_EXTENT,
+        height: DEFAULT_EXTENT,
+        fill: '#ffffff',
+        fillOpacity: 0.25,
+        stroke: null,
+        strokeWidth: 3,
+        zoneLabel: null,
+      };
+    case 'ellipse':
+      return {
+        id: crypto.randomUUID(),
+        kind: 'ellipse',
+        cx: 0.5,
+        cy: 0.5,
+        rx: half,
+        ry: half,
+        fill: '#ffffff',
+        fillOpacity: 0.25,
+        stroke: null,
+        strokeWidth: 3,
+        zoneLabel: null,
+      };
+    case 'line':
+      return {
+        id: crypto.randomUUID(),
+        kind: 'line',
+        x1: 0.5 - half,
+        y1: 0.5,
+        x2: 0.5 + half,
+        y2: 0.5,
+        stroke: '#ffffff',
+        strokeWidth: 3,
+        startArrow: false,
+        endArrow: false,
+      };
+    case 'polygon':
+      return {
+        id: crypto.randomUUID(),
+        kind: 'polygon',
+        points: [
+          { x: 0.5, y: 0.5 - half },
+          { x: 0.5 + half, y: 0.5 + half },
+          { x: 0.5 - half, y: 0.5 + half },
+        ],
+        fill: '#ffffff',
+        fillOpacity: 0.25,
+        stroke: null,
+        strokeWidth: 3,
+        zoneLabel: null,
+      };
+    default:
+      return assertNever(tool);
+  }
 }
 
 const NEAR = 1e-4;
@@ -466,6 +455,8 @@ function templateFor(template: NewTemplate): BackgroundDocument {
       return createQuadrantsTemplate();
     case 'concentric':
       return createConcentricCirclesTemplate();
+    case 'compass':
+      return createPoliticalCompassDocument();
     default:
       return assertNever(template);
   }
@@ -475,6 +466,7 @@ const templateName: Record<NewTemplate, string> = {
   blank: 'blank',
   quadrants: 'quadrants',
   concentric: 'concentric circles',
+  compass: 'political compass',
 };
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -490,6 +482,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   past: [],
   future: [],
   announcement: { message: '', seq: 0 },
+  propertiesRequestSeq: 0,
   lastCoalesceKey: null,
   gestureSnapshot: null,
 
@@ -501,6 +494,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     })),
 
   select: (selection) => set({ selection }),
+
+  requestProperties: () =>
+    set((state) => ({ propertiesRequestSeq: state.propertiesRequestSeq + 1 })),
 
   announce: (message) =>
     set((state) => ({ announcement: bump(state, message) })),
@@ -519,31 +515,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((state) => pushed(state, next, opts));
   },
 
-  updateZone: (id, patch, opts) => {
-    const { doc } = get();
-    if (!findZone(doc, id)) return;
-    const next: BackgroundDocument = {
-      ...doc,
-      zones: doc.zones.map((zone) =>
-        zone.id === id ? applyZonePatch(zone, patch) : zone,
-      ),
-    };
-    set((state) => pushed(state, next, opts));
-  },
-
   moveSelectedBy: (dx, dy) => {
     const { selection, doc } = get();
     if (!selection) return;
-    const current =
-      selection.type === 'element'
-        ? findElement(doc, selection.id)
-        : findZone(doc, selection.id);
+    const current = findElement(doc, selection.id);
     if (!current) return;
     const next = translateSelected(doc, selection, dx, dy);
-    const moved =
-      selection.type === 'element'
-        ? findElement(next, selection.id)
-        : findZone(next, selection.id);
+    const moved = findElement(next, selection.id);
     // Skip a fully-clamped edge nudge so it doesn't push a no-op history step.
     if (moved && JSON.stringify(moved) === JSON.stringify(current)) return;
     set((state) =>
@@ -554,36 +532,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   deleteSelected: () => {
     const { selection, doc } = get();
     if (!selection) return;
-    if (selection.type === 'element') {
-      const el = findElement(doc, selection.id);
-      if (!el) return;
-      const next: BackgroundDocument = {
-        ...doc,
-        elements: doc.elements.filter((e) => e.id !== selection.id),
-      };
-      set((state) => ({
-        ...pushed(state, next),
-        selection: null,
-        announcement: bump(state, `${elementKindLabel(el)} deleted`),
-      }));
-      return;
-    }
-    const zone = findZone(doc, selection.id);
-    if (!zone) return;
+    const el = findElement(doc, selection.id);
+    if (!el) return;
     const next: BackgroundDocument = {
       ...doc,
-      zones: doc.zones.filter((z) => z.id !== selection.id),
+      elements: doc.elements.filter((e) => e.id !== selection.id),
     };
     set((state) => ({
       ...pushed(state, next),
       selection: null,
-      announcement: bump(state, `Zone "${zone.label}" deleted`),
+      announcement: bump(state, `${elementKindLabel(el)} deleted`),
     }));
   },
 
   reorderSelected: (direction) => {
     const { selection, doc } = get();
-    if (!selection || selection.type !== 'element') return;
+    if (!selection) return;
     const index = doc.elements.findIndex((el) => el.id === selection.id);
     if (index === -1) return;
     const target = direction === 'forward' ? index + 1 : index - 1;
@@ -638,50 +602,43 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   beginDraft: (tool, at) =>
     set(() =>
-      tool === 'polygon' || tool === 'zone-polygon'
+      tool === 'polygon'
         ? { draft: { mode: 'polygon', tool, points: [at], current: at } }
         : { draft: { mode: 'drag', tool, start: at, current: at } },
     ),
 
-  updateDraft: (at) =>
+  updateDraft: (at, constrain) =>
     set((state) => {
       const { draft } = state;
       if (!draft) return {};
+      // Shift-constrain only the drag draws (never polygon vertex placement).
+      if (constrain && draft.mode === 'drag') {
+        const current =
+          draft.tool === 'line'
+            ? constrainLine45(draft.start, at, constrain)
+            : constrainRegular(draft.start, at, constrain);
+        return { draft: { ...draft, current } };
+      }
       return { draft: { ...draft, current: at } };
     }),
 
   commitDraft: () => {
     const { draft, doc } = get();
     if (!draft || draft.mode !== 'drag') return;
-    const built = buildDragItem(draft, doc.zones);
-    if (!built) {
+    const element = buildDragItem(draft);
+    if (!element) {
       set({ draft: null });
-      return;
-    }
-    if (built.target === 'element') {
-      const next: BackgroundDocument = {
-        ...doc,
-        elements: [...doc.elements, built.element],
-      };
-      const selection: Selection = { id: built.element.id, type: 'element' };
-      set((state) => ({
-        ...pushed(state, next),
-        selection,
-        draft: null,
-        announcement: bump(state, `${elementKindLabel(built.element)} added`),
-      }));
       return;
     }
     const next: BackgroundDocument = {
       ...doc,
-      zones: [...doc.zones, built.zone],
+      elements: [...doc.elements, element],
     };
-    const selection: Selection = { id: built.zone.id, type: 'zone' };
     set((state) => ({
       ...pushed(state, next),
-      selection,
+      selection: { id: element.id },
       draft: null,
-      announcement: bump(state, `Zone "${built.zone.label}" added`),
+      announcement: bump(state, `${elementKindLabel(element)} added`),
     }));
   },
 
@@ -719,42 +676,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }));
       return;
     }
-    if (draft.tool === 'polygon') {
-      const element: PolygonElement = {
-        id: crypto.randomUUID(),
-        kind: 'polygon',
-        points,
-        fill: '#ffffff',
-        fillOpacity: 0.25,
-        stroke: null,
-        strokeWidth: 3,
-      };
-      const next: BackgroundDocument = {
-        ...doc,
-        elements: [...doc.elements, element],
-      };
-      const selection: Selection = { id: element.id, type: 'element' };
-      set((state) => ({
-        ...pushed(state, next),
-        selection,
-        draft: null,
-        announcement: bump(state, 'Polygon added'),
-      }));
-      return;
-    }
-    const zone: Zone = {
+    const element: PolygonElement = {
       id: crypto.randomUUID(),
-      label: nextZoneLabel(doc.zones),
-      shape: 'polygon',
+      kind: 'polygon',
       points,
+      fill: '#ffffff',
+      fillOpacity: 0.25,
+      stroke: null,
+      strokeWidth: 3,
+      zoneLabel: null,
     };
-    const next: BackgroundDocument = { ...doc, zones: [...doc.zones, zone] };
-    const selection: Selection = { id: zone.id, type: 'zone' };
+    const next: BackgroundDocument = {
+      ...doc,
+      elements: [...doc.elements, element],
+    };
     set((state) => ({
       ...pushed(state, next),
-      selection,
+      selection: { id: element.id },
       draft: null,
-      announcement: bump(state, `Zone "${zone.label}" added`),
+      announcement: bump(state, 'Polygon added'),
     }));
   },
 
@@ -780,14 +720,53 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ...doc,
       elements: [...doc.elements, element],
     };
-    const selection: Selection = { id: element.id, type: 'element' };
     set((state) => ({
       ...pushed(state, next),
-      selection,
+      selection: { id: element.id },
       draft: null,
       announcement: bump(state, 'Text added'),
     }));
+    return element.id;
   },
+
+  insertDefaultShape: (tool) => {
+    const { doc } = get();
+    const element = buildDefaultShape(tool);
+    const next: BackgroundDocument = {
+      ...doc,
+      elements: [...doc.elements, element],
+    };
+    set((state) => ({
+      ...pushed(state, next),
+      selection: { id: element.id },
+      draft: null,
+      announcement: bump(state, `${elementKindLabel(element)} added`),
+    }));
+  },
+
+  // Cancel-like removal of a just-created text placeholder committed empty.
+  // Inline editing pushes no history, so the placeholder's create is the last
+  // entry — reverting to it drops the placeholder without leaving a dangling
+  // create/delete pair. Falls back to a plain filter if there is no snapshot.
+  discardNewText: (id) =>
+    set((state) => {
+      const previous = state.past[state.past.length - 1];
+      if (previous && !previous.elements.some((el) => el.id === id)) {
+        return {
+          doc: previous,
+          past: state.past.slice(0, -1),
+          selection: null,
+          lastCoalesceKey: null,
+        };
+      }
+      return {
+        doc: {
+          ...state.doc,
+          elements: state.doc.elements.filter((el) => el.id !== id),
+        },
+        selection: null,
+      };
+    }),
 
   undo: () =>
     set((state) => {

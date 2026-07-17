@@ -1,26 +1,37 @@
 import { describe, expect, it } from 'vitest';
 
-import type { BackgroundDocument, Zone } from '~/model/types';
+import type { BackgroundDocument, RectElement } from '~/model/types';
 
 import { evaluateScriptExport } from '../exportGate';
 
-function docWith(zones: Zone[]): BackgroundDocument {
+function docWith(elements: RectElement[]): BackgroundDocument {
   return {
     version: 1,
     title: 'Test',
     description: '',
-    elements: [],
-    zones,
+    elements,
   };
 }
 
-function rectZone(id: string, label: string): Zone {
-  return { id, label, shape: 'rect', x: 0, y: 0, width: 0.5, height: 0.5 };
+function rectZone(id: string, zoneLabel: string | null): RectElement {
+  return {
+    id,
+    kind: 'rect',
+    x: 0,
+    y: 0,
+    width: 0.5,
+    height: 0.5,
+    fill: '#ffffff',
+    fillOpacity: 0.25,
+    stroke: null,
+    strokeWidth: 3,
+    zoneLabel,
+  };
 }
 
 describe('evaluateScriptExport', () => {
   it('blocks export when there are no zones', () => {
-    const gate = evaluateScriptExport(docWith([]));
+    const gate = evaluateScriptExport(docWith([rectZone('a', null)]));
     expect(gate).toEqual({ ok: false, reason: 'no-zones' });
   });
 

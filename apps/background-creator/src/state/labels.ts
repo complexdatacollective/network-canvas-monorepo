@@ -1,4 +1,4 @@
-import type { SvgElement, Zone } from '~/model/types';
+import type { SvgElement, ZoneElement } from '~/model/types';
 
 import { assertNever } from './assertNever';
 
@@ -19,20 +19,21 @@ export function elementKindLabel(el: SvgElement): string {
   }
 }
 
-function zoneShapeLabel(zone: Zone): string {
-  switch (zone.shape) {
-    case 'rect':
-      return 'rectangle';
-    case 'circle':
-      return 'circle';
-    case 'polygon':
-      return 'polygon';
-    default:
-      return assertNever(zone);
-  }
+// A zone is any rect/ellipse/polygon element carrying a non-null zoneLabel; lines
+// and text can never be zones. Used to add zone chrome and branch keyboard
+// activation without re-deriving the whole zone list.
+export function isZoneElement(el: SvgElement): el is ZoneElement {
+  return (
+    (el.kind === 'rect' || el.kind === 'ellipse' || el.kind === 'polygon') &&
+    el.zoneLabel !== null
+  );
 }
 
-export function zoneAriaLabel(zone: Zone): string {
-  const label = zone.label.trim() === '' ? 'unlabelled' : zone.label;
-  return `Zone “${label}”, ${zoneShapeLabel(zone)}`;
+// Screen-reader label for a zone-marked element, e.g. `Ellipse, zone "inner"`.
+export function zoneAriaLabel(el: ZoneElement): string {
+  const label =
+    el.zoneLabel === null || el.zoneLabel.trim() === ''
+      ? 'unlabelled'
+      : el.zoneLabel;
+  return `${elementKindLabel(el)}, zone “${label}”`;
 }

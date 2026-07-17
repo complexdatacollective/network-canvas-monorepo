@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { zonesOf } from '~/geometry/zones';
 import type {
   BackgroundDocument,
   RectElement,
   SvgElement,
   TextElement,
-  Zone,
 } from '~/model/types';
 
-import { useEditorStore } from '../editorStore';
+import { nextZoneLabel, useEditorStore } from '../editorStore';
 
 const store = useEditorStore;
 const state = () => store.getState();
@@ -19,7 +19,6 @@ function blankDoc(): BackgroundDocument {
     title: 'Test',
     description: 'Test document',
     elements: [],
-    zones: [],
   };
 }
 
@@ -35,12 +34,9 @@ function rect(id: string, over: Partial<RectElement> = {}): RectElement {
     fillOpacity: 0.25,
     stroke: null,
     strokeWidth: 3,
+    zoneLabel: null,
     ...over,
   };
-}
-
-function rectZone(id: string, label: string): Zone {
-  return { id, label, shape: 'rect', x: 0.1, y: 0.1, width: 0.2, height: 0.2 };
 }
 
 function reset(doc: BackgroundDocument = blankDoc()): void {
@@ -55,6 +51,7 @@ function reset(doc: BackgroundDocument = blankDoc()): void {
     past: [],
     future: [],
     announcement: { message: '', seq: 0 },
+    propertiesRequestSeq: 0,
     lastCoalesceKey: null,
     gestureSnapshot: null,
   });
@@ -110,7 +107,7 @@ describe('history', () => {
   it('undo/redo report availability and clear selection', () => {
     expect(state().canUndo()).toBe(false);
     state().commitDoc({ ...state().doc, title: 'x' });
-    store.setState({ selection: { id: 'a', type: 'element' } });
+    store.setState({ selection: { id: 'a' } });
     expect(state().canUndo()).toBe(true);
     state().undo();
     expect(state().selection).toBeNull();
@@ -159,7 +156,7 @@ describe('gestures', () => {
 
   it('keeps undo order when a commit fires mid-gesture', () => {
     reset({ ...blankDoc(), elements: [rect('r', { x: 0.1 })] });
-    store.setState({ selection: { id: 'r', type: 'element' } });
+    store.setState({ selection: { id: 'r' } });
 
     state().beginGesture();
     // Mid-drag the shape moves; then a keyboard Delete commits through history.
@@ -201,8 +198,9 @@ describe('draft commit', () => {
       expect(el.height).toBeCloseTo(0.3);
       expect(el.fillOpacity).toBeCloseTo(0.25);
       expect(el.strokeWidth).toBe(3);
+      expect(el.zoneLabel).toBeNull();
     }
-    expect(state().selection).toEqual({ id: el?.id, type: 'element' });
+    expect(state().selection).toEqual({ id: el?.id });
     expect(state().draft).toBeNull();
     expect(state().announcement.message).toBe('Rectangle added');
   });
@@ -231,6 +229,7 @@ describe('draft commit', () => {
       expect(el.cy).toBeCloseTo(0.25);
       expect(el.rx).toBeCloseTo(0.2);
       expect(el.ry).toBeCloseTo(0.15);
+      expect(el.zoneLabel).toBeNull();
     }
   });
 
@@ -248,30 +247,6 @@ describe('draft commit', () => {
       expect(el.startArrow).toBe(false);
       expect(el.endArrow).toBe(false);
     }
-  });
-
-  it('creates a circle zone centred at the drag start with radius = distance', () => {
-    state().beginDraft('zone-circle', { x: 0.5, y: 0.5 });
-    state().updateDraft({ x: 0.7, y: 0.5 });
-    state().commitDraft();
-    const zone = state().doc.zones[0];
-    expect(zone?.shape).toBe('circle');
-    if (zone?.shape === 'circle') {
-      expect(zone.cx).toBeCloseTo(0.5);
-      expect(zone.cy).toBeCloseTo(0.5);
-      expect(zone.r).toBeCloseTo(0.2);
-      expect(zone.label).toBe('zone-1');
-    }
-  });
-
-  it('creates a rect zone with an auto label', () => {
-    state().beginDraft('zone-rect', { x: 0.1, y: 0.1 });
-    state().updateDraft({ x: 0.4, y: 0.4 });
-    state().commitDraft();
-    const zone = state().doc.zones[0];
-    expect(zone?.shape).toBe('rect');
-    expect(zone?.label).toBe('zone-1');
-    expect(state().announcement.message).toBe('Zone "zone-1" added');
   });
 
   it('discards a degenerate drag without adding an element', () => {
@@ -292,6 +267,43 @@ describe('draft commit', () => {
   });
 });
 
+describe('shift-constrained draws', () => {
+  it('constrains an ellipse to a visual circle at the stage aspect', () => {
+    state().beginDraft('ellipse', { x: 0.2, y: 0.2 });
+    // Stage 200×100 (aspect 2): dx=0.2 → constrained dy=0.4, so rx·200 == ry·100.
+    state().updateDraft({ x: 0.4, y: 0.9 }, { width: 200, height: 100 });
+    state().commitDraft();
+    const el = state().doc.elements[0];
+    if (el?.kind === 'ellipse') {
+      expect(el.rx).toBeCloseTo(0.1);
+      expect(el.ry).toBeCloseTo(0.2);
+      expect(el.rx * 200).toBeCloseTo(el.ry * 100);
+    }
+  });
+
+  it('constrains a rect to a visual square at the stage aspect', () => {
+    state().beginDraft('rect', { x: 0.2, y: 0.2 });
+    state().updateDraft({ x: 0.4, y: 0.9 }, { width: 200, height: 100 });
+    state().commitDraft();
+    const el = state().doc.elements[0];
+    if (el?.kind === 'rect') {
+      expect(el.width * 200).toBeCloseTo(el.height * 100);
+    }
+  });
+
+  it('snaps a shift-drawn line to a 45° increment', () => {
+    state().beginDraft('line', { x: 0.3, y: 0.5 });
+    // A shallow drag on a square stage snaps to horizontal.
+    state().updateDraft({ x: 0.8, y: 0.56 }, { width: 100, height: 100 });
+    state().commitDraft();
+    const el = state().doc.elements[0];
+    if (el?.kind === 'line') {
+      expect(el.y2).toBeCloseTo(el.y1);
+      expect(el.x2).toBeGreaterThan(el.x1);
+    }
+  });
+});
+
 describe('polygon draft', () => {
   it('creates a polygon element from three points', () => {
     state().beginDraft('polygon', { x: 0.2, y: 0.2 });
@@ -302,18 +314,9 @@ describe('polygon draft', () => {
     expect(el?.kind).toBe('polygon');
     if (el?.kind === 'polygon') {
       expect(el.points).toHaveLength(3);
+      expect(el.zoneLabel).toBeNull();
     }
     expect(state().draft).toBeNull();
-  });
-
-  it('creates a polygon zone from three points', () => {
-    state().beginDraft('zone-polygon', { x: 0.2, y: 0.2 });
-    state().addDraftPoint({ x: 0.6, y: 0.3 });
-    state().addDraftPoint({ x: 0.4, y: 0.7 });
-    state().closeDraftPolygon();
-    const zone = state().doc.zones[0];
-    expect(zone?.shape).toBe('polygon');
-    expect(zone?.label).toBe('zone-1');
   });
 
   it('refuses to close with fewer than three points and announces why', () => {
@@ -359,31 +362,54 @@ describe('polygon draft', () => {
   });
 });
 
-describe('zone auto-labelling', () => {
-  it('fills the lowest unused positive index', () => {
-    reset({ ...blankDoc(), zones: [rectZone('a', 'zone-2')] });
-    state().beginDraft('zone-rect', { x: 0.1, y: 0.1 });
-    state().updateDraft({ x: 0.4, y: 0.4 });
-    state().commitDraft();
-    expect(state().doc.zones[1]?.label).toBe('zone-1');
+describe('nextZoneLabel', () => {
+  it('starts at zone-1 and fills the lowest unused index', () => {
+    expect(nextZoneLabel([])).toBe('zone-1');
+    expect(
+      nextZoneLabel([
+        rect('a', { zoneLabel: 'zone-1' }),
+        rect('b', { zoneLabel: 'zone-3' }),
+      ]),
+    ).toBe('zone-2');
+  });
+});
+
+describe('zone marking via updateElement', () => {
+  it('marks and unmarks an element as a zone', () => {
+    reset({ ...blankDoc(), elements: [rect('r')] });
+    state().updateElement('r', { zoneLabel: 'inner' });
+    const marked = state().doc.elements[0];
+    if (marked?.kind === 'rect') expect(marked.zoneLabel).toBe('inner');
+    expect(zonesOf(state().doc)).toHaveLength(1);
+
+    state().updateElement('r', { zoneLabel: null });
+    const unmarked = state().doc.elements[0];
+    if (unmarked?.kind === 'rect') expect(unmarked.zoneLabel).toBeNull();
+    expect(zonesOf(state().doc)).toHaveLength(0);
   });
 
-  it('skips existing labels', () => {
-    reset({
-      ...blankDoc(),
-      zones: [rectZone('a', 'zone-1'), rectZone('b', 'zone-2')],
-    });
-    state().beginDraft('zone-rect', { x: 0.1, y: 0.1 });
-    state().updateDraft({ x: 0.4, y: 0.4 });
-    state().commitDraft();
-    expect(state().doc.zones[2]?.label).toBe('zone-3');
+  it('coalesces zone-label edits into one history step', () => {
+    reset({ ...blankDoc(), elements: [rect('r', { zoneLabel: 'a' })] });
+    state().updateElement(
+      'r',
+      { zoneLabel: 'ab' },
+      { coalesceKey: 'zone-label:r' },
+    );
+    state().updateElement(
+      'r',
+      { zoneLabel: 'abc' },
+      { coalesceKey: 'zone-label:r' },
+    );
+    expect(state().past).toHaveLength(1);
+    const el = state().doc.elements[0];
+    if (el?.kind === 'rect') expect(el.zoneLabel).toBe('abc');
   });
 });
 
 describe('moveSelectedBy', () => {
   it('clamps so the shape cannot leave the top-left', () => {
     reset({ ...blankDoc(), elements: [rect('r', { x: 0, y: 0 })] });
-    store.setState({ selection: { id: 'r', type: 'element' } });
+    store.setState({ selection: { id: 'r' } });
     state().moveSelectedBy(-0.5, -0.5);
     const el = state().doc.elements[0];
     if (el?.kind === 'rect') {
@@ -394,7 +420,7 @@ describe('moveSelectedBy', () => {
 
   it('clamps so the shape cannot leave the bottom-right', () => {
     reset({ ...blankDoc(), elements: [rect('r', { x: 0.7, y: 0.7 })] });
-    store.setState({ selection: { id: 'r', type: 'element' } });
+    store.setState({ selection: { id: 'r' } });
     state().moveSelectedBy(0.9, 0.9);
     const el = state().doc.elements[0];
     if (el?.kind === 'rect') {
@@ -405,14 +431,14 @@ describe('moveSelectedBy', () => {
 
   it('does not push history for a fully-clamped no-op nudge', () => {
     reset({ ...blankDoc(), elements: [rect('r', { x: 0, y: 0 })] });
-    store.setState({ selection: { id: 'r', type: 'element' } });
+    store.setState({ selection: { id: 'r' } });
     state().moveSelectedBy(-0.1, 0);
     expect(state().past).toHaveLength(0);
   });
 
   it('coalesces a burst of nudges into one history step', () => {
     reset({ ...blankDoc(), elements: [rect('r', { x: 0.4, y: 0.4 })] });
-    store.setState({ selection: { id: 'r', type: 'element' } });
+    store.setState({ selection: { id: 'r' } });
     state().moveSelectedBy(0.01, 0);
     state().moveSelectedBy(0.01, 0);
     state().moveSelectedBy(0.01, 0);
@@ -434,13 +460,14 @@ function oversizedEllipse(): SvgElement {
     fillOpacity: 0.25,
     stroke: null,
     strokeWidth: 3,
+    zoneLabel: null,
   };
 }
 
 describe('translation of an oversized shape', () => {
   it('does not teleport when nudged further into the overflow', () => {
     reset({ ...blankDoc(), elements: [oversizedEllipse()] });
-    store.setState({ selection: { id: 'e', type: 'element' } });
+    store.setState({ selection: { id: 'e' } });
     state().moveSelectedBy(0.01, 0);
     const el = state().doc.elements[0];
     expect(el?.kind).toBe('ellipse');
@@ -455,26 +482,11 @@ describe('translation of an oversized shape', () => {
 
   it('moves toward fitting when nudged the other way', () => {
     reset({ ...blankDoc(), elements: [oversizedEllipse()] });
-    store.setState({ selection: { id: 'e', type: 'element' } });
+    store.setState({ selection: { id: 'e' } });
     state().moveSelectedBy(-0.01, 0);
     const el = state().doc.elements[0];
     if (el?.kind === 'ellipse') {
       expect(el.cx).toBeCloseTo(0.89);
-    }
-  });
-
-  it('holds a circle zone still when nudged into its overflow', () => {
-    reset({
-      ...blankDoc(),
-      zones: [
-        { id: 'z', label: 'zone-1', shape: 'circle', cx: 0.9, cy: 0.5, r: 0.8 },
-      ],
-    });
-    store.setState({ selection: { id: 'z', type: 'zone' } });
-    state().moveSelectedBy(0.01, 0);
-    const zone = state().doc.zones[0];
-    if (zone?.shape === 'circle') {
-      expect(zone.cx).toBeCloseTo(0.9);
     }
   });
 });
@@ -488,21 +500,21 @@ describe('reorderSelected', () => {
   });
 
   it('refuses to move the back element further back', () => {
-    store.setState({ selection: { id: 'a', type: 'element' } });
+    store.setState({ selection: { id: 'a' } });
     state().reorderSelected('backward');
     expect(state().doc.elements.map((e) => e.id)).toEqual(['a', 'b', 'c']);
     expect(state().announcement.message).toBe('Already at the back');
   });
 
   it('refuses to move the front element further forward', () => {
-    store.setState({ selection: { id: 'c', type: 'element' } });
+    store.setState({ selection: { id: 'c' } });
     state().reorderSelected('forward');
     expect(state().doc.elements.map((e) => e.id)).toEqual(['a', 'b', 'c']);
     expect(state().announcement.message).toBe('Already at the front');
   });
 
   it('moves a middle element forward', () => {
-    store.setState({ selection: { id: 'b', type: 'element' } });
+    store.setState({ selection: { id: 'b' } });
     state().reorderSelected('forward');
     expect(state().doc.elements.map((e) => e.id)).toEqual(['a', 'c', 'b']);
   });
@@ -517,15 +529,15 @@ describe('tool switching', () => {
   });
 
   it('clears selection when leaving the select tool', () => {
-    store.setState({ selection: { id: 'r', type: 'element' } });
+    store.setState({ selection: { id: 'r' } });
     state().setTool('rect');
     expect(state().selection).toBeNull();
   });
 
   it('keeps selection when the tool stays select', () => {
-    store.setState({ selection: { id: 'r', type: 'element' } });
+    store.setState({ selection: { id: 'r' } });
     state().setTool('select');
-    expect(state().selection).toEqual({ id: 'r', type: 'element' });
+    expect(state().selection).toEqual({ id: 'r' });
   });
 });
 
@@ -539,30 +551,23 @@ describe('patches', () => {
       expect(el.fillOpacity).toBe(0.5);
     }
   });
-
-  it('coalesces label edits on a zone', () => {
-    reset({ ...blankDoc(), zones: [rectZone('z', 'zone-1')] });
-    state().updateZone('z', { label: 'a' }, { coalesceKey: 'label:z' });
-    state().updateZone('z', { label: 'ab' }, { coalesceKey: 'label:z' });
-    expect(state().past).toHaveLength(1);
-    expect(state().doc.zones[0]?.label).toBe('ab');
-  });
 });
 
 describe('createTextAt and deleteSelected', () => {
-  it('places a text element and selects it', () => {
-    state().createTextAt({ x: 0.5, y: 0.5 });
+  it('places a text element, selects it, and returns its id', () => {
+    const id = state().createTextAt({ x: 0.5, y: 0.5 });
     const el = state().doc.elements[0];
     expect(el?.kind).toBe('text');
+    expect(el?.id).toBe(id);
     const text = el?.kind === 'text' ? el : null;
     expect(text?.lines).toEqual<TextElement['lines']>(['Text']);
-    expect(state().selection).toEqual({ id: el?.id, type: 'element' });
+    expect(state().selection).toEqual({ id });
     expect(state().announcement.message).toBe('Text added');
   });
 
   it('deletes the selected element and clears selection', () => {
     reset({ ...blankDoc(), elements: [rect('r')] });
-    store.setState({ selection: { id: 'r', type: 'element' } });
+    store.setState({ selection: { id: 'r' } });
     state().deleteSelected();
     expect(state().doc.elements).toHaveLength(0);
     expect(state().selection).toBeNull();
@@ -570,15 +575,65 @@ describe('createTextAt and deleteSelected', () => {
   });
 });
 
+describe('discardNewText', () => {
+  it('reverts a just-created placeholder cleanly', () => {
+    const id = state().createTextAt({ x: 0.5, y: 0.5 });
+    expect(state().past).toHaveLength(1);
+    state().discardNewText(id);
+    expect(state().doc.elements).toHaveLength(0);
+    expect(state().past).toHaveLength(0);
+    expect(state().selection).toBeNull();
+  });
+});
+
+describe('insertDefaultShape', () => {
+  it('inserts a centred rectangle, selects it, and announces', () => {
+    state().insertDefaultShape('rect');
+    const el = state().doc.elements[0];
+    expect(el?.kind).toBe('rect');
+    if (el?.kind === 'rect') {
+      expect(el.x).toBeCloseTo(0.4);
+      expect(el.y).toBeCloseTo(0.4);
+      expect(el.width).toBeCloseTo(0.2);
+      expect(el.height).toBeCloseTo(0.2);
+    }
+    expect(state().selection).toEqual({ id: el?.id });
+    expect(state().announcement.message).toBe('Rectangle added');
+  });
+
+  it('inserts a default triangle for the polygon tool', () => {
+    state().insertDefaultShape('polygon');
+    const el = state().doc.elements[0];
+    expect(el?.kind).toBe('polygon');
+    if (el?.kind === 'polygon') {
+      expect(el.points).toHaveLength(3);
+    }
+  });
+});
+
+describe('requestProperties', () => {
+  it('bumps the sequence so the toolbar can auto-open Properties', () => {
+    expect(state().propertiesRequestSeq).toBe(0);
+    state().requestProperties();
+    state().requestProperties();
+    expect(state().propertiesRequestSeq).toBe(2);
+  });
+});
+
 describe('new / load reset history', () => {
   it('newDocument resets history and selection', () => {
     state().commitDoc({ ...state().doc, title: 'dirty' });
-    store.setState({ selection: { id: 'x', type: 'element' } });
+    store.setState({ selection: { id: 'x' } });
     state().newDocument('quadrants');
     expect(state().past).toHaveLength(0);
     expect(state().future).toHaveLength(0);
     expect(state().selection).toBeNull();
-    expect(state().doc.zones).toHaveLength(4);
+    expect(zonesOf(state().doc)).toHaveLength(4);
+  });
+
+  it('newDocument builds the political compass with five zones', () => {
+    state().newDocument('compass');
+    expect(zonesOf(state().doc)).toHaveLength(5);
   });
 
   it('loadDocument replaces the document and resets history', () => {

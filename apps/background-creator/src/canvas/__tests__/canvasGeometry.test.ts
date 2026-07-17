@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import type { EllipseElement, RectElement, Vec, Zone } from '~/model/types';
+import type { EllipseElement, RectElement, Vec } from '~/model/types';
 
-import { type Handle, resizeElement, resizeZone } from '../canvasGeometry';
+import { type Handle, resizeElement } from '../canvasGeometry';
 
 const MIN_SIZE = 0.01;
 const NW: Handle = { kind: 'corner', corner: 'nw' };
@@ -19,6 +19,7 @@ function rect(over: Partial<RectElement> = {}): RectElement {
     fillOpacity: 0.25,
     stroke: null,
     strokeWidth: 3,
+    zoneLabel: null,
     ...over,
   };
 }
@@ -35,6 +36,7 @@ function ellipse(over: Partial<EllipseElement> = {}): EllipseElement {
     fillOpacity: 0.25,
     stroke: null,
     strokeWidth: 3,
+    zoneLabel: null,
     ...over,
   };
 }
@@ -92,21 +94,35 @@ describe('resizedRect via resizeElement', () => {
   });
 });
 
-describe('resizedRect via resizeZone', () => {
-  it('keeps an out-of-canvas rect zone within [0,1] on resize', () => {
-    const zone: Zone = {
-      id: 'z',
-      label: 'zone-1',
-      shape: 'rect',
-      x: 0.6,
-      y: 0.1,
-      width: 0.8,
-      height: 0.2,
-    };
-    const out = resizeZone(zone, NW, { x: 0.1, y: 0.05 });
-    if (out.shape === 'rect') {
-      withinCanvas(out);
-      expect(out.width).toBeLessThanOrEqual(1);
+describe('shift-constrained resize', () => {
+  it('resizes a rect to a visual square at the stage aspect', () => {
+    // Anchor is the fixed SE corner at (0.3, 0.3). On a 200×100 stage (aspect 2)
+    // a visual square has width·200 == height·100; the constraint derives the
+    // vertical extent from the horizontal drag so the corner stays on-canvas.
+    const el = rect({ x: 0.1, y: 0.1, width: 0.2, height: 0.2 });
+    const out = resizeElement(
+      el,
+      NW,
+      { x: 0.2, y: 0 },
+      { width: 200, height: 100 },
+    );
+    if (out.kind === 'rect') {
+      expect(out.width * 200).toBeCloseTo(out.height * 100);
+    }
+  });
+
+  it('resizes an ellipse to a visual circle at the stage aspect', () => {
+    const el = ellipse({ cx: 0.5, cy: 0.5, rx: 0.2, ry: 0.2 });
+    // Anchor is the fixed NW corner at (0.3, 0.3); the radii scale to equal
+    // pixel extents on the wide stage.
+    const out = resizeElement(
+      el,
+      { kind: 'corner', corner: 'se' },
+      { x: 0.5, y: 1 },
+      { width: 200, height: 100 },
+    );
+    if (out.kind === 'ellipse') {
+      expect(out.rx * 200).toBeCloseTo(out.ry * 100);
     }
   });
 });

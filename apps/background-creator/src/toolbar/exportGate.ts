@@ -1,4 +1,4 @@
-import { validateZoneLabels } from '~/geometry/zones';
+import { validateZoneLabels, zonesOf } from '~/geometry/zones';
 import type { BackgroundDocument } from '~/model/types';
 
 // The result of checking whether a document is ready for zone-assignment script
@@ -14,10 +14,11 @@ type ScriptExportGate =
 export function evaluateScriptExport(
   doc: BackgroundDocument,
 ): ScriptExportGate {
-  if (doc.zones.length === 0) {
+  const zones = zonesOf(doc);
+  if (zones.length === 0) {
     return { ok: false, reason: 'no-zones' };
   }
-  const labels = validateZoneLabels(doc.zones);
+  const labels = validateZoneLabels(zones);
   if (!labels.ok) {
     return { ok: false, reason: 'invalid-labels', problems: labels.problems };
   }

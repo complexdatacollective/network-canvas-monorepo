@@ -1,4 +1,4 @@
-import type { SvgElement, TextElement, Vec, Zone } from '~/model/types';
+import type { SvgElement, TextElement, Vec } from '~/model/types';
 
 import { assertNever } from './assertNever';
 
@@ -8,6 +8,11 @@ import { assertNever } from './assertNever';
 // depends on the store already, so this direction stays acyclic.
 
 export type Bounds = { minX: number; maxX: number; minY: number; maxY: number };
+
+// Live stage dimensions in device pixels. Passed in from the canvas so the
+// Shift-constrain maths (visual squares/circles, 45° lines) stays a pure
+// function of its arguments and the store never reads the DOM.
+export type StageBox = { width: number; height: number };
 
 export const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
 
@@ -91,29 +96,6 @@ export function elementBounds(el: SvgElement): Bounds {
   }
 }
 
-export function zoneBounds(zone: Zone): Bounds {
-  switch (zone.shape) {
-    case 'rect':
-      return {
-        minX: zone.x,
-        maxX: zone.x + zone.width,
-        minY: zone.y,
-        maxY: zone.y + zone.height,
-      };
-    case 'circle':
-      return {
-        minX: zone.cx - zone.r,
-        maxX: zone.cx + zone.r,
-        minY: zone.cy - zone.r,
-        maxY: zone.cy + zone.r,
-      };
-    case 'polygon':
-      return pointsBounds(zone.points);
-    default:
-      return assertNever(zone);
-  }
-}
-
 export function boundsCentre(bounds: Bounds): Vec {
   return {
     x: (bounds.minX + bounds.maxX) / 2,
@@ -174,26 +156,43 @@ export function translateElement(
   }
 }
 
-export function translateZone(zone: Zone, dx: number, dy: number): Zone {
-  const d = clampedDelta(zoneBounds(zone), dx, dy);
-  switch (zone.shape) {
-    case 'rect':
-      return { ...zone, x: clamp01(zone.x + d.x), y: clamp01(zone.y + d.y) };
-    case 'circle':
-      return {
-        ...zone,
-        cx: clamp01(zone.cx + d.x),
-        cy: clamp01(zone.cy + d.y),
-      };
-    case 'polygon':
-      return {
-        ...zone,
-        points: zone.points.map((p) => ({
-          x: clamp01(p.x + d.x),
-          y: clamp01(p.y + d.y),
-        })),
-      };
-    default:
-      return assertNever(zone);
-  }
+// --- Shift-constrain maths -------------------------------------------------
+
+// Constrains `target` so the box spanned from `origin` reads as a visual square
+// (rect) or circle (ellipse) at the current stage aspect: the pixel extents on
+// both axes are made equal. The horizontal extent drives the vertical one, per
+// the spec's `ry = rx·stageW/stageH`. Clamped back into [0, 1]; at a canvas edge
+// the regularity gives to the clamp rather than escaping the canvas.
+export function constrainRegular(
+  origin: Vec,
+  target: Vec,
+  stage: StageBox,
+): Vec {
+  if (stage.width === 0 || stage.height === 0) return target;
+  const dx = target.x - origin.x;
+  const dy = target.y - origin.y;
+  const magnitude = (Math.abs(dx) * stage.width) / stage.height;
+  const signedY = (dy < 0 ? -1 : 1) * magnitude;
+  return { x: target.x, y: clamp01(origin.y + signedY) };
+}
+
+// Snaps the `origin`→`target` vector to the nearest 45° increment in visual
+// (pixel) space, so a Shift-drawn line reads as horizontal/vertical/diagonal on
+// screen regardless of the stage aspect.
+export function constrainLine45(
+  origin: Vec,
+  target: Vec,
+  stage: StageBox,
+): Vec {
+  if (stage.width === 0 || stage.height === 0) return target;
+  const dxPx = (target.x - origin.x) * stage.width;
+  const dyPx = (target.y - origin.y) * stage.height;
+  const length = Math.hypot(dxPx, dyPx);
+  if (length === 0) return target;
+  const step = Math.PI / 4;
+  const angle = Math.round(Math.atan2(dyPx, dxPx) / step) * step;
+  return {
+    x: clamp01(origin.x + (Math.cos(angle) * length) / stage.width),
+    y: clamp01(origin.y + (Math.sin(angle) * length) / stage.height),
+  };
 }

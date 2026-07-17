@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 
-import type { BackgroundDocument, Vec, Zone } from '~/model/types';
+import { zonesOf } from '~/geometry/zones';
+import type { BackgroundDocument, Vec, ZoneElement } from '~/model/types';
 import type { Bounds } from '~/state/documentGeometry';
 import type { Draft } from '~/state/editorStore';
 
@@ -36,7 +37,13 @@ const ZONE_HUES = [
 
 const pc = (n: number): string => `${n * 100}%`;
 
-function ZoneOutline({ zone, hue }: { zone: Zone; hue: string }): ReactElement {
+function ZoneOutline({
+  zone,
+  hue,
+}: {
+  zone: ZoneElement;
+  hue: string;
+}): ReactElement {
   const stroke = `var(${hue})`;
   const common = {
     fill: 'none',
@@ -46,7 +53,7 @@ function ZoneOutline({ zone, hue }: { zone: Zone; hue: string }): ReactElement {
     strokeOpacity: 0.75,
     vectorEffect: 'non-scaling-stroke' as const,
   };
-  if (zone.shape === 'rect') {
+  if (zone.kind === 'rect') {
     return (
       <rect
         x={pc(zone.x)}
@@ -57,14 +64,13 @@ function ZoneOutline({ zone, hue }: { zone: Zone; hue: string }): ReactElement {
       />
     );
   }
-  if (zone.shape === 'circle') {
-    // A normalized circle is an on-screen ellipse when the canvas is not square.
+  if (zone.kind === 'ellipse') {
     return (
       <ellipse
         cx={pc(zone.cx)}
         cy={pc(zone.cy)}
-        rx={pc(zone.r)}
-        ry={pc(zone.r)}
+        rx={pc(zone.rx)}
+        ry={pc(zone.ry)}
         {...common}
       />
     );
@@ -159,18 +165,6 @@ function DraftShape({ draft }: { draft: Draft }): ReactElement | null {
         />
       );
     }
-    if (tool === 'zone-circle') {
-      const r = Math.hypot(current.x - start.x, current.y - start.y);
-      return (
-        <ellipse
-          cx={pc(start.x)}
-          cy={pc(start.y)}
-          rx={pc(r)}
-          ry={pc(r)}
-          {...paint}
-        />
-      );
-    }
     const x = pc(Math.min(start.x, current.x));
     const y = pc(Math.min(start.y, current.y));
     const width = pc(Math.abs(current.x - start.x));
@@ -218,7 +212,7 @@ export function OverlaySvg({
       aria-hidden="true"
     >
       {zonesVisible &&
-        doc.zones.map((zone, index) => {
+        zonesOf(doc).map((zone, index) => {
           const hue = ZONE_HUES[index % ZONE_HUES.length] ?? ZONE_HUES[0];
           return <ZoneOutline key={zone.id} zone={zone} hue={hue} />;
         })}

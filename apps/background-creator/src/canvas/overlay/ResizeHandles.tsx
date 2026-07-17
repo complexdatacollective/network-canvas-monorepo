@@ -5,6 +5,7 @@ import type {
 } from 'react';
 
 import type { BackgroundDocument } from '~/model/types';
+import type { StageBox } from '~/state/documentGeometry';
 import { useEditorStore } from '~/state/editorStore';
 
 import {
@@ -13,8 +14,6 @@ import {
   type Handle,
   type HandlePlacement,
   resizeElement,
-  resizeZone,
-  zoneHandles,
 } from '../canvasGeometry';
 import { startPointerGesture } from '../pointerGesture';
 
@@ -32,43 +31,35 @@ export function ResizeHandles({
 
   if (activeTool !== 'select' || !selection) return null;
 
-  let placements: HandlePlacement[] = [];
-  if (selection.type === 'element') {
-    const el = doc.elements.find((e) => e.id === selection.id);
-    if (el) placements = elementHandles(el);
-  } else {
-    const zone = doc.zones.find((z) => z.id === selection.id);
-    if (zone) placements = zoneHandles(zone);
-  }
+  const el = doc.elements.find((e) => e.id === selection.id);
+  const placements: HandlePlacement[] = el ? elementHandles(el) : [];
   if (placements.length === 0) return null;
 
   const applyResize = (
     d: BackgroundDocument,
     handle: Handle,
     pt: { x: number; y: number },
-  ): BackgroundDocument => {
-    if (selection.type === 'element') {
-      return {
-        ...d,
-        elements: d.elements.map((el) =>
-          el.id === selection.id ? resizeElement(el, handle, pt) : el,
-        ),
-      };
-    }
-    return {
-      ...d,
-      zones: d.zones.map((z) =>
-        z.id === selection.id ? resizeZone(z, handle, pt) : z,
-      ),
-    };
-  };
+    stage: StageBox | null,
+  ): BackgroundDocument => ({
+    ...d,
+    elements: d.elements.map((element) =>
+      element.id === selection.id
+        ? resizeElement(element, handle, pt, stage)
+        : element,
+    ),
+  });
 
   const startResize = (e: ReactPointerEvent, handle: Handle) => {
     e.stopPropagation();
     const store = useEditorStore.getState();
     startPointerGesture(e, e.currentTarget, getRect, {
       onStart: () => store.beginGesture(),
-      onDrag: (pt) => store.updateGesture((d) => applyResize(d, handle, pt)),
+      onDrag: (pt, _start, shiftKey) => {
+        const rect = getRect();
+        const stage =
+          shiftKey && rect ? { width: rect.width, height: rect.height } : null;
+        store.updateGesture((d) => applyResize(d, handle, pt, stage));
+      },
       onEnd: ({ moved, cancelled }) => {
         if (cancelled) {
           store.cancelGesture();

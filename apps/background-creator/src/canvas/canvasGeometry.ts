@@ -1,11 +1,12 @@
-import type { BackgroundDocument, SvgElement, Vec, Zone } from '~/model/types';
+import type { BackgroundDocument, SvgElement, Vec } from '~/model/types';
 import { assertNever } from '~/state/assertNever';
 import {
   type Bounds,
   clamp01,
+  constrainRegular,
   elementBounds,
+  type StageBox,
   textBounds,
-  zoneBounds,
 } from '~/state/documentGeometry';
 import type { Selection } from '~/state/editorStore';
 
@@ -18,7 +19,6 @@ const clampRange = (n: number, lo: number, hi: number): number =>
 
 export type Handle =
   | { kind: 'corner'; corner: 'nw' | 'ne' | 'sw' | 'se' }
-  | { kind: 'radius' }
   | { kind: 'endpoint'; which: 1 | 2 }
   | { kind: 'vertex'; index: number };
 
@@ -29,8 +29,8 @@ export type HandlePlacement = { handle: Handle; pos: Vec };
 // Ray-casting parity test mirroring geometry/zones.ts pointInPolygon (which is
 // itself kept byte-equivalent to the interview ComposerCanvas), so the editor's
 // element hit-testing agrees with zone/script membership. A local copy is used
-// because geometry/zones only exposes pointInZone (Zone-shaped), and this file
-// must not modify geometry/.
+// because geometry/zones only exposes pointInZone (ZoneElement-shaped), and this
+// file must not modify geometry/.
 function pointInPolygon(p: Vec, points: Vec[]): boolean {
   if (points.length < 3) return false;
   let inside = false;
@@ -122,8 +122,10 @@ function nearEllipseEdge(
   return Math.abs(d - boundaryDist) <= tol;
 }
 
-// --- element / zone hit tests ---------------------------------------------
+// --- element hit tests -----------------------------------------------------
 
+// A zero-fill (invisible) shape is grabbable only near its outline, so a filled
+// element sitting over an invisible zone's interior stays selectable.
 function hitTestElement(p: Vec, el: SvgElement, tol: number): boolean {
   switch (el.kind) {
     case 'rect': {
@@ -150,57 +152,17 @@ function hitTestElement(p: Vec, el: SvgElement, tol: number): boolean {
   }
 }
 
-// Zones are only grabbable via their outline band (never their fill), so a filled
-// element sitting over a zone interior stays selectable.
-function hitTestZoneBand(p: Vec, zone: Zone, tol: number): boolean {
-  switch (zone.shape) {
-    case 'rect':
-      return nearRectEdge(p, zoneBounds(zone), tol);
-    case 'circle':
-      return Math.abs(Math.hypot(p.x - zone.cx, p.y - zone.cy) - zone.r) <= tol;
-    case 'polygon':
-      return minEdgeDistance(p, zone.points) <= tol;
-    default:
-      return assertNever(zone);
-  }
-}
-
 export function hitTestDocument(
   p: Vec,
   doc: BackgroundDocument,
   tol: number,
-  zonesVisible: boolean,
 ): Selection | null {
   // Topmost element wins: iterate paint order back-to-front.
   for (let i = doc.elements.length - 1; i >= 0; i -= 1) {
     const el = doc.elements[i];
-    if (el && hitTestElement(p, el, tol)) return { id: el.id, type: 'element' };
-  }
-  if (zonesVisible) {
-    for (let i = doc.zones.length - 1; i >= 0; i -= 1) {
-      const zone = doc.zones[i];
-      if (zone && hitTestZoneBand(p, zone, tol))
-        return { id: zone.id, type: 'zone' };
-    }
+    if (el && hitTestElement(p, el, tol)) return { id: el.id };
   }
   return null;
-}
-
-export function zoneCentroid(zone: Zone): Vec {
-  if (zone.shape === 'rect') {
-    return { x: zone.x + zone.width / 2, y: zone.y + zone.height / 2 };
-  }
-  if (zone.shape === 'circle') {
-    return { x: zone.cx, y: zone.cy };
-  }
-  const n = zone.points.length || 1;
-  let sx = 0;
-  let sy = 0;
-  for (const point of zone.points) {
-    sx += point.x;
-    sy += point.y;
-  }
-  return { x: sx / n, y: sy / n };
 }
 
 // --- handle placement ------------------------------------------------------
@@ -234,27 +196,6 @@ export function elementHandles(el: SvgElement): HandlePlacement[] {
       return [];
     default:
       return assertNever(el);
-  }
-}
-
-export function zoneHandles(zone: Zone): HandlePlacement[] {
-  switch (zone.shape) {
-    case 'rect':
-      return cornerPlacements(zoneBounds(zone));
-    case 'circle':
-      return [
-        {
-          handle: { kind: 'radius' },
-          pos: { x: zone.cx + zone.r, y: zone.cy },
-        },
-      ];
-    case 'polygon':
-      return zone.points.map((pos, index) => ({
-        handle: { kind: 'vertex', index },
-        pos,
-      }));
-    default:
-      return assertNever(zone);
   }
 }
 
@@ -305,18 +246,24 @@ function resizedRect(anchor: Vec, moving: Vec): Rect {
   return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
 }
 
+// `stage` present ⇒ Shift is held: a corner-resized rect/ellipse is constrained
+// to a visual square/circle at the current stage aspect (measured against the
+// fixed opposite corner).
 export function resizeElement(
   el: SvgElement,
   handle: Handle,
   pt: Vec,
+  stage?: StageBox | null,
 ): SvgElement {
   if (el.kind === 'rect' && handle.kind === 'corner') {
     const anchor = oppositeCorner(elementBounds(el), handle.corner);
-    return { ...el, ...resizedRect(anchor, pt) };
+    const moving = stage ? constrainRegular(anchor, pt, stage) : pt;
+    return { ...el, ...resizedRect(anchor, moving) };
   }
   if (el.kind === 'ellipse' && handle.kind === 'corner') {
     const anchor = oppositeCorner(elementBounds(el), handle.corner);
-    const r = resizedRect(anchor, pt);
+    const moving = stage ? constrainRegular(anchor, pt, stage) : pt;
+    const r = resizedRect(anchor, moving);
     return {
       ...el,
       cx: r.x + r.width / 2,
@@ -340,36 +287,12 @@ export function resizeElement(
   return el;
 }
 
-export function resizeZone(zone: Zone, handle: Handle, pt: Vec): Zone {
-  if (zone.shape === 'rect' && handle.kind === 'corner') {
-    const anchor = oppositeCorner(zoneBounds(zone), handle.corner);
-    return { ...zone, ...resizedRect(anchor, pt) };
-  }
-  if (zone.shape === 'circle' && handle.kind === 'radius') {
-    const r = clampRange(
-      Math.hypot(pt.x - zone.cx, pt.y - zone.cy),
-      MIN_SIZE,
-      1,
-    );
-    return { ...zone, r };
-  }
-  if (zone.shape === 'polygon' && handle.kind === 'vertex') {
-    const points = zone.points.map((v, i) =>
-      i === handle.index ? { x: clamp01(pt.x), y: clamp01(pt.y) } : v,
-    );
-    return { ...zone, points };
-  }
-  return zone;
-}
-
 export function cursorForHandle(handle: Handle): string {
   switch (handle.kind) {
     case 'corner':
       return handle.corner === 'nw' || handle.corner === 'se'
         ? 'nwse-resize'
         : 'nesw-resize';
-    case 'radius':
-      return 'ew-resize';
     case 'endpoint':
     case 'vertex':
       return 'move';
