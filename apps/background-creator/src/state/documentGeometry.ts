@@ -11,10 +11,8 @@ export type Bounds = { minX: number; maxX: number; minY: number; maxY: number };
 
 export const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
 
-const clampRange = (n: number, lo: number, hi: number): number => {
-  if (lo > hi) return lo;
-  return n < lo ? lo : n > hi ? hi : n;
-};
+const clampRange = (n: number, lo: number, hi: number): number =>
+  n < lo ? lo : n > hi ? hi : n;
 
 // Text carries no measurable geometry in the document model, so its selection
 // box and drag-clamp bounds are approximated: each line is ~0.04 of the canvas
@@ -125,10 +123,20 @@ export function boundsCentre(bounds: Bounds): Vec {
 
 // Clamps a requested translation so the shape's bounding box stays inside the
 // [0, 1] canvas — the shape sticks at the edge instead of leaving the canvas.
+// A shape larger than the canvas on an axis can never fit, which would invert
+// the raw [-min, 1-max] range; folding 0 into the range keeps it valid, so an
+// oversized shape can only move toward fitting (or hold still) — never teleport
+// to a forced position.
+function clampAxisDelta(min: number, max: number, delta: number): number {
+  const lo = Math.min(-min, 1 - max, 0);
+  const hi = Math.max(-min, 1 - max, 0);
+  return clampRange(delta, lo, hi);
+}
+
 function clampedDelta(bounds: Bounds, dx: number, dy: number): Vec {
   return {
-    x: clampRange(dx, -bounds.minX, 1 - bounds.maxX),
-    y: clampRange(dy, -bounds.minY, 1 - bounds.maxY),
+    x: clampAxisDelta(bounds.minX, bounds.maxX, dx),
+    y: clampAxisDelta(bounds.minY, bounds.maxY, dy),
   };
 }
 

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type {
   BackgroundDocument,
   RectElement,
+  SvgElement,
   TextElement,
   Zone,
 } from '~/model/types';
@@ -141,6 +142,47 @@ describe('gestures', () => {
     state().beginGesture();
     state().endGesture();
     expect(state().past).toHaveLength(0);
+  });
+
+  it('does not push history when a gesture rebuilds the doc without changing values', () => {
+    reset({ ...blankDoc(), elements: [rect('r', { x: 0 })] });
+    state().beginGesture();
+    // A fully-clamped drag rebuilds every object with identical values.
+    state().updateGesture((d) => ({
+      ...d,
+      elements: d.elements.map((el) => ({ ...el })),
+    }));
+    state().endGesture();
+    expect(state().past).toHaveLength(0);
+    expect(state().gestureSnapshot).toBeNull();
+  });
+
+  it('keeps undo order when a commit fires mid-gesture', () => {
+    reset({ ...blankDoc(), elements: [rect('r', { x: 0.1 })] });
+    store.setState({ selection: { id: 'r', type: 'element' } });
+
+    state().beginGesture();
+    // Mid-drag the shape moves; then a keyboard Delete commits through history.
+    state().updateGesture((d) => ({
+      ...d,
+      elements: d.elements.map((el) =>
+        el.kind === 'rect' ? { ...el, x: 0.3 } : el,
+      ),
+    }));
+    state().deleteSelected();
+    state().endGesture();
+
+    expect(state().doc.elements).toHaveLength(0);
+    expect(state().past).toHaveLength(1);
+
+    state().undo();
+    const el = state().doc.elements[0];
+    expect(el?.kind).toBe('rect');
+    // Undo restores the deletion only — landing on the mid-gesture position,
+    // not the stale pre-gesture snapshot.
+    if (el?.kind === 'rect') {
+      expect(el.x).toBeCloseTo(0.3);
+    }
   });
 });
 
@@ -296,6 +338,25 @@ describe('polygon draft', () => {
       expect(el.points).toHaveLength(3);
     }
   });
+
+  it('drops every trailing duplicate from a double-click on the last vertex', () => {
+    state().beginDraft('polygon', { x: 0.2, y: 0.2 });
+    state().addDraftPoint({ x: 0.6, y: 0.3 });
+    state().addDraftPoint({ x: 0.4, y: 0.7 });
+    // A double-click on the last vertex fires two extra near-duplicate points.
+    state().addDraftPoint({ x: 0.4, y: 0.7 });
+    state().addDraftPoint({ x: 0.4, y: 0.7 });
+    state().closeDraftPolygon();
+    const el = state().doc.elements[0];
+    expect(el?.kind).toBe('polygon');
+    if (el?.kind === 'polygon') {
+      expect(el.points).toEqual([
+        { x: 0.2, y: 0.2 },
+        { x: 0.6, y: 0.3 },
+        { x: 0.4, y: 0.7 },
+      ]);
+    }
+  });
 });
 
 describe('zone auto-labelling', () => {
@@ -356,6 +417,65 @@ describe('moveSelectedBy', () => {
     state().moveSelectedBy(0.01, 0);
     state().moveSelectedBy(0.01, 0);
     expect(state().past).toHaveLength(1);
+  });
+});
+
+// An ellipse wider than the canvas on the x-axis: minX = 0.1, maxX = 1.7. Its
+// box can never fit, so the raw clamp range would invert. cy/ry keep y in range.
+function oversizedEllipse(): SvgElement {
+  return {
+    id: 'e',
+    kind: 'ellipse',
+    cx: 0.9,
+    cy: 0.5,
+    rx: 0.8,
+    ry: 0.2,
+    fill: '#ffffff',
+    fillOpacity: 0.25,
+    stroke: null,
+    strokeWidth: 3,
+  };
+}
+
+describe('translation of an oversized shape', () => {
+  it('does not teleport when nudged further into the overflow', () => {
+    reset({ ...blankDoc(), elements: [oversizedEllipse()] });
+    store.setState({ selection: { id: 'e', type: 'element' } });
+    state().moveSelectedBy(0.01, 0);
+    const el = state().doc.elements[0];
+    expect(el?.kind).toBe('ellipse');
+    if (el?.kind === 'ellipse') {
+      // Moving right would push the box further off-canvas, so it holds still —
+      // no forced jump to a clamped position.
+      expect(el.cx).toBeCloseTo(0.9);
+    }
+    // A no-op move must not record history.
+    expect(state().past).toHaveLength(0);
+  });
+
+  it('moves toward fitting when nudged the other way', () => {
+    reset({ ...blankDoc(), elements: [oversizedEllipse()] });
+    store.setState({ selection: { id: 'e', type: 'element' } });
+    state().moveSelectedBy(-0.01, 0);
+    const el = state().doc.elements[0];
+    if (el?.kind === 'ellipse') {
+      expect(el.cx).toBeCloseTo(0.89);
+    }
+  });
+
+  it('holds a circle zone still when nudged into its overflow', () => {
+    reset({
+      ...blankDoc(),
+      zones: [
+        { id: 'z', label: 'zone-1', shape: 'circle', cx: 0.9, cy: 0.5, r: 0.8 },
+      ],
+    });
+    store.setState({ selection: { id: 'z', type: 'zone' } });
+    state().moveSelectedBy(0.01, 0);
+    const zone = state().doc.zones[0];
+    if (zone?.shape === 'circle') {
+      expect(zone.cx).toBeCloseTo(0.9);
+    }
   });
 });
 

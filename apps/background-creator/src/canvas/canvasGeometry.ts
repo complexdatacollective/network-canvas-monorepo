@@ -277,31 +277,31 @@ function oppositeCorner(b: Bounds, corner: 'nw' | 'ne' | 'sw' | 'se'): Vec {
 
 type Rect = { x: number; y: number; width: number; height: number };
 
+// Grows a collapsed [lo, hi] span to MIN_SIZE while keeping `anchor` as one edge
+// and staying inside [0, 1]. Grows away from the anchor toward the drag; if that
+// side is against the canvas edge it grows the other way, so a MIN_SIZE box
+// always survives even when the anchor sits exactly on the 0/1 boundary.
+function ensureMinExtent(
+  lo: number,
+  hi: number,
+  anchor: number,
+): [number, number] {
+  if (hi - lo >= MIN_SIZE) return [lo, hi];
+  if (anchor + MIN_SIZE <= 1) return [anchor, anchor + MIN_SIZE];
+  return [anchor - MIN_SIZE, anchor];
+}
+
 function resizedRect(anchor: Vec, moving: Vec): Rect {
+  // The anchor is the fixed opposite corner. A legal document can place it
+  // outside the canvas (e.g. x + width > 1), so clamp it in before sizing —
+  // otherwise the result can exceed [0, 1] and be rejected by the schema on
+  // reopen, silently losing the shape.
+  const ax = clamp01(anchor.x);
+  const ay = clamp01(anchor.y);
   const mx = clamp01(moving.x);
   const my = clamp01(moving.y);
-  let x0 = Math.min(anchor.x, mx);
-  let x1 = Math.max(anchor.x, mx);
-  let y0 = Math.min(anchor.y, my);
-  let y1 = Math.max(anchor.y, my);
-  if (x1 - x0 < MIN_SIZE) {
-    if (mx >= anchor.x) {
-      x0 = anchor.x;
-      x1 = Math.min(anchor.x + MIN_SIZE, 1);
-    } else {
-      x1 = anchor.x;
-      x0 = Math.max(anchor.x - MIN_SIZE, 0);
-    }
-  }
-  if (y1 - y0 < MIN_SIZE) {
-    if (my >= anchor.y) {
-      y0 = anchor.y;
-      y1 = Math.min(anchor.y + MIN_SIZE, 1);
-    } else {
-      y1 = anchor.y;
-      y0 = Math.max(anchor.y - MIN_SIZE, 0);
-    }
-  }
+  const [x0, x1] = ensureMinExtent(Math.min(ax, mx), Math.max(ax, mx), ax);
+  const [y0, y1] = ensureMinExtent(Math.min(ay, my), Math.max(ay, my), ay);
   return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
 }
 

@@ -198,7 +198,10 @@ function pushed(
   state: EditorState,
   nextDoc: BackgroundDocument,
   opts?: CommitOptions,
-): Pick<EditorState, 'doc' | 'past' | 'future' | 'lastCoalesceKey'> {
+): Pick<
+  EditorState,
+  'doc' | 'past' | 'future' | 'lastCoalesceKey' | 'gestureSnapshot'
+> {
   const key = opts?.coalesceKey;
   const coalesce =
     key !== undefined && key === state.lastCoalesceKey && state.past.length > 0;
@@ -209,6 +212,10 @@ function pushed(
       : [...state.past, state.doc].slice(-HISTORY_CAP),
     future: [],
     lastCoalesceKey: key ?? null,
+    // A real history commit supersedes any in-flight gesture: its pre-gesture
+    // snapshot is now stale, so drop it. Otherwise a later endGesture would
+    // append that snapshot after this commit's entry, scrambling undo order.
+    gestureSnapshot: null,
   };
 }
 
@@ -609,7 +616,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   endGesture: () =>
     set((state) => {
       const snapshot = state.gestureSnapshot;
-      if (!snapshot || snapshot === state.doc) {
+      // A fully-clamped drag rebuilds the doc object without changing any value,
+      // so compare by value (not reference) to skip a no-op history entry.
+      if (!snapshot || JSON.stringify(snapshot) === JSON.stringify(state.doc)) {
         return { gestureSnapshot: null };
       }
       return {
@@ -691,15 +700,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   closeDraftPolygon: () => {
     const { draft, doc } = get();
     if (!draft || draft.mode !== 'polygon') return;
-    // A double-click closes the polygon, but its second press already added a
-    // near-duplicate vertex; drop a trailing point that coincides with the one
-    // before it so the closing gesture doesn't leave a zero-length edge.
+    // A double-click closes the polygon, but each of its presses already added a
+    // near-duplicate vertex; drop every trailing point that coincides with the
+    // one before it so the closing gesture doesn't leave a zero-length edge.
     let points = draft.points;
-    if (points.length >= 2) {
+    while (points.length >= 2) {
       const last = points[points.length - 1];
       const prev = points[points.length - 2];
       if (last && prev && nearlyEqual(last, prev)) {
         points = points.slice(0, -1);
+      } else {
+        break;
       }
     }
     if (points.length < 3) {
