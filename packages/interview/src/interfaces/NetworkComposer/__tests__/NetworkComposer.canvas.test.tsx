@@ -202,8 +202,10 @@ describe('NetworkComposer canvas', () => {
       background: { image: 'asset-1' },
     });
 
-    const img = screen.getByAltText('Background');
+    const img = document.querySelector('img[src="blob:mock-background-image"]');
     expect(img).toHaveAttribute('src', 'blob:mock-background-image');
+    expect(img).toHaveAttribute('alt', '');
+    expect(img).toHaveAttribute('aria-hidden', 'true');
 
     // Scope to the decorative background wrapper — other chrome (e.g. tool
     // palette icons) also renders aria-hidden svgs, so a page-wide query
