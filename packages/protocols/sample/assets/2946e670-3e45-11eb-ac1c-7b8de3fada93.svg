@@ -33,14 +33,12 @@
       vector-effect: non-scaling-stroke;
     }
 
-    .axis-label,
     .quadrant-label,
     .unsure-label {
       font-family: system-ui, sans-serif;
       text-anchor: middle;
     }
 
-    .axis-label,
     .unsure-label {
       fill: #111111;
       font-size: clamp(14px, 2.6vmin, 34px);
@@ -82,19 +80,6 @@
   />
 
   <text class="unsure-label" x="10.5%" y="6%">Unsure</text>
-
-  <text class="axis-label" x="61.5%" y="4%">Authoritarian</text>
-  <text class="axis-label" x="61.5%" y="98%">Libertarian</text>
-
-  <text class="axis-label" x="24.5%" y="47.5%" text-anchor="start">
-    Economic
-  </text>
-  <text class="axis-label" x="24.5%" y="54%" text-anchor="start">Left</text>
-
-  <text class="axis-label" x="98.5%" y="47.5%" text-anchor="end">
-    Economic
-  </text>
-  <text class="axis-label" x="98.5%" y="54%" text-anchor="end">Right</text>
 
   <text class="quadrant-label" x="42.25%" y="25%">
     <tspan x="42.25%" dy="-0.2em">Authoritarian</tspan>
