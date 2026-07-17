@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
+import { installServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/serviceWorkerUpdate';
 import useAppUpdate, {
   type UseAppUpdateResult,
 } from '@codaco/fresco-ui/appUpdate/useAppUpdate';
@@ -82,7 +83,6 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
 
   const {
     needRefresh: [needRefresh],
-    updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW: (_swScriptUrl, swRegistration) => {
       setRegistration(swRegistration);
@@ -98,8 +98,8 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   }, [registration]);
 
   const installUpdate = useCallback(
-    () => void updateServiceWorker(true),
-    [updateServiceWorker],
+    () => installServiceWorkerUpdate({ registration }),
+    [registration],
   );
 
   const update = useAppUpdate({

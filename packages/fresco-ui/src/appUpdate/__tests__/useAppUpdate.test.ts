@@ -20,7 +20,7 @@ describe('version-change detection', () => {
         currentVersion: '2.0.0',
         needRefresh: false,
         hasUnsavedWork: false,
-        installUpdate: vi.fn(),
+        installUpdate: vi.fn().mockResolvedValue(true),
       }),
     );
     await waitFor(() => expect(result.current.status).toBe('updated'));
@@ -36,7 +36,7 @@ describe('version-change detection', () => {
         currentVersion: '2.0.0',
         needRefresh: false,
         hasUnsavedWork: false,
-        installUpdate: vi.fn(),
+        installUpdate: vi.fn().mockResolvedValue(true),
       }),
     );
     await waitFor(() =>
@@ -55,7 +55,7 @@ describe('version-change detection', () => {
         currentVersion: '2.0.0',
         needRefresh: false,
         hasUnsavedWork: false,
-        installUpdate: vi.fn(),
+        installUpdate: vi.fn().mockResolvedValue(true),
       }),
     );
     await waitFor(() =>
@@ -69,7 +69,7 @@ describe('version-change detection', () => {
 
 describe('auto-apply', () => {
   it('applies the update once when one is pending and no work is in progress', async () => {
-    const installUpdate = vi.fn();
+    const installUpdate = vi.fn().mockResolvedValue(true);
     const { result } = renderHook(() =>
       useAppUpdate({
         app: 'interviewer',
@@ -83,8 +83,24 @@ describe('auto-apply', () => {
     expect(result.current.status).toBe('available');
   });
 
+  it('keeps the manual update available when auto-apply rejects', async () => {
+    const installUpdate = vi.fn().mockRejectedValue(new Error('activation'));
+    const { result } = renderHook(() =>
+      useAppUpdate({
+        app: 'interviewer',
+        currentVersion: '2.0.0',
+        needRefresh: true,
+        hasUnsavedWork: false,
+        installUpdate,
+      }),
+    );
+
+    await waitFor(() => expect(installUpdate).toHaveBeenCalledOnce());
+    expect(result.current.status).toBe('available');
+  });
+
   it('defers to the manual button when work is in progress', async () => {
-    const installUpdate = vi.fn();
+    const installUpdate = vi.fn().mockResolvedValue(true);
     const { result } = renderHook(() =>
       useAppUpdate({
         app: 'interviewer',
@@ -99,7 +115,7 @@ describe('auto-apply', () => {
   });
 
   it('does not auto-apply an update surfaced after the fresh-load window', async () => {
-    const installUpdate = vi.fn();
+    const installUpdate = vi.fn().mockResolvedValue(true);
     const { result, rerender } = renderHook(
       ({ needRefresh }: { needRefresh: boolean }) =>
         useAppUpdate({
@@ -142,7 +158,7 @@ describe('release-notes state', () => {
         currentVersion: '2.0.0',
         needRefresh: true,
         hasUnsavedWork: true, // suppress auto-apply so the test doesn't reload
-        installUpdate: vi.fn(),
+        installUpdate: vi.fn().mockResolvedValue(true),
       }),
     );
 

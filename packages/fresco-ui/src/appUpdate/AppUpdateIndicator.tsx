@@ -3,20 +3,27 @@ import { useState } from 'react';
 import Button from '../Button';
 import Dialog from '../dialogs/Dialog';
 import Icon from '../Icon';
+import Surface from '../layout/Surface';
 import Pill from '../Pill';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
   RenderMarkdown,
 } from '../RenderMarkdown';
+import { ScrollArea } from '../ScrollArea';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '../Tooltip';
+import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
-import type { ReleaseNotes, UpdateStatus } from './useAppUpdate';
+import type {
+  InstallAppUpdate,
+  ReleaseNotes,
+  UpdateStatus,
+} from './useAppUpdate';
 
 type AppUpdateIndicatorProps = {
   status: UpdateStatus;
@@ -25,11 +32,26 @@ type AppUpdateIndicatorProps = {
   currentVersion: string;
   availableVersion?: string;
   releaseNotes: ReleaseNotes | 'loading' | null;
-  onInstall: () => void;
+  onInstall: InstallAppUpdate;
   unsavedWorkCaveat?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   idleIcon?: React.ReactNode;
+};
+
+const releaseNoteHeadingRenderers = {
+  h1: ({ children }: { children?: React.ReactNode }) => (
+    <Heading level="h3">{children}</Heading>
+  ),
+  h2: ({ children }: { children?: React.ReactNode }) => (
+    <Heading level="h3">{children}</Heading>
+  ),
+  h3: ({ children }: { children?: React.ReactNode }) => (
+    <Heading level="h4">{children}</Heading>
+  ),
+  h4: ({ children }: { children?: React.ReactNode }) => (
+    <Heading level="h4">{children}</Heading>
+  ),
 };
 
 export default function AppUpdateIndicator({
@@ -46,6 +68,9 @@ export default function AppUpdateIndicator({
   idleIcon,
 }: AppUpdateIndicatorProps) {
   const [open, setOpen] = useState(false);
+  const [installState, setInstallState] = useState<
+    'idle' | 'installing' | 'failed'
+  >('idle');
 
   if (status === 'idle') {
     return (
@@ -82,11 +107,14 @@ export default function AppUpdateIndicator({
     </Pill>
   );
 
-  const body =
+  const changelog =
     releaseNotes === 'loading' ? (
       <Paragraph margin="none">Loading release notes…</Paragraph>
     ) : releaseNotes ? (
-      <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+      <RenderMarkdown
+        allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+        components={releaseNoteHeadingRenderers}
+      >
         {releaseNotes.body}
       </RenderMarkdown>
     ) : (
@@ -95,19 +123,85 @@ export default function AppUpdateIndicator({
       </Paragraph>
     );
 
-  const shownVersion = isAvailable ? availableVersion : currentVersion;
+  const body = (
+    <Surface
+      noContainer
+      spacing="none"
+      shadow="none"
+      className="mt-4 flex max-h-72 min-h-0 flex-col"
+    >
+      <ScrollArea aria-label={`${appName} changelog`} viewportClassName="px-6">
+        {changelog}
+      </ScrollArea>
+    </Surface>
+  );
+
+  const handleInstall = async () => {
+    if (installState === 'installing') return;
+    setInstallState('installing');
+
+    try {
+      if ((await onInstall()) !== false) return;
+    } catch {
+      // The actionable failure state below covers registration and activation
+      // errors without exposing service-worker internals to the researcher.
+    }
+
+    setInstallState('failed');
+  };
+
+  const availableUpdateSummary = availableVersion
+    ? `You are currently using version ${currentVersion}. This update will install version ${availableVersion}.`
+    : `You are currently using version ${currentVersion}. This update will install the latest available version.`;
+
+  const installFeedback =
+    installState === 'installing' ? (
+      <span className="mt-2 block">Installing the update…</span>
+    ) : installState === 'failed' ? (
+      <span role="alert" className="mt-2 block">
+        The update could not be applied. Try again, or close and reopen the app.
+      </span>
+    ) : null;
+
+  const description = isAvailable ? (
+    <>
+      <span>{availableUpdateSummary}</span>
+      {unsavedWorkCaveat && (
+        <span className="mt-2 block">{unsavedWorkCaveat}</span>
+      )}
+      <span aria-live="polite">{installFeedback}</span>
+    </>
+  ) : (
+    'Your app was recently updated. Find details of the changes below.'
+  );
 
   const footer = isAvailable ? (
     <>
-      {unsavedWorkCaveat && (
-        <div className="mr-auto max-w-sm text-sm">{unsavedWorkCaveat}</div>
-      )}
-      <Button color="primary" onClick={onInstall}>
-        Install and reload
+      <Button
+        disabled={installState === 'installing'}
+        onClick={() => setOpen(false)}
+      >
+        Cancel
+      </Button>
+      <Button
+        color="primary"
+        disabled={installState === 'installing'}
+        icon={
+          installState === 'installing' ? (
+            <Icon name="LoaderCircle" className="size-4 animate-spin" />
+          ) : undefined
+        }
+        onClick={() => void handleInstall()}
+      >
+        {installState === 'installing'
+          ? 'Installing…'
+          : installState === 'failed'
+            ? 'Try again'
+            : 'Install and reload'}
       </Button>
     </>
   ) : (
-    <Button variant="text" onClick={() => setOpen(false)}>
+    <Button color="primary" onClick={() => setOpen(false)}>
       Close
     </Button>
   );
@@ -127,8 +221,8 @@ export default function AppUpdateIndicator({
       <Dialog
         open={open}
         closeDialog={() => setOpen(false)}
-        title={isAvailable ? 'Update available' : `What's new in ${appName}`}
-        description={shownVersion ? `Version ${shownVersion}` : undefined}
+        title={isAvailable ? 'Update available' : 'App Recently Updated'}
+        description={description}
         footer={footer}
       >
         {body}

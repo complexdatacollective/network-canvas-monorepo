@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { applyFreshLoadServiceWorkerUpdate } from '../applyFreshLoadServiceWorkerUpdate';
+import {
+  applyFreshLoadServiceWorkerUpdate,
+  installServiceWorkerUpdate,
+} from '../applyFreshLoadServiceWorkerUpdate';
 
 type FakeWorker = ServiceWorker & { state: ServiceWorkerState };
 
@@ -275,6 +278,81 @@ describe('applyFreshLoadServiceWorkerUpdate', () => {
     serviceWorker.dispatchControllerChange();
 
     await expect(result).resolves.toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
+});
+
+describe('installServiceWorkerUpdate', () => {
+  it('activates a waiting worker and reloads after it controls the page', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+    const reload = vi.fn();
+
+    const result = installServiceWorkerUpdate({
+      registration,
+      serviceWorker,
+      reload,
+      activationTimeoutMs: 50,
+    });
+
+    await Promise.resolve();
+    expect(waiting.postMessage).toHaveBeenCalledWith({
+      type: 'SKIP_WAITING',
+    });
+
+    serviceWorker.dispatchControllerChange();
+
+    await expect(result).resolves.toBe(true);
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('reloads when another tab has already activated the update', async () => {
+    const registration = createRegistration();
+    const serviceWorker = createServiceWorkerContainer({ registration });
+    const reload = vi.fn();
+
+    await expect(
+      installServiceWorkerUpdate({ registration, serviceWorker, reload }),
+    ).resolves.toBe(true);
+
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('reloads after activation even when controllerchange is not observed', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+    const reload = vi.fn();
+
+    const result = installServiceWorkerUpdate({
+      registration,
+      serviceWorker,
+      reload,
+      activationTimeoutMs: 50,
+    });
+
+    waiting.setState('activated');
+
+    await expect(result).resolves.toBe(true);
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('reports failure when the waiting worker never activates', async () => {
+    const waiting = createWorker('installed');
+    const registration = createRegistration({ waiting: waiting.worker });
+    const serviceWorker = createServiceWorkerContainer({ registration });
+    const reload = vi.fn();
+
+    await expect(
+      installServiceWorkerUpdate({
+        registration,
+        serviceWorker,
+        reload,
+        activationTimeoutMs: 1,
+      }),
+    ).resolves.toBe(false);
+
     expect(reload).not.toHaveBeenCalled();
   });
 });

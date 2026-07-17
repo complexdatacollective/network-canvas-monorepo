@@ -4,7 +4,7 @@ const DEFAULT_ACTIVATION_TIMEOUT_MS = 20_000;
 
 type ServiceWorkerContainerLike = Pick<
   ServiceWorkerContainer,
-  'addEventListener' | 'controller' | 'getRegistration'
+  'addEventListener' | 'controller' | 'getRegistration' | 'removeEventListener'
 >;
 
 type FreshLoadServiceWorkerUpdateOptions = {
@@ -13,6 +13,14 @@ type FreshLoadServiceWorkerUpdateOptions = {
   serviceWorker?: ServiceWorkerContainerLike;
   reload?: () => void;
   shouldSkip?: () => boolean;
+};
+
+type InstallServiceWorkerUpdateOptions = {
+  activationTimeoutMs?: number;
+  registrationTimeoutMs?: number;
+  registration?: ServiceWorkerRegistration;
+  serviceWorker?: ServiceWorkerContainerLike;
+  reload?: () => void;
 };
 
 function getServiceWorkerContainer(): ServiceWorkerContainerLike | undefined {
@@ -111,6 +119,92 @@ function waitForControllerChange(
     activationTimeoutMs,
     false,
   );
+}
+
+function waitForActivationOrControllerChange(
+  serviceWorker: ServiceWorkerContainerLike,
+  waitingWorker: ServiceWorker,
+  activationTimeoutMs: number,
+): Promise<boolean> {
+  if (waitingWorker.state === 'activated') return Promise.resolve(true);
+  if (waitingWorker.state === 'redundant') return Promise.resolve(false);
+
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+
+    const finish = (activated: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      waitingWorker.removeEventListener('statechange', onStateChange);
+      resolve(activated);
+    };
+
+    const onControllerChange = () => finish(true);
+    const onStateChange = () => {
+      if (waitingWorker.state === 'activated') {
+        finish(true);
+      } else if (waitingWorker.state === 'redundant') {
+        finish(false);
+      }
+    };
+
+    const timeoutId = window.setTimeout(
+      () => finish(false),
+      activationTimeoutMs,
+    );
+
+    serviceWorker.addEventListener('controllerchange', onControllerChange, {
+      once: true,
+    });
+    waitingWorker.addEventListener('statechange', onStateChange);
+
+    // Close the small race between the state checks above and attaching the
+    // listeners.
+    onStateChange();
+  });
+}
+
+// Manual installs must own the reload instead of relying on Workbox's
+// `controlling` event heuristic. If another tab has already activated the
+// update, there may no longer be a waiting worker; reloading still moves this
+// page onto the active version.
+export async function installServiceWorkerUpdate({
+  activationTimeoutMs = DEFAULT_ACTIVATION_TIMEOUT_MS,
+  registrationTimeoutMs = DEFAULT_UPDATE_CHECK_TIMEOUT_MS,
+  registration,
+  serviceWorker = getServiceWorkerContainer(),
+  reload = () => window.location.reload(),
+}: InstallServiceWorkerUpdateOptions = {}): Promise<boolean> {
+  if (!serviceWorker) return false;
+
+  const currentRegistration =
+    registration ??
+    (await withTimeout(
+      serviceWorker.getRegistration(),
+      registrationTimeoutMs,
+      undefined,
+    ));
+  if (!currentRegistration) return false;
+
+  const waitingWorker = currentRegistration.waiting;
+  if (!waitingWorker) {
+    reload();
+    return true;
+  }
+
+  const activated = waitForActivationOrControllerChange(
+    serviceWorker,
+    waitingWorker,
+    activationTimeoutMs,
+  );
+  waitingWorker.postMessage(SKIP_WAITING_MESSAGE);
+
+  if (!(await activated)) return false;
+
+  reload();
+  return true;
 }
 
 export async function applyFreshLoadServiceWorkerUpdate({
