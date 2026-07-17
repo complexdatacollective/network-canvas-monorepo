@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/setup-worktree.sh \"$CLAUDE_PROJECT_DIR\"",
+            "statusMessage": "Setting up the Network Canvas workspace"
+          }
+        ]
+      }
+    ]
+  }
+}

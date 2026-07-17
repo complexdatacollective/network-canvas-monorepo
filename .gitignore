@@ -63,6 +63,7 @@ apps/documentation/public/sidebar.json
 # Claude Code local state (worktrees, projects, settings)
 # Ignore everything under .claude/ except shared, version-controlled skills.
 .claude/*
+!.claude/settings.json
 !.claude/skills/
 
 # Playwright e2e artifacts
