@@ -20,19 +20,19 @@ are positioned with percentages, so the layout expands independently along
 both axes. Because labels remain SVG text rather than outlined paths, their
 letterforms are not stretched or distorted.
 
-<ResponsiveSvgPreview src="/assets/responsive-svg-background.svg" alt="A transparent tie-strength map comparing time spent together and emotional closeness"></ResponsiveSvgPreview>
+<ResponsiveSvgPreview src="/assets/responsive-svg-background.svg" alt="A transparent social-context map with areas for family, friends, work or study, and community"></ResponsiveSvgPreview>
 
 <DownloadLink href="/assets/responsive-svg-background.svg">
-  Download the responsive tie-strength example
+  Download the responsive social-context example
 </DownloadLink>
 
-The example is inspired by social network research on tie strength.
-[Granovetter's account of strong and weak ties](https://www.journals.uchicago.edu/doi/10.1086/225469)
-describes tie strength as a combination of time, emotional intensity, intimacy,
-and reciprocal services. For clarity, this illustrative map uses two
-participant-friendly dimensions: time spent together and emotional closeness.
-Adapt the dimensions and wording to fit your own research design rather than
-treating the example as a validated scale.
+The example follows a contextual name-generator approach from personal network
+research. [Bidart and Charbonneau describe a contextual name
+generator](https://journals.sagepub.com/doi/10.1177/1525822X11408513) for
+building a broad view of someone's network from the social contexts of everyday
+life. The four example areas—Family, Friends, Work or study, and Community—are
+illustrative rather than exhaustive or mutually exclusive. Adapt them to the
+contexts and language that fit your research design.
 
 ## How the example works
 
@@ -61,9 +61,10 @@ Here is the complete source of the downloadable example:
   role="img"
   aria-labelledby="title description"
 >
-  <title id="title">Responsive tie-strength map</title>
+  <title id="title">Responsive social-context map</title>
   <desc id="description">
-    Four labelled quadrants compare time spent together and emotional closeness.
+    Four labelled quadrants organise people by family, friends, work or study,
+    and community contexts.
   </desc>
   <style>
     .axis {
@@ -85,20 +86,17 @@ Here is the complete source of the downloadable example:
   <line class="axis" x1="50%" y1="0" x2="50%" y2="100%" />
 
   <text class="label" x="25%" y="25%">
-    <tspan x="25%" dy="-0.2em">More time</tspan>
-    <tspan x="25%" dy="1.2em">Lower closeness</tspan>
+    <tspan x="25%">Family</tspan>
   </text>
   <text class="label" x="75%" y="25%">
-    <tspan x="75%" dy="-0.2em">More time</tspan>
-    <tspan x="75%" dy="1.2em">Higher closeness</tspan>
+    <tspan x="75%">Friends</tspan>
   </text>
   <text class="label" x="25%" y="75%">
-    <tspan x="25%" dy="-0.2em">Less time</tspan>
-    <tspan x="25%" dy="1.2em">Lower closeness</tspan>
+    <tspan x="25%" dy="-0.2em">Work or</tspan>
+    <tspan x="25%" dy="1.2em">study</tspan>
   </text>
   <text class="label" x="75%" y="75%">
-    <tspan x="75%" dy="-0.2em">Less time</tspan>
-    <tspan x="75%" dy="1.2em">Higher closeness</tspan>
+    <tspan x="75%">Community</tspan>
   </text>
 </svg>
 ```

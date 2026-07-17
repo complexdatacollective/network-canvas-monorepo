@@ -5,9 +5,10 @@
   role="img"
   aria-labelledby="title description"
 >
-  <title id="title">Responsive tie-strength map</title>
+  <title id="title">Responsive social-context map</title>
   <desc id="description">
-    Four labelled quadrants compare time spent together and emotional closeness.
+    Four labelled quadrants organise people by family, friends, work or study,
+    and community contexts.
   </desc>
   <style>
     .axis {
@@ -29,19 +30,16 @@
   <line class="axis" x1="50%" y1="0" x2="50%" y2="100%" />
 
   <text class="label" x="25%" y="25%">
-    <tspan x="25%" dy="-0.2em">More time</tspan>
-    <tspan x="25%" dy="1.2em">Lower closeness</tspan>
+    <tspan x="25%">Family</tspan>
   </text>
   <text class="label" x="75%" y="25%">
-    <tspan x="75%" dy="-0.2em">More time</tspan>
-    <tspan x="75%" dy="1.2em">Higher closeness</tspan>
+    <tspan x="75%">Friends</tspan>
   </text>
   <text class="label" x="25%" y="75%">
-    <tspan x="25%" dy="-0.2em">Less time</tspan>
-    <tspan x="25%" dy="1.2em">Lower closeness</tspan>
+    <tspan x="25%" dy="-0.2em">Work or</tspan>
+    <tspan x="25%" dy="1.2em">study</tspan>
   </text>
   <text class="label" x="75%" y="75%">
-    <tspan x="75%" dy="-0.2em">Less time</tspan>
-    <tspan x="75%" dy="1.2em">Higher closeness</tspan>
+    <tspan x="75%">Community</tspan>
   </text>
 </svg>
