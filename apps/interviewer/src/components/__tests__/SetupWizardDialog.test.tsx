@@ -7,13 +7,19 @@ const {
   mockOpenDialog,
   mockRefresh,
   mockRevoke,
+  mockSetAnalyticsEnabled,
   mockStatus,
+  mockToastAdd,
+  mockUpdateSettings,
 } = vi.hoisted(() => ({
   mockEnrolWithoutLock: vi.fn(),
   mockOpenDialog: vi.fn(),
   mockRefresh: vi.fn(),
   mockRevoke: vi.fn(),
+  mockSetAnalyticsEnabled: vi.fn(),
   mockStatus: vi.fn(),
+  mockToastAdd: vi.fn(),
+  mockUpdateSettings: vi.fn(),
 }));
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
@@ -21,11 +27,14 @@ vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
 }));
 
 vi.mock('@codaco/fresco-ui/Toast', () => ({
-  useToast: () => ({ add: vi.fn() }),
+  useToast: () => ({ add: mockToastAdd }),
 }));
 
 vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
-  useAnalytics: () => ({ setEnabled: vi.fn() }),
+  useAnalytics: () => ({
+    enabled: false,
+    setEnabled: mockSetAnalyticsEnabled,
+  }),
 }));
 
 vi.mock('~/lib/auth/AuthContext', () => ({
@@ -39,7 +48,7 @@ vi.mock('~/lib/auth/api', () => ({
 }));
 
 vi.mock('~/lib/db/api', () => ({
-  updateSettings: vi.fn(),
+  updateSettings: mockUpdateSettings,
 }));
 
 import { useSetupWizard } from '../SetupWizardDialog';
@@ -96,5 +105,37 @@ describe('settings-launched setup wizard', () => {
     await waitFor(() => expect(mockRefresh).toHaveBeenCalledOnce());
     expect(mockEnrolWithoutLock).toHaveBeenCalledOnce();
     expect(mockRevoke).not.toHaveBeenCalled();
+  });
+
+  it('preserves an existing analytics opt-out when the toggle is untouched', async () => {
+    mockOpenDialog.mockResolvedValue({
+      selectedMethod: 'pin',
+      enrolmentCommitted: true,
+    });
+
+    render(<SetupLauncher />);
+    await userEvent.click(screen.getByRole('button', { name: 'Launch setup' }));
+
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledOnce());
+    expect(mockSetAnalyticsEnabled).toHaveBeenCalledWith(false);
+  });
+
+  it('refreshes auth when a post-enrolment settings write fails', async () => {
+    mockOpenDialog.mockResolvedValue({
+      selectedMethod: 'pin',
+      enrolmentCommitted: true,
+    });
+    mockUpdateSettings.mockRejectedValue(new Error('settings unavailable'));
+
+    render(<SetupLauncher />);
+    await userEvent.click(screen.getByRole('button', { name: 'Launch setup' }));
+
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledOnce());
+    expect(mockToastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Setup could not be completed',
+        description: 'settings unavailable',
+      }),
+    );
   });
 });

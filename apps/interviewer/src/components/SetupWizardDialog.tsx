@@ -69,6 +69,9 @@ export function useSetupWizard({
   const toast = useToast();
 
   const openSetupWizard = async (): Promise<void> => {
+    const initialAnalyticsEnabled = preserveExistingData
+      ? analytics.enabled
+      : true;
     const result = await openDialog({
       type: 'wizard',
       title: '🔑 Secure this device',
@@ -200,7 +203,9 @@ export function useSetupWizard({
         },
         {
           title: 'Help improve the app',
-          content: Step5Analytics,
+          content: () => (
+            <Step5Analytics initialEnabled={initialAnalyticsEnabled} />
+          ),
           nextLabel: 'Finish',
         },
       ],
@@ -233,13 +238,15 @@ export function useSetupWizard({
           requireUnlockOnExit: behavior.requireUnlockOnExit,
           requireUnlockOnExport: behavior.requireUnlockOnExport,
         });
-        // Persist + apply the analytics choice (defaults to enabled). Routes
-        // through the provider so opt-in/out and the native preference mirror
-        // take effect immediately.
-        await analytics.setEnabled(data.analyticsEnabled ?? true);
+        // First-run setup defaults to enabled. A Settings-launched wizard is
+        // seeded from the current preference so leaving the toggle untouched
+        // preserves an existing opt-out.
+        await analytics.setEnabled(
+          data.analyticsEnabled ?? initialAnalyticsEnabled,
+        );
       }
 
-      await refresh();
+      if (!preserveExistingData) await refresh();
     } catch (cause) {
       toast.add({
         title: 'Setup could not be completed',
@@ -249,6 +256,25 @@ export function useSetupWizard({
             : 'Something went wrong while setting up this device. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      // Settings closes before opening the wizard, leaving Home mounted behind
+      // it. Always reconcile auth after that flow, even if enrolment succeeded
+      // but a later preference write failed; otherwise Home keeps stale
+      // unconfigured/no-lock state until reload.
+      if (preserveExistingData) {
+        try {
+          await refresh();
+        } catch (cause) {
+          toast.add({
+            title: 'Security status could not be refreshed',
+            description:
+              cause instanceof Error
+                ? cause.message
+                : 'Reload Interviewer to refresh this device’s security status.',
+            variant: 'destructive',
+          });
+        }
+      }
     }
   };
 
