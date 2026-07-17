@@ -154,7 +154,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
 
   const existingVariableNames = useMemo(
     () =>
-      Object.entries(existingVariables)
+      Object.entries(existingVariables ?? {})
         .filter(([variableId]) => variableId !== uuid) // Exclude current variable being edited
         .map(([, existingVariable]) => get(existingVariable, 'name')),
     [existingVariables, uuid],
