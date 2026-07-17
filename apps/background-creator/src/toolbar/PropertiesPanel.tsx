@@ -1,7 +1,7 @@
 import { BringToFront, SendToBack, Trash2 } from 'lucide-react';
 import type { ReactElement, ReactNode } from 'react';
 
-import { Button } from '@codaco/fresco-ui/Button';
+import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
@@ -19,6 +19,7 @@ import type {
 } from '~/model/types';
 import { assertNever } from '~/state/assertNever';
 import { useEditorStore } from '~/state/editorStore';
+import { elementKindLabel } from '~/state/labels';
 
 import { ColorControl } from './ColorControl';
 import { NumberField } from './NumberField';
@@ -358,31 +359,37 @@ export function PropertiesPanel(): ReactElement {
     );
   }
 
+  const itemLabel = element
+    ? elementKindLabel(element)
+    : zone
+      ? `Zone “${zone.label.trim() === '' ? 'unlabelled' : zone.label}”`
+      : '';
+
   return (
-    // Capped height with its own scroll: a text element exposes many fields, more
-    // than fit a popover on a short viewport.
-    <div className="flex max-h-[min(70vh,34rem)] w-64 flex-col overflow-y-auto pr-1">
-      {element && <ElementControls element={element} />}
-      {zone && <ZoneControls zone={zone} zones={doc.zones} />}
-      <div className="border-outline/40 mt-2 flex flex-wrap items-center gap-2 border-t pt-4">
+    <div className="flex max-h-[min(70vh,34rem)] w-64 flex-col">
+      {/* Compact action row pinned above the scroll area so the item's identity,
+          z-order, and Delete stay in view for any selection — previously these
+          sat below the fold at the bottom of the scrollable fields. */}
+      <div className="border-outline/40 mb-3 flex items-center gap-1 border-b pb-3">
+        <span className="text-text min-w-0 flex-1 truncate text-sm font-semibold">
+          {itemLabel}
+        </span>
         {element && (
           <>
-            <Button
+            <IconButton
               variant="text"
               size="sm"
+              aria-label="Send backward"
               icon={<SendToBack />}
               onClick={() => reorderSelected('backward')}
-            >
-              Backward
-            </Button>
-            <Button
+            />
+            <IconButton
               variant="text"
               size="sm"
+              aria-label="Bring forward"
               icon={<BringToFront />}
               onClick={() => reorderSelected('forward')}
-            >
-              Forward
-            </Button>
+            />
           </>
         )}
         <Button
@@ -391,10 +398,15 @@ export function PropertiesPanel(): ReactElement {
           size="sm"
           icon={<Trash2 />}
           onClick={() => deleteSelected()}
-          className="ml-auto"
         >
           Delete
         </Button>
+      </div>
+      {/* Capped, scrollable field area: a text element exposes many fields, more
+          than fit a popover on a short viewport. */}
+      <div className="flex min-h-0 flex-col overflow-y-auto pr-1">
+        {element && <ElementControls element={element} />}
+        {zone && <ZoneControls zone={zone} zones={doc.zones} />}
       </div>
     </div>
   );

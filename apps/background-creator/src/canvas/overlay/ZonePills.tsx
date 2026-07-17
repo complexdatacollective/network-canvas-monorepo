@@ -8,7 +8,9 @@ import { useItemControls } from './useItemControls';
 
 // Visible label pill at each zone's centroid. Doubles as the zone's focusable
 // keyboard control (zones are only interactive while visible). Pills only capture
-// the pointer under the select tool, so drawing can pass through them.
+// the pointer under the select tool, so drawing can pass through them. The
+// `data-zone-id` marker lets the canvas' double-click handler recognise a pill
+// under the cursor and open that zone's label editor.
 export function ZonePills(): ReactElement | null {
   const zones = useEditorStore((s) => s.doc.zones);
   const zonesVisible = useEditorStore((s) => s.zonesVisible);
@@ -35,6 +37,7 @@ export function ZonePills(): ReactElement | null {
           <button
             key={zone.id}
             type="button"
+            data-zone-id={zone.id}
             aria-label={zoneAriaLabel(zone)}
             aria-pressed={selected}
             className={`focusable elevation-low absolute max-w-[40%] truncate rounded-full border px-2 py-0.5 text-xs ${

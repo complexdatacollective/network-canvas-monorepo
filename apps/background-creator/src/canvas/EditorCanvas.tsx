@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import { assignZone } from '~/geometry/zones';
 import type { BackgroundDocument } from '~/model/types';
@@ -27,6 +28,10 @@ import {
   useEditorStore,
 } from '~/state/editorStore';
 import { serializeDocument } from '~/svg/serialize';
+import {
+  editTextElementFlow,
+  editZoneLabelFlow,
+} from '~/toolbar/textEditDialog';
 
 import { hitTestDocument } from './canvasGeometry';
 import { KeyboardTargets } from './overlay/KeyboardTargets';
@@ -157,6 +162,13 @@ export function EditorCanvas(): ReactElement {
   const hoverRafRef = useRef<number | null>(null);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
 
+  // The stage's pointer/dblclick handlers are stable (attached imperatively
+  // below); keep the dialog context in a ref so they can open the text editor
+  // without re-binding the listeners each time the dialog store re-renders.
+  const dialogs = useDialog();
+  const dialogsRef = useRef(dialogs);
+  dialogsRef.current = dialogs;
+
   const stageSize = useStageSize(previewAspect, containerRef);
 
   const svg = useMemo(() => serializeDocument(doc), [doc]);
@@ -236,6 +248,12 @@ export function EditorCanvas(): ReactElement {
 
       if (tool === 'text') {
         store.createTextAt(pt);
+        // Prompt for content right away so the user isn't left hunting for where
+        // to type; cancelling keeps the placeholder the store just placed.
+        const created = useEditorStore.getState().selection;
+        if (created?.type === 'element') {
+          void editTextElementFlow(dialogsRef.current, created.id);
+        }
         return;
       }
 
@@ -292,9 +310,36 @@ export function EditorCanvas(): ReactElement {
     setHoverLabel(null);
   }, []);
 
-  const handleDoubleClick = useCallback(() => {
+  const handleDoubleClick = useCallback((e: MouseEvent) => {
     const store = useEditorStore.getState();
-    if (store.draft?.mode === 'polygon') store.closeDraftPolygon();
+    if (store.draft?.mode === 'polygon') {
+      store.closeDraftPolygon();
+      return;
+    }
+    // A zone label pill sits over its zone centroid and often over a text label,
+    // so decide by the topmost painted element at the cursor rather than the
+    // hit-test (which ranks elements above zones). `elementFromPoint` returns the
+    // pill button when one is under the cursor; that zone's label editor wins.
+    const overlay = document.elementFromPoint(e.clientX, e.clientY);
+    const pill = overlay?.closest('[data-zone-id]');
+    if (pill instanceof HTMLElement && pill.dataset.zoneId) {
+      const zoneId = pill.dataset.zoneId;
+      store.select({ id: zoneId, type: 'zone' });
+      void editZoneLabelFlow(dialogsRef.current, zoneId);
+      return;
+    }
+    // Otherwise, double-clicking a text element opens its editor (any tool),
+    // using the selection hit-test so a shape stacked over the text wins.
+    const rect = stageRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const pt = clientToNormalized(rect, e.clientX, e.clientY);
+    const tol = HIT_TOLERANCE_PX / Math.min(rect.width, rect.height);
+    const hit = hitTestDocument(pt, store.doc, tol, store.zonesVisible);
+    if (hit?.type !== 'element') return;
+    const el = store.doc.elements.find((candidate) => candidate.id === hit.id);
+    if (el?.kind !== 'text') return;
+    store.select(hit);
+    void editTextElementFlow(dialogsRef.current, el.id);
   }, []);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -344,7 +389,7 @@ export function EditorCanvas(): ReactElement {
     touchAction: 'none',
   };
 
-  const stageLabel = `Background canvas. Active tool: ${TOOL_LABELS[activeTool]}. Draw new shapes with the pointer; move, nudge, and delete existing shapes with the keyboard.`;
+  const stageLabel = `Background canvas. Active tool: ${TOOL_LABELS[activeTool]}. Draw with the pointer; select an item and press Delete to remove it, or double-click text to edit it.`;
 
   return (
     <div

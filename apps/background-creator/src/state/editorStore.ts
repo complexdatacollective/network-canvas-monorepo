@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import {
   createBlankDocument,
   createConcentricCirclesTemplate,
+  createPoliticalCompassDocument,
   createQuadrantsTemplate,
 } from '~/model/templates';
 import type {
@@ -470,7 +471,9 @@ const templateName: Record<NewTemplate, string> = {
 };
 
 export const useEditorStore = create<EditorState>((set, get) => ({
-  doc: createQuadrantsTemplate(),
+  // The editor opens on a model of the sample protocol's compass background so
+  // the first thing a researcher sees is a real, complete example.
+  doc: createPoliticalCompassDocument(),
   selection: null,
   activeTool: 'select',
   draft: null,
