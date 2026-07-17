@@ -6,7 +6,6 @@ export type PlatformId =
   | 'apple-intel'
   | 'windows'
   | 'linux'
-  | 'ios'
   | 'android';
 
 type AppAction = {
@@ -54,7 +53,6 @@ type PlatformLink = {
     | 'platforms.appleIntel'
     | 'platforms.windows'
     | 'platforms.linux'
-    | 'platforms.ios'
     | 'platforms.android';
   href: string;
 };
@@ -228,11 +226,6 @@ export const classicApps = [
         id: 'linux',
         labelKey: 'platforms.linux',
         href: classicDestinations.interviewerRelease,
-      },
-      {
-        id: 'ios',
-        labelKey: 'platforms.ios',
-        href: 'https://apps.apple.com/us/app/network-canvas-interviewer/id1538673677',
       },
       {
         id: 'android',

@@ -34,7 +34,6 @@ const platformIcons = {
   'apple-intel': Apple,
   'windows': Monitor,
   'linux': Terminal,
-  'ios': Apple,
   'android': Smartphone,
 } satisfies Record<PlatformId, LucideIcon>;
 
