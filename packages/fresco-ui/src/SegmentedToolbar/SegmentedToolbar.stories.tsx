@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
   Bold,
+  Download,
   Eye,
+  FilePlus,
+  FolderOpen,
   Grid3x3,
   Italic,
   List,
@@ -12,6 +15,7 @@ import {
   Plus,
   Redo2,
   Settings,
+  SlidersHorizontal,
   Snowflake,
   Sparkles,
   Spline,
@@ -25,10 +29,73 @@ import { useState } from 'react';
 import SplitButton from '../SplitButton';
 import { SegmentedToolbar, type ToolbarSegment } from './SegmentedToolbar';
 
+const componentDescription = `
+A horizontal or vertical pill of controls sharing one roving-focus toolbar (Base
+UI \`Toolbar\`), with optional dragging and animated add/remove. Compose it from
+a typed \`items\` array; each entry is a discriminated \`ToolbarSegment\`.
+
+### Composition
+
+\`\`\`tsx
+import {
+  SegmentedToolbar,
+  type ToolbarSegment,
+} from '@codaco/fresco-ui/SegmentedToolbar';
+
+const items: ToolbarSegment[] = [
+  { type: 'button', id: 'undo', label: 'Undo', icon: <Undo2 />, onClick: undo },
+  { type: 'toggle', id: 'freeze', label: 'Freeze', icon: <Snowflake />, pressed, onPressedChange },
+  { type: 'separator', id: 'sep' },
+  { type: 'group', id: 'view', mode: 'single', value, onValueChange, options: [/* … */] },
+  // Single-select menu — radio items, the one matching \`value\` is checked.
+  { type: 'menu', id: 'edge', kind: 'select', label: 'Draw edge', value, options, onSelect },
+  // Actions menu — plain menu-item commands (no radio semantics).
+  { type: 'menu', id: 'file', kind: 'actions', label: 'File', options, onSelect },
+  // Controlled popover — own \`open\`; keeps the trigger pressed while open.
+  { type: 'popover', id: 'props', label: 'Properties', open, onOpenChange, children: <Panel /> },
+];
+
+<SegmentedToolbar label="Editor toolbar" items={items} orientation="horizontal" size="md" draggable />
+\`\`\`
+
+### Props
+
+**\`SegmentedToolbar\`** — \`label\` (required accessible name) · \`items\` ·
+\`orientation\` \`'horizontal' | 'vertical'\` · \`size\` \`'sm' | 'md' | 'lg'\` ·
+\`draggable\` · \`position\`/\`defaultPosition\`/\`onPositionChange\` ·
+\`dragConstraints\` · \`dragHandleLabel\` · \`className\`.
+
+Every segment shares **\`SegmentContent\`**: \`label\` (accessible name), \`icon\`,
+\`showLabel\` (default: \`false\` with an icon, \`true\` without), \`variant\`,
+\`className\`.
+
+- **\`button\`** \`{ onClick?, disabled?, render? }\` — \`render\` hosts the styled
+  button inside a caller element (e.g. a Popover/Menu trigger).
+- **\`toggle\`** \`{ pressed? | defaultPressed?, onPressedChange?, disabled? }\`.
+- **\`group\`** \`{ mode: 'single' | 'multiple', value?/defaultValue?, onValueChange?, options }\`
+  — one toggle per option.
+- **\`menu\`** \`{ kind?: 'select' | 'actions', options, onSelect, value?, pressed?, disabled? }\`
+  — a **select** menu renders radio items (\`role="menuitemradio"\`, checked =
+  \`value\`); an **actions** menu renders plain commands (\`role="menuitem"\`) for
+  fire-and-forget actions. \`kind\` is inferred from whether a \`value\` selection
+  contract is declared — pass it explicitly to be unambiguous.
+- **\`popover\`** \`{ children, open?, defaultOpen?, onOpenChange?, side?, pressed?, disabled? }\`
+  — **controlled** (pass \`open\` + \`onOpenChange\`) or **uncontrolled** (omit
+  \`open\`, optionally \`defaultOpen\`). A disabled trigger is announced and taken
+  out of the tab order; a controlled, open popover that becomes disabled is
+  closed so its content is never stranded.
+- **\`separator\`** \`{}\`.
+- **\`component\`** \`{ component }\` — renders a caller component with
+  \`{ size, orientation }\` for composite controls (e.g. \`SplitButton\`).
+`;
+
 const meta = {
   title: 'Components/SegmentedToolbar',
   component: SegmentedToolbar,
-  parameters: { layout: 'centered' },
+  parameters: {
+    layout: 'centered',
+    docs: { description: { component: componentDescription } },
+  },
   tags: ['autodocs'],
   argTypes: {
     orientation: {
@@ -164,14 +231,21 @@ export const Labels: Story = {
 };
 
 /**
- * A `menu` segment is a button that opens a single-select menu. This mirrors the
- * Network Composer palette: an exclusive tool group, an edge tool that opens a
- * menu of edge types, and a toggle button for automatic layout.
+ * A `menu` segment opens a dropdown of `options` and comes in two flavours:
+ *
+ * - **Select** (`kind: 'select'`, or inferred from a declared `value`) — a
+ *   single-select menu of radio items; the one matching `value` is checked and
+ *   the trigger shows `pressed` styling. The `Draw edge` menu mirrors the
+ *   Network Composer edge-type picker.
+ * - **Actions** (`kind: 'actions'`, or inferred when no `value` is declared) — a
+ *   menu of one-shot commands rendered as plain menu items, so a screen reader
+ *   announces an action rather than "radio button, not checked". The `File`
+ *   menu is a typical example.
  */
 export const MenuSelection: Story = {
   args: {
     label: 'Network tools',
-    orientation: 'vertical',
+    orientation: 'horizontal',
     items: [
       {
         type: 'group',
@@ -183,9 +257,12 @@ export const MenuSelection: Story = {
           { value: 'add', label: 'Add node', icon: <Plus /> },
         ],
       },
+      // Single-select: `value` declares the selection contract, so `kind` is
+      // inferred as 'select' and the checked item reflects `value`.
       {
         type: 'menu',
         id: 'edge',
+        kind: 'select',
         label: 'Draw edge',
         icon: <Spline />,
         value: 'friendship',
@@ -195,7 +272,22 @@ export const MenuSelection: Story = {
         ],
         onSelect: noop,
       },
-      { type: 'separator', id: 'sep' },
+      { type: 'separator', id: 'sep-1' },
+      // Fire-and-forget commands: plain menu items, no persistent selection.
+      {
+        type: 'menu',
+        id: 'file',
+        kind: 'actions',
+        label: 'File',
+        icon: <FolderOpen />,
+        options: [
+          { value: 'new', label: 'New document', icon: <FilePlus /> },
+          { value: 'open', label: 'Open…', icon: <FolderOpen /> },
+          { value: 'download', label: 'Download', icon: <Download /> },
+        ],
+        onSelect: noop,
+      },
+      { type: 'separator', id: 'sep-2' },
       {
         type: 'toggle',
         id: 'auto',
@@ -243,6 +335,70 @@ export const PopoverInput: Story = {
       },
     ];
     return <SegmentedToolbar {...args} items={items} />;
+  },
+};
+
+/**
+ * A controlled `popover` segment driven by external state. The consumer owns
+ * `open`, so the panel can be opened programmatically (here, from a button
+ * outside the toolbar) while the trigger stays `pressed`. Toggling `disabled`
+ * while the popover is open closes it — its content is never stranded behind a
+ * trigger that can no longer dismiss it.
+ */
+export const ControlledPopover: Story = {
+  args: { label: 'Editor toolbar', items: [] },
+  render: function ControlledPopoverRender(args) {
+    const [open, setOpen] = useState(false);
+    const [disabled, setDisabled] = useState(false);
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo2 />,
+        onClick: noop,
+      },
+      { type: 'separator', id: 'sep' },
+      {
+        type: 'popover',
+        id: 'properties',
+        label: 'Properties',
+        icon: <SlidersHorizontal />,
+        side: 'top',
+        open,
+        onOpenChange: setOpen,
+        pressed: open,
+        disabled,
+        children: (
+          <div className="w-56 p-2">Properties for the current selection.</div>
+        ),
+      },
+    ];
+
+    const controlClass =
+      'inline-flex items-center gap-1 rounded-full border-2 border-current px-3 py-1 text-sm font-bold';
+
+    return (
+      <div className="flex flex-col items-center gap-6">
+        <SegmentedToolbar {...args} items={items} />
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className={controlClass}
+            onClick={() => setOpen((current) => !current)}
+          >
+            {open ? 'Close' : 'Open'} properties
+          </button>
+          <button
+            type="button"
+            className={controlClass}
+            onClick={() => setDisabled((current) => !current)}
+          >
+            {disabled ? 'Enable' : 'Disable'} tool
+          </button>
+        </div>
+      </div>
+    );
   },
 };
 

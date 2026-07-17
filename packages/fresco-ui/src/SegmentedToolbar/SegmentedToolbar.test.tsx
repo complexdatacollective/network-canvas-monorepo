@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
+  FolderOpen,
   Grid3x3,
   List,
   Map as MapIcon,
@@ -170,6 +171,172 @@ describe('SegmentedToolbar — buttons & separators', () => {
     expect(
       screen.getByRole('button', { name: 'vertical lg' }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('SegmentedToolbar — action menus', () => {
+  it('renders a menu with no value selection contract as plain menu items (not radios)', async () => {
+    const onSelect = vi.fn();
+    const items: ToolbarSegment[] = [
+      {
+        type: 'menu',
+        id: 'file',
+        label: 'File',
+        icon: <FolderOpen />,
+        options: [
+          { value: 'new', label: 'New' },
+          { value: 'open', label: 'Open' },
+        ],
+        onSelect,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'File' }));
+    // Fire-and-forget commands must not carry radio semantics.
+    expect(screen.queryByRole('menuitemradio')).not.toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Open' }),
+    );
+    expect(onSelect).toHaveBeenCalledWith('open');
+  });
+
+  it('honours an explicit kind: "actions" even when a value is present', async () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'menu',
+        id: 'file',
+        kind: 'actions',
+        label: 'File',
+        icon: <FolderOpen />,
+        value: 'new',
+        options: [{ value: 'new', label: 'New' }],
+        onSelect: vi.fn(),
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'File' }));
+    expect(
+      await screen.findByRole('menuitem', { name: 'New' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('menuitemradio')).not.toBeInTheDocument();
+  });
+
+  it('keeps radio semantics for kind: "select" even with no value chosen yet', async () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'menu',
+        id: 'edge',
+        kind: 'select',
+        label: 'Draw edge',
+        icon: <Spline />,
+        options: [
+          { value: 'friendship', label: 'Friendship' },
+          { value: 'advice', label: 'Advice' },
+        ],
+        onSelect: vi.fn(),
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Draw edge' }));
+    expect(
+      await screen.findByRole('menuitemradio', { name: 'Advice' }),
+    ).toBeInTheDocument();
+  });
+
+  it('does not fire onSelect for a disabled action item', async () => {
+    const onSelect = vi.fn();
+    const items: ToolbarSegment[] = [
+      {
+        type: 'menu',
+        id: 'file',
+        label: 'File',
+        icon: <FolderOpen />,
+        options: [{ value: 'open', label: 'Open', disabled: true }],
+        onSelect,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'File' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Open' }),
+    );
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+describe('SegmentedToolbar — popover control', () => {
+  it('opens an uncontrolled popover on trigger click', async () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Pencil />,
+        children: <input aria-label="Name" />,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(
+      screen.queryByRole('textbox', { name: 'Name' }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Add node' }));
+    expect(
+      await screen.findByRole('textbox', { name: 'Name' }),
+    ).toBeInTheDocument();
+  });
+
+  it('honours defaultOpen for an uncontrolled popover', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Pencil />,
+        defaultOpen: true,
+        children: <input aria-label="Name" />,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+  });
+
+  it('marks a disabled popover trigger as disabled', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Pencil />,
+        disabled: true,
+        open: false,
+        onOpenChange: vi.fn(),
+        children: <input aria-label="Name" />,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(screen.getByRole('button', { name: 'Add node' })).toBeDisabled();
+  });
+
+  it('closes a controlled, open popover when it becomes disabled', () => {
+    const onOpenChange = vi.fn();
+    const base = {
+      type: 'popover' as const,
+      id: 'add',
+      label: 'Add node',
+      icon: <Pencil />,
+      open: true,
+      onOpenChange,
+      children: <input aria-label="Name" />,
+    };
+    const { rerender } = render(
+      <SegmentedToolbar label="Tools" items={[base]} />,
+    );
+    // Open + enabled: no close is requested.
+    expect(onOpenChange).not.toHaveBeenCalled();
+    rerender(
+      <SegmentedToolbar label="Tools" items={[{ ...base, disabled: true }]} />,
+    );
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
 

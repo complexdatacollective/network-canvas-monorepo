@@ -4,6 +4,7 @@ import { backgroundDocumentSchema } from '~/model/schema';
 import {
   createBlankDocument,
   createConcentricCirclesTemplate,
+  createPoliticalCompassDocument,
   createQuadrantsTemplate,
 } from '~/model/templates';
 
@@ -13,8 +14,45 @@ describe('templates', () => {
       createBlankDocument(),
       createQuadrantsTemplate(),
       createConcentricCirclesTemplate(),
+      createPoliticalCompassDocument(),
     ]) {
       expect(backgroundDocumentSchema.safeParse(template).success).toBe(true);
+    }
+  });
+
+  it('political compass models the sample-protocol asset with full zone coverage', () => {
+    const doc = createPoliticalCompassDocument();
+    expect(doc.title).toBe('Responsive political compass');
+    const rects = doc.elements.filter((element) => element.kind === 'rect');
+    expect(rects.map((rect) => rect.fill)).toEqual([
+      '#f1f5f6',
+      '#ffafb3',
+      '#71cef0',
+      '#bee7b5',
+      '#e5c0df',
+    ]);
+    const labels = doc.zones.map((zone) => zone.label);
+    expect(labels).toEqual([
+      'unsure',
+      'authoritarian-left',
+      'authoritarian-right',
+      'libertarian-left',
+      'libertarian-right',
+    ]);
+    expect(new Set(labels).size).toBe(labels.length);
+    // Zones tile the whole canvas: every sampled point is assigned somewhere.
+    const rectZones = doc.zones.filter((zone) => zone.shape === 'rect');
+    for (const x of [0.01, 0.21, 0.22, 0.5, 0.61, 0.62, 0.99]) {
+      for (const y of [0.01, 0.49, 0.51, 0.99]) {
+        const covered = rectZones.some(
+          (zone) =>
+            x >= zone.x &&
+            x <= zone.x + zone.width &&
+            y >= zone.y &&
+            y <= zone.y + zone.height,
+        );
+        expect(covered).toBe(true);
+      }
     }
   });
 

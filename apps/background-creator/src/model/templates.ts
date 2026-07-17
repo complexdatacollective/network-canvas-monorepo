@@ -169,6 +169,113 @@ export function createQuadrantsTemplate(): BackgroundDocument {
   };
 }
 
+// Faithful model of the sample protocol's responsive political-compass asset
+// (packages/protocols/sample/assets/2946e670-3e45-11eb-ac1c-7b8de3fada93.svg),
+// with zones added for the unsure band and the four quadrants. Used as the
+// document the editor opens with.
+export function createPoliticalCompassDocument(): BackgroundDocument {
+  const ink = '#17142f';
+
+  const solidRect = (
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    fill: string,
+  ): RectElement => ({
+    id: crypto.randomUUID(),
+    kind: 'rect',
+    x,
+    y,
+    width,
+    height,
+    fill,
+    fillOpacity: 1,
+    stroke: null,
+    strokeWidth: 1,
+  });
+
+  const axis = (
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+  ): LineElement => ({
+    id: crypto.randomUUID(),
+    kind: 'line',
+    x1,
+    y1,
+    x2,
+    y2,
+    stroke: ink,
+    strokeWidth: 3,
+    startArrow: true,
+    endArrow: true,
+  });
+
+  const quadrantLabel = (
+    x: number,
+    y: number,
+    lines: string[],
+  ): TextElement => ({
+    id: crypto.randomUUID(),
+    kind: 'text',
+    x,
+    y,
+    lines,
+    fill: '#322f45',
+    fontMinPx: 13,
+    fontVmin: 2.3,
+    fontMaxPx: 30,
+    fontWeight: 500,
+    anchor: 'middle',
+    opacity: 0.38,
+  });
+
+  return {
+    version: 1,
+    title: 'Responsive political compass',
+    description:
+      'An unsure area and four political compass quadrants divided by economic and social axes.',
+    elements: [
+      solidRect(0, 0, 0.21, 1, '#f1f5f6'),
+      solidRect(0.23, 0, 0.385, 0.5, '#ffafb3'),
+      solidRect(0.615, 0, 0.385, 0.5, '#71cef0'),
+      solidRect(0.23, 0.5, 0.385, 0.5, '#bee7b5'),
+      solidRect(0.615, 0.5, 0.385, 0.5, '#e5c0df'),
+      axis(0.23, 0.5, 1, 0.5),
+      axis(0.615, 0, 0.615, 1),
+      {
+        id: crypto.randomUUID(),
+        kind: 'text',
+        x: 0.105,
+        y: 0.06,
+        lines: ['Unsure'],
+        fill: '#111111',
+        fontMinPx: 14,
+        fontVmin: 2.6,
+        fontMaxPx: 34,
+        fontWeight: 700,
+        anchor: 'middle',
+        opacity: 1,
+      },
+      quadrantLabel(0.4225, 0.25, ['Authoritarian', 'Left']),
+      quadrantLabel(0.8075, 0.25, ['Authoritarian', 'Right']),
+      quadrantLabel(0.4225, 0.75, ['Libertarian', 'Left']),
+      quadrantLabel(0.8075, 0.75, ['Libertarian', 'Right']),
+    ],
+    zones: [
+      // The unsure zone spans through the visual gutter (band ends at 0.21,
+      // quadrants start at 0.23) so no canvas position is unassigned.
+      makeRectZone('unsure', 0, 0, 0.22, 1),
+      makeRectZone('authoritarian-left', 0.22, 0, 0.395, 0.5),
+      makeRectZone('authoritarian-right', 0.615, 0, 0.385, 0.5),
+      makeRectZone('libertarian-left', 0.22, 0.5, 0.395, 0.5),
+      makeRectZone('libertarian-right', 0.615, 0.5, 0.385, 0.5),
+    ],
+  };
+}
+
 export function createConcentricCirclesTemplate(): BackgroundDocument {
   return {
     version: 1,

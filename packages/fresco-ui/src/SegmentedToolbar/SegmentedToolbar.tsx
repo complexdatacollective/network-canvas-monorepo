@@ -18,6 +18,7 @@ import { Button, type ButtonProps } from '../Button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
@@ -86,33 +87,68 @@ export type SeparatorSegment = {
 };
 
 /**
- * A button that opens a single-select menu — for choosing among options that
- * would otherwise need one segment each (e.g. picking an edge type to draw).
- * The trigger shows `pressed` styling when a selection is active.
+ * A button that opens a menu of `options`. Comes in two flavours, chosen by
+ * `kind`:
+ *
+ * - `'select'` — a single-select menu for choosing among options that would
+ *   otherwise need one segment each (e.g. picking an edge type to draw). Items
+ *   render as radio options (`role="menuitemradio"`); the one matching `value`
+ *   is checked and the trigger shows `pressed` styling while a selection is
+ *   active. `onSelect` receives the newly-chosen option value.
+ * - `'actions'` — a menu of one-shot, fire-and-forget commands (e.g. a File
+ *   menu). Items render as plain menu items (`role="menuitem"`), so a screen
+ *   reader announces a command rather than "radio button, not checked". There
+ *   is no persistent selection, so `value`/`pressed` are ignored; `onSelect`
+ *   receives the chosen command's value.
+ *
+ * When `kind` is omitted it is inferred from the selection contract: a segment
+ * that declares a `value` prop is treated as `'select'`, one that declares none
+ * as `'actions'`. Pass `kind` explicitly to be unambiguous — in particular a
+ * single-select menu that starts with nothing selected should still declare its
+ * `value` (as `undefined`) or set `kind: 'select'`.
  */
 export type MenuSegment = {
   type: 'menu';
   id: string;
+  /** Selection flavour. Inferred from `value` when omitted (see above). */
+  kind?: 'select' | 'actions';
   disabled?: boolean;
+  /** Single-select only: highlights the trigger while a selection is active. */
   pressed?: boolean;
+  /** Single-select only: the currently-selected option value. */
   value?: string;
   options: Array<SegmentContent & { value: string; disabled?: boolean }>;
+  /** Called with the chosen option's value. */
   onSelect: (value: string) => void;
 } & SegmentContent;
 
 /**
  * A pressed-able button that anchors a popover next to itself, rendering
- * arbitrary content (e.g. a text input). Open state is controlled by the
- * consumer so it can be tied to external state — for instance keeping the
- * button "pressed" for as long as the popover is open.
+ * arbitrary content (e.g. a text input).
+ *
+ * Open state can be controlled or uncontrolled, mirroring Base UI:
+ * - Controlled: pass `open` together with `onOpenChange` and own the state
+ *   yourself — e.g. to keep the button `pressed` for as long as the popover is
+ *   open, or to open it programmatically.
+ * - Uncontrolled: omit `open`; the popover manages its own state, starting from
+ *   `defaultOpen`. `onOpenChange` (if given) is still called on every change.
+ *
+ * `disabled` disables the trigger — announced to assistive technology and taken
+ * out of the tab order per Base UI's convention. If a *controlled* popover is
+ * open when it becomes disabled it is closed via `onOpenChange(false)`, so its
+ * content is never stranded behind a trigger that can no longer dismiss it.
  */
 export type PopoverSegment = {
   type: 'popover';
   id: string;
   disabled?: boolean;
   pressed?: boolean;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  /** Controlled open state. Omit for an uncontrolled popover (see `defaultOpen`). */
+  open?: boolean;
+  /** Uncontrolled initial open state. Ignored when `open` is provided. @default false */
+  defaultOpen?: boolean;
+  /** Called whenever the popover requests an open-state change (both modes). */
+  onOpenChange?: (open: boolean) => void;
   /** Which side of the trigger the popover opens on. @default 'right' */
   side?: 'top' | 'right' | 'bottom' | 'left';
   children: React.ReactNode;
@@ -357,6 +393,17 @@ function ToolbarGroupSegment({
 // state, so the selected highlight is applied directly when `pressed`.
 const menuActiveClasses = 'bg-selected! text-selected-contrast!';
 
+/**
+ * Whether a menu segment is a fire-and-forget actions menu (plain menu items)
+ * rather than a single-select radio menu. An explicit `kind` wins; otherwise a
+ * menu that declares a `value` selection contract is single-select and one that
+ * declares none is actions.
+ */
+function isActionsMenu(segment: MenuSegment): boolean {
+  if (segment.kind) return segment.kind === 'actions';
+  return !Object.hasOwn(segment, 'value');
+}
+
 function ToolbarMenuSegment({
   segment,
   size,
@@ -393,24 +440,40 @@ function ToolbarMenuSegment({
         overlaySide(orientation),
       )}
       <DropdownMenuContent side={overlaySide(orientation)}>
-        <DropdownMenuRadioGroup
-          value={segment.value}
-          onValueChange={(value) => segment.onSelect(String(value))}
-        >
-          {segment.options.map((option) => (
-            // Base UI radio items keep the menu open by default; close on pick
-            // so a single selection commits and returns focus to the page.
-            <DropdownMenuRadioItem
+        {isActionsMenu(segment) ? (
+          // Fire-and-forget commands: plain menu items (role="menuitem"), which
+          // close on click by default, so a screen reader announces an action
+          // rather than a radio selection.
+          segment.options.map((option) => (
+            <DropdownMenuItem
               key={option.value}
-              value={option.value}
+              icon={option.icon}
               disabled={option.disabled}
-              closeOnClick
+              onClick={() => segment.onSelect(option.value)}
             >
-              {option.icon}
               {option.label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+            </DropdownMenuItem>
+          ))
+        ) : (
+          <DropdownMenuRadioGroup
+            value={segment.value}
+            onValueChange={(value) => segment.onSelect(String(value))}
+          >
+            {segment.options.map((option) => (
+              // Base UI radio items keep the menu open by default; close on pick
+              // so a single selection commits and returns focus to the page.
+              <DropdownMenuRadioItem
+                key={option.value}
+                value={option.value}
+                disabled={option.disabled}
+                closeOnClick
+              >
+                {option.icon}
+                {option.label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -425,6 +488,15 @@ function ToolbarPopoverSegment({
   size: SegmentSize;
   orientation: ToolbarOrientation;
 }) {
+  const { disabled, open, onOpenChange } = segment;
+
+  // A controlled, open popover whose trigger becomes disabled would otherwise
+  // strand its content with no way to dismiss it (the trigger can no longer be
+  // clicked), so request a close. Uncontrolled popovers manage their own state.
+  React.useEffect(() => {
+    if (disabled && open) onOpenChange?.(false);
+  }, [disabled, open, onOpenChange]);
+
   // As with menu segments, a consumer-supplied className takes precedence over
   // the default pressed highlight, so an active state can be coloured by its
   // own meaning (e.g. a group tool adopting the active group's colour).
@@ -437,7 +509,7 @@ function ToolbarPopoverSegment({
     <Toolbar.Button
       render={
         <PopoverTrigger
-          disabled={segment.disabled}
+          disabled={disabled}
           render={segmentButton(segment, size, activeClasses)}
         />
       }
@@ -445,8 +517,9 @@ function ToolbarPopoverSegment({
   );
   return (
     <Popover
-      open={segment.open}
-      onOpenChange={(open) => segment.onOpenChange(open)}
+      open={open}
+      defaultOpen={segment.defaultOpen}
+      onOpenChange={(next) => onOpenChange?.(next)}
     >
       {withTooltip(
         trigger,
