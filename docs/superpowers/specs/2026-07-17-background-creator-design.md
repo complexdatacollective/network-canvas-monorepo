@@ -356,8 +356,11 @@ On top of #1018's article:
   preview, zones, SVG download, Python/R zone-assignment export); keep the
   format explanation and the Illustrator/Inkscape workflows as the manual
   alternative; keep accessibility guidance. Where the tool needs a link, use an
-  MDX comment placeholder (`{/* TODO: Background Creator URL once deployed */}`)
-  rather than inventing a URL.
+  HTML comment placeholder (`<!-- TODO: Background Creator URL once deployed -->`)
+  rather than inventing a URL. An MDX-style `{/* */}` comment is not an option:
+  the documentation pipeline renders `.mdx` as CommonMark plus raw HTML (no
+  MDX/JSX compiler), so `{/* */}` renders as visible literal text while an
+  HTML comment is dropped correctly.
 - `data-export.en.mdx` — short note under layout-variable export: zone
   assignment scripts from the Background Creator consume the `_x`/`_y` columns.
 
