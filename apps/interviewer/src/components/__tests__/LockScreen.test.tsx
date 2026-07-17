@@ -171,6 +171,29 @@ describe('LockScreen', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('restores destructive recovery for a later home lock cycle', () => {
+    window.history.replaceState(null, '', '/interview/session-1');
+    const { rerender } = render(<LockScreen />);
+
+    expect(
+      screen.queryByRole('button', { name: 'Recover by resetting' }),
+    ).not.toBeInTheDocument();
+
+    useAuthMock.mockReturnValue({ ...authValue, kind: 'unlocked' });
+    rerender(<LockScreen />);
+
+    act(() => {
+      window.history.replaceState(null, '', '/');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    useAuthMock.mockReturnValue(authValue);
+    rerender(<LockScreen />);
+
+    expect(
+      screen.getByRole('button', { name: 'Recover by resetting' }),
+    ).toBeInTheDocument();
+  });
+
   it('uses the lock-specific marker to restrict recovery after reload', () => {
     window.history.replaceState(null, '', '/interview/session-1');
     const firstLock = render(<LockScreen />);

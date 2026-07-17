@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -29,18 +29,18 @@ export function LockScreen() {
   const { kind } = useAuth();
   const [location] = useLocation();
   const interviewRoute = isInterviewRoutePath(location);
-  const recoveryRestricted = useRef<boolean | undefined>(undefined);
+  const [recoveryRestricted, setRecoveryRestricted] = useState(
+    readInterviewRecoveryRestriction,
+  );
 
-  if (recoveryRestricted.current === undefined) {
-    recoveryRestricted.current = readInterviewRecoveryRestriction();
-  }
+  useLayoutEffect(() => {
+    if (kind !== 'locked') {
+      setRecoveryRestricted(false);
+      return;
+    }
 
-  if (kind === 'locked' && interviewRoute) {
-    recoveryRestricted.current = true;
-  }
-
-  useEffect(() => {
     if (kind === 'locked' && interviewRoute) {
+      setRecoveryRestricted(true);
       persistInterviewRecoveryRestriction();
     }
   }, [interviewRoute, kind]);
@@ -52,6 +52,8 @@ export function LockScreen() {
   // Latch the restriction for this lock cycle so route changes cannot reveal
   // destructive recovery. The lock-specific marker preserves it across reloads.
   return (
-    <LockScreenView allowDestructiveRecovery={!recoveryRestricted.current} />
+    <LockScreenView
+      allowDestructiveRecovery={!(recoveryRestricted || interviewRoute)}
+    />
   );
 }
