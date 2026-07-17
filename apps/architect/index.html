@@ -43,23 +43,33 @@
       }
 
       /* circle-size mirrors the fresco-ui Spinner `lg` preset: 1.25 x 1rem. */
-      #boot-loader .boot-spinner {
+      .boot-spinner {
         --circle-size: 1.25rem;
         position: relative;
         width: calc(var(--circle-size) * 3);
         height: calc(var(--circle-size) * 3);
         margin: var(--circle-size);
         transform: rotate(45deg);
-        animation: boot-spinner-rotate 1.8s cubic-bezier(0.4, 0, 0.2, 1)
-          infinite;
+        animation: boot-spinner-rotate 1.8s ease-in-out infinite;
+        will-change: transform;
+        backface-visibility: hidden;
+      }
+
+      /* Rotation and scale run on separate elements so their keyframe timing
+         matches the independent Motion animations in fresco-ui Spinner. */
+      .boot-spinner__scale {
+        position: absolute;
+        inset: 0;
+        transform: scale(1);
+        animation: boot-spinner-scale 1.8s ease-in-out infinite;
         will-change: transform;
       }
 
-      #boot-loader .boot-petal {
+      .boot-petal {
         position: absolute;
       }
 
-      #boot-loader .boot-half {
+      .boot-half {
         width: calc(var(--circle-size) * 2);
         height: var(--circle-size);
         border-radius: calc(var(--circle-size) * 2) calc(var(--circle-size) * 2)
@@ -68,82 +78,76 @@
 
       /* The upper half-circle splits outward and shifts light<->dark, matching the
          fresco-ui Spinner's per-petal merge/split motion. */
-      #boot-loader .boot-half--top {
+      .boot-half--top {
+        background-color: var(--spinner-color-dark);
         transform: translateX(50%);
-        animation: boot-petal-split 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        animation:
+          boot-petal-split 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+          boot-petal-color 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
       }
 
-      #boot-loader .boot-half--bottom {
+      .boot-half--bottom {
         position: relative;
         top: -1px;
+        background-color: var(--spinner-color-light);
         transform: rotate(180deg);
       }
 
       /* Petal 1 — sea-serpent (blue). */
-      #boot-loader .boot-petal--1 {
+      .boot-petal--1 {
+        --spinner-color-light: oklch(73.83% 0.13 217.55);
+        --spinner-color-dark: oklch(68.83% 0.13 217.55);
         top: calc(var(--circle-size) * -1);
         left: 0;
       }
-      #boot-loader .boot-petal--1 .boot-half--top {
-        background-color: oklch(68.83% 0.13 217.55);
-        animation-name: boot-petal-split, boot-color-1;
-      }
-      #boot-loader .boot-petal--1 .boot-half--bottom {
-        background-color: oklch(73.83% 0.13 217.55);
-      }
 
       /* Petal 2 — mustard (yellow). */
-      #boot-loader .boot-petal--2 {
+      .boot-petal--2 {
+        --spinner-color-light: oklch(81% 0.17 86.39);
+        --spinner-color-dark: oklch(76% 0.17 86.39);
         top: 0;
         left: calc(var(--circle-size) * 2);
         transform: rotate(90deg);
       }
-      #boot-loader .boot-petal--2 .boot-half--top {
-        background-color: oklch(76% 0.17 86.39);
-        animation-name: boot-petal-split, boot-color-2;
-      }
-      #boot-loader .boot-petal--2 .boot-half--bottom {
-        background-color: oklch(81% 0.17 86.39);
-      }
 
       /* Petal 3 — neon-coral (red). */
-      #boot-loader .boot-petal--3 {
+      .boot-petal--3 {
+        --spinner-color-light: oklch(57.33% 0.2584 11.57);
+        --spinner-color-dark: oklch(52.33% 0.2584 11.57);
         top: var(--circle-size);
         left: calc(var(--circle-size) * -1);
         transform: rotate(-90deg);
       }
-      #boot-loader .boot-petal--3 .boot-half--top {
-        background-color: oklch(52.33% 0.2584 11.57);
-        animation-name: boot-petal-split, boot-color-3;
-      }
-      #boot-loader .boot-petal--3 .boot-half--bottom {
-        background-color: oklch(57.33% 0.2584 11.57);
-      }
 
       /* Petal 4 — sea-green (teal). */
-      #boot-loader .boot-petal--4 {
+      .boot-petal--4 {
+        --spinner-color-light: oklch(70% 0.2 171.52);
+        --spinner-color-dark: oklch(65% 0.2 171.52);
         top: calc(var(--circle-size) * 2);
         left: var(--circle-size);
         transform: rotate(-180deg);
       }
-      #boot-loader .boot-petal--4 .boot-half--top {
-        background-color: oklch(65% 0.2 171.52);
-        animation-name: boot-petal-split, boot-color-4;
-      }
-      #boot-loader .boot-petal--4 .boot-half--bottom {
-        background-color: oklch(70% 0.2 171.52);
-      }
 
       @keyframes boot-spinner-rotate {
         0% {
-          transform: rotate(45deg) scale(1);
-        }
-        20% {
-          transform: rotate(45deg) scale(0.8);
+          transform: rotate(45deg);
         }
         57%,
         100% {
-          transform: rotate(405deg) scale(1);
+          transform: rotate(405deg);
+        }
+      }
+
+      @keyframes boot-spinner-scale {
+        0% {
+          transform: scale(1);
+        }
+        20% {
+          transform: scale(0.8);
+        }
+        57%,
+        100% {
+          transform: scale(1);
         }
       }
 
@@ -157,47 +161,21 @@
         }
       }
 
-      @keyframes boot-color-1 {
+      @keyframes boot-petal-color {
         0%,
         100% {
-          background-color: oklch(68.83% 0.13 217.55);
+          background-color: var(--spinner-color-dark);
         }
         50% {
-          background-color: oklch(73.83% 0.13 217.55);
-        }
-      }
-      @keyframes boot-color-2 {
-        0%,
-        100% {
-          background-color: oklch(76% 0.17 86.39);
-        }
-        50% {
-          background-color: oklch(81% 0.17 86.39);
-        }
-      }
-      @keyframes boot-color-3 {
-        0%,
-        100% {
-          background-color: oklch(52.33% 0.2584 11.57);
-        }
-        50% {
-          background-color: oklch(57.33% 0.2584 11.57);
-        }
-      }
-      @keyframes boot-color-4 {
-        0%,
-        100% {
-          background-color: oklch(65% 0.2 171.52);
-        }
-        50% {
-          background-color: oklch(70% 0.2 171.52);
+          background-color: var(--spinner-color-light);
         }
       }
 
       @media (prefers-reduced-motion: reduce) {
         /* No spin, no split, and no fade-out — the loader hides instantly. */
-        #boot-loader .boot-spinner,
-        #boot-loader .boot-half--top {
+        .boot-spinner,
+        .boot-spinner__scale,
+        .boot-half--top {
           animation: none;
         }
         #boot-loader {
@@ -210,21 +188,23 @@
     <div id="root" className="root"></div>
     <div id="boot-loader" role="status" aria-label="Loading Architect">
       <div class="boot-spinner" aria-hidden="true">
-        <div class="boot-petal boot-petal--1">
-          <div class="boot-half boot-half--top"></div>
-          <div class="boot-half boot-half--bottom"></div>
-        </div>
-        <div class="boot-petal boot-petal--2">
-          <div class="boot-half boot-half--top"></div>
-          <div class="boot-half boot-half--bottom"></div>
-        </div>
-        <div class="boot-petal boot-petal--3">
-          <div class="boot-half boot-half--top"></div>
-          <div class="boot-half boot-half--bottom"></div>
-        </div>
-        <div class="boot-petal boot-petal--4">
-          <div class="boot-half boot-half--top"></div>
-          <div class="boot-half boot-half--bottom"></div>
+        <div class="boot-spinner__scale">
+          <div class="boot-petal boot-petal--1">
+            <div class="boot-half boot-half--top"></div>
+            <div class="boot-half boot-half--bottom"></div>
+          </div>
+          <div class="boot-petal boot-petal--2">
+            <div class="boot-half boot-half--top"></div>
+            <div class="boot-half boot-half--bottom"></div>
+          </div>
+          <div class="boot-petal boot-petal--3">
+            <div class="boot-half boot-half--top"></div>
+            <div class="boot-half boot-half--bottom"></div>
+          </div>
+          <div class="boot-petal boot-petal--4">
+            <div class="boot-half boot-half--top"></div>
+            <div class="boot-half boot-half--bottom"></div>
+          </div>
         </div>
       </div>
     </div>
