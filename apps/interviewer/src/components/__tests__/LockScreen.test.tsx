@@ -5,6 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const useAuthMock = vi.fn();
 vi.mock('~/lib/auth/AuthContext', () => ({ useAuth: () => useAuthMock() }));
 
+const getAuthorizedInterviewIdMock = vi.fn<() => string | null>(() => null);
+vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
+  useStepUpAuth: () => ({
+    getAuthorizedInterviewId: getAuthorizedInterviewIdMock,
+  }),
+}));
+
 const hasPasskeyWindowLimitationMock = vi.fn(() => false);
 vi.mock('~/lib/pwa/passkeyWindowLimitation', () => ({
   hasPasskeyWindowLimitation: () => hasPasskeyWindowLimitationMock(),
@@ -38,11 +45,14 @@ const authValue = {
 };
 
 beforeEach(() => {
+  window.history.replaceState(null, '', '/');
   useAuthMock.mockReturnValue(authValue);
+  getAuthorizedInterviewIdMock.mockReturnValue(null);
   hasPasskeyWindowLimitationMock.mockReturnValue(false);
 });
 
 afterEach(() => {
+  window.history.replaceState(null, '', '/');
   vi.clearAllMocks();
 });
 
@@ -91,6 +101,48 @@ describe('LockScreen', () => {
     });
     rerender(<LockScreen />);
     expect(screen.queryByText('Welcome back')).not.toBeInTheDocument();
+  });
+
+  it.each(['/interview/session-1', '/INTERVIEW/session-1'])(
+    'hides destructive recovery while protecting the interview route %s',
+    (route) => {
+      window.history.replaceState(null, '', route);
+
+      render(<LockScreen />);
+
+      expect(screen.getByText('Welcome back')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Recover by resetting' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it('keeps destructive recovery hidden when the URL changes while locked', () => {
+    window.history.replaceState(null, '', '/interview/session-1');
+    const { rerender } = render(<LockScreen />);
+
+    act(() => {
+      window.history.replaceState(null, '', '/');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    rerender(<LockScreen />);
+
+    expect(window.location.pathname).toBe('/');
+    expect(
+      screen.queryByRole('button', { name: 'Recover by resetting' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('uses the persisted interview marker to restrict recovery after reload', () => {
+    getAuthorizedInterviewIdMock.mockReturnValue('session-1');
+    window.history.replaceState(null, '', '/');
+
+    render(<LockScreen />);
+
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Recover by resetting' }),
+    ).not.toBeInTheDocument();
   });
 });
 

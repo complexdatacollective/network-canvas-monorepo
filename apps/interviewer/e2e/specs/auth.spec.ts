@@ -72,6 +72,20 @@ test.describe('vault lifecycle', () => {
     await expect(
       page.getByRole('heading', { name: 'Welcome back' }),
     ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Recover by resetting' }),
+    ).toHaveCount(0);
+
+    // Changing the URL and forcing another load while still locked must not
+    // turn the active interview's lock screen into a destructive reset route.
+    await page.goto('/');
+    await expect(
+      page.getByRole('heading', { name: 'Welcome back' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Recover by resetting' }),
+    ).toHaveCount(0);
+    await page.goto(interviewUrl);
     await vault.unlockPin(PIN);
 
     await expect(page).toHaveURL(interviewUrl);
