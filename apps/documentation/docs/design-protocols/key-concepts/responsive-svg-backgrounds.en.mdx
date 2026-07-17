@@ -42,10 +42,12 @@ In the Background Creator you can:
   background exactly as participants will see it, and you can switch between
   aspect ratios to confirm that lines, fills, and labels still make sense in
   portrait and landscape.
-- **Define zones.** Zones are invisible, labelled regions—rectangles, circles,
-  or polygons—that mark which part of your measure each area of the canvas
-  belongs to. They are stored inside the SVG file but never shown to
-  participants.
+- **Define zones.** Mark any rectangle, ellipse, or polygon you draw as a zone
+  and give it a label in its properties. The shape itself is the zone: a
+  visible fill—such as the quadrant fills in the built-in Quadrants
+  template—can double as a zone, or you can leave the shape transparent for a
+  zone that stays invisible to participants. Zone labels become the values of
+  the exported variable.
 - **Save and reopen your work.** Download the finished SVG to add to
   Architect, or reopen a previously saved SVG to keep editing it.
 - **Export a ready-to-run Python or R script.** The script reads the `_x` and
@@ -87,11 +89,13 @@ remain a contained image.
 <TipBox>
 
 In portrait or landscape, the Background Creator's built-in **Concentric
-circles** template stretches its rings into ellipses—and its invisible zones
-stretch identically, so each node is still assigned the ring the participant
-actually saw. If your measure instead depends on precise Euclidean distance or
-an undistorted circle, use a contained image instead, following the guidance
-above.
+circles** template stretches its rings into ellipses—and because each ring is
+itself the zone, membership stretches identically, so each node is still
+assigned the ring the participant actually saw. Hold Shift while drawing a
+ring to make it perfectly round at the aspect ratio you are currently
+previewing, so you can choose which screen shape you optimize for. If your
+measure instead depends on precise Euclidean distance or an undistorted
+circle, use a contained image instead, following the guidance above.
 
 </TipBox>
 
