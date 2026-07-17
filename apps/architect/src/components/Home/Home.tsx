@@ -27,6 +27,7 @@ import {
   openBundledTemplate,
   openLibraryProtocol,
   openLocalNetcanvas,
+  type ProtocolOpenResult,
 } from '~/ducks/modules/userActions/userActions';
 import {
   BUNDLED_TEMPLATES,
@@ -74,14 +75,20 @@ const Home = () => {
     const id = setInterval(() => setVisibleCount((c) => c + 1), 2400);
     return () => clearInterval(id);
   }, []);
-  const runAction = useCallback(async (action: () => Promise<unknown>) => {
-    setIsLoading(true);
-    try {
-      await action();
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // The loading overlay covers async work (dispatch, asset loading) only. It
+  // must be dismissed before any dialog is awaited, otherwise the spinner
+  // (rendered at a high z-index) paints over the dialog and blocks its buttons.
+  const runAction = useCallback(
+    async <T,>(action: () => Promise<T>): Promise<T> => {
+      setIsLoading(true);
+      try {
+        return await action();
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
   const handleCreate = useCallback(
     (values: { name: string; description?: string }) => {
       setShowNewDialog(false);
@@ -93,14 +100,18 @@ const Home = () => {
   );
   const handleOpenLocalFile = useCallback(
     async (file: File) => {
-      const result = await dispatch(openLocalNetcanvas({ file })).unwrap();
+      const result = await runAction(() =>
+        dispatch(openLocalNetcanvas({ file })).unwrap(),
+      );
       await showProtocolOpenResultDialog({
         result,
         openDialog,
         onApproveMigration: async () => {
-          const approvedResult = await dispatch(
-            openLocalNetcanvas({ file, migrationApproved: true }),
-          ).unwrap();
+          const approvedResult = await runAction(() =>
+            dispatch(
+              openLocalNetcanvas({ file, migrationApproved: true }),
+            ).unwrap(),
+          );
           await showProtocolOpenResultDialog({
             result: approvedResult,
             openDialog,
@@ -108,14 +119,12 @@ const Home = () => {
         },
       });
     },
-    [dispatch, openDialog],
+    [dispatch, openDialog, runAction],
   );
   const onDrop = (files: File[]) => {
     const file = files[0];
     if (file) {
-      void runAction(async () => {
-        await handleOpenLocalFile(file);
-      });
+      void handleOpenLocalFile(file);
     }
   };
   const {
@@ -171,12 +180,22 @@ const Home = () => {
       const template = pendingTemplate;
       setPendingTemplate(null);
       if (!template) return;
-      void runAction(async () => {
-        let assets: ExtractedAsset[] | undefined;
+      void (async () => {
+        let result: ProtocolOpenResult;
         try {
-          assets = template.loadAssets
-            ? await template.loadAssets()
-            : undefined;
+          result = await runAction(async () => {
+            const assets: ExtractedAsset[] | undefined = template.loadAssets
+              ? await template.loadAssets()
+              : undefined;
+            return dispatch(
+              openBundledTemplate({
+                protocol: template.protocol,
+                name,
+                assets,
+                sourceRef: template.sourceRef,
+              }),
+            ).unwrap();
+          });
         } catch (error) {
           const { message } = reportError(error);
           void openDialog({
@@ -188,25 +207,19 @@ const Home = () => {
           });
           return;
         }
-        const result = await dispatch(
-          openBundledTemplate({
-            protocol: template.protocol,
-            name,
-            assets,
-            sourceRef: template.sourceRef,
-          }),
-        ).unwrap();
         await showProtocolOpenResultDialog({ result, openDialog });
-      });
+      })();
     },
     [dispatch, openDialog, pendingTemplate, runAction],
   );
   const handleOpenLibraryProtocol = useCallback(
     (id: string) => {
-      void runAction(async () => {
-        const result = await dispatch(openLibraryProtocol(id)).unwrap();
+      void (async () => {
+        const result = await runAction(() =>
+          dispatch(openLibraryProtocol(id)).unwrap(),
+        );
         await showProtocolOpenResultDialog({ result, openDialog });
-      });
+      })();
     },
     [dispatch, openDialog, runAction],
   );
