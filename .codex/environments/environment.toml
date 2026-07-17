@@ -4,6 +4,8 @@ name = "network-canvas"
 
 [setup]
 script = '''
-cd "$CODEX_WORKTREE_PATH"
-pnpm install
-pnpm turbo build'''
+bash "$CODEX_WORKTREE_PATH/.codex/scripts/setup.sh"'''
+
+[cleanup]
+script = '''
+bash "$CODEX_WORKTREE_PATH/.codex/scripts/cleanup.sh"'''
