@@ -6,6 +6,11 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
 const useAuthMock = vi.fn();
 vi.mock('~/lib/auth/AuthContext', () => ({ useAuth: () => useAuthMock() }));
+vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
+  useStepUpAuth: () => ({
+    getAuthorizedInterviewId: () => null,
+  }),
+}));
 
 import { LockScreen } from '../LockScreen';
 
