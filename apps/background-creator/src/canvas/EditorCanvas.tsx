@@ -12,10 +12,11 @@ import {
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import { assignZone, zonesOf } from '~/geometry/zones';
-import type { BackgroundDocument, SvgElement } from '~/model/types';
+import type { BackgroundDocument, SvgElement, Vec } from '~/model/types';
 import {
   type Bounds,
   elementBounds,
+  type StageBox,
   translateElement,
 } from '~/state/documentGeometry';
 import {
@@ -26,6 +27,14 @@ import {
   useEditorStore,
 } from '~/state/editorStore';
 import { isZoneElement } from '~/state/labels';
+import {
+  computeSnap,
+  NO_GUIDES,
+  type SnapAxes,
+  type SnapGuides,
+  type SnapLines,
+  snapLines,
+} from '~/state/snapping';
 import { serializeDocument } from '~/svg/serialize';
 import { editZoneLabelFlow } from '~/toolbar/textEditDialog';
 import { linesToText, textToLines } from '~/toolbar/textLines';
@@ -37,7 +46,10 @@ import { OverlaySvg } from './overlay/OverlaySvg';
 import { ResizeHandles } from './overlay/ResizeHandles';
 import { announceSelectionPosition } from './overlay/useItemControls';
 import { ZonePills } from './overlay/ZonePills';
+import { isOverlayControlTarget } from './overlayTargets';
 import { clientToNormalized, startPointerGesture } from './pointerGesture';
+
+const RESIZE_HANDLE_ONLY = '[data-resize-handle]';
 
 // Screen-pixel click tolerance, converted to a single normalized value against
 // the smaller stage dimension. Approximate under a non-square stage (x and y
@@ -145,6 +157,10 @@ export function EditorCanvas(): ReactElement {
   const hoverRafRef = useRef<number | null>(null);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
 
+  // Per-gesture snap-guide chrome. Local, not in the store, because it is purely
+  // transient visual feedback that lives and dies with a single drag.
+  const [guides, setGuides] = useState<SnapGuides>(NO_GUIDES);
+
   // In-place text editing state. `editingRef` mirrors it for the imperative
   // stage listeners (see below), which are attached once and must read the
   // latest value without re-binding.
@@ -231,6 +247,28 @@ export function EditorCanvas(): ReactElement {
     return el ? elementBounds(el) : null;
   }, [selection, doc]);
 
+  // Snaps a gesture's pointer to alignment candidates and publishes the active
+  // guides, unless Alt is held or the stage has no measurable size. Stable, so
+  // it can sit in the imperatively-attached handler's dependency list.
+  const snapPoint = useCallback(
+    (
+      pt: Vec,
+      candidates: SnapLines,
+      stage: StageBox | null,
+      altKey: boolean,
+      axes?: SnapAxes,
+    ): Vec => {
+      if (altKey || !stage) {
+        setGuides(NO_GUIDES);
+        return pt;
+      }
+      const snap = computeSnap(pt, candidates, stage, { axes });
+      setGuides(snap.guides);
+      return snap.point;
+    },
+    [],
+  );
+
   // The stage's pointer/keyboard handlers are attached imperatively (below)
   // rather than as JSX props. The surface carries role="application"; a literal
   // tabIndex or an onKeyDown/pointer prop there trips jsx-a11y's
@@ -238,6 +276,12 @@ export function EditorCanvas(): ReactElement {
   // element are equivalent and only fire while the pointer/focus is on it.
   const handlePointerDown = useCallback(
     (e: PointerEvent) => {
+      // Overlay controls (resize handles, zone pills, the inline editor) own
+      // their own pointer handling. This native listener fires before their
+      // React handlers reach the document root, so the stage must yield here
+      // explicitly rather than rely on their stopPropagation (see overlayTargets).
+      if (isOverlayControlTarget(e.target)) return;
+
       const el = stageRef.current;
       if (!el) return;
       const store = useEditorStore.getState();
@@ -257,20 +301,28 @@ export function EditorCanvas(): ReactElement {
           return;
         }
         store.select(hit);
-        let last = pt;
+        // Move is applied absolutely from the pre-gesture document so snapping
+        // the pointer never accumulates drift. Other elements stay put during
+        // the drag, so their snap candidate lines are computed once.
+        const originalDoc = store.doc;
+        const candidates = snapLines(originalDoc, hit.id);
+        const startPt = pt;
         let began = false;
         startPointerGesture(e, el, getStageRect, {
-          onDrag: (current) => {
+          onDrag: (current, _start, _shiftKey, altKey) => {
             if (!began) {
               store.beginGesture();
               began = true;
             }
-            const dx = current.x - last.x;
-            const dy = current.y - last.y;
-            store.updateGesture((d) => moveInDoc(d, hit, dx, dy));
-            last = current;
+            const r = getStageRect();
+            const stage = r ? { width: r.width, height: r.height } : null;
+            const target = snapPoint(current, candidates, stage, altKey);
+            const dx = target.x - startPt.x;
+            const dy = target.y - startPt.y;
+            store.updateGesture(() => moveInDoc(originalDoc, hit, dx, dy));
           },
           onEnd: ({ moved, cancelled }) => {
+            setGuides(NO_GUIDES);
             if (cancelled) {
               if (began) store.cancelGesture();
               return;
@@ -288,6 +340,19 @@ export function EditorCanvas(): ReactElement {
       }
 
       if (tool === 'text') {
+        // Clicking an existing text element with the Text tool edits it, rather
+        // than dropping a new placeholder on top; any other hit or empty space
+        // creates one.
+        const tol = HIT_TOLERANCE_PX / Math.min(rect.width, rect.height);
+        const hit = hitTestDocument(pt, store.doc, tol);
+        const hitEl = hit
+          ? store.doc.elements.find((candidate) => candidate.id === hit.id)
+          : undefined;
+        if (hit && hitEl?.kind === 'text') {
+          store.select(hit);
+          beginTextEdit(hitEl.id, false);
+          return;
+        }
         const id = store.createTextAt(pt);
         beginTextEdit(id, true);
         return;
@@ -304,23 +369,36 @@ export function EditorCanvas(): ReactElement {
       }
 
       if (isDragTool(tool)) {
+        const candidates = snapLines(store.doc, null);
         store.beginDraft(tool, pt);
         startPointerGesture(e, el, getStageRect, {
-          onDrag: (currentPt, _start, shiftKey) => {
+          onDrag: (currentPt, _start, shiftKey, altKey) => {
             const r = getStageRect();
-            store.updateDraft(
-              currentPt,
-              shiftKey && r ? { width: r.width, height: r.height } : null,
-            );
+            const stage = r ? { width: r.width, height: r.height } : null;
+            const constrainStage = shiftKey ? stage : null;
+            // A 45° line has no free axis; a shift square/circle derives its y
+            // from x. So skip a shift-line's snapping entirely, and snap only x
+            // for a shift rect/ellipse — the store's constraint places the rest.
+            let snapped = currentPt;
+            if (shiftKey && tool === 'line') {
+              setGuides(NO_GUIDES);
+            } else {
+              const axes: SnapAxes | undefined = shiftKey
+                ? { x: true, y: false }
+                : undefined;
+              snapped = snapPoint(currentPt, candidates, stage, altKey, axes);
+            }
+            store.updateDraft(snapped, constrainStage);
           },
           onEnd: ({ cancelled }) => {
+            setGuides(NO_GUIDES);
             if (cancelled) store.cancelDraft();
             else store.commitDraft();
           },
         });
       }
     },
-    [getStageRect, beginTextEdit],
+    [getStageRect, beginTextEdit, snapPoint],
   );
 
   const handlePointerMove = useCallback((e: PointerEvent) => {
@@ -358,6 +436,13 @@ export function EditorCanvas(): ReactElement {
     (e: MouseEvent) => {
       // The in-place editor owns clicks on itself while open.
       if (editingRef.current) return;
+      // A double-click on a resize handle is not a text-edit gesture.
+      if (
+        e.target instanceof Element &&
+        e.target.closest(RESIZE_HANDLE_ONLY) !== null
+      ) {
+        return;
+      }
       const store = useEditorStore.getState();
       if (store.draft?.mode === 'polygon') {
         store.closeDraftPolygon();
@@ -475,11 +560,15 @@ export function EditorCanvas(): ReactElement {
       ref={containerRef}
       className="bg-background relative flex size-full items-center justify-center overflow-hidden"
     >
+      {/* The stage must NOT clip (no overflow-hidden): resize handles and other
+          overlay chrome extend ~10px past full-bleed shapes' edges, and an
+          overflow-hidden padding box would exclude edge handles from
+          hit-testing (the outer letterbox container clips instead). */}
       <div
         ref={stageRef}
         role="application"
         aria-label={stageLabel}
-        className="focusable border-outline relative overflow-hidden rounded-sm border"
+        className="focusable border-outline relative rounded-sm border"
         style={stageStyle}
       >
         {previewSurface === 'interview' && (
@@ -514,9 +603,10 @@ export function EditorCanvas(): ReactElement {
           selectionBounds={selectionBounds}
           draft={draft}
           zonesVisible={zonesVisible}
+          guides={guides}
         />
         <ZonePills />
-        <ResizeHandles getRect={getStageRect} />
+        <ResizeHandles getRect={getStageRect} onGuidesChange={setGuides} />
         <KeyboardTargets onActivate={activateElement} />
 
         {editingElement && stageSize && (

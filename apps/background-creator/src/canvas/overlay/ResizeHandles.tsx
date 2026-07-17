@@ -7,6 +7,12 @@ import type {
 import type { BackgroundDocument } from '~/model/types';
 import type { StageBox } from '~/state/documentGeometry';
 import { useEditorStore } from '~/state/editorStore';
+import {
+  computeSnap,
+  NO_GUIDES,
+  type SnapGuides,
+  snapLines,
+} from '~/state/snapping';
 
 import {
   cursorForHandle,
@@ -15,6 +21,7 @@ import {
   type HandlePlacement,
   resizeElement,
 } from '../canvasGeometry';
+import { RESIZE_HANDLE_ATTR } from '../overlayTargets';
 import { startPointerGesture } from '../pointerGesture';
 
 // Pointer-only resize affordances for the selected item under the select tool.
@@ -22,8 +29,10 @@ import { startPointerGesture } from '../pointerGesture';
 // pointer enhancement, so the dots are aria-hidden and not in the tab order.
 export function ResizeHandles({
   getRect,
+  onGuidesChange,
 }: {
   getRect: () => DOMRect | null;
+  onGuidesChange: (guides: SnapGuides) => void;
 }): ReactElement | null {
   const selection = useEditorStore((s) => s.selection);
   const activeTool = useEditorStore((s) => s.activeTool);
@@ -33,7 +42,7 @@ export function ResizeHandles({
 
   const el = doc.elements.find((e) => e.id === selection.id);
   const placements: HandlePlacement[] = el ? elementHandles(el) : [];
-  if (placements.length === 0) return null;
+  if (!el || placements.length === 0) return null;
 
   const applyResize = (
     d: BackgroundDocument,
@@ -49,18 +58,41 @@ export function ResizeHandles({
     ),
   });
 
+  // With Shift, a rect/ellipse corner-resize derives its y extent from x
+  // (constrainRegular), so snapping y would fight the constraint — snap only x
+  // and let the constraint place y. Lines carry no such constraint.
+  const shiftConstrains = el.kind === 'rect' || el.kind === 'ellipse';
+
   const startResize = (e: ReactPointerEvent, handle: Handle) => {
-    e.stopPropagation();
     const store = useEditorStore.getState();
+    // Other elements don't move during a resize, so the snap candidate lines are
+    // fixed for the gesture; compute them once, excluding the resized element.
+    const candidates = snapLines(store.doc, selection.id);
     startPointerGesture(e, e.currentTarget, getRect, {
       onStart: () => store.beginGesture(),
-      onDrag: (pt, _start, shiftKey) => {
+      onDrag: (pt, _start, shiftKey, altKey) => {
         const rect = getRect();
-        const stage =
-          shiftKey && rect ? { width: rect.width, height: rect.height } : null;
-        store.updateGesture((d) => applyResize(d, handle, pt, stage));
+        const fullStage = rect
+          ? { width: rect.width, height: rect.height }
+          : null;
+        // `constrainStage` (only under Shift) drives the visual square/circle.
+        const constrainStage = shiftKey ? fullStage : null;
+        let moving = pt;
+        if (!altKey && fullStage) {
+          const axes =
+            shiftKey && shiftConstrains ? { x: true, y: false } : undefined;
+          const snap = computeSnap(pt, candidates, fullStage, { axes });
+          onGuidesChange(snap.guides);
+          moving = snap.point;
+        } else {
+          onGuidesChange(NO_GUIDES);
+        }
+        store.updateGesture((d) =>
+          applyResize(d, handle, moving, constrainStage),
+        );
       },
       onEnd: ({ moved, cancelled }) => {
+        onGuidesChange(NO_GUIDES);
         if (cancelled) {
           store.cancelGesture();
           return;
@@ -81,15 +113,25 @@ export function ResizeHandles({
           touchAction: 'none',
         };
         return (
+          // The button is a generous ~20px transparent hit target so grabbing
+          // "the corner" is easy; the visible 12px dot inside is inert. The stage
+          // yields to `[data-resize-handle]` (see overlayTargets) so this
+          // button's own pointerdown wins the gesture.
           <button
             key={index}
             type="button"
             aria-hidden="true"
             tabIndex={-1}
-            className="border-surface bg-selected pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow"
+            {...{ [RESIZE_HANDLE_ATTR]: '' }}
+            className="pointer-events-auto absolute flex size-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-transparent"
             style={style}
             onPointerDown={(e) => startResize(e, handle)}
-          />
+          >
+            <span
+              aria-hidden="true"
+              className="border-surface bg-selected size-3 rounded-full border-2 shadow"
+            />
+          </button>
         );
       })}
     </div>

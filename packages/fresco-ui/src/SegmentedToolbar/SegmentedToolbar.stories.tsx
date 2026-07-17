@@ -79,11 +79,13 @@ Every segment shares **\`SegmentContent\`**: \`label\` (accessible name), \`icon
   \`value\`); an **actions** menu renders plain commands (\`role="menuitem"\`) for
   fire-and-forget actions. \`kind\` is inferred from whether a \`value\` selection
   contract is declared — pass it explicitly to be unambiguous.
-- **\`popover\`** \`{ children, open?, defaultOpen?, onOpenChange?, side?, pressed?, disabled? }\`
+- **\`popover\`** \`{ children, open?, defaultOpen?, onOpenChange?, dismissOnOutsidePress?, side?, pressed?, disabled? }\`
   — **controlled** (pass \`open\` + \`onOpenChange\`) or **uncontrolled** (omit
   \`open\`, optionally \`defaultOpen\`). A disabled trigger is announced and taken
   out of the tab order; a controlled, open popover that becomes disabled is
-  closed so its content is never stranded.
+  closed so its content is never stranded. \`dismissOnOutsidePress: false\` makes
+  it "sticky" — outside presses and focus-out no longer close it (see the
+  _Sticky popover_ story).
 - **\`separator\`** \`{}\`.
 - **\`component\`** \`{ component }\` — renders a caller component with
   \`{ size, orientation }\` for composite controls (e.g. \`SplitButton\`).
@@ -397,6 +399,55 @@ export const ControlledPopover: Story = {
             {disabled ? 'Enable' : 'Disable'} tool
           </button>
         </div>
+      </div>
+    );
+  },
+};
+
+/**
+ * A "sticky" `popover` segment (`dismissOnOutsidePress: false`). Pressing
+ * outside the popover or moving focus away does not close it — only the trigger
+ * toggle, Escape, or the consumer clearing `open` does. Use this for a panel
+ * that edits a live selection: clicking a different item elsewhere on the page
+ * switches the selection without dismissing the panel, and the underlying press
+ * is not swallowed. Click the counter button below the toolbar — the popover
+ * stays open and the count still increments.
+ */
+export const StickyPopover: Story = {
+  args: { label: 'Editor toolbar', items: [] },
+  render: function StickyPopoverRender(args) {
+    const [open, setOpen] = useState(true);
+    const [count, setCount] = useState(0);
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'properties',
+        label: 'Properties',
+        icon: <SlidersHorizontal />,
+        side: 'top',
+        open,
+        onOpenChange: setOpen,
+        pressed: open,
+        dismissOnOutsidePress: false,
+        children: (
+          <div className="w-56 p-2">
+            Stays open across outside clicks. Press Escape or the trigger to
+            close.
+          </div>
+        ),
+      },
+    ];
+
+    return (
+      <div className="flex flex-col items-center gap-6">
+        <SegmentedToolbar {...args} items={items} />
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded-full border-2 border-current px-3 py-1 text-sm font-bold"
+          onClick={() => setCount((current) => current + 1)}
+        >
+          Clicked {count} times (popover open: {String(open)})
+        </button>
       </div>
     );
   },

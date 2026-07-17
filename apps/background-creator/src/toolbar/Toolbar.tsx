@@ -166,12 +166,17 @@ export function Toolbar(): ReactElement {
       label: 'Properties',
       icon: <SlidersHorizontal />,
       side: 'top',
-      // Controlled: disabled with nothing selected, auto-opens on click-select,
-      // and closes when the selection clears (Escape/outside-click via
-      // onOpenChange still work).
+      // Controlled and sticky: disabled with nothing selected, auto-opens on a
+      // click-selection, and stays open across selection changes (its contents
+      // key off the store selection). `dismissOnOutsidePress: false` stops a
+      // canvas press from closing it or being swallowed, so selecting another
+      // element just switches selection and a double-click still edits text. It
+      // closes only via the trigger toggle, Escape, or the selection clearing
+      // (the effect below closes it when `selection` becomes null).
       disabled: selection === null,
       open: propertiesOpen,
       onOpenChange: setPropertiesOpen,
+      dismissOnOutsidePress: false,
       pressed: propertiesOpen,
       children: <PropertiesPanel />,
     },

@@ -11,7 +11,7 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react';
-import { cloneElement, type ReactElement } from 'react';
+import { cloneElement, type ReactElement, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SegmentedToolbar, type ToolbarSegment } from './SegmentedToolbar';
@@ -337,6 +337,56 @@ describe('SegmentedToolbar — popover control', () => {
       <SegmentedToolbar label="Tools" items={[{ ...base, disabled: true }]} />,
     );
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  // Sticky popover harness: a controlled, open popover next to an outside button.
+  function StickyHarness({ sticky }: { sticky: boolean }): ReactElement {
+    const [open, setOpen] = useState(true);
+    return (
+      <div>
+        <button type="button">Outside</button>
+        <SegmentedToolbar
+          label="Tools"
+          items={[
+            {
+              type: 'popover',
+              id: 'props',
+              label: 'Properties',
+              icon: <Pencil />,
+              open,
+              onOpenChange: setOpen,
+              dismissOnOutsidePress: sticky ? false : undefined,
+              children: <input aria-label="Name" />,
+            },
+          ]}
+        />
+      </div>
+    );
+  }
+
+  it('closes a normal controlled popover on an outside press', async () => {
+    render(<StickyHarness sticky={false} />);
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Outside' }));
+    expect(
+      screen.queryByRole('textbox', { name: 'Name' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps a sticky popover open on an outside press (dismissOnOutsidePress: false)', async () => {
+    render(<StickyHarness sticky />);
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Outside' }));
+    // The ambient dismissal is cancelled, so the content stays mounted.
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+  });
+
+  it('still closes a sticky popover from the trigger toggle', async () => {
+    render(<StickyHarness sticky />);
+    await userEvent.click(screen.getByRole('button', { name: 'Properties' }));
+    expect(
+      screen.queryByRole('textbox', { name: 'Name' }),
+    ).not.toBeInTheDocument();
   });
 });
 

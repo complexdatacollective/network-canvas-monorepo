@@ -11,6 +11,8 @@ import type { TextElement } from '~/model/types';
 import type { StageBox } from '~/state/documentGeometry';
 import { linesToText } from '~/toolbar/textLines';
 
+import { INLINE_EDITOR_ATTR } from './overlayTargets';
+
 // The rendered font size of a text element on the current stage: the SVG's
 // `clamp(min, <vmin>vmin, max)` resolved against the stage box (vmin = 1% of the
 // smaller stage dimension), so the in-place editor matches what the preview img
@@ -96,6 +98,7 @@ export function InlineTextEditor({
     <textarea
       ref={textareaRef}
       aria-label="Edit text"
+      {...{ [INLINE_EDITOR_ATTR]: '' }}
       value={value}
       rows={Math.max(value.split('\n').length, 1)}
       onChange={(e) => setValue(e.target.value)}

@@ -35,10 +35,16 @@ export type PointerGestureHandlers = {
   onStart?: (start: Vec) => void;
   /**
    * Called (rAF-batched) once the pointer moves past the drag threshold.
-   * `shiftKey` is read live from the move event so draws/resizes can constrain
-   * to regular shapes and 45° lines while Shift is held.
+   * `shiftKey` and `altKey` are read live from the move event so draws/resizes
+   * can constrain to regular shapes and 45° lines while Shift is held, and any
+   * gesture can bypass snapping while Alt is held.
    */
-  onDrag?: (current: Vec, start: Vec, shiftKey: boolean) => void;
+  onDrag?: (
+    current: Vec,
+    start: Vec,
+    shiftKey: boolean,
+    altKey: boolean,
+  ) => void;
   /** Called on pointer up/cancel. `moved` is false for a click (never dragged). */
   onEnd?: (result: {
     moved: boolean;
@@ -87,7 +93,7 @@ export function startPointerGesture(
     }
     if (raf !== null) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
-      handlers.onDrag?.(currentPoint(ev), start, ev.shiftKey);
+      handlers.onDrag?.(currentPoint(ev), start, ev.shiftKey, ev.altKey);
       raf = null;
     });
   };

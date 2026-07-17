@@ -4,6 +4,7 @@ import { zonesOf } from '~/geometry/zones';
 import type { BackgroundDocument, Vec, ZoneElement } from '~/model/types';
 import type { Bounds } from '~/state/documentGeometry';
 import type { Draft } from '~/state/editorStore';
+import type { SnapGuides } from '~/state/snapping';
 
 // Explicit stroke-only paint props (never `points`, which would collide with the
 // Vec[] geometry props below when spread onto an SVG element).
@@ -142,6 +143,46 @@ function SelectionOutline({ bounds }: { bounds: Bounds }): ReactElement {
   );
 }
 
+// Alignment guides drawn while a gesture is snapping: a thin dashed line spanning
+// the stage at each active snapped axis. Accent-toned to read as active chrome,
+// aria-hidden (the SVG already is). Uses the raw `--accent` token, which resolves
+// at runtime inside inline SVG (unlike the @theme-inline `--color-*` names).
+function SnapGuideLines({
+  guides,
+}: {
+  guides: SnapGuides;
+}): ReactElement | null {
+  if (guides.x === null && guides.y === null) return null;
+  const paint = {
+    stroke: 'var(--accent)',
+    strokeWidth: 1,
+    strokeDasharray: '4 4',
+    vectorEffect: 'non-scaling-stroke' as const,
+  };
+  return (
+    <>
+      {guides.x !== null && (
+        <line
+          x1={pc(guides.x)}
+          y1="0%"
+          x2={pc(guides.x)}
+          y2="100%"
+          {...paint}
+        />
+      )}
+      {guides.y !== null && (
+        <line
+          x1="0%"
+          y1={pc(guides.y)}
+          x2="100%"
+          y2={pc(guides.y)}
+          {...paint}
+        />
+      )}
+    </>
+  );
+}
+
 function DraftShape({ draft }: { draft: Draft }): ReactElement | null {
   const stroke = 'var(--selected)';
   const paint = {
@@ -196,6 +237,7 @@ type OverlaySvgProps = {
   selectionBounds: Bounds | null;
   draft: Draft | null;
   zonesVisible: boolean;
+  guides: SnapGuides;
 };
 
 export function OverlaySvg({
@@ -203,6 +245,7 @@ export function OverlaySvg({
   selectionBounds,
   draft,
   zonesVisible,
+  guides,
 }: OverlaySvgProps): ReactElement {
   return (
     <svg
@@ -218,6 +261,7 @@ export function OverlaySvg({
         })}
       {selectionBounds && <SelectionOutline bounds={selectionBounds} />}
       {draft && <DraftShape draft={draft} />}
+      <SnapGuideLines guides={guides} />
     </svg>
   );
 }

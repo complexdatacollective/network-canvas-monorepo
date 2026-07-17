@@ -28,6 +28,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
 import { cva, cx } from '../utils/cva';
 
+// The event-details object Base UI passes to a popover's onOpenChange, carrying
+// the change `reason` and a `cancel()` that stops Base UI handling the event.
+// Derived from the shared Popover so this file never depends on Base UI directly.
+type PopoverOpenChangeDetails = Parameters<
+  NonNullable<React.ComponentProps<typeof Popover>['onOpenChange']>
+>[1];
+
 export type SegmentContent = {
   /** Accessible name. Always the aria-label; rendered as visible text when showLabel. */
   label: string;
@@ -149,6 +156,15 @@ export type PopoverSegment = {
   defaultOpen?: boolean;
   /** Called whenever the popover requests an open-state change (both modes). */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * When `false`, the popover ignores *ambient* dismissals — an outside press or
+   * focus leaving the popover — so it stays open while the user interacts with
+   * the rest of the page. It still closes on the trigger toggle, the Escape key,
+   * an explicit close, or the consumer clearing `open`. Meant for a controlled
+   * popover whose content tracks a live selection and has its own close paths.
+   * @default true
+   */
+  dismissOnOutsidePress?: boolean;
   /** Which side of the trigger the popover opens on. @default 'right' */
   side?: 'top' | 'right' | 'bottom' | 'left';
   children: React.ReactNode;
@@ -515,11 +531,32 @@ function ToolbarPopoverSegment({
       }
     />
   );
+
+  // A "sticky" popover (dismissOnOutsidePress: false) cancels the ambient
+  // dismissals Base UI would otherwise honour — an outside press or focus
+  // leaving the popover — so it stays open across page interaction. Cancelling
+  // the event also stops Base UI from consuming the underlying press, so a click
+  // that switches selection reaches the canvas. Explicit paths (trigger toggle,
+  // Escape, the consumer clearing `open`) still close it.
+  const handleOpenChange = (
+    next: boolean,
+    details: PopoverOpenChangeDetails,
+  ) => {
+    if (
+      !next &&
+      segment.dismissOnOutsidePress === false &&
+      (details.reason === 'outside-press' || details.reason === 'focus-out')
+    ) {
+      details.cancel();
+      return;
+    }
+    onOpenChange?.(next);
+  };
   return (
     <Popover
       open={open}
       defaultOpen={segment.defaultOpen}
-      onOpenChange={(next) => onOpenChange?.(next)}
+      onOpenChange={handleOpenChange}
     >
       {withTooltip(
         trigger,
