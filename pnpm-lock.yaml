@@ -1762,6 +1762,9 @@ importers:
       '@codaco/protocol-utilities':
         specifier: workspace:*
         version: link:../protocol-utilities
+      '@codaco/protocols':
+        specifier: workspace:*
+        version: link:../protocols
       '@codaco/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript

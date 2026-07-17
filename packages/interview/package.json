@@ -79,6 +79,7 @@
     "@codaco/fresco-ui": "workspace:*",
     "@codaco/interface-images": "workspace:*",
     "@codaco/protocol-utilities": "workspace:*",
+    "@codaco/protocols": "workspace:*",
     "@codaco/tsconfig": "workspace:*",
     "@microsoft/api-extractor": "catalog:",
     "@playwright/test": "catalog:",

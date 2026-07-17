@@ -151,13 +151,15 @@ test('release lane suites match the workspace dependency graph', () => {
 });
 
 test('interview relevance closure covers peer-declared and asset-only workspace edges', () => {
-  // Anti-drift guard for two review findings: tooling/tailwind is a
+  // Anti-drift guard for review findings: tooling/tailwind is a
   // peerDependency of @codaco/interview (the theme tokens the e2e host
-  // renders with) rather than a dependency/devDependency, and
+  // renders with) rather than a dependency/devDependency,
   // @codaco/development-protocol is a devDependency the e2e matrix scenarios
-  // resolve by package name to reach fixture assets. Reading the real
-  // package.json graph means a future edge-type or dependency drop is caught
-  // here instead of silently classifying a relevant change as irrelevant.
+  // resolve by package name to reach fixture assets, and @codaco/protocols
+  // is a devDependency the e2e SILOS fixture resolves by package name.
+  // Reading the real package.json graph means a future edge-type or
+  // dependency drop is caught here instead of silently classifying a
+  // relevant change as irrelevant.
   const dirs = relevanceDirsForSubject(
     '@codaco/interview',
     collectWorkspacePackages(REPO_ROOT),
@@ -169,6 +171,10 @@ test('interview relevance closure covers peer-declared and asset-only workspace 
   assert.ok(
     dirs.has('packages/development-protocol'),
     'packages/development-protocol (devDependency) is in the interview closure',
+  );
+  assert.ok(
+    dirs.has('packages/protocols'),
+    'packages/protocols (devDependency) is in the interview closure',
   );
 });
 
