@@ -34,7 +34,7 @@ export function VaultRecoveryScreen() {
         />
       </motion.div>
       <Dialog
-        open
+        open={!resetOpen}
         dismissible={false}
         title="Can't read this device's security settings"
         footer={

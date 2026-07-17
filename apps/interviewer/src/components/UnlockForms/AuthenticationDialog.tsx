@@ -1,6 +1,13 @@
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import { Fingerprint, KeyRound, RectangleEllipsis } from 'lucide-react';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -29,6 +36,8 @@ type AuthenticationDialogBaseProps = {
   description: string;
   /** Offer the recovery route supported by the enrolled authentication method. */
   allowRecovery?: boolean;
+  /** Allow recovery actions that permanently reset app data. */
+  allowDestructiveRecovery?: boolean;
   /** Called after the selected authentication method succeeds. */
   onAuthenticated?: () => void;
 };
@@ -58,6 +67,7 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
     title,
     description,
     allowRecovery = false,
+    allowDestructiveRecovery = true,
     onAuthenticated,
   } = props;
   const showCancel = props.showCancel === true;
@@ -67,13 +77,18 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
   const formId = useId();
   const recoveryFormId = useId();
   const autoAttempted = useRef(false);
-  const biometricAttemptPending = useRef(false);
+  const authenticationAttemptCycle = useRef(0);
+  const biometricAttemptPending = useRef<symbol | null>(null);
+  const mountedRef = useRef(false);
+  const previousOpenRef = useRef(open);
   const openRef = useRef(open);
+  const onAuthenticatedRef = useRef(onAuthenticated);
   const [biometricPending, setBiometricPending] = useState(false);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
 
   openRef.current = open;
+  onAuthenticatedRef.current = onAuthenticated;
 
   const isUnlock = auth.kind === 'locked';
   const authenticateWithPin = isUnlock
@@ -89,27 +104,78 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
     ? auth.unlockWithRecovery
     : auth.verifyWithRecovery;
 
+  const invalidatePendingAuthentication = useCallback(() => {
+    authenticationAttemptCycle.current += 1;
+    biometricAttemptPending.current = null;
+  }, []);
+
+  const invalidatePendingAuthenticationAndReset = useCallback(() => {
+    invalidatePendingAuthentication();
+    setBiometricPending(false);
+  }, [invalidatePendingAuthentication]);
+
+  const runAuthenticationAttempt = useCallback(
+    async (
+      authenticate: () => Promise<AuthResult>,
+      beforeAuthenticated?: () => void,
+    ): Promise<AuthResult> => {
+      const attemptCycle = authenticationAttemptCycle.current;
+      const result = await authenticate();
+      const current =
+        mountedRef.current &&
+        openRef.current &&
+        attemptCycle === authenticationAttemptCycle.current;
+
+      if (result.ok && current) {
+        beforeAuthenticated?.();
+        onAuthenticatedRef.current?.();
+      }
+
+      return result;
+    },
+    [],
+  );
+
   const attemptBiometric = useCallback(async (): Promise<AuthResult> => {
-    if (biometricAttemptPending.current) {
+    if (biometricAttemptPending.current !== null) {
       return {
         ok: false,
         message: 'Biometric authentication is already in progress.',
       };
     }
 
-    biometricAttemptPending.current = true;
+    const pendingAttempt = Symbol('biometric-attempt');
+    biometricAttemptPending.current = pendingAttempt;
     setBiometricPending(true);
     try {
-      return await authenticateBiometric();
+      return await runAuthenticationAttempt(authenticateBiometric);
     } finally {
-      biometricAttemptPending.current = false;
-      setBiometricPending(false);
+      if (biometricAttemptPending.current === pendingAttempt) {
+        biometricAttemptPending.current = null;
+        if (mountedRef.current) {
+          setBiometricPending(false);
+        }
+      }
     }
-  }, [authenticateBiometric]);
+  }, [authenticateBiometric, runAuthenticationAttempt]);
+
+  useLayoutEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (previousOpenRef.current === open) return;
+    previousOpenRef.current = open;
+    invalidatePendingAuthentication();
+  }, [invalidatePendingAuthentication, open]);
 
   useEffect(() => {
     if (!open) {
       autoAttempted.current = false;
+      setBiometricPending(false);
       setRecoveryOpen(false);
       setResetOpen(false);
       return;
@@ -117,7 +183,7 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
 
     setResetOpen(false);
     setRecoveryOpen(allowRecovery && auth.mode === 'biometric' && limited);
-  }, [allowRecovery, auth.mode, limited, open]);
+  }, [allowDestructiveRecovery, allowRecovery, auth.mode, limited, open]);
 
   useEffect(() => {
     if (
@@ -132,21 +198,8 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
     }
 
     autoAttempted.current = true;
-    void attemptBiometric()
-      .then((result) => {
-        if (result.ok && openRef.current) onAuthenticated?.();
-        return undefined;
-      })
-      .catch(() => {});
-  }, [
-    attemptBiometric,
-    auth.kind,
-    auth.mode,
-    limited,
-    onAuthenticated,
-    open,
-    recoveryOpen,
-  ]);
+    void attemptBiometric().catch(() => {});
+  }, [attemptBiometric, auth.kind, auth.mode, limited, open, recoveryOpen]);
 
   if (
     (auth.kind !== 'locked' && auth.kind !== 'unlocked') ||
@@ -156,31 +209,52 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
     return null;
   }
 
-  const openResetDialog = () => setResetOpen(true);
+  const cancelAuthentication = () => {
+    invalidatePendingAuthenticationAndReset();
+    onCancel?.();
+  };
+  const openRecoveryDialog = () => {
+    invalidatePendingAuthenticationAndReset();
+    setRecoveryOpen(true);
+  };
+  const closeRecoveryDialog = () => {
+    invalidatePendingAuthenticationAndReset();
+    setRecoveryOpen(false);
+  };
+  const openResetDialog = () => {
+    if (!allowDestructiveRecovery) return;
+    invalidatePendingAuthenticationAndReset();
+    setResetOpen(true);
+  };
+  const closeResetDialog = () => {
+    invalidatePendingAuthenticationAndReset();
+    setResetOpen(false);
+  };
+  const finishReset = () => {
+    invalidatePendingAuthenticationAndReset();
+    setResetOpen(false);
+    setRecoveryOpen(false);
+  };
   const cancelButton = showCancel ? (
-    <Button type="button" onClick={onCancel}>
+    <Button type="button" onClick={cancelAuthentication}>
       Cancel
     </Button>
   ) : null;
   const recoveryButton = allowRecovery ? (
     auth.mode === 'biometric' ? (
-      <Button
-        type="button"
-        color="secondary"
-        onClick={() => setRecoveryOpen(true)}
-      >
+      <Button type="button" color="secondary" onClick={openRecoveryDialog}>
         Recover with passphrase
       </Button>
-    ) : (
+    ) : allowDestructiveRecovery ? (
       <Button type="button" color="destructive" onClick={openResetDialog}>
         Recover by resetting
       </Button>
-    )
+    ) : null
   ) : null;
   const dialogProps = {
     open: open && !recoveryOpen && !resetOpen,
     title,
-    closeDialog: showCancel ? onCancel : undefined,
+    closeDialog: showCancel ? cancelAuthentication : undefined,
     dismissible: showCancel,
   };
 
@@ -215,9 +289,7 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
             <PinUnlockForm
               formId={formId}
               verifyPin={async (pin) => {
-                const result = await authenticateWithPin(pin);
-                if (result.ok) onAuthenticated?.();
-                return result;
+                return runAuthenticationAttempt(() => authenticateWithPin(pin));
               }}
             />
           </UnlockLayout>
@@ -259,9 +331,10 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
                   typeof values.passphrase === 'string'
                     ? values.passphrase
                     : '';
-                const result = await authenticateWithPassphrase(phrase);
+                const result = await runAuthenticationAttempt(() =>
+                  authenticateWithPassphrase(phrase),
+                );
                 if (result.ok) {
-                  onAuthenticated?.();
                   return { success: true };
                 }
                 return {
@@ -299,9 +372,7 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
             submitLabel="Unlock with biometrics"
             disabled={biometricPending}
             onSubmit={async () => {
-              const result = await attemptBiometric();
-              if (result.ok) onAuthenticated?.();
-              return result;
+              return attemptBiometric();
             }}
           />
         </UnlockLayout>
@@ -317,17 +388,19 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
           <Dialog
             open
             title="Recover with passphrase"
-            closeDialog={() => setRecoveryOpen(false)}
+            closeDialog={closeRecoveryDialog}
             footer={
               <>
-                <Button
-                  type="button"
-                  color="destructive"
-                  onClick={openResetDialog}
-                >
-                  Recover by resetting
-                </Button>
-                <Button type="button" onClick={() => setRecoveryOpen(false)}>
+                {allowDestructiveRecovery ? (
+                  <Button
+                    type="button"
+                    color="destructive"
+                    onClick={openResetDialog}
+                  >
+                    Recover by resetting
+                  </Button>
+                ) : null}
+                <Button type="button" onClick={closeRecoveryDialog}>
                   Cancel
                 </Button>
                 <SubmitButton form={recoveryFormId} submittingText="Unlocking…">
@@ -351,10 +424,11 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
                     typeof values.passphrase === 'string'
                       ? values.passphrase
                       : '';
-                  const result = await authenticateWithRecovery(phrase);
+                  const result = await runAuthenticationAttempt(
+                    () => authenticateWithRecovery(phrase),
+                    () => setRecoveryOpen(false),
+                  );
                   if (result.ok) {
-                    setRecoveryOpen(false);
-                    onAuthenticated?.();
                     return { success: true };
                   }
                   return {
@@ -370,12 +444,9 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
         </FormStoreProvider>
       ) : null}
       <RecoverByResettingDialog
-        open={resetOpen}
-        onCancel={() => setResetOpen(false)}
-        onReset={() => {
-          setResetOpen(false);
-          setRecoveryOpen(false);
-        }}
+        open={allowRecovery && allowDestructiveRecovery && resetOpen}
+        onCancel={closeResetDialog}
+        onReset={finishReset}
       />
     </>
   );

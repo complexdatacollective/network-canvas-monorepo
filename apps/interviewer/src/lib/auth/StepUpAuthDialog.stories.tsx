@@ -8,6 +8,7 @@ type Outcome = 'success' | 'failure';
 type StoryArgs = {
   mode: 'pin' | 'passphrase' | 'biometric';
   outcome: Outcome;
+  allowDestructiveRecovery: boolean;
 };
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -21,15 +22,20 @@ const makeVerify = (outcome: Outcome, msg: string) => async () => {
 const meta: Meta<StoryArgs> = {
   title: 'Auth/StepUpAuthDialog',
   parameters: { layout: 'fullscreen' },
-  args: { mode: 'pin', outcome: 'success' },
+  args: {
+    mode: 'pin',
+    outcome: 'success',
+    allowDestructiveRecovery: true,
+  },
   argTypes: {
     mode: {
       control: 'inline-radio',
       options: ['pin', 'passphrase', 'biometric'],
     },
     outcome: { control: 'inline-radio', options: ['success', 'failure'] },
+    allowDestructiveRecovery: { control: 'boolean' },
   },
-  render: ({ mode, outcome }) => (
+  render: ({ mode, outcome, allowDestructiveRecovery }) => (
     <MockAuthProvider
       value={{
         kind: 'unlocked',
@@ -40,7 +46,12 @@ const meta: Meta<StoryArgs> = {
         verifyWithRecovery: makeVerify(outcome, 'Incorrect passphrase.'),
       }}
     >
-      <StepUpAuthDialogView open onResolve={() => {}} onCancel={() => {}} />
+      <StepUpAuthDialogView
+        open
+        allowDestructiveRecovery={allowDestructiveRecovery}
+        onResolve={() => {}}
+        onCancel={() => {}}
+      />
     </MockAuthProvider>
   ),
 };

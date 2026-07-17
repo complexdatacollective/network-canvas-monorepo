@@ -40,6 +40,12 @@ describe('VaultRecoveryScreen', () => {
     expect(
       await screen.findByText(/reset all app data\?/i),
     ).toBeInTheDocument();
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(
+      screen.queryByRole('heading', {
+        name: /can't read this device's security settings/i,
+      }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /permanently delete/i }),
     ).toBeInTheDocument();

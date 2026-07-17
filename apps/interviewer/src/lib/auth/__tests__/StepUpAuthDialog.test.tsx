@@ -2,6 +2,8 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { AuthContextValue } from '../AuthContext';
+
 const useAuthMock = vi.fn();
 vi.mock('../AuthContext', () => ({ useAuth: () => useAuthMock() }));
 
@@ -18,9 +20,18 @@ const verifyWithPassphrase = vi.fn(async () => ({ ok: true }));
 const verifyWithRecovery = vi.fn(async () => ({ ok: true }));
 const revoke = vi.fn(async () => undefined);
 
-const authValue = {
-  kind: 'unlocked' as const,
-  mode: 'pin' as const,
+const authValue: Pick<
+  AuthContextValue,
+  | 'kind'
+  | 'mode'
+  | 'verifyBiometric'
+  | 'verifyWithPin'
+  | 'verifyWithPassphrase'
+  | 'verifyWithRecovery'
+  | 'revoke'
+> = {
+  kind: 'unlocked',
+  mode: 'pin',
   verifyBiometric,
   verifyWithPin,
   verifyWithPassphrase,
@@ -40,11 +51,44 @@ afterEach(() => {
 describe('StepUpAuthDialogView', () => {
   it('renders the authentication UI selected by context', () => {
     render(
-      <StepUpAuthDialogView open onResolve={vi.fn()} onCancel={vi.fn()} />,
+      <StepUpAuthDialogView
+        open
+        allowDestructiveRecovery
+        onResolve={vi.fn()}
+        onCancel={vi.fn()}
+      />,
     );
     expect(screen.getByText('Confirm your identity')).toBeInTheDocument();
     expect(screen.getByText('Authenticate to continue.')).toBeInTheDocument();
     expect(screen.getByText('PIN')).toBeInTheDocument();
+    // Only title/description vary by context; action copy stays identical to
+    // the shared Welcome back dialog.
+    expect(screen.getByRole('button', { name: 'Unlock' })).toBeInTheDocument();
+  });
+
+  it('keeps passphrase recovery available without exposing destructive reset', async () => {
+    verifyBiometric.mockResolvedValueOnce({ ok: false });
+    useAuthMock.mockReturnValue({
+      ...authValue,
+      mode: 'biometric',
+    });
+    render(
+      <StepUpAuthDialogView
+        open
+        allowDestructiveRecovery={false}
+        onResolve={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(verifyBiometric).toHaveBeenCalledTimes(1));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Recover with passphrase' }),
+    );
+    expect(screen.getByText('Recover with passphrase')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Recover by resetting' }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -55,7 +99,9 @@ describe('StepUpAuthDialog', () => {
       mode: 'biometric',
     });
     const onResolve = vi.fn();
-    render(<StepUpAuthDialog open onResolve={onResolve} />);
+    render(
+      <StepUpAuthDialog open allowDestructiveRecovery onResolve={onResolve} />,
+    );
 
     await waitFor(() => expect(verifyBiometric).toHaveBeenCalledTimes(1));
     expect(onResolve).toHaveBeenCalledWith({ ok: true });
@@ -63,7 +109,9 @@ describe('StepUpAuthDialog', () => {
 
   it('renders nothing for mode none', () => {
     useAuthMock.mockReturnValue({ ...authValue, mode: 'none' });
-    const { container } = render(<StepUpAuthDialog open onResolve={vi.fn()} />);
+    const { container } = render(
+      <StepUpAuthDialog open allowDestructiveRecovery onResolve={vi.fn()} />,
+    );
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -75,7 +123,9 @@ describe('StepUpAuthDialog', () => {
     });
     const onResolve = vi.fn();
     const user = userEvent.setup();
-    render(<StepUpAuthDialog open onResolve={onResolve} />);
+    render(
+      <StepUpAuthDialog open allowDestructiveRecovery onResolve={onResolve} />,
+    );
 
     await waitFor(() => expect(verifyBiometric).toHaveBeenCalledTimes(1));
     await user.click(
@@ -100,7 +150,9 @@ describe('StepUpAuthDialog', () => {
       mode: 'biometric',
     });
     const user = userEvent.setup();
-    render(<StepUpAuthDialog open onResolve={vi.fn()} />);
+    render(
+      <StepUpAuthDialog open allowDestructiveRecovery onResolve={vi.fn()} />,
+    );
 
     expect(
       screen.getByText(/isn't available in this installed app/i),
@@ -119,7 +171,9 @@ describe('StepUpAuthDialog', () => {
 
   it('resolves cancellation through the shared dialog callback', async () => {
     const onResolve = vi.fn();
-    render(<StepUpAuthDialog open onResolve={onResolve} />);
+    render(
+      <StepUpAuthDialog open allowDestructiveRecovery onResolve={onResolve} />,
+    );
 
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onResolve).toHaveBeenCalledWith({
@@ -142,12 +196,18 @@ describe('StepUpAuthDialog', () => {
     });
     const onResolve = vi.fn();
     const { rerender } = render(
-      <StepUpAuthDialog open onResolve={onResolve} />,
+      <StepUpAuthDialog open allowDestructiveRecovery onResolve={onResolve} />,
     );
 
     await waitFor(() => expect(verifyBiometric).toHaveBeenCalledTimes(1));
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    rerender(<StepUpAuthDialog open={false} onResolve={onResolve} />);
+    rerender(
+      <StepUpAuthDialog
+        open={false}
+        allowDestructiveRecovery
+        onResolve={onResolve}
+      />,
+    );
     await act(async () => {
       resolveBiometric({ ok: true });
     });

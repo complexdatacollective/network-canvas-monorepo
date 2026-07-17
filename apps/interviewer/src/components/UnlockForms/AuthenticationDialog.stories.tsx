@@ -40,6 +40,7 @@ The shared authentication dialog used for both mandatory app unlocks and cancell
 - \`title\` and \`description\` are the only context-specific copy.
 - \`showCancel\` adds an explicit Cancel action and enables all standard dialog dismissal paths.
 - \`allowRecovery\` offers passphrase recovery for biometric authentication, or destructive reset recovery for PIN/passphrase authentication.
+- \`allowDestructiveRecovery\` can suppress every reset action while preserving biometric passphrase recovery.
 - Biometric authentication is attempted automatically when the platform supports it.
         `,
       },
@@ -51,6 +52,7 @@ The shared authentication dialog used for both mandatory app unlocks and cancell
     description: 'Authenticate to unlock and pick up where you left off.',
     showCancel: false,
     allowRecovery: true,
+    allowDestructiveRecovery: true,
   },
   argTypes: {
     showCancel: {
@@ -65,6 +67,14 @@ The shared authentication dialog used for both mandatory app unlocks and cancell
       table: { type: { summary: '() => void' } },
     },
     onAuthenticated: { control: false },
+    allowDestructiveRecovery: {
+      description:
+        'Allow recovery actions that permanently reset app data. Passphrase recovery remains available when false.',
+      table: {
+        type: { summary: 'boolean' },
+        defaultValue: { summary: 'true' },
+      },
+    },
   },
 } satisfies Meta<typeof AuthenticationDialog>;
 
@@ -98,6 +108,13 @@ export const WithoutRecovery: Story = {
     allowRecovery: false,
   },
   decorators: [withAuthMode('pin')],
+};
+
+export const WithoutDestructiveRecovery: Story = {
+  args: {
+    allowDestructiveRecovery: false,
+  },
+  decorators: [withAuthMode('biometric')],
 };
 
 export const LongDescription: Story = {

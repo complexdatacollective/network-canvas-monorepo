@@ -1,39 +1,57 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 
 import { useAuth } from '~/lib/auth/AuthContext';
-import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
+import {
+  isInterviewRoutePath,
+  persistInterviewRecoveryRestriction,
+  readInterviewRecoveryRestriction,
+} from '~/lib/auth/interviewRecoveryRestriction';
 
 import { AuthenticationDialog } from './UnlockForms/AuthenticationDialog';
 
 export function LockScreenView({
-  allowRecovery = true,
+  allowDestructiveRecovery = true,
 }: {
-  allowRecovery?: boolean;
+  allowDestructiveRecovery?: boolean;
 }) {
   return (
     <AuthenticationDialog
       title="Welcome back"
       description="Authenticate to unlock and pick up where you left off."
-      allowRecovery={allowRecovery}
+      allowRecovery
+      allowDestructiveRecovery={allowDestructiveRecovery}
     />
   );
 }
 
 export function LockScreen() {
   const { kind } = useAuth();
-  const { getAuthorizedInterviewId } = useStepUpAuth();
   const [location] = useLocation();
-  const recoveryRestricted = useRef(
-    /^\/interview\//i.test(location) || getAuthorizedInterviewId() !== null,
-  );
+  const interviewRoute = isInterviewRoutePath(location);
+  const recoveryRestricted = useRef<boolean | undefined>(undefined);
+
+  if (recoveryRestricted.current === undefined) {
+    recoveryRestricted.current = readInterviewRecoveryRestriction();
+  }
+
+  if (kind === 'locked' && interviewRoute) {
+    recoveryRestricted.current = true;
+  }
+
+  useEffect(() => {
+    if (kind === 'locked' && interviewRoute) {
+      persistInterviewRecoveryRestriction();
+    }
+  }, [interviewRoute, kind]);
 
   if (kind !== 'locked') {
     return null;
   }
 
-  // Never expose destructive recovery while an interview is protected. Latch
-  // the restriction for this lock cycle so Back/URL changes cannot reveal it;
-  // the persisted interview authorization keeps it restricted across reloads.
-  return <LockScreenView allowRecovery={!recoveryRestricted.current} />;
+  // Latch the restriction for this lock cycle so route changes cannot reveal
+  // destructive recovery. The lock-specific marker preserves it across reloads.
+  return (
+    <LockScreenView allowDestructiveRecovery={!recoveryRestricted.current} />
+  );
 }

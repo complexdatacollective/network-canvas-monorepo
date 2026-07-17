@@ -4,15 +4,18 @@ export type StepUpResult = { ok: true } | { ok: false; reason: 'cancelled' };
 
 type StepUpAuthDialogProps = {
   open: boolean;
+  allowDestructiveRecovery: boolean;
   onResolve: (result: StepUpResult) => void;
 };
 
 export function StepUpAuthDialogView({
   open,
+  allowDestructiveRecovery,
   onResolve,
   onCancel,
 }: {
   open: boolean;
+  allowDestructiveRecovery: boolean;
   onResolve: (result: StepUpResult) => void;
   onCancel: () => void;
 }) {
@@ -23,6 +26,7 @@ export function StepUpAuthDialogView({
       description="Authenticate to continue."
       showCancel
       allowRecovery
+      allowDestructiveRecovery={allowDestructiveRecovery}
       onCancel={onCancel}
       onAuthenticated={() => onResolve({ ok: true })}
     />
@@ -31,14 +35,15 @@ export function StepUpAuthDialogView({
 
 export default function StepUpAuthDialog({
   open,
+  allowDestructiveRecovery,
   onResolve,
 }: StepUpAuthDialogProps) {
-  const handleCancel = () =>
-    onResolve({ ok: false, reason: 'cancelled' } as const);
+  const handleCancel = () => onResolve({ ok: false, reason: 'cancelled' });
 
   return (
     <StepUpAuthDialogView
       open={open}
+      allowDestructiveRecovery={allowDestructiveRecovery}
       onResolve={onResolve}
       onCancel={handleCancel}
     />

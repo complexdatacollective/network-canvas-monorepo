@@ -6,6 +6,10 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 
 import type { AuthContextValue } from '../AuthContext';
+import {
+  persistInterviewRecoveryRestriction,
+  readInterviewRecoveryRestriction,
+} from '../interviewRecoveryRestriction';
 import { StepUpAuthProvider, useStepUpAuth } from '../StepUpAuthProvider';
 
 // The provider only reads `auth.kind`/`auth.mode` from useAuth; mock it so the
@@ -86,6 +90,7 @@ function Harness({ children }: { children?: ReactNode }) {
 }
 
 beforeEach(() => {
+  window.history.replaceState({}, '', '/');
   window.sessionStorage.clear();
   mockAuth = { kind: 'locked', mode: 'biometric' };
 });
@@ -162,10 +167,42 @@ describe('StepUpAuthProvider dialog dismissal across lock transitions', () => {
     );
     expect(screen.queryByText('Confirm your identity')).not.toBeInTheDocument();
   });
+
+  it('keeps destructive recovery suppressed for a step-up opened on an interview route', async () => {
+    window.history.replaceState({}, '', '/interview/s1');
+    mockAuth = { kind: 'unlocked', mode: 'pin' };
+    render(
+      <Harness>
+        <StepUpRequester onResult={vi.fn()} />
+      </Harness>,
+    );
+
+    await act(async () => {
+      screen.getByText('request-step-up').click();
+    });
+    expect(
+      await screen.findByText('Confirm your identity'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Recover by resetting' }),
+    ).not.toBeInTheDocument();
+
+    // The policy is captured when the dialog opens; changing the URL cannot
+    // re-enable reset on the already-open authentication surface.
+    await act(async () => {
+      window.history.pushState({}, '', '/');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(screen.getByText('Confirm your identity')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Recover by resetting' }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe('StepUpAuthProvider interview authorization', () => {
   it('preserves the authorized interview across a hard-refresh remount', async () => {
+    window.history.replaceState({}, '', '/interview/s1');
     const firstMount = render(
       <Harness>
         <AuthorizationProbe />
@@ -184,6 +221,39 @@ describe('StepUpAuthProvider interview authorization', () => {
     );
 
     expect(screen.getByTestId('authorized-interview')).toHaveTextContent('s1');
+  });
+
+  it('clears stale interview authorization when unlocked on the home route', async () => {
+    const firstMount = render(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+    await act(async () => {
+      screen.getByText('authorize-s1').click();
+    });
+    firstMount.unmount();
+
+    mockAuth = { kind: 'unlocked', mode: 'pin' };
+    const homeMount = render(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+
+    await waitFor(() =>
+      expect(
+        window.sessionStorage.getItem('interviewer:authorized-interview-id'),
+      ).toBeNull(),
+    );
+    homeMount.rerender(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+    expect(screen.getByTestId('authorized-interview')).toHaveTextContent(
+      'none',
+    );
   });
 
   it('clears persisted interview authorization after a destructive reset', async () => {
@@ -212,4 +282,24 @@ describe('StepUpAuthProvider interview authorization', () => {
       'none',
     );
   });
+});
+
+describe('StepUpAuthProvider lock recovery restriction cleanup', () => {
+  it.each([
+    { kind: 'unlocked', mode: 'pin' },
+    { kind: 'unconfigured' },
+    { kind: 'corrupt' },
+  ] satisfies Array<Pick<AuthContextValue, 'kind' | 'mode'>>)(
+    'clears the persisted lock restriction when auth is $kind',
+    async (auth) => {
+      persistInterviewRecoveryRestriction();
+      mockAuth = auth;
+
+      render(<Harness />);
+
+      await waitFor(() =>
+        expect(readInterviewRecoveryRestriction()).toBe(false),
+      );
+    },
+  );
 });

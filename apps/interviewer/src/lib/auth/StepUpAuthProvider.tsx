@@ -7,10 +7,15 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useLocation } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 
 import { useAuth } from './AuthContext';
+import {
+  clearInterviewRecoveryRestriction,
+  isInterviewRoutePath,
+} from './interviewRecoveryRestriction';
 import StepUpAuthDialog, { type StepUpResult } from './StepUpAuthDialog';
 
 const AUTHORIZED_INTERVIEW_ID_STORAGE_KEY =
@@ -54,7 +59,10 @@ const StepUpAuthContext = createContext<StepUpAuthContextValue | null>(null);
 export function StepUpAuthProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const { closeAllDialogs } = useDialog();
+  const [location] = useLocation();
   const [open, setOpen] = useState(false);
+  const [allowDestructiveRecovery, setAllowDestructiveRecovery] =
+    useState(true);
   const pendingResolve = useRef<((r: StepUpResult) => void) | null>(null);
   const prevKind = useRef(auth.kind);
   const authorizedInterviewId = useRef<string | null>(
@@ -89,7 +97,29 @@ export function StepUpAuthProvider({ children }: { children: ReactNode }) {
     const previous = prevKind.current;
     prevKind.current = auth.kind;
 
+    if (
+      auth.kind === 'unlocked' ||
+      auth.kind === 'unconfigured' ||
+      auth.kind === 'corrupt'
+    ) {
+      clearInterviewRecoveryRestriction();
+    }
+
     if (auth.kind === 'unconfigured' || auth.kind === 'corrupt') {
+      setAuthorizedInterviewId(null);
+    }
+
+    // An authorization marker is useful only while an interview route is
+    // active (including the locked refresh that temporarily replaces it with
+    // AuthGate). Once the unlocked app is visibly elsewhere, discard any
+    // stale marker so a later visit cannot bypass the entry gate. Setting a
+    // marker during NewSessionForm does not re-render this provider, so the
+    // synchronous navigation that follows still carries it into the new route.
+    if (
+      auth.kind === 'unlocked' &&
+      !isInterviewRoutePath(location) &&
+      authorizedInterviewId.current !== null
+    ) {
       setAuthorizedInterviewId(null);
     }
 
@@ -107,7 +137,7 @@ export function StepUpAuthProvider({ children }: { children: ReactNode }) {
     if (previous !== 'unlocked') {
       closeAllDialogs();
     }
-  }, [auth.kind, closeAllDialogs, setAuthorizedInterviewId]);
+  }, [auth.kind, closeAllDialogs, location, setAuthorizedInterviewId]);
 
   const requireFreshUnlock = useCallback(async (): Promise<StepUpResult> => {
     if (auth.kind !== 'unlocked' || !auth.mode || auth.mode === 'none') {
@@ -115,9 +145,13 @@ export function StepUpAuthProvider({ children }: { children: ReactNode }) {
     }
     return new Promise<StepUpResult>((resolve) => {
       pendingResolve.current = resolve;
+      // Capture this when the prompt opens. A route change while authentication
+      // is pending must not turn destructive recovery back on for the same
+      // dialog.
+      setAllowDestructiveRecovery(!isInterviewRoutePath(location));
       setOpen(true);
     });
-  }, [auth.kind, auth.mode]);
+  }, [auth.kind, auth.mode, location]);
 
   return (
     <StepUpAuthContext.Provider
@@ -128,7 +162,11 @@ export function StepUpAuthProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-      <StepUpAuthDialog open={open} onResolve={handleResolve} />
+      <StepUpAuthDialog
+        open={open}
+        allowDestructiveRecovery={allowDestructiveRecovery}
+        onResolve={handleResolve}
+      />
     </StepUpAuthContext.Provider>
   );
 }
