@@ -486,14 +486,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   lastCoalesceKey: null,
   gestureSnapshot: null,
 
+  // Changing tool or selection ends the current edit session, so the coalescing
+  // key is cleared: two separate edit bursts that happen to share a key (e.g.
+  // nudging element A, selecting away, then nudging A again) must not merge into
+  // a single undo step.
   setTool: (tool) =>
     set((state) => ({
       activeTool: tool,
       draft: null,
       selection: tool === 'select' ? state.selection : null,
+      lastCoalesceKey: null,
     })),
 
-  select: (selection) => set({ selection }),
+  select: (selection) => set({ selection, lastCoalesceKey: null }),
 
   requestProperties: () =>
     set((state) => ({ propertiesRequestSeq: state.propertiesRequestSeq + 1 })),

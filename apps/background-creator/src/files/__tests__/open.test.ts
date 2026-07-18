@@ -59,7 +59,9 @@ describe('readSvgFile', () => {
 
 describe('isSvgFile', () => {
   it('accepts a file with the SVG mime type', () => {
-    expect(isSvgFile(makeSvgFile('background.svg'))).toBe(true);
+    // An unrelated extension so acceptance depends solely on file.type, not the
+    // .svg extension path.
+    expect(isSvgFile(makeSvgFile('background.bin'))).toBe(true);
   });
 
   it('accepts a file with a .svg extension but no mime type (drag-drop sources)', () => {

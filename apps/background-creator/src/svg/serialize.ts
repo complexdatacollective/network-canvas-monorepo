@@ -23,24 +23,28 @@ function coord100(value: number): string {
   return `${round2(value * 100)}`;
 }
 
-// XML 1.0 forbids the C0 control characters other than tab (0x09), line feed
-// (0x0A), and carriage return (0x0D). Such characters arrive routinely when
-// pasting from Word or a PDF (U+000B, U+000C) and would make the whole SVG
-// unparseable, so they are stripped from every serialized string. A code-point
-// filter is used rather than a regex because a control-character character
-// class is itself a lint hazard.
+// Keeps only characters allowed by the XML 1.0 `Char` production: tab (0x09),
+// line feed (0x0A), carriage return (0x0D), and the valid scalar ranges below.
+// This drops the C0 controls that arrive when pasting from Word or a PDF
+// (U+000B, U+000C) as well as lone surrogates and U+FFFE/U+FFFF, any of which
+// would make the whole SVG unparseable. A code-point filter is used rather than
+// a regex because a control-character character class is itself a lint hazard.
 function stripXmlInvalid(value: string): string {
-  return [...value]
-    .filter((char) => {
-      const code = char.codePointAt(0) ?? 0;
-      const forbidden =
-        code <= 0x08 ||
-        code === 0x0b ||
-        code === 0x0c ||
-        (code >= 0x0e && code <= 0x1f);
-      return !forbidden;
-    })
-    .join('');
+  let out = '';
+  // for-of iterates by code point, so a valid surrogate pair is one char here
+  // while a lone surrogate is a single code unit that fails the ranges below.
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0;
+    const allowed =
+      code === 0x09 ||
+      code === 0x0a ||
+      code === 0x0d ||
+      (code >= 0x20 && code <= 0xd7ff) ||
+      (code >= 0xe000 && code <= 0xfffd) ||
+      (code >= 0x10000 && code <= 0x10ffff);
+    if (allowed) out += char;
+  }
+  return out;
 }
 
 function escapeText(value: string): string {

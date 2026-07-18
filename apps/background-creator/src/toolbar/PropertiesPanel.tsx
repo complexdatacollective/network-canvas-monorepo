@@ -254,7 +254,9 @@ function TextControls({ element }: { element: TextElement }): ReactElement {
         name="font-min"
         value={element.fontMinPx}
         min={8}
-        max={96}
+        // Capped at the current maximum (NumberField clamps on commit) so the
+        // min can never be saved above the max.
+        max={element.fontMaxPx}
         step={1}
         onCommit={(value) => updateElement(id, { fontMinPx: value })}
       />
@@ -271,7 +273,9 @@ function TextControls({ element }: { element: TextElement }): ReactElement {
         label="Font max (px)"
         name="font-max"
         value={element.fontMaxPx}
-        min={8}
+        // Floored at the current minimum (NumberField clamps on commit) so the
+        // max can never be saved below the min.
+        min={element.fontMinPx}
         max={96}
         step={1}
         onCommit={(value) => updateElement(id, { fontMaxPx: value })}

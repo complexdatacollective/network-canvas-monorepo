@@ -21,13 +21,17 @@ export class DocumentParseError extends Error {
 // base64 payload. Isolating the metadata block first, then the document tag
 // within it, keeps the match anchored without depending on attribute order or
 // incidental whitespace elsewhere in the file.
+// The `id` attribute may appear in any position and use single or double quotes
+// (a re-serializing tool can legitimately reorder attributes or switch quote
+// style without changing the document), so it is matched with an order- and
+// quote-independent lookahead; group 2 captures the metadata contents.
 const METADATA_BLOCK_PATTERN =
-  /<metadata\s+id="nc-background-creator"[^>]*>([\s\S]*?)<\/metadata>/;
+  /<metadata\b(?=[^>]*\sid\s*=\s*(["'])nc-background-creator\1)[^>]*>([\s\S]*?)<\/metadata>/;
 const DOCUMENT_TAG_PATTERN =
   /<nc:document[^>]*>\s*([A-Za-z0-9+/=\s]+?)\s*<\/nc:document>/;
 
 export function parseDocument(svgText: string): BackgroundDocument {
-  const metadataBlock = METADATA_BLOCK_PATTERN.exec(svgText)?.[1] ?? '';
+  const metadataBlock = METADATA_BLOCK_PATTERN.exec(svgText)?.[2] ?? '';
   const documentMatch = DOCUMENT_TAG_PATTERN.exec(metadataBlock);
   if (documentMatch === null) {
     throw new DocumentParseError(

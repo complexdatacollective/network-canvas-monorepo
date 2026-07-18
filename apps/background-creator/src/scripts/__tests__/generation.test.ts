@@ -76,6 +76,36 @@ describe('label escaping', () => {
   });
 });
 
+describe('title comment neutralization', () => {
+  // Each of these separators would, if left intact, break the leading "# "
+  // header comment and let the trailing text become executable Python/R.
+  const separators = ['a\rb', 'a\nb', 'a\r\nb', 'a\u2028b', 'a\u2029b'];
+
+  function backgroundCommentLine(script: string): string | undefined {
+    return script.split('\n').find((line) => line.startsWith('# Background:'));
+  }
+
+  it('Python collapses every line separator in the title to one comment line', () => {
+    for (const title of separators) {
+      const script = generatePythonScript(
+        { ...fixtureDocument, title },
+        defaultOpts,
+      );
+      expect(backgroundCommentLine(script)).toBe('# Background: a b');
+    }
+  });
+
+  it('R collapses every line separator in the title to one comment line', () => {
+    for (const title of separators) {
+      const script = generateRScript(
+        { ...fixtureDocument, title },
+        defaultOpts,
+      );
+      expect(backgroundCommentLine(script)).toBe('# Background: a b');
+    }
+  });
+});
+
 describe('nul (U+0000) handling', () => {
   const nul = String.fromCharCode(0);
   const replacement = String.fromCharCode(0xfffd);

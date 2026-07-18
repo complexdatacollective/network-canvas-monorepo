@@ -231,9 +231,7 @@ generated-script tests share fixture points/expectations so drift is caught.
 
 `generatePythonScript(doc, opts)` / `generateRScript(doc, opts)` where
 `opts = { layoutVariable: string; outputVariable: string }` (collected at
-export time via a form dialog; defaults `location` / `zone`). When the
-document contains locked-circle zones, the script header states the one-sided
-guarantee from §2 in plain language.
+export time via a form dialog; defaults `location` / `zone`).
 
 Both scripts:
 
@@ -262,7 +260,7 @@ verification). R semantics are covered by the shared TS fixture expectations.
 
 ## 6. App architecture
 
-```
+```text
 apps/background-creator/
   index.html            # boot shell, links src/styles/tailwind.css
   vite.config.ts        # react() + tailwindcss(), port 5185, vitest jsdom config

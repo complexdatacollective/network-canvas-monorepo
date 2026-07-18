@@ -1,6 +1,6 @@
 import { FileUp } from 'lucide-react';
 import { type ReactElement, type ReactNode, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 
@@ -25,9 +25,23 @@ export function FileDropzone({
     [dialogs],
   );
 
-  const onDropRejected = useCallback(() => {
-    void openRejectedDropFlow(dialogs);
-  }, [dialogs]);
+  const onDropRejected = useCallback(
+    (fileRejections: FileRejection[]) => {
+      // `multiple: false` rejects a multi-file drop with too-many-files; show a
+      // distinct hint for that rather than the generic "not an SVG" message.
+      // react-dropzone types FileError.code as `ErrorCode | string`, so the enum
+      // value is widened to a string for a plain string-to-string comparison.
+      const tooManyFilesCode: string = ErrorCode.TooManyFiles;
+      const tooMany = fileRejections.some((rejection) =>
+        rejection.errors.some((error) => error.code === tooManyFilesCode),
+      );
+      void openRejectedDropFlow(
+        dialogs,
+        tooMany ? 'too-many-files' : 'not-svg',
+      );
+    },
+    [dialogs],
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

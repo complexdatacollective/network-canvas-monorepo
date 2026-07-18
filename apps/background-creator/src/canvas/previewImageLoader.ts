@@ -125,9 +125,11 @@ export function createPreviewImageLoader<Source>({
     const decode = image.decode;
     if (typeof decode === 'function') {
       decode.call(image).then(swap, () => {
-        // decode() rejected: fall back to the load event. If the bytes are already
-        // in, swap immediately; otherwise the load listener above will.
-        if (image.complete) swap();
+        // decode() rejected. Do not swap based on `image.complete`: it is true even
+        // for a broken image, so swapping here could show a dead URL and revoke the
+        // last good frame. Let the load/error listeners settle this frame — a real
+        // decode failure fires 'error' (drop keeps the current frame), and a decode
+        // that rejected on a usable image still fires 'load' (swap).
       });
     } else if (image.complete) {
       swap();

@@ -1,5 +1,6 @@
 import { zonesOf } from '../geometry/zones';
 import type { BackgroundDocument, ZoneElement } from '../model/types';
+import { commentText } from './commentText';
 
 function formatNumber(value: number): string {
   return String(value);
@@ -58,16 +59,12 @@ function pyZoneLiteral(zone: ZoneElement): string {
   return `    {"label": ${label}, "shape": "polygon", "points": [${points}]},`;
 }
 
-function commentLine(value: string): string {
-  return value.replace(/\r?\n/g, ' ');
-}
-
 export function generatePythonScript(
   doc: BackgroundDocument,
   opts: { layoutVariable: string; outputVariable: string },
 ): string {
   const zones = zonesOf(doc).map(pyZoneLiteral).join('\n');
-  const title = commentLine(doc.title);
+  const title = commentText(doc.title);
   const layoutDefault = pyString(opts.layoutVariable);
   const outputDefault = pyString(opts.outputVariable);
 
@@ -231,21 +228,24 @@ def main(argv):
             return 1
         rows = list(reader)
 
+    # Validate every row before opening the output for writing. DictReader
+    # collects any cells beyond the header under the None restkey; failing here
+    # (rather than mid-write) means a malformed later row never truncates or
+    # partially overwrites an existing output file.
+    for index, row in enumerate(rows, start=1):
+        if None in row:
+            print(
+                f"Error: row {index} has more cells than the header "
+                f"({len(fieldnames)} columns).",
+                file=sys.stderr,
+            )
+            return 1
+
     output_fieldnames = fieldnames + [args.output_variable]
     with open(args.output, "w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=output_fieldnames)
         writer.writeheader()
-        for index, row in enumerate(rows, start=1):
-            # DictReader collects any cells beyond the header under the None
-            # restkey; fail cleanly rather than letting DictWriter raise a raw
-            # ValueError on the unexpected field.
-            if None in row:
-                print(
-                    f"Error: row {index} has more cells than the header "
-                    f"({len(fieldnames)} columns).",
-                    file=sys.stderr,
-                )
-                return 1
+        for row in rows:
             x = parse_coordinate(row.get(x_column))
             y = parse_coordinate(row.get(y_column))
             label = assign_zone(x, y) if x is not None and y is not None else None

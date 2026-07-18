@@ -390,6 +390,44 @@ describe('serializeDocument XML-invalid characters', () => {
     const [text] = restored.elements;
     expect(text?.kind === 'text' ? text.lines : []).toEqual(['Line', 'plain']);
   });
+
+  it('strips characters outside the XML 1.0 Char range and stays reopenable', () => {
+    // A lone surrogate (U+D800) and the non-characters U+FFFE/U+FFFF are all
+    // outside the XML Char production and would make the SVG unparseable.
+    const loneSurrogate = '\uD800';
+    const uFFFE = String.fromCharCode(0xfffe);
+    const uFFFF = String.fromCharCode(0xffff);
+    const doc: BackgroundDocument = {
+      version: 1,
+      title: `T${loneSurrogate}i${uFFFE}tle`,
+      description: `De${uFFFF}sc`,
+      elements: [],
+    };
+    const svg = serializeDocument(doc);
+
+    expect(svg).not.toContain(loneSurrogate);
+    expect(svg).not.toContain(uFFFE);
+    expect(svg).not.toContain(uFFFF);
+
+    const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    expect(parsed.querySelector('parsererror')).toBeNull();
+
+    const restored = parseDocument(svg);
+    expect(restored.title).toBe('Title');
+    expect(restored.description).toBe('Desc');
+  });
+
+  it('preserves a valid astral character (surrogate pair) that is inside Char', () => {
+    // U+1F600 is a valid XML character; only lone surrogates are invalid.
+    const emoji = '\u{1F600}';
+    const svg = serializeDocument({
+      version: 1,
+      title: `hi ${emoji}`,
+      description: '',
+      elements: [],
+    });
+    expect(parseDocument(svg).title).toBe(`hi ${emoji}`);
+  });
 });
 
 describe('serializeDocument ellipse', () => {

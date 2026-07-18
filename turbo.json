@@ -103,6 +103,29 @@
       "env": ["NODE_ENV"],
       "outputs": ["dist/**"]
     },
+    "@codaco/background-creator#build": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "index.html",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": ["dist/**"]
+    },
+    "@codaco/background-creator#typecheck": {
+      "dependsOn": ["^topo"],
+      "inputs": ["src/**", "vite.config.*", "tsconfig*.json", "package.json"],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
+    "@codaco/background-creator#test": {
+      "dependsOn": ["^topo"],
+      "inputs": ["src/**", "vite.config.*", "tsconfig*.json", "package.json"],
+      "outputs": []
+    },
     "networkcanvas.com#build": {
       "dependsOn": ["^topo"],
       "inputs": [

@@ -108,7 +108,7 @@ describe.skipIf(pythonMissing)('generated Python script executes', () => {
     expect(result.stderr).toContain('foo_x');
   });
 
-  it('exits 1 with a helpful message when a row has more cells than the header', () => {
+  it('exits 1 without truncating an existing output when a row is ragged', () => {
     const scriptPath = join(dir, 'ragged.py');
     const inputPath = join(dir, 'ragged-in.csv');
     const outputPath = join(dir, 'ragged-out.csv');
@@ -118,6 +118,10 @@ describe.skipIf(pythonMissing)('generated Python script executes', () => {
       inputPath,
       'id,name,location_x,location_y\nn0,Node 0,0.5,0.5\nn1,Node 1,0.5,0.5,EXTRA,MORE\n',
     );
+    // A pre-existing output file that the run must not destroy: validation
+    // happens before the output is opened for writing.
+    const sentinel = 'keep me\n';
+    writeFileSync(outputPath, sentinel);
 
     const result = spawnSync('python3', [scriptPath, inputPath, outputPath], {
       encoding: 'utf-8',
@@ -126,6 +130,33 @@ describe.skipIf(pythonMissing)('generated Python script executes', () => {
     expect(result.stderr).toContain('more cells than the header');
     // The message counts the offending data row (the second one here).
     expect(result.stderr).toContain('row 2');
+    // The existing output file is untouched — not truncated or partially written.
+    expect(readFileSync(outputPath, 'utf-8')).toBe(sentinel);
+  });
+
+  it('neutralizes a hostile title so it cannot inject executable code', () => {
+    // A bare CR is a line break to the Python tokenizer, so without sanitization
+    // the text after it would escape the "# Background:" comment and run.
+    const hostileTitle = 'ok\r__import__("os").system("echo PWNED")';
+    const scriptPath = join(dir, 'hostile-title.py');
+    const inputPath = join(dir, 'hostile-title-in.csv');
+    const outputPath = join(dir, 'hostile-title-out.csv');
+    writeFileSync(
+      scriptPath,
+      generatePythonScript(
+        { ...fixtureDocument, title: hostileTitle },
+        defaultOpts,
+      ),
+    );
+    writeFileSync(inputPath, 'id,location_x,location_y\nn0,0.5,0.5\n');
+
+    const result = spawnSync('python3', [scriptPath, inputPath, outputPath], {
+      encoding: 'utf-8',
+    });
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    // The injected payload never executes.
+    expect(result.stdout).not.toContain('PWNED');
   });
 
   it('reads a UTF-8 BOM input without a spurious missing-column error', () => {

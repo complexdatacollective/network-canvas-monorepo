@@ -178,6 +178,38 @@ describe('backgroundDocumentSchema', () => {
     ).toBe(false);
   });
 
+  it('rejects an empty element id', () => {
+    expect(
+      backgroundDocumentSchema.safeParse(docWith([{ ...baseRect, id: '' }]))
+        .success,
+    ).toBe(false);
+  });
+
+  it('rejects duplicate element ids', () => {
+    expect(
+      backgroundDocumentSchema.safeParse(
+        docWith([
+          { ...baseRect, id: 'dup' },
+          { ...baseRect, id: 'dup' },
+        ]),
+      ).success,
+    ).toBe(false);
+  });
+
+  it('accepts distinct ids and does not enforce zone-label uniqueness while editing', () => {
+    // Duplicate/blank zone labels are normal mid-edit and are surfaced at export
+    // time (validateZoneLabels), so the persisted schema must not reject them.
+    expect(
+      backgroundDocumentSchema.safeParse(
+        docWith([
+          { ...baseRect, id: 'a', zoneLabel: 'zone-1' },
+          { ...baseRect, id: 'b', zoneLabel: 'zone-1' },
+          { ...baseRect, id: 'c', zoneLabel: '' },
+        ]),
+      ).success,
+    ).toBe(true);
+  });
+
   it('rejects a rect that is missing its zoneLabel', () => {
     const { zoneLabel: _omit, ...rectWithoutLabel } = baseRect;
     expect(

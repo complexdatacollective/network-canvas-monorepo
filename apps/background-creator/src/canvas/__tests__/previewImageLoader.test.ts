@@ -224,6 +224,38 @@ describe('createPreviewImageLoader', () => {
     expect(swaps).toEqual(['blob:1']);
   });
 
+  it('keeps the current frame when decode rejects on a complete (broken) image', async () => {
+    const h = makeHarness({ withDecode: true });
+    const swaps: string[] = [];
+    const loader = createPreviewImageLoader<string>({
+      serialize: (source) => source,
+      onSwap: (url) => swaps.push(url),
+      deps: h.deps,
+    });
+
+    // Establish a good first frame.
+    loader.update('a');
+    h.runFrame();
+    h.imageAt(0).resolveDecode();
+    await Promise.resolve();
+    expect(swaps).toEqual(['blob:1']);
+
+    // A broken second frame: decode() rejects even though the image reports
+    // complete (a broken image sets complete = true). The loader must not swap
+    // in the dead URL; the error path frees it and the good frame stays.
+    loader.update('b');
+    h.runFrame();
+    h.imageAt(1).complete = true;
+    h.imageAt(1).rejectDecode();
+    await Promise.resolve();
+    expect(swaps).toEqual(['blob:1']);
+
+    h.imageAt(1).fireError();
+    expect(h.log).toContain('revoke blob:2');
+    expect(swaps).toEqual(['blob:1']);
+    expect(h.log).not.toContain('revoke blob:1');
+  });
+
   it('swaps on the load event when decode is unavailable (jsdom)', () => {
     const h = makeHarness({ withDecode: false });
     const swaps: string[] = [];

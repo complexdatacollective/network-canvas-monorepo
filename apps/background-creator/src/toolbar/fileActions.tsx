@@ -31,6 +31,10 @@ const NOT_SVG_TITLE = 'Not a Background Creator file';
 const NOT_SVG_DESCRIPTION =
   'That file is not an SVG. Choose a background SVG created with this tool.';
 
+const TOO_MANY_FILES_TITLE = 'Drop one SVG at a time';
+const TOO_MANY_FILES_DESCRIPTION =
+  'Only one background can be open at a time. Drop a single SVG created with this tool.';
+
 const REPLACE_TITLE = 'Replace the current design?';
 const REPLACE_DESCRIPTION =
   'The current background and its undo history will be cleared. Download it first if you want to keep it.';
@@ -150,9 +154,22 @@ export async function openDroppedFileFlow(
   await loadSvgFile(dialogs, file);
 }
 
-// A non-SVG drop is rejected by the dropzone before it reaches loadSvgFile, so
-// surface the same "not an SVG" acknowledgement the file picker would.
-export async function openRejectedDropFlow(dialogs: Dialogs): Promise<void> {
+// A drop rejected by the dropzone never reaches loadSvgFile, so surface a
+// readable acknowledgement here: the "not an SVG" message the file picker would,
+// or a distinct hint when the drop was rejected only for containing more than
+// one file.
+export async function openRejectedDropFlow(
+  dialogs: Dialogs,
+  reason: 'not-svg' | 'too-many-files' = 'not-svg',
+): Promise<void> {
+  if (reason === 'too-many-files') {
+    await acknowledge(
+      dialogs,
+      TOO_MANY_FILES_TITLE,
+      TOO_MANY_FILES_DESCRIPTION,
+    );
+    return;
+  }
   await acknowledge(dialogs, NOT_SVG_TITLE, NOT_SVG_DESCRIPTION);
 }
 

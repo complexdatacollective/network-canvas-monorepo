@@ -87,6 +87,9 @@ export function startPointerGesture(
   let pendingMove: PointerEvent | null = null;
 
   const onMove = (ev: PointerEvent) => {
+    // The document listeners see every active pointer; a second touch or stylus
+    // must not drive or finish the gesture that this initiating pointer started.
+    if (ev.pointerId !== pointerId) return;
     if (!dragging) {
       const dx = ev.clientX - startClient.x;
       const dy = ev.clientY - startClient.y;
@@ -103,6 +106,9 @@ export function startPointerGesture(
   };
 
   const finish = (ev: PointerEvent, cancelled: boolean) => {
+    // Only the initiating pointer's up/cancel ends the gesture; a different
+    // pointer lifting while this one is still down must be ignored.
+    if (ev.pointerId !== pointerId) return;
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
     document.removeEventListener('pointercancel', onCancel);

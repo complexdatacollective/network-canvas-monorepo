@@ -75,4 +75,19 @@ describe('parseDocument', () => {
       parseReason(svgWithMetadata(base64Utf8('{"version":2,"title":"x"}'))),
     ).toBe('invalid-metadata');
   });
+
+  it('reopens metadata whose id uses single quotes and is not the first attribute', () => {
+    const doc = createQuadrantsTemplate();
+    const payload = base64Utf8(JSON.stringify(doc));
+    const svg = [
+      '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">',
+      // Attribute order swapped and single-quoted id — semantically identical to
+      // our own output but as a re-serializing tool might rewrite it.
+      "  <metadata data-tool='x' id='nc-background-creator'>",
+      `    <nc:document xmlns:nc="${NC_NAMESPACE}">${payload}</nc:document>`,
+      '  </metadata>',
+      '</svg>',
+    ].join('\n');
+    expect(parseDocument(svg)).toEqual(doc);
+  });
 });

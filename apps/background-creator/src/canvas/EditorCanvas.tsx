@@ -291,6 +291,10 @@ export function EditorCanvas(): ReactElement {
   // element are equivalent and only fire while the pointer/focus is on it.
   const handlePointerDown = useCallback(
     (e: PointerEvent) => {
+      // Ignore non-primary presses (right/middle click) before any state change:
+      // startPointerGesture also bails on them, so mutating here first would drop
+      // an uncommitted text element or leave a draft with no pointerup to finish it.
+      if (e.button !== 0) return;
       // Overlay controls (resize handles, zone pills, the inline editor) own
       // their own pointer handling. This native listener fires before their
       // React handlers reach the document root, so the stage must yield here
@@ -448,17 +452,24 @@ export function EditorCanvas(): ReactElement {
       store.updateDraft(pt);
     }
 
-    if (store.zonesVisible) {
-      const zones = zonesOf(store.doc);
-      if (zones.length === 0) return;
-      // rAF-throttled so the hover readout updates at most once per frame.
-      if (hoverRafRef.current !== null) return;
-      hoverRafRef.current = requestAnimationFrame(() => {
-        hoverRafRef.current = null;
-        const label = assignZone(pt, zonesOf(useEditorStore.getState().doc));
-        setHoverLabel(label ?? 'no zone');
-      });
+    // Clear a stale readout when zone feedback is unavailable — zones hidden, or
+    // the last zone removed — so a previous label can't linger or reappear.
+    if (!store.zonesVisible) {
+      setHoverLabel(null);
+      return;
     }
+    const zones = zonesOf(store.doc);
+    if (zones.length === 0) {
+      setHoverLabel(null);
+      return;
+    }
+    // rAF-throttled so the hover readout updates at most once per frame.
+    if (hoverRafRef.current !== null) return;
+    hoverRafRef.current = requestAnimationFrame(() => {
+      hoverRafRef.current = null;
+      const label = assignZone(pt, zonesOf(useEditorStore.getState().doc));
+      setHoverLabel(label ?? 'no zone');
+    });
   }, []);
 
   const handlePointerLeave = useCallback(() => {

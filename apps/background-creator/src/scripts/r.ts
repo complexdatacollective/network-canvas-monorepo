@@ -1,5 +1,6 @@
 import { zonesOf } from '../geometry/zones';
 import type { BackgroundDocument, ZoneElement } from '../model/types';
+import { commentText } from './commentText';
 
 function formatNumber(value: number): string {
   return String(value);
@@ -58,16 +59,12 @@ function rZoneLiteral(zone: ZoneElement): string {
   return `  list(label = ${label}, shape = "polygon", points = list(${points}))`;
 }
 
-function commentLine(value: string): string {
-  return value.replace(/\r?\n/g, ' ');
-}
-
 export function generateRScript(
   doc: BackgroundDocument,
   opts: { layoutVariable: string; outputVariable: string },
 ): string {
   const zones = zonesOf(doc).map(rZoneLiteral).join(',\n');
-  const title = commentLine(doc.title);
+  const title = commentText(doc.title);
   const layoutDefault = rString(opts.layoutVariable);
   const outputDefault = rString(opts.outputVariable);
 

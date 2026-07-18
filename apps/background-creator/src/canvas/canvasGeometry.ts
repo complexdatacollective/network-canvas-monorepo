@@ -117,7 +117,10 @@ function nearEllipseEdge(
   const ny = (p.y - cy) / ry;
   const s = Math.sqrt(nx * nx + ny * ny);
   const d = Math.hypot(p.x - cx, p.y - cy);
-  if (s < 1e-6) return d <= tol;
+  // At the exact centre the ray has no length, so the radial estimate is
+  // undefined. The centre is on the outline only for a genuinely degenerate
+  // ellipse whose whole extent is within tolerance — not for every large one.
+  if (s < 1e-6) return Math.min(rx, ry) <= tol;
   const boundaryDist = d / s;
   return Math.abs(d - boundaryDist) <= tol;
 }

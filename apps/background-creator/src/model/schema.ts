@@ -15,7 +15,7 @@ const strokeWidth = z.number().finite().min(0.25).max(20);
 const colour = z
   .string()
   .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/);
-const identifier = z.string();
+const identifier = z.string().min(1);
 const fontPx = z.number().finite().positive();
 const fontVmin = z.number().finite().nonnegative();
 const zoneLabel = z.string().nullable();
@@ -102,12 +102,32 @@ const svgElementSchema = z.discriminatedUnion('kind', [
   textElementSchema,
 ]);
 
-export const backgroundDocumentSchema = z.strictObject({
-  version: z.literal(1),
-  title: z.string(),
-  description: z.string(),
-  elements: z.array(svgElementSchema),
-});
+// Element ids index selection, update, and delete, and become React keys, so a
+// duplicate makes those operations ambiguous. Uniqueness can't be expressed on
+// the per-element schema, so it is enforced document-wide here. Zone-label
+// uniqueness is deliberately NOT enforced: duplicate/blank labels are normal
+// while editing and are surfaced with actionable UX at export time
+// (validateZoneLabels), per the design spec §5.
+export const backgroundDocumentSchema = z
+  .strictObject({
+    version: z.literal(1),
+    title: z.string(),
+    description: z.string(),
+    elements: z.array(svgElementSchema),
+  })
+  .superRefine(({ elements }, ctx) => {
+    const seen = new Set<string>();
+    elements.forEach((element, index) => {
+      if (seen.has(element.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['elements', index, 'id'],
+          message: 'Element ids must be unique',
+        });
+      }
+      seen.add(element.id);
+    });
+  });
 
 // Compile-time guarantee that the schema stays a faithful mirror of the
 // hand-authored contract in types.ts. Passing a type that is not assignable to
