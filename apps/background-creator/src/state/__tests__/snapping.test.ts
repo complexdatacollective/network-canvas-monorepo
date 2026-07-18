@@ -2,8 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { BackgroundDocument, RectElement } from '~/model/types';
 
-import type { StageBox } from '../documentGeometry';
-import { computeSnap, snapLines, SNAP_THRESHOLD_PX } from '../snapping';
+import type { Bounds, StageBox } from '../documentGeometry';
+import {
+  computeBoundsSnap,
+  computeSnap,
+  type SnapLines,
+  snapLines,
+  SNAP_THRESHOLD_PX,
+} from '../snapping';
 
 // A 100×100 stage makes 1 normalized unit == 100px, so the 6px threshold is
 // 0.06 in normalized space on both axes — convenient round numbers for tests.
@@ -34,6 +40,13 @@ function doc(elements: RectElement[]): BackgroundDocument {
 // make exact-array assertions flaky.
 const round = (ns: number[]): number[] =>
   ns.map((n) => Math.round(n * 1000) / 1000);
+
+const bounds = (
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number,
+): Bounds => ({ minX, maxX, minY, maxY });
 
 describe('snapLines', () => {
   it('always includes the canvas frame lines on both axes', () => {
@@ -172,5 +185,126 @@ describe('computeSnap — degenerate stage', () => {
     });
     expect(result.guides).toEqual({ x: null, y: null });
     expect(result.point).toEqual({ x: 0.51, y: 0.49 });
+  });
+});
+
+describe('computeBoundsSnap — canvas centre', () => {
+  it('aligns the shape centre to the canvas centre on both axes', () => {
+    // Bounds centre x = 0.49, y = 0.51; only the centre probe is near 0.5.
+    const result = computeBoundsSnap(
+      bounds(0.3, 0.68, 0.3, 0.72),
+      snapLines(doc([]), null),
+      STAGE,
+    );
+    expect(result.guides).toEqual({ x: 0.5, y: 0.5 });
+    expect(result.delta.x).toBeCloseTo(0.01);
+    expect(result.delta.y).toBeCloseTo(-0.01);
+  });
+});
+
+describe('computeBoundsSnap — another element', () => {
+  it('snaps an edge to another element edge', () => {
+    // 'other' spans x 0.6..0.7; the moving shape's left edge (0.72) snaps to 0.7.
+    const candidates = snapLines(
+      doc([rect('other', { x: 0.6, y: 0.1, width: 0.1, height: 0.1 })]),
+      'moving',
+    );
+    const result = computeBoundsSnap(
+      bounds(0.72, 0.92, 0.75, 0.9),
+      candidates,
+      STAGE,
+    );
+    expect(result.guides.x).toBe(0.7);
+    expect(result.delta.x).toBeCloseTo(-0.02);
+    // The y probes sit far from every candidate, so that axis stays free.
+    expect(result.guides.y).toBeNull();
+    expect(result.delta.y).toBe(0);
+  });
+
+  it('snaps centre to another element centre', () => {
+    // 'other' spans x 0.6..0.8 (centre 0.7); the moving centre (0.69) is nearest.
+    const candidates = snapLines(
+      doc([rect('other', { x: 0.6, y: 0.6, width: 0.2, height: 0.2 })]),
+      'moving',
+    );
+    const result = computeBoundsSnap(
+      bounds(0.63, 0.75, 0.3, 0.4),
+      candidates,
+      STAGE,
+    );
+    expect(result.guides.x).toBe(0.7);
+    expect(result.delta.x).toBeCloseTo(0.01);
+  });
+});
+
+describe('computeBoundsSnap — nearest wins', () => {
+  it('prefers the closer probe when two are in range', () => {
+    // Left edge sits 4px (0.04) from the line 0.2; centre sits 2px (0.02) from
+    // 0.5. The nearer centre snap wins over the edge snap.
+    const candidates: SnapLines = { x: [0.2, 0.5], y: [0.5] };
+    const result = computeBoundsSnap(
+      bounds(0.24, 0.72, 0.4, 0.6),
+      candidates,
+      STAGE,
+    );
+    expect(result.guides.x).toBe(0.5);
+    expect(result.delta.x).toBeCloseTo(0.02);
+  });
+});
+
+describe('computeBoundsSnap — per-axis independence', () => {
+  it('resolves x while y finds nothing in range', () => {
+    const result = computeBoundsSnap(
+      bounds(0.44, 0.56, 0.8, 0.9),
+      { x: [0.5], y: [0.5] },
+      STAGE,
+    );
+    expect(result.guides.x).toBe(0.5);
+    expect(result.delta.x).toBeCloseTo(0);
+    expect(result.guides.y).toBeNull();
+    expect(result.delta.y).toBe(0);
+  });
+});
+
+describe('computeBoundsSnap — guide reports the line', () => {
+  it('reports the candidate line, not the probe that matched it', () => {
+    // Probes are at 0.33; the only candidate is 0.3. The guide is the line 0.3.
+    const result = computeBoundsSnap(
+      bounds(0.33, 0.5, 0.33, 0.5),
+      { x: [0.3], y: [0.3] },
+      STAGE,
+    );
+    expect(result.guides).toEqual({ x: 0.3, y: 0.3 });
+    expect(result.delta.x).toBeCloseTo(-0.03);
+    expect(result.delta.y).toBeCloseTo(-0.03);
+  });
+});
+
+describe('computeBoundsSnap — no candidates in range', () => {
+  it('leaves both axes free with a zero delta', () => {
+    const result = computeBoundsSnap(
+      bounds(0.1, 0.3, 0.1, 0.3),
+      { x: [0.9], y: [0.9] },
+      STAGE,
+    );
+    expect(result.guides).toEqual({ x: null, y: null });
+    expect(result.delta).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe('computeBoundsSnap — stage scaling', () => {
+  it('applies a tighter normalized band on a wider stage', () => {
+    // Centre is 0.02 off 0.5 on both axes. On a 1000px-wide stage that is 20px
+    // (beyond the 6px band) for x, but only 2px for the 100px-tall y.
+    const wide: StageBox = { width: 1000, height: 100 };
+    const result = computeBoundsSnap(
+      bounds(0.44, 0.52, 0.44, 0.52),
+      { x: [0.5], y: [0.5] },
+      wide,
+    );
+    expect(result.guides.x).toBeNull();
+    expect(result.delta.x).toBe(0);
+    expect(result.guides.y).toBe(0.5);
+    expect(result.delta.y).toBeCloseTo(0.02);
   });
 });

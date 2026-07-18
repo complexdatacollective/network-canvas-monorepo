@@ -28,6 +28,7 @@ import {
 } from '~/state/editorStore';
 import { isZoneElement } from '~/state/labels';
 import {
+  computeBoundsSnap,
   computeSnap,
   NO_GUIDES,
   type SnapAxes,
@@ -48,6 +49,10 @@ import { announceSelectionPosition } from './overlay/useItemControls';
 import { ZonePills } from './overlay/ZonePills';
 import { isOverlayControlTarget } from './overlayTargets';
 import { clientToNormalized, startPointerGesture } from './pointerGesture';
+import {
+  createPreviewImageLoader,
+  type PreviewImageLoader,
+} from './previewImageLoader';
 
 const RESIZE_HANDLE_ONLY = '[data-resize-handle]';
 
@@ -178,23 +183,33 @@ export function EditorCanvas(): ReactElement {
   const stageSize = useStageSize(previewAspect, containerRef);
 
   // While a text element is being edited in place it is omitted from the
-  // serialized preview, so the live textarea is the only rendering of it.
-  const svg = useMemo(() => {
-    const source = editing
-      ? {
-          ...doc,
-          elements: doc.elements.filter((el) => el.id !== editing.id),
-        }
-      : doc;
-    return serializeDocument(source);
+  // preview source, so the live textarea is the only rendering of it.
+  const previewSource = useMemo<BackgroundDocument>(() => {
+    if (!editing) return doc;
+    return {
+      ...doc,
+      elements: doc.elements.filter((el) => el.id !== editing.id),
+    };
   }, [doc, editing]);
 
+  // Preview frames flow through a decode-before-swap loader so the visible <img>
+  // never blanks between frames during a move/resize drag (see previewImageLoader).
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const loaderRef = useRef<PreviewImageLoader<BackgroundDocument> | null>(null);
   useEffect(() => {
-    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-    setBlobUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [svg]);
+    const loader = createPreviewImageLoader<BackgroundDocument>({
+      serialize: serializeDocument,
+      onSwap: setBlobUrl,
+    });
+    loaderRef.current = loader;
+    return () => {
+      loader.dispose();
+      loaderRef.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    loaderRef.current?.update(previewSource);
+  }, [previewSource]);
 
   const getStageRect = useCallback(
     () => stageRef.current?.getBoundingClientRect() ?? null,
@@ -301,10 +316,17 @@ export function EditorCanvas(): ReactElement {
           return;
         }
         store.select(hit);
-        // Move is applied absolutely from the pre-gesture document so snapping
-        // the pointer never accumulates drift. Other elements stay put during
-        // the drag, so their snap candidate lines are computed once.
+        // Move applies an absolute translation from the pre-gesture document, so
+        // the snap never accumulates drift. Snapping is shape-relative: the
+        // moving bounds (min/centre/max per axis) are tested against the
+        // candidate lines, so the shape's own edges and centre catch the
+        // canvas centre and other shapes — not wherever the pointer grabbed it.
+        // Other elements hold still, so their candidate lines are computed once.
         const originalDoc = store.doc;
+        const movingEl = originalDoc.elements.find(
+          (item) => item.id === hit.id,
+        );
+        const originalBounds = movingEl ? elementBounds(movingEl) : null;
         const candidates = snapLines(originalDoc, hit.id);
         const startPt = pt;
         let began = false;
@@ -314,11 +336,26 @@ export function EditorCanvas(): ReactElement {
               store.beginGesture();
               began = true;
             }
+            const rawDx = current.x - startPt.x;
+            const rawDy = current.y - startPt.y;
             const r = getStageRect();
             const stage = r ? { width: r.width, height: r.height } : null;
-            const target = snapPoint(current, candidates, stage, altKey);
-            const dx = target.x - startPt.x;
-            const dy = target.y - startPt.y;
+            let dx = rawDx;
+            let dy = rawDy;
+            if (altKey || !stage || !originalBounds) {
+              setGuides(NO_GUIDES);
+            } else {
+              const probe: Bounds = {
+                minX: originalBounds.minX + rawDx,
+                maxX: originalBounds.maxX + rawDx,
+                minY: originalBounds.minY + rawDy,
+                maxY: originalBounds.maxY + rawDy,
+              };
+              const snap = computeBoundsSnap(probe, candidates, stage);
+              setGuides(snap.guides);
+              dx = rawDx + snap.delta.x;
+              dy = rawDy + snap.delta.y;
+            }
             store.updateGesture(() => moveInDoc(originalDoc, hit, dx, dy));
           },
           onEnd: ({ moved, cancelled }) => {

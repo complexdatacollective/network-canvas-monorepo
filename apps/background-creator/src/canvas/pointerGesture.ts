@@ -84,6 +84,8 @@ export function startPointerGesture(
     return r ? clientToNormalized(r, ev.clientX, ev.clientY) : start;
   };
 
+  let pendingMove: PointerEvent | null = null;
+
   const onMove = (ev: PointerEvent) => {
     if (!dragging) {
       const dx = ev.clientX - startClient.x;
@@ -91,8 +93,10 @@ export function startPointerGesture(
       if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
       dragging = true;
     }
+    pendingMove = ev;
     if (raf !== null) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
+      pendingMove = null;
       handlers.onDrag?.(currentPoint(ev), start, ev.shiftKey, ev.altKey);
       raf = null;
     });
@@ -105,6 +109,15 @@ export function startPointerGesture(
     if (raf !== null) {
       cancelAnimationFrame(raf);
       raf = null;
+    }
+    // A drag that ends before the next animation frame still owes its last
+    // batched update — flush it synchronously, otherwise the final movement
+    // (or, for a within-one-frame drag, the entire gesture) is lost and e.g.
+    // a drawn draft commits at zero extent.
+    if (!cancelled && dragging && pendingMove !== null) {
+      const last = pendingMove;
+      pendingMove = null;
+      handlers.onDrag?.(currentPoint(last), start, last.shiftKey, last.altKey);
     }
     try {
       target.releasePointerCapture(pointerId);
