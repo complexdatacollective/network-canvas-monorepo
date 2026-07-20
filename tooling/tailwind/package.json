@@ -35,7 +35,7 @@
     "motion": "catalog:"
   },
   "devDependencies": {
-    "@codaco/tsconfig": "workspace:*",
+    "@codaco/tsconfig": "workspace:^",
     "typescript": "catalog:"
   },
   "peerDependencies": {

@@ -30,12 +30,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@codaco/protocol-validation": "workspace:*",
-    "@codaco/shared-consts": "workspace:*",
+    "@codaco/protocol-validation": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
     "es-toolkit": "catalog:"
   },
   "devDependencies": {
-    "@codaco/tsconfig": "workspace:*",
+    "@codaco/tsconfig": "workspace:^",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",

@@ -80,8 +80,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@codaco/protocol-validation": "workspace:*",
-    "@codaco/shared-consts": "workspace:*",
+    "@codaco/protocol-validation": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
     "@xmldom/xmldom": "^0.9.10",
     "effect": "catalog:",
     "es-toolkit": "catalog:",
@@ -91,7 +91,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@codaco/tsconfig": "workspace:*",
+    "@codaco/tsconfig": "workspace:^",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
