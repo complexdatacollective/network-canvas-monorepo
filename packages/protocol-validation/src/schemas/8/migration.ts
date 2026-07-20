@@ -1051,7 +1051,7 @@ const migrationV7toV8 = createMigration({
         'AlterEdgeForm',
       ]);
       const removedStageIds = new Set<string>();
-      result.stages = result.stages.filter((stage: unknown) => {
+      const keptStages = result.stages.filter((stage: unknown) => {
         const typedStage = asRecord(stage);
         if (
           !typedStage ||
@@ -1067,9 +1067,10 @@ const migrationV7toV8 = createMigration({
         }
         return false;
       });
+      result.stages = keptStages;
 
       if (removedStageIds.size > 0) {
-        for (const stage of result.stages) {
+        for (const stage of keptStages) {
           const skipLogic = asRecord(asRecord(stage)?.skipLogic);
           const destination = asRecord(skipLogic?.destination);
           if (
