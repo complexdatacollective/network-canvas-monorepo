@@ -7,7 +7,9 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { zonesOf } from '~/geometry/zones';
 import type {
   EllipseElement,
@@ -24,6 +26,7 @@ import { elementKindLabel } from '~/state/labels';
 
 import { ColorControl } from './ColorControl';
 import { NumberField } from './NumberField';
+import { SliderControl } from './SliderControl';
 
 const WEIGHT_OPTIONS: { value: TextElement['fontWeight']; label: string }[] = [
   { value: 400, label: 'Regular' },
@@ -136,14 +139,20 @@ function FillControls({
           );
         }}
       />
-      <NumberField
+      <SliderControl
         label="Fill opacity"
         name="fill-opacity"
         value={element.fillOpacity}
         min={0}
         max={1}
         step={0.05}
-        onCommit={(value) => updateElement(id, { fillOpacity: value })}
+        onCommit={(value) =>
+          updateElement(
+            id,
+            { fillOpacity: value },
+            { coalesceKey: `fill-opacity:${id}` },
+          )
+        }
       />
       <ColorControl
         label="Stroke"
@@ -260,14 +269,20 @@ function TextControls({ element }: { element: TextElement }): ReactElement {
           );
         }}
       />
-      <NumberField
+      <SliderControl
         label="Opacity"
         name="text-opacity"
         value={element.opacity}
         min={0}
         max={1}
         step={0.05}
-        onCommit={(value) => updateElement(id, { opacity: value })}
+        onCommit={(value) =>
+          updateElement(
+            id,
+            { opacity: value },
+            { coalesceKey: `text-opacity:${id}` },
+          )
+        }
       />
     </>
   );
@@ -326,22 +341,34 @@ export function PropertiesPanel(): ReactElement {
           scroll container's edges. */}
       <div className="-mx-8 min-h-0 overflow-y-auto">
         <div className="px-8 py-2">
-          <div className="flex items-center gap-1 not-last:mb-8">
-            <IconButton
-              variant="text"
-              size="sm"
-              aria-label="Send backward"
-              icon={<SendToBack />}
-              onClick={() => reorderSelected('backward')}
-            />
-            <IconButton
-              variant="text"
-              size="sm"
-              aria-label="Bring forward"
-              icon={<BringToFront />}
-              onClick={() => reorderSelected('forward')}
-            />
-          </div>
+          <fieldset className="m-0 w-full min-w-0 border-0 p-0 not-last:mb-8">
+            <legend
+              className={cx(
+                'mb-2 inline-block',
+                headingVariants({ level: 'label', margin: 'none' }),
+              )}
+            >
+              Layer Order
+            </legend>
+            <div className="flex items-center gap-2">
+              <IconButton
+                variant="outline"
+                size="sm"
+                aria-label="Send backward"
+                title="Send backward"
+                icon={<SendToBack />}
+                onClick={() => reorderSelected('backward')}
+              />
+              <IconButton
+                variant="outline"
+                size="sm"
+                aria-label="Bring forward"
+                title="Bring forward"
+                icon={<BringToFront />}
+                onClick={() => reorderSelected('forward')}
+              />
+            </div>
+          </fieldset>
           <ElementControls element={element} />
           <Button
             variant="outline"

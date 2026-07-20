@@ -151,7 +151,11 @@ export function ColorControl({
               )}
             >
               {Glyph && (
-                <Glyph aria-hidden className="size-3" style={{ color: glyphColor }} />
+                <Glyph
+                  aria-hidden
+                  className="size-3"
+                  style={{ color: glyphColor }}
+                />
               )}
             </button>
           );
