@@ -10,6 +10,7 @@ import {
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  type NcNode,
   StageMetadataSchema,
 } from '@codaco/shared-consts';
 
@@ -65,6 +66,56 @@ function makeNameGeneratorStage(overrides?: Record<string, unknown>): Stage {
     behaviours: { minNodes: 5, maxNodes: 8 },
     ...overrides,
   } as Stage;
+}
+
+function makeRosterStage(overrides?: Record<string, unknown>): Stage {
+  return {
+    id: 'stage-ngr',
+    label: 'Roster',
+    type: 'NameGeneratorRoster',
+    subject: { entity: 'node', type: 'node-type-1' },
+    dataSource: 'roster-asset',
+    prompts: [{ id: 'prompt-ngr', text: 'Pick people' }],
+    behaviours: { minNodes: 1, maxNodes: 8 },
+    ...overrides,
+  } as Stage;
+}
+
+const ROSTER_UID_PREFIX = 'roster-row-';
+
+function rosterNameFor(primaryKey: string): string {
+  return `Roster person ${primaryKey.slice(ROSTER_UID_PREFIX.length)}`;
+}
+
+function isRosterUid(primaryKey: string): boolean {
+  return primaryKey.startsWith(ROSTER_UID_PREFIX);
+}
+
+function makeRosterPool(count: number): NcNode[] {
+  return Array.from({ length: count }, (_, i) => {
+    const primaryKey = `${ROSTER_UID_PREFIX}${i}`;
+    return {
+      [entityPrimaryKeyProperty]: primaryKey,
+      type: 'node-type-1',
+      [entityAttributesProperty]: { 'var-name': rosterNameFor(primaryKey) },
+    } as NcNode;
+  });
+}
+
+function uniquePrimaryKeys(network: { nodes: NcNode[] }): number {
+  return new Set(network.nodes.map((n) => n[entityPrimaryKeyProperty])).size;
+}
+
+function stripUnstableIds(network: { nodes: NcNode[]; edges: unknown[] }) {
+  return {
+    nodes: network.nodes.map((n) => ({
+      ...n,
+      [entityPrimaryKeyProperty]: isRosterUid(n[entityPrimaryKeyProperty])
+        ? n[entityPrimaryKeyProperty]
+        : 'fabricated',
+    })),
+    edgeCount: network.edges.length,
+  };
 }
 
 function makeDyadCensusStage(overrides?: Record<string, unknown>): Stage {
@@ -681,6 +732,226 @@ describe('generateNetwork', () => {
           inProgressStageIndex: 99,
         }),
       ).not.toThrow();
+    });
+  });
+
+  describe('roster-backed generation', () => {
+    it('draws every node on a roster stage from the roster, keeping ids and values', () => {
+      const stage = makeRosterStage({
+        behaviours: { minNodes: 3, maxNodes: 3 },
+      });
+
+      const { network } = generateNetwork(makeCodebook(), [stage], {
+        seed: 42,
+        externalData: { 'stage-ngr': makeRosterPool(5) },
+      });
+
+      expect(network.nodes).toHaveLength(3);
+      for (const node of network.nodes) {
+        expect(isRosterUid(node[entityPrimaryKeyProperty])).toBe(true);
+        expect(node[entityAttributesProperty]['var-name']).toBe(
+          rosterNameFor(node[entityPrimaryKeyProperty]),
+        );
+      }
+    });
+
+    it('never draws the same roster row twice across prompts', () => {
+      const stage = makeRosterStage({
+        prompts: [
+          { id: 'prompt-1', text: 'Prompt one' },
+          { id: 'prompt-2', text: 'Prompt two' },
+        ],
+        behaviours: { minNodes: 4, maxNodes: 8 },
+      });
+
+      const { network } = generateNetwork(makeCodebook(), [stage], {
+        seed: 7,
+        externalData: { 'stage-ngr': makeRosterPool(10) },
+      });
+
+      expect(network.nodes.length).toBeGreaterThan(1);
+      expect(uniquePrimaryKeys(network)).toBe(network.nodes.length);
+      expect(network.nodes.length).toBeLessThanOrEqual(8);
+    });
+
+    it('never draws the same roster row twice across stages sharing a roster', () => {
+      const pool = makeRosterPool(4);
+      const stages = [
+        makeRosterStage({
+          id: 'stage-a',
+          behaviours: { minNodes: 2, maxNodes: 2 },
+        }),
+        makeRosterStage({
+          id: 'stage-b',
+          behaviours: { minNodes: 2, maxNodes: 2 },
+        }),
+      ];
+
+      const { network } = generateNetwork(makeCodebook(), stages, {
+        seed: 42,
+        externalData: { 'stage-a': pool, 'stage-b': pool },
+      });
+
+      expect(network.nodes).toHaveLength(4);
+      expect(uniquePrimaryKeys(network)).toBe(4);
+    });
+
+    it('stops at the roster size on a roster stage, even below minNodes', () => {
+      const stage = makeRosterStage({
+        behaviours: { minNodes: 5, maxNodes: 8 },
+      });
+
+      const { network } = generateNetwork(makeCodebook(), [stage], {
+        seed: 42,
+        externalData: { 'stage-ngr': makeRosterPool(2) },
+      });
+
+      expect(network.nodes).toHaveLength(2);
+    });
+
+    it.each([
+      ['no entry for the stage', undefined],
+      ['an empty entry for the stage', { 'stage-ngr': [] }],
+    ])('fabricates people given %s', (_label, externalData) => {
+      const stage = makeRosterStage({
+        behaviours: { minNodes: 3, maxNodes: 3 },
+      });
+
+      const { network } = generateNetwork(makeCodebook(), [stage], {
+        seed: 42,
+        externalData,
+      });
+
+      expect(network.nodes).toHaveLength(3);
+      expect(
+        network.nodes.every((n) => !isRosterUid(n[entityPrimaryKeyProperty])),
+      ).toBe(true);
+    });
+
+    it('tops up from the codebook when a stage also offers a manual add path', () => {
+      const stage = makeNameGeneratorStage({
+        behaviours: { minNodes: 8, maxNodes: 8 },
+      });
+
+      const { network } = generateNetwork(makeCodebook(), [stage], {
+        seed: 42,
+        externalData: { 'stage-ng': makeRosterPool(2) },
+      });
+
+      expect(network.nodes).toHaveLength(8);
+      const fromRoster = network.nodes.filter((n) =>
+        isRosterUid(n[entityPrimaryKeyProperty]),
+      );
+      expect(fromRoster).toHaveLength(2);
+    });
+
+    it('mixes roster and fabricated people when the roster is ample', () => {
+      const stage = makeNameGeneratorStage({
+        behaviours: { minNodes: 20, maxNodes: 20 },
+      });
+
+      const { network } = generateNetwork(makeCodebook(), [stage], {
+        seed: 42,
+        externalData: { 'stage-ng': makeRosterPool(50) },
+      });
+
+      const fromRoster = network.nodes.filter((n) =>
+        isRosterUid(n[entityPrimaryKeyProperty]),
+      );
+      expect(fromRoster.length).toBeGreaterThan(0);
+      expect(fromRoster.length).toBeLessThan(network.nodes.length);
+    });
+
+    it('adds nobody once an earlier stage exhausts a shared roster', () => {
+      const pool = makeRosterPool(3);
+      const stages = [
+        makeRosterStage({
+          id: 'stage-a',
+          behaviours: { minNodes: 3, maxNodes: 3 },
+        }),
+        makeRosterStage({
+          id: 'stage-b',
+          behaviours: { minNodes: 2, maxNodes: 2 },
+        }),
+      ];
+
+      const { network } = generateNetwork(makeCodebook(), stages, {
+        seed: 42,
+        externalData: { 'stage-a': pool, 'stage-b': pool },
+      });
+
+      expect(network.nodes.filter((n) => n.stageId === 'stage-a')).toHaveLength(
+        3,
+      );
+      expect(network.nodes.filter((n) => n.stageId === 'stage-b')).toHaveLength(
+        0,
+      );
+    });
+
+    it('keeps roster values through the form field pass', () => {
+      const stage = makeNameGeneratorStage({
+        behaviours: { minNodes: 3, maxNodes: 3 },
+        form: { fields: [{ variable: 'var-name', prompt: 'Their name' }] },
+      });
+
+      const { network } = generateNetwork(makeCodebook(), [stage], {
+        seed: 42,
+        externalData: { 'stage-ng': makeRosterPool(5) },
+      });
+
+      const fromRoster = network.nodes.filter((n) =>
+        isRosterUid(n[entityPrimaryKeyProperty]),
+      );
+      expect(fromRoster.length).toBeGreaterThan(0);
+      for (const node of fromRoster) {
+        expect(node[entityAttributesProperty]['var-name']).toBe(
+          rosterNameFor(node[entityPrimaryKeyProperty]),
+        );
+      }
+    });
+
+    it('lets prompt attributes win over a colliding roster column', () => {
+      const stage = makeRosterStage({
+        prompts: [
+          {
+            id: 'prompt-1',
+            text: 'Prompt one',
+            additionalAttributes: [{ variable: 'var-name', value: true }],
+          },
+        ],
+        behaviours: { minNodes: 2, maxNodes: 2 },
+      });
+
+      const { network } = generateNetwork(makeCodebook(), [stage], {
+        seed: 42,
+        externalData: { 'stage-ngr': makeRosterPool(5) },
+      });
+
+      expect(network.nodes).toHaveLength(2);
+      for (const node of network.nodes) {
+        expect(isRosterUid(node[entityPrimaryKeyProperty])).toBe(true);
+        expect(node[entityAttributesProperty]['var-name']).toBe(true);
+      }
+    });
+
+    it('stays reproducible for a given seed', () => {
+      const stages = [
+        makeRosterStage({ behaviours: { minNodes: 2, maxNodes: 6 } }),
+      ];
+      const externalData = { 'stage-ngr': makeRosterPool(8) };
+
+      const first = generateNetwork(makeCodebook(), stages, {
+        seed: 99,
+        externalData,
+      });
+      const second = generateNetwork(makeCodebook(), stages, {
+        seed: 99,
+        externalData,
+      });
+
+      expect(stripUnstableIds(first.network)).toEqual(
+        stripUnstableIds(second.network),
+      );
     });
   });
 

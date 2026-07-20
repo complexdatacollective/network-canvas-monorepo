@@ -74,6 +74,7 @@ export type GenerateNetworkOptions = {
    * effect on stage types where complete data is preferable (e.g. forms).
    */
   inProgressStageIndex?: number;
+  externalData?: Record<string, NcNode[]>;
 };
 
 export type GenerateNetworkResult = {
@@ -146,6 +147,14 @@ function getPromptAdditionalAttributes(
   );
 }
 
+const ROSTER_DRAW_RATIO = 0.7;
+
+type RosterDraw = {
+  pool: NcNode[] | undefined;
+  used: Set<string>;
+  allowFabrication: boolean;
+};
+
 function createNodesForStage(
   codebook: Codebook,
   stage: Stage,
@@ -153,6 +162,7 @@ function createNodesForStage(
   valueGen: ValueGenerator,
   existingNodeCount: number,
   stageNodeCount: number,
+  roster: RosterDraw,
 ): NcNode[] {
   const stageRecord = stage as Record<string, unknown>;
   const subject = stageRecord.subject as
@@ -172,10 +182,22 @@ function createNodesForStage(
   const remaining = maxNodes - stageNodeCount;
   if (remaining <= 0) return [];
 
-  const count = Math.min(valueGen.randomInt(minNodes, maxNodes), remaining);
+  const hasRoster = (roster.pool?.length ?? 0) > 0;
+
+  const pool = roster.pool
+    ? roster.pool.filter((n) => !roster.used.has(n[entityPrimaryKeyProperty]))
+    : [];
+
+  const requested = Math.min(valueGen.randomInt(minNodes, maxNodes), remaining);
+  const count =
+    hasRoster && !roster.allowFabrication
+      ? Math.min(requested, pool.length)
+      : requested;
+
   const promptId = (prompt.id as string) ?? uuid();
   const additionalAttrs = getPromptAdditionalAttributes(prompt);
   const newNodes: NcNode[] = [];
+  let drawn = 0;
 
   for (let i = 0; i < count; i++) {
     const nodeIndex = existingNodeCount + i;
@@ -185,10 +207,29 @@ function createNodesForStage(
       nodeIndex,
     );
 
+    const takeFromRoster =
+      drawn < pool.length &&
+      (!roster.allowFabrication ||
+        valueGen.randomFloat(0, 1) < ROSTER_DRAW_RATIO);
+
+    let primaryKey = uuid();
+
+    if (takeFromRoster) {
+      const swapIndex = valueGen.randomInt(drawn, pool.length - 1);
+      const picked = pool[swapIndex]!;
+      pool[swapIndex] = pool[drawn]!;
+      pool[drawn] = picked;
+      drawn += 1;
+
+      primaryKey = picked[entityPrimaryKeyProperty];
+      roster.used.add(primaryKey);
+      Object.assign(attrs, picked[entityAttributesProperty]);
+    }
+
     Object.assign(attrs, additionalAttrs);
 
     newNodes.push({
-      [entityPrimaryKeyProperty]: uuid(),
+      [entityPrimaryKeyProperty]: primaryKey,
       type: nodeType,
       [entityAttributesProperty]: attrs,
       stageId: stageRecord.id as string,
@@ -421,6 +462,7 @@ export function generateNetwork(
     simulateDropOut = false,
     respectSkipLogicAndFiltering = false,
     inProgressStageIndex,
+    externalData,
   } = options;
 
   const valueGen = new ValueGenerator(
@@ -431,6 +473,7 @@ export function generateNetwork(
   const egoAttributes: Record<string, unknown> = {};
   const stageMetadata: Record<string, unknown> = {};
   const egoUid = uuid();
+  const usedRosterUids = new Set<string>();
   const totalStages = stages.length;
   let currentStep = 0;
   let droppedOut = false;
@@ -485,6 +528,11 @@ export function generateNetwork(
       case 'NameGenerator':
       case 'NameGeneratorQuickAdd':
       case 'NameGeneratorRoster': {
+        const rosterDraw: RosterDraw = {
+          pool: externalData?.[stageId],
+          used: usedRosterUids,
+          allowFabrication: stageType !== 'NameGeneratorRoster',
+        };
         let stageNodeCount = 0;
         for (const prompt of prompts) {
           const newNodes = createNodesForStage(
@@ -494,6 +542,7 @@ export function generateNetwork(
             valueGen,
             nodes.length,
             stageNodeCount,
+            rosterDraw,
           );
           stageNodeCount += newNodes.length;
 
@@ -947,6 +996,7 @@ export function generateNetwork(
           valueGen,
           nodes.length,
           0,
+          { pool: undefined, used: usedRosterUids, allowFabrication: true },
         );
         nodes.push(...newNodes);
 

@@ -4,6 +4,8 @@ import { getInterviewProgress } from '@codaco/interview';
 import { generateNetwork } from '@codaco/protocol-utilities';
 import { createSession, getProtocolByHash, updateSession } from '~/lib/db/api';
 
+import { loadRosterNodesForStages } from './loadRosterData';
+
 type GenerateOptions = {
   protocolHash: string;
   count: number;
@@ -33,7 +35,13 @@ export async function generateSyntheticSessions(
     throw new Error(`Protocol not found for hash "${protocolHash}".`);
   }
 
-  const genOptions = { simulateDropOut, respectSkipLogicAndFiltering };
+  const externalData = await loadRosterNodesForStages(protocol);
+
+  const genOptions = {
+    simulateDropOut,
+    respectSkipLogicAndFiltering,
+    externalData,
+  };
   const generated: GeneratedRow[] = [];
   let completedCount = 0;
 
