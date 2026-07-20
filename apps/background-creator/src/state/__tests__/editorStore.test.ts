@@ -251,6 +251,8 @@ describe('draft commit', () => {
       expect(el.y2).toBeCloseTo(0.8);
       expect(el.startArrow).toBe(false);
       expect(el.endArrow).toBe(false);
+      // Drawn lines default to the theme text colour sentinel.
+      expect(el.stroke).toBe('text');
     }
   });
 
@@ -604,6 +606,17 @@ describe('patches', () => {
       expect(el.fillOpacity).toBe(0.5);
     }
   });
+
+  it('patches a text element to a new size token and sentinel fill', () => {
+    reset();
+    const id = state().createTextAt({ x: 0.5, y: 0.5 });
+    state().updateElement(id, { fontSize: 'extra-large', fill: 'background' });
+    const el = state().doc.elements[0];
+    if (el?.kind === 'text') {
+      expect(el.fontSize).toBe('extra-large');
+      expect(el.fill).toBe('background');
+    }
+  });
 });
 
 describe('createTextAt and deleteSelected', () => {
@@ -614,6 +627,9 @@ describe('createTextAt and deleteSelected', () => {
     expect(el?.id).toBe(id);
     const text = el?.kind === 'text' ? el : null;
     expect(text?.lines).toEqual<TextElement['lines']>(['Text']);
+    // New text defaults to the theme text colour at the medium size token.
+    expect(text?.fill).toBe('text');
+    expect(text?.fontSize).toBe('medium');
     expect(state().selection).toEqual({ id });
     expect(state().announcement.message).toBe('Text added');
   });
@@ -706,6 +722,15 @@ describe('insertDefaultShape', () => {
     expect(el?.kind).toBe('polygon');
     if (el?.kind === 'polygon') {
       expect(el.points).toHaveLength(3);
+    }
+  });
+
+  it('inserts a default line stroked with the text sentinel', () => {
+    state().insertDefaultShape('line');
+    const el = state().doc.elements[0];
+    expect(el?.kind).toBe('line');
+    if (el?.kind === 'line') {
+      expect(el.stroke).toBe('text');
     }
   });
 

@@ -100,8 +100,34 @@ describe('templates', () => {
       if (line.kind === 'line') {
         expect(line.startArrow).toBe(true);
         expect(line.endArrow).toBe(true);
-        expect(line.stroke).toBe('#ffffff');
+        expect(line.stroke).toBe('text');
         expect(line.strokeWidth).toBe(3);
+      }
+    }
+  });
+
+  it('quadrants and concentric labels use the text sentinel at the medium size', () => {
+    for (const doc of [
+      createQuadrantsTemplate(),
+      createConcentricCirclesTemplate(),
+    ]) {
+      const texts = doc.elements.filter((element) => element.kind === 'text');
+      expect(texts.length).toBeGreaterThan(0);
+      for (const text of texts) {
+        if (text.kind === 'text') {
+          expect(text.fill).toBe('text');
+          expect(text.fontSize).toBe('medium');
+        }
+      }
+    }
+  });
+
+  it('political compass keeps its faithful literal colours', () => {
+    const doc = createPoliticalCompassDocument();
+    for (const element of doc.elements) {
+      if (element.kind === 'line') expect(element.stroke).toBe('#17142f');
+      if (element.kind === 'text') {
+        expect(element.fill).toMatch(/^#[0-9a-f]{6}$/);
       }
     }
   });

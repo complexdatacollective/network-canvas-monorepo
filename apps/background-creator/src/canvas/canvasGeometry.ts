@@ -131,7 +131,12 @@ function nearEllipseEdge(
 // matches only near its outline here — its interior is deferred to the second
 // pass in hitTestDocument, so a filled element sitting over an invisible
 // zone's interior stays selectable.
-function hitTestElement(p: Vec, el: SvgElement, tol: number): boolean {
+function hitTestElement(
+  p: Vec,
+  el: SvgElement,
+  tol: number,
+  stage: StageBox | null,
+): boolean {
   switch (el.kind) {
     case 'rect': {
       const b = elementBounds(el);
@@ -151,7 +156,7 @@ function hitTestElement(p: Vec, el: SvgElement, tol: number): boolean {
       if (el.fillOpacity > 0 && pointInPolygon(p, el.points)) return true;
       return minEdgeDistance(p, el.points) <= tol;
     case 'text':
-      return withinBounds(p, textBounds(el), tol);
+      return withinBounds(p, textBounds(el, stage), tol);
     default:
       return assertNever(el);
   }
@@ -177,15 +182,18 @@ function hitTestZeroFillInterior(p: Vec, el: SvgElement): boolean {
   }
 }
 
+// `stage` (the live stage box, when the caller has one) makes text hit areas
+// match the measured rendered extent instead of the approximation.
 export function hitTestDocument(
   p: Vec,
   doc: BackgroundDocument,
   tol: number,
+  stage: StageBox | null = null,
 ): Selection | null {
   // Topmost element wins: iterate paint order back-to-front.
   for (let i = doc.elements.length - 1; i >= 0; i -= 1) {
     const el = doc.elements[i];
-    if (el && hitTestElement(p, el, tol)) return { id: el.id };
+    if (el && hitTestElement(p, el, tol, stage)) return { id: el.id };
   }
   // No painted geometry claims the point: fall back to the topmost zero-fill
   // interior so an invisible shape is selectable from inside.

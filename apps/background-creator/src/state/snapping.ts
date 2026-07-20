@@ -41,12 +41,15 @@ export const NO_GUIDES: SnapGuides = { x: null, y: null };
 export function snapLines(
   doc: BackgroundDocument,
   excludeId: string | null,
+  stage: StageBox | null = null,
 ): SnapLines {
   const x: number[] = [0, 0.5, 1];
   const y: number[] = [0, 0.5, 1];
   for (const el of doc.elements) {
     if (el.id === excludeId) continue;
-    const b = elementBounds(el);
+    // Measured (stage-aware) bounds keep a text element's edge candidates on
+    // its rendered extent; the approximation would offer phantom snap edges.
+    const b = elementBounds(el, stage);
     x.push(b.minX, (b.minX + b.maxX) / 2, b.maxX);
     y.push(b.minY, (b.minY + b.maxY) / 2, b.maxY);
   }

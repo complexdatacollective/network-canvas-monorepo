@@ -1,15 +1,70 @@
-import type {
-  BackgroundDocument,
-  EllipseElement,
-  LineElement,
-  PolygonElement,
-  RectElement,
-  SvgElement,
-  TextElement,
+import {
+  type BackgroundDocument,
+  type EllipseElement,
+  type LineElement,
+  type PolygonElement,
+  type RectElement,
+  type SvgElement,
+  TEXT_SIZE_PRESETS,
+  type TextElement,
 } from '~/model/types';
 
 const NC_NAMESPACE =
   'https://documentation.networkcanvas.com/xmlns/background-creator';
+
+// Literal fresco DARK theme values for --color-text / --color-background
+// (tooling/tailwind/fresco/themes/default.css `[data-theme='dark']`, with
+// --base-hue: 290 resolved). They are the fallbacks in the embedded <style>
+// below, so a standalone render of the file — a blob-URL <img> preview, a CSS
+// background-image, a bare browser tab — paints theme-sentinel colours as the
+// dark theme would, with no live theme resolution. Image contexts are the
+// consumption path; a host that instead INLINES the SVG into its DOM themes it
+// by defining the --color-text / --color-background custom properties in scope
+// (the class names alone cannot re-theme it: fresco's `--color-*` @theme-inline
+// tokens are not runtime custom properties, so the var() fallbacks win
+// otherwise). Every rule is scoped under `svg.nc-background` so an inlined
+// copy's document-scoped <style> cannot restyle host elements that share these
+// utility-like class names.
+const TEXT_DEFAULT = 'oklch(0.95 0.01 290)';
+const BACKGROUND_DEFAULT = 'oklch(0.2 0.03 290)';
+
+const EMBEDDED_STYLE = [
+  `  <style>`,
+  `    svg.nc-background { color: var(--color-text, ${TEXT_DEFAULT}) }`,
+  `    svg.nc-background .fill-current { fill: currentColor }`,
+  `    svg.nc-background .stroke-current { stroke: currentColor }`,
+  `    svg.nc-background .fill-background { fill: var(--color-background, ${BACKGROUND_DEFAULT}) }`,
+  `    svg.nc-background .stroke-background { stroke: var(--color-background, ${BACKGROUND_DEFAULT}) }`,
+  `  </style>`,
+].join('\n');
+
+// A sentinel colour paints through a class (resolved by the embedded <style>
+// or a host theme) and must NOT also emit a fill/stroke attribute, which would
+// override the class. A hex colour stays a literal presentation attribute.
+type Paint = { attr: string | null; className: string | null };
+
+function fillPaint(colour: string): Paint {
+  if (colour === 'text') return { attr: null, className: 'fill-current' };
+  if (colour === 'background') {
+    return { attr: null, className: 'fill-background' };
+  }
+  return { attr: `fill="${escapeAttr(colour)}"`, className: null };
+}
+
+function strokePaint(colour: string): Paint {
+  if (colour === 'text') return { attr: null, className: 'stroke-current' };
+  if (colour === 'background') {
+    return { attr: null, className: 'stroke-background' };
+  }
+  return { attr: `stroke="${escapeAttr(colour)}"`, className: null };
+}
+
+function classAttr(...paints: (Paint | null)[]): string[] {
+  const classes = paints.flatMap((paint) =>
+    paint !== null && paint.className !== null ? [paint.className] : [],
+  );
+  return classes.length > 0 ? [`class="${classes.join(' ')}"`] : [];
+}
 
 function round2(value: number): number {
   return Number(value.toFixed(2));
@@ -111,10 +166,17 @@ function collectArrowMarkers(
   return markers;
 }
 
+// Marker content does not inherit paint from the referencing line, so an
+// arrowhead re-states its line's stroke as its own fill: a hex stroke becomes a
+// literal fill, and a sentinel stroke becomes the matching fill-* class. The
+// class resolves against the root's inherited color / the embedded <style>, so
+// arrowheads match their line in a standalone <img> render too.
 function serializeMarker(markerId: string, colour: string): string {
+  const paint = fillPaint(colour);
+  const attrs = [...classAttr(paint), ...(paint.attr ? [paint.attr] : [])];
   return [
     `    <marker id="${markerId}" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse">`,
-    `      <path d="M 0 0 L 10 5 L 0 10 z" fill="${escapeAttr(colour)}" />`,
+    `      <path d="M 0 0 L 10 5 L 0 10 z" ${attrs.join(' ')} />`,
     `    </marker>`,
   ].join('\n');
 }
@@ -125,13 +187,16 @@ function paintAttrs(
   stroke: string | null,
   strokeWidth: number,
 ): string[] {
-  const attrs = [`fill="${escapeAttr(fill)}"`];
+  const fillP = fillPaint(fill);
+  const strokeP = stroke !== null ? strokePaint(stroke) : null;
+  const attrs = [...classAttr(fillP, strokeP)];
+  if (fillP.attr !== null) attrs.push(fillP.attr);
   if (fillOpacity !== 1) {
     attrs.push(`fill-opacity="${fillOpacity}"`);
   }
-  if (stroke !== null) {
+  if (strokeP !== null) {
+    if (strokeP.attr !== null) attrs.push(strokeP.attr);
     attrs.push(
-      `stroke="${escapeAttr(stroke)}"`,
       `stroke-width="${strokeWidth}"`,
       `vector-effect="non-scaling-stroke"`,
     );
@@ -175,12 +240,14 @@ function serializeLine(
   element: LineElement,
   markers: Map<string, string>,
 ): string {
+  const strokeP = strokePaint(element.stroke);
   const attrs = [
     `x1="${pct(element.x1)}"`,
     `y1="${pct(element.y1)}"`,
     `x2="${pct(element.x2)}"`,
     `y2="${pct(element.y2)}"`,
-    `stroke="${escapeAttr(element.stroke)}"`,
+    ...classAttr(strokeP),
+    ...(strokeP.attr !== null ? [strokeP.attr] : []),
     `stroke-width="${element.strokeWidth}"`,
     `vector-effect="non-scaling-stroke"`,
   ];
@@ -219,12 +286,18 @@ function serializePolygon(element: PolygonElement): string {
 }
 
 function serializeText(element: TextElement): string {
-  const fontStyle = `font-family: system-ui, sans-serif; font-size: clamp(${element.fontMinPx}px, ${element.fontVmin}vmin, ${element.fontMaxPx}px); font-weight: ${element.fontWeight}`;
+  const { minPx, vmin, maxPx } = TEXT_SIZE_PRESETS[element.fontSize];
+  // white-space: pre keeps leading/trailing/multiple spaces in rendered lines,
+  // matching what the inline editor shows and what measured bounds count (SVG's
+  // default white-space processing would collapse them).
+  const fontStyle = `font-family: system-ui, sans-serif; font-size: clamp(${minPx}px, ${vmin}vmin, ${maxPx}px); font-weight: ${element.fontWeight}; white-space: pre`;
+  const fillP = fillPaint(element.fill);
   const attrs = [
     `x="${pct(element.x)}"`,
     `y="${pct(element.y)}"`,
-    `fill="${escapeAttr(element.fill)}"`,
-    `text-anchor="${element.anchor}"`,
+    ...classAttr(fillP),
+    ...(fillP.attr !== null ? [fillP.attr] : []),
+    `text-anchor="middle"`,
     `style="${escapeAttr(fontStyle)}"`,
   ];
   if (element.opacity !== 1) {
@@ -243,12 +316,14 @@ function serializeText(element: TextElement): string {
   const firstDy = round2(-((1.2 * (lineCount - 1)) / 2 - 0.35));
   const tspans = element.lines.map((line, index) => {
     const dy = index === 0 ? `${firstDy}em` : '1.2em';
-    // An empty <tspan> applies no dy and collapses the line; a non-breaking
-    // space keeps blank lines rendering so they still advance the block.
-    const content = line === '' ? '\u00A0' : escapeText(line);
-    return `    <tspan x="${pct(element.x)}" dy="${dy}">${content}</tspan>`;
+    // A glyphless <tspan> applies no dy and collapses the line; a non-breaking
+    // space keeps blank (empty or whitespace-only) lines advancing the block.
+    const content = line.trim() === '' ? '\u00A0' : escapeText(line);
+    return `<tspan x="${pct(element.x)}" dy="${dy}">${content}</tspan>`;
   });
-  return [open, ...tspans, `  </text>`].join('\n');
+  // Emitted with no whitespace between tspans: under white-space: pre the
+  // pretty-printing text nodes would themselves render as glyph advances.
+  return `${open}${tspans.join('')}</text>`;
 }
 
 function serializeElement(
@@ -276,10 +351,15 @@ export function serializeDocument(doc: BackgroundDocument): string {
   // copy so the file is valid XML and reopening it restores the stripped form.
   const sanitized = sanitizeDocument(doc);
   const markers = collectArrowMarkers(sanitized.elements);
+  // The root carries class="text-text" so `currentColor` (fill-current /
+  // stroke-current, arrowhead fills) resolves to the theme text colour
+  // everywhere in the document; the single embedded <style> supplies the
+  // dark-theme fallbacks for standalone rendering.
   const lines: string[] = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" role="img" aria-labelledby="title description">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" role="img" aria-labelledby="title description" class="nc-background text-text">`,
     `  <title id="title">${escapeText(sanitized.title)}</title>`,
     `  <desc id="description">${escapeText(sanitized.description)}</desc>`,
+    EMBEDDED_STYLE,
     `  <metadata id="nc-background-creator">`,
     // The document is embedded as base64 of its UTF-8 JSON rather than
     // XML-escaped text. Base64's alphabet contains no XML meta-characters, so

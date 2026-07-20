@@ -1,6 +1,10 @@
 import { type KeyboardEvent as ReactKeyboardEvent, useRef } from 'react';
 
-import { boundsCentre, elementBounds } from '~/state/documentGeometry';
+import {
+  boundsCentre,
+  elementBounds,
+  type StageBox,
+} from '~/state/documentGeometry';
 import { useEditorStore } from '~/state/editorStore';
 
 const STEP = 0.01;
@@ -29,7 +33,12 @@ export function announceSelectionPosition(): void {
 // step in the store; the final position is announced once on key release, not
 // per repeat. `onActivate` fires on Enter/Space so the caller can open the
 // relevant editor (inline text, zone-label dialog) for the focused element.
-export function useItemControls(onActivate?: () => void): {
+// `stage` feeds measured text bounds into the nudge clamp so keyboard moves
+// reach the same extents as pointer drags.
+export function useItemControls(
+  onActivate?: () => void,
+  stage: StageBox | null = null,
+): {
   onKeyDown: (e: ReactKeyboardEvent) => void;
   onKeyUp: (e: ReactKeyboardEvent) => void;
 } {
@@ -41,22 +50,22 @@ export function useItemControls(onActivate?: () => void): {
     switch (e.key) {
       case 'ArrowUp':
         e.preventDefault();
-        store.moveSelectedBy(0, -step);
+        store.moveSelectedBy(0, -step, stage);
         nudgedRef.current = true;
         break;
       case 'ArrowDown':
         e.preventDefault();
-        store.moveSelectedBy(0, step);
+        store.moveSelectedBy(0, step, stage);
         nudgedRef.current = true;
         break;
       case 'ArrowLeft':
         e.preventDefault();
-        store.moveSelectedBy(-step, 0);
+        store.moveSelectedBy(-step, 0, stage);
         nudgedRef.current = true;
         break;
       case 'ArrowRight':
         e.preventDefault();
-        store.moveSelectedBy(step, 0);
+        store.moveSelectedBy(step, 0, stage);
         nudgedRef.current = true;
         break;
       case 'Delete':

@@ -1,11 +1,20 @@
-import type { SvgElement, TextElement, Vec } from '~/model/types';
+import {
+  type SvgElement,
+  TEXT_SIZE_PRESETS,
+  type TextElement,
+  type Vec,
+} from '~/model/types';
 
 import { assertNever } from './assertNever';
+import { measureWidestLinePx, textCanvasFont } from './textMeasure';
 
-// Pure document-space geometry shared by the editor store (drag-clamping,
-// selection framing) and the canvas overlay (outline + handle placement). Kept
-// in `state/` so the store never has to import from `canvas/`; the canvas
-// depends on the store already, so this direction stays acyclic.
+// Document-space geometry shared by the editor store (drag-clamping, selection
+// framing) and the canvas overlay (outline + handle placement). Kept in
+// `state/` so the store never has to import from `canvas/`; the canvas depends
+// on the store already, so this direction stays acyclic. Everything here is a
+// pure function of its arguments except measured text bounds, which read a
+// lazily-created offscreen canvas (see textMeasure) — store-side callers pass
+// no stage box and stay on the DOM-free approximation.
 
 export type Bounds = { minX: number; maxX: number; minY: number; maxY: number };
 
@@ -19,35 +28,69 @@ export const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
 const clampRange = (n: number, lo: number, hi: number): number =>
   n < lo ? lo : n > hi ? hi : n;
 
-// Text carries no measurable geometry in the document model, so its selection
-// box and drag-clamp bounds are approximated: each line is ~0.04 of the canvas
-// tall, and glyphs are ~0.5em wide (em ≈ the per-line height). Enough to frame
-// the label and keep it roughly on-canvas — deliberately not pixel-accurate.
+// Line height applied by the serialized SVG's tspan advance (1.2em), the
+// inline editor, and the measured text bounds — keep in sync with
+// svg/serialize.ts.
+export const TEXT_LINE_HEIGHT_EM = 1.2;
+
+// The rendered font size of a text element on the given stage: the SVG's
+// `clamp(min, <vmin>vmin, max)` resolved against the stage box (vmin = 1% of
+// the smaller stage dimension), so bounds and the in-place editor match what
+// the preview img paints.
+export function textFontPx(
+  text: Pick<TextElement, 'fontSize'>,
+  stage: StageBox,
+): number {
+  const { minPx, vmin, maxPx } = TEXT_SIZE_PRESETS[text.fontSize];
+  const scaled = (vmin / 100) * Math.min(stage.width, stage.height);
+  return Math.min(Math.max(scaled, minPx), maxPx);
+}
+
+// Fallback bounds when the rendered extent cannot be measured — no stage box
+// (store-side drag clamping) or no canvas 2D context (jsdom): each line is
+// ~0.04 of the canvas tall, and glyphs are ~0.5em wide (em ≈ the per-line
+// height). Enough to frame the label and keep it roughly on-canvas —
+// deliberately not pixel-accurate.
 const TEXT_LINE_HEIGHT = 0.04;
 const TEXT_CHAR_WIDTH = 0.5 * TEXT_LINE_HEIGHT;
 
-export function textBounds(text: TextElement): Bounds {
+function centredBounds(x: number, y: number, w: number, h: number): Bounds {
+  return {
+    minX: x - w / 2,
+    maxX: x + w / 2,
+    minY: y - h / 2,
+    maxY: y + h / 2,
+  };
+}
+
+function measuredTextBounds(text: TextElement, stage: StageBox): Bounds | null {
+  const px = textFontPx(text, stage);
+  const widestPx = measureWidestLinePx(
+    text.lines,
+    textCanvasFont(text.fontWeight, px),
+  );
+  if (widestPx === null) return null;
+  const width = Math.max(widestPx, 1) / stage.width;
+  const height =
+    (Math.max(text.lines.length, 1) * TEXT_LINE_HEIGHT_EM * px) / stage.height;
+  return centredBounds(text.x, text.y, width, height);
+}
+
+// Text is always middle-anchored on (x, y), so the bounds centre there. With a
+// stage box the rendered extent is measured (longest line width, 1.2em per
+// line, at the resolved clamp() font size); otherwise the approximation above.
+export function textBounds(text: TextElement, stage?: StageBox | null): Bounds {
+  if (stage && stage.width > 0 && stage.height > 0) {
+    const measured = measuredTextBounds(text, stage);
+    if (measured) return measured;
+  }
   const height = Math.max(text.lines.length, 1) * TEXT_LINE_HEIGHT;
   const longest = text.lines.reduce(
     (max, line) => Math.max(max, line.length),
     0,
   );
   const width = Math.max(longest * TEXT_CHAR_WIDTH, TEXT_CHAR_WIDTH);
-  const top = text.y - height / 2;
-  const bottom = text.y + height / 2;
-  let left: number;
-  let right: number;
-  if (text.anchor === 'start') {
-    left = text.x;
-    right = text.x + width;
-  } else if (text.anchor === 'end') {
-    left = text.x - width;
-    right = text.x;
-  } else {
-    left = text.x - width / 2;
-    right = text.x + width / 2;
-  }
-  return { minX: left, maxX: right, minY: top, maxY: bottom };
+  return centredBounds(text.x, text.y, width, height);
 }
 
 function pointsBounds(points: Vec[]): Bounds {
@@ -64,7 +107,7 @@ function pointsBounds(points: Vec[]): Bounds {
   return { minX, maxX, minY, maxY };
 }
 
-export function elementBounds(el: SvgElement): Bounds {
+export function elementBounds(el: SvgElement, stage?: StageBox | null): Bounds {
   switch (el.kind) {
     case 'rect':
       return {
@@ -90,7 +133,7 @@ export function elementBounds(el: SvgElement): Bounds {
     case 'polygon':
       return pointsBounds(el.points);
     case 'text':
-      return textBounds(el);
+      return textBounds(el, stage);
     default:
       return assertNever(el);
   }
@@ -126,8 +169,12 @@ export function translateElement(
   el: SvgElement,
   dx: number,
   dy: number,
+  stage: StageBox | null = null,
 ): SvgElement {
-  const d = clampedDelta(elementBounds(el), dx, dy);
+  // The stage box matters for text: without it the clamp uses the character
+  // approximation while hit-testing and the selection chrome use measured
+  // bounds, so realistic labels stop far short of the canvas edges.
+  const d = clampedDelta(elementBounds(el, stage), dx, dy);
   switch (el.kind) {
     case 'rect':
       return { ...el, x: clamp01(el.x + d.x), y: clamp01(el.y + d.y) };

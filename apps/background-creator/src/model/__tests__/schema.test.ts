@@ -20,6 +20,18 @@ const baseRect = {
   zoneLabel: null,
 };
 
+const baseText = {
+  id: 't1',
+  kind: 'text',
+  x: 0.5,
+  y: 0.5,
+  lines: ['x'],
+  fill: '#ffffff',
+  fontSize: 'medium',
+  fontWeight: 400,
+  opacity: 1,
+};
+
 function docWith(elements: unknown[]): unknown {
   return { version: 1, title: 't', description: 'd', elements };
 }
@@ -95,48 +107,48 @@ describe('backgroundDocumentSchema', () => {
 
   it('rejects text with no lines', () => {
     expect(
-      backgroundDocumentSchema.safeParse(
-        docWith([
-          {
-            id: 't1',
-            kind: 'text',
-            x: 0.5,
-            y: 0.5,
-            lines: [],
-            fill: '#ffffff',
-            fontMinPx: 14,
-            fontVmin: 2,
-            fontMaxPx: 32,
-            fontWeight: 400,
-            anchor: 'middle',
-            opacity: 1,
-          },
-        ]),
-      ).success,
+      backgroundDocumentSchema.safeParse(docWith([{ ...baseText, lines: [] }]))
+        .success,
     ).toBe(false);
   });
 
   it('rejects an unknown font weight', () => {
     expect(
       backgroundDocumentSchema.safeParse(
-        docWith([
-          {
-            id: 't1',
-            kind: 'text',
-            x: 0.5,
-            y: 0.5,
-            lines: ['x'],
-            fill: '#ffffff',
-            fontMinPx: 14,
-            fontVmin: 2,
-            fontMaxPx: 32,
-            fontWeight: 350,
-            anchor: 'middle',
-            opacity: 1,
-          },
-        ]),
+        docWith([{ ...baseText, fontWeight: 350 }]),
       ).success,
     ).toBe(false);
+  });
+
+  it('accepts every font size token and rejects an unknown one', () => {
+    for (const fontSize of ['small', 'medium', 'large', 'extra-large']) {
+      expect(
+        backgroundDocumentSchema.safeParse(docWith([{ ...baseText, fontSize }]))
+          .success,
+      ).toBe(true);
+    }
+    expect(
+      backgroundDocumentSchema.safeParse(
+        docWith([{ ...baseText, fontSize: 'huge' }]),
+      ).success,
+    ).toBe(false);
+  });
+
+  it('rejects numeric font fields and text anchor from the removed format', () => {
+    // The old numeric trio and anchor are gone; strict parsing rejects them as
+    // unknown keys, so a pre-token document cannot silently half-load.
+    for (const legacy of [
+      { fontMinPx: 14 },
+      { fontVmin: 2.6 },
+      { fontMaxPx: 32 },
+      { anchor: 'middle' },
+    ]) {
+      expect(
+        backgroundDocumentSchema.safeParse(
+          docWith([{ ...baseText, ...legacy }]),
+        ).success,
+      ).toBe(false);
+    }
   });
 
   it('rejects an unknown element kind', () => {
@@ -257,7 +269,7 @@ describe('backgroundDocumentSchema', () => {
     ).toBe(false);
   });
 
-  it('rejects a named colour that is not a hex value', () => {
+  it('rejects a named colour that is not a hex value or theme sentinel', () => {
     expect(
       backgroundDocumentSchema.safeParse(
         docWith([{ ...baseRect, fill: 'red' }]),
@@ -266,6 +278,47 @@ describe('backgroundDocumentSchema', () => {
     expect(
       backgroundDocumentSchema.safeParse(
         docWith([{ ...baseRect, stroke: 'currentColor', strokeWidth: 1 }]),
+      ).success,
+    ).toBe(false);
+  });
+
+  it('accepts the text/background sentinels on every colour field', () => {
+    for (const sentinel of ['text', 'background']) {
+      expect(
+        backgroundDocumentSchema.safeParse(
+          docWith([{ ...baseRect, fill: sentinel, stroke: sentinel }]),
+        ).success,
+      ).toBe(true);
+      expect(
+        backgroundDocumentSchema.safeParse(
+          docWith([{ ...baseText, fill: sentinel }]),
+        ).success,
+      ).toBe(true);
+      expect(
+        backgroundDocumentSchema.safeParse(
+          docWith([
+            {
+              id: 'l1',
+              kind: 'line',
+              x1: 0,
+              y1: 0,
+              x2: 1,
+              y2: 1,
+              stroke: sentinel,
+              strokeWidth: 1,
+              startArrow: false,
+              endArrow: false,
+            },
+          ]),
+        ).success,
+      ).toBe(true);
+    }
+  });
+
+  it('rejects an unknown theme token as a colour', () => {
+    expect(
+      backgroundDocumentSchema.safeParse(
+        docWith([{ ...baseRect, fill: 'primary' }]),
       ).success,
     ).toBe(false);
   });

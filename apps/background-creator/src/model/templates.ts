@@ -42,7 +42,7 @@ function makeAxisLine(
     y1,
     x2,
     y2,
-    stroke: '#ffffff',
+    stroke: 'text',
     strokeWidth: 3,
     startArrow: true,
     endArrow: true,
@@ -53,7 +53,6 @@ function makeLabel(props: {
   x: number;
   y: number;
   lines: string[];
-  anchor: TextElement['anchor'];
 }): TextElement {
   return {
     id: crypto.randomUUID(),
@@ -61,12 +60,9 @@ function makeLabel(props: {
     x: props.x,
     y: props.y,
     lines: props.lines,
-    fill: '#ffffff',
-    fontMinPx: 14,
-    fontVmin: 2.6,
-    fontMaxPx: 32,
+    fill: 'text',
+    fontSize: 'medium',
     fontWeight: 600,
-    anchor: props.anchor,
     opacity: 1,
   };
 }
@@ -115,34 +111,16 @@ export function createQuadrantsTemplate(): BackgroundDocument {
       makeSoftRect(0.5, 0.5, 0.5, 0.5, '#a855f7', 'bottom-right'),
       makeAxisLine(0, 0.5, 1, 0.5),
       makeAxisLine(0.5, 0, 0.5, 1),
-      makeLabel({ x: 0.015, y: 0.5, lines: ['Low X'], anchor: 'start' }),
-      makeLabel({ x: 0.985, y: 0.5, lines: ['High X'], anchor: 'end' }),
-      makeLabel({ x: 0.5, y: 0.04, lines: ['Low Y'], anchor: 'middle' }),
-      makeLabel({ x: 0.5, y: 0.98, lines: ['High Y'], anchor: 'middle' }),
-      makeLabel({
-        x: 0.25,
-        y: 0.25,
-        lines: ['Upper', 'left'],
-        anchor: 'middle',
-      }),
-      makeLabel({
-        x: 0.75,
-        y: 0.25,
-        lines: ['Upper', 'right'],
-        anchor: 'middle',
-      }),
-      makeLabel({
-        x: 0.25,
-        y: 0.75,
-        lines: ['Lower', 'left'],
-        anchor: 'middle',
-      }),
-      makeLabel({
-        x: 0.75,
-        y: 0.75,
-        lines: ['Lower', 'right'],
-        anchor: 'middle',
-      }),
+      // Text is always middle-anchored, so the axis-end labels sit far enough
+      // in from the canvas edges that their centred extent stays on-canvas.
+      makeLabel({ x: 0.06, y: 0.5, lines: ['Low X'] }),
+      makeLabel({ x: 0.94, y: 0.5, lines: ['High X'] }),
+      makeLabel({ x: 0.5, y: 0.04, lines: ['Low Y'] }),
+      makeLabel({ x: 0.5, y: 0.98, lines: ['High Y'] }),
+      makeLabel({ x: 0.25, y: 0.25, lines: ['Upper', 'left'] }),
+      makeLabel({ x: 0.75, y: 0.25, lines: ['Upper', 'right'] }),
+      makeLabel({ x: 0.25, y: 0.75, lines: ['Lower', 'left'] }),
+      makeLabel({ x: 0.75, y: 0.75, lines: ['Lower', 'right'] }),
     ],
   };
 }
@@ -205,11 +183,8 @@ export function createPoliticalCompassDocument(): BackgroundDocument {
     y,
     lines,
     fill: '#322f45',
-    fontMinPx: 13,
-    fontVmin: 2.3,
-    fontMaxPx: 30,
+    fontSize: 'medium',
     fontWeight: 500,
-    anchor: 'middle',
     opacity: 0.38,
   });
 
@@ -233,11 +208,8 @@ export function createPoliticalCompassDocument(): BackgroundDocument {
         y: 0.06,
         lines: ['Unsure'],
         fill: '#111111',
-        fontMinPx: 14,
-        fontVmin: 2.6,
-        fontMaxPx: 34,
+        fontSize: 'medium',
         fontWeight: 700,
-        anchor: 'middle',
         opacity: 1,
       },
       quadrantLabel(0.4225, 0.25, ['Authoritarian', 'Left']),
@@ -258,9 +230,9 @@ export function createConcentricCirclesTemplate(): BackgroundDocument {
       makeRing(0.45, 'outer'),
       makeRing(0.3, 'middle'),
       makeRing(0.15, 'inner'),
-      makeLabel({ x: 0.5, y: 0.5, lines: ['Inner'], anchor: 'middle' }),
-      makeLabel({ x: 0.5, y: 0.66, lines: ['Middle'], anchor: 'middle' }),
-      makeLabel({ x: 0.5, y: 0.82, lines: ['Outer'], anchor: 'middle' }),
+      makeLabel({ x: 0.5, y: 0.5, lines: ['Inner'] }),
+      makeLabel({ x: 0.5, y: 0.66, lines: ['Middle'] }),
+      makeLabel({ x: 0.5, y: 0.82, lines: ['Outer'] }),
     ],
   };
 }

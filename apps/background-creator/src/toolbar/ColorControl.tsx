@@ -1,15 +1,57 @@
-import { Ban } from 'lucide-react';
+import { Ban, type LucideIcon, PaintBucket, Type } from 'lucide-react';
 import type { ReactElement } from 'react';
 
+import {
+  controlVariants,
+  groupSpacingVariants,
+  inputControlVariants,
+  stateVariants,
+} from '@codaco/fresco-ui/styles/controlVariants';
+import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import { resolvePaint } from '~/model/paint';
 
-import { SWATCHES } from './palette';
+import { SWATCHES, THEME_SWATCHES } from './palette';
 
 // A hex colour to seed the native picker with when the current value can't be
 // shown there (null, or a non-hex colour string).
 const CUSTOM_FALLBACK = '#ffffff';
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
+
+// A glyph on each theme swatch distinguishes it from its literal near-twin in
+// the palette (theme text ≈ white, theme background ≈ near black) — without
+// one, a sighted mouse user cannot tell which of the two look-alikes carries
+// theme adaptation. The glyph paints in the OPPOSITE sentinel's colour for
+// guaranteed contrast.
+const THEME_GLYPHS: Record<string, LucideIcon> = {
+  text: Type,
+  background: PaintBucket,
+};
+
+// Best-effort resolution of a sentinel's current colour to #rrggbb so the
+// native picker opens near the colour the user sees instead of pure white. A
+// computed-style probe resolves the var(); canvas normalises whatever colour
+// serialisation the browser returns. Falls back to the plain seed when either
+// step is unavailable (jsdom, detached documents).
+function sentinelSeedHex(cssColor: string): string {
+  try {
+    const probe = document.createElement('span');
+    probe.style.color = cssColor;
+    probe.style.display = 'none';
+    document.body.appendChild(probe);
+    const resolved = getComputedStyle(probe).color;
+    probe.remove();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return CUSTOM_FALLBACK;
+    ctx.fillStyle = resolved;
+    const normalized = ctx.fillStyle;
+    return HEX.test(normalized) ? normalized : CUSTOM_FALLBACK;
+  } catch {
+    return CUSTOM_FALLBACK;
+  }
+}
 
 type ColorControlProps = {
   label: string;
@@ -28,6 +70,16 @@ const swatchBase = cx(
   'transition-transform hover:scale-110',
 );
 
+// The same input-like container chrome fresco-ui's RadioGroup field renders
+// its options inside, so the swatch grid presents as a labelled field.
+const swatchContainer = cx(
+  controlVariants(),
+  inputControlVariants(),
+  stateVariants(),
+  groupSpacingVariants({ size: 'sm' }),
+  'min-w-0 flex-wrap justify-start',
+);
+
 function selectedRing(selected: boolean): string {
   return selected
     ? 'ring-2 ring-primary ring-offset-1 ring-offset-surface'
@@ -41,17 +93,28 @@ export function ColorControl({
   allowNone = false,
 }: ColorControlProps): ReactElement {
   const nativeValue =
-    value !== null && HEX.test(value) ? value : CUSTOM_FALLBACK;
+    value !== null && HEX.test(value)
+      ? value
+      : value === 'text' || value === 'background'
+        ? sentinelSeedHex(resolvePaint(value))
+        : CUSTOM_FALLBACK;
   // A custom value is one not represented by any preset swatch (and not "None").
   const isCustom =
-    value !== null && !SWATCHES.some((swatch) => swatch.value === value);
+    value !== null &&
+    !SWATCHES.some((swatch) => swatch.value === value) &&
+    !THEME_SWATCHES.some((swatch) => swatch.value === value);
 
   return (
-    <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0">
-      <legend className="text-text/70 mb-1.5 text-xs font-medium">
+    <fieldset className="m-0 w-full min-w-0 border-0 p-0 not-last:mb-8">
+      <legend
+        className={cx(
+          'mb-2 inline-block',
+          headingVariants({ level: 'label', margin: 'none' }),
+        )}
+      >
         {label}
       </legend>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className={swatchContainer}>
         {allowNone && (
           <button
             type="button"
@@ -67,6 +130,32 @@ export function ColorControl({
             <Ban aria-hidden className="size-3.5" />
           </button>
         )}
+        {THEME_SWATCHES.map((swatch) => {
+          const Glyph = THEME_GLYPHS[swatch.value];
+          const glyphColor = resolvePaint(
+            swatch.value === 'text' ? 'background' : 'text',
+          );
+          return (
+            <button
+              key={swatch.value}
+              type="button"
+              aria-label={swatch.label}
+              title={swatch.label}
+              aria-pressed={value === swatch.value}
+              onClick={() => onCommit(swatch.value, false)}
+              style={{ backgroundColor: resolvePaint(swatch.value) }}
+              className={cx(
+                swatchBase,
+                'flex items-center justify-center',
+                selectedRing(value === swatch.value),
+              )}
+            >
+              {Glyph && (
+                <Glyph aria-hidden className="size-3" style={{ color: glyphColor }} />
+              )}
+            </button>
+          );
+        })}
         {SWATCHES.map((swatch) => (
           <button
             key={swatch.value}

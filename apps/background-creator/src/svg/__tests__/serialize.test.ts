@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createQuadrantsTemplate } from '~/model/templates';
-import type { BackgroundDocument } from '~/model/types';
+import type { BackgroundDocument, TextSize } from '~/model/types';
 import { parseDocument } from '~/svg/parse';
 import { serializeDocument } from '~/svg/serialize';
 
@@ -26,6 +26,31 @@ describe('serializeDocument root element', () => {
     expect(rootTag(svg)).not.toContain('viewBox');
     expect(rootTag(svg)).toContain('role="img"');
     expect(rootTag(svg)).toContain('aria-labelledby="title description"');
+  });
+
+  it('carries the scoped root classes and exactly one embedded style block', () => {
+    const svg = serializeDocument(docWith([]));
+    expect(rootTag(svg)).toContain('class="nc-background text-text"');
+    expect(svg.match(/<style>/g)).toHaveLength(1);
+    // Every rule is scoped under svg.nc-background so an inlined copy's
+    // document-scoped <style> cannot restyle host elements sharing the
+    // utility-like class names.
+    expect(svg).toContain(
+      'svg.nc-background { color: var(--color-text, oklch(0.95 0.01 290)) }',
+    );
+    expect(svg).toContain(
+      'svg.nc-background .fill-current { fill: currentColor }',
+    );
+    expect(svg).toContain(
+      'svg.nc-background .stroke-current { stroke: currentColor }',
+    );
+    expect(svg).toContain(
+      'svg.nc-background .fill-background { fill: var(--color-background, oklch(0.2 0.03 290)) }',
+    );
+    expect(svg).toContain(
+      'svg.nc-background .stroke-background { stroke: var(--color-background, oklch(0.2 0.03 290)) }',
+    );
+    expect(svg.match(/\.text-text\s*\{/g)).toBeNull();
   });
 
   it('escapes the title and description', () => {
@@ -248,11 +273,8 @@ describe('serializeDocument text', () => {
           y: 0.5,
           lines: ['Solo'],
           fill: '#ffffff',
-          fontMinPx: 14,
-          fontVmin: 2.6,
-          fontMaxPx: 32,
+          fontSize: 'medium',
           fontWeight: 600,
-          anchor: 'middle',
           opacity: 1,
         },
       ]),
@@ -277,11 +299,8 @@ describe('serializeDocument text', () => {
           y: 0.75,
           lines: ['Work &', 'study'],
           fill: '#ffffff',
-          fontMinPx: 14,
-          fontVmin: 2.6,
-          fontMaxPx: 32,
+          fontSize: 'medium',
           fontWeight: 600,
-          anchor: 'middle',
           opacity: 0.5,
         },
       ]),
@@ -303,11 +322,8 @@ describe('serializeDocument text', () => {
           y: 0.5,
           lines: ['One', 'Two', 'Three'],
           fill: '#ffffff',
-          fontMinPx: 14,
-          fontVmin: 2.6,
-          fontMaxPx: 32,
+          fontSize: 'medium',
           fontWeight: 600,
-          anchor: 'middle',
           opacity: 1,
         },
       ]),
@@ -328,11 +344,8 @@ describe('serializeDocument text', () => {
           y: 0.5,
           lines: ['Top', '', 'Bottom'],
           fill: '#ffffff',
-          fontMinPx: 14,
-          fontVmin: 2.6,
-          fontMaxPx: 32,
+          fontSize: 'medium',
           fontWeight: 600,
-          anchor: 'middle',
           opacity: 1,
         },
       ]),
@@ -363,11 +376,8 @@ describe('serializeDocument XML-invalid characters', () => {
           y: 0.5,
           lines: [`Li${vt}ne`, 'plain'],
           fill: '#ffffff',
-          fontMinPx: 14,
-          fontVmin: 2.6,
-          fontMaxPx: 32,
+          fontSize: 'medium',
           fontWeight: 600,
-          anchor: 'middle',
           opacity: 1,
         },
       ],
@@ -512,5 +522,173 @@ describe('serializeDocument zone-marked shapes', () => {
     expect(payload).toMatch(/^[A-Za-z0-9+/=]+$/);
     // ...and the label survives byte-exactly on reopen.
     expect(parseDocument(svg)).toEqual(doc);
+  });
+});
+
+describe('serializeDocument font size tokens', () => {
+  const clamps: Array<[TextSize, string]> = [
+    ['small', 'clamp(11px, 1.8vmin, 22px)'],
+    ['medium', 'clamp(14px, 2.6vmin, 32px)'],
+    ['large', 'clamp(18px, 3.6vmin, 44px)'],
+    ['extra-large', 'clamp(24px, 5vmin, 64px)'],
+  ];
+
+  for (const [fontSize, clamp] of clamps) {
+    it(`resolves the ${fontSize} token to ${clamp}`, () => {
+      const svg = serializeDocument(
+        docWith([
+          {
+            id: 't',
+            kind: 'text',
+            x: 0.5,
+            y: 0.5,
+            lines: ['Sized'],
+            fill: '#ffffff',
+            fontSize,
+            fontWeight: 600,
+            opacity: 1,
+          },
+        ]),
+      );
+      expect(svg).toContain(`font-size: ${clamp}; font-weight: 600`);
+    });
+  }
+});
+
+describe('serializeDocument theme-colour sentinels', () => {
+  it('serialises a text fill sentinel as class="fill-current" with no fill attribute', () => {
+    const svg = serializeDocument(
+      docWith([
+        {
+          id: 't',
+          kind: 'text',
+          x: 0.5,
+          y: 0.5,
+          lines: ['Themed'],
+          fill: 'text',
+          fontSize: 'medium',
+          fontWeight: 600,
+          opacity: 1,
+        },
+      ]),
+    );
+    const [textTag = ''] = /<text [^>]*>/.exec(renderedBody(svg)) ?? [];
+    expect(textTag).toContain('class="fill-current"');
+    expect(textTag).not.toContain('fill=');
+    expect(textTag).toContain('text-anchor="middle"');
+  });
+
+  it('serialises rect fill/stroke sentinels as classes with no paint attributes', () => {
+    const svg = serializeDocument(
+      docWith([
+        {
+          id: 'r',
+          kind: 'rect',
+          x: 0,
+          y: 0,
+          width: 0.5,
+          height: 0.5,
+          fill: 'background',
+          fillOpacity: 1,
+          stroke: 'text',
+          strokeWidth: 2,
+          zoneLabel: null,
+        },
+      ]),
+    );
+    const [rectTag = ''] = /<rect [^>]*\/>/.exec(renderedBody(svg)) ?? [];
+    expect(rectTag).toContain('class="fill-background stroke-current"');
+    expect(rectTag).not.toContain('fill=');
+    expect(rectTag).not.toContain(' stroke=');
+    expect(rectTag).toContain('stroke-width="2"');
+  });
+
+  it('serialises a sentinel-stroked line and matching arrowhead via classes', () => {
+    const svg = serializeDocument(
+      docWith([
+        {
+          id: 'l',
+          kind: 'line',
+          x1: 0,
+          y1: 0,
+          x2: 1,
+          y2: 1,
+          stroke: 'text',
+          strokeWidth: 3,
+          startArrow: true,
+          endArrow: true,
+        },
+      ]),
+    );
+    const [lineTag = ''] = /<line [^>]*\/>/.exec(svg) ?? [];
+    expect(lineTag).toContain('class="stroke-current"');
+    expect(lineTag).not.toContain(' stroke=');
+    expect(lineTag).toContain('marker-start="url(#arrow)"');
+    expect(lineTag).toContain('marker-end="url(#arrow)"');
+    // The arrowhead re-states the line's sentinel as a fill class.
+    expect(svg).toContain(
+      '<path d="M 0 0 L 10 5 L 0 10 z" class="fill-current" />',
+    );
+  });
+
+  it('serialises a background-stroked line with a fill-background arrowhead', () => {
+    const svg = serializeDocument(
+      docWith([
+        {
+          id: 'l',
+          kind: 'line',
+          x1: 0,
+          y1: 0,
+          x2: 1,
+          y2: 0,
+          stroke: 'background',
+          strokeWidth: 2,
+          startArrow: false,
+          endArrow: true,
+        },
+      ]),
+    );
+    const [lineTag = ''] = /<line [^>]*\/>/.exec(svg) ?? [];
+    expect(lineTag).toContain('class="stroke-background"');
+    expect(lineTag).not.toContain(' stroke=');
+    expect(svg).toContain(
+      '<path d="M 0 0 L 10 5 L 0 10 z" class="fill-background" />',
+    );
+  });
+
+  it('keeps distinct markers for a sentinel and a hex stroke', () => {
+    const svg = serializeDocument(
+      docWith([
+        {
+          id: 'l1',
+          kind: 'line',
+          x1: 0,
+          y1: 0,
+          x2: 1,
+          y2: 0,
+          stroke: 'text',
+          strokeWidth: 2,
+          startArrow: false,
+          endArrow: true,
+        },
+        {
+          id: 'l2',
+          kind: 'line',
+          x1: 0,
+          y1: 1,
+          x2: 1,
+          y2: 1,
+          stroke: '#ff8800',
+          strokeWidth: 2,
+          startArrow: false,
+          endArrow: true,
+        },
+      ]),
+    );
+    expect(svg.match(/<marker /g)).toHaveLength(2);
+    expect(svg).toContain(
+      '<path d="M 0 0 L 10 5 L 0 10 z" class="fill-current" />',
+    );
+    expect(svg).toContain('<path d="M 0 0 L 10 5 L 0 10 z" fill="#ff8800" />');
   });
 });

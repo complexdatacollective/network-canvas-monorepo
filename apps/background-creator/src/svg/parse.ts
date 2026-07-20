@@ -70,10 +70,50 @@ export function parseDocument(svgText: string): BackgroundDocument {
   try {
     return parseBackgroundDocument(data);
   } catch (error) {
+    // The schema failure surfaces in a user-facing dialog: a raw Zod issue
+    // dump is unreadable there, so map the known pre-release format break
+    // (numeric font trio / anchor fields) to a plain explanation and keep the
+    // generic case to one sentence.
+    if (isLegacyDocumentPayload(data)) {
+      throw new DocumentParseError(
+        'invalid-metadata',
+        'This file was saved by an earlier version of Background Creator and can no longer be opened. Recreate the design in the current version.',
+      );
+    }
     const detail = error instanceof Error ? error.message : String(error);
     throw new DocumentParseError(
       'invalid-metadata',
-      `The Background Creator metadata does not match the expected document format: ${detail}`,
+      `The Background Creator metadata does not match the expected document format.${summarizeSchemaFailure(detail)}`,
     );
   }
+}
+
+const LEGACY_TEXT_KEYS = ['fontMinPx', 'fontVmin', 'fontMaxPx', 'anchor'];
+
+// True when the payload carries text-element fields from the pre-release
+// document format that the current schema deliberately rejects.
+function isLegacyDocumentPayload(data: unknown): boolean {
+  if (typeof data !== 'object' || data === null || !('elements' in data)) {
+    return false;
+  }
+  const { elements } = data;
+  if (!Array.isArray(elements)) return false;
+  return elements.some(
+    (el) =>
+      typeof el === 'object' &&
+      el !== null &&
+      LEGACY_TEXT_KEYS.some((key) => key in el),
+  );
+}
+
+// First issue only, capped — enough to orient without dumping the whole array.
+function summarizeSchemaFailure(detail: string): string {
+  const firstLine = detail
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => line.length > 0 && !line.startsWith('['));
+  if (!firstLine) return '';
+  const capped =
+    firstLine.length > 120 ? `${firstLine.slice(0, 117)}…` : firstLine;
+  return ` (${capped})`;
 }

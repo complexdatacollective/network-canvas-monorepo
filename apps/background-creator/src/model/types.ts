@@ -1,5 +1,22 @@
 export type Vec = { x: number; y: number };
 
+// Colour fields (fill, stroke, text fill) hold either a literal hex string or
+// one of the theme sentinels 'text' / 'background', which serialize as classes
+// resolved against the host theme (see svg/serialize.ts and model/paint.ts).
+
+export type TextSize = 'small' | 'medium' | 'large' | 'extra-large';
+
+// The clamp() parts each token resolves to: font-size: clamp(minPx, vmin, maxPx).
+export const TEXT_SIZE_PRESETS: Record<
+  TextSize,
+  { minPx: number; vmin: number; maxPx: number }
+> = {
+  'small': { minPx: 11, vmin: 1.8, maxPx: 22 },
+  'medium': { minPx: 14, vmin: 2.6, maxPx: 32 },
+  'large': { minPx: 18, vmin: 3.6, maxPx: 44 },
+  'extra-large': { minPx: 24, vmin: 5, maxPx: 64 },
+};
+
 type BaseElement = { id: string };
 
 // rect/ellipse/polygon can be marked as zones; the label becomes the exported
@@ -58,11 +75,8 @@ export type TextElement = BaseElement & {
   y: number;
   lines: string[]; // ≥ 1, one <tspan> per line
   fill: string;
-  fontMinPx: number;
-  fontVmin: number;
-  fontMaxPx: number; // clamp() parts
+  fontSize: TextSize;
   fontWeight: 400 | 500 | 600 | 700;
-  anchor: 'start' | 'middle' | 'end';
   opacity: number; // 0..1
 };
 

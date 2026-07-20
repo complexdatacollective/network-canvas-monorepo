@@ -109,11 +109,12 @@ function moveInDoc(
   sel: Selection,
   dx: number,
   dy: number,
+  stage: StageBox | null,
 ): BackgroundDocument {
   return {
     ...doc,
     elements: doc.elements.map((el) =>
-      el.id === sel.id ? translateElement(el, dx, dy) : el,
+      el.id === sel.id ? translateElement(el, dx, dy, stage) : el,
     ),
   };
 }
@@ -274,8 +275,8 @@ export function EditorCanvas(): ReactElement {
   const selectionBounds = useMemo<Bounds | null>(() => {
     if (!selection) return null;
     const el = doc.elements.find((e) => e.id === selection.id);
-    return el ? elementBounds(el) : null;
-  }, [selection, doc]);
+    return el ? elementBounds(el, stageSize) : null;
+  }, [selection, doc, stageSize]);
 
   // Snaps a gesture's pointer to alignment candidates and publishes the active
   // guides, unless Alt is held or the stage has no measurable size. Stable, so
@@ -330,10 +331,13 @@ export function EditorCanvas(): ReactElement {
       const tool = store.activeTool;
       const rect = el.getBoundingClientRect();
       const pt = clientToNormalized(rect, e.clientX, e.clientY);
+      // Text hit areas and move-snap bounds use the live stage box so they
+      // match the measured rendered extent.
+      const stageBox: StageBox = { width: rect.width, height: rect.height };
 
       if (tool === 'select') {
         const tol = HIT_TOLERANCE_PX / Math.min(rect.width, rect.height);
-        const hit = hitTestDocument(pt, store.doc, tol);
+        const hit = hitTestDocument(pt, store.doc, tol, stageBox);
         if (!hit) {
           startPointerGesture(e, el, getStageRect, {
             onEnd: ({ moved }) => {
@@ -353,8 +357,10 @@ export function EditorCanvas(): ReactElement {
         const movingEl = originalDoc.elements.find(
           (item) => item.id === hit.id,
         );
-        const originalBounds = movingEl ? elementBounds(movingEl) : null;
-        const candidates = snapLines(originalDoc, hit.id);
+        const originalBounds = movingEl
+          ? elementBounds(movingEl, stageBox)
+          : null;
+        const candidates = snapLines(originalDoc, hit.id, stageBox);
         const startPt = pt;
         let began = false;
         startPointerGesture(e, el, getStageRect, {
@@ -383,7 +389,9 @@ export function EditorCanvas(): ReactElement {
               dx = rawDx + snap.delta.x;
               dy = rawDy + snap.delta.y;
             }
-            store.updateGesture(() => moveInDoc(originalDoc, hit, dx, dy));
+            store.updateGesture(() =>
+              moveInDoc(originalDoc, hit, dx, dy, stageBox),
+            );
           },
           onEnd: ({ moved, cancelled }) => {
             setGuides(NO_GUIDES);
@@ -404,7 +412,7 @@ export function EditorCanvas(): ReactElement {
         // than dropping a new placeholder on top; any other hit or empty space
         // creates one.
         const tol = HIT_TOLERANCE_PX / Math.min(rect.width, rect.height);
-        const hit = hitTestDocument(pt, store.doc, tol);
+        const hit = hitTestDocument(pt, store.doc, tol, stageBox);
         const hitEl = hit
           ? store.doc.elements.find((candidate) => candidate.id === hit.id)
           : undefined;
@@ -429,7 +437,7 @@ export function EditorCanvas(): ReactElement {
       }
 
       if (isDragTool(tool)) {
-        const candidates = snapLines(store.doc, null);
+        const candidates = snapLines(store.doc, null, stageBox);
         store.beginDraft(tool, pt);
         startPointerGesture(e, el, getStageRect, {
           onDrag: (currentPt, _start, shiftKey, altKey) => {
@@ -535,7 +543,10 @@ export function EditorCanvas(): ReactElement {
       if (!rect) return;
       const pt = clientToNormalized(rect, e.clientX, e.clientY);
       const tol = HIT_TOLERANCE_PX / Math.min(rect.width, rect.height);
-      const hit = hitTestDocument(pt, store.doc, tol);
+      const hit = hitTestDocument(pt, store.doc, tol, {
+        width: rect.width,
+        height: rect.height,
+      });
       if (!hit) return;
       const el = store.doc.elements.find(
         (candidate) => candidate.id === hit.id,
@@ -683,8 +694,13 @@ export function EditorCanvas(): ReactElement {
         />
         <ZonePills />
         <ResizeHandles getRect={getStageRect} onGuidesChange={setGuides} />
-        <SelectionProperties stageRef={stageRef} />
-        <KeyboardTargets onActivate={activateElement} />
+        {/* Hidden while an inline text edit is live: the trigger anchors to the
+            committed bounds, and the auto-growing textarea could extend under
+            it — a click meant to place the caret would end the session. */}
+        {!editing && (
+          <SelectionProperties stage={stageSize} stageRef={stageRef} />
+        )}
+        <KeyboardTargets stage={stageSize} onActivate={activateElement} />
 
         {editingElement && stageSize && (
           <InlineTextEditor

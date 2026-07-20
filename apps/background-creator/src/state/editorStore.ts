@@ -94,11 +94,8 @@ type ElementPatch = {
   startArrow?: boolean;
   endArrow?: boolean;
   lines?: string[];
-  fontMinPx?: number;
-  fontVmin?: number;
-  fontMaxPx?: number;
+  fontSize?: TextElement['fontSize'];
   fontWeight?: TextElement['fontWeight'];
-  anchor?: TextElement['anchor'];
   opacity?: number;
   // null unmarks the element as a zone; a string marks/renames it.
   zoneLabel?: string | null;
@@ -140,7 +137,7 @@ type EditorState = {
     patch: ElementPatch,
     opts?: CommitOptions,
   ) => void;
-  moveSelectedBy: (dx: number, dy: number) => void;
+  moveSelectedBy: (dx: number, dy: number, stage?: StageBox | null) => void;
   deleteSelected: () => void;
   reorderSelected: (direction: 'forward' | 'backward') => void;
 
@@ -295,11 +292,8 @@ function applyElementPatch(el: SvgElement, p: ElementPatch): SvgElement {
         ...(p.y !== undefined ? { y: p.y } : null),
         ...(p.lines !== undefined ? { lines: p.lines } : null),
         ...(p.fill !== undefined ? { fill: p.fill } : null),
-        ...(p.fontMinPx !== undefined ? { fontMinPx: p.fontMinPx } : null),
-        ...(p.fontVmin !== undefined ? { fontVmin: p.fontVmin } : null),
-        ...(p.fontMaxPx !== undefined ? { fontMaxPx: p.fontMaxPx } : null),
+        ...(p.fontSize !== undefined ? { fontSize: p.fontSize } : null),
         ...(p.fontWeight !== undefined ? { fontWeight: p.fontWeight } : null),
-        ...(p.anchor !== undefined ? { anchor: p.anchor } : null),
         ...(p.opacity !== undefined ? { opacity: p.opacity } : null),
       };
     default:
@@ -312,11 +306,12 @@ function translateSelected(
   selection: Selection,
   dx: number,
   dy: number,
+  stage: StageBox | null,
 ): BackgroundDocument {
   return {
     ...doc,
     elements: doc.elements.map((el) =>
-      el.id === selection.id ? translateElement(el, dx, dy) : el,
+      el.id === selection.id ? translateElement(el, dx, dy, stage) : el,
     ),
   };
 }
@@ -338,7 +333,7 @@ function buildDragItem(
       y1: start.y,
       x2: current.x,
       y2: current.y,
-      stroke: '#ffffff',
+      stroke: 'text',
       strokeWidth: 3,
       startArrow: false,
       endArrow: false,
@@ -428,7 +423,7 @@ function buildDefaultShape(
         y1: 0.5,
         x2: 0.5 + half,
         y2: 0.5,
-        stroke: '#ffffff',
+        stroke: 'text',
         strokeWidth: 3,
         startArrow: false,
         endArrow: false,
@@ -526,12 +521,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((state) => pushed(state, next, opts));
   },
 
-  moveSelectedBy: (dx, dy) => {
+  moveSelectedBy: (dx, dy, stage = null) => {
     const { selection, doc } = get();
     if (!selection) return;
     const current = findElement(doc, selection.id);
     if (!current) return;
-    const next = translateSelected(doc, selection, dx, dy);
+    const next = translateSelected(doc, selection, dx, dy, stage);
     const moved = findElement(next, selection.id);
     // Skip a fully-clamped edge nudge so it doesn't push a no-op history step.
     if (moved && JSON.stringify(moved) === JSON.stringify(current)) return;
@@ -734,12 +729,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       x: at.x,
       y: at.y,
       lines: ['Text'],
-      fill: '#ffffff',
-      fontMinPx: 14,
-      fontVmin: 2.6,
-      fontMaxPx: 32,
+      fill: 'text',
+      fontSize: 'medium',
       fontWeight: 600,
-      anchor: 'middle',
       opacity: 1,
     };
     const next: BackgroundDocument = {

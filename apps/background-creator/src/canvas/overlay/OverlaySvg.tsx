@@ -1,9 +1,14 @@
 import { useId, type ReactElement } from 'react';
 
 import { zonesOf } from '~/geometry/zones';
-import type { BackgroundDocument, Vec, ZoneElement } from '~/model/types';
+import type {
+  BackgroundDocument,
+  LineElement,
+  Vec,
+  ZoneElement,
+} from '~/model/types';
 import type { Bounds } from '~/state/documentGeometry';
-import type { Draft } from '~/state/editorStore';
+import { type Draft, useEditorStore } from '~/state/editorStore';
 import type { SnapGuides } from '~/state/snapping';
 
 // Explicit stroke-only paint props (never `points`, which would collide with the
@@ -203,6 +208,27 @@ function SelectionOutline({ bounds }: { bounds: Bounds }): ReactElement {
   );
 }
 
+// A selected line's bounds collapse to a hairline (zero-height when axis
+// aligned), so instead of the bounds outline it gets a halo drawn along its own
+// geometry: a wide translucent accent stroke, screen-fixed like the outline,
+// kept wider than the artwork's stroke so a ring stays visible around thick
+// lines. Endpoint drag affordances live in ResizeHandles.
+function LineSelectionHalo({ line }: { line: LineElement }): ReactElement {
+  return (
+    <line
+      x1={pc(line.x1)}
+      y1={pc(line.y1)}
+      x2={pc(line.x2)}
+      y2={pc(line.y2)}
+      stroke="var(--selected)"
+      strokeWidth={Math.max(6, line.strokeWidth + 4)}
+      strokeOpacity={0.4}
+      strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
+    />
+  );
+}
+
 // Alignment guides drawn while a gesture is snapping: a thin dashed line spanning
 // the stage at each active snapped axis. Accent-toned to read as active chrome,
 // aria-hidden (the SVG already is). Uses the raw `--accent` token, which resolves
@@ -311,6 +337,12 @@ export function OverlaySvg({
   // delimiter characters are awkward inside SVG url(#...) references.
   const patternPrefix = `zone-hatch-${useId().replace(/\W/g, '')}`;
   const zones = zonesVisible ? zonesOf(doc) : [];
+  // Selection id read here (as ResizeHandles does) so the halo/outline choice
+  // stays local to this overlay; geometry still comes from the doc prop.
+  const selection = useEditorStore((s) => s.selection);
+  const selectedElement = selection
+    ? doc.elements.find((el) => el.id === selection.id)
+    : undefined;
   return (
     <svg
       className="pointer-events-none absolute inset-0 size-full"
@@ -335,7 +367,12 @@ export function OverlaySvg({
           />
         );
       })}
-      {selectionBounds && <SelectionOutline bounds={selectionBounds} />}
+      {selectionBounds &&
+        (selectedElement?.kind === 'line' ? (
+          <LineSelectionHalo line={selectedElement} />
+        ) : (
+          <SelectionOutline bounds={selectionBounds} />
+        ))}
       {draft && <DraftShape draft={draft} />}
       <SnapGuideLines guides={guides} />
     </svg>

@@ -7,42 +7,37 @@ import {
   useState,
 } from 'react';
 
+import { resolvePaint } from '~/model/paint';
 import type { TextElement } from '~/model/types';
-import type { StageBox } from '~/state/documentGeometry';
+import {
+  type StageBox,
+  TEXT_LINE_HEIGHT_EM,
+  textFontPx,
+} from '~/state/documentGeometry';
+import { measureWidestLinePx, textCanvasFont } from '~/state/textMeasure';
 import { linesToText } from '~/toolbar/textLines';
 
 import { INLINE_EDITOR_ATTR } from './overlayTargets';
 
-// The rendered font size of a text element on the current stage: the SVG's
-// `clamp(min, <vmin>vmin, max)` resolved against the stage box (vmin = 1% of the
-// smaller stage dimension), so the in-place editor matches what the preview img
-// paints.
-function fontPxFor(el: TextElement, stage: StageBox): number {
-  const vmin = (el.fontVmin / 100) * Math.min(stage.width, stage.height);
-  return Math.min(Math.max(vmin, el.fontMinPx), el.fontMaxPx);
-}
+// Slack added to the measured content width so the caret at the end of the
+// longest line has room and sub-pixel rounding never scrolls a line. Symmetric
+// around the centred content, so glyphs stay on their rendered positions.
+const CARET_SLACK_PX = 2;
 
-function anchorTranslateX(anchor: TextElement['anchor']): string {
-  if (anchor === 'start') return '0';
-  if (anchor === 'end') return '-100%';
-  return '-50%';
-}
+// Per-character width estimate used only when no canvas 2D context exists
+// (jsdom); real browsers always measure.
+const FALLBACK_CHAR_EM = 0.6;
 
-function anchorTextAlign(
-  anchor: TextElement['anchor'],
-): CSSProperties['textAlign'] {
-  if (anchor === 'start') return 'left';
-  if (anchor === 'end') return 'right';
-  return 'center';
-}
-
-// In-place editor for a text element, positioned over the preview at the text's
-// anchor and matching its alignment and rendered font size. Enter inserts a
-// newline; Escape or blur commits (the parent decides whether an empty new
-// placeholder is removed instead). The parent is asked to restore stage focus
-// only when focus is not headed to another control — Escape, or a blur whose
-// relatedTarget is null (e.g. a Firefox canvas click, which focuses body
-// rather than the stage ancestor). A blur into a real control (Tab to the
+// In-place editor for a text element: a chrome-free textarea styled identically
+// to the rendered SVG text (font, resolved clamp() size, weight, line height,
+// centre alignment, theme-resolved colour) and sized to its content, centred on
+// the element's (x, y) — so double-clicking reads as the text itself becoming
+// editable, with the caret and native selection as the only affordance. Enter
+// inserts a newline; Escape or blur commits (the parent decides whether an
+// empty new placeholder is removed instead). The parent is asked to restore
+// stage focus only when focus is not headed to another control — Escape, or a
+// blur whose relatedTarget is null (e.g. a Firefox canvas click, which focuses
+// body rather than the stage ancestor). A blur into a real control (Tab to the
 // toolbar, clicking a panel field) must not have focus stolen back. While the
 // editor is mounted, the parent omits this element from the serialized preview
 // so there is no double render.
@@ -86,17 +81,31 @@ export function InlineTextEditor({
     // Enter falls through to the textarea's default newline insertion.
   };
 
-  const px = fontPxFor(element, stage);
+  // Auto-grow with the live value: width follows the widest line (measured with
+  // the same font the SVG renders), height follows the line count.
+  const px = textFontPx(element, stage);
+  const lines = value.split('\n');
+  const longest = lines.reduce((max, line) => Math.max(max, line.length), 0);
+  const widestPx =
+    measureWidestLinePx(lines, textCanvasFont(element.fontWeight, px)) ??
+    longest * FALLBACK_CHAR_EM * px;
   const style: CSSProperties = {
     left: `${element.x * 100}%`,
     top: `${element.y * 100}%`,
-    transform: `translate(${anchorTranslateX(element.anchor)}, -50%)`,
+    transform: 'translate(-50%, -50%)',
+    width: `${widestPx + CARET_SLACK_PX}px`,
+    height: `${lines.length * TEXT_LINE_HEIGHT_EM * px}px`,
+    fontFamily: 'system-ui, sans-serif',
     fontSize: `${px}px`,
-    lineHeight: 1.2,
+    lineHeight: TEXT_LINE_HEIGHT_EM,
     fontWeight: element.fontWeight,
-    color: element.fill,
-    textAlign: anchorTextAlign(element.anchor),
-    width: 'min(24rem, 60%)',
+    color: resolvePaint(element.fill),
+    // Always-visible caret: the seamless editor has no box chrome, so when the
+    // text colour matches the backdrop the caret is the only sign an editing
+    // session is live. The selection token contrasts with artwork on every
+    // preview surface.
+    caretColor: 'var(--selected)',
+    textAlign: 'center',
   };
 
   return (
@@ -105,12 +114,12 @@ export function InlineTextEditor({
       aria-label="Edit text"
       {...{ [INLINE_EDITOR_ATTR]: '' }}
       value={value}
-      rows={Math.max(value.split('\n').length, 1)}
+      wrap="off"
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
       onBlur={(e) => commit(e.relatedTarget === null)}
       spellCheck={false}
-      className="focusable border-selected bg-surface/90 elevation-medium absolute resize-none overflow-hidden rounded-sm border px-1 py-0.5 font-[system-ui]"
+      className="absolute resize-none overflow-hidden border-0 bg-transparent p-0 outline-none"
       style={style}
     />
   );

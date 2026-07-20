@@ -1,11 +1,11 @@
 import { BringToFront, SendToBack, Trash2 } from 'lucide-react';
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement } from 'react';
 
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
-import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { zonesOf } from '~/geometry/zones';
@@ -24,7 +24,6 @@ import { elementKindLabel } from '~/state/labels';
 
 import { ColorControl } from './ColorControl';
 import { NumberField } from './NumberField';
-import { linesToText, textToLines } from './textLines';
 
 const WEIGHT_OPTIONS: { value: TextElement['fontWeight']; label: string }[] = [
   { value: 400, label: 'Regular' },
@@ -33,18 +32,19 @@ const WEIGHT_OPTIONS: { value: TextElement['fontWeight']; label: string }[] = [
   { value: 700, label: 'Bold' },
 ];
 
-const ANCHOR_OPTIONS: { value: TextElement['anchor']; label: string }[] = [
-  { value: 'start', label: 'Start (left)' },
-  { value: 'middle', label: 'Middle (centre)' },
-  { value: 'end', label: 'End (right)' },
+const SIZE_OPTIONS: { value: TextElement['fontSize']; label: string }[] = [
+  { value: 'small', label: 'Small' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'large', label: 'Large' },
+  { value: 'extra-large', label: 'Extra large' },
 ];
 
 function pickWeight(value: unknown): TextElement['fontWeight'] | null {
   return WEIGHT_OPTIONS.find((option) => option.value === value)?.value ?? null;
 }
 
-function pickAnchor(value: unknown): TextElement['anchor'] | null {
-  return ANCHOR_OPTIONS.find((option) => option.value === value)?.value ?? null;
+function pickSize(value: unknown): TextElement['fontSize'] | null {
+  return SIZE_OPTIONS.find((option) => option.value === value)?.value ?? null;
 }
 
 // Mirrors validateZoneLabels' rules for a single zone element so the inline
@@ -64,12 +64,6 @@ function zoneLabelIssue(
     return 'Another zone already uses this label. Zone labels must be unique.';
   }
   return null;
-}
-
-// Vertical rhythm: fresco fields self-space via `not-last:mb-8`; non-field
-// blocks (colour controls) get a matching margin so the stack reads evenly.
-function Block({ children }: { children: ReactNode }): ReactElement {
-  return <div className="not-last:mb-8">{children}</div>;
 }
 
 // A rect/ellipse/polygon can be marked as a zone; enabling prefills the next
@@ -130,20 +124,18 @@ function FillControls({
   const id = element.id;
   return (
     <>
-      <Block>
-        <ColorControl
-          label="Fill"
-          value={element.fill}
-          onCommit={(value, continuous) => {
-            if (value === null) return;
-            updateElement(
-              id,
-              { fill: value },
-              continuous ? { coalesceKey: `fill:${id}` } : undefined,
-            );
-          }}
-        />
-      </Block>
+      <ColorControl
+        label="Fill"
+        value={element.fill}
+        onCommit={(value, continuous) => {
+          if (value === null) return;
+          updateElement(
+            id,
+            { fill: value },
+            continuous ? { coalesceKey: `fill:${id}` } : undefined,
+          );
+        }}
+      />
       <NumberField
         label="Fill opacity"
         name="fill-opacity"
@@ -153,20 +145,18 @@ function FillControls({
         step={0.05}
         onCommit={(value) => updateElement(id, { fillOpacity: value })}
       />
-      <Block>
-        <ColorControl
-          label="Stroke"
-          value={element.stroke}
-          allowNone
-          onCommit={(value, continuous) =>
-            updateElement(
-              id,
-              { stroke: value },
-              continuous ? { coalesceKey: `stroke:${id}` } : undefined,
-            )
-          }
-        />
-      </Block>
+      <ColorControl
+        label="Stroke"
+        value={element.stroke}
+        allowNone
+        onCommit={(value, continuous) =>
+          updateElement(
+            id,
+            { stroke: value },
+            continuous ? { coalesceKey: `stroke:${id}` } : undefined,
+          )
+        }
+      />
       <NumberField
         label="Stroke width"
         name="stroke-width"
@@ -186,20 +176,18 @@ function LineControls({ element }: { element: LineElement }): ReactElement {
   const id = element.id;
   return (
     <>
-      <Block>
-        <ColorControl
-          label="Stroke"
-          value={element.stroke}
-          onCommit={(value, continuous) => {
-            if (value === null) return;
-            updateElement(
-              id,
-              { stroke: value },
-              continuous ? { coalesceKey: `stroke:${id}` } : undefined,
-            );
-          }}
-        />
-      </Block>
+      <ColorControl
+        label="Stroke"
+        value={element.stroke}
+        onCommit={(value, continuous) => {
+          if (value === null) return;
+          updateElement(
+            id,
+            { stroke: value },
+            continuous ? { coalesceKey: `stroke:${id}` } : undefined,
+          );
+        }}
+      />
       <NumberField
         label="Stroke width"
         name="stroke-width"
@@ -229,56 +217,25 @@ function LineControls({ element }: { element: LineElement }): ReactElement {
   );
 }
 
+// Text content itself is edited inline on the canvas (double-click / Enter),
+// so the panel carries only presentation properties.
 function TextControls({ element }: { element: TextElement }): ReactElement {
   const updateElement = useEditorStore((s) => s.updateElement);
   const id = element.id;
   return (
     <>
       <UnconnectedField
-        label="Text"
-        name="text-lines"
-        hint="Each line becomes its own line of the label."
-        component={TextAreaField}
-        rows={2}
-        value={linesToText(element.lines)}
-        onChange={(value) =>
-          updateElement(
-            id,
-            { lines: textToLines(value ?? '') },
-            { coalesceKey: `text:${id}` },
-          )
-        }
-      />
-      <NumberField
-        label="Font min (px)"
-        name="font-min"
-        value={element.fontMinPx}
-        min={8}
-        // Capped at the current maximum (NumberField clamps on commit) so the
-        // min can never be saved above the max.
-        max={element.fontMaxPx}
-        step={1}
-        onCommit={(value) => updateElement(id, { fontMinPx: value })}
-      />
-      <NumberField
-        label="Font scale (vmin)"
-        name="font-vmin"
-        value={element.fontVmin}
-        min={0.5}
-        max={10}
-        step={0.1}
-        onCommit={(value) => updateElement(id, { fontVmin: value })}
-      />
-      <NumberField
-        label="Font max (px)"
-        name="font-max"
-        value={element.fontMaxPx}
-        // Floored at the current minimum (NumberField clamps on commit) so the
-        // max can never be saved below the min.
-        min={element.fontMinPx}
-        max={96}
-        step={1}
-        onCommit={(value) => updateElement(id, { fontMaxPx: value })}
+        label="Size"
+        name="font-size"
+        component={RadioGroupField}
+        orientation="horizontal"
+        size="sm"
+        options={SIZE_OPTIONS}
+        value={element.fontSize}
+        onChange={(value) => {
+          const fontSize = pickSize(value);
+          if (fontSize !== null) updateElement(id, { fontSize });
+        }}
       />
       <UnconnectedField
         label="Weight"
@@ -291,31 +248,18 @@ function TextControls({ element }: { element: TextElement }): ReactElement {
           if (weight !== null) updateElement(id, { fontWeight: weight });
         }}
       />
-      <UnconnectedField
-        label="Alignment"
-        name="text-anchor"
-        component={SelectField}
-        options={ANCHOR_OPTIONS}
-        value={element.anchor}
-        onChange={(value) => {
-          const anchor = pickAnchor(value);
-          if (anchor !== null) updateElement(id, { anchor });
+      <ColorControl
+        label="Colour"
+        value={element.fill}
+        onCommit={(value, continuous) => {
+          if (value === null) return;
+          updateElement(
+            id,
+            { fill: value },
+            continuous ? { coalesceKey: `fill:${id}` } : undefined,
+          );
         }}
       />
-      <Block>
-        <ColorControl
-          label="Colour"
-          value={element.fill}
-          onCommit={(value, continuous) => {
-            if (value === null) return;
-            updateElement(
-              id,
-              { fill: value },
-              continuous ? { coalesceKey: `fill:${id}` } : undefined,
-            );
-          }}
-        />
-      </Block>
       <NumberField
         label="Opacity"
         name="text-opacity"
@@ -366,41 +310,50 @@ export function PropertiesPanel(): ReactElement {
 
   return (
     <div className="flex max-h-[min(70vh,34rem)] w-64 flex-col">
-      {/* Compact action row pinned above the scroll area so the item's identity,
-          z-order, and Delete stay in view for any selection — previously these
-          sat below the fold at the bottom of the scrollable fields. */}
-      <div className="border-outline/40 mb-3 flex items-center gap-1 border-b pb-3">
-        <span className="text-text min-w-0 flex-1 truncate text-sm font-semibold">
+      {/* Only the element's identity is pinned above the fold; every control —
+          z-order, sections, Delete — lives in the scroll area below. */}
+      <div className="border-outline/40 -mx-8 mb-3 border-b px-8 pb-3">
+        <span className="text-text block truncate text-sm font-semibold">
           {elementKindLabel(element)}
         </span>
-        <IconButton
-          variant="text"
-          size="sm"
-          aria-label="Send backward"
-          icon={<SendToBack />}
-          onClick={() => reorderSelected('backward')}
-        />
-        <IconButton
-          variant="text"
-          size="sm"
-          aria-label="Bring forward"
-          icon={<BringToFront />}
-          onClick={() => reorderSelected('forward')}
-        />
-        <Button
-          variant="text"
-          color="destructive"
-          size="sm"
-          icon={<Trash2 />}
-          onClick={() => deleteSelected()}
-        >
-          Delete
-        </Button>
       </div>
-      {/* Capped, scrollable field area: a text element exposes many fields, more
-          than fit a popover on a short viewport. */}
-      <div className="flex min-h-0 flex-col overflow-y-auto pr-1">
-        <ElementControls element={element} />
+      {/* The negative margins stretch the scroll container to the popover's full
+          width (Surface `spacing="md"` padding is px-8) so the scrollbar hugs
+          the popover edge; the horizontal padding is re-applied INSIDE the
+          scrolled content. */}
+      {/* Vertical padding inside the clip box: the first/last controls'
+          focus rings (outline-offset) would otherwise be cut off at the
+          scroll container's edges. */}
+      <div className="-mx-8 min-h-0 overflow-y-auto">
+        <div className="px-8 py-2">
+          <div className="flex items-center gap-1 not-last:mb-8">
+            <IconButton
+              variant="text"
+              size="sm"
+              aria-label="Send backward"
+              icon={<SendToBack />}
+              onClick={() => reorderSelected('backward')}
+            />
+            <IconButton
+              variant="text"
+              size="sm"
+              aria-label="Bring forward"
+              icon={<BringToFront />}
+              onClick={() => reorderSelected('forward')}
+            />
+          </div>
+          <ElementControls element={element} />
+          <Button
+            variant="outline"
+            color="destructive"
+            size="sm"
+            icon={<Trash2 />}
+            className="w-full"
+            onClick={() => deleteSelected()}
+          >
+            Delete
+          </Button>
+        </div>
       </div>
     </div>
   );

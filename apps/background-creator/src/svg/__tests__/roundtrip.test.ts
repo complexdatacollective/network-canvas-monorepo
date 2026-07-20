@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createBlankDocument,
   createConcentricCirclesTemplate,
+  createPoliticalCompassDocument,
   createQuadrantsTemplate,
 } from '~/model/templates';
 import type { BackgroundDocument } from '~/model/types';
@@ -10,11 +11,13 @@ import { parseDocument } from '~/svg/parse';
 import { serializeDocument } from '~/svg/serialize';
 
 // A document that exercises every element kind and every optional branch:
-// stroked + unstroked rect/ellipse/polygon (some marked as zones, some not);
-// a line with both arrows, a line with one arrow reusing that colour's marker, a
-// line with no arrows, and a line whose arrow uses a second distinct colour;
-// single-, two-, and three-line text with varied opacity, anchor, and weight;
-// and XML-hostile characters in the title, description, and a zone label.
+// stroked + unstroked rect/ellipse/polygon (some marked as zones, some not,
+// including theme-sentinel fills and strokes); a line with both arrows, a line
+// with one arrow reusing that colour's marker, a line with no arrows, a line
+// whose arrow uses a second distinct colour, and a sentinel-stroked line with
+// an arrow; single-, two-, and three-line text with varied opacity, size
+// token, and weight (one with a sentinel fill); and XML-hostile characters in
+// the title, description, and a zone label.
 const kitchenSink: BackgroundDocument = {
   version: 1,
   title: 'Round & trip <test>',
@@ -53,9 +56,9 @@ const kitchenSink: BackgroundDocument = {
       cy: 0.5,
       rx: 0.25,
       ry: 0.1,
-      fill: '#ffffff',
+      fill: 'background',
       fillOpacity: 0,
-      stroke: '#ff0000',
+      stroke: 'text',
       strokeWidth: 3,
       zoneLabel: null,
     },
@@ -121,6 +124,18 @@ const kitchenSink: BackgroundDocument = {
       endArrow: false,
     },
     {
+      id: 'line-sentinel-stroke',
+      kind: 'line',
+      x1: 0.1,
+      y1: 0.9,
+      x2: 0.9,
+      y2: 0.9,
+      stroke: 'text',
+      strokeWidth: 2,
+      startArrow: true,
+      endArrow: true,
+    },
+    {
       id: 'polygon-stroked',
       kind: 'polygon',
       points: [
@@ -155,12 +170,9 @@ const kitchenSink: BackgroundDocument = {
       x: 0.3,
       y: 0.3,
       lines: ['Line & one', 'Line <two>'],
-      fill: '#ffffff',
-      fontMinPx: 16,
-      fontVmin: 3,
-      fontMaxPx: 40,
+      fill: 'text',
+      fontSize: 'large',
       fontWeight: 700,
-      anchor: 'start',
       opacity: 0.5,
     },
     {
@@ -170,11 +182,8 @@ const kitchenSink: BackgroundDocument = {
       y: 0.7,
       lines: ['Solo "line"'],
       fill: '#eeeeee',
-      fontMinPx: 12,
-      fontVmin: 2,
-      fontMaxPx: 24,
+      fontSize: 'small',
       fontWeight: 400,
-      anchor: 'middle',
       opacity: 1,
     },
     {
@@ -184,11 +193,8 @@ const kitchenSink: BackgroundDocument = {
       y: 0.2,
       lines: ['A', 'B', 'C'],
       fill: '#cccccc',
-      fontMinPx: 10,
-      fontVmin: 1.5,
-      fontMaxPx: 20,
+      fontSize: 'extra-large',
       fontWeight: 500,
-      anchor: 'end',
       opacity: 0.9,
     },
   ],
@@ -224,11 +230,8 @@ const unicodeDocument: BackgroundDocument = {
       y: 0.5,
       lines: ['こんにちは', '🎉🎊', '中文标签'],
       fill: '#ffffff',
-      fontMinPx: 14,
-      fontVmin: 2.6,
-      fontMaxPx: 32,
+      fontSize: 'medium',
       fontWeight: 600,
-      anchor: 'middle',
       opacity: 1,
     },
   ],
@@ -239,6 +242,7 @@ describe('serialize/parse round trip', () => {
     ['blank template', createBlankDocument()],
     ['quadrants template', createQuadrantsTemplate()],
     ['concentric circles template', createConcentricCirclesTemplate()],
+    ['political compass document', createPoliticalCompassDocument()],
     ['kitchen-sink document', kitchenSink],
     ['unicode document (emoji + CJK)', unicodeDocument],
   ];

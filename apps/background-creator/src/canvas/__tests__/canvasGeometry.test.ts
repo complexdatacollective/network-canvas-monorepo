@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import type {
   BackgroundDocument,
@@ -6,8 +6,10 @@ import type {
   PolygonElement,
   RectElement,
   SvgElement,
+  TextElement,
   Vec,
 } from '~/model/types';
+import { setTextMeasurer } from '~/state/textMeasure';
 
 import { type Handle, hitTestDocument, resizeElement } from '../canvasGeometry';
 
@@ -62,6 +64,21 @@ function polygon(over: Partial<PolygonElement> = {}): PolygonElement {
     stroke: null,
     strokeWidth: 3,
     zoneLabel: null,
+    ...over,
+  };
+}
+
+function textEl(over: Partial<TextElement> = {}): TextElement {
+  return {
+    id: 't',
+    kind: 'text',
+    x: 0.5,
+    y: 0.5,
+    lines: ['Hello world'],
+    fill: 'text',
+    fontSize: 'medium',
+    fontWeight: 400,
+    opacity: 1,
     ...over,
   };
 }
@@ -209,6 +226,53 @@ describe('hitTestDocument zero-fill interiors', () => {
     expect(
       hitTestDocument({ x: 0.67, y: 0.5 }, doc([outer, middle, inner]), TOL),
     ).toEqual({ id: 'middle' });
+  });
+});
+
+describe('text hit-testing', () => {
+  const TOL = 0.01;
+  // 'Hello world' on a 1000×1000 stage at medium (2.6vmin → 26px). With a
+  // 10px-per-character fake measurer the measured box is 110×31.2px →
+  // half-extents 0.055 × 0.0156; the approximation's are 0.11 × 0.02.
+  const STAGE = { width: 1000, height: 1000 };
+
+  afterEach(() => {
+    setTextMeasurer(null);
+  });
+
+  it('uses the approximation when no stage box is provided', () => {
+    setTextMeasurer((line) => line.length * 10);
+    expect(hitTestDocument({ x: 0.58, y: 0.5 }, doc([textEl()]), TOL)).toEqual({
+      id: 't',
+    });
+  });
+
+  it('hits inside the measured extent when a stage box is provided', () => {
+    setTextMeasurer((line) => line.length * 10);
+    expect(
+      hitTestDocument({ x: 0.55, y: 0.5 }, doc([textEl()]), TOL, STAGE),
+    ).toEqual({ id: 't' });
+  });
+
+  it('misses beyond the measured extent even where the approximation would hit', () => {
+    setTextMeasurer((line) => line.length * 10);
+    // Horizontally: 0.08 from centre > 0.055 + tol; vertically: 0.028 from
+    // centre > 0.0156 + tol. Both are inside the approximation + tol.
+    const d = doc([textEl()]);
+    expect(hitTestDocument({ x: 0.58, y: 0.5 }, d, TOL, STAGE)).toBeNull();
+    expect(hitTestDocument({ x: 0.5, y: 0.528 }, d, TOL, STAGE)).toBeNull();
+    expect(hitTestDocument({ x: 0.58, y: 0.5 }, d, TOL)).toEqual({ id: 't' });
+    expect(hitTestDocument({ x: 0.5, y: 0.528 }, d, TOL)).toEqual({ id: 't' });
+  });
+
+  it('hits wide rendered text beyond the approximate box', () => {
+    // 40px per character: measured half-width 0.22 vs approximate 0.11.
+    setTextMeasurer((line) => line.length * 40);
+    const d = doc([textEl()]);
+    expect(hitTestDocument({ x: 0.68, y: 0.5 }, d, TOL, STAGE)).toEqual({
+      id: 't',
+    });
+    expect(hitTestDocument({ x: 0.68, y: 0.5 }, d, TOL)).toBeNull();
   });
 });
 

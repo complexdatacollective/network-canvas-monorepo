@@ -13,22 +13,24 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
-import { elementBounds } from '~/state/documentGeometry';
+import { elementBounds, type StageBox } from '~/state/documentGeometry';
 import { useEditorStore } from '~/state/editorStore';
 import { PropertiesPanel } from '~/toolbar/PropertiesPanel';
 
 import { PROPERTIES_TRIGGER_ATTR } from '../overlayTargets';
 
-// Selection-anchored entry point to the element properties: a small trigger
-// floated just past the selection's bottom-right corner, opening the same
+// Selection-anchored entry point to the element properties: a filled accent
+// trigger floated just past the selection's bottom-right corner, opening the same
 // PropertiesPanel the toolbar's Properties popover hosts (that button remains
 // the keyboard-discoverable path). The stage yields to
 // `[data-properties-trigger]` (see overlayTargets) so pressing the trigger
 // never starts a stage gesture, and Base UI's dismiss-on-outside-press closes
 // the popup when a drag or another selection press lands on the stage.
 export function SelectionProperties({
+  stage,
   stageRef,
 }: {
+  stage: StageBox | null;
   stageRef: RefObject<HTMLDivElement | null>;
 }): ReactElement | null {
   const selection = useEditorStore((s) => s.selection);
@@ -51,18 +53,18 @@ export function SelectionProperties({
   if (activeTool !== 'select' || !selection) return null;
   const el = doc.elements.find((e) => e.id === selection.id);
   if (!el) return null;
-  const bounds = elementBounds(el);
+  const bounds = elementBounds(el, stage);
 
   // Preferred spot: below-right of the bounds, past the ~20px corner-handle hit
   // target centred on the corner (see ResizeHandles); the zone pill sits at the
   // top edge, well clear of this corner. Clamped to stay inside the stage —
   // the letterbox container clips (overflow-hidden), so a full-bleed element's
   // corner would otherwise push the trigger off-screen entirely. The clamped
-  // fallback (48px inset) tucks the button just inside the bounds, still clear
-  // of the corner handle.
+  // fallback (56px inset for the 48px md button) tucks the button just inside
+  // the bounds, still clear of the corner handle.
   const style: CSSProperties = {
-    left: `clamp(4px, calc(${bounds.maxX * 100}% + 12px), calc(100% - 48px))`,
-    top: `clamp(4px, calc(${bounds.maxY * 100}% + 12px), calc(100% - 48px))`,
+    left: `clamp(4px, calc(${bounds.maxX * 100}% + 12px), calc(100% - 56px))`,
+    top: `clamp(4px, calc(${bounds.maxY * 100}% + 12px), calc(100% - 56px))`,
   };
 
   return (
@@ -73,7 +75,7 @@ export function SelectionProperties({
             <IconButton
               icon={<SlidersHorizontal />}
               aria-label="Element properties"
-              size="sm"
+              color="accent"
               {...{ [PROPERTIES_TRIGGER_ATTR]: '' }}
               className="pointer-events-auto absolute"
               style={style}

@@ -12,6 +12,14 @@
 
 type Swatch = { value: string; label: string };
 
+// Theme-linked sentinel values (see ~/model/paint). Unlike the hex swatches
+// these serialize as CSS classes resolved by the exported SVG's embedded
+// style, so a background tracks the host theme's text/background colours.
+export const THEME_SWATCHES: Swatch[] = [
+  { value: 'text', label: 'Text colour' },
+  { value: 'background', label: 'Background colour' },
+];
+
 export const NEUTRAL_SWATCHES: Swatch[] = [
   { value: '#ffffff', label: 'White' },
   { value: '#17142f', label: 'Near black' },

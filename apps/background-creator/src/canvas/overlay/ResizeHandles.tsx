@@ -65,9 +65,15 @@ export function ResizeHandles({
 
   const startResize = (e: ReactPointerEvent, handle: Handle) => {
     const store = useEditorStore.getState();
+    const rect = getRect();
     // Other elements don't move during a resize, so the snap candidate lines are
     // fixed for the gesture; compute them once, excluding the resized element.
-    const candidates = snapLines(store.doc, selection.id);
+    // Stage-aware so text candidates sit on rendered (measured) extents.
+    const candidates = snapLines(
+      store.doc,
+      selection.id,
+      rect ? { width: rect.width, height: rect.height } : null,
+    );
     startPointerGesture(e, e.currentTarget, getRect, {
       onStart: () => store.beginGesture(),
       onDrag: (pt, _start, shiftKey, altKey) => {

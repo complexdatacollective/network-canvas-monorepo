@@ -90,4 +90,50 @@ describe('parseDocument', () => {
     ].join('\n');
     expect(parseDocument(svg)).toEqual(doc);
   });
+
+  it('explains a pre-release document plainly instead of dumping schema issues', () => {
+    const legacy = {
+      version: 1,
+      title: 'Old',
+      description: 'Old-format document',
+      elements: [
+        {
+          id: 't',
+          kind: 'text',
+          x: 0.5,
+          y: 0.5,
+          lines: ['Label'],
+          fill: '#ffffff',
+          fontMinPx: 14,
+          fontVmin: 2.6,
+          fontMaxPx: 32,
+          fontWeight: 600,
+          anchor: 'middle',
+          opacity: 1,
+        },
+      ],
+    };
+    const svg = svgWithMetadata(base64Utf8(JSON.stringify(legacy)));
+    expect(() => parseDocument(svg)).toThrow(/saved by an earlier version/);
+    try {
+      parseDocument(svg);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      expect(message).not.toContain('unrecognized_keys');
+      expect(message.length).toBeLessThan(200);
+    }
+  });
+
+  it('keeps the generic schema failure to a single readable sentence', () => {
+    const invalid = { version: 1, title: 'X' };
+    const svg = svgWithMetadata(base64Utf8(JSON.stringify(invalid)));
+    try {
+      parseDocument(svg);
+      expect.unreachable('parseDocument should throw');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      expect(message).toContain('does not match the expected document format');
+      expect(message.length).toBeLessThan(300);
+    }
+  });
 });

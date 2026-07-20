@@ -8,16 +8,22 @@ import type { BackgroundDocument } from '~/model/types';
 const normalized = z.number().finite().min(0).max(1);
 const opacity = z.number().finite().min(0).max(1);
 const strokeWidth = z.number().finite().min(0.25).max(20);
-// Colours are baked into the exported SVG as literal fill/stroke values, so the
-// contract accepts only hex colours (3/4/6/8 digit). This blocks a hand-edited
-// metadata payload from smuggling `url(...)` or other external references back
-// out under the tool's own metadata banner.
-const colour = z
-  .string()
-  .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/);
+// Colours are baked into the exported SVG as literal fill/stroke values or as
+// the theme sentinel classes, so the contract accepts only hex colours
+// (3/4/6/8 digit) plus the 'text'/'background' sentinels. This blocks a
+// hand-edited metadata payload from smuggling `url(...)` or other external
+// references back out under the tool's own metadata banner.
+const colour = z.union([
+  z
+    .string()
+    .regex(
+      /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/,
+    ),
+  z.literal('text'),
+  z.literal('background'),
+]);
 const identifier = z.string().min(1);
-const fontPx = z.number().finite().positive();
-const fontVmin = z.number().finite().nonnegative();
+const fontSize = z.enum(['small', 'medium', 'large', 'extra-large']);
 const zoneLabel = z.string().nullable();
 
 const vecSchema = z.strictObject({ x: normalized, y: normalized });
@@ -81,16 +87,13 @@ const textElementSchema = z.strictObject({
   y: normalized,
   lines: z.array(z.string()).min(1),
   fill: colour,
-  fontMinPx: fontPx,
-  fontVmin,
-  fontMaxPx: fontPx,
+  fontSize,
   fontWeight: z.union([
     z.literal(400),
     z.literal(500),
     z.literal(600),
     z.literal(700),
   ]),
-  anchor: z.enum(['start', 'middle', 'end']),
   opacity,
 });
 
