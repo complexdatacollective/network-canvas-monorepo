@@ -4,7 +4,7 @@ import {
   makeVariableUUIDReplacer,
 } from '@codaco/interview';
 import { filter as customFilter } from '@codaco/network-query';
-import type { Filter, Stage } from '@codaco/protocol-validation';
+import type { Filter, Stage, StageSubject } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -13,6 +13,8 @@ import {
 import { getProtocolAssets } from '~/lib/db/api';
 import type { StoredAsset, StoredProtocol } from '~/lib/db/types';
 
+type NodeSubject = Extract<StageSubject, { entity: 'node' }>;
+
 type RosterSource = {
   assetId: string;
   filter?: Filter;
@@ -20,7 +22,7 @@ type RosterSource = {
 
 type RosterStage = {
   stageId: string;
-  subjectType: string;
+  subject: NodeSubject;
   sources: RosterSource[];
 };
 
@@ -45,7 +47,7 @@ function getRosterStage(stage: Stage): RosterStage | null {
   if (sources.length === 0) return null;
   if (stage.subject.entity !== 'node') return null;
 
-  return { stageId: stage.id, subjectType: stage.subject.type, sources };
+  return { stageId: stage.id, subject: stage.subject, sources };
 }
 
 function applyPanelFilter(nodes: NcNode[], panelFilter?: Filter): NcNode[] {
@@ -60,7 +62,7 @@ function applyPanelFilter(nodes: NcNode[], panelFilter?: Filter): NcNode[] {
 async function parseAsset(
   asset: StoredAsset,
   source: string | undefined,
-  subjectType: string,
+  subject: NodeSubject,
   codebook: StoredProtocol['codebook'],
 ): Promise<NcNode[]> {
   if (typeof asset.data === 'string') return [];
@@ -69,11 +71,15 @@ async function parseAsset(
   try {
     const sourceFileName = source ?? asset.name;
     const { nodes } = await loadExternalData(sourceFileName, url);
-    const uuidData = nodes.map(makeVariableUUIDReplacer(codebook, subjectType));
-    return getVariableTypeReplacements(sourceFileName, uuidData, codebook, {
-      entity: 'node',
-      type: subjectType,
-    });
+    const uuidData = nodes.map(
+      makeVariableUUIDReplacer(codebook, subject.type),
+    );
+    return getVariableTypeReplacements(
+      sourceFileName,
+      uuidData,
+      codebook,
+      subject,
+    );
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -100,14 +106,14 @@ export async function loadRosterNodesForStages(
 
   const result: Record<string, NcNode[]> = {};
 
-  for (const { stageId, subjectType, sources } of rosterStages) {
+  for (const { stageId, subject, sources } of rosterStages) {
     const byPrimaryKey = new Map<string, NcNode>();
 
     for (const { assetId, filter: panelFilter } of sources) {
       const asset = assetsById.get(assetId);
       if (!asset || asset.type !== 'network') continue;
 
-      const cacheKey = `${assetId}::${subjectType}`;
+      const cacheKey = `${assetId}::${subject.type}`;
       let parsed = parseCache.get(cacheKey);
       if (!parsed) {
         const manifestEntry = manifest?.[assetId];
@@ -115,16 +121,13 @@ export async function loadRosterNodesForStages(
           manifestEntry && 'source' in manifestEntry
             ? manifestEntry.source
             : undefined;
-        parsed = parseAsset(
-          asset,
-          source,
-          subjectType,
-          protocol.codebook,
-        ).catch((e: unknown) => {
-          // eslint-disable-next-line no-console
-          console.error(`Could not read roster asset "${assetId}"`, e);
-          return [];
-        });
+        parsed = parseAsset(asset, source, subject, protocol.codebook).catch(
+          (e: unknown) => {
+            // eslint-disable-next-line no-console
+            console.error(`Could not read roster asset "${assetId}"`, e);
+            return [];
+          },
+        );
         parseCache.set(cacheKey, parsed);
       }
 
