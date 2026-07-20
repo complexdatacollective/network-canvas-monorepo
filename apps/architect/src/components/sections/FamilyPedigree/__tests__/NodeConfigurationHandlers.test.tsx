@@ -48,6 +48,10 @@ vi.mock('~/selectors/codebook', () => ({
   makeGetVariable: () => () => undefined,
 }));
 
+vi.mock('~/selectors/protocol', () => ({
+  getProtocol: () => undefined,
+}));
+
 vi.mock('~/components/EditorLayout', () => ({
   Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
