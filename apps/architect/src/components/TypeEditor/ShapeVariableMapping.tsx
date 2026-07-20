@@ -284,7 +284,7 @@ const ShapeVariableMapping = ({
   // re-sorts by value before it is stored. `toSorted` keeps the same item
   // references, so ArrayField's identity tracking follows items across the sort.
   const handleThresholdsChange = (next: ShapeThreshold[]) => {
-    const sorted = [...next].toSorted((a, b) => a.value - b.value);
+    const sorted = next.toSorted((a, b) => a.value - b.value);
     dispatch(change(form, 'shape.dynamic.thresholds', sorted));
   };
   const getDiscreteOptions = (): Array<{

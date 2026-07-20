@@ -4101,6 +4101,81 @@ describe('Migration V7 to V8', () => {
       expect(migrated.stages.map((s) => s.id)).toEqual(['keep']);
       expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
     });
+
+    const buildWithSkipTo = (stageId: string) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'src',
+            type: 'NameGenerator',
+            label: 'Generate',
+            subject: { entity: 'node', type: 'person' },
+            form: { title: 'Add', fields: [{ variable: 'name', prompt: 'N' }] },
+            prompts: [{ id: 'p1', text: 'Who?' }],
+            skipLogic: {
+              action: 'SKIP',
+              filter: {
+                join: 'OR',
+                rules: [
+                  {
+                    type: 'node',
+                    id: 'rule1',
+                    options: { type: 'person', operator: 'EXISTS' },
+                  },
+                ],
+              },
+              destination: { type: 'stage', stageId },
+            },
+          },
+          { id: 'empty', type: 'EgoForm', label: 'Ego', form: { fields: [] } },
+          {
+            id: 'keep',
+            type: 'Information',
+            label: 'Info',
+            items: [{ id: 'i1', type: 'text', content: 'Hello' }],
+          },
+        ],
+      }) as unknown as Protocol<7>;
+
+    type MigratedSkip = {
+      stages: { id?: string; skipLogic?: { destination?: unknown } }[];
+    };
+
+    it('clears a skip destination pointing at a dropped stage', () => {
+      const migrated = migrationV7toV8.migrate(buildWithSkipTo('empty'), {
+        name: 'Test Protocol',
+      }) as unknown as MigratedSkip;
+
+      expect(migrated.stages.map((s) => s.id)).toEqual(['src', 'keep']);
+      expect(migrated.stages[0]?.skipLogic?.destination).toBeUndefined();
+      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+    });
+
+    it('preserves a skip destination pointing at a surviving stage', () => {
+      const migrated = migrationV7toV8.migrate(buildWithSkipTo('keep'), {
+        name: 'Test Protocol',
+      }) as unknown as MigratedSkip;
+
+      expect(migrated.stages[0]?.skipLogic?.destination).toEqual({
+        type: 'stage',
+        stageId: 'keep',
+      });
+      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+    });
   });
 
   describe('migration metadata', () => {

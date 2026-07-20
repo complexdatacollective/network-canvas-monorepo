@@ -212,7 +212,10 @@ export const EntitySelectControl = ({
 
       <Button
         icon={<Plus />}
-        onClick={() => setShowNewTypeDialog(true)}
+        onClick={() => {
+          if (refuseBlockedChange()) return;
+          setShowNewTypeDialog(true);
+        }}
         color="primary"
         disabled={disabled || readOnly}
       >

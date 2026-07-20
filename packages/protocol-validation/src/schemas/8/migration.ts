@@ -1050,6 +1050,7 @@ const migrationV7toV8 = createMigration({
         'AlterForm',
         'AlterEdgeForm',
       ]);
+      const removedStageIds = new Set<string>();
       result.stages = result.stages.filter((stage: unknown) => {
         const typedStage = asRecord(stage);
         if (
@@ -1060,8 +1061,27 @@ const migrationV7toV8 = createMigration({
           return true;
         }
         const fields = asRecord(typedStage.form)?.fields;
-        return Array.isArray(fields) && fields.length > 0;
+        if (Array.isArray(fields) && fields.length > 0) return true;
+        if (typeof typedStage.id === 'string') {
+          removedStageIds.add(typedStage.id);
+        }
+        return false;
       });
+
+      if (removedStageIds.size > 0) {
+        for (const stage of result.stages) {
+          const skipLogic = asRecord(asRecord(stage)?.skipLogic);
+          const destination = asRecord(skipLogic?.destination);
+          if (
+            skipLogic &&
+            destination?.type === 'stage' &&
+            typeof destination.stageId === 'string' &&
+            removedStageIds.has(destination.stageId)
+          ) {
+            delete skipLogic.destination;
+          }
+        }
+      }
     }
 
     // Backfill any missing, empty, or whitespace-only stage label with a
