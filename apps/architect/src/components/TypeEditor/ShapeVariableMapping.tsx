@@ -229,7 +229,11 @@ const ShapeVariableMapping = ({
   };
   const handleToggle = () => {
     if (enabled) {
-      dispatch(change(form, 'shape.dynamic', undefined));
+      // redux-form only deletes a value whose `initial` counterpart is
+      // undefined, so change('shape.dynamic', undefined) silently no-ops for a
+      // mapping loaded from the protocol. Replacing the whole shape object
+      // drops `dynamic` for saved and unsaved mappings alike.
+      dispatch(change(form, 'shape', { default: defaultShape ?? 'circle' }));
     } else {
       dispatch(change(form, 'shape.dynamic', {}));
     }

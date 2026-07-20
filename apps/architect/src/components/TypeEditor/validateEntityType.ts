@@ -1,6 +1,10 @@
 import type { ShapeMappingType, ShapeThreshold } from './shapeMappingTypes';
 
 export type EntityTypeFormErrors = {
+  // redux-form's isValid only inspects errors on *registered* fields, and the
+  // shape mapping is built from unconnected controls. The form-level _error is
+  // what actually makes the form invalid and blocks the save.
+  _error?: string;
   shape?: {
     dynamic?: Partial<Record<'variable' | 'thresholds', string>>;
   };
@@ -12,6 +16,8 @@ const THRESHOLDS_MIN_MESSAGE =
   'Add at least one threshold, or turn off shape mapping.';
 const THRESHOLDS_ASCENDING_MESSAGE =
   'Thresholds must increase in value, with no duplicates.';
+const SHAPE_MAPPING_INCOMPLETE_MESSAGE =
+  'Finish the shape mapping, or turn off shape mapping, before saving.';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -61,7 +67,10 @@ const validateEntityType = (
     return {};
   }
 
-  return { shape: { dynamic: dynamicErrors } };
+  return {
+    _error: SHAPE_MAPPING_INCOMPLETE_MESSAGE,
+    shape: { dynamic: dynamicErrors },
+  };
 };
 
 export default validateEntityType;
