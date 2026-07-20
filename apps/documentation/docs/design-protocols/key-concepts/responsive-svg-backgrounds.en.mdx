@@ -25,17 +25,13 @@ the image.
 
 ## Use the Background Creator
 
-<!-- TODO: link the Background Creator when its deployment URL exists -->
+The [**Background Creator**](https://bg-creator.networkcanvas.com) is a
+browser-based tool for building responsive SVG backgrounds by drawing, rather
+than by hand-editing SVG source. It is the recommended way to create a
+background for the Narrative, Network Composer, and Sociogram interfaces, and it
+automatically follows every rule described in this article.
 
-The **Background Creator** is a browser-based tool for building responsive SVG
-backgrounds by drawing, rather than by hand-editing SVG source. It is the
-recommended way to create a background for the Narrative, Network Composer,
-and Sociogram interfaces, and it automatically follows every rule described in
-this article.
-
-> **Coming soon.** The Background Creator is being deployed now — this page
-> will link to it as soon as it is available. Until then, everything below
-> also documents how to build a compliant background by hand.
+![The Background Creator editing the built-in Quadrants template: four shaded quadrant zones divided by two labelled axes (Low to High X and Low to High Y), with the drawing and export toolbar along the bottom.](/assets/img/background-creator/editor.png)
 
 In the Background Creator you can:
 
@@ -59,6 +55,12 @@ In the Background Creator you can:
   coordinates](#classify-nodes-from-their-coordinates) below) and adds a
   categorical variable naming the zone each node's position falls in, so you
   do not have to write your own classification code.
+
+Selecting a shape reveals its properties, where you set its fill, opacity, and
+stroke, and mark it as a zone. Each zone shows a labelled pill so you can see at
+a glance which regions will be exported.
+
+![A quadrant selected in the Background Creator, with its properties panel open showing fill colour, fill opacity, and stroke controls.](/assets/img/background-creator/zone-properties.png)
 
 Two built-in templates cover the most common designs: **Quadrants**, two
 crossed axes dividing the canvas into four labelled regions like [the

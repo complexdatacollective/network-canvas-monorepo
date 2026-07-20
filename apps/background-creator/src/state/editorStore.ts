@@ -473,9 +473,9 @@ const templateName: Record<NewTemplate, string> = {
 };
 
 export const useEditorStore = create<EditorState>((set, get) => ({
-  // The editor opens on a model of the sample protocol's compass background so
-  // the first thing a researcher sees is a real, complete example.
-  doc: createPoliticalCompassDocument(),
+  // The editor opens on a blank canvas so the first thing a researcher sees is
+  // an empty surface to build on; the bundled templates are one click away.
+  doc: createBlankDocument(),
   selection: null,
   activeTool: 'select',
   draft: null,

@@ -63,8 +63,8 @@ site for pull-request previews. To configure it:
    the other apps keep — it lets developers review the current state of `main`
    before approving an app release, independent of the changeset-driven
    production release above.
-5. If Background Creator needs its own custom domain, configure it in the
-   Netlify site's domain settings; nothing in CI needs to change for that.
+5. Configure the production custom domain `https://bg-creator.networkcanvas.com`
+   in the Netlify site's domain settings; nothing in CI needs to change for that.
 
 Until the secret is set, the `apps-release-background-creator` production
 deploy will fail at the `netlify-cli deploy` step with a `site not found` style

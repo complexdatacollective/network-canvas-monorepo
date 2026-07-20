@@ -38,24 +38,39 @@ export function SelectionProperties({
   const activeTool = useEditorStore((s) => s.activeTool);
   const doc = useEditorStore((s) => s.doc);
 
-  const [open, setOpen] = useState(false);
   const selectedId = selection?.id ?? null;
-  const prevSelectedIdRef = useRef<string | null>(null);
-  // Keyboard-driven selection changes never press outside the popup, so close
-  // explicitly whenever the selected element changes (clearing unmounts below).
+
+  // The popup is bound to the element it was opened for, so `open` is DERIVED,
+  // not free state: it is true only while the current selection is still that
+  // element. Selecting another item therefore renders the popup closed in the
+  // same pass — it never paints re-anchored to the new element (the flash a
+  // plain `open` boolean + effect would allow), and it never lingers on it.
+  // Re-opening for the new element is an explicit press of the (larger) trigger.
+  const [openForId, setOpenForId] = useState<string | null>(null);
+  const open = openForId !== null && openForId === selectedId;
+  const setOpen = (next: boolean) => setOpenForId(next ? selectedId : null);
+
   // If the popup held focus when its element vanished — Delete pressed inside
   // the panel — the whole popover unmounts and focus falls to <body>; hand it
   // to the stage instead so the keyboard user is not stranded at the top of
-  // the document. Guarded on a PREVIOUS selection existing: on initial mount
-  // (or with nothing previously selected) there is no popover to close and no
-  // focus to restore, and grabbing focus on page load would yank keyboard and
-  // screen-reader users into the canvas uninvited.
+  // the document. Fire only on a real→null transition: on initial mount (or any
+  // reselection) there is no focus to rescue, and grabbing focus on page load
+  // would yank keyboard and screen-reader users into the canvas uninvited.
+  const hadSelectionRef = useRef(false);
   useEffect(() => {
-    const previous = prevSelectedIdRef.current;
-    prevSelectedIdRef.current = selectedId;
-    if (previous === null) return;
-    setOpen(false);
-    if (document.activeElement === document.body) stageRef.current?.focus();
+    const hadSelection = hadSelectionRef.current;
+    hadSelectionRef.current = selectedId !== null;
+    if (selectedId === null) {
+      // Drop the open binding when the selection clears (including a Delete
+      // pressed inside the panel, which is not an outside-press so no managed
+      // close runs). Otherwise a stale openForId could re-match a later
+      // selection of the same id — e.g. delete-then-undo restores the element —
+      // and the panel would reopen without an explicit trigger press.
+      setOpenForId(null);
+      if (hadSelection && document.activeElement === document.body) {
+        stageRef.current?.focus();
+      }
+    }
   }, [selectedId, stageRef]);
 
   if (activeTool !== 'select' || !selection) return null;
@@ -68,21 +83,27 @@ export function SelectionProperties({
   // top edge, well clear of this corner. Clamped to stay inside the stage —
   // the letterbox container clips (overflow-hidden), so a full-bleed element's
   // corner would otherwise push the trigger off-screen entirely. The clamped
-  // fallback (56px inset for the 48px md button) tucks the button just inside
-  // the bounds, still clear of the corner handle.
+  // fallback (88px inset — the 80px xl button plus an 8px edge margin) tucks the
+  // button fully inside the bounds, still clear of the corner handle.
   const style: CSSProperties = {
-    left: `clamp(4px, calc(${bounds.maxX * 100}% + 12px), calc(100% - 56px))`,
-    top: `clamp(4px, calc(${bounds.maxY * 100}% + 12px), calc(100% - 56px))`,
+    left: `clamp(4px, calc(${bounds.maxX * 100}% + 12px), calc(100% - 88px))`,
+    top: `clamp(4px, calc(${bounds.maxY * 100}% + 12px), calc(100% - 88px))`,
   };
 
   return (
     <div className="pointer-events-none absolute inset-0">
-      <Popover open={open} onOpenChange={setOpen}>
+      {/* Keyed on the selected element so a reselect UNMOUNTS the old popover
+          atomically instead of letting its AnimatePresence exit-animation play
+          — otherwise the closing panel briefly fades out re-anchored to the
+          newly selected element. Same-element close (trigger toggle, Escape,
+          outside press) keeps its key, so its exit fade still plays. */}
+      <Popover key={selectedId} open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
             <IconButton
               icon={<SlidersHorizontal />}
               aria-label="Element properties"
+              size="xl"
               color="accent"
               {...{ [PROPERTIES_TRIGGER_ATTR]: '' }}
               className="pointer-events-auto absolute"

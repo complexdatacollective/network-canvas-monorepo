@@ -1,24 +1,26 @@
 import {
   Circle,
-  Download,
   Eye,
   EyeOff,
+  File,
   FileCode,
+  FileOutput,
   FilePlus,
-  FileText,
   FolderOpen,
+  ImageDown,
+  Info,
+  LayoutGrid,
   Minus,
   Monitor,
   MousePointer2,
   Pentagon,
   Redo2,
-  Settings2,
-  SlidersHorizontal,
   Square,
+  Target,
   Type,
   Undo2,
 } from 'lucide-react';
-import { type ReactElement, useEffect, useState } from 'react';
+import { type ReactElement, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
@@ -35,7 +37,6 @@ import {
   openSvgFlow,
 } from './fileActions';
 import { PreviewPanel } from './PreviewPanel';
-import { PropertiesPanel } from './PropertiesPanel';
 
 const DRAW_TOOLS: EditorTool[] = [
   'select',
@@ -61,55 +62,49 @@ export function Toolbar(): ReactElement {
 
   const activeTool = useEditorStore((s) => s.activeTool);
   const zonesVisible = useEditorStore((s) => s.zonesVisible);
-  const selection = useEditorStore((s) => s.selection);
-  const canUndo = useEditorStore((s) => s.canUndo());
-  const canRedo = useEditorStore((s) => s.canRedo());
   const setTool = useEditorStore((s) => s.setTool);
   const toggleZonesVisible = useEditorStore((s) => s.toggleZonesVisible);
   const undo = useEditorStore((s) => s.undo);
   const redo = useEditorStore((s) => s.redo);
+  const canUndo = useEditorStore((s) => s.canUndo());
+  const canRedo = useEditorStore((s) => s.canRedo());
 
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [propertiesOpen, setPropertiesOpen] = useState(false);
-
-  // Clearing the selection closes and disables the panel (nothing to edit).
-  useEffect(() => {
-    if (selection === null) setPropertiesOpen(false);
-  }, [selection]);
 
   const handleToolChange = (values: string[]) => {
     const tool = toEditorTool(values[values.length - 1]);
     if (tool) setTool(tool);
   };
 
-  const handleFileSelect = (value: string) => {
+  const handleNewSelect = (value: string) => {
     switch (value) {
-      case 'new-blank':
+      case 'blank':
         void newDocumentFlow(dialogs, 'blank');
         break;
-      case 'new-quadrants':
+      case 'quadrants':
         void newDocumentFlow(dialogs, 'quadrants');
         break;
-      case 'new-concentric':
+      case 'concentric':
         void newDocumentFlow(dialogs, 'concentric');
         break;
-      case 'new-compass':
-        void newDocumentFlow(dialogs, 'compass');
+      default:
         break;
-      case 'open':
-        void openSvgFlow(dialogs);
-        break;
-      case 'download':
+    }
+  };
+
+  // Every way to get artwork out of the editor lives under one "Export" menu:
+  // the finished SVG for Architect, plus the ready-to-run zone-assignment
+  // scripts in either language.
+  const handleExportSelect = (value: string) => {
+    switch (value) {
+      case 'svg':
         void downloadSvgFlow();
         break;
-      case 'export-python':
-        void exportScriptFlow(dialogs, 'python');
-        break;
-      case 'export-r':
+      case 'r':
         void exportScriptFlow(dialogs, 'r');
         break;
-      case 'details':
-        void documentDetailsFlow(dialogs);
+      case 'python':
+        void exportScriptFlow(dialogs, 'python');
         break;
       default:
         break;
@@ -153,23 +148,6 @@ export function Toolbar(): ReactElement {
       pressed: previewOpen,
       children: <PreviewPanel />,
     },
-    {
-      type: 'popover',
-      id: 'properties',
-      label: 'Properties',
-      icon: <SlidersHorizontal />,
-      side: 'top',
-      // Controlled: disabled with nothing selected. Standard outside-press
-      // dismissal keeps this and the selection-anchored properties popover
-      // mutually exclusive — opening one is an outside press that closes the
-      // other, so an element never shows two live property panels at once.
-      // (The effect below still closes it when `selection` becomes null.)
-      disabled: selection === null,
-      open: propertiesOpen,
-      onOpenChange: setPropertiesOpen,
-      pressed: propertiesOpen,
-      children: <PropertiesPanel />,
-    },
     { type: 'separator', id: 'sep-history' },
     {
       type: 'button',
@@ -187,40 +165,50 @@ export function Toolbar(): ReactElement {
       disabled: !canRedo,
       onClick: () => redo(),
     },
-    { type: 'separator', id: 'sep-file' },
+    { type: 'separator', id: 'sep-document' },
     {
       type: 'menu',
-      id: 'file',
-      label: 'File',
-      icon: <FolderOpen />,
+      id: 'new',
+      label: 'New',
+      icon: <FilePlus />,
       kind: 'actions',
-      onSelect: handleFileSelect,
+      onSelect: handleNewSelect,
       options: [
-        { value: 'new-blank', label: 'New — Blank', icon: <FilePlus /> },
+        { value: 'blank', label: 'Blank canvas', icon: <File /> },
         {
-          value: 'new-quadrants',
-          label: 'New — Quadrants template',
-          icon: <FilePlus />,
+          value: 'quadrants',
+          label: 'Quadrants template',
+          icon: <LayoutGrid />,
         },
-        {
-          value: 'new-concentric',
-          label: 'New — Concentric circles template',
-          icon: <FilePlus />,
-        },
-        {
-          value: 'new-compass',
-          label: 'New — Political compass',
-          icon: <FilePlus />,
-        },
-        { value: 'open', label: 'Open SVG…', icon: <FolderOpen /> },
-        { value: 'download', label: 'Download SVG', icon: <Download /> },
-        {
-          value: 'export-python',
-          label: 'Export Python script…',
-          icon: <FileCode />,
-        },
-        { value: 'export-r', label: 'Export R script…', icon: <FileText /> },
-        { value: 'details', label: 'Document details…', icon: <Settings2 /> },
+        { value: 'concentric', label: 'Circles template', icon: <Target /> },
+      ],
+    },
+    {
+      type: 'button',
+      id: 'open',
+      label: 'Open',
+      icon: <FolderOpen />,
+      onClick: () => void openSvgFlow(dialogs),
+    },
+    {
+      type: 'button',
+      id: 'information',
+      label: 'Information',
+      icon: <Info />,
+      onClick: () => void documentDetailsFlow(dialogs),
+    },
+    { type: 'separator', id: 'sep-export' },
+    {
+      type: 'menu',
+      id: 'export',
+      label: 'Export',
+      icon: <FileOutput />,
+      kind: 'actions',
+      onSelect: handleExportSelect,
+      options: [
+        { value: 'svg', label: 'Download SVG', icon: <ImageDown /> },
+        { value: 'r', label: 'Export R script', icon: <FileCode /> },
+        { value: 'python', label: 'Export Python script', icon: <FileCode /> },
       ],
     },
   ];
