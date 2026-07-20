@@ -910,7 +910,7 @@ describe('generateNetwork', () => {
       }
     });
 
-    it('lets prompt attributes win over a colliding roster column', () => {
+    it('lets the roster value win a collision on a roster interface stage', () => {
       const stage = makeRosterStage({
         prompts: [
           {
@@ -930,6 +930,34 @@ describe('generateNetwork', () => {
       expect(network.nodes).toHaveLength(2);
       for (const node of network.nodes) {
         expect(isRosterUid(node[entityPrimaryKeyProperty])).toBe(true);
+        expect(node[entityAttributesProperty]['var-name']).toBe(
+          rosterNameFor(node[entityPrimaryKeyProperty]),
+        );
+      }
+    });
+
+    it('lets the prompt attribute win a collision on a name generator panel', () => {
+      const stage = makeNameGeneratorStage({
+        prompts: [
+          {
+            id: 'prompt-1',
+            text: 'Prompt one',
+            additionalAttributes: [{ variable: 'var-name', value: true }],
+          },
+        ],
+        behaviours: { minNodes: 2, maxNodes: 2 },
+      });
+
+      const { network } = generateNetwork(makeCodebook(), [stage], {
+        seed: 42,
+        externalData: { 'stage-ng': makeRosterPool(5) },
+      });
+
+      const fromRoster = network.nodes.filter((n) =>
+        isRosterUid(n[entityPrimaryKeyProperty]),
+      );
+      expect(fromRoster.length).toBeGreaterThan(0);
+      for (const node of fromRoster) {
         expect(node[entityAttributesProperty]['var-name']).toBe(true);
       }
     });

@@ -223,10 +223,18 @@ function createNodesForStage(
 
       primaryKey = picked[entityPrimaryKeyProperty];
       roster.used.add(primaryKey);
-      Object.assign(attrs, picked[entityAttributesProperty]);
-    }
 
-    Object.assign(attrs, additionalAttrs);
+      const rosterValues = picked[entityAttributesProperty];
+      // The roster interface lets the roster value win a collision with a
+      // prompt attribute, while a name generator panel lets the prompt win.
+      if (roster.allowFabrication) {
+        Object.assign(attrs, rosterValues, additionalAttrs);
+      } else {
+        Object.assign(attrs, additionalAttrs, rosterValues);
+      }
+    } else {
+      Object.assign(attrs, additionalAttrs);
+    }
 
     newNodes.push({
       [entityPrimaryKeyProperty]: primaryKey,
