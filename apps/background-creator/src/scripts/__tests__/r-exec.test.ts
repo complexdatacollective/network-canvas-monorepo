@@ -53,6 +53,27 @@ describe.skipIf(rscriptMissing)('generated R script executes', () => {
     });
   });
 
+  it('reads a UTF-8-BOM CSV (Excel re-save) without corrupting the first column', () => {
+    const scriptPath = join(dir, 'bom.R');
+    const inputPath = join(dir, 'bom-in.csv');
+    const outputPath = join(dir, 'bom-out.csv');
+    writeFileSync(scriptPath, script);
+    // A leading U+FEFF is written as the UTF-8 BOM bytes; without
+    // fileEncoding="UTF-8-BOM" R keeps it on names(data)[1], so the first
+    // coordinate column reads as missing and the script fails.
+    writeFileSync(inputPath, `﻿${buildFixtureCsv('location', fixturePoints)}`);
+
+    const result = spawnSync('Rscript', [scriptPath, inputPath, outputPath], {
+      encoding: 'utf-8',
+    });
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+    const { header } = toRecords(parseCsv(readFileSync(outputPath, 'utf-8')));
+    // The first header is a clean "id", not "﻿id".
+    expect(header[0]).toBe('id');
+    expect(header).toContain('zone');
+  });
+
   it('honours --layout-variable= and --output-variable= overrides', () => {
     const scriptPath = join(dir, 'override.R');
     const inputPath = join(dir, 'override-in.csv');

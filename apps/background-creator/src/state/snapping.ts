@@ -1,6 +1,11 @@
 import type { BackgroundDocument, Vec } from '~/model/types';
 
-import { type Bounds, elementBounds, type StageBox } from './documentGeometry';
+import {
+  type Bounds,
+  clamp01,
+  elementBounds,
+  type StageBox,
+} from './documentGeometry';
 
 // Pure screen-space snapping shared by every drag gesture (moving, resizing,
 // drawing). Kept beside documentGeometry in `state/` so the store and the canvas
@@ -49,9 +54,12 @@ export function snapLines(
     if (el.id === excludeId) continue;
     // Measured (stage-aware) bounds keep a text element's edge candidates on
     // its rendered extent; the approximation would offer phantom snap edges.
+    // Clamp to the canvas — a text element whose measured extent spills past
+    // an edge would otherwise offer an off-canvas candidate that the snap could
+    // adopt, committing an endpoint outside [0,1] that the schema rejects.
     const b = elementBounds(el, stage);
-    x.push(b.minX, (b.minX + b.maxX) / 2, b.maxX);
-    y.push(b.minY, (b.minY + b.maxY) / 2, b.maxY);
+    x.push(clamp01(b.minX), clamp01((b.minX + b.maxX) / 2), clamp01(b.maxX));
+    y.push(clamp01(b.minY), clamp01((b.minY + b.maxY) / 2), clamp01(b.maxY));
   }
   return { x, y };
 }

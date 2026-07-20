@@ -397,11 +397,16 @@ y_column <- paste0(layout_variable, "_y")
 # not reformatted, doubles keep full precision, and the literal string "NA" is
 # preserved (na.strings = character(0) disables NA parsing on input). Only the
 # two coordinate columns are converted, by parse_coordinate's as.numeric.
+# fileEncoding = "UTF-8-BOM" strips a leading byte-order mark (as Python's
+# utf-8-sig does): a Network Canvas export re-saved by Excel can carry one, and
+# R otherwise keeps it on names(data)[1], so the first coordinate column reads
+# as missing.
 data <- read.csv(
   input_path,
   colClasses = "character",
   na.strings = character(0),
-  check.names = FALSE
+  check.names = FALSE,
+  fileEncoding = "UTF-8-BOM"
 )
 # read.csv raises an error for most ragged files, but when every data row has
 # EXACTLY one extra field it silently takes the first column as row names

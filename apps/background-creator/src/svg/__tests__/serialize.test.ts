@@ -18,6 +18,15 @@ function docWith(elements: BackgroundDocument['elements']): BackgroundDocument {
   return { version: 1, title: 'T', description: 'D', elements };
 }
 
+// Fragment ids carry a per-document content-hash prefix so two inlined
+// backgrounds never collide; the exact hash is an implementation detail, so
+// tests recover it from the output rather than hard-coding it.
+function idPrefix(svg: string): string {
+  const match = svg.match(/id="(bg[a-z0-9]+-)title"/);
+  if (!match?.[1]) throw new Error('no document id prefix found');
+  return match[1];
+}
+
 describe('serializeDocument root element', () => {
   it('has width/height 100% and never a viewBox', () => {
     const svg = serializeDocument(createQuadrantsTemplate());
@@ -25,7 +34,22 @@ describe('serializeDocument root element', () => {
     expect(rootTag(svg)).toContain('height="100%"');
     expect(rootTag(svg)).not.toContain('viewBox');
     expect(rootTag(svg)).toContain('role="img"');
-    expect(rootTag(svg)).toContain('aria-labelledby="title description"');
+    const p = idPrefix(svg);
+    expect(rootTag(svg)).toContain(
+      `aria-labelledby="${p}title ${p}description"`,
+    );
+  });
+
+  it('gives distinct documents distinct fragment-id prefixes but is deterministic per document', () => {
+    const a = docWith([]);
+    const b: BackgroundDocument = { ...a, title: 'Different' };
+    // Same document → identical prefix (round-trips and golden output stay
+    // stable); different document → different prefix (two inlined backgrounds
+    // never share marker/title ids).
+    expect(idPrefix(serializeDocument(a))).toBe(idPrefix(serializeDocument(a)));
+    expect(idPrefix(serializeDocument(a))).not.toBe(
+      idPrefix(serializeDocument(b)),
+    );
   });
 
   it('carries the scoped root classes and exactly one embedded style block', () => {
@@ -60,8 +84,9 @@ describe('serializeDocument root element', () => {
       description: 'quote " here',
       elements: [],
     });
-    expect(svg).toContain('<title id="title">A &amp; B &lt;x&gt;</title>');
-    expect(svg).toContain('<desc id="description">quote " here</desc>');
+    const p = idPrefix(svg);
+    expect(svg).toContain(`<title id="${p}title">A &amp; B &lt;x&gt;</title>`);
+    expect(svg).toContain(`<desc id="${p}description">quote " here</desc>`);
   });
 });
 
@@ -221,15 +246,16 @@ describe('serializeDocument arrow markers', () => {
     );
     const markers = svg.match(/<marker /g) ?? [];
     expect(markers).toHaveLength(2);
-    expect(svg).toContain('id="arrow"');
-    expect(svg).toContain('id="arrow-2"');
+    const p = idPrefix(svg);
+    expect(svg).toContain(`id="${p}arrow"`);
+    expect(svg).toContain(`id="${p}arrow-2"`);
     expect(svg).toContain('markerUnits="userSpaceOnUse"');
     expect(svg).toContain('orient="auto-start-reverse"');
     expect(svg).toContain('<path d="M 0 0 L 10 5 L 0 10 z" fill="#ffffff" />');
     expect(svg).toContain('<path d="M 0 0 L 10 5 L 0 10 z" fill="#ff8800" />');
     // The first colour's line references "arrow"; the second references "arrow-2".
-    expect(svg).toContain('marker-start="url(#arrow)"');
-    expect(svg).toContain('marker-end="url(#arrow-2)"');
+    expect(svg).toContain(`marker-start="url(#${p}arrow)"`);
+    expect(svg).toContain(`marker-end="url(#${p}arrow-2)"`);
   });
 });
 
@@ -621,10 +647,11 @@ describe('serializeDocument theme-colour sentinels', () => {
       ]),
     );
     const [lineTag = ''] = /<line [^>]*\/>/.exec(svg) ?? [];
+    const p = idPrefix(svg);
     expect(lineTag).toContain('class="stroke-current"');
     expect(lineTag).not.toContain(' stroke=');
-    expect(lineTag).toContain('marker-start="url(#arrow)"');
-    expect(lineTag).toContain('marker-end="url(#arrow)"');
+    expect(lineTag).toContain(`marker-start="url(#${p}arrow)"`);
+    expect(lineTag).toContain(`marker-end="url(#${p}arrow)"`);
     // The arrowhead re-states the line's sentinel as a fill class.
     expect(svg).toContain(
       '<path d="M 0 0 L 10 5 L 0 10 z" class="fill-current" />',

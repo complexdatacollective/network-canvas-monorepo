@@ -65,6 +65,20 @@ describe('snapLines', () => {
     expect(round(lines.y)).toEqual([0, 0.5, 1, 0.1, 0.2, 0.3]);
   });
 
+  it('clamps element-derived candidates to the canvas', () => {
+    // A shape (or a text element's measured extent) reaching past an edge would
+    // otherwise offer an off-canvas snap line; a draw could adopt it and commit
+    // an endpoint outside [0,1] that the document schema rejects.
+    const lines = snapLines(
+      doc([rect('wide', { x: 0.9, y: 0.9, width: 0.3, height: 0.3 })]),
+      null,
+    );
+    expect(Math.max(...lines.x)).toBeLessThanOrEqual(1);
+    expect(Math.min(...lines.x)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...lines.y)).toBeLessThanOrEqual(1);
+    expect(Math.min(...lines.y)).toBeGreaterThanOrEqual(0);
+  });
+
   it('excludes the dragged element so a shape never snaps to itself', () => {
     const lines = snapLines(
       doc([

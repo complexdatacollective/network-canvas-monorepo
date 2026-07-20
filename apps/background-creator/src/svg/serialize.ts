@@ -147,10 +147,28 @@ function sanitizeDocument(doc: BackgroundDocument): BackgroundDocument {
   };
 }
 
+// A per-document id prefix. Fragment ids (markers, the title/desc referenced by
+// aria-labelledby) share the document-wide id space when an SVG is INLINED — as
+// the interview runtime does — so two backgrounds on one page would otherwise
+// both define `#arrow`, and the later line's `url(#arrow)` could resolve to the
+// first file's marker and paint the wrong arrowhead. A content hash keeps the
+// prefix deterministic (same document → identical bytes, so round-trips and the
+// golden tests stay stable) while making distinct documents collide-free.
+function documentIdPrefix(json: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < json.length; index += 1) {
+    hash ^= json.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `bg${(hash >>> 0).toString(36)}-`;
+}
+
 // Assigns a marker id to each distinct arrow stroke colour, in order of first
-// appearance: the first colour uses "arrow", subsequent colours "arrow-2", etc.
+// appearance: the first colour is "<prefix>arrow", subsequent colours
+// "<prefix>arrow-2", etc.
 function collectArrowMarkers(
   elements: readonly SvgElement[],
+  idPrefix: string,
 ): Map<string, string> {
   const markers = new Map<string, string>();
   for (const element of elements) {
@@ -160,7 +178,10 @@ function collectArrowMarkers(
       !markers.has(element.stroke)
     ) {
       const index = markers.size + 1;
-      markers.set(element.stroke, index === 1 ? 'arrow' : `arrow-${index}`);
+      markers.set(
+        element.stroke,
+        `${idPrefix}${index === 1 ? 'arrow' : `arrow-${index}`}`,
+      );
     }
   }
   return markers;
@@ -350,15 +371,19 @@ export function serializeDocument(doc: BackgroundDocument): string {
   // Both the painted markup and the embedded JSON are derived from the sanitized
   // copy so the file is valid XML and reopening it restores the stripped form.
   const sanitized = sanitizeDocument(doc);
-  const markers = collectArrowMarkers(sanitized.elements);
+  const json = JSON.stringify(sanitized);
+  const idPrefix = documentIdPrefix(json);
+  const titleId = `${idPrefix}title`;
+  const descriptionId = `${idPrefix}description`;
+  const markers = collectArrowMarkers(sanitized.elements, idPrefix);
   // The root carries class="text-text" so `currentColor` (fill-current /
   // stroke-current, arrowhead fills) resolves to the theme text colour
   // everywhere in the document; the single embedded <style> supplies the
   // dark-theme fallbacks for standalone rendering.
   const lines: string[] = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" role="img" aria-labelledby="title description" class="nc-background text-text">`,
-    `  <title id="title">${escapeText(sanitized.title)}</title>`,
-    `  <desc id="description">${escapeText(sanitized.description)}</desc>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" role="img" aria-labelledby="${titleId} ${descriptionId}" class="nc-background text-text">`,
+    `  <title id="${titleId}">${escapeText(sanitized.title)}</title>`,
+    `  <desc id="${descriptionId}">${escapeText(sanitized.description)}</desc>`,
     EMBEDDED_STYLE,
     `  <metadata id="nc-background-creator">`,
     // The document is embedded as base64 of its UTF-8 JSON rather than
@@ -368,7 +393,7 @@ export function serializeDocument(doc: BackgroundDocument): string {
     // scanning the raw file text instead of parsing untrusted file contents
     // as markup (the reopened-file DOM-XSS sink), while still round-tripping
     // any JSON content — including XML-hostile characters — byte-exactly.
-    `    <nc:document xmlns:nc="${NC_NAMESPACE}">${base64EncodeUtf8(JSON.stringify(sanitized))}</nc:document>`,
+    `    <nc:document xmlns:nc="${NC_NAMESPACE}">${base64EncodeUtf8(json)}</nc:document>`,
     `  </metadata>`,
   ];
 

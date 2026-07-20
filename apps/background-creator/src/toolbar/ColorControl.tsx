@@ -10,6 +10,7 @@ import {
 } from '@codaco/fresco-ui/styles/controlVariants';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { resolvePaint } from '~/model/paint';
+import { useEditorStore } from '~/state/editorStore';
 
 import { SWATCHES, THEME_SWATCHES } from './palette';
 
@@ -83,6 +84,13 @@ type ColorSwatchInputProps = {
   'onChange': (value: string | null) => void;
   // The native picker's drag stream; callers coalesce it into one undo step.
   'onContinuousChange'?: (value: string) => void;
+  // Ends the current picker's coalescing run (its popup blurred), so a later
+  // session on the same element is a separate undo step.
+  'onContinuousEnd'?: () => void;
+  // Names the swatch group for assistive tech — each swatch button only says
+  // "White", "Custom colour", etc., so without this the user cannot tell Fill
+  // from Stroke from Text colour.
+  'groupLabel': string;
   'allowNone'?: boolean;
   'aria-describedby'?: string;
 };
@@ -92,6 +100,8 @@ function ColorSwatchInput({
   value,
   onChange,
   onContinuousChange,
+  onContinuousEnd,
+  groupLabel,
   allowNone = false,
   'aria-describedby': ariaDescribedBy,
 }: ColorSwatchInputProps): ReactElement {
@@ -108,7 +118,13 @@ function ColorSwatchInput({
     !THEME_SWATCHES.some((swatch) => swatch.value === value);
 
   return (
-    <div id={id} aria-describedby={ariaDescribedBy} className={swatchContainer}>
+    <div
+      id={id}
+      role="group"
+      aria-label={groupLabel}
+      aria-describedby={ariaDescribedBy}
+      className={swatchContainer}
+    >
       {allowNone && (
         <button
           type="button"
@@ -182,6 +198,10 @@ function ColorSwatchInput({
           onChange={(event) =>
             (onContinuousChange ?? onChange)(event.target.value)
           }
+          // The picker reports every change as continuous under one coalesce
+          // key; blur (the popup closing) ends that session so the next one is
+          // its own undo step.
+          onBlur={() => onContinuousEnd?.()}
           // Enlarged and offset so the native swatch fills the round button
           // rather than showing the browser's default bevelled chrome.
           className="absolute -inset-1 size-8 cursor-pointer border-0 bg-transparent p-0"
@@ -216,8 +236,10 @@ export function ColorControl({
       component={ColorSwatchInput}
       value={value}
       allowNone={allowNone}
+      groupLabel={label}
       onChange={(next) => onCommit(next, false)}
       onContinuousChange={(next: string) => onCommit(next, true)}
+      onContinuousEnd={() => useEditorStore.getState().resetCoalescing()}
     />
   );
 }
