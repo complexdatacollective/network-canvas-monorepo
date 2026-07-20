@@ -17,26 +17,38 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type {
+  NodeShape,
+  Validation,
+  VariableOptions,
+  VariableType,
+} from '@codaco/protocol-validation';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 
+import type {
+  DiscreteShapeMapEntry,
+  ShapeMappingDraft,
+  ShapeThreshold,
+} from './shapeMappingTypes';
 import { ShapePickerControl, SHAPES } from './ShapePicker';
 import type { EntityTypeFormErrors } from './validateEntityType';
-const DISCRETE_TYPES = new Set(['categorical', 'ordinal', 'boolean']);
-const BREAKPOINT_TYPES = new Set(['number', 'scalar']);
-const ELIGIBLE_TYPES = new Set([...DISCRETE_TYPES, ...BREAKPOINT_TYPES]);
+const DISCRETE_TYPES = new Set<VariableType>([
+  'categorical',
+  'ordinal',
+  'boolean',
+]);
+const BREAKPOINT_TYPES = new Set<VariableType>(['number', 'scalar']);
+const ELIGIBLE_TYPES = new Set<VariableType>([
+  ...DISCRETE_TYPES,
+  ...BREAKPOINT_TYPES,
+]);
 type Variable = {
   name: string;
-  type: string;
-  options?: Array<{
-    label: string;
-    value: string | number | boolean;
-  }>;
-  validation?: {
-    minValue?: number;
-    maxValue?: number;
-  };
+  type: VariableType;
+  options?: VariableOptions;
+  validation?: Pick<Validation, 'minValue' | 'maxValue'>;
 };
 const parseThresholdValue = (value: string | undefined): number | null => {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -76,11 +88,6 @@ const MAX_THRESHOLDS = SHAPES.length - 1;
 const ITEM_ROW_CLASSES =
   'bg-input text-input-contrast flex w-full min-h-20 items-center gap-3 rounded-lg px-4';
 
-type ThresholdData = {
-  value: number;
-  shape: string;
-};
-
 // The item component is a stable top-level component (so ArrayField never
 // remounts rows); the per-variable input bounds and the node colour reach it
 // through context rather than being closed over in the render.
@@ -102,10 +109,10 @@ const ThresholdItem = ({
   index,
   onUpdate,
   onDelete,
-}: ArrayFieldItemProps<ThresholdData>) => {
+}: ArrayFieldItemProps<ShapeThreshold>) => {
   const { config, nodeColor } = useContext(ThresholdItemContext);
   const value = item.value ?? 0;
-  const shape = item.shape ?? '';
+  const shape = item.shape;
   const [draft, setDraft] = useState(() => String(value));
 
   useEffect(() => {
@@ -172,23 +179,10 @@ const ShapeVariableMapping = ({
   ) as Record<string, Variable> | undefined;
   const dynamic = useAppSelector((state: RootState) =>
     formSelector(state, 'shape.dynamic'),
-  ) as
-    | {
-        variable?: string;
-        type?: string;
-        map?: Array<{
-          value: string | number | boolean;
-          shape: string;
-        }>;
-        thresholds?: Array<{
-          value: number;
-          shape: string;
-        }>;
-      }
-    | undefined;
+  ) as ShapeMappingDraft | undefined;
   const defaultShape = useAppSelector((state: RootState) =>
     formSelector(state, 'shape.default'),
-  ) as string | undefined;
+  ) as NodeShape | undefined;
   const enabled = !!dynamic;
   const eligibleVariables = useMemo(() => {
     if (!variables) return [];
@@ -265,17 +259,14 @@ const ShapeVariableMapping = ({
     }
   };
   const handleDiscreteShapeChange = (
-    value: string | number | boolean,
-    shape: string,
+    value: DiscreteShapeMapEntry['value'],
+    shape: NodeShape,
   ) => {
     const currentMap = dynamic?.map ?? [];
     const existingIndex = currentMap.findIndex(
       (entry) => JSON.stringify(entry.value) === JSON.stringify(value),
     );
-    let newMap: Array<{
-      value: string | number | boolean;
-      shape: string;
-    }>;
+    let newMap: DiscreteShapeMapEntry[];
     if (existingIndex >= 0) {
       newMap = currentMap.map((entry, i) =>
         i === existingIndex ? { ...entry, shape } : entry,
@@ -288,13 +279,13 @@ const ShapeVariableMapping = ({
   // The schema requires thresholds strictly ascending, so every mutation
   // re-sorts by value before it is stored. `toSorted` keeps the same item
   // references, so ArrayField's identity tracking follows items across the sort.
-  const handleThresholdsChange = (next: ThresholdData[]) => {
+  const handleThresholdsChange = (next: ShapeThreshold[]) => {
     const sorted = [...next].toSorted((a, b) => a.value - b.value);
     dispatch(change(form, 'shape.dynamic.thresholds', sorted));
   };
   const getDiscreteOptions = (): Array<{
     label: string;
-    value: string | number | boolean;
+    value: DiscreteShapeMapEntry['value'];
   }> => {
     if (!selectedVar) return [];
     if (selectedVar.type === 'boolean') {
@@ -308,12 +299,11 @@ const ShapeVariableMapping = ({
     }
     return selectedVar.options ?? [];
   };
-  const getShapeForValue = (value: string | number | boolean): string => {
-    const entry = dynamic?.map?.find(
-      (m) => JSON.stringify(m.value) === JSON.stringify(value),
-    );
-    return entry?.shape ?? '';
-  };
+  const getShapeForValue = (
+    value: DiscreteShapeMapEntry['value'],
+  ): NodeShape | undefined =>
+    dynamic?.map?.find((m) => JSON.stringify(m.value) === JSON.stringify(value))
+      ?.shape;
   return (
     <div className="mt-5">
       <div className="border-surface-2 border-t py-2.5">
@@ -422,7 +412,7 @@ const ShapeVariableMapping = ({
                   nodeColor,
                 }}
               >
-                <ArrayField<ThresholdData>
+                <ArrayField<ShapeThreshold>
                   aria-label="Thresholds"
                   className="w-full gap-3 border-0 bg-transparent p-0"
                   sortable={false}

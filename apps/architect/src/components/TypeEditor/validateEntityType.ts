@@ -1,20 +1,8 @@
-type ShapeThreshold = {
-  value: number;
-  shape: string;
-};
-
-type ShapeDynamic = {
-  variable?: unknown;
-  type?: unknown;
-  thresholds?: unknown;
-};
+import type { ShapeMappingType, ShapeThreshold } from './shapeMappingTypes';
 
 export type EntityTypeFormErrors = {
   shape?: {
-    dynamic?: {
-      variable?: string;
-      thresholds?: string;
-    };
+    dynamic?: Partial<Record<'variable' | 'thresholds', string>>;
   };
 };
 
@@ -28,8 +16,11 @@ const THRESHOLDS_ASCENDING_MESSAGE =
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isThreshold = (value: unknown): value is ShapeThreshold =>
+const isThreshold = (value: unknown): value is Pick<ShapeThreshold, 'value'> =>
   isRecord(value) && typeof value.value === 'number';
+
+const isShapeMappingType = (value: unknown): value is ShapeMappingType =>
+  value === 'discrete' || value === 'breakpoints';
 
 const validateEntityType = (
   values: Record<string, unknown>,
@@ -39,7 +30,7 @@ const validateEntityType = (
     return {};
   }
 
-  const dynamic = shape.dynamic as ShapeDynamic;
+  const dynamic = shape.dynamic;
   const dynamicErrors: NonNullable<
     NonNullable<EntityTypeFormErrors['shape']>['dynamic']
   > = {};
@@ -47,7 +38,7 @@ const validateEntityType = (
   if (
     typeof dynamic.variable !== 'string' ||
     dynamic.variable.length === 0 ||
-    (dynamic.type !== 'discrete' && dynamic.type !== 'breakpoints')
+    !isShapeMappingType(dynamic.type)
   ) {
     dynamicErrors.variable = SELECT_VARIABLE_MESSAGE;
   } else if (dynamic.type === 'breakpoints') {
