@@ -1,5 +1,15 @@
 # @codaco/protocol-utilities
 
+## 2.2.2
+
+### Patch Changes
+
+- 98a31e7: Widen the internal `@codaco/*` dependency ranges from exact pins to caret ranges. When you install several Network Canvas packages together, npm and pnpm can now resolve a single shared version of each common dependency instead of being forced to keep multiple exact-pinned copies side by side.
+- Updated dependencies [c7e767c]
+- Updated dependencies [98a31e7]
+  - @codaco/protocol-validation@11.11.0
+  - @codaco/network-query@1.2.2
+
 ## 2.2.1
 
 ### Patch Changes
