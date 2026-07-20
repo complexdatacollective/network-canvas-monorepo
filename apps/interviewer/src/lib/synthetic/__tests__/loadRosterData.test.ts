@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
@@ -79,13 +79,23 @@ const MANIFEST = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  Object.assign(URL, { createObjectURL, revokeObjectURL });
   createObjectURL.mockReturnValue('blob:roster');
+  // Subclass rather than spread so URL stays constructible (jsdom builds
+  // `new URL(...)` internally); vi.unstubAllGlobals then restores it.
+  class StubURL extends URL {}
+  vi.stubGlobal(
+    'URL',
+    Object.assign(StubURL, { createObjectURL, revokeObjectURL }),
+  );
   vi.stubGlobal(
     'fetch',
     vi.fn(() => Promise.resolve(new Response(PEOPLE_CSV))),
   );
   getProtocolAssets.mockResolvedValue([storedAsset({})]);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('loadRosterNodesForStages', () => {

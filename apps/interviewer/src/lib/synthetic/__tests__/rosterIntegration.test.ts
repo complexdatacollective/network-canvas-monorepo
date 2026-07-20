@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { generateNetwork } from '@codaco/protocol-utilities';
 import developmentProtocol from '@codaco/protocols/development';
@@ -21,8 +21,8 @@ vi.mock('../../db/api', () => ({
 const { loadRosterNodesForStages } = await import('../loadRosterData');
 
 const ASSET_DIR = resolve(
-  process.cwd(),
-  '../../packages/protocols/development/assets/',
+  import.meta.dirname,
+  '../../../../../../packages/protocols/development/assets/',
 );
 
 const HASH = 'development-hash';
@@ -63,10 +63,16 @@ beforeAll(() => {
   const urlByBlob = new Map<unknown, string>();
   assets.forEach((a, i) => urlByBlob.set(a.data, [...bytesByUrl.keys()][i]!));
 
-  Object.assign(URL, {
-    createObjectURL: (blob: unknown) => urlByBlob.get(blob) ?? 'blob:unknown',
-    revokeObjectURL: () => undefined,
-  });
+  // Subclass rather than spread so URL stays constructible (jsdom builds
+  // `new URL(...)` internally); vi.unstubAllGlobals then restores it.
+  class StubURL extends URL {}
+  vi.stubGlobal(
+    'URL',
+    Object.assign(StubURL, {
+      createObjectURL: (blob: unknown) => urlByBlob.get(blob) ?? 'blob:unknown',
+      revokeObjectURL: () => undefined,
+    }),
+  );
   vi.stubGlobal('fetch', (url: string) => {
     const bytes = bytesByUrl.get(url);
     if (!bytes) return Promise.reject(new Error(`No bytes for ${url}`));
@@ -74,6 +80,10 @@ beforeAll(() => {
   });
 
   getProtocolAssets.mockResolvedValue(assets);
+});
+
+afterAll(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('synthetic generation over the real Development Protocol', () => {
