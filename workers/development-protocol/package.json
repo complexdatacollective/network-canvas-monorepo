@@ -12,7 +12,7 @@
     "@octokit/types": "^16.0.0"
   },
   "devDependencies": {
-    "@codaco/tsconfig": "workspace:*",
+    "@codaco/tsconfig": "workspace:^",
     "typescript": "catalog:",
     "wrangler": "catalog:"
   }

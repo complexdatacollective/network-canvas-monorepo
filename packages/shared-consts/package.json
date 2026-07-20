@@ -44,7 +44,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@codaco/tsconfig": "workspace:*",
+    "@codaco/tsconfig": "workspace:^",
     "@microsoft/api-extractor": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",
