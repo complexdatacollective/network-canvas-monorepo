@@ -3,8 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import {
   formValueSelector,
-  initialize,
   reducer as formReducer,
+  reduxForm,
 } from 'redux-form';
 import { describe, expect, it } from 'vitest';
 
@@ -12,11 +12,19 @@ import ShapeVariableMapping from '../ShapeVariableMapping';
 
 const FORM = 'TEST_FORM';
 
+type FormValues = {
+  variables: Record<string, { name: string; type: string }>;
+  shape: Record<string, unknown>;
+};
+
 const MAPPING = {
   variable: 'v1',
   type: 'breakpoints',
   thresholds: [{ value: 1, shape: 'square' }],
 };
+
+const Harness = () => <ShapeVariableMapping form={FORM} />;
+const ReduxHarness = reduxForm<FormValues>({ form: FORM })(Harness);
 
 const renderWithShape = (shape: Record<string, unknown>) => {
   const store = configureStore({
@@ -29,16 +37,14 @@ const renderWithShape = (shape: Record<string, unknown>) => {
     middleware: (getDefault) => getDefault({ serializableCheck: false }),
   });
 
-  store.dispatch(
-    initialize(FORM, {
-      variables: { v1: { name: 'age', type: 'number' } },
-      shape,
-    }),
-  );
-
   render(
     <Provider store={store}>
-      <ShapeVariableMapping form={FORM} />
+      <ReduxHarness
+        initialValues={{
+          variables: { v1: { name: 'age', type: 'number' } },
+          shape,
+        }}
+      />
     </Provider>,
   );
 
