@@ -20,9 +20,22 @@ function workspace() {
   const cwd = mkdtempSync(join(tmpdir(), 'vba-'));
   mkdirSync(join(cwd, '.changeset'));
   mkdirSync(join(cwd, 'apps/architect'), { recursive: true });
+  mkdirSync(join(cwd, 'apps/background-creator'), { recursive: true });
   mkdirSync(join(cwd, 'apps/documentation'), { recursive: true });
   mkdirSync(join(cwd, 'apps/interviewer'), { recursive: true });
   mkdirSync(join(cwd, 'apps/networkcanvas.com'), { recursive: true });
+  writeFileSync(
+    join(cwd, 'apps/background-creator/package.json'),
+    JSON.stringify(
+      {
+        name: '@codaco/background-creator',
+        version: '1.0.0-beta.0',
+        private: true,
+      },
+      null,
+      2,
+    ),
+  );
   writeFileSync(
     join(cwd, 'apps/architect/package.json'),
     JSON.stringify(
@@ -191,4 +204,26 @@ test('no pending product changesets → empty plan, no writes', () => {
   const { plans, consumed } = planProductReleases(cwd);
   assert.deepEqual(plans, []);
   assert.deepEqual(consumed, []);
+});
+
+test('bumps the Background Creator beta line from its seed version', () => {
+  const cwd = workspace();
+  writeFileSync(
+    join(cwd, '.changeset/bg.md'),
+    `---\n"@codaco/background-creator": minor\n---\n\nFirst release`,
+  );
+
+  const { plans, consumed } = planProductReleases(cwd, [
+    '@codaco/background-creator',
+  ]);
+  applyProductReleases(cwd, plans, consumed);
+
+  const pkg = JSON.parse(
+    readFileSync(join(cwd, 'apps/background-creator/package.json'), 'utf8'),
+  );
+  assert.equal(pkg.version, '1.0.0-beta.1');
+  assert.match(
+    readFileSync(join(cwd, 'apps/background-creator/CHANGELOG.md'), 'utf8'),
+    /## 1\.0\.0-beta\.1[\s\S]*First release/,
+  );
 });

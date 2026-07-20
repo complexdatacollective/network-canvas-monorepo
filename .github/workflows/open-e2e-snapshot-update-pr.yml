@@ -45,6 +45,7 @@ jobs:
             const releaseRef = process.env.RELEASE_REF;
             const releaseRefs = new Set([
               'changeset-release/architect',
+              'changeset-release/background-creator',
               'changeset-release/documentation',
               'changeset-release/interviewer',
               'changeset-release/main',

@@ -123,6 +123,7 @@ test('release lane suites match the workspace dependency graph', () => {
 
   const productLanes = {
     'changeset-release/architect': '@codaco/architect',
+    'changeset-release/background-creator': '@codaco/background-creator',
     'changeset-release/documentation': '@codaco/documentation',
     'changeset-release/interviewer': '@codaco/interviewer',
     'changeset-release/website': 'networkcanvas.com',
@@ -182,6 +183,7 @@ test('all release policies share the central snapshot PR target', () => {
   for (const [eventName, releaseRef] of [
     ['pull_request', 'changeset-release/main'],
     ['workflow_dispatch', 'changeset-release/architect'],
+    ['workflow_dispatch', 'changeset-release/background-creator'],
     ['workflow_dispatch', 'changeset-release/documentation'],
     ['workflow_dispatch', 'changeset-release/interviewer'],
     ['workflow_dispatch', 'changeset-release/website'],

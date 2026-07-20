@@ -10,8 +10,8 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const GUARD = join(scriptDir, 'check-changeset-app-isolation.mjs');
 
 // The guard reads the ignored-app set from the Changesets config, so every
-// fixture carries one that mirrors the real `ignore` list (the gated products,
-// the maintenance-mode classic apps, and Background Creator).
+// fixture carries one that mirrors the real `ignore` list (the gated products
+// and the maintenance-mode classic apps).
 const IGNORE = [
   '@codaco/architect-classic',
   '@codaco/interviewer-classic',
@@ -68,21 +68,21 @@ test('fails and names the file when a changeset mixes gated products', () => {
 });
 
 test('fails when an ignored app with no release lane is mixed with a library', () => {
-  // Background Creator is ignored but is not a gated product, so it is absent
+  // The classic apps are ignored but are not gated products, so they are absent
   // from GATED_PRODUCT_PACKAGES; the config-derived ignore set must still catch
-  // it (`changeset version` would otherwise reject the mixed changeset).
+  // them (`changeset version` would otherwise reject the mixed changeset).
   const cwd = fixture({
-    'bgc.md': `---\n"@codaco/background-creator": minor\n"@codaco/interview": patch\n---\n\nmixed`,
+    'classic.md': `---\n"@codaco/architect-classic": minor\n"@codaco/interview": patch\n---\n\nmixed`,
   });
   const res = run(cwd);
   assert.equal(res.status, 1);
-  assert.match(res.stderr, /bgc\.md/);
-  assert.match(res.stderr, /background-creator/);
+  assert.match(res.stderr, /classic\.md/);
+  assert.match(res.stderr, /architect-classic/);
 });
 
 test('passes for an ignored app on its own', () => {
   const cwd = fixture({
-    'bgc-only.md': `---\n"@codaco/background-creator": minor\n---\n\napp-only`,
+    'classic-only.md': `---\n"@codaco/architect-classic": minor\n---\n\napp-only`,
   });
   assert.equal(run(cwd).status, 0);
 });

@@ -6,7 +6,7 @@
 // The set of ignored apps is read from the Changesets config's `ignore` list —
 // the authoritative source `changeset version` itself uses — rather than a
 // hard-coded product list, so every ignored private app (the maintenance-mode
-// classic apps, Background Creator) is covered without a second list to keep in
+// classic apps, the gated products) is covered without a second list to keep in
 // sync. The gated-product multi-product check still uses GATED_PRODUCT_PACKAGES,
 // since only those apps have their own release PR.
 import { readFileSync } from 'node:fs';

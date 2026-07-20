@@ -107,7 +107,9 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
+        "public/**",
         "index.html",
+        "netlify.toml",
         "vite.config.*",
         "tsconfig*.json",
         "package.json"

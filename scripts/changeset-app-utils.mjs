@@ -6,6 +6,7 @@ import { join } from 'node:path';
 
 export const GATED_PRODUCT_PACKAGES = [
   '@codaco/architect',
+  '@codaco/background-creator',
   '@codaco/documentation',
   '@codaco/interviewer',
   'networkcanvas.com',
@@ -13,6 +14,7 @@ export const GATED_PRODUCT_PACKAGES = [
 
 export const GATED_PRODUCT_DIRS = {
   '@codaco/architect': 'apps/architect',
+  '@codaco/background-creator': 'apps/background-creator',
   '@codaco/documentation': 'apps/documentation',
   '@codaco/interviewer': 'apps/interviewer',
   'networkcanvas.com': 'apps/networkcanvas.com',
