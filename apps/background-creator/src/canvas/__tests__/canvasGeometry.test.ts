@@ -308,3 +308,39 @@ describe('shift-constrained resize', () => {
     }
   });
 });
+
+describe('polygon vertex resize', () => {
+  const vertex = (index: number): Handle => ({ kind: 'vertex', index });
+
+  it('moves a vertex to a non-degenerate position', () => {
+    const out = resizeElement(polygon(), vertex(2), { x: 0.6, y: 0.9 });
+    if (out.kind === 'polygon') {
+      expect(out.points[2]).toEqual({ x: 0.6, y: 0.9 });
+    }
+  });
+
+  it('rejects a drag that collapses a triangle onto two distinct vertices', () => {
+    const el = polygon();
+    // Drag vertex 2 exactly onto vertex 0 → only two distinct points remain.
+    const out = resizeElement(el, vertex(2), { x: 0.2, y: 0.2 });
+    // The vertex stays put; the model is never left zero-area.
+    expect(out).toBe(el);
+  });
+
+  it('allows a coincident vertex when three distinct positions remain', () => {
+    const el = polygon({
+      points: [
+        { x: 0.2, y: 0.2 },
+        { x: 0.8, y: 0.2 },
+        { x: 0.5, y: 0.8 },
+        { x: 0.4, y: 0.5 },
+      ],
+    });
+    // Dragging vertex 3 onto vertex 0 leaves three distinct vertices — allowed.
+    const out = resizeElement(el, vertex(3), { x: 0.2, y: 0.2 });
+    if (out.kind === 'polygon') {
+      expect(out.points).toHaveLength(4);
+      expect(out.points[3]).toEqual({ x: 0.2, y: 0.2 });
+    }
+  });
+});

@@ -4,6 +4,7 @@ import {
   type Bounds,
   clamp01,
   constrainRegular,
+  distinctVertexCount,
   elementBounds,
   type StageBox,
   textBounds,
@@ -321,6 +322,11 @@ export function resizeElement(
     const points = el.points.map((v, i) =>
       i === handle.index ? { x: clamp01(pt.x), y: clamp01(pt.y) } : v,
     );
+    // Reject a drag that collapses the polygon below three distinct vertices
+    // (dragging one vertex onto another): the close path already refuses such a
+    // shape, and a zero-area zone would export but never classify a node. The
+    // vertex simply stops rather than merging.
+    if (distinctVertexCount(points) < 3) return el;
     return { ...el, points };
   }
   return el;

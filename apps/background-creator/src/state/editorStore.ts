@@ -22,6 +22,7 @@ import { assertNever } from './assertNever';
 import {
   constrainLine45,
   constrainRegular,
+  nearlyEqual,
   type StageBox,
   translateElement,
 } from './documentGeometry';
@@ -448,10 +449,6 @@ function buildDefaultShape(
       return assertNever(tool);
   }
 }
-
-const NEAR = 1e-4;
-const nearlyEqual = (a: Vec, b: Vec): boolean =>
-  Math.abs(a.x - b.x) < NEAR && Math.abs(a.y - b.y) < NEAR;
 
 function templateFor(template: NewTemplate): BackgroundDocument {
   switch (template) {

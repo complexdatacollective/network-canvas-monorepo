@@ -12,14 +12,16 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
 }
 
-// True when the key press originates inside an open dialog or menu overlay, so a
-// Delete/Backspace there belongs to that surface (or its focused control) and
-// must not fall through to deleting the selected canvas item behind it.
-function isInOverlay(target: EventTarget | null): boolean {
+// True when focus is on the canvas surface (the stage or its focusable item
+// controls, all under role="application") or on the body — i.e. not on the
+// toolbar, the properties popover, a dialog, or a menu. The bare
+// Delete/Backspace shortcut only removes the selected item in this context;
+// anywhere else the key belongs to whatever control has focus.
+function isCanvasFocusContext(target: EventTarget | null): boolean {
+  if (target === document.body) return true;
   return (
     target instanceof HTMLElement &&
-    target.closest('[role="dialog"], [role="alertdialog"], [role="menu"]') !==
-      null
+    target.closest('[role="application"]') !== null
   );
 }
 
@@ -34,10 +36,12 @@ function App() {
       // Delete/Backspace (no modifiers) removes the current selection. The item
       // controls already handle this when a shape's own control is focused; this
       // global handler covers the common case where a click-selected shape left
-      // focus on the canvas or body. `deleteSelected` no-ops without a selection.
+      // focus on the canvas or body. Restricted to canvas focus so the key does
+      // not delete the selection while the user is on a toolbar control or in
+      // the properties popover. `deleteSelected` no-ops without a selection.
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (e.metaKey || e.ctrlKey || e.altKey) return;
-        if (isInOverlay(e.target)) return;
+        if (!isCanvasFocusContext(e.target)) return;
         if (!useEditorStore.getState().selection) return;
         e.preventDefault();
         useEditorStore.getState().deleteSelected();

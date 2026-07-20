@@ -28,6 +28,24 @@ export const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
 const clampRange = (n: number, lo: number, hi: number): number =>
   n < lo ? lo : n > hi ? hi : n;
 
+// Two normalized points are "the same vertex" below this separation (~sub-pixel
+// on any realistic stage). Shared by the polygon close path and the vertex
+// resize guard so both agree on what counts as a distinct vertex.
+const VERTEX_EPSILON = 1e-4;
+
+export const nearlyEqual = (a: Vec, b: Vec): boolean =>
+  Math.abs(a.x - b.x) < VERTEX_EPSILON && Math.abs(a.y - b.y) < VERTEX_EPSILON;
+
+// The number of vertices that are not near-duplicates of an earlier one. A
+// polygon needs at least three to enclose a non-zero area.
+export function distinctVertexCount(points: Vec[]): number {
+  const kept: Vec[] = [];
+  for (const point of points) {
+    if (!kept.some((other) => nearlyEqual(other, point))) kept.push(point);
+  }
+  return kept.length;
+}
+
 // Line height applied by the serialized SVG's tspan advance (1.2em), the
 // inline editor, and the measured text bounds — keep in sync with
 // svg/serialize.ts.

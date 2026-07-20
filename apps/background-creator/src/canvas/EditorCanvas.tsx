@@ -104,6 +104,23 @@ function cursorForTool(tool: EditorTool): string {
   return 'crosshair';
 }
 
+// Commits a focused property field (input/textarea/select) by blurring it,
+// unless it is the stage itself or an inline text edit (handled separately).
+// NumberField/InputField commit synchronously in their blur handler, so the
+// pending value lands before a subsequent selection change.
+function flushFocusedField(stage: HTMLElement): void {
+  const active = document.activeElement;
+  if (
+    active instanceof HTMLElement &&
+    active !== stage &&
+    (active instanceof HTMLInputElement ||
+      active instanceof HTMLTextAreaElement ||
+      active instanceof HTMLSelectElement)
+  ) {
+    active.blur();
+  }
+}
+
 function moveInDoc(
   doc: BackgroundDocument,
   sel: Selection,
@@ -329,6 +346,13 @@ export function EditorCanvas(): ReactElement {
 
       const el = stageRef.current;
       if (!el) return;
+      // A property field (e.g. Stroke width) commits its typed value on blur.
+      // This native press runs before the browser moves focus, so flush a
+      // focused editable field first — otherwise selecting another item below
+      // re-renders the panel and the pending edit is lost (or lands on the
+      // wrong element). The field commits against its own captured element id,
+      // so the value reaches the element it was being edited for.
+      flushFocusedField(el);
       const store = useEditorStore.getState();
       const tool = store.activeTool;
       const rect = el.getBoundingClientRect();
