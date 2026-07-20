@@ -7,6 +7,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -332,15 +333,17 @@ export function PropertiesPanel(): ReactElement {
           {elementKindLabel(element)}
         </span>
       </div>
-      {/* The negative margins stretch the scroll container to the popover's full
-          width (Surface `spacing="md"` padding is px-8) so the scrollbar hugs
-          the popover edge; the horizontal padding is re-applied INSIDE the
-          scrolled content. */}
-      {/* Vertical padding inside the clip box: the first/last controls'
-          focus rings (outline-offset) would otherwise be cut off at the
-          scroll container's edges. */}
-      <div className="-mx-8 min-h-0 overflow-y-auto">
-        <div className="px-8 py-2">
+      {/* ScrollArea provides the edge fade; the negative margins stretch it to
+          the popover's full width (Surface `spacing="md"` padding is px-8) so
+          the scrollbar hugs the popover edge, with the horizontal padding
+          re-applied on the viewport. The vertical padding keeps the first/last
+          controls' focus rings (outline-offset) inside the clip box. */}
+      <ScrollArea
+        className="-mx-8 min-h-0"
+        viewportClassName="px-8 py-2"
+        aria-label="Element properties"
+      >
+        <div>
           <fieldset className="m-0 w-full min-w-0 border-0 p-0 not-last:mb-8">
             <legend
               className={cx(
@@ -381,7 +384,7 @@ export function PropertiesPanel(): ReactElement {
             Delete
           </Button>
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 }

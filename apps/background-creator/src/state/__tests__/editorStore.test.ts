@@ -364,6 +364,30 @@ describe('polygon draft', () => {
     );
   });
 
+  it('refuses a close on the first vertex with only two distinct points', () => {
+    state().setTool('polygon');
+    state().beginDraft('polygon', { x: 0.2, y: 0.2 });
+    state().addDraftPoint({ x: 0.6, y: 0.3 });
+    // Double-click lands on the FIRST vertex: [start, other, start].
+    state().addDraftPoint({ x: 0.2, y: 0.2 });
+    state().closeDraftPolygon();
+    expect(state().doc.elements).toHaveLength(0);
+    expect(state().activeTool).toBe('polygon');
+  });
+
+  it('drops a closing press on the first vertex from a valid polygon', () => {
+    state().beginDraft('polygon', { x: 0.2, y: 0.2 });
+    state().addDraftPoint({ x: 0.6, y: 0.3 });
+    state().addDraftPoint({ x: 0.4, y: 0.7 });
+    state().addDraftPoint({ x: 0.2, y: 0.2 });
+    state().closeDraftPolygon();
+    const el = state().doc.elements[0];
+    expect(el?.kind).toBe('polygon');
+    if (el?.kind === 'polygon') {
+      expect(el.points).toHaveLength(3);
+    }
+  });
+
   it('persists the trimmed draft when a double-click close is refused', () => {
     state().setTool('polygon');
     state().beginDraft('polygon', { x: 0.2, y: 0.2 });
@@ -652,6 +676,24 @@ describe('discardNewText', () => {
     expect(state().doc.elements).toHaveLength(0);
     expect(state().past).toHaveLength(0);
     expect(state().selection).toBeNull();
+  });
+});
+
+describe('nudge coalescing boundaries', () => {
+  it('separates nudge bursts once resetCoalescing runs between them', () => {
+    reset({ ...blankDoc(), elements: [rect('r')] });
+    store.setState({ selection: { id: 'r' } });
+    state().moveSelectedBy(0.01, 0);
+    state().moveSelectedBy(0.01, 0);
+    expect(state().past).toHaveLength(1);
+    // Arrow-key release ends the burst.
+    state().resetCoalescing();
+    state().moveSelectedBy(0.01, 0);
+    expect(state().past).toHaveLength(2);
+    state().undo();
+    const el = state().doc.elements[0];
+    // Undo reverts only the second burst.
+    if (el?.kind === 'rect') expect(el.x).toBeCloseTo(0.12);
   });
 });
 

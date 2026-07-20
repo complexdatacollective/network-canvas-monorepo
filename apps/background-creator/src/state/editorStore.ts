@@ -129,6 +129,7 @@ type EditorState = {
 
   setTool: (tool: EditorTool) => void;
   select: (selection: Selection | null) => void;
+  resetCoalescing: () => void;
   announce: (message: string) => void;
 
   commitDoc: (next: BackgroundDocument, opts?: CommitOptions) => void;
@@ -504,6 +505,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   select: (selection) => set({ selection, lastCoalesceKey: null }),
 
+  // Ends a coalescing run (e.g. a keyboard-nudge burst on arrow-key release)
+  // so the next run with the same key becomes its own undo step.
+  resetCoalescing: () => set({ lastCoalesceKey: null }),
+
   announce: (message) =>
     set((state) => ({ announcement: bump(state, message) })),
 
@@ -680,6 +685,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const last = points[points.length - 1];
       const prev = points[points.length - 2];
       if (last && prev && nearlyEqual(last, prev)) {
+        points = points.slice(0, -1);
+      } else {
+        break;
+      }
+    }
+    // A close ON the first vertex leaves its duplicate at the END of the list
+    // (not adjacent to it), which the trailing trim above cannot see — without
+    // this, [start, other, start] commits a zero-area two-vertex polygon.
+    while (points.length >= 2) {
+      const first = points[0];
+      const last = points[points.length - 1];
+      if (first && last && nearlyEqual(first, last)) {
         points = points.slice(0, -1);
       } else {
         break;

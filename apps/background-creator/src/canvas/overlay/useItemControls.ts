@@ -88,6 +88,9 @@ export function useItemControls(
   const onKeyUp = (e: ReactKeyboardEvent) => {
     if (isArrow(e.key) && nudgedRef.current) {
       nudgedRef.current = false;
+      // The burst is over: without this, a later burst on the same element
+      // would share the nudge coalesce key and undo both bursts as one step.
+      useEditorStore.getState().resetCoalescing();
       announceSelectionPosition();
     }
   };

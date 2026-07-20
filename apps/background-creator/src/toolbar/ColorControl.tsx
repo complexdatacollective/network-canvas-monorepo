@@ -1,13 +1,13 @@
 import { Ban, type LucideIcon, PaintBucket, Type } from 'lucide-react';
 import type { ReactElement } from 'react';
 
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import {
   controlVariants,
   groupSpacingVariants,
   inputControlVariants,
   stateVariants,
 } from '@codaco/fresco-ui/styles/controlVariants';
-import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { resolvePaint } from '~/model/paint';
 
@@ -53,18 +53,6 @@ function sentinelSeedHex(cssColor: string): string {
   }
 }
 
-type ColorControlProps = {
-  label: string;
-  value: string | null;
-  // `continuous` is true while the native colour picker is being dragged, so the
-  // caller can coalesce that stream into a single undo step; discrete swatch and
-  // "None" picks report false.
-  onCommit: (value: string | null, continuous: boolean) => void;
-  // Offers a "None" option (stroke may be absent; a fill must always be a
-  // colour, so fill controls omit this).
-  allowNone?: boolean;
-};
-
 const swatchBase = cx(
   'focusable border-outline/60 relative size-6 rounded-full border',
   'transition-transform hover:scale-110',
@@ -86,12 +74,27 @@ function selectedRing(selected: boolean): string {
     : '';
 }
 
-export function ColorControl({
-  label,
+type ColorSwatchInputProps = {
+  // Attached to the swatch container, matching RadioGroupField's handling of
+  // the field-provided id.
+  'id'?: string;
+  'value': string | null;
+  // A discrete pick (swatch or "None"); one history step per call.
+  'onChange': (value: string | null) => void;
+  // The native picker's drag stream; callers coalesce it into one undo step.
+  'onContinuousChange'?: (value: string) => void;
+  'allowNone'?: boolean;
+  'aria-describedby'?: string;
+};
+
+function ColorSwatchInput({
+  id,
   value,
-  onCommit,
+  onChange,
+  onContinuousChange,
   allowNone = false,
-}: ColorControlProps): ReactElement {
+  'aria-describedby': ariaDescribedBy,
+}: ColorSwatchInputProps): ReactElement {
   const nativeValue =
     value !== null && HEX.test(value)
       ? value
@@ -105,93 +108,116 @@ export function ColorControl({
     !THEME_SWATCHES.some((swatch) => swatch.value === value);
 
   return (
-    <fieldset className="m-0 w-full min-w-0 border-0 p-0 not-last:mb-8">
-      <legend
-        className={cx(
-          'mb-2 inline-block',
-          headingVariants({ level: 'label', margin: 'none' }),
-        )}
-      >
-        {label}
-      </legend>
-      <div className={swatchContainer}>
-        {allowNone && (
-          <button
-            type="button"
-            aria-label="No colour"
-            aria-pressed={value === null}
-            onClick={() => onCommit(null, false)}
-            className={cx(
-              swatchBase,
-              'bg-surface-2 text-text/70 flex items-center justify-center',
-              selectedRing(value === null),
-            )}
-          >
-            <Ban aria-hidden className="size-3.5" />
-          </button>
-        )}
-        {THEME_SWATCHES.map((swatch) => {
-          const Glyph = THEME_GLYPHS[swatch.value];
-          const glyphColor = resolvePaint(
-            swatch.value === 'text' ? 'background' : 'text',
-          );
-          return (
-            <button
-              key={swatch.value}
-              type="button"
-              aria-label={swatch.label}
-              title={swatch.label}
-              aria-pressed={value === swatch.value}
-              onClick={() => onCommit(swatch.value, false)}
-              style={{ backgroundColor: resolvePaint(swatch.value) }}
-              className={cx(
-                swatchBase,
-                'flex items-center justify-center',
-                selectedRing(value === swatch.value),
-              )}
-            >
-              {Glyph && (
-                <Glyph
-                  aria-hidden
-                  className="size-3"
-                  style={{ color: glyphColor }}
-                />
-              )}
-            </button>
-          );
-        })}
-        {SWATCHES.map((swatch) => (
+    <div id={id} aria-describedby={ariaDescribedBy} className={swatchContainer}>
+      {allowNone && (
+        <button
+          type="button"
+          aria-label="No colour"
+          aria-pressed={value === null}
+          onClick={() => onChange(null)}
+          className={cx(
+            swatchBase,
+            'bg-surface-2 text-text/70 flex items-center justify-center',
+            selectedRing(value === null),
+          )}
+        >
+          <Ban aria-hidden className="size-3.5" />
+        </button>
+      )}
+      {THEME_SWATCHES.map((swatch) => {
+        const Glyph = THEME_GLYPHS[swatch.value];
+        const glyphColor = resolvePaint(
+          swatch.value === 'text' ? 'background' : 'text',
+        );
+        return (
           <button
             key={swatch.value}
             type="button"
             aria-label={swatch.label}
+            title={swatch.label}
             aria-pressed={value === swatch.value}
-            onClick={() => onCommit(swatch.value, false)}
-            style={{ backgroundColor: swatch.value }}
-            className={cx(swatchBase, selectedRing(value === swatch.value))}
-          />
-        ))}
-        <label
-          className={cx(
-            swatchBase,
-            // The focus lives on the nested native colour input, so surface its
-            // keyboard focus ring on the label (which is what the user sees).
-            'focusable-within overflow-hidden p-0',
-            selectedRing(isCustom),
-          )}
-          style={isCustom ? { backgroundColor: value ?? undefined } : undefined}
-        >
-          <span className="sr-only">Custom colour</span>
-          <input
-            type="color"
-            value={nativeValue}
-            onChange={(event) => onCommit(event.target.value, true)}
-            // Enlarged and offset so the native swatch fills the round button
-            // rather than showing the browser's default bevelled chrome.
-            className="absolute -inset-1 size-8 cursor-pointer border-0 bg-transparent p-0"
-          />
-        </label>
-      </div>
-    </fieldset>
+            onClick={() => onChange(swatch.value)}
+            style={{ backgroundColor: resolvePaint(swatch.value) }}
+            className={cx(
+              swatchBase,
+              'flex items-center justify-center',
+              selectedRing(value === swatch.value),
+            )}
+          >
+            {Glyph && (
+              <Glyph
+                aria-hidden
+                className="size-3"
+                style={{ color: glyphColor }}
+              />
+            )}
+          </button>
+        );
+      })}
+      {SWATCHES.map((swatch) => (
+        <button
+          key={swatch.value}
+          type="button"
+          aria-label={swatch.label}
+          aria-pressed={value === swatch.value}
+          onClick={() => onChange(swatch.value)}
+          style={{ backgroundColor: swatch.value }}
+          className={cx(swatchBase, selectedRing(value === swatch.value))}
+        />
+      ))}
+      <label
+        className={cx(
+          swatchBase,
+          // The focus lives on the nested native colour input, so surface its
+          // keyboard focus ring on the label (which is what the user sees).
+          'focusable-within overflow-hidden p-0',
+          selectedRing(isCustom),
+        )}
+        style={isCustom ? { backgroundColor: value ?? undefined } : undefined}
+      >
+        <span className="sr-only">Custom colour</span>
+        <input
+          type="color"
+          value={nativeValue}
+          onChange={(event) =>
+            (onContinuousChange ?? onChange)(event.target.value)
+          }
+          // Enlarged and offset so the native swatch fills the round button
+          // rather than showing the browser's default bevelled chrome.
+          className="absolute -inset-1 size-8 cursor-pointer border-0 bg-transparent p-0"
+        />
+      </label>
+    </div>
+  );
+}
+
+type ColorControlProps = {
+  label: string;
+  value: string | null;
+  // `continuous` is true while the native colour picker is being dragged, so the
+  // caller can coalesce that stream into a single undo step; discrete swatch and
+  // "None" picks report false.
+  onCommit: (value: string | null, continuous: boolean) => void;
+  // Offers a "None" option (stroke may be absent; a fill must always be a
+  // colour, so fill controls omit this).
+  allowNone?: boolean;
+};
+
+export function ColorControl({
+  label,
+  value,
+  onCommit,
+  allowNone = false,
+}: ColorControlProps): ReactElement {
+  return (
+    <UnconnectedField
+      label={label}
+      name={label.toLowerCase().replaceAll(/\s+/g, '-')}
+      component={ColorSwatchInput}
+      value={value}
+      allowNone={allowNone}
+      onChange={(next) => onCommit(next, false)}
+      onContinuousChange={(next: string) => onCommit(next, true)}
+    />
   );
 }

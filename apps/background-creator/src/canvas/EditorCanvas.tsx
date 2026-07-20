@@ -307,10 +307,12 @@ export function EditorCanvas(): ReactElement {
   // element are equivalent and only fire while the pointer/focus is on it.
   const handlePointerDown = useCallback(
     (e: PointerEvent) => {
-      // Ignore non-primary presses (right/middle click) before any state change:
-      // startPointerGesture also bails on them, so mutating here first would drop
-      // an uncommitted text element or leave a draft with no pointerup to finish it.
-      if (e.button !== 0) return;
+      // Ignore non-primary presses (right/middle click, a second touch or
+      // stylus — whose button is also 0) before any state change:
+      // startPointerGesture also bails on them, so mutating here first would
+      // drop an uncommitted text element, leave a draft with no pointerup to
+      // finish it, or race the gesture the first pointer is still driving.
+      if (e.button !== 0 || !e.isPrimary) return;
       // Overlay controls (resize handles, zone pills, the inline editor, the
       // selection properties trigger) own their own pointer handling. This
       // native listener fires before their React handlers reach the document
