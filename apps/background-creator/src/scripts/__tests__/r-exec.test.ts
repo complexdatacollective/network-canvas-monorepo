@@ -163,6 +163,29 @@ describe.skipIf(rscriptMissing)('generated R script executes', () => {
     expect(result.stderr).toContain('more columns than column names');
   });
 
+  it('fails loudly when every row has exactly one extra cell (row-name inference)', () => {
+    const scriptPath = join(dir, 'rownames.R');
+    const inputPath = join(dir, 'rownames-in.csv');
+    const outputPath = join(dir, 'rownames-out.csv');
+    writeFileSync(scriptPath, script);
+    // One extra field per data row: read.csv raises no error here — it takes
+    // the first column as row names, silently shifting every value one column
+    // left. The script must detect the inference and refuse.
+    writeFileSync(
+      inputPath,
+      'id,name,location_x,location_y\nn0,Node 0,0.5,0.5,EXTRA\nn1,Node 1,0.1,0.9,EXTRA\n',
+    );
+    const sentinel = 'sentinel: must survive\n';
+    writeFileSync(outputPath, sentinel);
+
+    const result = spawnSync('Rscript', [scriptPath, inputPath, outputPath], {
+      encoding: 'utf-8',
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('one more field than the header');
+    expect(readFileSync(outputPath, 'utf-8')).toBe(sentinel);
+  });
+
   it('rejects a space-separated flag with a non-zero exit and helpful message', () => {
     const scriptPath = join(dir, 'space-flag.R');
     const inputPath = join(dir, 'space-flag-in.csv');

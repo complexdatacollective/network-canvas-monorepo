@@ -4,6 +4,7 @@ import {
   type ReactElement,
   type RefObject,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 
@@ -39,13 +40,20 @@ export function SelectionProperties({
 
   const [open, setOpen] = useState(false);
   const selectedId = selection?.id ?? null;
+  const prevSelectedIdRef = useRef<string | null>(null);
   // Keyboard-driven selection changes never press outside the popup, so close
   // explicitly whenever the selected element changes (clearing unmounts below).
   // If the popup held focus when its element vanished — Delete pressed inside
   // the panel — the whole popover unmounts and focus falls to <body>; hand it
   // to the stage instead so the keyboard user is not stranded at the top of
-  // the document.
+  // the document. Guarded on a PREVIOUS selection existing: on initial mount
+  // (or with nothing previously selected) there is no popover to close and no
+  // focus to restore, and grabbing focus on page load would yank keyboard and
+  // screen-reader users into the canvas uninvited.
   useEffect(() => {
+    const previous = prevSelectedIdRef.current;
+    prevSelectedIdRef.current = selectedId;
+    if (previous === null) return;
     setOpen(false);
     if (document.activeElement === document.body) stageRef.current?.focus();
   }, [selectedId, stageRef]);

@@ -2,6 +2,7 @@ import { Slider } from '@base-ui/react/slider';
 import type { ReactElement } from 'react';
 
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import { useEditorStore } from '~/state/editorStore';
 
 type SliderInputProps = {
   'id'?: string;
@@ -39,6 +40,10 @@ function SliderInput({
         onValueChange={(next) => {
           if (next !== value) onChange(next);
         }}
+        // A committed value ends the interaction (pointer release, or each
+        // completed keyboard step); resetting here keeps every drag its own
+        // undo step instead of coalescing forever under the field's key.
+        onValueCommitted={() => useEditorStore.getState().resetCoalescing()}
       >
         <Slider.Control className="flex h-6 w-full touch-none items-center">
           <Slider.Track className="bg-surface-2 relative h-1.5 w-full rounded-full">

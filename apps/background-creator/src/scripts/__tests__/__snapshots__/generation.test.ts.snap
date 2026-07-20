@@ -403,6 +403,22 @@ data <- read.csv(
   na.strings = character(0),
   check.names = FALSE
 )
+# read.csv raises an error for most ragged files, but when every data row has
+# EXACTLY one extra field it silently takes the first column as row names
+# instead — shifting every value one column left. Explicit (non-automatic) row
+# names are the fingerprint of that inference: .row_names_info() is negative
+# for automatic numbering and positive when names were assigned from the data.
+if (.row_names_info(data) > 0L) {
+  cat(
+    "Error: each data row has one more field than the header row.\\n",
+    file = stderr()
+  )
+  cat(
+    "Check the input for stray commas or a missing header column.\\n",
+    file = stderr()
+  )
+  quit(status = 1)
+}
 columns <- names(data)
 missing <- setdiff(c(x_column, y_column), columns)
 if (length(missing) > 0) {

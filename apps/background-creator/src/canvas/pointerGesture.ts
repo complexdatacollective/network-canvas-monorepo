@@ -6,6 +6,7 @@ import { clamp01 } from '~/state/documentGeometry';
 // (React onPointerDown) and the imperatively-listened stage.
 export type GesturePointer = {
   button: number;
+  isPrimary: boolean;
   pointerId: number;
   clientX: number;
   clientY: number;
@@ -62,7 +63,11 @@ export function startPointerGesture(
   getRect: () => DOMRect | null,
   handlers: PointerGestureHandlers,
 ): void {
-  if (e.button !== 0) return;
+  // Non-left buttons and non-primary pointers (a second touch or stylus, whose
+  // button is also 0) never start a gesture — guarded HERE so every caller
+  // (stage, resize handles) gets the same isolation and a second finger cannot
+  // run a competing beginGesture/updateGesture against the first.
+  if (e.button !== 0 || !e.isPrimary) return;
   const rect = getRect();
   if (!rect) return;
 
