@@ -25,7 +25,12 @@ import {
 } from '../DropdownMenu';
 import { MotionSurface } from '../layout/Surface';
 import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../Tooltip';
 import { cva, cx } from '../utils/cva';
 
 // The event-details object Base UI passes to a popover's onOpenChange, carrying
@@ -818,17 +823,22 @@ export function SegmentedToolbar({
     </AnimatePresence>
   );
 
+  // One shared tooltip group for every segment: once any button's tooltip has
+  // opened, moving to an adjacent button shows its tooltip instantly instead of
+  // re-running the hover delay.
   const innerToolbar = (
-    <Toolbar.Root
-      orientation={orientation}
-      aria-label={label}
-      className={cx(
-        'flex items-center gap-1',
-        orientation === 'vertical' && 'flex-col',
-      )}
-    >
-      {segments}
-    </Toolbar.Root>
+    <TooltipProvider>
+      <Toolbar.Root
+        orientation={orientation}
+        aria-label={label}
+        className={cx(
+          'flex items-center gap-1',
+          orientation === 'vertical' && 'flex-col',
+        )}
+      >
+        {segments}
+      </Toolbar.Root>
+    </TooltipProvider>
   );
 
   // The Surface is the "pill" container; the Toolbar.Root sits inside it so Base

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   INLINE_EDITOR_ATTR,
   isOverlayControlTarget,
+  PROPERTIES_TRIGGER_ATTR,
   RESIZE_HANDLE_ATTR,
   ZONE_PILL_ATTR,
 } from '../overlayTargets';
@@ -14,10 +15,13 @@ function elementWith(attr: string): HTMLElement {
 }
 
 describe('isOverlayControlTarget', () => {
-  it('matches a resize handle, a zone pill, and the inline editor', () => {
+  it('matches a resize handle, a zone pill, the inline editor, and the properties trigger', () => {
     expect(isOverlayControlTarget(elementWith(RESIZE_HANDLE_ATTR))).toBe(true);
     expect(isOverlayControlTarget(elementWith(ZONE_PILL_ATTR))).toBe(true);
     expect(isOverlayControlTarget(elementWith(INLINE_EDITOR_ATTR))).toBe(true);
+    expect(isOverlayControlTarget(elementWith(PROPERTIES_TRIGGER_ATTR))).toBe(
+      true,
+    );
   });
 
   it('matches a descendant of a tagged control (e.g. the visible dot)', () => {

@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import { useId, type ReactElement } from 'react';
 
 import { zonesOf } from '~/geometry/zones';
 import type { BackgroundDocument, Vec, ZoneElement } from '~/model/types';
@@ -38,20 +38,59 @@ const ZONE_HUES = [
 
 const pc = (n: number): string => `${n * 100}%`;
 
+// One diagonal-hatch tile per zone hue, referenced by the zone fills below.
+// userSpaceOnUse keeps the tile a fixed 8px regardless of the shapes'
+// percentage geometry; the low-opacity line reads over light and dark artwork.
+// Alternating hues counter-rotate (45°/135°) so overlapping zones — nested
+// concentric rings especially — cross-hatch instead of stacking coincident
+// lines into one illegible blend.
+function ZoneHatchDefs({
+  prefix,
+  hues,
+}: {
+  prefix: string;
+  hues: readonly string[];
+}): ReactElement {
+  return (
+    <defs>
+      {hues.map((hue, index) => (
+        <pattern
+          key={hue}
+          id={`${prefix}${hue}`}
+          patternUnits="userSpaceOnUse"
+          width={8}
+          height={8}
+          patternTransform={`rotate(${index % 2 === 0 ? 45 : 135})`}
+        >
+          <line
+            x1={4}
+            y1={0}
+            x2={4}
+            y2={8}
+            stroke={`var(${hue})`}
+            strokeWidth={1.5}
+            strokeOpacity={0.35}
+          />
+        </pattern>
+      ))}
+    </defs>
+  );
+}
+
 function ZoneOutline({
   zone,
   hue,
+  patternPrefix,
 }: {
   zone: ZoneElement;
   hue: string;
+  patternPrefix: string;
 }): ReactElement {
-  const stroke = `var(${hue})`;
-  const common = {
-    fill: 'none',
-    stroke,
-    strokeWidth: 1.5,
-    strokeDasharray: '6 5',
-    strokeOpacity: 0.75,
+  const fill = `url(#${patternPrefix}${hue})`;
+  const outline = {
+    stroke: `var(${hue})`,
+    strokeWidth: 1,
+    strokeOpacity: 0.6,
     vectorEffect: 'non-scaling-stroke' as const,
   };
   if (zone.kind === 'rect') {
@@ -61,7 +100,8 @@ function ZoneOutline({
         y={pc(zone.y)}
         width={pc(zone.width)}
         height={pc(zone.height)}
-        {...common}
+        fill={fill}
+        {...outline}
       />
     );
   }
@@ -72,11 +112,31 @@ function ZoneOutline({
         cy={pc(zone.cy)}
         rx={pc(zone.rx)}
         ry={pc(zone.ry)}
-        {...common}
+        fill={fill}
+        {...outline}
       />
     );
   }
-  return <PolygonOutline points={zone.points} closed {...common} />;
+  // Percentages are invalid in <polygon points>, so the hatch is a full-stage
+  // rect clipped by an objectBoundingBox polygon (the zone's 0..1 fractions map
+  // directly), while the boundary stays the percentage-based per-edge lines.
+  const clipId = `${patternPrefix}clip-${zone.id}`;
+  return (
+    <>
+      <clipPath id={clipId} clipPathUnits="objectBoundingBox">
+        <polygon points={zone.points.map((p) => `${p.x},${p.y}`).join(' ')} />
+      </clipPath>
+      <rect
+        x="0"
+        y="0"
+        width="100%"
+        height="100%"
+        fill={fill}
+        clipPath={`url(#${clipId})`}
+      />
+      <PolygonOutline points={zone.points} closed fill="none" {...outline} />
+    </>
+  );
 }
 
 function PolygonOutline({
@@ -247,6 +307,10 @@ export function OverlaySvg({
   zonesVisible,
   guides,
 }: OverlaySvgProps): ReactElement {
+  // useId output is stripped to its alphanumeric token: the raw value's
+  // delimiter characters are awkward inside SVG url(#...) references.
+  const patternPrefix = `zone-hatch-${useId().replace(/\W/g, '')}`;
+  const zones = zonesVisible ? zonesOf(doc) : [];
   return (
     <svg
       className="pointer-events-none absolute inset-0 size-full"
@@ -254,11 +318,23 @@ export function OverlaySvg({
       height="100%"
       aria-hidden="true"
     >
-      {zonesVisible &&
-        zonesOf(doc).map((zone, index) => {
-          const hue = ZONE_HUES[index % ZONE_HUES.length] ?? ZONE_HUES[0];
-          return <ZoneOutline key={zone.id} zone={zone} hue={hue} />;
-        })}
+      {zones.length > 0 && (
+        <ZoneHatchDefs
+          prefix={patternPrefix}
+          hues={ZONE_HUES.slice(0, zones.length)}
+        />
+      )}
+      {zones.map((zone, index) => {
+        const hue = ZONE_HUES[index % ZONE_HUES.length] ?? ZONE_HUES[0];
+        return (
+          <ZoneOutline
+            key={zone.id}
+            zone={zone}
+            hue={hue}
+            patternPrefix={patternPrefix}
+          />
+        );
+      })}
       {selectionBounds && <SelectionOutline bounds={selectionBounds} />}
       {draft && <DraftShape draft={draft} />}
       <SnapGuideLines guides={guides} />

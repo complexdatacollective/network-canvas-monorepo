@@ -46,9 +46,13 @@ import { InlineTextEditor } from './InlineTextEditor';
 import { KeyboardTargets } from './overlay/KeyboardTargets';
 import { OverlaySvg } from './overlay/OverlaySvg';
 import { ResizeHandles } from './overlay/ResizeHandles';
+import { SelectionProperties } from './overlay/SelectionProperties';
 import { announceSelectionPosition } from './overlay/useItemControls';
 import { ZonePills } from './overlay/ZonePills';
-import { isOverlayControlTarget } from './overlayTargets';
+import {
+  isOverlayControlTarget,
+  PROPERTIES_TRIGGER_ATTR,
+} from './overlayTargets';
 import { clientToNormalized, startPointerGesture } from './pointerGesture';
 import {
   createPreviewImageLoader,
@@ -63,6 +67,7 @@ const RESIZE_HANDLE_ONLY = '[data-resize-handle]';
 const HIT_TOLERANCE_PX = 8;
 
 const ASPECT_RATIOS: Record<Exclude<PreviewAspect, 'fill'>, number> = {
+  '16:10': 16 / 10,
   '16:9': 16 / 9,
   '9:16': 9 / 16,
   '4:3': 4 / 3,
@@ -305,10 +310,11 @@ export function EditorCanvas(): ReactElement {
       // startPointerGesture also bails on them, so mutating here first would drop
       // an uncommitted text element or leave a draft with no pointerup to finish it.
       if (e.button !== 0) return;
-      // Overlay controls (resize handles, zone pills, the inline editor) own
-      // their own pointer handling. This native listener fires before their
-      // React handlers reach the document root, so the stage must yield here
-      // explicitly rather than rely on their stopPropagation (see overlayTargets).
+      // Overlay controls (resize handles, zone pills, the inline editor, the
+      // selection properties trigger) own their own pointer handling. This
+      // native listener fires before their React handlers reach the document
+      // root, so the stage must yield here explicitly rather than rely on
+      // their stopPropagation (see overlayTargets).
       if (isOverlayControlTarget(e.target)) return;
       // While an inline text edit is open, a stage press only dismisses it: the
       // press's default action moves focus off the textarea and the blur commit
@@ -385,11 +391,7 @@ export function EditorCanvas(): ReactElement {
               if (began) store.cancelGesture();
               return;
             }
-            if (!moved) {
-              // A clean click-selection (no drag) auto-opens Properties.
-              store.requestProperties();
-              return;
-            }
+            if (!moved) return;
             store.endGesture();
             announceSelectionPosition();
           },
@@ -501,10 +503,13 @@ export function EditorCanvas(): ReactElement {
     (e: MouseEvent) => {
       // The in-place editor owns clicks on itself while open.
       if (editingRef.current) return;
-      // A double-click on a resize handle is not a text-edit gesture.
+      // A double-click on a resize handle or the properties trigger is not a
+      // text-edit gesture (zone pills are NOT excluded — the elementFromPoint
+      // branch below deliberately handles them).
       if (
         e.target instanceof Element &&
-        e.target.closest(RESIZE_HANDLE_ONLY) !== null
+        (e.target.closest(RESIZE_HANDLE_ONLY) !== null ||
+          e.target.closest(`[${PROPERTIES_TRIGGER_ATTR}]`) !== null)
       ) {
         return;
       }
@@ -618,7 +623,13 @@ export function EditorCanvas(): ReactElement {
     touchAction: 'none',
   };
 
-  const stageLabel = `Background canvas. Active tool: ${TOOL_LABELS[activeTool]}. Draw with the pointer, or press Enter to add a shape at the centre. Hold Shift while drawing to keep ellipses and rectangles regular. Select an item and press Delete to remove it, or double-click text to edit it.`;
+  // The Enter-to-add hint only holds while a drawing tool is active — with
+  // Select active (including right after a shape commit reverts to it), Enter
+  // does nothing on the stage and promising otherwise misleads screen readers.
+  const stageLabel =
+    activeTool === 'select'
+      ? 'Background canvas. Active tool: Select. Select an item and press Delete to remove it, double-click text to edit it, or choose a drawing tool to add shapes.'
+      : `Background canvas. Active tool: ${TOOL_LABELS[activeTool]}. Draw with the pointer, or press Enter to add a shape at the centre. Hold Shift while drawing to keep ellipses and rectangles regular.`;
 
   return (
     <div
@@ -672,6 +683,7 @@ export function EditorCanvas(): ReactElement {
         />
         <ZonePills />
         <ResizeHandles getRect={getStageRect} onGuidesChange={setGuides} />
+        <SelectionProperties stageRef={stageRef} />
         <KeyboardTargets onActivate={activateElement} />
 
         {editingElement && stageSize && (

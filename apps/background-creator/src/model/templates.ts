@@ -71,17 +71,19 @@ function makeLabel(props: {
   };
 }
 
-// A stroke-only ring that is both the visible artwork and its own zone. rx = ry
-// keeps it round at a 1:1 preview; it warps with the canvas like any ellipse.
-// The model has no `fill: 'none'`, so a fully transparent fill (fillOpacity 0)
-// gives the same visual result.
+// A stroke-only ring that is both the visible artwork and its own zone. Radii
+// are normalized to the stage, so a round circle needs rx scaled by the stage's
+// height/width ratio; we target the 16:10 ratio of default macOS displays
+// (rx = r * 10/16, verifiable in-app via the 16:10 preview preset) and the
+// ring warps on other ratios like any ellipse. The model has no `fill: 'none'`,
+// so a fully transparent fill (fillOpacity 0) gives the same visual result.
 function makeRing(r: number, zoneLabel: string): EllipseElement {
   return {
     id: crypto.randomUUID(),
     kind: 'ellipse',
     cx: 0.5,
     cy: 0.5,
-    rx: r,
+    rx: r * 0.625,
     ry: r,
     fill: '#ffffff',
     fillOpacity: 0,

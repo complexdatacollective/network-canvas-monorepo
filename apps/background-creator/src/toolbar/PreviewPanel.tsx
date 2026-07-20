@@ -10,6 +10,7 @@ import {
 
 const ASPECT_OPTIONS: { value: PreviewAspect; label: string }[] = [
   { value: 'fill', label: 'Fill' },
+  { value: '16:10', label: '16:10' },
   { value: '16:9', label: '16:9' },
   { value: '9:16', label: '9:16' },
   { value: '4:3', label: '4:3' },

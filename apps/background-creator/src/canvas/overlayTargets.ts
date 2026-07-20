@@ -13,8 +13,9 @@
 export const RESIZE_HANDLE_ATTR = 'data-resize-handle';
 export const ZONE_PILL_ATTR = 'data-zone-pill';
 export const INLINE_EDITOR_ATTR = 'data-inline-editor';
+export const PROPERTIES_TRIGGER_ATTR = 'data-properties-trigger';
 
-const OVERLAY_SELECTOR = `[${RESIZE_HANDLE_ATTR}],[${ZONE_PILL_ATTR}],[${INLINE_EDITOR_ATTR}]`;
+const OVERLAY_SELECTOR = `[${RESIZE_HANDLE_ATTR}],[${ZONE_PILL_ATTR}],[${INLINE_EDITOR_ATTR}],[${PROPERTIES_TRIGGER_ATTR}]`;
 
 // True when the event target is (or sits inside) an interactive overlay control
 // the stage must not steal the gesture from.

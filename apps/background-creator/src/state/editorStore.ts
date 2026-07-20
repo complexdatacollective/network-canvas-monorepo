@@ -58,7 +58,14 @@ export type Draft =
   | { mode: 'drag'; tool: DragDraftTool; start: Vec; current: Vec }
   | { mode: 'polygon'; tool: 'polygon'; points: Vec[]; current: Vec };
 
-export type PreviewAspect = 'fill' | '16:9' | '9:16' | '4:3' | '3:4' | '1:1';
+export type PreviewAspect =
+  | 'fill'
+  | '16:10'
+  | '16:9'
+  | '9:16'
+  | '4:3'
+  | '3:4'
+  | '1:1';
 export type PreviewSurface = 'interview' | 'light' | 'checker';
 
 type Announcement = { message: string; seq: number };
@@ -119,16 +126,12 @@ type EditorState = {
   past: BackgroundDocument[];
   future: BackgroundDocument[];
   announcement: Announcement;
-  // Bumped on a clean pointer click-selection so the toolbar can auto-open the
-  // Properties popover (never on keyboard focus-selection or shape creation).
-  propertiesRequestSeq: number;
   // Bookkeeping (not part of the acted-on surface).
   lastCoalesceKey: string | null;
   gestureSnapshot: BackgroundDocument | null;
 
   setTool: (tool: EditorTool) => void;
   select: (selection: Selection | null) => void;
-  requestProperties: () => void;
   announce: (message: string) => void;
 
   commitDoc: (next: BackgroundDocument, opts?: CommitOptions) => void;
@@ -489,7 +492,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   past: [],
   future: [],
   announcement: { message: '', seq: 0 },
-  propertiesRequestSeq: 0,
   lastCoalesceKey: null,
   gestureSnapshot: null,
 
@@ -506,9 +508,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     })),
 
   select: (selection) => set({ selection, lastCoalesceKey: null }),
-
-  requestProperties: () =>
-    set((state) => ({ propertiesRequestSeq: state.propertiesRequestSeq + 1 })),
 
   announce: (message) =>
     set((state) => ({ announcement: bump(state, message) })),
@@ -646,11 +645,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ...doc,
       elements: [...doc.elements, element],
     };
+    // A successful creation hands back to the select tool (a discarded
+    // degenerate draft above keeps the draw tool so the user can retry). The
+    // announcement carries the mode change: aria-label updates on the focused
+    // stage are not reliably re-announced, so without it another Enter/draw
+    // attempt fails silently for screen-reader users.
     set((state) => ({
       ...pushed(state, next),
       selection: { id: element.id },
+      activeTool: 'select',
       draft: null,
-      announcement: bump(state, `${elementKindLabel(element)} added`),
+      announcement: bump(
+        state,
+        `${elementKindLabel(element)} added. Select tool active`,
+      ),
     }));
   },
 
@@ -705,8 +713,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((state) => ({
       ...pushed(state, next),
       selection: { id: element.id },
+      activeTool: 'select',
       draft: null,
-      announcement: bump(state, 'Polygon added'),
+      announcement: bump(state, 'Polygon added. Select tool active'),
     }));
   },
 
@@ -751,8 +760,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((state) => ({
       ...pushed(state, next),
       selection: { id: element.id },
+      activeTool: 'select',
       draft: null,
-      announcement: bump(state, `${elementKindLabel(element)} added`),
+      announcement: bump(
+        state,
+        `${elementKindLabel(element)} added. Select tool active`,
+      ),
     }));
   },
 

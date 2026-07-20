@@ -127,8 +127,10 @@ function nearEllipseEdge(
 
 // --- element hit tests -----------------------------------------------------
 
-// A zero-fill (invisible) shape is grabbable only near its outline, so a filled
-// element sitting over an invisible zone's interior stays selectable.
+// First hit-testing pass: painted geometry only. A zero-fill (invisible) shape
+// matches only near its outline here — its interior is deferred to the second
+// pass in hitTestDocument, so a filled element sitting over an invisible
+// zone's interior stays selectable.
 function hitTestElement(p: Vec, el: SvgElement, tol: number): boolean {
   switch (el.kind) {
     case 'rect': {
@@ -155,6 +157,26 @@ function hitTestElement(p: Vec, el: SvgElement, tol: number): boolean {
   }
 }
 
+// Second pass: the interior of a zero-fill shape, so clicking inside a
+// stroke-only ring still selects it when nothing painted claims the point.
+function hitTestZeroFillInterior(p: Vec, el: SvgElement): boolean {
+  switch (el.kind) {
+    case 'rect':
+      return el.fillOpacity === 0 && withinBounds(p, elementBounds(el), 0);
+    case 'ellipse':
+      return (
+        el.fillOpacity === 0 && insideEllipse(p, el.cx, el.cy, el.rx, el.ry)
+      );
+    case 'polygon':
+      return el.fillOpacity === 0 && pointInPolygon(p, el.points);
+    case 'line':
+    case 'text':
+      return false;
+    default:
+      return assertNever(el);
+  }
+}
+
 export function hitTestDocument(
   p: Vec,
   doc: BackgroundDocument,
@@ -164,6 +186,12 @@ export function hitTestDocument(
   for (let i = doc.elements.length - 1; i >= 0; i -= 1) {
     const el = doc.elements[i];
     if (el && hitTestElement(p, el, tol)) return { id: el.id };
+  }
+  // No painted geometry claims the point: fall back to the topmost zero-fill
+  // interior so an invisible shape is selectable from inside.
+  for (let i = doc.elements.length - 1; i >= 0; i -= 1) {
+    const el = doc.elements[i];
+    if (el && hitTestZeroFillInterior(p, el)) return { id: el.id };
   }
   return null;
 }

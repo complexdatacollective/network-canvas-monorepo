@@ -55,7 +55,6 @@ function reset(doc: BackgroundDocument = blankDoc()): void {
     past: [],
     future: [],
     announcement: { message: '', seq: 0 },
-    propertiesRequestSeq: 0,
     lastCoalesceKey: null,
     gestureSnapshot: null,
   });
@@ -206,7 +205,9 @@ describe('draft commit', () => {
     }
     expect(state().selection).toEqual({ id: el?.id });
     expect(state().draft).toBeNull();
-    expect(state().announcement.message).toBe('Rectangle added');
+    expect(state().announcement.message).toBe(
+      'Rectangle added. Select tool active',
+    );
   });
 
   it('normalizes a drag drawn up-and-left', () => {
@@ -259,6 +260,22 @@ describe('draft commit', () => {
     state().commitDraft();
     expect(state().doc.elements).toHaveLength(0);
     expect(state().draft).toBeNull();
+  });
+
+  it('reverts the active tool to select after a successful commit', () => {
+    state().setTool('rect');
+    state().beginDraft('rect', { x: 0.1, y: 0.1 });
+    state().updateDraft({ x: 0.5, y: 0.4 });
+    state().commitDraft();
+    expect(state().activeTool).toBe('select');
+  });
+
+  it('keeps the draw tool when a degenerate draft is discarded', () => {
+    state().setTool('rect');
+    state().beginDraft('rect', { x: 0.3, y: 0.3 });
+    state().updateDraft({ x: 0.302, y: 0.301 });
+    state().commitDraft();
+    expect(state().activeTool).toBe('rect');
   });
 
   it('records exactly one history step per created shape', () => {
@@ -323,12 +340,23 @@ describe('polygon draft', () => {
     expect(state().draft).toBeNull();
   });
 
+  it('reverts the active tool to select after closing a polygon', () => {
+    state().setTool('polygon');
+    state().beginDraft('polygon', { x: 0.2, y: 0.2 });
+    state().addDraftPoint({ x: 0.6, y: 0.3 });
+    state().addDraftPoint({ x: 0.4, y: 0.7 });
+    state().closeDraftPolygon();
+    expect(state().activeTool).toBe('select');
+  });
+
   it('refuses to close with fewer than three points and announces why', () => {
+    state().setTool('polygon');
     state().beginDraft('polygon', { x: 0.2, y: 0.2 });
     state().addDraftPoint({ x: 0.6, y: 0.3 });
     state().closeDraftPolygon();
     expect(state().doc.elements).toHaveLength(0);
     expect(state().draft).not.toBeNull();
+    expect(state().activeTool).toBe('polygon');
     expect(state().announcement.message).toBe(
       'A shape needs at least three points.',
     );
@@ -646,7 +674,9 @@ describe('insertDefaultShape', () => {
       expect(el.height).toBeCloseTo(0.2);
     }
     expect(state().selection).toEqual({ id: el?.id });
-    expect(state().announcement.message).toBe('Rectangle added');
+    expect(state().announcement.message).toBe(
+      'Rectangle added. Select tool active',
+    );
   });
 
   it('inserts a default triangle for the polygon tool', () => {
@@ -657,14 +687,11 @@ describe('insertDefaultShape', () => {
       expect(el.points).toHaveLength(3);
     }
   });
-});
 
-describe('requestProperties', () => {
-  it('bumps the sequence so the toolbar can auto-open Properties', () => {
-    expect(state().propertiesRequestSeq).toBe(0);
-    state().requestProperties();
-    state().requestProperties();
-    expect(state().propertiesRequestSeq).toBe(2);
+  it('reverts the active tool to select after inserting', () => {
+    state().setTool('ellipse');
+    state().insertDefaultShape('ellipse');
+    expect(state().activeTool).toBe('select');
   });
 });
 

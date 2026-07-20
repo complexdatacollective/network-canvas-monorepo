@@ -62,7 +62,6 @@ export function Toolbar(): ReactElement {
   const activeTool = useEditorStore((s) => s.activeTool);
   const zonesVisible = useEditorStore((s) => s.zonesVisible);
   const selection = useEditorStore((s) => s.selection);
-  const propertiesRequestSeq = useEditorStore((s) => s.propertiesRequestSeq);
   const canUndo = useEditorStore((s) => s.canUndo());
   const canRedo = useEditorStore((s) => s.canRedo());
   const setTool = useEditorStore((s) => s.setTool);
@@ -72,12 +71,6 @@ export function Toolbar(): ReactElement {
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [propertiesOpen, setPropertiesOpen] = useState(false);
-
-  // Auto-open Properties on a clean pointer click-selection (the store bumps the
-  // sequence). The initial 0 doesn't open it.
-  useEffect(() => {
-    if (propertiesRequestSeq > 0) setPropertiesOpen(true);
-  }, [propertiesRequestSeq]);
 
   // Clearing the selection closes and disables the panel (nothing to edit).
   useEffect(() => {
@@ -166,17 +159,14 @@ export function Toolbar(): ReactElement {
       label: 'Properties',
       icon: <SlidersHorizontal />,
       side: 'top',
-      // Controlled and sticky: disabled with nothing selected, auto-opens on a
-      // click-selection, and stays open across selection changes (its contents
-      // key off the store selection). `dismissOnOutsidePress: false` stops a
-      // canvas press from closing it or being swallowed, so selecting another
-      // element just switches selection and a double-click still edits text. It
-      // closes only via the trigger toggle, Escape, or the selection clearing
-      // (the effect below closes it when `selection` becomes null).
+      // Controlled: disabled with nothing selected. Standard outside-press
+      // dismissal keeps this and the selection-anchored properties popover
+      // mutually exclusive — opening one is an outside press that closes the
+      // other, so an element never shows two live property panels at once.
+      // (The effect below still closes it when `selection` becomes null.)
       disabled: selection === null,
       open: propertiesOpen,
       onOpenChange: setPropertiesOpen,
-      dismissOnOutsidePress: false,
       pressed: propertiesOpen,
       children: <PropertiesPanel />,
     },

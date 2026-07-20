@@ -116,8 +116,9 @@ describe('templates', () => {
     for (const zone of zones) {
       expect(zone.kind).toBe('ellipse');
       if (zone.kind === 'ellipse') {
-        expect(zone.rx).toBe(zone.ry);
-        if (zone.zoneLabel !== null) byLabel.set(zone.zoneLabel, zone.rx);
+        // Round on the default 16:10 stage: rx is ry scaled by 10/16.
+        expect(zone.rx).toBe(zone.ry * 0.625);
+        if (zone.zoneLabel !== null) byLabel.set(zone.zoneLabel, zone.ry);
       }
     }
     expect(byLabel.get('outer')).toBe(0.45);
@@ -138,7 +139,7 @@ describe('templates', () => {
       if (ellipse.kind === 'ellipse') {
         expect(ellipse.cx).toBe(0.5);
         expect(ellipse.cy).toBe(0.5);
-        expect(ellipse.rx).toBe(ellipse.ry);
+        expect(ellipse.rx).toBe(ellipse.ry * 0.625);
         expect(ellipse.fillOpacity).toBe(0);
         expect(ellipse.stroke).toBe('#ffffff');
       }
