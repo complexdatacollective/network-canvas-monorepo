@@ -84,8 +84,6 @@ export function startPointerGesture(
     return r ? clientToNormalized(r, ev.clientX, ev.clientY) : start;
   };
 
-  let pendingMove: PointerEvent | null = null;
-
   const onMove = (ev: PointerEvent) => {
     // The document listeners see every active pointer; a second touch or stylus
     // must not drive or finish the gesture that this initiating pointer started.
@@ -96,10 +94,8 @@ export function startPointerGesture(
       if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
       dragging = true;
     }
-    pendingMove = ev;
     if (raf !== null) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
-      pendingMove = null;
       handlers.onDrag?.(currentPoint(ev), start, ev.shiftKey, ev.altKey);
       raf = null;
     });
@@ -116,14 +112,14 @@ export function startPointerGesture(
       cancelAnimationFrame(raf);
       raf = null;
     }
-    // A drag that ends before the next animation frame still owes its last
-    // batched update — flush it synchronously, otherwise the final movement
-    // (or, for a within-one-frame drag, the entire gesture) is lost and e.g.
-    // a drawn draft commits at zero extent.
-    if (!cancelled && dragging && pendingMove !== null) {
-      const last = pendingMove;
-      pendingMove = null;
-      handlers.onDrag?.(currentPoint(last), start, last.shiftKey, last.altKey);
+    // The callers commit from state driven by onDrag, so the release point must
+    // go through onDrag before onEnd — not only a still-queued move frame, but
+    // the pointerup's own coordinates too: the pointer can travel between the
+    // last delivered pointermove and the release, and skipping that final
+    // segment leaves the element short of where the user let go. Re-delivering
+    // an already-applied point is a harmless no-op.
+    if (!cancelled && dragging) {
+      handlers.onDrag?.(currentPoint(ev), start, ev.shiftKey, ev.altKey);
     }
     try {
       target.releasePointerCapture(pointerId);

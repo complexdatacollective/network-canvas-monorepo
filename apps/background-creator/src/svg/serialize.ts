@@ -232,16 +232,14 @@ function serializeText(element: TextElement): string {
   }
   const open = `  <text ${attrs.join(' ')}>`;
 
-  if (element.lines.length === 1) {
-    const [single = ''] = element.lines;
-    return `${open}${escapeText(single)}</text>`;
-  }
-
   const lineCount = element.lines.length;
-  // First tspan lifts the multi-line block so it stays vertically centred on the
-  // element's y anchor; each following line advances one line-height (1.2em), so
-  // the lift must be measured in the same 1.2em steps (0.35em nudges the block
-  // onto the visual baseline).
+  // First tspan lifts the block so it stays vertically centred on the element's
+  // y anchor (the editor treats y as the visual centre — inline textarea and
+  // textBounds both do); each following line advances one line-height (1.2em),
+  // so the lift must be measured in the same 1.2em steps (0.35em nudges the
+  // block onto the visual baseline). A single line takes the same path — its
+  // lift is just the 0.35em baseline nudge — so it does not sit above its
+  // clicked/selected position the way a bare baseline-anchored <text> would.
   const firstDy = round2(-((1.2 * (lineCount - 1)) / 2 - 0.35));
   const tspans = element.lines.map((line, index) => {
     const dy = index === 0 ? `${firstDy}em` : '1.2em';

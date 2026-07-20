@@ -362,6 +362,27 @@ describe('polygon draft', () => {
     );
   });
 
+  it('persists the trimmed draft when a double-click close is refused', () => {
+    state().setTool('polygon');
+    state().beginDraft('polygon', { x: 0.2, y: 0.2 });
+    state().addDraftPoint({ x: 0.6, y: 0.3 });
+    // The refused double-click leaves its duplicate press behind.
+    state().addDraftPoint({ x: 0.6, y: 0.3 });
+    state().closeDraftPolygon();
+    const draft = state().draft;
+    expect(draft?.mode === 'polygon' && draft.points).toHaveLength(2);
+
+    // Continuing after the refusal must not bake a zero-length edge into the
+    // eventually-committed polygon.
+    state().addDraftPoint({ x: 0.4, y: 0.7 });
+    state().closeDraftPolygon();
+    const el = state().doc.elements[0];
+    expect(el?.kind).toBe('polygon');
+    if (el?.kind === 'polygon') {
+      expect(el.points).toHaveLength(3);
+    }
+  });
+
   it('drops a trailing duplicate vertex from a double-click close', () => {
     state().beginDraft('polygon', { x: 0.2, y: 0.2 });
     state().addDraftPoint({ x: 0.6, y: 0.3 });

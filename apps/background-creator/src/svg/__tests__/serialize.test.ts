@@ -238,7 +238,7 @@ describe('serializeDocument polygon', () => {
 });
 
 describe('serializeDocument text', () => {
-  it('renders a single-line text without tspans', () => {
+  it('centres a single-line text on its y anchor via the baseline nudge', () => {
     const svg = serializeDocument(
       docWith([
         {
@@ -257,8 +257,10 @@ describe('serializeDocument text', () => {
         },
       ]),
     );
-    expect(svg).toContain('>Solo</text>');
-    expect(svg).not.toContain('<tspan');
+    // A bare baseline-anchored <text> would sit above the element's y (the
+    // editor treats y as the visual centre), so even one line goes through the
+    // centring tspan with the 0.35em baseline nudge.
+    expect(svg).toContain('<tspan x="50%" dy="0.35em">Solo</tspan>');
     expect(svg).toContain('text-anchor="middle"');
     expect(svg).toContain(
       'font-size: clamp(14px, 2.6vmin, 32px); font-weight: 600',

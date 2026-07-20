@@ -691,7 +691,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     }
     if (points.length < 3) {
+      // Keep the trimmed vertices: the failed double-click's duplicate would
+      // otherwise linger mid-list once more points are added, and a later
+      // successful close (which only trims trailing duplicates) would commit a
+      // polygon with a zero-length edge.
       set((state) => ({
+        draft: { ...draft, points },
         announcement: bump(state, 'A shape needs at least three points.'),
       }));
       return;
