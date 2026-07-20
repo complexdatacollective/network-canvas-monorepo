@@ -22,6 +22,7 @@ import {
 import {
   type DragDraftTool,
   type EditorTool,
+  newTextCoalesceKey,
   type PreviewAspect,
   type Selection,
   useEditorStore,
@@ -220,10 +221,13 @@ export function EditorCanvas(): ReactElement {
     setEditing({ id, isNew });
   }, []);
 
-  const commitTextEdit = useCallback((value: string) => {
+  const commitTextEdit = useCallback((value: string, restoreFocus: boolean) => {
     const current = editingRef.current;
     setEditing(null);
-    stageRef.current?.focus();
+    // The editor requests focus restoration only when focus is not moving to
+    // another control (Escape, or a blur into nothing); yanking it back from a
+    // toolbar or panel destination would trap keyboard users in the canvas.
+    if (restoreFocus) stageRef.current?.focus();
     if (!current) return;
     const store = useEditorStore.getState();
     const el = store.doc.elements.find(
@@ -238,7 +242,13 @@ export function EditorCanvas(): ReactElement {
       return;
     }
     if (linesToText(el.lines) !== value) {
-      store.updateElement(current.id, { lines });
+      store.updateElement(
+        current.id,
+        { lines },
+        current.isNew
+          ? { coalesceKey: newTextCoalesceKey(current.id) }
+          : undefined,
+      );
       store.announce('Text updated');
     }
   }, []);
@@ -300,6 +310,13 @@ export function EditorCanvas(): ReactElement {
       // React handlers reach the document root, so the stage must yield here
       // explicitly rather than rely on their stopPropagation (see overlayTargets).
       if (isOverlayControlTarget(e.target)) return;
+      // While an inline text edit is open, a stage press only dismisses it: the
+      // press's default action moves focus off the textarea and the blur commit
+      // closes the editor. Acting here as well would remount the keyed editor
+      // during pointerdown — before the browser delivers that blur — silently
+      // discarding the uncommitted typing (worst on the text tool's
+      // place-type-place loop).
+      if (editingRef.current) return;
 
       const el = stageRef.current;
       if (!el) return;

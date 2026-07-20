@@ -8,7 +8,11 @@ import type {
   TextElement,
 } from '~/model/types';
 
-import { nextZoneLabel, useEditorStore } from '../editorStore';
+import {
+  newTextCoalesceKey,
+  nextZoneLabel,
+  useEditorStore,
+} from '../editorStore';
 
 const store = useEditorStore;
 const state = () => store.getState();
@@ -583,6 +587,50 @@ describe('discardNewText', () => {
     expect(state().doc.elements).toHaveLength(0);
     expect(state().past).toHaveLength(0);
     expect(state().selection).toBeNull();
+  });
+});
+
+describe('new-text creation coalescing', () => {
+  it('folds the first label edit into the creation entry so one undo removes the element', () => {
+    const id = state().createTextAt({ x: 0.5, y: 0.5 });
+    state().updateElement(
+      id,
+      { lines: ['Hello'] },
+      { coalesceKey: newTextCoalesceKey(id) },
+    );
+    expect(state().past).toHaveLength(1);
+    const el = state().doc.elements[0];
+    expect(el?.kind === 'text' && el.lines).toEqual(['Hello']);
+    state().undo();
+    expect(state().doc.elements).toHaveLength(0);
+  });
+
+  it('keeps a later re-edit of the same element as its own undo step', () => {
+    const id = state().createTextAt({ x: 0.5, y: 0.5 });
+    state().updateElement(
+      id,
+      { lines: ['Hello'] },
+      { coalesceKey: newTextCoalesceKey(id) },
+    );
+    state().updateElement(id, { lines: ['Hello again'] });
+    expect(state().past).toHaveLength(2);
+    state().undo();
+    const el = state().doc.elements[0];
+    expect(el?.kind === 'text' && el.lines).toEqual(['Hello']);
+  });
+
+  it('does not fold the edit in once another action resets coalescing', () => {
+    const id = state().createTextAt({ x: 0.5, y: 0.5 });
+    state().select({ id });
+    state().updateElement(
+      id,
+      { lines: ['Hello'] },
+      { coalesceKey: newTextCoalesceKey(id) },
+    );
+    expect(state().past).toHaveLength(2);
+    state().undo();
+    const el = state().doc.elements[0];
+    expect(el?.kind === 'text' && el.lines).toEqual(['Text']);
   });
 });
 

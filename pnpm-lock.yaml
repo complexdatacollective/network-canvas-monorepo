@@ -672,9 +672,15 @@ importers:
 
   apps/background-creator:
     dependencies:
+      '@base-ui/react':
+        specifier: 'catalog:'
+        version: 1.5.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@codaco/fresco-ui':
         specifier: workspace:*
         version: link:../../packages/fresco-ui
+      '@codaco/shared-consts':
+        specifier: workspace:*
+        version: link:../../packages/shared-consts
       '@codaco/tailwind-config':
         specifier: workspace:*
         version: link:../../tooling/tailwind
@@ -684,6 +690,9 @@ importers:
       lucide-react:
         specifier: 'catalog:'
         version: 1.17.0(react@19.2.7)
+      motion:
+        specifier: 'catalog:'
+        version: 12.40.0(@emotion/is-prop-valid@0.8.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react:
         specifier: 'catalog:'
         version: 19.2.7

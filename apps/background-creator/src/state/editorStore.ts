@@ -99,6 +99,13 @@ type ElementPatch = {
 
 type CommitOptions = { coalesceKey?: string };
 
+// Shared by createTextAt and the inline editor's first commit, so replacing a
+// new element's placeholder text folds into the creation's history entry and a
+// single Undo removes the element rather than resurrecting the placeholder.
+export function newTextCoalesceKey(id: string): string {
+  return `new-text:${id}`;
+}
+
 type NewTemplate = 'blank' | 'quadrants' | 'concentric' | 'compass';
 
 type EditorState = {
@@ -726,7 +733,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       elements: [...doc.elements, element],
     };
     set((state) => ({
-      ...pushed(state, next),
+      ...pushed(state, next, { coalesceKey: newTextCoalesceKey(element.id) }),
       selection: { id: element.id },
       draft: null,
       announcement: bump(state, 'Text added'),

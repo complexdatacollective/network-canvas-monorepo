@@ -39,8 +39,13 @@ function anchorTextAlign(
 // In-place editor for a text element, positioned over the preview at the text's
 // anchor and matching its alignment and rendered font size. Enter inserts a
 // newline; Escape or blur commits (the parent decides whether an empty new
-// placeholder is removed instead). While it is mounted, the parent omits this
-// element from the serialized preview so there is no double render.
+// placeholder is removed instead). The parent is asked to restore stage focus
+// only when focus is not headed to another control — Escape, or a blur whose
+// relatedTarget is null (e.g. a Firefox canvas click, which focuses body
+// rather than the stage ancestor). A blur into a real control (Tab to the
+// toolbar, clicking a panel field) must not have focus stolen back. While the
+// editor is mounted, the parent omits this element from the serialized preview
+// so there is no double render.
 export function InlineTextEditor({
   element,
   stage,
@@ -50,16 +55,16 @@ export function InlineTextEditor({
   element: TextElement;
   stage: StageBox;
   isNew: boolean;
-  onCommit: (value: string) => void;
+  onCommit: (value: string, restoreFocus: boolean) => void;
 }): ReactElement {
   const [value, setValue] = useState(() => linesToText(element.lines));
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const committedRef = useRef(false);
 
-  const commit = () => {
+  const commit = (restoreFocus: boolean) => {
     if (committedRef.current) return;
     committedRef.current = true;
-    onCommit(value);
+    onCommit(value, restoreFocus);
   };
 
   // Move focus into the editor on open; a freshly-placed placeholder selects its
@@ -76,7 +81,7 @@ export function InlineTextEditor({
   const handleKeyDown = (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
       e.preventDefault();
-      commit();
+      commit(true);
     }
     // Enter falls through to the textarea's default newline insertion.
   };
@@ -103,7 +108,7 @@ export function InlineTextEditor({
       rows={Math.max(value.split('\n').length, 1)}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
-      onBlur={commit}
+      onBlur={(e) => commit(e.relatedTarget === null)}
       spellCheck={false}
       className="focusable border-selected bg-surface/90 elevation-medium absolute resize-none overflow-hidden rounded-sm border px-1 py-0.5 font-[system-ui]"
       style={style}
