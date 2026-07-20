@@ -1,5 +1,11 @@
 # @codaco/development-protocol
 
+## 2.0.4
+
+### Patch Changes
+
+- eb0df29: Add examples of the four previously-missing stage types (Network Composer, Geospatial, Family Pedigree, and Narrative Pedigree) so the development protocol now contains a working example of every stage type.
+
 ## 2.0.3
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @codaco/fresco-ui
 
+## 4.1.1
+
+### Patch Changes
+
+- 677a449: Make app update controls wait for service-worker activation, reload reliably, show progress or retry feedback, and improve the update dialogs' version, release-note, and action hierarchy.
+- e61f5ad: Improve table headers by removing default vertical padding and alignment, with an example for wrapping long labels.
+- ae8d7e1: The `menu-sociogram` icon now honours the `--icon-tone-primary` and `--icon-tone-secondary` custom properties, so consumers can recolour it. It previously hardcoded platinum fills, which silently ignored any tone override. The default appearance is unchanged.
+
 ## 4.1.0
 
 ### Minor Changes
