@@ -42,6 +42,7 @@ async function dragNodeToCanvasPosition(
   page: Page,
   label: string,
   target: { x: number; y: number },
+  startYFraction = 0.5,
 ): Promise<void> {
   const node = sociogramNode(page, label);
   const canvas = page.locator('[data-zone-id="sociogram-canvas"]');
@@ -51,7 +52,7 @@ async function dragNodeToCanvasPosition(
     throw new Error(`Could not measure node "${label}" or the canvas`);
   }
   const startX = nodeBox.x + nodeBox.width / 2;
-  const startY = nodeBox.y + nodeBox.height / 2;
+  const startY = nodeBox.y + nodeBox.height * startYFraction;
   const endX = canvasBox.x + canvasBox.width * target.x;
   const endY = canvasBox.y + canvasBox.height * target.y;
 
@@ -509,7 +510,89 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
       // already-placed node still repositions it (Sociogram never passes
       // `allowRepositioning` through to Canvas, so CanvasNode's own default of
       // `true` always wins).
-      await dragNodeToCanvasPosition(page, 'Ash', { x: 0.4, y: 0.6 });
+      const canvas = page.locator('[data-zone-id="sociogram-canvas"]');
+      const ashNode = sociogramNode(page, 'Ash');
+      const drawer = page.getByLabel('Drawer', { exact: true });
+      const drawerTab = drawer.getByRole('button');
+      const canvasBox = await canvas.boundingBox();
+      const drawerBox = await drawer.boundingBox();
+      const drawerTabBox = await drawerTab.boundingBox();
+      if (!canvasBox || !drawerBox || !drawerTabBox) {
+        throw new Error('Could not measure the canvas or collapsed drawer');
+      }
+
+      const drawerGapWidth = drawerTabBox.x - drawerBox.x;
+      if (drawerGapWidth <= 0) {
+        throw new Error(
+          'Collapsed drawer has no transparent area beside its tab',
+        );
+      }
+
+      const coveredTarget = {
+        x: (drawerBox.x + drawerGapWidth / 2 - canvasBox.x) / canvasBox.width,
+        y:
+          (drawerTabBox.y + drawerTabBox.height / 2 - canvasBox.y) /
+          canvasBox.height,
+      };
+      await dragNodeToCanvasPosition(page, 'Ash', coveredTarget);
+
+      await expect
+        .poll(async () => {
+          state = await protocol.getNetworkState(interview.interviewId);
+          const ash = asPoint(
+            nodeAttribute(state, nameVarId, 'Ash', layoutVarId),
+          );
+          return ash
+            ? Math.abs(ash.x - coveredTarget.x) < 0.1 && ash.y > 0.85
+            : false;
+        })
+        .toBe(true);
+
+      const ashBox = await ashNode.boundingBox();
+      const updatedDrawerBox = await drawer.boundingBox();
+      const updatedDrawerTabBox = await drawerTab.boundingBox();
+      if (!ashBox || !updatedDrawerBox || !updatedDrawerTabBox) {
+        throw new Error(
+          'Could not measure the bottom node or collapsed drawer',
+        );
+      }
+
+      const overlapTop = Math.max(ashBox.y, updatedDrawerBox.y);
+      const overlapBottom = Math.min(
+        ashBox.y + ashBox.height,
+        updatedDrawerBox.y + updatedDrawerBox.height,
+      );
+      const coveredNodePoint = {
+        x: ashBox.x + ashBox.width / 2,
+        y: overlapTop + (overlapBottom - overlapTop) / 2,
+      };
+      if (
+        overlapBottom <= overlapTop ||
+        coveredNodePoint.x < updatedDrawerBox.x ||
+        coveredNodePoint.x > updatedDrawerBox.x + updatedDrawerBox.width ||
+        (coveredNodePoint.x >= updatedDrawerTabBox.x &&
+          coveredNodePoint.x <=
+            updatedDrawerTabBox.x + updatedDrawerTabBox.width)
+      ) {
+        throw new Error(
+          'Bottom node did not overlap the drawer outside its tab',
+        );
+      }
+
+      const hitNodeLabel = await page.evaluate(({ x, y }) => {
+        const element = document.elementFromPoint(x, y);
+        return element?.closest('button')?.getAttribute('aria-label') ?? null;
+      }, coveredNodePoint);
+      expect(hitNodeLabel).toMatch(/^Ash/);
+
+      const coveredStartYFraction =
+        (coveredNodePoint.y - ashBox.y) / ashBox.height;
+      await dragNodeToCanvasPosition(
+        page,
+        'Ash',
+        { x: 0.4, y: 0.6 },
+        coveredStartYFraction,
+      );
 
       await expect
         .poll(async () => {

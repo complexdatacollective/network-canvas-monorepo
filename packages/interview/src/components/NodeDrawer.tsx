@@ -115,6 +115,7 @@ export default function NodeDrawer({
         className={cx(
           'tablet-landscape:min-w-sm tablet-landscape:w-fit z-10 mx-auto w-full max-w-2xl drop-shadow-xl',
           floating ? 'absolute inset-x-0 bottom-0' : 'shrink-0',
+          floating && !isExpandedEffective && 'pointer-events-none',
         )}
       >
         {/* Toggle button */}
@@ -127,7 +128,7 @@ export default function NodeDrawer({
             }}
             disabled={isToggleDisabled}
             className={cx(
-              'bg-surface publish-colors flex items-center gap-2 rounded-t-lg px-8 py-2 text-sm transition-colors',
+              'bg-surface publish-colors pointer-events-auto flex items-center gap-2 rounded-t-lg px-8 py-2 text-sm transition-colors',
               'data-[drop-target-valid=true]:bg-drag-valid',
               'data-[drop-target-over=true]:data-[drop-target-valid=true]:bg-drag-over',
               headingVariants({ level: 'label' }),
