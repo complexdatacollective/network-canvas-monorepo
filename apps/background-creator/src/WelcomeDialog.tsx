@@ -3,6 +3,7 @@ import { type ReactElement, useState } from 'react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { setWelcomeDismissed } from '~/state/welcomePreference';
 
@@ -30,7 +31,23 @@ export function WelcomeDialog({
       closeDialog={handleClose}
       size="readable"
       title="Welcome to Background Creator"
-      description="Design the background image behind a sociogram — and the script that sorts each participant into the right part of it."
+      description={
+        <>
+          This tool is designed to help you author responsive images for your
+          Sociogram stages that work across all screen sizes, as well as to
+          automatically generate analysis code that lets you work out which zone
+          a node was dropped in based on its screen position. Please post
+          thoughts and feedback on our{' '}
+          <NativeLink
+            href="https://community.networkcanvas.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            community forum
+          </NativeLink>
+          .
+        </>
+      }
       footer={
         <div className="flex w-full items-center justify-between gap-4">
           <div className="flex items-center gap-2">
