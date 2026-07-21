@@ -287,7 +287,7 @@ export function SettingsDialog({
               ? ` · ${formatBytes(storage.usage)} used`
               : ''
           }`
-        : 'Offline storage: best-effort — the browser may clear it under storage pressure';
+        : 'Offline storage: best-effort — it may be cleared under storage pressure';
 
   const protocolOptions = protocols.map((p) => ({
     value: p.hash,

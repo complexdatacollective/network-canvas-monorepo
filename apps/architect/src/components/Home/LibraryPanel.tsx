@@ -466,15 +466,14 @@ const LibraryPanel = ({
       children: (
         <>
           <Paragraph>
-            Your protocols are saved only in this browser, on this device. They
-            are never uploaded to a server.
+            Your protocols are saved only on this device. They are never
+            uploaded to a server.
           </Paragraph>
           <Paragraph>
-            Because your work lives in this browser&apos;s storage, clearing
-            your browsing data, or using &quot;Clear all protocols&quot;, will
-            permanently remove it. Download the protocol as a{' '}
-            <code>.netcanvas</code> file to save a copy or move it to another
-            device. See our guide to{' '}
+            Because your work is stored locally, clearing Architect&apos;s app
+            data, or using &quot;Clear all protocols&quot;, will permanently
+            remove it. Download the protocol as a <code>.netcanvas</code> file
+            to save a copy or move it to another device. See our guide to{' '}
             <ExternalLink href={documentationLinks.savingAndBackingUp}>
               saving and backing up your work
             </ExternalLink>{' '}
@@ -498,7 +497,7 @@ const LibraryPanel = ({
       intent: 'destructive',
       title: 'Remove all data?',
       description:
-        'Every protocol, asset, and saved setting stored in this browser will be permanently removed. This cannot be undone.',
+        'Every protocol, asset, and setting stored locally by Architect will be permanently removed. This cannot be undone.',
       actions: {
         primary: { label: 'Remove all', value: true },
         cancel: { label: 'Cancel', value: false },
@@ -515,7 +514,7 @@ const LibraryPanel = ({
         type: 'acknowledge',
         intent: 'destructive',
         title: 'Could not remove data',
-        description: 'The stored data could not be removed from this browser.',
+        description: "Architect's stored data could not be removed.",
         actions: { primary: { label: 'OK', value: true } },
       });
     }
@@ -600,8 +599,8 @@ const LibraryPanel = ({
   const protocolCount = protocols.length;
   const storageTooltip =
     protocolCount === 1
-      ? 'Your 1 protocol is saved only in this browser, on this device. It is never uploaded to a server.'
-      : `Your ${protocolCount} protocols are saved only in this browser, on this device. They are never uploaded to a server.`;
+      ? 'Your 1 protocol is saved only on this device. It is never uploaded to a server.'
+      : `Your ${protocolCount} protocols are saved only on this device. They are never uploaded to a server.`;
   const headerEnd =
     activeTab === 'recent' ? (
       <div className="flex min-w-max items-center justify-end gap-2.5">
@@ -628,14 +627,14 @@ const LibraryPanel = ({
               <IconButton
                 variant="text"
                 size="sm"
-                aria-label="Clear all protocols from this browser"
+                aria-label="Clear all locally saved protocols"
                 onClick={() => void handleClearAll()}
                 icon={<Trash2 />}
               />
             }
           />
           <TooltipContent side="bottom">
-            Clear all protocols from this browser
+            Clear all locally saved protocols
           </TooltipContent>
         </Tooltip>
       </div>

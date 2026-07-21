@@ -8,7 +8,7 @@ Interviewer runs your Network Canvas protocols and collects data in the field. Y
 
 Interviewer comes in two supported versions, and you get them in different ways:
 
-- **Interviewer** (beta) — runs in your **web browser**, with nothing to download. Open it at [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com), and optionally install it as a **Progressive Web App (PWA)** on a device you control for quick access and offline use. Built on the same platform as Fresco 4.0, it supports schema 8, is compatible with your existing protocols, and is recommended for new studies.
+- **Interviewer** — runs in your **web browser**, with nothing to download. Open it at [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com), and optionally install it as a **Progressive Web App (PWA)** on a device you control for quick access and offline use. Built on the same platform as Fresco 4.0, it supports schema 8, is compatible with your existing protocols, and is recommended for new studies.
 - **Interviewer Classic** — the established **desktop and tablet** app. Download and install it from the [download page](https://networkcanvas.com/download). Runs schema 7 protocols and works fully offline.
 
 ## Using Interviewer in the browser

@@ -166,7 +166,7 @@ export function useSetupWizard({
                     <AlertTitle>Good news!</AlertTitle>
                     <AlertDescription>
                       If you set up a PIN, passphrase, or biometric lock next,
-                      your data is encrypted in this browser with a key derived
+                      your data is encrypted on this device with a key derived
                       from it. The key never leaves your device, so your data
                       stays unreadable without it.
                     </AlertDescription>

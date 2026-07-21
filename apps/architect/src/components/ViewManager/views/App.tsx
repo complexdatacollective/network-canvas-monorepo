@@ -64,8 +64,8 @@ const AutosaveFailureReporter = () => {
         intent: 'destructive',
         title: 'Autosave failed',
         description:
-          "Your recent changes could not be saved to this browser's " +
-          'storage, which can happen if it is full or unavailable. To ' +
+          'Your recent changes could not be saved to this device, which ' +
+          'can happen if local storage is full or unavailable. To ' +
           'avoid losing work, download a copy of your protocol.',
         actions: { primary: { label: 'OK', value: true } },
       });
