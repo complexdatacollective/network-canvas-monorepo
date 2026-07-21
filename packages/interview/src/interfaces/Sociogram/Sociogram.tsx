@@ -352,7 +352,18 @@ const Sociogram = (stageProps: SociogramProps) => {
     >
       {measurementContainer}
       <Canvas
-        background={<StageBackground background={stageBackground} />}
+        background={
+          stageBackground.image === undefined ? (
+            <div
+              className="interface h-full"
+              data-testid="sociogram-concentric-background"
+            >
+              <StageBackground background={stageBackground} />
+            </div>
+          ) : (
+            <StageBackground background={stageBackground} />
+          )
+        }
         nodes={canvasNodes}
         edges={edges}
         store={store}

@@ -248,6 +248,18 @@ function buildManualBaseline(): ScenarioDefinition {
       await expect(sociogram).toHaveAttribute('data-layout-mode', 'MANUAL');
       await expect(sociogram).toHaveCSS('padding', '0px');
 
+      const sociogramBox = await sociogram.boundingBox();
+      const canvasBox = await sociogram
+        .locator('[data-zone-id="sociogram-canvas"]')
+        .boundingBox();
+      if (!sociogramBox || !canvasBox) {
+        throw new Error('Could not measure the Sociogram canvas');
+      }
+      expect(canvasBox.x).toBeCloseTo(sociogramBox.x, 0);
+      expect(canvasBox.y).toBeCloseTo(sociogramBox.y, 0);
+      expect(canvasBox.width).toBeCloseTo(sociogramBox.width, 0);
+      expect(canvasBox.height).toBeCloseTo(sociogramBox.height, 0);
+
       await expect(
         sociogram.locator(
           '[data-zone-id="sociogram-canvas"] button[aria-label]',
@@ -276,6 +288,26 @@ function buildManualBaseline(): ScenarioDefinition {
       // bare `svg[aria-hidden] circle` would also count those.
       await expect(sociogram.locator('circle.canvas-radar__range')).toHaveCount(
         4,
+      );
+      const concentricBackground = sociogram.getByTestId(
+        'sociogram-concentric-background',
+      );
+      const backgroundInset = await concentricBackground.evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element).paddingTop),
+      );
+      expect(backgroundInset).toBeGreaterThan(0);
+
+      const backgroundBox = await concentricBackground.boundingBox();
+      const radarBox = await sociogram
+        .locator('svg:has(circle.canvas-radar__range)')
+        .boundingBox();
+      if (!backgroundBox || !radarBox) {
+        throw new Error('Could not measure the concentric-circle background');
+      }
+      expect(radarBox.y - backgroundBox.y).toBeCloseTo(backgroundInset, 0);
+      expect(radarBox.x + radarBox.width / 2).toBeCloseTo(
+        backgroundBox.x + backgroundBox.width / 2,
+        0,
       );
     },
   };
