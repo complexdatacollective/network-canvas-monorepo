@@ -143,7 +143,7 @@ function renderInterface(edges: NcEdge[] = []) {
   const navigate = async (direction: 'forwards' | 'backwards') => {
     let allowed = false;
     await act(async () => {
-      allowed = (await beforeNext?.(direction)) === true;
+      allowed = (await beforeNext?.(direction, 'step')) === true;
     });
     if (allowed) {
       const current = store.getState().session?.promptIndex ?? 0;

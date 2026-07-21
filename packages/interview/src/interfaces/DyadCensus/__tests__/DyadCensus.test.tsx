@@ -132,7 +132,7 @@ function renderInterface(
   const runValidation = async (direction: 'forwards' | 'backwards') => {
     let result: boolean | 'FORCE' | undefined;
     await act(async () => {
-      result = await handlers.get('stageValidation')?.(direction);
+      result = await handlers.get('stageValidation')?.(direction, 'step');
     });
     return result;
   };
@@ -141,7 +141,7 @@ function renderInterface(
     await act(async () => {
       for (const [key, fn] of handlers) {
         if (key === 'stageValidation') continue;
-        await fn(direction);
+        await fn(direction, 'step');
       }
     });
   };

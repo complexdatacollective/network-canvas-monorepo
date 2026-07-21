@@ -150,7 +150,7 @@ function renderInterface(
 
   const advancePastIntro = async () => {
     await act(async () => {
-      await beforeNext?.('forwards');
+      await beforeNext?.('forwards', 'step');
     });
     await waitFor(() =>
       expect(screen.getAllByRole('option').length).toBeGreaterThan(0),
