@@ -344,7 +344,7 @@ const Sociogram = (stageProps: SociogramProps) => {
 
   return (
     <div
-      className="interface h-full overflow-hidden p-0 [--sociogram-drawer-tab-height:3.5rem]"
+      className="interface h-full overflow-hidden p-0 [--sociogram-drawer-tab-height:--spacing(14)]"
       ref={interfaceRef}
       data-testid="sociogram"
       data-layout-mode={layoutMode}
@@ -354,12 +354,11 @@ const Sociogram = (stageProps: SociogramProps) => {
       <Canvas
         background={
           stageBackground.image === undefined ? (
-            <div
-              className="flex size-full items-center justify-center p-[calc(var(--sociogram-drawer-tab-height)*1.25)]"
+            <StageBackground
+              background={stageBackground}
+              className="interface h-full"
               data-testid="sociogram-concentric-background"
-            >
-              <StageBackground background={stageBackground} />
-            </div>
+            />
           ) : (
             <StageBackground background={stageBackground} />
           )
