@@ -95,16 +95,16 @@ const EgoFormInner = (props: EgoFormProps) => {
     ) as Record<string, FieldValue>,
   });
 
-  const beforeNext: BeforeNextFunction = async (direction) => {
+  const beforeNext: BeforeNextFunction = async (direction, intent) => {
     // If direction is backwards, and the form is invalid, check if the user
     // wants to proceed anyway (causing the form to be reset)
-    if (direction === 'backwards') {
+    if (direction === 'backwards' || intent === 'jump') {
       if (isFormDirty && !isFormValid) {
         const result = await openDialog({
           type: 'choice',
           title: 'Discard changes?',
           description:
-            'This form contains invalid data, so it cannot be saved. If you continue it will be reset and your changes will be lost. Do you want to discard your changes?',
+            'This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?',
           intent: 'destructive',
           actions: {
             primary: { label: 'Discard changes', value: true },

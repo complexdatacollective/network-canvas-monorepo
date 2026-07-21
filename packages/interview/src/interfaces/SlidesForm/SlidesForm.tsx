@@ -106,6 +106,15 @@ const slideTransition = {
   damping: 15,
 };
 
+const discardChangesDialog = {
+  title: 'Discard changes?',
+  description:
+    'This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?',
+  confirmLabel: 'Discard changes',
+  cancelLabel: 'Keep changes',
+  intent: 'destructive' as const,
+};
+
 type SlideHandle = {
   validate: () => Promise<boolean>;
   submit: () => Promise<void>;
@@ -331,9 +340,31 @@ export default function SlidesForm({
 
     setPendingDirection(direction);
 
+    if (intent === 'jump') {
+      const formIsValid = await slideRef.current?.validate();
+
+      if (formIsValid) {
+        await slideRef.current?.submit();
+        return true;
+      }
+
+      if (!slideRef.current?.isDirty()) {
+        return true;
+      }
+
+      const discarded = await confirm({
+        ...discardChangesDialog,
+        onConfirm: () => {
+          track('form_dismissed_without_save', { form_kind });
+        },
+      });
+
+      return discarded === true;
+    }
+
     if (direction === 'backwards') {
       if (activeIndex === 0) {
-        if (onNavigateBack && intent === 'step') {
+        if (onNavigateBack) {
           onNavigateBack();
           return false;
         }
@@ -343,29 +374,18 @@ export default function SlidesForm({
       const formIsValid = await slideRef.current?.validate();
 
       if (!formIsValid && slideRef.current?.isDirty()) {
-        const discarded = await confirm({
-          title: 'Discard changes?',
-          description:
-            'This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?',
-          confirmLabel: 'Discard changes',
-          cancelLabel: 'Cancel',
-          intent: 'destructive',
+        await confirm({
+          ...discardChangesDialog,
           onConfirm: () => {
             track('form_dismissed_without_save', { form_kind });
-            if (intent === 'step') {
-              setActiveIndex((prev) => prev - 1);
-            }
+            setActiveIndex((prev) => prev - 1);
           },
         });
-        return intent === 'jump' && discarded === true;
+        return false;
       }
 
       if (formIsValid) {
         await slideRef.current?.submit();
-      }
-
-      if (intent === 'jump') {
-        return true;
       }
 
       setActiveIndex((prev) => prev - 1);
@@ -384,7 +404,7 @@ export default function SlidesForm({
 
     await slideRef.current?.submit();
 
-    if (intent === 'jump' || activeIndex >= items.length - 1) {
+    if (activeIndex >= items.length - 1) {
       return true;
     }
 
