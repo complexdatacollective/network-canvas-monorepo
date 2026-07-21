@@ -13,6 +13,7 @@ import type { GenerationContext, NetworkDraft, StageOfType } from './context';
 import { createEdgesForPairs } from './edges';
 import { getStageFilteredEdges, getStageFilteredNodes } from './filtering';
 import { createNodesForStage, type RosterDraw } from './nodes';
+import { getSubjectType } from './subject';
 
 export function handleNameGenerators(
   ctx: GenerationContext,
@@ -27,7 +28,9 @@ export function handleNameGenerators(
     allowFabrication: stage.type !== 'NameGeneratorRoster',
   };
   const form = 'form' in stage ? stage.form : undefined;
-  const nodeTypeDef = ctx.codebook.node?.[stage.subject.type];
+  const subjectType = getSubjectType(stage.subject, 'node');
+  const nodeTypeDef =
+    subjectType !== undefined ? ctx.codebook.node?.[subjectType] : undefined;
 
   let stageNodeCount = 0;
   for (const prompt of stage.prompts) {
@@ -69,12 +72,10 @@ export function handleSociogram(
   draft: NetworkDraft,
   stage: StageOfType<'Sociogram'>,
 ): void {
-  const subjectNodes = getStageFilteredNodes(
-    ctx,
-    draft,
-    stage,
-    stage.subject.type,
-  );
+  const subjectType = getSubjectType(stage.subject, 'node');
+  if (subjectType === undefined) return;
+
+  const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
 
   for (const prompt of stage.prompts) {
     const createEdge = prompt.edges?.create;
@@ -116,12 +117,10 @@ export function handleDyadCensus(
   stage: StageOfType<'DyadCensus' | 'OneToManyDyadCensus'>,
   stageIndex: number,
 ): void {
-  const subjectNodes = getStageFilteredNodes(
-    ctx,
-    draft,
-    stage,
-    stage.subject.type,
-  );
+  const subjectType = getSubjectType(stage.subject, 'node');
+  if (subjectType === undefined) return;
+
+  const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
 
   const negativeResponses: DyadCensusMetadataItem[] = [];
   for (let promptIndex = 0; promptIndex < stage.prompts.length; promptIndex++) {
@@ -162,12 +161,10 @@ export function handleTieStrengthCensus(
   stage: StageOfType<'TieStrengthCensus'>,
   stageIndex: number,
 ): void {
-  const subjectNodes = getStageFilteredNodes(
-    ctx,
-    draft,
-    stage,
-    stage.subject.type,
-  );
+  const subjectType = getSubjectType(stage.subject, 'node');
+  if (subjectType === undefined) return;
+
+  const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
 
   const negativeResponses: DyadCensusMetadataItem[] = [];
   for (let promptIndex = 0; promptIndex < stage.prompts.length; promptIndex++) {
@@ -222,13 +219,11 @@ export function handleOrdinalBin(
   draft: NetworkDraft,
   stage: StageOfType<'OrdinalBin'>,
 ): void {
-  const subjectNodes = getStageFilteredNodes(
-    ctx,
-    draft,
-    stage,
-    stage.subject.type,
-  );
-  const nodeTypeDef = ctx.codebook.node?.[stage.subject.type];
+  const subjectType = getSubjectType(stage.subject, 'node');
+  if (subjectType === undefined) return;
+
+  const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
+  const nodeTypeDef = ctx.codebook.node?.[subjectType];
 
   for (const prompt of stage.prompts) {
     const varDef = nodeTypeDef?.variables?.[prompt.variable];
@@ -250,13 +245,11 @@ export function handleCategoricalBin(
   draft: NetworkDraft,
   stage: StageOfType<'CategoricalBin'>,
 ): void {
-  const subjectNodes = getStageFilteredNodes(
-    ctx,
-    draft,
-    stage,
-    stage.subject.type,
-  );
-  const nodeTypeDef = ctx.codebook.node?.[stage.subject.type];
+  const subjectType = getSubjectType(stage.subject, 'node');
+  if (subjectType === undefined) return;
+
+  const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
+  const nodeTypeDef = ctx.codebook.node?.[subjectType];
 
   for (const prompt of stage.prompts) {
     const varDef = nodeTypeDef?.variables?.[prompt.variable];
@@ -306,13 +299,11 @@ export function handleAlterForm(
   const form = stage.form;
   if (!form) return;
 
-  const subjectNodes = getStageFilteredNodes(
-    ctx,
-    draft,
-    stage,
-    stage.subject.type,
-  );
-  const nodeTypeDef = ctx.codebook.node?.[stage.subject.type];
+  const subjectType = getSubjectType(stage.subject, 'node');
+  if (subjectType === undefined) return;
+
+  const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
+  const nodeTypeDef = ctx.codebook.node?.[subjectType];
   if (!nodeTypeDef?.variables) return;
 
   const formVarIds = form.fields.map((f) => f.variable);
@@ -338,13 +329,11 @@ export function handleAlterEdgeForm(
   const form = stage.form;
   if (!form) return;
 
-  const subjectEdges = getStageFilteredEdges(
-    ctx,
-    draft,
-    stage,
-    stage.subject.type,
-  );
-  const edgeTypeDef = ctx.codebook.edge?.[stage.subject.type];
+  const subjectType = getSubjectType(stage.subject, 'edge');
+  if (subjectType === undefined) return;
+
+  const subjectEdges = getStageFilteredEdges(ctx, draft, stage, subjectType);
+  const edgeTypeDef = ctx.codebook.edge?.[subjectType];
   if (!edgeTypeDef?.variables) return;
 
   const formVarIds = form.fields.map((f) => f.variable);
@@ -422,12 +411,10 @@ export function handleGeospatial(
   draft: NetworkDraft,
   stage: StageOfType<'Geospatial'>,
 ): void {
-  const subjectNodes = getStageFilteredNodes(
-    ctx,
-    draft,
-    stage,
-    stage.subject.type,
-  );
+  const subjectType = getSubjectType(stage.subject, 'node');
+  if (subjectType === undefined) return;
+
+  const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
 
   for (const prompt of stage.prompts) {
     const varId = prompt.variable;
@@ -449,6 +436,9 @@ export function handleNetworkComposer(
   draft: NetworkDraft,
   stage: StageOfType<'NetworkComposer'>,
 ): void {
+  const subjectType = getSubjectType(stage.subject, 'node');
+  if (subjectType === undefined) return;
+
   // Network Composer builds the network from scratch: create nodes of the
   // subject type (populating their codebook attributes) and draw edges of each
   // configured edge type among them. It is promptless, so a synthetic prompt id

@@ -1087,6 +1087,115 @@ describe('generateNetwork', () => {
     });
   });
 
+  describe('draft protocol input (missing subject)', () => {
+    // generateNetwork also runs on unvalidated draft state (e.g. Architect's
+    // live preview of a protocol still being edited), where a subject-bearing
+    // stage can be missing `subject` entirely even though the schema types mark
+    // it required. Every handler must skip such a stage rather than throw.
+    it('skips a node-subject handler (Sociogram) without throwing when subject is missing', () => {
+      const codebook = makeCodebook();
+      const stages = [
+        makeNameGeneratorStage({ behaviours: { minNodes: 4, maxNodes: 4 } }),
+        {
+          id: 'stage-soc-draft',
+          label: 'Sociogram',
+          type: 'Sociogram',
+          prompts: [
+            {
+              id: 'prompt-soc',
+              text: 'Connect people',
+              edges: { create: 'edge-type-1' },
+            },
+          ],
+        } as unknown as Stage,
+      ];
+
+      expect(() =>
+        generateNetwork({ codebook, stages, seed: 42 }),
+      ).not.toThrow();
+
+      const { network } = generateNetwork({ codebook, stages, seed: 42 });
+      expect(network.nodes).toHaveLength(4);
+      expect(network.edges).toHaveLength(0);
+    });
+
+    it('skips AlterEdgeForm without throwing when subject is missing, leaving edge attributes exactly as created', () => {
+      // Edge creation (DyadCensus) already populates every codebook variable
+      // for the edge type, so a working guard must leave those values
+      // untouched rather than merely "absent" — compare against the same
+      // protocol with the malformed stage omitted entirely.
+      const codebook = makeCodebook({
+        edge: {
+          'edge-type-1': {
+            color: 'edge-color-seq-1',
+            variables: {
+              'var-strength': { name: 'Strength', type: 'text' },
+            },
+          },
+        },
+      });
+      const baseStages = [
+        makeNameGeneratorStage({ behaviours: { minNodes: 4, maxNodes: 4 } }),
+        makeDyadCensusStage(),
+      ];
+      const draftStage = {
+        id: 'stage-aef-draft',
+        label: 'Alter Edge Form',
+        type: 'AlterEdgeForm',
+        form: { fields: [{ variable: 'var-strength', prompt: 'Strength' }] },
+      } as unknown as Stage;
+
+      const withoutDraft = generateNetwork({
+        codebook,
+        stages: baseStages,
+        seed: 42,
+      });
+
+      const runWithDraft = () =>
+        generateNetwork({
+          codebook,
+          stages: [...baseStages, draftStage],
+          seed: 42,
+        });
+
+      expect(runWithDraft).not.toThrow();
+      const withDraft = runWithDraft();
+
+      expect(withDraft.network.edges.length).toBe(
+        withoutDraft.network.edges.length,
+      );
+      expect(withDraft.network.edges.length).toBeGreaterThan(0);
+      expect(
+        withDraft.network.edges.map((e) => e[entityAttributesProperty]),
+      ).toEqual(
+        withoutDraft.network.edges.map((e) => e[entityAttributesProperty]),
+      );
+    });
+
+    it('contributes no nodes when a NameGenerator-family stage is missing subject', () => {
+      const codebook = makeCodebook();
+      const stage = {
+        id: 'stage-ng-draft',
+        label: 'Name Generator',
+        type: 'NameGenerator',
+        prompts: [{ id: 'prompt-ng', text: 'Add people' }],
+        behaviours: { minNodes: 5, maxNodes: 8 },
+      } as unknown as Stage;
+
+      expect(() =>
+        generateNetwork({ codebook, stages: [stage], seed: 42 }),
+      ).not.toThrow();
+
+      const { network } = generateNetwork({
+        codebook,
+        stages: [stage],
+        seed: 42,
+      });
+      expect(network.nodes).toHaveLength(0);
+      expect(network.edges).toHaveLength(0);
+    });
+  });
+
   describe('generation config overrides', () => {
     it('rosterDrawRatio: 1 draws every node on a mixed stage from the roster while it lasts', () => {
       const stage = makeNameGeneratorStage({

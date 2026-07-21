@@ -10,6 +10,7 @@ import {
 import { generateAttributes } from './attributes';
 import type { GenerationConfig } from './config';
 import type { GenerationContext, StageOfType } from './context';
+import { getSubjectType } from './subject';
 
 /**
  * Node-subject stages that fabricate nodes: the three name-generator variants
@@ -86,7 +87,9 @@ export function createNodesForStage(
   stageNodeCount: number,
   roster: RosterDraw,
 ): NcNode[] {
-  const nodeType = stage.subject.type;
+  const nodeType = getSubjectType(stage.subject, 'node');
+  if (nodeType === undefined) return [];
+
   const nodeTypeDef = ctx.codebook.node?.[nodeType];
   if (!nodeTypeDef) return [];
 
