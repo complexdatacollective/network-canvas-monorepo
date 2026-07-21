@@ -51,6 +51,7 @@ function reset(doc: BackgroundDocument = blankDoc()): void {
     draft: null,
     zonesVisible: true,
     previewAspect: 'fill',
+    isEditingText: false,
     past: [],
     future: [],
     lastCoalesceKey: null,
@@ -676,6 +677,16 @@ describe('discardNewText', () => {
     expect(state().doc.elements).toHaveLength(0);
     expect(state().past).toHaveLength(0);
     expect(state().selection).toBeNull();
+  });
+});
+
+describe('text-editing flag', () => {
+  it('tracks whether an inline text edit is open', () => {
+    expect(state().isEditingText).toBe(false);
+    state().setTextEditing(true);
+    expect(state().isEditingText).toBe(true);
+    state().setTextEditing(false);
+    expect(state().isEditingText).toBe(false);
   });
 });
 

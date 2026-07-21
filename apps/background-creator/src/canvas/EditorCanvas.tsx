@@ -237,11 +237,13 @@ export function EditorCanvas(): ReactElement {
 
   const beginTextEdit = useCallback((id: string, isNew: boolean) => {
     setEditing({ id, isNew });
+    useEditorStore.getState().setTextEditing(true);
   }, []);
 
   const commitTextEdit = useCallback((value: string, restoreFocus: boolean) => {
     const current = editingRef.current;
     setEditing(null);
+    useEditorStore.getState().setTextEditing(false);
     // The editor requests focus restoration only when focus is not moving to
     // another control (Escape, or a blur into nothing); yanking it back from a
     // toolbar or panel destination would trap keyboard users in the canvas.

@@ -73,6 +73,11 @@ export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
   const redo = useEditorStore((s) => s.redo);
   const canUndo = useEditorStore((s) => s.canUndo());
   const canRedo = useEditorStore((s) => s.canRedo());
+  // While an inline text edit is open, clicking a history button would first
+  // blur the editor (committing or discarding the text) and then run undo/redo
+  // against the remaining history — two reverts from one click. Disable them for
+  // that window, matching the keyboard, where the textarea captures Ctrl/Cmd+Z.
+  const isEditingText = useEditorStore((s) => s.isEditingText);
 
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -159,7 +164,7 @@ export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
       id: 'undo',
       label: 'Undo',
       icon: <Undo2 />,
-      disabled: !canUndo,
+      disabled: !canUndo || isEditingText,
       onClick: () => undo(),
     },
     {
@@ -167,7 +172,7 @@ export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
       id: 'redo',
       label: 'Redo',
       icon: <Redo2 />,
-      disabled: !canRedo,
+      disabled: !canRedo || isEditingText,
       onClick: () => redo(),
     },
     { type: 'separator', id: 'sep-document' },

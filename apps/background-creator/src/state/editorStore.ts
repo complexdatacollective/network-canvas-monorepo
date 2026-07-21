@@ -117,6 +117,11 @@ type EditorState = {
   draft: Draft | null;
   zonesVisible: boolean;
   previewAspect: PreviewAspect;
+  // True while an inline text element is being edited. The toolbar disables its
+  // Undo/Redo buttons in this window so a click — which blurs the editor first,
+  // committing or discarding the text — cannot also pop an unrelated history
+  // step. Mirrors the keyboard, where Ctrl/Cmd+Z is captured by the textarea.
+  isEditingText: boolean;
   past: BackgroundDocument[];
   future: BackgroundDocument[];
   // Bookkeeping (not part of the acted-on surface).
@@ -164,6 +169,7 @@ type EditorState = {
 
   setPreviewAspect: (aspect: PreviewAspect) => void;
   toggleZonesVisible: () => void;
+  setTextEditing: (active: boolean) => void;
 };
 
 function findElement(
@@ -463,6 +469,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   draft: null,
   zonesVisible: true,
   previewAspect: 'fill',
+  isEditingText: false,
   past: [],
   future: [],
   lastCoalesceKey: null,
@@ -811,4 +818,5 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setPreviewAspect: (previewAspect) => set({ previewAspect }),
   toggleZonesVisible: () =>
     set((state) => ({ zonesVisible: !state.zonesVisible })),
+  setTextEditing: (active) => set({ isEditingText: active }),
 }));
