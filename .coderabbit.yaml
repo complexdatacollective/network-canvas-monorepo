@@ -8,6 +8,10 @@
 # can touch hundreds of them, which pushes PRs past CodeRabbit's 150-file review
 # limit and drowns out the reviewable harness/source changes.
 reviews:
+  # Reviews are opt-in. Request an incremental review with
+  # `@coderabbitai review`, or a complete review with `@coderabbitai full review`.
+  auto_review:
+    enabled: false
   path_filters:
     - '!packages/interview/e2e/aria-snapshots/**'
     - '!packages/interview/e2e/visual-snapshots/**'
