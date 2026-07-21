@@ -344,7 +344,7 @@ const Sociogram = (stageProps: SociogramProps) => {
 
   return (
     <div
-      className="interface h-full overflow-hidden p-0"
+      className="interface h-full overflow-hidden p-0 [--sociogram-drawer-tab-height:3.5rem]"
       ref={interfaceRef}
       data-testid="sociogram"
       data-layout-mode={layoutMode}
@@ -355,7 +355,7 @@ const Sociogram = (stageProps: SociogramProps) => {
         background={
           stageBackground.image === undefined ? (
             <div
-              className="interface h-full"
+              className="flex size-full items-center justify-center p-[calc(var(--sociogram-drawer-tab-height)*2)]"
               data-testid="sociogram-concentric-background"
             >
               <StageBackground background={stageBackground} />
@@ -383,6 +383,7 @@ const Sociogram = (stageProps: SociogramProps) => {
           nodes={sortedUnplacedNodes}
           floating
           dropTarget={drawerDropTarget}
+          tabClassName="h-[var(--sociogram-drawer-tab-height)]"
         />
       )}
       <CollapsablePrompts dragConstraints={interfaceRef}>

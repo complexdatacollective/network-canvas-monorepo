@@ -19,6 +19,7 @@ type NodeDrawerProps = {
   onExpandedChange?: (expanded: boolean) => void;
   /** When true, drawer is absolutely positioned (for Sociogram canvas overlay). Defaults to false (inline flex). */
   floating?: boolean;
+  tabClassName?: string;
   /**
    * When provided, the drawer registers as a DnD drop target so dragged nodes
    * can be returned to it (e.g. unplacing a placed sociogram node). Also makes
@@ -40,6 +41,7 @@ export default function NodeDrawer({
   expanded,
   onExpandedChange,
   floating = false,
+  tabClassName,
   dropTarget,
 }: NodeDrawerProps) {
   const [internalExpanded, setInternalExpanded] = useState(nodes.length > 0);
@@ -130,6 +132,7 @@ export default function NodeDrawer({
               'data-[drop-target-over=true]:data-[drop-target-valid=true]:bg-drag-over',
               headingVariants({ level: 'label' }),
               isToggleDisabled && 'cursor-not-allowed opacity-50',
+              tabClassName,
             )}
             data-zone-id={!isExpandedEffective ? dropZoneId : undefined}
             data-drop-target-valid={willAccept || undefined}
