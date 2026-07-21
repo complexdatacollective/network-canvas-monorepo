@@ -41,8 +41,15 @@ export function launchPreview({
 
   // Trailing slash is required: a bare '/preview' hits Vite's SPA html fallback
   // (and equivalent static-host fallbacks) and serves the main app's index.html
-  // instead of the preview entry, leaving a blank tab.
-  const popup = window.open('/preview/', '_blank');
+  // instead of the preview entry, leaving a blank window.
+  // The features string makes browsers open a separate popup window rather than
+  // a tab (and an app window when Architect runs as an installed PWA); the
+  // handshake below needs window.opener, so 'noopener' must never be added.
+  const popup = window.open(
+    '/preview/',
+    '_blank',
+    'popup,width=1280,height=800',
+  );
   if (!popup) {
     return Promise.resolve({ kind: 'popup-blocked' });
   }
@@ -55,7 +62,7 @@ export function launchPreview({
   });
 
   const expectedOrigin = window.location.origin;
-  // Ferry any Safari-private in-memory fallback assets to the preview tab: the
+  // Ferry any Safari-private in-memory fallback assets to the preview window: the
   // durable IndexedDB store is shared across tabs, but the in-memory map is
   // per-realm, so the preview context would otherwise resolve nothing. Blobs
   // survive structured clone over postMessage.
@@ -76,7 +83,7 @@ export function launchPreview({
 
   return new Promise<LaunchPreviewResult>((resolve, reject) => {
     // The listener stays registered for the popup's lifetime so a reloaded
-    // preview tab can re-request the payload. Cleanup happens when the popup
+    // preview window can re-request the payload. Cleanup happens when the popup
     // closes or when the initial handshake times out.
     let initialDelivered = false;
 
@@ -104,14 +111,16 @@ export function launchPreview({
       if (initialDelivered) return;
       cleanup();
       reject(
-        new Error("Preview tab didn't load in time. Close it and try again."),
+        new Error(
+          "Preview window didn't load in time. Close it and try again.",
+        ),
       );
     }, HANDSHAKE_TIMEOUT_MS);
 
     const closedPollId = setInterval(() => {
       if (!popup.closed) return;
       cleanup();
-      // Closing the tab before the handshake would otherwise leave the promise
+      // Closing the window before the handshake would otherwise leave the promise
       // pending forever, stranding the Preview button in its disabled state.
       if (!initialDelivered) {
         resolve({ kind: 'popup-closed' });
