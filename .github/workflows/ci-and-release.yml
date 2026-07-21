@@ -413,8 +413,14 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
-      - name: Build shared packages (apps build in their own deploy/release jobs)
-        run: pnpm exec turbo run build --filter='./packages/*'
+      - name: Build shared packages and Background Creator
+        # Apps normally build only in their deploy/release jobs, exercised
+        # pre-merge by their E2E suites. Background Creator ships without E2E, so
+        # its Vite build would otherwise first run at the post-merge production
+        # deploy — a Vite-only break (index.html, public/, build config) would
+        # pass every required check and fail only after merge. Build it here too
+        # so such a break fails this job and, through it, the quality gate.
+        run: pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
 
   typecheck:
     if: github.event_name != 'push'

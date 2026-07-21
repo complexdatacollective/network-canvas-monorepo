@@ -6,14 +6,28 @@ import { test } from 'node:test';
 
 import {
   classifyChangeset,
+  foreignIgnoredReleases,
   isMixedChangeset,
   isMultiProductChangeset,
+  isProductWithForeignIgnoredAppChangeset,
   nextBetaVersion,
   nextStableVersion,
   parseChangeset,
   readChangesets,
   renderChangelogSection,
 } from './changeset-app-utils.mjs';
+
+// Mirrors the Changesets `ignore` list: every gated product plus the
+// maintenance-mode classic apps, which have no release lane of their own.
+const IGNORE = [
+  '@codaco/architect',
+  '@codaco/background-creator',
+  '@codaco/documentation',
+  '@codaco/interviewer',
+  'networkcanvas.com',
+  '@codaco/architect-classic',
+  '@codaco/interviewer-classic',
+];
 
 test('parseChangeset extracts releases and summary', () => {
   const md = `---\n"@codaco/architect": minor\n'@codaco/interviewer': patch\n---\n\nDid a thing`;
@@ -91,6 +105,60 @@ test('isMultiProductChangeset: true only when gated products share one changeset
   assert.equal(isMultiProductChangeset(app), false);
   assert.equal(isMultiProductChangeset(lib), false);
   assert.equal(isMultiProductChangeset(twoApps), true);
+});
+
+test('foreignIgnoredReleases lists ignored apps that are not gated products', () => {
+  const cs = {
+    releases: [
+      { name: '@codaco/background-creator', type: 'patch' },
+      { name: '@codaco/architect-classic', type: 'patch' },
+      { name: '@codaco/interview', type: 'patch' },
+    ],
+  };
+  // The gated product and the library are excluded; only the classic remains.
+  assert.deepEqual(foreignIgnoredReleases(cs, IGNORE), [
+    { name: '@codaco/architect-classic', type: 'patch' },
+  ]);
+});
+
+test('isProductWithForeignIgnoredAppChangeset: catches a gated product paired with a classic app', () => {
+  // The gap the other two guards miss: both entries sit in `ignore`, so it is
+  // not "mixed" (no library) and not "multi-product" (one gated product), yet
+  // the product release would delete the file and drop the classic entry.
+  const productPlusClassic = {
+    releases: [
+      { name: '@codaco/background-creator', type: 'patch' },
+      { name: '@codaco/architect-classic', type: 'patch' },
+    ],
+  };
+  const productAlone = {
+    releases: [{ name: '@codaco/background-creator', type: 'patch' }],
+  };
+  const classicAlone = {
+    releases: [{ name: '@codaco/architect-classic', type: 'patch' }],
+  };
+  const libraryOnly = {
+    releases: [{ name: '@codaco/interview', type: 'patch' }],
+  };
+
+  assert.equal(
+    isProductWithForeignIgnoredAppChangeset(productPlusClassic, IGNORE),
+    true,
+  );
+  // A gated product alone, a classic alone, and a library-only changeset are
+  // all still valid — this guard must not flag them.
+  assert.equal(
+    isProductWithForeignIgnoredAppChangeset(productAlone, IGNORE),
+    false,
+  );
+  assert.equal(
+    isProductWithForeignIgnoredAppChangeset(classicAlone, IGNORE),
+    false,
+  );
+  assert.equal(
+    isProductWithForeignIgnoredAppChangeset(libraryOnly, IGNORE),
+    false,
+  );
 });
 
 test('nextBetaVersion increments only the beta counter', () => {

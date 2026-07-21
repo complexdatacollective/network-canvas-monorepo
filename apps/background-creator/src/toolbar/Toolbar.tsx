@@ -20,7 +20,7 @@ import {
   Type,
   Undo2,
 } from 'lucide-react';
-import { type ReactElement, useState } from 'react';
+import { type ReactElement, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
@@ -59,6 +59,8 @@ function selectedFor(active: EditorTool): string[] {
 
 export function Toolbar(): ReactElement {
   const dialogs = useDialog();
+  // Bounds the draggable toolbar to the viewport so it stays reachable.
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   const activeTool = useEditorStore((s) => s.activeTool);
   const zonesVisible = useEditorStore((s) => s.zonesVisible);
@@ -216,13 +218,19 @@ export function Toolbar(): ReactElement {
   return (
     // Full-window overlay that centres the toolbar along the bottom while letting
     // pointer events fall through to the canvas everywhere except the toolbar.
-    <div className="pointer-events-none absolute inset-0 z-20 flex items-end justify-center pb-6">
+    // The overlay is also the drag boundary: without it the toolbar could be
+    // dragged fully off-screen with no way back short of a reload (losing edits).
+    <div
+      ref={overlayRef}
+      className="pointer-events-none absolute inset-0 z-20 flex items-end justify-center pb-6"
+    >
       <SegmentedToolbar
         label="Editor toolbar"
         items={items}
         orientation="horizontal"
         size="md"
         draggable
+        dragConstraints={overlayRef}
         className="pointer-events-auto"
       />
     </div>

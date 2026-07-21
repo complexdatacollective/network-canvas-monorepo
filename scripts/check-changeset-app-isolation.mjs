@@ -14,8 +14,10 @@ import { join } from 'node:path';
 
 import {
   classifyChangeset,
+  foreignIgnoredReleases,
   isMixedChangeset,
   isMultiProductChangeset,
+  isProductWithForeignIgnoredAppChangeset,
   readChangesets,
 } from './changeset-app-utils.mjs';
 
@@ -28,8 +30,15 @@ const mixedOffenders = changesets.filter((cs) => isMixedChangeset(cs, ignore));
 const multiProductOffenders = changesets.filter((cs) =>
   isMultiProductChangeset(cs),
 );
+const productWithForeignOffenders = changesets.filter((cs) =>
+  isProductWithForeignIgnoredAppChangeset(cs, ignore),
+);
 
-if (mixedOffenders.length === 0 && multiProductOffenders.length === 0) {
+if (
+  mixedOffenders.length === 0 &&
+  multiProductOffenders.length === 0 &&
+  productWithForeignOffenders.length === 0
+) {
   process.exit(0);
 }
 
@@ -61,6 +70,27 @@ if (multiProductOffenders.length > 0) {
     console.error(`  .changeset/${cs.id}.md`);
     console.error(
       `    products: ${productReleases.map((r) => r.name).join(', ')}`,
+    );
+  }
+  console.error('');
+}
+
+if (productWithForeignOffenders.length > 0) {
+  console.error(
+    'Product + non-gated-app changesets found — these pair a gated product with a\n' +
+      'maintenance-mode app that has no release lane. The product release would consume\n' +
+      'and delete the file, silently dropping the other entry:\n',
+  );
+  for (const cs of productWithForeignOffenders) {
+    const { productReleases } = classifyChangeset(cs);
+    console.error(`  .changeset/${cs.id}.md`);
+    console.error(
+      `    products:   ${productReleases.map((r) => r.name).join(', ')}`,
+    );
+    console.error(
+      `    other apps: ${foreignIgnoredReleases(cs, ignore)
+        .map((r) => r.name)
+        .join(', ')}`,
     );
   }
   console.error('');

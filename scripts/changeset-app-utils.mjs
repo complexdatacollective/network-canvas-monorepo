@@ -75,6 +75,39 @@ export function isMultiProductChangeset(
   return new Set(productReleases.map((release) => release.name)).size > 1;
 }
 
+// Releases that are in the Changesets `ignore` list but are NOT gated products —
+// i.e. the maintenance-mode "classic" apps. They have no release lane of their
+// own (`changeset version` ignores them and no product release PR consumes
+// them), so an entry for one is only valid when it stands alone.
+export function foreignIgnoredReleases(
+  cs,
+  ignore,
+  productPackages = GATED_PRODUCT_PACKAGES,
+) {
+  const products = new Set(productPackages);
+  return cs.releases.filter(
+    (r) => ignore.includes(r.name) && !products.has(r.name),
+  );
+}
+
+// A gated product must ship alone. `isMixedChangeset` catches product+library
+// and `isMultiProductChangeset` catches product+product, but both miss a gated
+// product paired with a foreign ignored app (a classic): the pair has no
+// library (so it is not "mixed") and only one gated product (so it is not
+// "multi-product"), yet version-beta-apps.mjs would consume the whole file for
+// the product and silently drop the classic entry. This closes that gap.
+export function isProductWithForeignIgnoredAppChangeset(
+  cs,
+  ignore,
+  productPackages = GATED_PRODUCT_PACKAGES,
+) {
+  const products = new Set(productPackages);
+  const hasProduct = cs.releases.some((r) => products.has(r.name));
+  return (
+    hasProduct && foreignIgnoredReleases(cs, ignore, productPackages).length > 0
+  );
+}
+
 const BETA_RE = /^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/;
 
 export function nextBetaVersion(current) {
