@@ -355,7 +355,7 @@ const Sociogram = (stageProps: SociogramProps) => {
         background={
           stageBackground.image === undefined ? (
             <div
-              className="flex size-full items-center justify-center p-[calc(var(--sociogram-drawer-tab-height)*2)]"
+              className="flex size-full items-center justify-center p-[calc(var(--sociogram-drawer-tab-height)*1.25)]"
               data-testid="sociogram-concentric-background"
             >
               <StageBackground background={stageBackground} />
