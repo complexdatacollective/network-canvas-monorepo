@@ -99,21 +99,27 @@ function ZoneMarkControls({
         }
       />
       {marked && (
-        <UnconnectedField
-          label="Zone label"
-          name="zone-label"
-          component={InputField}
-          value={element.zoneLabel ?? ''}
-          errors={issue ? [issue] : undefined}
-          showErrors={Boolean(issue)}
-          onChange={(value) =>
-            updateElement(
-              id,
-              { zoneLabel: value ?? '' },
-              { coalesceKey: `zone-label:${id}` },
-            )
-          }
-        />
+        // Every keystroke coalesces under one `zone-label:${id}` key so a burst
+        // of typing is a single undo step; blur (focusout bubbles to onBlur)
+        // ends that run, so re-focusing the same field is its own undo step
+        // rather than merging with the previous edit.
+        <div onBlur={() => useEditorStore.getState().resetCoalescing()}>
+          <UnconnectedField
+            label="Zone label"
+            name="zone-label"
+            component={InputField}
+            value={element.zoneLabel ?? ''}
+            errors={issue ? [issue] : undefined}
+            showErrors={Boolean(issue)}
+            onChange={(value) =>
+              updateElement(
+                id,
+                { zoneLabel: value ?? '' },
+                { coalesceKey: `zone-label:${id}` },
+              )
+            }
+          />
+        </div>
       )}
     </>
   );

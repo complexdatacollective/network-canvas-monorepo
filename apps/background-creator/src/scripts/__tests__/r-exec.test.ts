@@ -207,6 +207,29 @@ describe.skipIf(rscriptMissing)('generated R script executes', () => {
     expect(readFileSync(outputPath, 'utf-8')).toBe(sentinel);
   });
 
+  it('fails loudly, preserving output, when a row has fewer cells than the header', () => {
+    const scriptPath = join(dir, 'short.R');
+    const inputPath = join(dir, 'short-in.csv');
+    const outputPath = join(dir, 'short-out.csv');
+    writeFileSync(scriptPath, script);
+    // Row n1 is missing its location_y cell. With read.csv's default fill=TRUE
+    // R would NA-pad it and write a blank coordinate/zone; fill=FALSE makes it a
+    // hard error so a truncated export is never silently written back.
+    writeFileSync(
+      inputPath,
+      'id,name,location_x,location_y\nn0,Node 0,0.5,0.5\nn1,Node 1,0.1\n',
+    );
+    const sentinel = 'sentinel: must survive\n';
+    writeFileSync(outputPath, sentinel);
+
+    const result = spawnSync('Rscript', [scriptPath, inputPath, outputPath], {
+      encoding: 'utf-8',
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).not.toBe('');
+    expect(readFileSync(outputPath, 'utf-8')).toBe(sentinel);
+  });
+
   it('rejects a space-separated flag with a non-zero exit and helpful message', () => {
     const scriptPath = join(dir, 'space-flag.R');
     const inputPath = join(dir, 'space-flag-in.csv');

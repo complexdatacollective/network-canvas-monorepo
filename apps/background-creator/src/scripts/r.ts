@@ -258,12 +258,17 @@ y_column <- paste0(layout_variable, "_y")
 # utf-8-sig does): a Network Canvas export re-saved by Excel can carry one, and
 # R otherwise keeps it on names(data)[1], so the first coordinate column reads
 # as missing.
+# fill = FALSE (read.csv defaults it TRUE) makes a row with fewer fields than
+# the header a hard error rather than NA-padding the missing cells: a truncated
+# export would otherwise be written back with a blank coordinate/zone, silently
+# corrupting the data.
 data <- read.csv(
   input_path,
   colClasses = "character",
   na.strings = character(0),
   check.names = FALSE,
-  fileEncoding = "UTF-8-BOM"
+  fileEncoding = "UTF-8-BOM",
+  fill = FALSE
 )
 # read.csv raises an error for most ragged files, but when every data row has
 # EXACTLY one extra field it silently takes the first column as row names

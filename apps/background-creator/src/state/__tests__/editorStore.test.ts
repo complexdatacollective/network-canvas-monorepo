@@ -375,6 +375,20 @@ describe('polygon draft', () => {
     expect(state().activeTool).toBe('polygon');
   });
 
+  it('refuses to close three distinct but collinear points', () => {
+    state().setTool('polygon');
+    state().beginDraft('polygon', { x: 0.2, y: 0.5 });
+    state().addDraftPoint({ x: 0.5, y: 0.5 });
+    // All three vertices lie on y=0.5, so the polygon encloses zero area.
+    state().addDraftPoint({ x: 0.8, y: 0.5 });
+    state().closeDraftPolygon();
+    expect(state().doc.elements).toHaveLength(0);
+    expect(state().activeTool).toBe('polygon');
+    expect(state().announcement.message).toBe(
+      'A polygon needs points that are not all in a line.',
+    );
+  });
+
   it('drops a closing press on the first vertex from a valid polygon', () => {
     state().beginDraft('polygon', { x: 0.2, y: 0.2 });
     state().addDraftPoint({ x: 0.6, y: 0.3 });

@@ -229,14 +229,23 @@ def main(argv):
         rows = list(reader)
 
     # Validate every row before opening the output for writing. DictReader
-    # collects any cells beyond the header under the None restkey; failing here
-    # (rather than mid-write) means a malformed later row never truncates or
-    # partially overwrites an existing output file.
+    # collects any cells beyond the header under the None restkey, and pads a
+    # row with too few cells by storing None as the *value* of each missing
+    # header key. Failing here (rather than mid-write) means a malformed later
+    # row never truncates or partially overwrites an existing output file.
     for index, row in enumerate(rows, start=1):
         if None in row:
             print(
                 f"Error: row {index} has more cells than the header "
                 f"({len(fieldnames)} columns).",
+                file=sys.stderr,
+            )
+            return 1
+        missing_cells = [name for name in fieldnames if row.get(name) is None]
+        if missing_cells:
+            print(
+                f"Error: row {index} has fewer cells than the header "
+                f"(missing {', '.join(missing_cells)}).",
                 file=sys.stderr,
             )
             return 1

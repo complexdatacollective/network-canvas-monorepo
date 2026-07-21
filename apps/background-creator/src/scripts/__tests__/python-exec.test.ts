@@ -134,6 +134,31 @@ describe.skipIf(pythonMissing)('generated Python script executes', () => {
     expect(readFileSync(outputPath, 'utf-8')).toBe(sentinel);
   });
 
+  it('exits 1 without truncating an existing output when a row is short', () => {
+    const scriptPath = join(dir, 'short.py');
+    const inputPath = join(dir, 'short-in.csv');
+    const outputPath = join(dir, 'short-out.csv');
+    writeFileSync(scriptPath, script);
+    // Second data row is missing its location_y cell. DictReader stores that
+    // missing column's value as None, which the extra-cell (None key) check
+    // misses; the row must be rejected before the output is opened.
+    writeFileSync(
+      inputPath,
+      'id,name,location_x,location_y\nn0,Node 0,0.5,0.5\nn1,Node 1,0.1\n',
+    );
+    const sentinel = 'keep me\n';
+    writeFileSync(outputPath, sentinel);
+
+    const result = spawnSync('python3', [scriptPath, inputPath, outputPath], {
+      encoding: 'utf-8',
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('fewer cells than the header');
+    expect(result.stderr).toContain('row 2');
+    expect(result.stderr).toContain('location_y');
+    expect(readFileSync(outputPath, 'utf-8')).toBe(sentinel);
+  });
+
   it('neutralizes a hostile title so it cannot inject executable code', () => {
     // A bare CR is a line break to the Python tokenizer, so without sanitization
     // the text after it would escape the "# Background:" comment and run.

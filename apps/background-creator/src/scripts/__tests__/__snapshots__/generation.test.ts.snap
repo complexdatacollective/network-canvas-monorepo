@@ -171,14 +171,23 @@ def main(argv):
         rows = list(reader)
 
     # Validate every row before opening the output for writing. DictReader
-    # collects any cells beyond the header under the None restkey; failing here
-    # (rather than mid-write) means a malformed later row never truncates or
-    # partially overwrites an existing output file.
+    # collects any cells beyond the header under the None restkey, and pads a
+    # row with too few cells by storing None as the *value* of each missing
+    # header key. Failing here (rather than mid-write) means a malformed later
+    # row never truncates or partially overwrites an existing output file.
     for index, row in enumerate(rows, start=1):
         if None in row:
             print(
                 f"Error: row {index} has more cells than the header "
                 f"({len(fieldnames)} columns).",
+                file=sys.stderr,
+            )
+            return 1
+        missing_cells = [name for name in fieldnames if row.get(name) is None]
+        if missing_cells:
+            print(
+                f"Error: row {index} has fewer cells than the header "
+                f"(missing {', '.join(missing_cells)}).",
                 file=sys.stderr,
             )
             return 1
@@ -401,12 +410,17 @@ y_column <- paste0(layout_variable, "_y")
 # utf-8-sig does): a Network Canvas export re-saved by Excel can carry one, and
 # R otherwise keeps it on names(data)[1], so the first coordinate column reads
 # as missing.
+# fill = FALSE (read.csv defaults it TRUE) makes a row with fewer fields than
+# the header a hard error rather than NA-padding the missing cells: a truncated
+# export would otherwise be written back with a blank coordinate/zone, silently
+# corrupting the data.
 data <- read.csv(
   input_path,
   colClasses = "character",
   na.strings = character(0),
   check.names = FALSE,
-  fileEncoding = "UTF-8-BOM"
+  fileEncoding = "UTF-8-BOM",
+  fill = FALSE
 )
 # read.csv raises an error for most ragged files, but when every data row has
 # EXACTLY one extra field it silently takes the first column as row names

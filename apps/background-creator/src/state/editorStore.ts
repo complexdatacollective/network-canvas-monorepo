@@ -22,6 +22,7 @@ import { assertNever } from './assertNever';
 import {
   constrainLine45,
   constrainRegular,
+  isDegeneratePolygon,
   nearlyEqual,
   type StageBox,
   translateElement,
@@ -699,14 +700,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         break;
       }
     }
-    if (points.length < 3) {
+    if (isDegeneratePolygon(points)) {
       // Keep the trimmed vertices: the failed double-click's duplicate would
       // otherwise linger mid-list once more points are added, and a later
       // successful close (which only trims trailing duplicates) would commit a
-      // polygon with a zero-length edge.
+      // polygon with a zero-length edge. Three distinct but collinear points
+      // enclose no area, so reject those too with a fitting message.
+      const message =
+        points.length < 3
+          ? 'A shape needs at least three points.'
+          : 'A polygon needs points that are not all in a line.';
       set((state) => ({
         draft: { ...draft, points },
-        announcement: bump(state, 'A shape needs at least three points.'),
+        announcement: bump(state, message),
       }));
       return;
     }

@@ -38,12 +38,42 @@ export const nearlyEqual = (a: Vec, b: Vec): boolean =>
 
 // The number of vertices that are not near-duplicates of an earlier one. A
 // polygon needs at least three to enclose a non-zero area.
-export function distinctVertexCount(points: Vec[]): number {
+function distinctVertexCount(points: Vec[]): number {
   const kept: Vec[] = [];
   for (const point of points) {
     if (!kept.some((other) => nearlyEqual(other, point))) kept.push(point);
   }
   return kept.length;
+}
+
+// Below this shoelace area (normalized units²) a polygon encloses no usable
+// space — its vertices are effectively collinear. Deliberately generous: even a
+// tiny intentional triangle sits far above it, while a degenerate one (three
+// distinct but collinear points) has an area of ~0.
+const MIN_POLYGON_AREA = 1e-6;
+
+// Shoelace area of a polygon in normalized units².
+function polygonArea(points: Vec[]): number {
+  let sum = 0;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const a = points[i];
+    const b = points[j];
+    if (!a || !b) continue;
+    sum += b.x * a.y - a.x * b.y;
+  }
+  return Math.abs(sum) / 2;
+}
+
+// A polygon is degenerate — unusable as a zone — when it has fewer than three
+// distinct vertices OR encloses no meaningful area (all vertices collinear).
+// distinctVertexCount alone misses the collinear case: a triangle resized (or
+// drawn) so one vertex lands on the line between the other two keeps three
+// distinct points yet has zero area, and such a zone would export but classify
+// no node. The draw-close path and the vertex-resize guard both gate on this.
+export function isDegeneratePolygon(points: Vec[]): boolean {
+  return (
+    distinctVertexCount(points) < 3 || polygonArea(points) < MIN_POLYGON_AREA
+  );
 }
 
 // Line height applied by the serialized SVG's tspan advance (1.2em), the

@@ -327,6 +327,14 @@ describe('polygon vertex resize', () => {
     expect(out).toBe(el);
   });
 
+  it('rejects a drag that flattens a triangle to three collinear points', () => {
+    const el = polygon();
+    // Vertices 0 and 1 sit on y=0.2; dragging vertex 2 onto that line leaves
+    // three distinct but collinear points — zero area, so the drag is refused.
+    const out = resizeElement(el, vertex(2), { x: 0.5, y: 0.2 });
+    expect(out).toBe(el);
+  });
+
   it('allows a coincident vertex when three distinct positions remain', () => {
     const el = polygon({
       points: [
