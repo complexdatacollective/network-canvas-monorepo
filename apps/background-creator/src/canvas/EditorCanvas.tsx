@@ -88,14 +88,6 @@ const TOOL_LABELS: Record<EditorTool, string> = {
   text: 'Text',
 };
 
-const CHECKER_STYLE: CSSProperties = {
-  backgroundColor: 'var(--surface)',
-  backgroundImage:
-    'linear-gradient(45deg, var(--surface-2) 25%, transparent 25%), linear-gradient(-45deg, var(--surface-2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--surface-2) 75%), linear-gradient(-45deg, transparent 75%, var(--surface-2) 75%)',
-  backgroundSize: '24px 24px',
-  backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0',
-};
-
 type TextEdit = { id: string; isNew: boolean };
 
 function isDragTool(tool: EditorTool): tool is DragDraftTool {
@@ -183,7 +175,6 @@ export function EditorCanvas(): ReactElement {
   const activeTool = useEditorStore((s) => s.activeTool);
   const zonesVisible = useEditorStore((s) => s.zonesVisible);
   const previewAspect = useEditorStore((s) => s.previewAspect);
-  const previewSurface = useEditorStore((s) => s.previewSurface);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -713,23 +704,14 @@ export function EditorCanvas(): ReactElement {
         className="focusable border-outline relative rounded-sm border"
         style={stageStyle}
       >
-        {previewSurface === 'interview' && (
-          <ThemedRegion
-            theme="interview"
-            className="bg-background pointer-events-none absolute inset-0"
-          >
-            {null}
-          </ThemedRegion>
-        )}
-        {previewSurface === 'light' && (
-          <div className="pointer-events-none absolute inset-0 bg-white" />
-        )}
-        {previewSurface === 'checker' && (
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={CHECKER_STYLE}
-          />
-        )}
+        {/* The preview always sits on the interview surface — the interview
+            theme is dark-only, so it is the only representative backdrop. */}
+        <ThemedRegion
+          theme="interview"
+          className="bg-background pointer-events-none absolute inset-0"
+        >
+          {null}
+        </ThemedRegion>
 
         {blobUrl && (
           <img

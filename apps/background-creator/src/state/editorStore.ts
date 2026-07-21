@@ -67,7 +67,6 @@ export type PreviewAspect =
   | '4:3'
   | '3:4'
   | '1:1';
-export type PreviewSurface = 'interview' | 'light' | 'checker';
 
 // Flat optional record: every element field, all optional. The union of per-kind
 // partials would collapse to shared keys only, so the patch is applied through
@@ -118,7 +117,6 @@ type EditorState = {
   draft: Draft | null;
   zonesVisible: boolean;
   previewAspect: PreviewAspect;
-  previewSurface: PreviewSurface;
   past: BackgroundDocument[];
   future: BackgroundDocument[];
   // Bookkeeping (not part of the acted-on surface).
@@ -165,7 +163,6 @@ type EditorState = {
   loadDocument: (doc: BackgroundDocument) => void;
 
   setPreviewAspect: (aspect: PreviewAspect) => void;
-  setPreviewSurface: (surface: PreviewSurface) => void;
   toggleZonesVisible: () => void;
 };
 
@@ -466,7 +463,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   draft: null,
   zonesVisible: true,
   previewAspect: 'fill',
-  previewSurface: 'interview',
   past: [],
   future: [],
   lastCoalesceKey: null,
@@ -813,7 +809,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }),
 
   setPreviewAspect: (previewAspect) => set({ previewAspect }),
-  setPreviewSurface: (previewSurface) => set({ previewSurface }),
   toggleZonesVisible: () =>
     set((state) => ({ zonesVisible: !state.zonesVisible })),
 }));

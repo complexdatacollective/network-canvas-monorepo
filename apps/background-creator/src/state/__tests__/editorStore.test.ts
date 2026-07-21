@@ -51,7 +51,6 @@ function reset(doc: BackgroundDocument = blankDoc()): void {
     draft: null,
     zonesVisible: true,
     previewAspect: 'fill',
-    previewSurface: 'interview',
     past: [],
     future: [],
     lastCoalesceKey: null,
