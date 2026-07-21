@@ -324,7 +324,7 @@ export default function SlidesForm({
     setIsReadyForNext(slideReady);
   }, [setIsReadyForNext, slideReady]);
 
-  const beforeNext: BeforeNextFunction = async (direction: Direction) => {
+  const beforeNext: BeforeNextFunction = async (direction, intent) => {
     if (items.length === 0) {
       return true;
     }
@@ -333,7 +333,7 @@ export default function SlidesForm({
 
     if (direction === 'backwards') {
       if (activeIndex === 0) {
-        if (onNavigateBack) {
+        if (onNavigateBack && intent === 'step') {
           onNavigateBack();
           return false;
         }
@@ -343,7 +343,7 @@ export default function SlidesForm({
       const formIsValid = await slideRef.current?.validate();
 
       if (!formIsValid && slideRef.current?.isDirty()) {
-        await confirm({
+        const discarded = await confirm({
           title: 'Discard changes?',
           description:
             'This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?',
@@ -352,14 +352,20 @@ export default function SlidesForm({
           intent: 'destructive',
           onConfirm: () => {
             track('form_dismissed_without_save', { form_kind });
-            setActiveIndex((prev) => prev - 1);
+            if (intent === 'step') {
+              setActiveIndex((prev) => prev - 1);
+            }
           },
         });
-        return false;
+        return intent === 'jump' && discarded === true;
       }
 
       if (formIsValid) {
         await slideRef.current?.submit();
+      }
+
+      if (intent === 'jump') {
+        return true;
       }
 
       setActiveIndex((prev) => prev - 1);
@@ -378,7 +384,7 @@ export default function SlidesForm({
 
     await slideRef.current?.submit();
 
-    if (activeIndex >= items.length - 1) {
+    if (intent === 'jump' || activeIndex >= items.length - 1) {
       return true;
     }
 

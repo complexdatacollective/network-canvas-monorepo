@@ -96,7 +96,12 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
    * - If we are moving backward, decrement the step until we reach 0
    * - If we are moving backward and on step 0, allow navigation
    */
-  useBeforeNext((direction) => {
+  useBeforeNext((direction, intent) => {
+    if (intent === 'jump') {
+      crossingDirection.current = direction;
+      return true;
+    }
+
     if (direction === 'forwards') {
       if (currentStep + 1 <= numberOfSteps) {
         setCurrentStep((prev) => prev + 1);

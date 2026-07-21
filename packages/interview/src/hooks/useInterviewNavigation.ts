@@ -31,6 +31,7 @@ import type { RootState } from '../store/store';
 import type {
   BeforeNextFunction,
   Direction,
+  NavigationIntent,
   RegisterBeforeNext,
   StageProps,
 } from '../types';
@@ -139,7 +140,10 @@ export default function useInterviewNavigation(
    * in insertion order. If any returns false, navigation is blocked. If any
    * returns 'FORCE' (and none returned false), the prompt boundary is skipped.
    */
-  const canNavigate = async (direction: Direction) => {
+  const canNavigate = async (
+    direction: Direction,
+    intent: NavigationIntent,
+  ) => {
     const handlers = beforeNextHandlers.current;
     if (handlers.size === 0) {
       return true;
@@ -147,7 +151,7 @@ export default function useInterviewNavigation(
 
     let hasForce = false;
     for (const fn of handlers.values()) {
-      const result = await fn(direction);
+      const result = await fn(direction, intent);
 
       invariant(
         result === true || result === false || result === 'FORCE',
@@ -169,7 +173,7 @@ export default function useInterviewNavigation(
     setForceNavigationDisabled(true);
 
     try {
-      const stageAllowsNavigation = await canNavigate('forwards');
+      const stageAllowsNavigation = await canNavigate('forwards', 'step');
 
       if (!stageAllowsNavigation) {
         return;
@@ -212,7 +216,7 @@ export default function useInterviewNavigation(
     setForceNavigationDisabled(true);
 
     try {
-      const stageAllowsNavigation = await canNavigate('backwards');
+      const stageAllowsNavigation = await canNavigate('backwards', 'step');
 
       if (!stageAllowsNavigation) {
         return;
@@ -261,7 +265,7 @@ export default function useInterviewNavigation(
         const direction: Direction =
           targetIndex > currentStep ? 'forwards' : 'backwards';
 
-        const stageAllowsNavigation = await canNavigate(direction);
+        const stageAllowsNavigation = await canNavigate(direction, 'jump');
         if (!stageAllowsNavigation) {
           return;
         }

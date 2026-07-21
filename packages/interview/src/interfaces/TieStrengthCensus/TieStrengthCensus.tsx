@@ -227,7 +227,12 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   });
 
   // Navigation
-  useBeforeNext((direction) => {
+  useBeforeNext((direction, intent) => {
+    if (intent === 'jump') {
+      setPairIndex(0);
+      return true;
+    }
+
     if (direction === 'forwards') {
       setIsForwards(true);
 

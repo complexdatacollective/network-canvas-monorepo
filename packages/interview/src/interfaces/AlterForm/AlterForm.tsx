@@ -61,8 +61,8 @@ const AlterForm = (props: StageProps<'AlterForm'>) => {
   // Intro state owns the forward-nav signal: pressing next dismisses the intro
   // instead of leaving the stage. Once in form mode, SlidesForm's own
   // useBeforeNext takes over. Backwards always passes through.
-  useBeforeNext((direction) => {
-    if (mode === 'intro' && direction === 'forwards') {
+  useBeforeNext((direction, intent) => {
+    if (mode === 'intro' && direction === 'forwards' && intent === 'step') {
       setMode('form');
       return false;
     }

@@ -64,6 +64,27 @@ const person: NcNode = {
   [entityAttributesProperty]: { name: 'Ada' },
 };
 
+const secondPerson: NcNode = {
+  [entityPrimaryKeyProperty]: 'person-2',
+  type: 'person',
+  [entityAttributesProperty]: { name: 'Grace' },
+};
+
+const codebook = {
+  node: {
+    person: {
+      name: 'Person',
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+      variables: {
+        name: { name: 'Name', type: 'text', component: 'Text' },
+      },
+    },
+  },
+  edge: {},
+  ego: { variables: {} },
+};
+
 describe('SlidesForm navigation ownership', () => {
   it('keeps rendered form content on an unavailable stage with an initial override', async () => {
     const store = configureStore({
@@ -166,5 +187,90 @@ describe('SlidesForm navigation ownership', () => {
 
     await act(() => Promise.resolve());
     expect(onStepChange).not.toHaveBeenCalled();
+  });
+
+  it('leaves the stage on a direct jump rather than advancing to the next item', async () => {
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: {
+          id: 'session',
+          network: {
+            ego: { [entityAttributesProperty]: {} },
+            nodes: [person, secondPerson],
+            edges: [],
+          },
+        } as never,
+        protocol: {
+          id: 'protocol',
+          hash: 'hash',
+          schemaVersion: 8,
+          codebook,
+          stages: [
+            {
+              id: 'alter-form',
+              type: 'AlterForm',
+              label: 'Alter form',
+              subject: { entity: 'node', type: 'person' },
+              introductionPanel: { title: 'About this person', text: '' },
+              form,
+            },
+            {
+              id: 'next-screen',
+              type: 'Information',
+              label: 'Next screen',
+              title: 'Next screen',
+              items: [],
+            },
+          ],
+        } as never,
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({ serializableCheck: false }),
+    });
+    const onStepChange = vi.fn();
+    let goToStage: ((targetIndex: number) => Promise<void>) | undefined;
+
+    function JumpHarness() {
+      const navigation = useInterviewNavigation(0);
+      goToStage = navigation.goToStage;
+
+      return (
+        <StageMetadataProvider value={navigation.registerBeforeNext}>
+          <SlidesForm
+            form={form}
+            items={[person, secondPerson]}
+            subject={{ entity: 'node', type: 'person' }}
+            updateItem={vi.fn()}
+            moveForward={navigation.moveForward}
+            renderHeader={() => <span>Person header</span>}
+            form_kind="alter"
+          />
+        </StageMetadataProvider>
+      );
+    }
+
+    render(
+      <Provider store={store}>
+        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+          <DialogProvider>
+            <JumpHarness />
+          </DialogProvider>
+        </CurrentStepProvider>
+      </Provider>,
+    );
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Person name' }),
+    ).toHaveValue('Ada');
+
+    await act(async () => {
+      await goToStage?.(1);
+    });
+
+    expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
+    expect(screen.getByRole('textbox', { name: 'Person name' })).toHaveValue(
+      'Ada',
+    );
   });
 });
