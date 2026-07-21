@@ -22,7 +22,7 @@ This page summarizes the practical best practices for each tool. For a comprehen
 
 <TipBox>
 
-This describes **Interviewer Classic**, which is fully offline. **Interviewer** (beta) stores interview data locally in the same way, but some schema-8 interfaces (e.g. [Geospatial](/en/design-protocols/interface-documentation/geospatial)) require an internet connection and contact third-party services during the interview — factor this into your risk assessment if you use them.
+This describes **Interviewer Classic**, which is fully offline. **Interviewer** stores interview data locally in the same way, but some schema-8 interfaces (e.g. [Geospatial](/en/design-protocols/interface-documentation/geospatial)) require an internet connection and contact third-party services during the interview — factor this into your risk assessment if you use them.
 
 </TipBox>
 

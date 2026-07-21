@@ -115,7 +115,7 @@ test('clears all stored protocols', async ({ architectPage, seed }) => {
   await expect(architectPage.getByText('To Be Cleared')).toBeVisible();
 
   await architectPage
-    .getByRole('button', { name: 'Clear all protocols from this browser' })
+    .getByRole('button', { name: 'Clear all locally saved protocols' })
     .click();
   // LibraryPanel's `handleClearAll` opens a `type: 'choice'` dialog titled
   // "Remove all data?"; `dialog-primary` is the confirm ("Remove all") action.
