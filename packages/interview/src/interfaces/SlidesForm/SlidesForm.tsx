@@ -106,6 +106,15 @@ const slideTransition = {
   damping: 15,
 };
 
+const discardChangesDialog = {
+  title: 'Discard changes?',
+  description:
+    'This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?',
+  confirmLabel: 'Discard changes',
+  cancelLabel: 'Keep changes',
+  intent: 'destructive' as const,
+};
+
 type SlideHandle = {
   validate: () => Promise<boolean>;
   submit: () => Promise<void>;
@@ -324,12 +333,34 @@ export default function SlidesForm({
     setIsReadyForNext(slideReady);
   }, [setIsReadyForNext, slideReady]);
 
-  const beforeNext: BeforeNextFunction = async (direction: Direction) => {
+  const beforeNext: BeforeNextFunction = async (direction, intent) => {
     if (items.length === 0) {
       return true;
     }
 
     setPendingDirection(direction);
+
+    if (intent === 'jump') {
+      const formIsValid = await slideRef.current?.validate();
+
+      if (formIsValid) {
+        await slideRef.current?.submit();
+        return true;
+      }
+
+      if (!slideRef.current?.isDirty()) {
+        return true;
+      }
+
+      const discarded = await confirm({
+        ...discardChangesDialog,
+        onConfirm: () => {
+          track('form_dismissed_without_save', { form_kind });
+        },
+      });
+
+      return discarded === true;
+    }
 
     if (direction === 'backwards') {
       if (activeIndex === 0) {
@@ -344,12 +375,7 @@ export default function SlidesForm({
 
       if (!formIsValid && slideRef.current?.isDirty()) {
         await confirm({
-          title: 'Discard changes?',
-          description:
-            'This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?',
-          confirmLabel: 'Discard changes',
-          cancelLabel: 'Cancel',
-          intent: 'destructive',
+          ...discardChangesDialog,
           onConfirm: () => {
             track('form_dismissed_without_save', { form_kind });
             setActiveIndex((prev) => prev - 1);

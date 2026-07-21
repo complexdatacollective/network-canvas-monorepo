@@ -469,6 +469,87 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
     expect(directions).toEqual(['forwards', 'backwards']);
   });
 
+  it("passes intent 'jump' to beforeNext, and 'step' for button navigation", async () => {
+    const intents: string[] = [];
+    const record = (_direction: string, intent: string) => {
+      intents.push(intent);
+      return true;
+    };
+
+    const jumped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      jumped.result.current.registerBeforeNext(record);
+    });
+    await act(async () => {
+      await jumped.result.current.goToStage(4);
+    });
+
+    const stepped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      stepped.result.current.registerBeforeNext(record);
+    });
+    await act(async () => {
+      await stepped.result.current.moveForward();
+    });
+    act(() => {
+      stepped.result.current.registerBeforeNext(record);
+    });
+    await act(async () => {
+      await stepped.result.current.moveBackward();
+    });
+
+    expect(intents).toEqual(['jump', 'step', 'step']);
+  });
+
+  it('lets a handler deny a jump while still allowing a step', async () => {
+    const denyJumps = (_direction: string, intent: string) => intent !== 'jump';
+
+    const jumped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      jumped.result.current.registerBeforeNext(denyJumps);
+    });
+    await act(async () => {
+      await jumped.result.current.goToStage(4);
+    });
+
+    expect(jumped.onStepChange).not.toHaveBeenCalled();
+
+    const stepped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      stepped.result.current.registerBeforeNext(denyJumps);
+    });
+    await act(async () => {
+      await stepped.result.current.moveForward();
+    });
+
+    expect(stepped.onStepChange).toHaveBeenCalledWith(3, expect.anything());
+  });
+
+  it('lets a handler allow a jump while still blocking a step', async () => {
+    const allowOnlyJumps = (_direction: string, intent: string) =>
+      intent === 'jump';
+
+    const jumped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      jumped.result.current.registerBeforeNext(allowOnlyJumps);
+    });
+    await act(async () => {
+      await jumped.result.current.goToStage(4);
+    });
+
+    expect(jumped.onStepChange).toHaveBeenCalledWith(4, expect.anything());
+
+    const stepped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      stepped.result.current.registerBeforeNext(allowOnlyJumps);
+    });
+    await act(async () => {
+      await stepped.result.current.moveForward();
+    });
+
+    expect(stepped.onStepChange).not.toHaveBeenCalled();
+  });
+
   it('still navigates when a beforeNext handler returns FORCE', async () => {
     const { result, onStepChange } = renderStatefulNavigation(makeStages(4), 0);
 
@@ -499,6 +580,40 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
       expect.objectContaining({ kind: 'local-skip' }),
     );
     expect(onStepChange).not.toHaveBeenCalled();
+  });
+
+  it('does not run beforeNext handlers when an unavailable target is declined', async () => {
+    const stages = makeStages(4);
+    stages[2]!.skipLogic = ALWAYS_SKIPPED;
+    const { result, onStepChange } = renderStatefulNavigation(stages, 0);
+
+    const beforeNext = vi.fn(() => true);
+    act(() => {
+      result.current.registerBeforeNext(beforeNext);
+    });
+
+    const confirmSkip = vi.fn().mockResolvedValue(false);
+    await act(async () => {
+      await result.current.goToStage(2, confirmSkip);
+    });
+
+    expect(confirmSkip).toHaveBeenCalledTimes(1);
+    expect(beforeNext).not.toHaveBeenCalled();
+    expect(onStepChange).not.toHaveBeenCalled();
+  });
+
+  it('confirms an unavailable target once when it is already unavailable', async () => {
+    const stages = makeStages(4);
+    stages[2]!.skipLogic = ALWAYS_SKIPPED;
+    const { result, onStepChange } = renderStatefulNavigation(stages, 0);
+
+    const confirmSkip = vi.fn().mockResolvedValue(true);
+    await act(async () => {
+      await result.current.goToStage(2, confirmSkip);
+    });
+
+    expect(confirmSkip).toHaveBeenCalledTimes(1);
+    expect(onStepChange).toHaveBeenCalledWith(2, expect.anything());
   });
 
   it('lands on a confirmed skipped stage without being bounced by recovery', async () => {

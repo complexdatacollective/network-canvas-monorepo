@@ -129,10 +129,13 @@ function renderInterface(
     }
   };
 
-  const runValidation = async (direction: 'forwards' | 'backwards') => {
+  const runValidation = async (
+    direction: 'forwards' | 'backwards',
+    intent: 'step' | 'jump' = 'step',
+  ) => {
     let result: boolean | 'FORCE' | undefined;
     await act(async () => {
-      result = await handlers.get('stageValidation')?.(direction);
+      result = await handlers.get('stageValidation')?.(direction, intent);
     });
     return result;
   };
@@ -141,7 +144,7 @@ function renderInterface(
     await act(async () => {
       for (const [key, fn] of handlers) {
         if (key === 'stageValidation') continue;
-        await fn(direction);
+        await fn(direction, 'step');
       }
     });
   };
@@ -186,6 +189,14 @@ function renderInterface(
 }
 
 describe('DyadCensus interface', () => {
+  it('blocks stepping forwards on an unanswered pair but allows a direct jump', async () => {
+    const { advancePastIntro, runValidation } = renderInterface(onePromptStage);
+    await advancePastIntro();
+
+    expect(await runValidation('forwards')).toBe(false);
+    expect(await runValidation('forwards', 'jump')).toBe(true);
+  });
+
   it('reflects a shared-graph edge on a later prompt but still requires a per-prompt answer', async () => {
     const { store, advancePastIntro, runValidation, yesButton } =
       renderInterface(twoPromptStage);
