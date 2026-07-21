@@ -474,7 +474,7 @@ export const UnplaceNodes: Story = {
   play: async ({ canvasElement }) => {
     const tab = await waitFor(() => {
       const el = canvasElement.querySelector<HTMLButtonElement>(
-        '[data-zone-id="node-drawer"] button',
+        'button[data-zone-id="node-drawer"], [data-zone-id="node-drawer"] button',
       );
       expect(el).not.toBeNull();
       expect(el!.textContent).toContain('0 unplaced');

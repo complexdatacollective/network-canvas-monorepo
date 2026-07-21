@@ -70,21 +70,69 @@ async function dragNodeToCanvasPosition(
  */
 async function dragNodeToDrawer(page: Page, label: string): Promise<void> {
   const node = sociogramNode(page, label);
-  const drawer = page.locator('[data-zone-id="node-drawer"]');
+  const drawer = page.locator('[aria-label="Drawer"]');
+  const drawerTab = drawer.getByRole('button');
   const nodeBox = await node.boundingBox();
   const drawerBox = await drawer.boundingBox();
-  if (!nodeBox || !drawerBox) {
-    throw new Error(`Could not measure node "${label}" or the drawer`);
+  const drawerTabBox = await drawerTab.boundingBox();
+  if (!nodeBox || !drawerBox || !drawerTabBox) {
+    throw new Error(`Could not measure node "${label}" or the drawer tab`);
   }
   const startX = nodeBox.x + nodeBox.width / 2;
   const startY = nodeBox.y + nodeBox.height / 2;
-  const endX = drawerBox.x + drawerBox.width / 2;
-  const endY = drawerBox.y + Math.min(20, drawerBox.height / 2);
+  const tabX = drawerTabBox.x + drawerTabBox.width / 2;
+  const tabY = drawerTabBox.y + drawerTabBox.height / 2;
+  const outsideTabX = drawerBox.x + 8;
+  const restingTabColor = await drawerTab.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+
+  if (
+    outsideTabX >= drawerTabBox.x &&
+    outsideTabX <= drawerTabBox.x + drawerTabBox.width
+  ) {
+    throw new Error('Could not find space beside the collapsed drawer tab');
+  }
 
   await page.mouse.move(startX, startY);
   await page.mouse.down();
   await page.mouse.move(startX + 8, startY + 8);
-  await page.mouse.move(endX, endY, { steps: 10 });
+
+  await expect(drawerTab).toHaveAttribute('data-drop-target-valid', 'true');
+  await expect(drawerTab).toHaveAttribute('aria-expanded', 'false');
+  const illuminatedTabColor = await drawerTab.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+  expect(illuminatedTabColor).not.toBe(restingTabColor);
+
+  // The collapsed wrapper is wider than its visible tab. Moving along that
+  // otherwise invisible strip must leave the drawer closed.
+  await page.mouse.move(outsideTabX, tabY, { steps: 10 });
+  await expect(drawerTab).toHaveAttribute('aria-expanded', 'false');
+
+  await page.mouse.move(tabX, tabY, { steps: 5 });
+  await expect(drawerTab).toHaveAttribute('aria-expanded', 'true');
+  await expect
+    .poll(async () => {
+      const expandedDrawerBox = await drawer.boundingBox();
+      const currentTabBox = await drawerTab.boundingBox();
+      if (!expandedDrawerBox || !currentTabBox) return 0;
+      return expandedDrawerBox.height - currentTabBox.height;
+    })
+    .toBeGreaterThan(48);
+
+  const dropHint = page.getByText('Drop here to remove');
+  await expect(dropHint).toBeVisible();
+  const dropHintBox = await dropHint.boundingBox();
+  if (!dropHintBox) {
+    throw new Error('Could not measure the expanded drawer drop area');
+  }
+  await page.mouse.move(
+    dropHintBox.x + dropHintBox.width / 2,
+    dropHintBox.y + dropHintBox.height / 2,
+    { steps: 5 },
+  );
+  await expect(drawerTab).toHaveAttribute('aria-expanded', 'true');
   await page.mouse.up();
 }
 

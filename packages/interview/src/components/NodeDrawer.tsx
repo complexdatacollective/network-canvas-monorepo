@@ -22,8 +22,8 @@ type NodeDrawerProps = {
   /**
    * When provided, the drawer registers as a DnD drop target so dragged nodes
    * can be returned to it (e.g. unplacing a placed sociogram node). Also makes
-   * the drawer manually expandable while empty, and auto-expands it whenever a
-   * compatible drag is in flight.
+   * the drawer manually expandable while empty, illuminates its tab during a
+   * compatible drag, and expands it when that drag reaches the tab.
    */
   dropTarget?: {
     accepts: string[];
@@ -59,9 +59,10 @@ export default function NodeDrawer({
     focusBehaviorOnDrop: 'none',
   });
 
-  // While a compatible drag is in flight, hold the drawer open so the drop
-  // area is visible — without mutating the participant's chosen state.
-  const isExpandedEffective = isExpanded || willAccept;
+  // Hover expansion is temporary, so leaving the drawer restores the canvas
+  // without mutating the participant's chosen state.
+  const isExpandedEffective = isExpanded || isOver;
+  const dropZoneId = dropTarget ? dropProps['data-zone-id'] : undefined;
 
   // Collapse when emptied, expand when nodes arrive
   const prevHasNodes = usePrevious(hasNodes);
@@ -86,7 +87,7 @@ export default function NodeDrawer({
   // Safety timeout in case onLayoutAnimationComplete doesn't fire
   // (e.g. no nodes actually moved).
   useEffect(() => {
-    if (!isLayoutAnimating) return;
+    if (!isLayoutAnimating) return undefined;
     const timeout = setTimeout(() => setIsLayoutAnimating(false), 500);
     return () => clearTimeout(timeout);
   }, [isLayoutAnimating]);
@@ -105,6 +106,7 @@ export default function NodeDrawer({
       <motion.div
         layout
         {...(dropTarget ? dropProps : {})}
+        data-zone-id={isExpandedEffective ? dropZoneId : undefined}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 28 }}
@@ -123,10 +125,15 @@ export default function NodeDrawer({
             }}
             disabled={isToggleDisabled}
             className={cx(
-              'bg-surface flex items-center gap-2 rounded-t-lg px-8 py-2 text-sm',
+              'bg-surface publish-colors flex items-center gap-2 rounded-t-lg px-8 py-2 text-sm transition-colors',
+              'data-[drop-target-valid=true]:bg-drag-valid',
+              'data-[drop-target-over=true]:data-[drop-target-valid=true]:bg-drag-over',
               headingVariants({ level: 'label' }),
               isToggleDisabled && 'cursor-not-allowed opacity-50',
             )}
+            data-zone-id={!isExpandedEffective ? dropZoneId : undefined}
+            data-drop-target-valid={willAccept || undefined}
+            data-drop-target-over={isOver || undefined}
             aria-label={
               isExpandedEffective ? 'Collapse drawer' : 'Expand drawer'
             }
