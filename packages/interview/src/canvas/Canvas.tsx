@@ -9,6 +9,7 @@ import {
 
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -22,6 +23,7 @@ import type { CanvasStoreApi } from './useCanvasStore';
 
 type CanvasProps = {
   background: ReactNode;
+  backgroundClassName?: string;
   underlays?: ReactNode;
   foreground?: ReactNode;
   nodes: NcNode[];
@@ -47,6 +49,7 @@ type CanvasProps = {
 
 export default function Canvas({
   background,
+  backgroundClassName,
   underlays,
   foreground,
   nodes,
@@ -145,7 +148,12 @@ export default function Canvas({
       tabIndex={dropProps.tabIndex}
     >
       {/* Background layer */}
-      <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+      <div
+        className={cx(
+          'absolute inset-0 flex items-center justify-center overflow-hidden',
+          backgroundClassName,
+        )}
+      >
         {background}
       </div>
 

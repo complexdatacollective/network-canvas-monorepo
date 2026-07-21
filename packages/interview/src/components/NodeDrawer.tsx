@@ -19,7 +19,6 @@ type NodeDrawerProps = {
   onExpandedChange?: (expanded: boolean) => void;
   /** When true, drawer is absolutely positioned (for Sociogram canvas overlay). Defaults to false (inline flex). */
   floating?: boolean;
-  tabClassName?: string;
   /**
    * When provided, the drawer registers as a DnD drop target so dragged nodes
    * can be returned to it (e.g. unplacing a placed sociogram node). Also makes
@@ -34,6 +33,10 @@ type NodeDrawerProps = {
 };
 
 const MotionChevron = motion.create(ChevronDown);
+const activeDropTargetBackground =
+  'bg-[color-mix(in_oklab,var(--surface)_70%,var(--accent)_30%)]';
+const activeDropTargetOverBackground =
+  'bg-[color-mix(in_oklab,var(--surface)_20%,var(--accent)_80%)]';
 
 export default function NodeDrawer({
   nodes,
@@ -41,7 +44,6 @@ export default function NodeDrawer({
   expanded,
   onExpandedChange,
   floating = false,
-  tabClassName,
   dropTarget,
 }: NodeDrawerProps) {
   const [internalExpanded, setInternalExpanded] = useState(nodes.length > 0);
@@ -128,12 +130,13 @@ export default function NodeDrawer({
             }}
             disabled={isToggleDisabled}
             className={cx(
-              'bg-surface publish-colors pointer-events-auto flex items-center gap-2 rounded-t-lg px-8 py-2 text-sm transition-colors',
-              'data-[drop-target-valid=true]:bg-drag-valid',
-              'data-[drop-target-over=true]:data-[drop-target-valid=true]:bg-drag-over',
+              'bg-surface publish-colors pointer-events-auto flex h-12 items-center gap-2 rounded-t-lg px-8 text-sm transition-colors',
+              willAccept &&
+                (isOver
+                  ? activeDropTargetOverBackground
+                  : activeDropTargetBackground),
               headingVariants({ level: 'label' }),
               isToggleDisabled && 'cursor-not-allowed opacity-50',
-              tabClassName,
             )}
             data-zone-id={!isExpandedEffective ? dropZoneId : undefined}
             data-drop-target-valid={willAccept || undefined}
@@ -176,7 +179,10 @@ export default function NodeDrawer({
           className={cx(
             'publish-colors overflow-hidden rounded transition-colors',
             !willAccept && 'bg-surface',
-            willAccept && (isOver ? 'bg-drag-over' : 'bg-drag-valid'),
+            willAccept &&
+              (isOver
+                ? activeDropTargetOverBackground
+                : activeDropTargetBackground),
           )}
         >
           <ScrollArea

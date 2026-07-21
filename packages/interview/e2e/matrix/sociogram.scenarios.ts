@@ -247,19 +247,6 @@ function buildManualBaseline(): ScenarioDefinition {
     run: async ({ page }) => {
       const sociogram = page.getByTestId('sociogram');
       await expect(sociogram).toHaveAttribute('data-layout-mode', 'MANUAL');
-      await expect(sociogram).toHaveCSS('padding', '0px');
-
-      const sociogramBox = await sociogram.boundingBox();
-      const canvasBox = await sociogram
-        .locator('[data-zone-id="sociogram-canvas"]')
-        .boundingBox();
-      if (!sociogramBox || !canvasBox) {
-        throw new Error('Could not measure the Sociogram canvas');
-      }
-      expect(canvasBox.x).toBeCloseTo(sociogramBox.x, 0);
-      expect(canvasBox.y).toBeCloseTo(sociogramBox.y, 0);
-      expect(canvasBox.width).toBeCloseTo(sociogramBox.width, 0);
-      expect(canvasBox.height).toBeCloseTo(sociogramBox.height, 0);
 
       await expect(
         sociogram.locator(
@@ -294,46 +281,7 @@ function buildManualBaseline(): ScenarioDefinition {
         'sociogram-concentric-background',
       );
       await expect(concentricBackground).toHaveJSProperty('tagName', 'svg');
-
-      const initialViewport = page.viewportSize();
-      if (!initialViewport) {
-        throw new Error('Could not measure the viewport');
-      }
-
-      const responsiveInsets = [
-        { width: 400, paddingBlock: 2, paddingInline: 2 },
-        { width: 600, paddingBlock: 4, paddingInline: 4 },
-        { width: 1100, paddingBlock: 6, paddingInline: 6 },
-        { width: 1600, paddingBlock: 6, paddingInline: 8 },
-      ];
-
-      for (const inset of responsiveInsets) {
-        await page.setViewportSize({ width: inset.width, height: 900 });
-        const spacing = await concentricBackground.evaluate((element) => {
-          const parent = element.parentElement;
-          if (!parent) {
-            throw new Error('Concentric-circle background has no parent');
-          }
-          const measurement = document.createElement('div');
-          measurement.style.position = 'absolute';
-          measurement.style.width = 'var(--spacing-base)';
-          parent.append(measurement);
-          const width = measurement.getBoundingClientRect().width;
-          measurement.remove();
-          return width;
-        });
-        const padding = await concentricBackground.evaluate((element) => {
-          const style = getComputedStyle(element);
-          return {
-            block: Number.parseFloat(style.paddingTop),
-            inline: Number.parseFloat(style.paddingLeft),
-          };
-        });
-        expect(padding.block).toBeCloseTo(spacing * inset.paddingBlock, 2);
-        expect(padding.inline).toBeCloseTo(spacing * inset.paddingInline, 2);
-      }
-
-      await page.setViewportSize(initialViewport);
+      await expect(concentricBackground).toHaveCSS('padding', '0px');
     },
   };
 }

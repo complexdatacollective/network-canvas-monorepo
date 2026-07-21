@@ -2,4 +2,4 @@
 '@codaco/interview': patch
 ---
 
-Keep Sociogram concentric circles comfortably inset using the responsive interface spacing scale.
+Refine Sociogram canvas spacing, keep image backgrounds full-screen, and improve the node drawer's size and drag-target feedback.
