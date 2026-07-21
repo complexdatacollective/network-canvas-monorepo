@@ -7,8 +7,11 @@ import {
   getAllEntityNames,
 } from '../../../utils/validation-helpers.ts';
 import {
+  type EdgeDefinition,
   EdgeDefinitionSchema,
+  type EgoDefinition,
   EgoDefinitionSchema,
+  type NodeDefinition,
   NodeDefinitionSchema,
 } from './definitions.ts';
 
@@ -61,3 +64,20 @@ export const CodebookSchema = z
   });
 
 export type Codebook = z.infer<typeof CodebookSchema>;
+
+/**
+ * A structural view of {@link Codebook} that relaxes each entity definition's
+ * strict requirements (a node's `name`/`color`/`shape`, an edge's `name`).
+ *
+ * Consumers that assemble or receive a codebook before it is schema-validated —
+ * e.g. synthetic network generation, which only ever reads each entity's
+ * `variables` — need to accept these partially-populated codebooks. Deriving the
+ * per-entity shapes from the canonical definitions with `Partial` (rather than
+ * re-describing them structurally) keeps the `variables` typing in lock-step
+ * with the schema.
+ */
+export type StructuralCodebook = {
+  node?: Record<string, Partial<NodeDefinition>>;
+  edge?: Record<string, Partial<EdgeDefinition>>;
+  ego?: Partial<EgoDefinition>;
+};

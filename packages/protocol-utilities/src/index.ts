@@ -1,5 +1,6 @@
+export type { GenerationConfig } from './generateNetwork/config';
 export type {
-  GenerateNetworkOptions,
+  GenerateNetworkParams,
   GenerateNetworkResult,
 } from './generateNetwork';
 export { generateNetwork } from './generateNetwork';

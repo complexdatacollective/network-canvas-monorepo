@@ -16,7 +16,7 @@ import {
 
 import { generateNetwork } from '../generateNetwork';
 
-type Codebook = Parameters<typeof generateNetwork>[0];
+type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 
 type ZodLiteralDef = { _zod: { def: { values: string[] } } };
 type ZodOptionShape = { shape: { type: ZodLiteralDef } };
@@ -214,7 +214,7 @@ function makeHiddenSkipLogic(
 }
 
 function makeSkipRoutingCodebook(): Codebook {
-  const nodeDefinition = {
+  const nodeDefinition: NonNullable<Codebook['node']>[string] = {
     color: 'node-color-seq-1',
     variables: { 'var-name': { name: 'Name', type: 'text' } },
   };
@@ -245,7 +245,9 @@ describe('generateNetwork', () => {
         skipLogic: makeHiddenSkipLogic(),
       } as Stage;
 
-      const { network } = generateNetwork(makeSkipRoutingCodebook(), stages, {
+      const { network } = generateNetwork({
+        codebook: makeSkipRoutingCodebook(),
+        stages,
         seed: 42,
         respectSkipLogicAndFiltering: true,
       });
@@ -266,7 +268,9 @@ describe('generateNetwork', () => {
         makeTypedNameGeneratorStage('target', 'destination'),
       ];
 
-      const { network } = generateNetwork(makeSkipRoutingCodebook(), stages, {
+      const { network } = generateNetwork({
+        codebook: makeSkipRoutingCodebook(),
+        stages,
         seed: 42,
         respectSkipLogicAndFiltering: true,
       });
@@ -286,7 +290,9 @@ describe('generateNetwork', () => {
         makeTypedNameGeneratorStage('unreachable', 'bypassed'),
       ];
 
-      const { network } = generateNetwork(makeSkipRoutingCodebook(), stages, {
+      const { network } = generateNetwork({
+        codebook: makeSkipRoutingCodebook(),
+        stages,
         seed: 42,
         respectSkipLogicAndFiltering: true,
       });
@@ -309,7 +315,9 @@ describe('generateNetwork', () => {
         makeTypedNameGeneratorStage('target', 'final'),
       ];
 
-      const { network } = generateNetwork(makeSkipRoutingCodebook(), stages, {
+      const { network } = generateNetwork({
+        codebook: makeSkipRoutingCodebook(),
+        stages,
         seed: 42,
         respectSkipLogicAndFiltering: true,
       });
@@ -331,7 +339,9 @@ describe('generateNetwork', () => {
         makeTypedNameGeneratorStage('target', 'destination'),
       ];
 
-      const { network } = generateNetwork(makeSkipRoutingCodebook(), stages, {
+      const { network } = generateNetwork({
+        codebook: makeSkipRoutingCodebook(),
+        stages,
         seed: 42,
         respectSkipLogicAndFiltering: true,
       });
@@ -348,7 +358,7 @@ describe('generateNetwork', () => {
       const codebook = makeCodebook();
       const stages = [makeFamilyPedigreeStage()];
 
-      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+      const { network } = generateNetwork({ codebook, stages, seed: 42 });
 
       expect(network.nodes.length).toBeGreaterThan(0);
 
@@ -361,7 +371,7 @@ describe('generateNetwork', () => {
       const codebook = makeCodebook();
       const stages = [makeFamilyPedigreeStage()];
 
-      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+      const { network } = generateNetwork({ codebook, stages, seed: 42 });
 
       expect(network.edges.length).toBeGreaterThan(0);
 
@@ -374,7 +384,7 @@ describe('generateNetwork', () => {
       const codebook = makeCodebook();
       const stages = [makeFamilyPedigreeStage()];
 
-      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+      const { network } = generateNetwork({ codebook, stages, seed: 42 });
 
       const codebookNodeTypes = new Set(Object.keys(codebook.node ?? {}));
 
@@ -387,7 +397,7 @@ describe('generateNetwork', () => {
       const codebook = makeCodebook();
       const stages = [makeFamilyPedigreeStage()];
 
-      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+      const { network } = generateNetwork({ codebook, stages, seed: 42 });
 
       for (const node of network.nodes) {
         const attrs = node[entityAttributesProperty];
@@ -404,7 +414,7 @@ describe('generateNetwork', () => {
         }),
       ];
 
-      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+      const { network } = generateNetwork({ codebook, stages, seed: 42 });
 
       expect(network.nodes.length).toBe(0);
       expect(network.edges.length).toBe(0);
@@ -426,7 +436,7 @@ describe('generateNetwork', () => {
         makeFamilyPedigreeStage(),
       ];
 
-      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+      const { network } = generateNetwork({ codebook, stages, seed: 42 });
 
       for (const node of network.nodes) {
         expect(node.type).not.toBe('person');
@@ -441,7 +451,7 @@ describe('generateNetwork', () => {
       const codebook = makeCodebook();
       const stages = [makeNameGeneratorStage({ behaviours: { minNodes: 9 } })];
 
-      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+      const { network } = generateNetwork({ codebook, stages, seed: 42 });
 
       expect(network.nodes.length).toBeGreaterThanOrEqual(9);
       for (const node of network.nodes) {
@@ -455,7 +465,7 @@ describe('generateNetwork', () => {
         makeNameGeneratorStage({ behaviours: { minNodes: 6, maxNodes: 3 } }),
       ];
 
-      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+      const { network } = generateNetwork({ codebook, stages, seed: 42 });
 
       expect(network.nodes.length).toBeGreaterThanOrEqual(6);
     });
@@ -466,7 +476,7 @@ describe('generateNetwork', () => {
       const codebook = makeCodebook();
       const stages = [makeFamilyPedigreeStage()];
 
-      const { stageMetadata } = generateNetwork(codebook, stages, { seed: 42 });
+      const { stageMetadata } = generateNetwork({ codebook, stages, seed: 42 });
 
       expect(stageMetadata).toEqual({ 0: { isNetworkCommitted: true } });
       expect(StageMetadataSchema.safeParse(stageMetadata).success).toBe(true);
@@ -476,7 +486,9 @@ describe('generateNetwork', () => {
       const codebook = makeCodebook();
       const stages = [makeNameGeneratorStage(), makeDyadCensusStage()];
 
-      const { stageMetadata, network } = generateNetwork(codebook, stages, {
+      const { stageMetadata, network } = generateNetwork({
+        codebook,
+        stages,
         seed: 42,
       });
 
@@ -506,7 +518,9 @@ describe('generateNetwork', () => {
       const codebook = makeCodebook();
       const stages = [makeNameGeneratorStage(), makeTieStrengthCensusStage()];
 
-      const { stageMetadata, network } = generateNetwork(codebook, stages, {
+      const { stageMetadata, network } = generateNetwork({
+        codebook,
+        stages,
         seed: 42,
       });
 
@@ -536,7 +550,7 @@ describe('generateNetwork', () => {
         makeFamilyPedigreeStage({ id: 'stage-fp-2' }),
       ];
 
-      const { stageMetadata } = generateNetwork(codebook, stages, { seed: 42 });
+      const { stageMetadata } = generateNetwork({ codebook, stages, seed: 42 });
 
       const result = StageMetadataSchema.safeParse(stageMetadata);
       expect(result.success).toBe(true);
@@ -609,7 +623,7 @@ describe('generateNetwork', () => {
       const codebook = makeBinCodebook();
       const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
 
-      const { network } = generateNetwork(codebook, stages, { seed: 42 });
+      const { network } = generateNetwork({ codebook, stages, seed: 42 });
 
       expect(network.nodes.length).toBeGreaterThan(0);
       for (const node of network.nodes) {
@@ -621,7 +635,9 @@ describe('generateNetwork', () => {
       const codebook = makeBinCodebook();
       const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
 
-      const { network } = generateNetwork(codebook, stages, {
+      const { network } = generateNetwork({
+        codebook,
+        stages,
         seed: 42,
         inProgressStageIndex: 1,
       });
@@ -651,7 +667,9 @@ describe('generateNetwork', () => {
       const codebook = makeBinCodebook();
       const stages = [makeNameGeneratorStage(), makeCategoricalBinStage()];
 
-      const { network } = generateNetwork(codebook, stages, {
+      const { network } = generateNetwork({
+        codebook,
+        stages,
         seed: 42,
         inProgressStageIndex: 1,
       });
@@ -695,7 +713,9 @@ describe('generateNetwork', () => {
         } as Stage,
       ];
 
-      const { network } = generateNetwork(codebook, stages, {
+      const { network } = generateNetwork({
+        codebook,
+        stages,
         seed: 42,
         inProgressStageIndex: 1,
       });
@@ -712,7 +732,9 @@ describe('generateNetwork', () => {
       const codebook = makeBinCodebook();
       const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
 
-      const { network } = generateNetwork(codebook, stages, {
+      const { network } = generateNetwork({
+        codebook,
+        stages,
         seed: 42,
         inProgressStageIndex: 0,
       });
@@ -727,7 +749,9 @@ describe('generateNetwork', () => {
       const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
 
       expect(() =>
-        generateNetwork(codebook, stages, {
+        generateNetwork({
+          codebook,
+          stages,
           seed: 42,
           inProgressStageIndex: 99,
         }),
@@ -741,7 +765,9 @@ describe('generateNetwork', () => {
         behaviours: { minNodes: 3, maxNodes: 3 },
       });
 
-      const { network } = generateNetwork(makeCodebook(), [stage], {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
         seed: 42,
         externalData: { 'stage-ngr': makeRosterPool(5) },
       });
@@ -764,7 +790,9 @@ describe('generateNetwork', () => {
         behaviours: { minNodes: 4, maxNodes: 8 },
       });
 
-      const { network } = generateNetwork(makeCodebook(), [stage], {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
         seed: 7,
         externalData: { 'stage-ngr': makeRosterPool(10) },
       });
@@ -787,7 +815,9 @@ describe('generateNetwork', () => {
         }),
       ];
 
-      const { network } = generateNetwork(makeCodebook(), stages, {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages,
         seed: 42,
         externalData: { 'stage-a': pool, 'stage-b': pool },
       });
@@ -801,7 +831,9 @@ describe('generateNetwork', () => {
         behaviours: { minNodes: 5, maxNodes: 8 },
       });
 
-      const { network } = generateNetwork(makeCodebook(), [stage], {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
         seed: 42,
         externalData: { 'stage-ngr': makeRosterPool(2) },
       });
@@ -817,7 +849,9 @@ describe('generateNetwork', () => {
         behaviours: { minNodes: 3, maxNodes: 3 },
       });
 
-      const { network } = generateNetwork(makeCodebook(), [stage], {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
         seed: 42,
         externalData,
       });
@@ -833,7 +867,9 @@ describe('generateNetwork', () => {
         behaviours: { minNodes: 8, maxNodes: 8 },
       });
 
-      const { network } = generateNetwork(makeCodebook(), [stage], {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
         seed: 42,
         externalData: { 'stage-ng': makeRosterPool(2) },
       });
@@ -850,7 +886,9 @@ describe('generateNetwork', () => {
         behaviours: { minNodes: 20, maxNodes: 20 },
       });
 
-      const { network } = generateNetwork(makeCodebook(), [stage], {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
         seed: 42,
         externalData: { 'stage-ng': makeRosterPool(50) },
       });
@@ -875,7 +913,9 @@ describe('generateNetwork', () => {
         }),
       ];
 
-      const { network } = generateNetwork(makeCodebook(), stages, {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages,
         seed: 42,
         externalData: { 'stage-a': pool, 'stage-b': pool },
       });
@@ -894,7 +934,9 @@ describe('generateNetwork', () => {
         form: { fields: [{ variable: 'var-name', prompt: 'Their name' }] },
       });
 
-      const { network } = generateNetwork(makeCodebook(), [stage], {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
         seed: 42,
         externalData: { 'stage-ng': makeRosterPool(5) },
       });
@@ -922,7 +964,9 @@ describe('generateNetwork', () => {
         behaviours: { minNodes: 2, maxNodes: 2 },
       });
 
-      const { network } = generateNetwork(makeCodebook(), [stage], {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
         seed: 42,
         externalData: { 'stage-ngr': makeRosterPool(5) },
       });
@@ -948,7 +992,9 @@ describe('generateNetwork', () => {
         behaviours: { minNodes: 2, maxNodes: 2 },
       });
 
-      const { network } = generateNetwork(makeCodebook(), [stage], {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
         seed: 42,
         externalData: { 'stage-ng': makeRosterPool(5) },
       });
@@ -968,11 +1014,15 @@ describe('generateNetwork', () => {
       ];
       const externalData = { 'stage-ngr': makeRosterPool(8) };
 
-      const first = generateNetwork(makeCodebook(), stages, {
+      const first = generateNetwork({
+        codebook: makeCodebook(),
+        stages,
         seed: 99,
         externalData,
       });
-      const second = generateNetwork(makeCodebook(), stages, {
+      const second = generateNetwork({
+        codebook: makeCodebook(),
+        stages,
         seed: 99,
         externalData,
       });
@@ -1017,7 +1067,7 @@ describe('generateNetwork', () => {
         } as unknown as Stage;
 
         expect(
-          () => generateNetwork(codebook, [stage], { seed: 42 }),
+          () => generateNetwork({ codebook, stages: [stage], seed: 42 }),
           `Stage type "${stageType}" is not handled by generateNetwork`,
         ).not.toThrow();
       }
@@ -1031,9 +1081,107 @@ describe('generateNetwork', () => {
         type: 'SomeNewStageType',
       } as unknown as Stage;
 
-      expect(() => generateNetwork(codebook, [stage], { seed: 42 })).toThrow(
-        /Unsupported stage type "SomeNewStageType"/,
+      expect(() =>
+        generateNetwork({ codebook, stages: [stage], seed: 42 }),
+      ).toThrow(/Unsupported stage type "SomeNewStageType"/);
+    });
+  });
+
+  describe('generation config overrides', () => {
+    it('rosterDrawRatio: 1 draws every node on a mixed stage from the roster while it lasts', () => {
+      const stage = makeNameGeneratorStage({
+        behaviours: { minNodes: 5, maxNodes: 5 },
+      });
+
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
+        seed: 42,
+        externalData: { 'stage-ng': makeRosterPool(5) },
+        config: { rosterDrawRatio: 1 },
+      });
+
+      expect(network.nodes).toHaveLength(5);
+      expect(
+        network.nodes.every((n) => isRosterUid(n[entityPrimaryKeyProperty])),
+      ).toBe(true);
+    });
+
+    it('rosterDrawRatio: 0 draws nobody from the roster on a mixed stage', () => {
+      const stage = makeNameGeneratorStage({
+        behaviours: { minNodes: 5, maxNodes: 5 },
+      });
+
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
+        seed: 42,
+        externalData: { 'stage-ng': makeRosterPool(5) },
+        config: { rosterDrawRatio: 0 },
+      });
+
+      expect(network.nodes).toHaveLength(5);
+      expect(
+        network.nodes.every((n) => !isRosterUid(n[entityPrimaryKeyProperty])),
+      ).toBe(true);
+    });
+
+    it('nodeCount overrides the default bounds when a stage omits behaviours', () => {
+      const stage = makeNameGeneratorStage({ behaviours: undefined });
+
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
+        seed: 42,
+        config: { nodeCount: { min: 3, max: 3 } },
+      });
+
+      expect(network.nodes).toHaveLength(3);
+    });
+
+    it('dropOutFactor: 0 never triggers drop-out', () => {
+      const stages = Array.from({ length: 20 }, (_, i) =>
+        makeTypedNameGeneratorStage(`ng-${i}`, 'node-type-1'),
       );
+
+      const { droppedOut, currentStep } = generateNetwork({
+        codebook: makeCodebook(),
+        stages,
+        seed: 42,
+        simulateDropOut: true,
+        config: { dropOutFactor: 0 },
+      });
+
+      expect(droppedOut).toBe(false);
+      expect(currentStep).toBe(stages.length);
+    });
+
+    it('a large dropOutFactor forces an early drop-out', () => {
+      const stages = Array.from({ length: 20 }, (_, i) =>
+        makeTypedNameGeneratorStage(`ng-${i}`, 'node-type-1'),
+      );
+
+      const { droppedOut, currentStep } = generateNetwork({
+        codebook: makeCodebook(),
+        stages,
+        seed: 42,
+        simulateDropOut: true,
+        config: { dropOutFactor: 100 },
+      });
+
+      expect(droppedOut).toBe(true);
+      expect(currentStep).toBe(0);
+    });
+
+    it('familyPedigreeNodeCount with a fixed range produces exactly that many nodes', () => {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [makeFamilyPedigreeStage()],
+        seed: 42,
+        config: { familyPedigreeNodeCount: { min: 6, max: 6 } },
+      });
+
+      expect(network.nodes).toHaveLength(6);
     });
   });
 });
