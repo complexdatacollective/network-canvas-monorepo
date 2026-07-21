@@ -820,14 +820,16 @@ describe('generateNetwork', () => {
         } as unknown as Stage,
       ];
 
-      expect(() =>
-        generateNetwork({
-          codebook,
-          stages,
-          seed: 42,
-          inProgressStageIndex: 1,
-        }),
-      ).not.toThrow();
+      const { network } = generateNetwork({
+        codebook,
+        stages,
+        seed: 42,
+        inProgressStageIndex: 1,
+      });
+
+      for (const node of network.nodes) {
+        expect(node[entityAttributesProperty]).not.toHaveProperty('undefined');
+      }
     });
 
     it('never writes an "undefined" key when an in-progress OrdinalBin prompt lacks a variable', () => {
