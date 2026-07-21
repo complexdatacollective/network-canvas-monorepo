@@ -27,7 +27,6 @@ import {
   type StageBox,
   translateElement,
 } from './documentGeometry';
-import { elementKindLabel } from './labels';
 
 // Single module-level store via zustand `create()`. The interview package uses
 // per-instance factory stores (`createStore()` + a passed-in store handle)
@@ -69,8 +68,6 @@ export type PreviewAspect =
   | '3:4'
   | '1:1';
 export type PreviewSurface = 'interview' | 'light' | 'checker';
-
-type Announcement = { message: string; seq: number };
 
 // Flat optional record: every element field, all optional. The union of per-kind
 // partials would collapse to shared keys only, so the patch is applied through
@@ -124,7 +121,6 @@ type EditorState = {
   previewSurface: PreviewSurface;
   past: BackgroundDocument[];
   future: BackgroundDocument[];
-  announcement: Announcement;
   // Bookkeeping (not part of the acted-on surface).
   lastCoalesceKey: string | null;
   gestureSnapshot: BackgroundDocument | null;
@@ -132,7 +128,6 @@ type EditorState = {
   setTool: (tool: EditorTool) => void;
   select: (selection: Selection | null) => void;
   resetCoalescing: () => void;
-  announce: (message: string) => void;
 
   commitDoc: (next: BackgroundDocument, opts?: CommitOptions) => void;
   updateElement: (
@@ -187,10 +182,6 @@ export function nextZoneLabel(zones: ZoneElement[]): string {
   let n = 1;
   while (used.has(`zone-${n}`)) n += 1;
   return `zone-${n}`;
-}
-
-function bump(state: EditorState, message: string): Announcement {
-  return { message, seq: state.announcement.seq + 1 };
 }
 
 // Snapshot-based history push. Consecutive commits sharing a `coalesceKey`
@@ -466,13 +457,6 @@ function templateFor(template: NewTemplate): BackgroundDocument {
   }
 }
 
-const templateName: Record<NewTemplate, string> = {
-  blank: 'blank',
-  quadrants: 'quadrants',
-  concentric: 'concentric circles',
-  compass: 'political compass',
-};
-
 export const useEditorStore = create<EditorState>((set, get) => ({
   // The editor opens on a blank canvas so the first thing a researcher sees is
   // an empty surface to build on; the bundled templates are one click away.
@@ -485,7 +469,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   previewSurface: 'interview',
   past: [],
   future: [],
-  announcement: { message: '', seq: 0 },
   lastCoalesceKey: null,
   gestureSnapshot: null,
 
@@ -506,9 +489,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // Ends a coalescing run (e.g. a keyboard-nudge burst on arrow-key release)
   // so the next run with the same key becomes its own undo step.
   resetCoalescing: () => set({ lastCoalesceKey: null }),
-
-  announce: (message) =>
-    set((state) => ({ announcement: bump(state, message) })),
 
   commitDoc: (next, opts) => set((state) => pushed(state, next, opts)),
 
@@ -550,7 +530,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((state) => ({
       ...pushed(state, next),
       selection: null,
-      announcement: bump(state, `${elementKindLabel(el)} deleted`),
     }));
   },
 
@@ -560,26 +539,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const index = doc.elements.findIndex((el) => el.id === selection.id);
     if (index === -1) return;
     const target = direction === 'forward' ? index + 1 : index - 1;
-    if (target < 0) {
-      set((state) => ({ announcement: bump(state, 'Already at the back') }));
-      return;
-    }
-    if (target >= doc.elements.length) {
-      set((state) => ({ announcement: bump(state, 'Already at the front') }));
-      return;
-    }
+    if (target < 0) return;
+    if (target >= doc.elements.length) return;
     const elements = [...doc.elements];
     const [moved] = elements.splice(index, 1);
     if (!moved) return;
     elements.splice(target, 0, moved);
     const next: BackgroundDocument = { ...doc, elements };
-    set((state) => ({
-      ...pushed(state, next),
-      announcement: bump(
-        state,
-        direction === 'forward' ? 'Moved forward' : 'Moved backward',
-      ),
-    }));
+    set((state) => pushed(state, next));
   },
 
   beginGesture: () => set((state) => ({ gestureSnapshot: state.doc })),
@@ -644,19 +611,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       elements: [...doc.elements, element],
     };
     // A successful creation hands back to the select tool (a discarded
-    // degenerate draft above keeps the draw tool so the user can retry). The
-    // announcement carries the mode change: aria-label updates on the focused
-    // stage are not reliably re-announced, so without it another Enter/draw
-    // attempt fails silently for screen-reader users.
+    // degenerate draft above keeps the draw tool so the user can retry).
     set((state) => ({
       ...pushed(state, next),
       selection: { id: element.id },
       activeTool: 'select',
       draft: null,
-      announcement: bump(
-        state,
-        `${elementKindLabel(element)} added. Select tool active`,
-      ),
     }));
   },
 
@@ -705,15 +665,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       // otherwise linger mid-list once more points are added, and a later
       // successful close (which only trims trailing duplicates) would commit a
       // polygon with a zero-length edge. Three distinct but collinear points
-      // enclose no area, so reject those too with a fitting message.
-      const message =
-        points.length < 3
-          ? 'A shape needs at least three points.'
-          : 'A polygon needs points that are not all in a line.';
-      set((state) => ({
-        draft: { ...draft, points },
-        announcement: bump(state, message),
-      }));
+      // enclose no area, so they are rejected here too.
+      set({ draft: { ...draft, points } });
       return;
     }
     const element: PolygonElement = {
@@ -735,7 +688,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       selection: { id: element.id },
       activeTool: 'select',
       draft: null,
-      announcement: bump(state, 'Polygon added. Select tool active'),
     }));
   },
 
@@ -762,7 +714,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ...pushed(state, next, { coalesceKey: newTextCoalesceKey(element.id) }),
       selection: { id: element.id },
       draft: null,
-      announcement: bump(state, 'Text added'),
     }));
     return element.id;
   },
@@ -779,10 +730,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       selection: { id: element.id },
       activeTool: 'select',
       draft: null,
-      announcement: bump(
-        state,
-        `${elementKindLabel(element)} added. Select tool active`,
-      ),
     }));
   },
 
@@ -813,7 +760,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   undo: () =>
     set((state) => {
       const previous = state.past[state.past.length - 1];
-      if (!previous) return { announcement: bump(state, 'Nothing to undo') };
+      if (!previous) return {};
       return {
         doc: previous,
         past: state.past.slice(0, -1),
@@ -822,14 +769,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         draft: null,
         lastCoalesceKey: null,
         gestureSnapshot: null,
-        announcement: bump(state, 'Undo'),
       };
     }),
 
   redo: () =>
     set((state) => {
       const [nextDoc] = state.future;
-      if (!nextDoc) return { announcement: bump(state, 'Nothing to redo') };
+      if (!nextDoc) return {};
       return {
         doc: nextDoc,
         past: [...state.past, state.doc].slice(-HISTORY_CAP),
@@ -838,7 +784,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         draft: null,
         lastCoalesceKey: null,
         gestureSnapshot: null,
-        announcement: bump(state, 'Redo'),
       };
     }),
 
@@ -846,7 +791,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   canRedo: () => get().future.length > 0,
 
   newDocument: (template) =>
-    set((state) => ({
+    set({
       doc: templateFor(template),
       selection: null,
       draft: null,
@@ -854,14 +799,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       future: [],
       lastCoalesceKey: null,
       gestureSnapshot: null,
-      announcement: bump(
-        state,
-        `Started a new ${templateName[template]} background`,
-      ),
-    })),
+    }),
 
   loadDocument: (doc) =>
-    set((state) => ({
+    set({
       doc,
       selection: null,
       draft: null,
@@ -869,8 +810,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       future: [],
       lastCoalesceKey: null,
       gestureSnapshot: null,
-      announcement: bump(state, `Opened “${doc.title}”`),
-    })),
+    }),
 
   setPreviewAspect: (previewAspect) => set({ previewAspect }),
   setPreviewSurface: (previewSurface) => set({ previewSurface }),

@@ -97,14 +97,13 @@ export function ResizeHandles({
           applyResize(d, handle, moving, constrainStage),
         );
       },
-      onEnd: ({ moved, cancelled }) => {
+      onEnd: ({ cancelled }) => {
         onGuidesChange(NO_GUIDES);
         if (cancelled) {
           store.cancelGesture();
           return;
         }
         store.endGesture();
-        if (moved) store.announce('Resized');
       },
     });
   };

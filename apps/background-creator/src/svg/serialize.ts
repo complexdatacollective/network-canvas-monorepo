@@ -147,13 +147,13 @@ function sanitizeDocument(doc: BackgroundDocument): BackgroundDocument {
   };
 }
 
-// A per-document id prefix. Fragment ids (markers, the title/desc referenced by
-// aria-labelledby) share the document-wide id space when an SVG is INLINED — as
-// the interview runtime does — so two backgrounds on one page would otherwise
-// both define `#arrow`, and the later line's `url(#arrow)` could resolve to the
-// first file's marker and paint the wrong arrowhead. A content hash keeps the
-// prefix deterministic (same document → identical bytes, so round-trips and the
-// golden tests stay stable) while making distinct documents collide-free.
+// A per-document id prefix for arrow-marker fragment ids. Marker ids share the
+// document-wide id space when an SVG is INLINED — as the interview runtime does
+// — so two backgrounds on one page would otherwise both define `#arrow`, and the
+// later line's `url(#arrow)` could resolve to the first file's marker and paint
+// the wrong arrowhead. A content hash keeps the prefix deterministic (same
+// document → identical bytes, so round-trips and the golden tests stay stable)
+// while making distinct documents collide-free.
 function documentIdPrefix(json: string): string {
   let hash = 0x811c9dc5;
   for (let index = 0; index < json.length; index += 1) {
@@ -373,17 +373,13 @@ export function serializeDocument(doc: BackgroundDocument): string {
   const sanitized = sanitizeDocument(doc);
   const json = JSON.stringify(sanitized);
   const idPrefix = documentIdPrefix(json);
-  const titleId = `${idPrefix}title`;
-  const descriptionId = `${idPrefix}description`;
   const markers = collectArrowMarkers(sanitized.elements, idPrefix);
   // The root carries class="text-text" so `currentColor` (fill-current /
   // stroke-current, arrowhead fills) resolves to the theme text colour
   // everywhere in the document; the single embedded <style> supplies the
   // dark-theme fallbacks for standalone rendering.
   const lines: string[] = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" role="img" aria-labelledby="${titleId} ${descriptionId}" class="nc-background text-text">`,
-    `  <title id="${titleId}">${escapeText(sanitized.title)}</title>`,
-    `  <desc id="${descriptionId}">${escapeText(sanitized.description)}</desc>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" class="nc-background text-text">`,
     EMBEDDED_STYLE,
     `  <metadata id="nc-background-creator">`,
     // The document is embedded as base64 of its UTF-8 JSON rather than

@@ -54,7 +54,5 @@ export async function editZoneLabelFlow(
 
   const label =
     typeof result.label === 'string' ? result.label : (element.zoneLabel ?? '');
-  const store = useEditorStore.getState();
-  store.updateElement(elementId, { zoneLabel: label });
-  store.announce('Zone label updated');
+  useEditorStore.getState().updateElement(elementId, { zoneLabel: label });
 }

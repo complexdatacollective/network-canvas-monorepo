@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { EditorCanvas } from '~/canvas/EditorCanvas';
 import { useEditorStore } from '~/state/editorStore';
+import { hasSeenWelcome } from '~/state/welcomePreference';
 
 import { FileDropzone } from './toolbar/FileDropzone';
 import { Toolbar } from './toolbar/Toolbar';
+import { WelcomeDialog } from './WelcomeDialog';
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -26,7 +28,10 @@ function isCanvasFocusContext(target: EventTarget | null): boolean {
 }
 
 function App() {
-  const announcement = useEditorStore((s) => s.announcement);
+  // First-run onboarding: shown until the user dismisses it with "Don't show
+  // this again" checked (persisted in localStorage). The Information toolbar
+  // button re-opens it on demand.
+  const [welcomeOpen, setWelcomeOpen] = useState(() => !hasSeenWelcome());
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -68,15 +73,10 @@ function App() {
       <main className="relative min-h-0 flex-1">
         <FileDropzone>
           <EditorCanvas />
-          <Toolbar />
+          <Toolbar onShowWelcome={() => setWelcomeOpen(true)} />
         </FileDropzone>
       </main>
-      {/* Single polite live region for editor announcements. The trailing space
-          toggles with the sequence so identical consecutive messages (e.g. two
-          "Undo"s) still register as a DOM change and are re-announced. */}
-      <output aria-live="polite" className="sr-only">
-        {announcement.message + (announcement.seq % 2 === 1 ? ' ' : '')}
-      </output>
+      <WelcomeDialog open={welcomeOpen} onClose={() => setWelcomeOpen(false)} />
     </div>
   );
 }

@@ -18,13 +18,37 @@ function docWith(elements: BackgroundDocument['elements']): BackgroundDocument {
   return { version: 1, title: 'T', description: 'D', elements };
 }
 
-// Fragment ids carry a per-document content-hash prefix so two inlined
-// backgrounds never collide; the exact hash is an implementation detail, so
-// tests recover it from the output rather than hard-coding it.
+// Arrow-marker fragment ids carry a per-document content-hash prefix so two
+// inlined backgrounds never collide; the exact hash is an implementation
+// detail, so tests recover it from a marker id rather than hard-coding it.
 function idPrefix(svg: string): string {
-  const match = svg.match(/id="(bg[a-z0-9]+-)title"/);
+  const match = svg.match(/id="(bg[a-z0-9]+-)arrow"/);
   if (!match?.[1]) throw new Error('no document id prefix found');
   return match[1];
+}
+
+// A document whose single arrowed line forces an arrow marker into the output,
+// making the per-document id prefix observable.
+function docWithArrow(title: string): BackgroundDocument {
+  return {
+    version: 1,
+    title,
+    description: 'D',
+    elements: [
+      {
+        id: 'l',
+        kind: 'line',
+        x1: 0,
+        y1: 0,
+        x2: 1,
+        y2: 1,
+        stroke: '#ffffff',
+        strokeWidth: 2,
+        startArrow: false,
+        endArrow: true,
+      },
+    ],
+  };
 }
 
 describe('serializeDocument root element', () => {
@@ -33,19 +57,27 @@ describe('serializeDocument root element', () => {
     expect(rootTag(svg)).toContain('width="100%"');
     expect(rootTag(svg)).toContain('height="100%"');
     expect(rootTag(svg)).not.toContain('viewBox');
-    expect(rootTag(svg)).toContain('role="img"');
-    const p = idPrefix(svg);
-    expect(rootTag(svg)).toContain(
-      `aria-labelledby="${p}title ${p}description"`,
-    );
   });
 
-  it('gives distinct documents distinct fragment-id prefixes but is deterministic per document', () => {
-    const a = docWith([]);
-    const b: BackgroundDocument = { ...a, title: 'Different' };
+  it('emits no screen-reader alt-text (no role=img, aria-labelledby, title or desc)', () => {
+    const svg = serializeDocument({
+      version: 1,
+      title: 'A title',
+      description: 'A description',
+      elements: [],
+    });
+    expect(rootTag(svg)).not.toContain('role="img"');
+    expect(rootTag(svg)).not.toContain('aria-labelledby');
+    expect(svg).not.toContain('<title');
+    expect(svg).not.toContain('<desc');
+  });
+
+  it('gives distinct documents distinct marker-id prefixes but is deterministic per document', () => {
+    const a = docWithArrow('A');
+    const b = docWithArrow('Different');
     // Same document → identical prefix (round-trips and golden output stay
     // stable); different document → different prefix (two inlined backgrounds
-    // never share marker/title ids).
+    // never share marker ids).
     expect(idPrefix(serializeDocument(a))).toBe(idPrefix(serializeDocument(a)));
     expect(idPrefix(serializeDocument(a))).not.toBe(
       idPrefix(serializeDocument(b)),
@@ -75,18 +107,6 @@ describe('serializeDocument root element', () => {
       'svg.nc-background .stroke-background { stroke: var(--color-background, oklch(0.2 0.03 290)) }',
     );
     expect(svg.match(/\.text-text\s*\{/g)).toBeNull();
-  });
-
-  it('escapes the title and description', () => {
-    const svg = serializeDocument({
-      version: 1,
-      title: 'A & B <x>',
-      description: 'quote " here',
-      elements: [],
-    });
-    const p = idPrefix(svg);
-    expect(svg).toContain(`<title id="${p}title">A &amp; B &lt;x&gt;</title>`);
-    expect(svg).toContain(`<desc id="${p}description">quote " here</desc>`);
   });
 });
 
@@ -418,10 +438,9 @@ describe('serializeDocument XML-invalid characters', () => {
     // DOMParser reads it back without a parser error...
     const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
     expect(parsed.querySelector('parsererror')).toBeNull();
-    expect(parsed.querySelector('title')?.textContent).toBe('Title');
 
     // ...and reopening restores the stripped (sanitized) form, not the original
-    // control characters.
+    // control characters (title/description round-trip through the metadata).
     const restored = parseDocument(svg);
     expect(restored.title).toBe('Title');
     expect(restored.description).toBe('Desc');

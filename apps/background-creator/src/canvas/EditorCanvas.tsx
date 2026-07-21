@@ -47,7 +47,6 @@ import { KeyboardTargets } from './overlay/KeyboardTargets';
 import { OverlaySvg } from './overlay/OverlaySvg';
 import { ResizeHandles } from './overlay/ResizeHandles';
 import { SelectionProperties } from './overlay/SelectionProperties';
-import { announceSelectionPosition } from './overlay/useItemControls';
 import { ZonePills } from './overlay/ZonePills';
 import {
   isOverlayControlTarget,
@@ -272,7 +271,6 @@ export function EditorCanvas(): ReactElement {
           ? { coalesceKey: newTextCoalesceKey(current.id) }
           : undefined,
       );
-      store.announce('Text updated');
     }
   }, []);
 
@@ -427,7 +425,6 @@ export function EditorCanvas(): ReactElement {
             }
             if (!moved) return;
             store.endGesture();
-            announceSelectionPosition();
           },
         });
         return;

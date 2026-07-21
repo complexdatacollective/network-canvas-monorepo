@@ -3,7 +3,6 @@ import type { ReactElement, ReactNode } from 'react';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import { isSvgFile, readSvgFile, SvgFileTooLargeError } from '~/files/open';
 import {
   PYTHON_FILETYPE,
@@ -174,8 +173,7 @@ export async function openRejectedDropFlow(
 }
 
 export async function downloadSvgFlow(): Promise<void> {
-  const store = useEditorStore.getState();
-  const { doc } = store;
+  const { doc } = useEditorStore.getState();
   const blob = new Blob([serializeDocument(doc)], {
     type: SVG_FILETYPE.mimeType,
   });
@@ -184,8 +182,7 @@ export async function downloadSvgFlow(): Promise<void> {
     SVG_FILETYPE.extension,
     'background',
   );
-  const result = await saveBlob(blob, name, SVG_FILETYPE);
-  if (result.saved) store.announce(`Downloaded ${name}`);
+  await saveBlob(blob, name, SVG_FILETYPE);
 }
 
 function ScriptOptionsFields(): ReactElement {
@@ -240,8 +237,7 @@ export async function exportScriptFlow(
   dialogs: Dialogs,
   language: ScriptLanguage,
 ): Promise<void> {
-  const store = useEditorStore.getState();
-  const { doc } = store;
+  const { doc } = useEditorStore.getState();
 
   const gate = evaluateScriptExport(doc);
   if (!gate.ok) {
@@ -276,57 +272,5 @@ export async function exportScriptFlow(
   const filetype = language === 'python' ? PYTHON_FILETYPE : R_FILETYPE;
   const name = language === 'python' ? 'assign_zones.py' : 'assign_zones.R';
   const blob = new Blob([source], { type: filetype.mimeType });
-  const result = await saveBlob(blob, name, filetype);
-  if (result.saved) store.announce(`Exported ${name}`);
-}
-
-function DetailsFields({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}): ReactElement {
-  return (
-    <>
-      <Field
-        name="title"
-        label="Title"
-        hint="Names the background for screen readers and in the saved SVG."
-        component={InputField}
-        initialValue={title}
-        required
-        autoFocus
-      />
-      <Field
-        name="description"
-        label="Description"
-        hint="A short description of what the background shows."
-        component={TextAreaField}
-        initialValue={description}
-      />
-    </>
-  );
-}
-
-export async function documentDetailsFlow(dialogs: Dialogs): Promise<void> {
-  const store = useEditorStore.getState();
-  const { doc } = store;
-  const result = await dialogs.openDialog({
-    type: 'form',
-    title: 'Document details',
-    description: 'These describe the background for accessibility.',
-    submitLabel: 'Save',
-    children: <DetailsFields title={doc.title} description={doc.description} />,
-  });
-  if (!result) return;
-
-  const current = useEditorStore.getState().doc;
-  const title = typeof result.title === 'string' ? result.title : current.title;
-  const description =
-    typeof result.description === 'string'
-      ? result.description
-      : current.description;
-  store.commitDoc({ ...current, title, description });
-  store.announce('Document details updated');
+  await saveBlob(blob, name, filetype);
 }

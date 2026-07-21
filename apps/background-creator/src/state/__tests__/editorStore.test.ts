@@ -54,7 +54,6 @@ function reset(doc: BackgroundDocument = blankDoc()): void {
     previewSurface: 'interview',
     past: [],
     future: [],
-    announcement: { message: '', seq: 0 },
     lastCoalesceKey: null,
     gestureSnapshot: null,
   });
@@ -205,9 +204,7 @@ describe('draft commit', () => {
     }
     expect(state().selection).toEqual({ id: el?.id });
     expect(state().draft).toBeNull();
-    expect(state().announcement.message).toBe(
-      'Rectangle added. Select tool active',
-    );
+    expect(state().activeTool).toBe('select');
   });
 
   it('normalizes a drag drawn up-and-left', () => {
@@ -351,7 +348,7 @@ describe('polygon draft', () => {
     expect(state().activeTool).toBe('select');
   });
 
-  it('refuses to close with fewer than three points and announces why', () => {
+  it('refuses to close with fewer than three points', () => {
     state().setTool('polygon');
     state().beginDraft('polygon', { x: 0.2, y: 0.2 });
     state().addDraftPoint({ x: 0.6, y: 0.3 });
@@ -359,9 +356,6 @@ describe('polygon draft', () => {
     expect(state().doc.elements).toHaveLength(0);
     expect(state().draft).not.toBeNull();
     expect(state().activeTool).toBe('polygon');
-    expect(state().announcement.message).toBe(
-      'A shape needs at least three points.',
-    );
   });
 
   it('refuses a close on the first vertex with only two distinct points', () => {
@@ -384,9 +378,6 @@ describe('polygon draft', () => {
     state().closeDraftPolygon();
     expect(state().doc.elements).toHaveLength(0);
     expect(state().activeTool).toBe('polygon');
-    expect(state().announcement.message).toBe(
-      'A polygon needs points that are not all in a line.',
-    );
   });
 
   it('drops a closing press on the first vertex from a valid polygon', () => {
@@ -596,14 +587,12 @@ describe('reorderSelected', () => {
     store.setState({ selection: { id: 'a' } });
     state().reorderSelected('backward');
     expect(state().doc.elements.map((e) => e.id)).toEqual(['a', 'b', 'c']);
-    expect(state().announcement.message).toBe('Already at the back');
   });
 
   it('refuses to move the front element further forward', () => {
     store.setState({ selection: { id: 'c' } });
     state().reorderSelected('forward');
     expect(state().doc.elements.map((e) => e.id)).toEqual(['a', 'b', 'c']);
-    expect(state().announcement.message).toBe('Already at the front');
   });
 
   it('moves a middle element forward', () => {
@@ -669,7 +658,6 @@ describe('createTextAt and deleteSelected', () => {
     expect(text?.fill).toBe('text');
     expect(text?.fontSize).toBe('medium');
     expect(state().selection).toEqual({ id });
-    expect(state().announcement.message).toBe('Text added');
   });
 
   it('deletes the selected element and clears selection', () => {
@@ -678,7 +666,6 @@ describe('createTextAt and deleteSelected', () => {
     state().deleteSelected();
     expect(state().doc.elements).toHaveLength(0);
     expect(state().selection).toBeNull();
-    expect(state().announcement.message).toBe('Rectangle deleted');
   });
 });
 
@@ -756,7 +743,7 @@ describe('new-text creation coalescing', () => {
 });
 
 describe('insertDefaultShape', () => {
-  it('inserts a centred rectangle, selects it, and announces', () => {
+  it('inserts a centred rectangle, selects it, and returns to the select tool', () => {
     state().insertDefaultShape('rect');
     const el = state().doc.elements[0];
     expect(el?.kind).toBe('rect');
@@ -767,9 +754,7 @@ describe('insertDefaultShape', () => {
       expect(el.height).toBeCloseTo(0.2);
     }
     expect(state().selection).toEqual({ id: el?.id });
-    expect(state().announcement.message).toBe(
-      'Rectangle added. Select tool active',
-    );
+    expect(state().activeTool).toBe('select');
   });
 
   it('inserts a default triangle for the polygon tool', () => {

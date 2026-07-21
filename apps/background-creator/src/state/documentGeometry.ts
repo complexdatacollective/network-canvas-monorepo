@@ -187,13 +187,6 @@ export function elementBounds(el: SvgElement, stage?: StageBox | null): Bounds {
   }
 }
 
-export function boundsCentre(bounds: Bounds): Vec {
-  return {
-    x: (bounds.minX + bounds.maxX) / 2,
-    y: (bounds.minY + bounds.maxY) / 2,
-  };
-}
-
 // Clamps a requested translation so the shape's bounding box stays inside the
 // [0, 1] canvas — the shape sticks at the edge instead of leaving the canvas.
 // A shape larger than the canvas on an axis can never fit, which would invert

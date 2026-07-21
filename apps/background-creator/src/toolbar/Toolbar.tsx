@@ -1,19 +1,18 @@
 import {
   Circle,
-  Eye,
-  EyeOff,
   File,
   FileCode,
   FileOutput,
   FilePlus,
   FolderOpen,
+  Goal,
   ImageDown,
   Info,
   LayoutGrid,
   Minus,
-  Monitor,
   MousePointer2,
   Pentagon,
+  Proportions,
   Redo2,
   Square,
   Target,
@@ -30,7 +29,6 @@ import {
 import { type EditorTool, useEditorStore } from '~/state/editorStore';
 
 import {
-  documentDetailsFlow,
   downloadSvgFlow,
   exportScriptFlow,
   newDocumentFlow,
@@ -57,7 +55,12 @@ function selectedFor(active: EditorTool): string[] {
   return DRAW_TOOLS.includes(active) ? [active] : [];
 }
 
-export function Toolbar(): ReactElement {
+type ToolbarProps = {
+  // Re-opens the first-run welcome dialog (the Information button).
+  onShowWelcome: () => void;
+};
+
+export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
   const dialogs = useDialog();
   // Bounds the draggable toolbar to the viewport so it stays reachable.
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -134,7 +137,7 @@ export function Toolbar(): ReactElement {
       type: 'toggle',
       id: 'toggle-zones',
       label: zonesVisible ? 'Hide zones' : 'Show zones',
-      icon: zonesVisible ? <Eye /> : <EyeOff />,
+      icon: <Goal />,
       pressed: zonesVisible,
       onPressedChange: () => toggleZonesVisible(),
     },
@@ -142,7 +145,7 @@ export function Toolbar(): ReactElement {
       type: 'popover',
       id: 'preview',
       label: 'Preview',
-      icon: <Monitor />,
+      icon: <Proportions />,
       // The toolbar floats at the bottom, so popovers open upward into the canvas.
       side: 'top',
       open: previewOpen,
@@ -197,7 +200,7 @@ export function Toolbar(): ReactElement {
       id: 'information',
       label: 'Information',
       icon: <Info />,
-      onClick: () => void documentDetailsFlow(dialogs),
+      onClick: onShowWelcome,
     },
     { type: 'separator', id: 'sep-export' },
     {
