@@ -36,7 +36,8 @@
     "button": {
       "buttonText": "Search documentation",
       "buttonTextMobile": "Search docs",
-      "buttonAriaLabel": "Open search modal"
+      "buttonAriaLabel": "Open search modal",
+      "buttonUnavailableText": "Search is temporarily unavailable"
     },
     "modal": {
       "searchBox": {

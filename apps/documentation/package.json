@@ -13,6 +13,7 @@
     "generateProtocols": "tsx ./scripts/generateSampleProtocol.ts",
     "optimize-images": "node ./scripts/optimize-images.mjs",
     "start": "pnpm next start",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "validate-redirects": "tsx ./scripts/validate-redirects.ts",
     "test-redirects": "tsx ./scripts/test-redirects.ts"
@@ -48,14 +49,18 @@
     "@microflash/rehype-figure": "^2.1.4",
     "@tailwindcss/postcss": "catalog:",
     "@tailwindcss/typography": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
     "@types/hast": "^3.0.4",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@types/unist": "^3.0.3",
+    "@vitejs/plugin-react": "catalog:",
     "gray-matter": "^4.0.3",
     "hast-util-heading-rank": "^3.0.0",
     "hast-util-to-string": "^3.0.1",
+    "jsdom": "catalog:",
     "jszip": "catalog:",
     "mdast-util-to-string": "^4.0.0",
     "next-sitemap": "^4.2.3",
@@ -75,6 +80,7 @@
     "unist-util-visit": "^5.1.0",
     "vfile": "^6.0.3",
     "vfile-matter": "^5.0.1",
+    "vitest": "catalog:",
     "zod": "catalog:"
   }
 }
