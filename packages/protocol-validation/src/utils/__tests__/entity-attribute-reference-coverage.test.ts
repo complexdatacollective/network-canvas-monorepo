@@ -50,9 +50,10 @@ const countTagged = (
 // Update this number deliberately when adding/removing a tagged field.
 // Merged total: main's NetworkComposer reference fields, plus this branch's
 // pedigree fields — biologicalSexVariable (NodeConfigSchema), gameteRoleVariable
-// (EdgeConfigSchema), and NarrativePedigree diseases[].variable. The value is
-// verified against the runtime count computed below.
-const EXPECTED_TAGGED_FIELD_COUNT = 34;
+// (EdgeConfigSchema), and NarrativePedigree diseases[].variable — plus the two
+// node shape-mapping `variable` fields (discrete and breakpoints arms). The
+// value is verified against the runtime count computed below.
+const EXPECTED_TAGGED_FIELD_COUNT = 36;
 
 describe('entity-attribute reference coverage', () => {
   it('has tagged the expected number of reference fields', () => {

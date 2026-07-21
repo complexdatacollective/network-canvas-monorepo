@@ -45,6 +45,7 @@ type WrappedFormProps = {
   id?: string;
   onSubmit?: (values: unknown) => void | Promise<void>;
   initialValues?: unknown;
+  validate?: (values: Record<string, unknown>) => Record<string, unknown>;
 };
 
 /**

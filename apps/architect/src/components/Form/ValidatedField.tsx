@@ -25,6 +25,7 @@ type ValidatedFieldProps<T = Record<string, never>> = Omit<
   inline?: boolean;
   entityType?: string;
   promptBeforeChange?: string;
+  blockChangeReason?: string | null;
 } & InputHTMLAttributes<HTMLInputElement>;
 
 /**

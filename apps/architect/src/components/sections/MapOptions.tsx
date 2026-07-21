@@ -41,6 +41,11 @@ type MapOptionsProps = StageEditorSectionProps & {
   };
   disabled: boolean;
 };
+const NO_SELECTABLE_PROPERTIES_MESSAGE =
+  'The selected GeoJSON has no feature properties available for map selection. Choose a GeoJSON file whose features include properties.';
+
+const noSelectablePropertiesGuard = () => NO_SELECTABLE_PROPERTIES_MESSAGE;
+
 const defaultMapOptions = {
   center: [0, 0],
   tokenAssetId: '',
@@ -56,11 +61,17 @@ const MapOptions = ({
   mapOptions = defaultMapOptions,
   disabled,
 }: MapOptionsProps) => {
-  const { variables: variableOptions } = useVariablesFromExternalData(
-    mapOptions?.dataSourceAssetId,
-    true,
-    'geojson',
-  );
+  const { variables: variableOptions, isVariablesLoading } =
+    useVariablesFromExternalData(
+      mapOptions?.dataSourceAssetId,
+      true,
+      'geojson',
+    );
+  const dataSourceAssetId = mapOptions?.dataSourceAssetId;
+  const noSelectableProperties =
+    Boolean(dataSourceAssetId) &&
+    !isVariablesLoading &&
+    variableOptions.length === 0;
   const { paletteName, paletteSize } = {
     paletteName: 'ord-color-seq',
     paletteSize: 8,
@@ -107,16 +118,24 @@ const MapOptions = ({
             validation={{ required: true }}
           />
         </Row>
-        {variableOptions && variableOptions.length > 0 && (
+        {Boolean(dataSourceAssetId) && !isVariablesLoading && (
           <Row>
             <ValidatedField
               name="mapOptions.targetFeatureProperty"
               label="Which property should be used for map selection?"
               component={FrescoReduxField}
-              validation={{ required: true }}
+              validation={{
+                required: noSelectableProperties
+                  ? noSelectablePropertiesGuard
+                  : true,
+              }}
               componentProps={{
                 fieldComponent: FrescoNativeSelectField,
                 options: variableOptions,
+                disabled: noSelectableProperties,
+                hint: noSelectableProperties
+                  ? NO_SELECTABLE_PROPERTIES_MESSAGE
+                  : undefined,
               }}
             />
           </Row>

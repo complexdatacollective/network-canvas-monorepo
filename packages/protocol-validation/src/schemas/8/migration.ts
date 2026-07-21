@@ -4,6 +4,7 @@ import {
 } from '../../migration/index.ts';
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
 import { ordinalColorSequence } from './common/prompts.ts';
+import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
 
 // Operators whose operand is a categorical option value (as opposed to a count,
 // like OPTIONS_*, or a regex). Their legacy scalar operands are wrapped in a
@@ -24,15 +25,15 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
-const codebookVariableName = (
+const codebookVariable = (
   codebook: unknown,
   subject: unknown,
   variableId: unknown,
-): string | undefined => {
-  if (typeof variableId !== 'string') return undefined;
+): Record<string, unknown> | null => {
+  if (typeof variableId !== 'string') return null;
   const cb = asRecord(codebook);
   const subj = asRecord(subject);
-  if (!cb || !subj) return undefined;
+  if (!cb || !subj) return null;
   let variables: Record<string, unknown> | null = null;
   if (subj.entity === 'ego') {
     variables = asRecord(asRecord(cb.ego)?.variables);
@@ -44,7 +45,15 @@ const codebookVariableName = (
       asRecord(asRecord(cb[subj.entity])?.[subj.type])?.variables,
     );
   }
-  const name = variables ? asRecord(variables[variableId])?.name : undefined;
+  return variables ? asRecord(variables[variableId]) : null;
+};
+
+const codebookVariableName = (
+  codebook: unknown,
+  subject: unknown,
+  variableId: unknown,
+): string | undefined => {
+  const name = codebookVariable(codebook, subject, variableId)?.name;
   return typeof name === 'string' && name.trim() !== '' ? name : undefined;
 };
 
@@ -478,13 +487,26 @@ const migrationV7toV8 = createMigration({
         fn: <V>(stage: V) => {
           const typedStage = asRecord(stage);
           if (!typedStage) return stage;
-          const fields = asRecord(typedStage.form)?.fields;
-          if (!Array.isArray(fields)) return stage;
+          const form = asRecord(typedStage.form);
+          const fields = form?.fields;
+          if (!form || !Array.isArray(fields)) return stage;
           const subject =
             typedStage.type === 'EgoForm'
               ? { entity: 'ego' }
               : typedStage.subject;
-          for (const field of fields) {
+          const renderable = fields.filter((field) => {
+            const type = codebookVariable(
+              codebook,
+              subject,
+              asRecord(field)?.variable,
+            )?.type;
+            return (
+              typeof type !== 'string' ||
+              !NON_RENDERABLE_VARIABLE_TYPES.has(type)
+            );
+          });
+          form.fields = renderable;
+          for (const field of renderable) {
             const typedField = asRecord(field);
             if (!typedField) continue;
             if (
@@ -736,6 +758,28 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage || !Array.isArray(typedStage.panels)) return stage;
+          for (const panel of typedStage.panels) {
+            const typedPanel = asRecord(panel);
+            if (!typedPanel || typedPanel.dataSource === 'existing') continue;
+            const filter = asRecord(typedPanel.filter);
+            if (!filter || !Array.isArray(filter.rules)) continue;
+            const remaining = filter.rules.filter(
+              (rule) => asRecord(rule)?.type !== 'edge',
+            );
+            if (remaining.length === 0) {
+              delete typedPanel.filter;
+            } else {
+              filter.rules = remaining;
+            }
+          }
+          return stage;
+        },
+      },
+      {
         // A filter whose rules array is empty empties (or inverts) the network
         // at runtime, and v8 requires at least one rule. Drop an empty stage or
         // panel filter; for skipLogic (whose filter is required) drop the whole
@@ -778,6 +822,31 @@ const migrationV7toV8 = createMigration({
             }
           }
 
+          return stage;
+        },
+      },
+      {
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
+          const backfillJoin = (filter: unknown) => {
+            const typedFilter = asRecord(filter);
+            if (!typedFilter || !Array.isArray(typedFilter.rules)) return;
+            if (
+              typedFilter.rules.length > 1 &&
+              typedFilter.join === undefined
+            ) {
+              typedFilter.join = 'OR';
+            }
+          };
+          backfillJoin(typedStage.filter);
+          backfillJoin(asRecord(typedStage.skipLogic)?.filter);
+          if (Array.isArray(typedStage.panels)) {
+            for (const panel of typedStage.panels) {
+              backfillJoin(asRecord(panel)?.filter);
+            }
+          }
           return stage;
         },
       },
@@ -974,6 +1043,47 @@ const migrationV7toV8 = createMigration({
     // Set name from required dependency
     const result = transformed;
     result.name = deps.name;
+
+    if (Array.isArray(result.stages)) {
+      const droppableFormStageTypes = new Set([
+        'EgoForm',
+        'AlterForm',
+        'AlterEdgeForm',
+      ]);
+      const removedStageIds = new Set<string>();
+      const keptStages = result.stages.filter((stage: unknown) => {
+        const typedStage = asRecord(stage);
+        if (
+          !typedStage ||
+          typeof typedStage.type !== 'string' ||
+          !droppableFormStageTypes.has(typedStage.type)
+        ) {
+          return true;
+        }
+        const fields = asRecord(typedStage.form)?.fields;
+        if (Array.isArray(fields) && fields.length > 0) return true;
+        if (typeof typedStage.id === 'string') {
+          removedStageIds.add(typedStage.id);
+        }
+        return false;
+      });
+      result.stages = keptStages;
+
+      if (removedStageIds.size > 0) {
+        for (const stage of keptStages) {
+          const skipLogic = asRecord(asRecord(stage)?.skipLogic);
+          const destination = asRecord(skipLogic?.destination);
+          if (
+            skipLogic &&
+            destination?.type === 'stage' &&
+            typeof destination.stageId === 'string' &&
+            removedStageIds.has(destination.stageId)
+          ) {
+            delete skipLogic.destination;
+          }
+        }
+      }
+    }
 
     // Backfill any missing, empty, or whitespace-only stage label with a
     // one-based positional default ("Stage 1", "Stage 2", …) so the migrated

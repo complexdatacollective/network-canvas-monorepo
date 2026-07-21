@@ -41,10 +41,7 @@ import {
 } from './common/index.ts';
 import type { FilterRule } from './filters/index.ts';
 import { type Prompt, stageSchema } from './stages/index.ts';
-
-// Variable types that have no renderable form `component` and therefore
-// cannot be referenced by a form field.
-const NON_RENDERABLE_VARIABLE_TYPES = new Set(['layout', 'location']);
+import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/index.ts';
 
 // Operators that expect numeric values for comparison
 const NUMERIC_COMPARISON_OPERATORS = [
@@ -941,35 +938,27 @@ const ProtocolSchema = z
           const { dynamic } = nodeDef.shape;
           const basePath = ['codebook', 'node', nodeType, 'shape', 'dynamic'];
 
-          if (!nodeDef.variables || !(dynamic.variable in nodeDef.variables)) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `Shape mapping variable "${dynamic.variable}" is not defined in this node type's variables`,
-              path: [...basePath, 'variable'],
-            });
-          } else {
-            const variable = nodeDef.variables[dynamic.variable];
-            if (variable) {
-              if (
-                dynamic.type === 'discrete' &&
-                !discreteEligibleTypes.has(variable.type)
-              ) {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message: `Discrete shape mapping requires a categorical, ordinal, or boolean variable, but "${dynamic.variable}" is of type "${variable.type}"`,
-                  path: [...basePath, 'type'],
-                });
-              }
-              if (
-                dynamic.type === 'breakpoints' &&
-                !breakpointEligibleTypes.has(variable.type)
-              ) {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message: `Breakpoint shape mapping requires a number or scalar variable, but "${dynamic.variable}" is of type "${variable.type}"`,
-                  path: [...basePath, 'type'],
-                });
-              }
+          const variable = nodeDef.variables?.[dynamic.variable];
+          if (variable) {
+            if (
+              dynamic.type === 'discrete' &&
+              !discreteEligibleTypes.has(variable.type)
+            ) {
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `Discrete shape mapping requires a categorical, ordinal, or boolean variable, but "${dynamic.variable}" is of type "${variable.type}"`,
+                path: [...basePath, 'type'],
+              });
+            }
+            if (
+              dynamic.type === 'breakpoints' &&
+              !breakpointEligibleTypes.has(variable.type)
+            ) {
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `Breakpoint shape mapping requires a number or scalar variable, but "${dynamic.variable}" is of type "${variable.type}"`,
+                path: [...basePath, 'type'],
+              });
             }
           }
         }

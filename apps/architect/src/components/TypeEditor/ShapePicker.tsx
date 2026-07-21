@@ -16,11 +16,14 @@ export const SHAPES: Array<{ value: NodeShape; label: string }> = [
   { value: 'diamond', label: 'Diamond' },
 ];
 
+const isNodeShape = (value: unknown): value is NodeShape =>
+  SHAPES.some((shape) => shape.value === value);
+
 type ShapePickerControlProps = {
   'id'?: string;
   'name'?: string;
-  'value'?: string;
-  'onChange'?: (value: string) => void;
+  'value'?: NodeShape;
+  'onChange'?: (value: NodeShape) => void;
   'onBlur'?: FocusEventHandler;
   'onFocus'?: FocusEventHandler;
   'small'?: boolean;
@@ -61,7 +64,7 @@ export const ShapePickerControl = ({
       name={name}
       value={value ?? ''}
       onValueChange={(nextValue) => {
-        if (!readOnly && typeof nextValue === 'string') onChange?.(nextValue);
+        if (!readOnly && isNodeShape(nextValue)) onChange?.(nextValue);
       }}
       disabled={disabled}
       readOnly={readOnly}

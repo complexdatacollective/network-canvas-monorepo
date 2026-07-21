@@ -61,6 +61,13 @@ export const getFamilyPedigreeDependentStages = <
       candidate.sourceStageId === stageId,
   );
 
+export const getFamilyPedigreeNodeTypeChangeBlock = <
+  T extends StageDependencyCandidate,
+>(
+  stages: T[],
+  stageId: string,
+) => getFamilyPedigreeDependentStages(stages, stageId);
+
 export const getSkipDestinationDependentStages = <
   T extends StageDependencyCandidate,
 >(
