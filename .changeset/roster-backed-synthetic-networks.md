@@ -1,6 +1,6 @@
 ---
 '@codaco/protocol-utilities': major
-'@codaco/interview': minor
+'@codaco/interview': major
 '@codaco/protocol-validation': minor
 ---
 
@@ -28,3 +28,11 @@ uses, so a host reads roster assets identically to a live interview.
 
 `@codaco/protocol-validation` now exports a `StructuralCodebook` type for
 consumers that assemble or receive a codebook before schema validation.
+
+Roster rows parsed by `@codaco/interview` are now identified as
+`subjectType_contentHash` instead of a bare content hash. A roster file that
+backs more than one node type (say, a shared address book used by both a
+person stage and a place stage) previously produced the same primary key for
+matching rows under each type, an invariant violation once both ended up in
+the same network. This is a breaking change: sessions saved by earlier
+versions will not re-associate their roster people after upgrading.
