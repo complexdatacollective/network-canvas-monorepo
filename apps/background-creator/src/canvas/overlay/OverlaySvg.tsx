@@ -7,7 +7,7 @@ import type {
   Vec,
   ZoneElement,
 } from '~/model/types';
-import type { Bounds } from '~/state/documentGeometry';
+import { type Bounds, nearlyEqual } from '~/state/documentGeometry';
 import { type Draft, useEditorStore } from '~/state/editorStore';
 import type { SnapGuides } from '~/state/snapping';
 
@@ -308,10 +308,15 @@ function DraftShape({ draft }: { draft: Draft }): ReactElement | null {
 
   const { points, current } = draft;
   const preview = [...points, current];
+  const first = points[0];
   // Once there are enough points to enclose an area, the first vertex is the
-  // "click to close" target, so it gets a larger hollow ring to invite the
-  // connect-back-to-start gesture.
-  const canClose = points.length >= 3;
+  // "click to close" target and gets a hollow ring. When the pointer snaps onto
+  // it (the move handler sets current to the first vertex within the close
+  // threshold), the ring fills to signal that a click will close the polygon —
+  // and the preview edge already runs back to it, so the shape reads as closed.
+  const canClose = points.length >= 3 && first !== undefined;
+  const willClose =
+    canClose && first !== undefined && nearlyEqual(current, first);
   return (
     <>
       <PolygonOutline points={preview} closed={false} {...paint} />
@@ -321,8 +326,8 @@ function DraftShape({ draft }: { draft: Draft }): ReactElement | null {
             key={i}
             cx={pc(p.x)}
             cy={pc(p.y)}
-            r={6}
-            fill="none"
+            r={willClose ? 7 : 6}
+            fill={willClose ? stroke : 'none'}
             stroke={stroke}
             strokeWidth={2}
           />

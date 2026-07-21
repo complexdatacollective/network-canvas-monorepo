@@ -519,7 +519,19 @@ export function EditorCanvas(): ReactElement {
     const pt = clientToNormalized(rect, e.clientX, e.clientY);
 
     if (store.draft?.mode === 'polygon') {
-      store.updateDraft(pt);
+      // Magnetically snap the preview endpoint onto the first vertex when the
+      // pointer is within the close threshold (and the shape can close): the
+      // edge visibly connects back to the start, and the overlay highlights the
+      // vertex, signalling that a click will close the polygon.
+      const first = store.draft.points[0];
+      const willClose =
+        store.draft.points.length >= 3 &&
+        first !== undefined &&
+        Math.hypot(
+          (pt.x - first.x) * rect.width,
+          (pt.y - first.y) * rect.height,
+        ) <= CLOSE_TOLERANCE_PX;
+      store.updateDraft(willClose && first ? first : pt);
     }
 
     // Clear a stale readout when zone feedback is unavailable — zones hidden, or
