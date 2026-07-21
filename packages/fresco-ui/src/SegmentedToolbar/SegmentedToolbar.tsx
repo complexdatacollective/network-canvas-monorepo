@@ -648,9 +648,9 @@ function DragHandle({
   orientation: ToolbarOrientation;
   size: SegmentSize;
   onPointerDown: (event: React.PointerEvent) => void;
-  onNudge: (delta: Position) => void;
+  onNudge: (delta: Position, handle: HTMLElement) => void;
 }) {
-  const handleKeyDown = (event: React.KeyboardEvent) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const deltas: Record<string, Position> = {
       ArrowLeft: { x: -NUDGE_STEP, y: 0 },
       ArrowRight: { x: NUDGE_STEP, y: 0 },
@@ -660,7 +660,7 @@ function DragHandle({
     const delta = deltas[event.key];
     if (!delta) return;
     event.preventDefault();
-    onNudge(delta);
+    onNudge(delta, event.currentTarget);
   };
 
   return (
@@ -792,20 +792,40 @@ export function SegmentedToolbar({
     }
   }, [position, x, y]);
 
-  const handleNudge = (delta: Position) => {
+  // Offset limits (in the x/y motion-value space) that keep the toolbar within
+  // its drag constraints, for keyboard nudges — pointer drags are clamped by
+  // motion, but keyboard nudges bypass that. An object-form constraint is
+  // already an offset range; a RefObject is measured (container vs the toolbar's
+  // own rect) and converted, so arrow keys can't walk the toolbar off-screen
+  // (motion's ref clamping only covers pointer drags). The toolbar element is
+  // the drag handle's parent — motion.create(Surface) does not forward an
+  // external ref to its DOM node, so we reach it from the handle instead.
+  const nudgeLimits = (
+    handle: HTMLElement,
+  ): { left: number; right: number; top: number; bottom: number } | null => {
+    if (!dragConstraints) return null;
+    if (!('current' in dragConstraints)) return dragConstraints;
+    const container = dragConstraints.current;
+    const surface = handle.parentElement;
+    if (!container || !surface) return null;
+    const c = container.getBoundingClientRect();
+    const s = surface.getBoundingClientRect();
+    // `s` already includes the current x/y offset; subtract it to recover the
+    // layout edges, then express the range as offsets that keep `s` inside `c`.
+    return {
+      left: c.left - (s.left - x.get()),
+      right: c.right - (s.right - x.get()),
+      top: c.top - (s.top - y.get()),
+      bottom: c.bottom - (s.bottom - y.get()),
+    };
+  };
+
+  const handleNudge = (delta: Position, handle: HTMLElement) => {
     const next = { x: x.get() + delta.x, y: y.get() + delta.y };
-    // Pointer drags are clamped by motion, but keyboard nudges bypass it, so
-    // honour the object-form bounds here. The RefObject form is left to motion's
-    // drag clamping (we don't measure the ref element).
-    if (dragConstraints && !('current' in dragConstraints)) {
-      next.x = Math.min(
-        Math.max(next.x, dragConstraints.left),
-        dragConstraints.right,
-      );
-      next.y = Math.min(
-        Math.max(next.y, dragConstraints.top),
-        dragConstraints.bottom,
-      );
+    const limits = nudgeLimits(handle);
+    if (limits) {
+      next.x = Math.min(Math.max(next.x, limits.left), limits.right);
+      next.y = Math.min(Math.max(next.y, limits.top), limits.bottom);
     }
     x.set(next.x);
     y.set(next.y);

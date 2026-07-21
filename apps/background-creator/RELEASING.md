@@ -73,9 +73,10 @@ Remaining (Netlify UI):
    `bg-creator` site in its domain settings (the `networkcanvas.com` DNS zone
    lives in Netlify too); nothing in CI changes for it. Until then, production
    releases land on `https://bg-creator.netlify.app`. Once the domain is live,
-   flip the `bg-creator.networkcanvas.com` reference in
-   `apps/documentation/docs/design-protocols/key-concepts/responsive-svg-backgrounds.en.mdx`
-   from inline code back to a hyperlink.
+   add the `bg-creator.networkcanvas.com` link to the "Use the Background
+   Creator" section of
+   `apps/documentation/docs/design-protocols/key-concepts/responsive-svg-backgrounds.en.mdx`,
+   which currently describes the tool without pointing at the not-yet-live URL.
 
 Because the site and secret above are in place, the production deploy resolves
 the Site ID normally. Were the secret ever unset, the `netlify-cli deploy` step

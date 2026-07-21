@@ -11,7 +11,7 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react';
-import { cloneElement, type ReactElement, useState } from 'react';
+import { cloneElement, type ReactElement, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SegmentedToolbar, type ToolbarSegment } from './SegmentedToolbar';
@@ -621,5 +621,54 @@ describe('SegmentedToolbar — draggable', () => {
     screen.getByRole('button', { name: 'Move toolbar' }).focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(screen.getByRole('status')).toHaveTextContent(/moved/i);
+  });
+
+  it('clamps a keyboard nudge to a measured RefObject constraint', async () => {
+    // A RefObject constraint is only clamped by motion for pointer drags, so the
+    // nudge handler measures the container and the toolbar to clamp keyboard
+    // nudges too — otherwise arrow keys could walk the toolbar off-screen.
+    const onPositionChange = vi.fn();
+    const rect = (l: number, t: number, r: number, b: number): DOMRect => ({
+      left: l,
+      top: t,
+      right: r,
+      bottom: b,
+      x: l,
+      y: t,
+      width: r - l,
+      height: b - t,
+      toJSON: () => ({}),
+    });
+    function Harness(): ReactElement {
+      const ref = useRef<HTMLDivElement>(null);
+      return (
+        <div ref={ref} data-testid="constraint">
+          <SegmentedToolbar
+            label="Tools"
+            items={items}
+            draggable
+            defaultPosition={{ x: 0, y: 0 }}
+            dragConstraints={ref}
+            onPositionChange={onPositionChange}
+          />
+        </div>
+      );
+    }
+    render(<Harness />);
+    const constraintBox = screen.getByTestId('constraint');
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    // Container is 100×100; the toolbar surface nearly fills it (96×96), leaving
+    // only 4px of slack on each axis.
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      return this === constraintBox ? rect(0, 0, 100, 100) : rect(0, 0, 96, 96);
+    };
+    try {
+      screen.getByRole('button', { name: 'Move toolbar' }).focus();
+      // An 8px nudge would exceed the 4px of slack, so it clamps to 4.
+      await userEvent.keyboard('{ArrowRight}');
+      expect(onPositionChange).toHaveBeenLastCalledWith({ x: 4, y: 0 });
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original;
+    }
   });
 });
