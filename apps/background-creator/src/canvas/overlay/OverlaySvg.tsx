@@ -308,12 +308,28 @@ function DraftShape({ draft }: { draft: Draft }): ReactElement | null {
 
   const { points, current } = draft;
   const preview = [...points, current];
+  // Once there are enough points to enclose an area, the first vertex is the
+  // "click to close" target, so it gets a larger hollow ring to invite the
+  // connect-back-to-start gesture.
+  const canClose = points.length >= 3;
   return (
     <>
       <PolygonOutline points={preview} closed={false} {...paint} />
-      {points.map((p, i) => (
-        <circle key={i} cx={pc(p.x)} cy={pc(p.y)} r={3.5} fill={stroke} />
-      ))}
+      {points.map((p, i) =>
+        i === 0 && canClose ? (
+          <circle
+            key={i}
+            cx={pc(p.x)}
+            cy={pc(p.y)}
+            r={6}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={2}
+          />
+        ) : (
+          <circle key={i} cx={pc(p.x)} cy={pc(p.y)} r={3.5} fill={stroke} />
+        ),
+      )}
     </>
   );
 }

@@ -65,6 +65,11 @@ const RESIZE_HANDLE_ONLY = '[data-resize-handle]';
 // normalize by different pixel extents), which is acceptable for grab targets.
 const HIT_TOLERANCE_PX = 8;
 
+// Clicking within this many pixels of a polygon's first vertex closes the shape
+// (the "connect back to the start" gesture). Generous so the vertex is an easy
+// target; double-click and Enter close it too.
+const CLOSE_TOLERANCE_PX = 12;
+
 const ASPECT_RATIOS: Record<Exclude<PreviewAspect, 'fill'>, number> = {
   '16:10': 16 / 10,
   '16:9': 16 / 9,
@@ -454,7 +459,22 @@ export function EditorCanvas(): ReactElement {
         if (!current || current.mode !== 'polygon') {
           store.beginDraft(tool, pt);
         } else {
-          store.addDraftPoint(pt);
+          // Clicking back on (or near) the first vertex closes the shape once it
+          // has enough points — the "connect back to the start" gesture people
+          // expect. Double-click and Enter close it too.
+          const first = current.points[0];
+          const closesShape =
+            current.points.length >= 3 &&
+            first !== undefined &&
+            Math.hypot(
+              (pt.x - first.x) * rect.width,
+              (pt.y - first.y) * rect.height,
+            ) <= CLOSE_TOLERANCE_PX;
+          if (closesShape) {
+            store.closeDraftPolygon();
+          } else {
+            store.addDraftPoint(pt);
+          }
         }
         return;
       }
