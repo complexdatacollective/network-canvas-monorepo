@@ -1,143 +1,54 @@
 import {
-  getVariableTypeReplacements,
-  loadExternalData,
-  makeVariableUUIDReplacer,
-} from '@codaco/interview';
-import { filter as customFilter } from '@codaco/network-query';
-import type { Filter, Stage, StageSubject } from '@codaco/protocol-validation';
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcNode,
-} from '@codaco/shared-consts';
+  collectRosterExternalData,
+  type ResolveRosterAsset,
+} from '@codaco/interview/contract';
+import type { NcNode } from '@codaco/shared-consts';
 import { getProtocolAssets } from '~/lib/db/api';
 import type { StoredAsset, StoredProtocol } from '~/lib/db/types';
 
-type NodeSubject = Extract<StageSubject, { entity: 'node' }>;
-
-type RosterSource = {
-  assetId: string;
-  filter?: Filter;
-};
-
-type RosterStage = {
-  stageId: string;
-  subject: NodeSubject;
-  sources: RosterSource[];
-};
-
-function getRosterStage(stage: Stage): RosterStage | null {
-  const sources: RosterSource[] = [];
-
-  if (stage.type === 'NameGeneratorRoster') {
-    sources.push({ assetId: stage.dataSource });
-  } else if (
-    stage.type === 'NameGenerator' ||
-    stage.type === 'NameGeneratorQuickAdd'
-  ) {
-    for (const panel of stage.panels ?? []) {
-      if (panel.dataSource !== 'existing') {
-        sources.push({ assetId: panel.dataSource, filter: panel.filter });
-      }
-    }
-  } else {
-    return null;
-  }
-
-  if (sources.length === 0) return null;
-  if (stage.subject.entity !== 'node') return null;
-
-  return { stageId: stage.id, subject: stage.subject, sources };
-}
-
-function applyPanelFilter(nodes: NcNode[], panelFilter?: Filter): NcNode[] {
-  if (!panelFilter) return nodes;
-  return customFilter(panelFilter)({
-    nodes,
-    edges: [],
-    ego: { [entityPrimaryKeyProperty]: '', [entityAttributesProperty]: {} },
-  }).nodes;
-}
-
-async function parseAsset(
-  asset: StoredAsset,
-  source: string | undefined,
-  subject: NodeSubject,
-  codebook: StoredProtocol['codebook'],
-): Promise<NcNode[]> {
-  if (typeof asset.data === 'string') return [];
-
-  const url = URL.createObjectURL(asset.data);
-  try {
-    const sourceFileName = source ?? asset.name;
-    const { nodes } = await loadExternalData(sourceFileName, url);
-    const uuidData = nodes.map(
-      makeVariableUUIDReplacer(codebook, subject.type),
-    );
-    return getVariableTypeReplacements(
-      sourceFileName,
-      uuidData,
-      codebook,
-      subject,
-    );
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
+/**
+ * Host adapter for the shared roster-collection pipeline: reads this protocol's
+ * stored (decrypted) assets and resolves each roster asset id to a fetchable
+ * object URL, then delegates the parse/merge/filter work to
+ * `collectRosterExternalData`. The stored assets are fetched lazily on first
+ * resolve so a protocol with no roster stages never triggers an asset read.
+ */
 export async function loadRosterNodesForStages(
   protocol: StoredProtocol,
 ): Promise<Record<string, NcNode[]>> {
-  const rosterStages = protocol.protocol.stages
-    .map(getRosterStage)
-    .filter((s): s is RosterStage => s !== null);
+  let assetsByIdPromise: Promise<Map<string, StoredAsset>> | undefined;
+  const getAssetsById = () => {
+    assetsByIdPromise ??= getProtocolAssets(protocol.hash)
+      .catch((error: unknown): StoredAsset[] => {
+        // eslint-disable-next-line no-console
+        console.error('Could not read protocol assets for roster data', error);
+        return [];
+      })
+      .then(
+        (records) => new Map(records.map((record) => [record.assetId, record])),
+      );
+    return assetsByIdPromise;
+  };
 
-  if (rosterStages.length === 0) return {};
-
-  const records = await getProtocolAssets(protocol.hash).catch((e: unknown) => {
-    // eslint-disable-next-line no-console
-    console.error('Could not read protocol assets for roster data', e);
-    return [];
-  });
-  const assetsById = new Map(records.map((r) => [r.assetId, r]));
-  const manifest = protocol.protocol.assetManifest;
-
-  const parseCache = new Map<string, Promise<NcNode[]>>();
-
-  const result: Record<string, NcNode[]> = {};
-
-  for (const { stageId, subject, sources } of rosterStages) {
-    const byPrimaryKey = new Map<string, NcNode>();
-
-    for (const { assetId, filter: panelFilter } of sources) {
-      const asset = assetsById.get(assetId);
-      if (!asset || asset.type !== 'network') continue;
-
-      const cacheKey = `${assetId}::${subject.type}`;
-      let parsed = parseCache.get(cacheKey);
-      if (!parsed) {
-        const manifestEntry = manifest?.[assetId];
-        const source =
-          manifestEntry && 'source' in manifestEntry
-            ? manifestEntry.source
-            : undefined;
-        parsed = parseAsset(asset, source, subject, protocol.codebook).catch(
-          (e: unknown) => {
-            // eslint-disable-next-line no-console
-            console.error(`Could not read roster asset "${assetId}"`, e);
-            return [];
-          },
-        );
-        parseCache.set(cacheKey, parsed);
-      }
-
-      for (const node of applyPanelFilter(await parsed, panelFilter)) {
-        byPrimaryKey.set(node[entityPrimaryKeyProperty], node);
-      }
+  const resolveAsset: ResolveRosterAsset = async (assetId) => {
+    const asset = (await getAssetsById()).get(assetId);
+    if (!asset || asset.type !== 'network' || typeof asset.data === 'string') {
+      return null;
     }
 
-    if (byPrimaryKey.size > 0) result[stageId] = [...byPrimaryKey.values()];
-  }
+    const url = URL.createObjectURL(asset.data);
+    const manifestEntry = protocol.protocol.assetManifest?.[assetId];
+    const sourceFileName =
+      manifestEntry && 'source' in manifestEntry
+        ? manifestEntry.source
+        : asset.name;
 
-  return result;
+    return { url, sourceFileName, cleanup: () => URL.revokeObjectURL(url) };
+  };
+
+  return collectRosterExternalData({
+    stages: protocol.protocol.stages,
+    codebook: protocol.codebook,
+    resolveAsset,
+  });
 }

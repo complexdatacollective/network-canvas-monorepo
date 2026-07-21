@@ -38,6 +38,8 @@ export async function generateSyntheticSessions(
   const externalData = await loadRosterNodesForStages(protocol);
 
   const genOptions = {
+    codebook: protocol.codebook,
+    stages: protocol.protocol.stages,
     simulateDropOut,
     respectSkipLogicAndFiltering,
     externalData,
@@ -46,11 +48,8 @@ export async function generateSyntheticSessions(
   let completedCount = 0;
 
   for (let i = 0; i < count; i++) {
-    const { network, stageMetadata, currentStep, droppedOut } = generateNetwork(
-      protocol.codebook,
-      protocol.protocol.stages,
-      genOptions,
-    );
+    const { network, stageMetadata, currentStep, droppedOut } =
+      generateNetwork(genOptions);
 
     const session = await createSession({
       protocolHash,
@@ -82,11 +81,10 @@ export async function generateSyntheticSessions(
       const toFix = generated.filter((g) => g.droppedOut).slice(0, deficit);
 
       for (const row of toFix) {
-        const { network, stageMetadata, currentStep } = generateNetwork(
-          protocol.codebook,
-          protocol.protocol.stages,
-          { ...genOptions, simulateDropOut: false },
-        );
+        const { network, stageMetadata, currentStep } = generateNetwork({
+          ...genOptions,
+          simulateDropOut: false,
+        });
         await updateSession(row.sessionId, {
           network,
           currentStep,

@@ -52,9 +52,6 @@ function storedProtocol(
             'var-age': { name: 'Age', type: 'number' },
           },
         },
-        place: {
-          variables: { 'var-place-name': { name: 'Name', type: 'text' } },
-        },
       },
     },
     protocol: { stages, assetManifest: manifest },
@@ -98,8 +95,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// These tests cover only the adapter's own responsibilities — joining stored
+// assets to roster sources, gating on asset type/shape, the object-URL
+// create/revoke lifecycle, and the source-filename choice. The parse, merge,
+// and panel-filter semantics live in @codaco/interview and are tested there.
 describe('loadRosterNodesForStages', () => {
-  it('parses a CSV roster into nodes of the stage subject type', async () => {
+  it('resolves a roster asset to an object URL and revokes it once parsed', async () => {
     const result = await loadRosterNodesForStages(
       storedProtocol([rosterStage()], MANIFEST),
     );
@@ -108,90 +109,30 @@ describe('loadRosterNodesForStages', () => {
     const [first] = result['stage-ngr']!;
     expect(first!.type).toBe('person');
     expect(first![entityAttributesProperty]['var-name']).toBe('Ada');
+    expect(createObjectURL).toHaveBeenCalledOnce();
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:roster');
   });
 
-  it('collects external data panels on a name generator', async () => {
-    getProtocolAssets.mockResolvedValue([storedAsset({ assetId: 'panel' })]);
-
-    const result = await loadRosterNodesForStages(
-      storedProtocol(
-        [
-          {
-            id: 'stage-ng',
-            label: 'Name Generator',
-            type: 'NameGenerator',
-            subject: { entity: 'node', type: 'person' },
-            prompts: [{ id: 'p1', text: 'Add people' }],
-            panels: [
-              { id: 'a', title: 'Previously', dataSource: 'existing' },
-              { id: 'b', title: 'Roster', dataSource: 'panel' },
-            ],
-          },
-        ],
-        { panel: { type: 'network', name: 'People', source: 'people.csv' } },
-      ),
-    );
-
-    expect(result['stage-ng']).toHaveLength(3);
-  });
-
-  it('offers only the rows a filtered panel would show', async () => {
-    getProtocolAssets.mockResolvedValue([storedAsset({ assetId: 'panel' })]);
-
-    const result = await loadRosterNodesForStages(
-      storedProtocol(
-        [
-          {
-            id: 'stage-ng',
-            label: 'Name Generator',
-            type: 'NameGenerator',
-            subject: { entity: 'node', type: 'person' },
-            prompts: [{ id: 'p1', text: 'Add people' }],
-            panels: [
-              {
-                id: 'b',
-                title: 'Older people',
-                dataSource: 'panel',
-                filter: {
-                  join: 'AND',
-                  rules: [
-                    {
-                      id: 'r1',
-                      type: 'node',
-                      options: {
-                        type: 'person',
-                        attribute: 'var-age',
-                        operator: 'GREATER_THAN',
-                        value: 40,
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        ],
-        { panel: { type: 'network', name: 'People', source: 'people.csv' } },
-      ),
-    );
-
-    expect(result['stage-ng']).toHaveLength(2);
-    const names = result['stage-ng']!.map(
-      (n) => n[entityAttributesProperty]['var-name'],
-    );
-    expect(names).not.toContain('Ada');
-  });
-
-  it('still generates when the whole asset read fails', async () => {
-    getProtocolAssets.mockRejectedValue(new Error('undecryptable asset'));
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('prefers the manifest source over the stored asset name as the parse filename', async () => {
+    // The stored asset name would parse as JSON; only the manifest's
+    // `people.csv` source yields the CSV parse that produces rows.
+    getProtocolAssets.mockResolvedValue([storedAsset({ name: 'roster.json' })]);
 
     const result = await loadRosterNodesForStages(
       storedProtocol([rosterStage()], MANIFEST),
     );
 
-    expect(result).toEqual({});
+    expect(result['stage-ngr']).toHaveLength(3);
+  });
+
+  it('falls back to the stored asset name when the manifest has no source', async () => {
+    getProtocolAssets.mockResolvedValue([storedAsset({ name: 'people.csv' })]);
+
+    const result = await loadRosterNodesForStages(
+      storedProtocol([rosterStage()], {}),
+    );
+
+    expect(result['stage-ngr']).toHaveLength(3);
   });
 
   it('omits a stage whose roster asset is missing', async () => {
@@ -202,66 +143,58 @@ describe('loadRosterNodesForStages', () => {
     );
 
     expect(result).toEqual({});
+    expect(createObjectURL).not.toHaveBeenCalled();
   });
 
-  it('keeps readable rosters when a sibling asset fails, and revokes its url', async () => {
-    const exploding = storedAsset({ assetId: 'broken' });
-    createObjectURL.mockImplementation((blob: unknown) =>
-      blob === exploding.data ? 'blob:broken' : 'blob:roster',
+  it('omits a stage whose asset is not a network asset', async () => {
+    getProtocolAssets.mockResolvedValue([storedAsset({ type: 'image' })]);
+
+    const result = await loadRosterNodesForStages(
+      storedProtocol([rosterStage()], MANIFEST),
     );
+
+    expect(result).toEqual({});
+    expect(createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('omits a stage whose asset data is a string rather than a blob', async () => {
+    getProtocolAssets.mockResolvedValue([storedAsset({ data: 'inline-data' })]);
+
+    const result = await loadRosterNodesForStages(
+      storedProtocol([rosterStage()], MANIFEST),
+    );
+
+    expect(result).toEqual({});
+    expect(createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('revokes the object URL even when parsing the asset fails', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn((url: string) =>
-        url === 'blob:broken'
-          ? Promise.reject(new Error('unreadable'))
-          : Promise.resolve(new Response(PEOPLE_CSV)),
-      ),
+      vi.fn(() => Promise.reject(new Error('unreadable'))),
     );
-    getProtocolAssets.mockResolvedValue([storedAsset({}), exploding]);
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await loadRosterNodesForStages(
-      storedProtocol(
-        [
-          rosterStage({ id: 'ok' }),
-          rosterStage({ id: 'bad', dataSource: 'broken' }),
-        ],
-        {
-          ...MANIFEST,
-          broken: { type: 'network', name: 'Broken', source: 'broken.csv' },
-        },
-      ),
+      storedProtocol([rosterStage()], MANIFEST),
     );
 
-    expect(result.ok).toHaveLength(3);
-    expect(result.bad).toBeUndefined();
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:broken');
+    expect(result).toEqual({});
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:roster');
   });
 
-  it('parses the same asset separately for each subject type', async () => {
-    const protocol = storedProtocol(
-      [
-        rosterStage({ id: 'as-person' }),
-        rosterStage({
-          id: 'as-place',
-          subject: { entity: 'node', type: 'place' },
-        }),
-      ],
-      MANIFEST,
-    );
-    const result = await loadRosterNodesForStages(protocol);
+  it('still resolves to {} when the whole asset read fails', async () => {
+    getProtocolAssets.mockRejectedValue(new Error('undecryptable asset'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    expect(result['as-person']![0]!.type).toBe('person');
-    expect(result['as-place']![0]!.type).toBe('place');
-    expect(result['as-person']![0]![entityAttributesProperty]['var-name']).toBe(
-      'Ada',
+    const result = await loadRosterNodesForStages(
+      storedProtocol([rosterStage()], MANIFEST),
     );
-    expect(
-      result['as-place']![0]![entityAttributesProperty]['var-place-name'],
-    ).toBe('Ada');
+
+    expect(result).toEqual({});
   });
 
-  it('does nothing when no stage uses a roster', async () => {
+  it('never reads protocol assets when no stage uses a roster', async () => {
     const result = await loadRosterNodesForStages(
       storedProtocol(
         [{ id: 'info', label: 'Info', type: 'Information', items: [] }],

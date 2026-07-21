@@ -123,11 +123,12 @@ describe('synthetic generation over the real Development Protocol', () => {
     const protocol = storedProtocol();
     const externalData = await loadRosterNodesForStages(protocol);
 
-    const { network } = generateNetwork(
-      protocol.codebook,
-      protocol.protocol.stages,
-      { seed: 42, externalData },
-    );
+    const { network } = generateNetwork({
+      codebook: protocol.codebook,
+      stages: protocol.protocol.stages,
+      seed: 42,
+      externalData,
+    });
 
     const rosterKeys = new Set(
       Object.values(externalData)
@@ -148,11 +149,12 @@ describe('synthetic generation over the real Development Protocol', () => {
     const protocol = storedProtocol();
     const externalData = await loadRosterNodesForStages(protocol);
 
-    const { network } = generateNetwork(
-      protocol.codebook,
-      protocol.protocol.stages,
-      { seed: 7, externalData },
-    );
+    const { network } = generateNetwork({
+      codebook: protocol.codebook,
+      stages: protocol.protocol.stages,
+      seed: 7,
+      externalData,
+    });
 
     const shared = new Set(
       externalData.namegenroster1!.map((n) => n[entityPrimaryKeyProperty]),
@@ -173,11 +175,12 @@ describe('synthetic generation over the real Development Protocol', () => {
     const externalData = await loadRosterNodesForStages(protocol);
     expect(externalData).toEqual({});
 
-    const { network } = generateNetwork(
-      protocol.codebook,
-      protocol.protocol.stages,
-      { seed: 42, externalData },
-    );
+    const { network } = generateNetwork({
+      codebook: protocol.codebook,
+      stages: protocol.protocol.stages,
+      seed: 42,
+      externalData,
+    });
 
     expect(network.nodes.length).toBeGreaterThan(0);
   });

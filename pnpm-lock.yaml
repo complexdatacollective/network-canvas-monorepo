@@ -859,9 +859,6 @@ importers:
       '@codaco/network-exporters':
         specifier: workspace:^
         version: link:../../packages/network-exporters
-      '@codaco/network-query':
-        specifier: workspace:^
-        version: link:../../packages/network-query
       '@codaco/protocol-utilities':
         specifier: workspace:^
         version: link:../../packages/protocol-utilities
