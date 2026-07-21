@@ -265,6 +265,20 @@ export default function useInterviewNavigation(
         const direction: Direction =
           targetIndex > currentStep ? 'forwards' : 'backwards';
 
+        // Confirm before running beforeNext handlers, so declining leaves the
+        // current screen untouched rather than saving or resetting it first.
+        const initialAvailability = getStageAvailabilityMap(
+          interviewStore.getState(),
+        )[targetIndex];
+        let confirmedUnavailable = false;
+        if (initialAvailability && initialAvailability.kind !== 'available') {
+          confirmedUnavailable =
+            (await confirmUnavailable?.(initialAvailability)) ?? false;
+          if (!confirmedUnavailable) {
+            return;
+          }
+        }
+
         const stageAllowsNavigation = await canNavigate(direction, 'jump');
         if (!stageAllowsNavigation) {
           return;
@@ -277,7 +291,8 @@ export default function useInterviewNavigation(
         )[targetIndex];
         if (targetAvailability && targetAvailability.kind !== 'available') {
           const confirmed =
-            (await confirmUnavailable?.(targetAvailability)) ?? false;
+            confirmedUnavailable ||
+            ((await confirmUnavailable?.(targetAvailability)) ?? false);
           if (!confirmed) {
             return;
           }

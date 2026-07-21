@@ -582,6 +582,40 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
     expect(onStepChange).not.toHaveBeenCalled();
   });
 
+  it('does not run beforeNext handlers when an unavailable target is declined', async () => {
+    const stages = makeStages(4);
+    stages[2]!.skipLogic = ALWAYS_SKIPPED;
+    const { result, onStepChange } = renderStatefulNavigation(stages, 0);
+
+    const beforeNext = vi.fn(() => true);
+    act(() => {
+      result.current.registerBeforeNext(beforeNext);
+    });
+
+    const confirmSkip = vi.fn().mockResolvedValue(false);
+    await act(async () => {
+      await result.current.goToStage(2, confirmSkip);
+    });
+
+    expect(confirmSkip).toHaveBeenCalledTimes(1);
+    expect(beforeNext).not.toHaveBeenCalled();
+    expect(onStepChange).not.toHaveBeenCalled();
+  });
+
+  it('confirms an unavailable target once when it is already unavailable', async () => {
+    const stages = makeStages(4);
+    stages[2]!.skipLogic = ALWAYS_SKIPPED;
+    const { result, onStepChange } = renderStatefulNavigation(stages, 0);
+
+    const confirmSkip = vi.fn().mockResolvedValue(true);
+    await act(async () => {
+      await result.current.goToStage(2, confirmSkip);
+    });
+
+    expect(confirmSkip).toHaveBeenCalledTimes(1);
+    expect(onStepChange).toHaveBeenCalledWith(2, expect.anything());
+  });
+
   it('lands on a confirmed skipped stage without being bounced by recovery', async () => {
     const stages = makeStages(4);
     stages[2]!.skipLogic = ALWAYS_SKIPPED;
