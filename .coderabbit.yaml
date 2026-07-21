@@ -10,6 +10,7 @@
 reviews:
   # Reviews are opt-in. Request an incremental review with
   # `@coderabbitai review`, or a complete review with `@coderabbitai full review`.
+  commit_status: false
   auto_review:
     enabled: false
   path_filters:
