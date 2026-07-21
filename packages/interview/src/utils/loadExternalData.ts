@@ -83,7 +83,10 @@ export const makeVariableUUIDReplacer =
     // Salt the content hash with the row's data-file position so byte-identical
     // rows receive distinct (but deterministic) primary keys. Without the index
     // the Collection keyExtractor dedupes identical rows to a single card.
-    const uuid = hash({ node, index });
+    // Prefix with the subject type so the same asset parsed for two different
+    // node types can never collide: a row's identity is scoped to the subject
+    // it was parsed for, keeping primary keys unique within a single network.
+    const uuid = `${subjectType}_${hash({ node, index })}`;
 
     const attributes = mapKeys(
       node[entityAttributesProperty] ?? {},

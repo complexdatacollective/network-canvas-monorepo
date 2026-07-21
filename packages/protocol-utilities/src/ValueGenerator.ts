@@ -1,5 +1,7 @@
 import { en, Faker } from '@faker-js/faker';
 
+import type { VariableValue } from '@codaco/shared-consts';
+
 import type { VariableEntry } from './types';
 
 export class ValueGenerator {
@@ -10,7 +12,7 @@ export class ValueGenerator {
     this.faker.seed(seed);
   }
 
-  generateForVariable(variable: VariableEntry, index: number): unknown {
+  generateForVariable(variable: VariableEntry, index: number): VariableValue {
     switch (variable.type) {
       case 'text':
         return this.faker.person.firstName();

@@ -102,11 +102,11 @@ describe('PreviewHost', () => {
     );
   });
 
-  it('mounts Shell with the payload after receiving preview:payload', () => {
+  it('mounts Shell with the payload after receiving preview:payload', async () => {
     render(<PreviewHost />);
     postPayload(openerStub, makePayload());
 
-    expect(screen.getByTestId('shell-mounted')).toBeInTheDocument();
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       payload: InterviewPayload;
       currentStep: number;
@@ -119,25 +119,27 @@ describe('PreviewHost', () => {
     expect(typeof call.onStepChange).toBe('function');
   });
 
-  it('always enables stage navigation in Architect preview', () => {
+  it('always enables stage navigation in Architect preview', async () => {
     render(<PreviewHost />);
     postPayload(openerStub, makePayload());
 
+    await screen.findByTestId('shell-mounted');
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       allowStageNavigation: boolean;
     };
     expect(call.allowStageNavigation).toBe(true);
   });
 
-  it('initialises currentStep from payload.startStage', () => {
+  it('initialises currentStep from payload.startStage', async () => {
     render(<PreviewHost />);
     postPayload(openerStub, makePayload({ startStage: 3 }));
 
+    await screen.findByTestId('shell-mounted');
     const call = shellMock.mock.calls.at(-1)?.[0] as { currentStep: number };
     expect(call.currentStep).toBe(3);
   });
 
-  it('passes a one-stage initial override without removing skip logic', () => {
+  it('passes a one-stage initial override without removing skip logic', async () => {
     render(<PreviewHost />);
     const baseProtocol = makeProtocol();
     const protocol = {
@@ -157,6 +159,7 @@ describe('PreviewHost', () => {
       makePayload({ protocol, startStage: 0, skipLogicBypassed: true }),
     );
 
+    await screen.findByTestId('shell-mounted');
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       payload: InterviewPayload;
       initialStageOverrideIndex?: number;
@@ -165,20 +168,22 @@ describe('PreviewHost', () => {
     expect(call.payload.protocol.stages[0]).toHaveProperty('skipLogic');
   });
 
-  it('omits the initial override when preview skip logic is active', () => {
+  it('omits the initial override when preview skip logic is active', async () => {
     render(<PreviewHost />);
     postPayload(openerStub, makePayload({ skipLogicBypassed: false }));
 
+    await screen.findByTestId('shell-mounted');
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       initialStageOverrideIndex?: number;
     };
     expect(call.initialStageOverrideIndex).toBeUndefined();
   });
 
-  it('seeds a synthetic network when useSyntheticData is true', () => {
+  it('seeds a synthetic network when useSyntheticData is true', async () => {
     render(<PreviewHost />);
     postPayload(openerStub, makePayload({ useSyntheticData: true }));
 
+    await screen.findByTestId('shell-mounted');
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       payload: InterviewPayload;
       currentStep: number;
@@ -186,7 +191,7 @@ describe('PreviewHost', () => {
     expect(call.currentStep).toBe(0);
   });
 
-  it('leaves the previewed stage partially complete in synthetic data', () => {
+  it('leaves the previewed stage partially complete in synthetic data', async () => {
     render(<PreviewHost />);
     const protocol = {
       name: 'T',
@@ -234,6 +239,7 @@ describe('PreviewHost', () => {
       makePayload({ protocol, startStage: 1, useSyntheticData: true }),
     );
 
+    await screen.findByTestId('shell-mounted');
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       payload: InterviewPayload;
     };
@@ -249,7 +255,7 @@ describe('PreviewHost', () => {
     expect(placed.length).toBeGreaterThan(0);
   });
 
-  it('seeds finalized stageMetadata for a synthetic FamilyPedigree', () => {
+  it('seeds finalized stageMetadata for a synthetic FamilyPedigree', async () => {
     render(<PreviewHost />);
     const protocol = {
       name: 'T',
@@ -276,6 +282,7 @@ describe('PreviewHost', () => {
       makePayload({ protocol, startStage: 0, useSyntheticData: true }),
     );
 
+    await screen.findByTestId('shell-mounted');
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       payload: InterviewPayload;
     };
@@ -284,7 +291,7 @@ describe('PreviewHost', () => {
     });
   });
 
-  it('shows an error fallback when payload processing throws', () => {
+  it('shows an error fallback when payload processing throws', async () => {
     render(<PreviewHost />);
     const protocol = {
       name: 'T',
@@ -297,7 +304,9 @@ describe('PreviewHost', () => {
     };
     postPayload(openerStub, makePayload({ protocol, useSyntheticData: true }));
 
-    expect(screen.getByText(/couldn't build the preview/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/couldn't build the preview/i),
+    ).toBeInTheDocument();
     expect(shellMock).not.toHaveBeenCalled();
   });
 

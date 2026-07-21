@@ -8,6 +8,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { filterExternalPanelNodes } from '../contract/rosterData';
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
 import {
@@ -92,36 +93,34 @@ export const getPanelNodes = (
         ),
       };
 
-      let nodes: NcNode[] = [];
-
-      // For current network nodes, we filter out any nodes that are already in the prompt
       if (panelConfig.dataSource === 'existing') {
-        nodes = nodesForOtherPrompts.filter(notInSet(new Set(nodeIds.prompt)));
-      } else {
-        // For external data nodes, we filter out any nodes that are already in the prompt
-        nodes =
-          externalData?.filter(
-            notInSet(new Set([...nodeIds.prompt, ...nodeIds.other])),
-          ) ?? ([] as NcNode[]);
+        // For current network nodes, we filter out any nodes that are already in the prompt
+        const nodes = nodesForOtherPrompts.filter(
+          notInSet(new Set(nodeIds.prompt)),
+        );
+
+        if (!panelConfig.filter) {
+          return nodes;
+        }
+
+        // If a filter is provided, we apply it to the nodes
+        const filterFunction = customFilter(panelConfig.filter);
+
+        const filteredNetwork = filterFunction({
+          nodes,
+          edges: networkEdges,
+          ego: networkEgo ?? { _uid: '', [entityAttributesProperty]: {} },
+        });
+
+        return filteredNetwork.nodes;
       }
 
-      if (!panelConfig.filter) {
-        return nodes;
-      }
+      // For external data nodes, we filter out any nodes that are already in the prompt
+      const nodes =
+        externalData?.filter(
+          notInSet(new Set([...nodeIds.prompt, ...nodeIds.other])),
+        ) ?? ([] as NcNode[]);
 
-      // If a filter is provided, we apply it to the nodes
-      const filterFunction = customFilter(panelConfig.filter);
-
-      const defaultEgo = { _uid: '', [entityAttributesProperty]: {} };
-      const filteredNetwork = filterFunction({
-        nodes,
-        edges: panelConfig.dataSource === 'existing' ? networkEdges : [],
-        ego:
-          panelConfig.dataSource === 'existing' && networkEgo
-            ? networkEgo
-            : defaultEgo,
-      });
-
-      return filteredNetwork.nodes;
+      return filterExternalPanelNodes(nodes, panelConfig.filter);
     },
   );

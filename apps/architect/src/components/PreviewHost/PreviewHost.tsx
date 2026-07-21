@@ -19,11 +19,12 @@ import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
+import { collectPreviewRosterData } from './previewRosterData';
 import { useAssetResolver } from './useAssetResolver';
 const PAYLOAD_TIMEOUT_MS = 5000;
 const noopSync = async () => {};
 const noopFinish = async () => {};
-function buildSession(payload: PreviewPayload): SessionPayload {
+async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
   const now = new Date().toISOString();
   const base: SessionPayload = {
     id: uuid(),
@@ -36,16 +37,22 @@ function buildSession(payload: PreviewPayload): SessionPayload {
   if (!payload.useSyntheticData) {
     return base;
   }
-  const generated = generateNetwork(
-    payload.protocol.codebook,
-    payload.protocol.stages,
-    {
-      // Leave the previewed stage partially complete so interaction-driven
-      // interfaces (ordinal/categorical bins, sociogram) still have
-      // unplaced nodes to work with.
-      inProgressStageIndex: payload.startStage,
-    },
+  // Draw roster-stage people from the protocol's real roster assets. Failures
+  // are isolated per-asset and never throw, so a roster problem degrades to
+  // fabricated people rather than blocking the preview.
+  const externalData = await collectPreviewRosterData(
+    payload.protocol,
+    payload.protocolId,
   );
+  const generated = generateNetwork({
+    codebook: payload.protocol.codebook,
+    stages: payload.protocol.stages,
+    externalData,
+    // Leave the previewed stage partially complete so interaction-driven
+    // interfaces (ordinal/categorical bins, sociogram) still have
+    // unplaced nodes to work with.
+    inProgressStageIndex: payload.startStage,
+  });
   // Stages that record a finalized state (e.g. a FamilyPedigree's committed
   // network) do so via stageMetadata; without it they preview as never
   // finalized. Parse each entry independently so a single malformed entry is
@@ -90,6 +97,33 @@ export function PreviewHost() {
     if (!opener) return;
     const expectedOrigin = window.location.origin;
     let received = false;
+    let cancelled = false;
+    const processPayload = async (previewPayload: PreviewPayload) => {
+      let nextPayload: InterviewPayload;
+      try {
+        // Resolve the protocol payload first (a throw here means an invalid
+        // protocol shape), then build the session, which is async because
+        // synthetic previews fetch and parse the protocol's roster assets.
+        const protocol = currentProtocolToPayload(previewPayload.protocol);
+        const session = await buildSession(previewPayload);
+        if (cancelled) return;
+        nextPayload = { protocol, session };
+      } catch (error) {
+        if (cancelled) return;
+        console.error('Failed to build preview payload', error);
+        setProcessingFailed(true);
+        return;
+      }
+      setProcessingFailed(false);
+      setInterviewPayload(nextPayload);
+      setProtocolId(previewPayload.protocolId);
+      setCurrentStep(previewPayload.startStage);
+      setBypassedStageIndex(
+        previewPayload.skipLogicBypassed ? previewPayload.startStage : null,
+      );
+      setSkipLogicNoticeDismissed(false);
+      setTimedOut(false);
+    };
     const onMessage = (event: MessageEvent) => {
       if (event.source !== opener) return;
       if (event.origin !== expectedOrigin) return;
@@ -108,31 +142,11 @@ export function PreviewHost() {
           data: asset.data,
         });
       }
-      let nextPayload: InterviewPayload;
-      try {
-        // Build the payload before marking the handshake received: a throw here
-        // (invalid protocol shape, synthetic-network generation) must surface an
-        // error rather than leave the loader stuck forever.
-        nextPayload = {
-          protocol: currentProtocolToPayload(previewPayload.protocol),
-          session: buildSession(previewPayload),
-        };
-      } catch (error) {
-        console.error('Failed to build preview payload', error);
-        received = true;
-        setProcessingFailed(true);
-        return;
-      }
+      // The payload message arrived — the handshake succeeded, so disarm the
+      // "couldn't reach Architect" timeout regardless of how the async build
+      // resolves. A build failure surfaces the processing-failed screen.
       received = true;
-      setProcessingFailed(false);
-      setInterviewPayload(nextPayload);
-      setProtocolId(previewPayload.protocolId);
-      setCurrentStep(previewPayload.startStage);
-      setBypassedStageIndex(
-        previewPayload.skipLogicBypassed ? previewPayload.startStage : null,
-      );
-      setSkipLogicNoticeDismissed(false);
-      setTimedOut(false);
+      void processPayload(previewPayload);
     };
     window.addEventListener('message', onMessage);
     opener.postMessage({ type: 'preview:ready' }, expectedOrigin);
@@ -140,6 +154,7 @@ export function PreviewHost() {
       if (!received) setTimedOut(true);
     }, PAYLOAD_TIMEOUT_MS);
     return () => {
+      cancelled = true;
       window.removeEventListener('message', onMessage);
       clearTimeout(timeoutId);
     };

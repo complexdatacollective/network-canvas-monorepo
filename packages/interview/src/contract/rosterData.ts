@@ -1,0 +1,246 @@
+import { filter as customFilter } from '@codaco/network-query';
+import type {
+  Codebook,
+  Filter,
+  Stage,
+  StageSubject,
+} from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
+
+import { getVariableTypeReplacements } from '../utils/externalData';
+import loadExternalData, {
+  makeVariableUUIDReplacer,
+} from '../utils/loadExternalData';
+
+type NodeSubject = Extract<StageSubject, { entity: 'node' }>;
+
+/**
+ * A roster/panel asset resolved by the host: a fetchable URL, the filename
+ * that drives the CSV-vs-JSON decision, and an optional cleanup callback
+ * (e.g. `URL.revokeObjectURL`) invoked once parsing settles, whether it
+ * succeeded or failed.
+ */
+export type ResolvedRosterAsset = {
+  url: string;
+  sourceFileName: string;
+  cleanup?: () => void;
+};
+
+/**
+ * Host hook resolving a protocol asset-manifest id to a fetchable asset.
+ * Returns null when the asset is missing or isn't a network asset, in which
+ * case that source is skipped.
+ */
+export type ResolveRosterAsset = (
+  assetId: string,
+) => Promise<ResolvedRosterAsset | null>;
+
+/**
+ * The runtime's external-data parse pipeline (single source of truth):
+ * fetch → uuid-replace → type-replace. Mirrors `useExternalData`.
+ *
+ * `subject` accepts any non-ego stage subject (node or edge) because the
+ * hook this backs (`useExternalData`) is typed against the shared
+ * `getStageSubject` selector, which spans every stage type; in practice only
+ * node subjects reach it, since only node-collecting stages (NameGenerator,
+ * NameGeneratorRoster, NameGeneratorQuickAdd) carry external data sources.
+ */
+export async function parseExternalNetworkAsset({
+  sourceFileName,
+  url,
+  codebook,
+  subject,
+}: {
+  sourceFileName: string;
+  url: string;
+  codebook: Codebook;
+  subject: Exclude<StageSubject, { entity: 'ego' }>;
+}): Promise<NcNode[]> {
+  const { nodes } = await loadExternalData(sourceFileName, url);
+  const uuidData = nodes.map(makeVariableUUIDReplacer(codebook, subject.type));
+  return getVariableTypeReplacements(
+    sourceFileName,
+    uuidData,
+    codebook,
+    subject,
+  );
+}
+
+/**
+ * The runtime's external-panel filter semantics (`getPanelNodes`, external
+ * branch). `defaultEgo` deliberately mirrors that selector's shape exactly —
+ * it stands in for a real ego so ego-scoped filter rules have something to
+ * read, it is not meant to represent an actual participant.
+ */
+export function filterExternalPanelNodes(
+  nodes: NcNode[],
+  filter?: Filter,
+): NcNode[] {
+  if (!filter) {
+    return nodes;
+  }
+
+  const defaultEgo = { _uid: '', [entityAttributesProperty]: {} };
+  return customFilter(filter)({
+    nodes,
+    edges: [],
+    ego: defaultEgo,
+  }).nodes;
+}
+
+type RosterSource = {
+  assetId: string;
+  filter?: Filter;
+};
+
+type RosterStage = {
+  stageId: string;
+  subject: NodeSubject;
+  sources: RosterSource[];
+};
+
+function getRosterStage(stage: Stage): RosterStage | null {
+  // Hosts pass draft/unvalidated stages (Architect previews the protocol being
+  // edited), so `dataSource`, `subject`, and panel fields can be absent even
+  // though the schema types mark them required. Every field is re-checked at
+  // runtime and the stage is skipped on a mismatch rather than throwing — the
+  // same widening-without-assertion posture as generateNetwork's subject.ts.
+  const sources: RosterSource[] = [];
+
+  if (stage.type === 'NameGeneratorRoster') {
+    const dataSource: string | undefined = stage.dataSource;
+    if (typeof dataSource === 'string') {
+      sources.push({ assetId: dataSource });
+    }
+  } else if (
+    stage.type === 'NameGenerator' ||
+    stage.type === 'NameGeneratorQuickAdd'
+  ) {
+    for (const panel of stage.panels ?? []) {
+      const dataSource: string | undefined = panel.dataSource;
+      if (typeof dataSource === 'string' && dataSource !== 'existing') {
+        sources.push({ assetId: dataSource, filter: panel.filter });
+      }
+    }
+  } else {
+    return null;
+  }
+
+  if (sources.length === 0) return null;
+
+  const subject: { entity?: string; type?: string } | undefined = stage.subject;
+  if (subject?.entity !== 'node' || typeof subject.type !== 'string') {
+    return null;
+  }
+
+  return { stageId: stage.id, subject: stage.subject, sources };
+}
+
+/**
+ * A source that resolved and parsed successfully (`nodes` may be empty — a
+ * readable roster with no rows), versus one that failed (the asset was missing
+ * or unreadable). The distinction lets a stage emit an empty pool for a
+ * genuinely empty roster while omitting a stage whose every source failed.
+ */
+type SourceOutcome = { resolved: true; nodes: NcNode[] } | { resolved: false };
+
+async function parseRosterSource(
+  assetId: string,
+  subject: NodeSubject,
+  codebook: Codebook,
+  resolveAsset: ResolveRosterAsset,
+): Promise<SourceOutcome> {
+  const resolved = await resolveAsset(assetId);
+  if (!resolved) {
+    return { resolved: false };
+  }
+
+  try {
+    const nodes = await parseExternalNetworkAsset({
+      sourceFileName: resolved.sourceFileName,
+      url: resolved.url,
+      codebook,
+      subject,
+    });
+    return { resolved: true, nodes };
+  } finally {
+    resolved.cleanup?.();
+  }
+}
+
+/**
+ * Host-agnostic roster collection for synthetic generation: per-stage node
+ * pools keyed by stage id, built from each stage's `NameGeneratorRoster`
+ * data source, or `NameGenerator`/`NameGeneratorQuickAdd` panel data sources.
+ *
+ * A stage's key is emitted (with an array that may be empty) whenever at least
+ * one of its sources resolved and parsed successfully — an empty array means
+ * "roster known to be empty", distinct from an absent key. A stage whose every
+ * source failed (missing asset, or a resolve/parse error) is omitted, so
+ * downstream generation still falls back to fabrication for it.
+ */
+export async function collectRosterExternalData({
+  stages,
+  codebook,
+  resolveAsset,
+}: {
+  stages: Stage[];
+  codebook: Codebook;
+  resolveAsset: ResolveRosterAsset;
+}): Promise<Record<string, NcNode[]>> {
+  const rosterStages = stages
+    .map(getRosterStage)
+    .filter((stage): stage is RosterStage => stage !== null);
+
+  if (rosterStages.length === 0) {
+    return {};
+  }
+
+  // Cache parses per invocation so an asset shared by several stages (or
+  // panels) is only fetched and parsed once per subject type.
+  const parseCache = new Map<string, Promise<SourceOutcome>>();
+  const result: Record<string, NcNode[]> = {};
+
+  for (const { stageId, subject, sources } of rosterStages) {
+    const byPrimaryKey = new Map<string, NcNode>();
+    let anySourceResolved = false;
+
+    for (const { assetId, filter } of sources) {
+      const cacheKey = `${assetId}::${subject.type}`;
+      let parsed = parseCache.get(cacheKey);
+      if (!parsed) {
+        parsed = parseRosterSource(
+          assetId,
+          subject,
+          codebook,
+          resolveAsset,
+        ).catch((error: unknown): SourceOutcome => {
+          // eslint-disable-next-line no-console
+          console.error(`Could not read roster asset "${assetId}"`, error);
+          return { resolved: false };
+        });
+        parseCache.set(cacheKey, parsed);
+      }
+
+      const outcome = await parsed;
+      if (!outcome.resolved) continue;
+      anySourceResolved = true;
+
+      for (const node of filterExternalPanelNodes(outcome.nodes, filter)) {
+        byPrimaryKey.set(node[entityPrimaryKeyProperty], node);
+      }
+    }
+
+    // Emit an (possibly empty) pool once any source resolved; omit the stage
+    // entirely when every source failed so generation falls back to fabrication.
+    if (anySourceResolved) {
+      result[stageId] = [...byPrimaryKey.values()];
+    }
+  }
+
+  return result;
+}

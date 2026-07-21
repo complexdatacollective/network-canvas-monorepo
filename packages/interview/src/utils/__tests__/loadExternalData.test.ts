@@ -19,6 +19,12 @@ const codebook: Codebook = {
       shape: { default: 'circle' },
       variables: {},
     },
+    place: {
+      name: 'Place',
+      color: 'node-color-seq-2',
+      shape: { default: 'square' },
+      variables: {},
+    },
   },
 };
 
@@ -50,6 +56,34 @@ describe('makeVariableUUIDReplacer primary-key salt', () => {
     const b = replacer(row, 3);
 
     expect(a[entityPrimaryKeyProperty]).toBe(b[entityPrimaryKeyProperty]);
+  });
+
+  it('prefixes the primary key with the stage subject type', () => {
+    const row: Partial<NcNode> = {
+      [entityAttributesProperty]: { name: 'Carol', age: '50' },
+    };
+
+    const replacer = makeVariableUUIDReplacer(codebook, 'person');
+
+    const node = replacer(row, 0);
+
+    expect(node[entityPrimaryKeyProperty]).toMatch(/^person_/);
+  });
+
+  it('gives the same row parsed under two subject types different primary keys', () => {
+    const row: Partial<NcNode> = {
+      [entityAttributesProperty]: { name: 'Dana', age: '29' },
+    };
+
+    // Same asset row, same index, parsed for two different node types (e.g.
+    // one roster shared by a person stage and a place stage) — this is the
+    // invariant the subject-type prefix exists to guarantee.
+    const asPerson = makeVariableUUIDReplacer(codebook, 'person')(row, 0);
+    const asPlace = makeVariableUUIDReplacer(codebook, 'place')(row, 0);
+
+    expect(asPerson[entityPrimaryKeyProperty]).not.toBe(
+      asPlace[entityPrimaryKeyProperty],
+    );
   });
 });
 
