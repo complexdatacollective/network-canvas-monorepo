@@ -30,7 +30,7 @@ const toggleButtonGroupComposedVariants = compose(
 // Individual toggle button variants
 const toggleButtonVariants = cva({
   base: cx(
-    'relative inline-flex items-center justify-center',
+    'relative isolate inline-flex items-center justify-center',
     'shrink-0 cursor-pointer rounded-full',
     'overflow-hidden text-center font-medium',
     'border-4 bg-transparent',
