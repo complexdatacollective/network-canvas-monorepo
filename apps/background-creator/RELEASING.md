@@ -43,29 +43,41 @@ The app's `build` command is a plain Vite production build into `dist/`. The
 `public/_redirects` SPA fallback and `public/_headers` cache/security rules are
 copied into `dist/` by Vite and applied by Netlify at deploy time.
 
-## Manual setup required (one-time)
+## Provisioning (one-time)
 
-CI deploys production releases to a Netlify **site that must already exist** —
-netlify-cli can't create one. Netlify's Git integration uses the same linked
-site for pull-request previews. To configure it:
+The `apps-release-background-creator` job deploys **by Site ID** —
+`netlify deploy --no-build --prod --dir=apps/background-creator/dist --site=$NETLIFY_SITE_ID_BACKGROUND_CREATOR`
+— so it needs a Netlify site to exist but **not** a Git connection: CI uploads
+the prebuilt `dist/` directly (the `_redirects` SPA fallback and `_headers`
+rules ride along inside it). Pull-request previews come from a separate,
+Git-connected `bg-creator-dev` site.
 
-1. Create a new Netlify site for Background Creator and connect it to this
-   repository so Netlify builds pull-request previews. Its versioned build
-   settings live in `netlify.toml` in this directory; set `apps/background-creator`
-   as the package directory and keep the repository root as the build base.
-2. Note its Site ID (Site settings → General → Site details).
-3. Add it as the repo secret `NETLIFY_SITE_ID_BACKGROUND_CREATOR`. The
-   `NETLIFY_AUTH_TOKEN` secret is already shared across all Netlify deploys in
-   this repo (docs, architect, interviewer, networkcanvas.com) — no new token
-   needed.
-4. Optionally create a separate `background-creator-dev` site linked to this
-   repository that deploys every push to `main`, mirroring the developer sites
-   the other apps keep — it lets developers review the current state of `main`
-   before approving an app release, independent of the changeset-driven
-   production release above.
-5. Configure the production custom domain `https://bg-creator.networkcanvas.com`
-   in the Netlify site's domain settings; nothing in CI needs to change for that.
+Done:
 
-Until the secret is set, the `apps-release-background-creator` production
-deploy will fail at the `netlify-cli deploy` step with a `site not found` style
-error. The Git-connected preview deploys and the rest of CI are unaffected.
+1. **Production site** `bg-creator` (team `network-canvas`, Site ID
+   `8ce0d202-ec6f-4a81-8c42-3c11e3180d33`), created with
+   `netlify sites:create --name bg-creator --account-slug network-canvas`. It is
+   a bare deploy target — its own build settings never run, since CI deploys a
+   prebuilt directory.
+2. **Repo secret** `NETLIFY_SITE_ID_BACKGROUND_CREATOR` set to that Site ID via
+   `gh secret set`. The `NETLIFY_AUTH_TOKEN` secret is already shared across
+   every Netlify deploy in this repo (docs, architect, interviewer,
+   networkcanvas.com) — no new token needed.
+3. **Preview site** `bg-creator-dev` (`bg-creator.networkcanvas.dev`),
+   Git-connected to this repository, already builds pull-request previews and
+   every push to `main`, mirroring the other apps' developer sites.
+
+Remaining (Netlify UI):
+
+4. **Custom domain.** Attach `https://bg-creator.networkcanvas.com` to the
+   `bg-creator` site in its domain settings (the `networkcanvas.com` DNS zone
+   lives in Netlify too); nothing in CI changes for it. Until then, production
+   releases land on `https://bg-creator.netlify.app`. Once the domain is live,
+   flip the `bg-creator.networkcanvas.com` reference in
+   `apps/documentation/docs/design-protocols/key-concepts/responsive-svg-backgrounds.en.mdx`
+   from inline code back to a hyperlink.
+
+Because the site and secret above are in place, the production deploy resolves
+the Site ID normally. Were the secret ever unset, the `netlify-cli deploy` step
+would fail with a `site not found` style error while preview deploys and the
+rest of CI stayed unaffected.
