@@ -8,7 +8,7 @@ import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 import type { IdleTimeoutMinutes } from '~/lib/auth/AuthContext';
-import { updateSettings } from '~/lib/db/api';
+import { getSettings, updateSettings } from '~/lib/db/api';
 
 import { ExternalLink } from './ExternalLink';
 import AuthorisationGlyph from './SetupWizard/AuthorisationGlyph';
@@ -30,7 +30,8 @@ export type SetupWizardData = {
     requireUnlockOnExit: boolean;
     requireUnlockOnExport: boolean;
   };
-  // Undefined when the user never touched the toggle — defaults to enabled.
+  // Undefined when the user never touched the toggle. The wizard launch mode
+  // supplies the preference that should be preserved in that case.
   analyticsEnabled?: boolean;
 };
 
@@ -51,25 +52,59 @@ async function enrolWithoutSecurity() {
   await authApi.enrolWithoutLock();
 }
 
-export function useSetupWizard() {
+type UseSetupWizardOptions = {
+  /**
+   * A Settings-launched wizard may be securing an already-populated database.
+   * Once enrolment has re-encrypted those records, leaving or changing methods
+   * must not revoke the new vault because revoke() also wipes the database.
+   */
+  preserveExistingData?: boolean;
+};
+
+export function useSetupWizard({
+  preserveExistingData = false,
+}: UseSetupWizardOptions = {}) {
   const { openDialog } = useDialog();
   const { refresh } = useAuth();
   const analytics = useAnalytics();
   const toast = useToast();
 
   const openSetupWizard = async (): Promise<void> => {
+    let initialAnalyticsEnabled = true;
+    if (preserveExistingData) {
+      // Settings are readable before vault enrolment. Use the persisted row
+      // rather than AnalyticsProvider's safe pre-unlock fallback so an
+      // untouched toggle preserves the user's actual preference.
+      try {
+        initialAnalyticsEnabled = (await getSettings()).analyticsEnabled;
+      } catch (cause) {
+        toast.add({
+          title: 'Setup could not be opened',
+          description:
+            cause instanceof Error
+              ? cause.message
+              : 'Stored settings could not be read. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     const result = await openDialog({
       type: 'wizard',
       title: '🔑 Secure this device',
       confirmCancel: {
-        intent: 'destructive',
-        title: 'Skip the wizard?',
-        description:
-          'Your device will be left unsecured, and default preferences will be assumed. Are you sure you want to skip the setup wizard?',
-        primaryLabel: 'Use app without security',
+        intent: preserveExistingData ? 'warning' : 'destructive',
+        title: preserveExistingData ? 'Exit setup?' : 'Skip the wizard?',
+        description: preserveExistingData
+          ? 'If you have already configured a device lock, it will remain active. Otherwise, Interviewer will continue without app security.'
+          : 'Your device will be left unsecured, and default preferences will be assumed. Are you sure you want to skip the setup wizard?',
+        primaryLabel: preserveExistingData
+          ? 'Exit setup'
+          : 'Use app without security',
         cancelLabel: 'Go back to wizard',
       },
-      cancelLabel: 'Skip Wizard',
+      cancelLabel: preserveExistingData ? 'Exit setup' : 'Skip Wizard',
       steps: [
         {
           title: 'Setting up your device',
@@ -169,11 +204,13 @@ export function useSetupWizard() {
           title: 'Choose an authentication method',
           description:
             'Choose between the options below to determine how you will be prompted to unlock the app.',
-          content: Step2MethodPicker,
+          content: () => (
+            <Step2MethodPicker lockCommittedMethod={preserveExistingData} />
+          ),
         },
         {
           title: 'Set up your method',
-          content: Step3Configure,
+          content: () => <Step3Configure allowChange={!preserveExistingData} />,
           skip: ({ data }) => data.selectedMethod === 'none',
         },
         {
@@ -184,7 +221,9 @@ export function useSetupWizard() {
         },
         {
           title: 'Help improve the app',
-          content: Step5Analytics,
+          content: () => (
+            <Step5Analytics initialEnabled={initialAnalyticsEnabled} />
+          ),
           nextLabel: 'Finish',
         },
       ],
@@ -195,8 +234,12 @@ export function useSetupWizard() {
     // welcome screen with no feedback — they stay on /welcome and can retry.
     try {
       if (!result) {
-        // Dismissed.
-        await enrolWithoutSecurity();
+        // The Settings wizard is optional. Dismissing it must leave the vault
+        // exactly as it was so a fresh browser remains unconfigured and still
+        // receives mandatory setup if it is later installed.
+        if (!preserveExistingData) {
+          await enrolWithoutSecurity();
+        }
       } else {
         const data = result as SetupWizardData;
         if (data.selectedMethod === 'none') {
@@ -210,13 +253,15 @@ export function useSetupWizard() {
           requireUnlockOnExit: behavior.requireUnlockOnExit,
           requireUnlockOnExport: behavior.requireUnlockOnExport,
         });
-        // Persist + apply the analytics choice (defaults to enabled). Routes
-        // through the provider so opt-in/out and the native preference mirror
-        // take effect immediately.
-        await analytics.setEnabled(data.analyticsEnabled ?? true);
+        // First-run setup defaults to enabled. A Settings-launched wizard is
+        // seeded from the current preference so leaving the toggle untouched
+        // preserves an existing opt-out.
+        await analytics.setEnabled(
+          data.analyticsEnabled ?? initialAnalyticsEnabled,
+        );
       }
 
-      await refresh();
+      if (!preserveExistingData) await refresh();
     } catch (cause) {
       toast.add({
         title: 'Setup could not be completed',
@@ -226,6 +271,25 @@ export function useSetupWizard() {
             : 'Something went wrong while setting up this device. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      // Settings closes before opening the wizard, leaving Home mounted behind
+      // it. Always reconcile auth after that flow, even if enrolment succeeded
+      // but a later preference write failed; otherwise Home keeps stale
+      // unconfigured/no-lock state until reload.
+      if (preserveExistingData) {
+        try {
+          await refresh();
+        } catch (cause) {
+          toast.add({
+            title: 'Security status could not be refreshed',
+            description:
+              cause instanceof Error
+                ? cause.message
+                : 'Reload Interviewer to refresh this device’s security status.',
+            variant: 'destructive',
+          });
+        }
+      }
     }
   };
 

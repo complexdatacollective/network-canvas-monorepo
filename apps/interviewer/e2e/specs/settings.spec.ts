@@ -153,11 +153,39 @@ test.describe('settings', () => {
       page.getByRole('heading', { name: 'Device lock' }),
     ).toBeVisible();
     await expect(
+      page.getByText(
+        /Use the Get started wizard below to enable app security/i,
+      ),
+    ).toBeVisible();
+    await expect(
       page.getByRole('button', { name: 'Reset device' }),
     ).toBeVisible();
     await expect(
       page.getByRole('button', { name: 'Revoke', exact: true }),
     ).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Get started' }).click();
+    await expect(page.getByRole('dialog')).toContainText(
+      'Setting up your device',
+    );
+  });
+
+  test('Exiting optional security setup preserves the installed setup gate', async ({
+    page,
+  }) => {
+    await openSettings(page);
+    await page.getByRole('tab', { name: 'Security' }).click();
+    await page.getByRole('button', { name: 'Get started' }).click();
+
+    await page.getByTestId('wizard-cancel').click();
+    await expect(page.getByRole('dialog').last()).toContainText('Exit setup?');
+    await page.getByTestId('dialog-primary').click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    await page.evaluate(() => window.dispatchEvent(new Event('appinstalled')));
+
+    await expect(page).toHaveURL(/\/welcome$/);
+    await expect(page.getByText("Let's set up this device.")).toBeVisible();
   });
 
   test('Synthetic data tab sees a protocol imported just before Settings opened', async ({

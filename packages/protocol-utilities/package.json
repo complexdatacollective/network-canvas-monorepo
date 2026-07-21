@@ -1,6 +1,6 @@
 {
   "name": "@codaco/protocol-utilities",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Synthetic network generation and interview-payload builder for Network Canvas protocols.",
   "license": "MIT",
   "repository": {
@@ -32,15 +32,15 @@
     "clean": "rm -rf .turbo node_modules dist"
   },
   "dependencies": {
-    "@codaco/network-query": "workspace:*",
-    "@codaco/protocol-validation": "workspace:*",
-    "@codaco/shared-consts": "workspace:*",
+    "@codaco/network-query": "workspace:^",
+    "@codaco/protocol-validation": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
     "@faker-js/faker": "catalog:",
     "es-toolkit": "catalog:",
     "uuid": "catalog:"
   },
   "devDependencies": {
-    "@codaco/tsconfig": "workspace:*",
+    "@codaco/tsconfig": "workspace:^",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",

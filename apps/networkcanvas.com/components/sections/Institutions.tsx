@@ -10,7 +10,7 @@ import { institutions } from '~/lib/content';
 function renderPriorLink(chunks: ReactNode) {
   return (
     <NativeLink
-      href="https://reporter.nih.gov/search/MPUhMnE1GkqRHltT4rj3TQ/project-details/10405582"
+      href="https://reporter.nih.gov/project-details/9306043"
       target="_blank"
       rel="noreferrer"
       className="font-bold"
@@ -23,7 +23,7 @@ function renderPriorLink(chunks: ReactNode) {
 function renderOngoingLink(chunks: ReactNode) {
   return (
     <NativeLink
-      href="https://reporter.nih.gov/search/vo3bW-y-mE6OeQAQvDNH5g/project-details/10233551"
+      href="https://reporter.nih.gov/project-details/10715902"
       target="_blank"
       rel="noreferrer"
       className="font-bold"

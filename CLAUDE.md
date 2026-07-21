@@ -278,7 +278,14 @@ Network Canvas uses a protocol-based system where:
 
 - **NO `any` types** - explicitly forbidden, always use proper TypeScript typing
 - **No barrel files** - avoid index.js/ts except in exceptional circumstances
-- **Workspace dependencies**: Use `workspace:*` for dependencies used by multiple packages, or tooling dependencies. Use regular versioning for app-specific dependencies.
+- **Workspace dependencies**: Use `workspace:^` for internal `@codaco/*`
+  dependencies used by multiple packages, or tooling dependencies. Use regular
+  versioning for app-specific dependencies. Prefer `workspace:^` over
+  `workspace:*`: `workspace:*` publishes as an exact pin and changesets treats it
+  as the exact current version, so a minor/major bump of a package listed as a
+  `peerDependency` escalates every dependent to a spurious major release (and
+  external consumers cannot deduplicate shared packages). `workspace:^` publishes
+  as a caret range, which avoids both.
 - **Classic app dependencies**: Keep `architect-classic` on its GitHub
   `protocol-validation` dependency and `interviewer-classic` on its external npm
   `@codaco/protocol-validation` dependency. Do not migrate either to the

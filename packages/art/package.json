@@ -21,9 +21,9 @@
     "motion": "catalog:"
   },
   "devDependencies": {
-    "@codaco/fresco-ui": "workspace:*",
-    "@codaco/tailwind-config": "workspace:*",
-    "@codaco/tsconfig": "workspace:*",
+    "@codaco/fresco-ui": "workspace:^",
+    "@codaco/tailwind-config": "workspace:^",
+    "@codaco/tsconfig": "workspace:^",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",
     "@storybook/react-vite": "catalog:",

@@ -1,5 +1,17 @@
 # @codaco/interview
 
+## 4.1.0
+
+### Minor Changes
+
+- c7e767c: Add image backgrounds to Narrative stages and keep canvas background images fully visible and centred in every layout.
+
+### Patch Changes
+
+- 04f6fe2: Fix the icon on the Name Generator add buttons drifting to the top of the circle when a node type uses a Lucide icon. The quick-add toggle and the create-new-node button now keep their icon vertically centred.
+- Updated dependencies [98a31e7]
+  - @codaco/network-query@1.2.2
+
 ## 4.0.0
 
 ### Patch Changes

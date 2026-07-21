@@ -244,8 +244,8 @@ export function ManageAuthenticator() {
       {hasNoLock && (
         <Paragraph intent="smallText" emphasis="muted">
           No device lock is configured. Data on this device is not encrypted at
-          the app layer. To enable a lock, reset the device first and run setup
-          again.
+          the app layer. Use the Get started wizard below to enable app security
+          and encrypt data stored by Interviewer.
         </Paragraph>
       )}
       <dl className="font-monospace mt-4 mb-6 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-xs">

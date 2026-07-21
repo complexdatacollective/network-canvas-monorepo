@@ -1,6 +1,6 @@
 {
   "name": "@codaco/network-query",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Network filtering and querying for Network Canvas",
   "license": "GPL-3.0-or-later",
   "repository": {
@@ -30,12 +30,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@codaco/protocol-validation": "workspace:*",
-    "@codaco/shared-consts": "workspace:*",
+    "@codaco/protocol-validation": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
     "es-toolkit": "catalog:"
   },
   "devDependencies": {
-    "@codaco/tsconfig": "workspace:*",
+    "@codaco/tsconfig": "workspace:^",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",

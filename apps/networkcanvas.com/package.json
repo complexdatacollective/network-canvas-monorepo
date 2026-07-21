@@ -12,10 +12,10 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
-    "@codaco/art": "workspace:*",
-    "@codaco/fresco-ui": "workspace:*",
-    "@codaco/shared-consts": "workspace:*",
-    "@codaco/tailwind-config": "workspace:*",
+    "@codaco/art": "workspace:^",
+    "@codaco/fresco-ui": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
+    "@codaco/tailwind-config": "workspace:^",
     "@fontsource-variable/inclusive-sans": "catalog:",
     "@fontsource-variable/nunito": "catalog:",
     "@formatjs/intl-localematcher": "^0.8.9",
@@ -31,7 +31,7 @@
     "zustand": "catalog:"
   },
   "devDependencies": {
-    "@codaco/tsconfig": "workspace:*",
+    "@codaco/tsconfig": "workspace:^",
     "@netlify/edge-functions": "^3.0.8",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/jest-dom": "catalog:",
@@ -41,7 +41,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "jsdom": "catalog:",
-    "postcss": "^8.5.17",
+    "postcss": "^8.5.19",
     "sharp": "^0.34.5",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",

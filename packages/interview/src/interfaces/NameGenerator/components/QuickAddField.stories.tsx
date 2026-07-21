@@ -224,6 +224,26 @@ export const Default: Story = {
   },
 };
 
+export const WithLucideIcon: Story = {
+  args: {
+    name: 'name',
+    placeholder: 'Type a name and press enter...',
+    disabled: false,
+    icon: 'Smartphone',
+  },
+  render: ({ icon: _icon, ...args }) => (
+    <QuickAddFieldWrapper {...args} onFormSubmit={formSubmitAction} />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'QuickAddField whose node type uses a Lucide icon (`Smartphone`) instead of a custom kebab-case icon. Verifies the icon stays vertically centred inside the toggle circle.',
+      },
+    },
+  },
+};
+
 export const WithValidation: Story = {
   args: {
     name: 'name',

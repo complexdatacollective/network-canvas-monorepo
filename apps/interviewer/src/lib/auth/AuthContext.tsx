@@ -39,6 +39,10 @@ type AuthActions = {
   unlockWithPassphrase: (phrase: string) => Promise<authApi.AuthResult>;
   unlockWithBiometric: () => Promise<authApi.AuthResult>;
   unlockWithRecovery: (phrase: string) => Promise<authApi.AuthResult>;
+  verifyWithPin: (pin: string) => Promise<authApi.AuthResult>;
+  verifyWithPassphrase: (phrase: string) => Promise<authApi.AuthResult>;
+  verifyBiometric: () => Promise<authApi.AuthResult>;
+  verifyWithRecovery: (phrase: string) => Promise<authApi.AuthResult>;
   reEnrolWithPin: (
     currentPin: string,
     nextPin: string,
@@ -159,6 +163,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (phrase: string) => runAndRefresh(() => authApi.unlockWithRecovery(phrase)),
     [runAndRefresh],
   );
+  const verifyWithPin = useCallback(
+    (pin: string) => authApi.verifyWithPin(pin),
+    [],
+  );
+  const verifyWithPassphrase = useCallback(
+    (phrase: string) => authApi.verifyWithPassphrase(phrase),
+    [],
+  );
+  const verifyBiometric = useCallback(() => authApi.verifyBiometric(), []);
+  const verifyWithRecovery = useCallback(
+    (phrase: string) => authApi.verifyWithRecovery(phrase),
+    [],
+  );
   const reEnrolWithPin = useCallback(
     (currentPin: string, nextPin: string) =>
       runAndRefresh(() => authApi.reEnrolWithPin(currentPin, nextPin)),
@@ -197,6 +214,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unlockWithPassphrase,
       unlockWithBiometric,
       unlockWithRecovery,
+      verifyWithPin,
+      verifyWithPassphrase,
+      verifyBiometric,
+      verifyWithRecovery,
       reEnrolWithPin,
       reEnrolWithPassphrase,
       lock,
@@ -214,6 +235,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unlockWithPassphrase,
       unlockWithBiometric,
       unlockWithRecovery,
+      verifyWithPin,
+      verifyWithPassphrase,
+      verifyBiometric,
+      verifyWithRecovery,
       reEnrolWithPin,
       reEnrolWithPassphrase,
       lock,

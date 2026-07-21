@@ -48,19 +48,63 @@ test.describe('vault lifecycle', () => {
     });
   });
 
+  test('refreshing an interview does not request authentication twice', async ({
+    vault,
+    interviewNav,
+    page,
+  }) => {
+    await vault.enrolPin(PIN);
+    await page.getByRole('button', { name: 'Previous protocol' }).click();
+    await page.getByRole('button', { name: 'Install sample protocol' }).click();
+    await expect(
+      page.getByRole('button', { name: 'Start new interview' }),
+    ).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole('button', { name: 'Start new interview' }).click();
+    await page.getByTestId('new-session-case-id').fill('refresh-regression');
+    await page.getByTestId('new-session-submit').click();
+    await vault.confirmPin(PIN);
+    await expect(page).toHaveURL(/\/interview\//, { timeout: 15_000 });
+    await interviewNav.waitForStage();
+
+    const interviewUrl = page.url();
+    await page.reload();
+    await expect(
+      page.getByRole('heading', { name: 'Welcome back' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Recover by resetting' }),
+    ).toHaveCount(0);
+
+    // Changing the URL and forcing another load while still locked must not
+    // turn the active interview's lock screen into a destructive reset route.
+    await page.goto('/');
+    await expect(
+      page.getByRole('heading', { name: 'Welcome back' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Recover by resetting' }),
+    ).toHaveCount(0);
+    await page.goto(interviewUrl);
+    await vault.unlockPin(PIN);
+
+    await expect(page).toHaveURL(interviewUrl);
+    await interviewNav.waitForStage();
+    await expect(
+      page.getByRole('heading', { name: 'Confirm your identity' }),
+    ).toHaveCount(0);
+  });
+
   test('reset app data returns to an unconfigured state', async ({
     vault,
     page,
   }) => {
     await vault.enrolPin(PIN);
     await page.reload();
-    await page.getByTestId('reset-app-data').click();
-    // The confirm dialog stacks on top of the still-open "Welcome back" lock
-    // dialog (it doesn't close itself until revoke() completes), so both are
-    // simultaneously role="dialog" — scope by name to disambiguate.
+    await page.getByRole('button', { name: 'Recover by resetting' }).click();
     const dialog = page.getByRole('dialog', { name: 'Reset all app data?' });
     await expect(dialog).toBeVisible();
-    await dialog.getByTestId('dialog-primary').click();
+    await dialog.getByRole('button', { name: 'Permanently delete' }).click();
     // Back to a usable (unconfigured/none) Home — no lock screen.
     await expect(
       page.getByRole('heading', { name: 'Welcome back' }),

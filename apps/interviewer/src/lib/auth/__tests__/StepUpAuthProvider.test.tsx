@@ -6,7 +6,11 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 
 import type { AuthContextValue } from '../AuthContext';
-import { StepUpAuthProvider } from '../StepUpAuthProvider';
+import {
+  persistInterviewRecoveryRestriction,
+  readInterviewRecoveryRestriction,
+} from '../interviewRecoveryRestriction';
+import { StepUpAuthProvider, useStepUpAuth } from '../StepUpAuthProvider';
 
 // The provider only reads `auth.kind`/`auth.mode` from useAuth; mock it so the
 // test can drive the locked → unlocked transition directly.
@@ -17,8 +21,8 @@ vi.mock('../AuthContext', () => ({
 
 const RESET_CONFIRM_TITLE = 'Reset all app data?';
 
-// Opens a destructive confirm dialog on demand — the same DialogProvider-hosted
-// confirm the lock screen's Reset button opens via useResetAppData.
+// Opens a destructive confirm dialog on demand so provider-hosted confirmation
+// dismissal remains covered independently of the controlled auth reset dialog.
 function ConfirmOpener() {
   const { confirm } = useDialog();
   return (
@@ -41,6 +45,39 @@ function ConfirmOpener() {
   );
 }
 
+function StepUpRequester({
+  onResult,
+}: {
+  onResult: (result: { ok: boolean; reason?: 'cancelled' }) => void;
+}) {
+  const { requireFreshUnlock } = useStepUpAuth();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void requireFreshUnlock().then(onResult);
+      }}
+    >
+      request-step-up
+    </button>
+  );
+}
+
+function AuthorizationProbe() {
+  const { getAuthorizedInterviewId, setAuthorizedInterviewId } =
+    useStepUpAuth();
+  return (
+    <>
+      <button type="button" onClick={() => setAuthorizedInterviewId('s1')}>
+        authorize-s1
+      </button>
+      <output data-testid="authorized-interview">
+        {getAuthorizedInterviewId() ?? 'none'}
+      </output>
+    </>
+  );
+}
+
 function Harness({ children }: { children?: ReactNode }) {
   return (
     <DialogProvider>
@@ -53,6 +90,8 @@ function Harness({ children }: { children?: ReactNode }) {
 }
 
 beforeEach(() => {
+  window.history.replaceState({}, '', '/');
+  window.sessionStorage.clear();
   mockAuth = { kind: 'locked', mode: 'biometric' };
 });
 afterEach(() => {
@@ -96,4 +135,171 @@ describe('StepUpAuthProvider dialog dismissal across lock transitions', () => {
       expect(screen.queryByText(RESET_CONFIRM_TITLE)).not.toBeInTheDocument(),
     );
   });
+
+  it('cancels a pending step-up when destructive recovery resets auth', async () => {
+    mockAuth = { kind: 'unlocked', mode: 'pin' };
+    const onResult = vi.fn();
+    const { rerender } = render(
+      <Harness>
+        <StepUpRequester onResult={onResult} />
+      </Harness>,
+    );
+
+    await act(async () => {
+      screen.getByText('request-step-up').click();
+    });
+    expect(
+      await screen.findByText('Confirm your identity'),
+    ).toBeInTheDocument();
+
+    mockAuth = { kind: 'unconfigured' };
+    rerender(
+      <Harness>
+        <StepUpRequester onResult={onResult} />
+      </Harness>,
+    );
+
+    await waitFor(() =>
+      expect(onResult).toHaveBeenCalledWith({
+        ok: false,
+        reason: 'cancelled',
+      }),
+    );
+    expect(screen.queryByText('Confirm your identity')).not.toBeInTheDocument();
+  });
+
+  it('keeps destructive recovery suppressed for a step-up opened on an interview route', async () => {
+    window.history.replaceState({}, '', '/interview/s1');
+    mockAuth = { kind: 'unlocked', mode: 'pin' };
+    render(
+      <Harness>
+        <StepUpRequester onResult={vi.fn()} />
+      </Harness>,
+    );
+
+    await act(async () => {
+      screen.getByText('request-step-up').click();
+    });
+    expect(
+      await screen.findByText('Confirm your identity'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Recover by resetting' }),
+    ).not.toBeInTheDocument();
+
+    // The policy is captured when the dialog opens; changing the URL cannot
+    // re-enable reset on the already-open authentication surface.
+    await act(async () => {
+      window.history.pushState({}, '', '/');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(screen.getByText('Confirm your identity')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Recover by resetting' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('StepUpAuthProvider interview authorization', () => {
+  it('preserves the authorized interview across a hard-refresh remount', async () => {
+    window.history.replaceState({}, '', '/interview/s1');
+    const firstMount = render(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+
+    await act(async () => {
+      screen.getByText('authorize-s1').click();
+    });
+    firstMount.unmount();
+
+    render(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+
+    expect(screen.getByTestId('authorized-interview')).toHaveTextContent('s1');
+  });
+
+  it('clears stale interview authorization when unlocked on the home route', async () => {
+    const firstMount = render(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+    await act(async () => {
+      screen.getByText('authorize-s1').click();
+    });
+    firstMount.unmount();
+
+    mockAuth = { kind: 'unlocked', mode: 'pin' };
+    const homeMount = render(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+
+    await waitFor(() =>
+      expect(
+        window.sessionStorage.getItem('interviewer:authorized-interview-id'),
+      ).toBeNull(),
+    );
+    homeMount.rerender(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+    expect(screen.getByTestId('authorized-interview')).toHaveTextContent(
+      'none',
+    );
+  });
+
+  it('clears persisted interview authorization after a destructive reset', async () => {
+    const firstMount = render(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+    await act(async () => {
+      screen.getByText('authorize-s1').click();
+    });
+    firstMount.unmount();
+
+    mockAuth = { kind: 'unconfigured' };
+    const resetMount = render(<Harness />);
+    await waitFor(() => expect(window.sessionStorage.length).toBe(0));
+    resetMount.unmount();
+
+    mockAuth = { kind: 'locked', mode: 'pin' };
+    render(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+    expect(screen.getByTestId('authorized-interview')).toHaveTextContent(
+      'none',
+    );
+  });
+});
+
+describe('StepUpAuthProvider lock recovery restriction cleanup', () => {
+  it.each([
+    { kind: 'unlocked', mode: 'pin' },
+    { kind: 'unconfigured' },
+    { kind: 'corrupt' },
+  ] satisfies Array<Pick<AuthContextValue, 'kind' | 'mode'>>)(
+    'clears the persisted lock restriction when auth is $kind',
+    async (auth) => {
+      persistInterviewRecoveryRestriction();
+      mockAuth = auth;
+
+      render(<Harness />);
+
+      await waitFor(() =>
+        expect(readInterviewRecoveryRestriction()).toBe(false),
+      );
+    },
+  );
 });

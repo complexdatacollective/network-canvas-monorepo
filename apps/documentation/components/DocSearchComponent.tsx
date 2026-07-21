@@ -10,8 +10,15 @@ import { usePageBackgroundTargetRef } from '@codaco/art';
 import { inputFieldControlVariants } from '@codaco/fresco-ui/form/fields/InputField';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { env } from '~/env';
+import { getDocSearchConfig } from '~/lib/docSearchConfig';
 import { getSectionColorClass } from '~/lib/sections';
 import { usePathname } from '~/navigation';
+
+const docSearchConfig = getDocSearchConfig({
+  appId: env.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID,
+  indexName: env.NEXT_PUBLIC_ALGOLIA_INDEX_NAME,
+  apiKey: env.NEXT_PUBLIC_ALGOLIA_API_KEY,
+});
 
 // Pulls the workflow-section slug out of a result's URL. Sections are the first
 // path segment after the locale (e.g. /en/design-protocols/...); we match the
@@ -101,6 +108,7 @@ const DocSearchComponent = ({
   const translations = useDocSearchTranslations();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const backgroundTargetRef = usePageBackgroundTargetRef();
+  const isSearchAvailable = docSearchConfig !== null;
 
   const selectVisibleSearchAsBackgroundTarget = useCallback(() => {
     const button = buttonRef.current;
@@ -157,13 +165,24 @@ const DocSearchComponent = ({
           size: large ? 'lg' : 'md',
           state: 'normal',
           className: cx(
-            'pointer-events-auto w-full shrink cursor-pointer',
+            'pointer-events-auto w-full shrink',
+            isSearchAvailable
+              ? 'cursor-pointer'
+              : 'cursor-not-allowed opacity-50',
             className,
           ),
         })}
         onClick={openDocSearch}
-        aria-label={t('button.buttonAriaLabel')}
-        aria-haspopup="dialog"
+        disabled={!isSearchAvailable}
+        aria-label={
+          isSearchAvailable
+            ? t('button.buttonAriaLabel')
+            : t('button.buttonUnavailableText')
+        }
+        aria-haspopup={isSearchAvailable ? 'dialog' : undefined}
+        title={
+          isSearchAvailable ? undefined : t('button.buttonUnavailableText')
+        }
       >
         <Search aria-hidden />
         <span
@@ -193,49 +212,51 @@ const DocSearchComponent = ({
           <span className="text-sm">⌘</span>K
         </kbd>
       </button>
-      <div className="hidden">
-        <DocSearch
-          translations={translations}
-          appId={env.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID}
-          indices={[
-            {
-              name: env.NEXT_PUBLIC_ALGOLIA_INDEX_NAME,
-              searchParameters: {
-                filters: `lang:${locale}`,
-                // Boost (not restrict) results from the section the reader is
-                // currently in, so same-section pages rank higher while every
-                // section still appears. Relies on the crawler-populated,
-                // facetable `section` attribute on each record.
-                ...(boostSection
-                  ? { optionalFilters: [`section:${boostSection}`] }
-                  : {}),
+      {docSearchConfig ? (
+        <div className="hidden">
+          <DocSearch
+            translations={translations}
+            appId={docSearchConfig.appId}
+            indices={[
+              {
+                name: docSearchConfig.indexName,
+                searchParameters: {
+                  filters: `lang:${locale}`,
+                  // Boost (not restrict) results from the section the reader is
+                  // currently in, so same-section pages rank higher while every
+                  // section still appears. Relies on the crawler-populated,
+                  // facetable `section` attribute on each record.
+                  ...(boostSection
+                    ? { optionalFilters: [`section:${boostSection}`] }
+                    : {}),
+                },
               },
-            },
-          ]}
-          apiKey={env.NEXT_PUBLIC_ALGOLIA_API_KEY}
-          insights={true}
-          placeholder="Search documentation"
-          hitComponent={({ hit, children }) => {
-            const slug = getSectionSlug(hit.url);
-            const colorClass = slug ? getSectionColorClass(slug) : undefined;
-            return (
-              <a href={hit.url}>
-                {slug && colorClass ? (
-                  <span
-                    className={cx(
-                      'mr-2 shrink-0 self-center rounded-full px-2 py-0.5 text-[0.625rem] font-semibold tracking-wide text-white uppercase',
-                      colorClass,
-                    )}
-                  >
-                    {sectionLabel(slug)}
-                  </span>
-                ) : null}
-                {children}
-              </a>
-            );
-          }}
-        />
-      </div>
+            ]}
+            apiKey={docSearchConfig.apiKey}
+            insights={true}
+            placeholder="Search documentation"
+            hitComponent={({ hit, children }) => {
+              const slug = getSectionSlug(hit.url);
+              const colorClass = slug ? getSectionColorClass(slug) : undefined;
+              return (
+                <a href={hit.url}>
+                  {slug && colorClass ? (
+                    <span
+                      className={cx(
+                        'mr-2 shrink-0 self-center rounded-full px-2 py-0.5 text-[0.625rem] font-semibold tracking-wide text-white uppercase',
+                        colorClass,
+                      )}
+                    >
+                      {sectionLabel(slug)}
+                    </span>
+                  ) : null}
+                  {children}
+                </a>
+              );
+            }}
+          />
+        </div>
+      ) : null}
     </>
   );
 };

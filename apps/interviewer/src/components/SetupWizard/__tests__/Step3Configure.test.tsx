@@ -77,6 +77,22 @@ describe('Step3Configure — read-only summary reconciliation', () => {
     );
   });
 
+  it('does not offer to replace a committed method while preserving stored data', async () => {
+    wizardData = { selectedMethod: 'pin', enrolmentCommitted: true };
+    statusMock.mockResolvedValue({
+      configured: true,
+      locked: false,
+      mode: 'pin',
+    });
+
+    render(<Step3Configure allowChange={false} />);
+
+    expect(await screen.findByText('PIN configured.')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Change' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('drops back into the configure form when a committed enrolment no longer matches the vault', async () => {
     // A same-method biometric "Change" revoked the old vault, then the user
     // cancelled the OS sheet: enrolmentCommitted is still true but the vault is

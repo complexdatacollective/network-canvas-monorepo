@@ -1,5 +1,11 @@
 # @codaco/protocol-validation
 
+## 11.11.0
+
+### Minor Changes
+
+- c7e767c: Add image backgrounds to Narrative stages and keep canvas background images fully visible and centred in every layout.
+
 ## 11.10.0
 
 ### Minor Changes
