@@ -246,6 +246,7 @@ function buildManualBaseline(): ScenarioDefinition {
     run: async ({ page }) => {
       const sociogram = page.getByTestId('sociogram');
       await expect(sociogram).toHaveAttribute('data-layout-mode', 'MANUAL');
+      await expect(sociogram).toHaveCSS('padding', '0px');
 
       await expect(
         sociogram.locator(
