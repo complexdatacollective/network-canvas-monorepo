@@ -2,7 +2,20 @@ name: Chromatic
 
 on:
   push:
+    branches:
+      - 'changeset-release/**'
   workflow_dispatch:
+    inputs:
+      project:
+        description: Storybook project to publish
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - fresco-ui
+          - interview
+          - interviewer
 
 permissions:
   contents: read
@@ -26,12 +39,40 @@ jobs:
         env:
           BEFORE_SHA: ${{ github.event.before }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REQUESTED_PROJECT: ${{ inputs.project }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            case "$REQUESTED_PROJECT" in
+              all)
+                fresco_ui=true
+                interview=true
+                interviewer=true
+                ;;
+              fresco-ui)
+                fresco_ui=true
+                interview=false
+                interviewer=false
+                ;;
+              interview)
+                fresco_ui=false
+                interview=true
+                interviewer=false
+                ;;
+              interviewer)
+                fresco_ui=false
+                interview=false
+                interviewer=true
+                ;;
+              *)
+                echo "Unknown Storybook project: $REQUESTED_PROJECT" >&2
+                exit 1
+                ;;
+            esac
+
             {
-              echo "fresco_ui=true"
-              echo "interview=true"
-              echo "interviewer=true"
+              echo "fresco_ui=$fresco_ui"
+              echo "interview=$interview"
+              echo "interviewer=$interviewer"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
