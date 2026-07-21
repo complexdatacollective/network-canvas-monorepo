@@ -1,4 +1,5 @@
 import { SlidersHorizontal } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   type CSSProperties,
   type ReactElement,
@@ -73,48 +74,68 @@ export function SelectionProperties({
     }
   }, [selectedId, stageRef]);
 
-  if (activeTool !== 'select' || !selection) return null;
-  const el = doc.elements.find((e) => e.id === selection.id);
-  if (!el) return null;
-  const bounds = elementBounds(el, stage);
+  const reduce = useReducedMotion();
+  const el =
+    activeTool === 'select' && selection
+      ? doc.elements.find((e) => e.id === selection.id)
+      : undefined;
+  const bounds = el ? elementBounds(el, stage) : null;
 
-  // Preferred spot: below-right of the bounds, past the ~20px corner-handle hit
-  // target centred on the corner (see ResizeHandles); the zone pill sits at the
-  // top edge, well clear of this corner. Clamped to stay inside the stage —
-  // the letterbox container clips (overflow-hidden), so a full-bleed element's
-  // corner would otherwise push the trigger off-screen entirely. The clamped
-  // fallback (88px inset — the 80px xl button plus an 8px edge margin) tucks the
-  // button fully inside the bounds, still clear of the corner handle.
-  const style: CSSProperties = {
-    left: `clamp(4px, calc(${bounds.maxX * 100}% + 12px), calc(100% - 88px))`,
-    top: `clamp(4px, calc(${bounds.maxY * 100}% + 12px), calc(100% - 88px))`,
-  };
+  // Preferred spot: just past the selection's bottom-right corner — 6px out, so
+  // the button hugs the shape while still clearing the 12px visible corner
+  // handle dot (see ResizeHandles); the zone pill sits at the top edge, clear of
+  // this corner. Clamped to stay inside the stage — the letterbox container
+  // clips (overflow-hidden), so a full-bleed element's corner would otherwise
+  // push the trigger off-screen. The clamped fallback (88px inset — the 80px xl
+  // button plus an 8px edge margin) tucks it fully inside the bounds.
+  const style: CSSProperties | undefined = bounds
+    ? {
+        left: `clamp(4px, calc(${bounds.maxX * 100}% + 6px), calc(100% - 88px))`,
+        top: `clamp(4px, calc(${bounds.maxY * 100}% + 6px), calc(100% - 88px))`,
+      }
+    : undefined;
 
   return (
     <div className="pointer-events-none absolute inset-0">
-      {/* Keyed on the selected element so a reselect UNMOUNTS the old popover
-          atomically instead of letting its AnimatePresence exit-animation play
-          — otherwise the closing panel briefly fades out re-anchored to the
-          newly selected element. Same-element close (trigger toggle, Escape,
-          outside press) keeps its key, so its exit fade still plays. */}
-      <Popover key={selectedId} open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          render={
-            <IconButton
-              icon={<SlidersHorizontal />}
-              aria-label="Element properties"
-              size="xl"
-              color="accent"
-              {...{ [PROPERTIES_TRIGGER_ATTR]: '' }}
-              className="pointer-events-auto absolute"
-              style={style}
-            />
-          }
-        />
-        <PopoverContent>
-          <PropertiesPanel />
-        </PopoverContent>
-      </Popover>
+      {/* Keyed on the selected element so a reselect swaps the whole popover
+          (the old one exits at its own position, the new enters at the new
+          corner) — the closing panel never re-anchors to the new element. The
+          motion.div scales/fades the trigger in on select and out on deselect;
+          the popover panel (portaled) keeps its own open/close animation. */}
+      <AnimatePresence>
+        {el && style && (
+          <motion.div
+            key={el.id}
+            className="pointer-events-auto absolute"
+            style={style}
+            initial={reduce ? false : { opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
+            transition={
+              reduce
+                ? { duration: 0 }
+                : { type: 'spring', stiffness: 520, damping: 30, mass: 0.6 }
+            }
+          >
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger
+                render={
+                  <IconButton
+                    icon={<SlidersHorizontal />}
+                    aria-label="Element properties"
+                    size="xl"
+                    color="accent"
+                    {...{ [PROPERTIES_TRIGGER_ATTR]: '' }}
+                  />
+                }
+              />
+              <PopoverContent>
+                <PropertiesPanel />
+              </PopoverContent>
+            </Popover>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
