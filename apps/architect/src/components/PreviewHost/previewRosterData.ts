@@ -56,13 +56,23 @@ export function makeRosterAssetResolver(
  * Roster node pools (keyed by stage id) for a preview's synthetic session,
  * drawn from the protocol's actual roster assets.
  */
-export function collectPreviewRosterData(
+export async function collectPreviewRosterData(
   protocol: CurrentProtocol,
   protocolId: string,
 ): Promise<Record<string, NcNode[]>> {
-  return collectRosterExternalData({
-    stages: protocol.stages,
-    codebook: protocol.codebook,
-    resolveAsset: makeRosterAssetResolver(protocol, protocolId),
-  });
+  // Load-bearing soft-fail: previews run on draft protocols, so collection can
+  // throw on half-built shapes that per-asset error isolation can't anticipate
+  // (e.g. a malformed panel filter throwing inside network-query). Any failure
+  // returns {} so the preview still renders, falling back to fabricated people.
+  try {
+    return await collectRosterExternalData({
+      stages: protocol.stages,
+      codebook: protocol.codebook,
+      resolveAsset: makeRosterAssetResolver(protocol, protocolId),
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Could not collect roster data for preview', error);
+    return {};
+  }
 }

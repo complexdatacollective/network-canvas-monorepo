@@ -4,23 +4,44 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { GenerationContext, NetworkDraft } from './context';
 import { getStageFilteredNodes } from './filtering';
 
+/** Keep only string entries, dropping the `undefined` a half-built prompt yields. */
+function onlyStrings(values: (string | undefined)[]): string[] {
+  return values.filter((value): value is string => typeof value === 'string');
+}
+
 /**
  * Variables an in-progress stage would not yet have written for unvisited
  * nodes. Clearing these returns a node to the stage's "unplaced" bucket.
+ *
+ * markStageInProgress runs on the in-progress stage — in Architect previews the
+ * stage being edited, so its prompts can be half-built (missing `variable` or
+ * `layout`) even though the schema types mark those fields required. Each field
+ * is re-derived at runtime and non-strings are filtered out, so no `undefined`
+ * key ever reaches the attribute object.
  */
 function getInProgressClearableVariables(stage: Stage): string[] {
   if (stage.type === 'OrdinalBin') {
-    return stage.prompts.map((p) => p.variable);
+    return onlyStrings(
+      (stage.prompts ?? []).map((p): string | undefined => p.variable),
+    );
   }
   if (stage.type === 'CategoricalBin') {
     // A node only counts as uncategorised when both the prompt variable and any
     // "other" variable are nil, so both are cleared together.
-    return stage.prompts.flatMap((p) =>
-      p.otherVariable ? [p.variable, p.otherVariable] : [p.variable],
+    return onlyStrings(
+      (stage.prompts ?? []).flatMap((p): (string | undefined)[] => [
+        p.variable,
+        p.otherVariable,
+      ]),
     );
   }
   if (stage.type === 'Sociogram') {
-    return stage.prompts.map((p) => p.layout.layoutVariable);
+    return onlyStrings(
+      (stage.prompts ?? []).map((p): string | undefined => {
+        const layout: { layoutVariable?: string } | undefined = p.layout;
+        return layout?.layoutVariable;
+      }),
+    );
   }
   return [];
 }

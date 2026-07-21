@@ -194,4 +194,28 @@ describe('collectPreviewRosterData', () => {
 
     expect(result).toEqual({});
   });
+
+  it('fails soft to {} and logs when collection itself throws', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    // A draft stage engineered to throw the moment collection reads its `type`,
+    // standing in for the half-built shapes previews can produce.
+    const explodingStage = {
+      id: 'boom',
+      label: 'Boom',
+      get type(): string {
+        throw new Error('stage read failed');
+      },
+    };
+    const protocol = makeProtocol({
+      stages: [explodingStage],
+    } as unknown as Partial<CurrentProtocol>);
+
+    const result = await collectPreviewRosterData(protocol, PROTOCOL_ID);
+
+    expect(result).toEqual({});
+    expect(consoleError).toHaveBeenCalled();
+  });
 });

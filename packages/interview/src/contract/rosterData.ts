@@ -104,17 +104,26 @@ type RosterStage = {
 };
 
 function getRosterStage(stage: Stage): RosterStage | null {
+  // Hosts pass draft/unvalidated stages (Architect previews the protocol being
+  // edited), so `dataSource`, `subject`, and panel fields can be absent even
+  // though the schema types mark them required. Every field is re-checked at
+  // runtime and the stage is skipped on a mismatch rather than throwing — the
+  // same widening-without-assertion posture as generateNetwork's subject.ts.
   const sources: RosterSource[] = [];
 
   if (stage.type === 'NameGeneratorRoster') {
-    sources.push({ assetId: stage.dataSource });
+    const dataSource: string | undefined = stage.dataSource;
+    if (typeof dataSource === 'string') {
+      sources.push({ assetId: dataSource });
+    }
   } else if (
     stage.type === 'NameGenerator' ||
     stage.type === 'NameGeneratorQuickAdd'
   ) {
     for (const panel of stage.panels ?? []) {
-      if (panel.dataSource !== 'existing') {
-        sources.push({ assetId: panel.dataSource, filter: panel.filter });
+      const dataSource: string | undefined = panel.dataSource;
+      if (typeof dataSource === 'string' && dataSource !== 'existing') {
+        sources.push({ assetId: dataSource, filter: panel.filter });
       }
     }
   } else {
@@ -122,7 +131,11 @@ function getRosterStage(stage: Stage): RosterStage | null {
   }
 
   if (sources.length === 0) return null;
-  if (stage.subject.entity !== 'node') return null;
+
+  const subject: { entity?: string; type?: string } | undefined = stage.subject;
+  if (subject?.entity !== 'node' || typeof subject.type !== 'string') {
+    return null;
+  }
 
   return { stageId: stage.id, subject: stage.subject, sources };
 }

@@ -8,7 +8,10 @@ import {
   type Panel,
   type Stage,
 } from '@codaco/protocol-validation';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
 
 import {
   collectRosterExternalData,
@@ -297,6 +300,82 @@ describe('collectRosterExternalData', () => {
       expect.stringContaining('"unreadable"'),
       expect.any(Error),
     );
+  });
+
+  it('drops draft roster stages missing subject or dataSource, leaving siblings intact', async () => {
+    stubFetch({ 'stub://roster': PEOPLE_CSV });
+    const resolveAsset: ResolveRosterAsset = vi.fn((assetId: string) => {
+      if (assetId === 'roster') {
+        return Promise.resolve(resolved('roster'));
+      }
+      return Promise.resolve(null);
+    });
+
+    // Draft/unvalidated stages the host may feed in: `subject` or `dataSource`
+    // absent despite the schema types marking them required.
+    const draftMissingSubject = {
+      id: 'draft-no-subject',
+      label: 'Roster',
+      type: 'NameGeneratorRoster',
+      dataSource: 'draft-roster',
+      prompts: [{ id: 'p1', text: 'Pick people' }],
+    } as unknown as Stage;
+    const draftMissingDataSource = {
+      id: 'draft-no-source',
+      label: 'Roster',
+      type: 'NameGeneratorRoster',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Pick people' }],
+    } as unknown as Stage;
+
+    // A throw would reject this await and fail the test.
+    const result = await collectRosterExternalData({
+      stages: [
+        draftMissingSubject,
+        draftMissingDataSource,
+        rosterStage('ok', 'roster'),
+      ],
+      codebook,
+      resolveAsset,
+    });
+
+    expect(result.ok).toHaveLength(3);
+    expect(result['draft-no-subject']).toBeUndefined();
+    expect(result['draft-no-source']).toBeUndefined();
+    // The dropped stages never reach asset resolution.
+    expect(resolveAsset).not.toHaveBeenCalledWith('draft-roster');
+    expect(resolveAsset).toHaveBeenCalledWith('roster');
+  });
+
+  it('collapses byte-identical rows from two panels to one entry per content hash', async () => {
+    stubFetch({
+      'stub://panel-a': PEOPLE_CSV,
+      'stub://panel-b': PEOPLE_CSV,
+    });
+    const resolveAsset: ResolveRosterAsset = vi.fn((assetId: string) => {
+      if (assetId === 'panel-a' || assetId === 'panel-b') {
+        return Promise.resolve(resolved(assetId));
+      }
+      return Promise.resolve(null);
+    });
+
+    const panels: Panel[] = [
+      { id: 'a', title: 'First', dataSource: 'panel-a' },
+      { id: 'b', title: 'Second', dataSource: 'panel-b' },
+    ];
+
+    const result = await collectRosterExternalData({
+      stages: [nameGeneratorStage('stage-ng', panels)],
+      codebook,
+      resolveAsset,
+    });
+
+    // Both panels parse independently, but byte-identical content yields
+    // identical content-hash primary keys, so the later source overwrites the
+    // earlier one in the merge map: three rows in, three entries out (not six).
+    expect(result['stage-ng']).toHaveLength(3);
+    const keys = result['stage-ng']!.map((n) => n[entityPrimaryKeyProperty]);
+    expect(new Set(keys).size).toBe(3);
   });
 
   it('returns {} and never calls resolveAsset when no stage has a roster data source', async () => {

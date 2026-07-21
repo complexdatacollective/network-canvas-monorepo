@@ -757,6 +757,59 @@ describe('generateNetwork', () => {
         }),
       ).not.toThrow();
     });
+
+    // markStageInProgress runs on the stage being edited, so in Architect
+    // previews its prompts are the most likely to be half-built.
+    it('does not throw when an in-progress Sociogram prompt lacks layout', () => {
+      const codebook = makeCodebook();
+      const stages = [
+        makeNameGeneratorStage(),
+        {
+          id: 'stage-soc-draft',
+          label: 'Sociogram',
+          type: 'Sociogram',
+          subject: { entity: 'node', type: 'node-type-1' },
+          prompts: [{ id: 'prompt-soc', text: 'Place people' }],
+        } as unknown as Stage,
+      ];
+
+      expect(() =>
+        generateNetwork({
+          codebook,
+          stages,
+          seed: 42,
+          inProgressStageIndex: 1,
+        }),
+      ).not.toThrow();
+    });
+
+    it('never writes an "undefined" key when an in-progress OrdinalBin prompt lacks a variable', () => {
+      const codebook = makeBinCodebook();
+      const stages = [
+        makeNameGeneratorStage(),
+        {
+          id: 'stage-ob-draft',
+          label: 'Ordinal Bin',
+          type: 'OrdinalBin',
+          subject: { entity: 'node', type: 'node-type-1' },
+          prompts: [{ id: 'prompt-ob', text: 'How close?' }],
+        } as unknown as Stage,
+      ];
+
+      let result: ReturnType<typeof generateNetwork> | undefined;
+      expect(() => {
+        result = generateNetwork({
+          codebook,
+          stages,
+          seed: 42,
+          inProgressStageIndex: 1,
+        });
+      }).not.toThrow();
+
+      for (const node of result!.network.nodes) {
+        expect(node[entityAttributesProperty]).not.toHaveProperty('undefined');
+      }
+    });
   });
 
   describe('roster-backed generation', () => {
