@@ -3,6 +3,7 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { GenerationContext, NetworkDraft } from './context';
 import { getStageFilteredNodes } from './filtering';
+import { getSubjectType } from './subject';
 
 /** Keep only string entries, dropping the `undefined` a half-built prompt yields. */
 function onlyStrings(values: (string | undefined)[]): string[] {
@@ -47,10 +48,9 @@ function getInProgressClearableVariables(stage: Stage): string[] {
 }
 
 function getNodeSubjectType(stage: Stage): string | undefined {
-  if (!('subject' in stage) || stage.subject.entity !== 'node') {
-    return undefined;
-  }
-  return stage.subject.type;
+  if (!('subject' in stage)) return undefined;
+  const subject: { entity?: string; type?: string } | undefined = stage.subject;
+  return getSubjectType(subject, 'node');
 }
 
 /**

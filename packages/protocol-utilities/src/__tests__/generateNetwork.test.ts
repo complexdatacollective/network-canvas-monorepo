@@ -859,6 +859,39 @@ describe('generateNetwork', () => {
         expect(node[entityAttributesProperty]).not.toHaveProperty('undefined');
       }
     });
+
+    // A draft stage can carry a `subject` key whose value is unset (Architect's
+    // in-memory draft state), which passes an `'subject' in stage` type check
+    // but would throw on a direct `.entity` dereference.
+    it('does not throw when an in-progress OrdinalBin has an unset subject', () => {
+      const codebook = makeBinCodebook();
+      const stages = [
+        makeNameGeneratorStage(),
+        {
+          id: 'stage-ob-draft',
+          label: 'Ordinal Bin',
+          type: 'OrdinalBin',
+          subject: undefined,
+          prompts: [
+            { id: 'prompt-ob', text: 'How close?', variable: 'var-ordinal' },
+          ],
+        } as unknown as Stage,
+      ];
+
+      let result: ReturnType<typeof generateNetwork> | undefined;
+      expect(() => {
+        result = generateNetwork({
+          codebook,
+          stages,
+          seed: 42,
+          inProgressStageIndex: 1,
+        });
+      }).not.toThrow();
+
+      for (const node of result!.network.nodes) {
+        expect(node[entityAttributesProperty]).not.toHaveProperty('undefined');
+      }
+    });
   });
 
   describe('roster-backed generation', () => {
