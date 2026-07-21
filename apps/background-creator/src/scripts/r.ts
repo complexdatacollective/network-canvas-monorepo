@@ -46,7 +46,10 @@ function rString(value: string): string {
 }
 
 function rZoneLiteral(zone: ZoneElement): string {
-  const label = rString(zone.zoneLabel ?? '');
+  // Trim to match validateZoneLabels, which trims for its empty/duplicate
+  // checks. Without this a label like "inner " passes the export gate but
+  // writes a hidden-whitespace category that splits "inner" during analysis.
+  const label = rString((zone.zoneLabel ?? '').trim());
   if (zone.kind === 'rect') {
     return `  list(label = ${label}, shape = "rect", x = ${formatNumber(zone.x)}, y = ${formatNumber(zone.y)}, width = ${formatNumber(zone.width)}, height = ${formatNumber(zone.height)})`;
   }

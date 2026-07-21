@@ -76,6 +76,45 @@ describe('label escaping', () => {
   });
 });
 
+describe('label trimming', () => {
+  // Surrounding whitespace passes the export gate because validateZoneLabels
+  // trims for its empty/duplicate checks, so the generated script must embed
+  // the trimmed label too — a hidden-whitespace category would otherwise split
+  // "inner" during analysis.
+  const paddedDocument: BackgroundDocument = {
+    version: 1,
+    title: 'Padded label',
+    description: 'Trim exercise.',
+    elements: [
+      {
+        id: 'p',
+        kind: 'rect',
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        fill: '#ffffff',
+        fillOpacity: 0.25,
+        stroke: null,
+        strokeWidth: 1,
+        zoneLabel: '  inner  ',
+      },
+    ],
+  };
+
+  it('Python trims surrounding whitespace from the zone label', () => {
+    const script = generatePythonScript(paddedDocument, defaultOpts);
+    expect(script).toContain('"label": "inner"');
+    expect(script).not.toContain('  inner  ');
+  });
+
+  it('R trims surrounding whitespace from the zone label', () => {
+    const script = generateRScript(paddedDocument, defaultOpts);
+    expect(script).toContain('label = "inner"');
+    expect(script).not.toContain('  inner  ');
+  });
+});
+
 describe('title comment neutralization', () => {
   // Each of these separators would, if left intact, break the leading "# "
   // header comment and let the trailing text become executable Python/R.

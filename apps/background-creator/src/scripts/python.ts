@@ -46,7 +46,10 @@ function pyString(value: string): string {
 }
 
 function pyZoneLiteral(zone: ZoneElement): string {
-  const label = pyString(zone.zoneLabel ?? '');
+  // Trim to match validateZoneLabels, which trims for its empty/duplicate
+  // checks. Without this a label like "inner " passes the export gate but
+  // writes a hidden-whitespace category that splits "inner" during analysis.
+  const label = pyString((zone.zoneLabel ?? '').trim());
   if (zone.kind === 'rect') {
     return `    {"label": ${label}, "shape": "rect", "x": ${formatNumber(zone.x)}, "y": ${formatNumber(zone.y)}, "width": ${formatNumber(zone.width)}, "height": ${formatNumber(zone.height)}},`;
   }
