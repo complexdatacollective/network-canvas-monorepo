@@ -470,4 +470,96 @@ describe('SlidesForm navigation ownership', () => {
 
     expect(onStepChange).not.toHaveBeenCalled();
   });
+
+  it('leaves the stage on a jump once discarding unsaved changes is confirmed', async () => {
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: {
+          id: 'session',
+          network: {
+            ego: { [entityAttributesProperty]: {} },
+            nodes: [person],
+            edges: [],
+          },
+        } as never,
+        protocol: {
+          id: 'protocol',
+          hash: 'hash',
+          schemaVersion: 8,
+          codebook: requiredNameCodebook,
+          stages: [
+            {
+              id: 'alter-form',
+              type: 'AlterForm',
+              label: 'Alter form',
+              subject: { entity: 'node', type: 'person' },
+              introductionPanel: { title: 'About this person', text: '' },
+              form,
+            },
+            {
+              id: 'next-screen',
+              type: 'Information',
+              label: 'Next screen',
+              title: 'Next screen',
+              items: [],
+            },
+          ],
+        } as never,
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({ serializableCheck: false }),
+    });
+    const onStepChange = vi.fn();
+    let goToStage: ((targetIndex: number) => Promise<void>) | undefined;
+
+    function JumpHarness() {
+      const navigation = useInterviewNavigation(0);
+      goToStage = navigation.goToStage;
+
+      return (
+        <StageMetadataProvider value={navigation.registerBeforeNext}>
+          <SlidesForm
+            form={form}
+            items={[person]}
+            subject={{ entity: 'node', type: 'person' }}
+            updateItem={vi.fn()}
+            moveForward={navigation.moveForward}
+            renderHeader={() => <span>Person header</span>}
+            form_kind="alter"
+          />
+        </StageMetadataProvider>
+      );
+    }
+
+    render(
+      <Provider store={store}>
+        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+          <DialogProvider>
+            <JumpHarness />
+          </DialogProvider>
+        </CurrentStepProvider>
+      </Provider>,
+    );
+
+    const field = await screen.findByRole('textbox', { name: 'Person name' });
+    fireEvent.change(field, { target: { value: '' } });
+    await screen.findByDisplayValue('');
+
+    let jump: Promise<void> | undefined;
+    await act(async () => {
+      jump = goToStage?.(1);
+      await Promise.resolve();
+    });
+
+    const discardChanges = await screen.findByRole('button', {
+      name: 'Discard changes',
+    });
+    await act(async () => {
+      fireEvent.click(discardChanges);
+      await jump;
+    });
+
+    expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
+  });
 });
