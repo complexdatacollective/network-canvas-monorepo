@@ -64,6 +64,24 @@
       ],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
+    "@codaco/documentation#test": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "app/**",
+        "components/**",
+        "hooks/**",
+        "lib/**",
+        "messages/**",
+        "env.js",
+        "navigation.ts",
+        "vitest.config.*",
+        "vitest.setup.*",
+        "tsconfig*.json",
+        "package.json",
+        ".env"
+      ],
+      "outputs": []
+    },
     "@codaco/architect#build": {
       "dependsOn": ["^topo"],
       "inputs": [

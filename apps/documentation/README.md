@@ -25,7 +25,7 @@ To run the app locally:
 
 Effortlessly find the information you need with the top-level search bar. Instantly locate relevant documentation, making navigation and discovery a breeze.
 
-Search is powered by Algolia DocSearch (`@docsearch/react`) in `components/DocSearchComponent.tsx`, configured via the `NEXT_PUBLIC_ALGOLIA_*` env vars in `env.js`. Results are made section-aware in two ways:
+Search is powered by Algolia DocSearch (`@docsearch/react`) in `components/DocSearchComponent.tsx`, configured via the `NEXT_PUBLIC_ALGOLIA_*` env vars in `env.js`. Production receives these values from GitHub Actions secrets, while the `documentation-dev` Netlify site provides them to Git-integrated deploy previews. Results are made section-aware in two ways:
 
 - **Section badge** — each result shows a coloured pill naming its workflow section (Get Started, Design Protocols, …), matching the homepage colours. The section slug is derived purely client-side from the hit's URL (the first path segment after the locale), so no Algolia-side data is required for the badge. Colours and labels come from `lib/sections.ts` and the `SectionSwitcher` translation namespace.
 - **Current-section boost** — results from the section the reader is currently in are boosted (via Algolia `optionalFilters`) so same-section pages rank higher, while every section still appears.
