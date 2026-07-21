@@ -165,10 +165,15 @@ describe('SiteNavigation', () => {
       'Interviewer Classic',
     ]);
     expect(architectClassicLink).toHaveClass(
-      'flex-col',
+      'items-start',
+      'gap-4',
       'p-5',
       'hover:bg-cyber-grape/10',
       '[[data-theme=dark]_&]:hover:bg-platinum-dark/10',
+    );
+    expect(architectClassicLink.querySelector('img')).toHaveAttribute(
+      'alt',
+      '',
     );
     expect(
       within(architectClassicLink).getByText('Architect Classic'),
