@@ -456,6 +456,35 @@ describe('collectRosterExternalData', () => {
     expect(result).toEqual({});
   });
 
+  it('emits an empty pool when one source fails but another succeeds with no rows', async () => {
+    stubFetch({ 'stub://empty': EMPTY_CSV });
+    // spyOn returns the file's already-installed spy; clear its accumulated
+    // calls so the count below is scoped to this test.
+    vi.spyOn(console, 'error')
+      .mockImplementation(() => {})
+      .mockClear();
+    const resolveAsset: ResolveRosterAsset = vi.fn((assetId: string) =>
+      Promise.resolve(resolved(assetId)),
+    );
+
+    const panels: Panel[] = [
+      { id: 'a', title: 'Broken', dataSource: 'broken' },
+      { id: 'b', title: 'Empty', dataSource: 'empty' },
+    ];
+
+    const result = await collectRosterExternalData({
+      stages: [nameGeneratorStage('stage-ng', panels)],
+      codebook,
+      resolveAsset,
+    });
+
+    // One source parsed successfully (with zero rows), so the roster is known
+    // empty — key present with [] — despite the sibling source failing.
+    expect('stage-ng' in result).toBe(true);
+    expect(result['stage-ng']).toEqual([]);
+    expect(console.error).toHaveBeenCalledTimes(1);
+  });
+
   it('returns {} and never calls resolveAsset when no stage has a roster data source', async () => {
     const resolveAsset: ResolveRosterAsset = vi.fn();
 
