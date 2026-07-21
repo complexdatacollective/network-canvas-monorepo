@@ -67,7 +67,11 @@ describe('launchPreview', () => {
       skipLogicBypassed: false,
     });
 
-    expect(openSpy).toHaveBeenCalledWith('/preview/', '_blank');
+    expect(openSpy).toHaveBeenCalledWith(
+      '/preview/',
+      '_blank',
+      'popup,width=1280,height=800',
+    );
 
     postReadyFromSource(popup);
     await promise;

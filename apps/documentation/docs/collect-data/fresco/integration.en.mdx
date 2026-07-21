@@ -1,6 +1,6 @@
 ---
 title: Integration with other survey tools
-date: 13th August 2024
+date: 21st July 2026
 navOrder: 12
 ---
 
@@ -10,21 +10,16 @@ To facilitate this, Fresco supports integration with other survey tools via shar
 
 This integration will allow your participants to complete a "conventional" survey and then seamlessly transition to the network portion of the interview in Fresco simply by clicking a link. The data collected in Fresco can then be associated to the survey data using the shared participant identifier when conducting your analysis.
 
-This article will explain the process of integrating using Qualtrics as an example, but the process is similar for other survey tools. Please let us know if you would like to see additional documentation for other survey tools.
+This article explains the process using Qualtrics and Prolific as examples, but the approach is similar for other survey and recruitment tools. Please let us know if you would like to see additional documentation for other tools.
 
 ## What is a Participant identifier?
 
 In Fresco, every participant in your study must have a unique identifier. When creating participants manually, you must provide this identifier yourself (or use the dedicated button to randomly generate one). When anonymous recruitment is enabled, this identifier will be generated as a participant is created using the anonymous participation URL, or (as we will see later in this tutorial) can be provided as part of the URL.
 
 <Tipbox danger>
-  Participant identifiers are sometimes used in URLs that are shared with
-  participants, and are therefore potentially visible to them. Because of this,
-  they{' '}
-  <strong>
-    must not contain sensitive information, and must not be easy for other
-    participants to guess
-  </strong>{' '}
-  (e.g. sequential numbers, or easily guessable strings).
+
+Participant identifiers are sometimes used in URLs that are shared with participants, and are therefore potentially visible to them. Because of this, they **must not contain sensitive information, and must not be easy for other participants to guess** (e.g. sequential numbers, or easily guessable strings).
+
 </Tipbox>
 
 ## How Integration Works
@@ -142,6 +137,62 @@ https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98/?participantI
 </Tipbox>
 
 Assuming that the test was successful, you can now distribute your survey to participants. When they complete the survey, they will be directed to the Fresco interview with the participant identifier in Fresco corresponding to the Response ID in Qualtrics.
+
+## Example integration with Prolific
+
+[Prolific](https://www.prolific.com) is a participant recruitment platform rather than a survey tool, so it plays a slightly different role in your study. Instead of building your survey in Prolific, you use it to recruit participants and send them to your study — either straight into Fresco, or into your survey tool first and then on to Fresco.
+
+Passing a participant identifier works the same way as in the Qualtrics example above: you append it to the Fresco onboarding URL as a `participantIdentifier` query parameter. The only thing that changes is where the identifier comes from. Prolific automatically replaces special placeholders in your study URL with each participant's details:
+
+- `{{%PROLIFIC_PID%}}` — the participant's unique Prolific ID
+- `{{%STUDY_ID%}}` — the ID of your Prolific study
+- `{{%SESSION_ID%}}` — the ID of the participant's individual submission
+
+We recommend using `{{%PROLIFIC_PID%}}` as the participant identifier, since it uniquely and stably identifies each participant across your study.
+
+### Route 1: Recruit directly into Fresco
+
+This is the simplest approach, and closely mirrors the Qualtrics example above — except that Prolific, rather than a survey tool, generates the link to Fresco.
+
+First, enable anonymous recruitment and copy your protocol's "Anonymous Participation URL", exactly as described in the Qualtrics example above.
+
+Then, when setting up your study in Prolific, choose to record Prolific IDs using **URL parameters**, and set your study's URL to the Fresco onboarding URL with the `participantIdentifier` query parameter set to the `{{%PROLIFIC_PID%}}` placeholder:
+
+```plaintext
+https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98/?participantIdentifier={{%PROLIFIC_PID%}}
+```
+
+When a participant starts your study, Prolific replaces `{{%PROLIFIC_PID%}}` with their unique Prolific ID. Fresco then creates a participant whose identifier is that Prolific ID, allowing you to link the network data collected in Fresco back to the participant's Prolific record.
+
+Before launching, test the link with a dummy identifier to confirm it creates a participant in Fresco, using the same approach shown in the testing tip in the Qualtrics example above.
+
+### Route 2: Recruit via a survey tool, then Fresco
+
+If your study also involves extensive ego-level data collection, you may prefer participants to complete a survey in a tool such as Qualtrics before continuing to the Fresco interview. In this case, Prolific sends participants to your survey tool, and your survey tool links on to Fresco.
+
+Point your Prolific study at your survey tool instead of Fresco, and capture the Prolific ID there. In Qualtrics, for example, you would store `{{%PROLIFIC_PID%}}` in an embedded data field — see Prolific's [Qualtrics integration guide](https://researcher-help.prolific.com/en/articles/445194-qualtrics-integration-guide) for the details.
+
+Then follow the Qualtrics example above to link from your survey to Fresco, but use the captured Prolific ID as the `participantIdentifier` rather than the Qualtrics Response ID. If you stored the ID in an embedded data field named `PROLIFIC_PID`, the piped text code is `${e://Field/PROLIFIC_PID}`, giving a link like:
+
+```html
+<a
+  href="https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98/?participantIdentifier=${e://Field/PROLIFIC_PID}"
+>
+  Continue to the next section
+</a>
+```
+
+This way a single identifier — the participant's Prolific ID — ties together their Prolific record, their survey responses, and their Fresco network data.
+
+### Returning participants to Prolific
+
+<Tipbox danger>
+
+Prolific requires participants to return to Prolific — using a completion URL or completion code — for their submission to be recorded and for them to be paid. Because Fresco is a one-way integration and cannot automatically redirect participants back to Prolific when the interview ends, you need to plan for this step yourself.
+
+We recommend using Prolific's **completion code** method rather than a redirect, and making sure participants can only complete on Prolific once their interview data has been submitted. See Prolific's [documentation on data collection and study completion](https://researcher-help.prolific.com/en/articles/445127-data-collection) for the available options.
+
+</Tipbox>
 
 ## Additional Considerations
 
