@@ -14,7 +14,10 @@ and roster-panel stages draw their people from those rows — preserving each
 row's primary key and attributes — instead of inventing people from the
 codebook. Draws are without replacement across prompts and stages, mirroring the
 runtime's global exclusion of rows already in the network. A stage with no entry
-still falls back to codebook-generated people. A new `config` option exposes the
+still falls back to codebook-generated people. A roster that loads but contains
+no rows — or whose panel filters out every row — now generates an empty roster
+stage instead of inventing people, matching a live interview that would offer
+nobody to add; only a missing or unreadable roster falls back to fabrication. A new `config` option exposes the
 generation-tuning defaults (the roster-versus-fabricate ratio, node counts, edge
 probabilities, and so on) so callers can override them. FamilyPedigree stages
 now mark exactly one generated node as ego, matching the runtime convention,

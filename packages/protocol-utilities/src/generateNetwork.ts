@@ -42,8 +42,14 @@ export type GenerateNetworkParams = {
    * (`NameGeneratorRoster`) and name generators with roster panels. Rows are
    * drawn **without replacement across all prompts and stages** via a shared
    * used-set, mirroring the runtime's exclusion of rows already in the network.
-   * A stage with no entry (or an empty/exhausted pool) falls back per stage
-   * type: a roster stage adds nobody, while a name generator fabricates people.
+   *
+   * A key's presence is three-way. An **absent** key means "no roster known":
+   * a roster stage fabricates people, a name generator fabricates as usual. An
+   * **empty array** means "roster known to be empty" (the asset resolved but had
+   * no rows, or a panel filtered them all out): a roster stage adds nobody,
+   * while a name generator still fabricates to its node counts via its manual
+   * add path. A **non-empty** array draws from those rows (a roster stage only
+   * from them; a name generator mixes them with fabricated people).
    */
   externalData?: Record<string, NcNode[]>;
   /** Seed for deterministic output. A random seed is used when omitted. */

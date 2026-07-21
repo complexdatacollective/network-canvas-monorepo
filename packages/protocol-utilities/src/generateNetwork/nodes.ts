@@ -37,11 +37,13 @@ type NodeDrawPrompt = {
  * Roster state for a name-generator stage.
  *
  * `pool` is the stage's unfiltered roster rows; the drawable rows are those in
- * `pool` not already in `used`. That distinction is load-bearing: "has a
- * roster" is decided from the unfiltered `pool`, so a `NameGeneratorRoster`
- * stage whose roster is exhausted by an earlier stage produces zero nodes
- * (roster present but nothing drawable), while a stage with no roster at all
- * fabricates. See `createNodesForStage`.
+ * `pool` not already in `used`. Presence of `pool` is load-bearing and
+ * three-way: `undefined` means "no roster known" (the stage had no external
+ * data entry), an empty array means "roster known to be empty" (the asset
+ * resolved and parsed but yielded no rows, or a panel filtered them all out),
+ * and a non-empty array is a roster with rows. A `NameGeneratorRoster` stage
+ * fabricates only in the first case; a known-empty or exhausted roster produces
+ * zero nodes. See `createNodesForStage`.
  */
 export type RosterDraw = {
   pool?: NcNode[];
@@ -97,10 +99,13 @@ export function createNodesForStage(
   const remaining = maxNodes - stageNodeCount;
   if (remaining <= 0) return [];
 
-  // "Has a roster" is read from the UNFILTERED pool; the drawable pool excludes
-  // rows already used. This is what distinguishes "no roster data → fabricate"
-  // from "roster exhausted → produce zero nodes" on NameGeneratorRoster stages.
-  const hasRoster = (roster.pool?.length ?? 0) > 0;
+  // "Has a roster" means the stage was given a roster entry at all — the key is
+  // present — regardless of how many rows it holds. This three-way distinction
+  // drives NameGeneratorRoster fallback: no entry (`pool` undefined) fabricates;
+  // an entry that is empty (roster known empty) or exhausted by an earlier stage
+  // (drawable pool empty) produces zero nodes. The drawable pool below excludes
+  // rows already used.
+  const hasRoster = roster.pool !== undefined;
 
   const pool = roster.pool
     ? roster.pool.filter((n) => !roster.used.has(n[entityPrimaryKeyProperty]))

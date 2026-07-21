@@ -976,10 +976,7 @@ describe('generateNetwork', () => {
       expect(network.nodes).toHaveLength(2);
     });
 
-    it.each([
-      ['no entry for the stage', undefined],
-      ['an empty entry for the stage', { 'stage-ngr': [] }],
-    ])('fabricates people given %s', (_label, externalData) => {
+    it('fabricates people on a roster stage with no external-data entry', () => {
       const stage = makeRosterStage({
         behaviours: { minNodes: 3, maxNodes: 3 },
       });
@@ -988,10 +985,50 @@ describe('generateNetwork', () => {
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
-        externalData,
+        externalData: undefined,
       });
 
       expect(network.nodes).toHaveLength(3);
+      expect(
+        network.nodes.every((n) => !isRosterUid(n[entityPrimaryKeyProperty])),
+      ).toBe(true);
+    });
+
+    // Inverts the earlier "empty entry fabricates" behaviour: a resolvable but
+    // empty roster now means "roster known to be empty", not "no roster". A live
+    // interview would offer nobody to add, so a roster stage with an empty entry
+    // adds nobody rather than inventing people.
+    it('adds nobody on a roster stage whose external-data entry is empty', () => {
+      const stage = makeRosterStage({
+        behaviours: { minNodes: 3, maxNodes: 3 },
+      });
+
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
+        seed: 42,
+        externalData: { 'stage-ngr': [] },
+      });
+
+      expect(network.nodes).toHaveLength(0);
+    });
+
+    // The empty-roster rule suppresses fabrication only on pure roster stages. A
+    // name generator with a manual-add path still fabricates to its node counts
+    // when its roster entry is empty.
+    it('still fabricates to minNodes on a mixed name generator with an empty entry', () => {
+      const stage = makeNameGeneratorStage({
+        behaviours: { minNodes: 5, maxNodes: 5 },
+      });
+
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [stage],
+        seed: 42,
+        externalData: { 'stage-ng': [] },
+      });
+
+      expect(network.nodes).toHaveLength(5);
       expect(
         network.nodes.every((n) => !isRosterUid(n[entityPrimaryKeyProperty])),
       ).toBe(true);

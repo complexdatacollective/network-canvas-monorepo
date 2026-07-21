@@ -22,6 +22,8 @@ import {
 
 const PEOPLE_CSV = 'Name,Age\nAda,36\nGrace,45\nAlan,41\n';
 const PLACES_CSV = 'Name\nOffice\nHome\n';
+// Header row only: a roster asset that resolves and parses but has no rows.
+const EMPTY_CSV = 'Name,Age\n';
 
 const codebook: Codebook = {
   node: {
@@ -88,6 +90,23 @@ const ageFilter: Filter = {
         attribute: asEntityAttributeReference('var-age'),
         operator: 'GREATER_THAN',
         value: 40,
+      },
+    },
+  ],
+};
+
+// Keeps nobody: no roster person is older than 200.
+const impossibleAgeFilter: Filter = {
+  join: 'AND',
+  rules: [
+    {
+      id: 'r1',
+      type: 'node',
+      options: {
+        type: 'person',
+        attribute: asEntityAttributeReference('var-age'),
+        operator: 'GREATER_THAN',
+        value: 200,
       },
     },
   ],
@@ -376,6 +395,65 @@ describe('collectRosterExternalData', () => {
     expect(result['stage-ng']).toHaveLength(3);
     const keys = result['stage-ng']!.map((n) => n[entityPrimaryKeyProperty]);
     expect(new Set(keys).size).toBe(3);
+  });
+
+  it('emits an empty pool for a roster that resolves but has no rows', async () => {
+    stubFetch({ 'stub://empty': EMPTY_CSV });
+    const cleanup = vi.fn();
+    const resolveAsset: ResolveRosterAsset = vi
+      .fn()
+      .mockResolvedValue(resolved('empty', { cleanup }));
+
+    const result = await collectRosterExternalData({
+      stages: [rosterStage('stage-ngr', 'empty')],
+      codebook,
+      resolveAsset,
+    });
+
+    // Key present (a resolvable but empty roster), distinct from an absent key.
+    expect('stage-ngr' in result).toBe(true);
+    expect(result['stage-ngr']).toEqual([]);
+    expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it('emits an empty pool when a panel filter removes every row', async () => {
+    stubFetch({ 'stub://panel': PEOPLE_CSV });
+    const resolveAsset: ResolveRosterAsset = vi
+      .fn()
+      .mockResolvedValue(resolved('panel'));
+
+    const panels: Panel[] = [
+      {
+        id: 'b',
+        title: 'Nobody',
+        dataSource: 'panel',
+        filter: impossibleAgeFilter,
+      },
+    ];
+
+    const result = await collectRosterExternalData({
+      stages: [nameGeneratorStage('stage-ng', panels)],
+      codebook,
+      resolveAsset,
+    });
+
+    expect('stage-ng' in result).toBe(true);
+    expect(result['stage-ng']).toEqual([]);
+  });
+
+  it('omits a stage whose only source cannot be resolved', async () => {
+    const resolveAsset: ResolveRosterAsset = vi.fn().mockResolvedValue(null);
+
+    const result = await collectRosterExternalData({
+      stages: [rosterStage('all-failed', 'missing')],
+      codebook,
+      resolveAsset,
+    });
+
+    // Every source failed, so the stage is absent — generation falls back to
+    // fabrication rather than treating this as a known-empty roster.
+    expect('all-failed' in result).toBe(false);
+    expect(result).toEqual({});
   });
 
   it('returns {} and never calls resolveAsset when no stage has a roster data source', async () => {

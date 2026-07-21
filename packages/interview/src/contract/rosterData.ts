@@ -140,24 +140,33 @@ function getRosterStage(stage: Stage): RosterStage | null {
   return { stageId: stage.id, subject: stage.subject, sources };
 }
 
+/**
+ * A source that resolved and parsed successfully (`nodes` may be empty — a
+ * readable roster with no rows), versus one that failed (the asset was missing
+ * or unreadable). The distinction lets a stage emit an empty pool for a
+ * genuinely empty roster while omitting a stage whose every source failed.
+ */
+type SourceOutcome = { resolved: true; nodes: NcNode[] } | { resolved: false };
+
 async function parseRosterSource(
   assetId: string,
   subject: NodeSubject,
   codebook: Codebook,
   resolveAsset: ResolveRosterAsset,
-): Promise<NcNode[]> {
+): Promise<SourceOutcome> {
   const resolved = await resolveAsset(assetId);
   if (!resolved) {
-    return [];
+    return { resolved: false };
   }
 
   try {
-    return await parseExternalNetworkAsset({
+    const nodes = await parseExternalNetworkAsset({
       sourceFileName: resolved.sourceFileName,
       url: resolved.url,
       codebook,
       subject,
     });
+    return { resolved: true, nodes };
   } finally {
     resolved.cleanup?.();
   }
@@ -167,6 +176,12 @@ async function parseRosterSource(
  * Host-agnostic roster collection for synthetic generation: per-stage node
  * pools keyed by stage id, built from each stage's `NameGeneratorRoster`
  * data source, or `NameGenerator`/`NameGeneratorQuickAdd` panel data sources.
+ *
+ * A stage's key is emitted (with an array that may be empty) whenever at least
+ * one of its sources resolved and parsed successfully — an empty array means
+ * "roster known to be empty", distinct from an absent key. A stage whose every
+ * source failed (missing asset, or a resolve/parse error) is omitted, so
+ * downstream generation still falls back to fabrication for it.
  */
 export async function collectRosterExternalData({
   stages,
@@ -187,11 +202,12 @@ export async function collectRosterExternalData({
 
   // Cache parses per invocation so an asset shared by several stages (or
   // panels) is only fetched and parsed once per subject type.
-  const parseCache = new Map<string, Promise<NcNode[]>>();
+  const parseCache = new Map<string, Promise<SourceOutcome>>();
   const result: Record<string, NcNode[]> = {};
 
   for (const { stageId, subject, sources } of rosterStages) {
     const byPrimaryKey = new Map<string, NcNode>();
+    let anySourceResolved = false;
 
     for (const { assetId, filter } of sources) {
       const cacheKey = `${assetId}::${subject.type}`;
@@ -202,20 +218,26 @@ export async function collectRosterExternalData({
           subject,
           codebook,
           resolveAsset,
-        ).catch((error: unknown) => {
+        ).catch((error: unknown): SourceOutcome => {
           // eslint-disable-next-line no-console
           console.error(`Could not read roster asset "${assetId}"`, error);
-          return [];
+          return { resolved: false };
         });
         parseCache.set(cacheKey, parsed);
       }
 
-      for (const node of filterExternalPanelNodes(await parsed, filter)) {
+      const outcome = await parsed;
+      if (!outcome.resolved) continue;
+      anySourceResolved = true;
+
+      for (const node of filterExternalPanelNodes(outcome.nodes, filter)) {
         byPrimaryKey.set(node[entityPrimaryKeyProperty], node);
       }
     }
 
-    if (byPrimaryKey.size > 0) {
+    // Emit an (possibly empty) pool once any source resolved; omit the stage
+    // entirely when every source failed so generation falls back to fabrication.
+    if (anySourceResolved) {
       result[stageId] = [...byPrimaryKey.values()];
     }
   }
