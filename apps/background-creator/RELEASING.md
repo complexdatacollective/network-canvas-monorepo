@@ -67,16 +67,18 @@ Done:
    Git-connected to this repository, already builds pull-request previews and
    every push to `main`, mirroring the other apps' developer sites.
 
-Remaining (Netlify UI):
-
-4. **Custom domain.** Attach `https://bg-creator.networkcanvas.com` to the
-   `bg-creator` site in its domain settings (the `networkcanvas.com` DNS zone
-   lives in Netlify too); nothing in CI changes for it. Until then, production
-   releases land on `https://bg-creator.netlify.app`. Once the domain is live,
-   add the `bg-creator.networkcanvas.com` link to the "Use the Background
-   Creator" section of
-   `apps/documentation/docs/design-protocols/key-concepts/responsive-svg-backgrounds.en.mdx`,
-   which currently describes the tool without pointing at the not-yet-live URL.
+4. **Custom domain** `bg-creator.networkcanvas.com`, attached to the
+   `bg-creator` site and live. DNS for `networkcanvas.com` is served through
+   Cloudflare, which proxies the subdomain to Netlify; Netlify holds the TLS
+   certificate. Nothing in CI changes for it. It was seeded with a one-off manual
+   production deploy —
+   `netlify deploy --no-build --prod --dir=apps/background-creator/dist --site=8ce0d202-ec6f-4a81-8c42-3c11e3180d33`
+   after `pnpm exec turbo run build --filter=@codaco/background-creator` — so the
+   URL resolves ahead of the first changeset-driven release; from there the
+   Release Background Creator PR keeps production current. The "Use the
+   Background Creator" section of
+   `apps/documentation/docs/design-protocols/key-concepts/responsive-svg-backgrounds.en.mdx`
+   links to it.
 
 Because the site and secret above are in place, the production deploy resolves
 the Site ID normally. Were the secret ever unset, the `netlify-cli deploy` step
