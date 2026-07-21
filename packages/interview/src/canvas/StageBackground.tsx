@@ -10,10 +10,15 @@ type CanvasStage = Extract<
 >;
 
 type StageBackgroundProps = {
-  background: CanvasStage['background'];
+  'background': CanvasStage['background'];
+  'className'?: string;
+  'data-testid'?: string;
 };
 
-export default function StageBackground({ background }: StageBackgroundProps) {
+export default function StageBackground({
+  background,
+  ...props
+}: StageBackgroundProps) {
   const { url: backgroundImageUrl } = useAssetUrl(background.image);
 
   if (background.image === undefined) {
@@ -21,11 +26,12 @@ export default function StageBackground({ background }: StageBackgroundProps) {
       <ConcentricCircles
         n={background.concentricCircles}
         skewed={background.skewedTowardCenter}
+        {...props}
       />
     );
   }
 
   return backgroundImageUrl ? (
-    <CanvasBackgroundImage src={backgroundImageUrl} />
+    <CanvasBackgroundImage src={backgroundImageUrl} {...props} />
   ) : null;
 }

@@ -126,6 +126,13 @@ describe('NodeDrawer', () => {
     await waitFor(() => {
       expect(tab).toHaveAttribute('data-drop-target-valid', 'true');
     });
+    const drawerSurfaces = drawer.querySelectorAll('.publish-colors');
+    expect(drawerSurfaces).toHaveLength(2);
+    drawerSurfaces.forEach((surface) => {
+      expect(surface).toHaveClass(
+        'bg-[color-mix(in_oklab,var(--surface)_70%,var(--accent)_30%)]',
+      );
+    });
     expect(tab).toHaveAttribute('aria-expanded', 'false');
 
     elementsFromPoint.mockReturnValue([tab]);
@@ -135,6 +142,11 @@ describe('NodeDrawer', () => {
     await waitFor(() => {
       expect(tab).toHaveAttribute('aria-expanded', 'true');
       expect(tab).toHaveAttribute('data-drop-target-over', 'true');
+    });
+    drawerSurfaces.forEach((surface) => {
+      expect(surface).toHaveClass(
+        'bg-[color-mix(in_oklab,var(--surface)_20%,var(--accent)_80%)]',
+      );
     });
     expect(tab).not.toHaveAttribute('data-zone-id');
     expect(drawer).toHaveAttribute('data-zone-id', 'node-drawer');
