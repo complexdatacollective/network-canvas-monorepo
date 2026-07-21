@@ -6,11 +6,13 @@ import { Reveal } from '~/components/ui/Reveal';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import type { TeamMember } from '~/lib/siteContent';
 
+import { ScientificAdvisors } from './ScientificAdvisors';
+
 export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
   const t = useTranslations('Team');
 
   return (
-    <Container className="tablet-landscape:py-28 py-20">
+    <Container as="section" className="tablet-landscape:py-28 py-20">
       <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
       <div className="tablet-portrait:grid-cols-3 tablet-landscape:grid-cols-4 mt-14 grid grid-cols-2 gap-x-6 gap-y-12">
@@ -38,6 +40,8 @@ export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
           </Reveal>
         ))}
       </div>
+
+      <ScientificAdvisors />
     </Container>
   );
 }

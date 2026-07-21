@@ -9,7 +9,6 @@ import { CoreTeam } from '../CoreTeam';
 import { DesignPrinciples } from '../DesignPrinciples';
 import { Institutions } from '../Institutions';
 import { Publications } from '../Publications';
-import { ScientificAdvisors } from '../ScientificAdvisors';
 import { VideoSection } from '../VideoSection';
 import { WhatNext } from '../WhatNext';
 
@@ -59,7 +58,6 @@ describe('localized home sections', () => {
       <>
         <DesignPrinciples />
         <CoreTeam members={members} />
-        <ScientificAdvisors />
       </>,
       'es',
     );
@@ -137,7 +135,7 @@ describe('localized home sections', () => {
       'laptop:grid-cols-4',
       'grid-cols-1',
       'w-full',
-      'max-w-[1200px]',
+      'max-w-[1600px]',
       'mx-auto',
     );
     expect(publicationCard?.closest('.max-w-none')).toBeInTheDocument();

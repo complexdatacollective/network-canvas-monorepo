@@ -5,6 +5,7 @@ import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { SectionHeading } from '~/components/ui/SectionHeading';
+import { cn } from '~/lib/cn';
 import { institutions } from '~/lib/content';
 
 function renderPriorLink(chunks: ReactNode) {
@@ -37,7 +38,7 @@ export function Institutions() {
   const t = useTranslations('Institutions');
 
   return (
-    <Container className="tablet-landscape:py-24 py-20">
+    <Container maxWidth="full" className="tablet-landscape:py-24 py-20">
       <SectionHeading title={t('heading')}>
         <Paragraph margin="none">
           {t.rich('paragraph1', {
@@ -53,7 +54,7 @@ export function Institutions() {
       <div
         data-homepage-weave-target
         data-homepage-weave-moving-target
-        className="mt-14 flex flex-wrap items-center justify-center gap-x-16 gap-y-10"
+        className="laptop:gap-x-12 mx-auto mt-14 flex max-w-[1500px] flex-wrap items-center justify-center gap-x-10 gap-y-10"
       >
         {institutions.map((inst) => (
           // Partner logos are fixed-colour brand assets. In dark mode they sit on
@@ -61,13 +62,32 @@ export function Institutions() {
           // in light mode the plate is absent and the logos render as before.
           <div
             key={inst.name}
-            className="[[data-theme=dark]_&]:rounded [[data-theme=dark]_&]:bg-white/90 [[data-theme=dark]_&]:px-5 [[data-theme=dark]_&]:py-3"
+            className="flex max-w-full items-center justify-center [[data-theme=dark]_&]:rounded [[data-theme=dark]_&]:bg-white/90 [[data-theme=dark]_&]:px-3 [[data-theme=dark]_&]:py-2"
           >
-            <img
-              src={inst.logo}
-              alt={inst.name}
-              className="tablet-landscape:h-20 h-16 w-auto object-contain"
-            />
+            <div
+              className={cn(
+                'tablet-portrait:h-20 laptop:h-28 relative h-16 max-w-full overflow-hidden',
+                inst.name === 'University of Oxford' &&
+                  'tablet-portrait:w-40 laptop:w-56 w-32',
+                inst.name === 'Northwestern University' &&
+                  'tablet-portrait:w-[21rem] laptop:w-[29rem] w-72',
+                inst.name === 'Complex Data Collective' &&
+                  'tablet-portrait:w-[21.5rem] laptop:w-[30rem] w-72',
+              )}
+            >
+              <img
+                src={inst.logo}
+                alt={inst.name}
+                className={cn(
+                  'absolute left-1/2 h-full w-auto max-w-none -translate-x-1/2 -translate-y-1/2 object-contain',
+                  inst.name === 'Northwestern University' && 'top-1/2',
+                  inst.name === 'University of Oxford' &&
+                    'top-[42.5%] scale-[1.3]',
+                  inst.name === 'Complex Data Collective' &&
+                    'top-[42.5%] scale-[3.2]',
+                )}
+              />
+            </div>
           </div>
         ))}
       </div>

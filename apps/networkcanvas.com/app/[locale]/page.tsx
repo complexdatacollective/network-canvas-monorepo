@@ -9,7 +9,6 @@ import { Grants } from '~/components/sections/Grants';
 import { HeroIntro } from '~/components/sections/HeroIntro';
 import { Institutions } from '~/components/sections/Institutions';
 import { Publications } from '~/components/sections/Publications';
-import { ScientificAdvisors } from '~/components/sections/ScientificAdvisors';
 import { Tools } from '~/components/sections/Tools';
 import { VideoSection } from '~/components/sections/VideoSection';
 import { WhatNext } from '~/components/sections/WhatNext';
@@ -43,7 +42,6 @@ export default async function HomePage({ params }: HomePageProps) {
         <Grants grants={grants} />
         <Publications publications={publications} />
         <CoreTeam members={coreTeam} />
-        <ScientificAdvisors />
         <Institutions />
         <WhatNext />
 
