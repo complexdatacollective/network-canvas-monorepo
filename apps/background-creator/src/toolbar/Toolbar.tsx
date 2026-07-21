@@ -196,14 +196,6 @@ export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
       onClick: () => void openSvgFlow(dialogs),
     },
     {
-      type: 'button',
-      id: 'information',
-      label: 'Information',
-      icon: <Info />,
-      onClick: onShowWelcome,
-    },
-    { type: 'separator', id: 'sep-export' },
-    {
       type: 'menu',
       id: 'export',
       label: 'Export',
@@ -215,6 +207,14 @@ export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
         { value: 'r', label: 'Export R script', icon: <FileCode /> },
         { value: 'python', label: 'Export Python script', icon: <FileCode /> },
       ],
+    },
+    { type: 'separator', id: 'sep-info' },
+    {
+      type: 'button',
+      id: 'information',
+      label: 'Information',
+      icon: <Info />,
+      onClick: onShowWelcome,
     },
   ];
 
