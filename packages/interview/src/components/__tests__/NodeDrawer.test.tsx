@@ -6,13 +6,15 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useEffect } from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StoreApi } from 'zustand';
 
 import { type DndStore, DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 
 import NodeDrawer from '../NodeDrawer';
+
+const elementsFromPoint = vi.fn<(x: number, y: number) => Element[]>();
 
 beforeAll(() => {
   if (typeof window.ResizeObserver === 'undefined') {
@@ -35,6 +37,15 @@ beforeAll(() => {
       thresholds = [];
     } as unknown as typeof window.IntersectionObserver;
   }
+  Object.defineProperty(document, 'elementsFromPoint', {
+    configurable: true,
+    value: elementsFromPoint,
+  });
+});
+
+beforeEach(() => {
+  elementsFromPoint.mockReset();
+  elementsFromPoint.mockReturnValue([]);
 });
 
 function CaptureDndStore({
@@ -90,7 +101,7 @@ describe('NodeDrawer', () => {
     expect(screen.getByText('Drop here to remove')).toBeInTheDocument();
   });
 
-  it('auto-expands while a compatible drag is in flight and collapses back after', async () => {
+  it('illuminates for a compatible drag and expands only while the drag is over it', async () => {
     const { getDndStore } = renderDrawer({
       dropTarget: {
         accepts: ['PLACED_NODE'],
@@ -99,7 +110,10 @@ describe('NodeDrawer', () => {
       },
     });
     const tab = screen.getByRole('button', { name: /expand drawer/i });
+    const drawer = screen.getByLabelText('Drawer');
     expect(tab).toHaveAttribute('aria-expanded', 'false');
+    expect(tab).toHaveAttribute('data-zone-id', 'node-drawer');
+    expect(drawer).not.toHaveAttribute('data-zone-id');
 
     act(() => {
       getDndStore()
@@ -110,15 +124,37 @@ describe('NodeDrawer', () => {
         );
     });
     await waitFor(() => {
-      expect(tab).toHaveAttribute('aria-expanded', 'true');
+      expect(tab).toHaveAttribute('data-drop-target-valid', 'true');
     });
+    expect(tab).toHaveAttribute('aria-expanded', 'false');
 
-    // Drag ends without a drop: the drawer returns to its collapsed state
+    elementsFromPoint.mockReturnValue([tab]);
+    act(() => {
+      getDndStore().getState().updateDragPosition(5, 5);
+    });
+    await waitFor(() => {
+      expect(tab).toHaveAttribute('aria-expanded', 'true');
+      expect(tab).toHaveAttribute('data-drop-target-over', 'true');
+    });
+    expect(tab).not.toHaveAttribute('data-zone-id');
+    expect(drawer).toHaveAttribute('data-zone-id', 'node-drawer');
+    expect(screen.getByText('Drop here to remove')).toBeInTheDocument();
+
+    elementsFromPoint.mockReturnValue([]);
+    act(() => {
+      getDndStore().getState().updateDragPosition(50, 50);
+    });
+    await waitFor(() => {
+      expect(tab).toHaveAttribute('aria-expanded', 'false');
+    });
+    expect(tab).toHaveAttribute('data-zone-id', 'node-drawer');
+    expect(drawer).not.toHaveAttribute('data-zone-id');
+
     act(() => {
       getDndStore().getState().endDrag();
     });
     await waitFor(() => {
-      expect(tab).toHaveAttribute('aria-expanded', 'false');
+      expect(tab).not.toHaveAttribute('data-drop-target-valid');
     });
   });
 
@@ -182,7 +218,8 @@ describe('NodeDrawer', () => {
         );
     });
 
-    // No auto-expand, and a drop does not fire the handler
+    // No illumination or expansion, and a drop does not fire the handler
+    expect(tab).not.toHaveAttribute('data-drop-target-valid');
     expect(tab).toHaveAttribute('aria-expanded', 'false');
     act(() => {
       getDndStore().getState().setActiveDropTarget('node-drawer');

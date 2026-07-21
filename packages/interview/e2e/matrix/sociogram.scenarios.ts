@@ -42,6 +42,7 @@ async function dragNodeToCanvasPosition(
   page: Page,
   label: string,
   target: { x: number; y: number },
+  startYFraction = 0.5,
 ): Promise<void> {
   const node = sociogramNode(page, label);
   const canvas = page.locator('[data-zone-id="sociogram-canvas"]');
@@ -51,7 +52,7 @@ async function dragNodeToCanvasPosition(
     throw new Error(`Could not measure node "${label}" or the canvas`);
   }
   const startX = nodeBox.x + nodeBox.width / 2;
-  const startY = nodeBox.y + nodeBox.height / 2;
+  const startY = nodeBox.y + nodeBox.height * startYFraction;
   const endX = canvasBox.x + canvasBox.width * target.x;
   const endY = canvasBox.y + canvasBox.height * target.y;
 
@@ -70,21 +71,69 @@ async function dragNodeToCanvasPosition(
  */
 async function dragNodeToDrawer(page: Page, label: string): Promise<void> {
   const node = sociogramNode(page, label);
-  const drawer = page.locator('[data-zone-id="node-drawer"]');
+  const drawer = page.locator('[aria-label="Drawer"]');
+  const drawerTab = drawer.getByRole('button');
   const nodeBox = await node.boundingBox();
   const drawerBox = await drawer.boundingBox();
-  if (!nodeBox || !drawerBox) {
-    throw new Error(`Could not measure node "${label}" or the drawer`);
+  const drawerTabBox = await drawerTab.boundingBox();
+  if (!nodeBox || !drawerBox || !drawerTabBox) {
+    throw new Error(`Could not measure node "${label}" or the drawer tab`);
   }
   const startX = nodeBox.x + nodeBox.width / 2;
   const startY = nodeBox.y + nodeBox.height / 2;
-  const endX = drawerBox.x + drawerBox.width / 2;
-  const endY = drawerBox.y + Math.min(20, drawerBox.height / 2);
+  const tabX = drawerTabBox.x + drawerTabBox.width / 2;
+  const tabY = drawerTabBox.y + drawerTabBox.height / 2;
+  const outsideTabX = drawerBox.x + 8;
+  const restingTabColor = await drawerTab.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+
+  if (
+    outsideTabX >= drawerTabBox.x &&
+    outsideTabX <= drawerTabBox.x + drawerTabBox.width
+  ) {
+    throw new Error('Could not find space beside the collapsed drawer tab');
+  }
 
   await page.mouse.move(startX, startY);
   await page.mouse.down();
   await page.mouse.move(startX + 8, startY + 8);
-  await page.mouse.move(endX, endY, { steps: 10 });
+
+  await expect(drawerTab).toHaveAttribute('data-drop-target-valid', 'true');
+  await expect(drawerTab).toHaveAttribute('aria-expanded', 'false');
+  const illuminatedTabColor = await drawerTab.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+  expect(illuminatedTabColor).not.toBe(restingTabColor);
+
+  // The collapsed wrapper is wider than its visible tab. Moving along that
+  // otherwise invisible strip must leave the drawer closed.
+  await page.mouse.move(outsideTabX, tabY, { steps: 10 });
+  await expect(drawerTab).toHaveAttribute('aria-expanded', 'false');
+
+  await page.mouse.move(tabX, tabY, { steps: 5 });
+  await expect(drawerTab).toHaveAttribute('aria-expanded', 'true');
+  await expect
+    .poll(async () => {
+      const expandedDrawerBox = await drawer.boundingBox();
+      const currentTabBox = await drawerTab.boundingBox();
+      if (!expandedDrawerBox || !currentTabBox) return 0;
+      return expandedDrawerBox.height - currentTabBox.height;
+    })
+    .toBeGreaterThan(48);
+
+  const dropHint = page.getByText('Drop here to remove');
+  await expect(dropHint).toBeVisible();
+  const dropHintBox = await dropHint.boundingBox();
+  if (!dropHintBox) {
+    throw new Error('Could not measure the expanded drawer drop area');
+  }
+  await page.mouse.move(
+    dropHintBox.x + dropHintBox.width / 2,
+    dropHintBox.y + dropHintBox.height / 2,
+    { steps: 5 },
+  );
+  await expect(drawerTab).toHaveAttribute('aria-expanded', 'true');
   await page.mouse.up();
 }
 
@@ -198,6 +247,19 @@ function buildManualBaseline(): ScenarioDefinition {
     run: async ({ page }) => {
       const sociogram = page.getByTestId('sociogram');
       await expect(sociogram).toHaveAttribute('data-layout-mode', 'MANUAL');
+      await expect(sociogram).toHaveCSS('padding', '0px');
+
+      const sociogramBox = await sociogram.boundingBox();
+      const canvasBox = await sociogram
+        .locator('[data-zone-id="sociogram-canvas"]')
+        .boundingBox();
+      if (!sociogramBox || !canvasBox) {
+        throw new Error('Could not measure the Sociogram canvas');
+      }
+      expect(canvasBox.x).toBeCloseTo(sociogramBox.x, 0);
+      expect(canvasBox.y).toBeCloseTo(sociogramBox.y, 0);
+      expect(canvasBox.width).toBeCloseTo(sociogramBox.width, 0);
+      expect(canvasBox.height).toBeCloseTo(sociogramBox.height, 0);
 
       await expect(
         sociogram.locator(
@@ -227,6 +289,26 @@ function buildManualBaseline(): ScenarioDefinition {
       // bare `svg[aria-hidden] circle` would also count those.
       await expect(sociogram.locator('circle.canvas-radar__range')).toHaveCount(
         4,
+      );
+      const concentricBackground = sociogram.getByTestId(
+        'sociogram-concentric-background',
+      );
+      const backgroundInset = await concentricBackground.evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element).paddingTop),
+      );
+      expect(backgroundInset).toBeGreaterThan(0);
+
+      const backgroundBox = await concentricBackground.boundingBox();
+      const radarBox = await sociogram
+        .locator('svg:has(circle.canvas-radar__range)')
+        .boundingBox();
+      if (!backgroundBox || !radarBox) {
+        throw new Error('Could not measure the concentric-circle background');
+      }
+      expect(radarBox.y - backgroundBox.y).toBeCloseTo(backgroundInset, 0);
+      expect(radarBox.x + radarBox.width / 2).toBeCloseTo(
+        backgroundBox.x + backgroundBox.width / 2,
+        0,
       );
     },
   };
@@ -428,7 +510,89 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
       // already-placed node still repositions it (Sociogram never passes
       // `allowRepositioning` through to Canvas, so CanvasNode's own default of
       // `true` always wins).
-      await dragNodeToCanvasPosition(page, 'Ash', { x: 0.4, y: 0.6 });
+      const canvas = page.locator('[data-zone-id="sociogram-canvas"]');
+      const ashNode = sociogramNode(page, 'Ash');
+      const drawer = page.getByLabel('Drawer', { exact: true });
+      const drawerTab = drawer.getByRole('button');
+      const canvasBox = await canvas.boundingBox();
+      const drawerBox = await drawer.boundingBox();
+      const drawerTabBox = await drawerTab.boundingBox();
+      if (!canvasBox || !drawerBox || !drawerTabBox) {
+        throw new Error('Could not measure the canvas or collapsed drawer');
+      }
+
+      const drawerGapWidth = drawerTabBox.x - drawerBox.x;
+      if (drawerGapWidth <= 0) {
+        throw new Error(
+          'Collapsed drawer has no transparent area beside its tab',
+        );
+      }
+
+      const coveredTarget = {
+        x: (drawerBox.x + drawerGapWidth / 2 - canvasBox.x) / canvasBox.width,
+        y:
+          (drawerTabBox.y + drawerTabBox.height / 2 - canvasBox.y) /
+          canvasBox.height,
+      };
+      await dragNodeToCanvasPosition(page, 'Ash', coveredTarget);
+
+      await expect
+        .poll(async () => {
+          state = await protocol.getNetworkState(interview.interviewId);
+          const ash = asPoint(
+            nodeAttribute(state, nameVarId, 'Ash', layoutVarId),
+          );
+          return ash
+            ? Math.abs(ash.x - coveredTarget.x) < 0.1 && ash.y > 0.85
+            : false;
+        })
+        .toBe(true);
+
+      const ashBox = await ashNode.boundingBox();
+      const updatedDrawerBox = await drawer.boundingBox();
+      const updatedDrawerTabBox = await drawerTab.boundingBox();
+      if (!ashBox || !updatedDrawerBox || !updatedDrawerTabBox) {
+        throw new Error(
+          'Could not measure the bottom node or collapsed drawer',
+        );
+      }
+
+      const overlapTop = Math.max(ashBox.y, updatedDrawerBox.y);
+      const overlapBottom = Math.min(
+        ashBox.y + ashBox.height,
+        updatedDrawerBox.y + updatedDrawerBox.height,
+      );
+      const coveredNodePoint = {
+        x: ashBox.x + ashBox.width / 2,
+        y: overlapTop + (overlapBottom - overlapTop) / 2,
+      };
+      if (
+        overlapBottom <= overlapTop ||
+        coveredNodePoint.x < updatedDrawerBox.x ||
+        coveredNodePoint.x > updatedDrawerBox.x + updatedDrawerBox.width ||
+        (coveredNodePoint.x >= updatedDrawerTabBox.x &&
+          coveredNodePoint.x <=
+            updatedDrawerTabBox.x + updatedDrawerTabBox.width)
+      ) {
+        throw new Error(
+          'Bottom node did not overlap the drawer outside its tab',
+        );
+      }
+
+      const hitNodeLabel = await page.evaluate(({ x, y }) => {
+        const element = document.elementFromPoint(x, y);
+        return element?.closest('button')?.getAttribute('aria-label') ?? null;
+      }, coveredNodePoint);
+      expect(hitNodeLabel).toMatch(/^Ash/);
+
+      const coveredStartYFraction =
+        (coveredNodePoint.y - ashBox.y) / ashBox.height;
+      await dragNodeToCanvasPosition(
+        page,
+        'Ash',
+        { x: 0.4, y: 0.6 },
+        coveredStartYFraction,
+      );
 
       await expect
         .poll(async () => {
