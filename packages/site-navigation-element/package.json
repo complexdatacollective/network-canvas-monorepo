@@ -44,7 +44,7 @@
     "@vitest/browser-playwright": "catalog:",
     "motion": "catalog:",
     "playwright": "catalog:",
-    "postcss": "^8.5.18",
+    "postcss": "^8.5.19",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",
