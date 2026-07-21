@@ -16,7 +16,9 @@ codebook. Draws are without replacement across prompts and stages, mirroring the
 runtime's global exclusion of rows already in the network. A stage with no entry
 still falls back to codebook-generated people. A new `config` option exposes the
 generation-tuning defaults (the roster-versus-fabricate ratio, node counts, edge
-probabilities, and so on) so callers can override them.
+probabilities, and so on) so callers can override them. FamilyPedigree stages
+now mark exactly one generated node as ego, matching the runtime convention,
+instead of randomising the ego flag across every node.
 
 `@codaco/interview` now exposes its roster-parsing pipeline from the `./contract`
 entry: `collectRosterExternalData` gathers a protocol's roster nodes keyed by

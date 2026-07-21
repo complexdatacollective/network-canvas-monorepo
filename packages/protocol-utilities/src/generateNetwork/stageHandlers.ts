@@ -365,6 +365,7 @@ export function handleFamilyPedigree(
   const nodeType = stage.nodeConfig?.type;
   const nodeTypeDef = nodeType ? ctx.codebook.node?.[nodeType] : undefined;
   const edgeType = stage.edgeConfig?.type;
+  const egoVariable = stage.nodeConfig?.egoVariable;
 
   if (!nodeType) return;
 
@@ -381,6 +382,18 @@ export function handleFamilyPedigree(
       type: nodeType,
       [entityAttributesProperty]: attrs,
       stageId: stage.id,
+    });
+  }
+
+  // generateAttributes randomises egoVariable per node like any other boolean
+  // codebook variable, but the runtime marks exactly one pedigree node as ego
+  // (FamilyPedigree's egoCellTransform sets true on the proband and explicit
+  // false on every other alter/partner/child). Pin that here, after
+  // generation, so overwriting the attribute costs no RNG draws and the rest
+  // of the stage's random stream is undisturbed.
+  if (egoVariable) {
+    familyNodes.forEach((node, index) => {
+      node[entityAttributesProperty][egoVariable] = index === 0;
     });
   }
 

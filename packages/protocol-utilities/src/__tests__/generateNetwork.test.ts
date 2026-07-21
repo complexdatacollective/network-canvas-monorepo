@@ -419,6 +419,53 @@ describe('generateNetwork', () => {
       expect(network.nodes.length).toBe(0);
       expect(network.edges.length).toBe(0);
     });
+
+    it('marks exactly one node as ego, and false on every other node', () => {
+      const codebook = makeCodebook({
+        node: {
+          'node-type-1': {
+            color: 'node-color-seq-1',
+            variables: {
+              'var-name': { name: 'Name', type: 'text' },
+              'var-ego': { name: 'Is ego', type: 'boolean' },
+            },
+          },
+        },
+      });
+      const stages = [makeFamilyPedigreeStage()];
+
+      const { network } = generateNetwork({ codebook, stages, seed: 42 });
+
+      expect(network.nodes.length).toBeGreaterThan(1);
+
+      const egoNodes = network.nodes.filter(
+        (node) => node[entityAttributesProperty]['var-ego'] === true,
+      );
+      expect(egoNodes).toHaveLength(1);
+      expect(egoNodes[0]).toBe(network.nodes[0]);
+
+      for (const node of network.nodes.slice(1)) {
+        expect(node[entityAttributesProperty]['var-ego']).toBe(false);
+      }
+    });
+
+    it('does not throw and skips ego marking when nodeConfig has no egoVariable', () => {
+      const codebook = makeCodebook();
+      const stages = [
+        makeFamilyPedigreeStage({
+          nodeConfig: {
+            type: 'node-type-1',
+            nodeLabelVariable: 'var-name',
+            biologicalSexVariable: 'var-sex',
+            relationshipVariable: 'var-rel',
+          },
+        }),
+      ];
+
+      expect(() =>
+        generateNetwork({ codebook, stages, seed: 42 }),
+      ).not.toThrow();
+    });
   });
 
   describe('all node types match codebook', () => {
