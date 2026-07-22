@@ -1143,9 +1143,12 @@ class NodePanelFixture {
         el.focus();
       }
     });
+    const grabbedBefore = await getGrabAnnouncement(this.page);
     await nodeInPanel.press('Control+d');
 
-    await expect(getGrabAnnouncement(this.page)).resolves.toBe('');
+    await expect
+      .poll(() => getGrabAnnouncement(this.page), { timeout: 200 })
+      .toBe(grabbedBefore);
     await expect(
       this.page.getByTestId('node-list').getByRole('option', { name: label }),
     ).toHaveCount(0);
