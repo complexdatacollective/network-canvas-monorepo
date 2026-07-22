@@ -136,6 +136,16 @@
       "permanent": true
     },
     {
+      "source": "/interface-documentation/small-roster-name-generator",
+      "destination": "/en/design-protocols/interface-documentation/name-generator-roster",
+      "permanent": true
+    },
+    {
+      "source": "/interface-documentation/large-roster-name-generator",
+      "destination": "/en/design-protocols/interface-documentation/name-generator-roster",
+      "permanent": true
+    },
+    {
       "source": "/interface-documentation/:path*",
       "destination": "/en/design-protocols/interface-documentation/:path*",
       "permanent": true
@@ -143,6 +153,16 @@
     {
       "source": "/key-concepts/data-export",
       "destination": "/en/analyze-data/data-export",
+      "permanent": true
+    },
+    {
+      "source": "/key-concepts/preview-mode",
+      "destination": "/en/design-protocols/preview-mode",
+      "permanent": true
+    },
+    {
+      "source": "/key-concepts/responsive-svg-backgrounds",
+      "destination": "/en/design-protocols/responsive-svg-backgrounds",
       "permanent": true
     },
     {
@@ -156,6 +176,21 @@
       "permanent": true
     },
     {
+      "source": "/advanced-topics/node-labelling",
+      "destination": "/en/design-protocols/key-concepts/node-labelling",
+      "permanent": true
+    },
+    {
+      "source": "/advanced-topics/protocol-file-format",
+      "destination": "/en/design-protocols/key-concepts/the-protocol-file",
+      "permanent": true
+    },
+    {
+      "source": "/advanced-topics/protocol-schema-information",
+      "destination": "/en/get-started/protocol-schema-information",
+      "permanent": true
+    },
+    {
       "source": "/advanced-topics/:path*",
       "destination": "/en/get-started/advanced-topics/:path*",
       "permanent": true
@@ -166,8 +201,28 @@
       "permanent": true
     },
     {
+      "source": "/en/desktop/key-concepts/preview-mode",
+      "destination": "/en/design-protocols/preview-mode",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/key-concepts/responsive-svg-backgrounds",
+      "destination": "/en/design-protocols/responsive-svg-backgrounds",
+      "permanent": true
+    },
+    {
       "source": "/en/desktop/key-concepts/:path*",
       "destination": "/en/design-protocols/key-concepts/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/interface-documentation/small-roster-name-generator",
+      "destination": "/en/design-protocols/interface-documentation/name-generator-roster",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/interface-documentation/large-roster-name-generator",
+      "destination": "/en/design-protocols/interface-documentation/name-generator-roster",
       "permanent": true
     },
     {
@@ -178,6 +233,21 @@
     {
       "source": "/en/desktop/advanced-topics/network-canvas-graphml",
       "destination": "/en/analyze-data/data-export",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/advanced-topics/node-labelling",
+      "destination": "/en/design-protocols/key-concepts/node-labelling",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/advanced-topics/protocol-file-format",
+      "destination": "/en/design-protocols/key-concepts/the-protocol-file",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/advanced-topics/protocol-schema-information",
+      "destination": "/en/get-started/protocol-schema-information",
       "permanent": true
     },
     {
@@ -192,6 +262,11 @@
     },
     {
       "source": "/en/desktop/project-information/irb-best-practices",
+      "destination": "/en/get-started/planning-a-study/irb-best-practices",
+      "permanent": true
+    },
+    {
+      "source": "/en/desktop/project-information/security-model",
       "destination": "/en/get-started/planning-a-study/irb-best-practices",
       "permanent": true
     },

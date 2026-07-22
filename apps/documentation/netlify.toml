@@ -143,6 +143,16 @@ status = 301
 
 # Legacy flat /interface-documentation/* (old Architect links)
 [[redirects]]
+from = "/interface-documentation/small-roster-name-generator"
+to = "/en/design-protocols/interface-documentation/name-generator-roster"
+status = 301
+
+[[redirects]]
+from = "/interface-documentation/large-roster-name-generator"
+to = "/en/design-protocols/interface-documentation/name-generator-roster"
+status = 301
+
+[[redirects]]
 from = "/interface-documentation/*"
 to = "/en/design-protocols/interface-documentation/:splat"
 status = 301
@@ -151,6 +161,16 @@ status = 301
 [[redirects]]
 from = "/key-concepts/data-export"
 to = "/en/analyze-data/data-export"
+status = 301
+
+[[redirects]]
+from = "/key-concepts/preview-mode"
+to = "/en/design-protocols/preview-mode"
+status = 301
+
+[[redirects]]
+from = "/key-concepts/responsive-svg-backgrounds"
+to = "/en/design-protocols/responsive-svg-backgrounds"
 status = 301
 
 [[redirects]]
@@ -165,6 +185,21 @@ to = "/en/analyze-data/data-export"
 status = 301
 
 [[redirects]]
+from = "/advanced-topics/node-labelling"
+to = "/en/design-protocols/key-concepts/node-labelling"
+status = 301
+
+[[redirects]]
+from = "/advanced-topics/protocol-file-format"
+to = "/en/design-protocols/key-concepts/the-protocol-file"
+status = 301
+
+[[redirects]]
+from = "/advanced-topics/protocol-schema-information"
+to = "/en/get-started/protocol-schema-information"
+status = 301
+
+[[redirects]]
 from = "/advanced-topics/*"
 to = "/en/get-started/advanced-topics/:splat"
 status = 301
@@ -176,8 +211,28 @@ to = "/en/analyze-data/data-export"
 status = 301
 
 [[redirects]]
+from = "/en/desktop/key-concepts/preview-mode"
+to = "/en/design-protocols/preview-mode"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/key-concepts/responsive-svg-backgrounds"
+to = "/en/design-protocols/responsive-svg-backgrounds"
+status = 301
+
+[[redirects]]
 from = "/en/desktop/key-concepts/*"
 to = "/en/design-protocols/key-concepts/:splat"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/interface-documentation/small-roster-name-generator"
+to = "/en/design-protocols/interface-documentation/name-generator-roster"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/interface-documentation/large-roster-name-generator"
+to = "/en/design-protocols/interface-documentation/name-generator-roster"
 status = 301
 
 [[redirects]]
@@ -188,6 +243,21 @@ status = 301
 [[redirects]]
 from = "/en/desktop/advanced-topics/network-canvas-graphml"
 to = "/en/analyze-data/data-export"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/advanced-topics/node-labelling"
+to = "/en/design-protocols/key-concepts/node-labelling"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/advanced-topics/protocol-file-format"
+to = "/en/design-protocols/key-concepts/the-protocol-file"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/advanced-topics/protocol-schema-information"
+to = "/en/get-started/protocol-schema-information"
 status = 301
 
 [[redirects]]
@@ -202,6 +272,11 @@ status = 301
 
 [[redirects]]
 from = "/en/desktop/project-information/irb-best-practices"
+to = "/en/get-started/planning-a-study/irb-best-practices"
+status = 301
+
+[[redirects]]
+from = "/en/desktop/project-information/security-model"
 to = "/en/get-started/planning-a-study/irb-best-practices"
 status = 301
 
