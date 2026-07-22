@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * Fixture for OneToManyDyadCensus stages.
@@ -55,8 +55,44 @@ export class OneToManyDyadCensusFixture {
     );
   }
 
+  /**
+   * Whether a target is fully opaque on screen. Crossing a prompt boundary
+   * changes the NodeList animationKey, which fades the old targets to inline
+   * opacity 0, swaps items, then re-runs the stagger entrance — and
+   * Playwright's visibility check ignores opacity, so mid-choreography
+   * targets count as "visible" while rendering as an empty panel. Checks
+   * every ancestor up to the list container because the animated opacity
+   * lives on wrapper elements, not the option itself.
+   */
+  async isTargetSettled(label: string): Promise<boolean> {
+    try {
+      return await this.getTargetNode(label).evaluate(
+        (el) => {
+          for (let node: Element | null = el; node; node = node.parentElement) {
+            if (Number(getComputedStyle(node).opacity) < 1) return false;
+            if (node.id === 'dyad-census-targets') break;
+          }
+          return true;
+        },
+        undefined,
+        { timeout: 1000 },
+      );
+    } catch {
+      // Not in the DOM yet (or detached mid-choreography) — not settled.
+      return false;
+    }
+  }
+
+  /** Wait until a target has fully entered the list. */
+  async waitForTargetSettled(label: string): Promise<void> {
+    await expect.poll(() => this.isTargetSettled(label)).toBe(true);
+  }
+
   /** Click a target node to toggle the edge to the current focal node. */
   async toggleTarget(label: string): Promise<void> {
+    // Clicking while the prompt-boundary choreography is re-creating the
+    // list detaches the element under the pointer (webkit flake).
+    await this.waitForTargetSettled(label);
     await this.getTargetNode(label).click();
   }
 
