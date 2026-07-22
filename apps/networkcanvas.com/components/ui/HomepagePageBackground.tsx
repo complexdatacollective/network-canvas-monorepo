@@ -69,7 +69,7 @@ export function HomepagePageBackground() {
       commit({
         convergence: CENTER,
         intensity: READING_INTENSITY,
-        flare: HERO_FLARE,
+        flare: READING_FLARE,
         resolved: true,
       });
       return undefined;
@@ -125,11 +125,22 @@ export function HomepagePageBackground() {
 
     update();
 
-    const observer = new ResizeObserver(update);
+    // Coalesce the layout-reading update to one run per frame so bursts of
+    // scroll/resize events don't force redundant reflows.
+    let frameId = 0;
+    const scheduleUpdate = () => {
+      if (frameId) return;
+      frameId = requestAnimationFrame(() => {
+        frameId = 0;
+        update();
+      });
+    };
+
+    const observer = new ResizeObserver(scheduleUpdate);
     observer.observe(layer);
     if (hero) observer.observe(hero);
-    window.addEventListener('resize', update);
-    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', scheduleUpdate);
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
     let isActive = true;
     void document.fonts?.ready.then(() => {
       if (isActive) update();
@@ -138,9 +149,10 @@ export function HomepagePageBackground() {
 
     return () => {
       isActive = false;
+      if (frameId) cancelAnimationFrame(frameId);
       observer.disconnect();
-      window.removeEventListener('resize', update);
-      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', scheduleUpdate);
+      window.removeEventListener('scroll', scheduleUpdate);
     };
   }, [reduceMotion]);
 
