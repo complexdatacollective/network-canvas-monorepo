@@ -74,7 +74,7 @@ Because the Narrative only shows alters that have a value for the preset's layou
 
 Free-draw annotations are a live discussion aid, not saved data. An annotation fades after a few seconds unless you freeze it, and nothing drawn on the canvas is recorded with the interview. Because the Narrative collects nothing itself, plan separately for how you will capture the discussion it prompts — for example by using screen-recording and audio-recording software to keep a record of what is said and drawn.
 
-## Try to Avoid
+### Try to Avoid
 
 <BadPractice>
 

@@ -15,6 +15,8 @@ The Network Composer is a free-form, single-screen interface for building a whol
 
 It is best thought of as a network "notepad". Because it is dense and fast — with a tool palette, an inspector, keyboard shortcuts, and undo/redo — it is designed to be driven by a researcher or interviewer, either alongside a participant or working alone to sketch, pilot, or model a network, rather than handed to an unassisted participant.
 
+![The Network Composer, with its floating tool palette beside a network drawn over a concentric-circles background](/assets/img/interface-documentation/network-composer/network-composer-example.png)
+
 ## How it works
 
 The Interface presents a single canvas with a floating tool palette. Each tool stays active until you switch to another, so you can repeat an action without selecting it again:
@@ -28,7 +30,37 @@ The Interface presents a single canvas with a floating tool palette. Each tool s
 
 To assign groups quickly, you can select several alters at once — by shift-clicking them, or by drawing a freehand lasso around them — and then add the whole selection to a group in one step, using the color-coded buttons that appear beneath the canvas. The same multi-selection can also be deleted together.
 
-The attributes shown in the inspector are configured in Architect: one set for the alters, and an optional set for each edge type. Each attribute pairs a variable with the input control used to collect it, plus an optional label to caption the field (the variable's name is used when no label is given). The name variable filled by the Add Node field, the variable that stores each alter's position, the available edge types, and the categorical variable drawn as group hulls are all set up there as well.
+## Configuring
+
+Everything the tools operate on is set up in Architect when you create the stage:
+
+### The name variable
+
+The **Add Node** field fills a text variable you choose — the same quick-add mechanism as the [Name Generator using Quick Add](/en/design-protocols/interface-documentation/name-generator-using-quick-add).
+
+### The layout variable
+
+Each alter's position on the canvas is stored as normalized coordinates in a layout variable, exactly as the [Sociogram](/en/design-protocols/interface-documentation/sociogram) stores them.
+
+### Attribute forms
+
+The inspector shows one optional attribute form for the alters, and one for each edge type. Each field pairs a codebook variable with the input control used to collect it, plus an optional label and hint to caption the field (the variable's name is used when no label is given). Unlike other form-based Interfaces, the input control is chosen **on the stage** rather than on the codebook variable, so the same variable can be collected with different controls on different stages. A stage whose form has no fields simply shows that there are no attributes to edit.
+
+### Edge types
+
+Each relationship type the **Draw Edge** tool can create is added to the stage, and each type may optionally carry its own attribute form. The tool only appears when the stage defines at least one edge type, and each edge type can be added once.
+
+### Groups
+
+An optional categorical variable is drawn as the **Groups** convex hulls. The tool toggles an alter's membership — a value of that variable — and the automatic layout gently pulls members of the same group together.
+
+### Background
+
+The canvas background is either concentric circles or a custom image, shared with the [Sociogram](/en/design-protocols/interface-documentation/sociogram) and [Narrative](/en/design-protocols/interface-documentation/narrative) Interfaces — see [Responsive SVG Backgrounds](/en/design-protocols/responsive-svg-backgrounds) for producing images that scale cleanly across devices.
+
+### Automatic layout
+
+The design-time setting only chooses the **starting** state: unlike the Sociogram, the force-directed layout can be switched on and off during the interview, and the live choice is remembered for the stage.
 
 ### Best Practices
 

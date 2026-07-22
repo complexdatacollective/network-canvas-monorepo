@@ -58,7 +58,7 @@ Instead of drawing edges, a prompt can use tapping to **toggle an attribute**. T
 
 Edge creation and attribute toggling are the two tap behaviors, and a single prompt uses one or the other — not both. Split the two tasks across separate prompts when you need each.
 
-## Best Practices
+### Best Practices
 
 <GoodPractice>
 
@@ -72,7 +72,7 @@ Match each prompt's wording to its tap behavior: ask about relationships on edge
 
 </GoodPractice>
 
-## Try to Avoid
+### Try to Avoid
 
 <BadPractice>
 
