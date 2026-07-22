@@ -1094,7 +1094,9 @@ export function SummerUpdatePage() {
                     onClick={() => setSelectedInterface(index)}
                   >
                     <InterfaceGraphic motif={feature.motif} />
-                    <div className="text-sm font-bold">{feature.shortName}</div>
+                    <div className="text-sm leading-snug font-bold">
+                      {feature.shortName}
+                    </div>
                   </button>
                 </Reveal>
               ))}

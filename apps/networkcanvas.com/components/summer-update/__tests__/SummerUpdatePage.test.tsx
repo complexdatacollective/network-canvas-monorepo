@@ -74,6 +74,9 @@ describe('SummerUpdatePage', () => {
     expect(screen.getByRole('button', { name: 'Geospatial' })).toHaveClass(
       'justify-center',
     );
+    expect(screen.getByText('One-to-many dyad census')).toHaveClass(
+      'leading-snug',
+    );
     expect(
       screen.getByRole('heading', { name: 'Geospatial interface' }),
     ).toBeInTheDocument();
