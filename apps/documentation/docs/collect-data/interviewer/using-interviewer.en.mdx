@@ -62,7 +62,7 @@ The following introduction to the software describes some of its key features an
 
 ## Security and locking
 
-Interviewer keeps everything it stores — protocols, interviews, and settings — on the device, with no cloud sync or server component. On desktop, that on-device data is **encrypted at rest**, and the same authentication that unlocks the app releases the key used to decrypt it.
+Interviewer keeps everything it stores — protocols, interviews, and settings — on the device, with no cloud sync or server component. When you set up an app lock (a PIN, passphrase, or biometric), that on-device data is **encrypted at rest** with a key derived from your credential, and the same authentication that unlocks the app releases the key used to decrypt it.
 
 ### Setting up security
 
@@ -74,7 +74,7 @@ The wizard opens with a brief overview of what it will cover — securing your d
 
 ![The setup wizard introduction](/assets/img/interviewer-guide/setup-intro.png)
 
-It then explains the two layers that protect your research data: **secure data storage** and **app authorization**. On platforms where the operating system already sandboxes the app's data, encryption isn't required, and the wizard tells you so.
+It then explains the two layers that protect your research data: **secure data storage** and **app authorization** — features to use _in addition_ to device-level protections such as storage encryption and a strong device password.
 
 ![The 'Securing your data' step of the setup wizard](/assets/img/interviewer-guide/securing-data.png)
 
