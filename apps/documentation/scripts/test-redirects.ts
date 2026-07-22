@@ -39,18 +39,17 @@ const redirectTests: RedirectTest[] = [
   },
   {
     from: '/reference/protocol-schema-information',
-    expectedDestination:
-      '/en/get-started/advanced-topics/protocol-schema-information',
+    expectedDestination: '/en/get-started/protocol-schema-information',
     description: 'Protocol schema information redirect',
   },
   {
     from: '/reference/node-labelling',
-    expectedDestination: '/en/get-started/advanced-topics/node-labelling',
+    expectedDestination: '/en/design-protocols/key-concepts/node-labelling',
     description: 'Node labelling redirect',
   },
   {
     from: '/reference/protocol-file-format',
-    expectedDestination: '/en/get-started/advanced-topics/protocol-file-format',
+    expectedDestination: '/en/design-protocols/key-concepts/the-protocol-file',
     description: 'Protocol file format redirect',
   },
   {
@@ -88,7 +87,7 @@ const redirectTests: RedirectTest[] = [
   },
   {
     from: '/advanced-topics/network-canvas-graphml',
-    expectedDestination: '/en/analyze-data/network-canvas-graphml',
+    expectedDestination: '/en/analyze-data/data-export',
     description:
       'advanced-topics graphml jumps section (exact rule beats advanced-topics splat)',
   },
