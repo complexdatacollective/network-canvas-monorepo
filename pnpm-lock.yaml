@@ -67,8 +67,8 @@ catalogs:
       specifier: ^1.61.1
       version: 1.61.1
     '@posthog/react':
-      specifier: ^1.9.1
-      version: 1.9.1
+      specifier: ^1.10.3
+      version: 1.10.3
     '@radix-ui/react-slot':
       specifier: ^1.2.4
       version: 1.2.4
@@ -707,7 +707,7 @@ importers:
         version: 16.2.10(next@16.2.10(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sass@1.100.0))(react@19.2.7)
       '@posthog/react':
         specifier: 'catalog:'
-        version: 1.9.1(@types/react@19.2.17)(posthog-js@1.376.5)(react@19.2.7)
+        version: 1.10.3(@types/react@19.2.17)(posthog-js@1.376.5)(react@19.2.7)
       '@radix-ui/react-collapsible':
         specifier: ^1.1.12
         version: 1.1.12(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -5595,8 +5595,8 @@ packages:
   '@posthog/core@1.29.14':
     resolution: {integrity: sha512-IqfiD5rxdgPHsZMz45uQu824a5CEnpXRIU6QSoQT4NWjLbzKPMxg5zpHSCz+DMbDJ+Ii53T/tO76jGztpTd7uQ==}
 
-  '@posthog/react@1.9.1':
-    resolution: {integrity: sha512-tIGjs8WzKPrHQmSyM/2a3GoedQkttkxgmCsdn0kgy+6mIiSNk36FAFGKbWFJ7/Kln5bHwcM/MQhiGYbwQG8bQQ==}
+  '@posthog/react@1.10.3':
+    resolution: {integrity: sha512-Qu//fGQmVlX0B9kTA3LLg67e7AYLEmeuA0Bf1qSyUM0uUILcRQGjQezhNQPLYSTakOqvXEnl6fM2iQBF6Toxrw==}
     peerDependencies:
       '@types/react': ^19.2.17
       posthog-js: '>=1.257.2'
@@ -17692,7 +17692,7 @@ snapshots:
     dependencies:
       '@posthog/types': 1.376.5
 
-  '@posthog/react@1.9.1(@types/react@19.2.17)(posthog-js@1.376.5)(react@19.2.7)':
+  '@posthog/react@1.10.3(@types/react@19.2.17)(posthog-js@1.376.5)(react@19.2.7)':
     dependencies:
       posthog-js: 1.376.5
       react: 19.2.7
