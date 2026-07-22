@@ -457,6 +457,8 @@
   --animate-background-gradient: background-gradient 5s infinite ease-in-out;
   --animate-linking: linking 1s ease-in-out infinite;
   --animate-pulse-glow: animate-pulse-glow 2s infinite;
+  --animate-text-glow: text-glow-orbit 13.5s linear infinite;
+  --text-glow-stroke-width: 0.062em;
 
   --transform-origin-left-right: 0% 50%;
 
@@ -494,6 +496,12 @@
 
     100% {
       box-shadow: 0 0 0 0 oklch(from var(--success) l c h / 0);
+    }
+  }
+
+  @keyframes text-glow-orbit {
+    to {
+      --text-glow-angle: 360deg;
     }
   }
 
@@ -555,6 +563,12 @@
       transform: scale(0.8);
     }
   }
+}
+
+@property --text-glow-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
 }
 
 /* Override default border color to use our theme values */

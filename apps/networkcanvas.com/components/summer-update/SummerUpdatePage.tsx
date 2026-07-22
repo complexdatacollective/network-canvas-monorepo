@@ -1,10 +1,19 @@
 'use client';
 
+import { ExternalLink } from 'lucide-react';
 import { motion, useReducedMotion, useScroll } from 'motion/react';
-import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
+import NetworkWeaveBackground from '@codaco/art/NetworkWeaveBackground';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import Definition from '@codaco/fresco-ui/Definition';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -24,10 +33,6 @@ import {
 } from './summerUpdateContent';
 
 const easing = [0.22, 1, 0.36, 1] as [number, number, number, number];
-const BackgroundLights = dynamic(
-  () => import('@codaco/art').then((art) => art.BackgroundLights),
-  { ssr: false },
-);
 const revealMotion = {
   distance: 32,
   duration: 0.9,
@@ -52,18 +57,31 @@ const accentBackgroundClasses: Record<AccentColor, string> = {
   'paradise-pink': 'bg-paradise-pink',
   'sea-serpent': 'bg-sea-serpent',
 };
-const schemaLightColors = [
-  'oklch(var(--purple-pizazz) / 0.22)',
-  'oklch(var(--cerulean-blue) / 0.18)',
+const heroWeaveColors = [
+  'var(--color-neon-coral)',
+  'var(--color-mustard)',
+  'var(--color-sea-green)',
+  'var(--color-sea-serpent)',
+  'var(--color-cerulean-blue)',
 ] as const;
-const finalLightColors = [
-  'oklch(var(--sea-green) / 0.2)',
-  'oklch(var(--barbie-pink) / 0.18)',
-] as const;
-const upgradeLightColors = [
-  'oklch(var(--sea-serpent) / 0.18)',
-  'oklch(var(--paradise-pink) / 0.16)',
-] as const;
+const heroTextGlowClasses =
+  'bg-[conic-gradient(from_var(--text-glow-angle),var(--color-neon-coral),var(--color-mustard),var(--color-sea-serpent),var(--color-paradise-pink),var(--color-cerulean-blue),var(--color-neon-coral))] bg-clip-text';
+const defaultHeroWeaveConvergence = { x: 0.5, y: 0.5 };
+
+function clampUnit(value: number) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function Section({
+  children,
+  ...rest
+}: { children: ReactNode } & React.HTMLAttributes<HTMLElement>) {
+  return (
+    <section className="relative my-24" {...rest}>
+      {children}
+    </section>
+  );
+}
 
 function HeroEntrance({
   bar,
@@ -71,12 +89,14 @@ function HeroEntrance({
   className,
   delay,
   direction = 'up',
+  onAnimationComplete,
 }: {
   bar?: boolean;
   children?: ReactNode;
   className?: string;
   delay: number;
   direction?: 'down' | 'up';
+  onAnimationComplete?: () => void;
 }) {
   const shouldReduceMotion = useReducedMotion();
   const initial = bar
@@ -96,6 +116,7 @@ function HeroEntrance({
           ? { duration: 0 }
           : { duration: bar ? 1 : 0.9, delay, ease: easing }
       }
+      onAnimationComplete={onAnimationComplete}
       className={className}
     >
       {children}
@@ -103,20 +124,9 @@ function HeroEntrance({
   );
 }
 
-function SectionLabel({
-  children,
-  dark,
-}: {
-  children: ReactNode;
-  dark?: boolean;
-}) {
+function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <div
-      className={cn(
-        'font-monospace inline-flex items-center gap-3 text-xs leading-relaxed tracking-widest uppercase',
-        dark ? 'text-sea-green' : 'text-neon-coral',
-      )}
-    >
+    <div className="font-monospace text-slate-blue inline-flex items-center gap-3 text-xs leading-relaxed font-semibold tracking-widest uppercase">
       <span aria-hidden className="h-0.5 w-6 bg-current" />
       {children}
     </div>
@@ -128,11 +138,13 @@ function ActionButton({
   compact,
   href,
   secondary,
+  target,
 }: {
   children: ReactNode;
   compact?: boolean;
   href: string;
   secondary?: boolean;
+  target?: string;
 }) {
   return (
     <ButtonLink
@@ -141,7 +153,8 @@ function ActionButton({
       color={secondary ? 'dynamic' : 'success'}
       size={compact ? 'md' : 'lg'}
       textStyle={secondary ? 'uppercase' : undefined}
-      variant={secondary ? 'glass' : 'raised'}
+      variant={secondary ? 'outline' : 'raised'}
+      target={target}
     >
       {children}
     </ButtonLink>
@@ -156,18 +169,22 @@ function BenefitCard({
 }: {
   children: ReactNode;
   delay: number;
-  icon: 'blue' | 'cyan' | 'green';
+  icon: 'blue' | 'cyan' | 'green' | 'coral' | 'mustard';
   title: string;
 }) {
   const iconClass = {
     blue: 'border-cerulean-blue/35 bg-cerulean-blue/10',
     cyan: 'border-sea-serpent/35 bg-sea-serpent/10',
     green: 'border-sea-green/35 bg-sea-green/10',
+    coral: 'border-neon-coral/35 bg-neon-coral/10',
+    mustard: 'border-mustard/35 bg-mustard/10',
   }[icon];
   const iconDotClass = {
     blue: 'bg-cerulean-blue',
     cyan: 'bg-sea-serpent',
     green: 'bg-sea-green',
+    coral: 'bg-neon-coral',
+    mustard: 'bg-mustard',
   }[icon];
 
   return (
@@ -188,10 +205,10 @@ function BenefitCard({
         >
           <span className={cn('size-4 rounded-full', iconDotClass)} />
         </div>
-        <Heading level="h3" className="text-navy-taupe">
+        <Heading level="h3" className="text-text">
           {title}
         </Heading>
-        <Paragraph className="text-navy-taupe/75">{children}</Paragraph>
+        <Paragraph className="text-text/75">{children}</Paragraph>
       </Surface>
     </Reveal>
   );
@@ -213,7 +230,7 @@ function BulletList({
               accentBackgroundClasses[item.color],
             )}
           />
-          <span className="text-navy-taupe/80">{item.content}</span>
+          <span className="">{item.content}</span>
         </li>
       ))}
     </ul>
@@ -234,7 +251,7 @@ function ScreenshotFrame({
   return (
     <div className="elevation-medium overflow-hidden rounded bg-white">
       <div
-        className="border-navy-taupe/10 bg-platinum flex items-center gap-2 border-b px-4 py-3"
+        className="border-navy-taupe/10 flex items-center gap-2 border-b px-4 py-3"
         aria-hidden
       >
         <span className="bg-neon-coral size-2.5 rounded-full" />
@@ -562,7 +579,7 @@ function StatusChip({ status }: { status: CompatibilityStatus }) {
   const statusClass = {
     migrates: 'bg-sea-serpent/15 text-sea-serpent-dark',
     native: 'bg-sea-green/15 text-sea-green-dark',
-    unsupported: 'bg-neon-coral/10 text-neon-coral-dark',
+    unsupported: 'bg-neon-coral/10 text-slate-blue font-semibold-dark',
   }[status];
 
   return (
@@ -578,11 +595,74 @@ function StatusChip({ status }: { status: CompatibilityStatus }) {
 }
 
 export function SummerUpdatePage() {
+  const shouldReduceMotion = useReducedMotion();
   const [selectedInterface, setSelectedInterface] = useState(0);
   const [selectedCompatibilityRow, setSelectedCompatibilityRow] = useState<
     number | null
   >(null);
+  const [heroWeaveConvergence, setHeroWeaveConvergence] = useState(
+    defaultHeroWeaveConvergence,
+  );
+  const heroRef = useRef<HTMLElement>(null);
+  const heroFocalTextRef = useRef<HTMLSpanElement>(null);
   const { scrollYProgress } = useScroll();
+  const updateHeroWeaveConvergence = useCallback(() => {
+    const hero = heroRef.current;
+    const focalText = heroFocalTextRef.current;
+
+    if (!hero || !focalText) {
+      return;
+    }
+
+    const heroBounds = hero.getBoundingClientRect();
+    const focalTextBounds = focalText.getBoundingClientRect();
+
+    if (heroBounds.width === 0 || heroBounds.height === 0) {
+      return;
+    }
+
+    const nextConvergence = {
+      x: clampUnit(
+        (focalTextBounds.left + focalTextBounds.width / 2 - heroBounds.left) /
+          heroBounds.width,
+      ),
+      y: clampUnit(
+        (focalTextBounds.top + focalTextBounds.height / 2 - heroBounds.top) /
+          heroBounds.height,
+      ),
+    };
+
+    setHeroWeaveConvergence((currentConvergence) =>
+      Math.abs(currentConvergence.x - nextConvergence.x) < 0.001 &&
+      Math.abs(currentConvergence.y - nextConvergence.y) < 0.001
+        ? currentConvergence
+        : nextConvergence,
+    );
+  }, []);
+
+  useEffect(() => {
+    updateHeroWeaveConvergence();
+    window.addEventListener('resize', updateHeroWeaveConvergence);
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver(updateHeroWeaveConvergence);
+
+    if (heroRef.current) {
+      resizeObserver?.observe(heroRef.current);
+    }
+
+    if (heroFocalTextRef.current) {
+      resizeObserver?.observe(heroFocalTextRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateHeroWeaveConvergence);
+      resizeObserver?.disconnect();
+    };
+  }, [updateHeroWeaveConvergence]);
+
   const activeInterface =
     interfaceFeatures[selectedInterface] ?? interfaceFeatures[0];
   const selectedCompatibility =
@@ -595,488 +675,542 @@ export function SummerUpdatePage() {
 
   return (
     <>
-      <main className="bg-rich-black font-body text-navy-taupe selection:bg-mustard selection:text-rich-black">
+      <main className="selection:bg-mustard selection:text-rich-black">
         <motion.div
           aria-hidden
           className="from-neon-coral via-mustard to-sea-green fixed inset-x-0 top-0 z-50 h-1 w-full origin-left rounded-r-full bg-linear-to-r"
           style={{ scaleX: scrollYProgress }}
         />
 
-        <section
-          className="from-rich-black via-cyber-grape to-slate-blue relative overflow-hidden bg-linear-to-b text-white"
-          aria-labelledby="summer-update-title"
-        >
-          <HeroEntrance delay={0.05} direction="down">
-            <Header
-              className="relative z-20 [--input-contrast:var(--color-white)] [--input:var(--color-cyber-grape)] [--primary-contrast:var(--color-white)] [--primary:var(--color-sea-green)] [--surface-contrast:var(--color-white)] [--surface:var(--color-rich-black)] [--text:var(--color-white)]"
-              containerClassName="py-6!"
+        <Section ref={heroRef} aria-labelledby="summer-update-title">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-70"
+            aria-hidden
+          >
+            <NetworkWeaveBackground
+              seed="summer-2026-update"
+              complexity={28}
+              strands={5}
+              convergence={heroWeaveConvergence}
+              colors={heroWeaveColors}
+              backgroundColor="transparent"
+              intensity={0.5}
+              flare={1.4}
+              blendMode="normal"
+              speedFactor={0.5}
+              className="block h-full w-full"
             />
+          </div>
+          <HeroEntrance delay={0.05} direction="down">
+            <Header className="relative z-20" containerClassName="py-6!" />
           </HeroEntrance>
 
-          <div className="tablet-portrait:pt-24 tablet-portrait:pb-48 relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-6 pt-16 pb-40 text-center">
-            <HeroEntrance delay={0.18}>
-              <div className="border-sea-serpent/40 bg-sea-serpent/10 font-monospace text-sea-serpent inline-flex rounded-full border px-4 py-2 text-xs tracking-widest uppercase">
-                New Schema 8 · Fresco 4.0.0 · Architect & Interviewer redesigned
-              </div>
-            </HeroEntrance>
-            <HeroEntrance delay={0.32}>
+          <div className="tablet-portrait:pt-24 tablet-portrait:pb-48 relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center gap-12 px-6 pt-16 pb-40 text-center">
+            <HeroEntrance
+              delay={0.32}
+              onAnimationComplete={updateHeroWeaveConvergence}
+            >
               <Heading
                 level="h1"
                 variant="display-heading"
-                className="text-white"
+                className="text-text"
                 id="summer-update-title"
               >
-                Introducing the next generation of Network Canvas apps
+                Introducing the next generation of{' '}
+                <span
+                  ref={heroFocalTextRef}
+                  className={cn(
+                    heroTextGlowClasses,
+                    'overflow-visible px-2 whitespace-nowrap text-white',
+                  )}
+                  style={{
+                    WebkitTextFillColor: 'var(--color-text)',
+                    WebkitTextStroke:
+                      'var(--text-glow-stroke-width) transparent',
+                    paintOrder: 'stroke fill',
+                    animation: shouldReduceMotion
+                      ? undefined
+                      : 'var(--animate-text-glow)',
+                  }}
+                >
+                  Network Canvas
+                </span>{' '}
+                apps
               </Heading>
             </HeroEntrance>
-            <HeroEntrance
-              bar
-              delay={0.52}
-              className="from-neon-coral via-paradise-pink to-sea-serpent mx-auto mt-8 h-1.5 w-48 origin-center rounded-full bg-linear-to-r"
-            />
             <HeroEntrance delay={0.62}>
               <Paragraph
                 intent="lead"
                 emphasis="muted"
-                className="mx-auto max-w-3xl text-white/80"
+                className="mx-auto max-w-3xl text-2xl"
               >
-                These updates represent a significant step forward in how you
-                design, run, and manage network interviews — here is what is
-                changing, what is new, and what it means for your work.
+                A significant step forward in how you design, run, and manage
+                Network Canvas interviews — here is what is changing, what is
+                new, and what it means for your work.
               </Paragraph>
-            </HeroEntrance>
-            <HeroEntrance delay={0.74}>
-              <div className="mt-10 flex flex-wrap justify-center gap-4">
-                <ActionButton href="https://architect.networkcanvas.com/">
-                  Open Architect
-                </ActionButton>
-                <ActionButton
-                  href="https://interviewer.networkcanvas.com/"
-                  secondary
-                >
-                  Open Interviewer
-                </ActionButton>
-              </div>
-            </HeroEntrance>
-            <HeroEntrance delay={0.86}>
-              <div className="font-monospace mt-5 text-xs tracking-widest text-white/50 uppercase">
-                Free and open-source · Nothing to install
-              </div>
             </HeroEntrance>
           </div>
 
           <HeroEntrance
             delay={1.1}
-            className="font-monospace absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3 text-xs tracking-widest text-white/55 uppercase"
+            className="font-monospace text-text/55 absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3 text-xs tracking-widest uppercase"
           >
             <span>Keep scrolling to learn more</span>
             <span
-              className="flex h-8 w-5 justify-center rounded-full border border-white/40 pt-2"
+              className="border-text/40 flex h-8 w-5 justify-center rounded-full border pt-2"
               aria-hidden
             >
-              <span className="size-1 animate-bounce rounded-full bg-white/70" />
+              <span className="bg-text/70 size-1 animate-bounce rounded-full" />
             </span>
           </HeroEntrance>
-        </section>
+        </Section>
 
-        <section
-          className="bg-platinum text-navy-taupe tablet-portrait:px-16 tablet-portrait:py-24 relative z-10 -mt-10 rounded-t-lg px-5 py-16"
-          aria-labelledby="whats-new-title"
-        >
-          <div className="relative z-10 mx-auto max-w-6xl">
+        <Section aria-labelledby="whats-new-title">
+          <div className="mx-auto max-w-6xl px-6">
             <Reveal {...revealMotion}>
               <SectionLabel>01 — What’s new</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
-                className="text-navy-taupe mt-2!"
+                className="text-text mt-2!"
                 id="whats-new-title"
               >
                 Architect and Interviewer, reimagined for the browser
               </Heading>
-              <Paragraph intent="lead" className="text-navy-taupe/80 max-w-3xl">
+              <Paragraph intent="lead" className="max-w-3xl">
                 We have redesigned <strong>Architect</strong> and{' '}
                 <strong>Interviewer</strong> as websites that can also be
-                installed as Progressive Web Apps (PWAs) on your device.
-                Together with <strong>Fresco 4.0.0</strong>, they form a
-                unified, modern platform built on a shared technical foundation
-                — and all three support a new protocol file format,{' '}
+                installed as{' '}
+                <Definition
+                  definition={
+                    <>
+                      <dfn>Progressive Web Apps</dfn> are specially crafted
+                      websites that can be installed on your device and provide
+                      a native app-like experience. This means they have an icon
+                      you can click to open them, they have their own storage,
+                      and they work offline.
+                    </>
+                  }
+                >
+                  Progressive Web Apps
+                </Definition>{' '}
+                on your device. Together with <strong>Fresco 4.0.0</strong>,
+                they form a unified, modern platform built on a shared technical
+                foundation — and all three support a new protocol file format,{' '}
                 <strong>Schema 8</strong>.
               </Paragraph>
             </Reveal>
-
-            <div className="tablet-portrait:grid-cols-3 mt-12 grid grid-cols-1 gap-6">
-              <BenefitCard title="Low friction use" icon="green" delay={0}>
-                Visit{' '}
-                <NativeLink href="https://architect.networkcanvas.com/">
-                  architect.networkcanvas.com
-                </NativeLink>{' '}
-                or{' '}
-                <NativeLink href="https://interviewer.networkcanvas.com/">
-                  interviewer.networkcanvas.com
-                </NativeLink>{' '}
-                on any device, at any time — and use the tools without
-                installing anything.
-              </BenefitCard>
-              <BenefitCard
-                title="Local app installation"
-                icon="blue"
-                delay={0.11}
-              >
-                Install either tool as an app directly from the browser. It
-                works like a typical app on your device, while you remain in
-                control of your data locally.
-              </BenefitCard>
-              <BenefitCard title="Streamlined updates" icon="cyan" delay={0.22}>
-                Installed apps silently check for newer versions and prompt you
-                to refresh. On the website, updates happen automatically behind
-                the scenes.
-              </BenefitCard>
-            </div>
-
-            <Reveal {...revealMotion}>
-              <aside className="border-mustard/50 bg-mustard/10 mt-10 rounded-sm border p-5">
-                <span className="bg-mustard font-monospace text-rich-black mr-3 inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest">
-                  NAMING
-                </span>
-                <Paragraph className="text-navy-taupe/80 inline">
-                  The original desktop and tablet apps are now{' '}
-                  <strong>Architect Classic</strong> and{' '}
-                  <strong>Interviewer Classic</strong>. They remain available
-                  for in-progress studies, but are no longer recommended for new
-                  research.
-                </Paragraph>
-              </aside>
-            </Reveal>
           </div>
-        </section>
-
-        <section
-          className="bg-platinum text-navy-taupe tablet-portrait:px-16 tablet-portrait:py-24 px-5 py-16"
-          aria-labelledby="meet-apps-title"
-        >
-          <Heading
-            level="h2"
-            margin="none"
-            className="sr-only"
-            id="meet-apps-title"
-          >
-            Meet the apps
-          </Heading>
-          <div className="tablet-portrait:space-y-32 relative z-10 mx-auto max-w-6xl space-y-24">
-            <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
-              <Reveal {...revealMotion} direction="left">
-                <div className="mb-5 flex items-center gap-4">
-                  <Image
-                    src="/images/summer-2026/architect-icon.png"
-                    alt="Architect app icon"
-                    width={54}
-                    height={54}
-                    className="rounded-sm"
-                  />
-                  <span className="font-monospace text-neon-coral text-xs tracking-widest uppercase">
-                    02 — Protocol design
-                  </span>
-                </div>
-                <Heading
-                  level="h3"
-                  variant="subheading"
-                  className="text-navy-taupe"
-                >
-                  Architect — build protocols in your browser, or as a PWA
-                </Heading>
-                <Paragraph className="text-navy-taupe/80">
-                  There is nothing to install — just open{' '}
-                  <NativeLink href="https://architect.networkcanvas.com/">
-                    architect.networkcanvas.com
-                  </NativeLink>{' '}
-                  and start building. Architect always runs the latest version
-                  automatically. Once in the website, install it to your
-                  computer as a PWA for a native-like experience and local
-                  control over your data.
-                </Paragraph>
-                <BulletList
-                  items={[
-                    {
-                      color: 'neon-coral',
-                      content: (
-                        <>
-                          Builds <strong>Schema 8</strong> protocols — required
-                          by Fresco 4.0.0 and the latest Interviewer
-                        </>
-                      ),
-                    },
-                    {
-                      color: 'sea-serpent',
-                      content:
-                        'Opens and automatically upgrades older Schema 7 protocols',
-                    },
-                    {
-                      color: 'neon-carrot',
-                      content:
-                        'Explore domain-specific protocol templates, informed by current literature',
-                    },
-                  ]}
-                />
-                <aside className="border-mustard/50 bg-mustard/10 mt-6 rounded-sm border p-5">
-                  <Paragraph className="text-navy-taupe/80">
-                    <strong>The website and PWA share no data.</strong> To move
-                    a protocol between them, download the file from one and
-                    upload it to the other.
-                  </Paragraph>
-                </aside>
-                <div className="mt-8 flex flex-wrap gap-4">
-                  <ActionButton
-                    compact
-                    href="https://architect.networkcanvas.com/"
-                  >
-                    Open Architect
-                  </ActionButton>
-                  <ActionButton
-                    compact
-                    href="https://documentation.networkcanvas.com/en/design-protocols/getting-started"
-                    secondary
-                  >
-                    Documentation
-                  </ActionButton>
-                </div>
-                <Paragraph
-                  intent="smallText"
-                  emphasis="muted"
-                  className="text-navy-taupe/55 mt-6"
-                >
-                  Architect Classic remains available for researchers who need
-                  to keep using older versions of Interviewer (e.g. 6.6.0). It
-                  is in maintenance mode — bug fixes only — and continues to
-                  produce Schema 7 protocols.
-                </Paragraph>
-              </Reveal>
-
-              <Reveal {...revealMotion} direction="right">
-                <ScreenshotFrame
-                  address="architect.networkcanvas.com"
-                  alt="Architect protocol editor showing the Sample Protocol timeline"
-                  src="/images/screenshots/architect.png"
-                />
-              </Reveal>
-            </div>
-
-            <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
-              <Reveal
-                {...revealMotion}
-                direction="right"
-                className="tablet-portrait:order-2"
+          <div className="phone-landscape:grid-cols-2 desktop:grid-cols-4 mx-auto my-12 grid max-w-380 grid-cols-1 gap-6 px-6">
+            <BenefitCard title="Low friction use" icon="green" delay={0}>
+              Visit{' '}
+              <NativeLink
+                href="https://architect.networkcanvas.com/"
+                target="_blank"
               >
-                <div className="mb-5 flex items-center gap-4">
-                  <Image
-                    src="/images/summer-2026/interviewer-icon.svg"
-                    alt="Interviewer app icon"
-                    width={54}
-                    height={54}
-                    className="rounded-sm"
-                  />
-                  <span className="font-monospace text-kiwi text-xs tracking-widest uppercase">
-                    02 — Survey deployment
-                  </span>
-                </div>
-                <Heading
-                  level="h3"
-                  variant="subheading"
-                  className="text-navy-taupe"
-                >
-                  Interviewer — manage and deploy surveys anywhere
-                </Heading>
-                <Paragraph className="text-navy-taupe/80">
-                  Interviewer has also been redesigned for the browser: upload a
-                  protocol at{' '}
-                  <NativeLink href="https://interviewer.networkcanvas.com/">
-                    interviewer.networkcanvas.com
-                  </NativeLink>{' '}
-                  and deploy without installing anything. Install it as a PWA to
-                  support offline workflows — it remains the ideal tool for
-                  in-person, interviewer-assisted network studies.
-                </Paragraph>
-                <BulletList
-                  items={[
-                    {
-                      color: 'kiwi',
-                      content:
-                        'New advanced security: encrypted data storage, and app authorization for sensitive actions such as exporting data',
-                    },
-                    {
-                      color: 'cerulean-blue',
-                      content: (
-                        <>
-                          Supports <strong>Schema 8</strong> natively, and
-                          migrates Schema 7 protocols automatically when you
-                          open them
-                        </>
-                      ),
-                    },
-                    {
-                      color: 'paradise-pink',
-                      content:
-                        'Interviewer and Interviewer Classic can be installed side by side, if necessary',
-                    },
-                  ]}
-                />
-                <div className="mt-8 flex flex-wrap gap-4">
-                  <ActionButton
-                    compact
-                    href="https://interviewer.networkcanvas.com/"
-                  >
-                    Open Interviewer
-                  </ActionButton>
-                  <ActionButton
-                    compact
-                    href="https://documentation.networkcanvas.com/en/collect-data/interviewer/using-interviewer"
-                    secondary
-                  >
-                    Documentation
-                  </ActionButton>
-                </div>
-                <Paragraph
-                  intent="smallText"
-                  emphasis="muted"
-                  className="text-navy-taupe/55 mt-6"
-                >
-                  Interviewer Classic remains available for in-progress studies.
-                  Like Architect Classic, it is in maintenance mode only, and
-                  not advisable for new research.
-                </Paragraph>
-              </Reveal>
-
-              <Reveal
-                {...revealMotion}
-                direction="left"
-                className="tablet-portrait:order-1"
+                architect.networkcanvas.com
+              </NativeLink>{' '}
+              or{' '}
+              <NativeLink
+                href="https://interviewer.networkcanvas.com/"
+                target="_blank"
               >
-                <ScreenshotFrame
-                  contain
-                  address="interviewer.networkcanvas.com"
-                  alt="Interviewer dashboard showing protocol cards and a resume interview action"
-                  src="/images/summer-2026/interviewer.webp"
-                />
-              </Reveal>
-            </div>
+                interviewer.networkcanvas.com
+              </NativeLink>{' '}
+              on any device, at any time — and use the tools without installing
+              anything.
+            </BenefitCard>
+            <BenefitCard
+              title="Local app installation"
+              icon="blue"
+              delay={0.11}
+            >
+              Install either tool as an app directly from the browser. It works
+              like a typical app on your device, while you remain in control of
+              your data locally.
+            </BenefitCard>
+            <BenefitCard title="Streamlined updates" icon="cyan" delay={0.22}>
+              The new apps are automatically kept up-to-date with the latest
+              features and fixes, so you can focus on your research rather than
+              managing software versions.
+            </BenefitCard>
+            <BenefitCard
+              title="Tablet support restored"
+              icon="coral"
+              delay={0.33}
+            >
+              The new Interviewer app once again runs on tablet devices (iPad
+              and Android) after several years of no availability due to app
+              store restrictions.
+            </BenefitCard>
+          </div>
 
-            <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
-              <Reveal {...revealMotion} direction="left">
-                <div className="mb-5 flex items-center gap-4">
-                  <Image
-                    src="/images/summer-2026/fresco-icon.png"
-                    alt="Fresco app icon"
-                    width={54}
-                    height={54}
-                    className="rounded-sm"
-                  />
-                  <span className="font-monospace text-mustard text-xs tracking-widest uppercase">
-                    02 — Remote web interviews
-                  </span>
-                </div>
-                <Heading
-                  level="h3"
-                  variant="subheading"
-                  className="text-navy-taupe"
-                >
-                  Fresco 4.0.0 — remote, self-administered interviews
-                </Heading>
-                <Paragraph className="text-navy-taupe/80">
-                  Fresco brings Network Canvas interviews to the web. Deploy
-                  your own private instance, upload a protocol, and share a URL
-                  — participants complete interviews on their own devices, with
-                  no app download required.
-                </Paragraph>
-                <aside className="border-mustard/50 bg-mustard/10 mt-6 rounded-sm border p-5">
-                  <Paragraph className="text-navy-taupe/80">
-                    <strong>Note:</strong> Fresco 4.0.0 is not supported on
-                    mobile phones.
+          <Reveal {...revealMotion}>
+            <Alert variant="info" className="mx-auto my-12! max-w-6xl">
+              <AlertTitle>
+                What about the original desktop and tablet apps?
+              </AlertTitle>
+              <AlertDescription>
+                The original desktop and tablet apps are now named{' '}
+                <strong>Architect Classic</strong> and{' '}
+                <strong>Interviewer Classic</strong>. They remain available for
+                in-progress studies and are <strong>fully supported</strong>,
+                but are in maintenance mode and will not receive new features.
+              </AlertDescription>
+            </Alert>
+          </Reveal>
+
+          <div>
+            <Heading
+              level="h2"
+              margin="none"
+              className="sr-only"
+              id="meet-apps-title"
+            >
+              Meet the apps
+            </Heading>
+            <div className="tablet-portrait:space-y-32 mx-auto max-w-6xl space-y-24">
+              <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
+                <Reveal {...revealMotion} direction="left">
+                  <div className="flex items-center gap-4">
+                    <Image
+                      src="/images/summer-2026/architect-icon.png"
+                      alt="Architect app icon"
+                      width={54}
+                      height={54}
+                      className="rounded-sm"
+                    />
+                    <span className="font-monospace text-slate-blue text-xs font-semibold tracking-widest uppercase">
+                      02 — Protocol design
+                    </span>
+                  </div>
+                  <Heading level="h3" variant="subheading">
+                    Meet the new Architect — design protocols in the browser
+                  </Heading>
+                  <Paragraph className="">
+                    There is nothing to install — just open{' '}
+                    <NativeLink
+                      href="https://architect.networkcanvas.com/"
+                      target="_blank"
+                    >
+                      architect.networkcanvas.com
+                    </NativeLink>{' '}
+                    and start building. Architect always runs the latest version
+                    automatically. Once in the website, install it to your
+                    computer as a{' '}
+                    <Definition
+                      asAbbreviation
+                      definition={
+                        <>
+                          <dfn>Progressive Web Apps</dfn> are specially crafted
+                          websites that can be installed on your device and
+                          provide a native app-like experience. This means they
+                          have an icon you can click to open them, they have
+                          their own storage, and they work offline.
+                        </>
+                      }
+                    >
+                      PWA
+                    </Definition>{' '}
+                    for a native-like experience and local control over your
+                    data.
                   </Paragraph>
-                </aside>
-                <div className="mt-8 flex flex-wrap gap-4">
-                  <ActionButton
-                    compact
-                    href="https://documentation.networkcanvas.com/en/collect-data/fresco/guide"
+                  <BulletList
+                    items={[
+                      {
+                        color: 'neon-coral',
+                        content: (
+                          <>
+                            Builds <strong>Schema 8</strong> protocols with all
+                            the new features (see below)
+                          </>
+                        ),
+                      },
+                      {
+                        color: 'sea-serpent',
+                        content:
+                          'Opens and automatically upgrades older Schema 7 protocols',
+                      },
+                      {
+                        color: 'neon-carrot',
+                        content:
+                          'Includes domain-specific protocol templates, designed to help you get started quickly and avoid common mistakes',
+                      },
+                    ]}
+                  />
+                  <div className="mt-8 flex flex-wrap gap-4">
+                    <ActionButton
+                      compact
+                      href="https://architect.networkcanvas.com/"
+                      target="_blank"
+                    >
+                      Open Architect
+                    </ActionButton>
+                    <ActionButton
+                      compact
+                      href="https://documentation.networkcanvas.com/en/design-protocols/getting-started"
+                      secondary
+                    >
+                      Documentation
+                    </ActionButton>
+                  </div>
+                  <Paragraph
+                    intent="smallText"
+                    emphasis="muted"
+                    className="text-text/55 mt-6"
                   >
-                    Deployment guide
-                  </ActionButton>
-                  <ActionButton
-                    compact
-                    href="https://documentation.networkcanvas.com/en/collect-data/fresco/using-fresco"
-                    secondary
-                  >
-                    Documentation
-                  </ActionButton>
-                </div>
-              </Reveal>
+                    Architect Classic remains available for researchers who need
+                    to keep using older versions of Interviewer (e.g. 6.6.0). It
+                    is in maintenance mode — bug fixes only — and continues to
+                    produce Schema 7 protocols.
+                  </Paragraph>
+                </Reveal>
 
-              <div className="space-y-4">
-                <FeatureCard
-                  title="Multi-user access"
-                  color="neon-coral"
-                  delay={0}
+                <Reveal {...revealMotion} direction="right">
+                  <ScreenshotFrame
+                    address="architect.networkcanvas.com"
+                    alt="Architect protocol editor showing the Sample Protocol timeline"
+                    src="/images/screenshots/architect.png"
+                  />
+                </Reveal>
+              </div>
+
+              <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
+                <Reveal
+                  {...revealMotion}
+                  direction="right"
+                  className="tablet-portrait:order-2"
                 >
-                  Each team member gets their own account, rather than sharing
-                  credentials.
-                </FeatureCard>
-                <FeatureCard
-                  title="Two-factor authentication"
-                  color="sea-serpent"
-                  delay={0.11}
+                  <div className="mb-5 flex items-center gap-4">
+                    <Image
+                      src="/images/summer-2026/interviewer-icon.svg"
+                      alt="Interviewer app icon"
+                      width={54}
+                      height={54}
+                      className="rounded-sm"
+                    />
+                    <span className="font-monospace text-slate-blue text-xs font-semibold tracking-widest uppercase">
+                      02 — Face-to-face interviews
+                    </span>
+                  </div>
+                  <Heading
+                    level="h3"
+                    variant="subheading"
+                    className="text-text"
+                  >
+                    Interviewer — conduct interviews anywhere
+                  </Heading>
+                  <Paragraph className="">
+                    Interviewer has also been redesigned for the browser: upload
+                    a protocol at{' '}
+                    <NativeLink href="https://interviewer.networkcanvas.com/">
+                      interviewer.networkcanvas.com
+                    </NativeLink>{' '}
+                    and deploy without installing anything. Install it as a{' '}
+                    <Definition
+                      asAbbreviation
+                      definition={
+                        <>
+                          <dfn>Progressive Web Apps</dfn> are specially crafted
+                          websites that can be installed on your device and
+                          provide a native app-like experience. This means they
+                          have an icon you can click to open them, they have
+                          their own storage, and they work offline.
+                        </>
+                      }
+                    >
+                      PWA
+                    </Definition>{' '}
+                    to support offline workflows — it remains the ideal tool for
+                    in-person, interviewer-assisted network studies.
+                  </Paragraph>
+                  <BulletList
+                    items={[
+                      {
+                        color: 'kiwi',
+                        content:
+                          'New advanced security: encrypted data storage, and app authorization for sensitive actions such as exporting data',
+                      },
+                      {
+                        color: 'cerulean-blue',
+                        content: (
+                          <>
+                            Supports <strong>Schema 8</strong> natively, and
+                            migrates all existing Schema 7 protocols
+                            automatically when you import them
+                          </>
+                        ),
+                      },
+                      {
+                        color: 'paradise-pink',
+                        content:
+                          'Compatible with all desktop and tablet devices, including iPads and Android tablets',
+                      },
+                    ]}
+                  />
+                  <div className="mt-8 flex flex-wrap gap-4">
+                    <ActionButton
+                      compact
+                      href="https://interviewer.networkcanvas.com/"
+                      target="_blank"
+                    >
+                      Open Interviewer
+                    </ActionButton>
+                    <ActionButton
+                      compact
+                      href="https://documentation.networkcanvas.com/en/collect-data/interviewer/using-interviewer"
+                      secondary
+                    >
+                      Documentation
+                    </ActionButton>
+                  </div>
+                  <Paragraph
+                    intent="smallText"
+                    emphasis="muted"
+                    className="text-text/55 mt-6"
+                  >
+                    Interviewer Classic remains available for in-progress
+                    studies. Like Architect Classic, it is in maintenance mode
+                    only, and does not benefit from new features.
+                  </Paragraph>
+                </Reveal>
+
+                <Reveal
+                  {...revealMotion}
+                  direction="left"
+                  className="tablet-portrait:order-1"
                 >
-                  Enable 2FA and register passkeys directly from the dashboard.
-                </FeatureCard>
-                <FeatureCard
-                  title="Flexible storage"
-                  color="mustard"
-                  delay={0.22}
-                >
-                  Use UploadThing (managed, simplest to set up) or any
-                  S3-compatible bucket — AWS S3, Cloudflare R2, MinIO, Backblaze
-                  B2.
-                </FeatureCard>
+                  <ScreenshotFrame
+                    contain
+                    address="interviewer.networkcanvas.com"
+                    alt="Interviewer dashboard showing protocol cards and a resume interview action"
+                    src="/images/summer-2026/interviewer.webp"
+                  />
+                </Reveal>
+              </div>
+
+              <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
+                <Reveal {...revealMotion} direction="left">
+                  <div className="mb-5 flex items-center gap-4">
+                    <Image
+                      src="/images/summer-2026/fresco-icon.png"
+                      alt="Fresco app icon"
+                      width={54}
+                      height={54}
+                      className="rounded-sm"
+                    />
+                    <span className="font-monospace text-slate-blue text-xs font-semibold tracking-widest uppercase">
+                      02 — Remote self-administered interviews
+                    </span>
+                  </div>
+                  <Heading
+                    level="h3"
+                    variant="subheading"
+                    className="text-text"
+                  >
+                    Fresco 4.0.0 — a significant upgrade
+                  </Heading>
+                  <Paragraph className="">
+                    The latest version of Fresco is a huge release, bringing
+                    several significant new features. Designed to support remote
+                    self-administered interviews (but completely compatible with
+                    face-to-face interviewing too), Fresco is the suggested
+                    choice for studies with large numbers of participants, a
+                    large team of researchers, or that require a centralised
+                    data management solution.
+                  </Paragraph>
+                  <div className="mt-8 flex flex-wrap gap-4">
+                    <ActionButton
+                      compact
+                      href="https://documentation.networkcanvas.com/en/collect-data/fresco/guide"
+                    >
+                      Deployment guide
+                    </ActionButton>
+                    <ActionButton
+                      compact
+                      href="https://documentation.networkcanvas.com/en/collect-data/fresco/using-fresco"
+                      secondary
+                    >
+                      Documentation
+                    </ActionButton>
+                  </div>
+                  <Paragraph
+                    intent="smallText"
+                    emphasis="muted"
+                    className="text-text/55 mt-6"
+                  >
+                    Users of Fresco 3.x should avoid upgrading in the middle of
+                    a study. Fresco 4.0.0 cannot be downgraded to 3.x.
+                  </Paragraph>
+                </Reveal>
+
+                <div className="space-y-4">
+                  <FeatureCard
+                    title="Multi-user access"
+                    color="neon-coral"
+                    delay={0}
+                  >
+                    Multi-user support – Each team member gets their own
+                    account, with two-factor authentication, passkey support,
+                    and a full audit log of all actions taken in the system.
+                  </FeatureCard>
+                  <FeatureCard
+                    title="Two-factor authentication"
+                    color="sea-serpent"
+                    delay={0.11}
+                  >
+                    Access data via a secure API – Fresco now provides a REST
+                    API for programmatic access to your study data, enabling
+                    realtime reporting, dashboards, and analytics.
+                  </FeatureCard>
+                  <FeatureCard
+                    title="Flexible storage"
+                    color="mustard"
+                    delay={0.22}
+                  >
+                    Fully deployable on your own infrastructure – Fresco can be
+                    installed entirely on your own servers, or hosted in your
+                    private cloud, giving you full control over your data.
+                  </FeatureCard>
+                </div>
               </div>
             </div>
           </div>
-        </section>
-
-        <section
-          className="from-rich-black via-cyber-grape to-slate-blue tablet-portrait:px-16 tablet-portrait:py-28 relative overflow-hidden bg-linear-to-br px-5 py-20 text-white"
-          aria-labelledby="schema-title"
-        >
-          <div
-            className="pointer-events-none absolute inset-0 opacity-70"
-            aria-hidden
-          >
-            <BackgroundLights
-              large={2}
-              medium={2}
-              small={1}
-              colors={schemaLightColors}
-              blendMode="color-dodge"
-              speedFactor={0.3}
-            />
-          </div>
-          <div className="relative z-10 mx-auto max-w-6xl">
+        </Section>
+        <Section aria-labelledby="schema-title">
+          <div className="mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
-              <SectionLabel dark>03 — Schema 8</SectionLabel>
+              <SectionLabel>03 — Schema 8</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
-                className="mt-2! text-white"
+                className="text-text mt-2!"
                 id="schema-title"
               >
-                New interfaces and features, only in the new generation
+                New interfaces and features
               </Heading>
               <Paragraph
                 intent="lead"
                 emphasis="muted"
-                className="max-w-3xl text-white/70"
+                className="text-text/70 max-w-3xl"
               >
-                Schema 8 introduces new interview interfaces and features that
-                are unavailable in the current generation. If your study
-                requires any of these, you’ll need to use the new tools. Tap
-                each one to explore.
+                This new generation of apps introduces a new{' '}
+                <Definition
+                  definition={
+                    <>
+                      Protocol Schemas are the technical specifications that
+                      define how protocol files are structured and interpreted
+                      by the apps. They ensure that protocols are compatible
+                      across different versions of the apps and provide a
+                      framework for implementing new features and interfaces.
+                    </>
+                  }
+                >
+                  protocol schema version
+                </Definition>
+                , Schema 8, which includes several new interview interfaces and
+                features. If your study requires any of these, you’ll need to
+                use the new tools. Tap each one to explore.
               </Paragraph>
             </Reveal>
 
@@ -1090,7 +1224,7 @@ export function SummerUpdatePage() {
                   <button
                     type="button"
                     aria-pressed={selectedInterface === index}
-                    className="focusable aria-pressed:border-sea-serpent aria-pressed:bg-sea-serpent/15 flex h-full w-full flex-col items-center justify-center gap-3 rounded-sm border border-white/15 bg-white/5 p-5 text-center text-white/80 transition hover:bg-white/10 aria-pressed:text-white"
+                    className="focusable border-text/15 bg-surface-1 hover:bg-surface-2 aria-pressed:border-sea-serpent aria-pressed:bg-sea-serpent/15 aria-pressed:text-text flex h-full w-full flex-col items-center justify-center gap-3 rounded-sm border p-5 text-center transition"
                     onClick={() => setSelectedInterface(index)}
                   >
                     <InterfaceGraphic motif={feature.motif} />
@@ -1104,7 +1238,7 @@ export function SummerUpdatePage() {
 
             <Reveal {...revealMotion}>
               <div
-                className="bg-rich-black/45 tablet-portrait:p-8 mt-8 rounded border border-white/15 p-6 backdrop-blur-sm"
+                className="bg-surface-1 border-text/15 tablet-portrait:p-8 mt-8 rounded border p-6"
                 aria-live="polite"
               >
                 <div className="flex flex-wrap items-center gap-4">
@@ -1112,7 +1246,7 @@ export function SummerUpdatePage() {
                     level="h3"
                     variant="subheading"
                     margin="none"
-                    className="text-white"
+                    className="text-text"
                   >
                     {activeInterface.name}
                   </Heading>
@@ -1120,7 +1254,7 @@ export function SummerUpdatePage() {
                     {activeInterface.tag}
                   </span>
                 </div>
-                <Paragraph emphasis="muted" className="max-w-3xl text-white/70">
+                <Paragraph emphasis="muted" className="text-text/70 max-w-3xl">
                   {activeInterface.description}
                 </Paragraph>
                 <NativeLink
@@ -1129,42 +1263,54 @@ export function SummerUpdatePage() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Explore in the documentation ↗
+                  Explore in the documentation{' '}
+                  <ExternalLink className="inline-block size-4" />
                 </NativeLink>
               </div>
             </Reveal>
           </div>
-        </section>
+        </Section>
 
-        <section
-          className="bg-platinum text-navy-taupe tablet-portrait:px-16 tablet-portrait:py-28 px-5 py-20"
-          aria-labelledby="compatibility-title"
-        >
-          <div className="relative z-10 mx-auto max-w-6xl">
+        <Section aria-labelledby="compatibility-title">
+          <div className="mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
               <SectionLabel>04 — Compatibility</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
-                className="text-navy-taupe mt-2!"
+                className="text-text mt-2!"
                 id="compatibility-title"
               >
-                Two formats, six apps — know before you upgrade
+                What to know before you upgrade
               </Heading>
-              <Paragraph intent="lead" className="text-navy-taupe/80 max-w-3xl">
-                Protocol schema versions determine which apps can open a given
-                protocol file — and the most important change in this release is{' '}
-                <strong>Schema 8</strong>. Here is exactly how every app handles
-                both formats. Select a row for what it means in practice.
+              <Paragraph intent="lead" className="max-w-3xl">
+                <Definition
+                  definition={
+                    <>
+                      Protocol Schemas are the technical specifications that
+                      define how protocol files are structured and interpreted
+                      by the apps. They ensure that protocols are compatible
+                      across different versions of the apps and provide a
+                      framework for implementing new features and interfaces.
+                    </>
+                  }
+                >
+                  Protocol schema version
+                </Definition>{' '}
+                determine which apps can open a given protocol file — and the
+                most important change in this release is{' '}
+                <strong>Schema 8</strong>. Below you will find a table that
+                indicates exactly how every app handles both formats. Select a
+                row to see details about what it means in practice.
               </Paragraph>
             </Reveal>
 
             <Reveal {...revealMotion} direction="zoom">
-              <div className="elevation-low border-navy-taupe/15 bg-surface mt-12 overflow-hidden rounded border">
+              <div className="elevation-low border-text/15 bg-surface-1 my-12 overflow-hidden rounded border">
                 <div className="overflow-x-auto">
                   <div className="min-w-4xl">
                     <div
-                      className="border-navy-taupe/15 bg-surface-2 font-monospace text-navy-taupe/60 grid grid-cols-4 gap-4 border-b px-6 py-4 text-xs font-bold tracking-widest uppercase"
+                      className="border-text/15 bg-surface-2 font-monospace text-text/60 grid grid-cols-4 gap-4 border-b px-6 py-4 text-xs font-bold tracking-widest uppercase"
                       aria-hidden
                     >
                       <span>App</span>
@@ -1179,8 +1325,8 @@ export function SummerUpdatePage() {
                           {row.group !== previousGroup ? (
                             <div
                               className={cn(
-                                'bg-platinum font-monospace text-navy-taupe/55 px-6 py-2 text-xs font-bold tracking-widest uppercase',
-                                index > 0 && 'border-navy-taupe/15 border-t',
+                                'bg-surface-2 font-monospace text-text/55 px-6 py-2 text-xs font-bold tracking-widest uppercase',
+                                index > 0 && 'border-text/15 border-t',
                               )}
                             >
                               {row.group}
@@ -1194,18 +1340,18 @@ export function SummerUpdatePage() {
                               row.schema8
                             }`}
                             aria-pressed={selectedCompatibilityRow === index}
-                            className="focusable border-navy-taupe/10 aria-pressed:bg-sea-serpent/10 hover:bg-navy-taupe/5 grid w-full grid-cols-4 items-center gap-4 border-t px-6 py-4 text-left transition first:border-t-0"
+                            className="focusable border-text/10 hover:bg-text/5 aria-pressed:bg-sea-serpent/10 grid w-full grid-cols-4 items-center gap-4 border-t px-6 py-4 text-left transition first:border-t-0"
                             onClick={() => setSelectedCompatibilityRow(index)}
                           >
-                            <span className="text-navy-taupe font-bold">
+                            <span className="text-text font-bold">
                               {row.app}{' '}
                               {row.version ? (
-                                <span className="font-monospace text-navy-taupe/50 text-xs font-normal">
+                                <span className="font-monospace text-text/50 text-xs font-normal">
                                   {row.version}
                                 </span>
                               ) : null}
                             </span>
-                            <span className="text-navy-taupe/65 text-sm">
+                            <span className="text-text/65 text-sm">
                               {row.platform}
                             </span>
                             <StatusChip status={row.schema7} />
@@ -1217,7 +1363,7 @@ export function SummerUpdatePage() {
                   </div>
                 </div>
                 <div
-                  className="border-navy-taupe/15 bg-sea-serpent/10 text-navy-taupe/75 border-t px-6 py-4 text-sm"
+                  className="border-text/15 bg-sea-serpent/10 text-text/75 border-t px-6 py-4 text-sm"
                   aria-live="polite"
                 >
                   {compatibilityNote}
@@ -1226,22 +1372,24 @@ export function SummerUpdatePage() {
             </Reveal>
 
             <Reveal {...revealMotion} direction="zoom">
-              <div className="elevation-low bg-rich-black tablet-portrait:grid-cols-2 tablet-portrait:p-10 mt-10 grid grid-cols-1 items-center gap-10 rounded p-8 text-white">
+              <Surface className="tablet-portrait:grid-cols-2 my-12 grid grid-cols-1 items-center gap-10">
                 <div>
                   <Heading
                     level="h3"
                     variant="subheading"
-                    className="text-white"
+                    className="text-text"
                   >
-                    Migration is one-way.
+                    Protocol migration is one-way.
                   </Heading>
-                  <Paragraph emphasis="muted" className="text-white/70">
+                  <Paragraph>
                     If you open a Schema 7 protocol in any new-generation app,
                     it will be automatically upgraded to Schema 8. You will not
                     be able to convert it back, or open it in the older apps
-                    afterward.
+                    afterward. This is especially important if you make changes
+                    to a protocol in Architect, as it will be upgraded to Schema
+                    8 when you save it.
                   </Paragraph>
-                  <Paragraph className="border-mustard/35 bg-mustard/10 rounded-sm border p-4 text-white/80">
+                  <Paragraph className="border-mustard/35 bg-mustard/10 rounded-sm border p-4">
                     Keep a copy of your original{' '}
                     <span className="bg-mustard font-monospace text-rich-black rounded-xs px-2 py-1 text-xs font-bold">
                       .netcanvas
@@ -1252,10 +1400,10 @@ export function SummerUpdatePage() {
                 </div>
                 <div className="flex flex-col items-center gap-5" aria-hidden>
                   <div className="flex items-center justify-center gap-5">
-                    <div className="grid size-24 place-items-center rounded-full border-2 border-white/25 text-center">
+                    <div className="border-text/25 grid size-24 place-items-center rounded-full border-2 text-center">
                       <span>
                         <strong className="block text-3xl">7</strong>
-                        <span className="font-monospace text-xs tracking-widest text-white/50">
+                        <span className="font-monospace text-text/50 text-xs tracking-widest">
                           SCHEMA
                         </span>
                       </span>
@@ -1275,42 +1423,23 @@ export function SummerUpdatePage() {
                       </span>
                     </div>
                   </div>
-                  <div className="font-monospace text-neon-coral text-xs tracking-wide">
+                  <div className="font-monospace text-slate-blue text-xs font-semibold tracking-wide">
                     ← ✗ No return path
                   </div>
                 </div>
-              </div>
+              </Surface>
             </Reveal>
-          </div>
-        </section>
-
-        <section
-          className="from-rich-black via-cyber-grape to-slate-blue tablet-portrait:px-16 tablet-portrait:py-28 relative overflow-hidden bg-linear-to-br px-5 py-20 text-white"
-          aria-labelledby="upgrade-title"
-        >
-          <div
-            className="pointer-events-none absolute inset-0 opacity-70"
-            aria-hidden
-          >
-            <BackgroundLights
-              large={2}
-              medium={2}
-              small={1}
-              colors={upgradeLightColors}
-              blendMode="color-dodge"
-              speedFactor={0.25}
-            />
           </div>
           <div className="relative z-10 mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
-              <SectionLabel dark>05 — Should you upgrade?</SectionLabel>
+              <SectionLabel>05 — Should you upgrade?</SectionLabel>
               <Heading
                 level="h2"
                 margin="none"
                 className="sr-only"
                 id="upgrade-title"
               >
-                Should you upgrade?
+                When should you upgrade?
               </Heading>
             </Reveal>
             <div className="tablet-portrait:grid-cols-2 mt-8 grid grid-cols-1 gap-6">
@@ -1322,17 +1451,17 @@ export function SummerUpdatePage() {
                   shadow="sm"
                   className="h-full"
                 >
-                  <span className="bg-sea-green/15 font-monospace text-sea-green-dark inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
+                  <span className="bg-sea-green/15 font-monospace text-sea-green inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
                     Starting a new study
                   </span>
                   <Heading
                     level="h3"
                     variant="subheading"
-                    className="text-navy-taupe"
+                    className="text-text"
                   >
                     Use the new generation
                   </Heading>
-                  <Paragraph className="text-navy-taupe/80">
+                  <Paragraph className="">
                     For new studies, we recommend the new tools: use{' '}
                     <strong>Architect</strong> to design your protocol, and
                     deploy interviews with <strong>Fresco 4.0.0</strong> or{' '}
@@ -1348,17 +1477,17 @@ export function SummerUpdatePage() {
                   shadow="sm"
                   className="h-full"
                 >
-                  <span className="bg-sea-serpent/15 font-monospace text-sea-serpent-dark inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
+                  <span className="bg-sea-serpent/15 font-monospace text-sea-serpent inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
                     Running an ongoing study
                   </span>
                   <Heading
                     level="h3"
                     variant="subheading"
-                    className="text-navy-taupe"
+                    className="text-text"
                   >
                     There is no rush
                   </Heading>
-                  <Paragraph className="text-navy-taupe/80">
+                  <Paragraph className="">
                     Interviewer Classic and Architect Classic are still
                     supported and will continue to receive bug fixes. Upgrade at
                     a time that suits your project — just be mindful of the
@@ -1368,24 +1497,21 @@ export function SummerUpdatePage() {
               </Reveal>
             </div>
           </div>
-        </section>
+        </Section>
 
-        <section
-          className="bg-platinum text-navy-taupe tablet-portrait:px-16 tablet-portrait:py-28 px-5 py-20"
-          aria-labelledby="resources-title"
-        >
-          <div className="relative z-10 mx-auto max-w-6xl">
+        <Section aria-labelledby="resources-title">
+          <div className="mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
               <SectionLabel>06 — Project resources</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
-                className="text-navy-taupe mt-2!"
+                className="text-text mt-2!"
                 id="resources-title"
               >
                 A clearer home for the whole Network Canvas project
               </Heading>
-              <Paragraph intent="lead" className="text-navy-taupe/80 max-w-3xl">
+              <Paragraph intent="lead" className="max-w-3xl">
                 The apps are not the only part of Network Canvas that has
                 changed. We have also redesigned the project website and
                 reorganized the documentation to make it easier to understand
@@ -1399,29 +1525,28 @@ export function SummerUpdatePage() {
                   noContainer
                   spacing="xl"
                   shadow="sm"
-                  className="h-full"
+                  className="flex h-full flex-col"
                 >
-                  <div className="flex h-full flex-col">
-                    <SectionLabel>Project website</SectionLabel>
-                    <Heading level="h3" variant="subheading" className="mt-2!">
-                      A fresh new look for networkcanvas.com
-                    </Heading>
-                    <Paragraph>
-                      The redesigned website introduces a more expressive visual
-                      identity and clearer paths through the Network Canvas
-                      ecosystem, from learning what the platform can do to
-                      choosing the best tools for your study.
-                    </Paragraph>
-                    <NativeLink href="https://networkcanvas.com/">
-                      Explore the new website ↗
-                    </NativeLink>
-                    <div className="mt-auto pt-8">
-                      <ScreenshotFrame
-                        address="networkcanvas.com"
-                        alt="The redesigned Network Canvas website homepage"
-                        src="/images/summer-2026/website-homepage.jpg"
-                      />
-                    </div>
+                  <SectionLabel>Project documentation</SectionLabel>
+                  <Heading level="h3" variant="subheading" className="mt-2!">
+                    Guidance organized around your research workflow
+                  </Heading>
+                  <Paragraph>
+                    The documentation now starts with the work you are doing:
+                    getting started, designing protocols, collecting data, and
+                    analyzing results. New workflow navigation and refreshed
+                    guides make the next step easier to find.
+                  </Paragraph>
+                  <NativeLink href="https://documentation.networkcanvas.com/">
+                    Explore the documentation{' '}
+                    <ExternalLink className="inline-block size-4" />
+                  </NativeLink>
+                  <div className="mt-auto pt-8">
+                    <ScreenshotFrame
+                      address="documentation.networkcanvas.com"
+                      alt="The redesigned Network Canvas documentation homepage"
+                      src="/images/summer-2026/documentation-homepage.jpg"
+                    />
                   </div>
                 </Surface>
               </Reveal>
@@ -1431,60 +1556,43 @@ export function SummerUpdatePage() {
                   noContainer
                   spacing="xl"
                   shadow="sm"
-                  className="h-full"
+                  className="flex h-full flex-col"
                 >
-                  <div className="flex h-full flex-col">
-                    <SectionLabel>Project documentation</SectionLabel>
-                    <Heading level="h3" variant="subheading" className="mt-2!">
-                      Guidance organized around your research workflow
-                    </Heading>
-                    <Paragraph>
-                      The documentation now starts with the work you are doing:
-                      getting started, designing protocols, collecting data, and
-                      analyzing results. New workflow navigation and refreshed
-                      guides make the next step easier to find.
-                    </Paragraph>
-                    <NativeLink href="https://documentation.networkcanvas.com/">
-                      Explore the documentation ↗
-                    </NativeLink>
-                    <div className="mt-auto pt-8">
-                      <ScreenshotFrame
-                        address="documentation.networkcanvas.com"
-                        alt="The redesigned Network Canvas documentation homepage"
-                        src="/images/summer-2026/documentation-homepage.jpg"
-                      />
-                    </div>
+                  <SectionLabel>Project website</SectionLabel>
+                  <Heading level="h3" variant="subheading" className="mt-2!">
+                    A fresh new look for networkcanvas.com
+                  </Heading>
+                  <Paragraph>
+                    The redesigned website introduces a more expressive visual
+                    identity and clearer paths through the Network Canvas
+                    ecosystem, from learning what the platform can do to
+                    choosing the best tools for your study.
+                  </Paragraph>
+                  <NativeLink href="https://networkcanvas.com/">
+                    Explore the new website{' '}
+                    <ExternalLink className="inline-block size-4" />
+                  </NativeLink>
+                  <div className="mt-auto pt-8">
+                    <ScreenshotFrame
+                      address="networkcanvas.com"
+                      alt="The redesigned Network Canvas website homepage"
+                      src="/images/summer-2026/website-homepage.jpg"
+                    />
                   </div>
                 </Surface>
               </Reveal>
             </div>
           </div>
-        </section>
+        </Section>
 
-        <section
-          className="from-rich-black via-cyber-grape to-slate-blue tablet-portrait:px-16 tablet-portrait:py-28 relative overflow-hidden bg-linear-to-br px-5 py-20 text-white"
-          aria-labelledby="getting-started-title"
-        >
-          <div
-            className="pointer-events-none absolute inset-0 opacity-70"
-            aria-hidden
-          >
-            <BackgroundLights
-              large={2}
-              medium={1}
-              small={2}
-              colors={finalLightColors}
-              blendMode="color-dodge"
-              speedFactor={0.25}
-            />
-          </div>
-          <div className="relative z-10 mx-auto max-w-6xl">
+        <Section aria-labelledby="getting-started-title">
+          <div className="mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
-              <SectionLabel dark>07 — Getting started</SectionLabel>
+              <SectionLabel>07 — Getting started</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
-                className="mt-2! text-white"
+                className="text-text mt-2!"
                 id="getting-started-title"
               >
                 Start exploring the new generation
@@ -1497,7 +1605,7 @@ export function SummerUpdatePage() {
                   delay={index * 0.11}
                   key={destination.title}
                 >
-                  <article className="elevation-low h-full rounded border border-white/15 bg-white/5 p-6 backdrop-blur-sm">
+                  <article className="elevation-low border-text/15 bg-surface-1 h-full rounded border p-6">
                     <span className="flex items-start justify-between gap-4">
                       <NativeLink
                         className="[--link:var(--color-sea-serpent)]"
@@ -1517,10 +1625,10 @@ export function SummerUpdatePage() {
                           destination.color === 'pink' && 'text-paradise-pink',
                         )}
                       >
-                        ↗
+                        <ExternalLink className="inline-block size-4" />
                       </span>
                     </span>
-                    <span className="mt-3 block text-sm text-white/60">
+                    <span className="text-text/60 mt-3 block text-sm">
                       {destination.detail}
                     </span>
                   </article>
@@ -1530,7 +1638,7 @@ export function SummerUpdatePage() {
             <Reveal {...revealMotion}>
               <Paragraph
                 emphasis="muted"
-                className="mt-12 max-w-4xl text-white/70"
+                className="text-text/70 mt-12 max-w-4xl"
               >
                 If you have questions or run into issues, the{' '}
                 <NativeLink
@@ -1547,7 +1655,7 @@ export function SummerUpdatePage() {
               </Paragraph>
             </Reveal>
           </div>
-        </section>
+        </Section>
       </main>
       <Footer />
     </>

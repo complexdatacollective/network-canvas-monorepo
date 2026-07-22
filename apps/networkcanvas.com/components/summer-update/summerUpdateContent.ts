@@ -97,7 +97,7 @@ export type InterfaceMotif = (typeof interfaceFeatures)[number]['motif'];
 
 export const compatibilityRows = [
   {
-    group: 'Former generation',
+    group: "Current ('Classic') generation",
     app: 'Interviewer Classic',
     version: '6.6.0',
     platform: 'Desktop & tablet',
@@ -106,7 +106,7 @@ export const compatibilityRows = [
     note: 'Interviewer Classic runs Schema 7 natively, but cannot open Schema 8 protocols. Continue using it for in-progress Schema 7 studies — it remains supported with bug fixes.',
   },
   {
-    group: 'Former generation',
+    group: "Current ('Classic') generation",
     app: 'Architect Classic',
     version: '6.6.0',
     platform: 'Desktop',
@@ -115,7 +115,7 @@ export const compatibilityRows = [
     note: 'Architect Classic continues to produce Schema 7 protocols, in maintenance mode. Use it only if you need to keep running older versions of Interviewer (e.g. 6.6.0).',
   },
   {
-    group: 'Former generation',
+    group: "Current ('Classic') generation",
     app: 'Fresco',
     version: '3.1.2',
     platform: 'Browser',

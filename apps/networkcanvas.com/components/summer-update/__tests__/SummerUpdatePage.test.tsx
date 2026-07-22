@@ -1,8 +1,30 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import type { ComponentPropsWithoutRef, ComponentType, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SummerUpdatePage } from '../SummerUpdatePage';
+
+const { motionPreferences } = vi.hoisted(() => ({
+  motionPreferences: { shouldReduce: false },
+}));
+
+vi.mock('@codaco/art/NetworkWeaveBackground', () => ({
+  default: ({ convergence }: { convergence?: { x: number; y: number } }) => (
+    <div
+      data-testid="hero-weave"
+      data-convergence={
+        convergence ? `${convergence.x},${convergence.y}` : undefined
+      }
+    />
+  ),
+}));
 
 function MotionDiv({
   animate: _animate,
@@ -24,11 +46,12 @@ function MotionDiv({
 }
 
 vi.mock('motion/react', () => ({
+  AnimatePresence: ({ children }: { children: ReactNode }) => children,
   motion: {
     create: (Component: ComponentType) => Component,
     div: MotionDiv,
   },
-  useReducedMotion: () => true,
+  useReducedMotion: () => motionPreferences.shouldReduce,
   useScroll: () => ({ scrollYProgress: 0 }),
 }));
 
@@ -65,9 +88,21 @@ vi.mock('~/lib/i18n/navigation', () => ({
   ),
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  motionPreferences.shouldReduce = false;
+});
 
 describe('SummerUpdatePage', () => {
+  it('defines PWA where the abbreviation is introduced', () => {
+    render(<SummerUpdatePage />);
+
+    const abbreviation = screen.getByText('PWAs');
+
+    expect(abbreviation.tagName).toBe('ABBR');
+    expect(abbreviation).toHaveAccessibleDescription('Progressive Web Apps');
+  });
+
   it('links every Schema 8 explorer item to its relevant documentation', () => {
     render(<SummerUpdatePage />);
 
@@ -164,8 +199,62 @@ describe('SummerUpdatePage', () => {
     ).toContainElement(documentationScreenshot);
   });
 
-  it('uses the shared dark treatment for section five and white browser frames', () => {
+  it('uses theme-aware sections, a text-anchored woven hero, and white browser frames', async () => {
     render(<SummerUpdatePage />);
+
+    const heroHeading = screen.getByRole('heading', {
+      name: 'Introducing the next generation of Network Canvas apps',
+    });
+    const hero = heroHeading.closest('section');
+    const projectName = within(heroHeading).getByText('Network Canvas');
+
+    if (!hero) {
+      throw new Error('Hero focal text did not render');
+    }
+
+    expect(hero).toHaveClass('relative', 'overflow-hidden');
+    expect(hero).not.toHaveClass('bg-linear-to-b');
+    expect(heroHeading).toHaveClass('text-text');
+    expect(projectName).toHaveClass('bg-clip-text', 'text-white');
+    expect(projectName).toHaveStyle({
+      animation: 'var(--animate-text-glow)',
+    });
+    expect(projectName.style.webkitTextFillColor).toBe('var(--color-white)');
+    expect(projectName.style.webkitTextStroke).toBe(
+      'var(--text-glow-stroke-width) transparent',
+    );
+
+    vi.spyOn(hero, 'getBoundingClientRect').mockReturnValue({
+      bottom: 850,
+      height: 800,
+      left: 100,
+      right: 1100,
+      top: 50,
+      width: 1000,
+      x: 100,
+      y: 50,
+      toJSON: () => ({}),
+    });
+    vi.spyOn(projectName, 'getBoundingClientRect').mockReturnValue({
+      bottom: 450,
+      height: 100,
+      left: 600,
+      right: 800,
+      top: 350,
+      width: 200,
+      x: 600,
+      y: 350,
+      toJSON: () => ({}),
+    });
+
+    fireEvent(window, new Event('resize'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('hero-weave')).toHaveAttribute(
+        'data-convergence',
+        '0.6,0.4375',
+      ),
+    );
 
     expect(
       screen.getByRole('heading', { name: 'Should you upgrade?' }),
@@ -174,7 +263,12 @@ describe('SummerUpdatePage', () => {
       screen
         .getByRole('heading', { name: 'Should you upgrade?' })
         .closest('section'),
-    ).toHaveClass('bg-linear-to-br');
+    ).toHaveClass('bg-surface', 'text-text', 'border-text/10');
+    expect(
+      screen
+        .getByRole('heading', { name: 'Should you upgrade?' })
+        .closest('section'),
+    ).not.toHaveClass('bg-linear-to-br');
 
     const interviewerScreenshot = screen.getByRole('img', {
       name: 'Interviewer dashboard showing protocol cards and a resume interview action',
@@ -183,5 +277,19 @@ describe('SummerUpdatePage', () => {
     expect(interviewerScreenshot.parentElement).not.toHaveClass(
       'bg-rich-black',
     );
+  });
+
+  it('keeps the text glow still when reduced motion is requested', () => {
+    motionPreferences.shouldReduce = true;
+    render(<SummerUpdatePage />);
+
+    const projectName = within(
+      screen.getByRole('heading', {
+        name: 'Introducing the next generation of Network Canvas apps',
+      }),
+    ).getByText('Network Canvas');
+
+    expect(projectName.style.animation).toBe('');
+    expect(projectName.style.webkitTextFillColor).toBe('var(--color-white)');
   });
 });
