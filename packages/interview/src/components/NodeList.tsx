@@ -1,4 +1,4 @@
-import { motion, animate as motionAnimate } from 'motion/react';
+import { motion } from 'motion/react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -10,6 +10,7 @@ import type {
   ItemProps,
 } from '@codaco/fresco-ui/collection/types';
 import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
+import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   entityAttributesProperty,
@@ -70,7 +71,10 @@ const NodeList = memo(
     ...collectionProps
   }: NodeListProps) => {
     const layout = useMemo(() => new InlineGridLayout<NcNode>({ gap: 4 }), []);
-    const containerRef = useRef<HTMLDivElement>(null);
+    // Safe animate so the exit fade skips (instant swap) under reduced
+    // motion / MotionConfig skipAnimations; the scope doubles as the
+    // container ref for querying stagger items.
+    const [containerRef, safeAnimate] = useSafeAnimate();
 
     // --- Item buffering for prompt transitions ---
     const [displayItems, setDisplayItems] = useState(items);
@@ -131,7 +135,7 @@ const NodeList = memo(
 
       const nextKey = animationKey;
 
-      void motionAnimate(
+      void safeAnimate(
         staggerItems,
         { opacity: 0, scale: 0.6 },
         { duration: EXIT_DURATION },
@@ -140,7 +144,7 @@ const NodeList = memo(
         setDisplayAnimationKey(nextKey);
         isTransitioningRef.current = false;
       });
-    }, [animationKey]);
+    }, [animationKey, containerRef, safeAnimate]);
 
     // Build drag and drop hooks if accepts or onDrop is provided
     const { dragAndDropHooks } = useDragAndDrop<NcNode>({
