@@ -77,9 +77,9 @@ The software has been built to allow it to be extended and improved by anyone wi
 
 Our software was conceived in the context of research of a highly sensitive nature, so we understand that for many researchers security is of the utmost importance.
 
-We do not transmit, collect or retain any data from or about your study. The data you collect in the field is yours, and is only ever stored on your devices. This provides a baseline level of security, but also means that a large part of the responsibility for securing devices and data falls on the researcher. Please review our articles on [configuring devices prior to starting data collection](/en/collect-data/interviewer/configuring-devices), and [IRB and security best practices](/en/get-started/planning-a-study/irb-best-practices) to ensure that you are aware of the most common weaknesses. You should also consult with your institutional IT or security experts.
+We never receive, transmit, or store participant data. The data you collect in the field is yours, and is only ever stored on your devices. This provides a baseline level of security, but also means that a large part of the responsibility for securing devices and data falls on the researcher. Please review our articles on [configuring devices prior to starting data collection](/en/collect-data/interviewer/configuring-devices), and [IRB and security best practices](/en/get-started/planning-a-study/irb-best-practices) to ensure that you are aware of the most common weaknesses. You should also consult with your institutional IT or security experts.
 
-If you are working in a scenario where you have access to a network connection with internet access, you can use an [online workflow](/en/collect-data/protocol-and-data-workflows#option-1-online-workflow) or you can implement an entirely [offline workflow](/en/collect-data/protocol-and-data-workflows#option-2-offline-workflow) that does not require data to be transmitted. Further details of the security model we implement can be [found here](./security-model).
+If you are working in a scenario where you have access to a network connection with internet access, you can use an [online workflow](/en/collect-data/protocol-and-data-workflows#option-1-online-workflow) or you can implement an entirely [offline workflow](/en/collect-data/protocol-and-data-workflows#option-2-offline-workflow) that does not require data to be transmitted. Further details of what data each app stores, and how to keep it secure, can be found in our [IRB and security best practices](/en/get-started/planning-a-study/irb-best-practices) article.
 
 If you have specific security requirements, please contact us to discuss how we can make our software suite compliant with your needs.
 
@@ -91,7 +91,7 @@ Fresco and Interviewer are software tools that can be used in a GDPR-compliant m
 
 - All participant data is stored only on your local device
 - No participant data is transmitted externally unless you manually export it
-- The app does not collect analytics or crash logs
+- Interviewer sends optional anonymous usage and error analytics (on by default; can be disabled; never participant data); Interviewer Classic collects none
 - Device-level protections (disk encryption, access controls) are your responsibility
 
 **For Fresco (Self-Hosted Web Application):**

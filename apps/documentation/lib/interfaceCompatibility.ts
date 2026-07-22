@@ -46,10 +46,8 @@ const INTERFACE_INTRODUCED_IN: Record<string, number> = {
   'family-pedigree': 8,
   'narrative-pedigree': 8,
   'network-composer': 8,
-  // Schema 6 — NameGeneratorRoster family (schemas/6/migration.ts)
+  // Schema 6 — NameGeneratorRoster (schemas/6/migration.ts)
   'name-generator-roster': 6,
-  'large-roster-name-generator': 6,
-  'small-roster-name-generator': 6,
   // Schema 5 — TieStrengthCensus (schemas/5/migration.ts)
   'tie-strength-census': 5,
   // Baseline (schema 1)

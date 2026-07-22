@@ -249,7 +249,7 @@ It also contains a **Start new interview** button, a **Requires internet** indic
 
 <AppOnly axis="interviewer" app="classic">
 
-In Interviewer Classic the card's metadata shows the protocol's [schema version](/en/get-started/advanced-topics/protocol-schema-information) instead of an interview count, and you start interviews and manage protocols from the start screen rather than from buttons on the card itself.
+In Interviewer Classic the card's metadata shows the protocol's [schema version](/en/get-started/protocol-schema-information) instead of an interview count, and you start interviews and manage protocols from the start screen rather than from buttons on the card itself.
 
 </AppOnly>
 
@@ -477,15 +477,15 @@ Continue forwards through the sample protocol, until you arrive at a name genera
 
 This stage once again behaves differently from the previous name generators due to being based on a different interface. It allows a participant to nominate alters from a predetermined list (i.e. a roster). In this case, "classmate" nodes are added by selecting the appropriate "display card" on the scrollable roster. Multiple alters can be added at one time. Note that you are able to filter and sort the list, which helps when trying to locate a specific roster member. The sortable properties, as well as the information to be displayed on the cards, are all fully customizable within Architect.
 
-<Screenshot axis="interviewer" name="small-roster" alt="The Small Roster Name Generator"></Screenshot>
+<Screenshot axis="interviewer" name="small-roster" alt="A Name Generator for Roster Data stage displaying a small roster"></Screenshot>
 
-Once a member of the roster has been nominated by selecting its card, Interviewer creates a node in the network model using data from the roster. This results in data files that contain only the nodes that the participant nominated. This stage is an example of the [small roster name generator interface](/en/design-protocols/interface-documentation/small-roster-name-generator).
+Once a member of the roster has been nominated by selecting its card, Interviewer creates a node in the network model using data from the roster. This results in data files that contain only the nodes that the participant nominated. This stage is an example of the [Name Generator for Roster Data interface](/en/design-protocols/interface-documentation/name-generator-roster).
 
-Clicking next again will take you to a second roster-based name generator Interface, but this time designed to work for extremely large rosters. Here, we ask about universities visited or studied at. Our CSV roster data file contains approximately 9,300 nodes.
+Clicking next again will take you to a second roster-based name generator stage — this time using the same interface with an extremely large roster. Here, we ask about universities visited or studied at. Our CSV roster data file contains approximately 9,300 nodes.
 
-<Screenshot axis="interviewer" name="large-roster" alt="The Large Roster Interface"></Screenshot>
+<Screenshot axis="interviewer" name="large-roster" alt="A Name Generator for Roster Data stage displaying a large roster"></Screenshot>
 
-Since this roster is so large, this interface does not display the roster in its entirety. Instead, it offers a search box, and customizable levels of fuzzy matching, in order to help the participant quickly locate the nodes they wish to nominate. This is an example of a stage configured using the [large roster name generator interface](/en/design-protocols/interface-documentation/large-roster-name-generator).
+Since this roster is so large, the interface does not display the roster in its entirety. Instead, it offers a search box, and customizable levels of fuzzy matching, in order to help the participant quickly locate the nodes they wish to nominate. This is an example of how the Name Generator for Roster Data adapts its presentation to the size of the roster.
 
 ## General purpose form interfaces
 
