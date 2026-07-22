@@ -56,25 +56,42 @@ export class OneToManyDyadCensusFixture {
   }
 
   /**
-   * Whether a target is fully opaque on screen. Crossing a prompt boundary
-   * changes the NodeList animationKey, which fades the old targets to inline
-   * opacity 0, swaps items, then re-runs the stagger entrance — and
-   * Playwright's visibility check ignores opacity, so mid-choreography
-   * targets count as "visible" while rendering as an empty panel. Checks
-   * every ancestor up to the list container because the animated opacity
-   * lives on wrapper elements, not the option itself.
+   * Whether a target is fully opaque on screen AND belongs to the active
+   * prompt's list. Crossing a prompt boundary changes the NodeList
+   * animationKey, which fades the old targets to inline opacity 0, swaps
+   * items, then re-runs the stagger entrance — and Playwright's visibility
+   * check ignores opacity, so mid-choreography targets count as "visible"
+   * while rendering as an empty panel. Checks every ancestor up to the list
+   * container because the animated opacity lives on wrapper elements, not
+   * the option itself.
+   *
+   * Opacity alone can't guard the pre-exit window: a label present in both
+   * the outgoing and incoming lists (NodeList buffers the old items until
+   * the exit completes) matches the still-opaque OLD node. The stagger
+   * wrapper's data-stagger-key carries the buffered displayAnimationKey,
+   * which only advances to the active prompt index after the swap — so on
+   * multi-prompt stages (pips rendered) also require it to match.
    */
   async isTargetSettled(label: string): Promise<boolean> {
+    const activePromptIndex = await this.getActivePipIndex();
     try {
       return await this.getTargetNode(label).evaluate(
-        (el) => {
+        (el, expectedStaggerKey) => {
+          if (expectedStaggerKey !== null) {
+            const wrapper = el.closest('[data-stagger-item]');
+            if (
+              wrapper?.getAttribute('data-stagger-key') !== expectedStaggerKey
+            ) {
+              return false;
+            }
+          }
           for (let node: Element | null = el; node; node = node.parentElement) {
             if (Number(getComputedStyle(node).opacity) < 1) return false;
             if (node.id === 'dyad-census-targets') break;
           }
           return true;
         },
-        undefined,
+        activePromptIndex === -1 ? null : String(activePromptIndex),
         { timeout: 1000 },
       );
     } catch {
