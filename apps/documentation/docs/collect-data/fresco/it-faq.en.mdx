@@ -1,6 +1,6 @@
 ---
 title: FAQ for IT Departments
-date: 19th June 2026
+date: 22nd July 2026
 navOrder: 9
 ---
 
@@ -82,7 +82,7 @@ There are no third-party tracking pixels, advertising scripts, or analytics SDKs
 
 ## Is there an API? How is it secured?
 
-Fresco exposes a versioned, read-only **Interview Data API** that lets external tools pull interview data and protocol metadata. It is:
+Fresco exposes a versioned, read-only **Interview Data API** that lets external tools pull interview data and protocol metadata. Its endpoints and usage are documented in the [Fresco API reference](/en/analyze-data/fresco-api). It is:
 
 - **Off by default.** It must be explicitly enabled in the Settings screen.
 - **Bearer-token authenticated.** Tokens are generated, listed, and revoked from the dashboard, and each token's last-used timestamp is recorded.
@@ -135,7 +135,7 @@ Failed and successful login attempts are also stored with the source IP for the 
 Updates are the deployer's responsibility. The Network Canvas team does not push updates to deployed instances.
 
 - New releases are announced on the [User Community](https://community.networkcanvas.com/).
-- Researchers update by following the [Upgrade Guide](./upgrading) — typically pulling the latest code (or Docker image), running database migrations, and redeploying.
+- Fork-based deployments (the standard Netlify path) update by syncing the fork with the upstream repository, as described in the [Upgrade Guide](./upgrading). Docker deployments update by pulling the latest image and recreating the stack, as described in the [Advanced Deployment guide's updating section](./advanced#updating-fresco).
 - Docker images are tagged with both `latest` and `vX.Y.Z` semantic version tags, allowing pinning to a known version.
 
 We recommend subscribing to release announcements and applying security-relevant updates promptly. Dependency vulnerabilities are tracked through GitHub's standard Dependabot tooling on the upstream repository.

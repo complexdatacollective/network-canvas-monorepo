@@ -24,15 +24,15 @@ The Network Canvas development team does not act as a Data Controller or Data Pr
 
 ## Interviewer vs Fresco: Key Differences
 
-| Aspect                     | Interviewer & Interviewer Classic (data on your device)                                                                                                                                                                                    | Fresco (Self-Hosted Web)                                                              |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| **Data Storage Location**  | All participant data stored only on your local device                                                                                                                                                                                      | Interview data stored in Postgres database; study assets stored in S3 via UploadThing |
-| **Data Transmission**      | No participant data transmitted externally unless you manually export it                                                                                                                                                                   | Data remains on your infrastructure; no transmission to developers                    |
-| **Encryption**             | Interviewer encrypts on-device data at rest when an app lock is set up, keyed to that authentication; Interviewer Classic relies wholly on device-level protections. Enable disk encryption and access controls on every device regardless | Encrypted at rest when using providers like Neon; S3 server-side encryption enforced  |
-| **Analytics/Telemetry**    | Interviewer sends optional anonymous usage/error analytics (on by default; can be disabled; never participant data); Interviewer Classic sends none                                                                                        | Optional anonymous usage/error analytics (can be disabled)                            |
-| **GDPR-Compliant Hosting** | Not applicable (local device storage)                                                                                                                                                                                                      | Possible when selecting an EU region (available on paid UploadThing plans)            |
-| **Your Control**           | Complete control over participant data on your device                                                                                                                                                                                      | All participant data remains under your control at all times                          |
-| **Infrastructure**         | Your device                                                                                                                                                                                                                                | Your deployed infrastructure (hosting, database, storage)                             |
+| Aspect                     | Interviewer & Interviewer Classic (data on your device)                                                                                                                                                                                    | Fresco (Self-Hosted Web)                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| **Data Storage Location**  | All participant data stored only on your local device                                                                                                                                                                                      | Interview data stored in Postgres database; study assets stored in S3-compatible storage |
+| **Data Transmission**      | No participant data transmitted externally unless you manually export it                                                                                                                                                                   | Data remains on your infrastructure; no transmission to developers                       |
+| **Encryption**             | Interviewer encrypts on-device data at rest when an app lock is set up, keyed to that authentication; Interviewer Classic relies wholly on device-level protections. Enable disk encryption and access controls on every device regardless | Encrypted at rest when using providers like Neon; S3 server-side encryption enforced     |
+| **Analytics/Telemetry**    | Interviewer sends optional anonymous usage/error analytics (on by default; can be disabled; never participant data); Interviewer Classic sends none                                                                                        | Optional anonymous usage/error analytics (can be disabled)                               |
+| **GDPR-Compliant Hosting** | Not applicable (local device storage)                                                                                                                                                                                                      | Possible when selecting an EU region or an S3-compatible provider/region of your choice  |
+| **Your Control**           | Complete control over participant data on your device                                                                                                                                                                                      | All participant data remains under your control at all times                             |
+| **Infrastructure**         | Your device                                                                                                                                                                                                                                | Your deployed infrastructure (hosting, database, storage)                                |
 
 **Your Responsibilities as Data Controller:**
 
@@ -120,15 +120,15 @@ Fresco does **not** store binary data collected from participants during intervi
 
 Fresco stores study introduction videos and images, protocol logos and branding, explanatory materials, and roster files (CSV/JSON) in S3—and these roster files may contain participant personally identifiable information (PII) depending on your study design.
 
-#### UploadThing
+#### Asset storage
 
-Fresco uses UploadThing, which stores files in Amazon S3. You cannot choose a different storage provider, as Fresco requires UploadThing for asset management.
+Fresco stores study assets in an S3-compatible object store. You can use **UploadThing** (a hosted S3 wrapper, easiest to set up) or point Fresco at any S3-compatible endpoint such as AWS S3, self-hosted MinIO, Cloudflare R2, or Backblaze B2 — see [Advanced Deployment](/en/collect-data/fresco/advanced) for configuration.
 
-The free UploadThing plan uses US-based S3 storage by default, which may not be suitable for GDPR-sensitive data. Paid plans allow selection of S3 storage region, with EU regions available for GDPR-compliant storage. Region selection ensures data residency in the EU.
+Data residency depends on your chosen backend. UploadThing's free plan uses US-based S3 storage by default, while its paid plans allow selecting an S3 region, with EU regions available. With other S3-compatible providers you choose the region (and therefore residency) directly, and self-hosted MinIO keeps assets entirely on your own infrastructure.
 
 All S3 assets are automatically encrypted at rest, and Fresco enforces server-side encryption using SSE-S3 or SSE-KMS. Access is controlled through signed URLs, and files are not publicly accessible.
 
-If your roster data contains PII, you must use a paid UploadThing plan, select an EU region (or other GDPR-aligned region), ensure your institutional policies allow S3 storage, document this in your data protection impact assessment, and include UploadThing in your data processing records.
+If your roster data contains PII, ensure your chosen storage backend stores it in an EU region (or other GDPR-aligned region) or on infrastructure you control, confirm your institutional policies allow that storage arrangement, document it in your data protection impact assessment, and include the storage provider in your data processing records.
 
 ### Telemetry, analytics, and update checks
 
@@ -164,7 +164,7 @@ You should document which lawful basis you are relying on, how you obtained cons
 
 For Fresco deployments, choose hosting providers that offer GDPR-compliant hosting, verify they provide Data Processing Agreements (DPAs), and ensure they offer EU or appropriate regional hosting.
 
-For Postgres (whether using Neon or self-hosted), select an EU region for data residency, configure encryption at rest and in transit, implement secure access controls, and limit access to authorized personnel only. For S3 storage via UploadThing, use a paid plan to select an EU region, verify region selection in the UploadThing dashboard, and document this choice in your compliance records.
+For Postgres (whether using Neon or self-hosted), select an EU region for data residency, configure encryption at rest and in transit, implement secure access controls, and limit access to authorized personnel only. For S3-compatible asset storage, select an EU region with your chosen provider (for UploadThing this requires a paid plan; self-hosted MinIO keeps assets on your infrastructure), verify the region in the provider's dashboard, and document this choice in your compliance records.
 
 Implement role-based access control, use strong authentication (multi-factor where possible), regularly review who has access to data, and remove access promptly when no longer needed.
 
@@ -230,7 +230,7 @@ Prevent breaches through regular security audits, penetration testing for Fresco
 
 Within the EU, no additional measures are required, as data remains within GDPR jurisdiction. To countries outside the EU, ensure an adequate level of protection exists, use Standard Contractual Clauses if needed, document transfer mechanisms, and conduct a transfer impact assessment.
 
-For Network Canvas deployments, choose EU regions for all services (Neon, UploadThing), avoid transferring data outside the EU unless necessary, and if transfers are required, implement appropriate safeguards.
+For Network Canvas deployments, choose EU regions for all services (such as Neon and your asset-storage provider), avoid transferring data outside the EU unless necessary, and if transfers are required, implement appropriate safeguards.
 
 ## Demonstrating compliance
 

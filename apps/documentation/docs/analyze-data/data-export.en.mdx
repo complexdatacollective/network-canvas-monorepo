@@ -14,27 +14,13 @@ After conducting interviews using Interviewer or Fresco, you need to export the 
 
 The export process transforms your interview data—including ego attributes, alter attributes, and edge data—into structured files that you can import into analysis tools such as R, Python, SPSS, UCINET, Gephi, and many others.
 
-## Export locations
+## Where to export from
 
-The export process differs depending on which Network Canvas application you're using. Interviewer and Interviewer Classic both store data on the device and export it as files you keep, but the steps differ; Fresco stores data centrally and exports from its dashboard.
+This page describes what Network Canvas exports contain, regardless of which application produced them. The steps for actually running an export differ by application — Interviewer and Interviewer Classic store data on the device and export it as files you keep, while Fresco stores data centrally and exports from its dashboard. Each application's own guide walks through its export workflow:
 
-**Interviewer Classic (desktop and tablet app):**
-
-- Export from the **Manage or Export Sessions** card on the start screen
-- Export data directly to your local filesystem
-- See [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows#data-export) for detailed Interviewer Classic workflows
-
-**Interviewer (browser app):**
-
-- Export from the **Data** page, reached from the dashboard
-- Download exported data through your browser
-- See the [Interviewer export workflow](#interviewer) below for the step-by-step process
-
-**Fresco:**
-
-- Export from the interviews page in the dashboard
-- Download exported data through your browser
-- See [Using Fresco](/en/collect-data/fresco/using-fresco#exporting-data) for detailed Fresco workflows
+- **Interviewer** — see [Using Interviewer](/en/collect-data/interviewer/using-interviewer#resuming-exporting-and-managing-interview-sessions)
+- **Interviewer Classic** — see [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows#data-export)
+- **Fresco** — see [Using Fresco](/en/collect-data/fresco/using-fresco#exporting-data)
 
 ## File types
 
@@ -42,13 +28,13 @@ Network Canvas supports two file formats for data export. Choose the format that
 
 ### CSV format
 
-**What it is:** Comma-Separated Values (CSV) files are plain text files that represent tabular data. The CSV export creates multiple files, one for each type of entity in your network data.
+**What it is:** Comma-Separated Values (CSV) files are plain text files that represent tabular data. The CSV export creates multiple files, one for each type of entity in your network data, and complies with the `egor` package standard.
 
 **Best for:**
 
 - Statistical analysis in R, Python, SPSS, Stata, SAS
 - Spreadsheet applications (Excel, Google Sheets, LibreOffice Calc)
-- The egor package in R
+- The [egor package](https://cran.r-project.org/package=egor) in R
 - Custom data processing workflows
 
 **What you get:**
@@ -228,7 +214,7 @@ This option converts normalized node positions from Sociogram interfaces into sc
 
 Network Canvas stores node positions from Sociogram layout variables as normalized x/y coordinates (values between 0 and 1) with the origin at the top-left. This normalization allows layouts to be displayed on screens of different sizes while maintaining relative positions.
 
-When enabled, this converts normalized coordinates to pixel coordinates based on screen size. In Interviewer, it uses the actual screen dimensions from the interview device. In Fresco, it uses a hardcoded size of 1920 x 1080 pixels. When disabled (the default), it exports normalized coordinates in the 0-1 range.
+When enabled, this converts normalized coordinates to pixel coordinates based on a screen size. In Interviewer, it uses the screen layout width and height you set in **Settings → Data export** (default 1920 x 1080 pixels). In Interviewer Classic, it uses the screen dimensions configured in its export settings, which default to — and can be reset to — the device's own resolution. In Fresco, it uses a fixed size of 1920 x 1080 pixels. When disabled (the default), it exports normalized coordinates in the 0-1 range.
 
 Enable this option when you want to recreate the exact visual layout as it appeared during the interview, when you're importing into visualization software that expects pixel coordinates, or when you need coordinates that match specific screen dimensions. Disable it when you want device-independent coordinates that work on any canvas size, when you're comparing layouts created on different screen sizes, or when you want maximum flexibility for visualization.
 
@@ -282,56 +268,6 @@ These identifiers allow you to:
 - `sessionFinish` - Interview end timestamp
 - `sessionExported` - Export timestamp
 - `networkCanvasProtocolName` - Protocol used
-
-## Export workflows
-
-#### Interviewer Classic
-
-1. Open Interviewer Classic
-2. On the start screen, click the **Manage or Export Sessions** card
-3. Select the interview sessions you want to export
-4. Click the export button
-5. Choose your file type (CSV or GraphML)
-6. Configure export options if needed
-7. Choose a save location:
-   - **Windows/macOS/Linux:** Standard file browser appears
-   - **iOS/Android:** Share dialog appears—choose your storage location
-
-#### Interviewer
-
-Interviewer collects every session on the **Data** page, reached from the dashboard. Each row shows the case ID, the protocol used, when the interview started and was last updated, its completion progress, and its export status.
-
-![The Interviewer Data page, listing collected sessions with progress and export status](/assets/img/interviewer-guide/resume-section.png)
-
-1. Open the **Data** page from the dashboard
-2. Filter by status (**All**, **In progress**, **Complete**) or search by case ID or protocol to find the sessions you want
-3. Select one or more sessions using the checkboxes
-4. Export the selected sessions — they are packaged into a single `.zip` archive, and each is flagged as exported once it completes
-5. Output formats (CSV, GraphML) and screen-coordinate options are set ahead of time in **Settings → Data export**
-
-**Tips:**
-
-- Export regularly to avoid data loss
-- Use cloud storage apps on tablets for automatic backup
-- See [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows) for detailed workflows
-
-### Exporting from Fresco
-
-1. Log into your Fresco dashboard
-2. Navigate to the interviews page
-3. Select interviews to export (or use **Export all** option)
-4. Click the **Export selected** button
-5. Choose your file type (CSV or GraphML)
-6. Configure export options if needed
-7. Click **Start export process**
-8. Download the exported file when ready
-
-**Tips:**
-
-- Track export status on the interviews page
-- Use **Export all unexported interviews** for incremental exports
-- Export incomplete interview URLs to follow up with participants
-- See [Using Fresco](/en/collect-data/fresco/using-fresco#exporting-data) for detailed workflows
 
 ## Data structure details
 

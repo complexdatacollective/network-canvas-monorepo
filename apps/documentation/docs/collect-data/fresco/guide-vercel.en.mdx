@@ -1,9 +1,15 @@
 ---
 title: Vercel Deployment Guide
-date: 22nd July 2025
+date: 22nd July 2026
 navOrder: 5
 hidden: true
 ---
+
+<TipBox danger>
+
+**This is a legacy deployment guide.** It is kept for researchers who already have a Fresco instance deployed on Vercel, and it is no longer updated. For new deployments, follow the supported [Deployment Guide](/en/collect-data/fresco/guide), which deploys Fresco using Netlify.
+
+</TipBox>
 
 <SummaryCard duration="60 minutes">
 
@@ -43,7 +49,7 @@ most research projects. It is not a requirement to use Vercel to host Fresco, bu
 
 Deploying Fresco for your study can be achieved entirely for free using the steps detailed in this guide. We built it this way to allow the broadest possible access to the software. The free deployment method does come with some limitations, such as the amount of data you can store and transfer, and the overall performance of the application.
 
-If you are running a large study, require guaranteed levels of performance, or have special requirements imposed by your IRB regarding participant data, you may wish to use a paid plan or a different approach to deployment. Consult the [cloud pricing](./cloud-pricing) page for more information. Please note that the Network Canvas team does not benefit financially in any way from your choice of cloud provider.
+If you are running a large study, require guaranteed levels of performance, or have special requirements imposed by your IRB regarding participant data, you may wish to use a paid plan or a different approach to deployment. Consult the [cloud pricing](/en/collect-data/fresco/cloud-pricing) page for more information. Please note that the Network Canvas team does not benefit financially in any way from your choice of cloud provider.
 
 It is also possible to use whatever infrastructure you may have access to in order to deploy Fresco. For information on this, see our [advanced deployment](./advanced) guide.
 
@@ -74,7 +80,7 @@ Fresco uses a PostgreSQL database to store data about your study, participants, 
 
    ![Create a Neon database](/assets/img/fresco-images/vercel-db-1.png)
 
-3. Choose a region from the dropdown. We recommend choosing the region nearest to you. By default, the database will be created on the Free tier. For more information on database tier pricing, consult the [cloud pricing](./cloud-pricing) page. Then, click **Continue**.
+3. Choose a region from the dropdown. We recommend choosing the region nearest to you. By default, the database will be created on the Free tier. For more information on database tier pricing, consult the [cloud pricing](/en/collect-data/fresco/cloud-pricing) page. Then, click **Continue**.
 
    ![Choose a region and installation plan](/assets/img/fresco-images/vercel-db-2.png)
 
@@ -121,7 +127,7 @@ Fresco uses a PostgreSQL database to store data about your study, participants, 
 
 ## Create a project on Vercel
 
-Next, we will deploy your fork to the Vercel platform, using the services we created previously. You can use the "hobby" tier (which is free) or paid plan (for more information about cloud pricing, read our [cloud pricing](./cloud-pricing) documentation), but for the purposes of this guide, we will use the free tier.
+Next, we will deploy your fork to the Vercel platform, using the services we created previously. You can use the "hobby" tier (which is free) or paid plan (for more information about cloud pricing, read our [cloud pricing](/en/collect-data/fresco/cloud-pricing) documentation), but for the purposes of this guide, we will use the free tier.
 
 <Tipbox>
 
@@ -157,7 +163,7 @@ To use Fresco, you need to set up an administrator account which will enable you
 
 <TipBox danger>
 
-To ensure the security of your deployment, you have **2 hours** from when the app is deployed to complete the configuration and setup. If this time elapses before completing all setup steps, your configuration will expire. To redeploy, follow our guide to [reset your database](/en/collect-data/fresco/deployment-troubleshooting#instance-expired-message-during-the-setup-process).
+To ensure the security of your deployment, you have **2 hours** from when the app is deployed to complete the configuration and setup. If this time elapses before completing all setup steps, your configuration will expire. To redeploy, follow our guide to [reset your database](/en/collect-data/fresco/deployment-troubleshooting#reset-your-database).
 
 </TipBox>
 

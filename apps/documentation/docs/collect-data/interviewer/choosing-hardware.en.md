@@ -9,7 +9,7 @@ Choosing a device for running Interviewer is an important step in optimizing the
 
 <TipBox>
 
-The platform comparison below — along with the App Store availability and native-app management concerns — chiefly applies to **Interviewer Classic**, which you install natively on each device. The browser-based **Interviewer** runs in any [supported web browser](/en/collect-data/interviewer), so its main hardware requirement is a device that runs a current browser well. The display-quality, keyboard, performance, and connectivity advice on this page still applies, but you can disregard the app-store and native-install caveats.
+The platform comparison below — along with the App Store availability and native-app management concerns — chiefly applies to **Interviewer Classic**, which you install natively on each device. The browser-based **Interviewer** runs in any [supported web browser](/en/collect-data/interviewer/installing-interviewer#supported-browsers), so its main hardware requirement is a device that runs a current browser well. The display-quality, keyboard, performance, and connectivity advice on this page still applies, but you can disregard the app-store and native-install caveats.
 
 </TipBox>
 

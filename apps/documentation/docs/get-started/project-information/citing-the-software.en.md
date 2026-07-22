@@ -48,9 +48,9 @@ You may wish to cite an evaluation of the software when discussing it in your re
 
 URLs for Network Canvas software repositories are:
 
-- [https://github.com/complexdatacollective/Interviewer](https://github.com/complexdatacollective/Interviewer)
-- [https://github.com/complexdatacollective/Architect](https://github.com/complexdatacollective/Architect)
-- [https://github.com/complexdatacollective/Fresco](https://github.com/complexdatacollective/Fresco)
+- [https://github.com/complexdatacollective/network-canvas-monorepo](https://github.com/complexdatacollective/network-canvas-monorepo) — the current Architect and Interviewer apps and their shared packages
+- [https://github.com/complexdatacollective/Fresco](https://github.com/complexdatacollective/Fresco) — Fresco
+- [https://github.com/complexdatacollective/Interviewer](https://github.com/complexdatacollective/Interviewer) and [https://github.com/complexdatacollective/Architect](https://github.com/complexdatacollective/Architect) — the Classic apps
 
 Architect and Interviewer run in your web browser; to get started with any of the tools, see the [get started guide](/en/get-started/network-canvas). Downloads for the **Classic** desktop apps are available at:
 
