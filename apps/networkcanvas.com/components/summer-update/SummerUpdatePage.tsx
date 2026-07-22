@@ -1399,24 +1399,28 @@ export function SummerUpdatePage() {
                   shadow="sm"
                   className="h-full"
                 >
-                  <ScreenshotFrame
-                    address="networkcanvas.com"
-                    alt="The redesigned Network Canvas website homepage"
-                    src="/images/summer-2026/website-homepage.jpg"
-                  />
-                  <SectionLabel>Project website</SectionLabel>
-                  <Heading level="h3" variant="subheading">
-                    A fresh new look for networkcanvas.com
-                  </Heading>
-                  <Paragraph>
-                    The redesigned website introduces a more expressive visual
-                    identity and clearer paths through the Network Canvas
-                    ecosystem, from learning what the platform can do to
-                    choosing the best tools for your study.
-                  </Paragraph>
-                  <NativeLink href="https://networkcanvas.com/">
-                    Explore the new website ↗
-                  </NativeLink>
+                  <div className="flex h-full flex-col">
+                    <SectionLabel>Project website</SectionLabel>
+                    <Heading level="h3" variant="subheading" className="mt-2!">
+                      A fresh new look for networkcanvas.com
+                    </Heading>
+                    <Paragraph>
+                      The redesigned website introduces a more expressive visual
+                      identity and clearer paths through the Network Canvas
+                      ecosystem, from learning what the platform can do to
+                      choosing the best tools for your study.
+                    </Paragraph>
+                    <NativeLink href="https://networkcanvas.com/">
+                      Explore the new website ↗
+                    </NativeLink>
+                    <div className="mt-auto pt-8">
+                      <ScreenshotFrame
+                        address="networkcanvas.com"
+                        alt="The redesigned Network Canvas website homepage"
+                        src="/images/summer-2026/website-homepage.jpg"
+                      />
+                    </div>
+                  </div>
                 </Surface>
               </Reveal>
               <Reveal {...revealMotion} direction="right" delay={0.11}>
@@ -1427,24 +1431,28 @@ export function SummerUpdatePage() {
                   shadow="sm"
                   className="h-full"
                 >
-                  <ScreenshotFrame
-                    address="documentation.networkcanvas.com"
-                    alt="The redesigned Network Canvas documentation homepage"
-                    src="/images/summer-2026/documentation-homepage.jpg"
-                  />
-                  <SectionLabel>Project documentation</SectionLabel>
-                  <Heading level="h3" variant="subheading">
-                    Guidance organized around your research workflow
-                  </Heading>
-                  <Paragraph>
-                    The documentation now starts with the work you are doing:
-                    getting started, designing protocols, collecting data, and
-                    analyzing results. New workflow navigation and refreshed
-                    guides make the next step easier to find.
-                  </Paragraph>
-                  <NativeLink href="https://documentation.networkcanvas.com/">
-                    Explore the documentation ↗
-                  </NativeLink>
+                  <div className="flex h-full flex-col">
+                    <SectionLabel>Project documentation</SectionLabel>
+                    <Heading level="h3" variant="subheading" className="mt-2!">
+                      Guidance organized around your research workflow
+                    </Heading>
+                    <Paragraph>
+                      The documentation now starts with the work you are doing:
+                      getting started, designing protocols, collecting data, and
+                      analyzing results. New workflow navigation and refreshed
+                      guides make the next step easier to find.
+                    </Paragraph>
+                    <NativeLink href="https://documentation.networkcanvas.com/">
+                      Explore the documentation ↗
+                    </NativeLink>
+                    <div className="mt-auto pt-8">
+                      <ScreenshotFrame
+                        address="documentation.networkcanvas.com"
+                        alt="The redesigned Network Canvas documentation homepage"
+                        src="/images/summer-2026/documentation-homepage.jpg"
+                      />
+                    </div>
+                  </div>
                 </Surface>
               </Reveal>
             </div>

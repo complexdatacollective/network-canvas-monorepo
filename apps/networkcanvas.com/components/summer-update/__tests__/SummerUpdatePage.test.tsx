@@ -133,16 +133,29 @@ describe('SummerUpdatePage', () => {
     expect(
       screen.getByRole('link', { name: 'Explore the documentation ↗' }),
     ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/');
+    const websiteHeading = screen.getByRole('heading', {
+      name: 'A fresh new look for networkcanvas.com',
+    });
+    const websiteScreenshot = screen.getByRole('img', {
+      name: 'The redesigned Network Canvas website homepage',
+    });
+    const documentationHeading = screen.getByRole('heading', {
+      name: 'Guidance organized around your research workflow',
+    });
+    const documentationScreenshot = screen.getByRole('img', {
+      name: 'The redesigned Network Canvas documentation homepage',
+    });
+
+    expect(websiteHeading).toHaveClass('mt-2!');
+    expect(documentationHeading).toHaveClass('mt-2!');
     expect(
-      screen.getByRole('img', {
-        name: 'The redesigned Network Canvas website homepage',
-      }),
-    ).toBeInTheDocument();
+      screen.getByRole('link', { name: 'Explore the new website ↗' })
+        .parentElement?.lastElementChild,
+    ).toContainElement(websiteScreenshot);
     expect(
-      screen.getByRole('img', {
-        name: 'The redesigned Network Canvas documentation homepage',
-      }),
-    ).toBeInTheDocument();
+      screen.getByRole('link', { name: 'Explore the documentation ↗' })
+        .parentElement?.lastElementChild,
+    ).toContainElement(documentationScreenshot);
   });
 
   it('uses the shared dark treatment for section five and white browser frames', () => {
