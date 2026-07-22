@@ -89,7 +89,7 @@ Next, you choose how you will unlock the app. Depending on your device, the opti
 
 <TipBox danger={true}>
 
-There is **no way to recover a lost credential**. If you lose the enrolled biometric, PIN, or passphrase — for example on a wiped or replaced device — the encrypted data on that device cannot be recovered. Changing your security method afterwards (for example, switching from a PIN to a passphrase) is also destructive: it requires **revoking the device lock**, which erases **all protocols, sessions, and stored credentials on this device**. For both reasons, **export your interviews regularly** so that losing — or re-securing — a device never means losing your data.
+A forgotten **PIN or passphrase** cannot be recovered — the data it protects is permanently inaccessible on that device. **Biometric** setup also enrolls a mandatory **recovery passphrase**, so losing the authenticator alone falls back to it; losing both means the same permanent loss. Re-enrolling a replacement PIN or passphrase (after proving your current one) preserves access to your data, but changing to or from biometric requires **revoking the device lock**, which erases **all protocols, sessions, and stored credentials on this device**. Whichever method you use, **export your interviews regularly** so that losing — or re-securing — a device never means losing your data.
 
 </TipBox>
 
@@ -124,7 +124,7 @@ For extra protection, you can require re-authentication at interview boundaries 
 
 **Security** appears once you have set a security method during setup. It shows your current method and when it was set and, for a PIN, lets you **change your PIN** without losing data. It also holds the auto-lock timeout and the re-authentication options described under [Locking and unlocking](#locking-and-unlocking) above. Finally, it offers a **Revoke / Reset device** option: because your stored data is tied to your security method, using this **wipes every protocol and session on the device** and returns you to first-run setup.
 
-**Synthetic data** generates fake interview sessions so you can rehearse and validate your export pipeline before collecting real data. Choose a **protocol**, set the **number of sessions** to create (1–1000, default 10), and optionally **simulate participant drop-out** (on by default, which leaves some sessions incomplete to mirror real-world data) or **respect skip logic and filtering** (off by default). Generated sessions appear in your **Data** view and export exactly like real ones; **Delete All** removes every synthetic session in one step.
+**Synthetic data** generates fake interview sessions so you can rehearse and validate your export pipeline before collecting real data. Choose a **protocol**, set the **number of sessions** to create (1–1000, default 10), and optionally **simulate participant drop-out** (on by default, which leaves some sessions incomplete to mirror real-world data) or **respect skip logic and filtering** (off by default). Generated sessions appear in your **Data** view and export exactly like real ones; **Delete All** removes every synthetic session in one step. For how synthetic data fits into a full rehearsal of your study, see [Piloting Your Study](/en/get-started/planning-a-study/piloting-your-study).
 
 </AppOnly>
 

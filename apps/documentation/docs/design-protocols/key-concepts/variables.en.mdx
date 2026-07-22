@@ -234,37 +234,15 @@ ego_id,edge_id,from,to,relationship_strength,frequency
 1,1,1,2,strong,weekly
 ```
 
-### Variable types in analysis
-
-Different variable types require different analytical approaches:
-
-**Categorical/Ordinal:**
-
-- Use frequency tables, cross-tabs
-- Chi-square tests, logistic regression
-
-**Boolean:**
-
-- Treat as categorical with two levels
-- Can convert to 0/1 for regression
-
-**Numerical:**
-
-- Descriptive statistics (mean, median, SD)
-- Correlation, regression, t-tests
-
-**Text:**
-
-- Qualitative analysis
-- Content analysis, coding
+For a full reference mapping every variable type to its exported CSV columns and GraphML attributes—along with advice on analyzing each type—see the [Export Data Dictionary](/en/analyze-data/data-dictionary).
 
 ### Variable naming in exports
 
 Variable names in your protocol become column names in exported data:
 
 - `close_friend` variable → `close_friend` column
-- Categorical variables → Multiple columns (for checkboxes) or single column (for radio buttons)
-- Layout variables → `x` and `y` columns
+- Categorical variables → one column per option, named `variable_option` with `true`/`false` values
+- Layout variables → columns named after the variable with `_x` and `_y` suffixes (e.g. `my_layout_x` and `my_layout_y`)
 
 ## Common patterns
 

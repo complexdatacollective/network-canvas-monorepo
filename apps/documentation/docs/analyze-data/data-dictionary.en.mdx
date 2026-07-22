@@ -1,0 +1,202 @@
+---
+title: Export Data Dictionary
+navOrder: 2
+toc: true
+---
+
+<Definition>
+  The export data dictionary describes exactly how each Network Canvas variable
+  type is written to exported CSV and GraphML files, so you can interpret every
+  column and attribute in your data with confidence.
+</Definition>
+
+## How to read this page
+
+Every variable you define in your protocol is exported under its **variable
+name** from the codebook. In CSV files, most variable types become a single
+column named after the variable; categorical and layout variables expand into
+several columns, as described below. In GraphML files, each variable is declared
+with a `<key>` element whose `attr.name` is the variable name and whose
+`attr.type` tells analysis software how to parse the values.
+
+For the overall file structure—which files an export produces and how they link
+together—see [Data Export](/en/analyze-data/data-export). This page focuses on
+how individual values are encoded.
+
+## Variable types at a glance
+
+| Variable type | CSV column(s)                           | CSV value                           | GraphML `attr.type`                     | Example value              |
+| ------------- | --------------------------------------- | ----------------------------------- | --------------------------------------- | -------------------------- |
+| Text          | `variable_name`                         | The text, quoted only when needed   | `string`                                | `Jane`                     |
+| Number        | `variable_name`                         | The number                          | `int` or `double` (detected)            | `34`                       |
+| Boolean       | `variable_name`                         | `true` / `false`                    | `boolean`                               | `true`                     |
+| Ordinal       | `variable_name`                         | The selected option value           | `int`, `double`, or `string` (detected) | `3`                        |
+| Categorical   | `variable_name_option` (one per option) | `true` / `false` per option         | `boolean` (one key per option)          | `true`                     |
+| Scalar        | `variable_name`                         | Number between 0 and 1              | `float`                                 | `0.735`                    |
+| Date          | `variable_name`                         | ISO date string                     | `string`                                | `1989-07-21`               |
+| Layout        | `variable_name_x`, `variable_name_y`    | Normalized coordinates (0–1)        | `double` (`_X` and `_Y` keys)           | `0.62`, `0.24`             |
+| Location      | `variable_name`                         | Identifier of the selected map area | `string`                                | `outside-selectable-areas` |
+
+The sections below give the full details for each type, including how missing
+values appear.
+
+## Per-type details
+
+### Text
+
+A text variable becomes one CSV column named after the variable, containing the
+participant's response as entered. Values containing a comma, a quotation mark,
+or a line break are wrapped in double quotes (with internal quotes doubled),
+following standard CSV rules. As a safeguard against spreadsheet formula
+injection, any value beginning with `=`, `+`, `-`, `@`, or a tab character is
+prefixed with a single quote (`'`) so spreadsheet applications treat it as
+literal text. In GraphML, text values are exported with `attr.type="string"`.
+
+### Number
+
+A number variable becomes one CSV column containing the numeric value as
+entered, with no rounding or reformatting. In GraphML, the `attr.type` is
+detected from the values in your data: `int` when every value is a whole
+number, `double` when any value has a decimal part, and `string` when the
+values are mixed or absent.
+
+### Boolean
+
+A boolean variable becomes one CSV column containing `true` or `false`
+(lowercase). In GraphML, it is declared with `attr.type="boolean"` and each
+value is written as `true` or `false`. A question the participant never
+answered produces an empty CSV cell, and no value at all in GraphML.
+
+### Ordinal
+
+An ordinal variable stores the **value** of the selected option (not its
+label), which may be a string or a number depending on how you defined the
+options in Architect. The CSV column contains that value directly. In GraphML,
+the `attr.type` is detected from the data in the same way as for number
+variables: all-integer option values produce `int`, decimal values produce
+`double`, and string option values produce `string`.
+
+### Categorical
+
+Because participants can select multiple options, a categorical variable is
+expanded into **one column per option**, named
+`variable_name_optionValue`—for example, a `support_type` variable with
+options `emotional` and `financial` produces `support_type_emotional` and
+`support_type_financial`. Each column contains `true` if that option was
+selected and `false` otherwise. If the participant never answered the
+question, every option column contains `false` in CSV.
+
+In GraphML, the same expansion happens: one `<key>` per option with
+`attr.type="boolean"` and `attr.name` set to `variable_name_optionValue`. The
+machine-readable `id` of each key is the variable's internal identifier
+followed by a hash of the option value (key ids must be XML NMTOKENs, which
+arbitrary option values are not). If the participant never answered, no values
+are written for any of the option keys.
+
+### Scalar
+
+A scalar variable (collected with the Visual Analog Scale) stores a number on
+a normalized 0–1 scale. The CSV column contains that number, and GraphML
+declares it with `attr.type="float"`.
+
+### Date
+
+A date variable stores an ISO-formatted date string whose precision matches
+the variable's resolution setting: `1989-07-21` (full), `1989-07` (month), or
+`1989` (year). The CSV column contains this string as-is, and GraphML declares
+it with `attr.type="string"`.
+
+### Layout
+
+A layout variable stores a node's position on a Sociogram canvas as normalized
+coordinates between 0 and 1, with the origin at the top-left. It is split into
+two columns in CSV, named with lowercase suffixes:
+
+- `variable_name_x` — horizontal position (0 = left edge, 1 = right edge)
+- `variable_name_y` — vertical position (0 = top edge, 1 = bottom edge)
+
+If the **use screen layout coordinates** export option is enabled, the export
+keeps these normalized columns and adds two more, named with camelCase
+suffixes: `variable_name_screenSpaceX` and `variable_name_screenSpaceY`.
+These contain pixel values rounded to two decimal places. Screen-space X is
+the normalized x multiplied by the screen width; screen-space Y is inverted—
+calculated as (1 − y) × screen height—so it is measured from the **bottom** of
+the screen, matching the convention of most graph visualization software.
+
+In GraphML, the same split happens but with uppercase suffixes on the
+human-readable names: two keys with `attr.name` values `variable_name_X` and
+`variable_name_Y`, both declared as `attr.type="double"` (plus
+`variable_name_screenSpaceX` and `variable_name_screenSpaceY` when screen
+layout coordinates are enabled).
+
+A node that was never positioned produces empty cells in CSV and no values in
+GraphML.
+
+### Location
+
+A location variable (collected with the Geospatial interface) stores a text
+identifier for the map area the participant selected, taken from the property
+of the GeoJSON shapefile that the stage is configured to record (or the special
+value `outside-selectable-areas` when a selection was outside the selectable
+regions). It becomes one CSV column containing that string, and GraphML
+declares it with `attr.type="string"`.
+
+## Identifier and metadata columns
+
+Alongside your variables, each CSV file contains identifier columns that link
+the files together:
+
+- The **ego file** begins with `networkCanvasEgoUUID`, `networkCanvasCaseID`,
+  `networkCanvasSessionID`, `networkCanvasProtocolName`, `sessionStart`,
+  `sessionFinish`, `sessionExported`, `APP_VERSION`, and `COMMIT_HASH`,
+  followed by your ego variables. Session timestamps are ISO 8601 strings.
+- **Alter files** begin with `nodeID` (a sequential number unique within the
+  export), `networkCanvasEgoUUID` (the join key to the ego file), and
+  `networkCanvasUUID` (the alter's permanent identifier).
+- **Edge files** begin with `edgeID`, `from`, `to` (which reference `nodeID`
+  values in the alter files), `networkCanvasEgoUUID`, `networkCanvasUUID`, and
+  the permanent endpoint identifiers `networkCanvasSourceUUID` and
+  `networkCanvasTargetUUID`.
+
+## Missing values
+
+An unanswered question appears as an **empty cell** in CSV and as an **omitted
+value** in GraphML (the `<key>` declaration may still be present, but no
+`<data>` element is written for that entity). The one exception is categorical
+variables in CSV, where an unanswered question produces an explicit `false` in
+every option column—so treat an all-`false` row with care if the question was
+optional.
+
+## Encrypted variables
+
+If your protocol uses the experimental
+[Anonymisation interface](/en/design-protocols/interface-documentation/anonymisation),
+encrypted variables are never exported in readable form: every exported value
+for an encrypted variable is the literal string `ENCRYPTED`, in both CSV and
+GraphML.
+
+## Variable types in analysis
+
+Different variable types call for different analytical approaches once your
+data is loaded:
+
+- **Categorical and ordinal** variables suit frequency tables and cross-tabs,
+  and support chi-square tests and logistic regression. Remember that exports
+  contain option _values_, so recode them to labelled factors or categories in
+  your analysis software if you want readable output.
+- **Boolean** variables (including the expanded categorical option columns)
+  can be treated as categorical with two levels, or converted to 0/1 for use
+  in regression models.
+- **Number and scalar** variables support descriptive statistics (mean,
+  median, standard deviation) as well as correlation, regression, and t-tests.
+  Scalar values are already normalized to 0–1, which simplifies comparison
+  across scales.
+- **Text** variables are best suited to qualitative approaches such as content
+  analysis and coding.
+
+## Related pages
+
+- [Data Export](/en/analyze-data/data-export) — file formats, export options,
+  and loading data into R and Python
+- [Variables](/en/design-protocols/key-concepts/variables) — defining
+  variables when designing your protocol

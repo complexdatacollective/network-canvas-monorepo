@@ -61,7 +61,7 @@ ego_id,networkCanvasEgoUUID,networkCanvasCaseID,age,gender,sessionStart,sessionF
 #### Alter attribute list
 
 - **One row per alter** (nominated node)
-- **Filename format:** `caseID_sessionUUID_alterType.csv`
+- **Filename format:** `caseID_sessionUUID_attributeList_alterType.csv`
 - **Contains:**
   - All alter attributes you collected
   - Network Canvas identifiers (alter UUID, ego UUID)
@@ -85,7 +85,7 @@ ego_id,alter_id,networkCanvasUUID,networkCanvasEgoUUID,name,age,close_friend,con
 #### Edge attribute list
 
 - **One row per edge** (relationship between alters)
-- **Filename format:** `caseID_sessionUUID_edgeType.csv`
+- **Filename format:** `caseID_sessionUUID_edgeList_edgeType.csv`
 - **Contains:**
   - Edge attributes you collected
   - Source and target identifiers (both UUID and export ID)
@@ -155,6 +155,7 @@ Exported GraphML files include a small set of Network Canvas extensions so that 
 - `nc:sessionUUID`
 - `nc:protocolName`
 - `nc:protocolUID`
+- `nc:codebookHash`
 - `nc:sessionExportTime`
 - `nc:sessionStartTime`
 - `nc:sessionFinishTime`
@@ -210,19 +211,20 @@ Even when merged, ego networks remain separate—the data is combined into share
 
 ### Use screen layout coordinates
 
-This option converts normalized node positions from Sociogram interfaces into screen-specific pixel coordinates.
+This option adds screen-specific pixel coordinates alongside the normalized node positions recorded by Sociogram interfaces.
 
 Network Canvas stores node positions from Sociogram layout variables as normalized x/y coordinates (values between 0 and 1) with the origin at the top-left. This normalization allows layouts to be displayed on screens of different sizes while maintaining relative positions.
 
-When enabled, this converts normalized coordinates to pixel coordinates based on a screen size. In Interviewer, it uses the screen layout width and height you set in **Settings → Data export** (default 1920 x 1080 pixels). In Interviewer Classic, it uses the screen dimensions configured in its export settings, which default to — and can be reset to — the device's own resolution. In Fresco, it uses a fixed size of 1920 x 1080 pixels. When disabled (the default), it exports normalized coordinates in the 0-1 range.
+A layout variable is exported as two CSV columns named after the variable, with `_x` and `_y` suffixes—a layout variable named `layout` produces `layout_x` and `layout_y` columns containing the normalized values. When this option is enabled, the export keeps those normalized columns and **adds** two further columns, `layout_screenSpaceX` and `layout_screenSpaceY`, containing pixel values (rounded to two decimal places) based on a screen size. In Interviewer, it uses the screen layout width and height you set in **Settings → Data export** (default 1920 x 1080 pixels). In Interviewer Classic, it uses the screen dimensions configured in its export settings, which default to — and can be reset to — the device's own resolution. In Fresco, it uses a fixed size of 1920 x 1080 pixels. When disabled (the default), only the normalized 0-1 columns are exported. Note that the screen-space Y value is calculated as (1 − y) × screen height, so it is measured from the bottom of the screen—matching the coordinate convention of most visualization software—while the normalized `_y` column is measured from the top.
 
 Enable this option when you want to recreate the exact visual layout as it appeared during the interview, when you're importing into visualization software that expects pixel coordinates, or when you need coordinates that match specific screen dimensions. Disable it when you want device-independent coordinates that work on any canvas size, when you're comparing layouts created on different screen sizes, or when you want maximum flexibility for visualization.
 
 <TipBox>
 
 If a Sociogram uses a responsive background with quadrants or other regions,
-leave **Use screen layout coordinates** disabled. You can compare the normalized
-`x` and `y` values directly with the percentage boundaries in the image. See
+leave **Use screen layout coordinates** disabled. You can compare the layout
+variable's normalized `_x` and `_y` columns directly with the percentage
+boundaries in the image. See
 [Classify nodes from their
 coordinates](/en/design-protocols/responsive-svg-backgrounds#classify-nodes-from-their-coordinates)
 for quadrant rules, boundary handling, and an R example.
@@ -231,20 +233,20 @@ for quadrant rules, boundary handling, and an R example.
 
 **Example:**
 
-**Normalized (default):**
+**Normalized (default), for a layout variable named `layout`:**
 
 ```csv
-alter_id,name,x,y
+nodeID,name,layout_x,layout_y
 1,John,0.25,0.33
 2,Sarah,0.75,0.67
 ```
 
-**Screen coordinates (1920x1080):**
+**With screen layout coordinates enabled (1920x1080):**
 
 ```csv
-alter_id,name,x,y
-1,John,480,356
-2,Sarah,1440,724
+nodeID,name,layout_x,layout_y,layout_screenSpaceX,layout_screenSpaceY
+1,John,0.25,0.33,480.00,723.60
+2,Sarah,0.75,0.67,1440.00,356.40
 ```
 
 ### Additional export considerations
@@ -270,6 +272,10 @@ These identifiers allow you to:
 - `networkCanvasProtocolName` - Protocol used
 
 ## Data structure details
+
+For a complete reference showing how each variable type is encoded in these
+files—column naming, value formats, and missing-value handling—see the
+[Export Data Dictionary](/en/analyze-data/data-dictionary).
 
 ### Understanding the ego-alter-edge structure
 
@@ -309,7 +315,7 @@ If your protocol defines multiple node types (e.g., "Person" and "Place"), the e
 
 **CSV export:**
 
-- Separate alter files: `case_001_session_123_Person.csv` and `case_001_session_123_Place.csv`
+- Separate alter files: `case_001_session_123_attributeList_Person.csv` and `case_001_session_123_attributeList_Place.csv`
 - Each file contains only alters of that specific type
 - Edges between different types appear in the edge files with appropriate type indicators
 
@@ -377,17 +383,56 @@ If you exported sessions as separate files, combine the matching per-session fil
 
 ### In Python
 
+Network Canvas CSV exports load directly into [pandas](https://pandas.pydata.org),
+and the per-file identifier columns give you everything needed to join entity
+files and build graphs with [networkx](https://networkx.org):
+
 ```python
 import pandas as pd
 import networkx as nx
 
-# CSV approach
-egos = pd.read_csv('ego.csv')
-alters = pd.read_csv('alters_Person.csv')
-edges = pd.read_csv('edges_friendship.csv')
+# Read the entity CSVs. Alter and edge rows carry a networkCanvasEgoUUID
+# column that links them to their ego's row in the ego file.
+egos = pd.read_csv("case_001_session_123_ego.csv")
+alters = pd.read_csv("case_001_session_123_attributeList_Person.csv")
+edges = pd.read_csv("case_001_session_123_edgeList_Friend.csv")
 
-# GraphML approach
-G = nx.read_graphml('case_001_session_123.graphml')
+# A flat analysis table: each alter alongside its ego's attributes
+alters_with_ego = alters.merge(egos, on="networkCanvasEgoUUID")
+
+# Build one networkx graph per ego network from the CSV files,
+# using the permanent UUID columns as node identifiers
+graphs = {}
+for ego_uuid, ego_alters in alters.groupby("networkCanvasEgoUUID"):
+    G = nx.Graph()
+    for _, alter in ego_alters.iterrows():
+        G.add_node(alter["networkCanvasUUID"], **alter.to_dict())
+    ego_edges = edges[edges["networkCanvasEgoUUID"] == ego_uuid]
+    for _, edge in ego_edges.iterrows():
+        G.add_edge(
+            edge["networkCanvasSourceUUID"],
+            edge["networkCanvasTargetUUID"],
+            **edge.to_dict(),
+        )
+    graphs[ego_uuid] = G
+```
+
+Because each session exports its own set of files, a single session's files
+contain exactly one ego network; the grouping above becomes useful once you
+concatenate the matching per-session files (for example with `pd.concat`)
+into study-level data frames.
+
+Alternatively, read the GraphML file, which contains the complete ego network
+for a session in one graph. Ego attributes are stored at graph level (declared
+with `for="graph"`), so networkx exposes them on the graph's own attribute
+dictionary:
+
+```python
+G = nx.read_graphml("case_001_session_123.graphml")
+
+G.graph              # ego attributes, e.g. {'egoName': 'Enzo', 'egoAge': 40}
+G.nodes(data=True)   # alters with their attributes
+G.edges(data=True)   # edges with their attributes
 ```
 
 ### In network visualization software
