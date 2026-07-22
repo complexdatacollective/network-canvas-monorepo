@@ -14,7 +14,7 @@ How that data is stored, and therefore what security measures you need to put in
 
 <TipBox>
 
-This page summarizes the practical best practices for each tool. For a comprehensive deep dive — including roles under GDPR, ethics committee and IT department guidance, and a full security checklist — see our [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance). For a complementary technical breakdown of what data needs securing in the desktop apps, see the [Overview of Security Model](/en/get-started/project-information/security-model).
+This page summarizes the practical best practices for each tool. For a comprehensive deep dive — including roles under GDPR, ethics committee and IT department guidance, and a full security checklist — see our [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance).
 
 </TipBox>
 
@@ -31,6 +31,16 @@ Interviewer Classic and Architect Classic are fully offline tools designed to ru
 ### Data storage
 
 The data collected in the field is yours, and is only ever stored on your devices. We never receive, transmit, or store participant data, and no participant data leaves the device unless you manually export it. Interviewer sends optional anonymous usage and error analytics — never participant data — which are on by default and can be disabled at any time in Settings → Privacy; Interviewer Classic sends none. We do not use cookies or other tracking tokens of any kind within Network Canvas.
+
+### What data is stored where
+
+When assessing risk, it helps to know exactly what these apps keep on the device. Each stores three kinds of data, all of which should be treated as potentially sensitive:
+
+- **Protocols** — alongside the structure of your interview, a protocol can embed any datasets needed to conduct it. For example, a study in a school may include a roster of the names of classmates.
+- **Session data** — participant response data, which may include sensitive personal information (especially in domains such as healthcare), plus metadata such as the date a session was conducted, which may reveal participant whereabouts.
+- **App configuration and metadata** — application settings and protocol metadata, such as display preferences in Interviewer Classic or which protocol was last edited in Architect Classic.
+
+Where this data lives differs by app generation. The browser-based **Architect** and **Interviewer** store their data in your web browser's local storage on the device you use, while **Architect Classic** and **Interviewer Classic** store their data within the app on the device. In both cases, the device-level protections described below — disk encryption, strong passwords, and automatic locking — are what keep this data safe. For information about data storage and security in Fresco, see the [Fresco FAQ](/en/collect-data/fresco/faq#is-fresco-gdpr-compliant) and the Fresco section below.
 
 ### Security best practices
 

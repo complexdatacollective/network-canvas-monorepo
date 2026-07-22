@@ -1,7 +1,7 @@
 ---
 title: Working with Roster Data
 wip: false
-navOrder: 4
+navOrder: 5
 ---
 
 <SummaryCard duration="30 minutes">

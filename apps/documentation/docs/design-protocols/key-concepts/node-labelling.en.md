@@ -1,10 +1,11 @@
 ---
 title: Node Labelling
+navOrder: 13
 ---
 
 ## How Interviewer Calculates a Node's Label
 
-Interviewer calculates the label to be used when rendering a node using the the following logic:
+Interviewer calculates the label to be used when rendering a node using the following logic:
 
 0. Use any node label worker that is within the protocol (see [section below](#custom-node-labelling-advanced) for details on this advanced feature).
 1. Look for a variable called "name" (regardless of case) in the [codebook](/en/design-protocols/key-concepts/codebook) for node's type, and try to retrieve this value from the node.
@@ -13,7 +14,7 @@ Interviewer calculates the label to be used when rendering a node using the the 
 
 If you are seeing unexpected results, such as "No 'name' variable!" messages, ensure you have constructed your protocol or your data in a way that satisfies a rule with a higher precedence. For example, ensure you have correctly created a 'name' variable for the node type, and that this variable is assigned a value within your interview.
 
-For advanced functionality, such as calculating a node label dynamically, see ["custom node labelling"](../advanced-topics/node-labelling#custom-node-labelling-advanced).
+For advanced functionality, such as calculating a node label dynamically, see ["custom node labelling"](#custom-node-labelling-advanced) below.
 
 ## Labelling Nodes from Roster Data
 
@@ -31,7 +32,7 @@ Custom node labelling is not supported in [Fresco](/en/collect-data/fresco). The
 
 For more flexible labelling of nodes, you can implement a custom labelling function. To accomplish this, you would:
 
-- Add `nodeLabelWorker.js` to your protocol (see: [the protocol file format](../advanced-topics/protocol-schema-information) for details of how to do this)
+- Add `nodeLabelWorker.js` to your protocol (see [Inside a .netcanvas file](./the-protocol-file#inside-a-netcanvas-file) for details of how to do this)
 - Within this file, define a function named `nodeLabelWorker`
 - Return a string from that function, which will be used as the label.
 

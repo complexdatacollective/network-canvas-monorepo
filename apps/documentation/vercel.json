@@ -12,7 +12,52 @@
     },
     {
       "source": "/en/get-started/release-announcements",
-      "destination": "/en/get-started/advanced-topics/protocol-schema-information",
+      "destination": "/en/get-started/protocol-schema-information",
+      "permanent": true
+    },
+    {
+      "source": "/en/get-started/advanced-topics/node-labelling",
+      "destination": "/en/design-protocols/key-concepts/node-labelling",
+      "permanent": true
+    },
+    {
+      "source": "/en/get-started/advanced-topics/protocol-file-format",
+      "destination": "/en/design-protocols/key-concepts/the-protocol-file",
+      "permanent": true
+    },
+    {
+      "source": "/en/get-started/advanced-topics/protocol-schema-information",
+      "destination": "/en/get-started/protocol-schema-information",
+      "permanent": true
+    },
+    {
+      "source": "/en/design-protocols/interface-documentation/small-roster-name-generator",
+      "destination": "/en/design-protocols/interface-documentation/name-generator-roster",
+      "permanent": true
+    },
+    {
+      "source": "/en/design-protocols/interface-documentation/large-roster-name-generator",
+      "destination": "/en/design-protocols/interface-documentation/name-generator-roster",
+      "permanent": true
+    },
+    {
+      "source": "/en/design-protocols/key-concepts/preview-mode",
+      "destination": "/en/design-protocols/preview-mode",
+      "permanent": true
+    },
+    {
+      "source": "/en/design-protocols/key-concepts/responsive-svg-backgrounds",
+      "destination": "/en/design-protocols/responsive-svg-backgrounds",
+      "permanent": true
+    },
+    {
+      "source": "/en/get-started/project-information/security-model",
+      "destination": "/en/get-started/planning-a-study/irb-best-practices",
+      "permanent": true
+    },
+    {
+      "source": "/en/analyze-data/network-canvas-graphml",
+      "destination": "/en/analyze-data/data-export",
       "permanent": true
     },
     {
@@ -52,27 +97,27 @@
     },
     {
       "source": "/reference/security-model",
-      "destination": "/en/get-started/project-information/security-model",
+      "destination": "/en/get-started/planning-a-study/irb-best-practices",
       "permanent": true
     },
     {
       "source": "/reference/network-canvas-graphml",
-      "destination": "/en/analyze-data/network-canvas-graphml",
+      "destination": "/en/analyze-data/data-export",
       "permanent": true
     },
     {
       "source": "/reference/node-labelling",
-      "destination": "/en/get-started/advanced-topics/node-labelling",
+      "destination": "/en/design-protocols/key-concepts/node-labelling",
       "permanent": true
     },
     {
       "source": "/reference/protocol-file-format",
-      "destination": "/en/get-started/advanced-topics/protocol-file-format",
+      "destination": "/en/design-protocols/key-concepts/the-protocol-file",
       "permanent": true
     },
     {
       "source": "/reference/protocol-schema-information",
-      "destination": "/en/get-started/advanced-topics/protocol-schema-information",
+      "destination": "/en/get-started/protocol-schema-information",
       "permanent": true
     },
     {
@@ -107,7 +152,7 @@
     },
     {
       "source": "/advanced-topics/network-canvas-graphml",
-      "destination": "/en/analyze-data/network-canvas-graphml",
+      "destination": "/en/analyze-data/data-export",
       "permanent": true
     },
     {
@@ -132,7 +177,7 @@
     },
     {
       "source": "/en/desktop/advanced-topics/network-canvas-graphml",
-      "destination": "/en/analyze-data/network-canvas-graphml",
+      "destination": "/en/analyze-data/data-export",
       "permanent": true
     },
     {

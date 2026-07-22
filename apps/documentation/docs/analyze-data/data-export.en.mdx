@@ -159,6 +159,38 @@ ego_id,edge_id,edge_type,from,to,networkCanvasSourceUUID,networkCanvasTargetUUID
 </graphml>
 ```
 
+#### Network Canvas GraphML extensions
+
+Exported GraphML files include a small set of Network Canvas extensions so that interview metadata—such as the protocol used, case ID, and session identifiers—travels with the network data. These extensions are designed for interoperability: GraphML parsers that don't recognize them will simply ignore them.
+
+**Session metadata:** Namespaced `nc:` attributes on the `<graph>` element store session-level metadata:
+
+- `nc:caseId`
+- `nc:sessionUUID`
+- `nc:protocolName`
+- `nc:protocolUID`
+- `nc:sessionExportTime`
+- `nc:sessionStartTime`
+- `nc:sessionFinishTime`
+
+The schema `nc-types.xsd` defines these attributes, and `graphml+netcanvas.xsd` extends the `<graph>` element to include them.
+
+**Ego attributes:** Ego data is stored using the standard GraphML mechanism for attaching data to the graph itself, so no schema extension is needed. Each ego attribute is declared with a `<key>` element whose `for` attribute is set to `graph`, rather than `node` or `edge`:
+
+```xml
+<key id="ego_attribute" attr.name="ego_attribute" attr.type="string" for="graph" />
+```
+
+Note that the `<key>` element must be located outside of the `<graph>` element. The attribute is then given a value anywhere inside the `<graph>` element:
+
+```xml
+<graph>
+  <data key="ego_attribute">Jimbo</data>
+</graph>
+```
+
+Because this uses the existing GraphML schema, other parsers either ignore ego data or correctly display it as one or more attributes of the graph itself. Network Canvas parsers treat all graph-level `<key>` and `<data>` elements as describing ego.
+
 ### Choosing between CSV and GraphML
 
 | Consideration          | CSV                                       | GraphML                                   |
@@ -202,7 +234,7 @@ If a Sociogram uses a responsive background with quadrants or other regions,
 leave **Use screen layout coordinates** disabled. You can compare the normalized
 `x` and `y` values directly with the percentage boundaries in the image. See
 [Classify nodes from their
-coordinates](/en/design-protocols/key-concepts/responsive-svg-backgrounds#classify-nodes-from-their-coordinates)
+coordinates](/en/design-protocols/responsive-svg-backgrounds#classify-nodes-from-their-coordinates)
 for quadrant rules, boundary handling, and an R example.
 
 </TipBox>

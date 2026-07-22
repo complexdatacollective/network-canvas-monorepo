@@ -15,7 +15,52 @@ status = 301
 
 [[redirects]]
 from = "/en/get-started/release-announcements"
-to = "/en/get-started/advanced-topics/protocol-schema-information"
+to = "/en/get-started/protocol-schema-information"
+status = 301
+
+[[redirects]]
+from = "/en/get-started/advanced-topics/node-labelling"
+to = "/en/design-protocols/key-concepts/node-labelling"
+status = 301
+
+[[redirects]]
+from = "/en/get-started/advanced-topics/protocol-file-format"
+to = "/en/design-protocols/key-concepts/the-protocol-file"
+status = 301
+
+[[redirects]]
+from = "/en/get-started/advanced-topics/protocol-schema-information"
+to = "/en/get-started/protocol-schema-information"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/interface-documentation/small-roster-name-generator"
+to = "/en/design-protocols/interface-documentation/name-generator-roster"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/interface-documentation/large-roster-name-generator"
+to = "/en/design-protocols/interface-documentation/name-generator-roster"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/key-concepts/preview-mode"
+to = "/en/design-protocols/preview-mode"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/key-concepts/responsive-svg-backgrounds"
+to = "/en/design-protocols/responsive-svg-backgrounds"
+status = 301
+
+[[redirects]]
+from = "/en/get-started/project-information/security-model"
+to = "/en/get-started/planning-a-study/irb-best-practices"
+status = 301
+
+[[redirects]]
+from = "/en/analyze-data/network-canvas-graphml"
+to = "/en/analyze-data/data-export"
 status = 301
 
 # Legacy flat (pre-locale) top-level pages
@@ -57,27 +102,27 @@ status = 301
 
 [[redirects]]
 from = "/reference/security-model"
-to = "/en/get-started/project-information/security-model"
+to = "/en/get-started/planning-a-study/irb-best-practices"
 status = 301
 
 [[redirects]]
 from = "/reference/network-canvas-graphml"
-to = "/en/analyze-data/network-canvas-graphml"
+to = "/en/analyze-data/data-export"
 status = 301
 
 [[redirects]]
 from = "/reference/node-labelling"
-to = "/en/get-started/advanced-topics/node-labelling"
+to = "/en/design-protocols/key-concepts/node-labelling"
 status = 301
 
 [[redirects]]
 from = "/reference/protocol-file-format"
-to = "/en/get-started/advanced-topics/protocol-file-format"
+to = "/en/design-protocols/key-concepts/the-protocol-file"
 status = 301
 
 [[redirects]]
 from = "/reference/protocol-schema-information"
-to = "/en/get-started/advanced-topics/protocol-schema-information"
+to = "/en/get-started/protocol-schema-information"
 status = 301
 
 [[redirects]]
@@ -116,7 +161,7 @@ status = 301
 # Legacy flat /advanced-topics/* (old Architect links)
 [[redirects]]
 from = "/advanced-topics/network-canvas-graphml"
-to = "/en/analyze-data/network-canvas-graphml"
+to = "/en/analyze-data/data-export"
 status = 301
 
 [[redirects]]
@@ -142,7 +187,7 @@ status = 301
 
 [[redirects]]
 from = "/en/desktop/advanced-topics/network-canvas-graphml"
-to = "/en/analyze-data/network-canvas-graphml"
+to = "/en/analyze-data/data-export"
 status = 301
 
 [[redirects]]

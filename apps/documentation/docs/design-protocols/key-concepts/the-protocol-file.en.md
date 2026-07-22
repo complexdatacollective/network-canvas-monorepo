@@ -18,13 +18,19 @@ A Network Canvas protocol is stored as a `.netcanvas` file — a self-contained 
 
 Either way, the `.netcanvas` file contains all the data in your protocol. So if you use any [resources](/en/design-protocols/key-concepts/resources), such as roster data, images, or video, these will be embedded within the file. See [Saving and backing up](/en/design-protocols/saving-and-backing-up) for how each version stores your work and how to keep it safe.
 
+## Inside a .netcanvas file
+
+Although you can treat a `.netcanvas` file as a single file, it is really a zipped folder. Inside, the stages, prompts, and logic that make up your interview are stored in a file called `protocol.json`, and any resources you have added — such as images, video, or roster data — live alongside it in an `assets/` folder.
+
+To look inside a protocol, rename it so that it ends in `.zip`, and then unzip it. The main reason to do this is the [custom node labelling](/en/design-protocols/key-concepts/node-labelling#custom-node-labelling-advanced) workflow, which involves placing a `nodeLabelWorker.js` file at the top level of the protocol — in the same folder as `protocol.json`. Once you have added the file, zip the folder back up, rename it so that it ends in `.netcanvas`, and import it into Interviewer. If you later edit the protocol in Architect, the JavaScript file will be preserved when you save.
+
 ## Authoring Protocol Files
 
 Architect creates your protocol for you when you start a new one. In **Architect** (the browser app), your changes are saved automatically to the browser library as you work — there is no Save button, and you **Download** a `.netcanvas` file when you want a copy. In **Architect Classic**, Architect creates the `.netcanvas` file and prompts you to save your changes as you add stages, edit content, or upload resources. Either way, your changes are stored within the protocol.
 
 Once you deploy your protocol to other applications, however, be aware that making changes effectively makes your protocol a new version. If you find that you need to make changes after deploying it, you have two options. It is recommended to save a copy of your protocol with a new name after making changes, and to import the new version to Interviewer. The other option is to remove the existing protocol (and any interview data) from Interviewer or Fresco and upload the newer version. This is necessary to ensure compatibility across tools.
 
-If you choose to create or edit a protocol file by hand, you will be responsible for ensuring it follows all specifications for the current [schema](/en/get-started/advanced-topics/protocol-schema-information).
+If you choose to create or edit a protocol file by hand, you will be responsible for ensuring it follows all specifications for the current [schema](/en/get-started/protocol-schema-information).
 
 ## Using Protocol Files
 

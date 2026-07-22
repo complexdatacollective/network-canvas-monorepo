@@ -1,6 +1,6 @@
 ---
 title: Installing Architect Classic
-navOrder: 8
+navOrder: 10
 toc: true
 ---
 

@@ -287,7 +287,7 @@ We can also narrow down the options that appear to a participant when they searc
 
 Refer to our Interface Documentation for more in depth instruction, including
 useful Do's and Don'ts of working with [roster
-data](/en/design-protocols/interface-documentation/small-roster-name-generator).
+data](/en/design-protocols/interface-documentation/name-generator-roster).
 
 </TipBox>
 
@@ -385,7 +385,7 @@ You should think carefully about how the choices you make regarding the
 background will impact the way your participants position their nodes.
 
 If the background defines quadrants, axes, or other regions, see [Responsive
-SVG Backgrounds](/en/design-protocols/key-concepts/responsive-svg-backgrounds).
+SVG Backgrounds](/en/design-protocols/responsive-svg-backgrounds).
 The guide explains how to make the regions adapt to portrait and landscape
 screens, and how to infer a node's region from the normalized coordinates stored
 in its layout variable.
@@ -424,7 +424,7 @@ By now you should have a feel for the process of configuring a stage within Arch
 
 From the timeline overview, click the "Add New Stage" button, and select the Dyad Census interface. Again, we name the stage and this time we select node type "Classmate."
 
-We will next implement skip logic so that the stage will only show for participants who nominate at least two classmates on the small roster name generator implemented previously. We do this by toggling the switch to enable skip logic for the stage, selecting "Skip this stage if", and, then, defining an alter rule by clicking the "Add Alter Rule" button to define the equation.
+We will next implement skip logic so that the stage will only show for participants who nominate at least two classmates on the classmate roster stage implemented previously. We do this by toggling the switch to enable skip logic for the stage, selecting "Skip this stage if", and, then, defining an alter rule by clicking the "Add Alter Rule" button to define the equation.
 
 We define the rule by selecting the alter node type of "Classmate", then selecting rule type of "Presence", and, finally, selecting "Does not Exist."
 
@@ -462,7 +462,7 @@ We have now finished configuring this sociogram stage.
 
 <TipBox>
 
-Interfaces that do not create nodes — such as the sociogram, ordinal bin, and categorical bin — need an existing network to display anything. In Architect you don't have to build one by hand: preview starts with **Start preview with example data** turned on, so an example network of nodes and edges is generated automatically and the stage you are previewing already has data to work with. The previewed stage is intentionally left partly incomplete, so you can still exercise its interaction (positioning nodes, sorting them into bins, creating edges, toggling attributes). See [Preview mode](/en/design-protocols/key-concepts/preview-mode) for more on the preview settings.
+Interfaces that do not create nodes — such as the sociogram, ordinal bin, and categorical bin — need an existing network to display anything. In Architect you don't have to build one by hand: preview starts with **Start preview with example data** turned on, so an example network of nodes and edges is generated automatically and the stage you are previewing already has data to work with. The previewed stage is intentionally left partly incomplete, so you can still exercise its interaction (positioning nodes, sorting them into bins, creating edges, toggling attributes). See [Preview mode](/en/design-protocols/preview-mode) for more on the preview settings.
 
 </TipBox>
 
