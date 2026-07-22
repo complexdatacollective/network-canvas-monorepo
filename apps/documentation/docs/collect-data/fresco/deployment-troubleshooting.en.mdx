@@ -65,7 +65,9 @@ This error means that you are using the deployment specific URL, which requires 
 
 ## Reset your database
 
-Resetting your database completely erases your Fresco instance's data — all protocols, participants, settings, accounts, and any unexported interviews — and returns the app to its first-run setup wizard. It is a last-resort recovery procedure: use it if your instance expired during initial setup, or if every account is locked out and no other [recovery options](/en/collect-data/fresco/accounts#recovering-access) remain.
+Resetting your database erases everything stored in your Fresco instance's database — all protocols, participants, settings, accounts, and any unexported interviews — and returns the app to its first-run setup wizard. It is a last-resort recovery procedure: use it if your instance expired during initial setup, or if every account is locked out and no other [recovery options](/en/collect-data/fresco/accounts#recovering-access) remain.
+
+Note that files in your configured storage backend — protocol assets and roster files in UploadThing, S3, or self-hosted MinIO — are **not** removed by a database reset. If you are decommissioning a study, delete them from the storage provider separately.
 
 Export any interview data you can before you begin. The steps depend on how you deployed Fresco.
 

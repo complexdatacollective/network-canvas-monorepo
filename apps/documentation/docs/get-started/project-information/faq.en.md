@@ -81,6 +81,6 @@ If you have specific security requirements, please contact us to discuss how we 
 
 ## Is Interviewer GDPR compliant?
 
-Interviewer and Fresco can be used in a GDPR-compliant manner, but compliance depends on how you deploy and configure them. The Network Canvas development team never receives or hosts participant data, and does not act as a Data Controller or Data Processor under GDPR — you, or your institution, are always the Data Controller. The only information the software ever sends to us is optional anonymous usage and error analytics in Interviewer, which never include participant data (Interviewer Classic sends none).
+Interviewer and Fresco can be used in a GDPR-compliant manner, but compliance depends on how you deploy and configure them. The Network Canvas development team never receives or hosts participant data, and does not act as a Data Controller or Data Processor under GDPR — you, or your institution, are always the Data Controller. The only information the software ever sends to us is optional anonymous usage and error analytics in Interviewer and Fresco, which never include participant data and can be disabled (Interviewer Classic sends none).
 
 For detailed guidance — including how each app stores data, analytics and third-party services, and your responsibilities as Data Controller — see our [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance).
