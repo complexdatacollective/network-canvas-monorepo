@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
@@ -21,7 +21,8 @@ import { DeckSlotCard } from './DeckSlotCard';
 import { ImportTriggerCard } from './ImportTriggerCard';
 import { useDeckKeyboard } from './useDeckKeyboard';
 
-// Cards are square; height is measured from the section, width follows.
+// Cards are square; height is measured from the section while the deck is
+// idle, and width follows.
 const CARD_ASPECT = 1 / 1;
 // Readability floor: below this the card's container-query type becomes too
 // small to read, so the deck stops shrinking and lets the section clip
@@ -60,9 +61,8 @@ type ProtocolDeckProps = {
   onInstallSample?: () => void;
   onDismissSample?: () => void;
   onInstallDevelopment?: () => void;
-  // When set, the matching card is rendered in its "new session" state: the
-  // case-ID form replaces the description, metadata, and Start button in the
-  // card footer, and swipe/keyboard navigation is locked.
+  // When set, swipe/keyboard navigation is locked and the matching protocol
+  // card is isolated above a modal backdrop with the case-ID form.
   newSessionProtocolHash?: string | null;
   onCancelNewSession?: () => void;
   onSessionCreated?: (session: StoredSession) => void;
@@ -84,15 +84,9 @@ const sectionVariants = {
   },
 } as const;
 
-// Chevron row needs both a view-transition cascade (hidden/visible/exit)
-// and a "fade out while the new-session form is open" toggle. We model
-// the toggle as a `muted` variant and drive `animate` explicitly when it
-// applies — outside of `muted`, `animate="visible"` lines up with the
-// state that the parent cascade is propagating anyway.
 const chevronRowVariants = {
   hidden: { opacity: 0, y: '10%' },
   visible: { opacity: 1, y: 0 },
-  muted: { opacity: 0, y: 0 },
   exit: {
     opacity: 0,
     y: '10%',
@@ -334,13 +328,16 @@ export function ProtocolDeck({
   }, [slides, initialProtocolHash]);
 
   // Observe the section (not the outer container) so cardHeight tracks the
-  // space actually available to the carousel. The outer container also
-  // holds the chevron+dots row. Read borderBoxSize; contentRect excludes
-  // our own padding and would feed back into the calculation.
+  // space actually available to the carousel. Freeze the last resting size
+  // while the case-ID form is active: the software keyboard can shrink the
+  // app's visual-viewport frame, but must not reflow the card around its
+  // focused input. Read borderBoxSize; contentRect excludes our own padding
+  // and would feed back into the calculation.
   useEffect(() => {
     const el = sectionRef.current;
-    if (!el) return;
+    if (!el) return undefined;
     const ro = new ResizeObserver((entries) => {
+      if (newSessionActive) return;
       const entry = entries[0];
       if (!entry) return;
       const box = entry.borderBoxSize?.[0];
@@ -349,7 +346,7 @@ export function ProtocolDeck({
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [newSessionActive]);
 
   const { cardWidth, cardHeight } = useMemo(() => {
     const padding = computeSectionPadding(sectionHeight);
@@ -377,10 +374,11 @@ export function ProtocolDeck({
     }, [slides, activeIndex]),
   });
 
-  // Esc cancels the new-session form. Listen at the window so it works
-  // regardless of which form control currently has focus.
+  // The manually orchestrated backdrop does not own keyboard dismissal like
+  // Base UI's full Modal component would, so keep Escape available from any
+  // focused form control.
   useEffect(() => {
-    if (!newSessionActive) return;
+    if (!newSessionActive) return undefined;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -396,11 +394,28 @@ export function ProtocolDeck({
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center">
+      <AnimatePresence>
+        {newSessionActive ? (
+          <motion.button
+            key="new-session-backdrop"
+            type="button"
+            tabIndex={-1}
+            aria-label="Cancel starting interview"
+            data-testid="new-session-backdrop"
+            className="bg-overlay publish-colors fixed inset-0 z-40 cursor-default border-0 p-0 backdrop-blur-xs"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.25 } }}
+            exit={{ opacity: 0 }}
+            onClick={onCancelNewSession}
+          />
+        ) : null}
+      </AnimatePresence>
+
       <motion.section
         ref={sectionRef}
         variants={sectionVariants}
         aria-label="Protocol deck"
-        className="flex max-h-[45rem] min-h-0 w-full flex-1 items-center justify-center"
+        className={`flex max-h-[45rem] min-h-0 w-full flex-1 items-center justify-center ${newSessionActive ? 'pointer-events-none relative z-50' : ''}`}
       >
         {cardHeight > 0 ? (
           <DeckCarousel
@@ -409,6 +424,7 @@ export function ProtocolDeck({
             activeIndex={activeIndex}
             onActiveIndexChange={setActiveIndex}
             disabled={newSessionActive}
+            isolateActiveSlide={newSessionActive}
             cardWidth={cardWidth}
             cardHeight={cardHeight}
           />
@@ -419,7 +435,7 @@ export function ProtocolDeck({
         <motion.div
           variants={chevronRowVariants}
           initial="hidden"
-          animate={newSessionActive ? 'muted' : 'visible'}
+          animate="visible"
           exit="exit"
           // Hide the row from assistive tech and pointer/keyboard events
           // while the form is open so it can't be tabbed into behind the

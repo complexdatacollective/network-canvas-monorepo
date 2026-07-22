@@ -76,7 +76,7 @@ export function StatusRowView({
   return (
     <motion.div
       variants={variants}
-      className="font-monospace text-text/60 tablet-landscape:px-11 tablet-landscape:justify-between flex items-center justify-end px-6 pb-4 text-xs"
+      className="font-monospace text-text/60 tablet-landscape:justify-between laptop:px-11 flex items-center justify-end px-6 pb-4 text-xs"
     >
       <Link
         href="/data"

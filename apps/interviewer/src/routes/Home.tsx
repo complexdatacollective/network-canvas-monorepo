@@ -175,7 +175,7 @@ export function HomeRoute() {
           controls out of the tab order while the new-session form is up. */}
       <InstallBanner />
       <header
-        className="tablet-landscape:px-11 tablet-landscape:pt-9 relative flex items-center justify-between px-6 pt-6"
+        className="laptop:px-11 laptop:pt-9 relative flex items-center justify-between px-6 pt-4"
         inert={newSessionActive}
       >
         <BrandHeader />
@@ -197,7 +197,7 @@ export function HomeRoute() {
             actual ORIENTATION, not a min-width breakpoint: the 13" iPad's
             portrait width (~1024px) would otherwise trip a min-width
             breakpoint and pull the pill up into the header. */}
-        <div className="tablet-landscape:px-11 tablet-landscape:pt-9 pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-6 landscape:translate-y-0">
+        <div className="laptop:px-11 laptop:pt-9 pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-4 landscape:translate-y-0">
           <AnimatePresence>
             {showResumePill ? (
               <ResumePill key="resume-pill" sessions={sessions} />

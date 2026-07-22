@@ -352,19 +352,16 @@ export const RequiresInternetPill: Story = {
 };
 
 // Stand-in for NewSessionForm (which needs app providers the story can't
-// host), sized like the real thing: intro paragraph, label + hint, input,
-// and the Cancel/submit row.
+// host), sized like the real thing: label + hint, input, and the Cancel/submit
+// row.
 function CaseIdFormStandIn() {
   return (
     <div className="flex flex-col gap-4 text-base">
-      <span>
-        Before the interview begins, enter a case ID. This will be shown on the
-        resume interview screen to help you quickly identify this session.
-      </span>
       <div>
         <div className="font-bold">Case ID</div>
         <div className="text-current/80">
-          A label used to identify this interview in exports.
+          This will be shown on the resume interview screen to help you quickly
+          identify this session.
         </div>
       </div>
       <div className="border-navy-taupe/40 rounded-full border px-4 py-3">
