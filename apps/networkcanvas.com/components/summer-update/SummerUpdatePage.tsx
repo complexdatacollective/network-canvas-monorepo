@@ -1090,7 +1090,7 @@ export function SummerUpdatePage() {
                   <button
                     type="button"
                     aria-pressed={selectedInterface === index}
-                    className="focusable aria-pressed:border-sea-serpent aria-pressed:bg-sea-serpent/15 flex h-full w-full flex-col items-center gap-3 rounded-sm border border-white/15 bg-white/5 p-5 text-center text-white/80 transition hover:bg-white/10 aria-pressed:text-white"
+                    className="focusable aria-pressed:border-sea-serpent aria-pressed:bg-sea-serpent/15 flex h-full w-full flex-col items-center justify-center gap-3 rounded-sm border border-white/15 bg-white/5 p-5 text-center text-white/80 transition hover:bg-white/10 aria-pressed:text-white"
                     onClick={() => setSelectedInterface(index)}
                   >
                     <InterfaceGraphic motif={feature.motif} />

@@ -71,6 +71,9 @@ describe('SummerUpdatePage', () => {
   it('links every Schema 8 explorer item to its relevant documentation', () => {
     render(<SummerUpdatePage />);
 
+    expect(screen.getByRole('button', { name: 'Geospatial' })).toHaveClass(
+      'justify-center',
+    );
     expect(
       screen.getByRole('heading', { name: 'Geospatial interface' }),
     ).toBeInTheDocument();
