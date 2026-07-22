@@ -1,16 +1,8 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
-import { difference, get, keys } from 'es-toolkit/compat';
-import { useCallback } from 'react';
-import { useSelector } from 'react-redux';
-import { change, getFormValues } from 'redux-form';
+import { get } from 'es-toolkit/compat';
 
 // Screen message listeners removed as part of screen system refactor
-// List of fields that are independent of the stage subject, and so do not need to be
-// reset when the subject changes.
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
 
 import Row from '../EditorLayout/Row';
 import Section from '../EditorLayout/Section';
@@ -18,33 +10,14 @@ import ValidatedField from '../Form/ValidatedField';
 import IssueAnchor from '../IssueAnchor';
 import EntitySelectField from './fields/EntitySelectField/EntitySelectField';
 import Filter from './Filter';
-export const SUBJECT_INDEPENDENT_FIELDS = [
-  'id',
-  'type',
-  'label',
-  'interviewScript',
-  'introductionPanel',
-  // The subject field itself never depends on its own value — omitting it
-  // here meant handleResetStage nulled the just-selected subject out from
-  // under the user on every change, including the very first selection.
-  'subject',
-];
+import useResetStageOnSubjectChange from './useResetStageOnSubjectChange';
+
 type NodeTypeProps = StageEditorSectionProps & {
   withFilter?: boolean;
 };
 const NodeType = (props: NodeTypeProps) => {
-  const { form, withFilter = false } = props;
-  const dispatch = useAppDispatch();
-  const formValues = useSelector((state: RootState) =>
-    getFormValues(form)(state),
-  );
-  const fields = keys(formValues);
-  const handleResetStage = useCallback(() => {
-    const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
-    fieldsToReset.forEach((field) => {
-      dispatch(change(form, field, null) as UnknownAction);
-    });
-  }, [dispatch, fields, form]);
+  const { form, interfaceType, withFilter = false } = props;
+  const handleResetStage = useResetStageOnSubjectChange(form, interfaceType);
   // TODO: Restore auto-selection of newly created types when type creation dialogs
   // are properly integrated with form state management
   return (
