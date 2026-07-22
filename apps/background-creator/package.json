@@ -12,10 +12,9 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
-    "@codaco/fresco-ui": "workspace:*",
-    "@codaco/shared-consts": "workspace:*",
-    "@codaco/tailwind-config": "workspace:*",
-    "@codaco/tsconfig": "workspace:*",
+    "@codaco/fresco-ui": "workspace:^",
+    "@codaco/tailwind-config": "workspace:^",
+    "@codaco/tsconfig": "workspace:^",
     "lucide-react": "catalog:",
     "motion": "catalog:",
     "react": "catalog:",
