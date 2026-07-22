@@ -248,6 +248,8 @@ const renderSidebarItem = (
   item: TSidebarFolder | SidebarPage,
   locale: Locale,
   sidebarContainerRef: RefObject<HTMLDivElement | null>,
+  section: Section,
+  sectionSourceFile: string | undefined,
 ) => {
   if (item.type === 'folder') {
     const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
@@ -260,7 +262,13 @@ const renderSidebarItem = (
         href={sourceFile}
       >
         {sortedChildren.map((child) =>
-          renderSidebarItem(child, locale, sidebarContainerRef),
+          renderSidebarItem(
+            child,
+            locale,
+            sidebarContainerRef,
+            section,
+            sectionSourceFile,
+          ),
         )}
       </SidebarFolder>
     );
@@ -271,12 +279,18 @@ const renderSidebarItem = (
     return null;
   }
 
-  const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
+  // The section's index page is served at the section root, so link there
+  // instead of the file-derived URL. Otherwise the sidebar entry is never
+  // marked active when a reader lands on /{locale}/{section}.
+  const href =
+    item.sourceFile === sectionSourceFile
+      ? (`/${locale}/${section}` as Route)
+      : processSourceFile(item.type, locale, item.sourceFile);
   return (
     <SidebarLink
       sidebarContainerRef={sidebarContainerRef}
       key={item.label}
-      href={sourceFile}
+      href={href}
       label={item.label}
     />
   );
@@ -329,7 +343,13 @@ export function Sidebar({ className }: { className?: string }) {
 
       <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
         {sortedSidebarItems.map((item) =>
-          renderSidebarItem(item, locale, sidebarContainerRef),
+          renderSidebarItem(
+            item,
+            locale,
+            sidebarContainerRef,
+            section,
+            sectionData.sourceFile,
+          ),
         )}
       </div>
     </nav>

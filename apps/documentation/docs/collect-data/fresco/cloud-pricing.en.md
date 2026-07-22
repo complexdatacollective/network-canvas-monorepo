@@ -1,7 +1,7 @@
 ---
 title: Cloud Pricing
 date: 8th October 2025
-navOrder: 11
+navOrder: 6
 wip: false
 ---
 

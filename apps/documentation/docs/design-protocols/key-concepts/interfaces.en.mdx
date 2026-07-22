@@ -1,5 +1,6 @@
 ---
 title: Interfaces
+navOrder: 2
 ---
 
 <Definition>
@@ -20,13 +21,15 @@ Interfaces can be broadly categorized as: name generators, sociograms, name inte
 
 ### Name Generator interfaces
 
-Name Generators allow participants to create alters during the course of an interview, thereby describing one of the two main entities in your study's networks. There are five Name Generator Interfaces available, each designed for specific scenarios:
+Name Generators allow participants to create alters during the course of an interview, thereby describing one of the two main entities in your study's networks. The following Name Generator Interfaces are available, each designed for specific scenarios:
 
 - [Name Generator (using forms)](/en/design-protocols/interface-documentation/name-generator-using-forms) - Collect detailed information about each alter as they are named
 - [Name Generator (using quick add)](/en/design-protocols/interface-documentation/name-generator-using-quick-add) - Quickly name multiple alters before collecting attributes
+- [Name Generator for Roster Data](/en/design-protocols/interface-documentation/name-generator-roster) - Select alters from a predefined roster, adapting its presentation to the size of the roster
 - [Small Roster Name Generator](/en/design-protocols/interface-documentation/small-roster-name-generator) - Select alters from a predefined list (best for rosters under 100)
 - [Large Roster Name Generator](/en/design-protocols/interface-documentation/large-roster-name-generator) - Select alters from large rosters with search functionality
 - [Family Pedigree](/en/design-protocols/interface-documentation/family-pedigree) - Build a family pedigree by creating family members and the relationships between them, then collect attributes for each. (This interface also generates edges and interprets alters.)
+- [Network Composer](/en/design-protocols/interface-documentation/network-composer) - Build nodes and edges quickly on a single free-form canvas, designed to be driven by a researcher or interviewer. (This interface also generates edges and interprets alters.)
 
 ![Available Name Generator Interfaces in Architect](/assets/img/key-concepts/interfaces/name-generators.png)
 
@@ -34,10 +37,11 @@ Name Generators allow participants to create alters during the course of an inte
 
 Sociograms are the visual mapping component of a network interview. On the Sociogram, participants draw ties between alters to signify the relationships between individuals within their personal network, describing the other main entity in your study's networks.
 
-There are two Sociogram Interfaces in Network Canvas:
+The following Sociogram Interfaces are available in Network Canvas:
 
 - [Sociogram](/en/design-protocols/interface-documentation/sociogram) - Interactive Interface for collecting edge data by having participants draw connections between alters
 - [Narrative](/en/design-protocols/interface-documentation/narrative) - Display-only Interface for showing the participant's network without collecting data
+- [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) - Display-only Interface that draws a previously built family pedigree using standard pedigree notation, overlaying inheritance information for one or more conditions
 
 ![Available Sociogram Interfaces in Architect](/assets/img/key-concepts/interfaces/sociograms.png)
 
@@ -51,6 +55,7 @@ Once a protocol contains entities, Name Interpreter Interfaces can be used to co
 - [Per Alter Edge Form](/en/design-protocols/interface-documentation/per-alter-edge-form) - Collect attribute data about edges using forms
 - [Ego Form](/en/design-protocols/interface-documentation/ego-form) - Collect data about the participant themselves
 - [Dyad Census](/en/design-protocols/interface-documentation/dyad-census) - Systematically ask about relationships between all pairs of alters
+- [Tie-Strength Census](/en/design-protocols/interface-documentation/tie-strength-census) - A Dyad Census variation that also records the strength of each tie on an ordinal variable
 - [One-To-Many Dyad Census](/en/design-protocols/interface-documentation/one-to-many-dyad-census) - A Dyad Census variation that links one alter to multiple others at a time
 - [Geospatial](/en/design-protocols/interface-documentation/geospatial) - Capture geospatial data by having participants select areas on a map (requires an internet connection and a Mapbox account)
 

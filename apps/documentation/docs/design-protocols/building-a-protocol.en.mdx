@@ -1,5 +1,5 @@
 ---
-navOrder: 3
+navOrder: 2
 title: Building a protocol
 toc: true
 ---
@@ -293,6 +293,12 @@ data](/en/design-protocols/interface-documentation/small-roster-name-generator).
 
 Last, we implement a prompt for the stage, following the same process we did in the previous stages. We enter the prompt that includes instructions for how to nominate a node from the roster, "Please select any members of your degree class that you spend time with **other than when studying**. Tap a card to select, and press the **down arrow** when you are finished."
 
+### Repeating the process for a university roster
+
+The sample protocol follows this stage with a second Name Generator for Roster Data stage, this time using a roster of universities. Repeat the process you just followed: create a new Name Generator for Roster Data stage, add a stage name, and create a new node type for "University". For the external data source, we use a roster of world universities - to use the same file, please <DownloadLink href="/assets/world-universities.csv">click here</DownloadLink> to download the CSV file. It contains "name", "country", and "website" variables, which you can use to configure the display and search options just as you did above. Finally, add the prompt "Which universities have you either **visited** or **studied at**?"
+
+We will collect data about each of these universities using the University node type in a later stage.
+
 ## Creating an Ego Form
 
 The next stage in this sample protocol uses the Ego Form Interface. We create the Ego Form and set a stage name as we have previous interfaces.
@@ -416,7 +422,7 @@ We also choose edge creation as the task for the stage, but create a new edge ty
 
 By now you should have a feel for the process of configuring a stage within Architect. We will continue by adding a Dyad Census Interface stage to our interview, which builds on many of the concepts we have already covered.
 
-From the timeline overview, click the "Add New Stage" button, and select the Dyad Census interface. Again, we name the stage and this time we select node type "Classmates."
+From the timeline overview, click the "Add New Stage" button, and select the Dyad Census interface. Again, we name the stage and this time we select node type "Classmate."
 
 We will next implement skip logic so that the stage will only show for participants who nominate at least two classmates on the small roster name generator implemented previously. We do this by toggling the switch to enable skip logic for the stage, selecting "Skip this stage if", and, then, defining an alter rule by clicking the "Add Alter Rule" button to define the equation.
 
@@ -429,7 +435,7 @@ We previously created two edge types on the sociogram which appear available for
 
 <Screenshot axis="architect" name="dyad-prompt"></Screenshot>
 
-### Toggling an Attribute
+## Sociogram: toggling an attribute
 
 In our final Sociogram stage in this protocol, we will implement attribute toggling - or the action that allows a participant to toggle a boolean variable to "true" or "false" by tapping a note.
 
