@@ -48,7 +48,7 @@ Network Canvas supports two file formats for data export. Choose the format that
 
 - Statistical analysis in R, Python, SPSS, Stata, SAS
 - Spreadsheet applications (Excel, Google Sheets, LibreOffice Calc)
-- The egoR package in R
+- The egor package in R
 - Custom data processing workflows
 
 **What you get:**
@@ -198,7 +198,7 @@ Because this uses the existing GraphML schema, other parsers either ignore ego d
 | **Analysis focus**     | Statistical analysis, ego network metrics | Network visualization, graph analysis     |
 | **File count**         | Multiple files (one per entity type)      | Single file per session                   |
 | **Readability**        | Human-readable, opens in Excel            | XML format, needs specialized software    |
-| **R compatibility**    | Native support, works with egoR           | Requires graph packages (igraph, network) |
+| **R compatibility**    | Native support, works with egor           | Requires graph packages (igraph, network) |
 | **Data structure**     | Relational (separate tables)              | Graph (nodes and edges)                   |
 | **Best for beginners** | ✓ More familiar format                    | May require learning curve                |
 
@@ -210,11 +210,15 @@ Network Canvas provides several specialized export options that affect how your 
 
 ### Merge sessions by protocol
 
-This option combines all interview sessions into a single file (or set of files for CSV).
+This option combines all interview sessions conducted with the same protocol into a single file (or set of files for CSV).
 
-When enabled, this creates one combined file containing all interviews. For CSV exports, you get a single ego file, a single alter file per type, and a single edge file per type. For GraphML, this option is not applicable, as GraphML is always exported per-session. When disabled, the export creates separate files for each interview session.
+**Availability:** This option is only available in Interviewer Classic, up to version 6.5—it was removed in version 6.6. Interviewer and Fresco always export each session as separate files—Interviewer packages them into a single `.zip` archive for download.
 
-Enable this option when you want all your data in one place for analysis, when you're importing into statistical software that works better with combined datasets, or when you're using the egoR package in R. Disable it when you want to analyze individual interviews separately, when you need to track which data came from which interview session, or when you're doing quality checks on individual interviews.
+When enabled, this creates one combined file per protocol containing all interviews. For CSV exports, you get a single ego file, a single alter file per type, and a single edge file per type. For GraphML exports, you get a single file containing a separate `<graph>` element for each session—note that most software outside Network Canvas does not support GraphML files with multiple graphs. When disabled, the export creates separate files for each interview session.
+
+Enable this option when you want all your data in one place for analysis, or when you're importing into statistical software that works better with combined datasets. Disable it when you want to analyze individual interviews separately, or when you're doing quality checks on individual interviews.
+
+If your application doesn't offer this option, you can combine the per-session CSV files during analysis instead—for example with `dplyr::bind_rows` in R.
 
 Even when merged, ego networks remain separate—the data is combined into shared files, but network boundaries are preserved through the ego identifiers.
 
@@ -399,25 +403,39 @@ Network Canvas handles missing data as follows:
 
 ### In R (statistical analysis)
 
-Network Canvas CSV exports are designed to work seamlessly with R, particularly the egoR package:
+Network Canvas CSV exports are designed to work seamlessly with R, particularly the [egor package](https://cran.r-project.org/package=egor):
 
 ```r
-library(egoR)
+library(egor)
 
-# Read Network Canvas data
-ego_data <- read_egonet(
-  egos = "path/to/ego.csv",
-  alters = "path/to/alters_Person.csv",
-  edges = "path/to/edges_friendship.csv"
+# Read the exported CSV files
+egos <- read.csv("path/to/ego.csv")
+alters <- read.csv("path/to/alters_Person.csv")
+edges <- read.csv("path/to/edges_friendship.csv")
+
+# Combine them into an egor object, linking the files
+# through the Network Canvas identifiers
+ego_data <- threefiles_to_egor(
+  egos = egos,
+  alters.df = alters,
+  edges = edges,
+  ID.vars = list(
+    ego = "networkCanvasEgoUUID",
+    alter = "networkCanvasUUID",
+    source = "networkCanvasSourceUUID",
+    target = "networkCanvasTargetUUID"
+  )
 )
 
-# Or use ideanet package (see tutorial)
+# Or use the ideanet package, which reads an export folder directly (see tutorial)
 library(ideanet)
 nc_data <- nc_read(
   path = "path/to/export/folder",
   protocol = "path/to/protocol.netcanvas"
 )
 ```
+
+If you exported sessions as separate files, combine the matching per-session files (for example with `dplyr::bind_rows`) before building the egor object, so that each data frame covers all interviews.
 
 **See also:** [Working with Network Canvas Data in R](/en/analyze-data/working-with-data)
 
