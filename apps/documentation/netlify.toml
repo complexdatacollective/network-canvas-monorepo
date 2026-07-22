@@ -13,6 +13,11 @@ from = "/en/design-protocols/installing-architect-desktop"
 to = "/en/design-protocols/installing-architect-classic"
 status = 301
 
+[[redirects]]
+from = "/en/get-started/release-announcements"
+to = "/en/get-started/advanced-topics/protocol-schema-information"
+status = 301
+
 # Legacy flat (pre-locale) top-level pages
 [[redirects]]
 from = "/citing-the-software"
