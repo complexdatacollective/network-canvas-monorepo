@@ -251,12 +251,14 @@ function suites(...keys) {
 // Which suites gate each release lane. Architect and Interviewer both bundle
 // the @codaco/interview runtime, so their lanes keep interview-e2e; the
 // library lane publishes packages consumed by every app and keeps all three;
-// Documentation and Website ship none of the suite subjects and need no E2E.
+// Background Creator, Documentation, and Website ship none of the suite
+// subjects and need no E2E.
 // Hand-maintained for a simple CI hot path — release-e2e-policy.test.mjs
 // derives the expected mapping from the real package.json dependency graph
 // and fails when this table drifts.
 export const SUITES_BY_RELEASE_REF = {
   'changeset-release/architect': suites('architect', 'interview'),
+  'changeset-release/background-creator': suites(),
   'changeset-release/documentation': suites(),
   'changeset-release/interviewer': suites('interviewer', 'interview'),
   'changeset-release/main': suites('interview', 'interviewer', 'architect'),
@@ -275,6 +277,10 @@ const MANIFEST_LANES = [
     ref: 'changeset-release/architect',
   },
   {
+    pattern: /^apps\/background-creator\/package\.json$/,
+    ref: 'changeset-release/background-creator',
+  },
+  {
     pattern: /^apps\/interviewer\/package\.json$/,
     ref: 'changeset-release/interviewer',
   },
@@ -291,6 +297,7 @@ const MANIFEST_LANES = [
 const VERSIONED_MANIFESTS = [
   'packages/*/package.json',
   'apps/architect/package.json',
+  'apps/background-creator/package.json',
   'apps/interviewer/package.json',
   'apps/documentation/package.json',
   'apps/networkcanvas.com/package.json',

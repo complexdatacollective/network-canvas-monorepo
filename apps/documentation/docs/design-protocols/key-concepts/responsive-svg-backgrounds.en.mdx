@@ -23,6 +23,56 @@ relative to the available canvas, allowing the layout to expand in both
 directions. Text remains readable rather than being stretched with the rest of
 the image.
 
+## Use the Background Creator
+
+The [**Background Creator**](https://bg-creator.networkcanvas.com) is a
+browser-based tool for building responsive SVG backgrounds by drawing, rather
+than by hand-editing SVG source. It is the recommended way to create a
+background for the Narrative, Network Composer, and Sociogram interfaces, and it
+automatically follows every rule described in this article.
+
+![The Background Creator editing the built-in Quadrants template: four shaded quadrant zones divided by two labelled axes (Low to High X and Low to High Y), with the drawing and export toolbar along the bottom.](/assets/img/background-creator/editor.png)
+
+In the Background Creator you can:
+
+- **Draw directly on the canvas.** Add rectangles, ellipses, lines, polygons,
+  and live text, positioned as percentages so the result is responsive by
+  construction.
+- **Preview the result in real time.** A full-screen preview shows the
+  background exactly as participants will see it, and you can switch between
+  aspect ratios to confirm that lines, fills, and labels still make sense in
+  portrait and landscape.
+- **Define zones.** Mark any rectangle, ellipse, or polygon you draw as a zone
+  and give it a label in its properties. The shape itself is the zone: a
+  visible fill—such as the quadrant fills in the built-in Quadrants
+  template—can double as a zone, or you can leave the shape transparent for a
+  zone that stays invisible to participants. Zone labels become the values of
+  the exported variable.
+- **Save and reopen your work.** Download the finished SVG to add to
+  Architect, or reopen a previously saved SVG to keep editing it.
+- **Export a ready-to-run Python or R script.** The script reads the `_x` and
+  `_y` columns from your CSV export (see [Classify nodes from their
+  coordinates](#classify-nodes-from-their-coordinates) below) and adds a
+  categorical variable naming the zone each node's position falls in, so you
+  do not have to write your own classification code.
+
+Selecting a shape reveals its properties, where you set its fill, opacity, and
+stroke, and mark it as a zone. Each zone shows a labelled pill so you can see at
+a glance which regions will be exported.
+
+![A quadrant selected in the Background Creator, with its properties panel open showing fill colour, fill opacity, and stroke controls.](/assets/img/background-creator/zone-properties.png)
+
+Two built-in templates cover the most common designs: **Quadrants**, two
+crossed axes dividing the canvas into four labelled regions like [the
+downloadable template below](#start-with-the-template), and **Concentric
+circles**, nested rings for measures where relative closeness to the centre
+carries categorical meaning (inner, middle, outer). Both templates already
+include matching zones, ready to export.
+
+If you would rather work in a graphics editor, or only need to reword the
+built-in quadrant template, [Adobe Illustrator](#adobe-illustrator) and
+[Inkscape](#inkscape) below describe those manual alternatives.
+
 ## Is a responsive SVG appropriate for your measure?
 
 Responsive backgrounds are most appropriate when horizontal and vertical
@@ -42,11 +92,24 @@ preserve angles or distances when the screen changes shape. For example,
 concentric circles would become ellipses in portrait mode and should therefore
 remain a contained image.
 
+<TipBox>
+
+In portrait or landscape, the Background Creator's built-in **Concentric
+circles** template stretches its rings into ellipses—and because each ring is
+itself the zone, membership stretches identically, so each node is still
+assigned the ring the participant actually saw. Hold Shift while drawing a
+ring to make it perfectly round at the aspect ratio you are currently
+previewing, so you can choose which screen shape you optimize for. If your
+measure instead depends on precise Euclidean distance or an undistorted
+circle, use a contained image instead, following the guidance above.
+
+</TipBox>
+
 ## Start with the template
 
-You do not need to create an SVG from scratch. The easiest approach is to
-download this template and replace its four labels with terms from your own
-study.
+If you are not using the Background Creator, you do not need to create an SVG
+from scratch by hand either. The manual alternative is to download this
+template and replace its four labels with terms from your own study.
 
 <ResponsiveSvgPreview src="/assets/responsive-svg-background.svg" alt="A transparent social-context map with areas for family, friends, work or study, and community"></ResponsiveSvgPreview>
 
@@ -134,6 +197,14 @@ from working as an image.
 
 ## Classify nodes from their coordinates
 
+If you built your background in the [Background
+Creator](#use-the-background-creator) and defined zones there, you do not need
+to write the classification logic below by hand: export a Python or R script
+and it will assign each node's zone for you from the layout variable's `_x`
+and `_y` columns. The rest of this section explains the underlying coordinate
+system, and shows how to write that classification yourself for a background
+built without zones.
+
 When a participant positions a node, Network Canvas stores the center of that
 node as two normalized coordinates in the prompt's layout variable:
 
@@ -207,6 +278,13 @@ The template is designed to make simple wording changes safe. Changing the
 number of regions, adding colored areas, moving boundaries, or creating a new
 layout requires more care.
 
+The [Background Creator](#use-the-background-creator) is built for exactly
+this: draw new regions, adjust colors, and define zones without touching SVG
+source, then download the result. The manual alternative below—working in a
+graphics editor—is still useful when you want finer control over the artwork,
+such as custom shapes, gradients, or an existing house style, or when you are
+collaborating with a designer who does not use the Background Creator.
+
 You can sketch the intended layout in a familiar drawing application and give
 the sketch, labels, and the [technical handoff checklist](#technical-handoff-checklist)
 below to a designer or technical collaborator. The downloadable template gives
@@ -224,6 +302,7 @@ behavior.
 
 ## Adobe Illustrator
 
+This is the manual, graphics-editor alternative to the Background Creator.
 Adobe Illustrator is useful for designing the visual layout, choosing colors,
 and positioning labels. Adobe's [responsive SVG export
 tutorial](https://www.adobe.com/learn/illustrator/web/export-css?ntd=1)
@@ -249,7 +328,8 @@ proportion.
 
 ## Inkscape
 
-Inkscape is a free application for designing SVG images. Its [Document
+This is another manual, graphics-editor alternative to the Background
+Creator. Inkscape is a free application for designing SVG images. Its [Document
 Properties
 guide](https://inkscape-manuals.readthedocs.io/en/latest/managing-workspace.html#document-properties-dialog)
 explains how to manage the page and its background.
@@ -274,7 +354,11 @@ opening and resaving it in Inkscape.
 
 This section is intended for a designer, developer, or researcher who is
 comfortable inspecting SVG source. It is not necessary when you only replace
-the labels in the supplied template.
+the labels in the supplied template, and SVGs downloaded from the [Background
+Creator](#use-the-background-creator) already satisfy every item below. If you
+also want zone-based Python or R export, build the background in the
+Background Creator rather than a graphics editor—zones are stored in a
+metadata block that Illustrator and Inkscape cannot produce.
 
 A responsive Network Canvas background should:
 

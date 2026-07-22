@@ -18,14 +18,27 @@ import { Button, type ButtonProps } from '../Button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '../DropdownMenu';
 import { MotionSurface } from '../layout/Surface';
 import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../Tooltip';
 import { cva, cx } from '../utils/cva';
+
+// The event-details object Base UI passes to a popover's onOpenChange, carrying
+// the change `reason` and a `cancel()` that stops Base UI handling the event.
+// Derived from the shared Popover so this file never depends on Base UI directly.
+type PopoverOpenChangeDetails = Parameters<
+  NonNullable<React.ComponentProps<typeof Popover>['onOpenChange']>
+>[1];
 
 export type SegmentContent = {
   /** Accessible name. Always the aria-label; rendered as visible text when showLabel. */
@@ -86,33 +99,77 @@ export type SeparatorSegment = {
 };
 
 /**
- * A button that opens a single-select menu — for choosing among options that
- * would otherwise need one segment each (e.g. picking an edge type to draw).
- * The trigger shows `pressed` styling when a selection is active.
+ * A button that opens a menu of `options`. Comes in two flavours, chosen by
+ * `kind`:
+ *
+ * - `'select'` — a single-select menu for choosing among options that would
+ *   otherwise need one segment each (e.g. picking an edge type to draw). Items
+ *   render as radio options (`role="menuitemradio"`); the one matching `value`
+ *   is checked and the trigger shows `pressed` styling while a selection is
+ *   active. `onSelect` receives the newly-chosen option value.
+ * - `'actions'` — a menu of one-shot, fire-and-forget commands (e.g. a File
+ *   menu). Items render as plain menu items (`role="menuitem"`), so a screen
+ *   reader announces a command rather than "radio button, not checked". There
+ *   is no persistent selection, so `value`/`pressed` are ignored; `onSelect`
+ *   receives the chosen command's value.
+ *
+ * When `kind` is omitted it is inferred from the selection contract: a segment
+ * that declares a `value` prop is treated as `'select'`, one that declares none
+ * as `'actions'`. Pass `kind` explicitly to be unambiguous — in particular a
+ * single-select menu that starts with nothing selected should still declare its
+ * `value` (as `undefined`) or set `kind: 'select'`.
  */
 export type MenuSegment = {
   type: 'menu';
   id: string;
+  /** Selection flavour. Inferred from `value` when omitted (see above). */
+  kind?: 'select' | 'actions';
   disabled?: boolean;
+  /** Single-select only: highlights the trigger while a selection is active. */
   pressed?: boolean;
+  /** Single-select only: the currently-selected option value. */
   value?: string;
   options: Array<SegmentContent & { value: string; disabled?: boolean }>;
+  /** Called with the chosen option's value. */
   onSelect: (value: string) => void;
 } & SegmentContent;
 
 /**
  * A pressed-able button that anchors a popover next to itself, rendering
- * arbitrary content (e.g. a text input). Open state is controlled by the
- * consumer so it can be tied to external state — for instance keeping the
- * button "pressed" for as long as the popover is open.
+ * arbitrary content (e.g. a text input).
+ *
+ * Open state can be controlled or uncontrolled, mirroring Base UI:
+ * - Controlled: pass `open` together with `onOpenChange` and own the state
+ *   yourself — e.g. to keep the button `pressed` for as long as the popover is
+ *   open, or to open it programmatically.
+ * - Uncontrolled: omit `open`; the popover manages its own state, starting from
+ *   `defaultOpen`. `onOpenChange` (if given) is still called on every change.
+ *
+ * `disabled` disables the trigger — announced to assistive technology and taken
+ * out of the tab order per Base UI's convention. If a *controlled* popover is
+ * open when it becomes disabled it is closed via `onOpenChange(false)`, so its
+ * content is never stranded behind a trigger that can no longer dismiss it.
  */
 export type PopoverSegment = {
   type: 'popover';
   id: string;
   disabled?: boolean;
   pressed?: boolean;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  /** Controlled open state. Omit for an uncontrolled popover (see `defaultOpen`). */
+  open?: boolean;
+  /** Uncontrolled initial open state. Ignored when `open` is provided. @default false */
+  defaultOpen?: boolean;
+  /** Called whenever the popover requests an open-state change (both modes). */
+  onOpenChange?: (open: boolean) => void;
+  /**
+   * When `false`, the popover ignores *ambient* dismissals — an outside press or
+   * focus leaving the popover — so it stays open while the user interacts with
+   * the rest of the page. It still closes on the trigger toggle, the Escape key,
+   * an explicit close, or the consumer clearing `open`. Meant for a controlled
+   * popover whose content tracks a live selection and has its own close paths.
+   * @default true
+   */
+  dismissOnOutsidePress?: boolean;
   /** Which side of the trigger the popover opens on. @default 'right' */
   side?: 'top' | 'right' | 'bottom' | 'left';
   children: React.ReactNode;
@@ -357,6 +414,17 @@ function ToolbarGroupSegment({
 // state, so the selected highlight is applied directly when `pressed`.
 const menuActiveClasses = 'bg-selected! text-selected-contrast!';
 
+/**
+ * Whether a menu segment is a fire-and-forget actions menu (plain menu items)
+ * rather than a single-select radio menu. An explicit `kind` wins; otherwise a
+ * menu that declares a `value` selection contract is single-select and one that
+ * declares none is actions.
+ */
+function isActionsMenu(segment: MenuSegment): boolean {
+  if (segment.kind) return segment.kind === 'actions';
+  return !Object.hasOwn(segment, 'value');
+}
+
 function ToolbarMenuSegment({
   segment,
   size,
@@ -393,24 +461,40 @@ function ToolbarMenuSegment({
         overlaySide(orientation),
       )}
       <DropdownMenuContent side={overlaySide(orientation)}>
-        <DropdownMenuRadioGroup
-          value={segment.value}
-          onValueChange={(value) => segment.onSelect(String(value))}
-        >
-          {segment.options.map((option) => (
-            // Base UI radio items keep the menu open by default; close on pick
-            // so a single selection commits and returns focus to the page.
-            <DropdownMenuRadioItem
+        {isActionsMenu(segment) ? (
+          // Fire-and-forget commands: plain menu items (role="menuitem"), which
+          // close on click by default, so a screen reader announces an action
+          // rather than a radio selection.
+          segment.options.map((option) => (
+            <DropdownMenuItem
               key={option.value}
-              value={option.value}
+              icon={option.icon}
               disabled={option.disabled}
-              closeOnClick
+              onClick={() => segment.onSelect(option.value)}
             >
-              {option.icon}
               {option.label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+            </DropdownMenuItem>
+          ))
+        ) : (
+          <DropdownMenuRadioGroup
+            value={segment.value}
+            onValueChange={(value) => segment.onSelect(String(value))}
+          >
+            {segment.options.map((option) => (
+              // Base UI radio items keep the menu open by default; close on pick
+              // so a single selection commits and returns focus to the page.
+              <DropdownMenuRadioItem
+                key={option.value}
+                value={option.value}
+                disabled={option.disabled}
+                closeOnClick
+              >
+                {option.icon}
+                {option.label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -425,6 +509,15 @@ function ToolbarPopoverSegment({
   size: SegmentSize;
   orientation: ToolbarOrientation;
 }) {
+  const { disabled, open, onOpenChange } = segment;
+
+  // A controlled, open popover whose trigger becomes disabled would otherwise
+  // strand its content with no way to dismiss it (the trigger can no longer be
+  // clicked), so request a close. Uncontrolled popovers manage their own state.
+  React.useEffect(() => {
+    if (disabled && open) onOpenChange?.(false);
+  }, [disabled, open, onOpenChange]);
+
   // As with menu segments, a consumer-supplied className takes precedence over
   // the default pressed highlight, so an active state can be coloured by its
   // own meaning (e.g. a group tool adopting the active group's colour).
@@ -437,16 +530,38 @@ function ToolbarPopoverSegment({
     <Toolbar.Button
       render={
         <PopoverTrigger
-          disabled={segment.disabled}
+          disabled={disabled}
           render={segmentButton(segment, size, activeClasses)}
         />
       }
     />
   );
+
+  // A "sticky" popover (dismissOnOutsidePress: false) cancels the ambient
+  // dismissals Base UI would otherwise honour — an outside press or focus
+  // leaving the popover — so it stays open across page interaction. Cancelling
+  // the event also stops Base UI from consuming the underlying press, so a click
+  // that switches selection reaches the canvas. Explicit paths (trigger toggle,
+  // Escape, the consumer clearing `open`) still close it.
+  const handleOpenChange = (
+    next: boolean,
+    details: PopoverOpenChangeDetails,
+  ) => {
+    if (
+      !next &&
+      segment.dismissOnOutsidePress === false &&
+      (details.reason === 'outside-press' || details.reason === 'focus-out')
+    ) {
+      details.cancel();
+      return;
+    }
+    onOpenChange?.(next);
+  };
   return (
     <Popover
-      open={segment.open}
-      onOpenChange={(open) => segment.onOpenChange(open)}
+      open={open}
+      defaultOpen={segment.defaultOpen}
+      onOpenChange={handleOpenChange}
     >
       {withTooltip(
         trigger,
@@ -533,9 +648,9 @@ function DragHandle({
   orientation: ToolbarOrientation;
   size: SegmentSize;
   onPointerDown: (event: React.PointerEvent) => void;
-  onNudge: (delta: Position) => void;
+  onNudge: (delta: Position, handle: HTMLElement) => void;
 }) {
-  const handleKeyDown = (event: React.KeyboardEvent) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const deltas: Record<string, Position> = {
       ArrowLeft: { x: -NUDGE_STEP, y: 0 },
       ArrowRight: { x: NUDGE_STEP, y: 0 },
@@ -545,7 +660,7 @@ function DragHandle({
     const delta = deltas[event.key];
     if (!delta) return;
     event.preventDefault();
-    onNudge(delta);
+    onNudge(delta, event.currentTarget);
   };
 
   return (
@@ -677,20 +792,40 @@ export function SegmentedToolbar({
     }
   }, [position, x, y]);
 
-  const handleNudge = (delta: Position) => {
+  // Offset limits (in the x/y motion-value space) that keep the toolbar within
+  // its drag constraints, for keyboard nudges — pointer drags are clamped by
+  // motion, but keyboard nudges bypass that. An object-form constraint is
+  // already an offset range; a RefObject is measured (container vs the toolbar's
+  // own rect) and converted, so arrow keys can't walk the toolbar off-screen
+  // (motion's ref clamping only covers pointer drags). The toolbar element is
+  // the drag handle's parent — motion.create(Surface) does not forward an
+  // external ref to its DOM node, so we reach it from the handle instead.
+  const nudgeLimits = (
+    handle: HTMLElement,
+  ): { left: number; right: number; top: number; bottom: number } | null => {
+    if (!dragConstraints) return null;
+    if (!('current' in dragConstraints)) return dragConstraints;
+    const container = dragConstraints.current;
+    const surface = handle.parentElement;
+    if (!container || !surface) return null;
+    const c = container.getBoundingClientRect();
+    const s = surface.getBoundingClientRect();
+    // `s` already includes the current x/y offset; subtract it to recover the
+    // layout edges, then express the range as offsets that keep `s` inside `c`.
+    return {
+      left: c.left - (s.left - x.get()),
+      right: c.right - (s.right - x.get()),
+      top: c.top - (s.top - y.get()),
+      bottom: c.bottom - (s.bottom - y.get()),
+    };
+  };
+
+  const handleNudge = (delta: Position, handle: HTMLElement) => {
     const next = { x: x.get() + delta.x, y: y.get() + delta.y };
-    // Pointer drags are clamped by motion, but keyboard nudges bypass it, so
-    // honour the object-form bounds here. The RefObject form is left to motion's
-    // drag clamping (we don't measure the ref element).
-    if (dragConstraints && !('current' in dragConstraints)) {
-      next.x = Math.min(
-        Math.max(next.x, dragConstraints.left),
-        dragConstraints.right,
-      );
-      next.y = Math.min(
-        Math.max(next.y, dragConstraints.top),
-        dragConstraints.bottom,
-      );
+    const limits = nudgeLimits(handle);
+    if (limits) {
+      next.x = Math.min(Math.max(next.x, limits.left), limits.right);
+      next.y = Math.min(Math.max(next.y, limits.top), limits.bottom);
     }
     x.set(next.x);
     y.set(next.y);
@@ -708,17 +843,22 @@ export function SegmentedToolbar({
     </AnimatePresence>
   );
 
+  // One shared tooltip group for every segment: once any button's tooltip has
+  // opened, moving to an adjacent button shows its tooltip instantly instead of
+  // re-running the hover delay.
   const innerToolbar = (
-    <Toolbar.Root
-      orientation={orientation}
-      aria-label={label}
-      className={cx(
-        'flex items-center gap-1',
-        orientation === 'vertical' && 'flex-col',
-      )}
-    >
-      {segments}
-    </Toolbar.Root>
+    <TooltipProvider>
+      <Toolbar.Root
+        orientation={orientation}
+        aria-label={label}
+        className={cx(
+          'flex items-center gap-1',
+          orientation === 'vertical' && 'flex-col',
+        )}
+      >
+        {segments}
+      </Toolbar.Root>
+    </TooltipProvider>
   );
 
   // The Surface is the "pill" container; the Toolbar.Root sits inside it so Base

@@ -413,8 +413,14 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
-      - name: Build shared packages (apps build in their own deploy/release jobs)
-        run: pnpm exec turbo run build --filter='./packages/*'
+      - name: Build shared packages and Background Creator
+        # Apps normally build only in their deploy/release jobs, exercised
+        # pre-merge by their E2E suites. Background Creator ships without E2E, so
+        # its Vite build would otherwise first run at the post-merge production
+        # deploy — a Vite-only break (index.html, public/, build config) would
+        # pass every required check and fail only after merge. Build it here too
+        # so such a break fails this job and, through it, the quality gate.
+        run: pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
 
   typecheck:
     if: github.event_name != 'push'
@@ -1067,6 +1073,9 @@ jobs:
           - product: Architect
             slug: architect
             package: '@codaco/architect'
+          - product: Background Creator
+            slug: background-creator
+            package: '@codaco/background-creator'
           - product: Documentation
             slug: documentation
             package: '@codaco/documentation'
@@ -1127,6 +1136,8 @@ jobs:
     outputs:
       architect_released: ${{ steps.architect.outputs.released }}
       architect_version: ${{ steps.architect.outputs.version }}
+      background_creator_released: ${{ steps.background_creator.outputs.released }}
+      background_creator_version: ${{ steps.background_creator.outputs.version }}
       documentation_released: ${{ steps.documentation.outputs.released }}
       documentation_version: ${{ steps.documentation.outputs.version }}
       interviewer_released: ${{ steps.interviewer.outputs.released }}
@@ -1146,6 +1157,11 @@ jobs:
         env:
           PKG_JSON: apps/architect/package.json
           PKG_NAME: '@codaco/architect'
+        run: bash .github/scripts/detect-app-release.sh
+      - id: background_creator
+        env:
+          PKG_JSON: apps/background-creator/package.json
+          PKG_NAME: '@codaco/background-creator'
         run: bash .github/scripts/detect-app-release.sh
       - id: documentation
         env:
@@ -1307,6 +1323,77 @@ jobs:
           tag_name: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
           name: Interviewer ${{ needs.apps-release-detect.outputs.interviewer_version }}
           body_path: ${{ runner.temp }}/interviewer-notes.md
+          prerelease: true
+          make_latest: 'false'
+
+  # Build, deploy to Netlify production, and cut a GitHub release for
+  # background-creator when its version changed. Separate job (see
+  # apps-release-architect) so a failure in one app's build never blocks the
+  # other's release.
+  # NOTE(human-setup-required): needs NETLIFY_SITE_ID_BACKGROUND_CREATOR set —
+  # see apps/background-creator/RELEASING.md.
+  apps-release-background-creator:
+    needs: apps-release-detect
+    if: needs.apps-release-detect.outputs.background_creator_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # One release per version — see apps-release-architect for the rationale.
+    concurrency:
+      group: apps-release-@codaco/background-creator@${{ needs.apps-release-detect.outputs.background_creator_version }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        with:
+          fetch-tags: true
+          persist-credentials: false
+      - name: Skip if this version was already released
+        id: guard
+        env:
+          TAG: '@codaco/background-creator@${{ needs.apps-release-detect.outputs.background_creator_version }}'
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG already released — nothing to do"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - if: steps.guard.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build & deploy background-creator to production
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          pnpm exec turbo run build --filter=@codaco/background-creator
+          npx --yes netlify-cli@22 deploy --no-build --prod \
+            --filter=@codaco/background-creator \
+            --dir=apps/background-creator/dist \
+            --site="${{ secrets.NETLIFY_SITE_ID_BACKGROUND_CREATOR }}"
+      - name: background-creator release notes
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          VERSION: ${{ needs.apps-release-detect.outputs.background_creator_version }}
+        run: >-
+          node scripts/release-notes.mjs
+          --app apps/background-creator
+          --pkg @codaco/background-creator
+          --version "$VERSION"
+          --out "${RUNNER_TEMP}/background-creator-notes.md"
+      - if: steps.guard.outputs.skip != 'true'
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: '@codaco/background-creator@${{ needs.apps-release-detect.outputs.background_creator_version }}'
+          name: Background Creator ${{ needs.apps-release-detect.outputs.background_creator_version }}
+          body_path: ${{ runner.temp }}/background-creator-notes.md
           prerelease: true
           make_latest: 'false'
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip';
-import { AnimatePresence } from 'motion/react';
 import * as React from 'react';
 
 import { MotionSurface } from './layout/Surface';
@@ -55,31 +54,33 @@ const TooltipContent = React.forwardRef<
           align={align}
           arrowPadding={POPOVER_ARROW_PADDING}
         >
-          <AnimatePresence>
-            <BaseTooltip.Popup
-              ref={ref}
-              render={
-                <MotionSurface
-                  floating
-                  spacing="sm"
-                  shadow="sm"
-                  className={cx(
-                    'max-w-(--available-width) overflow-visible text-sm',
-                    className,
-                  )}
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  noContainer
-                  transition={{ type: 'spring', duration: 0.5 }}
-                />
-              }
-              {...props}
-            >
-              {showArrow && <TooltipArrow />}
-              {children}
-            </BaseTooltip.Popup>
-          </AnimatePresence>
+          {/* Deliberately no exit animation: Base UI keeps a closing popup
+              mounted until its animations finish, so an exit tween lets stale
+              tooltips pile up when the provider group short-circuits the delay
+              (fast scrubbing across a toolbar). Closing instantly guarantees a
+              newly opened tooltip is the only one visible. */}
+          <BaseTooltip.Popup
+            ref={ref}
+            render={
+              <MotionSurface
+                floating
+                spacing="sm"
+                shadow="sm"
+                className={cx(
+                  'max-w-(--available-width) overflow-visible text-sm',
+                  className,
+                )}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                noContainer
+                transition={{ type: 'spring', duration: 0.5 }}
+              />
+            }
+            {...props}
+          >
+            {showArrow && <TooltipArrow />}
+            {children}
+          </BaseTooltip.Popup>
         </BaseTooltip.Positioner>
       </BaseTooltip.Portal>
     );

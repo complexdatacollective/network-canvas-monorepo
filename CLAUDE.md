@@ -139,10 +139,10 @@ pnpm publish-packages
 - **Publishable library packages** under `packages/*` release to npm via
   `changesets/action` (the "Version Packages" PR). Private packages stay in the
   same dependency graph but are not published.
-- **Each gated product** has its own release PR: Architect and Interviewer release
-  on a `-beta.N` line and create a GitHub release, while Documentation and
-  networkcanvas.com use normal semver and receive a Git tag. Merging a product's
-  release PR deploys only that product to Netlify production.
+- **Each gated product** has its own release PR: Architect, Background Creator,
+  and Interviewer release on a `-beta.N` line and create a GitHub release, while
+  Documentation and networkcanvas.com use normal semver and receive a Git tag.
+  Merging a product's release PR deploys only that product to Netlify production.
 - **One release lane per changeset.** Never put a gated product and a library—or
   two gated products—in the same changeset. `pnpm check:changesets` rejects both;
   write one changeset per product or library lane.
@@ -159,6 +159,7 @@ consistency:
 - **Apps**: Products and websites
   - `architect` - Offline-capable Vite/React PWA for designing, validating, and previewing protocols
   - `architect-classic` - Maintenance-mode Electron version of the original Architect
+  - `background-creator` - Vite/React editor for designing sociogram background images and matching position-generation scripts
   - `documentation` - Localized Next.js documentation site built from Markdown/MDX
   - `interviewer` - Offline-first Vite/React PWA for protocol management, local interviews, and data export
   - `interviewer-classic` - Maintenance-mode Interviewer for Electron desktop and Capacitor mobile
@@ -331,7 +332,8 @@ package or product version changes will trigger a release — and only the
 suites whose subject ships in that release lane: the library lane
 (`changeset-release/main`) runs all three; the Architect and Interviewer lanes
 run their own suite plus Interview (both apps bundle the interview runtime);
-the Documentation and Website lanes run none. The mapping lives in
+the Background Creator, Documentation, and Website lanes run none. The mapping
+lives in
 `scripts/release-e2e-policy.mjs`, and its test derives the expected lanes from
 the real package.json dependency graph so the table cannot silently drift.
 The required `quality` check requires exactly the suites the policy selects.

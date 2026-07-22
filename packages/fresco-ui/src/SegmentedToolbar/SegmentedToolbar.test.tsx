@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
+  FolderOpen,
   Grid3x3,
   List,
   Map as MapIcon,
@@ -10,7 +11,7 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react';
-import { cloneElement, type ReactElement } from 'react';
+import { cloneElement, type ReactElement, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SegmentedToolbar, type ToolbarSegment } from './SegmentedToolbar';
@@ -170,6 +171,222 @@ describe('SegmentedToolbar — buttons & separators', () => {
     expect(
       screen.getByRole('button', { name: 'vertical lg' }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('SegmentedToolbar — action menus', () => {
+  it('renders a menu with no value selection contract as plain menu items (not radios)', async () => {
+    const onSelect = vi.fn();
+    const items: ToolbarSegment[] = [
+      {
+        type: 'menu',
+        id: 'file',
+        label: 'File',
+        icon: <FolderOpen />,
+        options: [
+          { value: 'new', label: 'New' },
+          { value: 'open', label: 'Open' },
+        ],
+        onSelect,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'File' }));
+    // Fire-and-forget commands must not carry radio semantics.
+    expect(screen.queryByRole('menuitemradio')).not.toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Open' }),
+    );
+    expect(onSelect).toHaveBeenCalledWith('open');
+  });
+
+  it('honours an explicit kind: "actions" even when a value is present', async () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'menu',
+        id: 'file',
+        kind: 'actions',
+        label: 'File',
+        icon: <FolderOpen />,
+        value: 'new',
+        options: [{ value: 'new', label: 'New' }],
+        onSelect: vi.fn(),
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'File' }));
+    expect(
+      await screen.findByRole('menuitem', { name: 'New' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('menuitemradio')).not.toBeInTheDocument();
+  });
+
+  it('keeps radio semantics for kind: "select" even with no value chosen yet', async () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'menu',
+        id: 'edge',
+        kind: 'select',
+        label: 'Draw edge',
+        icon: <Spline />,
+        options: [
+          { value: 'friendship', label: 'Friendship' },
+          { value: 'advice', label: 'Advice' },
+        ],
+        onSelect: vi.fn(),
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Draw edge' }));
+    expect(
+      await screen.findByRole('menuitemradio', { name: 'Advice' }),
+    ).toBeInTheDocument();
+  });
+
+  it('does not fire onSelect for a disabled action item', async () => {
+    const onSelect = vi.fn();
+    const items: ToolbarSegment[] = [
+      {
+        type: 'menu',
+        id: 'file',
+        label: 'File',
+        icon: <FolderOpen />,
+        options: [{ value: 'open', label: 'Open', disabled: true }],
+        onSelect,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'File' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Open' }),
+    );
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+describe('SegmentedToolbar — popover control', () => {
+  it('opens an uncontrolled popover on trigger click', async () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Pencil />,
+        children: <input aria-label="Name" />,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(
+      screen.queryByRole('textbox', { name: 'Name' }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Add node' }));
+    expect(
+      await screen.findByRole('textbox', { name: 'Name' }),
+    ).toBeInTheDocument();
+  });
+
+  it('honours defaultOpen for an uncontrolled popover', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Pencil />,
+        defaultOpen: true,
+        children: <input aria-label="Name" />,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+  });
+
+  it('marks a disabled popover trigger as disabled', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Pencil />,
+        disabled: true,
+        open: false,
+        onOpenChange: vi.fn(),
+        children: <input aria-label="Name" />,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(screen.getByRole('button', { name: 'Add node' })).toBeDisabled();
+  });
+
+  it('closes a controlled, open popover when it becomes disabled', () => {
+    const onOpenChange = vi.fn();
+    const base = {
+      type: 'popover' as const,
+      id: 'add',
+      label: 'Add node',
+      icon: <Pencil />,
+      open: true,
+      onOpenChange,
+      children: <input aria-label="Name" />,
+    };
+    const { rerender } = render(
+      <SegmentedToolbar label="Tools" items={[base]} />,
+    );
+    // Open + enabled: no close is requested.
+    expect(onOpenChange).not.toHaveBeenCalled();
+    rerender(
+      <SegmentedToolbar label="Tools" items={[{ ...base, disabled: true }]} />,
+    );
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  // Sticky popover harness: a controlled, open popover next to an outside button.
+  function StickyHarness({ sticky }: { sticky: boolean }): ReactElement {
+    const [open, setOpen] = useState(true);
+    return (
+      <div>
+        <button type="button">Outside</button>
+        <SegmentedToolbar
+          label="Tools"
+          items={[
+            {
+              type: 'popover',
+              id: 'props',
+              label: 'Properties',
+              icon: <Pencil />,
+              open,
+              onOpenChange: setOpen,
+              dismissOnOutsidePress: sticky ? false : undefined,
+              children: <input aria-label="Name" />,
+            },
+          ]}
+        />
+      </div>
+    );
+  }
+
+  it('closes a normal controlled popover on an outside press', async () => {
+    render(<StickyHarness sticky={false} />);
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Outside' }));
+    expect(
+      screen.queryByRole('textbox', { name: 'Name' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps a sticky popover open on an outside press (dismissOnOutsidePress: false)', async () => {
+    render(<StickyHarness sticky />);
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Outside' }));
+    // The ambient dismissal is cancelled, so the content stays mounted.
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+  });
+
+  it('still closes a sticky popover from the trigger toggle', async () => {
+    render(<StickyHarness sticky />);
+    await userEvent.click(screen.getByRole('button', { name: 'Properties' }));
+    expect(
+      screen.queryByRole('textbox', { name: 'Name' }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -404,5 +621,54 @@ describe('SegmentedToolbar — draggable', () => {
     screen.getByRole('button', { name: 'Move toolbar' }).focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(screen.getByRole('status')).toHaveTextContent(/moved/i);
+  });
+
+  it('clamps a keyboard nudge to a measured RefObject constraint', async () => {
+    // A RefObject constraint is only clamped by motion for pointer drags, so the
+    // nudge handler measures the container and the toolbar to clamp keyboard
+    // nudges too — otherwise arrow keys could walk the toolbar off-screen.
+    const onPositionChange = vi.fn();
+    const rect = (l: number, t: number, r: number, b: number): DOMRect => ({
+      left: l,
+      top: t,
+      right: r,
+      bottom: b,
+      x: l,
+      y: t,
+      width: r - l,
+      height: b - t,
+      toJSON: () => ({}),
+    });
+    function Harness(): ReactElement {
+      const ref = useRef<HTMLDivElement>(null);
+      return (
+        <div ref={ref} data-testid="constraint">
+          <SegmentedToolbar
+            label="Tools"
+            items={items}
+            draggable
+            defaultPosition={{ x: 0, y: 0 }}
+            dragConstraints={ref}
+            onPositionChange={onPositionChange}
+          />
+        </div>
+      );
+    }
+    render(<Harness />);
+    const constraintBox = screen.getByTestId('constraint');
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    // Container is 100×100; the toolbar surface nearly fills it (96×96), leaving
+    // only 4px of slack on each axis.
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      return this === constraintBox ? rect(0, 0, 100, 100) : rect(0, 0, 96, 96);
+    };
+    try {
+      screen.getByRole('button', { name: 'Move toolbar' }).focus();
+      // An 8px nudge would exceed the 4px of slack, so it clamps to 4.
+      await userEvent.keyboard('{ArrowRight}');
+      expect(onPositionChange).toHaveBeenLastCalledWith({ x: 4, y: 0 });
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original;
+    }
   });
 });

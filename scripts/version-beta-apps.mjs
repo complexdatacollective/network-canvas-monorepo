@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Version step for one gated product release lane. It increments an Architect or
-// Interviewer beta version, or bumps a website with normal semver, writes a
-// CHANGELOG section, deletes consumed changesets, and emits a PR-body summary.
+// Version step for one gated product release lane. It increments a beta-line
+// product's version (Architect, Interviewer, Background Creator), or bumps a
+// website with normal semver, writes a CHANGELOG section, deletes consumed
+// changesets, and emits a PR-body summary.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

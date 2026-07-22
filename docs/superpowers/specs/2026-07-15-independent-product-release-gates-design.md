@@ -66,3 +66,12 @@ its generated release PR versions the site, and merging that PR deploys it to
 Netlify production before tagging `networkcanvas.com@<version>`. The classic
 Architect and Interviewer release jobs remain version/tag driven and continue
 to publish to their external repositories.
+
+## Addendum — 2026-07-20: Background Creator lane
+
+Background Creator (`@codaco/background-creator`, branch
+`changeset-release/background-creator`, "Release Background Creator" PR) was
+added as a fifth matrix entry, releasing on a `1.0.0-beta.N` line like Architect
+and Interviewer. Its lane requires no E2E suites: no suite subject package is in
+the app's workspace dependency closure. See
+`apps/background-creator/RELEASING.md`.

@@ -75,8 +75,12 @@ function Popover({
     nextOpen: boolean,
     event: BasePopover.Root.ChangeEventDetails,
   ) => {
-    setMounted(nextOpen);
+    // The consumer runs first so a `event.cancel()` (e.g. a sticky popover
+    // swallowing an outside press) also vetoes this internal mounted mirror —
+    // otherwise an uncontrolled popover closes even though Base UI honoured
+    // the cancellation.
     onOpenChange?.(nextOpen, event);
+    if (!event.isCanceled) setMounted(nextOpen);
   };
 
   // When open is controlled externally, sync mounted state so

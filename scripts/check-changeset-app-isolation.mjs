@@ -1,36 +1,57 @@
 #!/usr/bin/env node
-// CI guard: a single changeset must not mix an app (ignored) with a library.
+// CI guard: a single changeset must not mix an ignored app with a library.
 // `changeset version` hard-errors on such "mixed" changesets, which would break
 // the entire library release. Fail fast on the PR instead.
+//
+// The set of ignored apps is read from the Changesets config's `ignore` list —
+// the authoritative source `changeset version` itself uses — rather than a
+// hard-coded product list, so every ignored private app (the maintenance-mode
+// classic apps, the gated products) is covered without a second list to keep in
+// sync. The gated-product multi-product check still uses GATED_PRODUCT_PACKAGES,
+// since only those apps have their own release PR.
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
   classifyChangeset,
+  foreignIgnoredReleases,
   isMixedChangeset,
   isMultiProductChangeset,
+  isProductWithForeignIgnoredAppChangeset,
   readChangesets,
 } from './changeset-app-utils.mjs';
 
-const changesets = readChangesets(join(process.cwd(), '.changeset'));
-const mixedOffenders = changesets.filter((cs) => isMixedChangeset(cs));
+const changesetDir = join(process.cwd(), '.changeset');
+const { ignore = [] } = JSON.parse(
+  readFileSync(join(changesetDir, 'config.json'), 'utf8'),
+);
+const changesets = readChangesets(changesetDir);
+const mixedOffenders = changesets.filter((cs) => isMixedChangeset(cs, ignore));
 const multiProductOffenders = changesets.filter((cs) =>
   isMultiProductChangeset(cs),
 );
+const productWithForeignOffenders = changesets.filter((cs) =>
+  isProductWithForeignIgnoredAppChangeset(cs, ignore),
+);
 
-if (mixedOffenders.length === 0 && multiProductOffenders.length === 0) {
+if (
+  mixedOffenders.length === 0 &&
+  multiProductOffenders.length === 0 &&
+  productWithForeignOffenders.length === 0
+) {
   process.exit(0);
 }
 
 if (mixedOffenders.length > 0) {
   console.error(
-    'Mixed changesets found — these combine a gated product with a library and would break\n' +
+    'Mixed changesets found — these combine an ignored app with a library and would break\n' +
       'the library release (`changeset version` rejects them):\n',
   );
   for (const cs of mixedOffenders) {
-    const { productReleases, libReleases } = classifyChangeset(cs);
+    const { productReleases, libReleases } = classifyChangeset(cs, ignore);
     console.error(`  .changeset/${cs.id}.md`);
     console.error(
-      `    products:  ${productReleases.map((r) => r.name).join(', ')}`,
+      `    apps:      ${productReleases.map((r) => r.name).join(', ')}`,
     );
     console.error(
       `    libraries: ${libReleases.map((r) => r.name).join(', ')}`,
@@ -49,6 +70,27 @@ if (multiProductOffenders.length > 0) {
     console.error(`  .changeset/${cs.id}.md`);
     console.error(
       `    products: ${productReleases.map((r) => r.name).join(', ')}`,
+    );
+  }
+  console.error('');
+}
+
+if (productWithForeignOffenders.length > 0) {
+  console.error(
+    'Product + non-gated-app changesets found — these pair a gated product with a\n' +
+      'maintenance-mode app that has no release lane. The product release would consume\n' +
+      'and delete the file, silently dropping the other entry:\n',
+  );
+  for (const cs of productWithForeignOffenders) {
+    const { productReleases } = classifyChangeset(cs);
+    console.error(`  .changeset/${cs.id}.md`);
+    console.error(
+      `    products:   ${productReleases.map((r) => r.name).join(', ')}`,
+    );
+    console.error(
+      `    other apps: ${foreignIgnoredReleases(cs, ignore)
+        .map((r) => r.name)
+        .join(', ')}`,
     );
   }
   console.error('');

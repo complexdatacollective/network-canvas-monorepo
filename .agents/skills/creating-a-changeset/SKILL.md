@@ -12,8 +12,8 @@ released package or app:
 
 - A published library under `packages/*` (e.g. `@codaco/interview`,
   `@codaco/protocol-validation`) — any behaviour/API/type change consumers see.
-- A gated product: `@codaco/architect`, `@codaco/interviewer`,
-  `@codaco/documentation`, or `networkcanvas.com`.
+- A gated product: `@codaco/architect`, `@codaco/background-creator`,
+  `@codaco/interviewer`, `@codaco/documentation`, or `networkcanvas.com`.
 
 Skip it for repository-docs-only, test-only, CI/tooling-only, or internal
 refactors with no consumer-visible effect. Content changes to the released
@@ -23,19 +23,20 @@ Don't add an empty changeset just to have one.
 ## Independent lanes — never mix them
 
 **A single changeset must target one release lane:** either one or more libraries,
-Architect, Interviewer, Documentation, or Website. CI (`pnpm check:changesets`)
+Architect, Background Creator, Interviewer, Documentation, or Website. CI (`pnpm check:changesets`)
 rejects a gated product mixed with a library because `changeset version`
 hard-errors on it. It also rejects two gated products in one file because each
 product has an independent release PR. If one feature affects multiple lanes,
 run `pnpm changeset` once per lane.
 
-| Lane          | Bump type                                    | Ships via                                   |
-| ------------- | -------------------------------------------- | ------------------------------------------- |
-| Libraries     | Real semver impact                           | "Version Packages" PR → npm                 |
-| Architect     | Categorises notes; `-beta.N` auto-increments | "Release Architect" PR → Netlify + GitHub   |
-| Interviewer   | Categorises notes; `-beta.N` auto-increments | "Release Interviewer" PR → Netlify + GitHub |
-| Documentation | Real semver impact                           | "Release Documentation" PR → Netlify + tag  |
-| Website       | Real semver impact                           | "Release Website" PR → Netlify + tag        |
+| Lane               | Bump type                                    | Ships via                                          |
+| ------------------ | -------------------------------------------- | -------------------------------------------------- |
+| Libraries          | Real semver impact                           | "Version Packages" PR → npm                        |
+| Architect          | Categorises notes; `-beta.N` auto-increments | "Release Architect" PR → Netlify + GitHub          |
+| Background Creator | Categorises notes; `-beta.N` auto-increments | "Release Background Creator" PR → Netlify + GitHub |
+| Interviewer        | Categorises notes; `-beta.N` auto-increments | "Release Interviewer" PR → Netlify + GitHub        |
+| Documentation      | Real semver impact                           | "Release Documentation" PR → Netlify + tag         |
+| Website            | Real semver impact                           | "Release Website" PR → Netlify + tag               |
 
 ## How to author
 
