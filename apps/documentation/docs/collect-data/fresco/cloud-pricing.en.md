@@ -9,27 +9,27 @@ Deploying Fresco can be achieved entirely for free using the free tiers of each 
 
 ## Netlify
 
-- **Hobby Tier (Free)**: Netlify offers a Free tier which provides sufficient features for small-scale deployments.
+- **Free tier**: Netlify's free tier provides sufficient features for small-scale deployments.
 
-- **Upgrade Option**: If your project grows or you require additional features, you can upgrade to Netlify's Personal plan for $9/month or Pro plan for $20/member/month.
+- **Upgrade option**: If your project grows or you require additional features, Netlify offers paid personal and team plans.
 
-For more information on Netlify's pricing plans and features, you can visit their [pricing page.](https://www.netlify.com/pricing)
+For current plans and prices, visit Netlify's [pricing page](https://www.netlify.com/pricing).
 
 ## Neon
 
-- **Free Plan**: Neon offers a free plan which provides 0.5 GB storage and 100 compute hours, sufficient for small-scale projects.
+- **Free tier**: Neon's free plan includes a small amount of storage and compute, sufficient for small-scale projects.
 
-- **Upgrade Option**: If you require extra storage or compute hours, you can upgrade to Neon's Launch plan for $5/month.
+- **Upgrade option**: If you require extra storage or compute hours, Neon offers paid plans with higher limits.
 
-For more information on Neon's pricing plans and features, you can visit their [pricing page.](https://neon.com/pricing)
+For current plans and prices, visit Neon's [pricing page](https://neon.com/pricing).
 
 ## UploadThing
 
-- **Free Tier**: UploadThing offers a free tier with basic features and up to 2GB of storage, suitable for small projects.
+- **Free tier**: UploadThing's free tier offers basic features and a small amount of storage, suitable for small projects.
 
-- **Upgrade Option**: If you require additional storage or features, you can upgrade to 100GB of storage for $10/month.
+- **Upgrade option**: If you require additional storage or features, UploadThing offers paid plans with larger storage allowances.
 
-For more information on UploadThing's pricing plans and features, you can visit their [pricing page.](https://uploadthing.com/pricing)
+For current plans and prices, visit UploadThing's [pricing page](https://uploadthing.com/pricing).
 
 ## S3-compatible storage (alternative to UploadThing)
 

@@ -47,7 +47,7 @@ Finally, this documentation site is a hub for training material and tutorials, a
 
 Network Canvas has technologies built in to allow research with mixed/low written literacy groups, and we welcome feedback about ways we can adapt the software to new research populations and make it more accessible.
 
-Unfortunately we do not have specific support for screen readers, or right-to-left languages at present.
+Accessibility support depends on which generation of the apps you use. Interviews run in the current **Interviewer** app and in **Fresco** are built for screen-reader use and full keyboard operation. The Classic apps do not have specific screen-reader support. Right-to-left languages are not currently supported in any of the apps.
 
 ## Which hardware do I need to run the different components of the Network Canvas suite?
 
