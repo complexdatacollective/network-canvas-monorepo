@@ -42,7 +42,7 @@ catalog:
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.61.1
-  '@posthog/react': ^1.9.1
+  '@posthog/react': ^1.10.3
   '@radix-ui/react-dialog': ^1.1.15
   '@radix-ui/react-slot': ^1.2.4
   '@reduxjs/toolkit': ^2.12.0
