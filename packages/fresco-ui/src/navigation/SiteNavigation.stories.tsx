@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Monitor, Search } from 'lucide-react';
-import { expect, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import Button from '../Button';
 import SiteNavigation from './SiteNavigation';
@@ -12,6 +12,7 @@ type StoryArgs = {
     | 'community'
     | 'documentation'
     | 'resources'
+    | 'software'
     | 'getStarted';
   containerWidth: number;
   locale: SiteNavigationLocale;
@@ -81,6 +82,7 @@ const meta = {
         'community',
         'documentation',
         'resources',
+        'software',
         'getStarted',
       ],
     },
@@ -190,6 +192,27 @@ export const ResourcesExpanded: Story = {
     await expect(resourcesButton).not.toBeVisible();
     await expect(documentationLink).toBeVisible();
     await expect(documentationLink).toHaveAttribute('aria-current', 'page');
+  },
+};
+
+export const SoftwareExpanded: Story = {
+  args: {
+    activeItemId: 'software',
+    containerWidth: 1536,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Software' }));
+    await waitFor(() => {
+      const finalCard = screen
+        .getByRole('link', { name: 'Interviewer Classic' })
+        .closest('li');
+      if (!finalCard) throw new Error('Expected the final software card.');
+
+      expect(getComputedStyle(finalCard).opacity).toBe('1');
+      expect(getComputedStyle(finalCard).transform).toBe('none');
+    });
   },
 };
 

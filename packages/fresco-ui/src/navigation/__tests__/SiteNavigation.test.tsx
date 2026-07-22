@@ -149,9 +149,18 @@ describe('SiteNavigation', () => {
       name: 'Architect Classic',
     });
     const softwareGrid = architectClassicLink.closest('ul');
+    const softwarePopup = architectClassicLink.closest('nav');
     if (!softwareGrid) throw new Error('Expected the software grid.');
+    if (!softwarePopup) throw new Error('Expected the software popup.');
+    const softwareViewport = softwarePopup.querySelector(':scope > div');
+    if (!softwareViewport) throw new Error('Expected the software viewport.');
 
     expect(softwareGrid).toHaveClass('grid', 'grid-cols-3');
+    expect(softwarePopup).toHaveClass(
+      'h-(--popup-height)',
+      'w-(--popup-width)',
+    );
+    expect(softwareViewport).toHaveClass('relative');
     expect(within(softwareGrid).getAllByRole('listitem')).toHaveLength(5);
     expect(
       within(softwareGrid)
