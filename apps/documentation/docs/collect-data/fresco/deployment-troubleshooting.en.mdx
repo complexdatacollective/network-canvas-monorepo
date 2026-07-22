@@ -85,6 +85,10 @@ If you followed the [Deployment Guide](/en/collect-data/fresco/guide), your data
 
 3. After confirming, follow the deployment guide to [create a new database](/en/collect-data/fresco/guide#create-a-database) and replace the environment variables in your Netlify project.
 
+### Vercel deployments (legacy)
+
+If you deployed with the legacy [Vercel guide](/en/collect-data/fresco/guide-vercel), your database is also hosted by Neon: follow the Neon steps above, then replace the database environment variables in your **Vercel** project settings (rather than Netlify) and redeploy.
+
 ### Docker deployments
 
 If you followed the [Advanced Deployment](/en/collect-data/fresco/advanced) guide and use the bundled `postgres` service from one of the official Docker Compose files, stop the stack, remove the volume that stores the PostgreSQL data, and start the stack again. Fresco will create an empty database and show the setup wizard the next time you visit your instance. The Advanced Deployment guide describes the compose files and their environment configuration.
