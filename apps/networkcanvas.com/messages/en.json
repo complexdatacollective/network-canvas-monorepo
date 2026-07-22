@@ -29,7 +29,7 @@
   },
   "Tools": {
     "heading": "A selection of tools to facilitate your research",
-    "introduction": "We provide a complete end-to-end workflow for networks research, with an app for survey design and for interviewing. Using these tools, researchers can easily design, capture, and export network data.",
+    "introduction": "We provide a complete end-to-end workflow for networks research, with apps for survey design and for interviewing. Using these tools, researchers can easily design, capture, and export network data.",
     "architect": {
       "description": "A browser-based tool for visually designing Network Canvas interviews. Architect allows subject experts to focus on the design and implementation of their study, without needing to learn complex new technology.",
       "action": "Open Architect",
@@ -41,7 +41,7 @@
       "screenshotAlt": "Interviewer home screen showing available Network Canvas protocols"
     },
     "fresco": {
-      "description": "Bringing Network Canvas interviews to the web! Fresco is a pilot project that allows researchers to conduct Network Canvas interviews in a web browser.",
+      "description": "Bringing Network Canvas interviews to the web! Fresco allows researchers to conduct Network Canvas interviews in a web browser.",
       "action": "Try the Fresco Sandbox",
       "deployAction": "Deploy Fresco",
       "screenshotAlt": "Fresco dashboard showing protocol, participant, and interview totals"

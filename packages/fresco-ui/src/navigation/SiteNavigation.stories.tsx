@@ -171,7 +171,7 @@ export const ResourcesGrouped: Story = {
     await expect(resourcesButton).toBeVisible();
     await expect(resourcesButton).toHaveAttribute('aria-current', 'page');
     await expect(
-      canvas.getByRole('link', { name: 'Docs', hidden: true }),
+      canvas.getByRole('link', { name: 'Documentation', hidden: true }),
     ).not.toBeVisible();
   },
 };
@@ -187,7 +187,9 @@ export const ResourcesExpanded: Story = {
       name: 'Resources',
       hidden: true,
     });
-    const documentationLink = canvas.getByRole('link', { name: 'Docs' });
+    const documentationLink = canvas.getByRole('link', {
+      name: 'Documentation',
+    });
 
     await expect(resourcesButton).not.toBeVisible();
     await expect(documentationLink).toBeVisible();

@@ -20,7 +20,6 @@ export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
           <Reveal
             key={member.id}
             delay={(i % 4) * 0.05}
-            data-homepage-weave-interactive-target
             className="group spring-short flex flex-col items-center rounded p-3 text-center"
           >
             <img
