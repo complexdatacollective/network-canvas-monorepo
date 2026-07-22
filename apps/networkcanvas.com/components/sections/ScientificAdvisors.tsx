@@ -8,10 +8,7 @@ export function ScientificAdvisors() {
   const t = useTranslations('ScientificAdvisors');
 
   return (
-    <div
-      data-homepage-weave-target
-      className="mx-auto mt-16 max-w-3xl text-center"
-    >
+    <div className="mx-auto mt-16 max-w-3xl text-center">
       <Heading
         level="h3"
         variant="subheading"

@@ -9,7 +9,7 @@ navOrder: 5
 
 Network Canvas is a suite of three applications designed to assist researchers in the collection of social network data. These applications are: Architect for building interview protocols, Interviewer for use in the field to collect data, and [Fresco](/en/collect-data/fresco) for deploying protocols in the web browser.
 
-Interviewer comes in two supported versions: the established **Interviewer Classic**, and **Interviewer**, which is built on the same new platform as Fresco, supports schema 8, and is recommended for new studies. See [Running Interviews](/en/collect-data) for a comparison of the interview apps.
+Interviewer comes in two supported versions: the established **Interviewer Classic**, and the normal app, which is built on the same new platform as Fresco, supports schema 8, and is recommended for new studies. See [Running Interviews](/en/collect-data) for a comparison of the interview apps. If you have used the Classic apps before and are considering the move, see [Migrating from the Classic Apps](/en/get-started/migrating-from-classic).
 
 We have designed our software to overcome a few distinct barriers to social network data collection:
 
@@ -19,9 +19,7 @@ We have designed our software to overcome a few distinct barriers to social netw
 
 ## When can I use the tools in the Network Canvas suite?
 
-Network Canvas has been in development since 2016, with extensive alpha and beta phases. We are happy to report that we released the first stable versions of the software in December 2020. We believe the software is now ready for use in your research.
-
-Throughout the remaining duration of our funding we will be working through a backlog of missing features, improvements, and bug fixes. These will be released as updates, and you will receive a notification within the software when they are available.
+Right now! Network Canvas has been in development since 2016, and the first stable versions of the software were released in December 2020. The suite is stable, in active use, and updated regularly — you will receive a notification within the software when updates are available.
 
 ## How much does the software cost? What is your funding model?
 
@@ -33,7 +31,7 @@ We can also provide development and consultancy services to support ideas you ha
 
 ## Who is developing the Network Canvas suite?
 
-The software is being developed by a team of researchers and developers based at Northwestern University and the University of Oxford, as well as several external contracted developers. We are grateful to be funded through a grant from the [National Institutes of Health](https://reporter.nih.gov/search/My1lXoKhnEyzXX5kIyl7Mw/project-details/9306043).
+The software is developed by a team of researchers and developers based at Northwestern University and the University of Oxford, as well as several external contracted developers.
 
 The intellectual property and copyright associated with the software is controlled by a registered not-for-profit, the Complex Data Collective, comprising the core project staff.
 
@@ -43,13 +41,13 @@ Our tools are designed to be used by all social network researchers, regardless 
 
 The Network Canvas suite provides an end-to-end workflow, taking you from designing your interview to collating and exporting the data in a format that you are used to working with. Our central aim is to simplify this process, and lower the technical barriers to conducting personal networks research.
 
-Finally, we intend to run demonstrations and training sessions at many network analysis conferences in the near future. In addition, our website will be a hub for training material, including videos and documentation. We hope you find these useful. If not, please let us know and we will try to improve as best we can!
+Finally, this documentation site is a hub for training material and tutorials, and our [user community](https://community.networkcanvas.com) is a great place to ask questions. We hope you find these resources useful. If not, please let us know and we will try to improve as best we can!
 
 ## My participants have special language or literacy requirements. Can I still use Network Canvas?
 
 Network Canvas has technologies built in to allow research with mixed/low written literacy groups, and we welcome feedback about ways we can adapt the software to new research populations and make it more accessible.
 
-Unfortunately we do not have specific support for screen readers, or right-to-left languages at present.
+Accessibility support depends on which generation of the apps you use. Interviews run in the current **Interviewer** app and in **Fresco** are built for screen-reader use and full keyboard operation. The Classic apps do not have specific screen-reader support. Right-to-left languages are not currently supported in any of the apps.
 
 ## Which hardware do I need to run the different components of the Network Canvas suite?
 
@@ -59,8 +57,6 @@ The Network Canvas suite consists of three applications, with each component run
 - Interviewer runs in your web browser and can be installed to a device you control as a Progressive Web App. It works best with a touch screen device, but also functions well with a conventional computer that uses a keyboard and mouse. **Interviewer Classic**, the downloadable app, runs on Windows, macOS, iOS, and Android; specific functionality may vary by operating system.
 - Fresco is a web-based application. For information on supported browsers, devices, and platforms, see our [Fresco FAQ](/en/collect-data/fresco/faq#which-browsers-are-supported).
 
-Our development test devices have included a Samsung Chromebook Plus, iPad Pros (both 9.7" and 12.1"), and the Google Pixel C tablet. We have also completed Network Canvas studies using 27 inch “all in one” touchscreen computers with positive results.
-
 Although Network Canvas has not been tested on all possible hardware configurations, we anticipate that most mid to high-end laptop computers and tablets will be capable of running the software well. Please see our article on [choosing hardware for a study](/en/collect-data/interviewer/choosing-hardware) for more information. If you are planning data collection and have specific questions, please create a post on our [user community](https://community.networkcanvas.com).
 
 ## How do I cite the Network Canvas suite of tools in a paper or grant application?
@@ -69,7 +65,7 @@ Please see our page on [citing the software](./citing-the-software).
 
 ## Does the software support feature X?
 
-Perhaps! As our work progresses, we encourage interested parties to browse the documentation and tutorials that are available through this website, and to explore the software themselves.
+Perhaps! We encourage interested parties to browse the documentation and tutorials that are available through this website, and to explore the software themselves.
 
 The software has been built to allow it to be extended and improved by anyone with web development skills. We encourage users to experiment with implementing new functionality, and contributing it back to the project. Please [get in touch](mailto:info@networkcanvas.com) if you wish to discuss commissioning the development of specific functionality for your study.
 
@@ -77,40 +73,14 @@ The software has been built to allow it to be extended and improved by anyone wi
 
 Our software was conceived in the context of research of a highly sensitive nature, so we understand that for many researchers security is of the utmost importance.
 
-We do not transmit, collect or retain any data from or about your study. The data you collect in the field is yours, and is only ever stored on your devices. This provides a baseline level of security, but also means that a large part of the responsibility for securing devices and data falls on the researcher. Please review our articles on [configuring devices prior to starting data collection](/en/collect-data/interviewer/configuring-devices), and [IRB and security best practices](/en/get-started/planning-a-study/irb-best-practices) to ensure that you are aware of the most common weaknesses. You should also consult with your institutional IT or security experts.
+We never receive, transmit, or store participant data. The data you collect is yours. In Interviewer and Interviewer Classic it is only ever stored on your devices; in Fresco it is stored in a database on infrastructure that you or your institution control. This provides a baseline level of security, but also means that a large part of the responsibility for securing devices and data falls on the researcher. Please review our articles on [configuring devices prior to starting data collection](/en/collect-data/interviewer/configuring-devices), and [IRB and security best practices](/en/get-started/planning-a-study/irb-best-practices) to ensure that you are aware of the most common weaknesses. You should also consult with your institutional IT or security experts.
 
-If you are working in a scenario where you have access to a network connection with internet access, you can use an [online workflow](/en/collect-data/protocol-and-data-workflows#option-1-online-workflow) or you can implement an entirely [offline workflow](/en/collect-data/protocol-and-data-workflows#option-2-offline-workflow) that does not require data to be transmitted. Further details of the security model we implement can be [found here](./security-model).
+If you are working in a scenario where you have access to a network connection with internet access, you can use an [online workflow](/en/collect-data/protocol-and-data-workflows#option-1-online-workflow) or you can implement an entirely [offline workflow](/en/collect-data/protocol-and-data-workflows#option-2-offline-workflow) that does not require data to be transmitted. Further details of what data each app stores, and how to keep it secure, can be found in the best practices article linked above.
 
 If you have specific security requirements, please contact us to discuss how we can make our software suite compliant with your needs.
 
 ## Is Interviewer GDPR compliant?
 
-Fresco and Interviewer are software tools that can be used in a GDPR-compliant manner, but compliance depends entirely on how you deploy and configure them. The Network Canvas development team does **not** host any participant data and does **not** act as a Data Controller or Data Processor under GDPR.
+Interviewer and Fresco can be used in a GDPR-compliant manner, but compliance depends on how you deploy and configure them. The Network Canvas development team never receives or hosts participant data, and does not act as a Data Controller or Data Processor under GDPR — you, or your institution, are always the Data Controller. The only information the software ever sends to us is optional anonymous usage and error analytics in Interviewer and Fresco, which never include participant data and can be disabled (Interviewer Classic sends none).
 
-**For Interviewer and Interviewer Classic (data stored on your device):**
-
-- All participant data is stored only on your local device
-- No participant data is transmitted externally unless you manually export it
-- The app does not collect analytics or crash logs
-- Device-level protections (disk encryption, access controls) are your responsibility
-
-**For Fresco (Self-Hosted Web Application):**
-
-- You deploy and host Fresco on your own infrastructure
-- All participant data remains under your control at all times
-- Interview data is stored in Postgres (encrypted at rest when using providers like Neon)
-- Study assets are stored in S3 via UploadThing (server-side encryption enforced)
-- GDPR-compliant hosting is possible when selecting an EU region (available on paid UploadThing plans)
-- Optional anonymous usage/error analytics can be disabled
-
-**Your Responsibilities:**
-As the Data Controller, you are responsible for:
-
-- Establishing a lawful basis for processing participant data
-- Selecting GDPR-compliant hosting regions
-- Implementing appropriate data security measures
-- Maintaining data retention and deletion policies
-- Enabling participant rights (access, rectification, erasure)
-
-**Learn More:**
-For comprehensive guidance on GDPR compliance, including detailed information for researchers, ethics committees, and IT departments, see our [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance).
+For detailed guidance — including how each app stores data, analytics and third-party services, and your responsibilities as Data Controller — see our [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance).

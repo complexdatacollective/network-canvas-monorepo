@@ -2,7 +2,7 @@
   "type": "folder",
   "slug": "interviewer",
   "localeLabels": { "en": "Interviewer" },
-  "localeIndexFiles": { "en": "installing-interviewer.en.md" },
+  "localeIndexFiles": { "en": "about.en.mdx" },
   "navOrder": 2,
   "isExpanded": true
 }

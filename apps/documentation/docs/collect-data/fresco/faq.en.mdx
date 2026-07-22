@@ -1,6 +1,6 @@
 ---
 title: Frequently Asked Questions
-date: 9th October 2025
+date: 22nd July 2026
 navOrder: 12
 ---
 
@@ -68,35 +68,7 @@ If you are using a different database provider, you will need to follow the back
 
 ## Is Fresco GDPR compliant?
 
-Fresco and Interviewer are software tools that can be used in a GDPR-compliant manner, but compliance depends entirely on how you deploy and configure them. The Network Canvas development team does **not** host any participant data and does **not** act as a Data Controller or Data Processor under GDPR.
-
-**For Interviewer (Desktop/Tablet App):**
-
-- All participant data is stored only on your local device
-- No participant data is transmitted externally unless you manually export it
-- The app does not collect analytics or crash logs
-- Device-level protections (disk encryption, access controls) are your responsibility
-
-**For Fresco (Self-Hosted Web Application):**
-
-- You deploy and host Fresco on your own infrastructure
-- All participant data remains under your control at all times
-- Interview data is stored in Postgres (encrypted at rest when using providers like Neon)
-- Study assets are stored in an S3-compatible bucket — either UploadThing (server-side encryption enforced) or your own S3 storage (AWS S3, MinIO, Cloudflare R2, Backblaze B2)
-- GDPR-compliant hosting is possible by selecting an EU region — an EU-region UploadThing paid plan, or an EU-region S3 bucket
-- Optional anonymous usage/error analytics can be disabled
-
-**Your Responsibilities:**
-As the Data Controller, you are responsible for:
-
-- Establishing a lawful basis for processing participant data
-- Selecting GDPR-compliant hosting regions
-- Implementing appropriate data security measures
-- Maintaining data retention and deletion policies
-- Enabling participant rights (access, rectification, erasure)
-
-**Learn More:**
-For comprehensive guidance on GDPR compliance, including detailed information for researchers, ethics committees, and IT departments, see our [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance).
+Fresco can be used in a GDPR-compliant manner, but compliance depends entirely on how you deploy and configure your instance — you host Fresco yourself, and no participant data ever reaches the Network Canvas development team. As the deploying institution, you act as the Data Controller and are responsible for choices such as hosting regions, security measures, and data retention. For comprehensive guidance, see the [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance); for infrastructure-level detail aimed at IT and security teams, see the [FAQ for IT Departments](/en/collect-data/fresco/it-faq).
 
 ## Can I create more than one user account?
 
@@ -132,7 +104,7 @@ If you are locked out of an account in **Fresco v4 or later**, you have a few op
 
 - If you enabled two-factor authentication, sign in using one of your **recovery codes**.
 - Ask **another administrator** to **Reset Auth** for your account from User Management. This clears your existing passkeys and two-factor authentication and gives the administrator a temporary password to pass to you, which you use to sign back in. (This is why we recommend creating more than one account.)
-- As a last resort, if every account is inaccessible and no recovery codes remain, you may need to [reset your database](/en/collect-data/fresco/deployment-troubleshooting#instance-expired-message-during-the-setup-process). This will result in the loss of all data and unexported interviews.
+- As a last resort, if every account is inaccessible and no recovery codes remain, you may need to [reset your database](/en/collect-data/fresco/deployment-troubleshooting#reset-your-database). This will result in the loss of all data and unexported interviews.
 
 See [Accounts & security](/en/collect-data/fresco/accounts) for more on recovering access.
 

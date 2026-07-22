@@ -1,7 +1,7 @@
 ---
 title: Working with Roster Data
 wip: false
-navOrder: 4
+navOrder: 5
 ---
 
 <SummaryCard duration="30 minutes">
@@ -28,11 +28,11 @@ To follow along, you should:
 
 A roster is a list where each row can potentially become a node in a network. This list might consist of students in a classroom, workers in an office, or people in a team sport. Rosters can also include people mentioned in previous surveys by a specific individual, lists of words related to one's occupation, or any item where it is useful to nominate members of that list in Network Canvas. Commonly, rosters are used in whole network studies since you can merge together all of the ego-alter nominations to create a whole network. Each person in the whole network would make their nominations to others and then the researcher could combine these.
 
-Above we noted rosters for 'people mentioned in a previous survey'. While this is a use for a user-specific roster, this is not yet available in Network Canvas without some workarounds altohugh it is a planned feature for future releases.
+Above we noted rosters for 'people mentioned in a previous survey'. While this is a use for a user-specific roster, this is not yet available in Network Canvas without some workarounds although it is a planned feature for future releases.
 
 ## Rosters in Network Canvas
 
-In a Network Canvas interviewer session, when a person is nominating nodes we presently have the ability to bring nodes in from a side panel. Typically this side panel would includes 'people already mentioned'. However, we can also bring in nodes from a pre-defined list. Below we discuss:
+In a Network Canvas interviewer session, when a person is nominating nodes we presently have the ability to bring nodes in from a side panel. Typically this side panel would include 'people already mentioned'. However, we can also bring in nodes from a pre-defined list. Below we discuss:
 
 - how to create this roster list,
 - how to add this list to an existing protocol,

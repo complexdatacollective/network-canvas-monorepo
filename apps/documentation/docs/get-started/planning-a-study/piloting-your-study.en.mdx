@@ -1,0 +1,65 @@
+---
+title: Piloting Your Study
+date: 22nd July 2026
+navOrder: 3
+toc: true
+---
+
+<Paragraph variant="lead">
+  Before a real participant sits down, run your study end to end without one.
+  The Network Canvas tools include several complementary ways to rehearse —
+  stage previews in Architect, synthetic interview sessions in Interviewer and
+  Fresco, and a shared sandbox Fresco deployment — that together let you test
+  your protocol, your interview workflow, and your export pipeline before
+  launch.
+</Paragraph>
+
+## Why pilot?
+
+A protocol that looks right in the editor can still surprise you in the field: a validation rule that stops participants from submitting a form, a skip logic path that hides a stage you expected to see, or an export that doesn't contain what your analysis needs. Each of these is far cheaper to discover during a dry run than during data collection.
+
+Piloting is also the natural time to train your team. The interview user interface is deliberately minimal, and much of the functionality researchers need is less discoverable than participants' tasks — you should expect to spend time learning and training interviewers so that they can navigate the software confidently (see [Using Interviewer](/en/collect-data/interviewer/using-interviewer)).
+
+The rest of this page walks through a piloting journey, from previewing single stages to a pre-launch checklist.
+
+## Preview stages as you design
+
+Your first line of defense is in Architect itself. As you build, you can [preview any stage](/en/design-protocols/preview-mode) to see how it will appear to participants, letting you check changes immediately rather than waiting until you deploy. Previews can start with automatically generated example data — so network-dependent interfaces like sociograms and bins have something to display — and can show stages that skip logic would normally hide, so you can check every screen in your protocol. Nothing you enter in a preview is saved.
+
+Previewing catches problems with individual stages, but it is only the first part of a full dry run: it won't exercise your interview workflow on the device you'll use in the field, or your export pipeline. That's what the next steps are for.
+
+## Rehearse the full interview
+
+Next, run your protocol in [Interviewer](/en/collect-data/interviewer/using-interviewer) exactly as you would for a real interview: import the protocol, start a new interview, enter a case ID, and work through every stage as a participant would. Consider giving pilot sessions a case ID that clearly marks them as tests — the case ID appears everywhere sessions are listed, which makes test sessions easy to find and delete later.
+
+As you go, navigate back and forth around stages that use [skip logic](/en/design-protocols/key-concepts/skip-logic) or [network filtering](/en/design-protocols/key-concepts/network-filtering), changing your earlier answers to confirm that each path shows and hides the stages you intended.
+
+## Validate your export pipeline with synthetic data
+
+A handful of hand-entered pilot interviews won't tell you whether your export and analysis workflow holds up against a realistic dataset. For that, Interviewer (the browser-based app) can generate fake interview sessions for you: open **Settings → Synthetic data**, choose a protocol, and set the number of sessions to create (from 1 to 1000). You can optionally simulate participant drop-out — leaving some sessions incomplete to mirror real-world data — and have generation respect your protocol's skip logic and filtering. Generated sessions appear in your **Data** view and export exactly like real ones, and **Delete All** removes every synthetic session in one step. See the [Settings section of Using Interviewer](/en/collect-data/interviewer/using-interviewer#settings) for details.
+
+Export your synthetic sessions, then open the resulting files in the software you plan to analyze with. The [Data Export guide](/en/analyze-data/data-export) explains what the CSV and GraphML files contain and how the identifiers link them, so you can confirm the variables your analysis needs are actually present in the output.
+
+## Rehearse remote collection
+
+If you plan to collect data remotely with Fresco, you can rehearse without deploying anything: the [Fresco Sandbox](/en/collect-data/fresco/sandbox) is a shared example deployment for exploring the platform without setting up your own instance. Fresco also has its own [synthetic test data generator](/en/collect-data/fresco/using-fresco#generating-synthetic-test-data), so you can test the remote export workflow end to end as well.
+
+<TipBox danger>
+
+The sandbox is a shared environment: protocols you upload are visible to all users, and the database is periodically reset. Never upload real study or participant data — see the [Sandbox page](/en/collect-data/fresco/sandbox) for details.
+
+</TipBox>
+
+## Pre-launch checklist
+
+Before your first real participant, work through this list:
+
+- **Preview every stage in Architect** — including stages that skip logic would hide, using the [preview settings](/en/design-protocols/preview-mode) to bypass it.
+- **Try to break your validation rules.** Test edge cases, and test with pilot participants; the [Field Validation guide](/en/design-protocols/key-concepts/field-validation) explains what to look for, such as required fields that can't be answered or ranges that exclude legitimate responses.
+- **Run a complete interview on the device you will use in the field.** Performance, text entry, and screen size all shape the participant experience — see [Choosing a Hardware Device](/en/collect-data/interviewer/choosing-hardware).
+- **Check connectivity requirements.** Protocols using internet-dependent interfaces such as [Geospatial](/en/design-protocols/interface-documentation/geospatial) show a **Requires internet** indicator on their protocol card, and need a reliable connection wherever interviews will happen.
+- **Export test data and open the files** in your analysis software, checking them against the [Data Export guide](/en/analyze-data/data-export).
+- **Review your security setup.** If participants will handle the device, configure re-authentication at interview boundaries so that exiting an interview can't expose other participants' data (see [Security and locking](/en/collect-data/interviewer/using-interviewer#security-and-locking)).
+- **Delete synthetic and pilot sessions** before real collection begins, so test data never mingles with study data.
+
+Once everything passes, you are ready to move on to collecting data — the [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows) tutorial covers deployment, export, and backup practices for each way of running a study.

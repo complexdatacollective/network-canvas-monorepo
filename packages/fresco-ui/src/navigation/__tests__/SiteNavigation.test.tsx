@@ -21,11 +21,11 @@ describe('SiteNavigation', () => {
       'href',
       'https://community.networkcanvas.com/',
     );
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Documentation' })).toHaveAttribute(
       'href',
       'https://documentation.networkcanvas.com/',
     );
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Documentation' })).toHaveAttribute(
       'aria-current',
       'page',
     );
@@ -56,13 +56,13 @@ describe('SiteNavigation', () => {
     expect(
       screen.getByRole('link', { name: 'Inicio de Network Canvas' }),
     ).toHaveAttribute('href', 'https://networkcanvas.com/');
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Documentación' })).toHaveAttribute(
       'href',
       '/',
     );
-    expect(screen.getByRole('link', { name: 'Docs' })).not.toHaveAttribute(
-      'target',
-    );
+    expect(
+      screen.getByRole('link', { name: 'Documentación' }),
+    ).not.toHaveAttribute('target');
     expect(
       screen.getByRole('link', { name: 'Galería de protocolos' }),
     ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/');
@@ -284,11 +284,11 @@ describe('SiteNavigation', () => {
     expect(
       screen.getByRole('link', { name: 'Network Canvas home' }),
     ).toHaveAttribute('href', 'https://networkcanvas.com/');
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Documentation' })).toHaveAttribute(
       'href',
       'https://documentation.networkcanvas.com/',
     );
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Documentation' })).toHaveAttribute(
       'target',
       '_blank',
     );

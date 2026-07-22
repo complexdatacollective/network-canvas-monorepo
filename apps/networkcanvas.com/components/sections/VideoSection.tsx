@@ -30,7 +30,7 @@ export function VideoSection() {
         {t.rich('description', { channel: renderChannelLink })}
       </SectionHeading>
 
-      <Reveal data-homepage-weave-target className="mx-auto mt-12 max-w-3xl">
+      <Reveal className="mx-auto mt-12 max-w-3xl">
         <iframe
           src="https://www.youtube-nocookie.com/embed/XzfE6j-LnII?si=sg8osuFqwG3ZlDK1"
           title={t('watchLabel')}

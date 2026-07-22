@@ -1,0 +1,158 @@
+---
+title: Glossary
+navOrder: 4
+toc: true
+---
+
+This page gives short, plain-language definitions of the terms you will meet
+throughout this documentation — useful if you are running interviews or
+analyzing data and come across a term from protocol design you haven't seen
+before. Each entry links to the page that covers the concept in full, so you
+can start here and dig deeper when you need to.
+
+## Alter
+
+A person (or other entity) that a participant names as part of their network
+during an interview. Participants create alters on [name
+generator](#name-generator) stages, and each alter is stored as a
+[node](#node) in the network. In exported data, every alter is linked to the
+[ego](#ego) who named it — see [Working with
+Data](/en/analyze-data/working-with-data).
+
+## Attribute
+
+The value of a [variable](#variable) recorded for a particular entity — for
+example, the age recorded for one alter. Architect calls the definition in the
+[codebook](#codebook) a variable; the value stored on an individual node is
+its attribute. See [Codebook](/en/design-protocols/key-concepts/codebook).
+
+## Case ID
+
+A short label — letters and numbers, up to 30 characters — entered at the
+start of each interview to help you keep track of and identify interview
+sessions in a way that is meaningful to your study. Case IDs are visible
+wherever you see interview sessions in Interviewer, and are included in all
+exported data. See [Using
+Interviewer](/en/collect-data/interviewer/using-interviewer#entering-a-case-id).
+
+## Codebook
+
+The central record of every entity type (ego, node, and edge) and every
+variable defined in your protocol. Architect builds the codebook automatically
+as you work, and it helps you keep your protocol consistent and plan your data
+analysis. See [Codebook](/en/design-protocols/key-concepts/codebook).
+
+## Edge
+
+A connection, or tie, between two [nodes](#node) — for example, a friendship a
+participant draws between two alters on a [sociogram](#sociogram). A protocol
+can define multiple edge types, and edges can carry their own variables. See
+[Codebook](/en/design-protocols/key-concepts/codebook) for how edge types are
+defined.
+
+## Ego
+
+The participant: the person a Network Canvas interview is about, whose
+personal network the interview captures. Data about the ego can be collected
+with the [Ego Form](/en/design-protocols/interface-documentation/ego-form)
+interface, and appears in [exported data](/en/analyze-data/data-export) as one
+row per ego.
+
+## Entity
+
+The collective term for the things an interview records data about: the ego,
+nodes, and edges. The [codebook](#codebook) organizes your protocol's
+variables by entity type. See
+[Codebook](/en/design-protocols/key-concepts/codebook#entity-types).
+
+## Interface
+
+A data collection instrument designed for a specific task — such as naming
+alters, drawing ties, or completing a form. You configure interfaces in
+Architect and add them to your protocol, where they become [stages](#stage).
+See [Interfaces](/en/design-protocols/key-concepts/interfaces) for the full
+list of available interfaces.
+
+## Name Generator
+
+An interface that asks participants to name the members of their network,
+creating [alters](#alter). Several name generator interfaces are available,
+including quick-add, form-based, and [roster](#roster)-based variants. See
+[Name Generator
+interfaces](/en/design-protocols/key-concepts/interfaces#name-generator-interfaces).
+
+## Name Interpreter
+
+An interface that collects additional information about alters or ties that
+already exist in the interview — for example, sorting alters into categories
+or completing a form about each one. See [Name Interpreter
+interfaces](/en/design-protocols/key-concepts/interfaces#name-interpreter-interfaces).
+
+## Node
+
+A single entity in a network. Nodes often represent the people a participant
+has named ([alters](#alter)), but you are free to define node types that
+represent anything your study needs — places, for example. See
+[Codebook](/en/design-protocols/key-concepts/codebook) for how node types are
+defined.
+
+## Prompt
+
+A participant-facing question or instruction that explains which data to
+provide, or how to complete the task, on a given stage. A stage may contain a
+single prompt or several. See
+[Prompts](/en/design-protocols/key-concepts/prompts).
+
+## Protocol
+
+The complete description of your interview: the stages, prompts, and logic it
+contains, along with any resources it uses. You build protocols in Architect,
+and move them between apps as `.netcanvas` files. See [The Protocol
+File](/en/design-protocols/key-concepts/the-protocol-file).
+
+## Resource
+
+An external file or credential used within your protocol — such as images,
+audio, video, roster data, or an API key. Resources are embedded within the
+protocol itself. See
+[Resources](/en/design-protocols/key-concepts/resources).
+
+## Roster
+
+A list prepared before the interview in which each row can become a node in
+the network — for example, students in a classroom or workers in an office.
+Participants select alters from a roster using the [Name Generator for Roster
+Data](/en/design-protocols/interface-documentation/name-generator-roster)
+interface. See [Working with Roster
+Data](/en/design-protocols/working-with-rosters) for strategies and file
+formats.
+
+## Schema
+
+The set of rules that defines what a valid protocol file looks like. Schemas
+are numbered — a protocol's **schema version** — and a protocol's schema
+version controls which apps can open it; apps migrate older protocols to newer
+schema versions automatically. See [Protocol Schema
+Information](/en/get-started/protocol-schema-information).
+
+## Sociogram
+
+The visual mapping component of a network interview: participants position
+their alters and draw ties between them to show the relationships within their
+personal network. See
+[Sociogram](/en/design-protocols/interface-documentation/sociogram).
+
+## Stage
+
+One of the individual screens that a participant sees during an interview. An
+interview is made up of one or more stages, and each stage is an instance of
+an [interface](#interface) that has been configured to collect specific data.
+See [Interfaces](/en/design-protocols/key-concepts/interfaces).
+
+## Variable
+
+A data field you define in your protocol to collect information about the ego,
+alters, or edges — an alter's age, for example. Each variable has a type (such
+as text, number, boolean, or categorical) that determines how it is collected
+and how it appears in exported data. See
+[Variables](/en/design-protocols/key-concepts/variables).

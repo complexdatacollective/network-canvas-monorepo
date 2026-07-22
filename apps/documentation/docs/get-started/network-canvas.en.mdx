@@ -9,19 +9,39 @@ designed around the needs of both researchers and their participants.
 We provide a complete end-to-end workflow for networks research, with apps
 for survey design and for interviewing. Using these tools, researchers can easily design, capture, and export network data.
 
-## Getting Started
+## The research workflow
 
-To get started using the Network Canvas tools, read the
-[project overview](/en/get-started/project-information/project-overview), and determine which tools
-to use for your project.
+Every Network Canvas study has the same shape: you design a protocol that
+describes your interview, you collect data by running that protocol with
+participants, and you analyze the data you collected. The documentation is
+organized around these three phases:
 
-|                     | Runs where            | Access                                                          | Step in workflow | Supported Schemas |
-| ------------------- | --------------------- | --------------------------------------------------------------- | ---------------- | ----------------- |
-| Architect           | Browser, PWA          | [Open in browser](https://architect.networkcanvas.com)          | Build protocol   | V8                |
-| Architect Classic   | Windows, macOS, Linux | [Download](/en/design-protocols/installing-architect-classic)   | Build protocol   | V7                |
-| Interviewer         | Browser, PWA          | [Open in browser](https://interviewer.networkcanvas.com)        | Run interviews   | V8                |
-| Interviewer Classic | Desktop & tablet      | [Download](/en/collect-data/interviewer/installing-interviewer) | Run interviews   | V7                |
-| Fresco              | Browser (self-hosted) | [Deploy an instance](/en/collect-data/fresco/guide)             | Run interviews   | V8                |
+- **[Design Protocols](/en/design-protocols)** — decide what your interview
+  will ask, and how, and express those decisions as a protocol file. Architect
+  is the tool for building, previewing, and refining protocols.
+- **[Collect Data](/en/collect-data)** — run your protocol as interviews with
+  participants. Interviewer runs interviews on a device you control, while
+  Fresco deploys your protocol to the web for participants to complete
+  remotely.
+- **[Analyze Data](/en/analyze-data)** — export the network data you collected
+  in standard formats such as CSV and GraphML, ready for R, Python, or any
+  other network-analysis package.
+
+If you are still thinking your study through, start with
+[Planning a Study](/en/get-started/planning-a-study/workflows), which walks
+through the decisions to make before you begin.
+
+## The applications
+
+Each phase of the workflow is supported by one or more applications:
+
+|                     | Runs where            | Access                                                          | Step in workflow |
+| ------------------- | --------------------- | --------------------------------------------------------------- | ---------------- |
+| Architect           | Browser, PWA          | [Open in browser](https://architect.networkcanvas.com)          | Build protocol   |
+| Architect Classic   | Windows, macOS, Linux | [Download](/en/design-protocols/installing-architect-classic)   | Build protocol   |
+| Interviewer         | Browser, PWA          | [Open in browser](https://interviewer.networkcanvas.com)        | Run interviews   |
+| Interviewer Classic | Desktop & tablet      | [Download](/en/collect-data/interviewer/installing-interviewer) | Run interviews   |
+| Fresco              | Browser (self-hosted) | [Deploy an instance](/en/collect-data/fresco/guide)             | Run interviews   |
 
 _**PWA** (Progressive Web App): Architect and Interviewer run in any modern web
 browser with nothing to install, and can optionally be installed to a device you
@@ -31,53 +51,36 @@ control for quick access and offline use._
 
 Not all apps are compatible. A protocol's schema version, determined by the tool it was
 built in, controls which apps can open it, so consider compatibility when choosing
-your tools. See [App compatibility by schema version](/en/get-started/release-announcements)
-for a visual matrix of what runs where, or
-[Protocol Schema Information](/en/get-started/advanced-topics/protocol-schema-information) for a
-full explanation of schema versions and automatic migration.
+your tools. See
+[Protocol Schema Information](/en/get-started/protocol-schema-information)
+for a full explanation of schema versions, app compatibility, and automatic migration.
 
 </TipBox>
-
-From there, explore the two main sections of the documentation, each with step-by-step
-tutorials to get you started:
-
-- **[Design Protocols](/en/design-protocols)** — everything about designing a protocol in
-  Architect. Choose between **Architect** and **Architect Classic**, open or install
-  the tool, and follow the tutorials for building a protocol.
-- **[Collect Data](/en/collect-data)** — everything about administering interviews.
-  Choose between **Interviewer** — the browser-based app you can install to a device
-  you control for interviewer-assisted interviews — and **Fresco**, which deploys your
-  protocol to the web for participants to complete remotely. (For existing schema 7
-  studies, **Interviewer Classic** remains available as a desktop and tablet download.)
 
 We encourage you to use the search function at the top of each page to find articles on
 any given topic. Our pages are heavily interlinked, and information is necessarily spread
 around.
 
-## Useful Pages
-
-Please explore the pages and headings to the left.
+## In this section
 
 This **Get Started** section holds the supporting reference material that applies across
 all of the tools. You'll find these headings in the sidebar to the left:
 
 - **Planning a Study** — how to think through your study before you start, including a
-  visual [overview of the workflows](/en/get-started/planning-a-study/workflows) and
-  guidance on GDPR and IRB. The full end-to-end
-  [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows) tutorial
-  lives in the [Collect Data](/en/collect-data) section.
-- **Project Information** — details of the origins of the projects, as well as information
-  about the [security model](/en/get-started/project-information/security-model), citing
-  the software, and collaborating with us.
-- **Advanced Topics** — articles that may be useful for advanced users or developers,
-  including protocol schema and file-format details.
+  visual [overview of the workflows](/en/get-started/planning-a-study/workflows),
+  advice on [piloting your study](/en/get-started/planning-a-study/piloting-your-study),
+  and guidance on GDPR and IRB.
+- **[Migrating from the Classic Apps](/en/get-started/migrating-from-classic)** — how to
+  move an existing study from Architect Classic and Interviewer Classic to the current
+  browser-based apps.
+- **[Protocol Schema Information](/en/get-started/protocol-schema-information)** — how
+  protocol schema versions work, which apps support which versions, and how migration
+  happens.
+- **[Glossary](/en/get-started/glossary)** — plain-language definitions of the terms
+  used throughout this documentation, each linking to fuller coverage.
+- **Project Information** — details of the origins of the project in the
+  [project overview](/en/get-started/project-information/project-overview), as well as
+  information about citing the software and collaborating with us.
 
-You'll also find [release announcements](/en/get-started/release-announcements) here.
 Reference material for _designing_ protocols — **Key Concepts** and **Interface
-Documentation** — now lives in the [Design Protocols](/en/design-protocols) section.
-
-Whichever tools you choose, the shape of a study is the same: design a protocol, run it
-to collect data, and export that data for analysis. For detailed walkthroughs of these
-workflows — including the browser-based route with Architect and the desktop route with
-Architect Classic and Interviewer Classic — see the
-[protocol and data workflows](/en/collect-data/protocol-and-data-workflows) tutorial.
+Documentation** — lives in the [Design Protocols](/en/design-protocols) section.

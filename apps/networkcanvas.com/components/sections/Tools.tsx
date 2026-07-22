@@ -34,11 +34,7 @@ export function Tools() {
 
   return (
     <Container className="tablet-landscape:py-28 py-20">
-      <div data-homepage-weave-target>
-        <SectionHeading title={t('heading')}>
-          {t('introduction')}
-        </SectionHeading>
-      </div>
+      <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
       <div className="tablet-landscape:gap-24 mt-16 flex flex-col gap-16">
         {tools.map((tool) => {
@@ -46,8 +42,6 @@ export function Tools() {
           return (
             <Reveal
               key={tool.id}
-              data-homepage-weave-target
-              data-homepage-weave-moving-target
               className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 bg-surface/55 grid items-center gap-8 rounded p-6 shadow-xl backdrop-blur-md"
             >
               <div>

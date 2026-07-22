@@ -51,11 +51,7 @@ export function Institutions() {
         </Paragraph>
       </SectionHeading>
 
-      <div
-        data-homepage-weave-target
-        data-homepage-weave-moving-target
-        className="laptop:gap-x-12 mx-auto mt-14 flex max-w-[1500px] flex-wrap items-center justify-center gap-x-10 gap-y-10"
-      >
+      <div className="laptop:gap-x-12 mx-auto mt-14 flex max-w-[1500px] flex-wrap items-center justify-center gap-x-10 gap-y-10">
         {institutions.map((inst) => (
           // Partner logos are fixed-colour brand assets. In dark mode they sit on
           // a light plate so dark marks (e.g. the Oxford wordmark) stay legible;

@@ -6,11 +6,11 @@
     },
     "design-protocols": {
       "label": "Design Protocols",
-      "description": "Build interview protocols in Architect or Architect Classic."
+      "description": "Design the interview protocol your study will run."
     },
     "collect-data": {
       "label": "Collect Data",
-      "description": "Run your protocol and collect data with Interviewer or Fresco."
+      "description": "Run interviews in person or remotely, and gather your data."
     },
     "analyze-data": {
       "label": "Analyze Data",
