@@ -53,8 +53,9 @@ export function Tools() {
               <div>
                 <Heading
                   level="h3"
+                  variant="subheading"
                   margin="none"
-                  className={`font-heading tablet-landscape:text-3xl text-2xl font-bold ${accent.text}`}
+                  className={accent.text}
                 >
                   {tool.name}
                 </Heading>

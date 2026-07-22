@@ -113,11 +113,7 @@ export function AppChoiceCard({ app }: { app: AppRecord }) {
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <Heading
-          level="h3"
-          margin="none"
-          className="font-heading text-3xl font-black tracking-tight"
-        >
+        <Heading level="h3" variant="subheading" margin="none">
           {app.name}
         </Heading>
         <Badge

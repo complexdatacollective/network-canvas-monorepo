@@ -5,6 +5,67 @@ import { describe, expect, it } from 'vitest';
 import Button from './Button';
 
 describe('Button', () => {
+  it('derives the raised edge from the selected button color', () => {
+    render(
+      <Button variant="raised" color="success">
+        Open Architect
+      </Button>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Open Architect' })).toHaveClass(
+      'bg-(--component-text)',
+      'border-(--component-raised-edge)',
+      'border-b-4',
+      'not-disabled:hover:border-b-5',
+      '[--component-text:var(--success)]',
+      '[--component-raised-edge:color-mix(in_oklab,var(--component-text)_78%,var(--color-black)_22%)]',
+      'not-disabled:hover:elevation-medium',
+      'not-disabled:active:translate-y-1',
+      'uppercase',
+      'tracking-widest',
+      'text-sm',
+    );
+  });
+
+  it('scales the raised edge and allows the default text style', () => {
+    render(
+      <>
+        <Button variant="raised" size="sm">
+          Small
+        </Button>
+        <Button variant="raised" size="xl" textStyle="default">
+          Extra large
+        </Button>
+      </>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Small' })).toHaveClass(
+      'border-b-3',
+      'not-disabled:hover:border-b-4',
+    );
+    expect(screen.getByRole('button', { name: 'Extra large' })).toHaveClass(
+      'border-b-6',
+      'not-disabled:hover:border-b-8',
+      'normal-case',
+      'tracking-wide',
+      'text-xl',
+    );
+  });
+
+  it('reduces uppercase text by one size level', () => {
+    render(
+      <Button size="lg" textStyle="uppercase">
+        Uppercase
+      </Button>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Uppercase' })).toHaveClass(
+      'text-base',
+      'tracking-widest',
+      'uppercase',
+    );
+  });
+
   it('supports a contrast-background default-inverted variant', () => {
     render(
       <Button variant="default-inverted" color="warning">
@@ -30,6 +91,7 @@ describe('Button', () => {
       'focusable',
       'text-link',
       'font-semibold',
+      'overflow-visible',
     );
     expect(label).toHaveClass(
       'group-hover:bg-[length:100%_2px]',

@@ -14,8 +14,9 @@ export function ScientificAdvisors() {
     >
       <Heading
         level="h3"
+        variant="subheading"
         margin="none"
-        className="font-heading text-text text-xl font-bold"
+        className="text-text"
       >
         {t('heading')}
       </Heading>

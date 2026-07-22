@@ -21,7 +21,8 @@ export function Hero() {
       <div className="tablet-portrait:items-start flex w-full flex-col items-center justify-center">
         <FancyHeading
           level="h1"
-          className="font-heading tablet-portrait:mx-0 tablet-portrait:text-left tablet-portrait:text-[4rem] tablet-portrait:leading-[1.04] tablet-landscape:text-[4.5rem] tablet-landscape:leading-[1.02] desktop:text-[5rem] mx-auto max-w-5xl text-center text-4xl font-black"
+          variant="display-heading"
+          className="tablet-portrait:mx-0 tablet-portrait:text-left mx-auto max-w-5xl text-center"
         >
           {t('Hero.title')}
         </FancyHeading>

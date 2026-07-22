@@ -94,6 +94,22 @@
   --text-4xl--line-height: 1.2;
   --text-4xl--letter-spacing: -0.03em;
 
+  --text-5xl: clamp(
+    calc(2.027 * var(--theme-root-size)),
+    calc(0.777 * var(--theme-root-size) + 4.5vw),
+    calc(3.815 * var(--theme-root-size))
+  );
+  --text-5xl--line-height: 1.12;
+  --text-5xl--letter-spacing: -0.035em;
+
+  --text-6xl: clamp(
+    calc(2.7 * var(--theme-root-size)),
+    6vw,
+    calc(5 * var(--theme-root-size))
+  );
+  --text-6xl--line-height: 1.04;
+  --text-6xl--letter-spacing: -0.02em;
+
   --font-*: initial;
 
   --font-body: var(

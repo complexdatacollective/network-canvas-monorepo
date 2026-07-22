@@ -50,7 +50,12 @@ describe('AppChoiceCard', () => {
     const description = screen.getByRole('article').querySelector('p');
     const status = screen.getByText('Recommended for new studies');
 
-    expect(heading).toHaveClass('scroll-m-20', 'm-0!', 'text-3xl');
+    expect(heading).toHaveClass(
+      'scroll-m-20',
+      'm-0!',
+      'text-2xl',
+      'font-black',
+    );
     expect(description).not.toBeNull();
     expect(description).toHaveClass('font-body');
     expect(description).not.toHaveClass('not-last:mb-[1em]');

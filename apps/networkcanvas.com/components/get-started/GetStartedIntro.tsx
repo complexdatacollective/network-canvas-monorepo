@@ -85,8 +85,9 @@ export function GetStartedIntro() {
           >
             <Heading
               level="h1"
+              variant="display-heading"
               margin="none"
-              className="font-heading text-text text-4xl font-black tracking-tight text-balance"
+              className="text-text"
             >
               {t('intro.heading')}
             </Heading>

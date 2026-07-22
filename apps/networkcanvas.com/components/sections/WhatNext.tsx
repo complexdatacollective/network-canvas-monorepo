@@ -82,8 +82,9 @@ export function WhatNext() {
             <div className="flex-1">
               <Heading
                 level="h3"
+                variant="subheading"
                 margin="none"
-                className="font-heading text-text text-2xl font-bold"
+                className="text-text"
               >
                 {card.title}
               </Heading>
@@ -112,8 +113,9 @@ function SectionTitle({ title }: { title: string }) {
   return (
     <Heading
       level="h2"
+      variant="section-heading"
       margin="none"
-      className="font-heading text-text tablet-landscape:text-4xl text-center text-3xl font-bold"
+      className="text-text text-center"
     >
       {title}
     </Heading>
