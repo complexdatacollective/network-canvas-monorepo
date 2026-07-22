@@ -11,7 +11,7 @@ navOrder: 9
 
 </InterfaceSummary>
 
-The Sociogram and the [Narrative](/en/design-protocols/interface-documentation/narrative) are Network Canvas's two canvas-based visualisation interfaces. On the Sociogram, participants build the spatial picture of their network — positioning alters on a canvas and drawing the ties between them. The Narrative is its display-only companion: it replays a network the participant has already laid out for open, researcher-led discussion, without collecting new data.
+The Sociogram and the [Narrative](/en/design-protocols/interface-documentation/narrative) are Network Canvas's two canvas-based visualization interfaces. On the Sociogram, participants build the spatial picture of their network — positioning alters on a canvas and drawing the ties between them. The Narrative is its display-only companion: it replays a network the participant has already laid out for open, researcher-led discussion, without collecting new data.
 
 When using the Sociogram, participants position their alters and draw ties between them. The interface can create one or more edge types between alters, and can collect boolean attribute data by highlighting alters where a variable's value is true.
 
@@ -23,7 +23,7 @@ A Sociogram is built from one or more [prompts](/en/design-protocols/key-concept
 
 Every prompt has a **layout variable**, which stores each node's position on the canvas as a pair of coordinates. This is where the spatial data you collect on the Sociogram is recorded.
 
-If you use the same layout variable across all of a stage's prompts, a node's position carries over as the participant moves between tasks, so they refine one shared arrangement. If you want separate spatial measures, give each prompt a different layout variable — reusing a variable replaces the earlier coordinates. Positions are stored as normalised coordinates that a [responsive SVG background](/en/design-protocols/responsive-svg-backgrounds#classify-nodes-from-their-coordinates) can turn into meaningful regions during analysis.
+If you use the same layout variable across all of a stage's prompts, a node's position carries over as the participant moves between tasks, so they refine one shared arrangement. If you want separate spatial measures, give each prompt a different layout variable — reusing a variable replaces the earlier coordinates. Positions are stored as normalized coordinates that a [responsive SVG background](/en/design-protocols/responsive-svg-backgrounds#classify-nodes-from-their-coordinates) can turn into meaningful regions during analysis.
 
 ### Automatic or manual positioning
 
@@ -38,7 +38,7 @@ A Sociogram stage can sit on either a series of concentric circles or a custom b
 
 <GoodPractice>
 
-Consider customising the background to orient participants to the activity or to give the layout meaning — for example dividing the canvas into quadrants or social contexts that node positions can then be read against.
+Consider customizing the background to orient participants to the activity or to give the layout meaning — for example dividing the canvas into quadrants or social contexts that node positions can then be read against.
 
 </GoodPractice>
 
@@ -56,7 +56,7 @@ Instead of drawing edges, a prompt can use tapping to **toggle an attribute**. T
 
 ![Alters highlighted on the Sociogram where an attribute is true](/assets/img/interface-documentation/sociogram/sociogram-highlight.png)
 
-Edge creation and attribute toggling are the two tap behaviours, and a single prompt uses one or the other — not both. Split the two tasks across separate prompts when you need each.
+Edge creation and attribute toggling are the two tap behaviors, and a single prompt uses one or the other — not both. Split the two tasks across separate prompts when you need each.
 
 ## Best Practices
 
@@ -68,7 +68,7 @@ Keep the same layout variable across a stage's prompts when you want participant
 
 <GoodPractice>
 
-Match each prompt's wording to its tap behaviour: ask about relationships on edge-creation prompts, and about a characteristic of individual alters on attribute-toggling prompts.
+Match each prompt's wording to its tap behavior: ask about relationships on edge-creation prompts, and about a characteristic of individual alters on attribute-toggling prompts.
 
 </GoodPractice>
 

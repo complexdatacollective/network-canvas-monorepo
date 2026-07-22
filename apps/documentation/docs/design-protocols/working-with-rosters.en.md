@@ -132,7 +132,7 @@ With the `simpsons-roster` you can observe that there is an empty cell for occup
 
 ### Formatting the display of the roster
 
-Once you have selected a roster the next three items allow you to customise the look of the roster item in Interviewer. Roster items are displayed as cards rather than nodes. To nominate a roster member, the participant drags its card into the node panel, which turns it into a node and removes the card from the list. For a full description of how participants nominate roster members, see the [Name Generator for Roster Data documentation](/en/design-protocols/interface-documentation/name-generator-roster).
+Once you have selected a roster the next three items allow you to customize the look of the roster item in Interviewer. Roster items are displayed as cards rather than nodes. To nominate a roster member, the participant drags its card into the node panel, which turns it into a node and removes the card from the list. For a full description of how participants nominate roster members, see the [Name Generator for Roster Data documentation](/en/design-protocols/interface-documentation/name-generator-roster).
 
 <AppOnly app="classic">
 
@@ -189,7 +189,7 @@ The Name Generator for Roster Data is a single interface that adapts how roster 
 
 ## Potential pitfall: Rosters and Name Collisions
 
-Concerning rosters, there are a handful of situations in Network Canvas that can lead to improper data if not considered fully. These issues mainly concern the fact that a node in Network Canvas is [labelled](/en/design-protocols/key-concepts/node-labelling) by the `name` variable. So when the participant is linking nodes or assigning additional data if there are two people with the same value for `name` it can be difficult to distinguish them. Below are two examples and some proposed workarounds:
+Concerning rosters, there are a handful of situations in Network Canvas that can lead to improper data if not considered fully. These issues mainly concern the fact that a node in Network Canvas is [labeled](/en/design-protocols/key-concepts/node-labelling) by the `name` variable. So when the participant is linking nodes or assigning additional data if there are two people with the same value for `name` it can be difficult to distinguish them. Below are two examples and some proposed workarounds:
 
 ### Collision type 1. Collisions within the roster list itself.
 

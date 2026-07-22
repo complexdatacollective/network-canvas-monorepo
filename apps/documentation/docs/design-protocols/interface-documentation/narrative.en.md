@@ -5,13 +5,13 @@ navOrder: 10
 
 <InterfaceSummary type="Narrative">
 
-<InterfaceMeta type="Data Visualisation" creates="Does not create data" usesprompts="false">
+<InterfaceMeta type="Data Visualization" creates="Does not create data" usesprompts="false">
 
 </InterfaceMeta>
 
 </InterfaceSummary>
 
-The Narrative and the [Sociogram](/en/design-protocols/interface-documentation/sociogram) are Network Canvas's two canvas-based visualisation interfaces. On the Sociogram, participants build the spatial picture of their network by positioning alters and drawing the ties between them. The Narrative is its display-only companion: it takes a network the participant has already laid out — commonly on a Sociogram — and represents it back to them for open, researcher-led discussion. It records no new data of its own.
+The Narrative and the [Sociogram](/en/design-protocols/interface-documentation/sociogram) are Network Canvas's two canvas-based visualization interfaces. On the Sociogram, participants build the spatial picture of their network by positioning alters and drawing the ties between them. The Narrative is its display-only companion: it takes a network the participant has already laid out — commonly on a Sociogram — and represents it back to them for open, researcher-led discussion. It records no new data of its own.
 
 Because it collects nothing, the Narrative is built for qualitative work. It maps data gathered elsewhere in the interview onto the visual network — group memberships, attributes, and edge types — so that the participant and researcher can talk through the picture together and interrogate what it shows.
 
@@ -22,13 +22,13 @@ Everything you configure on the Narrative lives in one or more **presets**. A pr
 | Ingredient                | What it does                                                                                                                                                                                                     |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Layout** (required)     | A layout variable that positions the nodes. Only alters that already have a value for this variable appear, so choose one an earlier stage populated — for example the layout variable a Sociogram prompt wrote. |
-| **Groups** (optional)     | A categorical variable drawn as semi-transparent, coloured convex hulls behind the nodes that share each value. A node with several values appears inside several overlapping hulls.                             |
+| **Groups** (optional)     | A categorical variable drawn as semi-transparent, colored convex hulls behind the nodes that share each value. A node with several values appears inside several overlapping hulls.                              |
 | **Links** (optional)      | One or more edge types to draw between the nodes.                                                                                                                                                                |
 | **Attributes** (optional) | One or more boolean variables. Nodes whose value is true are highlighted while the preset is active.                                                                                                             |
 
 Each preset has a label that identifies it in the interface. During the interview, a floating preset switcher lets the researcher or participant step between presets and toggle the groups, links, and highlighted attributes on and off. Where a preset lists several highlight attributes, they choose which one to show at a time. Nothing done here is written back to the data — the Narrative only ever reads.
 
-![An example Narrative preset, with highlighted nodes, edges between them, and coloured group hulls](/assets/img/interface-documentation/narrative/narrative-example.png)
+![An example Narrative preset, with highlighted nodes, edges between them, and colored group hulls](/assets/img/interface-documentation/narrative/narrative-example.png)
 
 ## Configuring presets in Architect
 
@@ -46,9 +46,9 @@ The group, edge, and highlight options each pick from the variables already in y
 
 Like the Sociogram, a Narrative stage can sit on either a series of concentric circles or a custom background image. A responsive SVG works best as an image background, because it keeps regions and labels readable as the canvas changes shape. See [Responsive SVG Backgrounds](/en/design-protocols/responsive-svg-backgrounds) for how to prepare one.
 
-### Behaviours
+### Behaviors
 
-Three stage-level behaviours change how participants can interact with the canvas:
+Three stage-level behaviors change how participants can interact with the canvas:
 
 - **Automatic layout** applies a force-directed layout that gently refines the stored node positions and draws grouped nodes together into their hulls. With it off, the positions from the layout variable are shown as they were laid out.
 - **Allow repositioning** lets the participant drag nodes around the canvas.
