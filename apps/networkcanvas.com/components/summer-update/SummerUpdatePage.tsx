@@ -4,6 +4,7 @@ import { ExternalLink } from 'lucide-react';
 import { motion, useReducedMotion, useScroll } from 'motion/react';
 import Image from 'next/image';
 import {
+  forwardRef,
   useCallback,
   useEffect,
   useRef,
@@ -46,6 +47,7 @@ type AccentColor =
   | 'neon-carrot'
   | 'neon-coral'
   | 'paradise-pink'
+  | 'sea-green'
   | 'sea-serpent';
 
 const accentBackgroundClasses: Record<AccentColor, string> = {
@@ -55,7 +57,28 @@ const accentBackgroundClasses: Record<AccentColor, string> = {
   'neon-carrot': 'bg-neon-carrot',
   'neon-coral': 'bg-neon-coral',
   'paradise-pink': 'bg-paradise-pink',
+  'sea-green': 'bg-sea-green',
   'sea-serpent': 'bg-sea-serpent',
+};
+const accentSoftBackgroundClasses: Record<AccentColor, string> = {
+  'cerulean-blue': 'bg-cerulean-blue/15',
+  'kiwi': 'bg-kiwi/15',
+  'mustard': 'bg-mustard/15',
+  'neon-carrot': 'bg-neon-carrot/15',
+  'neon-coral': 'bg-neon-coral/15',
+  'paradise-pink': 'bg-paradise-pink/15',
+  'sea-green': 'bg-sea-green/15',
+  'sea-serpent': 'bg-sea-serpent/15',
+};
+const accentTextClasses: Record<AccentColor, string> = {
+  'cerulean-blue': 'text-cerulean-blue',
+  'kiwi': 'text-kiwi',
+  'mustard': 'text-mustard',
+  'neon-carrot': 'text-neon-carrot',
+  'neon-coral': 'text-neon-coral',
+  'paradise-pink': 'text-paradise-pink',
+  'sea-green': 'text-sea-green',
+  'sea-serpent': 'text-sea-serpent',
 };
 const heroWeaveColors = [
   'var(--color-neon-coral)',
@@ -72,16 +95,16 @@ function clampUnit(value: number) {
   return Math.min(1, Math.max(0, value));
 }
 
-function Section({
-  children,
-  ...rest
-}: { children: ReactNode } & React.HTMLAttributes<HTMLElement>) {
-  return (
-    <section className="relative my-24" {...rest}>
-      {children}
-    </section>
-  );
-}
+const Section = forwardRef<
+  HTMLElement,
+  { children: ReactNode } & React.HTMLAttributes<HTMLElement>
+>(({ children, className, ...rest }, ref) => (
+  <section ref={ref} className={cn('relative my-24', className)} {...rest}>
+    {children}
+  </section>
+));
+
+Section.displayName = 'Section';
 
 function HeroEntrance({
   bar,
@@ -240,12 +263,16 @@ function BulletList({
 function ScreenshotFrame({
   address,
   alt,
-  contain,
+  aspect = 'standard',
+  crop = 'none',
+  fit = 'cover',
   src,
 }: {
   address: string;
   alt: string;
-  contain?: boolean;
+  aspect?: 'standard' | 'photo';
+  crop?: 'none' | 'architect' | 'interviewer';
+  fit?: 'contain' | 'cover';
   src: string;
 }) {
   return (
@@ -263,8 +290,9 @@ function ScreenshotFrame({
       </div>
       <div
         className={cn(
-          'relative aspect-4/3 overflow-hidden bg-white [&_img]:object-cover',
-          contain && '[&_img]:object-contain',
+          'relative overflow-hidden bg-white',
+          aspect === 'standard' && 'aspect-4/3',
+          aspect === 'photo' && 'aspect-3/2',
         )}
       >
         <Image
@@ -272,9 +300,91 @@ function ScreenshotFrame({
           src={src}
           alt={alt}
           sizes="(min-width: 801px) 50vw, 100vw"
+          className={cn(
+            fit === 'cover' ? 'object-cover' : 'object-contain',
+            crop === 'none' && 'object-top',
+            crop === 'architect' && 'origin-top scale-135 object-top',
+            crop === 'interviewer' && '-translate-y-2 scale-110 object-center',
+          )}
         />
       </div>
     </div>
+  );
+}
+
+function DestinationCard({
+  destination,
+  index,
+}: {
+  destination: (typeof destinationLinks)[number];
+  index: number;
+}) {
+  return (
+    <Surface
+      as="article"
+      noContainer
+      spacing="lg"
+      shadow="sm"
+      className="group border-text/15 bg-surface-1 hover:elevation-medium relative flex h-full flex-col overflow-hidden border transition hover:-translate-y-1"
+    >
+      <div className="flex items-start justify-between gap-6">
+        <span
+          aria-hidden
+          className={cn(
+            'flex size-14 items-center justify-center rounded-sm',
+            accentSoftBackgroundClasses[destination.color],
+          )}
+        >
+          <Image
+            src={destination.icon}
+            alt=""
+            width={40}
+            height={40}
+            className="rounded-xs"
+          />
+        </span>
+        <span className="font-monospace text-text/35 text-xs tracking-widest">
+          {String(index + 1).padStart(2, '0')} / 04
+        </span>
+      </div>
+      <div className="mt-8 flex flex-1 flex-col">
+        <span
+          className={cn(
+            'font-monospace text-xs font-semibold tracking-widest uppercase',
+            accentTextClasses[destination.color],
+          )}
+        >
+          {destination.category}
+        </span>
+        <div className="mb-4">
+          <Heading level="h3" variant="subheading" margin="none">
+            <NativeLink
+              className="[--link:var(--color-text)]"
+              href={destination.href}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {destination.title}
+            </NativeLink>
+          </Heading>
+        </div>
+        <Paragraph intent="smallText" emphasis="muted">
+          {destination.description}
+        </Paragraph>
+        <div className="border-text/10 mt-auto flex items-center justify-between gap-4 border-t pt-5">
+          <span className="font-monospace text-text/55 truncate text-xs">
+            {destination.detail}
+          </span>
+          <ExternalLink
+            aria-hidden
+            className={cn(
+              'size-4 shrink-0 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1',
+              accentTextClasses[destination.color],
+            )}
+          />
+        </div>
+      </div>
+    </Surface>
   );
 }
 
@@ -682,7 +792,11 @@ export function SummerUpdatePage() {
           style={{ scaleX: scrollYProgress }}
         />
 
-        <Section ref={heroRef} aria-labelledby="summer-update-title">
+        <Section
+          ref={heroRef}
+          className="m-0! flex min-h-svh flex-col overflow-hidden"
+          aria-labelledby="summer-update-title"
+        >
           <div
             className="pointer-events-none absolute inset-0 opacity-70"
             aria-hidden
@@ -705,7 +819,7 @@ export function SummerUpdatePage() {
             <Header className="relative z-20" containerClassName="py-6!" />
           </HeroEntrance>
 
-          <div className="tablet-portrait:pt-24 tablet-portrait:pb-48 relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center gap-12 px-6 pt-16 pb-40 text-center">
+          <div className="tablet-portrait:pt-24 tablet-portrait:pb-48 relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-12 px-6 pt-16 pb-40 text-center">
             <HeroEntrance
               delay={0.32}
               onAnimationComplete={updateHeroWeaveConvergence}
@@ -724,7 +838,7 @@ export function SummerUpdatePage() {
                     'overflow-visible px-2 whitespace-nowrap text-white',
                   )}
                   style={{
-                    WebkitTextFillColor: 'var(--color-text)',
+                    WebkitTextFillColor: 'var(--color-white)',
                     WebkitTextStroke:
                       'var(--text-glow-stroke-width) transparent',
                     paintOrder: 'stroke fill',
@@ -760,7 +874,7 @@ export function SummerUpdatePage() {
               className="border-text/40 flex h-8 w-5 justify-center rounded-full border pt-2"
               aria-hidden
             >
-              <span className="bg-text/70 size-1 animate-bounce rounded-full" />
+              <span className="bg-text/70 size-1 rounded-full motion-safe:animate-bounce" />
             </span>
           </HeroEntrance>
         </Section>
@@ -970,6 +1084,7 @@ export function SummerUpdatePage() {
                   <ScreenshotFrame
                     address="architect.networkcanvas.com"
                     alt="Architect protocol editor showing the Sample Protocol timeline"
+                    crop="architect"
                     src="/images/screenshots/architect.png"
                   />
                 </Reveal>
@@ -1081,9 +1196,10 @@ export function SummerUpdatePage() {
                   className="tablet-portrait:order-1"
                 >
                   <ScreenshotFrame
-                    contain
+                    aspect="photo"
                     address="interviewer.networkcanvas.com"
                     alt="Interviewer dashboard showing protocol cards and a resume interview action"
+                    crop="interviewer"
                     src="/images/summer-2026/interviewer.webp"
                   />
                 </Reveal>
@@ -1255,10 +1371,28 @@ export function SummerUpdatePage() {
                   </span>
                 </div>
                 <Paragraph emphasis="muted" className="text-text/70 max-w-3xl">
-                  {activeInterface.description}
+                  {activeInterface.summary}
                 </Paragraph>
+                <ul className="mt-5 space-y-3">
+                  {activeInterface.details.map((detail) => (
+                    <li className="flex items-start gap-3" key={detail}>
+                      <span
+                        aria-hidden
+                        className="bg-sea-serpent mt-2 size-2 shrink-0 rounded-full"
+                      />
+                      <Paragraph
+                        intent="smallText"
+                        emphasis="muted"
+                        margin="none"
+                        className="text-text/70 max-w-4xl"
+                      >
+                        {detail}
+                      </Paragraph>
+                    </li>
+                  ))}
+                </ul>
                 <NativeLink
-                  className="[--link:var(--color-sea-serpent)]"
+                  className="mt-6 inline-block [--link:var(--color-sea-serpent)]"
                   href={activeInterface.href}
                   target="_blank"
                   rel="noreferrer"
@@ -1518,7 +1652,7 @@ export function SummerUpdatePage() {
                 the platform, choose the right tools, and find your next step.
               </Paragraph>
             </Reveal>
-            <div className="tablet-portrait:grid-cols-2 mt-12 grid grid-cols-1 gap-6">
+            <div className="tablet-landscape:grid-cols-2 mt-12 grid grid-cols-1 gap-6">
               <Reveal {...revealMotion} direction="left">
                 <Surface
                   as="article"
@@ -1527,24 +1661,27 @@ export function SummerUpdatePage() {
                   shadow="sm"
                   className="flex h-full flex-col"
                 >
-                  <SectionLabel>Project documentation</SectionLabel>
-                  <Heading level="h3" variant="subheading" className="mt-2!">
-                    Guidance organized around your research workflow
-                  </Heading>
-                  <Paragraph>
-                    The documentation now starts with the work you are doing:
-                    getting started, designing protocols, collecting data, and
-                    analyzing results. New workflow navigation and refreshed
-                    guides make the next step easier to find.
-                  </Paragraph>
-                  <NativeLink href="https://documentation.networkcanvas.com/">
-                    Explore the documentation{' '}
-                    <ExternalLink className="inline-block size-4" />
-                  </NativeLink>
+                  <div className="max-w-3xl">
+                    <SectionLabel>Project documentation</SectionLabel>
+                    <Heading level="h3" variant="subheading" className="mt-2!">
+                      Guidance organized around your research workflow
+                    </Heading>
+                    <Paragraph>
+                      The documentation now starts with the work you are doing:
+                      getting started, designing protocols, collecting data, and
+                      analyzing results. New workflow navigation and refreshed
+                      guides make the next step easier to find.
+                    </Paragraph>
+                    <NativeLink href="https://documentation.networkcanvas.com/">
+                      Explore the documentation{' '}
+                      <ExternalLink className="inline-block size-4" />
+                    </NativeLink>
+                  </div>
                   <div className="mt-auto pt-8">
                     <ScreenshotFrame
                       address="documentation.networkcanvas.com"
                       alt="The redesigned Network Canvas documentation homepage"
+                      fit="contain"
                       src="/images/summer-2026/documentation-homepage.jpg"
                     />
                   </div>
@@ -1558,24 +1695,27 @@ export function SummerUpdatePage() {
                   shadow="sm"
                   className="flex h-full flex-col"
                 >
-                  <SectionLabel>Project website</SectionLabel>
-                  <Heading level="h3" variant="subheading" className="mt-2!">
-                    A fresh new look for networkcanvas.com
-                  </Heading>
-                  <Paragraph>
-                    The redesigned website introduces a more expressive visual
-                    identity and clearer paths through the Network Canvas
-                    ecosystem, from learning what the platform can do to
-                    choosing the best tools for your study.
-                  </Paragraph>
-                  <NativeLink href="https://networkcanvas.com/">
-                    Explore the new website{' '}
-                    <ExternalLink className="inline-block size-4" />
-                  </NativeLink>
+                  <div className="max-w-3xl">
+                    <SectionLabel>Project website</SectionLabel>
+                    <Heading level="h3" variant="subheading" className="mt-2!">
+                      A fresh new look for networkcanvas.com
+                    </Heading>
+                    <Paragraph>
+                      The redesigned website introduces a more expressive visual
+                      identity and clearer paths through the Network Canvas
+                      ecosystem, from learning what the platform can do to
+                      choosing the best tools for your study.
+                    </Paragraph>
+                    <NativeLink href="https://networkcanvas.com/">
+                      Explore the new website{' '}
+                      <ExternalLink className="inline-block size-4" />
+                    </NativeLink>
+                  </div>
                   <div className="mt-auto pt-8">
                     <ScreenshotFrame
                       address="networkcanvas.com"
                       alt="The redesigned Network Canvas website homepage"
+                      fit="contain"
                       src="/images/summer-2026/website-homepage.jpg"
                     />
                   </div>
@@ -1605,41 +1745,12 @@ export function SummerUpdatePage() {
                   delay={index * 0.11}
                   key={destination.title}
                 >
-                  <article className="elevation-low border-text/15 bg-surface-1 h-full rounded border p-6">
-                    <span className="flex items-start justify-between gap-4">
-                      <NativeLink
-                        className="[--link:var(--color-sea-serpent)]"
-                        href={destination.href}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {destination.title}
-                      </NativeLink>
-                      <span
-                        aria-hidden
-                        className={cn(
-                          'text-xl',
-                          destination.color === 'cyan' && 'text-sea-serpent',
-                          destination.color === 'green' && 'text-sea-green',
-                          destination.color === 'mustard' && 'text-mustard',
-                          destination.color === 'pink' && 'text-paradise-pink',
-                        )}
-                      >
-                        <ExternalLink className="inline-block size-4" />
-                      </span>
-                    </span>
-                    <span className="text-text/60 mt-3 block text-sm">
-                      {destination.detail}
-                    </span>
-                  </article>
+                  <DestinationCard destination={destination} index={index} />
                 </Reveal>
               ))}
             </div>
             <Reveal {...revealMotion}>
-              <Paragraph
-                emphasis="muted"
-                className="text-text/70 mt-12 max-w-4xl"
-              >
+              <Paragraph className="mt-12 max-w-6xl">
                 If you have questions or run into issues, the{' '}
                 <NativeLink
                   className="[--link:var(--color-sea-serpent)]"

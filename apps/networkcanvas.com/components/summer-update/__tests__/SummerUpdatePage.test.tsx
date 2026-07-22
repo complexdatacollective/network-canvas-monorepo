@@ -45,12 +45,26 @@ function MotionDiv({
   return <div {...props}>{children}</div>;
 }
 
+function MotionSpan({
+  animate: _animate,
+  children,
+  onViewportEnter: _onViewportEnter,
+  ...props
+}: ComponentPropsWithoutRef<'span'> & {
+  animate?: unknown;
+  onViewportEnter?: () => void;
+}) {
+  return <span {...props}>{children}</span>;
+}
+
 vi.mock('motion/react', () => ({
   AnimatePresence: ({ children }: { children: ReactNode }) => children,
   motion: {
     create: (Component: ComponentType) => Component,
     div: MotionDiv,
+    span: MotionSpan,
   },
+  useAnimation: () => ({ start: vi.fn() }),
   useReducedMotion: () => motionPreferences.shouldReduce,
   useScroll: () => ({ scrollYProgress: 0 }),
 }));
@@ -97,10 +111,15 @@ describe('SummerUpdatePage', () => {
   it('defines PWA where the abbreviation is introduced', () => {
     render(<SummerUpdatePage />);
 
-    const abbreviation = screen.getByText('PWAs');
+    const abbreviations = screen.getAllByText('PWA');
 
-    expect(abbreviation.tagName).toBe('ABBR');
-    expect(abbreviation).toHaveAccessibleDescription('Progressive Web Apps');
+    expect(abbreviations).toHaveLength(2);
+    abbreviations.forEach((abbreviation) => {
+      expect(abbreviation.tagName).toBe('ABBR');
+      expect(abbreviation).toHaveAccessibleDescription(
+        /Progressive Web Apps are specially crafted websites/,
+      );
+    });
   });
 
   it('links every Schema 8 explorer item to its relevant documentation', () => {
@@ -116,7 +135,7 @@ describe('SummerUpdatePage', () => {
       screen.getByRole('heading', { name: 'Geospatial interface' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Explore in the documentation ↗' }),
+      screen.getByRole('link', { name: 'Explore in the documentation' }),
     ).toHaveAttribute(
       'href',
       'https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/geospatial',
@@ -128,10 +147,13 @@ describe('SummerUpdatePage', () => {
       screen.getByRole('heading', { name: 'Anonymisation interface' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/participant-centered local encryption/),
+      screen.getByText(/encrypting selected node or edge attributes/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Explore in the documentation ↗' }),
+      screen.getByText(/Each participant creates the passphrase/).closest('li'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Explore in the documentation' }),
     ).toHaveAttribute(
       'href',
       'https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/anonymisation',
@@ -169,10 +191,10 @@ describe('SummerUpdatePage', () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Explore the new website ↗' }),
+      screen.getByRole('link', { name: 'Explore the new website' }),
     ).toHaveAttribute('href', 'https://networkcanvas.com/');
     expect(
-      screen.getByRole('link', { name: 'Explore the documentation ↗' }),
+      screen.getByRole('link', { name: 'Explore the documentation' }),
     ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/');
     const websiteHeading = screen.getByRole('heading', {
       name: 'A fresh new look for networkcanvas.com',
@@ -190,13 +212,59 @@ describe('SummerUpdatePage', () => {
     expect(websiteHeading).toHaveClass('mt-2!');
     expect(documentationHeading).toHaveClass('mt-2!');
     expect(
-      screen.getByRole('link', { name: 'Explore the new website ↗' })
-        .parentElement?.lastElementChild,
+      screen
+        .getByRole('link', { name: 'Explore the new website' })
+        .closest('article'),
     ).toContainElement(websiteScreenshot);
     expect(
-      screen.getByRole('link', { name: 'Explore the documentation ↗' })
-        .parentElement?.lastElementChild,
+      screen
+        .getByRole('link', { name: 'Explore the documentation' })
+        .closest('article'),
     ).toContainElement(documentationScreenshot);
+    expect(websiteScreenshot.parentElement).toHaveClass('aspect-4/3');
+    expect(documentationScreenshot.parentElement).toHaveClass('aspect-4/3');
+  });
+
+  it('presents the new-generation destinations as descriptive launch cards', () => {
+    render(<SummerUpdatePage />);
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Start exploring the new generation',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Design protocols')).toBeInTheDocument();
+    expect(screen.getByText('Collect in person')).toBeInTheDocument();
+    expect(screen.getByText('Collect remotely')).toBeInTheDocument();
+    expect(screen.getByText('Learn the workflow')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Build, validate, and preview Schema 8 protocols/),
+    ).toBeInTheDocument();
+    const destinations = screen
+      .getByRole('heading', { name: 'Start exploring the new generation' })
+      .closest('section');
+
+    if (!destinations) {
+      throw new Error('Destination cards did not render');
+    }
+
+    expect(
+      within(destinations).getByRole('link', { name: 'Open Architect' }),
+    ).toHaveAttribute('href', 'https://architect.networkcanvas.com/');
+  });
+
+  it('uses source-specific frame ratios for the new app screenshots', () => {
+    render(<SummerUpdatePage />);
+
+    const architectScreenshot = screen.getByRole('img', {
+      name: 'Architect protocol editor showing the Sample Protocol timeline',
+    });
+    const interviewerScreenshot = screen.getByRole('img', {
+      name: 'Interviewer dashboard showing protocol cards and a resume interview action',
+    });
+
+    expect(architectScreenshot.parentElement).toHaveClass('aspect-4/3');
+    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-3/2');
   });
 
   it('uses theme-aware sections, a text-anchored woven hero, and white browser frames', async () => {
@@ -212,7 +280,14 @@ describe('SummerUpdatePage', () => {
       throw new Error('Hero focal text did not render');
     }
 
-    expect(hero).toHaveClass('relative', 'overflow-hidden');
+    expect(hero).toHaveClass(
+      'relative',
+      'm-0!',
+      'min-h-svh',
+      'flex-col',
+      'overflow-hidden',
+    );
+    expect(hero.querySelector('.min-h-screen')).not.toBeInTheDocument();
     expect(hero).not.toHaveClass('bg-linear-to-b');
     expect(heroHeading).toHaveClass('text-text');
     expect(projectName).toHaveClass('bg-clip-text', 'text-white');
@@ -256,24 +331,24 @@ describe('SummerUpdatePage', () => {
       ),
     );
 
-    expect(
-      screen.getByRole('heading', { name: 'Should you upgrade?' }),
-    ).toHaveClass('sr-only');
-    expect(
-      screen
-        .getByRole('heading', { name: 'Should you upgrade?' })
-        .closest('section'),
-    ).toHaveClass('bg-surface', 'text-text', 'border-text/10');
-    expect(
-      screen
-        .getByRole('heading', { name: 'Should you upgrade?' })
-        .closest('section'),
-    ).not.toHaveClass('bg-linear-to-br');
+    const upgradeHeading = screen.getByRole('heading', {
+      name: 'When should you upgrade?',
+    });
+    const upgradeSection = upgradeHeading.closest('section');
+
+    expect(upgradeHeading).toHaveClass('sr-only');
+    expect(upgradeSection).toHaveClass('relative');
+    expect(upgradeSection).not.toHaveClass(
+      'bg-linear-to-br',
+      'bg-rich-black',
+      'bg-white',
+    );
 
     const interviewerScreenshot = screen.getByRole('img', {
       name: 'Interviewer dashboard showing protocol cards and a resume interview action',
     });
     expect(interviewerScreenshot.parentElement).toHaveClass('bg-white');
+    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-3/2');
     expect(interviewerScreenshot.parentElement).not.toHaveClass(
       'bg-rich-black',
     );
@@ -291,5 +366,9 @@ describe('SummerUpdatePage', () => {
 
     expect(projectName.style.animation).toBe('');
     expect(projectName.style.webkitTextFillColor).toBe('var(--color-white)');
+    expect(
+      screen.getByText('Keep scrolling to learn more').nextElementSibling
+        ?.firstElementChild,
+    ).toHaveClass('motion-safe:animate-bounce');
   });
 });
