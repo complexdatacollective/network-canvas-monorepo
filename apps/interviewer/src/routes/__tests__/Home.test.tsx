@@ -142,6 +142,19 @@ describe('HomeRoute resume notification', () => {
     });
   });
 
+  it('uses compact page insets by default and increases them at laptop width', () => {
+    const { container } = render(<HomeRoute />);
+    const header = container.querySelector('header');
+
+    expect(header).toHaveClass('px-6', 'pt-4', 'laptop:px-11', 'laptop:pt-9');
+    expect(header).not.toHaveClass(
+      'pt-6',
+      'tablet-landscape:px-11',
+      'tablet-landscape:pt-4',
+      'tablet-landscape:pt-9',
+    );
+  });
+
   it('hides while the case ID form is active and returns when it closes', async () => {
     render(<HomeRoute />);
 
