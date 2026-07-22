@@ -35,8 +35,19 @@ vi.mock('../../../../selectors/name-generator', () => ({
 // NodeList pulls in heavy dnd/collection machinery; stub it to a marker that
 // reports the number of items it was asked to render.
 vi.mock('../../../../components/NodeList', () => ({
-  default: ({ items }: { items: NcNode[] }) => (
-    <div data-testid="node-list">{items.length}</div>
+  default: ({
+    items,
+    disabledKeys,
+  }: {
+    items: NcNode[];
+    disabledKeys?: string[];
+  }) => (
+    <div
+      data-testid="node-list"
+      data-disabled-keys={disabledKeys ? disabledKeys.join(',') : undefined}
+    >
+      {items.length}
+    </div>
   ),
 }));
 
@@ -58,11 +69,11 @@ const makeNode = (id: string): NcNode => ({
   type: 'person',
 });
 
-const renderPanel = () =>
+const renderPanel = (disableDragging = false) =>
   render(
     <NodePanel
       panelConfig={externalPanelConfig}
-      disableDragging={false}
+      disableDragging={disableDragging}
       accepts={[]}
       panelNumber={0}
       minimize={false}
@@ -122,5 +133,38 @@ describe('NodePanel external-data status handling', () => {
     expect(list.textContent).toBe('2');
     expect(screen.queryByText('Loading...')).toBeNull();
     expect(screen.queryByText(/External data could not be loaded/i)).toBeNull();
+  });
+});
+
+describe('NodePanel node limit enforcement', () => {
+  const rows = [makeNode('a'), makeNode('b')];
+
+  beforeEach(() => {
+    externalDataMock.mockReturnValue({
+      externalData: rows,
+      status: { isLoading: false, error: null },
+    });
+    panelNodesSelector.mockReturnValue(rows);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('leaves panel nodes draggable when the node limit has not been reached', () => {
+    renderPanel();
+
+    expect(
+      screen.getByTestId('node-list').getAttribute('data-disabled-keys'),
+    ).toBeNull();
+  });
+
+  it('disables every panel node once the node limit has been reached', () => {
+    renderPanel(true);
+
+    expect(
+      screen.getByTestId('node-list').getAttribute('data-disabled-keys'),
+    ).toBe('a,b');
   });
 });
