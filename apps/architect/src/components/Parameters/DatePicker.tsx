@@ -8,8 +8,10 @@ import { change, formValues } from 'redux-form';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import DatePicker from '~/components/Form/Fields/DatePicker';
-import { DATE_FORMATS, DATE_TYPES } from '~/components/Form/Fields/DatePicker';
+import DatePicker, {
+  DATE_FORMATS,
+  DATE_TYPES,
+} from '~/components/Form/Fields/DatePicker';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 

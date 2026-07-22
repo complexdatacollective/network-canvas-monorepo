@@ -8,8 +8,7 @@ import { change, formValueSelector } from 'redux-form';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import DatePicker from '~/components/Form/Fields/DatePicker';
-import { DATE_FORMATS } from '~/components/Form/Fields/DatePicker';
+import DatePicker, { DATE_FORMATS } from '~/components/Form/Fields/DatePicker';
 import Toggle from '~/components/Form/Fields/Toggle';
 import FrescoReduxField, {
   reduxIntegerValue,
