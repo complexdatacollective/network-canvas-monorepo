@@ -1,7 +1,6 @@
 ---
 title: Project Overview
 navOrder: 2
-last_modified_at: 2020-12-14
 wip: false
 toc: true
 ---
@@ -14,34 +13,27 @@ Whereas tools for capturing and analyzing digital trace data have proliferated, 
 
 The Network Canvas project aims to address these and other problems, by providing a set of high quality digital tools that facilitate the capture of complex network data. It provides intuitive participant facing interfaces, and powerful researcher facing tools with shallow learning curves, to enable data capture that was previously intractable.
 
-Please see the following promotional video to learn more about our team, our objectives, and the features of the Network Canvas suite of tools.
+Please see the following video to learn more about our team, our objectives, and the origins of the Network Canvas suite of tools.
 
 <VideoIFrame title="Introduction to the Network Canvas suite" src="https://www.youtube.com/embed/XzfE6j-LnII"></VideoIFrame>
 
 ## The Components of Network Canvas
 
-Network Canvas is organized around the stages of the research process, from design, to administration, to analysis. The core suite therefore consists of two different pieces of software:
+Network Canvas is organized around the stages of the research process, from design, to administration, to analysis. The suite consists of three applications:
 
-- **Architect** - A tool for building Network Canvas interview protocols
-- **Interviewer** - A tool for administering interviews in the field
+- **Architect** — a tool for building Network Canvas interview protocols; see [Design Protocols](/en/design-protocols).
+- **Interviewer** — a tool for administering interviews in person, on a device you control; see [Collect Data](/en/collect-data).
+- **Fresco** — a tool for deploying protocols built in Architect to the web, so that participants can complete interviews remotely; see [Fresco](/en/collect-data/fresco).
 
-Both now run in your web browser — there's nothing to install to get started, and you can install either as a Progressive Web App on a device you control to keep it handy and use it offline. Downloadable **Classic** versions — **Architect Classic** and **Interviewer Classic** — remain available for existing schema 7 studies and fully-offline desktop workflows.
+Downloadable **Classic** versions of the first two apps — **Architect Classic** and **Interviewer Classic** — remain available for existing schema 7 studies and fully-offline desktop workflows; see [Migrating from the Classic Apps](/en/get-started/migrating-from-classic).
 
-These two applications work together to provide a seamless [end-to-end workflow](/en/collect-data/protocol-and-data-workflows) up to the point of analysis.
+These applications work together to provide a seamless [end-to-end workflow](/en/collect-data/protocol-and-data-workflows) up to the point of analysis.
 
 <ImageFullWidth src="/assets/img/offline-data/online.png" alt="Online workflow diagram"></ImageFullWidth>
 
 <TipBox>
 
-The Network Canvas tools can also be used in an offline workflow. For more information, see the [protocol and data workflows](/en/collect-data/protocol-and-data-workflows#option-2-offline-workflow) tutorial.
-
-</TipBox>
-
-Network Canvas also includes a third piece of software, [Fresco](/en/collect-data/fresco), which is a tool for deploying Network Canvas protocols built in Architect to the web.
-
-<TipBox>
-
-Interviewer now comes in two versions. **Interviewer Classic** is the established desktop and tablet release described above. **Interviewer** is built on the same new technology platform as Fresco 4.0 — gaining its improvements to the interview experience and data export — supports schema 8, and is compatible with all existing protocols. It's recommended for new studies, while Interviewer Classic remains supported. See [Running Interviews](/en/collect-data) for a comparison.
+The Network Canvas tools can also be used in an offline workflow. For more information, see the [protocol and data workflows](/en/collect-data/protocol-and-data-workflows#classic-offline-workflow) tutorial.
 
 </TipBox>
 
@@ -65,9 +57,9 @@ We therefore designed the Network Canvas tools on the assumption that interviews
 
 ![An interviewer-assisted interview](/assets/img/introduction-images/interviewer-assisted.png)
 
-Of course, we recognize that it is not always possible to conduct interviews in this manner. Some users have had success with implementing Network Canvas interviews using screen sharing technology (which may be a viable workaround for those who simply cannot be in a face-to-face context).
+Of course, we recognize that it is not always possible to conduct interviews in this manner. Some users have had success running interviewer-assisted sessions at a distance using screen sharing technology.
 
-We also recognize that workflows that involve unsupervised data collection, and/or self-administered interviews are important to network researchers. Our focus with this project is to do the best possible job of designing an interviewer-assisted and in-person experience, but we are actively exploring how future work might supplement the software suite with web-based or remote interview options.
+We also recognize that workflows involving unsupervised data collection and self-administered interviews are important to network researchers. In-person, interviewer-assisted collection remains the core method the suite is designed around, and [Fresco](/en/collect-data/fresco) extends the suite to remote data collection, allowing participants to complete interviews themselves in their own web browser.
 
 ### "Visuality" and an emphasis on user experience
 
@@ -83,15 +75,15 @@ Design issues are not confined to participants, however. Software designed for r
 
 A key element of our approach is to focus on the process of 'doing research' holistically. Our experience taught us that the obstacles to conducting networks research are not isolated within any one part of the process, but are both within the individual stages and threaded through the process as a whole.
 
-The initial incarnation of the Network Canvas concept provided simply an interview tool, with the protocol hard coded in a text based format that required a high degree of technical knowledge from would-be research designers. Data we collected using this tool then needed to be painstakingly cleaned and managed, using using a series of scripts and processes.
+The initial incarnation of the Network Canvas concept provided simply an interview tool, with the protocol hard coded in a text based format that required a high degree of technical knowledge from would-be research designers. Data we collected using this tool then needed to be painstakingly cleaned and managed, using a series of scripts and processes.
 
 We therefore decided that simplifying the process of collecting complex structural data required not just an interview tool, but also a tool for designing these interviews, as well as a tool for managing and exporting data. This complete end-to-end workflow lowers the costs (both material and technical) for network researchers.
 
 ### Open-Source Development
 
-We knew that the key to sustaining this effort would be input and collaboration with the community. We noted that 'black-box' development produces much research software (meaning that implementations cannot be improved or scrutinised) and is driven by top-down processes. We also noted that developing software and tools incurrs significant financial costs and technical costs, often placing it out the reach of the majority of researchers, and incentivising commercialisation as a means to make development practical.
+We knew that the key to sustaining this effort would be input and collaboration with the community. We noted that 'black-box' development produces much research software (meaning that implementations cannot be improved or scrutinized) and is driven by top-down processes. We also noted that developing software and tools incurs significant financial costs and technical costs, often placing it out of the reach of the majority of researchers, and incentivizing commercialization as a means to make development practical.
 
-We believe that in order to break out of these practices, we needed to develop a strong foundation that would enable others to build upon it, while sharing improvements and enhancements with all users. To move Network Canvas in this direction, we made the code itself completely open-source, implemented a community driven development programme, and made the software free to use.
+We believe that in order to break out of these practices, we needed to develop a strong foundation that would enable others to build upon it, while sharing improvements and enhancements with all users. To move Network Canvas in this direction, we made the code itself completely open-source, implemented a community driven development program, and made the software free to use.
 
 We established a not for profit entity (the Complex Data Collective - or CODACO) which owns all IP and copyright associated with the project. CODACO licenses Network Canvas under the "GPLv3" which is a popular open source license that gives all users certain guaranteed freedoms.
 

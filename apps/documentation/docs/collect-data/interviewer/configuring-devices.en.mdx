@@ -5,7 +5,7 @@ wip: false
 toc: true
 ---
 
-Take the time to optimize the interview experience before starting data collection. Configure Interviewer to suit your hardware, research population, and individual participant needs to create the ideal interview environment.
+Take the time to optimize the interview experience before starting data collection. Configuring your devices — and Interviewer itself — to suit your hardware, research population, and individual participant needs helps you to create the ideal interview environment.
 
 Beyond these customizations, you should also complete some fundamental steps to ensure secure and stable data collection. This article describes these steps in sequence.
 
@@ -13,15 +13,16 @@ Beyond these customizations, you should also complete some fundamental steps to 
 
 Before configuring your devices, ensure you have:
 
-- Installed Interviewer Classic on your target devices (tablets, computers, or both)
+- Opened [Interviewer](/en/collect-data/interviewer) in your web browser, or [downloaded and installed Interviewer Classic](https://networkcanvas.com/download), on your target devices (tablets, computers, or both)
 - Access to device settings on your Android, iOS, macOS, Windows, or Linux devices
 - A protocol ready to import, or plan to create one for testing your configuration
 
-<TipBox danger={true}>
+The device-level steps below apply whichever version of Interviewer you are running. For the app-level configuration, choose your version below — the version-specific guidance updates to match.
 
-This article covers **Interviewer Classic**. If you are running protocols in **Interviewer** that use internet-dependent schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)), make sure the interview device will have a reliable internet connection in the field — those interfaces cannot run offline.
-
-</TipBox>
+<AppSwitch axis="interviewer">
+  <AppOption label="Interviewer"></AppOption>
+  <AppOption label="Interviewer Classic"></AppOption>
+</AppSwitch>
 
 ## Disable automatic updates
 
@@ -66,19 +67,43 @@ If you are running Interviewer on macOS, Windows, or Linux, you do not need to c
 
 ## Turn on device-level encryption features
 
-Network Canvas cannot secure your data at rest or when someone else has physical access to your device. To mitigate these risks, take the time to ensure you follow general security best practices. Enable disk encryption on your device, and use strong user authentication, screen lock timeouts, and other physical security measures to secure your device.
+Any protection Interviewer itself provides is a layer to use _in addition_ to device-level protections, not a substitute for them. Take the time to ensure you follow general security best practices: enable disk encryption on your device, and use strong user authentication, screen lock timeouts, and other physical security measures to secure your device. For a fuller list of measures, see our [security best practices](/en/get-started/planning-a-study/irb-best-practices#security-best-practices).
 
-## Configure the behavior and visual properties of Interviewer
+## Configuring Interviewer
 
-The settings menu in Interviewer provides several important options that help you tailor the interview experience to your device and your participant's needs.
+<AppOnly axis="interviewer" app="current">
+
+Interviewer is configured in two places: a short **setup wizard** that runs the first time you open the app on a device, and the **Settings** area on the dashboard (the gear icon).
+
+The setup wizard walks you through securing your data. You choose how you will unlock the app — a biometric, PIN, or passphrase, or no app-level security at all. When you set a credential, the data stored on the device is encrypted at rest with a key derived from it. Complete this setup on every interview device **before** data collection begins: apart from changing a PIN, your security method cannot be changed later without revoking the device lock, which erases all protocols and sessions on the device. The wizard also asks whether you would like to share anonymous usage data, a choice you can change at any time.
+
+Everything else is managed from **Settings**, which is organized into five areas: **About**, **Data export**, **Privacy**, **Security**, and **Synthetic data**. Before starting data collection, we recommend that you:
+
+- Configure your export file formats and options in **Data export**. These are set once here and applied to every export, rather than chosen each time you export.
+- Review the auto-lock timeout and re-authentication options in **Security**. If participants will handle the device during interviews, turn on **require authentication when exiting an interview**, so that a participant who exits an interview cannot reach the dashboard.
+- Use **Synthetic data** to generate fake interview sessions and rehearse your full export workflow before collecting real data. For how this fits into a wider rehearsal of your study, see [Piloting Your Study](/en/get-started/planning-a-study/piloting-your-study).
+
+The [Security and locking](/en/collect-data/interviewer/using-interviewer#security-and-locking) section of the Using Interviewer tutorial walks through the setup wizard and each Settings area in detail. For where your data lives, what protects it, and what can destroy it, see [Data Storage and Safety](/en/collect-data/interviewer/data-storage).
+
+<TipBox danger={true}>
+
+If your protocol uses internet-dependent interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)), make sure the interview device will have a reliable internet connection in the field — those interfaces cannot run offline. Protocols that need a connection show a **Requires internet** indicator on their protocol card.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+The settings menu in Interviewer Classic provides several important options that help you tailor the interview experience to your device and your participant's needs.
 
 ### Text size
 
 You will most often need to adjust the overall **text size** of the Interviewer interface. From the **visual properties** tab of the settings menu, two options control this setting.
 
-![Settings menu](/assets/uploads/screen-shot-2022-06-30-at-11.58.52-am.png 'The visual properties tab of the settings menu in Interviewer')
+![Settings menu](/assets/uploads/screen-shot-2022-06-30-at-11.58.52-am.png 'The visual properties tab of the settings menu in Interviewer Classic')
 
-To scale all text _and interface elements_, increase or decrease the **interface scale** dropdown. By default, Interviewer automatically increases text size and spacing as its window size increases. To disable this behavior and set a static window size, turn off **use dynamic scaling**.
+To scale all text _and interface elements_, increase or decrease the **interface scale** dropdown. By default, Interviewer Classic automatically increases text size and spacing as its window size increases. To disable this behavior and set a static window size, turn off **use dynamic scaling**.
 
 <TipBox>
 
@@ -93,3 +118,5 @@ If you are using a device that lacks a physical keyboard, we recommend turning o
 ![A form with "use fullscreen forms" turned off](/assets/uploads/screen-shot-2022-06-30-at-11.43.40-am.png 'A form with "use fullscreen forms" turned off')
 
 ![A form with "use fullscreen forms" turned on](/assets/uploads/screen-shot-2022-06-30-at-11.43.58-am.png 'A form with "use fullscreen forms" turned on')
+
+</AppOnly>

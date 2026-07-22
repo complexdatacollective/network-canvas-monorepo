@@ -22,7 +22,7 @@ Either way, the `.netcanvas` file contains all the data in your protocol. So if 
 
 Although you can treat a `.netcanvas` file as a single file, it is really a zipped folder. Inside, the stages, prompts, and logic that make up your interview are stored in a file called `protocol.json`, and any resources you have added — such as images, video, or roster data — live alongside it in an `assets/` folder.
 
-To look inside a protocol, rename it so that it ends in `.zip`, and then unzip it. The main reason to do this is the [custom node labelling](/en/design-protocols/key-concepts/node-labelling#custom-node-labelling-advanced) workflow, which involves placing a `nodeLabelWorker.js` file at the top level of the protocol — in the same folder as `protocol.json`. Once you have added the file, zip the folder back up, rename it so that it ends in `.netcanvas`, and import it into Interviewer. If you later edit the protocol in Architect, the JavaScript file will be preserved when you save.
+To look inside a protocol, rename it so that it ends in `.zip`, and then unzip it. The main reason to do this is the [custom node labeling](/en/design-protocols/key-concepts/node-labelling#custom-node-labeling-advanced) workflow, which involves placing a `nodeLabelWorker.js` file at the top level of the protocol — in the same folder as `protocol.json`. Once you have added the file, zip the folder back up, rename it so that it ends in `.netcanvas`, and import it into Interviewer. If you later edit the protocol in Architect, the JavaScript file will be preserved when you save.
 
 ## Authoring Protocol Files
 
