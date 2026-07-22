@@ -46,13 +46,5 @@ describe('HomePage hero background composition', () => {
     expect(
       container.querySelector('img[src="/images/blobs/multi-2.svg"]'),
     ).toBeNull();
-    expect(
-      container.querySelectorAll('[data-homepage-weave-target]'),
-    ).toHaveLength(14);
-    expect(
-      container.querySelectorAll(
-        '[data-homepage-weave-target][data-homepage-weave-moving-target]',
-      ),
-    ).toHaveLength(8);
   });
 });

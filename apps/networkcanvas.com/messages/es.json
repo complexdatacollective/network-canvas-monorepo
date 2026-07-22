@@ -41,7 +41,7 @@
       "screenshotAlt": "Pantalla de inicio de Interviewer que muestra los protocolos disponibles de Network Canvas"
     },
     "fresco": {
-      "description": "¡Network Canvas lleva las entrevistas a la web! Fresco es un proyecto piloto que permite realizar entrevistas de Network Canvas en un navegador web.",
+      "description": "¡Network Canvas lleva las entrevistas a la web! Fresco permite realizar entrevistas de Network Canvas en un navegador web.",
       "action": "Probar el entorno sandbox de Fresco",
       "deployAction": "Implementar Fresco",
       "screenshotAlt": "Panel de Fresco que muestra los totales de protocolos, participantes y entrevistas"

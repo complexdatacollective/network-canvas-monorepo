@@ -37,10 +37,7 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
           className="col-start-1 row-start-2"
         />
 
-        <div
-          data-homepage-weave-target
-          className="tablet-portrait:col-auto tablet-portrait:row-auto col-span-3 col-start-1 row-start-1 min-w-0 flex-1"
-        >
+        <div className="tablet-portrait:col-auto tablet-portrait:row-auto col-span-3 col-start-1 row-start-1 min-w-0 flex-1">
           <div className="tablet-portrait:p-8 pointer-events-none overflow-hidden p-4">
             <AnimatePresence custom={direction} initial={false} mode="wait">
               <motion.a
