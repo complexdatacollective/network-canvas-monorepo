@@ -20,6 +20,21 @@ async function getDndAnnouncement(page: Page): Promise<string> {
   });
 }
 
+async function getGrabAnnouncement(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const statusElements = document.querySelectorAll(
+      'body > div[role="status"][aria-live="polite"]',
+    );
+    for (const el of statusElements) {
+      const text = el.textContent?.trim() ?? '';
+      if (text.includes('grabbed')) {
+        return text;
+      }
+    }
+    return '';
+  });
+}
+
 /**
  * Navigate keyboard DnD to a specific drop target by reading announcements.
  *
@@ -1114,6 +1129,26 @@ class NodePanelFixture {
     await expect(
       this.page.getByTestId('node-list').getByRole('option', { name: label }),
     ).toBeVisible();
+  }
+
+  async expectDragNodeToMainListNoOp(
+    panelTitle: string,
+    label: string,
+  ): Promise<void> {
+    const nodeInPanel = this.getNode(panelTitle, label);
+    await expect(nodeInPanel).toHaveAttribute('aria-disabled', 'true');
+
+    await nodeInPanel.evaluate((el) => {
+      if (el instanceof HTMLElement) {
+        el.focus();
+      }
+    });
+    await nodeInPanel.press('Control+d');
+
+    await expect(getGrabAnnouncement(this.page)).resolves.toBe('');
+    await expect(
+      this.page.getByTestId('node-list').getByRole('option', { name: label }),
+    ).toHaveCount(0);
   }
 
   /**

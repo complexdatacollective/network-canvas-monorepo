@@ -3,9 +3,10 @@
     - heading "Add exactly one person" [level=2]
   - button "Prior contacts":
     - heading "Prior contacts" [level=3]
-  - listbox "Prior contacts"
+  - listbox "Prior contacts":
+    - option "Mohammad" [disabled]
+  - slider "Resize panel and node list areas"
   - listbox "Added Nodes":
-    - option "Mohammad"
     - option "Alice"
   - button "Add a person" [disabled]:
     - img "Add a person"
