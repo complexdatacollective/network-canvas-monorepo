@@ -60,6 +60,10 @@ const finalLightColors = [
   'oklch(var(--sea-green) / 0.2)',
   'oklch(var(--barbie-pink) / 0.18)',
 ] as const;
+const upgradeLightColors = [
+  'oklch(var(--sea-serpent) / 0.18)',
+  'oklch(var(--paradise-pink) / 0.16)',
+] as const;
 
 function HeroEntrance({
   bar,
@@ -228,7 +232,7 @@ function ScreenshotFrame({
   src: string;
 }) {
   return (
-    <div className="elevation-medium bg-surface overflow-hidden rounded">
+    <div className="elevation-medium overflow-hidden rounded bg-white">
       <div
         className="border-navy-taupe/10 bg-platinum flex items-center gap-2 border-b px-4 py-3"
         aria-hidden
@@ -243,7 +247,7 @@ function ScreenshotFrame({
       <div
         className={cn(
           'relative aspect-4/3 overflow-hidden bg-white [&_img]:object-cover',
-          contain && 'bg-rich-black [&_img]:object-contain',
+          contain && '[&_img]:object-contain',
         )}
       >
         <Image
@@ -1279,9 +1283,22 @@ export function SummerUpdatePage() {
         </section>
 
         <section
-          className="bg-rich-black tablet-portrait:px-16 tablet-portrait:py-28 px-5 py-20 text-white"
+          className="from-rich-black via-cyber-grape to-slate-blue tablet-portrait:px-16 tablet-portrait:py-28 relative overflow-hidden bg-linear-to-br px-5 py-20 text-white"
           aria-labelledby="upgrade-title"
         >
+          <div
+            className="pointer-events-none absolute inset-0 opacity-70"
+            aria-hidden
+          >
+            <BackgroundLights
+              large={2}
+              medium={2}
+              small={1}
+              colors={upgradeLightColors}
+              blendMode="color-dodge"
+              speedFactor={0.25}
+            />
+          </div>
           <div className="relative z-10 mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
               <SectionLabel dark>05 — Should you upgrade?</SectionLabel>
@@ -1382,6 +1399,11 @@ export function SummerUpdatePage() {
                   shadow="sm"
                   className="h-full"
                 >
+                  <ScreenshotFrame
+                    address="networkcanvas.com"
+                    alt="The redesigned Network Canvas website homepage"
+                    src="/images/summer-2026/website-homepage.jpg"
+                  />
                   <SectionLabel>Project website</SectionLabel>
                   <Heading level="h3" variant="subheading">
                     A fresh new look for networkcanvas.com
@@ -1405,6 +1427,11 @@ export function SummerUpdatePage() {
                   shadow="sm"
                   className="h-full"
                 >
+                  <ScreenshotFrame
+                    address="documentation.networkcanvas.com"
+                    alt="The redesigned Network Canvas documentation homepage"
+                    src="/images/summer-2026/documentation-homepage.jpg"
+                  />
                   <SectionLabel>Project documentation</SectionLabel>
                   <Heading level="h3" variant="subheading">
                     Guidance organized around your research workflow

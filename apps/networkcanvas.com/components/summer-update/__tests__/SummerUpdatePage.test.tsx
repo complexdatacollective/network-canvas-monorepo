@@ -133,5 +133,36 @@ describe('SummerUpdatePage', () => {
     expect(
       screen.getByRole('link', { name: 'Explore the documentation ↗' }),
     ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/');
+    expect(
+      screen.getByRole('img', {
+        name: 'The redesigned Network Canvas website homepage',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', {
+        name: 'The redesigned Network Canvas documentation homepage',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('uses the shared dark treatment for section five and white browser frames', () => {
+    render(<SummerUpdatePage />);
+
+    expect(
+      screen.getByRole('heading', { name: 'Should you upgrade?' }),
+    ).toHaveClass('sr-only');
+    expect(
+      screen
+        .getByRole('heading', { name: 'Should you upgrade?' })
+        .closest('section'),
+    ).toHaveClass('bg-linear-to-br');
+
+    const interviewerScreenshot = screen.getByRole('img', {
+      name: 'Interviewer dashboard showing protocol cards and a resume interview action',
+    });
+    expect(interviewerScreenshot.parentElement).toHaveClass('bg-white');
+    expect(interviewerScreenshot.parentElement).not.toHaveClass(
+      'bg-rich-black',
+    );
   });
 });
