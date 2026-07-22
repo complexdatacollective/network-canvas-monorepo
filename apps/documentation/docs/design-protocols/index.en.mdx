@@ -1,34 +1,22 @@
 ---
-title: About Architect
+title: Designing Protocols
 navOrder: 0
 ---
 
-Architect is the protocol designer for Network Canvas — the tool you use to build the interview protocols that run in Interviewer and Fresco. It comes in two versions with similar names: **Architect** — the current app, which runs in your browser with nothing to install — and **Architect Classic**, the older downloadable application (Windows, macOS, Linux). Throughout this documentation, "Architect" on its own means the browser app, and "Architect Classic" always refers to the download. They share the same interface and protocol-building workflow, but they are **not interchangeable** — each builds a different version of the protocol file format ("schema"), and that version determines which app you can run your interviews in. The table below compares them; which you should use depends mainly on where you will run your interviews.
+In this phase of your study, you turn your research design into a **protocol** — a self-contained definition of your interview. A protocol describes the stages your participants will move through, each built from an [interface](/en/design-protocols/key-concepts/interfaces); a codebook of node, edge, and ego variables that defines the data you will collect; and any resources — such as images, video, audio, or roster files — that your stages use. For a fuller picture of what a protocol contains, see [The Protocol File](/en/design-protocols/key-concepts/the-protocol-file).
 
-<KeyConcept title="Not sure which to use?">
+Protocols are built in [**Architect**](https://architect.networkcanvas.com), the Network Canvas protocol designer, which runs in your browser with nothing to install. The protocol you build here is what you will later run in Interviewer or Fresco to collect your data.
 
-Choose **Architect** for new studies — it's the default and needs no setup. Its schema 8 protocols run in **Fresco** and in the new **Interviewer** app.
+## Where to start
 
-Choose **Architect Classic** only if you need to keep using **Interviewer Classic**, the older desktop and tablet app. It builds schema 7 protocols and cannot open protocols built in Architect.
+If you are new to protocol design, we recommend working through these pages in order:
 
-[Open Architect →](https://architect.networkcanvas.com)
+1. [Getting Started](/en/design-protocols/getting-started) — open Architect, learn your way around, and create or open your first protocol.
+2. [Building a protocol](/en/design-protocols/building-a-protocol) — a step-by-step tutorial that rebuilds the sample protocol, introducing stages, the codebook, and resources along the way.
+3. [Saving and backing up](/en/design-protocols/saving-and-backing-up) — understand how Architect stores your work, and how to keep safe copies of it.
 
-</KeyConcept>
+When you need more depth, the **Key concepts** pages explain the ideas behind protocol design — interfaces, the codebook, variables, prompts, forms, and more — and the **Interface documentation** describes every interview interface in detail. For inspiration, the [Protocol Gallery](/en/design-protocols/protocol-gallery) showcases protocols from published studies, showing how researchers have combined these building blocks in practice.
 
-|                   | Architect                                            | Architect Classic                                                                                              |
-| ----------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Install           | Nothing — runs in the browser                        | Download and install (Windows, macOS, Linux)                                                                   |
-| Protocol schema   | Schema 8 (latest)                                    | Schema 7 and earlier                                                                                           |
-| Run interviews in | Fresco and Interviewer                               | Interviewer Classic (Interviewer and Fresco can automatically upgrade a protocol created in Architect Classic) |
-| Backup & moving   | Download a `.netcanvas` file to keep or share a copy | Your `.netcanvas` file is already on disk — copy it anywhere                                                   |
-| Updates           | Always the latest, automatically                     | Download each new release yourself                                                                             |
-| Best for          | New studies (run in Fresco or Interviewer)           | Studies that must keep using the older Interviewer Classic app                                                 |
-| Status            | Actively developed                                   | Maintenance mode — bug fixes only                                                                              |
+## If your study uses Interviewer Classic
 
-<TipBox>
-
-A **PWA** (Progressive Web App) is a website you can optionally install to your device. Architect runs in any modern web browser with nothing to install; installing it as a PWA adds quick access from your device and offline use.
-
-</TipBox>
-
-Architect can open a schema 7 protocol made in Architect Classic and upgrade it to schema 8, but this is one-way — a schema 8 protocol cannot be converted back or opened in Architect Classic. For a full explanation of schema versions and compatibility, see [App compatibility by schema version](/en/get-started/release-announcements) and [Protocol Schema Information](/en/get-started/advanced-topics/protocol-schema-information).
+If your interviews must run in **Interviewer Classic**, the older desktop and tablet app, you will need to build your protocol in **Architect Classic** instead. See [Choosing Architect or Architect Classic](/en/design-protocols/choosing-architect) to understand the differences between the two versions.

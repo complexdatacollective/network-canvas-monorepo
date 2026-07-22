@@ -1,8 +1,10 @@
 ---
 title: Installing Architect Classic
-navOrder: 7
+navOrder: 8
 toc: true
 ---
+
+Not sure whether you need Architect Classic at all? See [Choosing Architect or Architect Classic](/en/design-protocols/choosing-architect).
 
 For all new studies, we recommend using [Architect](/en/design-protocols/getting-started), which runs entirely in your browser with nothing to download or install (and can be installed as a Progressive Web App for offline use). It creates schema 8 protocols, which can be used in [Fresco](/en/collect-data/fresco) and [Interviewer](/en/collect-data/interviewer).
 

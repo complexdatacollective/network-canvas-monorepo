@@ -11,6 +11,11 @@
       "permanent": true
     },
     {
+      "source": "/en/get-started/release-announcements",
+      "destination": "/en/get-started/advanced-topics/protocol-schema-information",
+      "permanent": true
+    },
+    {
       "source": "/citing-the-software",
       "destination": "/en/get-started/project-information/citing-the-software",
       "permanent": true
