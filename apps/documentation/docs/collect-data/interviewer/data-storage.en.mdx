@@ -1,0 +1,62 @@
+---
+title: Data Storage and Safety
+navOrder: 5
+toc: true
+---
+
+<Paragraph variant="lead">
+  Interviewer keeps all of your research data on the device it runs on. This
+  page answers the operational questions a field team needs: where interview
+  data lives, what protects it, what can destroy it, and how to keep it safe.
+</Paragraph>
+
+## Where your data lives
+
+Everything Interviewer stores — protocols, interviews, and settings — stays on the device, with no cloud sync or server component. The Network Canvas team never receives, transmits, or stores any participant data, and no participant data leaves the device unless you export it. The optional anonymous usage analytics contain no participant data — network data, responses, case IDs, protocol contents, and asset files are never collected — and can be turned off at any time in **Settings → Privacy**.
+
+Interviewer stores its data in your **web browser's storage** on the device you use. All of it should be treated as potentially sensitive:
+
+- **Protocols** — alongside the structure of your interview, a protocol can embed any datasets needed to conduct it, such as a participant roster.
+- **Session data** — participant response data, plus metadata such as the date a session was conducted.
+- **App configuration and metadata** — application settings and protocol metadata.
+
+<TipBox>
+
+**Interviewer Classic** stores its data within the app on the device instead, and does not encrypt its data store — device-level encryption is its only protection at rest. See [IRB and Security Best Practices](/en/get-started/planning-a-study/irb-best-practices) for guidance covering both versions.
+
+</TipBox>
+
+## What protects your data
+
+When you set up an app lock during first-run setup — a PIN, passphrase, or biometric — the on-device data is **encrypted at rest** with a key derived from your credential, and the same authentication that unlocks the app releases the key used to decrypt it. While the app is locked, the lock screen reveals nothing about what is stored — no protocol names, session counts, or other details. Interviewer locks itself automatically after a period of inactivity and when the app is closed, and you can additionally require re-authentication when entering an interview, exiting to the dashboard, or exporting data. See [Security and locking](/en/collect-data/interviewer/using-interviewer#security-and-locking) for how to set all of this up.
+
+If you chose **No security** during setup, there is no app-level protection, and your data relies on the device's own protections alone.
+
+Either way, app-level security is a layer to use _in addition_ to device-level protections, not a substitute for them. Enable full-disk encryption on the device, use strong user authentication and screen lock timeouts, and restrict physical access — see the [security best practices](/en/get-started/planning-a-study/irb-best-practices#security-best-practices) for the full list.
+
+## What can destroy your data
+
+Because your data lives only on the device, several things can permanently remove it:
+
+- **Losing your credential.** There is no way to recover a lost credential. If you lose the enrolled biometric, PIN, or passphrase — for example on a wiped or replaced device — the encrypted data on that device cannot be recovered.
+- **Revoking the device lock.** Changing your security method (other than changing a PIN, which is non-destructive) requires revoking the device lock, which erases all protocols, sessions, and stored credentials on the device. The **Revoke / Reset device** option in **Settings → Security** does the same, returning you to first-run setup.
+- **Clearing browser data or removing the app.** Interviewer's data lives in your browser's storage, so clearing the browser's stored site data — or uninstalling the browser or the installed PWA in a way that removes its data — takes your protocols and interviews with it. Treat clearing browser data on an interview device as deleting your research data.
+- **Deleting a protocol.** Removing a protocol from the device also removes any interviews recorded against it. Interviewer asks you to confirm first, since this cannot be undone.
+- **Losing the device itself.** A lost, stolen, wiped, or broken device takes its data with it.
+
+<TipBox danger={true}>
+
+The common thread: **export your interviews regularly**, so that losing — or re-securing — a device never means losing your data.
+
+</TipBox>
+
+## Keeping data safe in the field
+
+Since interview data exists only on the device until you export it, exporting is both your backup mechanism and the most vulnerable step in the workflow. We recommend that you:
+
+- **Export regularly.** Export sessions from the **Data** view as you collect them, rather than letting data accumulate on field devices. The [export process](/en/collect-data/interviewer/using-interviewer#the-export-process) packages your selected sessions into a single `.zip` archive.
+- **Minimize the time data stays on field devices.** Upload exports to a designated secured storage location as regularly as possible, and then delete the sessions from the device. This limits the risk from a device being lost or stolen.
+- **Organize and back up your exports.** Follow the [data organization and backup best practices](/en/collect-data/protocol-and-data-workflows#data-organization-and-backup-best-practices) — a copy in one cloud location is not a backup.
+- **Rehearse your export pipeline before collecting real data.** Use the **Synthetic data** feature in Settings to generate fake sessions and run them through your full export-and-backup workflow, so the first time you depend on it is not with real participant data.
+
+For the wider security picture — including your responsibilities as the holder of the data — see [IRB and Security Best Practices](/en/get-started/planning-a-study/irb-best-practices).

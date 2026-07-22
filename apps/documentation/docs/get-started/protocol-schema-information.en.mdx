@@ -1,7 +1,7 @@
 ---
 title: Protocol Schema Information
 wip: false
-navOrder: 2
+navOrder: 3
 ---
 
 ## Summary
@@ -69,7 +69,7 @@ If your protocol is marked as obsolete, and you wish to continue collecting data
 
 ## Migrating a protocol
 
-Migrating a protocol happens within Architect, Fresco, and Interviewer, and is automatic. How it works depends on which app you use:
+Migrating a protocol happens within Architect, Fresco, and Interviewer, and is automatic. If you are migrating because you are moving from the Classic apps to the current generation, [Migrating from the Classic Apps](/en/get-started/migrating-from-classic) walks through that whole transition — including what happens to your collected data. How migration works depends on which app you use:
 
 **In Architect (the browser app), Fresco, and Interviewer**, migration is automatic and requires no setup — these apps always run the latest version. When you open or import a protocol built on an older schema, it is upgraded to the current schema in place. In Architect, the upgraded protocol is saved to your browser library; **Download** a `.netcanvas` copy if you want a backup or need to move it to another app.
 
@@ -148,6 +148,6 @@ For the full history, consult the table below for information about which schema
 
 The following section may be useful if you are attempting to understand how schema migration is performed on a technical level. In rare cases, this may help you to troubleshoot an issue with a migrated protocol yourself, should you wish.
 
-- A migration between two sequential schema versions is a functional transformation of the protocol object. These transformations are written as simple functions that take a protocol object, mutate it, and return the mutated protocol. Migration functions are defined in the [protocol-validation submodule](https://github.com/complexdatacollective/protocol-validation/tree/master/src/migrations/migrations).
+- A migration between two sequential schema versions is a functional transformation of the protocol object. These transformations are written as simple functions that take a protocol object, mutate it, and return the mutated protocol. Migration functions are defined in the [protocol-validation package](https://github.com/complexdatacollective/network-canvas-monorepo/tree/main/packages/protocol-validation/src/migrations) in the monorepo.
 - Transformations can be chained together, meaning that a protocol can be migrated from version 1 to version n by applying all transformations in between in sequence \[1 … n].
 - We plan a parallel system of "patching", which will use the same technique as migration, but is designed to address any data corruption issues caused as a result of bugs in Architect. Patches are designed to fix protocol issues without updating the schema version.

@@ -1,0 +1,43 @@
+---
+title: Migrating from the Classic Apps
+navOrder: 2
+---
+
+If you built your study with **Architect Classic** and **Interviewer Classic** — the downloadable desktop and tablet apps — you may be wondering what moving to the current browser-based [Architect](/en/design-protocols/choosing-architect) and [Interviewer](/en/collect-data/interviewer) involves. This page walks through the decisions in order: whether to switch mid-study, how to move your protocol across, what happens to the data you have already collected, and what changes in day-to-day use.
+
+<KeyConcept title="The short version">
+
+Your existing protocols carry over: Architect, Interviewer, and Fresco open schema 7 protocols and upgrade them to schema 8 automatically. The upgrade is **one-way**, so keep a copy of your schema 7 `.netcanvas` file for as long as you still need the Classic apps. Data you have already collected or exported is unaffected.
+
+</KeyConcept>
+
+## Should you switch mid-study?
+
+If you are partway through data collection, there is no need to rush. The Classic apps continue to run schema 7 protocols, so finishing an in-flight study on Architect Classic and Interviewer Classic is fully supported — if you are happy with your protocol as it is, you do not need to take any action. (Architect Classic is in maintenance mode, receiving bug fixes only.)
+
+Switching partway through collection is possible, but worth planning deliberately: the protocol migration is one-way (see below), and interviews collected before and after the change will live in two different apps, each exported separately. For many studies the simplest path is to complete data collection in the Classic apps and adopt the current generation for your next study. If you do want to change over mid-study, pick a clear changeover point, and export the sessions already on your Classic devices before retiring them.
+
+## Moving your protocol
+
+Open or import your schema 7 `.netcanvas` file in [Architect](https://architect.networkcanvas.com) and it is migrated to schema 8 automatically — there is nothing to configure. The migration is one-way: the upgraded protocol is saved to Architect's browser library, and any `.netcanvas` file you download from Architect is schema 8, which the Classic apps cannot open. Keep your original schema 7 file somewhere safe for as long as you still need Architect Classic or Interviewer Classic. [Protocol Schema Information](/en/get-started/protocol-schema-information) covers the mechanics of migration and includes a compatibility table showing which apps support which schema versions.
+
+If you only want to _run_ an existing protocol, you do not need Architect at all: importing a schema 7 protocol into Interviewer or Fresco upgrades it to schema 8 in place, with a notification telling you the migration occurred.
+
+## What happens to your existing data
+
+Nothing. Interview data is separate from the protocol that produced it: sessions collected with Interviewer Classic stay on the device that collected them and are exported from there exactly as before, and exports you have already made remain valid. Both generations export the same CSV and GraphML formats, so data from before and after a changeover feeds the same analysis workflow — the [Data Export guide](/en/analyze-data/data-export) describes what exports contain regardless of which application produced them.
+
+## What changes day to day
+
+The overall workflow — design a protocol in Architect, run it in Interviewer, export your data — is unchanged. The differences you will notice are:
+
+- **Nothing to install.** Architect and Interviewer run in your web browser and are always the latest version. Both can optionally be installed to a device you control as a Progressive Web App, for quick access and offline use.
+- **Protocols are stored in a browser library.** Architect saves your work automatically to a library inside your browser, instead of `.netcanvas` files you save and manage on disk. Download a `.netcanvas` copy regularly as a backup — [Saving and backing up](/en/design-protocols/saving-and-backing-up) explains this storage model and its implications.
+- **New schema-8 interfaces and features.** Migrating unlocks everything introduced in schema 8, including the Geospatial, Family Pedigree, Narrative Pedigree, and Network Composer interfaces — see [Schema version 8](/en/get-started/protocol-schema-information#schema-version-8) for the full list. Note that some schema-8 interfaces (such as Geospatial) require an internet connection during the interview.
+- **On-device security in Interviewer.** Interviewer can lock the app behind a PIN, passphrase, or biometric, and encrypts its stored data at rest — see [Security and locking](/en/collect-data/interviewer/using-interviewer#security-and-locking).
+
+Where behaviour differs in finer detail, the documentation covers both generations side by side: pages such as [Using Interviewer](/en/collect-data/interviewer/using-interviewer) and [Saving and backing up](/en/design-protocols/saving-and-backing-up) let you switch between the current and Classic apps as you read.
+
+## Where to get help
+
+If you are unsure how any of this applies to your study, or something unexpected happens along the way, create a post on our [user community](https://community.networkcanvas.com) — it is a great place to ask questions.
