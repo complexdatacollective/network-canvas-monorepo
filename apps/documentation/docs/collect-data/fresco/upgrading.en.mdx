@@ -1,6 +1,6 @@
 ---
 title: Upgrading Fresco
-date: 9th October 2025
+date: 22nd July 2026
 navOrder: 10
 wip: false
 ---
@@ -17,7 +17,7 @@ You are responsible for upgrading your own instance of Fresco. We recommend upgr
 
 ## Upgrade Process
 
-To upgrade your Fresco version, you will need to sync your fork with the latest version of the Fresco repository. This will pull in the latest changes and updates from the main Fresco repository.
+This process applies if you deployed Fresco by forking the repository and connecting it to Netlify, as described in the [Deployment Guide](./guide). To upgrade your Fresco version, you will need to sync your fork with the latest version of the Fresco repository. This will pull in the latest changes and updates from the main Fresco repository.
 
 From your GitHub repository, click **"Sync Fork"** and select **"Update Branch"**.
 
@@ -26,6 +26,10 @@ From your GitHub repository, click **"Sync Fork"** and select **"Update Branch"*
 Netlify will automatically begin redeploying your Fresco instance. This process will take a few minutes to complete.
 
 For more information on how to sync your fork, see the [GitHub documentation](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/syncing-a-fork).
+
+## Upgrading a Docker deployment
+
+If you deployed Fresco with Docker rather than by forking the repository, there is no fork to sync. Instead, you pull the latest container image and recreate the stack — see [Updating Fresco](./advanced#updating-fresco) in the Advanced Deployment guide for the commands. If you pinned a specific image version, update the tag in your compose file first.
 
 ## Versioning
 
@@ -40,9 +44,9 @@ This version information is accessible from several places:
 - **GitHub**: You can find the version of your Fresco instance on your GitHub repository, inside the `package.json` file.
 - **Exported Data**: The version number of your Fresco instance is included in the exported data within the ego file. This information is useful for tracking the version of Fresco used to collect data.
 
-## UploadThing Variable Update
+## UploadThing variable update (pre-2.0.0 upgrades only)
 
-If you are upgrading from a version of Fresco prior to 2.0.0, you will need to update your UploadThing environment variable after the upgrade process is complete. To do this:
+This section applies only if you are upgrading from a version of Fresco older than 2.0.0, which used an earlier UploadThing environment variable format. After the upgrade process is complete, update the variable as follows:
 
 1. Visit your UploadThing dashboard.
 2. Navigate to the **API Keys** section from the sidebar and copy your environment variable using the copy button. It should look something like this:

@@ -631,53 +631,21 @@ Select a session to resume an in-progress interview or review a finished one. Yo
 
 </AppOnly>
 
-## File types
+## The export process
 
 <AppOnly axis="interviewer" app="classic">
 
-After clicking "export selected to file," you will be prompted to choose a file type for the export. The two options are:
+After clicking "export selected to file," you will be prompted to choose a file type for the export (CSV, GraphML, or both) and to configure export options, such as merging sessions by protocol. The result is a single `.zip` file saved to a location you choose. Settings for exported data can also be found in the device settings in the welcome section.
 
 </AppOnly>
 
 <AppOnly axis="interviewer" app="current">
 
-Interviewer packages the sessions you select into a single `.zip` archive, reporting progress as it goes and flagging each session as exported once it completes. The file types included are chosen ahead of time in **Settings** rather than at export time. The two options are:
+Interviewer packages the sessions you select into a single `.zip` archive, reporting progress as it goes and flagging each session as exported once it completes. Nothing is chosen at export time: the file formats included (CSV, GraphML, or both) and the screen-coordinate options are configured ahead of time in **Settings → Data export** (see [Settings](#settings) above).
 
 </AppOnly>
 
-- **CSV**. A common format for representing network data. This format is readable as a table (or series of tables) in Excel, LibreOffice, Keynote, and other tabular programs. The CSV version also complies with the `egor` package standard. Selecting this option will output multiple files, including node and edge lists for each type, and an ego attribute list that also includes session metadata:
-  - **Ego attribute list**: This file will have one row per ego, with ego-level variables session metadata. The filename will be in the format `caseID_sessionUUID_ego.csv`.
-  - **Alter attribute list**: This file will have one row per alter (i.e. per nominated node). All alters have their own unique ID, as well as an automatically incrementing ID that is only consistent on a per-export basis. The filename will be in the format `caseID_sessionUUID_alterType.csv`.
-  - **Edge attribute list**: This will have one row per relationship, with columns representing edge attributes. Each row will have a key to link to ego (`networkCanvasEgoUUID`), as well as source and target columns that reference both the UUID and the automatically incrementing export ID. The filename will be in the format `caseID_sessionUUID_edgeType.csv`.
-- **GraphML**. An XML based open standard for representing graph data, that is compatible with many social network analysis programs including UCINET, Gephi, NodeXL, Pajek, Visone, and ORA. The filename will be in the format `caseID_sessionUUID.graphml`.
-
-Which file type you should choose depends largely on the needs of your analysis tools. We recommend exporting data in both formats, and experimenting with the data you receive to ensure that it needs your needs.
-
-## Export Options
-
-You may configure a variety of specialized export options that will impact the data you receive in a variety of ways. These options can be left at their default values unless you know that you need to change them.
-
-<AppOnly axis="interviewer" app="classic">
-
-#### Merge sessions by protocol
-
-This option is available up to version 6.5. It was removed in version 6.6, which always exports each session as separate files.
-
-The option to "Merge Sessions by Protocol" will produce a consolidated file (or files in the case of CSV) that contains all interviews. Although the file(s) will contain all egos, nodes, and edges across all interviews, the ego networks themselves will not be merged in any way.
-
-If this option is left deselected, the export process will produce separate files for each of the interviews completed.
-
-</AppOnly>
-
-#### Use screen layout coordinates
-
-Position data from layout variables used on the Sociogram interface in Interviewer is stored on nodes as normalized x/y coordinates, with the origin in the top left of the screen. This allows you to later visualize these layouts on a canvas of arbitrary size, and to compare layouts that were created on screens with different proportions.
-
-<AppOnly axis="interviewer" app="current">
-
-In Interviewer you can optionally export node positions as screen-coordinate pixels instead of normalized coordinates, at a resolution you set in **Settings** — useful when you want positions to match a specific screen size.
-
-</AppOnly>
+To learn what the exported CSV and GraphML files contain — the entity files and their columns, the identifiers used to link them, and what each export option does — see the [Data Export guide](/en/analyze-data/data-export).
 
 ## Next Steps
 

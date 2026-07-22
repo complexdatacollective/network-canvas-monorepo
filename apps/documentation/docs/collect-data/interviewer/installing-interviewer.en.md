@@ -15,7 +15,11 @@ Interviewer comes in two supported versions, and you get them in different ways:
 
 Open [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com) in a modern web browser — there is no download or installation step, and the app always runs the latest version. To keep it handy on an interview device, use your browser's **Install** option (often shown as an install icon in the address bar, or "Add to Home Screen") to install it as a Progressive Web App. It then opens in its own window, appears alongside your other apps, and remains available offline.
 
-We recommend a modern device with a high-resolution screen and ample memory. Performance may differ considerably depending on the power of the device you use, and a slow device can negatively impact the interview experience for your research participants, leading to poorer-quality data.
+Interview performance depends on the device you run Interviewer on. For advice on picking a device that will give your participants a smooth interview experience, see [choosing a hardware device for Interviewer](/en/collect-data/interviewer/choosing-hardware).
+
+### Supported browsers
+
+Interviewer is supported on the latest versions of Chrome, Safari, and Firefox. Because Interviewer is built on the same platform as Fresco, browser support is the same for both apps. We specifically do not support Internet Explorer or Edge Legacy.
 
 ## Installing Interviewer Classic
 
