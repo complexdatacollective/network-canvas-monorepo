@@ -22,7 +22,7 @@ This page summarizes the practical best practices for each tool. For a comprehen
 
 <TipBox>
 
-This describes **Interviewer Classic**, which is fully offline. **Interviewer** stores interview data locally in the same way, but some schema-8 interfaces (e.g. [Geospatial](/en/design-protocols/interface-documentation/geospatial)) require an internet connection and contact third-party services during the interview — factor this into your risk assessment if you use them.
+**Interviewer Classic** is fully offline. **Interviewer** stores interview data locally in the same way, but some schema-8 interfaces (e.g. [Geospatial](/en/design-protocols/interface-documentation/geospatial)) require an internet connection and contact third-party services during the interview — factor this into your risk assessment if you use them.
 
 </TipBox>
 
@@ -30,13 +30,13 @@ Interviewer Classic and Architect Classic are fully offline tools designed to ru
 
 ### Data storage
 
-The data collected in the field is yours, and is only ever stored on your devices. We do not transmit, collect, or retain any data from or about any study, and no participant data leaves the device unless you manually export it. Additionally, we do not use cookies or other tracking tokens of any kind within Network Canvas.
+The data collected in the field is yours, and is only ever stored on your devices. We never receive, transmit, or store participant data, and no participant data leaves the device unless you manually export it. Interviewer sends optional anonymous usage and error analytics — never participant data — which are on by default and can be disabled at any time in Settings → Privacy; Interviewer Classic sends none. We do not use cookies or other tracking tokens of any kind within Network Canvas.
 
 ### Security best practices
 
 Since the onus of data storage and device security is on the researcher, we suggest the following best practices to ensure the security of your Network Canvas study data:
 
-- **Turn on full-disk encryption (OS).** Network Canvas does not encrypt its data stores, since the keys would be trivial to uncover from within the apps themselves. Use FileVault (macOS), BitLocker / Device encryption (Windows), or your platform's equivalent.
+- **Turn on full-disk encryption (OS).** Whichever app you use, enable FileVault (macOS), BitLocker / Device encryption (Windows), or your platform's equivalent. Interviewer Classic and Architect Classic do not encrypt their data stores, so device encryption is their only protection at rest. Interviewer additionally encrypts its on-device data at rest, keyed to the same authentication that unlocks the app — treat this as defense in depth, not a substitute for device encryption.
 - **Use strong passwords/passcodes on devices.** Implement user access controls to prevent multi-user systems from granting access to data from other user accounts.
 - **Restrict physical access to devices.** The use of 'kiosk' modes (or similar), along with full constant supervision of the interview, prevents research participants from accessing data within the app.
 - **Minimize time study data remains on field devices.** Uploading data to designated secured storage locations as regularly as possible, and then deleting it from field devices, helps limit risk of breach (e.g. a device being stolen).

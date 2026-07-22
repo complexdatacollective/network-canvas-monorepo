@@ -1,10 +1,11 @@
 ---
 title: Dyad Census
+navOrder: 17
 ---
 
 <InterfaceSummary type="DyadCensus">
 
-<InterfaceMeta type="Edge Generator" creates="Edges of one or more types" usesprompts="true">
+<InterfaceMeta type="Name Interpreter" creates="Edges of one or more types" usesprompts="true">
 
 </InterfaceMeta>
 
@@ -28,6 +29,6 @@ Use this Interface to encourage participants to add edges that they might not ha
 
 <BadPractice>
 
-Using this interface with a large number of alters will result in a large number of screens (exponential increasing as the number of alters increases).
+Using this interface with a large number of alters will result in a large number of screens. The number of pairs grows rapidly with the number of alters — n alters means n(n-1)/2 pairs per prompt.
 
 </BadPractice>

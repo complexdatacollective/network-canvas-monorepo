@@ -1,5 +1,6 @@
 ---
 title: Sociogram
+navOrder: 9
 ---
 
 <InterfaceSummary type="Sociogram">

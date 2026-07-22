@@ -1,6 +1,6 @@
 ---
 title: GDPR Compliance Guide
-date: 19th November 2025
+date: 22nd July 2026
 navOrder: 1
 ---
 
@@ -28,8 +28,8 @@ The Network Canvas development team does not act as a Data Controller or Data Pr
 | -------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | **Data Storage Location**  | All participant data stored only on your local device                                        | Interview data stored in Postgres database; study assets stored in S3 via UploadThing |
 | **Data Transmission**      | No participant data transmitted externally unless you manually export it                     | Data remains on your infrastructure; no transmission to developers                    |
-| **Encryption**             | Device-level protections required (disk encryption, access controls are your responsibility) | Encrypted at rest when using providers like Neon; S3 server-side encryption enforced  |
-| **Analytics/Telemetry**    | Does not collect analytics or crash logs                                                     | Optional anonymous usage/error analytics (can be disabled)                            |
+| **Encryption**             | Interviewer encrypts on-device data at rest on desktop, keyed to app authentication; Interviewer Classic relies wholly on device-level protections. Enable disk encryption and access controls on every device regardless | Encrypted at rest when using providers like Neon; S3 server-side encryption enforced  |
+| **Analytics/Telemetry**    | Interviewer sends optional anonymous usage/error analytics (on by default; can be disabled; never participant data); Interviewer Classic sends none | Optional anonymous usage/error analytics (can be disabled)                            |
 | **GDPR-Compliant Hosting** | Not applicable (local device storage)                                                        | Possible when selecting an EU region (available on paid UploadThing plans)            |
 | **Your Control**           | Complete control over participant data on your device                                        | All participant data remains under your control at all times                          |
 | **Infrastructure**         | Your device                                                                                  | Your deployed infrastructure (hosting, database, storage)                             |
@@ -56,7 +56,7 @@ The Network Canvas development team provides the open-source software but does n
 
 <TipBox>
 
-The data-handling description in this section applies to **Interviewer Classic**, which is fully offline. **Interviewer** is also a researcher-controlled app that stores interview data locally, but some schema-8 interfaces — notably [Geospatial](/en/design-protocols/interface-documentation/geospatial), which loads maps from the third-party Mapbox service — require an internet connection during the interview. If you use such interfaces, account for those third-party connections in your GDPR assessment.
+This section covers both **Interviewer Classic**, which is fully offline, and **Interviewer**, which is also a researcher-controlled app that stores interview data locally. Where the two generations differ, the text below says so. Note that some schema-8 interfaces in Interviewer — notably [Geospatial](/en/design-protocols/interface-documentation/geospatial), which loads maps from the third-party Mapbox service — require an internet connection during the interview. If you use such interfaces, account for those third-party connections in your GDPR assessment.
 
 </TipBox>
 
@@ -64,17 +64,17 @@ Interviewer is designed to run on researcher-controlled devices, storing intervi
 
 ### Data storage
 
-All interview data is stored locally on your device. Data resides within the application sandbox on the local filesystem and is exported only when you manually export it. No automatic uploads or transmissions occur.
+All interview data is stored locally on your device. Data resides within the application sandbox on the local filesystem and is exported only when you manually export it. No automatic uploads or transmissions of interview data occur.
 
 For GDPR purposes, this means you have complete control over participant data. Data residency is determined by the physical location of your device, and no third parties have access to the data through the software.
 
 ### Network communication
 
-Interviewer performs minimal network communication. The application queries the GitHub API to check for new versions, but no participant data or identifiable information is transmitted in these requests—only the current version number is sent. Beyond this update check, Interviewer makes no external connections, and all data processing occurs entirely offline.
+Both generations perform minimal network communication, and neither ever transmits participant data. **Interviewer Classic** queries the GitHub API to check for new versions—only the current version number is sent—and beyond this update check makes no external connections, processing all data entirely offline. **Interviewer** receives app updates through the browser and, when analytics are enabled, sends anonymous usage and error information (see below); some interfaces, such as Geospatial, contact third-party services during the interview (see the note above).
 
 ### Telemetry and third-party services
 
-Interviewer does not include analytics or crash reporting, external scripts, fonts, or services, tracking mechanisms of any kind, or third-party data processors.
+**Interviewer Classic** includes no analytics or crash reporting of any kind. **Interviewer** sends optional anonymous usage and error analytics—feature usage, import and export events, and crash details—which are on by default and can be disabled at any time in **Settings → Privacy**. These analytics never include participant data: network data, responses, case IDs, protocol contents, and asset files are never collected. Neither generation includes external scripts, fonts, or services, tracking mechanisms of any kind, or third-party data processors, and no participant data ever leaves the device.
 
 ### Other stored data
 
@@ -82,9 +82,9 @@ Application preferences for UI configuration are stored locally. These preferenc
 
 ### Encryption and device security
 
-**Important:** Interviewer does not perform internal encryption of its stored data.
+The two generations differ here. **Interviewer** encrypts its on-device data—protocols, interviews, and settings—at rest on desktop, and the key is released by the same authentication (biometric, PIN, or passphrase) that unlocks the app. On platforms where the operating system already sandboxes app data, encryption is not required and the setup wizard says so. Because the data is tied to your credential, a lost credential is unrecoverable and revoking the device lock erases all local data—export interviews regularly. **Interviewer Classic** performs no internal encryption of its stored data.
 
-You are responsible for enabling device-level encryption (such as FileVault on macOS, BitLocker on Windows, or device encryption on mobile platforms), implementing secure device access policies using passwords or biometric authentication, establishing safe export and storage procedures for exported data, and maintaining physical security of devices.
+For both generations, you are responsible for enabling device-level encryption (such as FileVault on macOS, BitLocker on Windows, or device encryption on mobile platforms), implementing secure device access policies using passwords or biometric authentication, establishing safe export and storage procedures for exported data, and maintaining physical security of devices.
 
 Using Interviewer in a GDPR-compliant manner requires securing the device where data is stored, regulating who can access the device, managing exported files securely, maintaining data retention and deletion policies, and ensuring devices are not lost or stolen. The software itself neither sends nor shares participant data, but you must implement appropriate technical and organizational measures to protect it.
 

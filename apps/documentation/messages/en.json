@@ -2,7 +2,7 @@
   "SectionSwitcher": {
     "get-started": {
       "label": "Get Started",
-      "description": "Install the software and learn about Network Canvas."
+      "description": "Learn about Network Canvas, choose your tools, and plan your study."
     },
     "design-protocols": {
       "label": "Design Protocols",
@@ -15,10 +15,6 @@
     "analyze-data": {
       "label": "Analyze Data",
       "description": "Export and analyze the network data your interviews produce."
-    },
-    "studio": {
-      "label": "Studio",
-      "description": "A web-based platform for creating and sharing network data collection instruments."
     }
   },
   "WorkflowNav": {
