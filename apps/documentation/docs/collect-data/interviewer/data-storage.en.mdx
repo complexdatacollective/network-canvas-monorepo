@@ -14,6 +14,8 @@ toc: true
 
 Everything Interviewer stores — protocols, interviews, and settings — stays on the device, with no cloud sync or server component. The Network Canvas team never receives, transmits, or stores any participant data, and no participant data leaves the device unless you export it. The optional anonymous usage analytics contain no participant data — network data, responses, case IDs, protocol contents, and asset files are never collected — and can be turned off at any time in **Settings → Privacy**.
 
+One documented exception to the local-only model: on stages using the [Geospatial interface](/en/design-protocols/interface-documentation/geospatial), map tiles are fetched from the third-party Mapbox service during the interview, and anything a participant types into its search box is sent to Mapbox's search API. Factor this in when planning studies where locations are sensitive.
+
 Interviewer stores its data in your **web browser's storage** on the device you use. All of it should be treated as potentially sensitive:
 
 - **Protocols** — alongside the structure of your interview, a protocol can embed any datasets needed to conduct it, such as a participant roster.
@@ -38,8 +40,8 @@ Either way, app-level security is a layer to use _in addition_ to device-level p
 
 Because your data lives only on the device, several things can permanently remove it:
 
-- **Losing your credential.** There is no way to recover a lost credential. If you lose the enrolled biometric, PIN, or passphrase — for example on a wiped or replaced device — the encrypted data on that device cannot be recovered.
-- **Revoking the device lock.** Changing your security method (other than changing a PIN, which is non-destructive) requires revoking the device lock, which erases all protocols, sessions, and stored credentials on the device. The **Revoke / Reset device** option in **Settings → Security** does the same, returning you to first-run setup.
+- **Losing your credential.** A forgotten **PIN or passphrase** cannot be recovered — the data it protects is permanently inaccessible on that device. **Biometric** setup also enrolls a mandatory **recovery passphrase**: if you lose the authenticator alone (for example on replaced hardware), unlocking falls back to that passphrase, and only losing both means permanent loss.
+- **Revoking the device lock.** Re-enrolling a replacement **PIN or passphrase** (after proving your current one) preserves access to your data, but changing to or from **biometric** requires revoking the device lock, which erases all protocols, sessions, and stored credentials on the device. The **Revoke / Reset device** option in **Settings → Security** does the same, returning you to first-run setup.
 - **Clearing browser data or removing the app.** Interviewer's data lives in your browser's storage, so clearing the browser's stored site data — or uninstalling the browser or the installed PWA in a way that removes its data — takes your protocols and interviews with it. Treat clearing browser data on an interview device as deleting your research data.
 - **Deleting a protocol.** Removing a protocol from the device also removes any interviews recorded against it. Interviewer asks you to confirm first, since this cannot be undone.
 - **Losing the device itself.** A lost, stolen, wiped, or broken device takes its data with it.

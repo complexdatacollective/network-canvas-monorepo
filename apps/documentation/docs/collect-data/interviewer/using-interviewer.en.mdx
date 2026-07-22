@@ -89,7 +89,7 @@ Next, you choose how you will unlock the app. Depending on your device, the opti
 
 <TipBox danger={true}>
 
-There is **no way to recover a lost credential**. If you lose the enrolled biometric, PIN, or passphrase — for example on a wiped or replaced device — the encrypted data on that device cannot be recovered. Changing your security method afterwards (for example, switching from a PIN to a passphrase) is also destructive: it requires **revoking the device lock**, which erases **all protocols, sessions, and stored credentials on this device**. For both reasons, **export your interviews regularly** so that losing — or re-securing — a device never means losing your data.
+A forgotten **PIN or passphrase** cannot be recovered — the data it protects is permanently inaccessible on that device. **Biometric** setup also enrolls a mandatory **recovery passphrase**, so losing the authenticator alone falls back to it; losing both means the same permanent loss. Re-enrolling a replacement PIN or passphrase (after proving your current one) preserves access to your data, but changing to or from biometric requires **revoking the device lock**, which erases **all protocols, sessions, and stored credentials on this device**. Whichever method you use, **export your interviews regularly** so that losing — or re-securing — a device never means losing your data.
 
 </TipBox>
 
