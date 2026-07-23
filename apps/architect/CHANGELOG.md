@@ -1,5 +1,36 @@
 # @codaco/architect
 
+## 8.0.0-beta.10
+
+### Minor Changes
+
+- Open protocol previews in a dedicated window instead of a browser tab. When Architect is installed as an app, the preview opens in its own app window.
+- Synthetic preview sessions now draw roster-stage people from the protocol's
+  actual roster assets instead of inventing them, so a preview lines up with the
+  roster file the way a real interview would. A roster that is missing or
+  unreadable — including a half-built draft stage — falls back to generated
+  people, so a roster problem never blocks a preview.
+- Allow Narrative stages to use custom image backgrounds, accept SVG image resources, preview canvas backgrounds at their full interview size and color, render resource cards responsively with contextual surface shading, and link every canvas background selector to responsive SVG guidance.
+
+### Patch Changes
+
+- Stop the stage editors from silently discarding variable settings they don't manage. Adding an editable attribute to a Network Composer stage no longer clears the input control from the variable in your codebook, which previously broke every other stage that used the same variable. Interface-owned option sets, such as the Family Pedigree biological sex values, also keep their locked state when you edit a form field that uses them.
+
+  Day offsets on a relative date picker can no longer be set to a negative number, and edge rules are no longer offered on side panels that draw their data from an external file, where they can never match. Switching an existing panel to an external file now offers to remove any edge rules its filter already contains.
+
+- Renaming an ego variable to a name already in use now shows an inline "already in use" message on the field, matching how node and edge variables behave. Previously it slipped past the inline check and surfaced a confusing "Misconfigured Protocol" dialog instead.
+- Closed several ways a protocol could be left in a state the validator rejects, where saving previously appeared to work but the stage silently reverted:
+
+  - Mapping a variable to a node shape now requires a variable to be chosen, and a breakpoint mapping requires at least one threshold with strictly increasing values. New thresholds start above the previous one, and an incomplete mapping blocks saving with an explanation instead of reverting without warning.
+  - Changing the node type of a Family Pedigree stage is now blocked, with an explanation, while a Narrative Pedigree stage depends on it — preventing a broken reference to a variable that no longer exists on the new type.
+  - The map stage now reads feature properties from every feature in a GeoJSON file rather than only the first, so the property selector appears whenever any feature has properties. When no feature has any, saving is blocked with a clear message rather than failing validation later.
+  - The codebook's "used in" display now names shape settings as a place a variable is used.
+
+- Make Architect's large startup spinner match the motion and colours of the loading indicator used throughout the app.
+- Fix the loading spinner covering the protocol upgrade dialog, which made the "Create upgraded copy" button unclickable when opening an older protocol.
+- Fix the update dialog so Install and reload opens the new version immediately and shows progress while the update is applied.
+- Clarify that protocols and settings are saved locally on this device, whether Architect is open in a browser tab or installed as an app.
+
 ## 8.0.0-beta.9
 
 ### Patch Changes
