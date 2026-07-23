@@ -24,7 +24,7 @@ export function HomepageEntrance({
   return (
     <>
       <HomepagePageBackground reveal={revealBackground} />
-      <div className="relative z-10">
+      <div>
         <HeroIntro
           newsItems={newsItems}
           onEntranceStart={handleEntranceStart}

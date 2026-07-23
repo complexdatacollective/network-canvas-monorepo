@@ -57,6 +57,7 @@ describe('HomepageEntrance', () => {
 
     expect(latestReveal()).toBe(false);
     expect(screen.getByText('Homepage content')).toBeInTheDocument();
+    expect(document.querySelectorAll('.relative.z-10')).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Start entrance' }));
 

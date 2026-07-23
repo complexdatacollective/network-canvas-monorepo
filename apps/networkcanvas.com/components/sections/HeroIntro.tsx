@@ -44,7 +44,7 @@ export function HeroIntro({ newsItems, onEntranceStart }: HeroIntroProps) {
       className="tablet-portrait:min-h-svh relative isolate overflow-hidden"
     >
       <motion.div
-        className="tablet-portrait:flex tablet-portrait:min-h-svh tablet-portrait:flex-col relative z-10"
+        className="tablet-portrait:flex tablet-portrait:min-h-svh tablet-portrait:flex-col"
         variants={entrance.pageVariants}
         initial={false}
         animate={controls}

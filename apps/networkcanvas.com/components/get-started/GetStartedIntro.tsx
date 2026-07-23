@@ -64,7 +64,6 @@ export function GetStartedIntro() {
       className="relative isolate overflow-hidden"
     >
       <motion.div
-        className="relative z-10"
         variants={entrance.pageVariants}
         initial={false}
         animate={controls}

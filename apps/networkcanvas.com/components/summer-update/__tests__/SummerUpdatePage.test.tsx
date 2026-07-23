@@ -569,10 +569,8 @@ describe('SummerUpdatePage', () => {
     const heroWeave = within(hero).getByTestId('hero-weave');
     expect(heroWeave).toBeInTheDocument();
     expect(heroWeave.parentElement).toHaveClass('entrance-motion-item');
-    expect(heroWeave.parentElement?.parentElement).toHaveClass('z-0');
-    expect(
-      hero.querySelector('.relative.z-10.flex.min-h-svh'),
-    ).toBeInTheDocument();
+    expect(hero.querySelectorAll('[class*="z-"]')).toHaveLength(0);
+    expect(hero.querySelectorAll('.relative')).toHaveLength(0);
 
     const upgradeHeading = screen.getByRole('heading', {
       name: 'When should you upgrade?',

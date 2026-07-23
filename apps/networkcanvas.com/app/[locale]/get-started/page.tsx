@@ -54,7 +54,7 @@ export default async function GetStartedPage({ params }: GetStartedPageProps) {
   return (
     <main className="relative isolate">
       <GetStartedPageBackground />
-      <div className="relative z-10">
+      <div>
         <GetStartedIntro />
         <WorkflowPath workflow="design" apps={designApps} />
         <WorkflowPath workflow="collect" apps={collectApps} />

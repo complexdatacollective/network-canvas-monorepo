@@ -128,6 +128,7 @@ describe('HeroIntro', () => {
       'tablet-portrait:min-h-svh',
       'tablet-portrait:flex-col',
     );
+    expect(motionRoot).not.toHaveClass('relative', 'z-10');
   });
 
   it('renders visible static server markup before the motion preference resolves', () => {

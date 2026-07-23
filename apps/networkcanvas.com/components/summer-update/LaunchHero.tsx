@@ -42,16 +42,13 @@ function HeroBrand({ children }: { children: ReactNode }) {
   const shouldReduceMotion = useReducedMotion();
 
   return (
-    <span
-      data-homepage-weave-target
-      className="relative inline-block overflow-visible"
-    >
+    <span data-homepage-weave-target className="inline-block overflow-visible">
       <HeroEntrance
         as="span"
         phase="brand"
         className={cn(
           heroTextGlowClasses,
-          'relative inline-block overflow-visible px-2 whitespace-nowrap text-white',
+          'inline-block overflow-visible px-2 whitespace-nowrap text-white',
         )}
         style={{
           WebkitTextFillColor: 'var(--color-white)',
@@ -175,7 +172,7 @@ export function LaunchHero() {
       className="m-0! flex min-h-svh flex-col overflow-hidden px-0!"
       aria-labelledby="summer-update-title"
     >
-      <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="from-slate-blue/25 via-sea-serpent/10 absolute inset-0 bg-linear-to-b to-transparent" />
         <motion.div
           className="entrance-motion-item absolute inset-0"
@@ -188,17 +185,16 @@ export function LaunchHero() {
         <HeroSignalField />
       </div>
       <motion.div
-        className="relative z-10 flex min-h-svh w-full flex-col"
+        className="flex min-h-svh w-full flex-col"
         initial={false}
         animate={entranceControls}
       >
         <Header
-          className="relative z-20"
           containerClassName="py-6!"
           entranceVariants={launchHeroHeaderVariants}
         />
 
-        <div className="tablet-portrait:pt-24 tablet-portrait:pb-48 relative mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-12 px-6 pt-16 pb-40 text-center">
+        <div className="tablet-portrait:pt-24 tablet-portrait:pb-48 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-12 px-6 pt-16 pb-40 text-center">
           <motion.div
             className="w-full origin-center will-change-transform"
             style={
