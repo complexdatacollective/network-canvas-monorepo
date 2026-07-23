@@ -570,7 +570,7 @@ export function SummerUpdatePage() {
                             aria-pressed={isSelected}
                             className={cn(
                               'focusable aria-pressed:border-sea-serpent not-aria-pressed:hover:bg-selected flex size-full flex-col items-center justify-center overflow-hidden text-center transition',
-                              'hover:elevation-high aria-pressed:inset-surface aria-pressed:bg-sea-serpent aria-pressed:text-rich-black not-aria-pressed:hover:-translate-y-1',
+                              'hover:elevation-high aria-pressed:inset-surface aria-pressed:text-rich-black not-aria-pressed:hover:-translate-y-1 aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_70%,var(--color-white))]',
                             )}
                             onClick={() => setSelectedInterface(index)}
                           >
@@ -934,15 +934,9 @@ export function SummerUpdatePage() {
                 the platform, choose the right tools, and find your next step.
               </Paragraph>
             </Reveal>
-            <div className="mt-12 grid grid-cols-1 gap-6">
+            <div className="mt-12 grid grid-cols-1 gap-20">
               <Reveal {...summerUpdateRevealMotion} direction="left">
-                <Surface
-                  as="article"
-                  noContainer
-                  spacing="xl"
-                  shadow="sm"
-                  className="tablet-portrait:grid-cols-5 grid grid-cols-1 items-center gap-8"
-                >
+                <article className="tablet-portrait:grid-cols-5 grid grid-cols-1 items-center gap-8">
                   <div className="tablet-portrait:col-span-2 min-w-0">
                     <ScreenshotFrame
                       address="documentation.networkcanvas.com"
@@ -968,27 +962,14 @@ export function SummerUpdatePage() {
                       <ExternalLink className="inline-block size-4" />
                     </NativeLink>
                   </div>
-                </Surface>
+                </article>
               </Reveal>
               <Reveal
                 {...summerUpdateRevealMotion}
                 direction="right"
                 delay={0.11}
               >
-                <Surface
-                  as="article"
-                  noContainer
-                  spacing="xl"
-                  shadow="sm"
-                  className="tablet-portrait:grid-cols-5 grid grid-cols-1 items-center gap-8"
-                >
-                  <div className="tablet-portrait:col-span-2 min-w-0">
-                    <ScreenshotFrame
-                      address="networkcanvas.com"
-                      alt="The redesigned Network Canvas website homepage"
-                      src="/images/screenshots/website-homepage.png"
-                    />
-                  </div>
+                <article className="tablet-portrait:grid-cols-5 grid grid-cols-1 items-center gap-8">
                   <div className="tablet-portrait:col-span-3 max-w-4xl min-w-0">
                     <SectionLabel subSection>Project website</SectionLabel>
                     <Heading level="h3" variant="subheading" className="mt-2!">
@@ -1005,7 +986,14 @@ export function SummerUpdatePage() {
                       <ExternalLink className="inline-block size-4" />
                     </NativeLink>
                   </div>
-                </Surface>
+                  <div className="tablet-portrait:col-span-2 min-w-0">
+                    <ScreenshotFrame
+                      address="networkcanvas.com"
+                      alt="The redesigned Network Canvas website homepage"
+                      src="/images/screenshots/website-homepage.png"
+                    />
+                  </div>
+                </article>
               </Reveal>
             </div>
           </div>

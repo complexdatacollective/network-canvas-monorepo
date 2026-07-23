@@ -259,7 +259,7 @@ describe('SummerUpdatePage', () => {
 
     expect(selectedFeature).toHaveClass(
       'justify-center',
-      'aria-pressed:bg-sea-serpent',
+      'aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_70%,var(--color-white))]',
       'aria-pressed:text-rich-black',
     );
     expect(selectedFeature).not.toHaveClass('aria-pressed:bg-sea-serpent/15');
@@ -419,19 +419,46 @@ describe('SummerUpdatePage', () => {
     const documentationScreenshot = screen.getByRole('img', {
       name: 'The redesigned Network Canvas documentation homepage',
     });
+    const websiteArticle = screen
+      .getByRole('link', { name: 'Explore the new website' })
+      .closest('article');
+    const documentationArticle = screen
+      .getByRole('link', { name: 'Explore the documentation' })
+      .closest('article');
+    const websiteImageColumn =
+      websiteScreenshot.parentElement?.parentElement?.parentElement;
+    const documentationImageColumn =
+      documentationScreenshot.parentElement?.parentElement?.parentElement;
+
+    if (
+      !(websiteArticle instanceof HTMLElement) ||
+      !(documentationArticle instanceof HTMLElement) ||
+      !(websiteImageColumn instanceof HTMLElement) ||
+      !(documentationImageColumn instanceof HTMLElement)
+    ) {
+      throw new Error('Project resource layout did not render');
+    }
 
     expect(websiteHeading).toHaveClass('mt-2!');
     expect(documentationHeading).toHaveClass('mt-2!');
-    expect(
-      screen
-        .getByRole('link', { name: 'Explore the new website' })
-        .closest('article'),
-    ).toContainElement(websiteScreenshot);
-    expect(
-      screen
-        .getByRole('link', { name: 'Explore the documentation' })
-        .closest('article'),
-    ).toContainElement(documentationScreenshot);
+    expect(websiteArticle).toContainElement(websiteScreenshot);
+    expect(documentationArticle).toContainElement(documentationScreenshot);
+    expect(websiteArticle).not.toHaveClass(
+      'publish-colors',
+      'bg-surface',
+      'rounded',
+      'shadow-md',
+    );
+    expect(documentationArticle).not.toHaveClass(
+      'publish-colors',
+      'bg-surface',
+      'rounded',
+      'shadow-md',
+    );
+    expect(documentationArticle.firstElementChild).toBe(
+      documentationImageColumn,
+    );
+    expect(websiteArticle.lastElementChild).toBe(websiteImageColumn);
     expect(websiteScreenshot.parentElement).toHaveClass('aspect-4/3');
     expect(documentationScreenshot.parentElement).toHaveClass('aspect-4/3');
   });
