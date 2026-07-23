@@ -288,6 +288,82 @@ describe('SummerUpdatePage', () => {
     );
   });
 
+  it('groups the feature explorer and shows screenshots in interface details', () => {
+    render(<SummerUpdatePage />);
+
+    [
+      'New interview interfaces',
+      'Schema 8 features',
+      'Architect',
+      'Interviewer',
+      'Fresco 4.0.0',
+    ].forEach((heading) => {
+      const groupHeading = screen.getByRole('heading', {
+        level: 3,
+        name: heading,
+      });
+
+      expect(groupHeading).toHaveClass('text-2xl', 'font-black');
+      expect(groupHeading).not.toHaveClass('uppercase', 'tracking-widest');
+      expect(groupHeading.parentElement).not.toHaveClass('border-b', 'pb-3');
+    });
+
+    [
+      'Geospatial',
+      'Anonymisation',
+      'One-to-many dyad census',
+      'Family pedigree',
+      'Narrative pedigree',
+      'Network composer',
+    ].forEach((interfaceName) => {
+      const card = screen.getByRole('button', { name: interfaceName });
+
+      expect(card.querySelector('img')).not.toBeInTheDocument();
+      expect(card.querySelector('svg')).toBeInTheDocument();
+    });
+
+    const geospatialDetails = screen
+      .getByRole('heading', { name: 'Geospatial interface' })
+      .closest('[aria-live="polite"]');
+    const geospatialScreenshot = screen.getByRole('img', {
+      name: 'Geospatial interface preview',
+    });
+    const screenshotFrame = geospatialScreenshot.closest('.aspect-video');
+
+    if (!(geospatialDetails instanceof HTMLElement)) {
+      throw new Error('Feature details panel did not render');
+    }
+
+    expect(geospatialDetails).toContainElement(geospatialScreenshot);
+    expect(
+      within(geospatialDetails).queryByText('New interface'),
+    ).not.toBeInTheDocument();
+    expect(screenshotFrame?.parentElement?.lastElementChild).toBe(
+      screenshotFrame,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anonymisation' }));
+
+    expect(
+      screen.queryByRole('img', {
+        name: 'Geospatial interface preview',
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('img', {
+        name: 'Anonymisation interface preview',
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Validation' }));
+
+    expect(
+      screen.queryByRole('img', {
+        name: /interface preview$/i,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it('explains the selected compatibility row in plain language', () => {
     render(<SummerUpdatePage />);
 
@@ -432,7 +508,9 @@ describe('SummerUpdatePage', () => {
     expect(projectName.parentElement).toHaveAttribute(
       'data-homepage-weave-target',
     );
-    expect(within(hero).getByTestId('hero-weave')).toBeInTheDocument();
+    const heroWeave = within(hero).getByTestId('hero-weave');
+    expect(heroWeave).toBeInTheDocument();
+    expect(heroWeave.parentElement).toHaveClass('entrance-motion-item');
 
     const upgradeHeading = screen.getByRole('heading', {
       name: 'When should you upgrade?',

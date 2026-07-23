@@ -1281,6 +1281,9 @@ importers:
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../../packages/fresco-ui
+      '@codaco/interface-images':
+        specifier: workspace:^
+        version: link:../../packages/interface-images
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../../packages/shared-consts

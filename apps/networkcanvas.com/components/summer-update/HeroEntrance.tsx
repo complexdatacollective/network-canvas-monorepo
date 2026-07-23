@@ -29,6 +29,17 @@ export const launchHeroHeaderVariants: Variants = {
   },
 };
 
+export const launchHeroWeaveVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      ...entranceSpring,
+      delay: 0.1,
+    },
+  },
+};
+
 const entranceVariants = {
   lead: {
     hidden: {

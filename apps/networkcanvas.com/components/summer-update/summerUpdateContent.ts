@@ -15,6 +15,7 @@ export const interfaceFeatures = [
     ],
     href: `${documentationRoot}/design-protocols/interface-documentation/geospatial`,
     motif: 'geospatial',
+    screenshotType: 'Geospatial',
   },
   {
     group: 'interfaces',
@@ -30,6 +31,7 @@ export const interfaceFeatures = [
     ],
     href: `${documentationRoot}/design-protocols/interface-documentation/anonymisation`,
     motif: 'anonymisation',
+    screenshotType: 'Anonymisation',
   },
   {
     group: 'interfaces',
@@ -45,6 +47,7 @@ export const interfaceFeatures = [
     ],
     href: `${documentationRoot}/design-protocols/interface-documentation/one-to-many-dyad-census`,
     motif: 'one-to-many',
+    screenshotType: 'OneToManyDyadCensus',
   },
   {
     group: 'interfaces',
@@ -60,6 +63,7 @@ export const interfaceFeatures = [
     ],
     href: `${documentationRoot}/design-protocols/interface-documentation/family-pedigree`,
     motif: 'family-pedigree',
+    screenshotType: 'FamilyPedigree',
   },
   {
     group: 'interfaces',
@@ -75,6 +79,7 @@ export const interfaceFeatures = [
     ],
     href: `${documentationRoot}/design-protocols/interface-documentation/narrative-pedigree`,
     motif: 'narrative-pedigree',
+    screenshotType: 'NarrativePedigree',
   },
   {
     group: 'interfaces',
@@ -90,6 +95,7 @@ export const interfaceFeatures = [
     ],
     href: `${documentationRoot}/design-protocols/interface-documentation/network-composer`,
     motif: 'network-composer',
+    screenshotType: 'NetworkComposer',
   },
   {
     group: 'schema',

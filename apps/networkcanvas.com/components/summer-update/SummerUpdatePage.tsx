@@ -8,15 +8,15 @@ import {
   useReducedMotion,
 } from 'motion/react';
 import Image from 'next/image';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import { Badge } from '@codaco/fresco-ui/Badge';
 import Definition from '@codaco/fresco-ui/Definition';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import InterfacePicture from '@codaco/interface-images/InterfacePicture';
 import { Footer } from '~/components/layout/Footer';
 import { Reveal } from '~/components/ui/Reveal';
 import { cn } from '~/lib/cn';
@@ -41,6 +41,16 @@ import {
   interfaceFeatures,
 } from './summerUpdateContent';
 import { summerUpdateRevealMotion } from './summerUpdateMotion';
+
+type FeatureGroup = (typeof interfaceFeatures)[number]['group'];
+
+const featureGroupHeadings: Record<FeatureGroup, string> = {
+  interfaces: 'New interview interfaces',
+  schema: 'Schema 8 features',
+  architect: 'Architect',
+  interviewer: 'Interviewer',
+  fresco: 'Fresco 4.0.0',
+};
 
 export function SummerUpdatePage() {
   const shouldReduceMotion = useReducedMotion();
@@ -460,12 +470,12 @@ export function SummerUpdatePage() {
                   reporting, dashboards, and analytics.
                 </FeatureCard>
                 <FeatureCard
-                  title="Flexible storage"
+                  title="Fully self-hostable"
                   color="mustard"
                   delay={0.22}
                 >
-                  Fully deployable on your own infrastructure – Fresco can be
-                  installed entirely on your own servers, or hosted in your
+                  Fully deployable on your own infrastructure – Fresco can now
+                  be installed entirely on your own servers, or hosted in your
                   private cloud, giving you full control over your data.
                 </FeatureCard>
               </div>
@@ -516,75 +526,100 @@ export function SummerUpdatePage() {
                 <FeatureConstellation />
                 {interfaceFeatures.map((feature, index) => {
                   const isSelected = selectedInterface === index;
+                  const startsGroup =
+                    interfaceFeatures[index - 1]?.group !== feature.group;
 
                   return (
-                    <Reveal
-                      {...summerUpdateRevealMotion}
-                      delay={(index % 3) * 0.08}
-                      className="relative z-10 h-full"
-                      key={feature.shortName}
-                    >
-                      <motion.div
-                        layout={!shouldReduceMotion}
-                        className="relative h-full"
-                        transition={{
-                          duration: shouldReduceMotion ? 0 : undefined,
-                          type: shouldReduceMotion ? 'tween' : 'spring',
-                          stiffness: shouldReduceMotion ? undefined : 340,
-                          damping: shouldReduceMotion ? undefined : 32,
-                        }}
-                      >
-                        <Surface
-                          as="button"
-                          type="button"
-                          noContainer
-                          aria-pressed={isSelected}
+                    <Fragment key={feature.shortName}>
+                      {startsGroup ? (
+                        <Reveal
+                          {...summerUpdateRevealMotion}
                           className={cn(
-                            'hover:bg-selected aria-pressed:border-sea-serpent flex size-full flex-col items-center justify-center overflow-hidden text-center transition',
-                            'hover:elevation-high aria-pressed:inset-surface aria-pressed:bg-sea-serpent/15 not-aria-pressed:hover:-translate-y-1',
+                            'relative z-10 col-span-full',
+                            index > 0 && 'mt-8',
                           )}
-                          onClick={() => setSelectedInterface(index)}
                         >
-                          {isSelected ? (
+                          <Heading
+                            level="h3"
+                            variant="subheading"
+                            margin="none"
+                          >
+                            {featureGroupHeadings[feature.group]}
+                          </Heading>
+                        </Reveal>
+                      ) : null}
+                      <Reveal
+                        {...summerUpdateRevealMotion}
+                        delay={(index % 3) * 0.08}
+                        className="relative z-10 h-full"
+                      >
+                        <motion.div
+                          layout={!shouldReduceMotion}
+                          className="relative h-full"
+                          transition={{
+                            duration: shouldReduceMotion ? 0 : undefined,
+                            type: shouldReduceMotion ? 'tween' : 'spring',
+                            stiffness: shouldReduceMotion ? undefined : 340,
+                            damping: shouldReduceMotion ? undefined : 32,
+                          }}
+                        >
+                          <Surface
+                            as="button"
+                            type="button"
+                            noContainer
+                            aria-pressed={isSelected}
+                            className={cn(
+                              'focusable hover:bg-selected aria-pressed:border-sea-serpent flex size-full flex-col items-center justify-center overflow-hidden text-center transition',
+                              'hover:elevation-high aria-pressed:inset-surface aria-pressed:bg-sea-serpent/15 not-aria-pressed:hover:-translate-y-1',
+                            )}
+                            onClick={() => setSelectedInterface(index)}
+                          >
+                            {isSelected ? (
+                              <motion.span
+                                layoutId={
+                                  shouldReduceMotion
+                                    ? undefined
+                                    : 'active-schema-feature'
+                                }
+                                aria-hidden
+                                className="pointer-events-none absolute inset-0"
+                                transition={{
+                                  duration: shouldReduceMotion ? 0 : undefined,
+                                  type: shouldReduceMotion ? 'tween' : 'spring',
+                                  stiffness: shouldReduceMotion
+                                    ? undefined
+                                    : 420,
+                                  damping: shouldReduceMotion ? undefined : 34,
+                                }}
+                              />
+                            ) : null}
                             <motion.span
-                              layoutId={
+                              className="relative z-10 flex flex-col items-center justify-center gap-3"
+                              animate={
                                 shouldReduceMotion
                                   ? undefined
-                                  : 'active-schema-feature'
+                                  : isSelected
+                                    ? {
+                                        scale: 1.045,
+                                        y: -2,
+                                      }
+                                    : { scale: 1, y: 0 }
                               }
-                              aria-hidden
-                              className="pointer-events-none absolute inset-0"
                               transition={{
-                                duration: shouldReduceMotion ? 0 : undefined,
-                                type: shouldReduceMotion ? 'tween' : 'spring',
-                                stiffness: shouldReduceMotion ? undefined : 420,
-                                damping: shouldReduceMotion ? undefined : 34,
+                                type: 'spring',
+                                stiffness: 420,
+                                damping: 30,
                               }}
-                            />
-                          ) : null}
-                          <motion.span
-                            className="relative z-10 flex flex-col items-center justify-center gap-3"
-                            animate={
-                              shouldReduceMotion
-                                ? undefined
-                                : isSelected
-                                  ? { scale: 1.045, y: -2 }
-                                  : { scale: 1, y: 0 }
-                            }
-                            transition={{
-                              type: 'spring',
-                              stiffness: 420,
-                              damping: 30,
-                            }}
-                          >
-                            <InterfaceGraphic motif={feature.motif} />
-                            <span className="text-sm leading-snug font-bold">
-                              {feature.shortName}
-                            </span>
-                          </motion.span>
-                        </Surface>
-                      </motion.div>
-                    </Reveal>
+                            >
+                              <InterfaceGraphic motif={feature.motif} />
+                              <span className="text-sm leading-snug font-bold">
+                                {feature.shortName}
+                              </span>
+                            </motion.span>
+                          </Surface>
+                        </motion.div>
+                      </Reveal>
+                    </Fragment>
                   );
                 })}
               </div>
@@ -626,12 +661,9 @@ export function SummerUpdatePage() {
                         damping: 30,
                       }}
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <Heading level="h3" variant="subheading">
-                          {activeInterface.name}
-                        </Heading>
-                        <Badge>{activeInterface.tag}</Badge>
-                      </div>
+                      <Heading level="h3" variant="subheading">
+                        {activeInterface.name}
+                      </Heading>
                       <Paragraph emphasis="muted" className="text-current/70">
                         {activeInterface.summary}
                       </Paragraph>
@@ -675,6 +707,17 @@ export function SummerUpdatePage() {
                         Explore in the documentation{' '}
                         <ExternalLink className="inline-block size-4" />
                       </NativeLink>
+                      {'screenshotType' in activeInterface ? (
+                        <div className="mt-6 aspect-video overflow-hidden rounded">
+                          <InterfacePicture
+                            type={activeInterface.screenshotType}
+                            ratio="16:9"
+                            sizes="(min-width: 64rem) 30vw, 100vw"
+                            alt={`${activeInterface.name} preview`}
+                            className="size-full object-cover"
+                          />
+                        </div>
+                      ) : null}
                     </motion.div>
                   </AnimatePresence>
                 </Surface>

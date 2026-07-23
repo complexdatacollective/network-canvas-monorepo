@@ -16,7 +16,11 @@ import { Header } from '~/components/layout/Header';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
 import { cn } from '~/lib/cn';
 
-import { HeroEntrance, launchHeroHeaderVariants } from './HeroEntrance';
+import {
+  HeroEntrance,
+  launchHeroHeaderVariants,
+  launchHeroWeaveVariants,
+} from './HeroEntrance';
 import { HeroSignalField } from './HeroSignalField';
 import { Section } from './Section';
 
@@ -107,7 +111,14 @@ export function LaunchHero() {
     >
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="from-slate-blue/25 via-sea-serpent/10 absolute inset-0 bg-linear-to-b to-transparent" />
-        <HomepagePageBackground />
+        <motion.div
+          className="entrance-motion-item absolute inset-0"
+          initial={false}
+          animate={entranceControls}
+          variants={launchHeroWeaveVariants}
+        >
+          <HomepagePageBackground />
+        </motion.div>
         <HeroSignalField />
       </div>
       <motion.div

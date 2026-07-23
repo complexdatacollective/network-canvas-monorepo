@@ -110,6 +110,5 @@ export const institutions = [
 ];
 
 export const footerLinks = [
-  { id: 'terms', href: externalLinks.terms },
   { id: 'privacy', href: externalLinks.privacy },
 ] as const;
