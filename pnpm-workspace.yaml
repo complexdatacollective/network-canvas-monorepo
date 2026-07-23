@@ -78,7 +78,7 @@ catalog:
   jszip: ^3.10.1
   lucide-react: ^1.17.0
   motion: ^12.40.0
-  next: ^16.2.10
+  next: ^16.2.11
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.61.1
