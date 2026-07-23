@@ -1,5 +1,36 @@
 # @codaco/interviewer
 
+## 8.0.0-beta.9
+
+### Minor Changes
+
+- Synthetic sessions now pick people from a protocol's actual rosters. Previously,
+  a roster screen generated invented people, so test data never lined up with the
+  roster file and that mismatch carried into every later stage. Generated sessions
+  now draw from the real roster rows, and a stage that also allows adding people
+  manually gets a mix of both. Where a side panel filters its roster, generation
+  draws only from the people that panel would actually show. A roster that loads
+  but has no rows — or whose panel filters out everyone — now generates an empty
+  roster stage rather than inventing people. Protocols whose roster files are
+  missing or unreadable still generate as before.
+
+### Patch Changes
+
+- Keep the case ID form stable when starting an interview on short tablet viewports, with compact responsive spacing and a focused backdrop that preserves the surrounding protocol deck.
+- Animate the resume-last-interview notification out while entering a case ID for
+  a new interview, then bring it back when returning to the protocol card.
+- Clarify that interview data is stored locally on this device and encrypted there when app security is configured, whether Interviewer is open in a browser tab or installed as an app.
+- Preserve the existing analytics preference when app security is enabled from
+  Settings, and keep mandatory setup available after the optional wizard is
+  exited without choosing a security method.
+- Replace the startup loading ring with the same large Network Canvas spinner used by Architect for a consistent first-load experience.
+- Preserve SVG image types when importing protocol assets so responsive canvas backgrounds display correctly.
+- Let browser users enable app security from the Security settings with the Get
+  started wizard. Settings-launched setup preserves existing data if it is exited
+  after a device lock has been created.
+- Fix the update dialog so Install and reload opens the new version immediately and shows progress while the update is applied.
+- Use a consistent authentication and recovery dialog throughout Interviewer, avoid a duplicate identity check when refreshing an active interview, and suppress destructive recovery while an interview is protected without blocking biometric passphrase recovery.
+
 ## 8.0.0-beta.8
 
 ### Patch Changes
