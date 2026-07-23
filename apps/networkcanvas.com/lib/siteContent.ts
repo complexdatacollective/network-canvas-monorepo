@@ -48,7 +48,7 @@ const httpsUrl = z
   .refine((value) => value.startsWith('https://'), 'must use HTTPS');
 const internalPath = z
   .string()
-  .regex(/^\/(?!\/)[^\s]*$/, 'must be a root-relative path');
+  .regex(/^\/(?![\\/])[^\\\s]*$/, 'must be a root-relative path');
 const publicImage = z
   .string()
   .regex(/^\/images\/.+/, 'must start with /images/');

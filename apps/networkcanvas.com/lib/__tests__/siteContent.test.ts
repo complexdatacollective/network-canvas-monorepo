@@ -132,6 +132,15 @@ p1,Publication,Publicación,Journal,Revista,Author,http://example.com/p1
 `,
     },
     {
+      name: 'unsafe internal URL',
+      filename: 'latest-news.csv',
+      row: 'row 2',
+      field: 'href',
+      source: `id,title_en,title_es,href
+unsafe,Unsafe news,Noticia insegura,/\\evil.com
+`,
+    },
+    {
       name: 'invalid image',
       filename: 'core-team.csv',
       row: 'row 2',
