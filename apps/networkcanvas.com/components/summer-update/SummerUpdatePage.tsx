@@ -25,7 +25,6 @@ import { ActionButton } from './ActionButton';
 import { BenefitCard } from './BenefitCard';
 import { BulletList } from './BulletList';
 import { DestinationCard } from './DestinationCard';
-import { DestinationFan } from './DestinationFan';
 import { FeatureCard } from './FeatureCard';
 import { FeatureConstellation } from './FeatureConstellation';
 import { InterfaceGraphic } from './InterfaceGraphic';
