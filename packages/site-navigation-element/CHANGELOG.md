@@ -1,5 +1,11 @@
 # @codaco/site-navigation-element
 
+## 1.0.1
+
+### Patch Changes
+
+- a95c5e8: Reveal the software destinations in the shared site navigation with a staggered animation, keep the dropdown stable while it closes, and respect reduced-motion preferences.
+
 ## 1.0.0
 
 ### Major Changes

@@ -1,5 +1,14 @@
 # @codaco/fresco-ui
 
+## 4.1.2
+
+### Patch Changes
+
+- 72adf34: Improve the shared site navigation software menu with roomier spacing and app icons for every destination.
+- cdce0c2: Rename the shared site navigation "Docs" link to "Documentation".
+- a95c5e8: Reveal the software destinations in the shared site navigation with a staggered animation, keep the dropdown stable while it closes, and respect reduced-motion preferences.
+- 10e9fba: Toggle button labels no longer paint over content stacked above them. Their text sat in the same stacking context as the surrounding page rather than being scoped to its own button, so a form's pinned header could be overlapped while scrolling.
+
 ## 4.1.1
 
 ### Patch Changes
