@@ -394,7 +394,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'quickAdd',
     'behaviours.minNodes',
     'behaviours.maxNodes',
-    'behaviours.maxNodes-panel-drag-gap',
+    'behaviours.maxNodes-panel-drag',
     'panels[].id',
     'panels[].title',
     'panels[].dataSource=existing',

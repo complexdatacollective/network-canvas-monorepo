@@ -89,7 +89,7 @@ const StageEditor = (props: StageEditorProps) => {
 
   const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
   const interfaceType = (stage?.type || type || 'Information') as StageType;
-  const template = getInterface(interfaceType).template || {};
+  const template = getInterface(interfaceType).template;
   const initialValues = stage || { ...template, type: interfaceType };
 
   // Get form state

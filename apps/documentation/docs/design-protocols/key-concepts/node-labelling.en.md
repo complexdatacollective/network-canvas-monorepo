@@ -1,5 +1,5 @@
 ---
-title: Node Labelling
+title: Node Labeling
 navOrder: 13
 ---
 
@@ -7,30 +7,30 @@ navOrder: 13
 
 Interviewer calculates the label to be used when rendering a node using the following logic:
 
-0. Use any node label worker that is within the protocol (see [section below](#custom-node-labelling-advanced) for details on this advanced feature).
+0. Use any node label worker that is within the protocol (see [section below](#custom-node-labeling-advanced) for details on this advanced feature).
 1. Look for a variable called "name" (regardless of case) in the [codebook](/en/design-protocols/key-concepts/codebook) for node's type, and try to retrieve this value from the node.
 2. Look for a property on the node with a key of 'name' (regardless of case), and try to retrieve this value.
 3. Show the text "No 'name' variable!"
 
 If you are seeing unexpected results, such as "No 'name' variable!" messages, ensure you have constructed your protocol or your data in a way that satisfies a rule with a higher precedence. For example, ensure you have correctly created a 'name' variable for the node type, and that this variable is assigned a value within your interview.
 
-For advanced functionality, such as calculating a node label dynamically, see ["custom node labelling"](#custom-node-labelling-advanced) below.
+For advanced functionality, such as calculating a node label dynamically, see ["custom node labeling"](#custom-node-labeling-advanced) below.
 
-## Labelling Nodes from Roster Data
+## Labeling Nodes from Roster Data
 
-To control the labelling of nodes from network file assets, the following options are available: create an attribute for your nodes called "name" (regardless of case). You can implement this attribute as a column in your CSV file, or as a named attribute in a GraphML file.
+To control the labeling of nodes from network file assets, the following options are available: create an attribute for your nodes called "name" (regardless of case). You can implement this attribute as a column in your CSV file, or as a named attribute in a GraphML file.
 
 See also: [working with assets](/en/design-protocols/key-concepts/resources#network).
 
-## Custom Node Labelling (Advanced)
+## Custom Node Labeling (Advanced)
 
 <TipBox>
 
-Custom node labelling is not supported in [Fresco](/en/collect-data/fresco). The `nodeLabelWorker` described below only runs in Interviewer.
+Custom node labeling is not supported in [Fresco](/en/collect-data/fresco). The `nodeLabelWorker` described below only runs in Interviewer.
 
 </TipBox>
 
-For more flexible labelling of nodes, you can implement a custom labelling function. To accomplish this, you would:
+For more flexible labeling of nodes, you can implement a custom labeling function. To accomplish this, you would:
 
 - Add `nodeLabelWorker.js` to your protocol (see [Inside a .netcanvas file](./the-protocol-file#inside-a-netcanvas-file) for details of how to do this)
 - Within this file, define a function named `nodeLabelWorker`
@@ -63,6 +63,6 @@ function nodeLabelWorker({ node, network }) {
 
 In addition to attributes specified from a protocol, each node will contain a unique `networkCanvasId` property which can be used to identify the node in the network.
 
-The `nodeLabelWorker` function will be executed asynchronously in a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers) environment. It will be further restricted by the Content Security Policy of the app; you should not rely on network access within the labelling function.
+The `nodeLabelWorker` function will be executed asynchronously in a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers) environment. It will be further restricted by the Content Security Policy of the app; you should not rely on network access within the labeling function.
 
 For a more complete example, see [the nodeLabelWorker in the development protocol](https://github.com/complexdatacollective/development-protocol/blob/master/nodeLabelWorker.js).

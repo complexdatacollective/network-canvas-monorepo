@@ -2,6 +2,7 @@
   "label": "Draw Your Network",
   "type": "Sociogram",
   "background": {
+    "skewedTowardCenter": false,
     "concentricCircles": 4
   },
   "subject": {
