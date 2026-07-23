@@ -3,7 +3,6 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
   within,
 } from '@testing-library/react';
 import type { ComponentPropsWithoutRef, ComponentType, ReactNode } from 'react';
@@ -15,15 +14,8 @@ const { motionPreferences } = vi.hoisted(() => ({
   motionPreferences: { shouldReduce: false },
 }));
 
-vi.mock('@codaco/art/NetworkWeaveBackground', () => ({
-  default: ({ convergence }: { convergence?: { x: number; y: number } }) => (
-    <div
-      data-testid="hero-weave"
-      data-convergence={
-        convergence ? `${convergence.x},${convergence.y}` : undefined
-      }
-    />
-  ),
+vi.mock('../../ui/HomepagePageBackground', () => ({
+  HomepagePageBackground: () => <div data-testid="hero-weave" />,
 }));
 
 function MotionDiv({
@@ -82,8 +74,13 @@ vi.mock('~/components/ui/ButtonLink', () => ({
     children,
     external: _external,
     href,
+    textStyle: _textStyle,
     ...props
-  }: ComponentPropsWithoutRef<'a'> & { external?: boolean; href: string }) => (
+  }: ComponentPropsWithoutRef<'a'> & {
+    external?: boolean;
+    href: string;
+    textStyle?: string;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>
@@ -249,11 +246,11 @@ describe('SummerUpdatePage', () => {
     }
 
     expect(
-      within(destinations).getByRole('link', { name: 'Open Architect' }),
+      within(destinations).getByRole('link', { name: /Open Architect/ }),
     ).toHaveAttribute('href', 'https://architect.networkcanvas.com/');
   });
 
-  it('uses source-specific frame ratios for the new app screenshots', () => {
+  it('uses consistent frame ratios for the new app screenshots', () => {
     render(<SummerUpdatePage />);
 
     const architectScreenshot = screen.getByRole('img', {
@@ -264,10 +261,10 @@ describe('SummerUpdatePage', () => {
     });
 
     expect(architectScreenshot.parentElement).toHaveClass('aspect-4/3');
-    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-3/2');
+    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-4/3');
   });
 
-  it('uses theme-aware sections, a text-anchored woven hero, and white browser frames', async () => {
+  it('uses theme-aware sections, a text-anchored woven hero, and white browser frames', () => {
     render(<SummerUpdatePage />);
 
     const heroHeading = screen.getByRole('heading', {
@@ -289,7 +286,6 @@ describe('SummerUpdatePage', () => {
     );
     expect(hero.querySelector('.min-h-screen')).not.toBeInTheDocument();
     expect(hero).not.toHaveClass('bg-linear-to-b');
-    expect(heroHeading).toHaveClass('text-text');
     expect(projectName).toHaveClass('bg-clip-text', 'text-white');
     expect(projectName).toHaveStyle({
       animation: 'var(--animate-text-glow)',
@@ -298,38 +294,8 @@ describe('SummerUpdatePage', () => {
     expect(projectName.style.webkitTextStroke).toBe(
       'var(--text-glow-stroke-width) transparent',
     );
-
-    vi.spyOn(hero, 'getBoundingClientRect').mockReturnValue({
-      bottom: 850,
-      height: 800,
-      left: 100,
-      right: 1100,
-      top: 50,
-      width: 1000,
-      x: 100,
-      y: 50,
-      toJSON: () => ({}),
-    });
-    vi.spyOn(projectName, 'getBoundingClientRect').mockReturnValue({
-      bottom: 450,
-      height: 100,
-      left: 600,
-      right: 800,
-      top: 350,
-      width: 200,
-      x: 600,
-      y: 350,
-      toJSON: () => ({}),
-    });
-
-    fireEvent(window, new Event('resize'));
-
-    await waitFor(() =>
-      expect(screen.getByTestId('hero-weave')).toHaveAttribute(
-        'data-convergence',
-        '0.6,0.4375',
-      ),
-    );
+    expect(projectName).toHaveAttribute('data-homepage-weave-target');
+    expect(within(hero).getByTestId('hero-weave')).toBeInTheDocument();
 
     const upgradeHeading = screen.getByRole('heading', {
       name: 'When should you upgrade?',
@@ -348,7 +314,7 @@ describe('SummerUpdatePage', () => {
       name: 'Interviewer dashboard showing protocol cards and a resume interview action',
     });
     expect(interviewerScreenshot.parentElement).toHaveClass('bg-white');
-    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-3/2');
+    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-4/3');
     expect(interviewerScreenshot.parentElement).not.toHaveClass(
       'bg-rich-black',
     );

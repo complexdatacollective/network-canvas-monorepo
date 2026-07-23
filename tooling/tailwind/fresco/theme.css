@@ -458,7 +458,7 @@
   --animate-linking: linking 1s ease-in-out infinite;
   --animate-pulse-glow: animate-pulse-glow 2s infinite;
   --animate-text-glow: text-glow-orbit 13.5s linear infinite;
-  --text-glow-stroke-width: 0.062em;
+  --text-glow-stroke-width: 0.032em;
 
   --transform-origin-left-right: 0% 50%;
 

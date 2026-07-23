@@ -3,17 +3,10 @@
 import { ExternalLink } from 'lucide-react';
 import { motion, useReducedMotion, useScroll } from 'motion/react';
 import Image from 'next/image';
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { forwardRef, useState, type ReactNode } from 'react';
 
-import NetworkWeaveBackground from '@codaco/art/NetworkWeaveBackground';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import Definition from '@codaco/fresco-ui/Definition';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
@@ -25,12 +18,14 @@ import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Reveal } from '~/components/ui/Reveal';
 import { cn } from '~/lib/cn';
 
+import { HomepagePageBackground } from '../ui/HomepagePageBackground';
+import { InterfaceGraphic } from './InterfaceGraphic';
+import { ProtocolMigrationIllustration } from './ProtocolMigrationIllustration';
 import {
   compatibilityRows,
   destinationLinks,
   interfaceFeatures,
   type CompatibilityStatus,
-  type InterfaceMotif,
 } from './summerUpdateContent';
 
 const easing = [0.22, 1, 0.36, 1] as [number, number, number, number];
@@ -48,7 +43,8 @@ type AccentColor =
   | 'neon-coral'
   | 'paradise-pink'
   | 'sea-green'
-  | 'sea-serpent';
+  | 'sea-serpent'
+  | 'slate-blue';
 
 const accentBackgroundClasses: Record<AccentColor, string> = {
   'cerulean-blue': 'bg-cerulean-blue',
@@ -59,6 +55,7 @@ const accentBackgroundClasses: Record<AccentColor, string> = {
   'paradise-pink': 'bg-paradise-pink',
   'sea-green': 'bg-sea-green',
   'sea-serpent': 'bg-sea-serpent',
+  'slate-blue': 'bg-slate-blue',
 };
 const accentSoftBackgroundClasses: Record<AccentColor, string> = {
   'cerulean-blue': 'bg-cerulean-blue/15',
@@ -69,6 +66,7 @@ const accentSoftBackgroundClasses: Record<AccentColor, string> = {
   'paradise-pink': 'bg-paradise-pink/15',
   'sea-green': 'bg-sea-green/15',
   'sea-serpent': 'bg-sea-serpent/15',
+  'slate-blue': 'bg-slate-blue/15',
 };
 const accentTextClasses: Record<AccentColor, string> = {
   'cerulean-blue': 'text-cerulean-blue',
@@ -79,27 +77,20 @@ const accentTextClasses: Record<AccentColor, string> = {
   'paradise-pink': 'text-paradise-pink',
   'sea-green': 'text-sea-green',
   'sea-serpent': 'text-sea-serpent',
+  'slate-blue': 'text-slate-blue',
 };
-const heroWeaveColors = [
-  'var(--color-neon-coral)',
-  'var(--color-mustard)',
-  'var(--color-sea-green)',
-  'var(--color-sea-serpent)',
-  'var(--color-cerulean-blue)',
-] as const;
 const heroTextGlowClasses =
   'bg-[conic-gradient(from_var(--text-glow-angle),var(--color-neon-coral),var(--color-sea-serpent),var(--color-mustard),var(--color-sea-green),var(--color-neon-coral))] bg-clip-text';
-const defaultHeroWeaveConvergence = { x: 0.5, y: 0.5 };
-
-function clampUnit(value: number) {
-  return Math.min(1, Math.max(0, value));
-}
 
 const Section = forwardRef<
   HTMLElement,
   { children: ReactNode } & React.HTMLAttributes<HTMLElement>
 >(({ children, className, ...rest }, ref) => (
-  <section ref={ref} className={cn('relative my-24', className)} {...rest}>
+  <section
+    ref={ref}
+    className={cn('tablet-landscape:px-10 relative my-24 px-6', className)}
+    {...rest}
+  >
     {children}
   </section>
 ));
@@ -112,14 +103,12 @@ function HeroEntrance({
   className,
   delay,
   direction = 'up',
-  onAnimationComplete,
 }: {
   bar?: boolean;
   children?: ReactNode;
   className?: string;
   delay: number;
   direction?: 'down' | 'up';
-  onAnimationComplete?: () => void;
 }) {
   const shouldReduceMotion = useReducedMotion();
   const initial = bar
@@ -139,7 +128,6 @@ function HeroEntrance({
           ? { duration: 0 }
           : { duration: bar ? 1 : 0.9, delay, ease: easing }
       }
-      onAnimationComplete={onAnimationComplete}
       className={className}
     >
       {children}
@@ -147,11 +135,36 @@ function HeroEntrance({
   );
 }
 
-function SectionLabel({ children }: { children: ReactNode }) {
+function SectionLabel({
+  children,
+  Icon,
+  subSection,
+}: {
+  children: ReactNode;
+  Icon?: ReactNode;
+  subSection?: boolean;
+}) {
   return (
-    <div className="font-monospace text-slate-blue inline-flex items-center gap-3 text-xs leading-relaxed font-semibold tracking-widest uppercase">
-      <span aria-hidden className="h-0.5 w-6 bg-current" />
-      {children}
+    <div
+      className={cn(
+        'font-monospace text-slate-blue inline-flex items-center gap-3 text-xs leading-relaxed font-semibold tracking-widest uppercase',
+        subSection
+          ? '[counter-increment:subsection]'
+          : '[counter-increment:section] [counter-set:subsection_0]',
+        subSection && 'text-slate-blue/75',
+      )}
+    >
+      {Icon ?? <span aria-hidden className="h-0.5 w-6 bg-current" />}
+      <span>
+        <span aria-hidden>
+          <span className="before:content-[counter(section,decimal-leading-zero)]" />
+          {subSection && (
+            <span className="before:content-[counter(subsection,lower-alpha)]" />
+          )}
+          {' — '}
+        </span>
+        {children}
+      </span>
     </div>
   );
 }
@@ -228,10 +241,8 @@ function BenefitCard({
         >
           <span className={cn('size-4 rounded-full', iconDotClass)} />
         </div>
-        <Heading level="h3" className="text-text">
-          {title}
-        </Heading>
-        <Paragraph className="text-text/75">{children}</Paragraph>
+        <Heading level="h3">{title}</Heading>
+        <Paragraph className="text-current/75">{children}</Paragraph>
       </Surface>
     </Reveal>
   );
@@ -263,49 +274,32 @@ function BulletList({
 function ScreenshotFrame({
   address,
   alt,
-  aspect = 'standard',
-  crop = 'none',
-  fit = 'cover',
   src,
 }: {
   address: string;
   alt: string;
-  aspect?: 'standard' | 'photo';
-  crop?: 'none' | 'architect' | 'interviewer';
-  fit?: 'contain' | 'cover';
   src: string;
 }) {
   return (
-    <div className="elevation-medium overflow-hidden rounded bg-white">
+    <div className="elevation-medium bg-surface overflow-hidden rounded">
       <div
-        className="border-navy-taupe/10 flex items-center gap-2 border-b px-4 py-3"
+        className="flex items-center gap-2 border-b border-current/10 px-4 py-3"
         aria-hidden
       >
         <span className="bg-neon-coral size-2.5 rounded-full" />
         <span className="bg-mustard size-2.5 rounded-full" />
         <span className="bg-sea-green size-2.5 rounded-full" />
-        <span className="font-monospace text-navy-taupe/55 ml-2 truncate text-xs">
+        <span className="font-monospace ml-2 truncate text-xs text-current/55">
           {address}
         </span>
       </div>
-      <div
-        className={cn(
-          'relative overflow-hidden bg-white',
-          aspect === 'standard' && 'aspect-4/3',
-          aspect === 'photo' && 'aspect-3/2',
-        )}
-      >
+      <div className="relative aspect-4/3 overflow-hidden bg-white">
         <Image
           fill
           src={src}
           alt={alt}
           sizes="(min-width: 801px) 50vw, 100vw"
-          className={cn(
-            fit === 'cover' ? 'object-cover' : 'object-contain',
-            crop === 'none' && 'object-top',
-            crop === 'architect' && 'origin-top scale-135 object-top',
-            crop === 'interviewer' && '-translate-y-2 scale-110 object-center',
-          )}
+          className="fit"
         />
       </div>
     </div>
@@ -321,11 +315,12 @@ function DestinationCard({
 }) {
   return (
     <Surface
-      as="article"
+      as="a"
+      href={destination.href}
       noContainer
       spacing="lg"
       shadow="sm"
-      className="group border-text/15 bg-surface-1 hover:elevation-medium relative flex h-full flex-col overflow-hidden border transition hover:-translate-y-1"
+      className="effect-shadow-sm group hover:effect-shadow-md relative flex h-full flex-col overflow-hidden border transition hover:-translate-y-1"
     >
       <div className="flex items-start justify-between gap-6">
         <span
@@ -343,7 +338,7 @@ function DestinationCard({
             className="rounded-xs"
           />
         </span>
-        <span className="font-monospace text-text/35 text-xs tracking-widest">
+        <span className="font-monospace text-xs tracking-widest text-current/35">
           {String(index + 1).padStart(2, '0')} / 04
         </span>
       </div>
@@ -358,21 +353,14 @@ function DestinationCard({
         </span>
         <div className="mb-4">
           <Heading level="h3" variant="subheading" margin="none">
-            <NativeLink
-              className="[--link:var(--color-text)]"
-              href={destination.href}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {destination.title}
-            </NativeLink>
+            {destination.title}
           </Heading>
         </div>
         <Paragraph intent="smallText" emphasis="muted">
           {destination.description}
         </Paragraph>
         <div className="border-text/10 mt-auto flex items-center justify-between gap-4 border-t pt-5">
-          <span className="font-monospace text-text/55 truncate text-xs">
+          <span className="font-monospace truncate text-xs text-current/55">
             {destination.detail}
           </span>
           <ExternalLink
@@ -424,261 +412,6 @@ function FeatureCard({
   );
 }
 
-function InterfaceGraphic({ motif }: { motif: InterfaceMotif }) {
-  const common = {
-    'width': 76,
-    'height': 56,
-    'viewBox': '0 0 76 56',
-    'aria-hidden': true,
-  } as const;
-
-  switch (motif) {
-    case 'geospatial':
-      return (
-        <svg {...common}>
-          <rect
-            x="6"
-            y="8"
-            width="64"
-            height="40"
-            rx="9"
-            fill="none"
-            stroke="currentColor"
-            strokeOpacity=".32"
-            strokeWidth="2"
-            strokeDasharray="5 5"
-          />
-          <line
-            x1="26"
-            y1="24"
-            x2="46"
-            y2="34"
-            stroke="currentColor"
-            strokeOpacity=".4"
-            strokeWidth="1.5"
-          />
-          <circle cx="26" cy="24" r="5.5" className="fill-neon-coral" />
-          <circle cx="46" cy="34" r="4.5" className="fill-mustard" />
-          <circle cx="57" cy="17" r="3.5" className="fill-sea-serpent" />
-        </svg>
-      );
-    case 'anonymisation':
-      return (
-        <svg {...common}>
-          <circle
-            cx="38"
-            cy="28"
-            r="19"
-            fill="none"
-            stroke="currentColor"
-            strokeOpacity=".45"
-            strokeWidth="2"
-            strokeDasharray="4 6"
-          />
-          <circle cx="38" cy="28" r="9" className="fill-kiwi" />
-        </svg>
-      );
-    case 'one-to-many':
-      return (
-        <svg {...common}>
-          <g stroke="currentColor" strokeOpacity=".5" strokeWidth="1.5">
-            <line x1="18" y1="28" x2="57" y2="12" />
-            <line x1="18" y1="28" x2="60" y2="28" />
-            <line x1="18" y1="28" x2="57" y2="44" />
-          </g>
-          <circle cx="18" cy="28" r="7" className="fill-neon-coral" />
-          <circle cx="57" cy="12" r="5" className="fill-sea-serpent" />
-          <circle cx="60" cy="28" r="5" className="fill-purple-pizazz" />
-          <circle cx="57" cy="44" r="5" className="fill-neon-carrot" />
-        </svg>
-      );
-    case 'family-pedigree':
-    case 'narrative-pedigree': {
-      const narrative = motif === 'narrative-pedigree';
-      return (
-        <svg {...common}>
-          <g stroke="currentColor" strokeOpacity=".55" strokeWidth="2">
-            <line x1="31" y1="14" x2="50" y2="14" />
-            <line x1="40" y1="14" x2="40" y2="30" />
-            <line x1="40" y1="30" x2="28" y2="41" />
-            <line x1="40" y1="30" x2="52" y2="41" />
-          </g>
-          <rect
-            x="21"
-            y="9"
-            width="10"
-            height="10"
-            className={
-              narrative
-                ? 'fill-neon-coral stroke-none'
-                : 'stroke-sea-serpent fill-none'
-            }
-            strokeWidth="2.5"
-          />
-          <circle
-            cx="50"
-            cy="14"
-            r="5.5"
-            fill="none"
-            className={narrative ? 'stroke-current' : 'stroke-paradise-pink'}
-            strokeOpacity={narrative ? '.6' : undefined}
-            strokeWidth="2.5"
-          />
-          <circle
-            cx="28"
-            cy="44"
-            r="5"
-            className={
-              narrative
-                ? 'fill-neon-coral stroke-none'
-                : 'stroke-mustard fill-none'
-            }
-            strokeWidth="2.5"
-          />
-          <rect
-            x="47"
-            y="39"
-            width="10"
-            height="10"
-            fill="none"
-            className={narrative ? 'stroke-current' : 'stroke-kiwi'}
-            strokeOpacity={narrative ? '.6' : undefined}
-            strokeWidth="2.5"
-          />
-        </svg>
-      );
-    }
-    case 'network-composer':
-      return (
-        <svg {...common}>
-          <g stroke="currentColor" strokeOpacity=".45" strokeWidth="1.5">
-            <line x1="16" y1="40" x2="34" y2="14" />
-            <line x1="34" y1="14" x2="58" y2="20" />
-            <line x1="58" y1="20" x2="52" y2="44" />
-            <line x1="16" y1="40" x2="52" y2="44" />
-            <line x1="30" y1="32" x2="58" y2="20" />
-          </g>
-          <circle cx="16" cy="40" r="6" className="fill-neon-coral" />
-          <circle cx="34" cy="14" r="5" className="fill-sea-serpent" />
-          <circle cx="58" cy="20" r="7" className="fill-mustard" />
-          <circle cx="52" cy="44" r="5" className="fill-kiwi" />
-          <circle cx="30" cy="32" r="3.5" className="fill-purple-pizazz" />
-        </svg>
-      );
-    case 'validation':
-      return (
-        <svg {...common}>
-          <line
-            x1="14"
-            y1="28"
-            x2="44"
-            y2="12"
-            stroke="currentColor"
-            strokeOpacity=".5"
-            strokeWidth="1.5"
-          />
-          <line
-            x1="14"
-            y1="28"
-            x2="44"
-            y2="44"
-            stroke="currentColor"
-            strokeOpacity=".5"
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
-          />
-          <circle cx="14" cy="28" r="6.5" className="fill-cerulean-blue" />
-          <circle cx="49" cy="12" r="5" className="fill-kiwi" />
-          <circle
-            cx="49"
-            cy="44"
-            r="5"
-            fill="none"
-            className="stroke-neon-coral"
-            strokeWidth="2.5"
-          />
-        </svg>
-      );
-    case 'node-shapes':
-      return (
-        <svg {...common}>
-          <circle cx="18" cy="28" r="8" className="fill-neon-coral" />
-          <rect
-            x="34"
-            y="20"
-            width="16"
-            height="16"
-            rx="3"
-            className="fill-sea-serpent"
-          />
-          <polygon points="64,19 73,28 64,37 55,28" className="fill-mustard" />
-        </svg>
-      );
-    case 'templates':
-      return (
-        <svg {...common}>
-          <rect
-            x="12"
-            y="20"
-            width="40"
-            height="26"
-            rx="6"
-            fill="none"
-            stroke="currentColor"
-            strokeOpacity=".3"
-            strokeWidth="2"
-          />
-          <rect
-            x="18"
-            y="13"
-            width="40"
-            height="26"
-            rx="6"
-            fill="none"
-            stroke="currentColor"
-            strokeOpacity=".5"
-            strokeWidth="2"
-          />
-          <rect
-            x="24"
-            y="6"
-            width="40"
-            height="26"
-            rx="6"
-            className="fill-slate-blue"
-            fillOpacity=".28"
-            stroke="currentColor"
-            strokeWidth="2"
-          />
-          <circle cx="34" cy="19" r="3" className="fill-neon-coral" />
-          <circle cx="44" cy="19" r="3" className="fill-sea-serpent" />
-          <circle cx="54" cy="19" r="3" className="fill-mustard" />
-        </svg>
-      );
-    case 'synthetic-data':
-      return (
-        <svg {...common}>
-          <g
-            fill="none"
-            stroke="currentColor"
-            strokeOpacity=".5"
-            strokeWidth="2"
-            strokeDasharray="3 4"
-          >
-            <circle cx="20" cy="20" r="5" />
-            <circle cx="56" cy="13" r="4" />
-            <circle cx="60" cy="41" r="5" />
-            <circle cx="22" cy="43" r="4" />
-          </g>
-          <circle cx="38" cy="28" r="7.5" className="fill-paradise-pink" />
-        </svg>
-      );
-  }
-
-  const exhaustiveMotif: never = motif;
-  return exhaustiveMotif;
-}
-
 function StatusChip({ status }: { status: CompatibilityStatus }) {
   const labels = {
     migrates: '→ Migrates to 8',
@@ -710,68 +443,7 @@ export function SummerUpdatePage() {
   const [selectedCompatibilityRow, setSelectedCompatibilityRow] = useState<
     number | null
   >(null);
-  const [heroWeaveConvergence, setHeroWeaveConvergence] = useState(
-    defaultHeroWeaveConvergence,
-  );
-  const heroRef = useRef<HTMLElement>(null);
-  const heroFocalTextRef = useRef<HTMLSpanElement>(null);
   const { scrollYProgress } = useScroll();
-  const updateHeroWeaveConvergence = useCallback(() => {
-    const hero = heroRef.current;
-    const focalText = heroFocalTextRef.current;
-
-    if (!hero || !focalText) {
-      return;
-    }
-
-    const heroBounds = hero.getBoundingClientRect();
-    const focalTextBounds = focalText.getBoundingClientRect();
-
-    if (heroBounds.width === 0 || heroBounds.height === 0) {
-      return;
-    }
-
-    const nextConvergence = {
-      x: clampUnit(
-        (focalTextBounds.left + focalTextBounds.width / 2 - heroBounds.left) /
-          heroBounds.width,
-      ),
-      y: clampUnit(
-        (focalTextBounds.top + focalTextBounds.height / 2 - heroBounds.top) /
-          heroBounds.height,
-      ),
-    };
-
-    setHeroWeaveConvergence((currentConvergence) =>
-      Math.abs(currentConvergence.x - nextConvergence.x) < 0.001 &&
-      Math.abs(currentConvergence.y - nextConvergence.y) < 0.001
-        ? currentConvergence
-        : nextConvergence,
-    );
-  }, []);
-
-  useEffect(() => {
-    updateHeroWeaveConvergence();
-    window.addEventListener('resize', updateHeroWeaveConvergence);
-
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? undefined
-        : new ResizeObserver(updateHeroWeaveConvergence);
-
-    if (heroRef.current) {
-      resizeObserver?.observe(heroRef.current);
-    }
-
-    if (heroFocalTextRef.current) {
-      resizeObserver?.observe(heroFocalTextRef.current);
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateHeroWeaveConvergence);
-      resizeObserver?.disconnect();
-    };
-  }, [updateHeroWeaveConvergence]);
 
   const activeInterface =
     interfaceFeatures[selectedInterface] ?? interfaceFeatures[0];
@@ -785,7 +457,7 @@ export function SummerUpdatePage() {
 
   return (
     <>
-      <main className="selection:bg-mustard selection:text-rich-black">
+      <main className="selection:bg-mustard selection:text-rich-black [counter-reset:section_subsection]">
         <motion.div
           aria-hidden
           className="from-neon-coral via-mustard to-sea-green fixed inset-x-0 top-0 z-50 h-1 w-full origin-left rounded-r-full bg-linear-to-r"
@@ -793,46 +465,26 @@ export function SummerUpdatePage() {
         />
 
         <Section
-          ref={heroRef}
-          className="m-0! flex min-h-svh flex-col overflow-hidden"
+          className="m-0! flex min-h-svh flex-col overflow-hidden px-0!"
           aria-labelledby="summer-update-title"
         >
-          <div
-            className="pointer-events-none absolute inset-0 opacity-70"
-            aria-hidden
-          >
-            <NetworkWeaveBackground
-              seed="summer-2026-update"
-              complexity={28}
-              strands={5}
-              convergence={heroWeaveConvergence}
-              colors={heroWeaveColors}
-              backgroundColor="transparent"
-              intensity={0.5}
-              flare={1.4}
-              blendMode="normal"
-              speedFactor={0.5}
-              className="block h-full w-full"
-            />
+          <div className="pointer-events-none absolute inset-0" aria-hidden>
+            <HomepagePageBackground />
           </div>
           <HeroEntrance delay={0.05} direction="down">
             <Header className="relative z-20" containerClassName="py-6!" />
           </HeroEntrance>
 
           <div className="tablet-portrait:pt-24 tablet-portrait:pb-48 relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-12 px-6 pt-16 pb-40 text-center">
-            <HeroEntrance
-              delay={0.32}
-              onAnimationComplete={updateHeroWeaveConvergence}
-            >
+            <HeroEntrance delay={0.32}>
               <Heading
                 level="h1"
                 variant="display-heading"
-                className="text-text"
                 id="summer-update-title"
               >
                 Introducing the next generation of{' '}
                 <span
-                  ref={heroFocalTextRef}
+                  data-homepage-weave-target
                   className={cn(
                     heroTextGlowClasses,
                     'overflow-visible px-2 whitespace-nowrap text-white',
@@ -858,15 +510,16 @@ export function SummerUpdatePage() {
                 className="tablet-landscape:text-xl text-center text-lg leading-relaxed"
               >
                 A leap forward in designing, running, and managing Network
-                Canvas interviews — here is what is changing, what is new, and
-                what it means for your work.
+                Canvas interviews. This page covers what's{' '}
+                <strong>changing</strong>, what's <strong>new</strong>, and what
+                it <strong>means</strong> for your work.
               </Paragraph>
             </HeroEntrance>
           </div>
 
           <HeroEntrance
             delay={1.1}
-            className="font-monospace text-text/55 absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3 text-xs tracking-widest uppercase"
+            className="font-monospace absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3 text-xs tracking-widest text-current/55 uppercase"
           >
             <span>Keep scrolling to learn more</span>
             <span
@@ -879,9 +532,9 @@ export function SummerUpdatePage() {
         </Section>
 
         <Section aria-labelledby="whats-new-title">
-          <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
-              <SectionLabel>01 — What’s new</SectionLabel>
+              <SectionLabel>What’s new</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
@@ -914,7 +567,7 @@ export function SummerUpdatePage() {
               </Paragraph>
             </Reveal>
           </div>
-          <div className="phone-landscape:grid-cols-2 desktop:grid-cols-4 mx-auto my-12 grid max-w-380 grid-cols-1 gap-6 px-6">
+          <div className="phone-landscape:grid-cols-2 desktop:grid-cols-4 mx-auto my-12 grid max-w-380 grid-cols-1 gap-6">
             <BenefitCard title="Low friction use" icon="green" delay={0}>
               Visit{' '}
               <NativeLink
@@ -959,7 +612,7 @@ export function SummerUpdatePage() {
           </div>
 
           <Reveal {...revealMotion}>
-            <Alert variant="info" className="mx-auto my-12! max-w-6xl">
+            <Alert variant="info" className="mx-auto my-12! max-w-4xl p-8">
               <AlertTitle>
                 What about the original desktop and tablet apps?
               </AlertTitle>
@@ -973,19 +626,12 @@ export function SummerUpdatePage() {
             </Alert>
           </Reveal>
 
-          <div>
-            <Heading
-              level="h2"
-              margin="none"
-              className="sr-only"
-              id="meet-apps-title"
-            >
-              Meet the apps
-            </Heading>
-            <div className="tablet-portrait:space-y-32 mx-auto max-w-6xl space-y-24">
-              <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
-                <Reveal {...revealMotion} direction="left">
-                  <div className="flex items-center gap-4">
+          <div className="tablet-portrait:space-y-32 mx-auto max-w-6xl space-y-24">
+            <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
+              <Reveal {...revealMotion} direction="left">
+                <SectionLabel
+                  subSection
+                  Icon={
                     <Image
                       src="/images/summer-2026/architect-icon.png"
                       alt="Architect app icon"
@@ -993,109 +639,118 @@ export function SummerUpdatePage() {
                       height={54}
                       className="rounded-sm"
                     />
-                    <span className="font-monospace text-slate-blue text-xs font-semibold tracking-widest uppercase">
-                      02 — Protocol design
-                    </span>
-                  </div>
-                  <Heading level="h3" variant="subheading">
-                    Meet the new Architect — design protocols in the browser
-                  </Heading>
-                  <Paragraph className="">
-                    There is nothing to install — just open{' '}
-                    <NativeLink
-                      href="https://architect.networkcanvas.com/"
-                      target="_blank"
-                    >
-                      architect.networkcanvas.com
-                    </NativeLink>{' '}
-                    and start building. Architect always runs the latest version
-                    automatically. Once in the website, install it to your
-                    computer as a{' '}
-                    <Definition
-                      asAbbreviation
-                      definition={
-                        <>
-                          <dfn>Progressive Web Apps</dfn> are specially crafted
-                          websites that can be installed on your device and
-                          provide a native app-like experience. This means they
-                          have an icon you can click to open them, they have
-                          their own storage, and they work offline.
-                        </>
-                      }
-                    >
-                      PWA
-                    </Definition>{' '}
-                    for a native-like experience and local control over your
-                    data.
-                  </Paragraph>
-                  <BulletList
-                    items={[
-                      {
-                        color: 'neon-coral',
-                        content: (
-                          <>
-                            Builds <strong>Schema 8</strong> protocols with all
-                            the new features (see below)
-                          </>
-                        ),
-                      },
-                      {
-                        color: 'sea-serpent',
-                        content:
-                          'Opens and automatically upgrades older Schema 7 protocols',
-                      },
-                      {
-                        color: 'neon-carrot',
-                        content:
-                          'Includes domain-specific protocol templates, designed to help you get started quickly and avoid common mistakes',
-                      },
-                    ]}
-                  />
-                  <div className="mt-8 flex flex-wrap gap-4">
-                    <ActionButton
-                      compact
-                      href="https://architect.networkcanvas.com/"
-                      target="_blank"
-                    >
-                      Open Architect
-                    </ActionButton>
-                    <ActionButton
-                      compact
-                      href="https://documentation.networkcanvas.com/en/design-protocols/getting-started"
-                      secondary
-                    >
-                      Documentation
-                    </ActionButton>
-                  </div>
-                  <Paragraph
-                    intent="smallText"
-                    emphasis="muted"
-                    className="text-text/55 mt-6"
-                  >
-                    Architect Classic remains available for researchers who need
-                    to keep using older versions of Interviewer (e.g. 6.6.0). It
-                    is in maintenance mode — bug fixes only — and continues to
-                    produce Schema 7 protocols.
-                  </Paragraph>
-                </Reveal>
-
-                <Reveal {...revealMotion} direction="right">
-                  <ScreenshotFrame
-                    address="architect.networkcanvas.com"
-                    alt="Architect protocol editor showing the Sample Protocol timeline"
-                    crop="architect"
-                    src="/images/screenshots/architect.png"
-                  />
-                </Reveal>
-              </div>
-
-              <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
-                <Reveal
-                  {...revealMotion}
-                  direction="right"
-                  className="tablet-portrait:order-2"
+                  }
                 >
-                  <div className="mb-5 flex items-center gap-4">
+                  Protocol design
+                </SectionLabel>
+                <Heading level="h3" variant="subheading">
+                  Meet the new Architect — design protocols in the browser
+                </Heading>
+                <Paragraph className="">
+                  There is nothing to install — just open{' '}
+                  <NativeLink
+                    href="https://architect.networkcanvas.com/"
+                    target="_blank"
+                  >
+                    architect.networkcanvas.com
+                  </NativeLink>{' '}
+                  and start building. Architect always runs the latest version
+                  automatically. Once in the website, install it to your
+                  computer as a{' '}
+                  <Definition
+                    asAbbreviation
+                    definition={
+                      <>
+                        <dfn>Progressive Web Apps</dfn> are specially crafted
+                        websites that can be installed on your device and
+                        provide a native app-like experience. This means they
+                        have an icon you can click to open them, they have their
+                        own storage, and they work offline.
+                      </>
+                    }
+                  >
+                    PWA
+                  </Definition>{' '}
+                  for a native-like experience and local control over your data.
+                </Paragraph>
+                <BulletList
+                  items={[
+                    {
+                      color: 'neon-coral',
+                      content: (
+                        <>
+                          Builds <strong>Schema 8</strong> protocols with all
+                          the new features (see below)
+                        </>
+                      ),
+                    },
+                    {
+                      color: 'sea-serpent',
+                      content: (
+                        <>
+                          Opens and <strong>automatically upgrades</strong>{' '}
+                          older Schema 7 protocols
+                        </>
+                      ),
+                    },
+                    {
+                      color: 'neon-carrot',
+                      content: (
+                        <>
+                          Includes <strong>protocol templates</strong>, designed
+                          to help you get started quickly and avoid common
+                          mistakes
+                        </>
+                      ),
+                    },
+                  ]}
+                />
+                <div className="mt-8 flex flex-wrap gap-4">
+                  <ActionButton
+                    compact
+                    href="https://architect.networkcanvas.com/"
+                    target="_blank"
+                  >
+                    Open Architect
+                  </ActionButton>
+                  <ActionButton
+                    compact
+                    href="https://documentation.networkcanvas.com/en/design-protocols/getting-started"
+                    secondary
+                  >
+                    Documentation
+                  </ActionButton>
+                </div>
+                <Paragraph
+                  intent="smallText"
+                  emphasis="muted"
+                  className="mt-6 text-current/55"
+                >
+                  Architect Classic remains available for researchers who need
+                  to keep using older versions of Interviewer (e.g. 6.6.0). It
+                  is in maintenance mode — bug fixes only — and continues to
+                  produce Schema 7 protocols.
+                </Paragraph>
+              </Reveal>
+
+              <Reveal {...revealMotion} direction="right">
+                <ScreenshotFrame
+                  address="architect.networkcanvas.com"
+                  alt="Architect protocol editor showing the Sample Protocol timeline"
+                  src="/images/screenshots/architect.png"
+                />
+              </Reveal>
+            </div>
+
+            <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
+              <Reveal
+                {...revealMotion}
+                direction="right"
+                className="tablet-portrait:order-2"
+              >
+                <SectionLabel
+                  subSection
+                  Icon={
                     <Image
                       src="/images/summer-2026/interviewer-icon.svg"
                       alt="Interviewer app icon"
@@ -1103,110 +758,106 @@ export function SummerUpdatePage() {
                       height={54}
                       className="rounded-sm"
                     />
-                    <span className="font-monospace text-slate-blue text-xs font-semibold tracking-widest uppercase">
-                      02 — Face-to-face interviews
-                    </span>
-                  </div>
-                  <Heading
-                    level="h3"
-                    variant="subheading"
-                    className="text-text"
-                  >
-                    Interviewer — conduct interviews anywhere
-                  </Heading>
-                  <Paragraph className="">
-                    Interviewer has also been redesigned for the browser: upload
-                    a protocol at{' '}
-                    <NativeLink href="https://interviewer.networkcanvas.com/">
-                      interviewer.networkcanvas.com
-                    </NativeLink>{' '}
-                    and deploy without installing anything. Install it as a{' '}
-                    <Definition
-                      asAbbreviation
-                      definition={
-                        <>
-                          <dfn>Progressive Web Apps</dfn> are specially crafted
-                          websites that can be installed on your device and
-                          provide a native app-like experience. This means they
-                          have an icon you can click to open them, they have
-                          their own storage, and they work offline.
-                        </>
-                      }
-                    >
-                      PWA
-                    </Definition>{' '}
-                    to support offline workflows — it remains the ideal tool for
-                    in-person, interviewer-assisted network studies.
-                  </Paragraph>
-                  <BulletList
-                    items={[
-                      {
-                        color: 'kiwi',
-                        content:
-                          'New advanced security: encrypted data storage, and app authorization for sensitive actions such as exporting data',
-                      },
-                      {
-                        color: 'cerulean-blue',
-                        content: (
-                          <>
-                            Supports <strong>Schema 8</strong> natively, and
-                            migrates all existing Schema 7 protocols
-                            automatically when you import them
-                          </>
-                        ),
-                      },
-                      {
-                        color: 'paradise-pink',
-                        content:
-                          'Compatible with all desktop and tablet devices, including iPads and Android tablets',
-                      },
-                    ]}
-                  />
-                  <div className="mt-8 flex flex-wrap gap-4">
-                    <ActionButton
-                      compact
-                      href="https://interviewer.networkcanvas.com/"
-                      target="_blank"
-                    >
-                      Open Interviewer
-                    </ActionButton>
-                    <ActionButton
-                      compact
-                      href="https://documentation.networkcanvas.com/en/collect-data/interviewer/using-interviewer"
-                      secondary
-                    >
-                      Documentation
-                    </ActionButton>
-                  </div>
-                  <Paragraph
-                    intent="smallText"
-                    emphasis="muted"
-                    className="text-text/55 mt-6"
-                  >
-                    Interviewer Classic remains available for in-progress
-                    studies. Like Architect Classic, it is in maintenance mode
-                    only, and does not benefit from new features.
-                  </Paragraph>
-                </Reveal>
-
-                <Reveal
-                  {...revealMotion}
-                  direction="left"
-                  className="tablet-portrait:order-1"
+                  }
                 >
-                  <ScreenshotFrame
-                    aspect="photo"
-                    address="interviewer.networkcanvas.com"
-                    alt="Interviewer dashboard showing protocol cards and a resume interview action"
-                    crop="interviewer"
-                    src="/images/summer-2026/interviewer.webp"
-                  />
-                </Reveal>
-              </div>
+                  Face-to-face interviews
+                </SectionLabel>
+                <Heading level="h3" variant="subheading">
+                  Interviewer — conduct interviews anywhere
+                </Heading>
+                <Paragraph className="">
+                  Interviewer has also been redesigned for the browser: upload a
+                  protocol at{' '}
+                  <NativeLink href="https://interviewer.networkcanvas.com/">
+                    interviewer.networkcanvas.com
+                  </NativeLink>{' '}
+                  and deploy without installing anything. Install it as a{' '}
+                  <Definition
+                    asAbbreviation
+                    definition={
+                      <>
+                        <dfn>Progressive Web Apps</dfn> are specially crafted
+                        websites that can be installed on your device and
+                        provide a native app-like experience. This means they
+                        have an icon you can click to open them, they have their
+                        own storage, and they work offline.
+                      </>
+                    }
+                  >
+                    PWA
+                  </Definition>{' '}
+                  to support offline workflows — it remains the ideal tool for
+                  in-person, interviewer-assisted network studies.
+                </Paragraph>
+                <BulletList
+                  items={[
+                    {
+                      color: 'kiwi',
+                      content:
+                        'New advanced security: encrypted data storage, and app authorization for sensitive actions such as exporting data',
+                    },
+                    {
+                      color: 'cerulean-blue',
+                      content: (
+                        <>
+                          Supports <strong>Schema 8</strong> natively, and
+                          migrates all existing Schema 7 protocols automatically
+                          when you import them
+                        </>
+                      ),
+                    },
+                    {
+                      color: 'paradise-pink',
+                      content:
+                        'Compatible with all desktop and tablet devices, including iPads and Android tablets',
+                    },
+                  ]}
+                />
+                <div className="mt-8 flex flex-wrap gap-4">
+                  <ActionButton
+                    compact
+                    href="https://interviewer.networkcanvas.com/"
+                    target="_blank"
+                  >
+                    Open Interviewer
+                  </ActionButton>
+                  <ActionButton
+                    compact
+                    href="https://documentation.networkcanvas.com/en/collect-data/interviewer/using-interviewer"
+                    secondary
+                  >
+                    Documentation
+                  </ActionButton>
+                </div>
+                <Paragraph
+                  intent="smallText"
+                  emphasis="muted"
+                  className="mt-6 text-current/55"
+                >
+                  Interviewer Classic remains available for in-progress studies.
+                  Like Architect Classic, it is in maintenance mode only, and
+                  does not benefit from new features.
+                </Paragraph>
+              </Reveal>
 
-              <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
-                <Reveal {...revealMotion} direction="left">
-                  <div className="mb-5 flex items-center gap-4">
+              <Reveal
+                {...revealMotion}
+                direction="left"
+                className="tablet-portrait:order-1"
+              >
+                <ScreenshotFrame
+                  address="interviewer.networkcanvas.com"
+                  alt="Interviewer dashboard showing protocol cards and a resume interview action"
+                  src="/images/screenshots/interviewer.png"
+                />
+              </Reveal>
+            </div>
+
+            <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
+              <Reveal {...revealMotion} direction="left">
+                <SectionLabel
+                  subSection
+                  Icon={
                     <Image
                       src="/images/summer-2026/fresco-icon.png"
                       alt="Fresco app icon"
@@ -1214,80 +865,75 @@ export function SummerUpdatePage() {
                       height={54}
                       className="rounded-sm"
                     />
-                    <span className="font-monospace text-slate-blue text-xs font-semibold tracking-widest uppercase">
-                      02 — Remote self-administered interviews
-                    </span>
-                  </div>
-                  <Heading
-                    level="h3"
-                    variant="subheading"
-                    className="text-text"
+                  }
+                >
+                  Remote self-administered interviews
+                </SectionLabel>
+                <Heading level="h3" variant="subheading">
+                  Fresco 4.0.0 — a significant upgrade
+                </Heading>
+                <Paragraph className="">
+                  The latest version of Fresco is a huge release, bringing
+                  several significant new features. Designed to support remote
+                  self-administered interviews (but completely compatible with
+                  face-to-face interviewing too), Fresco is the suggested choice
+                  for studies with large numbers of participants, a large team
+                  of researchers, or that require a centralised data management
+                  solution.
+                </Paragraph>
+                <div className="mt-8 flex flex-wrap gap-4">
+                  <ActionButton
+                    compact
+                    href="https://documentation.networkcanvas.com/en/collect-data/fresco/guide"
                   >
-                    Fresco 4.0.0 — a significant upgrade
-                  </Heading>
-                  <Paragraph className="">
-                    The latest version of Fresco is a huge release, bringing
-                    several significant new features. Designed to support remote
-                    self-administered interviews (but completely compatible with
-                    face-to-face interviewing too), Fresco is the suggested
-                    choice for studies with large numbers of participants, a
-                    large team of researchers, or that require a centralised
-                    data management solution.
-                  </Paragraph>
-                  <div className="mt-8 flex flex-wrap gap-4">
-                    <ActionButton
-                      compact
-                      href="https://documentation.networkcanvas.com/en/collect-data/fresco/guide"
-                    >
-                      Deployment guide
-                    </ActionButton>
-                    <ActionButton
-                      compact
-                      href="https://documentation.networkcanvas.com/en/collect-data/fresco/using-fresco"
-                      secondary
-                    >
-                      Documentation
-                    </ActionButton>
-                  </div>
-                  <Paragraph
-                    intent="smallText"
-                    emphasis="muted"
-                    className="text-text/55 mt-6"
+                    Deployment guide
+                  </ActionButton>
+                  <ActionButton
+                    compact
+                    href="https://documentation.networkcanvas.com/en/collect-data/fresco/using-fresco"
+                    secondary
                   >
-                    Users of Fresco 3.x should avoid upgrading in the middle of
-                    a study. Fresco 4.0.0 cannot be downgraded to 3.x.
-                  </Paragraph>
-                </Reveal>
-
-                <div className="space-y-4">
-                  <FeatureCard
-                    title="Multi-user access"
-                    color="neon-coral"
-                    delay={0}
-                  >
-                    Multi-user support – Each team member gets their own
-                    account, with two-factor authentication, passkey support,
-                    and a full audit log of all actions taken in the system.
-                  </FeatureCard>
-                  <FeatureCard
-                    title="Two-factor authentication"
-                    color="sea-serpent"
-                    delay={0.11}
-                  >
-                    Access data via a secure API – Fresco now provides a REST
-                    API for programmatic access to your study data, enabling
-                    realtime reporting, dashboards, and analytics.
-                  </FeatureCard>
-                  <FeatureCard
-                    title="Flexible storage"
-                    color="mustard"
-                    delay={0.22}
-                  >
-                    Fully deployable on your own infrastructure – Fresco can be
-                    installed entirely on your own servers, or hosted in your
-                    private cloud, giving you full control over your data.
-                  </FeatureCard>
+                    Documentation
+                  </ActionButton>
                 </div>
+                <Paragraph
+                  intent="smallText"
+                  emphasis="muted"
+                  className="mt-6 text-current/55"
+                >
+                  Users of Fresco 3.x should avoid upgrading in the middle of a
+                  study. Fresco 4.0.0 cannot be downgraded to 3.x.
+                </Paragraph>
+              </Reveal>
+
+              <div className="space-y-4">
+                <FeatureCard
+                  title="Multi-user access"
+                  color="neon-coral"
+                  delay={0}
+                >
+                  Multi-user support – Each team member gets their own account,
+                  with two-factor authentication, passkey support, and a full
+                  audit log of all actions taken in the system.
+                </FeatureCard>
+                <FeatureCard
+                  title="Two-factor authentication"
+                  color="sea-serpent"
+                  delay={0.11}
+                >
+                  Access data via a secure API – Fresco now provides a REST API
+                  for programmatic access to your study data, enabling realtime
+                  reporting, dashboards, and analytics.
+                </FeatureCard>
+                <FeatureCard
+                  title="Flexible storage"
+                  color="mustard"
+                  delay={0.22}
+                >
+                  Fully deployable on your own infrastructure – Fresco can be
+                  installed entirely on your own servers, or hosted in your
+                  private cloud, giving you full control over your data.
+                </FeatureCard>
               </div>
             </div>
           </div>
@@ -1295,7 +941,7 @@ export function SummerUpdatePage() {
         <Section aria-labelledby="schema-title">
           <div className="mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
-              <SectionLabel>03 — Schema 8</SectionLabel>
+              <SectionLabel>Schema 8</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
@@ -1307,7 +953,7 @@ export function SummerUpdatePage() {
               <Paragraph
                 intent="lead"
                 emphasis="muted"
-                className="text-text/70 max-w-3xl"
+                className="max-w-3xl text-current/70"
               >
                 This new generation of apps introduces a new{' '}
                 <Definition
@@ -1325,51 +971,51 @@ export function SummerUpdatePage() {
                 </Definition>
                 , Schema 8, which includes several new interview interfaces and
                 features. If your study requires any of these, you’ll need to
-                use the new tools. Tap each one to explore.
+                use the new tools. Choose any card to explore the details.
               </Paragraph>
             </Reveal>
+          </div>
 
-            <div className="tablet-portrait:grid-cols-3 tablet-landscape:grid-cols-5 mt-12 grid grid-cols-2 gap-4">
+          <div className="tablet-landscape:grid-cols-5 mx-auto mt-12 grid max-w-380 items-start gap-8">
+            <div className="tablet-portrait:grid-cols-3 tablet-landscape:col-span-3 grid grid-cols-2 gap-4">
               {interfaceFeatures.map((feature, index) => (
                 <Reveal
                   {...revealMotion}
-                  delay={index * 0.11}
+                  delay={(index % 3) * 0.08}
                   key={feature.shortName}
                 >
-                  <button
+                  <Surface
+                    as="button"
                     type="button"
+                    noContainer
                     aria-pressed={selectedInterface === index}
-                    className="focusable border-text/15 bg-surface-1 hover:bg-surface-2 aria-pressed:border-sea-serpent aria-pressed:bg-sea-serpent/15 aria-pressed:text-text flex h-full w-full flex-col items-center justify-center gap-3 rounded-sm border p-5 text-center transition"
+                    className={cn(
+                      'hover:bg-selected/50 aria-pressed:border-sea-serpent aria-pressed:bg-sea-serpent/15 flex size-full flex-col items-center justify-center gap-3 text-center transition',
+                      'hover:elevation-high aria-pressed:inset-surface not-aria-pressed:hover:-translate-y-1',
+                    )}
                     onClick={() => setSelectedInterface(index)}
                   >
                     <InterfaceGraphic motif={feature.motif} />
                     <div className="text-sm leading-snug font-bold">
                       {feature.shortName}
                     </div>
-                  </button>
+                  </Surface>
                 </Reveal>
               ))}
             </div>
 
-            <Reveal {...revealMotion}>
-              <div
-                className="bg-surface-1 border-text/15 tablet-portrait:p-8 mt-8 rounded border p-6"
-                aria-live="polite"
-              >
-                <div className="flex flex-wrap items-center gap-4">
-                  <Heading
-                    level="h3"
-                    variant="subheading"
-                    margin="none"
-                    className="text-text"
-                  >
+            <Reveal
+              {...revealMotion}
+              className="tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:col-span-2"
+            >
+              <Surface aria-live="polite">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <Heading level="h3" variant="subheading">
                     {activeInterface.name}
                   </Heading>
-                  <span className="bg-sea-green/15 font-monospace text-sea-green rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
-                    {activeInterface.tag}
-                  </span>
+                  <Badge>{activeInterface.tag}</Badge>
                 </div>
-                <Paragraph emphasis="muted" className="text-text/70 max-w-3xl">
+                <Paragraph emphasis="muted" className="text-current/70">
                   {activeInterface.summary}
                 </Paragraph>
                 <ul className="mt-5 space-y-3">
@@ -1383,7 +1029,7 @@ export function SummerUpdatePage() {
                         intent="smallText"
                         emphasis="muted"
                         margin="none"
-                        className="text-text/70 max-w-4xl"
+                        className="text-current/70"
                       >
                         {detail}
                       </Paragraph>
@@ -1399,7 +1045,7 @@ export function SummerUpdatePage() {
                   Explore in the documentation{' '}
                   <ExternalLink className="inline-block size-4" />
                 </NativeLink>
-              </div>
+              </Surface>
             </Reveal>
           </div>
         </Section>
@@ -1407,7 +1053,7 @@ export function SummerUpdatePage() {
         <Section aria-labelledby="compatibility-title">
           <div className="mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
-              <SectionLabel>04 — Compatibility</SectionLabel>
+              <SectionLabel>Compatibility</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
@@ -1439,11 +1085,11 @@ export function SummerUpdatePage() {
             </Reveal>
 
             <Reveal {...revealMotion} direction="zoom">
-              <div className="elevation-low border-text/15 bg-surface-1 my-12 overflow-hidden rounded border">
+              <div className="effect-shadow border-text/15 bg-surface my-12 overflow-hidden rounded border">
                 <div className="overflow-x-auto">
                   <div className="min-w-4xl">
                     <div
-                      className="border-text/15 bg-surface-2 font-monospace text-text/60 grid grid-cols-4 gap-4 border-b px-6 py-4 text-xs font-bold tracking-widest uppercase"
+                      className="border-text/15 bg-surface-2 font-monospace text-surface-2-contrast grid grid-cols-4 gap-4 border-b px-6 py-4 text-xs font-bold tracking-widest uppercase"
                       aria-hidden
                     >
                       <span>App</span>
@@ -1458,7 +1104,7 @@ export function SummerUpdatePage() {
                           {row.group !== previousGroup ? (
                             <div
                               className={cn(
-                                'bg-surface-2 font-monospace text-text/55 px-6 py-2 text-xs font-bold tracking-widest uppercase',
+                                'bg-surface-2/50 font-monospace text-surface-2-contrast/55 px-6 py-2 text-xs font-bold tracking-widest uppercase',
                                 index > 0 && 'border-text/15 border-t',
                               )}
                             >
@@ -1479,12 +1125,12 @@ export function SummerUpdatePage() {
                             <span className="text-text font-bold">
                               {row.app}{' '}
                               {row.version ? (
-                                <span className="font-monospace text-text/50 text-xs font-normal">
+                                <span className="font-monospace text-xs font-normal text-current/50">
                                   {row.version}
                                 </span>
                               ) : null}
                             </span>
-                            <span className="text-text/65 text-sm">
+                            <span className="text-sm text-current/65">
                               {row.platform}
                             </span>
                             <StatusChip status={row.schema7} />
@@ -1496,22 +1142,31 @@ export function SummerUpdatePage() {
                   </div>
                 </div>
                 <div
-                  className="border-text/15 bg-sea-serpent/10 text-text/75 border-t px-6 py-4 text-sm"
+                  className="border-text/15 bg-sea-serpent/10 border-t px-6 py-4 text-sm text-current/75"
                   aria-live="polite"
                 >
                   {compatibilityNote}
                 </div>
               </div>
             </Reveal>
-
+            <Reveal {...revealMotion}>
+              <SectionLabel subSection>Caution</SectionLabel>
+              <Heading
+                level="h2"
+                margin="none"
+                className="sr-only"
+                id="upgrade-title"
+              >
+                Caution
+              </Heading>
+            </Reveal>
             <Reveal {...revealMotion} direction="zoom">
-              <Surface className="tablet-portrait:grid-cols-2 my-12 grid grid-cols-1 items-center gap-10">
+              <Surface
+                spacing="lg"
+                className="tablet-portrait:grid-cols-2 my-12 grid grid-cols-1 items-center gap-10"
+              >
                 <div>
-                  <Heading
-                    level="h3"
-                    variant="subheading"
-                    className="text-text"
-                  >
+                  <Heading level="h3" variant="subheading">
                     Protocol migration is one-way.
                   </Heading>
                   <Paragraph>
@@ -1531,41 +1186,13 @@ export function SummerUpdatePage() {
                     Classic, Architect Classic, or Fresco 3.x.
                   </Paragraph>
                 </div>
-                <div className="flex flex-col items-center gap-5" aria-hidden>
-                  <div className="flex items-center justify-center gap-5">
-                    <div className="border-text/25 grid size-24 place-items-center rounded-full border-2 text-center">
-                      <span>
-                        <strong className="block text-3xl">7</strong>
-                        <span className="font-monospace text-text/50 text-xs tracking-widest">
-                          SCHEMA
-                        </span>
-                      </span>
-                    </div>
-                    <div className="text-sea-serpent flex flex-col items-center gap-2">
-                      <span className="text-3xl">→</span>
-                      <span className="font-monospace text-xs tracking-wide whitespace-nowrap">
-                        Automatic upgrade
-                      </span>
-                    </div>
-                    <div className="border-sea-green bg-sea-green/10 text-sea-green grid size-24 place-items-center rounded-full border-2 text-center">
-                      <span>
-                        <strong className="block text-3xl">8</strong>
-                        <span className="font-monospace text-xs tracking-widest">
-                          SCHEMA
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="font-monospace text-slate-blue text-xs font-semibold tracking-wide">
-                    ← ✗ No return path
-                  </div>
-                </div>
+                <ProtocolMigrationIllustration className="mx-auto max-w-xl" />
               </Surface>
             </Reveal>
           </div>
           <div className="relative z-10 mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
-              <SectionLabel>05 — Should you upgrade?</SectionLabel>
+              <SectionLabel subSection>Should you upgrade?</SectionLabel>
               <Heading
                 level="h2"
                 margin="none"
@@ -1577,21 +1204,11 @@ export function SummerUpdatePage() {
             </Reveal>
             <div className="tablet-portrait:grid-cols-2 mt-8 grid grid-cols-1 gap-6">
               <Reveal {...revealMotion}>
-                <Surface
-                  as="article"
-                  noContainer
-                  spacing="lg"
-                  shadow="sm"
-                  className="h-full"
-                >
+                <Surface as="article" noContainer className="h-full">
                   <span className="bg-sea-green/15 font-monospace text-sea-green inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
-                    Starting a new study
+                    Starting a new study?
                   </span>
-                  <Heading
-                    level="h3"
-                    variant="subheading"
-                    className="text-text"
-                  >
+                  <Heading level="h3" variant="subheading">
                     Use the new generation
                   </Heading>
                   <Paragraph className="">
@@ -1603,22 +1220,12 @@ export function SummerUpdatePage() {
                 </Surface>
               </Reveal>
               <Reveal {...revealMotion} delay={0.11}>
-                <Surface
-                  as="article"
-                  noContainer
-                  spacing="lg"
-                  shadow="sm"
-                  className="h-full"
-                >
+                <Surface as="article" noContainer className="h-full">
                   <span className="bg-sea-serpent/15 font-monospace text-sea-serpent inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
-                    Running an ongoing study
+                    Running an ongoing study?
                   </span>
-                  <Heading
-                    level="h3"
-                    variant="subheading"
-                    className="text-text"
-                  >
-                    There is no rush
+                  <Heading level="h3" variant="subheading">
+                    There is no rush!
                   </Heading>
                   <Paragraph className="">
                     Interviewer Classic and Architect Classic are still
@@ -1635,7 +1242,7 @@ export function SummerUpdatePage() {
         <Section aria-labelledby="resources-title">
           <div className="mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
-              <SectionLabel>06 — Project resources</SectionLabel>
+              <SectionLabel>Project resources</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
@@ -1651,17 +1258,26 @@ export function SummerUpdatePage() {
                 the platform, choose the right tools, and find your next step.
               </Paragraph>
             </Reveal>
-            <div className="tablet-landscape:grid-cols-2 mt-12 grid grid-cols-1 gap-6">
+            <div className="mt-12 grid grid-cols-1 gap-6">
               <Reveal {...revealMotion} direction="left">
                 <Surface
                   as="article"
                   noContainer
                   spacing="xl"
                   shadow="sm"
-                  className="flex h-full flex-col"
+                  className="tablet-portrait:grid-cols-5 grid grid-cols-1 items-center gap-8"
                 >
-                  <div className="max-w-3xl">
-                    <SectionLabel>Project documentation</SectionLabel>
+                  <div className="tablet-portrait:col-span-2 min-w-0">
+                    <ScreenshotFrame
+                      address="documentation.networkcanvas.com"
+                      alt="The redesigned Network Canvas documentation homepage"
+                      src="/images/screenshots/documentation-homepage.png"
+                    />
+                  </div>
+                  <div className="tablet-portrait:col-span-3 max-w-4xl min-w-0">
+                    <SectionLabel subSection>
+                      Project documentation
+                    </SectionLabel>
                     <Heading level="h3" variant="subheading" className="mt-2!">
                       Guidance organized around your research workflow
                     </Heading>
@@ -1676,14 +1292,6 @@ export function SummerUpdatePage() {
                       <ExternalLink className="inline-block size-4" />
                     </NativeLink>
                   </div>
-                  <div className="mt-auto pt-8">
-                    <ScreenshotFrame
-                      address="documentation.networkcanvas.com"
-                      alt="The redesigned Network Canvas documentation homepage"
-                      fit="contain"
-                      src="/images/summer-2026/documentation-homepage.jpg"
-                    />
-                  </div>
                 </Surface>
               </Reveal>
               <Reveal {...revealMotion} direction="right" delay={0.11}>
@@ -1692,10 +1300,17 @@ export function SummerUpdatePage() {
                   noContainer
                   spacing="xl"
                   shadow="sm"
-                  className="flex h-full flex-col"
+                  className="tablet-portrait:grid-cols-5 grid grid-cols-1 items-center gap-8"
                 >
-                  <div className="max-w-3xl">
-                    <SectionLabel>Project website</SectionLabel>
+                  <div className="tablet-portrait:col-span-2 min-w-0">
+                    <ScreenshotFrame
+                      address="networkcanvas.com"
+                      alt="The redesigned Network Canvas website homepage"
+                      src="/images/screenshots/website-homepage.png"
+                    />
+                  </div>
+                  <div className="tablet-portrait:col-span-3 max-w-4xl min-w-0">
+                    <SectionLabel subSection>Project website</SectionLabel>
                     <Heading level="h3" variant="subheading" className="mt-2!">
                       A fresh new look for networkcanvas.com
                     </Heading>
@@ -1710,14 +1325,6 @@ export function SummerUpdatePage() {
                       <ExternalLink className="inline-block size-4" />
                     </NativeLink>
                   </div>
-                  <div className="mt-auto pt-8">
-                    <ScreenshotFrame
-                      address="networkcanvas.com"
-                      alt="The redesigned Network Canvas website homepage"
-                      fit="contain"
-                      src="/images/summer-2026/website-homepage.jpg"
-                    />
-                  </div>
                 </Surface>
               </Reveal>
             </div>
@@ -1727,7 +1334,7 @@ export function SummerUpdatePage() {
         <Section aria-labelledby="getting-started-title">
           <div className="mx-auto max-w-6xl">
             <Reveal {...revealMotion}>
-              <SectionLabel>07 — Getting started</SectionLabel>
+              <SectionLabel>Getting started</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"

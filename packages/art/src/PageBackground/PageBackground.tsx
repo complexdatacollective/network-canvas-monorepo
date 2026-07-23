@@ -178,6 +178,7 @@ export function usePageBackgroundTargetRef() {
 
 export function PageBackgroundProvider({
   children,
+  colors,
   fallbackConvergence = DEFAULT_CONVERGENCE,
   intensity = INITIAL_INTENSITY,
   motionMode = 'scroll',
@@ -185,6 +186,7 @@ export function PageBackgroundProvider({
   waitForTarget = true,
 }: {
   children: ReactNode;
+  colors?: readonly string[];
   fallbackConvergence?: NetworkWeaveConvergence;
   intensity?: number;
   motionMode?: 'scroll' | 'target';
@@ -286,6 +288,7 @@ export function PageBackgroundProvider({
   return (
     <>
       <PageBackground
+        colors={colors}
         convergence={convergence}
         intensity={intensity}
         layerRef={layerRef}
@@ -407,6 +410,7 @@ function useResponsiveOrientation(): NetworkWeaveOrientation {
 }
 
 export function PageBackground({
+  colors,
   convergence = DEFAULT_CONVERGENCE,
   complexity = DEFAULT_COMPLEXITY,
   intensity = INITIAL_INTENSITY,
@@ -419,6 +423,7 @@ export function PageBackground({
   targetChangeVersion = 0,
   layerRef,
 }: {
+  colors?: readonly string[];
   convergence?: NetworkWeaveConvergence;
   complexity?: number;
   intensity?: number;
@@ -618,6 +623,7 @@ export function PageBackground({
     >
       <NetworkWeaveBackground
         seed="networkcanvas.com"
+        colors={colors}
         convergence={renderedSettings.convergence}
         complexity={renderedSettings.complexity}
         intensity={renderedSettings.intensity}

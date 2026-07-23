@@ -1,10 +1,16 @@
+'use client';
+
 import { Sparkles } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Pill from '@codaco/fresco-ui/Pill';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NewsItem as NewsItemRecord } from '~/lib/siteContent';
+
+const reducedMotionStoryInterval = 8000;
 
 function NewsItem({
   title,
@@ -51,21 +57,58 @@ export function NewsTicker({
   newsItems: readonly NewsItemRecord[];
 }) {
   const t = useTranslations('News');
+  const shouldReduceMotion = useReducedMotion() === true;
+  const [activeNewsIndex, setActiveNewsIndex] = useState(0);
+  const [rotationPaused, setRotationPaused] = useState(false);
+  const activeNewsItem =
+    newsItems.length === 0
+      ? undefined
+      : newsItems[activeNewsIndex % newsItems.length];
+
+  useEffect(() => {
+    if (!shouldReduceMotion || rotationPaused || newsItems.length <= 1) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setActiveNewsIndex((currentIndex) => {
+        return (currentIndex + 1) % newsItems.length;
+      });
+    }, reducedMotionStoryInterval);
+
+    return () => window.clearInterval(interval);
+  }, [newsItems.length, rotationPaused, shouldReduceMotion]);
 
   return (
-    <div className="border-cerulean-blue/30 bg-cerulean-blue/5 tablet-portrait:rounded-full rounded-[1.5rem] border backdrop-blur-md">
+    <div
+      className="border-cerulean-blue/30 bg-cerulean-blue/5 tablet-portrait:rounded-full rounded-[1.5rem] border backdrop-blur-md"
+      onMouseEnter={() => setRotationPaused(true)}
+      onMouseLeave={() => setRotationPaused(false)}
+      onFocusCapture={() => setRotationPaused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setRotationPaused(false);
+        }
+      }}
+    >
       {/* Desktop: single-line marquee */}
       <div className="tablet-portrait:flex hidden items-center gap-5 px-6 py-3">
         <NewsLabel />
         <div className="relative flex-1 overflow-hidden mask-[linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
-          <div className="animate-marquee flex w-max gap-12 motion-reduce:animate-none">
-            {newsItems.map((item) => (
-              <NewsItem key={`first-${item.id}`} {...item} />
-            ))}
-            {newsItems.map((item) => (
-              <NewsItem key={`second-${item.id}`} {...item} duplicate />
-            ))}
-          </div>
+          {shouldReduceMotion ? (
+            <div aria-live="polite" aria-atomic="true">
+              {activeNewsItem ? <NewsItem {...activeNewsItem} /> : null}
+            </div>
+          ) : (
+            <div className="animate-marquee flex w-max gap-12 focus-within:[animation-play-state:paused] hover:[animation-play-state:paused] motion-reduce:animate-none">
+              {newsItems.map((item) => (
+                <NewsItem key={`first-${item.id}`} {...item} />
+              ))}
+              {newsItems.map((item) => (
+                <NewsItem key={`second-${item.id}`} {...item} duplicate />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

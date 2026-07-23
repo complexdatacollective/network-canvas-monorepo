@@ -11,11 +11,11 @@ import type { NetworkWeaveConvergence } from '@codaco/art/NetworkWeaveBackground
 // centre of the viewport and rests there for the rest of the page. Nothing else
 // moves the focal point.
 const HERO_ANCHOR_SELECTOR = '[data-homepage-weave-target]';
-const CENTER: NetworkWeaveConvergence = { x: 0.5, y: 0.5 };
+const CENTER: NetworkWeaveConvergence = { x: 0, y: 0 };
 const COMPLEXITY = 20;
 const SPEED_FACTOR = 0.28;
 const HERO_INTENSITY = 0.62;
-const READING_INTENSITY = 0.26;
+const READING_INTENSITY = 0.16;
 const HERO_FLARE = 1.45;
 const READING_FLARE = 2.08;
 const POSITION_TOLERANCE = 0.0005;
@@ -46,7 +46,7 @@ function statesAreEqual(current: BackgroundState, next: BackgroundState) {
   );
 }
 
-export function HomepagePageBackground() {
+export function HomepagePageBackground({ target }: { target?: string }) {
   const layerRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
   const [background, setBackground] = useState<BackgroundState>({
@@ -75,7 +75,9 @@ export function HomepagePageBackground() {
       return undefined;
     }
 
-    const hero = document.querySelector<HTMLElement>(HERO_ANCHOR_SELECTOR);
+    const hero = document.querySelector<HTMLElement>(
+      target ?? HERO_ANCHOR_SELECTOR,
+    );
 
     const update = () => {
       const layerRect = layer.getBoundingClientRect();
@@ -154,7 +156,7 @@ export function HomepagePageBackground() {
       window.removeEventListener('resize', scheduleUpdate);
       window.removeEventListener('scroll', scheduleUpdate);
     };
-  }, [reduceMotion]);
+  }, [reduceMotion, target]);
 
   return (
     <PageBackground

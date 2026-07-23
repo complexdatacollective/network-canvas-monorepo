@@ -13,6 +13,11 @@ import DocumentationFooter from './DocumentationFooter';
 import SharedNav from './SharedNav/SharedNav';
 
 const DOCUMENTATION_FLARE_RANGE = [1.8, 2.6] as const;
+const DOCUMENTATION_WEAVE_COLORS = [
+  'oklch(from var(--color-slate-blue) calc(l - 0.3) c h)',
+  'var(--color-slate-blue)',
+  'oklch(from var(--color-slate-blue) calc(l + 0.3) c h)',
+] as const;
 
 export function LayoutComponent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -46,7 +51,8 @@ export function LayoutComponent({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-background text-text publish-colors relative isolate flex min-h-dvh w-full flex-auto flex-col">
       <PageBackgroundProvider
-        intensity={isHomePage ? 0.4 : 0.1}
+        colors={DOCUMENTATION_WEAVE_COLORS}
+        intensity={isHomePage ? 0.25 : 0.06}
         motionMode="target"
         scrollFlareRange={DOCUMENTATION_FLARE_RANGE}
         waitForTarget

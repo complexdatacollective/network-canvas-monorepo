@@ -2,6 +2,7 @@ const documentationRoot = 'https://documentation.networkcanvas.com/en';
 
 export const interfaceFeatures = [
   {
+    group: 'interfaces',
     shortName: 'Geospatial',
     name: 'Geospatial interface',
     tag: 'New interface',
@@ -16,6 +17,7 @@ export const interfaceFeatures = [
     motif: 'geospatial',
   },
   {
+    group: 'interfaces',
     shortName: 'Anonymisation',
     name: 'Anonymisation interface',
     tag: 'New interface',
@@ -30,6 +32,7 @@ export const interfaceFeatures = [
     motif: 'anonymisation',
   },
   {
+    group: 'interfaces',
     shortName: 'One-to-many dyad census',
     name: 'One-to-many dyad census interface',
     tag: 'New interface',
@@ -44,6 +47,7 @@ export const interfaceFeatures = [
     motif: 'one-to-many',
   },
   {
+    group: 'interfaces',
     shortName: 'Family pedigree',
     name: 'Family pedigree interface',
     tag: 'New interface',
@@ -58,6 +62,7 @@ export const interfaceFeatures = [
     motif: 'family-pedigree',
   },
   {
+    group: 'interfaces',
     shortName: 'Narrative pedigree',
     name: 'Narrative pedigree interface',
     tag: 'New interface',
@@ -72,6 +77,7 @@ export const interfaceFeatures = [
     motif: 'narrative-pedigree',
   },
   {
+    group: 'interfaces',
     shortName: 'Network composer',
     name: 'Network composer interface',
     tag: 'New interface',
@@ -86,34 +92,67 @@ export const interfaceFeatures = [
     motif: 'network-composer',
   },
   {
-    shortName: 'Validation & skip logic',
-    name: 'Richer validation & skip logic',
+    group: 'schema',
+    shortName: 'Validation',
+    name: 'Richer field validation',
     tag: 'New feature',
     summary:
-      'Create more responsive interview flows with richer validation rules and more precise destinations for skip logic.',
+      'Express relationships between answers directly in the protocol, so forms can catch inconsistent responses while the interview is still in progress.',
     details: [
-      'Compare a numeric response with another variable instead of relying only on a fixed threshold.',
-      'Use “contains” and “does not contain” for text, and match several selected values in one categorical rule.',
-      'Continue normally, jump forward to a chosen later stage, or route directly to the interview finish screen.',
+      'Compare a numeric response with another variable using the new greater-than-variable and less-than-variable rules.',
+      'Combine these relative checks with existing required, range, uniqueness, and cross-field rules to describe the answers your study can accept.',
+      'Preview the form in Architect and test edge cases before deployment; the same protocol rules run in Interviewer and Fresco.',
     ],
-    href: `${documentationRoot}/get-started/advanced-topics/protocol-schema-information#whats-new-in-schema-8`,
+    href: `${documentationRoot}/design-protocols/key-concepts/field-validation`,
     motif: 'validation',
   },
   {
-    shortName: 'Node shapes & form hints',
-    name: 'Configurable node shapes & form hints',
+    group: 'schema',
+    shortName: 'Enhanced skip logic',
+    name: 'Enhanced skip logic',
     tag: 'New feature',
     summary:
-      'Use stronger visual and written cues to make dense interfaces and form questions easier to interpret.',
+      'Build more precise interview routes with expanded comparison rules and explicit destinations for each skipped stage.',
+    details: [
+      'Use “contains” and “does not contain” with text responses, and match several selected values in categorical and ordinal rules.',
+      'Continue at the next available stage, jump forward to a chosen later stage, or route directly to the interview finish screen.',
+      'Keep every destination forward-moving, making complex paths predictable and avoiding loops during data collection.',
+    ],
+    href: `${documentationRoot}/design-protocols/key-concepts/skip-logic`,
+    motif: 'enhanced-skip-logic',
+  },
+  {
+    group: 'schema',
+    shortName: 'Node shapes',
+    name: 'Configurable node shapes',
+    tag: 'New feature',
+    summary:
+      'Use shape as an additional visual channel, making different kinds of people easier to distinguish in dense network interfaces.',
     details: [
       'Choose circles, squares, or diamonds as a default shape for each person type.',
       'Map shapes dynamically from categorical, ordinal, boolean, number, or scalar variables when the visual distinction carries data.',
-      'Place markdown-formatted guidance beside a form question and show automatic hints derived from its validation rules.',
+      'Combine shape with color and size so important categories remain legible without depending on a single visual cue.',
     ],
-    href: `${documentationRoot}/get-started/advanced-topics/protocol-schema-information#whats-new-in-schema-8`,
+    href: `${documentationRoot}/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape`,
     motif: 'node-shapes',
   },
   {
+    group: 'schema',
+    shortName: 'Form hints',
+    name: 'Form hints and validation guidance',
+    tag: 'New feature',
+    summary:
+      'Place concise guidance beside an individual question, giving participants context exactly where they need it.',
+    details: [
+      'Add a markdown-formatted hint to a form field without lengthening the main stage prompt.',
+      'Use hints to clarify expected formats, unfamiliar terms, or how a response will be interpreted.',
+      'Optionally show automatic guidance derived from the field’s validation rules, such as acceptable ranges or required responses.',
+    ],
+    href: `${documentationRoot}/get-started/protocol-schema-information#whats-new-in-schema-8`,
+    motif: 'form-hints',
+  },
+  {
+    group: 'architect',
     shortName: 'Protocol templates',
     name: 'Protocol templates',
     tag: 'Architect feature',
@@ -128,6 +167,22 @@ export const interfaceFeatures = [
     motif: 'templates',
   },
   {
+    group: 'architect',
+    shortName: 'Responsive SVG backgrounds',
+    name: 'Responsive SVG sociogram backgrounds',
+    tag: 'Architect feature',
+    summary:
+      'Create sociogram backgrounds whose regions, axes, and labels adapt to both portrait and landscape interview canvases.',
+    details: [
+      'Upload an SVG whose elements are positioned relative to the available canvas instead of a fixed pixel grid.',
+      'Keep labels readable and regions extended to the canvas edges when participants rotate a tablet or use a different screen shape.',
+      'Use the provided social-context template as a starting point for quadrants, independent axes, categories, or overlapping contexts.',
+    ],
+    href: `${documentationRoot}/design-protocols/responsive-svg-backgrounds`,
+    motif: 'responsive-sociogram-backgrounds',
+  },
+  {
+    group: 'interviewer',
     shortName: 'Synthetic data',
     name: 'Synthetic interview data',
     tag: 'New feature',
@@ -138,8 +193,83 @@ export const interfaceFeatures = [
       'Optionally simulate participant drop-out and respect the protocol’s skip logic and network filters.',
       'Synthetic records are flagged separately and can be removed in bulk without touching real interviews.',
     ],
-    href: `${documentationRoot}/collect-data/fresco/using-fresco#generating-synthetic-test-data`,
+    href: `${documentationRoot}/collect-data/interviewer/using-interviewer#settings`,
     motif: 'synthetic-data',
+  },
+  {
+    group: 'interviewer',
+    shortName: 'Encryption at rest',
+    name: 'On-device encryption at rest',
+    tag: 'Interviewer feature',
+    summary:
+      'Protect protocols, interviews, and settings stored on the device whenever you configure an Interviewer app lock.',
+    details: [
+      'Choose a PIN, passphrase, or supported biometric method during setup; the same authentication unlocks the key used to decrypt local data.',
+      'Keep the decryption key only in memory while Interviewer is unlocked. Reloading, locking, closing, or reaching the idle timeout removes it.',
+      'Use this app-level protection alongside full-device encryption and regular exports as part of a layered data-security plan.',
+    ],
+    href: `${documentationRoot}/collect-data/interviewer/using-interviewer#security-and-locking`,
+    motif: 'encryption-at-rest',
+  },
+  {
+    group: 'interviewer',
+    shortName: 'Authorisation checks',
+    name: 'Configurable authorisation checks',
+    tag: 'Interviewer feature',
+    summary:
+      'Require a fresh unlock at sensitive workflow boundaries instead of relying only on the app’s general idle lock.',
+    details: [
+      'Independently require re-authentication before entering an interview, leaving it for the dashboard, or exporting collected data.',
+      'Use the already configured PIN, passphrase, or biometric method, without introducing a second set of credentials.',
+      'Keep protocol names, session counts, and stored data hidden whenever Interviewer is locked.',
+    ],
+    href: `${documentationRoot}/collect-data/interviewer/using-interviewer#locking-and-unlocking`,
+    motif: 'authorisation-checks',
+  },
+  {
+    group: 'fresco',
+    shortName: 'Multi-user',
+    name: 'Multi-user administration',
+    tag: 'Fresco 4.0.0 feature',
+    summary:
+      'Give each researcher a separate administrator account instead of sharing one set of dashboard credentials.',
+    details: [
+      'Add and remove multiple administrator accounts from settings; every current account has equal administrative access.',
+      'Choose password authentication with optional TOTP two-factor protection, or use passkeys for password-free sign-in.',
+      'Attribute dashboard activity to usernames in the shared audit feed, including authentication, protocol, export, and account-management events.',
+    ],
+    href: `${documentationRoot}/collect-data/fresco/it-faq#what-authentication-does-fresco-use`,
+    motif: 'multi-user',
+  },
+  {
+    group: 'fresco',
+    shortName: 'Advanced export filtering',
+    name: 'Advanced export filtering',
+    tag: 'Fresco 4.0.0 feature',
+    summary:
+      'Find and export precisely the interviews you need, even when a large study spans many pages of results.',
+    details: [
+      'Filter server-side by protocol, date, progress, network size, export status, or participant identifier across the complete dataset.',
+      'Select every interview matching the active filters, not only the rows currently visible on screen.',
+      'Export all, completed, or unexported interviews within the filtered result set while leaving unrelated records untouched.',
+    ],
+    href: `${documentationRoot}/collect-data/fresco/using-fresco#finding-and-filtering-interviews`,
+    motif: 'advanced-export-filtering',
+  },
+  {
+    group: 'fresco',
+    shortName: 'Secure data API',
+    name: 'Secure Interview Data API',
+    tag: 'Fresco 4.0.0 feature',
+    summary:
+      'Connect analysis tools directly to a Fresco deployment through a versioned, read-only JSON API.',
+    details: [
+      'Keep the API disabled until it is needed, then create bearer tokens from the authenticated dashboard.',
+      'List and retrieve interview networks and protocol metadata without exposing any endpoint that can modify study data.',
+      'Revoke tokens, review when each token was last used, and build repeatable R, Python, dashboard, or reporting workflows.',
+    ],
+    href: `${documentationRoot}/analyze-data/fresco-api`,
+    motif: 'secure-data-api',
   },
 ] as const;
 
@@ -224,7 +354,7 @@ export const destinationLinks = [
       'Run secure, offline-capable interviews on desktop and tablet, then export completed sessions from the same local app.',
     detail: 'interviewer.networkcanvas.com',
     href: 'https://interviewer.networkcanvas.com/',
-    color: 'sea-serpent',
+    color: 'neon-coral',
     icon: '/images/summer-2026/interviewer-icon.svg',
   },
   {
@@ -234,7 +364,7 @@ export const destinationLinks = [
       'Set up the multi-user platform for remote self-administered studies, centralized data management, and research teams.',
     detail: 'deployment guide',
     href: `${documentationRoot}/collect-data/fresco/guide`,
-    color: 'paradise-pink',
+    color: 'slate-blue',
     icon: '/images/summer-2026/fresco-icon.png',
   },
   {
@@ -244,7 +374,7 @@ export const destinationLinks = [
       'Follow task-focused guidance for choosing tools, designing protocols, collecting data, and understanding every interface.',
     detail: 'latest interfaces & features',
     href: documentationRoot,
-    color: 'mustard',
+    color: 'sea-serpent',
     icon: '/images/icons/docs.png',
   },
 ] as const;
