@@ -92,7 +92,6 @@ function renderStrong(chunks: ReactNode) {
 export function LaunchHero() {
   const t = useTranslations('SummerUpdate.hero');
   const sectionRef = useRef<HTMLElement>(null);
-  const entranceStarted = useRef(false);
   const shouldReduceMotion = useReducedMotion();
   const entranceControls = useAnimationControls();
   const { scrollYProgress } = useScroll({
@@ -128,11 +127,10 @@ export function LaunchHero() {
   );
 
   useLayoutEffect(() => {
-    if (shouldReduceMotion === null || entranceStarted.current) {
+    if (shouldReduceMotion === null) {
       return undefined;
     }
 
-    entranceStarted.current = true;
     if (shouldReduceMotion) {
       sectionRef.current?.removeAttribute('data-entrance-pending');
       return undefined;
@@ -161,6 +159,7 @@ export function LaunchHero() {
 
     return () => {
       active = false;
+      entranceControls.stop();
       window.removeEventListener('scroll', settleOnScroll);
     };
   }, [entranceControls, shouldReduceMotion]);

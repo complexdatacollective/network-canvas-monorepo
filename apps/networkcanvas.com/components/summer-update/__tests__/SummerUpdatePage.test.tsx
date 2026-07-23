@@ -1,7 +1,20 @@
-import { cleanup, fireEvent, screen, within } from '@testing-library/react';
-import type { ComponentPropsWithoutRef, ComponentType, ReactNode } from 'react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
+import {
+  type ComponentPropsWithoutRef,
+  type ComponentType,
+  type ReactNode,
+  StrictMode,
+} from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { loadLocaleMessages } from '~/lib/i18n/messages';
 import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { SummerUpdatePage } from '../SummerUpdatePage';
@@ -10,6 +23,7 @@ const { launchAnimationControls, motionPreferences } = vi.hoisted(() => ({
   launchAnimationControls: {
     set: vi.fn(),
     start: vi.fn(() => Promise.resolve()),
+    stop: vi.fn(),
   },
   motionPreferences: { shouldReduce: false },
 }));
@@ -228,10 +242,30 @@ afterEach(() => {
   cleanup();
   launchAnimationControls.set.mockClear();
   launchAnimationControls.start.mockClear();
+  launchAnimationControls.stop.mockClear();
   motionPreferences.shouldReduce = false;
 });
 
 describe('SummerUpdatePage', () => {
+  it('restarts the hero entrance when Strict Mode replays a client mount', () => {
+    render(
+      <StrictMode>
+        <NextIntlClientProvider
+          locale="en-US"
+          messages={loadLocaleMessages('en-US')}
+          timeZone="UTC"
+        >
+          <SummerUpdatePage />
+        </NextIntlClientProvider>
+      </StrictMode>,
+    );
+
+    expect(launchAnimationControls.start).toHaveBeenCalledTimes(2);
+    expect(launchAnimationControls.start).toHaveBeenNthCalledWith(1, 'visible');
+    expect(launchAnimationControls.start).toHaveBeenNthCalledWith(2, 'visible');
+    expect(launchAnimationControls.stop).toHaveBeenCalledOnce();
+  });
+
   it('defines PWA where the abbreviation is introduced', () => {
     renderWithIntl(<SummerUpdatePage />);
 
