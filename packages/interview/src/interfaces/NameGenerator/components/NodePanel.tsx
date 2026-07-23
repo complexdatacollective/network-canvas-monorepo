@@ -38,6 +38,7 @@ function NodePanel(props: NodePanelProps) {
     minimize,
     accepts,
     animationKey,
+    disableDragging,
   } = props;
 
   const stageSubject = useStageSelector(getStageSubject);
@@ -91,6 +92,14 @@ function NodePanel(props: NodePanelProps) {
     [panelConfig.dataSource, fullNodeIndex],
   );
 
+  const disabledKeys = useMemo(
+    () =>
+      disableDragging
+        ? nodes.map((node) => node[entityPrimaryKeyProperty])
+        : undefined,
+    [disableDragging, nodes],
+  );
+
   const renderItem = useCallback(
     (node: NcNode, itemProps: ItemProps) => (
       <ExternalNodeItem node={node} itemProps={itemProps} size="sm" />
@@ -125,6 +134,7 @@ function NodePanel(props: NodePanelProps) {
           nodeSize="sm"
           animationKey={animationKey}
           announcedName={panelConfig.title}
+          disabledKeys={disabledKeys}
           renderItem={isExternalData ? renderItem : undefined}
         />
       )}

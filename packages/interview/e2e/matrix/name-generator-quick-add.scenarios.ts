@@ -197,11 +197,11 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
     },
 
     {
-      id: 'node-limits-and-panel-drag-gap',
+      id: 'node-limits-and-panel-drag',
       covers: [
         'behaviours.minNodes',
         'behaviours.maxNodes',
-        'behaviours.maxNodes-panel-drag-gap',
+        'behaviours.maxNodes-panel-drag',
       ],
       currentStep: 1,
       seedNetwork: true,
@@ -239,19 +239,21 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         expect(await interview.nextButtonHasPulse()).toBe(true);
         expect(await stage.quickAdd.isDisabled()).toBe(true);
 
-        // Known gap: NodePanel's disableDragging prop is declared but never
-        // read (NodePanel.tsx:21) and handleDropNode has no maxNodesReached
-        // guard (NameGenerator.tsx:171-190), so a panel drop still succeeds
-        // even though maxNodes: 1 was already reached via quick-add.
-        const setupNodeName = await stage.nodePanel
+        const panelOption = stage.nodePanel
           .getPanel('Prior contacts')
           .getByRole('option')
-          .first()
-          .textContent();
-        await stage.nodePanel.dragNodeToMainList(
+          .first();
+        await expect(panelOption).toHaveAttribute('aria-disabled', 'true');
+
+        const setupNodeName = await panelOption.textContent();
+        await stage.nodePanel.expectDragNodeToMainListNoOp(
           'Prior contacts',
           setupNodeName!.trim(),
         );
+
+        await expect(
+          page.getByTestId('node-list').getByRole('option'),
+        ).toHaveText(['Alice']);
 
         network = await protocol.getNetworkState(interview.interviewId);
         expect(network?.nodes).toHaveLength(2);
