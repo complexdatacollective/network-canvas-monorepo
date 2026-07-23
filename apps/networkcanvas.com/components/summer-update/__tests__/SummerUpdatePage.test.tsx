@@ -279,7 +279,7 @@ describe('SummerUpdatePage', () => {
 
     expect(selectedFeature).toHaveClass(
       'justify-center',
-      'aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_55%,var(--color-white))]',
+      'aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_25%,var(--color-white))]',
       'aria-pressed:text-rich-black',
     );
     expect(selectedFeature).not.toHaveClass('aria-pressed:bg-sea-serpent/15');
