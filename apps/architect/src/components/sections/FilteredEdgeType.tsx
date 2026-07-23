@@ -1,40 +1,21 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
-import { difference, get, keys } from 'es-toolkit/compat';
-import { useCallback } from 'react';
-import { useSelector } from 'react-redux';
-import { change, getFormValues } from 'redux-form';
+import { get } from 'es-toolkit/compat';
 
 import { Row, Section } from '~/components/EditorLayout';
 // Screen message listeners removed as part of screen system refactor
 import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
 
 import IssueAnchor from '../IssueAnchor';
 import EntitySelectField from './fields/EntitySelectField/EntitySelectField';
 import Filter from './Filter';
-import { SUBJECT_INDEPENDENT_FIELDS } from './NodeType';
+import useResetStageOnSubjectChange from './useResetStageOnSubjectChange';
 
 type FilteredEdgeTypeProps = StageEditorSectionProps;
 
 const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
-  const { form } = props;
+  const { form, interfaceType } = props;
 
-  const dispatch = useAppDispatch();
-  const formValues = useSelector((state: RootState) =>
-    getFormValues(form)(state),
-  );
-  const fields = keys(formValues);
-
-  const handleResetStage = useCallback(() => {
-    const fieldsToReset = difference(fields, SUBJECT_INDEPENDENT_FIELDS);
-    fieldsToReset.forEach((field) => {
-      dispatch(change(form, field, null) as UnknownAction);
-    });
-  }, [dispatch, fields, form]);
-
-  const _currentSubject = get(formValues, 'subject');
+  const handleResetStage = useResetStageOnSubjectChange(form, interfaceType);
 
   // TODO: Restore auto-selection of newly created types when type creation dialogs
   // are properly integrated with form state management
