@@ -10,7 +10,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SummerUpdatePage } from '../SummerUpdatePage';
 
-const { motionPreferences } = vi.hoisted(() => ({
+const { launchAnimationControls, motionPreferences } = vi.hoisted(() => ({
+  launchAnimationControls: {
+    set: vi.fn(),
+    start: vi.fn(() => Promise.resolve()),
+  },
   motionPreferences: { shouldReduce: false },
 }));
 
@@ -31,6 +35,7 @@ type MotionMockProps = {
   layoutId?: string;
   onViewportEnter?: () => void;
   transition?: unknown;
+  variants?: unknown;
   viewport?: unknown;
   whileInView?: unknown;
 };
@@ -44,6 +49,7 @@ function MotionDiv({
   layoutId: _layoutId,
   onViewportEnter: _onViewportEnter,
   transition: _transition,
+  variants: _variants,
   viewport: _viewport,
   whileInView: _whileInView,
   ...props
@@ -60,6 +66,7 @@ function MotionSpan({
   layoutId: _layoutId,
   onViewportEnter: _onViewportEnter,
   transition: _transition,
+  variants: _variants,
   viewport: _viewport,
   whileInView: _whileInView,
   ...props
@@ -76,6 +83,7 @@ function MotionSvg({
   layoutId: _layoutId,
   onViewportEnter: _onViewportEnter,
   transition: _transition,
+  variants: _variants,
   viewport: _viewport,
   whileInView: _whileInView,
   ...props
@@ -92,6 +100,7 @@ function MotionPath({
   layoutId: _layoutId,
   onViewportEnter: _onViewportEnter,
   transition: _transition,
+  variants: _variants,
   viewport: _viewport,
   whileInView: _whileInView,
   ...props
@@ -108,6 +117,7 @@ function MotionCircle({
   layoutId: _layoutId,
   onViewportEnter: _onViewportEnter,
   transition: _transition,
+  variants: _variants,
   viewport: _viewport,
   whileInView: _whileInView,
   ...props
@@ -124,6 +134,7 @@ function MotionGroup({
   layoutId: _layoutId,
   onViewportEnter: _onViewportEnter,
   transition: _transition,
+  variants: _variants,
   viewport: _viewport,
   whileInView: _whileInView,
   ...props
@@ -140,6 +151,7 @@ function MotionListItem({
   layoutId: _layoutId,
   onViewportEnter: _onViewportEnter,
   transition: _transition,
+  variants: _variants,
   viewport: _viewport,
   whileInView: _whileInView,
   ...props
@@ -161,6 +173,7 @@ vi.mock('motion/react', () => ({
     svg: MotionSvg,
   },
   useAnimation: () => ({ start: vi.fn() }),
+  useAnimationControls: () => launchAnimationControls,
   useMotionValue: (value: number) => ({
     get: () => value,
     set: vi.fn(),
@@ -217,6 +230,8 @@ vi.mock('~/lib/i18n/navigation', () => ({
 
 afterEach(() => {
   cleanup();
+  launchAnimationControls.set.mockClear();
+  launchAnimationControls.start.mockClear();
   motionPreferences.shouldReduce = false;
 });
 
@@ -414,7 +429,9 @@ describe('SummerUpdatePage', () => {
     expect(projectName.style.webkitTextStroke).toBe(
       'var(--text-glow-stroke-width) transparent',
     );
-    expect(projectName).toHaveAttribute('data-homepage-weave-target');
+    expect(projectName.parentElement).toHaveAttribute(
+      'data-homepage-weave-target',
+    );
     expect(within(hero).getByTestId('hero-weave')).toBeInTheDocument();
 
     const upgradeHeading = screen.getByRole('heading', {

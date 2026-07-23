@@ -13,11 +13,11 @@ import type { NetworkWeaveConvergence } from '@codaco/art/NetworkWeaveBackground
 const HERO_ANCHOR_SELECTOR = '[data-homepage-weave-target]';
 const CENTER: NetworkWeaveConvergence = { x: 0, y: 0 };
 const COMPLEXITY = 20;
-const SPEED_FACTOR = 0.28;
-const HERO_INTENSITY = 0.62;
-const READING_INTENSITY = 0.16;
+const SPEED_FACTOR = 0.18;
+const HERO_INTENSITY = 0.45;
+const READING_INTENSITY = 0.15;
 const HERO_FLARE = 1.45;
-const READING_FLARE = 2.08;
+const READING_FLARE = 4.08;
 const POSITION_TOLERANCE = 0.0005;
 const PARAMETER_TOLERANCE = 0.0005;
 

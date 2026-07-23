@@ -30,7 +30,6 @@ const FRAGMENT_SHADER = `
     precision mediump float;
   #endif
 
-  uniform vec2 u_resolution;
   uniform vec2 u_focus;
   uniform vec2 u_focus_size;
   uniform vec2 u_pointer;
@@ -41,173 +40,254 @@ const FRAGMENT_SHADER = `
   uniform vec3 u_color_2;
   uniform vec3 u_color_3;
 
-  float lineGlow(float distanceFromLine, float width) {
+  float gaussian(float value, float width) {
     float safeWidth = max(width, 0.0001);
-    return exp(
-      -(distanceFromLine * distanceFromLine) /
-      (safeWidth * safeWidth)
-    );
+    return exp(-(value * value) / (safeWidth * safeWidth));
   }
 
-  float signalNode(vec2 point, vec2 position, float radius) {
-    vec2 offset = point - position;
-    return exp(-dot(offset, offset) / max(radius * radius, 0.0001));
+  float routeProgress(vec2 point, float side) {
+    return clamp((point.x * side - 1.08) / 2.25, 0.0, 1.0);
   }
 
-  float signalTail(
+  float routeY(
+    float progress,
+    float lane,
+    float bend,
+    float phase
+  ) {
+    return lane +
+      bend *
+      sin(progress * 4.3 + phase) *
+      (0.35 + progress * 0.65);
+  }
+
+  float routeMask(
     vec2 point,
-    vec2 origin,
-    vec2 target,
+    float side,
+    float lane,
+    float bend,
+    float phase,
     float width
   ) {
-    vec2 segment = target - origin;
-    float segmentLength = max(dot(segment, segment), 0.0001);
-    float progress = clamp(
-      dot(point - origin, segment) / segmentLength,
-      0.0,
-      1.0
+    float sideDistance = point.x * side;
+    float progress = routeProgress(point, side);
+    float pathY = routeY(progress, lane, bend, phase);
+    float bounds =
+      smoothstep(0.98, 1.12, sideDistance) *
+      (1.0 - smoothstep(3.05, 3.35, sideDistance));
+    float dashWave = 0.5 + 0.5 * sin(progress * 34.0 + phase * 2.0);
+    float dashes = mix(
+      0.18,
+      1.0,
+      smoothstep(0.18, 0.7, dashWave)
     );
-    float distanceFromSegment = length(
-      point - (origin + segment * progress)
-    );
-    return lineGlow(distanceFromSegment, width) * progress;
+
+    return gaussian(point.y - pathY, width) * bounds * dashes;
   }
 
-  float angularLobe(float angle, float heading) {
-    return 0.12 + 0.88 * pow(
-      max(0.0, 0.5 + 0.5 * cos(angle - heading)),
-      5.0
+  float signalNode(
+    vec2 pixelPoint,
+    vec2 localPosition,
+    vec2 focusHalfSize,
+    float radius
+  ) {
+    vec2 pixelPosition = localPosition * focusHalfSize;
+    return gaussian(length(pixelPoint - pixelPosition), radius);
+  }
+
+  float packetSignal(
+    vec2 pixelPoint,
+    vec2 focusHalfSize,
+    float side,
+    float lane,
+    float bend,
+    float phase,
+    float intro,
+    float start,
+    float end
+  ) {
+    float active =
+      smoothstep(start, start + 0.045, intro) *
+      (1.0 - smoothstep(end - 0.055, end, intro));
+    float progress = 1.0 - smoothstep(start, end, intro);
+    vec2 position = vec2(
+      side * (1.08 + progress * 2.25),
+      routeY(progress, lane, bend, phase)
     );
+
+    return signalNode(
+      pixelPoint,
+      position,
+      focusHalfSize,
+      3.2
+    ) * active;
+  }
+
+  void selectStronger(
+    float candidate,
+    vec3 candidateColor,
+    inout float strongest,
+    inout vec3 color
+  ) {
+    if (candidate > strongest) {
+      strongest = candidate;
+      color = candidateColor;
+    }
   }
 
   void main() {
-    float shortestSide = min(u_resolution.x, u_resolution.y);
-    vec2 point = (gl_FragCoord.xy - u_focus) / shortestSide;
-    point -= u_pointer * 0.014;
+    vec2 focusHalfSize = max(
+      u_focus_size * 0.5,
+      vec2(60.0, 20.0)
+    );
+    vec2 pixelPoint = gl_FragCoord.xy - u_focus;
+    vec2 point = pixelPoint / focusHalfSize;
+    point -= u_pointer * 0.006;
 
-    vec2 targetHalfSize = max(
-      u_focus_size / (shortestSide * 2.0),
-      vec2(0.14, 0.035)
+    float intro = clamp(u_time / 2.05, 0.0, 1.0);
+    float introVisibility = smoothstep(0.05, 0.14, intro);
+    float settled = smoothstep(0.72, 1.0, intro);
+    float routeStrength = mix(0.052, 0.012, settled);
+    float pathWidth = max(
+      0.022,
+      1.55 / max(focusHalfSize.y, 1.0)
     );
-    vec2 lensScale = vec2(
-      targetHalfSize.x * 1.24,
-      targetHalfSize.y * 2.85
+
+    float route0 = routeMask(
+      point,
+      -1.0,
+      -1.12,
+      0.46,
+      0.2,
+      pathWidth
     );
-    float scrollSpread = mix(
+    float route1 = routeMask(
+      point,
+      -1.0,
+      1.18,
+      -0.4,
+      1.7,
+      pathWidth
+    );
+    float route2 = routeMask(
+      point,
       1.0,
-      1.32,
-      smoothstep(0.08, 0.72, u_scroll)
+      -1.28,
+      -0.42,
+      3.3,
+      pathWidth
     );
-    vec2 lensPoint = point / (lensScale * scrollSpread);
-    float radius = length(lensPoint);
-    float angle = atan(lensPoint.y, lensPoint.x);
-    float pixelWidth = max(
-      0.009,
-      2.2 / max(shortestSide * min(lensScale.x, lensScale.y), 1.0)
+    float route3 = routeMask(
+      point,
+      1.0,
+      1.08,
+      0.44,
+      4.8,
+      pathWidth
     );
-    float visibility = 1.0 - smoothstep(0.2, 0.92, u_scroll);
-    float envelope = 1.0 - smoothstep(1.55, 2.05, radius);
-    float breathe = 0.5 + 0.5 * sin(u_time * 0.72);
 
-    float filament0 = lineGlow(
-      radius - (0.87 + 0.055 * sin(angle * 3.0 - u_time * 0.48)),
-      pixelWidth
-    ) * angularLobe(angle, u_time * 0.24);
-    float filament1 = lineGlow(
-      radius - (1.02 + 0.05 * sin(angle * 4.0 + u_time * 0.4)),
-      pixelWidth * 0.9
-    ) * angularLobe(angle, 1.5708 - u_time * 0.2);
-    float filament2 = lineGlow(
-      radius - (1.17 + 0.045 * sin(angle * 5.0 - u_time * 0.34)),
-      pixelWidth
-    ) * angularLobe(angle, 3.1416 + u_time * 0.17);
-    float filament3 = lineGlow(
-      radius - (1.32 + 0.05 * sin(angle * 4.0 + u_time * 0.29)),
-      pixelWidth * 0.92
-    ) * angularLobe(angle, 4.7124 - u_time * 0.15);
+    float packet0 = packetSignal(
+      pixelPoint,
+      focusHalfSize,
+      -1.0,
+      -1.12,
+      0.46,
+      0.2,
+      intro,
+      0.16,
+      0.44
+    );
+    float packet1 = packetSignal(
+      pixelPoint,
+      focusHalfSize,
+      -1.0,
+      1.18,
+      -0.4,
+      1.7,
+      intro,
+      0.22,
+      0.5
+    );
+    float packet2 = packetSignal(
+      pixelPoint,
+      focusHalfSize,
+      1.0,
+      -1.28,
+      -0.42,
+      3.3,
+      intro,
+      0.28,
+      0.56
+    );
+    float packet3 = packetSignal(
+      pixelPoint,
+      focusHalfSize,
+      1.0,
+      1.08,
+      0.44,
+      4.8,
+      intro,
+      0.34,
+      0.62
+    );
 
-    float wavePhase0 = fract(u_time * 0.045);
-    float wavePhase1 = fract(u_time * 0.045 + 0.25);
-    float wavePhase2 = fract(u_time * 0.045 + 0.5);
-    float wavePhase3 = fract(u_time * 0.045 + 0.75);
-    float wave0 = lineGlow(
-      radius - (0.56 + wavePhase0 * 0.96),
-      pixelWidth * 0.8
-    ) * (1.0 - wavePhase0);
-    float wave1 = lineGlow(
-      radius - (0.56 + wavePhase1 * 0.96),
-      pixelWidth * 0.8
-    ) * (1.0 - wavePhase1);
-    float wave2 = lineGlow(
-      radius - (0.56 + wavePhase2 * 0.96),
-      pixelWidth * 0.8
-    ) * (1.0 - wavePhase2);
-    float wave3 = lineGlow(
-      radius - (0.56 + wavePhase3 * 0.96),
-      pixelWidth * 0.8
-    ) * (1.0 - wavePhase3);
+    float arrival =
+      smoothstep(0.5, 0.68, intro) *
+      (1.0 - smoothstep(0.76, 0.94, intro));
+    float idleGlint =
+      mix(0.014, 0.022, 0.5 + 0.5 * sin(u_time * 0.72));
+    float glint0 = signalNode(
+      pixelPoint,
+      vec2(-1.08, routeY(0.0, -1.12, 0.46, 0.2)),
+      focusHalfSize,
+      3.8
+    );
+    float glint1 = signalNode(
+      pixelPoint,
+      vec2(-1.08, routeY(0.0, 1.18, -0.4, 1.7)),
+      focusHalfSize,
+      3.8
+    );
+    float glint2 = signalNode(
+      pixelPoint,
+      vec2(1.08, routeY(0.0, -1.28, -0.42, 3.3)),
+      focusHalfSize,
+      3.8
+    );
+    float glint3 = signalNode(
+      pixelPoint,
+      vec2(1.08, routeY(0.0, 1.08, 0.44, 4.8)),
+      focusHalfSize,
+      3.8
+    );
 
-    float orbitAngle0 = u_time * 0.36;
-    float orbitAngle1 = u_time * 0.29 + 1.5708;
-    float orbitAngle2 = -u_time * 0.32 + 3.1416;
-    float orbitAngle3 = -u_time * 0.26 + 4.7124;
-    vec2 orbit0 = vec2(cos(orbitAngle0), sin(orbitAngle0)) * 0.94;
-    vec2 orbit1 = vec2(cos(orbitAngle1), sin(orbitAngle1)) * 1.08;
-    vec2 orbit2 = vec2(cos(orbitAngle2), sin(orbitAngle2)) * 1.22;
-    vec2 orbit3 = vec2(cos(orbitAngle3), sin(orbitAngle3)) * 1.36;
-    vec2 tail0 = vec2(cos(orbitAngle0 - 0.2), sin(orbitAngle0 - 0.2)) * 0.94;
-    vec2 tail1 = vec2(cos(orbitAngle1 - 0.18), sin(orbitAngle1 - 0.18)) * 1.08;
-    vec2 tail2 = vec2(cos(orbitAngle2 + 0.19), sin(orbitAngle2 + 0.19)) * 1.22;
-    vec2 tail3 = vec2(cos(orbitAngle3 + 0.17), sin(orbitAngle3 + 0.17)) * 1.36;
-
-    float bead0 =
-      signalNode(lensPoint, orbit0, 0.055) +
-      signalTail(lensPoint, tail0, orbit0, 0.018) * 0.55;
-    float bead1 =
-      signalNode(lensPoint, orbit1, 0.05) +
-      signalTail(lensPoint, tail1, orbit1, 0.017) * 0.55;
-    float bead2 =
-      signalNode(lensPoint, orbit2, 0.052) +
-      signalTail(lensPoint, tail2, orbit2, 0.017) * 0.55;
-    float bead3 =
-      signalNode(lensPoint, orbit3, 0.048) +
-      signalTail(lensPoint, tail3, orbit3, 0.016) * 0.55;
-
-    float aura = exp(
-      -pow(max(radius - 0.54, 0.0), 2.0) / 0.34
-    ) * smoothstep(0.34, 0.72, radius) * (0.055 + breathe * 0.018);
-
+    float glintStrength = arrival * 0.18 + idleGlint * settled;
     float weight0 =
-      filament0 * 0.9 + wave0 * 0.58 + bead0 * 1.18 +
-      aura * angularLobe(angle, 0.0);
+      route0 * routeStrength * introVisibility +
+      packet0 * 0.3 +
+      glint0 * glintStrength;
     float weight1 =
-      filament1 * 0.9 + wave1 * 0.58 + bead1 * 1.18 +
-      aura * angularLobe(angle, 1.5708);
+      route1 * routeStrength * introVisibility +
+      packet1 * 0.3 +
+      glint1 * glintStrength;
     float weight2 =
-      filament2 * 0.9 + wave2 * 0.58 + bead2 * 1.18 +
-      aura * angularLobe(angle, 3.1416);
+      route2 * routeStrength * introVisibility +
+      packet2 * 0.3 +
+      glint2 * glintStrength;
     float weight3 =
-      filament3 * 0.9 + wave3 * 0.58 + bead3 * 1.18 +
-      aura * angularLobe(angle, 4.7124);
-    float totalWeight = weight0 + weight1 + weight2 + weight3;
-    vec3 color = (
-      u_color_0 * weight0 +
-      u_color_1 * weight1 +
-      u_color_2 * weight2 +
-      u_color_3 * weight3
-    ) / max(totalWeight, 0.0001);
+      route3 * routeStrength * introVisibility +
+      packet3 * 0.3 +
+      glint3 * glintStrength;
 
-    vec2 quietBox = abs(point) - targetHalfSize * vec2(1.02, 0.86);
-    float quietDistance =
-      length(max(quietBox, 0.0)) +
-      min(max(quietBox.x, quietBox.y), 0.0);
-    float quietZone = mix(
-      0.12,
-      1.0,
-      smoothstep(-0.012, 0.045, quietDistance)
-    );
-    float alpha = clamp(totalWeight * 0.72, 0.0, 0.94);
-    alpha *= envelope * visibility * quietZone;
+    vec3 color = u_color_0;
+    float strongest = weight0;
+    selectStronger(weight1, u_color_1, strongest, color);
+    selectStronger(weight2, u_color_2, strongest, color);
+    selectStronger(weight3, u_color_3, strongest, color);
+
+    float scrollVisibility = 1.0 - smoothstep(0.02, 0.3, u_scroll);
+    float alpha = min(strongest, 0.32) * scrollVisibility;
+    if (alpha < 0.001) discard;
 
     gl_FragColor = vec4(color, alpha);
   }
@@ -330,10 +410,6 @@ export function HeroSignalField() {
     if (!program) return undefined;
 
     const positionLocation = context.getAttribLocation(program, 'a_position');
-    const resolutionLocation = context.getUniformLocation(
-      program,
-      'u_resolution',
-    );
     const focusLocation = context.getUniformLocation(program, 'u_focus');
     const focusSizeLocation = context.getUniformLocation(
       program,
@@ -381,6 +457,7 @@ export function HeroSignalField() {
     let measurementFrameId = 0;
     let isIntersecting = true;
     let colorsNeedUpdate = true;
+    let startTimestamp: number | null = null;
     let focus = { x: 0, y: 0 };
     let focusSize = { width: 1, height: 1 };
     let pointer = { x: 0, y: 0 };
@@ -454,6 +531,7 @@ export function HeroSignalField() {
       }
       lastDrawTimestamp = timestamp;
       if (colorsNeedUpdate && !updateColors()) return;
+      startTimestamp ??= timestamp;
 
       pointer = {
         x: pointer.x + (targetPointer.x - pointer.x) * 0.055,
@@ -461,11 +539,10 @@ export function HeroSignalField() {
       };
       context.clearColor(0, 0, 0, 0);
       context.clear(context.COLOR_BUFFER_BIT);
-      context.uniform2f(resolutionLocation, canvas.width, canvas.height);
       context.uniform2f(focusLocation, focus.x, focus.y);
       context.uniform2f(focusSizeLocation, focusSize.width, focusSize.height);
       context.uniform2f(pointerLocation, pointer.x, pointer.y);
-      context.uniform1f(timeLocation, timestamp / 1000);
+      context.uniform1f(timeLocation, (timestamp - startTimestamp) / 1000);
       context.uniform1f(scrollLocation, scrollProgress);
       context.drawArrays(context.TRIANGLES, 0, 3);
       frameId = requestAnimationFrame(draw);
