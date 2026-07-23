@@ -1,5 +1,10 @@
 {
   "label": "Explore Your Network",
+  "behaviours": {
+    "allowRepositioning": true,
+    "automaticLayout": true,
+    "freeDraw": false
+  },
   "type": "Narrative",
   "background": {
     "image": "narrative_background"

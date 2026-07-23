@@ -5,6 +5,7 @@
   },
   "type": "NetworkComposer",
   "background": {
+    "skewedTowardCenter": false,
     "concentricCircles": 4
   },
   "subject": {
