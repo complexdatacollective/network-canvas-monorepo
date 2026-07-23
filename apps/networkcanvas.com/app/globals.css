@@ -13,6 +13,12 @@
    Tailwind at the source tree directly. */
 @source '../node_modules/@codaco/fresco-ui/src/**/*.{ts,tsx}';
 
+/* The Fresco theme resets the text scale; re-add the slightly-smaller-than
+   -base size used for secondary and meta copy. */
+@theme {
+  --text-base-sm: clamp(0.9rem, 0.28vw + 0.79rem, 1.01rem);
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;

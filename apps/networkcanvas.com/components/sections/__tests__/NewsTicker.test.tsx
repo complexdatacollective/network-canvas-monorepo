@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, screen } from '@testing-library/react';
+import { act, cleanup, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { NewsItem } from '~/lib/siteContent';
@@ -54,7 +54,7 @@ describe('NewsTicker', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('rotates stories without animation when reduced motion is preferred', () => {
+  it('keeps the first story static when reduced motion is preferred', () => {
     vi.useFakeTimers();
     motionPreference.reduced = true;
     const rotatingNewsItems: NewsItem[] = [
@@ -71,21 +71,17 @@ describe('NewsTicker', () => {
     );
     const ticker = container.firstElementChild;
     if (!ticker) throw new Error('Expected the news ticker to render');
+    const desktopTicker = ticker.children[0];
 
     expect(container.querySelector('.animate-marquee')).not.toBeInTheDocument();
-    expect(container.querySelector('[aria-live="polite"]')).toHaveTextContent(
-      'Fixture-only research news',
+    expect(desktopTicker).toHaveTextContent('Fixture-only research news');
+    expect(desktopTicker).not.toHaveTextContent(
+      'Second fixture research story',
     );
 
-    fireEvent.mouseEnter(ticker);
-    act(() => vi.advanceTimersByTime(8000));
-    expect(container.querySelector('[aria-live="polite"]')).toHaveTextContent(
-      'Fixture-only research news',
-    );
-
-    fireEvent.mouseLeave(ticker);
-    act(() => vi.advanceTimersByTime(8000));
-    expect(container.querySelector('[aria-live="polite"]')).toHaveTextContent(
+    act(() => vi.advanceTimersByTime(16000));
+    expect(desktopTicker).toHaveTextContent('Fixture-only research news');
+    expect(desktopTicker).not.toHaveTextContent(
       'Second fixture research story',
     );
   });

@@ -1,12 +1,15 @@
+import { useTranslations } from 'next-intl';
+
 import { cn } from '~/lib/cn';
 
 import type { CompatibilityStatus } from './summerUpdateContent';
 
 export function StatusChip({ status }: { status: CompatibilityStatus }) {
+  const t = useTranslations('SummerUpdate.compatibility.statuses');
   const labels = {
-    migrates: '→ Migrates to 8',
-    native: '✓ Native',
-    unsupported: '✗ Not supported',
+    migrates: `→ ${t('migrates')}`,
+    native: `✓ ${t('native')}`,
+    unsupported: `✗ ${t('unsupported')}`,
   } as const;
 
   const statusClass = {

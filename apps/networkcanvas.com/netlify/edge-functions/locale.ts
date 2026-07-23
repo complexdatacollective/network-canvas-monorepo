@@ -21,11 +21,6 @@ const legacyDownloadPaths = new Set([
   '/download/',
   '/download.html',
 ]);
-const englishOnlyPaths = new Set([
-  '/summer-2026-update',
-  '/summer-2026-update/',
-]);
-
 function canonicalizeLocale(value: string) {
   try {
     return Intl.getCanonicalLocales(value)[0];
@@ -122,17 +117,6 @@ export function getLocaleRedirect(request: Request, savedLocale?: string) {
   const pathLocale = getPathLocale(url.pathname);
 
   if (pathLocale) {
-    if (
-      englishOnlyPaths.has(pathLocale.unlocalizedPath) &&
-      pathLocale.locale === 'es'
-    ) {
-      url.pathname = getLocalizedPathname(
-        defaultSiteLocale,
-        pathLocale.unlocalizedPath,
-      );
-      return url;
-    }
-
     if (!legacyDownloadPaths.has(pathLocale.unlocalizedPath)) return undefined;
 
     url.pathname = `/${pathLocale.locale}/get-started/`;
@@ -144,13 +128,9 @@ export function getLocaleRedirect(request: Request, savedLocale?: string) {
   }
 
   const detectedLocale = detectLocale(request, savedLocale);
-  const locale =
-    detectedLocale === 'es' && englishOnlyPaths.has(url.pathname)
-      ? defaultSiteLocale
-      : detectedLocale;
   url.pathname = legacyDownloadPaths.has(url.pathname)
-    ? `/${locale}/get-started/`
-    : getLocalizedPathname(locale, url.pathname);
+    ? `/${detectedLocale}/get-started/`
+    : getLocalizedPathname(detectedLocale, url.pathname);
 
   return url;
 }

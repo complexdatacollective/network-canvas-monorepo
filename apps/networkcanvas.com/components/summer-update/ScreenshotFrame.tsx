@@ -104,7 +104,7 @@ export function ScreenshotFrame({
           src={src}
           alt={alt}
           sizes="(min-width: 801px) 50vw, 100vw"
-          className="fit"
+          className="object-cover"
         />
       </motion.div>
     </div>

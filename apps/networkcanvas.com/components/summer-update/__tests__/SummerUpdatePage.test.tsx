@@ -1,12 +1,8 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from '@testing-library/react';
+import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import type { ComponentPropsWithoutRef, ComponentType, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { SummerUpdatePage } from '../SummerUpdatePage';
 
@@ -237,7 +233,7 @@ afterEach(() => {
 
 describe('SummerUpdatePage', () => {
   it('defines PWA where the abbreviation is introduced', () => {
-    render(<SummerUpdatePage />);
+    renderWithIntl(<SummerUpdatePage />);
 
     const abbreviations = screen.getAllByText('PWA');
 
@@ -251,7 +247,7 @@ describe('SummerUpdatePage', () => {
   });
 
   it('keeps the introductory cards in one column on phone-sized screens', () => {
-    render(<SummerUpdatePage />);
+    renderWithIntl(<SummerUpdatePage />);
 
     const firstBenefitCard = screen
       .getByRole('heading', { name: 'Low friction use' })
@@ -271,7 +267,7 @@ describe('SummerUpdatePage', () => {
   });
 
   it('links every Schema 8 explorer item to its relevant documentation', () => {
-    render(<SummerUpdatePage />);
+    renderWithIntl(<SummerUpdatePage />);
 
     const selectedFeature = screen.getByRole('button', {
       name: 'Geospatial',
@@ -279,9 +275,9 @@ describe('SummerUpdatePage', () => {
 
     expect(selectedFeature).toHaveClass(
       'justify-center',
-      'aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_25%,var(--color-white))]',
-      'aria-pressed:text-rich-black',
-      'inset-surface',
+      'aria-pressed:bg-selected',
+      'aria-pressed:text-selected-contrast',
+      'aria-pressed:inset-surface',
     );
     expect(selectedFeature).not.toHaveClass('aria-pressed:bg-sea-serpent/15');
     expect(screen.getByText('One-to-many dyad census')).toHaveClass(
@@ -299,10 +295,13 @@ describe('SummerUpdatePage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Anonymisation' }));
 
-    expect(selectedFeature).not.toHaveClass('inset-surface');
+    expect(selectedFeature).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: 'Anonymisation' })).toHaveClass(
-      'inset-surface',
+      'aria-pressed:inset-surface',
     );
+    expect(
+      screen.getByRole('button', { name: 'Anonymisation' }),
+    ).toHaveAttribute('aria-pressed', 'true');
     expect(
       screen.getByRole('heading', { name: 'Anonymisation interface' }),
     ).toBeInTheDocument();
@@ -321,7 +320,7 @@ describe('SummerUpdatePage', () => {
   });
 
   it('groups the feature explorer and shows screenshots in interface details', () => {
-    render(<SummerUpdatePage />);
+    renderWithIntl(<SummerUpdatePage />);
 
     [
       'New interview interfaces',
@@ -397,7 +396,7 @@ describe('SummerUpdatePage', () => {
   });
 
   it('explains the selected compatibility row in plain language', () => {
-    render(<SummerUpdatePage />);
+    renderWithIntl(<SummerUpdatePage />);
 
     expect(
       screen.getByText(
@@ -407,7 +406,7 @@ describe('SummerUpdatePage', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: 'Architect: Schema 7 migrates; Schema 8 native',
+        name: 'Architect, Browser & PWA: Schema 7 Migrates to 8; Schema 8 Native',
       }),
     );
 
@@ -419,7 +418,7 @@ describe('SummerUpdatePage', () => {
   });
 
   it('introduces the redesigned project website and documentation', () => {
-    render(<SummerUpdatePage />);
+    renderWithIntl(<SummerUpdatePage />);
 
     expect(
       screen.getByRole('heading', {
@@ -431,7 +430,7 @@ describe('SummerUpdatePage', () => {
     ).toHaveAttribute('href', 'https://networkcanvas.com/');
     expect(
       screen.getByRole('link', { name: 'Explore the documentation' }),
-    ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/');
+    ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/en');
     const websiteHeading = screen.getByRole('heading', {
       name: 'A fresh new look for networkcanvas.com',
     });
@@ -489,7 +488,7 @@ describe('SummerUpdatePage', () => {
   });
 
   it('presents the new-generation destinations as descriptive launch cards', () => {
-    render(<SummerUpdatePage />);
+    renderWithIntl(<SummerUpdatePage />);
 
     expect(
       screen.getByRole('heading', {
@@ -517,7 +516,7 @@ describe('SummerUpdatePage', () => {
   });
 
   it('uses consistent frame ratios for the new app screenshots', () => {
-    render(<SummerUpdatePage />);
+    renderWithIntl(<SummerUpdatePage />);
 
     const architectScreenshot = screen.getByRole('img', {
       name: 'Architect protocol editor showing the Sample Protocol timeline',
@@ -531,7 +530,7 @@ describe('SummerUpdatePage', () => {
   });
 
   it('uses theme-aware sections, a text-anchored woven hero, and white browser frames', () => {
-    render(<SummerUpdatePage />);
+    renderWithIntl(<SummerUpdatePage />);
 
     const heroHeading = screen.getByRole('heading', {
       name: 'Introducing the next generation of Network Canvas apps',
@@ -570,6 +569,10 @@ describe('SummerUpdatePage', () => {
     const heroWeave = within(hero).getByTestId('hero-weave');
     expect(heroWeave).toBeInTheDocument();
     expect(heroWeave.parentElement).toHaveClass('entrance-motion-item');
+    expect(heroWeave.parentElement?.parentElement).toHaveClass('z-0');
+    expect(
+      hero.querySelector('.relative.z-10.flex.min-h-svh'),
+    ).toBeInTheDocument();
 
     const upgradeHeading = screen.getByRole('heading', {
       name: 'When should you upgrade?',
@@ -594,9 +597,52 @@ describe('SummerUpdatePage', () => {
     );
   });
 
+  it('localizes feature interactions, images, and compatibility statuses in Spanish', () => {
+    renderWithIntl(<SummerUpdatePage />, 'es');
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Architect e Interviewer, reinventados para el navegador',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', {
+        name: 'Panel de Interviewer que muestra tarjetas de protocolos y una acción para reanudar una entrevista',
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anonimización' }));
+
+    expect(
+      screen.getByRole('heading', { name: 'Interfaz de anonimización' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/frase de contraseña que protege los datos/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', {
+        name: 'Vista previa de Interfaz de anonimización',
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Architect, Navegador y PWA: esquema 7 Migra al 8; esquema 8 Nativo',
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        /El nuevo Architect crea protocolos del esquema 8, y abre y actualiza automáticamente/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Nativo/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/No compatible/).length).toBeGreaterThan(0);
+  });
+
   it('keeps the text glow still when reduced motion is requested', () => {
     motionPreferences.shouldReduce = true;
-    render(<SummerUpdatePage />);
+    renderWithIntl(<SummerUpdatePage />);
 
     const projectName = within(
       screen.getByRole('heading', {

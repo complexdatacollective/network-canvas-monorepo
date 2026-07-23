@@ -7,8 +7,9 @@ import {
   motion,
   useReducedMotion,
 } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
-import { Fragment, useState } from 'react';
+import { Fragment, type ReactNode, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Definition from '@codaco/fresco-ui/Definition';
@@ -26,7 +27,6 @@ import { BenefitCard } from './BenefitCard';
 import { BulletList } from './BulletList';
 import { DestinationCard } from './DestinationCard';
 import { FeatureCard } from './FeatureCard';
-import { FeatureConstellation } from './FeatureConstellation';
 import { InterfaceGraphic } from './InterfaceGraphic';
 import { LaunchHero } from './LaunchHero';
 import { ProtocolMigrationIllustration } from './ProtocolMigrationIllustration';
@@ -36,23 +36,116 @@ import { Section } from './Section';
 import { SectionLabel } from './SectionLabel';
 import { StatusChip } from './StatusChip';
 import {
-  compatibilityRows,
-  destinationLinks,
-  interfaceFeatures,
+  type FeatureGroup,
+  useSummerUpdateContent,
 } from './summerUpdateContent';
 import { summerUpdateRevealMotion } from './summerUpdateMotion';
 
-type FeatureGroup = (typeof interfaceFeatures)[number]['group'];
+function renderDefinitionName(chunks: ReactNode) {
+  return <dfn>{chunks}</dfn>;
+}
 
-const featureGroupHeadings: Record<FeatureGroup, string> = {
-  interfaces: 'New interview interfaces',
-  schema: 'Schema 8 features',
-  architect: 'Architect',
-  interviewer: 'Interviewer',
-  fresco: 'Fresco 4.0.0',
-};
+function renderStrong(chunks: ReactNode) {
+  return <strong>{chunks}</strong>;
+}
+
+function ProgressiveWebAppTerm({
+  asAbbreviation,
+  children,
+}: {
+  asAbbreviation?: boolean;
+  children: ReactNode;
+}) {
+  const t = useTranslations('SummerUpdate');
+
+  return (
+    <Definition
+      asAbbreviation={asAbbreviation}
+      definition={t.rich('definitions.pwa', {
+        dfn: renderDefinitionName,
+      })}
+    >
+      {children}
+    </Definition>
+  );
+}
+
+function renderProgressiveWebApp(chunks: ReactNode) {
+  return <ProgressiveWebAppTerm>{chunks}</ProgressiveWebAppTerm>;
+}
+
+function renderProgressiveWebAppAbbreviation(chunks: ReactNode) {
+  return <ProgressiveWebAppTerm asAbbreviation>{chunks}</ProgressiveWebAppTerm>;
+}
+
+function ProtocolSchemaTerm({ children }: { children: ReactNode }) {
+  const t = useTranslations('SummerUpdate');
+
+  return (
+    <Definition definition={t('definitions.protocolSchema')}>
+      {children}
+    </Definition>
+  );
+}
+
+function renderProtocolSchema(chunks: ReactNode) {
+  return <ProtocolSchemaTerm>{chunks}</ProtocolSchemaTerm>;
+}
+
+function renderArchitectLink(chunks: ReactNode) {
+  return (
+    <NativeLink href="https://architect.networkcanvas.com/" target="_blank">
+      {chunks}
+    </NativeLink>
+  );
+}
+
+function renderInterviewerExternalLink(chunks: ReactNode) {
+  return (
+    <NativeLink href="https://interviewer.networkcanvas.com/" target="_blank">
+      {chunks}
+    </NativeLink>
+  );
+}
+
+function renderInterviewerLink(chunks: ReactNode) {
+  return (
+    <NativeLink href="https://interviewer.networkcanvas.com/">
+      {chunks}
+    </NativeLink>
+  );
+}
+
+function renderProtocolFile(chunks: ReactNode) {
+  return (
+    <span className="bg-mustard font-monospace text-rich-black rounded-xs px-2 py-1 text-xs font-bold">
+      {chunks}
+    </span>
+  );
+}
+
+function renderCommunityLink(chunks: ReactNode) {
+  return (
+    <NativeLink
+      className="[--link:var(--color-sea-serpent)]"
+      href="https://community.networkcanvas.com/"
+    >
+      {chunks}
+    </NativeLink>
+  );
+}
 
 export function SummerUpdatePage() {
+  const t = useTranslations('SummerUpdate');
+  const { compatibilityRows, destinationLinks, interfaceFeatures } =
+    useSummerUpdateContent();
+  const featureGroupHeadings: Record<FeatureGroup, string> = {
+    interfaces: t('features.groups.interfaces'),
+    schema: t('features.groups.schema'),
+    architect: t('features.groups.architect'),
+    interviewer: t('features.groups.interviewer'),
+    fresco: t('features.groups.fresco'),
+  };
   const shouldReduceMotion = useReducedMotion();
   const [selectedInterface, setSelectedInterface] = useState(0);
   const [selectedCompatibilityRow, setSelectedCompatibilityRow] = useState<
@@ -66,8 +159,8 @@ export function SummerUpdatePage() {
       ? undefined
       : compatibilityRows[selectedCompatibilityRow];
   const compatibilityNote =
-    selectedCompatibility?.note ??
-    'Select any row above to see what it means for your protocol files.';
+    selectedCompatibility?.note ?? t('compatibility.defaultNote');
+  if (!activeInterface) return null;
 
   return (
     <>
@@ -78,94 +171,64 @@ export function SummerUpdatePage() {
         <Section aria-labelledby="whats-new-title">
           <div className="mx-auto max-w-6xl">
             <Reveal {...summerUpdateRevealMotion}>
-              <SectionLabel>What’s new</SectionLabel>
+              <SectionLabel>{t('overview.label')}</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
                 className="text-text mt-2!"
                 id="whats-new-title"
               >
-                Architect and Interviewer, reimagined for the browser
+                {t('overview.heading')}
               </Heading>
               <Paragraph intent="lead" className="max-w-3xl">
-                We have redesigned <strong>Architect</strong> and{' '}
-                <strong>Interviewer</strong> as websites that can also be
-                installed as{' '}
-                <Definition
-                  definition={
-                    <>
-                      <dfn>Progressive Web Apps</dfn> are specially crafted
-                      websites that can be installed on your device and provide
-                      a native app-like experience. This means they have an icon
-                      you can click to open them, they have their own storage,
-                      and they work offline.
-                    </>
-                  }
-                >
-                  Progressive Web Apps
-                </Definition>{' '}
-                on your device. Together with <strong>Fresco 4.0.0</strong>,
-                they form a unified, modern platform built on a shared technical
-                foundation — and all three support a new protocol file format,{' '}
-                <strong>Schema 8</strong>.
+                {t.rich('overview.introduction', {
+                  pwa: renderProgressiveWebApp,
+                  strong: renderStrong,
+                })}
               </Paragraph>
             </Reveal>
           </div>
           <div className="tablet-portrait:grid-cols-2 desktop:grid-cols-4 mx-auto my-12 grid max-w-380 grid-cols-1 gap-6">
-            <BenefitCard title="Low friction use" icon="green" delay={0}>
-              Visit{' '}
-              <NativeLink
-                href="https://architect.networkcanvas.com/"
-                target="_blank"
-              >
-                architect.networkcanvas.com
-              </NativeLink>{' '}
-              or{' '}
-              <NativeLink
-                href="https://interviewer.networkcanvas.com/"
-                target="_blank"
-              >
-                interviewer.networkcanvas.com
-              </NativeLink>{' '}
-              on any device, at any time — and use the tools without installing
-              anything.
+            <BenefitCard
+              title={t('overview.benefits.lowFriction.title')}
+              icon="green"
+              delay={0}
+            >
+              {t.rich('overview.benefits.lowFriction.description', {
+                architect: renderArchitectLink,
+                interviewer: renderInterviewerExternalLink,
+              })}
             </BenefitCard>
             <BenefitCard
-              title="Local app installation"
+              title={t('overview.benefits.installation.title')}
               icon="blue"
               delay={0.11}
             >
-              Install either tool as an app directly from the browser. It works
-              like a typical app on your device, while you remain in control of
-              your data locally.
-            </BenefitCard>
-            <BenefitCard title="Streamlined updates" icon="cyan" delay={0.22}>
-              The new apps are automatically kept up-to-date with the latest
-              features and fixes, so you can focus on your research rather than
-              managing software versions.
+              {t('overview.benefits.installation.description')}
             </BenefitCard>
             <BenefitCard
-              title="Tablet support restored"
+              title={t('overview.benefits.updates.title')}
+              icon="cyan"
+              delay={0.22}
+            >
+              {t('overview.benefits.updates.description')}
+            </BenefitCard>
+            <BenefitCard
+              title={t('overview.benefits.tablet.title')}
               icon="coral"
               delay={0.33}
             >
-              The new Interviewer app once again runs on tablet devices (iPad
-              and Android) after several years of no availability due to app
-              store restrictions.
+              {t('overview.benefits.tablet.description')}
             </BenefitCard>
           </div>
 
           <Reveal {...summerUpdateRevealMotion}>
             <Alert variant="info" className="mx-auto my-12! max-w-4xl p-8">
-              <AlertTitle>
-                What about the original desktop and tablet apps?
-              </AlertTitle>
+              <AlertTitle>{t('overview.classic.title')}</AlertTitle>
               <AlertDescription>
-                The original desktop and tablet apps are now named{' '}
-                <strong>Architect Classic</strong> and{' '}
-                <strong>Interviewer Classic</strong>. They remain available for
-                in-progress studies and are <strong>fully supported</strong>,
-                but are in maintenance mode and will not receive new features.
+                {t.rich('overview.classic.description', {
+                  strong: renderStrong,
+                })}
               </AlertDescription>
             </Alert>
           </Reveal>
@@ -178,44 +241,23 @@ export function SummerUpdatePage() {
                   Icon={
                     <Image
                       src="/images/summer-2026/architect-icon.png"
-                      alt="Architect app icon"
+                      alt={t('apps.architect.iconAlt')}
                       width={54}
                       height={54}
                       className="rounded-sm"
                     />
                   }
                 >
-                  Protocol design
+                  {t('apps.architect.label')}
                 </SectionLabel>
                 <Heading level="h3" variant="subheading">
-                  Meet the new Architect — design protocols in the browser
+                  {t('apps.architect.heading')}
                 </Heading>
                 <Paragraph className="">
-                  There is nothing to install — just open{' '}
-                  <NativeLink
-                    href="https://architect.networkcanvas.com/"
-                    target="_blank"
-                  >
-                    architect.networkcanvas.com
-                  </NativeLink>{' '}
-                  and start building. Architect always runs the latest version
-                  automatically. Once in the website, install it to your
-                  computer as a{' '}
-                  <Definition
-                    asAbbreviation
-                    definition={
-                      <>
-                        <dfn>Progressive Web Apps</dfn> are specially crafted
-                        websites that can be installed on your device and
-                        provide a native app-like experience. This means they
-                        have an icon you can click to open them, they have their
-                        own storage, and they work offline.
-                      </>
-                    }
-                  >
-                    PWA
-                  </Definition>{' '}
-                  for a native-like experience and local control over your data.
+                  {t.rich('apps.architect.description', {
+                    link: renderArchitectLink,
+                    pwa: renderProgressiveWebAppAbbreviation,
+                  })}
                 </Paragraph>
                 <BulletList
                   items={[
@@ -223,8 +265,9 @@ export function SummerUpdatePage() {
                       color: 'neon-coral',
                       content: (
                         <>
-                          Builds <strong>Schema 8</strong> protocols with all
-                          the new features (see below)
+                          {t.rich('apps.architect.bullets.schema8', {
+                            strong: renderStrong,
+                          })}
                         </>
                       ),
                     },
@@ -232,8 +275,9 @@ export function SummerUpdatePage() {
                       color: 'sea-serpent',
                       content: (
                         <>
-                          Opens and <strong>automatically upgrades</strong>{' '}
-                          older Schema 7 protocols
+                          {t.rich('apps.architect.bullets.upgrades', {
+                            strong: renderStrong,
+                          })}
                         </>
                       ),
                     },
@@ -241,9 +285,9 @@ export function SummerUpdatePage() {
                       color: 'neon-carrot',
                       content: (
                         <>
-                          Includes <strong>protocol templates</strong>, designed
-                          to help you get started quickly and avoid common
-                          mistakes
+                          {t.rich('apps.architect.bullets.templates', {
+                            strong: renderStrong,
+                          })}
                         </>
                       ),
                     },
@@ -255,14 +299,14 @@ export function SummerUpdatePage() {
                     href="https://architect.networkcanvas.com/"
                     target="_blank"
                   >
-                    Open Architect
+                    {t('apps.architect.open')}
                   </ActionButton>
                   <ActionButton
                     compact
                     href="https://documentation.networkcanvas.com/en/design-protocols/getting-started"
                     secondary
                   >
-                    Documentation
+                    {t('common.documentation')}
                   </ActionButton>
                 </div>
                 <Paragraph
@@ -270,17 +314,14 @@ export function SummerUpdatePage() {
                   emphasis="muted"
                   className="mt-6 text-current/55"
                 >
-                  Architect Classic remains available for researchers who need
-                  to keep using older versions of Interviewer (e.g. 6.6.0). It
-                  is in maintenance mode — bug fixes only — and continues to
-                  produce Schema 7 protocols.
+                  {t('apps.architect.classicNote')}
                 </Paragraph>
               </Reveal>
 
               <Reveal {...summerUpdateRevealMotion} direction="right">
                 <ScreenshotFrame
                   address="architect.networkcanvas.com"
-                  alt="Architect protocol editor showing the Sample Protocol timeline"
+                  alt={t('apps.architect.screenshotAlt')}
                   src="/images/screenshots/architect.png"
                 />
               </Reveal>
@@ -297,63 +338,43 @@ export function SummerUpdatePage() {
                   Icon={
                     <Image
                       src="/images/summer-2026/interviewer-icon.svg"
-                      alt="Interviewer app icon"
+                      alt={t('apps.interviewer.iconAlt')}
                       width={54}
                       height={54}
                       className="rounded-sm"
                     />
                   }
                 >
-                  Face-to-face interviews
+                  {t('apps.interviewer.label')}
                 </SectionLabel>
                 <Heading level="h3" variant="subheading">
-                  Interviewer — conduct interviews anywhere
+                  {t('apps.interviewer.heading')}
                 </Heading>
                 <Paragraph className="">
-                  Interviewer has also been redesigned for the browser: upload a
-                  protocol at{' '}
-                  <NativeLink href="https://interviewer.networkcanvas.com/">
-                    interviewer.networkcanvas.com
-                  </NativeLink>{' '}
-                  and deploy without installing anything. Install it as a{' '}
-                  <Definition
-                    asAbbreviation
-                    definition={
-                      <>
-                        <dfn>Progressive Web Apps</dfn> are specially crafted
-                        websites that can be installed on your device and
-                        provide a native app-like experience. This means they
-                        have an icon you can click to open them, they have their
-                        own storage, and they work offline.
-                      </>
-                    }
-                  >
-                    PWA
-                  </Definition>{' '}
-                  to support offline workflows — it remains the ideal tool for
-                  in-person, interviewer-assisted network studies.
+                  {t.rich('apps.interviewer.description', {
+                    link: renderInterviewerLink,
+                    pwa: renderProgressiveWebAppAbbreviation,
+                  })}
                 </Paragraph>
                 <BulletList
                   items={[
                     {
                       color: 'kiwi',
-                      content:
-                        'New advanced security: encrypted data storage, and app authorization for sensitive actions such as exporting data',
+                      content: t('apps.interviewer.bullets.security'),
                     },
                     {
                       color: 'cerulean-blue',
                       content: (
                         <>
-                          Supports <strong>Schema 8</strong> natively, and
-                          migrates all existing Schema 7 protocols automatically
-                          when you import them
+                          {t.rich('apps.interviewer.bullets.schema8', {
+                            strong: renderStrong,
+                          })}
                         </>
                       ),
                     },
                     {
                       color: 'paradise-pink',
-                      content:
-                        'Compatible with all desktop and tablet devices, including iPads and Android tablets',
+                      content: t('apps.interviewer.bullets.compatibility'),
                     },
                   ]}
                 />
@@ -363,14 +384,14 @@ export function SummerUpdatePage() {
                     href="https://interviewer.networkcanvas.com/"
                     target="_blank"
                   >
-                    Open Interviewer
+                    {t('apps.interviewer.open')}
                   </ActionButton>
                   <ActionButton
                     compact
                     href="https://documentation.networkcanvas.com/en/collect-data/interviewer/using-interviewer"
                     secondary
                   >
-                    Documentation
+                    {t('common.documentation')}
                   </ActionButton>
                 </div>
                 <Paragraph
@@ -378,9 +399,7 @@ export function SummerUpdatePage() {
                   emphasis="muted"
                   className="mt-6 text-current/55"
                 >
-                  Interviewer Classic remains available for in-progress studies.
-                  Like Architect Classic, it is in maintenance mode only, and
-                  does not benefit from new features.
+                  {t('apps.interviewer.classicNote')}
                 </Paragraph>
               </Reveal>
 
@@ -391,7 +410,7 @@ export function SummerUpdatePage() {
               >
                 <ScreenshotFrame
                   address="interviewer.networkcanvas.com"
-                  alt="Interviewer dashboard showing protocol cards and a resume interview action"
+                  alt={t('apps.interviewer.screenshotAlt')}
                   src="/images/screenshots/interviewer.png"
                 />
               </Reveal>
@@ -404,40 +423,34 @@ export function SummerUpdatePage() {
                   Icon={
                     <Image
                       src="/images/summer-2026/fresco-icon.png"
-                      alt="Fresco app icon"
+                      alt={t('apps.fresco.iconAlt')}
                       width={54}
                       height={54}
                       className="rounded-sm"
                     />
                   }
                 >
-                  Remote self-administered interviews
+                  {t('apps.fresco.label')}
                 </SectionLabel>
                 <Heading level="h3" variant="subheading">
-                  Fresco 4.0.0 — a significant upgrade
+                  {t('apps.fresco.heading')}
                 </Heading>
                 <Paragraph className="">
-                  The latest version of Fresco is a huge release, bringing
-                  several significant new features. Designed to support remote
-                  self-administered interviews (but completely compatible with
-                  face-to-face interviewing too), Fresco is the suggested choice
-                  for studies with large numbers of participants, a large team
-                  of researchers, or that require a centralised data management
-                  solution.
+                  {t('apps.fresco.description')}
                 </Paragraph>
                 <div className="mt-8 flex flex-wrap gap-4">
                   <ActionButton
                     compact
                     href="https://documentation.networkcanvas.com/en/collect-data/fresco/guide"
                   >
-                    Deployment guide
+                    {t('apps.fresco.deploymentGuide')}
                   </ActionButton>
                   <ActionButton
                     compact
                     href="https://documentation.networkcanvas.com/en/collect-data/fresco/using-fresco"
                     secondary
                   >
-                    Documentation
+                    {t('common.documentation')}
                   </ActionButton>
                 </div>
                 <Paragraph
@@ -445,38 +458,31 @@ export function SummerUpdatePage() {
                   emphasis="muted"
                   className="mt-6 text-current/55"
                 >
-                  Users of Fresco 3.x should avoid upgrading in the middle of a
-                  study. Fresco 4.0.0 cannot be downgraded to 3.x.
+                  {t('apps.fresco.upgradeNote')}
                 </Paragraph>
               </Reveal>
 
               <div className="space-y-4">
                 <FeatureCard
-                  title="Multi-user access"
+                  title={t('apps.fresco.cards.multiUser.title')}
                   color="neon-coral"
                   delay={0}
                 >
-                  Multi-user support – Each team member gets their own account,
-                  with two-factor authentication, passkey support, and a full
-                  audit log of all actions taken in the system.
+                  {t('apps.fresco.cards.multiUser.description')}
                 </FeatureCard>
                 <FeatureCard
-                  title="Two-factor authentication"
+                  title={t('apps.fresco.cards.api.title')}
                   color="sea-serpent"
                   delay={0.11}
                 >
-                  Access data via a secure API – Fresco now provides a REST API
-                  for programmatic access to your study data, enabling realtime
-                  reporting, dashboards, and analytics.
+                  {t('apps.fresco.cards.api.description')}
                 </FeatureCard>
                 <FeatureCard
-                  title="Fully self-hostable"
+                  title={t('apps.fresco.cards.selfHosted.title')}
                   color="mustard"
                   delay={0.22}
                 >
-                  Fully deployable on your own infrastructure – Fresco can now
-                  be installed entirely on your own servers, or hosted in your
-                  private cloud, giving you full control over your data.
+                  {t('apps.fresco.cards.selfHosted.description')}
                 </FeatureCard>
               </div>
             </div>
@@ -485,37 +491,23 @@ export function SummerUpdatePage() {
         <Section aria-labelledby="schema-title">
           <div className="mx-auto max-w-6xl">
             <Reveal {...summerUpdateRevealMotion}>
-              <SectionLabel>Schema 8</SectionLabel>
+              <SectionLabel>{t('features.label')}</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
                 className="text-text mt-2!"
                 id="schema-title"
               >
-                New interfaces and features
+                {t('features.heading')}
               </Heading>
               <Paragraph
                 intent="lead"
                 emphasis="muted"
                 className="max-w-3xl text-current/70"
               >
-                This new generation of apps introduces a new{' '}
-                <Definition
-                  definition={
-                    <>
-                      Protocol Schemas are the technical specifications that
-                      define how protocol files are structured and interpreted
-                      by the apps. They ensure that protocols are compatible
-                      across different versions of the apps and provide a
-                      framework for implementing new features and interfaces.
-                    </>
-                  }
-                >
-                  protocol schema version
-                </Definition>
-                , Schema 8, which includes several new interview interfaces and
-                features. If your study requires any of these, you’ll need to
-                use the new tools. Choose any card to explore the details.
+                {t.rich('features.introduction', {
+                  definition: renderProtocolSchema,
+                })}
               </Paragraph>
             </Reveal>
           </div>
@@ -523,7 +515,6 @@ export function SummerUpdatePage() {
           <LayoutGroup id="schema-feature-explorer">
             <div className="tablet-landscape:grid-cols-5 mx-auto mt-12 grid max-w-380 items-start gap-8">
               <div className="tablet-portrait:grid-cols-3 tablet-landscape:col-span-3 relative grid grid-cols-2 gap-4">
-                <FeatureConstellation />
                 {interfaceFeatures.map((feature, index) => {
                   const isSelected = selectedInterface === index;
                   const startsGroup =
@@ -534,10 +525,7 @@ export function SummerUpdatePage() {
                       {startsGroup ? (
                         <Reveal
                           {...summerUpdateRevealMotion}
-                          className={cn(
-                            'relative z-10 col-span-full',
-                            index > 0 && 'mt-8',
-                          )}
+                          className={cn('col-span-full', index > 0 && 'mt-8')}
                         >
                           <Heading
                             level="h3"
@@ -551,7 +539,7 @@ export function SummerUpdatePage() {
                       <Reveal
                         {...summerUpdateRevealMotion}
                         delay={(index % 3) * 0.08}
-                        className="relative z-10 h-full"
+                        className="h-full"
                       >
                         <motion.div
                           layout={!shouldReduceMotion}
@@ -569,9 +557,9 @@ export function SummerUpdatePage() {
                             noContainer
                             aria-pressed={isSelected}
                             className={cn(
-                              'focusable aria-pressed:border-sea-serpent not-aria-pressed:hover:bg-selected flex size-full flex-col items-center justify-center overflow-hidden text-center transition',
-                              'hover:elevation-high aria-pressed:text-rich-black not-aria-pressed:hover:-translate-y-1 aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_25%,var(--color-white))]',
-                              isSelected && 'inset-surface',
+                              'focusable not-aria-pressed:hover:text-selected-contrast flex size-full cursor-pointer flex-col items-center justify-center overflow-hidden text-center transition not-aria-pressed:hover:bg-[color-mix(in_oklab,var(--color-selected)_50%,var(--color-surface))]',
+                              'hover:elevation-high not-aria-pressed:hover:-translate-y-1',
+                              'aria-pressed:inset-surface aria-pressed:bg-selected aria-pressed:text-selected-contrast border backdrop-blur-2xl',
                             )}
                             onClick={() => setSelectedInterface(index)}
                           >
@@ -595,13 +583,13 @@ export function SummerUpdatePage() {
                               />
                             ) : null}
                             <motion.span
-                              className="relative z-10 flex flex-col items-center justify-center gap-3"
+                              className="flex flex-col items-center justify-center gap-3"
                               animate={
                                 shouldReduceMotion
                                   ? undefined
                                   : isSelected
                                     ? {
-                                        scale: 1.045,
+                                        scale: 0.985,
                                         y: -2,
                                       }
                                     : { scale: 1, y: 0 }
@@ -705,8 +693,11 @@ export function SummerUpdatePage() {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        Explore in the documentation{' '}
-                        <ExternalLink className="inline-block size-4" />
+                        {t('features.documentationLink')}{' '}
+                        <ExternalLink
+                          aria-hidden
+                          className="inline-block size-4"
+                        />
                       </NativeLink>
                       {'screenshotType' in activeInterface ? (
                         <div className="mt-6 aspect-video overflow-hidden rounded">
@@ -714,7 +705,9 @@ export function SummerUpdatePage() {
                             type={activeInterface.screenshotType}
                             ratio="16:9"
                             sizes="(min-width: 64rem) 30vw, 100vw"
-                            alt={`${activeInterface.name} preview`}
+                            alt={t('features.previewAlt', {
+                              name: activeInterface.name,
+                            })}
                             className="size-full object-cover"
                           />
                         </div>
@@ -730,34 +723,20 @@ export function SummerUpdatePage() {
         <Section aria-labelledby="compatibility-title">
           <div className="mx-auto max-w-6xl">
             <Reveal {...summerUpdateRevealMotion}>
-              <SectionLabel>Compatibility</SectionLabel>
+              <SectionLabel>{t('compatibility.label')}</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
                 className="text-text mt-2!"
                 id="compatibility-title"
               >
-                What to know before you upgrade
+                {t('compatibility.heading')}
               </Heading>
               <Paragraph intent="lead" className="max-w-3xl">
-                <Definition
-                  definition={
-                    <>
-                      Protocol Schemas are the technical specifications that
-                      define how protocol files are structured and interpreted
-                      by the apps. They ensure that protocols are compatible
-                      across different versions of the apps and provide a
-                      framework for implementing new features and interfaces.
-                    </>
-                  }
-                >
-                  Protocol schema version
-                </Definition>{' '}
-                determine which apps can open a given protocol file — and the
-                most important change in this release is{' '}
-                <strong>Schema 8</strong>. Below you will find a table that
-                indicates exactly how every app handles both formats. Select a
-                row to see details about what it means in practice.
+                {t.rich('compatibility.introduction', {
+                  definition: renderProtocolSchema,
+                  strong: renderStrong,
+                })}
               </Paragraph>
             </Reveal>
 
@@ -769,10 +748,10 @@ export function SummerUpdatePage() {
                       className="border-text/15 bg-surface-2 font-monospace text-surface-2-contrast grid grid-cols-4 gap-4 border-b px-6 py-4 text-xs font-bold tracking-widest uppercase"
                       aria-hidden
                     >
-                      <span>App</span>
-                      <span>Platform</span>
-                      <span>Schema 7</span>
-                      <span>Schema 8</span>
+                      <span>{t('compatibility.columns.app')}</span>
+                      <span>{t('compatibility.columns.platform')}</span>
+                      <span>{t('compatibility.columns.schema7')}</span>
+                      <span>{t('compatibility.columns.schema8')}</span>
                     </div>
                     {compatibilityRows.map((row, index) => {
                       const previousGroup = compatibilityRows[index - 1]?.group;
@@ -790,11 +769,22 @@ export function SummerUpdatePage() {
                           ) : null}
                           <button
                             type="button"
-                            aria-label={`${row.app}${
-                              row.version ? ` ${row.version}` : ''
-                            }: Schema 7 ${row.schema7}; Schema 8 ${
-                              row.schema8
-                            }`}
+                            aria-label={t(
+                              row.version
+                                ? 'compatibility.rowAccessibleNameWithVersion'
+                                : 'compatibility.rowAccessibleName',
+                              {
+                                app: row.app,
+                                platform: row.platform,
+                                schema7: t(
+                                  `compatibility.statuses.${row.schema7}`,
+                                ),
+                                schema8: t(
+                                  `compatibility.statuses.${row.schema8}`,
+                                ),
+                                version: row.version ?? '',
+                              },
+                            )}
                             aria-pressed={selectedCompatibilityRow === index}
                             className="focusable border-text/10 hover:bg-text/5 aria-pressed:bg-sea-serpent/10 grid w-full grid-cols-4 items-center gap-4 border-t px-6 py-4 text-left transition first:border-t-0"
                             onClick={() => setSelectedCompatibilityRow(index)}
@@ -827,14 +817,16 @@ export function SummerUpdatePage() {
               </div>
             </Reveal>
             <Reveal {...summerUpdateRevealMotion}>
-              <SectionLabel subSection>Caution</SectionLabel>
+              <SectionLabel subSection>
+                {t('compatibility.caution.label')}
+              </SectionLabel>
               <Heading
                 level="h2"
                 margin="none"
                 className="sr-only"
                 id="upgrade-title"
               >
-                Caution
+                {t('compatibility.caution.label')}
               </Heading>
             </Reveal>
             <Reveal {...summerUpdateRevealMotion} direction="zoom">
@@ -844,71 +836,61 @@ export function SummerUpdatePage() {
               >
                 <div>
                   <Heading level="h3" variant="subheading">
-                    Protocol migration is one-way.
+                    {t('compatibility.caution.heading')}
                   </Heading>
                   <Paragraph>
-                    If you open a Schema 7 protocol in any new-generation app,
-                    it will be automatically upgraded to Schema 8. You will not
-                    be able to convert it back, or open it in the older apps
-                    afterward. This is especially important if you make changes
-                    to a protocol in Architect, as it will be upgraded to Schema
-                    8 when you save it.
+                    {t('compatibility.caution.description')}
                   </Paragraph>
                   <Paragraph className="border-mustard/35 bg-mustard/10 rounded-sm border p-4">
-                    Keep a copy of your original{' '}
-                    <span className="bg-mustard font-monospace text-rich-black rounded-xs px-2 py-1 text-xs font-bold">
-                      .netcanvas
-                    </span>{' '}
-                    file if you need to continue running it in Interviewer
-                    Classic, Architect Classic, or Fresco 3.x.
+                    {t.rich('compatibility.caution.fileNote', {
+                      file: renderProtocolFile,
+                    })}
                   </Paragraph>
                 </div>
                 <ProtocolMigrationIllustration className="mx-auto max-w-xl" />
               </Surface>
             </Reveal>
           </div>
-          <div className="relative z-10 mx-auto max-w-6xl">
+          <div className="mx-auto max-w-6xl">
             <Reveal {...summerUpdateRevealMotion}>
-              <SectionLabel subSection>Should you upgrade?</SectionLabel>
+              <SectionLabel subSection>
+                {t('compatibility.upgrade.label')}
+              </SectionLabel>
               <Heading
                 level="h2"
                 margin="none"
                 className="sr-only"
-                id="upgrade-title"
+                id="upgrade-recommendation-title"
               >
-                When should you upgrade?
+                {t('compatibility.upgrade.heading')}
               </Heading>
             </Reveal>
             <div className="tablet-portrait:grid-cols-2 mt-8 grid grid-cols-1 gap-6">
               <Reveal {...summerUpdateRevealMotion}>
                 <Surface as="article" noContainer className="h-full">
                   <span className="bg-sea-green/15 font-monospace text-sea-green inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
-                    Starting a new study?
+                    {t('compatibility.upgrade.newStudy.label')}
                   </span>
                   <Heading level="h3" variant="subheading">
-                    Use the new generation
+                    {t('compatibility.upgrade.newStudy.heading')}
                   </Heading>
                   <Paragraph className="">
-                    For new studies, we recommend the new tools: use{' '}
-                    <strong>Architect</strong> to design your protocol, and
-                    deploy interviews with <strong>Fresco 4.0.0</strong> or{' '}
-                    <strong>Interviewer</strong>, depending on your needs.
+                    {t.rich('compatibility.upgrade.newStudy.description', {
+                      strong: renderStrong,
+                    })}
                   </Paragraph>
                 </Surface>
               </Reveal>
               <Reveal {...summerUpdateRevealMotion} delay={0.11}>
                 <Surface as="article" noContainer className="h-full">
                   <span className="bg-sea-serpent/15 font-monospace text-sea-serpent inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
-                    Running an ongoing study?
+                    {t('compatibility.upgrade.ongoing.label')}
                   </span>
                   <Heading level="h3" variant="subheading">
-                    There is no rush!
+                    {t('compatibility.upgrade.ongoing.heading')}
                   </Heading>
                   <Paragraph className="">
-                    Interviewer Classic and Architect Classic are still
-                    supported and will continue to receive bug fixes. Upgrade at
-                    a time that suits your project — just be mindful of the
-                    one-way migration when you do.
+                    {t('compatibility.upgrade.ongoing.description')}
                   </Paragraph>
                 </Surface>
               </Reveal>
@@ -919,20 +901,17 @@ export function SummerUpdatePage() {
         <Section aria-labelledby="resources-title">
           <div className="mx-auto max-w-6xl">
             <Reveal {...summerUpdateRevealMotion}>
-              <SectionLabel>Project resources</SectionLabel>
+              <SectionLabel>{t('resources.label')}</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
                 className="text-text mt-2!"
                 id="resources-title"
               >
-                A clearer home for the whole Network Canvas project
+                {t('resources.heading')}
               </Heading>
               <Paragraph intent="lead" className="max-w-3xl">
-                The apps are not the only part of Network Canvas that has
-                changed. We have also redesigned the project website and
-                reorganized the documentation to make it easier to understand
-                the platform, choose the right tools, and find your next step.
+                {t('resources.introduction')}
               </Paragraph>
             </Reveal>
             <div className="mt-12 grid grid-cols-1 gap-20">
@@ -941,26 +920,26 @@ export function SummerUpdatePage() {
                   <div className="tablet-portrait:col-span-2 min-w-0">
                     <ScreenshotFrame
                       address="documentation.networkcanvas.com"
-                      alt="The redesigned Network Canvas documentation homepage"
+                      alt={t('resources.documentation.screenshotAlt')}
                       src="/images/screenshots/documentation-homepage.png"
                     />
                   </div>
                   <div className="tablet-portrait:col-span-3 max-w-4xl min-w-0">
                     <SectionLabel subSection>
-                      Project documentation
+                      {t('resources.documentation.label')}
                     </SectionLabel>
                     <Heading level="h3" variant="subheading" className="mt-2!">
-                      Guidance organized around your research workflow
+                      {t('resources.documentation.heading')}
                     </Heading>
                     <Paragraph>
-                      The documentation now starts with the work you are doing:
-                      getting started, designing protocols, collecting data, and
-                      analyzing results. New workflow navigation and refreshed
-                      guides make the next step easier to find.
+                      {t('resources.documentation.description')}
                     </Paragraph>
-                    <NativeLink href="https://documentation.networkcanvas.com/">
-                      Explore the documentation{' '}
-                      <ExternalLink className="inline-block size-4" />
+                    <NativeLink href="https://documentation.networkcanvas.com/en">
+                      {t('resources.documentation.link')}{' '}
+                      <ExternalLink
+                        aria-hidden
+                        className="inline-block size-4"
+                      />
                     </NativeLink>
                   </div>
                 </article>
@@ -972,25 +951,25 @@ export function SummerUpdatePage() {
               >
                 <article className="tablet-portrait:grid-cols-5 grid grid-cols-1 items-center gap-8">
                   <div className="tablet-portrait:col-span-3 max-w-4xl min-w-0">
-                    <SectionLabel subSection>Project website</SectionLabel>
+                    <SectionLabel subSection>
+                      {t('resources.website.label')}
+                    </SectionLabel>
                     <Heading level="h3" variant="subheading" className="mt-2!">
-                      A fresh new look for networkcanvas.com
+                      {t('resources.website.heading')}
                     </Heading>
-                    <Paragraph>
-                      The redesigned website introduces a more expressive visual
-                      identity and clearer paths through the Network Canvas
-                      ecosystem, from learning what the platform can do to
-                      choosing the best tools for your study.
-                    </Paragraph>
+                    <Paragraph>{t('resources.website.description')}</Paragraph>
                     <NativeLink href="https://networkcanvas.com/">
-                      Explore the new website{' '}
-                      <ExternalLink className="inline-block size-4" />
+                      {t('resources.website.link')}{' '}
+                      <ExternalLink
+                        aria-hidden
+                        className="inline-block size-4"
+                      />
                     </NativeLink>
                   </div>
                   <div className="tablet-portrait:col-span-2 min-w-0">
                     <ScreenshotFrame
                       address="networkcanvas.com"
-                      alt="The redesigned Network Canvas website homepage"
+                      alt={t('resources.website.screenshotAlt')}
                       src="/images/screenshots/website-homepage.png"
                     />
                   </div>
@@ -1003,14 +982,14 @@ export function SummerUpdatePage() {
         <Section aria-labelledby="getting-started-title">
           <div className="mx-auto max-w-6xl">
             <Reveal {...summerUpdateRevealMotion}>
-              <SectionLabel>Getting started</SectionLabel>
+              <SectionLabel>{t('destinations.label')}</SectionLabel>
               <Heading
                 level="h2"
                 variant="section-heading"
                 className="text-text mt-2!"
                 id="getting-started-title"
               >
-                Start exploring the new generation
+                {t('destinations.heading')}
               </Heading>
             </Reveal>
             <div className="tablet-portrait:grid-cols-2 relative mt-12 grid grid-cols-1 gap-5">
@@ -1019,7 +998,7 @@ export function SummerUpdatePage() {
                   {...summerUpdateRevealMotion}
                   delay={index * 0.11}
                   direction={index % 2 === 0 ? 'left' : 'right'}
-                  className="relative z-10 h-full"
+                  className="h-full"
                   key={destination.title}
                 >
                   <DestinationCard destination={destination} index={index} />
@@ -1028,18 +1007,9 @@ export function SummerUpdatePage() {
             </div>
             <Reveal {...summerUpdateRevealMotion}>
               <Paragraph className="mt-12 max-w-6xl">
-                If you have questions or run into issues, the{' '}
-                <NativeLink
-                  className="[--link:var(--color-sea-serpent)]"
-                  href="https://community.networkcanvas.com/"
-                >
-                  community forum
-                </NativeLink>{' '}
-                is the best place to reach us and connect with other researchers
-                using the tools. We hope these new tools make a meaningful
-                difference in your research — our team is extremely grateful for
-                feedback from the community, and for the ongoing support that
-                makes this work possible.
+                {t.rich('destinations.closing', {
+                  community: renderCommunityLink,
+                })}
               </Paragraph>
             </Reveal>
           </div>

@@ -258,5 +258,417 @@
         }
       }
     }
+  },
+  "SummerUpdate": {
+    "metadata": {
+      "title": "Introducing the next generation of Network Canvas apps",
+      "description": "Meet the redesigned Architect and Interviewer apps, Fresco 4.0.0, and the new Schema 8 protocol format."
+    },
+    "hero": {
+      "heading": "<lead>Introducing the next generation of</lead> <product><brand>Network Canvas</brand> <apps>apps</apps></product>",
+      "description": "A leap forward in designing, running, and managing Network Canvas interviews. This page covers what's <strong>changing</strong>, what's <strong>new</strong>, and what it <strong>means</strong> for your work.",
+      "scrollCue": "Keep scrolling to learn more"
+    },
+    "definitions": {
+      "pwa": "<dfn>Progressive Web Apps</dfn> are specially crafted websites that can be installed on your device and provide a native app-like experience. This means they have an icon you can click to open them, they have their own storage, and they work offline.",
+      "protocolSchema": "Protocol Schemas are the technical specifications that define how protocol files are structured and interpreted by the apps. They ensure that protocols are compatible across different versions of the apps and provide a framework for implementing new features and interfaces."
+    },
+    "common": {
+      "documentation": "Documentation"
+    },
+    "overview": {
+      "label": "What's new",
+      "heading": "Architect and Interviewer, reimagined for the browser",
+      "introduction": "We have redesigned <strong>Architect</strong> and <strong>Interviewer</strong> as websites that can also be installed as <pwa>Progressive Web Apps</pwa> on your device. Together with <strong>Fresco 4.0.0</strong>, they form a unified, modern platform built on a shared technical foundation — and all three support a new protocol file format, <strong>Schema 8</strong>.",
+      "benefits": {
+        "lowFriction": {
+          "title": "Low friction use",
+          "description": "Visit <architect>architect.networkcanvas.com</architect> or <interviewer>interviewer.networkcanvas.com</interviewer> on any device, at any time — and use the tools without installing anything."
+        },
+        "installation": {
+          "title": "Local app installation",
+          "description": "Install either tool as an app directly from the browser. It works like a typical app on your device, while you remain in control of your data locally."
+        },
+        "updates": {
+          "title": "Streamlined updates",
+          "description": "The new apps are automatically kept up-to-date with the latest features and fixes, so you can focus on your research rather than managing software versions."
+        },
+        "tablet": {
+          "title": "Tablet support restored",
+          "description": "The new Interviewer app once again runs on tablet devices (iPad and Android) after several years of no availability due to app store restrictions."
+        }
+      },
+      "classic": {
+        "title": "What about the original desktop and tablet apps?",
+        "description": "The original desktop and tablet apps are now named <strong>Architect Classic</strong> and <strong>Interviewer Classic</strong>. They remain available for in-progress studies and are <strong>fully supported</strong>, but are in maintenance mode and will not receive new features."
+      }
+    },
+    "apps": {
+      "architect": {
+        "label": "Protocol design",
+        "heading": "Meet the new Architect — design protocols in the browser",
+        "description": "There is nothing to install — just open <link>architect.networkcanvas.com</link> and start building. Architect always runs the latest version automatically. Once on the website, install it to your computer as a <pwa>PWA</pwa> for a native-like experience and local control over your data.",
+        "iconAlt": "Architect app icon",
+        "screenshotAlt": "Architect protocol editor showing the Sample Protocol timeline",
+        "bullets": {
+          "schema8": "Builds <strong>Schema 8</strong> protocols with all the new features (see below)",
+          "upgrades": "Opens and <strong>automatically upgrades</strong> older Schema 7 protocols",
+          "templates": "Includes <strong>protocol templates</strong>, designed to help you get started quickly and avoid common mistakes"
+        },
+        "open": "Open Architect",
+        "classicNote": "Architect Classic remains available for researchers who need to keep using older versions of Interviewer (e.g. 6.6.0). It is in maintenance mode — bug fixes only — and continues to produce Schema 7 protocols."
+      },
+      "interviewer": {
+        "label": "Face-to-face interviews",
+        "heading": "Interviewer — conduct interviews anywhere",
+        "description": "Interviewer has also been redesigned for the browser: upload a protocol at <link>interviewer.networkcanvas.com</link> and deploy without installing anything. Install it as a <pwa>PWA</pwa> to support offline workflows — it remains the ideal tool for in-person, interviewer-assisted network studies.",
+        "iconAlt": "Interviewer app icon",
+        "screenshotAlt": "Interviewer dashboard showing protocol cards and a resume interview action",
+        "bullets": {
+          "security": "New advanced security: encrypted data storage, and app authorization for sensitive actions such as exporting data",
+          "schema8": "Supports <strong>Schema 8</strong> natively, and migrates all existing Schema 7 protocols automatically when you import them",
+          "compatibility": "Compatible with all desktop and tablet devices, including iPads and Android tablets"
+        },
+        "open": "Open Interviewer",
+        "classicNote": "Interviewer Classic remains available for in-progress studies. Like Architect Classic, it is in maintenance mode only, and does not benefit from new features."
+      },
+      "fresco": {
+        "label": "Remote self-administered interviews",
+        "heading": "Fresco 4.0.0 — a significant upgrade",
+        "description": "The latest version of Fresco is a huge release, bringing several significant new features. Designed to support remote self-administered interviews (but completely compatible with face-to-face interviewing too), Fresco is the suggested choice for studies with large numbers of participants, a large team of researchers, or that require a centralized data management solution.",
+        "iconAlt": "Fresco app icon",
+        "deploymentGuide": "Deployment guide",
+        "upgradeNote": "Users of Fresco 3.x should avoid upgrading in the middle of a study. Fresco 4.0.0 cannot be downgraded to 3.x.",
+        "cards": {
+          "multiUser": {
+            "title": "Multi-user access",
+            "description": "Each team member gets their own account, with two-factor authentication, passkey support, and a full audit log of all actions taken in the system."
+          },
+          "api": {
+            "title": "Secure data API",
+            "description": "Fresco now provides a secure, read-only API for programmatic access to your study data, enabling real-time reporting, dashboards, and analytics."
+          },
+          "selfHosted": {
+            "title": "Fully self-hostable",
+            "description": "Fresco can now be installed entirely on your own servers, or hosted in your private cloud, giving you full control over your data."
+          }
+        }
+      }
+    },
+    "features": {
+      "label": "Schema 8",
+      "heading": "New interfaces and features",
+      "introduction": "This new generation of apps introduces a new <definition>protocol schema version</definition>, Schema 8, which includes several new interview interfaces and features. If your study requires any of these, you'll need to use the new tools. Choose any card to explore the details.",
+      "documentationLink": "Explore in the documentation",
+      "previewAlt": "{name} preview",
+      "groups": {
+        "interfaces": "New interview interfaces",
+        "schema": "Schema 8 features",
+        "architect": "Architect",
+        "interviewer": "Interviewer",
+        "fresco": "Fresco 4.0.0"
+      },
+      "geospatial": {
+        "shortName": "Geospatial",
+        "name": "Geospatial interface",
+        "summary": "Capture alter-level location data by asking participants to select an area on an interactive map.",
+        "details": {
+          "0": "Define selectable census tracts, ZIP codes, neighborhoods, or custom study regions with a GeoJSON file.",
+          "1": "Choose which GeoJSON property is saved with each person, so the response is ready to join with spatial data during analysis.",
+          "2": "Optionally add address search and public-transit context. Mapbox services require an internet connection during the interview."
+        }
+      },
+      "anonymisation": {
+        "shortName": "Anonymisation",
+        "name": "Anonymisation interface",
+        "summary": "Give participants direct control over sensitive identifiers by encrypting selected node or edge attributes on their device.",
+        "details": {
+          "0": "Each participant creates the passphrase used to protect their selected data, and that passphrase is never stored by the app.",
+          "1": "Researchers cannot decrypt the protected values; exports replace encrypted attributes with a clear marker instead.",
+          "2": "This is an experimental feature for studies where stronger privacy assurances may support trust and disclosure."
+        }
+      },
+      "oneToMany": {
+        "shortName": "One-to-many dyad census",
+        "name": "One-to-many dyad census interface",
+        "summary": "Create ties from one focal person to several other people on the same screen instead of considering every pair separately.",
+        "details": {
+          "0": "Use it when a network contains central figures who are likely to have relationships with many others.",
+          "1": "Collect one or more relationship types while keeping the focal person visible throughout the task.",
+          "2": "Decide whether each focal person returns to the list for another pass or is removed after they have been considered."
+        }
+      },
+      "familyPedigree": {
+        "shortName": "Family pedigree",
+        "name": "Family pedigree interface",
+        "summary": "Guide participants through building a complex family structure in a dedicated visual workflow.",
+        "details": {
+          "0": "Create family members and relationships together, with automatic layout keeping the pedigree readable as it grows.",
+          "1": "Represent biological, social, adoptive, donor, surrogate, and partner relationships, and collect attributes for every family member.",
+          "2": "Add an optional disease-nomination step to record which relatives are affected by specific conditions for later visualization."
+        }
+      },
+      "narrativePedigree": {
+        "shortName": "Narrative pedigree",
+        "name": "Narrative pedigree interface",
+        "summary": "Turn an earlier Family Pedigree into a read-only visualization that uses standard clinical pedigree notation.",
+        "details": {
+          "0": "Show affected relatives and definite carriers for one or more conditions across supported inheritance patterns.",
+          "1": "Optionally display possible at-risk statuses when the study is designed for appropriately guided interpretation.",
+          "2": "Focus on one person's contributing lineage and export a printable snapshot. The visualization is an aid, not a diagnosis."
+        }
+      },
+      "networkComposer": {
+        "shortName": "Network composer",
+        "name": "Network composer interface",
+        "summary": "Build and edit a participant's whole personal network on one free-form canvas.",
+        "details": {
+          "0": "Add people, complete person and relationship attributes, draw several relationship types, and reposition the network as the conversation develops.",
+          "1": "Use lasso selection, groups, automatic layout, keyboard shortcuts, and undo or redo to construct dense networks efficiently.",
+          "2": "Treat it as a researcher- or interviewer-led network notepad rather than a step-by-step self-administered task."
+        }
+      },
+      "validation": {
+        "shortName": "Validation",
+        "name": "Richer field validation",
+        "summary": "Express relationships between answers directly in the protocol, so forms can catch inconsistent responses while the interview is still in progress.",
+        "details": {
+          "0": "Compare a numeric response with another variable using the new greater-than-variable and less-than-variable rules.",
+          "1": "Combine these relative checks with existing required, range, uniqueness, and cross-field rules to describe the answers your study can accept.",
+          "2": "Preview the form in Architect and test edge cases before deployment; the same protocol rules run in Interviewer and Fresco."
+        }
+      },
+      "enhancedSkipLogic": {
+        "shortName": "Enhanced skip logic",
+        "name": "Enhanced skip logic",
+        "summary": "Build more precise interview routes with expanded comparison rules and explicit destinations for each skipped stage.",
+        "details": {
+          "0": "Use “contains” and “does not contain” with text responses, and match several selected values in categorical and ordinal rules.",
+          "1": "Continue at the next available stage, jump forward to a chosen later stage, or route directly to the interview finish screen.",
+          "2": "Keep every destination forward-moving, making complex paths predictable and avoiding loops during data collection."
+        }
+      },
+      "nodeShapes": {
+        "shortName": "Node shapes",
+        "name": "Configurable node shapes",
+        "summary": "Use shape as an additional visual channel, making different kinds of people easier to distinguish in dense network interfaces.",
+        "details": {
+          "0": "Choose circles, squares, or diamonds as a default shape for each person type.",
+          "1": "Map shapes dynamically from categorical, ordinal, boolean, number, or scalar variables when the visual distinction carries data.",
+          "2": "Combine shape with color and size so important categories remain legible without depending on a single visual cue."
+        }
+      },
+      "formHints": {
+        "shortName": "Form hints",
+        "name": "Form hints and validation guidance",
+        "summary": "Place concise guidance beside an individual question, giving participants context exactly where they need it.",
+        "details": {
+          "0": "Add a markdown-formatted hint to a form field without lengthening the main stage prompt.",
+          "1": "Use hints to clarify expected formats, unfamiliar terms, or how a response will be interpreted.",
+          "2": "Optionally show automatic guidance derived from the field's validation rules, such as acceptable ranges or required responses."
+        }
+      },
+      "protocolTemplates": {
+        "shortName": "Protocol templates",
+        "name": "Protocol templates",
+        "summary": "Start from a research-grounded protocol instead of an empty timeline, then adapt it to your study.",
+        "details": {
+          "0": "Explore templates for transnational, mental-health, social-isolation, behavioral-influence, care-and-support, and sexual or injection-risk networks.",
+          "1": "Use the general Sample Protocol to learn how key Network Canvas features and techniques fit together.",
+          "2": "Edit every stage, prompt, variable, and visual choice; your adapted protocols remain stored locally in your browser."
+        }
+      },
+      "responsiveSvg": {
+        "shortName": "Responsive SVG backgrounds",
+        "name": "Responsive SVG sociogram backgrounds",
+        "summary": "Create sociogram backgrounds whose regions, axes, and labels adapt to both portrait and landscape interview canvases.",
+        "details": {
+          "0": "Upload an SVG whose elements are positioned relative to the available canvas instead of a fixed pixel grid.",
+          "1": "Keep labels readable and regions extended to the canvas edges when participants rotate a tablet or use a different screen shape.",
+          "2": "Use the provided social-context template as a starting point for quadrants, independent axes, categories, or overlapping contexts."
+        }
+      },
+      "syntheticData": {
+        "shortName": "Synthetic data",
+        "name": "Synthetic interview data",
+        "summary": "Generate realistic test interviews before recruitment so you can inspect the complete data workflow without putting participant data at risk.",
+        "details": {
+          "0": "Create up to 1,000 synthetic interviews at once and inspect how responses appear in study tables and exports.",
+          "1": "Optionally simulate participant drop-out and respect the protocol's skip logic and network filters.",
+          "2": "Synthetic records are flagged separately and can be removed in bulk without touching real interviews."
+        }
+      },
+      "encryptionAtRest": {
+        "shortName": "Encryption at rest",
+        "name": "On-device encryption at rest",
+        "summary": "Protect protocols, interviews, and settings stored on the device whenever you configure an Interviewer app lock.",
+        "details": {
+          "0": "Choose a PIN, passphrase, or supported biometric method during setup; the same authentication unlocks the key used to decrypt local data.",
+          "1": "Keep the decryption key only in memory while Interviewer is unlocked. Reloading, locking, closing, or reaching the idle timeout removes it.",
+          "2": "Use this app-level protection alongside full-device encryption and regular exports as part of a layered data-security plan."
+        }
+      },
+      "authorisationChecks": {
+        "shortName": "Authorization checks",
+        "name": "Configurable authorization checks",
+        "summary": "Require a fresh unlock at sensitive workflow boundaries instead of relying only on the app's general idle lock.",
+        "details": {
+          "0": "Independently require re-authentication before entering an interview, leaving it for the dashboard, or exporting collected data.",
+          "1": "Use the already configured PIN, passphrase, or biometric method, without introducing a second set of credentials.",
+          "2": "Keep protocol names, session counts, and stored data hidden whenever Interviewer is locked."
+        }
+      },
+      "multiUser": {
+        "shortName": "Multi-user",
+        "name": "Multi-user administration",
+        "summary": "Give each researcher a separate administrator account instead of sharing one set of dashboard credentials.",
+        "details": {
+          "0": "Add and remove multiple administrator accounts from settings; every current account has equal administrative access.",
+          "1": "Choose password authentication with optional TOTP two-factor protection, or use passkeys for password-free sign-in.",
+          "2": "Attribute dashboard activity to usernames in the shared audit feed, including authentication, protocol, export, and account-management events."
+        }
+      },
+      "advancedExportFiltering": {
+        "shortName": "Advanced export filtering",
+        "name": "Advanced export filtering",
+        "summary": "Find and export precisely the interviews you need, even when a large study spans many pages of results.",
+        "details": {
+          "0": "Filter server-side by protocol, date, progress, network size, export status, or participant identifier across the complete dataset.",
+          "1": "Select every interview matching the active filters, not only the rows currently visible on screen.",
+          "2": "Export all, completed, or unexported interviews within the filtered result set while leaving unrelated records untouched."
+        }
+      },
+      "secureDataApi": {
+        "shortName": "Secure data API",
+        "name": "Secure Interview Data API",
+        "summary": "Connect analysis tools directly to a Fresco deployment through a versioned, read-only JSON API.",
+        "details": {
+          "0": "Keep the API disabled until it is needed, then create bearer tokens from the authenticated dashboard.",
+          "1": "List and retrieve interview networks and protocol metadata without exposing any endpoint that can modify study data.",
+          "2": "Revoke tokens, review when each token was last used, and build repeatable R, Python, dashboard, or reporting workflows."
+        }
+      }
+    },
+    "compatibility": {
+      "label": "Compatibility",
+      "heading": "What to know before you upgrade",
+      "introduction": "<definition>Protocol schema versions</definition> determine which apps can open a given protocol file — and the most important change in this release is <strong>Schema 8</strong>. Below you will find a table that indicates exactly how every app handles both formats. Select a row to see details about what it means in practice.",
+      "defaultNote": "Select any row above to see what it means for your protocol files.",
+      "groups": {
+        "classic": "Current ('Classic') generation",
+        "new": "New generation"
+      },
+      "columns": {
+        "app": "App",
+        "platform": "Platform",
+        "schema7": "Schema 7",
+        "schema8": "Schema 8"
+      },
+      "statuses": {
+        "migrates": "Migrates to 8",
+        "native": "Native",
+        "unsupported": "Not supported"
+      },
+      "rowAccessibleName": "{app}, {platform}: Schema 7 {schema7}; Schema 8 {schema8}",
+      "rowAccessibleNameWithVersion": "{app} {version}, {platform}: Schema 7 {schema7}; Schema 8 {schema8}",
+      "rows": {
+        "interviewerClassic": {
+          "platform": "Desktop & tablet",
+          "note": "Interviewer Classic runs Schema 7 natively, but cannot open Schema 8 protocols. Continue using it for in-progress Schema 7 studies — it remains supported with bug fixes."
+        },
+        "architectClassic": {
+          "platform": "Desktop",
+          "note": "Architect Classic continues to produce Schema 7 protocols, in maintenance mode. Use it only if you need to keep running older versions of Interviewer (e.g. 6.6.0)."
+        },
+        "frescoClassic": {
+          "platform": "Browser",
+          "note": "Fresco 3.1.2 runs Schema 7 natively but will not open Schema 8 protocols. Upgrade to Fresco 4.0.0 to use the new format."
+        },
+        "interviewer": {
+          "platform": "Browser & PWA",
+          "note": "The new Interviewer opens Schema 8 natively. Opening a Schema 7 protocol migrates it to Schema 8 automatically — and one way."
+        },
+        "architect": {
+          "platform": "Browser & PWA",
+          "note": "The new Architect builds Schema 8 protocols, and opens and automatically upgrades older Schema 7 protocols created in Architect Classic."
+        },
+        "fresco": {
+          "platform": "Browser",
+          "note": "Fresco 4.0.0 runs Schema 8 natively; uploaded Schema 7 protocols are migrated to Schema 8 automatically — and one way."
+        }
+      },
+      "illustration": {
+        "schema": "SCHEMA",
+        "original": "ORIGINAL"
+      },
+      "caution": {
+        "label": "Caution",
+        "heading": "Protocol migration is one-way.",
+        "description": "If you open a Schema 7 protocol in any new-generation app, it will be automatically upgraded to Schema 8. You will not be able to convert it back, or open it in the older apps afterward. This is especially important if you make changes to a protocol in Architect, as it will be upgraded to Schema 8 when you save it.",
+        "fileNote": "Keep a copy of your original <file>.netcanvas</file> file if you need to continue running it in Interviewer Classic, Architect Classic, or Fresco 3.x."
+      },
+      "upgrade": {
+        "label": "Should you upgrade?",
+        "heading": "When should you upgrade?",
+        "newStudy": {
+          "label": "Starting a new study?",
+          "heading": "Use the new generation",
+          "description": "For new studies, we recommend the new tools: use <strong>Architect</strong> to design your protocol, and deploy interviews with <strong>Fresco 4.0.0</strong> or <strong>Interviewer</strong>, depending on your needs."
+        },
+        "ongoing": {
+          "label": "Running an ongoing study?",
+          "heading": "There is no rush!",
+          "description": "Interviewer Classic and Architect Classic are still supported and will continue to receive bug fixes. Upgrade at a time that suits your project — just be mindful of the one-way migration when you do."
+        }
+      }
+    },
+    "resources": {
+      "label": "Project resources",
+      "heading": "A clearer home for the whole Network Canvas project",
+      "introduction": "The apps are not the only part of Network Canvas that has changed. We have also redesigned the project website and reorganized the documentation to make it easier to understand the platform, choose the right tools, and find your next step.",
+      "documentation": {
+        "label": "Project documentation",
+        "heading": "Guidance organized around your research workflow",
+        "description": "The documentation now starts with the work you are doing: getting started, designing protocols, collecting data, and analyzing results. New workflow navigation and refreshed guides make the next step easier to find.",
+        "link": "Explore the documentation",
+        "screenshotAlt": "The redesigned Network Canvas documentation homepage"
+      },
+      "website": {
+        "label": "Project website",
+        "heading": "A fresh new look for networkcanvas.com",
+        "description": "The redesigned website introduces a more expressive visual identity and clearer paths through the Network Canvas ecosystem, from learning what the platform can do to choosing the best tools for your study.",
+        "link": "Explore the new website",
+        "screenshotAlt": "The redesigned Network Canvas website homepage"
+      }
+    },
+    "destinations": {
+      "label": "Getting started",
+      "heading": "Start exploring the new generation",
+      "closing": "If you have questions or run into issues, the <community>community forum</community> is the best place to reach us and connect with other researchers using the tools. We hope these new tools make a meaningful difference in your research — our team is extremely grateful for feedback from the community, and for the ongoing support that makes this work possible.",
+      "architect": {
+        "title": "Open Architect",
+        "category": "Design protocols",
+        "description": "Build, validate, and preview Schema 8 protocols directly in your browser, with a local library that stays on your device.",
+        "detail": "architect.networkcanvas.com"
+      },
+      "interviewer": {
+        "title": "Open Interviewer",
+        "category": "Collect in person",
+        "description": "Run secure, offline-capable interviews on desktop and tablet, then export completed sessions from the same local app.",
+        "detail": "interviewer.networkcanvas.com"
+      },
+      "fresco": {
+        "title": "Deploy Fresco 4.0.0",
+        "category": "Collect remotely",
+        "description": "Set up the multi-user platform for remote self-administered studies, centralized data management, and research teams.",
+        "detail": "deployment guide"
+      },
+      "documentation": {
+        "title": "Explore the docs",
+        "category": "Learn the workflow",
+        "description": "Follow task-focused guidance for choosing tools, designing protocols, collecting data, and understanding every interface.",
+        "detail": "latest interfaces & features"
+      }
+    }
   }
 }

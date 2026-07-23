@@ -1,40 +1,38 @@
 import type { Metadata } from 'next';
-import { setRequestLocale } from 'next-intl/server';
-import { redirect } from 'next/navigation';
+import { hasLocale } from 'next-intl';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { notFound } from 'next/navigation';
 
 import { SummerUpdatePage } from '~/components/summer-update/SummerUpdatePage';
+import { routing } from '~/lib/i18n/routing';
 
 type SummerUpdateRouteProps = {
   params: Promise<{ locale: string }>;
 };
 
-function isEnglishLocale(locale: string) {
-  return locale === 'en-US' || locale === 'en-GB';
-}
-
 export async function generateMetadata({
   params,
 }: SummerUpdateRouteProps): Promise<Metadata> {
   const { locale } = await params;
-  const contentLocale = isEnglishLocale(locale) ? locale : 'en-US';
+  if (!hasLocale(routing.locales, locale)) notFound();
 
-  const canonical = `https://networkcanvas.com/${contentLocale}/summer-2026-update`;
+  const t = await getTranslations({ locale, namespace: 'SummerUpdate' });
+  const canonical = `https://networkcanvas.com/${locale}/summer-2026-update`;
 
   return {
-    title: 'Introducing the next generation of Network Canvas apps',
-    description:
-      'Meet the redesigned Architect and Interviewer apps, Fresco 4.0.0, and the new Schema 8 protocol format.',
+    title: t('metadata.title'),
+    description: t('metadata.description'),
     alternates: {
       canonical,
       languages: {
         'en-US': 'https://networkcanvas.com/en-US/summer-2026-update',
         'en-GB': 'https://networkcanvas.com/en-GB/summer-2026-update',
+        'es': 'https://networkcanvas.com/es/summer-2026-update',
       },
     },
     openGraph: {
-      title: 'Introducing the next generation of Network Canvas apps',
-      description:
-        'Meet the redesigned Architect and Interviewer apps, Fresco 4.0.0, and the new Schema 8 protocol format.',
+      title: t('metadata.title'),
+      description: t('metadata.description'),
       url: canonical,
       type: 'article',
     },
@@ -45,7 +43,7 @@ export default async function SummerUpdateRoute({
   params,
 }: SummerUpdateRouteProps) {
   const { locale } = await params;
-  if (!isEnglishLocale(locale)) redirect('/en-US/summer-2026-update/');
+  if (!hasLocale(routing.locales, locale)) notFound();
 
   setRequestLocale(locale);
 

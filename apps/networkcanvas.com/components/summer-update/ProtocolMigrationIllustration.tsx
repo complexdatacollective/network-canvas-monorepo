@@ -7,6 +7,7 @@ import {
   useScroll,
   useTransform,
 } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import { useRef, useSyncExternalStore } from 'react';
 
 const subscribeToHydration = () => () => undefined;
@@ -20,6 +21,7 @@ type ProtocolMigrationIllustrationProps = {
 export function ProtocolMigrationIllustration({
   className,
 }: ProtocolMigrationIllustrationProps) {
+  const t = useTranslations('SummerUpdate.compatibility.illustration');
   const containerRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const hasHydrated = useSyncExternalStore(
@@ -223,7 +225,7 @@ export function ProtocolMigrationIllustration({
             fontSize="11"
             letterSpacing="2"
           >
-            SCHEMA
+            {t('schema')}
           </text>
           <text
             x="105"
@@ -297,7 +299,7 @@ export function ProtocolMigrationIllustration({
             fontSize="11"
             letterSpacing="2"
           >
-            SCHEMA
+            {t('schema')}
           </text>
           <text
             x="390"
@@ -372,7 +374,7 @@ export function ProtocolMigrationIllustration({
             fontSize="10"
             letterSpacing="1.3"
           >
-            ORIGINAL
+            {t('original')}
           </text>
         </motion.g>
 

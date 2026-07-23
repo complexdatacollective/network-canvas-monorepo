@@ -10,13 +10,13 @@ import {
   accentSoftBackgroundClasses,
   accentTextClasses,
 } from './summerUpdateColors';
-import { type destinationLinks } from './summerUpdateContent';
+import type { Destination } from './summerUpdateContent';
 
 export function DestinationCard({
   destination,
   index,
 }: {
-  destination: (typeof destinationLinks)[number];
+  destination: Destination;
   index: number;
 }) {
   return (

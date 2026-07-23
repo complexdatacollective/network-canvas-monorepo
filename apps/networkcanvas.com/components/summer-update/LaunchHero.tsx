@@ -8,7 +8,8 @@ import {
   useSpring,
   useTransform,
 } from 'motion/react';
-import { useLayoutEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
+import { type ReactNode, useLayoutEffect, useRef } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -27,7 +28,72 @@ import { Section } from './Section';
 const heroTextGlowClasses =
   'bg-[conic-gradient(from_var(--text-glow-angle),var(--color-neon-coral),var(--color-sea-serpent),var(--color-mustard),var(--color-sea-green),var(--color-neon-coral))] bg-clip-text';
 
+function renderHeroApps(chunks: ReactNode) {
+  return (
+    <span className="inline-block align-bottom">
+      <HeroEntrance as="span" phase="apps" className="inline-block">
+        {chunks}
+      </HeroEntrance>
+    </span>
+  );
+}
+
+function HeroBrand({ children }: { children: ReactNode }) {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <span
+      data-homepage-weave-target
+      className="relative inline-block overflow-visible"
+    >
+      <HeroEntrance
+        as="span"
+        phase="brand"
+        className={cn(
+          heroTextGlowClasses,
+          'relative inline-block overflow-visible px-2 whitespace-nowrap text-white',
+        )}
+        style={{
+          WebkitTextFillColor: 'var(--color-white)',
+          WebkitTextStroke: 'var(--text-glow-stroke-width) transparent',
+          paintOrder: 'stroke fill',
+          textShadow:
+            '0 0 0.025em var(--color-slate-blue-dark), 0 0 0.12em var(--color-slate-blue-dark), 0 0 0.28em var(--color-slate-blue)',
+          animation: shouldReduceMotion
+            ? undefined
+            : 'var(--animate-text-glow)',
+        }}
+      >
+        {children}
+      </HeroEntrance>
+    </span>
+  );
+}
+
+function renderHeroBrand(chunks: ReactNode) {
+  return <HeroBrand>{chunks}</HeroBrand>;
+}
+
+function renderHeroLead(chunks: ReactNode) {
+  return (
+    <span className="block">
+      <HeroEntrance as="span" phase="lead" className="block origin-bottom">
+        {chunks}
+      </HeroEntrance>
+    </span>
+  );
+}
+
+function renderHeroProduct(chunks: ReactNode) {
+  return <span className="block">{chunks}</span>;
+}
+
+function renderStrong(chunks: ReactNode) {
+  return <strong>{chunks}</strong>;
+}
+
 export function LaunchHero() {
+  const t = useTranslations('SummerUpdate.hero');
   const sectionRef = useRef<HTMLElement>(null);
   const entranceStarted = useRef(false);
   const shouldReduceMotion = useReducedMotion();
@@ -109,7 +175,7 @@ export function LaunchHero() {
       className="m-0! flex min-h-svh flex-col overflow-hidden px-0!"
       aria-labelledby="summer-update-title"
     >
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
+      <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
         <div className="from-slate-blue/25 via-sea-serpent/10 absolute inset-0 bg-linear-to-b to-transparent" />
         <motion.div
           className="entrance-motion-item absolute inset-0"
@@ -150,48 +216,12 @@ export function LaunchHero() {
               variant="display-heading"
               id="summer-update-title"
             >
-              <span className="block">
-                <HeroEntrance
-                  as="span"
-                  phase="lead"
-                  className="block origin-bottom"
-                >
-                  Introducing the next generation of
-                </HeroEntrance>
-              </span>{' '}
-              <span className="block">
-                <span
-                  data-homepage-weave-target
-                  className="relative inline-block overflow-visible"
-                >
-                  <HeroEntrance
-                    as="span"
-                    phase="brand"
-                    className={cn(
-                      heroTextGlowClasses,
-                      'relative inline-block overflow-visible px-2 whitespace-nowrap text-white',
-                    )}
-                    style={{
-                      WebkitTextFillColor: 'var(--color-white)',
-                      WebkitTextStroke:
-                        'var(--text-glow-stroke-width) transparent',
-                      paintOrder: 'stroke fill',
-                      textShadow:
-                        '0 0 0.025em var(--color-slate-blue-dark), 0 0 0.12em var(--color-slate-blue-dark), 0 0 0.28em var(--color-slate-blue)',
-                      animation: shouldReduceMotion
-                        ? undefined
-                        : 'var(--animate-text-glow)',
-                    }}
-                  >
-                    Network Canvas
-                  </HeroEntrance>
-                </span>{' '}
-                <span className="inline-block align-bottom">
-                  <HeroEntrance as="span" phase="apps" className="inline-block">
-                    apps
-                  </HeroEntrance>
-                </span>
-              </span>
+              {t.rich('heading', {
+                apps: renderHeroApps,
+                brand: renderHeroBrand,
+                lead: renderHeroLead,
+                product: renderHeroProduct,
+              })}
             </Heading>
           </motion.div>
 
@@ -211,10 +241,9 @@ export function LaunchHero() {
                 intent="lead"
                 className="tablet-landscape:text-xl text-center text-lg leading-relaxed"
               >
-                A leap forward in designing, running, and managing Network
-                Canvas interviews. This page covers what's{' '}
-                <strong>changing</strong>, what's <strong>new</strong>, and what
-                it <strong>means</strong> for your work.
+                {t.rich('description', {
+                  strong: renderStrong,
+                })}
               </Paragraph>
             </motion.div>
           </HeroEntrance>
@@ -225,12 +254,12 @@ export function LaunchHero() {
           className="absolute bottom-16 left-1/2 -translate-x-1/2"
         >
           <motion.div
-            className="font-monospace flex flex-col items-center gap-3 text-xs tracking-widest text-current/55 uppercase"
+            className="font-monospace flex flex-col items-center gap-3 text-center text-xs tracking-widest text-current/55 uppercase"
             style={
               shouldReduceMotion ? undefined : { opacity: scrollCueOpacity }
             }
           >
-            <span>Keep scrolling to learn more</span>
+            <span className="text-pretty">{t('scrollCue')}</span>
             <span
               className="border-text/40 flex h-8 w-5 justify-center rounded-full border pt-2"
               aria-hidden
