@@ -15,7 +15,7 @@ export type DefinitionProps = Omit<
 > & {
   /** The term or phrase that the definition describes. */
   children: React.ReactNode;
-  /** The expanded definition shown on hover or keyboard focus. */
+  /** The expanded definition shown on hover, keyboard focus, or press. */
   definition: React.ReactNode;
   /** Render the term as an `abbr` element when it is an abbreviation. */
   asAbbreviation?: boolean;
@@ -37,10 +37,12 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
       showArrow,
       className,
       'aria-describedby': ariaDescribedByProp,
+      onClick,
       ...props
     },
     ref,
   ) => {
+    const [open, setOpen] = React.useState(false);
     const Element = asAbbreviation ? 'abbr' : 'span';
     const descriptionId = React.useId();
     const ariaDescribedBy = ariaDescribedByProp
@@ -48,7 +50,7 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
       : descriptionId;
 
     return (
-      <Tooltip>
+      <Tooltip open={open} onOpenChange={setOpen}>
         <TooltipTrigger
           closeOnClick={false}
           render={
@@ -60,6 +62,12 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
               )}
               {...props}
               aria-describedby={ariaDescribedBy}
+              onClick={(event) => {
+                onClick?.(event);
+                if (!event.defaultPrevented) {
+                  setOpen(true);
+                }
+              }}
               tabIndex={0}
             />
           }

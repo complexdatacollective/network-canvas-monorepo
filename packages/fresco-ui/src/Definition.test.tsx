@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -68,5 +68,20 @@ describe('Definition', () => {
     expect(abbreviation).toHaveAccessibleDescription(
       'Computer-assisted personal interviewing',
     );
+  });
+
+  it('opens when pressed without receiving focus', async () => {
+    render(
+      <Definition definition="A collection of people and relationships.">
+        network
+      </Definition>,
+    );
+
+    const term = screen.getByText('network');
+
+    fireEvent.click(term);
+
+    expect(term).not.toHaveFocus();
+    await waitFor(() => expect(term).toHaveAttribute('data-popup-open'));
   });
 });

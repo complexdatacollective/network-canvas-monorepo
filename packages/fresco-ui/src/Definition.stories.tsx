@@ -11,7 +11,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: `An inline term that reveals an expanded definition on hover or keyboard focus. It composes Fresco's Base UI Tooltip primitives and renders a keyboard-focusable \`span\` by default.
+        component: `An inline term that reveals an expanded definition on hover, keyboard focus, or press. It composes Fresco's Base UI Tooltip primitives and renders a keyboard-focusable \`span\` by default.
 
 The definition is also connected to the term with \`aria-describedby\`, because Base UI tooltips are visual-only. Screen readers receive the definition without depending on the popup being visible.
 
@@ -126,5 +126,14 @@ export const KeyboardFocus: Story = {
     await expect(term).toHaveAccessibleDescription(
       'The people an individual knows and the relationships among them.',
     );
+  },
+};
+
+export const TouchActivation: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const term = canvas.getByText('personal network');
+    await userEvent.click(term);
+    await waitFor(() => expect(term).toHaveAttribute('data-popup-open'));
   },
 };
