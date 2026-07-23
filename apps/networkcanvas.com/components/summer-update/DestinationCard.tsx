@@ -26,7 +26,7 @@ export function DestinationCard({
       noContainer
       spacing="lg"
       shadow="sm"
-      className="effect-shadow-sm group hover:effect-shadow-md relative flex h-full flex-col overflow-hidden border transition hover:-translate-y-1"
+      className="spring-discrete-medium effect-shadow-sm group hover:effect-shadow-md relative flex h-full flex-col overflow-hidden border transition hover:-translate-y-1"
     >
       <div className="flex items-start justify-between gap-6">
         <span
@@ -66,9 +66,6 @@ export function DestinationCard({
           {destination.description}
         </Paragraph>
         <div className="border-text/10 mt-auto flex items-center justify-between gap-4 border-t pt-5">
-          <span className="font-monospace truncate text-xs text-current/55">
-            {destination.detail}
-          </span>
           <ExternalLink
             aria-hidden
             className={cn(

@@ -18,47 +18,163 @@ vi.mock('../../ui/HomepagePageBackground', () => ({
   HomepagePageBackground: () => <div data-testid="hero-weave" />,
 }));
 
+vi.mock('../HeroSignalField', () => ({
+  HeroSignalField: () => <div data-testid="hero-signal-field" />,
+}));
+
+type MotionMockProps = {
+  animate?: unknown;
+  children?: ReactNode;
+  exit?: unknown;
+  initial?: unknown;
+  layout?: unknown;
+  layoutId?: string;
+  onViewportEnter?: () => void;
+  transition?: unknown;
+  viewport?: unknown;
+  whileInView?: unknown;
+};
+
 function MotionDiv({
   animate: _animate,
   children,
+  exit: _exit,
   initial: _initial,
+  layout: _layout,
+  layoutId: _layoutId,
+  onViewportEnter: _onViewportEnter,
   transition: _transition,
   viewport: _viewport,
   whileInView: _whileInView,
   ...props
-}: ComponentPropsWithoutRef<'div'> & {
-  animate?: unknown;
-  children?: ReactNode;
-  initial?: unknown;
-  transition?: unknown;
-  viewport?: unknown;
-  whileInView?: unknown;
-}) {
+}: ComponentPropsWithoutRef<'div'> & MotionMockProps) {
   return <div {...props}>{children}</div>;
 }
 
 function MotionSpan({
   animate: _animate,
   children,
+  exit: _exit,
+  initial: _initial,
+  layout: _layout,
+  layoutId: _layoutId,
   onViewportEnter: _onViewportEnter,
+  transition: _transition,
+  viewport: _viewport,
+  whileInView: _whileInView,
   ...props
-}: ComponentPropsWithoutRef<'span'> & {
-  animate?: unknown;
-  onViewportEnter?: () => void;
-}) {
+}: ComponentPropsWithoutRef<'span'> & MotionMockProps) {
   return <span {...props}>{children}</span>;
+}
+
+function MotionSvg({
+  animate: _animate,
+  children,
+  exit: _exit,
+  initial: _initial,
+  layout: _layout,
+  layoutId: _layoutId,
+  onViewportEnter: _onViewportEnter,
+  transition: _transition,
+  viewport: _viewport,
+  whileInView: _whileInView,
+  ...props
+}: ComponentPropsWithoutRef<'svg'> & MotionMockProps) {
+  return <svg {...props}>{children}</svg>;
+}
+
+function MotionPath({
+  animate: _animate,
+  children,
+  exit: _exit,
+  initial: _initial,
+  layout: _layout,
+  layoutId: _layoutId,
+  onViewportEnter: _onViewportEnter,
+  transition: _transition,
+  viewport: _viewport,
+  whileInView: _whileInView,
+  ...props
+}: ComponentPropsWithoutRef<'path'> & MotionMockProps) {
+  return <path {...props}>{children}</path>;
+}
+
+function MotionCircle({
+  animate: _animate,
+  children,
+  exit: _exit,
+  initial: _initial,
+  layout: _layout,
+  layoutId: _layoutId,
+  onViewportEnter: _onViewportEnter,
+  transition: _transition,
+  viewport: _viewport,
+  whileInView: _whileInView,
+  ...props
+}: ComponentPropsWithoutRef<'circle'> & MotionMockProps) {
+  return <circle {...props}>{children}</circle>;
+}
+
+function MotionGroup({
+  animate: _animate,
+  children,
+  exit: _exit,
+  initial: _initial,
+  layout: _layout,
+  layoutId: _layoutId,
+  onViewportEnter: _onViewportEnter,
+  transition: _transition,
+  viewport: _viewport,
+  whileInView: _whileInView,
+  ...props
+}: ComponentPropsWithoutRef<'g'> & MotionMockProps) {
+  return <g {...props}>{children}</g>;
+}
+
+function MotionListItem({
+  animate: _animate,
+  children,
+  exit: _exit,
+  initial: _initial,
+  layout: _layout,
+  layoutId: _layoutId,
+  onViewportEnter: _onViewportEnter,
+  transition: _transition,
+  viewport: _viewport,
+  whileInView: _whileInView,
+  ...props
+}: ComponentPropsWithoutRef<'li'> & MotionMockProps) {
+  return <li {...props}>{children}</li>;
 }
 
 vi.mock('motion/react', () => ({
   AnimatePresence: ({ children }: { children: ReactNode }) => children,
+  LayoutGroup: ({ children }: { children: ReactNode }) => children,
   motion: {
+    circle: MotionCircle,
     create: (Component: ComponentType) => Component,
     div: MotionDiv,
+    g: MotionGroup,
+    li: MotionListItem,
+    path: MotionPath,
     span: MotionSpan,
+    svg: MotionSvg,
   },
   useAnimation: () => ({ start: vi.fn() }),
+  useMotionValue: (value: number) => ({
+    get: () => value,
+    set: vi.fn(),
+  }),
+  useMotionValueEvent: vi.fn(),
   useReducedMotion: () => motionPreferences.shouldReduce,
-  useScroll: () => ({ scrollYProgress: 0 }),
+  useScroll: () => ({
+    scrollYProgress: {
+      get: () => 0,
+      set: vi.fn(),
+    },
+  }),
+  useSpring: () => 0,
+  useTransform: () => 0,
 }));
 
 vi.mock('~/components/layout/Header', () => ({
@@ -285,7 +401,11 @@ describe('SummerUpdatePage', () => {
       'overflow-hidden',
     );
     expect(hero.querySelector('.min-h-screen')).not.toBeInTheDocument();
-    expect(hero).not.toHaveClass('bg-linear-to-b');
+    expect(hero.querySelector('.bg-linear-to-b')).toHaveClass(
+      'from-slate-blue/25',
+      'via-sea-serpent/10',
+      'to-transparent',
+    );
     expect(projectName).toHaveClass('bg-clip-text', 'text-white');
     expect(projectName).toHaveStyle({
       animation: 'var(--animate-text-glow)',

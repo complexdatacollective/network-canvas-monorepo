@@ -6,7 +6,8 @@ export const summerUpdateEasing = [0.22, 1, 0.36, 1] as [
 ];
 
 export const summerUpdateRevealMotion = {
-  distance: 32,
+  distance: 48,
   duration: 0.9,
   easing: summerUpdateEasing,
+  scrollLinked: true,
 } as const;

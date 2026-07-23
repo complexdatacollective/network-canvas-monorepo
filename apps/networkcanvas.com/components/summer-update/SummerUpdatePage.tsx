@@ -1,7 +1,12 @@
 'use client';
 
 import { ExternalLink } from 'lucide-react';
-import { motion, useReducedMotion, useScroll } from 'motion/react';
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  useReducedMotion,
+} from 'motion/react';
 import Image from 'next/image';
 import { useState } from 'react';
 
@@ -13,20 +18,21 @@ import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
-import { Header } from '~/components/layout/Header';
 import { Reveal } from '~/components/ui/Reveal';
 import { cn } from '~/lib/cn';
 
-import { HomepagePageBackground } from '../ui/HomepagePageBackground';
 import { ActionButton } from './ActionButton';
 import { BenefitCard } from './BenefitCard';
 import { BulletList } from './BulletList';
 import { DestinationCard } from './DestinationCard';
+import { DestinationFan } from './DestinationFan';
 import { FeatureCard } from './FeatureCard';
-import { HeroEntrance } from './HeroEntrance';
+import { FeatureConstellation } from './FeatureConstellation';
 import { InterfaceGraphic } from './InterfaceGraphic';
+import { LaunchHero } from './LaunchHero';
 import { ProtocolMigrationIllustration } from './ProtocolMigrationIllustration';
 import { ScreenshotFrame } from './ScreenshotFrame';
+import { ScrollSignalProgress } from './ScrollSignalProgress';
 import { Section } from './Section';
 import { SectionLabel } from './SectionLabel';
 import { StatusChip } from './StatusChip';
@@ -37,16 +43,12 @@ import {
 } from './summerUpdateContent';
 import { summerUpdateRevealMotion } from './summerUpdateMotion';
 
-const heroTextGlowClasses =
-  'bg-[conic-gradient(from_var(--text-glow-angle),var(--color-neon-coral),var(--color-sea-serpent),var(--color-mustard),var(--color-sea-green),var(--color-neon-coral))] bg-clip-text';
-
 export function SummerUpdatePage() {
   const shouldReduceMotion = useReducedMotion();
   const [selectedInterface, setSelectedInterface] = useState(0);
   const [selectedCompatibilityRow, setSelectedCompatibilityRow] = useState<
     number | null
   >(null);
-  const { scrollYProgress } = useScroll();
 
   const activeInterface =
     interfaceFeatures[selectedInterface] ?? interfaceFeatures[0];
@@ -61,78 +63,8 @@ export function SummerUpdatePage() {
   return (
     <>
       <main className="selection:bg-mustard selection:text-rich-black [counter-reset:section_subsection]">
-        <motion.div
-          aria-hidden
-          className="from-neon-coral via-mustard to-sea-green fixed inset-x-0 top-0 z-50 h-1 w-full origin-left rounded-r-full bg-linear-to-r"
-          style={{ scaleX: scrollYProgress }}
-        />
-
-        <Section
-          className="m-0! flex min-h-svh flex-col overflow-hidden px-0!"
-          aria-labelledby="summer-update-title"
-        >
-          <div className="pointer-events-none absolute inset-0" aria-hidden>
-            <HomepagePageBackground />
-          </div>
-          <HeroEntrance delay={0.05} direction="down">
-            <Header className="relative z-20" containerClassName="py-6!" />
-          </HeroEntrance>
-
-          <div className="tablet-portrait:pt-24 tablet-portrait:pb-48 relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-12 px-6 pt-16 pb-40 text-center">
-            <HeroEntrance delay={0.32}>
-              <Heading
-                level="h1"
-                variant="display-heading"
-                id="summer-update-title"
-              >
-                Introducing the next generation of{' '}
-                <span
-                  data-homepage-weave-target
-                  className={cn(
-                    heroTextGlowClasses,
-                    'overflow-visible px-2 whitespace-nowrap text-white',
-                  )}
-                  style={{
-                    WebkitTextFillColor: 'var(--color-white)',
-                    WebkitTextStroke:
-                      'var(--text-glow-stroke-width) transparent',
-                    paintOrder: 'stroke fill',
-                    animation: shouldReduceMotion
-                      ? undefined
-                      : 'var(--animate-text-glow)',
-                  }}
-                >
-                  Network Canvas
-                </span>{' '}
-                apps
-              </Heading>
-            </HeroEntrance>
-            <HeroEntrance delay={0.62}>
-              <Paragraph
-                intent="lead"
-                className="tablet-landscape:text-xl text-center text-lg leading-relaxed"
-              >
-                A leap forward in designing, running, and managing Network
-                Canvas interviews. This page covers what's{' '}
-                <strong>changing</strong>, what's <strong>new</strong>, and what
-                it <strong>means</strong> for your work.
-              </Paragraph>
-            </HeroEntrance>
-          </div>
-
-          <HeroEntrance
-            delay={1.1}
-            className="font-monospace absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3 text-xs tracking-widest text-current/55 uppercase"
-          >
-            <span>Keep scrolling to learn more</span>
-            <span
-              className="border-text/40 flex h-8 w-5 justify-center rounded-full border pt-2"
-              aria-hidden
-            >
-              <span className="bg-text/70 size-1 rounded-full motion-safe:animate-bounce" />
-            </span>
-          </HeroEntrance>
-        </Section>
+        <ScrollSignalProgress />
+        <LaunchHero />
 
         <Section aria-labelledby="whats-new-title">
           <div className="mx-auto max-w-6xl">
@@ -579,78 +511,177 @@ export function SummerUpdatePage() {
             </Reveal>
           </div>
 
-          <div className="tablet-landscape:grid-cols-5 mx-auto mt-12 grid max-w-380 items-start gap-8">
-            <div className="tablet-portrait:grid-cols-3 tablet-landscape:col-span-3 grid grid-cols-2 gap-4">
-              {interfaceFeatures.map((feature, index) => (
-                <Reveal
-                  {...summerUpdateRevealMotion}
-                  delay={(index % 3) * 0.08}
-                  key={feature.shortName}
-                >
-                  <Surface
-                    as="button"
-                    type="button"
-                    noContainer
-                    aria-pressed={selectedInterface === index}
-                    className={cn(
-                      'hover:bg-selected/50 aria-pressed:border-sea-serpent aria-pressed:bg-sea-serpent/15 flex size-full flex-col items-center justify-center gap-3 text-center transition',
-                      'hover:elevation-high aria-pressed:inset-surface not-aria-pressed:hover:-translate-y-1',
-                    )}
-                    onClick={() => setSelectedInterface(index)}
-                  >
-                    <InterfaceGraphic motif={feature.motif} />
-                    <div className="text-sm leading-snug font-bold">
-                      {feature.shortName}
-                    </div>
-                  </Surface>
-                </Reveal>
-              ))}
-            </div>
+          <LayoutGroup id="schema-feature-explorer">
+            <div className="tablet-landscape:grid-cols-5 mx-auto mt-12 grid max-w-380 items-start gap-8">
+              <div className="tablet-portrait:grid-cols-3 tablet-landscape:col-span-3 relative grid grid-cols-2 gap-4">
+                <FeatureConstellation />
+                {interfaceFeatures.map((feature, index) => {
+                  const isSelected = selectedInterface === index;
 
-            <Reveal
-              {...summerUpdateRevealMotion}
-              className="tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:col-span-2"
-            >
-              <Surface aria-live="polite">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <Heading level="h3" variant="subheading">
-                    {activeInterface.name}
-                  </Heading>
-                  <Badge>{activeInterface.tag}</Badge>
-                </div>
-                <Paragraph emphasis="muted" className="text-current/70">
-                  {activeInterface.summary}
-                </Paragraph>
-                <ul className="mt-5 space-y-3">
-                  {activeInterface.details.map((detail) => (
-                    <li className="flex items-start gap-3" key={detail}>
-                      <span
-                        aria-hidden
-                        className="bg-sea-serpent mt-2 size-2 shrink-0 rounded-full"
-                      />
-                      <Paragraph
-                        intent="smallText"
-                        emphasis="muted"
-                        margin="none"
-                        className="text-current/70"
+                  return (
+                    <Reveal
+                      {...summerUpdateRevealMotion}
+                      delay={(index % 3) * 0.08}
+                      className="relative z-10 h-full"
+                      key={feature.shortName}
+                    >
+                      <motion.div
+                        layout={!shouldReduceMotion}
+                        className="relative h-full"
+                        transition={{
+                          duration: shouldReduceMotion ? 0 : undefined,
+                          type: shouldReduceMotion ? 'tween' : 'spring',
+                          stiffness: shouldReduceMotion ? undefined : 340,
+                          damping: shouldReduceMotion ? undefined : 32,
+                        }}
                       >
-                        {detail}
+                        <Surface
+                          as="button"
+                          type="button"
+                          noContainer
+                          aria-pressed={isSelected}
+                          className={cn(
+                            'hover:bg-selected aria-pressed:border-sea-serpent flex size-full flex-col items-center justify-center overflow-hidden text-center transition',
+                            'hover:elevation-high aria-pressed:inset-surface aria-pressed:bg-sea-serpent/15 not-aria-pressed:hover:-translate-y-1',
+                          )}
+                          onClick={() => setSelectedInterface(index)}
+                        >
+                          {isSelected ? (
+                            <motion.span
+                              layoutId={
+                                shouldReduceMotion
+                                  ? undefined
+                                  : 'active-schema-feature'
+                              }
+                              aria-hidden
+                              className="pointer-events-none absolute inset-0"
+                              transition={{
+                                duration: shouldReduceMotion ? 0 : undefined,
+                                type: shouldReduceMotion ? 'tween' : 'spring',
+                                stiffness: shouldReduceMotion ? undefined : 420,
+                                damping: shouldReduceMotion ? undefined : 34,
+                              }}
+                            />
+                          ) : null}
+                          <motion.span
+                            className="relative z-10 flex flex-col items-center justify-center gap-3"
+                            animate={
+                              shouldReduceMotion
+                                ? undefined
+                                : isSelected
+                                  ? { scale: 1.045, y: -2 }
+                                  : { scale: 1, y: 0 }
+                            }
+                            transition={{
+                              type: 'spring',
+                              stiffness: 420,
+                              damping: 30,
+                            }}
+                          >
+                            <InterfaceGraphic motif={feature.motif} />
+                            <span className="text-sm leading-snug font-bold">
+                              {feature.shortName}
+                            </span>
+                          </motion.span>
+                        </Surface>
+                      </motion.div>
+                    </Reveal>
+                  );
+                })}
+              </div>
+
+              <Reveal
+                {...summerUpdateRevealMotion}
+                className="tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:col-span-2"
+              >
+                <Surface aria-live="polite" className="overflow-hidden">
+                  <AnimatePresence initial={false} mode="wait">
+                    <motion.div
+                      key={activeInterface.shortName}
+                      initial={
+                        shouldReduceMotion
+                          ? false
+                          : {
+                              clipPath: 'inset(0 0 100% 0)',
+                              opacity: 0,
+                              y: 18,
+                            }
+                      }
+                      animate={{
+                        clipPath: 'inset(0 0 0% 0)',
+                        opacity: 1,
+                        y: 0,
+                      }}
+                      exit={
+                        shouldReduceMotion
+                          ? undefined
+                          : {
+                              clipPath: 'inset(0 0 0 100%)',
+                              opacity: 0,
+                              y: -10,
+                            }
+                      }
+                      transition={{
+                        type: 'spring',
+                        stiffness: 260,
+                        damping: 30,
+                      }}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <Heading level="h3" variant="subheading">
+                          {activeInterface.name}
+                        </Heading>
+                        <Badge>{activeInterface.tag}</Badge>
+                      </div>
+                      <Paragraph emphasis="muted" className="text-current/70">
+                        {activeInterface.summary}
                       </Paragraph>
-                    </li>
-                  ))}
-                </ul>
-                <NativeLink
-                  className="mt-6 inline-block [--link:var(--color-sea-serpent)]"
-                  href={activeInterface.href}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Explore in the documentation{' '}
-                  <ExternalLink className="inline-block size-4" />
-                </NativeLink>
-              </Surface>
-            </Reveal>
-          </div>
+                      <ul className="mt-5 space-y-3">
+                        {activeInterface.details.map((detail, index) => (
+                          <motion.li
+                            className="flex items-start gap-3"
+                            key={detail}
+                            initial={
+                              shouldReduceMotion ? false : { opacity: 0, x: 14 }
+                            }
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{
+                              type: 'spring',
+                              stiffness: 300,
+                              damping: 28,
+                              delay: shouldReduceMotion ? 0 : index * 0.055,
+                            }}
+                          >
+                            <span
+                              aria-hidden
+                              className="bg-sea-serpent mt-2 size-2 shrink-0 rounded-full"
+                            />
+                            <Paragraph
+                              intent="smallText"
+                              emphasis="muted"
+                              margin="none"
+                              className="text-current/70"
+                            >
+                              {detail}
+                            </Paragraph>
+                          </motion.li>
+                        ))}
+                      </ul>
+                      <NativeLink
+                        className="mt-6 inline-block [--link:var(--color-sea-serpent)]"
+                        href={activeInterface.href}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Explore in the documentation{' '}
+                        <ExternalLink className="inline-block size-4" />
+                      </NativeLink>
+                    </motion.div>
+                  </AnimatePresence>
+                </Surface>
+              </Reveal>
+            </div>
+          </LayoutGroup>
         </Section>
 
         <Section aria-labelledby="compatibility-title">
@@ -951,11 +982,13 @@ export function SummerUpdatePage() {
                 Start exploring the new generation
               </Heading>
             </Reveal>
-            <div className="tablet-portrait:grid-cols-2 mt-12 grid grid-cols-1 gap-5">
+            <div className="tablet-portrait:grid-cols-2 relative mt-12 grid grid-cols-1 gap-5">
               {destinationLinks.map((destination, index) => (
                 <Reveal
                   {...summerUpdateRevealMotion}
                   delay={index * 0.11}
+                  direction={index % 2 === 0 ? 'left' : 'right'}
+                  className="relative z-10 h-full"
                   key={destination.title}
                 >
                   <DestinationCard destination={destination} index={index} />

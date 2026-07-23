@@ -35,7 +35,7 @@ export function BenefitCard({
   }[icon];
 
   return (
-    <Reveal {...summerUpdateRevealMotion} delay={delay}>
+    <Reveal {...summerUpdateRevealMotion} delay={delay} scrollStagger={2.2}>
       <Surface
         as="article"
         noContainer
