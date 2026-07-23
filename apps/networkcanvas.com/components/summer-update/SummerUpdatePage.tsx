@@ -111,7 +111,7 @@ export function SummerUpdatePage() {
               </Paragraph>
             </Reveal>
           </div>
-          <div className="phone-landscape:grid-cols-2 desktop:grid-cols-4 mx-auto my-12 grid max-w-380 grid-cols-1 gap-6">
+          <div className="tablet-portrait:grid-cols-2 desktop:grid-cols-4 mx-auto my-12 grid max-w-380 grid-cols-1 gap-6">
             <BenefitCard title="Low friction use" icon="green" delay={0}>
               Visit{' '}
               <NativeLink
@@ -570,7 +570,7 @@ export function SummerUpdatePage() {
                             aria-pressed={isSelected}
                             className={cn(
                               'focusable aria-pressed:border-sea-serpent not-aria-pressed:hover:bg-selected flex size-full flex-col items-center justify-center overflow-hidden text-center transition',
-                              'hover:elevation-high aria-pressed:inset-surface aria-pressed:text-rich-black not-aria-pressed:hover:-translate-y-1 aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_70%,var(--color-white))]',
+                              'hover:elevation-high aria-pressed:inset-surface aria-pressed:text-rich-black not-aria-pressed:hover:-translate-y-1 aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_55%,var(--color-white))]',
                             )}
                             onClick={() => setSelectedInterface(index)}
                           >

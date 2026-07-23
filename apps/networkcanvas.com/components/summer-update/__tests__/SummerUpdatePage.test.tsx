@@ -250,6 +250,26 @@ describe('SummerUpdatePage', () => {
     });
   });
 
+  it('keeps the introductory cards in one column on phone-sized screens', () => {
+    render(<SummerUpdatePage />);
+
+    const firstBenefitCard = screen
+      .getByRole('heading', { name: 'Low friction use' })
+      .closest('article');
+    const benefitGrid = firstBenefitCard?.parentElement?.parentElement;
+
+    if (!(benefitGrid instanceof HTMLElement)) {
+      throw new Error('Introductory benefit grid did not render');
+    }
+
+    expect(benefitGrid).toHaveClass(
+      'grid-cols-1',
+      'tablet-portrait:grid-cols-2',
+      'desktop:grid-cols-4',
+    );
+    expect(benefitGrid).not.toHaveClass('phone-landscape:grid-cols-2');
+  });
+
   it('links every Schema 8 explorer item to its relevant documentation', () => {
     render(<SummerUpdatePage />);
 
@@ -259,7 +279,7 @@ describe('SummerUpdatePage', () => {
 
     expect(selectedFeature).toHaveClass(
       'justify-center',
-      'aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_70%,var(--color-white))]',
+      'aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_55%,var(--color-white))]',
       'aria-pressed:text-rich-black',
     );
     expect(selectedFeature).not.toHaveClass('aria-pressed:bg-sea-serpent/15');
