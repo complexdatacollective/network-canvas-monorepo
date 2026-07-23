@@ -3,7 +3,7 @@
 import { ExternalLink } from 'lucide-react';
 import { motion, useReducedMotion, useScroll } from 'motion/react';
 import Image from 'next/image';
-import { forwardRef, useState, type ReactNode } from 'react';
+import { useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
@@ -14,428 +14,31 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
 import { Header } from '~/components/layout/Header';
-import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Reveal } from '~/components/ui/Reveal';
 import { cn } from '~/lib/cn';
 
 import { HomepagePageBackground } from '../ui/HomepagePageBackground';
+import { ActionButton } from './ActionButton';
+import { BenefitCard } from './BenefitCard';
+import { BulletList } from './BulletList';
+import { DestinationCard } from './DestinationCard';
+import { FeatureCard } from './FeatureCard';
+import { HeroEntrance } from './HeroEntrance';
 import { InterfaceGraphic } from './InterfaceGraphic';
 import { ProtocolMigrationIllustration } from './ProtocolMigrationIllustration';
+import { ScreenshotFrame } from './ScreenshotFrame';
+import { Section } from './Section';
+import { SectionLabel } from './SectionLabel';
+import { StatusChip } from './StatusChip';
 import {
   compatibilityRows,
   destinationLinks,
   interfaceFeatures,
-  type CompatibilityStatus,
 } from './summerUpdateContent';
+import { summerUpdateRevealMotion } from './summerUpdateMotion';
 
-const easing = [0.22, 1, 0.36, 1] as [number, number, number, number];
-const revealMotion = {
-  distance: 32,
-  duration: 0.9,
-  easing,
-} as const;
-
-type AccentColor =
-  | 'cerulean-blue'
-  | 'kiwi'
-  | 'mustard'
-  | 'neon-carrot'
-  | 'neon-coral'
-  | 'paradise-pink'
-  | 'sea-green'
-  | 'sea-serpent'
-  | 'slate-blue';
-
-const accentBackgroundClasses: Record<AccentColor, string> = {
-  'cerulean-blue': 'bg-cerulean-blue',
-  'kiwi': 'bg-kiwi',
-  'mustard': 'bg-mustard',
-  'neon-carrot': 'bg-neon-carrot',
-  'neon-coral': 'bg-neon-coral',
-  'paradise-pink': 'bg-paradise-pink',
-  'sea-green': 'bg-sea-green',
-  'sea-serpent': 'bg-sea-serpent',
-  'slate-blue': 'bg-slate-blue',
-};
-const accentSoftBackgroundClasses: Record<AccentColor, string> = {
-  'cerulean-blue': 'bg-cerulean-blue/15',
-  'kiwi': 'bg-kiwi/15',
-  'mustard': 'bg-mustard/15',
-  'neon-carrot': 'bg-neon-carrot/15',
-  'neon-coral': 'bg-neon-coral/15',
-  'paradise-pink': 'bg-paradise-pink/15',
-  'sea-green': 'bg-sea-green/15',
-  'sea-serpent': 'bg-sea-serpent/15',
-  'slate-blue': 'bg-slate-blue/15',
-};
-const accentTextClasses: Record<AccentColor, string> = {
-  'cerulean-blue': 'text-cerulean-blue',
-  'kiwi': 'text-kiwi',
-  'mustard': 'text-mustard',
-  'neon-carrot': 'text-neon-carrot',
-  'neon-coral': 'text-neon-coral',
-  'paradise-pink': 'text-paradise-pink',
-  'sea-green': 'text-sea-green',
-  'sea-serpent': 'text-sea-serpent',
-  'slate-blue': 'text-slate-blue',
-};
 const heroTextGlowClasses =
   'bg-[conic-gradient(from_var(--text-glow-angle),var(--color-neon-coral),var(--color-sea-serpent),var(--color-mustard),var(--color-sea-green),var(--color-neon-coral))] bg-clip-text';
-
-const Section = forwardRef<
-  HTMLElement,
-  { children: ReactNode } & React.HTMLAttributes<HTMLElement>
->(({ children, className, ...rest }, ref) => (
-  <section
-    ref={ref}
-    className={cn('tablet-landscape:px-10 relative my-24 px-6', className)}
-    {...rest}
-  >
-    {children}
-  </section>
-));
-
-Section.displayName = 'Section';
-
-function HeroEntrance({
-  bar,
-  children,
-  className,
-  delay,
-  direction = 'up',
-}: {
-  bar?: boolean;
-  children?: ReactNode;
-  className?: string;
-  delay: number;
-  direction?: 'down' | 'up';
-}) {
-  const shouldReduceMotion = useReducedMotion();
-  const initial = bar
-    ? { opacity: 0, scaleX: 0 }
-    : {
-        opacity: 0,
-        y: direction === 'down' ? -16 : 30,
-      };
-  const visible = bar ? { opacity: 1, scaleX: 1 } : { opacity: 1, y: 0 };
-
-  return (
-    <motion.div
-      initial={shouldReduceMotion ? false : initial}
-      animate={shouldReduceMotion ? undefined : visible}
-      transition={
-        shouldReduceMotion
-          ? { duration: 0 }
-          : { duration: bar ? 1 : 0.9, delay, ease: easing }
-      }
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function SectionLabel({
-  children,
-  Icon,
-  subSection,
-}: {
-  children: ReactNode;
-  Icon?: ReactNode;
-  subSection?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        'font-monospace text-slate-blue inline-flex items-center gap-3 text-xs leading-relaxed font-semibold tracking-widest uppercase',
-        subSection
-          ? '[counter-increment:subsection]'
-          : '[counter-increment:section] [counter-set:subsection_0]',
-        subSection && 'text-slate-blue/75',
-      )}
-    >
-      {Icon ?? <span aria-hidden className="h-0.5 w-6 bg-current" />}
-      <span>
-        <span aria-hidden>
-          <span className="before:content-[counter(section,decimal-leading-zero)]" />
-          {subSection && (
-            <span className="before:content-[counter(subsection,lower-alpha)]" />
-          )}
-          {' — '}
-        </span>
-        {children}
-      </span>
-    </div>
-  );
-}
-
-function ActionButton({
-  children,
-  compact,
-  href,
-  secondary,
-  target,
-}: {
-  children: ReactNode;
-  compact?: boolean;
-  href: string;
-  secondary?: boolean;
-  target?: string;
-}) {
-  return (
-    <ButtonLink
-      external
-      href={href}
-      color={secondary ? 'dynamic' : 'success'}
-      size={compact ? 'md' : 'lg'}
-      textStyle={secondary ? 'uppercase' : undefined}
-      variant={secondary ? 'outline' : 'raised'}
-      target={target}
-    >
-      {children}
-    </ButtonLink>
-  );
-}
-
-function BenefitCard({
-  children,
-  delay,
-  icon,
-  title,
-}: {
-  children: ReactNode;
-  delay: number;
-  icon: 'blue' | 'cyan' | 'green' | 'coral' | 'mustard';
-  title: string;
-}) {
-  const iconClass = {
-    blue: 'border-cerulean-blue/35 bg-cerulean-blue/10',
-    cyan: 'border-sea-serpent/35 bg-sea-serpent/10',
-    green: 'border-sea-green/35 bg-sea-green/10',
-    coral: 'border-neon-coral/35 bg-neon-coral/10',
-    mustard: 'border-mustard/35 bg-mustard/10',
-  }[icon];
-  const iconDotClass = {
-    blue: 'bg-cerulean-blue',
-    cyan: 'bg-sea-serpent',
-    green: 'bg-sea-green',
-    coral: 'bg-neon-coral',
-    mustard: 'bg-mustard',
-  }[icon];
-
-  return (
-    <Reveal {...revealMotion} delay={delay}>
-      <Surface
-        as="article"
-        noContainer
-        spacing="lg"
-        shadow="sm"
-        className="h-full"
-      >
-        <div
-          className={cn(
-            'relative mb-6 grid size-12 place-items-center rounded-full border',
-            iconClass,
-          )}
-          aria-hidden
-        >
-          <span className={cn('size-4 rounded-full', iconDotClass)} />
-        </div>
-        <Heading level="h3">{title}</Heading>
-        <Paragraph className="text-current/75">{children}</Paragraph>
-      </Surface>
-    </Reveal>
-  );
-}
-
-function BulletList({
-  items,
-}: {
-  items: readonly { color: AccentColor; content: ReactNode }[];
-}) {
-  return (
-    <ul className="mt-6 space-y-4">
-      {items.map((item, index) => (
-        <li className="flex items-start gap-4" key={index}>
-          <span
-            aria-hidden
-            className={cn(
-              'mt-2 size-2.5 shrink-0 rounded-full',
-              accentBackgroundClasses[item.color],
-            )}
-          />
-          <span className="">{item.content}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ScreenshotFrame({
-  address,
-  alt,
-  src,
-}: {
-  address: string;
-  alt: string;
-  src: string;
-}) {
-  return (
-    <div className="elevation-medium bg-surface overflow-hidden rounded">
-      <div
-        className="flex items-center gap-2 border-b border-current/10 px-4 py-3"
-        aria-hidden
-      >
-        <span className="bg-neon-coral size-2.5 rounded-full" />
-        <span className="bg-mustard size-2.5 rounded-full" />
-        <span className="bg-sea-green size-2.5 rounded-full" />
-        <span className="font-monospace ml-2 truncate text-xs text-current/55">
-          {address}
-        </span>
-      </div>
-      <div className="relative aspect-4/3 overflow-hidden bg-white">
-        <Image
-          fill
-          src={src}
-          alt={alt}
-          sizes="(min-width: 801px) 50vw, 100vw"
-          className="fit"
-        />
-      </div>
-    </div>
-  );
-}
-
-function DestinationCard({
-  destination,
-  index,
-}: {
-  destination: (typeof destinationLinks)[number];
-  index: number;
-}) {
-  return (
-    <Surface
-      as="a"
-      href={destination.href}
-      noContainer
-      spacing="lg"
-      shadow="sm"
-      className="effect-shadow-sm group hover:effect-shadow-md relative flex h-full flex-col overflow-hidden border transition hover:-translate-y-1"
-    >
-      <div className="flex items-start justify-between gap-6">
-        <span
-          aria-hidden
-          className={cn(
-            'flex size-14 items-center justify-center rounded-sm',
-            accentSoftBackgroundClasses[destination.color],
-          )}
-        >
-          <Image
-            src={destination.icon}
-            alt=""
-            width={40}
-            height={40}
-            className="rounded-xs"
-          />
-        </span>
-        <span className="font-monospace text-xs tracking-widest text-current/35">
-          {String(index + 1).padStart(2, '0')} / 04
-        </span>
-      </div>
-      <div className="mt-8 flex flex-1 flex-col">
-        <span
-          className={cn(
-            'font-monospace text-xs font-semibold tracking-widest uppercase',
-            accentTextClasses[destination.color],
-          )}
-        >
-          {destination.category}
-        </span>
-        <div className="mb-4">
-          <Heading level="h3" variant="subheading" margin="none">
-            {destination.title}
-          </Heading>
-        </div>
-        <Paragraph intent="smallText" emphasis="muted">
-          {destination.description}
-        </Paragraph>
-        <div className="border-text/10 mt-auto flex items-center justify-between gap-4 border-t pt-5">
-          <span className="font-monospace truncate text-xs text-current/55">
-            {destination.detail}
-          </span>
-          <ExternalLink
-            aria-hidden
-            className={cn(
-              'size-4 shrink-0 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1',
-              accentTextClasses[destination.color],
-            )}
-          />
-        </div>
-      </div>
-    </Surface>
-  );
-}
-
-function FeatureCard({
-  children,
-  color,
-  delay,
-  title,
-}: {
-  children: ReactNode;
-  color: AccentColor;
-  delay: number;
-  title: string;
-}) {
-  return (
-    <Reveal {...revealMotion} direction="right" delay={delay}>
-      <Surface
-        as="article"
-        noContainer
-        spacing="sm"
-        shadow="xs"
-        className="flex gap-4"
-      >
-        <span
-          aria-hidden
-          className={cn(
-            'mt-2 size-2.5 shrink-0 rounded-full',
-            accentBackgroundClasses[color],
-          )}
-        />
-        <div>
-          <Heading level="h4">{title}</Heading>
-          <Paragraph intent="smallText">{children}</Paragraph>
-        </div>
-      </Surface>
-    </Reveal>
-  );
-}
-
-function StatusChip({ status }: { status: CompatibilityStatus }) {
-  const labels = {
-    migrates: '→ Migrates to 8',
-    native: '✓ Native',
-    unsupported: '✗ Not supported',
-  } as const;
-
-  const statusClass = {
-    migrates: 'bg-sea-serpent/15 text-sea-serpent-dark',
-    native: 'bg-sea-green/15 text-sea-green-dark',
-    unsupported: 'bg-neon-coral/10 text-slate-blue font-semibold-dark',
-  }[status];
-
-  return (
-    <span
-      className={cn(
-        'font-monospace inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-wide whitespace-nowrap',
-        statusClass,
-      )}
-    >
-      {labels[status]}
-    </span>
-  );
-}
 
 export function SummerUpdatePage() {
   const shouldReduceMotion = useReducedMotion();
@@ -533,7 +136,7 @@ export function SummerUpdatePage() {
 
         <Section aria-labelledby="whats-new-title">
           <div className="mx-auto max-w-6xl">
-            <Reveal {...revealMotion}>
+            <Reveal {...summerUpdateRevealMotion}>
               <SectionLabel>What’s new</SectionLabel>
               <Heading
                 level="h2"
@@ -611,7 +214,7 @@ export function SummerUpdatePage() {
             </BenefitCard>
           </div>
 
-          <Reveal {...revealMotion}>
+          <Reveal {...summerUpdateRevealMotion}>
             <Alert variant="info" className="mx-auto my-12! max-w-4xl p-8">
               <AlertTitle>
                 What about the original desktop and tablet apps?
@@ -628,7 +231,7 @@ export function SummerUpdatePage() {
 
           <div className="tablet-portrait:space-y-32 mx-auto max-w-6xl space-y-24">
             <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
-              <Reveal {...revealMotion} direction="left">
+              <Reveal {...summerUpdateRevealMotion} direction="left">
                 <SectionLabel
                   subSection
                   Icon={
@@ -733,7 +336,7 @@ export function SummerUpdatePage() {
                 </Paragraph>
               </Reveal>
 
-              <Reveal {...revealMotion} direction="right">
+              <Reveal {...summerUpdateRevealMotion} direction="right">
                 <ScreenshotFrame
                   address="architect.networkcanvas.com"
                   alt="Architect protocol editor showing the Sample Protocol timeline"
@@ -744,7 +347,7 @@ export function SummerUpdatePage() {
 
             <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
               <Reveal
-                {...revealMotion}
+                {...summerUpdateRevealMotion}
                 direction="right"
                 className="tablet-portrait:order-2"
               >
@@ -841,7 +444,7 @@ export function SummerUpdatePage() {
               </Reveal>
 
               <Reveal
-                {...revealMotion}
+                {...summerUpdateRevealMotion}
                 direction="left"
                 className="tablet-portrait:order-1"
               >
@@ -854,7 +457,7 @@ export function SummerUpdatePage() {
             </div>
 
             <div className="tablet-portrait:grid-cols-2 tablet-portrait:gap-14 grid grid-cols-1 items-center gap-10">
-              <Reveal {...revealMotion} direction="left">
+              <Reveal {...summerUpdateRevealMotion} direction="left">
                 <SectionLabel
                   subSection
                   Icon={
@@ -940,7 +543,7 @@ export function SummerUpdatePage() {
         </Section>
         <Section aria-labelledby="schema-title">
           <div className="mx-auto max-w-6xl">
-            <Reveal {...revealMotion}>
+            <Reveal {...summerUpdateRevealMotion}>
               <SectionLabel>Schema 8</SectionLabel>
               <Heading
                 level="h2"
@@ -980,7 +583,7 @@ export function SummerUpdatePage() {
             <div className="tablet-portrait:grid-cols-3 tablet-landscape:col-span-3 grid grid-cols-2 gap-4">
               {interfaceFeatures.map((feature, index) => (
                 <Reveal
-                  {...revealMotion}
+                  {...summerUpdateRevealMotion}
                   delay={(index % 3) * 0.08}
                   key={feature.shortName}
                 >
@@ -1005,7 +608,7 @@ export function SummerUpdatePage() {
             </div>
 
             <Reveal
-              {...revealMotion}
+              {...summerUpdateRevealMotion}
               className="tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:col-span-2"
             >
               <Surface aria-live="polite">
@@ -1052,7 +655,7 @@ export function SummerUpdatePage() {
 
         <Section aria-labelledby="compatibility-title">
           <div className="mx-auto max-w-6xl">
-            <Reveal {...revealMotion}>
+            <Reveal {...summerUpdateRevealMotion}>
               <SectionLabel>Compatibility</SectionLabel>
               <Heading
                 level="h2"
@@ -1084,7 +687,7 @@ export function SummerUpdatePage() {
               </Paragraph>
             </Reveal>
 
-            <Reveal {...revealMotion} direction="zoom">
+            <Reveal {...summerUpdateRevealMotion} direction="zoom">
               <div className="effect-shadow border-text/15 bg-surface my-12 overflow-hidden rounded border">
                 <div className="overflow-x-auto">
                   <div className="min-w-4xl">
@@ -1149,7 +752,7 @@ export function SummerUpdatePage() {
                 </div>
               </div>
             </Reveal>
-            <Reveal {...revealMotion}>
+            <Reveal {...summerUpdateRevealMotion}>
               <SectionLabel subSection>Caution</SectionLabel>
               <Heading
                 level="h2"
@@ -1160,7 +763,7 @@ export function SummerUpdatePage() {
                 Caution
               </Heading>
             </Reveal>
-            <Reveal {...revealMotion} direction="zoom">
+            <Reveal {...summerUpdateRevealMotion} direction="zoom">
               <Surface
                 spacing="lg"
                 className="tablet-portrait:grid-cols-2 my-12 grid grid-cols-1 items-center gap-10"
@@ -1191,7 +794,7 @@ export function SummerUpdatePage() {
             </Reveal>
           </div>
           <div className="relative z-10 mx-auto max-w-6xl">
-            <Reveal {...revealMotion}>
+            <Reveal {...summerUpdateRevealMotion}>
               <SectionLabel subSection>Should you upgrade?</SectionLabel>
               <Heading
                 level="h2"
@@ -1203,7 +806,7 @@ export function SummerUpdatePage() {
               </Heading>
             </Reveal>
             <div className="tablet-portrait:grid-cols-2 mt-8 grid grid-cols-1 gap-6">
-              <Reveal {...revealMotion}>
+              <Reveal {...summerUpdateRevealMotion}>
                 <Surface as="article" noContainer className="h-full">
                   <span className="bg-sea-green/15 font-monospace text-sea-green inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
                     Starting a new study?
@@ -1219,7 +822,7 @@ export function SummerUpdatePage() {
                   </Paragraph>
                 </Surface>
               </Reveal>
-              <Reveal {...revealMotion} delay={0.11}>
+              <Reveal {...summerUpdateRevealMotion} delay={0.11}>
                 <Surface as="article" noContainer className="h-full">
                   <span className="bg-sea-serpent/15 font-monospace text-sea-serpent inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
                     Running an ongoing study?
@@ -1241,7 +844,7 @@ export function SummerUpdatePage() {
 
         <Section aria-labelledby="resources-title">
           <div className="mx-auto max-w-6xl">
-            <Reveal {...revealMotion}>
+            <Reveal {...summerUpdateRevealMotion}>
               <SectionLabel>Project resources</SectionLabel>
               <Heading
                 level="h2"
@@ -1259,7 +862,7 @@ export function SummerUpdatePage() {
               </Paragraph>
             </Reveal>
             <div className="mt-12 grid grid-cols-1 gap-6">
-              <Reveal {...revealMotion} direction="left">
+              <Reveal {...summerUpdateRevealMotion} direction="left">
                 <Surface
                   as="article"
                   noContainer
@@ -1294,7 +897,11 @@ export function SummerUpdatePage() {
                   </div>
                 </Surface>
               </Reveal>
-              <Reveal {...revealMotion} direction="right" delay={0.11}>
+              <Reveal
+                {...summerUpdateRevealMotion}
+                direction="right"
+                delay={0.11}
+              >
                 <Surface
                   as="article"
                   noContainer
@@ -1333,7 +940,7 @@ export function SummerUpdatePage() {
 
         <Section aria-labelledby="getting-started-title">
           <div className="mx-auto max-w-6xl">
-            <Reveal {...revealMotion}>
+            <Reveal {...summerUpdateRevealMotion}>
               <SectionLabel>Getting started</SectionLabel>
               <Heading
                 level="h2"
@@ -1347,7 +954,7 @@ export function SummerUpdatePage() {
             <div className="tablet-portrait:grid-cols-2 mt-12 grid grid-cols-1 gap-5">
               {destinationLinks.map((destination, index) => (
                 <Reveal
-                  {...revealMotion}
+                  {...summerUpdateRevealMotion}
                   delay={index * 0.11}
                   key={destination.title}
                 >
@@ -1355,7 +962,7 @@ export function SummerUpdatePage() {
                 </Reveal>
               ))}
             </div>
-            <Reveal {...revealMotion}>
+            <Reveal {...summerUpdateRevealMotion}>
               <Paragraph className="mt-12 max-w-6xl">
                 If you have questions or run into issues, the{' '}
                 <NativeLink
