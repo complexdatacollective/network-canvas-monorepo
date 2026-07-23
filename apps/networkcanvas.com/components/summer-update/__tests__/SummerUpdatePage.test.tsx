@@ -281,6 +281,7 @@ describe('SummerUpdatePage', () => {
       'justify-center',
       'aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_25%,var(--color-white))]',
       'aria-pressed:text-rich-black',
+      'inset-surface',
     );
     expect(selectedFeature).not.toHaveClass('aria-pressed:bg-sea-serpent/15');
     expect(screen.getByText('One-to-many dyad census')).toHaveClass(
@@ -298,6 +299,10 @@ describe('SummerUpdatePage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Anonymisation' }));
 
+    expect(selectedFeature).not.toHaveClass('inset-surface');
+    expect(screen.getByRole('button', { name: 'Anonymisation' })).toHaveClass(
+      'inset-surface',
+    );
     expect(
       screen.getByRole('heading', { name: 'Anonymisation interface' }),
     ).toBeInTheDocument();

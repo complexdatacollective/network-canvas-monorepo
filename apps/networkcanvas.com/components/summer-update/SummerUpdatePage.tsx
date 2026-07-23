@@ -570,7 +570,8 @@ export function SummerUpdatePage() {
                             aria-pressed={isSelected}
                             className={cn(
                               'focusable aria-pressed:border-sea-serpent not-aria-pressed:hover:bg-selected flex size-full flex-col items-center justify-center overflow-hidden text-center transition',
-                              'hover:elevation-high aria-pressed:inset-surface aria-pressed:text-rich-black not-aria-pressed:hover:-translate-y-1 aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_25%,var(--color-white))]',
+                              'hover:elevation-high aria-pressed:text-rich-black not-aria-pressed:hover:-translate-y-1 aria-pressed:bg-[color-mix(in_oklab,var(--color-sea-serpent)_25%,var(--color-white))]',
+                              isSelected && 'inset-surface',
                             )}
                             onClick={() => setSelectedInterface(index)}
                           >
