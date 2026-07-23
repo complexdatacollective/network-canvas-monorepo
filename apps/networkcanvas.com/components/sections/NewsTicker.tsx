@@ -3,11 +3,38 @@
 import { Sparkles } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
+import type { ReactNode } from 'react';
 
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Pill from '@codaco/fresco-ui/Pill';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { Link } from '~/lib/i18n/navigation';
 import type { NewsItem as NewsItemRecord } from '~/lib/siteContent';
+
+function NewsLink({
+  children,
+  href,
+  tabIndex,
+}: {
+  children: ReactNode;
+  href: string;
+  tabIndex?: number;
+}) {
+  const isInternal = href.startsWith('/');
+
+  return (
+    <NativeLink
+      href={href}
+      render={isInternal ? <Link href={href} /> : undefined}
+      target={isInternal ? undefined : '_blank'}
+      rel={isInternal ? undefined : 'noreferrer'}
+      tabIndex={tabIndex}
+      className="text-cerulean-blue font-bold"
+    >
+      {children}
+    </NativeLink>
+  );
+}
 
 function NewsItem({
   title,
@@ -26,15 +53,9 @@ function NewsItem({
       className="text-base-sm text-text/80 inline-flex shrink-0 items-center gap-2 whitespace-nowrap"
     >
       {title}
-      <NativeLink
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        tabIndex={duplicate ? -1 : undefined}
-        className="text-cerulean-blue font-bold"
-      >
+      <NewsLink href={href} tabIndex={duplicate ? -1 : undefined}>
         {t('fullStory')}
-      </NativeLink>
+      </NewsLink>
     </span>
   );
 }
@@ -89,15 +110,7 @@ export function NewsTicker({
             key={item.id}
             className="text-base-sm text-text/80"
           >
-            {item.title}{' '}
-            <NativeLink
-              href={item.href}
-              target="_blank"
-              rel="noreferrer"
-              className="text-cerulean-blue font-bold"
-            >
-              {t('fullStory')}
-            </NativeLink>
+            {item.title} <NewsLink href={item.href}>{t('fullStory')}</NewsLink>
           </Paragraph>
         ))}
       </div>

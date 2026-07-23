@@ -322,6 +322,7 @@ export function SummerUpdatePage() {
                 <ScreenshotFrame
                   address="architect.networkcanvas.com"
                   alt={t('apps.architect.screenshotAlt')}
+                  aspectRatio="4:3"
                   src="/images/screenshots/architect.png"
                 />
               </Reveal>

@@ -94,6 +94,12 @@ describe('loadSiteContent', () => {
         content.coreTeam,
       ].every((records) => records.length > 0),
     ).toBe(true);
+    expect(content.newsItems).toContainEqual(
+      expect.objectContaining({
+        id: 'summer-2026-app-release',
+        href: '/summer-2026-update',
+      }),
+    );
   });
 
   it.each([

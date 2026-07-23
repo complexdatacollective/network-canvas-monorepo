@@ -483,8 +483,8 @@ describe('SummerUpdatePage', () => {
       documentationImageColumn,
     );
     expect(websiteArticle.lastElementChild).toBe(websiteImageColumn);
-    expect(websiteScreenshot.parentElement).toHaveClass('aspect-4/3');
-    expect(documentationScreenshot.parentElement).toHaveClass('aspect-4/3');
+    expect(websiteScreenshot.parentElement).toHaveClass('aspect-7/5');
+    expect(documentationScreenshot.parentElement).toHaveClass('aspect-7/5');
   });
 
   it('presents the new-generation destinations as descriptive launch cards', () => {
@@ -515,7 +515,7 @@ describe('SummerUpdatePage', () => {
     ).toHaveAttribute('href', 'https://architect.networkcanvas.com/');
   });
 
-  it('uses consistent frame ratios for the new app screenshots', () => {
+  it('matches new app screenshot ratios without cropping', () => {
     renderWithIntl(<SummerUpdatePage />);
 
     const architectScreenshot = screen.getByRole('img', {
@@ -526,7 +526,7 @@ describe('SummerUpdatePage', () => {
     });
 
     expect(architectScreenshot.parentElement).toHaveClass('aspect-4/3');
-    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-4/3');
+    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-7/5');
   });
 
   it('uses theme-aware sections, a text-anchored woven hero, and white browser frames', () => {
@@ -589,7 +589,7 @@ describe('SummerUpdatePage', () => {
       name: 'Interviewer dashboard showing protocol cards and a resume interview action',
     });
     expect(interviewerScreenshot.parentElement).toHaveClass('bg-white');
-    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-4/3');
+    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-7/5');
     expect(interviewerScreenshot.parentElement).not.toHaveClass(
       'bg-rich-black',
     );
