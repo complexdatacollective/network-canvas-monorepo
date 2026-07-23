@@ -25,7 +25,7 @@ async function getGrabAnnouncement(page: Page): Promise<string> {
     const statusElements = document.querySelectorAll(
       'body > div[role="status"][aria-live="polite"]',
     );
-    for (const el of statusElements) {
+    for (const el of Array.from(statusElements).toReversed()) {
       const text = el.textContent?.trim() ?? '';
       if (text.includes('grabbed')) {
         return text;
@@ -1146,9 +1146,8 @@ class NodePanelFixture {
     const grabbedBefore = await getGrabAnnouncement(this.page);
     await nodeInPanel.press('Control+d');
 
-    await expect
-      .poll(() => getGrabAnnouncement(this.page), { timeout: 200 })
-      .toBe(grabbedBefore);
+    await this.page.waitForTimeout(200);
+    expect(await getGrabAnnouncement(this.page)).toBe(grabbedBefore);
     await expect(
       this.page.getByTestId('node-list').getByRole('option', { name: label }),
     ).toHaveCount(0);
