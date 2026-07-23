@@ -45,14 +45,16 @@ export function BenefitCard({
       >
         <div
           className={cn(
-            'relative mb-6 grid size-12 place-items-center rounded-full border',
+            'tablet-portrait:grid relative mb-6 hidden size-12 place-items-center rounded-full border',
             iconClass,
           )}
           aria-hidden
         >
           <span className={cn('size-4 rounded-full', iconDotClass)} />
         </div>
-        <Heading level="h3">{title}</Heading>
+        <Heading level="h3" className="mt-0!">
+          {title}
+        </Heading>
         <Paragraph className="text-current/75">{children}</Paragraph>
       </Surface>
     </Reveal>

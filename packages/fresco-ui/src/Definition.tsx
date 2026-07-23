@@ -61,7 +61,7 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
             <Element
               ref={ref}
               className={cx(
-                'text-link focusable inline-block cursor-help rounded-sm underline decoration-dashed decoration-1 underline-offset-2',
+                'text-link focusable inline-block cursor-help rounded-sm underline decoration-dashed decoration-2 underline-offset-3',
                 className,
               )}
               {...props}
