@@ -1,8 +1,6 @@
 import { motion, type Variants } from 'motion/react';
 import type { CSSProperties, ReactNode } from 'react';
 
-import { summerUpdateEasing } from './summerUpdateMotion';
-
 type HeroEntrancePhase = 'apps' | 'brand' | 'copy' | 'cue' | 'lead';
 
 const entranceSpring = {
@@ -34,22 +32,18 @@ export const launchHeroHeaderVariants: Variants = {
 const entranceVariants = {
   lead: {
     hidden: {
-      clipPath: 'inset(0 0 100% 0)',
       opacity: 0,
-      y: 24,
+      scaleY: 0.94,
+      y: 28,
     },
     visible: {
-      clipPath: 'inset(0 0 0% 0)',
       opacity: 1,
+      scaleY: 1,
       y: 0,
       transition: {
-        clipPath: {
-          delay: 0.22,
-          duration: 0.73,
-          ease: summerUpdateEasing,
-        },
-        opacity: { delay: 0.22, duration: 0.18 },
-        y: { ...entranceSpring, delay: 0.22 },
+        opacity: { delay: 0.18, duration: 0.18 },
+        scaleY: { ...entranceSpring, delay: 0.18 },
+        y: { ...entranceSpring, delay: 0.18 },
       },
     },
   },
@@ -72,20 +66,13 @@ const entranceVariants = {
   },
   apps: {
     hidden: {
-      clipPath: 'inset(100% 0 0 0)',
       opacity: 0,
       y: 24,
     },
     visible: {
-      clipPath: 'inset(0% 0 0 0)',
       opacity: 1,
       y: 0,
       transition: {
-        clipPath: {
-          delay: 0.72,
-          duration: 0.53,
-          ease: summerUpdateEasing,
-        },
         opacity: { delay: 0.72, duration: 0.16 },
         y: { ...entranceSpring, delay: 0.72 },
       },

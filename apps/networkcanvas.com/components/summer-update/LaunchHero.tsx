@@ -139,8 +139,12 @@ export function LaunchHero() {
               variant="display-heading"
               id="summer-update-title"
             >
-              <span className="block overflow-hidden">
-                <HeroEntrance as="span" phase="lead" className="block">
+              <span className="block">
+                <HeroEntrance
+                  as="span"
+                  phase="lead"
+                  className="block origin-bottom"
+                >
                   Introducing the next generation of
                 </HeroEntrance>
               </span>{' '}
@@ -171,7 +175,7 @@ export function LaunchHero() {
                     Network Canvas
                   </HeroEntrance>
                 </span>{' '}
-                <span className="inline-block overflow-hidden align-bottom">
+                <span className="inline-block align-bottom">
                   <HeroEntrance as="span" phase="apps" className="inline-block">
                     apps
                   </HeroEntrance>

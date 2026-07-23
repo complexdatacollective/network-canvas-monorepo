@@ -119,7 +119,7 @@ const FRAGMENT_SHADER = `
       pixelPoint,
       position,
       focusHalfSize,
-      3.2
+      5.2
     ) * active;
   }
 
@@ -147,7 +147,7 @@ const FRAGMENT_SHADER = `
     float intro = clamp(u_time / 2.05, 0.0, 1.0);
     float introVisibility = smoothstep(0.05, 0.14, intro);
     float settled = smoothstep(0.72, 1.0, intro);
-    float routeStrength = mix(0.052, 0.012, settled);
+    float routeStrength = mix(0.12, 0.004, settled);
     float pathWidth = max(
       0.022,
       1.55 / max(focusHalfSize.y, 1.0)
@@ -235,48 +235,48 @@ const FRAGMENT_SHADER = `
       smoothstep(0.5, 0.68, intro) *
       (1.0 - smoothstep(0.76, 0.94, intro));
     float idleGlint =
-      mix(0.014, 0.022, 0.5 + 0.5 * sin(u_time * 0.72));
+      mix(0.006, 0.01, 0.5 + 0.5 * sin(u_time * 0.72));
     float glint0 = signalNode(
       pixelPoint,
       vec2(-1.08, routeY(0.0, -1.12, 0.46, 0.2)),
       focusHalfSize,
-      3.8
+      5.5
     );
     float glint1 = signalNode(
       pixelPoint,
       vec2(-1.08, routeY(0.0, 1.18, -0.4, 1.7)),
       focusHalfSize,
-      3.8
+      5.5
     );
     float glint2 = signalNode(
       pixelPoint,
       vec2(1.08, routeY(0.0, -1.28, -0.42, 3.3)),
       focusHalfSize,
-      3.8
+      5.5
     );
     float glint3 = signalNode(
       pixelPoint,
       vec2(1.08, routeY(0.0, 1.08, 0.44, 4.8)),
       focusHalfSize,
-      3.8
+      5.5
     );
 
-    float glintStrength = arrival * 0.18 + idleGlint * settled;
+    float glintStrength = arrival * 0.32 + idleGlint * settled;
     float weight0 =
       route0 * routeStrength * introVisibility +
-      packet0 * 0.3 +
+      packet0 * 0.48 +
       glint0 * glintStrength;
     float weight1 =
       route1 * routeStrength * introVisibility +
-      packet1 * 0.3 +
+      packet1 * 0.48 +
       glint1 * glintStrength;
     float weight2 =
       route2 * routeStrength * introVisibility +
-      packet2 * 0.3 +
+      packet2 * 0.48 +
       glint2 * glintStrength;
     float weight3 =
       route3 * routeStrength * introVisibility +
-      packet3 * 0.3 +
+      packet3 * 0.48 +
       glint3 * glintStrength;
 
     vec3 color = u_color_0;
@@ -286,10 +286,10 @@ const FRAGMENT_SHADER = `
     selectStronger(weight3, u_color_3, strongest, color);
 
     float scrollVisibility = 1.0 - smoothstep(0.02, 0.3, u_scroll);
-    float alpha = min(strongest, 0.32) * scrollVisibility;
+    float alpha = min(strongest, 0.46) * scrollVisibility;
     if (alpha < 0.001) discard;
 
-    gl_FragColor = vec4(color, alpha);
+    gl_FragColor = vec4(color * alpha, alpha);
   }
 `;
 
@@ -401,7 +401,7 @@ export function HeroSignalField() {
       antialias: false,
       depth: false,
       powerPreference: 'high-performance',
-      premultipliedAlpha: false,
+      premultipliedAlpha: true,
       preserveDrawingBuffer: false,
     });
     if (!context) return undefined;
@@ -443,8 +443,6 @@ export function HeroSignalField() {
       0,
       0,
     );
-    context.enable(context.BLEND);
-    context.blendFunc(context.SRC_ALPHA, context.ONE_MINUS_SRC_ALPHA);
 
     const colorCanvas = document.createElement('canvas');
     colorCanvas.width = 1;
@@ -633,6 +631,7 @@ export function HeroSignalField() {
   return (
     <canvas
       ref={canvasRef}
+      data-hero-signal-field
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 size-full"
     />
