@@ -88,7 +88,7 @@ const heroWeaveColors = [
   'var(--color-cerulean-blue)',
 ] as const;
 const heroTextGlowClasses =
-  'bg-[conic-gradient(from_var(--text-glow-angle),var(--color-neon-coral),var(--color-mustard),var(--color-sea-serpent),var(--color-paradise-pink),var(--color-cerulean-blue),var(--color-neon-coral))] bg-clip-text';
+  'bg-[conic-gradient(from_var(--text-glow-angle),var(--color-neon-coral),var(--color-sea-serpent),var(--color-mustard),var(--color-sea-green),var(--color-neon-coral))] bg-clip-text';
 const defaultHeroWeaveConvergence = { x: 0.5, y: 0.5 };
 
 function clampUnit(value: number) {
@@ -855,12 +855,11 @@ export function SummerUpdatePage() {
             <HeroEntrance delay={0.62}>
               <Paragraph
                 intent="lead"
-                emphasis="muted"
-                className="mx-auto max-w-3xl text-2xl"
+                className="tablet-landscape:text-xl text-center text-lg leading-relaxed"
               >
-                A significant step forward in how you design, run, and manage
-                Network Canvas interviews — here is what is changing, what is
-                new, and what it means for your work.
+                A leap forward in designing, running, and managing Network
+                Canvas interviews — here is what is changing, what is new, and
+                what it means for your work.
               </Paragraph>
             </HeroEntrance>
           </div>
