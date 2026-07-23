@@ -28,6 +28,11 @@ type BackgroundState = {
   resolved: boolean;
 };
 
+type HomepagePageBackgroundProps = {
+  reveal?: boolean;
+  target?: string;
+};
+
 function clampToViewport(value: number) {
   return Math.min(1, Math.max(0, value));
 }
@@ -46,7 +51,10 @@ function statesAreEqual(current: BackgroundState, next: BackgroundState) {
   );
 }
 
-export function HomepagePageBackground({ target }: { target?: string }) {
+export function HomepagePageBackground({
+  reveal = true,
+  target,
+}: HomepagePageBackgroundProps) {
   const layerRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
   const [background, setBackground] = useState<BackgroundState>({
@@ -171,7 +179,7 @@ export function HomepagePageBackground({ target }: { target?: string }) {
       speedFactor={SPEED_FACTOR}
       layerRef={layerRef}
       motionMode="target"
-      resolved={background.resolved}
+      resolved={background.resolved && reveal}
     />
   );
 }

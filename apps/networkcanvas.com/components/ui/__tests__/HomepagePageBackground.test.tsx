@@ -9,6 +9,7 @@ type MockPageBackgroundProps = {
   flare: number;
   intensity: number;
   layerRef: RefObject<HTMLDivElement | null>;
+  resolved: boolean;
 };
 
 const { motionPreferences, pageBackgroundRender } = vi.hoisted(() => ({
@@ -109,5 +110,53 @@ describe('HomepagePageBackground', () => {
     await waitFor(() => {
       expect(getLatestBackgroundProps().convergence).toEqual({ x: 0, y: 0 });
     });
+  });
+
+  it('keeps the weave hidden until the homepage entrance begins', () => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function getBoundingClientRect(this: Element) {
+        if (
+          this instanceof HTMLElement &&
+          this.dataset.testid === 'page-background-layer'
+        ) {
+          return new DOMRect(0, 0, 1000, 1000);
+        }
+
+        if (
+          this instanceof HTMLElement &&
+          this.hasAttribute('data-homepage-weave-target')
+        ) {
+          return new DOMRect(400, 200, 200, 200);
+        }
+
+        return new DOMRect();
+      },
+    );
+
+    const { rerender } = render(
+      <>
+        <div data-homepage-weave-target />
+        <HomepagePageBackground reveal={false} />
+      </>,
+    );
+
+    expect(getLatestBackgroundProps().resolved).toBe(false);
+
+    rerender(
+      <>
+        <div data-homepage-weave-target />
+        <HomepagePageBackground reveal />
+      </>,
+    );
+
+    expect(getLatestBackgroundProps().resolved).toBe(true);
+  });
+
+  it('preserves the default reveal for reduced-motion contexts', () => {
+    motionPreferences.shouldReduce = true;
+
+    render(<HomepagePageBackground />);
+
+    expect(getLatestBackgroundProps().resolved).toBe(true);
   });
 });
