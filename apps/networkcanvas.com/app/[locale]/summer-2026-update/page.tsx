@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 
 import { SummerUpdatePage } from '~/components/summer-update/SummerUpdatePage';
 
@@ -16,9 +16,9 @@ export async function generateMetadata({
   params,
 }: SummerUpdateRouteProps): Promise<Metadata> {
   const { locale } = await params;
-  if (!isEnglishLocale(locale)) notFound();
+  const contentLocale = isEnglishLocale(locale) ? locale : 'en-US';
 
-  const canonical = `https://networkcanvas.com/${locale}/summer-2026-update`;
+  const canonical = `https://networkcanvas.com/${contentLocale}/summer-2026-update`;
 
   return {
     title: 'Introducing the next generation of Network Canvas apps',
@@ -45,7 +45,7 @@ export default async function SummerUpdateRoute({
   params,
 }: SummerUpdateRouteProps) {
   const { locale } = await params;
-  if (!isEnglishLocale(locale)) notFound();
+  if (!isEnglishLocale(locale)) redirect('/en-US/summer-2026-update/');
 
   setRequestLocale(locale);
 

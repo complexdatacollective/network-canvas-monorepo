@@ -140,6 +140,27 @@ describe('locale routing', () => {
     );
   });
 
+  it('routes the English-only announcement to US English', () => {
+    expect(
+      getLocaleRedirect(
+        new Request('http://localhost/summer-2026-update', {
+          headers: { 'accept-language': 'es-ES,es;q=0.9' },
+        }),
+      )?.toString(),
+    ).toBe('http://localhost/en-US/summer-2026-update/');
+    expect(
+      getLocaleRedirect(
+        new Request('http://localhost/summer-2026-update/'),
+        'es',
+      )?.toString(),
+    ).toBe('http://localhost/en-US/summer-2026-update/');
+    expect(
+      getLocaleRedirect(
+        new Request('http://localhost/es/summer-2026-update/'),
+      )?.toString(),
+    ).toBe('http://localhost/en-US/summer-2026-update/');
+  });
+
   it('recognizes locale paths after Netlify normalizes their casing', () => {
     expect(
       getLocaleRedirect(new Request('http://localhost/en-us/get-started/')),
