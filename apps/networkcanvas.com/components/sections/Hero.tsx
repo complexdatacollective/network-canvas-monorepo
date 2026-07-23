@@ -44,9 +44,10 @@ export function Hero({
       >
         <MotionHeading
           level="h1"
+          variant="display-heading"
           margin="none"
           variants={itemVariants}
-          className="entrance-motion-item font-heading text-text tablet-portrait:row-start-1 tablet-portrait:self-center tablet-portrait:text-[4rem] tablet-portrait:leading-[1.04] tablet-landscape:text-[4.5rem] tablet-landscape:leading-[1.02] desktop:text-[5rem] mx-auto max-w-5xl text-center text-4xl font-black"
+          className="entrance-motion-item text-text tablet-portrait:row-start-1 tablet-portrait:self-center mx-auto max-w-5xl text-center"
         >
           {t('headline')}
         </MotionHeading>

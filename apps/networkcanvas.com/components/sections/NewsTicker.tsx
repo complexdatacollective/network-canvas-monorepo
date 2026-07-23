@@ -1,4 +1,7 @@
+'use client';
+
 import { Sparkles } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
@@ -51,6 +54,8 @@ export function NewsTicker({
   newsItems: readonly NewsItemRecord[];
 }) {
   const t = useTranslations('News');
+  const shouldReduceMotion = useReducedMotion() === true;
+  const activeNewsItem = newsItems[0];
 
   return (
     <div className="border-cerulean-blue/30 bg-cerulean-blue/5 tablet-portrait:rounded-full rounded-[1.5rem] border backdrop-blur-md">
@@ -58,14 +63,20 @@ export function NewsTicker({
       <div className="tablet-portrait:flex hidden items-center gap-5 px-6 py-3">
         <NewsLabel />
         <div className="relative flex-1 overflow-hidden mask-[linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
-          <div className="animate-marquee flex w-max gap-12 motion-reduce:animate-none">
-            {newsItems.map((item) => (
-              <NewsItem key={`first-${item.id}`} {...item} />
-            ))}
-            {newsItems.map((item) => (
-              <NewsItem key={`second-${item.id}`} {...item} duplicate />
-            ))}
-          </div>
+          {shouldReduceMotion ? (
+            activeNewsItem ? (
+              <NewsItem {...activeNewsItem} />
+            ) : null
+          ) : (
+            <div className="animate-marquee flex w-max gap-12 focus-within:[animation-play-state:paused] hover:[animation-play-state:paused] motion-reduce:animate-none">
+              {newsItems.map((item) => (
+                <NewsItem key={`first-${item.id}`} {...item} />
+              ))}
+              {newsItems.map((item) => (
+                <NewsItem key={`second-${item.id}`} {...item} duplicate />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

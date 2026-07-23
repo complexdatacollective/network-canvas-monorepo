@@ -1,14 +1,27 @@
-import { cleanup, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, cleanup, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { NewsItem } from '~/lib/siteContent';
 import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { NewsTicker } from '../NewsTicker';
 
-afterEach(cleanup);
+const motionPreference = vi.hoisted(() => ({ reduced: false }));
 
-const newsItems: NewsItem[] = [
+vi.mock('motion/react', () => ({
+  useReducedMotion: () => motionPreference.reduced,
+}));
+
+beforeEach(() => {
+  motionPreference.reduced = false;
+});
+
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
+
+const newsItems: [NewsItem] = [
   {
     id: 'fixture-news',
     title: 'Fixture-only research news',
@@ -32,11 +45,45 @@ describe('NewsTicker', () => {
     const duplicate = container.querySelector('[aria-hidden="true"] a');
     expect(duplicate).toHaveAttribute('tabindex', '-1');
     expect(container.querySelector('.animate-marquee')).toHaveClass(
+      'hover:[animation-play-state:paused]',
+      'focus-within:[animation-play-state:paused]',
       'motion-reduce:animate-none',
     );
     expect(
       screen.queryByText('Network Canvas wins INSNA Award'),
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps the first story static when reduced motion is preferred', () => {
+    vi.useFakeTimers();
+    motionPreference.reduced = true;
+    const rotatingNewsItems: NewsItem[] = [
+      newsItems[0],
+      {
+        id: 'second-fixture-news',
+        title: 'Second fixture research story',
+        href: 'https://example.com/second-news',
+      },
+    ];
+
+    const { container } = renderWithIntl(
+      <NewsTicker newsItems={rotatingNewsItems} />,
+    );
+    const ticker = container.firstElementChild;
+    if (!ticker) throw new Error('Expected the news ticker to render');
+    const desktopTicker = ticker.children[0];
+
+    expect(container.querySelector('.animate-marquee')).not.toBeInTheDocument();
+    expect(desktopTicker).toHaveTextContent('Fixture-only research news');
+    expect(desktopTicker).not.toHaveTextContent(
+      'Second fixture research story',
+    );
+
+    act(() => vi.advanceTimersByTime(16000));
+    expect(desktopTicker).toHaveTextContent('Fixture-only research news');
+    expect(desktopTicker).not.toHaveTextContent(
+      'Second fixture research story',
+    );
   });
 
   it('renders the ticker labels in Spanish', () => {

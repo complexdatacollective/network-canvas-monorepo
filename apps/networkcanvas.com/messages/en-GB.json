@@ -15,5 +15,61 @@
         }
       }
     }
+  },
+  "SummerUpdate": {
+    "apps": {
+      "interviewer": {
+        "bullets": {
+          "security": "New advanced security: encrypted data storage, and app authorisation for sensitive actions such as exporting data"
+        }
+      },
+      "fresco": {
+        "description": "The latest version of Fresco is a huge release, bringing several significant new features. Designed to support remote self-administered interviews (but completely compatible with face-to-face interviewing too), Fresco is the suggested choice for studies with large numbers of participants, a large team of researchers, or that require a centralised data management solution."
+      }
+    },
+    "features": {
+      "geospatial": {
+        "details": {
+          "0": "Define selectable census tracts, postcodes, neighbourhoods, or custom study regions with a GeoJSON file."
+        }
+      },
+      "familyPedigree": {
+        "details": {
+          "2": "Add an optional disease-nomination step to record which relatives are affected by specific conditions for later visualisation."
+        }
+      },
+      "narrativePedigree": {
+        "summary": "Turn an earlier Family Pedigree into a read-only visualisation that uses standard clinical pedigree notation.",
+        "details": {
+          "2": "Focus on one person's contributing lineage and export a printable snapshot. The visualisation is an aid, not a diagnosis."
+        }
+      },
+      "nodeShapes": {
+        "details": {
+          "2": "Combine shape with colour and size so important categories remain legible without depending on a single visual cue."
+        }
+      },
+      "protocolTemplates": {
+        "details": {
+          "0": "Explore templates for transnational, mental-health, social-isolation, behavioural-influence, care-and-support, and sexual or injection-risk networks."
+        }
+      },
+      "authorisationChecks": {
+        "shortName": "Authorisation checks",
+        "name": "Configurable authorisation checks"
+      }
+    },
+    "resources": {
+      "introduction": "The apps are not the only part of Network Canvas that has changed. We have also redesigned the project website and reorganised the documentation to make it easier to understand the platform, choose the right tools, and find your next step.",
+      "documentation": {
+        "heading": "Guidance organised around your research workflow",
+        "description": "The documentation now starts with the work you are doing: getting started, designing protocols, collecting data, and analysing results. New workflow navigation and refreshed guides make the next step easier to find."
+      }
+    },
+    "destinations": {
+      "fresco": {
+        "description": "Set up the multi-user platform for remote self-administered studies, centralised data management, and research teams."
+      }
+    }
   }
 }

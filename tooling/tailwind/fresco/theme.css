@@ -94,6 +94,22 @@
   --text-4xl--line-height: 1.2;
   --text-4xl--letter-spacing: -0.03em;
 
+  --text-5xl: clamp(
+    calc(2.027 * var(--theme-root-size)),
+    calc(0.777 * var(--theme-root-size) + 4.5vw),
+    calc(3.815 * var(--theme-root-size))
+  );
+  --text-5xl--line-height: 1.12;
+  --text-5xl--letter-spacing: -0.035em;
+
+  --text-6xl: clamp(
+    calc(2.7 * var(--theme-root-size)),
+    6vw,
+    calc(5 * var(--theme-root-size))
+  );
+  --text-6xl--line-height: 1.04;
+  --text-6xl--letter-spacing: -0.02em;
+
   --font-*: initial;
 
   --font-body: var(
@@ -441,6 +457,8 @@
   --animate-background-gradient: background-gradient 5s infinite ease-in-out;
   --animate-linking: linking 1s ease-in-out infinite;
   --animate-pulse-glow: animate-pulse-glow 2s infinite;
+  --animate-text-glow: text-glow-orbit 13.5s linear infinite;
+  --text-glow-stroke-width: 0.032em;
 
   --transform-origin-left-right: 0% 50%;
 
@@ -478,6 +496,12 @@
 
     100% {
       box-shadow: 0 0 0 0 oklch(from var(--success) l c h / 0);
+    }
+  }
+
+  @keyframes text-glow-orbit {
+    to {
+      --text-glow-angle: 360deg;
     }
   }
 
@@ -539,6 +563,12 @@
       transform: scale(0.8);
     }
   }
+}
+
+@property --text-glow-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
 }
 
 /* Override default border color to use our theme values */

@@ -20,9 +20,10 @@ export function SectionHeading({
     <div className={cn('mx-auto max-w-2xl text-center', className)}>
       <Heading
         level="h2"
+        variant="section-heading"
         margin="none"
         id={id}
-        className="font-heading text-text tablet-landscape:text-4xl text-3xl font-bold"
+        className="text-text"
       >
         {title}
       </Heading>

@@ -36,11 +36,7 @@ describe('Hero', () => {
       screen.getByRole('heading', {
         name: 'Simplifying complex network data collection.',
       }),
-    ).toHaveClass(
-      'tablet-portrait:text-[4rem]',
-      'tablet-landscape:text-[4.5rem]',
-      'desktop:text-[5rem]',
-    );
+    ).toHaveClass('text-6xl', 'font-black');
     expect(screen.getByText(/Network Canvas provides/)).toHaveClass(
       'text-text',
     );

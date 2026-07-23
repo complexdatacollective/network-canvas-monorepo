@@ -21,7 +21,6 @@ const legacyDownloadPaths = new Set([
   '/download/',
   '/download.html',
 ]);
-
 function canonicalizeLocale(value: string) {
   try {
     return Intl.getCanonicalLocales(value)[0];
@@ -128,10 +127,10 @@ export function getLocaleRedirect(request: Request, savedLocale?: string) {
     return undefined;
   }
 
-  const locale = detectLocale(request, savedLocale);
+  const detectedLocale = detectLocale(request, savedLocale);
   url.pathname = legacyDownloadPaths.has(url.pathname)
-    ? `/${locale}/get-started/`
-    : getLocalizedPathname(locale, url.pathname);
+    ? `/${detectedLocale}/get-started/`
+    : getLocalizedPathname(detectedLocale, url.pathname);
 
   return url;
 }

@@ -6,13 +6,12 @@ import { Footer } from '~/components/layout/Footer';
 import { CoreTeam } from '~/components/sections/CoreTeam';
 import { DesignPrinciples } from '~/components/sections/DesignPrinciples';
 import { Grants } from '~/components/sections/Grants';
-import { HeroIntro } from '~/components/sections/HeroIntro';
+import { HomepageEntrance } from '~/components/sections/HomepageEntrance';
 import { Institutions } from '~/components/sections/Institutions';
 import { Publications } from '~/components/sections/Publications';
 import { Tools } from '~/components/sections/Tools';
 import { VideoSection } from '~/components/sections/VideoSection';
 import { WhatNext } from '~/components/sections/WhatNext';
-import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
 import { routing } from '~/lib/i18n/routing';
 import { loadSiteContent } from '~/lib/siteContent';
 
@@ -29,11 +28,8 @@ export default async function HomePage({ params }: HomePageProps) {
     await loadSiteContent(locale);
 
   return (
-    <main className="homepage-body relative isolate">
-      <HomepagePageBackground />
-      <div className="relative z-10">
-        <HeroIntro newsItems={newsItems} />
-
+    <main className="relative isolate">
+      <HomepageEntrance newsItems={newsItems}>
         <Tools />
         <VideoSection />
 
@@ -46,7 +42,7 @@ export default async function HomePage({ params }: HomePageProps) {
         <WhatNext />
 
         <Footer />
-      </div>
+      </HomepageEntrance>
     </main>
   );
 }

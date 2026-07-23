@@ -49,7 +49,6 @@ import SiteFooter from '@codaco/fresco-ui/navigation/SiteFooter';
 <SiteFooter
   brand={<Brand />}
   links={[
-    { label: 'Terms of Use', href: termsUrl },
     { label: 'Privacy Policy', href: privacyUrl },
   ]}
   copyright={t('copyright', { year: new Date().getFullYear() })}
@@ -116,10 +115,6 @@ const meta: Meta<StoryArgs> = {
   },
   render: ({ containerWidth, longLabels, showExtraContent }) => {
     const links: readonly SiteFooterLink[] = [
-      {
-        label: longLabels ? 'Terms and Conditions of Use' : 'Terms of Use',
-        href: '#terms',
-      },
       {
         label: longLabels
           ? 'Privacy and Personal Information Policy'

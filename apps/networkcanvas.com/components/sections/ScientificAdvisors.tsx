@@ -11,8 +11,9 @@ export function ScientificAdvisors() {
     <div className="mx-auto mt-16 max-w-3xl text-center">
       <Heading
         level="h3"
+        variant="subheading"
         margin="none"
-        className="font-heading text-text text-xl font-bold"
+        className="text-text"
       >
         {t('heading')}
       </Heading>

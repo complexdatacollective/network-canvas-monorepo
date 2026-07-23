@@ -48,15 +48,15 @@ type ScrollLinkedPageBackgroundProps = {
 };
 
 function getFlareKeyframes(parameterProfile: ParameterProfile) {
-  return parameterProfile === 'get-started'
-    ? GET_STARTED_FLARE_KEYFRAMES
-    : HOMEPAGE_FLARE_KEYFRAMES;
+  if (parameterProfile === 'get-started') return GET_STARTED_FLARE_KEYFRAMES;
+  return HOMEPAGE_FLARE_KEYFRAMES;
 }
 
 function getStaticParameters(parameterProfile: ParameterProfile) {
-  return parameterProfile === 'get-started'
-    ? { heroIntensity: 0.36, readingIntensity: 0.18, speedFactor: 0.24 }
-    : { heroIntensity: 0.62, readingIntensity: 0.26, speedFactor: 0.28 };
+  if (parameterProfile === 'get-started') {
+    return { heroIntensity: 0.36, readingIntensity: 0.18, speedFactor: 0.24 };
+  }
+  return { heroIntensity: 0.62, readingIntensity: 0.26, speedFactor: 0.28 };
 }
 
 function clampToViewport(value: number) {
@@ -264,6 +264,7 @@ export function ScrollLinkedPageBackground({
     let focusedTarget: HTMLElement | null = null;
     let activeInteractiveTarget: HTMLElement | null = null;
     let targetChangeVersion = 0;
+    let measurementFrameId = 0;
 
     const updateBackground = () => {
       const layerRect = layer.getBoundingClientRect();
@@ -419,18 +420,27 @@ export function ScrollLinkedPageBackground({
       });
     };
 
+    const scheduleBackgroundUpdate = () => {
+      if (measurementFrameId) return;
+
+      measurementFrameId = requestAnimationFrame(() => {
+        measurementFrameId = 0;
+        updateBackground();
+      });
+    };
+
     const interactiveTargetListeners = interactiveTargets.map((target) => {
       const handlePointerEnter = () => {
         hoveredTarget = target;
-        updateBackground();
+        scheduleBackgroundUpdate();
       };
       const handlePointerLeave = () => {
         if (hoveredTarget === target) hoveredTarget = null;
-        updateBackground();
+        scheduleBackgroundUpdate();
       };
       const handleFocusIn = () => {
         focusedTarget = target;
-        updateBackground();
+        scheduleBackgroundUpdate();
       };
       const handleFocusOut = (event: FocusEvent) => {
         if (
@@ -440,7 +450,7 @@ export function ScrollLinkedPageBackground({
           return;
         }
         if (focusedTarget === target) focusedTarget = null;
-        updateBackground();
+        scheduleBackgroundUpdate();
       };
 
       target.addEventListener('pointerenter', handlePointerEnter);
@@ -459,20 +469,23 @@ export function ScrollLinkedPageBackground({
 
     updateBackground();
 
-    const observer = new ResizeObserver(updateBackground);
+    const observer = new ResizeObserver(scheduleBackgroundUpdate);
     observer.observe(layer);
     targets.forEach((target) => observer.observe(target));
     interactiveTargets.forEach((target) => observer.observe(target));
-    window.addEventListener('resize', updateBackground);
-    window.addEventListener('scroll', updateBackground, { passive: true });
+    window.addEventListener('resize', scheduleBackgroundUpdate);
+    window.addEventListener('scroll', scheduleBackgroundUpdate, {
+      passive: true,
+    });
     let isActive = true;
     void document.fonts?.ready.then(() => {
-      if (isActive) updateBackground();
+      if (isActive) scheduleBackgroundUpdate();
       return undefined;
     });
 
     return () => {
       isActive = false;
+      if (measurementFrameId) cancelAnimationFrame(measurementFrameId);
       observer.disconnect();
       interactiveTargetListeners.forEach(
         ({
@@ -488,8 +501,8 @@ export function ScrollLinkedPageBackground({
           target.removeEventListener('focusout', handleFocusOut);
         },
       );
-      window.removeEventListener('resize', updateBackground);
-      window.removeEventListener('scroll', updateBackground);
+      window.removeEventListener('resize', scheduleBackgroundUpdate);
+      window.removeEventListener('scroll', scheduleBackgroundUpdate);
     };
   }, [
     holdTargetSelector,

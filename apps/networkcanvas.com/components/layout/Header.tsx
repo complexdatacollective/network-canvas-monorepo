@@ -3,7 +3,7 @@
 import type { Variants } from 'motion/react';
 import { useLocale } from 'next-intl';
 
-import SiteNavigation from '@codaco/fresco-ui/navigation/SiteNavigation';
+import SharedSiteNavigation from '@codaco/fresco-ui/navigation/SiteNavigation';
 import type { SiteNavigationLinkRenderProps } from '@codaco/fresco-ui/navigation/SiteNavigation';
 import ThemeSwitcher from '~/components/layout/ThemeSwitcher';
 import { isLocale } from '~/lib/i18n/locales';
@@ -18,20 +18,29 @@ function renderNavigationLink({
 
 export function Header({
   activeItemId,
+  className,
+  containerClassName,
   entranceVariants,
 }: {
   activeItemId?: 'home' | 'getStarted';
+  className?: string;
+  containerClassName?: string;
   entranceVariants?: Variants;
 }) {
   const locale = useLocale();
   if (!isLocale(locale)) {
-    throw new Error(`Unsupported site navigation locale: ${locale}`);
+    throw new Error(`Unsupported site navigation locale: ${String(locale)}`);
   }
 
   return (
-    <SiteNavigation
+    <SharedSiteNavigation
       activeItemId={activeItemId}
-      className={entranceVariants ? 'entrance-motion-item' : undefined}
+      className={
+        [entranceVariants ? 'entrance-motion-item' : undefined, className]
+          .filter(Boolean)
+          .join(' ') || undefined
+      }
+      containerClassName={containerClassName}
       entranceVariants={entranceVariants}
       locale={locale}
       renderLink={renderNavigationLink}

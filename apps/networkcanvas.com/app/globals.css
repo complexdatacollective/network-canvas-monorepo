@@ -43,5 +43,5 @@
 }
 
 @utility animate-marquee {
-  animation: marquee-x 32s linear infinite;
+  animation: marquee-x 56s linear infinite;
 }

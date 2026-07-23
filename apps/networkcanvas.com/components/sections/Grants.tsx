@@ -54,8 +54,9 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
               >
                 <Heading
                   level="h3"
+                  variant="subheading"
                   margin="none"
-                  className="font-heading text-text tablet-portrait:text-3xl text-2xl font-bold"
+                  className="text-text"
                 >
                   {active.title}
                 </Heading>

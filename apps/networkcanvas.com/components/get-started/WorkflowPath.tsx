@@ -37,8 +37,9 @@ export function WorkflowPath({
         </Paragraph>
         <Heading
           level="h2"
+          variant="section-heading"
           margin="none"
-          className="font-heading text-text text-4xl font-black tracking-tight text-balance"
+          className="text-text"
         >
           {t(`sections.${workflow}.heading`)}
         </Heading>

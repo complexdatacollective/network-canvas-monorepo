@@ -64,7 +64,6 @@ export function GetStartedIntro() {
       className="relative isolate overflow-hidden"
     >
       <motion.div
-        className="relative z-10"
         variants={entrance.pageVariants}
         initial={false}
         animate={controls}
@@ -85,8 +84,9 @@ export function GetStartedIntro() {
           >
             <Heading
               level="h1"
+              variant="display-heading"
               margin="none"
-              className="font-heading text-text text-4xl font-black tracking-tight text-balance"
+              className="text-text"
             >
               {t('intro.heading')}
             </Heading>

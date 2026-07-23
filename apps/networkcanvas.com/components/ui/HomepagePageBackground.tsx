@@ -7,17 +7,17 @@ import { PageBackground } from '@codaco/art';
 import type { NetworkWeaveConvergence } from '@codaco/art/NetworkWeaveBackground';
 
 // The hero video is the weave's only focal anchor. On load the weave knits
-// inward to it; then, as the hero scrolls out of view, the focus eases to the
-// centre of the viewport and rests there for the rest of the page. Nothing else
-// moves the focal point.
+// inward to it; then, as the hero scrolls away, the focus follows a longer path
+// to the viewport origin and rests there for the rest of the page.
 const HERO_ANCHOR_SELECTOR = '[data-homepage-weave-target]';
-const CENTER: NetworkWeaveConvergence = { x: 0.5, y: 0.5 };
+const CENTER: NetworkWeaveConvergence = { x: 0, y: 0 };
 const COMPLEXITY = 20;
-const SPEED_FACTOR = 0.28;
-const HERO_INTENSITY = 0.62;
-const READING_INTENSITY = 0.26;
+const SPEED_FACTOR = 0.18;
+const HERO_INTENSITY = 0.45;
+const READING_INTENSITY = 0.15;
 const HERO_FLARE = 1.45;
-const READING_FLARE = 2.08;
+const READING_FLARE = 4.08;
+const FOCUS_RETURN_DISTANCE_FACTOR = 1.75;
 const POSITION_TOLERANCE = 0.0005;
 const PARAMETER_TOLERANCE = 0.0005;
 
@@ -26,6 +26,11 @@ type BackgroundState = {
   intensity: number;
   flare: number;
   resolved: boolean;
+};
+
+type HomepagePageBackgroundProps = {
+  reveal?: boolean;
+  target?: string;
 };
 
 function clampToViewport(value: number) {
@@ -46,7 +51,10 @@ function statesAreEqual(current: BackgroundState, next: BackgroundState) {
   );
 }
 
-export function HomepagePageBackground() {
+export function HomepagePageBackground({
+  reveal = true,
+  target,
+}: HomepagePageBackgroundProps) {
   const layerRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
   const [background, setBackground] = useState<BackgroundState>({
@@ -75,7 +83,9 @@ export function HomepagePageBackground() {
       return undefined;
     }
 
-    const hero = document.querySelector<HTMLElement>(HERO_ANCHOR_SELECTOR);
+    const hero = document.querySelector<HTMLElement>(
+      target ?? HERO_ANCHOR_SELECTOR,
+    );
 
     const update = () => {
       const layerRect = layer.getBoundingClientRect();
@@ -111,11 +121,15 @@ export function HomepagePageBackground() {
       const exitProgress = clampToViewport(
         window.scrollY / Math.max(1, heroDocumentBottom),
       );
+      const focusReturnProgress = clampToViewport(
+        window.scrollY /
+          Math.max(1, heroDocumentBottom * FOCUS_RETURN_DISTANCE_FACTOR),
+      );
 
       commit({
         convergence: {
-          x: interpolate(restingConvergence.x, CENTER.x, exitProgress),
-          y: interpolate(restingConvergence.y, CENTER.y, exitProgress),
+          x: interpolate(restingConvergence.x, CENTER.x, focusReturnProgress),
+          y: interpolate(restingConvergence.y, CENTER.y, focusReturnProgress),
         },
         intensity: interpolate(HERO_INTENSITY, READING_INTENSITY, exitProgress),
         flare: interpolate(HERO_FLARE, READING_FLARE, exitProgress),
@@ -154,7 +168,7 @@ export function HomepagePageBackground() {
       window.removeEventListener('resize', scheduleUpdate);
       window.removeEventListener('scroll', scheduleUpdate);
     };
-  }, [reduceMotion]);
+  }, [reduceMotion, target]);
 
   return (
     <PageBackground
@@ -165,7 +179,7 @@ export function HomepagePageBackground() {
       speedFactor={SPEED_FACTOR}
       layerRef={layerRef}
       motionMode="target"
-      resolved={background.resolved}
+      resolved={background.resolved && reveal}
     />
   );
 }

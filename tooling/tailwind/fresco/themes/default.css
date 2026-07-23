@@ -135,7 +135,7 @@
     --info-contrast: oklch(var(--white));
 
     --selected: oklch(91% 0.21 80);
-    --selected-contrast: var(--accent-contrast);
+    --selected-contrast: oklch(42% 0.05 79.8);
 
     --drag-valid: oklch(var(--slate-blue) / 0.3);
     --drag-over: oklch(var(--slate-blue) / 0.8);

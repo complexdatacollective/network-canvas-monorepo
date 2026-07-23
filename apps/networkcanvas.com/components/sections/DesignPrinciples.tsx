@@ -16,8 +16,9 @@ export function DesignPrinciples() {
         <div className="tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:self-start">
           <Heading
             level="h2"
+            variant="section-heading"
             margin="none"
-            className="font-heading text-text tablet-landscape:text-4xl text-3xl font-bold"
+            className="text-text"
           >
             {t('heading')}
           </Heading>
@@ -38,8 +39,9 @@ export function DesignPrinciples() {
             >
               <Heading
                 level="h3"
+                variant="subheading"
                 margin="none"
-                className="font-heading text-text tablet-landscape:text-2xl text-xl font-bold"
+                className="text-text"
               >
                 <NativeLink
                   href={principle.href}

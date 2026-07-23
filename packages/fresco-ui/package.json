@@ -19,6 +19,7 @@
     "./Accordion": "./src/Accordion.tsx",
     "./Alert": "./src/Alert.tsx",
     "./Badge": "./src/Badge.tsx",
+    "./Definition": "./src/Definition.tsx",
     "./NativeLink": "./src/NativeLink.tsx",
     "./Pips": "./src/Pips.tsx",
     "./ProgressBar": "./src/ProgressBar.tsx",
@@ -172,6 +173,10 @@
       "./Badge": {
         "types": "./dist/Badge.d.ts",
         "default": "./dist/Badge.js"
+      },
+      "./Definition": {
+        "types": "./dist/Definition.d.ts",
+        "default": "./dist/Definition.js"
       },
       "./NativeLink": {
         "types": "./dist/NativeLink.d.ts",

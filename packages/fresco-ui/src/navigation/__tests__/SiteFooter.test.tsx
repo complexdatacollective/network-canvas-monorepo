@@ -9,12 +9,12 @@ import SiteFooter from '../SiteFooter';
 
 const links = [
   {
-    label: 'Terms of Use',
-    href: 'https://example.com/terms',
-  },
-  {
     label: 'Privacy Policy',
     href: 'https://example.com/privacy',
+  },
+  {
+    label: 'Accessibility',
+    href: 'https://example.com/accessibility',
   },
 ] as const;
 

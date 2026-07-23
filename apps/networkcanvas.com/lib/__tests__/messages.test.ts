@@ -65,6 +65,12 @@ describe('message catalogs', () => {
     expect(britishEnglish.get('GetStarted.apps.fresco.description')).toContain(
       'centralised',
     );
+    expect(
+      americanEnglish.get('SummerUpdate.resources.documentation.heading'),
+    ).toContain('organized');
+    expect(
+      britishEnglish.get('SummerUpdate.resources.documentation.heading'),
+    ).toContain('organised');
   });
 
   it('keeps placeholders and rich-text tags in parity', () => {

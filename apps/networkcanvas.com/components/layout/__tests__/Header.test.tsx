@@ -103,8 +103,8 @@ describe('localized layout navigation', () => {
     renderWithIntl(<Footer />, 'es');
 
     expect(
-      screen.getByRole('link', { name: 'Términos de uso' }),
-    ).toBeInTheDocument();
+      screen.queryByRole('link', { name: 'Términos de uso' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Política de privacidad' }),
     ).toBeInTheDocument();

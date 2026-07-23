@@ -13,8 +13,6 @@ import Link from './Link';
 import LogoComponent from './SharedNav/LogoComponent';
 
 const links = {
-  terms:
-    'https://assets.networkcanvas.com/public/files/Website/terms-and-conditions.txt',
   privacy: 'https://assets.networkcanvas.com/public/files/Website/privacy.txt',
 } as const;
 
@@ -33,7 +31,6 @@ const renderNetlifyLink = (children: ReactNode) => (
 export default function DocumentationFooter() {
   const t = useTranslations('Footer');
   const footerLinks: SiteFooterLink[] = [
-    { label: t('terms'), href: links.terms },
     { label: t('privacy'), href: links.privacy },
   ];
   const footerSocialLinks: SiteFooterSocialLink[] = [

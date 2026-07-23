@@ -17,6 +17,9 @@ export const headingVariants = cva({
       'default': '',
       'all-caps': 'tracking-widest uppercase',
       'page-heading': 'text-4xl',
+      'display-heading': 'text-6xl font-black',
+      'section-heading': 'text-4xl font-black',
+      'subheading': 'text-2xl font-black',
     },
     margin: {
       default: 'mt-0 mb-0 not-first:mt-[1em] not-last:mb-[0.5em]',

@@ -18,7 +18,14 @@ const meta = {
     },
     variant: {
       control: 'select',
-      options: ['default', 'all-caps', 'page-heading'],
+      options: [
+        'default',
+        'all-caps',
+        'page-heading',
+        'display-heading',
+        'section-heading',
+        'subheading',
+      ],
       description: 'Visual variant of the heading',
     },
     margin: {
@@ -70,6 +77,24 @@ export const Variants: Story = {
         <div className="mb-2 text-xs">page-heading</div>
         <Heading level="h1" variant="page-heading">
           Page Heading (text-4xl)
+        </Heading>
+      </div>
+      <div>
+        <div className="mb-2 text-xs">display-heading</div>
+        <Heading level="h1" variant="display-heading">
+          Display Heading (text-6xl, font-black)
+        </Heading>
+      </div>
+      <div>
+        <div className="mb-2 text-xs">section-heading</div>
+        <Heading level="h2" variant="section-heading">
+          Section Heading (text-4xl, font-black)
+        </Heading>
+      </div>
+      <div>
+        <div className="mb-2 text-xs">subheading</div>
+        <Heading level="h3" variant="subheading">
+          Subheading (text-2xl, font-black)
         </Heading>
       </div>
     </div>

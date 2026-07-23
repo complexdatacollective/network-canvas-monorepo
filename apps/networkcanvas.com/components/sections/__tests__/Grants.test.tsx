@@ -32,15 +32,22 @@ vi.mock('@codaco/fresco-ui/typography/Heading', () => ({
   default: ({
     level = 'h2',
     margin,
+    variant,
     ...props
   }: ComponentPropsWithoutRef<'h3'> & {
     level?: 'h1' | 'h2' | 'h3' | 'h4' | 'label';
     margin?: 'default' | 'none';
+    variant?: 'default' | 'subheading';
   }) => {
     const Tag = level === 'label' ? 'h4' : level;
 
     return (
-      <Tag data-fresco-heading="true" data-fresco-margin={margin} {...props} />
+      <Tag
+        data-fresco-heading="true"
+        data-fresco-margin={margin}
+        data-fresco-variant={variant}
+        {...props}
+      />
     );
   },
 }));
@@ -71,14 +78,9 @@ describe('Grants', () => {
 
     expect(heading).toHaveAttribute('data-fresco-heading', 'true');
     expect(heading).toHaveAttribute('data-fresco-margin', 'none');
+    expect(heading).toHaveAttribute('data-fresco-variant', 'subheading');
     expect(heading.tagName).toBe('H3');
-    expect(heading).toHaveClass(
-      'font-heading',
-      'text-text',
-      'text-2xl',
-      'tablet-portrait:text-3xl',
-      'font-bold',
-    );
+    expect(heading).toHaveClass('text-text');
 
     for (const paragraph of [pis, description]) {
       expect(paragraph).toHaveAttribute('data-fresco-paragraph', 'true');
