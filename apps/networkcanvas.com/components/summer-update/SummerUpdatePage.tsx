@@ -569,8 +569,8 @@ export function SummerUpdatePage() {
                             noContainer
                             aria-pressed={isSelected}
                             className={cn(
-                              'focusable hover:bg-selected aria-pressed:border-sea-serpent flex size-full flex-col items-center justify-center overflow-hidden text-center transition',
-                              'hover:elevation-high aria-pressed:inset-surface aria-pressed:bg-sea-serpent/15 not-aria-pressed:hover:-translate-y-1',
+                              'focusable aria-pressed:border-sea-serpent not-aria-pressed:hover:bg-selected flex size-full flex-col items-center justify-center overflow-hidden text-center transition',
+                              'hover:elevation-high aria-pressed:inset-surface aria-pressed:bg-sea-serpent aria-pressed:text-rich-black not-aria-pressed:hover:-translate-y-1',
                             )}
                             onClick={() => setSelectedInterface(index)}
                           >

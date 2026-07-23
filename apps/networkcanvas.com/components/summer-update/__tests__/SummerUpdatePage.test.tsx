@@ -253,9 +253,16 @@ describe('SummerUpdatePage', () => {
   it('links every Schema 8 explorer item to its relevant documentation', () => {
     render(<SummerUpdatePage />);
 
-    expect(screen.getByRole('button', { name: 'Geospatial' })).toHaveClass(
+    const selectedFeature = screen.getByRole('button', {
+      name: 'Geospatial',
+    });
+
+    expect(selectedFeature).toHaveClass(
       'justify-center',
+      'aria-pressed:bg-sea-serpent',
+      'aria-pressed:text-rich-black',
     );
+    expect(selectedFeature).not.toHaveClass('aria-pressed:bg-sea-serpent/15');
     expect(screen.getByText('One-to-many dyad census')).toHaveClass(
       'leading-snug',
     );
