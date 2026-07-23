@@ -284,6 +284,78 @@ describe('NetworkWeaveBackground', () => {
     },
   );
 
+  it.each([
+    ['horizontal', false],
+    ['horizontal', true],
+    ['vertical', false],
+    ['vertical', true],
+  ] as const)(
+    'keeps the %s ribbon arcs continuous across lane positions when reverse is %s',
+    (orientation, reverse) => {
+      const convergenceAt = (cross: number) =>
+        orientation === 'horizontal'
+          ? { x: 0.5, y: cross }
+          : { x: cross, y: 0.5 };
+      const { container, rerender } = render(
+        <NetworkWeaveBackground
+          complexity={12}
+          strands={4}
+          convergence={convergenceAt(0.081)}
+          orientation={orientation}
+          reverse={reverse}
+          animated={false}
+        />,
+      );
+      const firstControlCross = (laneIndex: number) => {
+        const coordinates =
+          container
+            .querySelectorAll('.network-weave__ribbon-guide')
+            [laneIndex]?.getAttribute('data-centerline')
+            ?.match(/-?\d+(?:\.\d+)?/g)
+            ?.map(Number) ?? [];
+        expect(coordinates).toHaveLength(8);
+
+        return (
+          (orientation === 'horizontal' ? coordinates[3] : coordinates[2]) ?? 0
+        );
+      };
+      const crossings = [
+        { laneIndex: 0, before: 0.081, after: 0.079 },
+        { laneIndex: 1, before: 0.141, after: 0.139 },
+        { laneIndex: 2, before: 0.859, after: 0.861 },
+        { laneIndex: 3, before: 0.919, after: 0.921 },
+      ];
+
+      crossings.forEach(({ laneIndex, before, after }) => {
+        rerender(
+          <NetworkWeaveBackground
+            complexity={12}
+            strands={4}
+            convergence={convergenceAt(before)}
+            orientation={orientation}
+            reverse={reverse}
+            animated={false}
+          />,
+        );
+        const controlBefore = firstControlCross(laneIndex);
+
+        rerender(
+          <NetworkWeaveBackground
+            complexity={12}
+            strands={4}
+            convergence={convergenceAt(after)}
+            orientation={orientation}
+            reverse={reverse}
+            animated={false}
+          />,
+        );
+        const controlAfter = firstControlCross(laneIndex);
+
+        expect(Math.abs(controlAfter - controlBefore)).toBeLessThan(4);
+      });
+    },
+  );
+
   it('supports vertical and reversed flows', () => {
     const horizontal = renderToStaticMarkup(
       <NetworkWeaveBackground seed="layout" animated={false} />,

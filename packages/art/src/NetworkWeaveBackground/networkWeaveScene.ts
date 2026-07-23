@@ -209,9 +209,10 @@ const createRibbonProfiles = ({
   const crossDimension =
     orientation === 'horizontal' ? NETWORK_WEAVE_HEIGHT : NETWORK_WEAVE_WIDTH;
   const width = (pixels: number) => pixels / crossDimension;
+  const negativeSideLaneCount = Math.ceil(laneCrosses.length / 2);
 
   return laneCrosses.map((laneCross, laneIndex) => {
-    const side = laneCross < convergenceCross ? -1 : 1;
+    const side = laneIndex < negativeSideLaneCount ? -1 : 1;
     const innerBoundary = convergenceCross + side * (clearanceRadius + 0.055);
     const bypassCross = laneCross + (innerBoundary - laneCross) * 0.74;
     const mergeCross =
