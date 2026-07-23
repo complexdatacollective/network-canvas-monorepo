@@ -1,5 +1,63 @@
 # @codaco/interview
 
+## 5.0.0
+
+### Major Changes
+
+- c2a8700: `generateNetwork` now takes a single parameter object — call
+  `generateNetwork({ codebook, stages, ...options })` instead of passing the
+  codebook and stages as positional arguments. This is a breaking change.
+
+  It can also build name generator stages from real roster data. Pass parsed
+  roster nodes via the new `externalData` option, keyed by stage id, and roster
+  and roster-panel stages draw their people from those rows — preserving each
+  row's primary key and attributes — instead of inventing people from the
+  codebook. Draws are without replacement across prompts and stages, mirroring the
+  runtime's global exclusion of rows already in the network. A stage with no entry
+  still falls back to codebook-generated people. A roster that loads but contains
+  no rows — or whose panel filters out every row — now generates an empty roster
+  stage instead of inventing people, matching a live interview that would offer
+  nobody to add; only a missing or unreadable roster falls back to fabrication. A new `config` option exposes the
+  generation-tuning defaults (the roster-versus-fabricate ratio, node counts, edge
+  probabilities, and so on) so callers can override them. FamilyPedigree stages
+  now mark exactly one generated node as ego, matching the runtime convention,
+  instead of randomising the ego flag across every node.
+
+  `@codaco/interview` now exposes its roster-parsing pipeline from the `./contract`
+  entry: `collectRosterExternalData` gathers a protocol's roster nodes keyed by
+  stage, and `parseExternalNetworkAsset` and `filterExternalPanelNodes` parse and
+  filter individual roster assets. This is the exact code the interview runtime
+  uses, so a host reads roster assets identically to a live interview.
+
+  `@codaco/protocol-validation` now exports a `StructuralCodebook` type for
+  consumers that assemble or receive a codebook before schema validation.
+
+  Roster rows parsed by `@codaco/interview` are now identified as
+  `subjectType_contentHash` instead of a bare content hash. A roster file that
+  backs more than one node type (say, a shared address book used by both a
+  person stage and a place stage) previously produced the same primary key for
+  matching rows under each type, an invariant violation once both ended up in
+  the same network. This is a breaking change: sessions saved by earlier
+  versions will not re-associate their roster people after upgrading.
+
+### Patch Changes
+
+- 1e6a02b: Refine Sociogram canvas spacing, keep image backgrounds full-screen, and improve the node drawer's size and drag-target feedback.
+- 34de1fd: Keep the full Sociogram canvas available while repositioning people by removing its outer padding and opening the empty drawer only after a dragged person reaches its highlighted tab.
+- 7f0d49e: Name generator panels now respect the screen's maximum number of people.
+  Previously the limit only stopped new people being added through the form or
+  quick add field, so a participant who had reached the maximum could keep
+  dragging people out of a side panel. Panel items can no longer be dragged once
+  the maximum is reached, and dragging people back into a panel to remove them
+  still works as before.
+- 9145682: Node lists now respect reduced-motion preferences when moving between prompts. Previously the outgoing nodes always played a fade-out animation before the next prompt's nodes appeared, even when the participant's system requested reduced motion; the swap is now instant in that case.
+- c53110d: Go to the chosen screen when picking one from the navigation bar. Screens that
+  have their own internal steps previously ignored the choice — picking a later
+  screen from an alter form moved to the next person's form and stayed put.
+  Picking a screen now saves the current form if it can, asks before discarding
+  changes that cannot be saved, and otherwise moves straight there without
+  requiring the form to be completed first.
+
 ## 4.1.0
 
 ### Minor Changes
