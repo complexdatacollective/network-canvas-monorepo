@@ -1,5 +1,6 @@
 'use client';
 
+import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip';
 import * as React from 'react';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
@@ -42,17 +43,20 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
     },
     ref,
   ) => {
-    const [open, setOpen] = React.useState(false);
+    const [tooltipHandle] = React.useState(() => BaseTooltip.createHandle());
     const Element = asAbbreviation ? 'abbr' : 'span';
     const descriptionId = React.useId();
+    const triggerId = React.useId();
     const ariaDescribedBy = ariaDescribedByProp
       ? `${ariaDescribedByProp} ${descriptionId}`
       : descriptionId;
 
     return (
-      <Tooltip open={open} onOpenChange={setOpen}>
+      <Tooltip handle={tooltipHandle}>
         <TooltipTrigger
           closeOnClick={false}
+          handle={tooltipHandle}
+          id={triggerId}
           render={
             <Element
               ref={ref}
@@ -65,7 +69,7 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
               onClick={(event) => {
                 onClick?.(event);
                 if (!event.defaultPrevented) {
-                  setOpen(true);
+                  tooltipHandle.open(triggerId);
                 }
               }}
               tabIndex={0}
