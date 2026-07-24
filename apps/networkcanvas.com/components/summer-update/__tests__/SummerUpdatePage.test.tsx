@@ -456,7 +456,7 @@ describe('SummerUpdatePage', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'A clearer home for the whole Network Canvas project',
+        name: 'Revamped documentation and a new project website',
       }),
     ).toBeInTheDocument();
     expect(
@@ -632,6 +632,16 @@ describe('SummerUpdatePage', () => {
   it('localizes feature interactions, images, and compatibility statuses in Spanish', () => {
     renderWithIntl(<SummerUpdatePage />, 'es');
 
+    expect(
+      screen.getByRole('heading', {
+        name: 'Documentación renovada y un nuevo sitio web del proyecto',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /La documentación ahora se estructura según la etapa de su investigación/,
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
         name: 'Architect e Interviewer, reinventados para el navegador',
