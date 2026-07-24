@@ -52,6 +52,28 @@ describe('Validation options', () => {
       );
     });
 
+    describe('scalar bounds', () => {
+      it('does not offer minValue/maxValue for scalar type', () => {
+        const optionValues = getValidationOptionsForVariableType(
+          'scalar',
+          'node',
+        ).map((o) => o.value);
+
+        expect(optionValues).not.toContain('minValue');
+        expect(optionValues).not.toContain('maxValue');
+      });
+
+      it('still offers minValue/maxValue for number type', () => {
+        const optionValues = getValidationOptionsForVariableType(
+          'number',
+          'node',
+        ).map((o) => o.value);
+
+        expect(optionValues).toContain('minValue');
+        expect(optionValues).toContain('maxValue');
+      });
+    });
+
     describe('entity-specific validation filtering', () => {
       it('excludes unique validation for ego entity', () => {
         const nodeOptions = getValidationOptionsForVariableType('text', 'node');

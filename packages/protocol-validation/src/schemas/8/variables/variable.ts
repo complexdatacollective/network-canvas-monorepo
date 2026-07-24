@@ -57,8 +57,6 @@ const scalarVariableSchema = baseVariableSchema.extend({
     .strictObject(validations)
     .pick({
       required: true,
-      minValue: true,
-      maxValue: true,
       greaterThanVariable: true,
       lessThanVariable: true,
       greaterThanOrEqualToVariable: true,

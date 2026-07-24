@@ -35,8 +35,6 @@ const VALIDATIONS = {
   ],
   scalar: [
     'required',
-    'minValue',
-    'maxValue',
     'lessThanVariable',
     'greaterThanVariable',
     'lessThanOrEqualToVariable',
