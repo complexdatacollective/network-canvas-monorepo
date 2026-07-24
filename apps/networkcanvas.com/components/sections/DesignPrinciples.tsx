@@ -27,8 +27,8 @@ export function DesignPrinciples() {
   const t = useTranslations('Principles');
 
   return (
-    <Container maxWidth="wide" className="tablet-landscape:py-28 py-20">
-      <div className="tablet-landscape:grid-cols-3 laptop:grid-cols-4 tablet-landscape:gap-16 grid gap-12">
+    <Container maxWidth="wide" className="">
+      <div className="tablet-landscape:grid-cols-3 tablet-landscape:gap-16 grid gap-12">
         <div className="tablet-landscape:sticky tablet-landscape:top-24 tablet-landscape:col-span-1 tablet-landscape:self-start">
           <Heading level="h2" variant="section-heading" margin="none">
             {t('heading')}
@@ -41,15 +41,15 @@ export function DesignPrinciples() {
           </Paragraph>
         </div>
 
-        <div className="tablet-landscape:col-span-2 laptop:col-span-3 flex flex-col gap-6">
+        <div className="tablet-landscape:col-span-2 flex flex-col gap-6">
           {principles.map((principle, i) => (
             <Reveal
               key={principle.id}
               delay={i * 0.04}
               className="group relative"
             >
-              <div className="bg-surface/55 tablet-portrait:grid-cols-3 laptop:grid-cols-4 tablet-landscape:gap-10 tablet-portrait:p-8 tablet-landscape:p-10 grid items-center gap-6 rounded p-6 shadow-lg backdrop-blur-md transition-[transform,box-shadow] duration-300 ease-out group-focus-within:-translate-y-1 group-focus-within:shadow-xl group-hover:-translate-y-1 group-hover:shadow-xl motion-reduce:transform-none">
-                <div className="bg-surface-2/55 tablet-portrait:col-span-1 flex aspect-4/3 items-center justify-center rounded p-4">
+              <div className="bg-surface/55 tablet-portrait:grid-cols-3 tablet-landscape:gap-10 tablet-portrait:p-8 tablet-landscape:p-10 grid items-center gap-6 rounded p-6 shadow-lg backdrop-blur-md transition-[transform,box-shadow] duration-300 ease-out group-focus-within:-translate-y-1 group-focus-within:shadow-xl group-hover:-translate-y-1 group-hover:shadow-xl motion-reduce:transform-none">
+                <div className="tablet-portrait:col-span-1 flex aspect-4/3 items-center justify-center">
                   <Image
                     src={principleIllustrations[principle.id]}
                     alt=""
@@ -58,7 +58,7 @@ export function DesignPrinciples() {
                     className="size-full object-contain"
                   />
                 </div>
-                <div className="tablet-portrait:col-span-2 laptop:col-span-3 max-w-4xl">
+                <div className="tablet-portrait:col-span-2 max-w-4xl">
                   <Heading level="h3" variant="subheading" margin="none">
                     {t(`${principle.id}.title`)}
                   </Heading>

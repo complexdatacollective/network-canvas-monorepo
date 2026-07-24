@@ -44,7 +44,7 @@ export function Publications({
   const t = useTranslations('Publications');
 
   return (
-    <Container maxWidth="full" className="tablet-landscape:py-28 py-20">
+    <Container maxWidth="full" className="">
       <SectionHeading title={t('heading')}>
         <Paragraph margin="none">
           {t.rich('introduction', { article: renderArticleLink })}

@@ -103,7 +103,15 @@ describe('localized home sections', () => {
       ),
     );
     expect(card.querySelector('img')).toHaveAttribute('alt', '');
+    expect(card.querySelector('img')?.parentElement).not.toHaveClass(
+      'bg-surface-2/55',
+      'p-4',
+    );
     expect(heading.closest('.max-w-\\[1400px\\]')).toBeInTheDocument();
+    expect(card.parentElement).toHaveClass('tablet-landscape:col-span-2');
+    expect(card.parentElement).not.toHaveClass('laptop:col-span-3');
+    expect(heading.parentElement).toHaveClass('tablet-portrait:col-span-2');
+    expect(heading.parentElement).not.toHaveClass('laptop:col-span-3');
     expect(screen.getAllByRole('link')).toHaveLength(5);
   });
 

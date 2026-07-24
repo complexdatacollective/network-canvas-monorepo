@@ -25,7 +25,7 @@ export function VideoSection() {
   const t = useTranslations('Video');
 
   return (
-    <Container className="tablet-landscape:py-24 py-20">
+    <Container>
       <SectionHeading title={t('heading')}>
         {t.rich('description', { channel: renderChannelLink })}
       </SectionHeading>

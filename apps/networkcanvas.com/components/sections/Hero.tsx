@@ -6,6 +6,8 @@ import type { Variants } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
+import { buttonVariants } from '@codaco/fresco-ui/Button';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { NewsTicker } from '~/components/sections/NewsTicker';
@@ -13,6 +15,7 @@ import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { HeroVideo } from '~/components/ui/HeroVideo';
 import { GET_STARTED_PATH } from '~/lib/getStarted';
+import { Link } from '~/lib/i18n/navigation';
 import type { NewsItem } from '~/lib/siteContent';
 
 const MotionHeading = motion.create(Heading);
@@ -40,7 +43,7 @@ export function Hero({
     >
       <Container
         data-testid="hero-layout"
-        className="tablet-portrait:grid tablet-portrait:flex-1 tablet-portrait:grid-cols-1 tablet-portrait:grid-rows-[minmax(auto,20svh)_auto_auto_auto] tablet-portrait:items-center tablet-portrait:content-center tablet-portrait:gap-y-10 tablet-portrait:pt-4 tablet-portrait:pb-6 pt-6 pb-20"
+        className="tablet-portrait:grid tablet-portrait:flex-1 tablet-portrait:grid-cols-1 tablet-portrait:grid-rows-[minmax(auto,20svh)_auto_auto_auto] tablet-portrait:items-center tablet-portrait:content-center tablet-portrait:gap-y-10 tablet-portrait:pt-4 tablet-portrait:pb-6 my-0! pt-6 pb-20"
       >
         <MotionHeading
           level="h1"
@@ -84,18 +87,17 @@ export function Hero({
           data-testid="hero-cta-wrapper"
           className="entrance-motion-item tablet-portrait:col-start-1 tablet-portrait:row-start-4 tablet-portrait:mt-0 mt-12 flex flex-col items-center gap-3"
         >
-          <ButtonLink
+          <Link
             href={GET_STARTED_PATH}
-            color="default"
-            size="lg"
-            className="bg-neon-coral tablet-landscape:h-16 tablet-landscape:px-10 tablet-landscape:text-xl rounded-full text-white"
+            className={buttonVariants({
+              size: 'xl',
+              color: 'destructive',
+              variant: 'raised',
+            })}
           >
             {t('getStarted')}
-            <ArrowRight
-              aria-hidden
-              className="tablet-landscape:size-6 size-5"
-            />
-          </ButtonLink>
+            <ArrowRight aria-hidden />
+          </Link>
           <Paragraph margin="none" className="text-base-sm text-text/60">
             {t('keepScrolling')}
           </Paragraph>

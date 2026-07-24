@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 export function MailingListForm() {
@@ -28,17 +29,13 @@ export function MailingListForm() {
       }}
       className="phone-landscape:flex-row mt-6 flex flex-col gap-3"
     >
-      <input
+      <InputField
         type="email"
         required
         placeholder={t('placeholder')}
         aria-label={t('emailLabel')}
-        className="focusable bg-surface-1 text-text placeholder:text-text/40 phone-landscape:max-w-xs w-full rounded px-4 py-3 text-base"
       />
-      <Button
-        type="submit"
-        className="bg-cyber-grape shrink-0 rounded border-transparent px-6 py-3 text-sm text-white uppercase transition-transform hover:-translate-y-0.5"
-      >
+      <Button type="submit" color="primary">
         {t('submit')}
       </Button>
     </form>

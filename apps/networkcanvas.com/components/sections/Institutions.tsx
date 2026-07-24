@@ -38,7 +38,7 @@ export function Institutions() {
   const t = useTranslations('Institutions');
 
   return (
-    <Container maxWidth="full" className="tablet-landscape:py-24 py-20">
+    <Container maxWidth="full">
       <SectionHeading title={t('heading')}>
         <Paragraph margin="none">
           {t.rich('paragraph1', {

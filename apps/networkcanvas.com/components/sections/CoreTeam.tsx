@@ -12,7 +12,7 @@ export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
   const t = useTranslations('Team');
 
   return (
-    <Container as="section" className="tablet-landscape:py-28 py-20">
+    <Container as="section" className="">
       <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
       <div className="tablet-portrait:grid-cols-3 tablet-landscape:grid-cols-4 mt-14 grid grid-cols-2 gap-x-6 gap-y-12">
@@ -20,7 +20,7 @@ export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
           <Reveal
             key={member.id}
             delay={(i % 4) * 0.05}
-            className="group spring-short flex flex-col items-center rounded p-3 text-center"
+            className="group spring-short z-10 flex flex-col items-center rounded p-3 text-center"
           >
             <img
               src={member.photo}

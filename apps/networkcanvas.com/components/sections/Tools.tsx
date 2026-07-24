@@ -33,16 +33,16 @@ export function Tools() {
   const t = useTranslations('Tools');
 
   return (
-    <Container className="tablet-landscape:py-28 py-20">
+    <Container className="">
       <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
-      <div className="tablet-landscape:gap-24 mt-16 flex flex-col gap-16">
+      <div className="tablet-landscape:gap-12 mt-16 flex flex-col gap-8">
         {tools.map((tool) => {
           const accent = accents[tool.color];
           return (
             <Reveal
               key={tool.id}
-              className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 bg-surface/55 grid items-center gap-8 rounded p-6 shadow-xl backdrop-blur-md"
+              className="tablet-landscape:gap-16 tablet-landscape:p-10 bg-surface/55 grid auto-cols-auto grid-flow-col items-center gap-8 rounded p-6 shadow-xl backdrop-blur-md"
             >
               <div>
                 <Heading
@@ -80,7 +80,7 @@ export function Tools() {
                   ) : null}
                 </div>
               </div>
-              <div>
+              <div className="tablet-landscape:col-start-2 tablet-landscape:row-start-1 tablet-landscape:max-w-none w-112 max-w-[30rem] flex-1">
                 <a
                   href={tool.href}
                   target="_blank"

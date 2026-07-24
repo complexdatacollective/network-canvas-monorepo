@@ -26,7 +26,7 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
   const paginate = (dir: number) => setState([index + dir, dir]);
 
   return (
-    <Container className="tablet-landscape:py-28 py-20">
+    <Container className="">
       <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
       <div className="tablet-portrait:flex tablet-portrait:gap-6 tablet-landscape:gap-10 mx-auto mt-16 grid max-w-5xl grid-cols-[auto_1fr_auto] items-center gap-4">

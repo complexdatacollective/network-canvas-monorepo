@@ -69,9 +69,9 @@ export function WhatNext() {
   ];
 
   return (
-    <Container className="tablet-landscape:py-28 py-20">
+    <Container className="">
       <SectionTitle title={t('heading')} />
-      <div className="mt-12 flex flex-col gap-6">
+      <div className="tablet-landscape:gap-12 mt-16 flex flex-col gap-8">
         {cards.map((card) => (
           <Reveal
             key={card.id}

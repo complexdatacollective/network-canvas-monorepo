@@ -1,40 +1,129 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" fill="none" aria-hidden="true" focusable="false">
-  <rect x="42" y="34" width="236" height="172" rx="25" fill="#fff" stroke="#3a3a75" stroke-width="5"/>
-  <path d="M128 52V188" stroke="#3a3a75" stroke-width="4" stroke-linecap="round"/>
-
-  <rect x="62" y="58" width="45" height="24" rx="8" fill="#d1395d" stroke="#3a3a75" stroke-width="4"/>
-  <path d="M73 70H94" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
-  <rect x="62" y="94" width="34" height="17" rx="6" fill="#eab93f" stroke="#3a3a75" stroke-width="4"/>
-  <rect x="62" y="122" width="47" height="17" rx="6" fill="#57c6a4" stroke="#3a3a75" stroke-width="4"/>
-  <rect x="62" y="150" width="27" height="17" rx="6" fill="#13b3e2" stroke="#3a3a75" stroke-width="4"/>
-  <circle cx="105" cy="158" r="5" fill="#fff" stroke="#3a3a75" stroke-width="3"/>
-
-  <g stroke="#3a3a75" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M157 94C174 71 200 70 215 91" stroke-width="7"/>
-    <path d="M157 94C174 71 200 70 215 91" stroke="#13b3e2" stroke-width="3"/>
-    <path d="M157 94C166 119 179 132 202 137" stroke-width="7"/>
-    <path d="M157 94C166 119 179 132 202 137" stroke="#57c6a4" stroke-width="3"/>
-    <path d="M215 91C235 100 238 120 224 135" stroke-width="7"/>
-    <path d="M215 91C235 100 238 120 224 135" stroke="#eab93f" stroke-width="3"/>
-    <path d="M202 137L224 135" stroke-width="7"/>
-    <path d="M202 137L224 135" stroke="#d1395d" stroke-width="3"/>
-  </g>
-
-  <circle cx="157" cy="94" r="10" fill="#d1395d" stroke="#3a3a75" stroke-width="4"/>
-  <path d="M215 79L227 91L215 103L203 91Z" fill="#eab93f" stroke="#3a3a75" stroke-width="4" stroke-linejoin="round"/>
-  <circle cx="202" cy="137" r="9" fill="#57c6a4" stroke="#3a3a75" stroke-width="4"/>
-  <rect x="216" y="127" width="18" height="18" rx="6" fill="#13b3e2" stroke="#3a3a75" stroke-width="4"/>
-
-  <rect x="190" y="125" width="46" height="36" rx="4" stroke="#3a3a75" stroke-width="3" stroke-dasharray="4 6"/>
-  <rect x="186" y="121" width="8" height="8" rx="2" fill="#fff" stroke="#3a3a75" stroke-width="3"/>
-  <rect x="232" y="121" width="8" height="8" rx="2" fill="#fff" stroke="#3a3a75" stroke-width="3"/>
-  <rect x="186" y="157" width="8" height="8" rx="2" fill="#fff" stroke="#3a3a75" stroke-width="3"/>
-  <rect x="232" y="157" width="8" height="8" rx="2" fill="#fff" stroke="#3a3a75" stroke-width="3"/>
-
-  <path d="M151 59H238" stroke="#57c6a4" stroke-width="3" stroke-linecap="round"/>
-  <path d="M151 53V65M238 53V65M168 56V62M185 56V62M202 56V62M219 56V62" stroke="#3a3a75" stroke-width="3" stroke-linecap="round"/>
-  <path d="M254 79V156" stroke="#13b3e2" stroke-width="3" stroke-linecap="round"/>
-  <path d="M248 79H260M248 156H260M251 98H257M251 117H257M251 136H257" stroke="#3a3a75" stroke-width="3" stroke-linecap="round"/>
-
-  <path d="M229 151L247 190L255 176L270 182L276 169L261 163L274 151Z" fill="#eab93f" stroke="#3a3a75" stroke-width="4" stroke-linejoin="round"/>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 320 240"
+   fill="none"
+   aria-hidden="true"
+   focusable="false"
+   version="1.1"
+   id="svg22"
+   sodipodi:docname="emphasis-on-design.svg"
+   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs22" />
+  <sodipodi:namedview
+     id="namedview22"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="2.2570662"
+     inkscape:cx="208.8995"
+     inkscape:cy="118.95974"
+     inkscape:window-width="1728"
+     inkscape:window-height="980"
+     inkscape:window-x="0"
+     inkscape:window-y="33"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg22" />
+  <rect
+     x="42"
+     y="34"
+     width="236"
+     height="172"
+     rx="25"
+     fill="#fff"
+     stroke="#3a3a75"
+     stroke-width="5"
+     id="rect1" />
+  <path
+     d="M128 52V188"
+     stroke="#3a3a75"
+     stroke-width="4"
+     stroke-linecap="round"
+     id="path1" />
+  <rect
+     x="62"
+     y="58"
+     width="45"
+     height="24"
+     rx="8"
+     fill="#d1395d"
+     stroke="#3a3a75"
+     stroke-width="4"
+     id="rect2" />
+  <path
+     d="M73 70H94"
+     stroke="#fff"
+     stroke-width="4"
+     stroke-linecap="round"
+     id="path2" />
+  <rect
+     x="62"
+     y="94"
+     width="34"
+     height="17"
+     rx="6"
+     fill="#eab93f"
+     stroke="#3a3a75"
+     stroke-width="4"
+     id="rect3" />
+  <rect
+     x="62"
+     y="122"
+     width="47"
+     height="17"
+     rx="6"
+     fill="#57c6a4"
+     stroke="#3a3a75"
+     stroke-width="4"
+     id="rect4" />
+  <rect
+     x="62"
+     y="150"
+     width="27"
+     height="17"
+     rx="6"
+     fill="#13b3e2"
+     stroke="#3a3a75"
+     stroke-width="4"
+     id="rect5" />
+  <circle
+     cx="105"
+     cy="158"
+     r="5"
+     fill="#fff"
+     stroke="#3a3a75"
+     stroke-width="3"
+     id="circle5" />
+  <path
+     d="M151 59H238"
+     stroke="#57c6a4"
+     stroke-width="3"
+     stroke-linecap="round"
+     id="path18" />
+  <path
+     d="M151 53V65M238 53V65M168 56V62M185 56V62M202 56V62M219 56V62"
+     stroke="#3a3a75"
+     stroke-width="3"
+     stroke-linecap="round"
+     id="path19" />
+  <path
+     d="M254 79V156"
+     stroke="#13b3e2"
+     stroke-width="3"
+     stroke-linecap="round"
+     id="path20" />
+  <path
+     d="M248 79H260M248 156H260M251 98H257M251 117H257M251 136H257"
+     stroke="#3a3a75"
+     stroke-width="3"
+     stroke-linecap="round"
+     id="path21" />
 </svg>
