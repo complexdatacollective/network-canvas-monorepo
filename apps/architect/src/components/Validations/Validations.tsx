@@ -1,6 +1,12 @@
 import { keys as getKeys, isNull, toPairs } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
-import { useId, useState, type ReactNode, type ComponentProps } from 'react';
+import {
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+  type ComponentProps,
+} from 'react';
 import { Field } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
@@ -10,23 +16,55 @@ import { cx } from '~/utils/cva';
 
 import Validation from './Validation';
 
-const validate = (validations: Record<string, unknown>): string | undefined => {
-  const values = toPairs(validations);
+// A scalar's bounds double as the visual analog scale's rendered track, so an
+// orphaned or inverted pair produces a scale no participant can answer. The
+// schema rejects it; catch it here so the error appears while editing rather
+// than at protocol validation.
+const validateScalarBounds = (
+  validations: Record<string, unknown>,
+): string | undefined => {
+  const { minValue, maxValue } = validations;
+  const hasMin = typeof minValue === 'number';
+  const hasMax = typeof maxValue === 'number';
 
-  const check = values.reduce((acc: string[], [key, value]) => {
-    if (!isNull(value)) {
-      return acc;
-    }
-    acc.push(key);
-    return acc;
-  }, []);
-
-  if (check.length === 0) {
-    return undefined;
+  if (hasMin && !hasMax) {
+    return 'Minimum value needs a Maximum value greater than it';
   }
 
-  return `Validations (${check.join(', ')}) must have values`;
+  if (hasMax && !hasMin) {
+    return 'Maximum value needs a Minimum value less than it';
+  }
+
+  if (hasMin && hasMax && minValue >= maxValue) {
+    return 'Minimum value must be less than Maximum value';
+  }
+
+  return undefined;
 };
+
+export const makeValidate =
+  (variableType: string) =>
+  (validations: Record<string, unknown>): string | undefined => {
+    const values = toPairs(validations);
+
+    const check = values.reduce((acc: string[], [key, value]) => {
+      if (!isNull(value)) {
+        return acc;
+      }
+      acc.push(key);
+      return acc;
+    }, []);
+
+    if (check.length > 0) {
+      return `Validations (${check.join(', ')}) must have values`;
+    }
+
+    if (variableType === 'scalar') {
+      return validateScalarBounds(validations);
+    }
+
+    return undefined;
+  };
 
 const format = (value: Record<string, unknown> = {}) => toPairs(value);
 
@@ -120,6 +158,7 @@ const ValidationsField = ({
 
 type ValidationsProps = {
   name: string;
+  variableType: string;
   validationOptions?: ValidationOption[];
   value?: Record<string, unknown>;
   addNew: boolean;
@@ -132,6 +171,7 @@ type ValidationsProps = {
 
 const Validations = ({
   name,
+  variableType,
   validationOptions = [],
   existingVariables = {},
   value = {},
@@ -144,6 +184,8 @@ const Validations = ({
   // Only one row (existing or the "add new" draft) is ever open for editing
   // at a time.
   const [editingKey, setEditingKey] = useState<string | null>(null);
+  // redux-form re-runs validation whenever this identity changes.
+  const validate = useMemo(() => makeValidate(variableType), [variableType]);
   const usedOptions = getKeys(value);
   const availableOptions = getOptionsWithUsedDisabled(
     validationOptions,

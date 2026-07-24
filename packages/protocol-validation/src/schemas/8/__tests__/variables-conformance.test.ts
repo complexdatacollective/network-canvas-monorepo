@@ -305,4 +305,89 @@ describe('variable schema conformance', () => {
       expect(result.success).toBe(true);
     });
   });
+
+  describe('scalar bound pairs', () => {
+    const scalarVariables = (validation: Record<string, unknown>) => ({
+      closeness: {
+        name: 'closeness',
+        type: 'scalar',
+        component: 'VisualAnalogScale',
+        validation,
+      },
+    });
+
+    it('accepts a complete, ordered pair', () => {
+      const result = VariablesSchema.safeParse(
+        scalarVariables({ minValue: 2, maxValue: 10 }),
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts a scalar with no bounds at all', () => {
+      const result = VariablesSchema.safeParse(
+        scalarVariables({ required: true }),
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects a minValue with no maxValue', () => {
+      const result = VariablesSchema.safeParse(
+        scalarVariables({ minValue: 10 }),
+      );
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.path).toEqual([
+        'closeness',
+        'validation',
+        'minValue',
+      ]);
+    });
+
+    it('rejects a maxValue with no minValue', () => {
+      const result = VariablesSchema.safeParse(
+        scalarVariables({ maxValue: 10 }),
+      );
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.path).toEqual([
+        'closeness',
+        'validation',
+        'maxValue',
+      ]);
+    });
+
+    it('rejects an inverted pair', () => {
+      const result = VariablesSchema.safeParse(
+        scalarVariables({ minValue: 10, maxValue: 2 }),
+      );
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects an equal pair, which has no usable range', () => {
+      const result = VariablesSchema.safeParse(
+        scalarVariables({ minValue: 5, maxValue: 5 }),
+      );
+      expect(result.success).toBe(false);
+    });
+
+    it('leaves number variable bounds unconstrained', () => {
+      const result = VariablesSchema.safeParse({
+        age: {
+          name: 'age',
+          type: 'number',
+          component: 'Number',
+          validation: { minValue: 18 },
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('applies to edge and ego variables too', () => {
+      expect(
+        EdgeVariablesSchema.safeParse(scalarVariables({ minValue: 10 }))
+          .success,
+      ).toBe(false);
+      expect(
+        EgoVariablesSchema.safeParse(scalarVariables({ minValue: 10 })).success,
+      ).toBe(false);
+    });
+  });
 });

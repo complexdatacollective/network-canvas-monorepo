@@ -344,6 +344,50 @@ const rejectEgoUnique = (variables: VariablesRecord, ctx: z.RefinementCtx) => {
   }
 };
 
+// A scalar's minValue/maxValue double as the visual analog scale's rendered
+// track bounds, so a bound authored on its own pairs with the opposite end of
+// the default 0-1 scale and renders an unanswerable track (a minimum of 10
+// against a maximum of 1). Require both, in order. A migration drops pairs that
+// fail this.
+const rejectIncoherentScalarBounds = (
+  variables: VariablesRecord,
+  ctx: z.RefinementCtx,
+) => {
+  for (const [key, variable] of Object.entries(variables)) {
+    if (variable.type !== 'scalar' || !variable.validation) continue;
+
+    const { minValue, maxValue } = variable.validation;
+    const hasMin = typeof minValue === 'number';
+    const hasMax = typeof maxValue === 'number';
+
+    if (hasMin && !hasMax) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message:
+          'A scalar "minValue" requires a "maxValue" greater than it, so the scale has a usable range',
+        path: [key, 'validation', 'minValue'],
+      });
+    }
+
+    if (hasMax && !hasMin) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message:
+          'A scalar "maxValue" requires a "minValue" less than it, so the scale has a usable range',
+        path: [key, 'validation', 'maxValue'],
+      });
+    }
+
+    if (hasMin && hasMax && minValue >= maxValue) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'A scalar "minValue" must be less than its "maxValue"',
+        path: [key, 'validation', 'minValue'],
+      });
+    }
+  }
+};
+
 type AllKeys<T> = T extends unknown ? keyof T : never;
 export type VariablePropertyKey = AllKeys<Variable>;
 
@@ -367,16 +411,19 @@ const checkDuplicateVariableNames = <T extends Record<string, Variable>>(
 export const VariablesSchema = z
   .record(VariableNameSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
-  .superRefine(rejectEncryptedOnNonTextNode);
+  .superRefine(rejectEncryptedOnNonTextNode)
+  .superRefine(rejectIncoherentScalarBounds);
 
 export const EdgeVariablesSchema = z
   .record(VariableNameSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
-  .superRefine(rejectEncrypted('Edge'));
+  .superRefine(rejectEncrypted('Edge'))
+  .superRefine(rejectIncoherentScalarBounds);
 
 export const EgoVariablesSchema = z
   .record(VariableNameSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncrypted('Ego'))
-  .superRefine(rejectEgoUnique);
+  .superRefine(rejectEgoUnique)
+  .superRefine(rejectIncoherentScalarBounds);
 export type Variables = z.infer<typeof VariablesSchema>;
