@@ -26,14 +26,13 @@ const getOptionProperties = (option: VariableOption): OptionProperties => ({
  */
 const getSortOrderOptionGetter =
   (variableOptions: VariableOption[]) =>
-  (
-    property: string,
-    _rowValues: unknown,
-    allValues: Record<string, unknown>[],
-  ) => {
+  (property: string, _rowValues: unknown, allValues: unknown) => {
     switch (property) {
       case 'property': {
-        const used = map(allValues, 'property') as string[];
+        const used = map(
+          allValues as Record<string, unknown>[],
+          'property',
+        ) as string[];
 
         return [{ value: '*', label: '*' }, ...variableOptions]
           .filter((option) => !NON_SORTABLE_TYPES.includes(option.type ?? ''))

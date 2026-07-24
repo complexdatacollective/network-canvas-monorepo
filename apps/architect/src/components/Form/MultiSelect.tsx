@@ -44,7 +44,7 @@ type ItemValue = {
   [key: string]: unknown;
 };
 
-type OptionGetter = (
+export type OptionGetter = (
   fieldName: string,
   rowValues: unknown,
   allValues: unknown,

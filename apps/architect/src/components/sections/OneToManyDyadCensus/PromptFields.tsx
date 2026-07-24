@@ -86,7 +86,7 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
         form={form}
         disabled={!edgeVariable}
         maxItems={sortMaxItems}
-        optionGetter={() => getOptions('property', undefined, [])}
+        optionGetter={getOptions}
         summary={
           <Paragraph>
             The focal nodes are presented one at a time. You may optionally
@@ -101,7 +101,7 @@ const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
         form={form}
         disabled={!edgeVariable}
         maxItems={sortMaxItems}
-        optionGetter={() => getOptions('property', undefined, [])}
+        optionGetter={getOptions}
         summary={
           <Paragraph>
             You may also configure one or more sort rules that determine the
