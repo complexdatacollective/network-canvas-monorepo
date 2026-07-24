@@ -199,7 +199,7 @@ export function HomepagePageBackground({
       flare={background.flare}
       speedFactor={SPEED_FACTOR}
       layerRef={layerRef}
-      motionMode="target"
+      motionMode="direct"
       resolved={background.resolved && reveal}
     />
   );

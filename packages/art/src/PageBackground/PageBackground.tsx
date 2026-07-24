@@ -41,6 +41,7 @@ const SCROLL_OPACITY_RANGE = [1, 0];
 const SCROLL_SCALE_RANGE = [1, 1.8];
 
 type ScrollFlareRange = readonly [number, number];
+type PageBackgroundMotionMode = 'direct' | 'scroll' | 'target';
 
 // The weave is hidden behind an inverse-radial mask until the convergence target
 // (the hero video) resolves, then the masked disc shrinks to nothing at the
@@ -189,7 +190,7 @@ export function PageBackgroundProvider({
   colors?: readonly string[];
   fallbackConvergence?: NetworkWeaveConvergence;
   intensity?: number;
-  motionMode?: 'scroll' | 'target';
+  motionMode?: PageBackgroundMotionMode;
   scrollFlareRange?: ScrollFlareRange;
   waitForTarget?: boolean;
 }) {
@@ -429,7 +430,7 @@ export function PageBackground({
   intensity?: number;
   flare?: number;
   speedFactor?: number;
-  motionMode?: 'scroll' | 'target';
+  motionMode?: PageBackgroundMotionMode;
   resolved?: boolean;
   scrollFadeEnd?: number;
   scrollFlareRange?: ScrollFlareRange;
@@ -589,15 +590,15 @@ export function PageBackground({
     reduceMotion,
   );
   const renderedSettings =
-    motionMode === 'scroll'
-      ? {
+    motionMode === 'target'
+      ? weaveSettings
+      : {
           convergence,
           complexity,
           intensity,
           flare,
           speedFactor,
-        }
-      : weaveSettings;
+        };
   const renderedFlare =
     scrollFlareRange && reduceMotion === false
       ? scrollFlare

@@ -9,6 +9,7 @@ type MockPageBackgroundProps = {
   flare: number;
   intensity: number;
   layerRef: RefObject<HTMLDivElement | null>;
+  motionMode: string;
   resolved: boolean;
 };
 
@@ -122,6 +123,7 @@ describe('HomepagePageBackground', () => {
       x: 0.5,
       y: 0.3,
     });
+    expect(getLatestBackgroundProps().motionMode).toBe('direct');
 
     act(() => {
       window.scrollY = 400;
