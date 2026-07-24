@@ -1,4 +1,4 @@
-import { cleanup, screen } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -76,6 +76,37 @@ describe('localized home sections', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders each design principle as a wide illustrated card link', () => {
+    renderWithIntl(<DesignPrinciples />, 'es');
+
+    const heading = screen.getByRole('heading', {
+      name: 'Flexibilidad ontológica',
+      level: 3,
+    });
+    const card = heading.closest<HTMLElement>('.relative');
+
+    if (!card) {
+      throw new Error('Expected the principle heading to be inside a card');
+    }
+
+    expect(heading.closest('a')).not.toBeInTheDocument();
+    expect(
+      within(card).getByRole('link', { name: 'Flexibilidad ontológica' }),
+    ).toHaveAttribute(
+      'href',
+      'https://documentation.networkcanvas.com/en/desktop/project-information/project-overview#ontological-flexibility',
+    );
+    expect(card.querySelector('img')).toHaveAttribute(
+      'src',
+      expect.stringContaining(
+        '/images/illustrations/design-principles/ontological-flexibility.svg',
+      ),
+    );
+    expect(card.querySelector('img')).toHaveAttribute('alt', '');
+    expect(heading.closest('.max-w-\\[1400px\\]')).toBeInTheDocument();
+    expect(screen.getAllByRole('link')).toHaveLength(5);
+  });
+
   it('renders Spanish rich text and calls to action', () => {
     renderWithIntl(
       <>
@@ -111,8 +142,9 @@ describe('localized home sections', () => {
       .getByRole('heading', { name: 'Localized fixture publication' })
       .closest('a');
     expect(publicationCard).toHaveClass(
-      'bg-surface-3',
+      'bg-surface-3/55',
       'text-surface-3-contrast',
+      'backdrop-blur-md',
     );
     expect(publicationCard?.parentElement?.parentElement).toHaveClass(
       'tablet-portrait:grid-cols-2',
