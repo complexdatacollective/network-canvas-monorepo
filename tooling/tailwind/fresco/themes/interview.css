@@ -3,11 +3,11 @@
  *
  * Layered on top of `themes/default.css`. Activates on any element
  * carrying the `data-theme-interview` attribute. The wrapper sets a
- * base `--theme-root-size` (1rem), which the type scale in `theme.css`
- * consumes via calc(N * var(--theme-root-size)). The interview Shell
- * additionally ramps this sentinel with viewport width (see `Shell.tsx`
- * in @codaco/interview); here it is the non-responsive base shared by
- * all themed regions.
+ * base `--theme-root-size` (0.9rem, the shared product base), which the
+ * type scale in `theme.css` consumes via calc(N * var(--theme-root-size)).
+ * The interview Shell ramps this sentinel with viewport width (see
+ * `Shell.tsx` in @codaco/interview); here it is the non-responsive base for
+ * embedded (non-Shell) themed regions.
  *
  * Provides a darker palette and Nunito-only typography tuned for the
  * interview UI.
@@ -15,7 +15,7 @@
 
 @layer base {
   [data-theme-interview] {
-    --theme-root-size: 1rem;
+    --theme-root-size: 0.9rem;
     font-size: var(--theme-root-size);
   }
 }
@@ -27,12 +27,12 @@
 
     /*
      * Redeclared (not inherited from :root) so the calc resolves against
-     * THIS region's `--theme-root-size`, which the breakpoint media queries
-     * below override. Without redeclaration the inherited value is the
-     * snapshot computed at :root (where --theme-root-size never scales),
-     * and `size-*` / `p-*` / `gap-*` would be frozen at the default size
-     * inside the themed region. Same gotcha applies to `--container-*`
-     * below.
+     * THIS region's `--theme-root-size` — including the fluid clamp the
+     * interview Shell sets on its `<main>` (see Shell.tsx in @codaco/interview),
+     * so `size-*` / `p-*` / `gap-*` scale with it in lock-step with the type
+     * scale. Without redeclaration the inherited value is the snapshot computed
+     * at :root (the product base), and spacing would be frozen at that size
+     * inside the themed region. Same gotcha applies to `--container-*` below.
      */
     --spacing-base: calc(0.25 * var(--theme-root-size));
 

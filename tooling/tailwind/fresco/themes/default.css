@@ -11,7 +11,25 @@
 
 @layer theme {
   :root {
+    /*
+     * Product base — dense product UI (Architect, Interviewer dashboards,
+     * Fresco chrome) inherits this fixed value and keeps constant density at
+     * every screen size, so a larger display shows more content rather than
+     * bigger content. The whole type + spacing system multiplies against this
+     * sentinel.
+     */
     --theme-root-size: 0.9rem;
+
+    /*
+     * Opt-in fluid ramp for presentation surfaces (the marketing site, the
+     * full-screen interview). A surface applies it with
+     * `--theme-root-size: var(--theme-root-size-fluid)` so the curve lives in
+     * one place and cannot drift between consumers. Holds 0.9rem up to ~1440px,
+     * then grows to 1.1rem by ~2080px; rem endpoints keep OS text-zoom working,
+     * and because the per-size --text-* caps are root-multiples, lifting root
+     * also lifts every heading's ceiling.
+     */
+    --theme-root-size-fluid: clamp(0.9rem, 0.45rem + 0.5vw, 1.1rem);
 
     --heading-font: 'Nunito Variable', sans-serif;
     --body-font: 'Inclusive Sans Variable', sans-serif;

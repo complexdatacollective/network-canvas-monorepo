@@ -130,11 +130,14 @@ function Interview({
         <main
           className={cx(
             'relative flex size-full flex-1 overflow-hidden',
-            // Viewport-width ramp for the --theme-root-size type-scale sentinel,
-            // scoped to the Shell so only the full-screen interview scales (not
-            // other themed regions). Keep breakpoints synced with
-            // --breakpoint-laptop / --breakpoint-desktop-lg in theme.css.
-            'laptop:[--theme-root-size:1.125rem] desktop-lg:[--theme-root-size:1.25rem] [--theme-root-size:1rem]',
+            // Fluid viewport-width ramp for the --theme-root-size type-scale
+            // sentinel, scoped to the Shell so only the full-screen interview
+            // scales (not other themed regions). Shares the 0.9rem product base
+            // but climbs early, reaching ~1rem (the interview theme's former
+            // base value) by ~1280px and a 1.25rem cap by ~2560px. Spacing and
+            // node sizes ramp with it via interview.css's --spacing-base
+            // redeclaration.
+            '[--theme-root-size:clamp(0.9rem,0.75rem+0.3125vw,1.25rem)]',
             isHorizontalNav ? 'flex-col' : 'flex-row-reverse',
           )}
         />
