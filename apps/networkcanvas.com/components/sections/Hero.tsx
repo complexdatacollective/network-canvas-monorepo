@@ -7,11 +7,9 @@ import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
 import { buttonVariants } from '@codaco/fresco-ui/Button';
-import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { NewsTicker } from '~/components/sections/NewsTicker';
-import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { HeroVideo } from '~/components/ui/HeroVideo';
 import { GET_STARTED_PATH } from '~/lib/getStarted';
