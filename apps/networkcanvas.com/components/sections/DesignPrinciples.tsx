@@ -6,6 +6,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
+import { scrollDrivenRevealMotion } from '~/components/ui/scrollDrivenMotion';
 import { principles } from '~/lib/content';
 
 type PrincipleId = (typeof principles)[number]['id'];
@@ -45,10 +46,14 @@ export function DesignPrinciples() {
           {principles.map((principle, i) => (
             <Reveal
               key={principle.id}
-              delay={i * 0.04}
+              {...scrollDrivenRevealMotion}
+              delay={i * 0.06}
               className="group relative"
             >
-              <div className="bg-surface/55 tablet-portrait:grid-cols-3 tablet-landscape:gap-10 tablet-portrait:p-8 tablet-landscape:p-10 grid items-center gap-6 rounded p-6 shadow-lg backdrop-blur-md transition-[transform,box-shadow] duration-300 ease-out group-focus-within:-translate-y-1 group-focus-within:shadow-xl group-hover:-translate-y-1 group-hover:shadow-xl motion-reduce:transform-none">
+              <div
+                key="content"
+                className="bg-surface/55 tablet-portrait:grid-cols-3 tablet-landscape:gap-10 tablet-portrait:p-8 tablet-landscape:p-10 grid items-center gap-6 rounded p-6 shadow-lg backdrop-blur-md transition-[transform,box-shadow] duration-300 ease-out group-focus-within:-translate-y-1 group-focus-within:shadow-xl group-hover:-translate-y-1 group-hover:shadow-xl motion-reduce:transform-none"
+              >
                 <div className="tablet-portrait:col-span-1 flex aspect-4/3 items-center justify-center">
                   <Image
                     src={principleIllustrations[principle.id]}
@@ -73,6 +78,7 @@ export function DesignPrinciples() {
                 </div>
               </div>
               <NativeLink
+                key="link"
                 href={principle.href}
                 target="_blank"
                 rel="noreferrer"

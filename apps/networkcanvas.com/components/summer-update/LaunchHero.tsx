@@ -15,6 +15,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Header } from '~/components/layout/Header';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
+import { heroScrollSpring } from '~/components/ui/scrollDrivenMotion';
 import { cn } from '~/lib/cn';
 
 import {
@@ -98,11 +99,7 @@ export function LaunchHero() {
     target: sectionRef,
     offset: ['start start', 'end start'],
   });
-  const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 120,
-    damping: 24,
-    mass: 0.35,
-  });
+  const smoothProgress = useSpring(scrollYProgress, heroScrollSpring);
   const headingY = useTransform(smoothProgress, [0, 1], [0, -120]);
   const headingScale = useTransform(
     smoothProgress,

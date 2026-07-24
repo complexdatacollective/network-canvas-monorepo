@@ -10,6 +10,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 export function MailingListForm() {
   const t = useTranslations('MailingList');
   const [submitted, setSubmitted] = useState(false);
+  const [email, setEmail] = useState('');
 
   if (submitted) {
     return (
@@ -32,6 +33,8 @@ export function MailingListForm() {
       <InputField
         type="email"
         required
+        value={email}
+        onChange={(value) => setEmail(value ?? '')}
         placeholder={t('placeholder')}
         aria-label={t('emailLabel')}
       />

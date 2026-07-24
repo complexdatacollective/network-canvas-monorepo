@@ -17,6 +17,13 @@ const { motionPreferences, pageBackgroundRender } = vi.hoisted(() => ({
   pageBackgroundRender: vi.fn((props: MockPageBackgroundProps) => props),
 }));
 
+let targetLayout = {
+  height: 200,
+  left: 400,
+  top: 200,
+  width: 200,
+};
+
 vi.mock('motion/react', () => ({
   useReducedMotion: () => motionPreferences.shouldReduce,
 }));
@@ -48,6 +55,35 @@ describe('HomepagePageBackground', () => {
       return 1;
     });
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    targetLayout = {
+      height: 200,
+      left: 400,
+      top: 200,
+      width: 200,
+    };
+    const isTarget = (element: HTMLElement) =>
+      element.hasAttribute('data-homepage-weave-target') ||
+      element.hasAttribute('data-get-started-weave-target');
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(
+      function getOffsetHeight(this: HTMLElement) {
+        return isTarget(this) ? targetLayout.height : 0;
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(
+      function getOffsetLeft(this: HTMLElement) {
+        return isTarget(this) ? targetLayout.left : 0;
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(
+      function getOffsetTop(this: HTMLElement) {
+        return isTarget(this) ? targetLayout.top : 0;
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(
+      function getOffsetWidth(this: HTMLElement) {
+        return isTarget(this) ? targetLayout.width : 0;
+      },
+    );
   });
 
   afterEach(() => {
@@ -64,13 +100,6 @@ describe('HomepagePageBackground', () => {
           this.dataset.testid === 'page-background-layer'
         ) {
           return new DOMRect(0, 0, 1000, 1000);
-        }
-
-        if (
-          this instanceof HTMLElement &&
-          this.hasAttribute('data-homepage-weave-target')
-        ) {
-          return new DOMRect(400, 200 - window.scrollY, 200, 200);
         }
 
         return new DOMRect();
@@ -122,13 +151,6 @@ describe('HomepagePageBackground', () => {
           return new DOMRect(0, 0, 1000, 1000);
         }
 
-        if (
-          this instanceof HTMLElement &&
-          this.hasAttribute('data-homepage-weave-target')
-        ) {
-          return new DOMRect(400, 200, 200, 200);
-        }
-
         return new DOMRect();
       },
     );
@@ -150,6 +172,84 @@ describe('HomepagePageBackground', () => {
     );
 
     expect(getLatestBackgroundProps().resolved).toBe(true);
+  });
+
+  it('anchors the weave to a page-specific hero target', () => {
+    targetLayout = {
+      height: 300,
+      left: 200,
+      top: 100,
+      width: 400,
+    };
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function getBoundingClientRect(this: Element) {
+        if (
+          this instanceof HTMLElement &&
+          this.dataset.testid === 'page-background-layer'
+        ) {
+          return new DOMRect(0, 0, 1000, 1000);
+        }
+
+        return new DOMRect();
+      },
+    );
+
+    render(
+      <>
+        <div data-get-started-weave-target />
+        <HomepagePageBackground target="[data-get-started-weave-target]" />
+      </>,
+    );
+
+    expect(getLatestBackgroundProps().convergence).toEqual({
+      x: 0.4,
+      y: 0.25,
+    });
+  });
+
+  it('ignores visual transforms when measuring the hero anchor', async () => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function getBoundingClientRect(this: Element) {
+        if (
+          this instanceof HTMLElement &&
+          this.dataset.testid === 'page-background-layer'
+        ) {
+          return new DOMRect(0, 0, 1000, 1000);
+        }
+
+        if (
+          this instanceof HTMLElement &&
+          this.hasAttribute('data-homepage-weave-target')
+        ) {
+          return new DOMRect(360, 104 - window.scrollY, 184, 184);
+        }
+
+        return new DOMRect();
+      },
+    );
+
+    render(
+      <>
+        <div data-homepage-weave-target />
+        <HomepagePageBackground />
+      </>,
+    );
+
+    expect(getLatestBackgroundProps().convergence).toEqual({
+      x: 0.5,
+      y: 0.3,
+    });
+
+    act(() => {
+      window.scrollY = 200;
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    await waitFor(() => {
+      const background = getLatestBackgroundProps();
+      expect(background.convergence.x).toBeCloseTo(0.3571, 4);
+      expect(background.convergence.y).toBeCloseTo(0.2143, 4);
+    });
   });
 
   it('preserves the default reveal for reduced-motion contexts', () => {

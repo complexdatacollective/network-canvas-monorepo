@@ -16,12 +16,30 @@ vi.mock('~/components/ui/Reveal', () => ({
   Reveal: ({
     children,
     className,
+    delay: _delay,
+    direction: _direction,
+    distance: _distance,
+    duration: _duration,
+    easing: _easing,
+    scrollLinked,
+    scrollStagger: _scrollStagger,
     ...props
   }: ComponentPropsWithoutRef<'section'> & {
     children: ReactNode;
     className?: string;
+    delay?: number;
+    direction?: string;
+    distance?: number;
+    duration?: number;
+    easing?: readonly number[];
+    scrollLinked?: boolean;
+    scrollStagger?: number;
   }) => (
-    <section className={className} {...props}>
+    <section
+      className={className}
+      data-scroll-linked={scrollLinked ? 'true' : undefined}
+      {...props}
+    >
       {children}
     </section>
   ),
@@ -73,8 +91,23 @@ describe('Tools', () => {
       const actionLink = screen.getByRole('link', {
         name: app.actionName,
       });
+      const previewFrame = previewLink.parentElement;
 
-      expect(panel).toHaveClass('bg-surface/55', 'backdrop-blur-md');
+      expect(panel).toHaveClass(
+        'bg-surface/55',
+        'backdrop-blur-md',
+        'grid-cols-1',
+        'tablet-landscape:grid-cols-2',
+      );
+      expect(panel).toHaveAttribute('data-scroll-linked', 'true');
+      expect(heading.parentElement).toHaveClass('min-w-0');
+      expect(previewFrame).toHaveClass(
+        'w-full',
+        'max-w-md',
+        'mx-auto',
+        'tablet-landscape:col-start-2',
+      );
+      expect(previewFrame).not.toHaveClass('w-112');
       expect(previewLink).toHaveAttribute('href', app.href);
       expect(previewLink).toHaveAttribute('target', '_blank');
       expect(previewLink).toHaveClass('focusable');

@@ -25,6 +25,7 @@ const animationControls = vi.hoisted(() => ({
   start: vi.fn(() => Promise.resolve()),
 }));
 const entranceStart = vi.hoisted(() => vi.fn());
+const heroDepartureStyle = vi.hoisted(() => ({ opacity: 'scroll-opacity' }));
 
 type MotionDivProps = {
   animate?: unknown;
@@ -71,6 +72,10 @@ vi.mock('@codaco/art', () => ({
   },
 }));
 
+vi.mock('~/components/ui/useHeroScrollDeparture', () => ({
+  useHeroScrollDeparture: () => heroDepartureStyle,
+}));
+
 vi.mock('~/components/layout/Header', () => ({
   Header: ({ entranceVariants }: { entranceVariants?: unknown }) => (
     <div data-header-variants={entranceVariants ? 'active' : 'none'}>
@@ -84,14 +89,19 @@ vi.mock('~/components/sections/Hero', () => ({
     containerVariants,
     itemVariants,
     newsItems: heroNewsItems,
+    scrollStyle,
   }: {
     containerVariants?: unknown;
     itemVariants?: unknown;
     newsItems: readonly NewsItem[];
+    scrollStyle?: unknown;
   }) => (
     <div
       data-hero-container-variants={containerVariants ? 'active' : 'none'}
       data-hero-item-variants={itemVariants ? 'active' : 'none'}
+      data-hero-scroll-style={
+        scrollStyle === heroDepartureStyle ? 'active' : 'none'
+      }
     >
       Hero content: {heroNewsItems[0]?.title}
     </div>
@@ -118,6 +128,9 @@ describe('HeroIntro', () => {
     expect(
       screen.getByText('Hero content: Fixture-only intro news'),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText('Hero content: Fixture-only intro news'),
+    ).toHaveAttribute('data-hero-scroll-style', 'active');
     expect(
       screen.queryByText('Network Canvas wins INSNA Award'),
     ).not.toBeInTheDocument();

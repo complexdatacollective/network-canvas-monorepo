@@ -10,6 +10,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
+import { useHeroScrollDeparture } from '~/components/ui/useHeroScrollDeparture';
 import { externalLinks } from '~/lib/content';
 import { createHeroEntrance } from '~/lib/heroEntrance';
 
@@ -46,6 +47,10 @@ export function GetStartedIntro() {
   const controls = useAnimationControls();
   const entranceStarted = useRef(false);
   const introRef = useRef<HTMLDivElement>(null);
+  const heroScrollStyle = useHeroScrollDeparture(introRef, {
+    distance: 80,
+    restingScale: 0.95,
+  });
 
   useLayoutEffect(() => {
     if (reduceMotion !== false || entranceStarted.current) {
@@ -76,7 +81,8 @@ export function GetStartedIntro() {
 
         <motion.div
           variants={entrance.heroVariants}
-          className="tablet-portrait:pt-24 tablet-portrait:pb-32 pt-16 pb-24"
+          style={heroScrollStyle}
+          className="tablet-portrait:pt-24 tablet-portrait:pb-32 origin-center pt-16 pb-24 will-change-transform"
         >
           <motion.div
             variants={entrance.itemVariants}

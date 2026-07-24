@@ -2,7 +2,7 @@
 
 import { ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
-import type { Variants } from 'motion/react';
+import type { MotionStyle, Variants } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
@@ -26,18 +26,21 @@ export function Hero({
   containerVariants,
   itemVariants,
   newsItems,
+  scrollStyle,
 }: {
   containerVariants?: Variants;
   itemVariants?: Variants;
   newsItems: readonly NewsItem[];
+  scrollStyle?: MotionStyle;
 }) {
   const t = useTranslations('Hero');
 
   return (
     <motion.div
       variants={containerVariants}
+      style={scrollStyle}
       data-testid="hero-root"
-      className="tablet-portrait:flex tablet-portrait:flex-1"
+      className="tablet-portrait:flex tablet-portrait:flex-1 origin-center will-change-transform"
     >
       <Container
         data-testid="hero-layout"

@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, screen } from '@testing-library/react';
-import type { ComponentPropsWithoutRef } from 'react';
+import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Grant } from '~/lib/siteContent';
@@ -61,6 +61,29 @@ vi.mock('@codaco/fresco-ui/typography/Paragraph', () => ({
   }) => (
     <p data-fresco-paragraph="true" data-fresco-margin={margin} {...props} />
   ),
+}));
+
+vi.mock('~/components/ui/Reveal', () => ({
+  Reveal: ({
+    children,
+    delay: _delay,
+    direction: _direction,
+    distance: _distance,
+    duration: _duration,
+    easing: _easing,
+    scrollLinked: _scrollLinked,
+    scrollStagger: _scrollStagger,
+    ...props
+  }: ComponentPropsWithoutRef<'div'> & {
+    children: ReactNode;
+    delay?: number;
+    direction?: string;
+    distance?: number;
+    duration?: number;
+    easing?: readonly number[];
+    scrollLinked?: boolean;
+    scrollStagger?: number;
+  }) => <div {...props}>{children}</div>,
 }));
 
 afterEach(cleanup);

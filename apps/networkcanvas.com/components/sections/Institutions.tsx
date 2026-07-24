@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
+import { Reveal } from '~/components/ui/Reveal';
+import { scrollDrivenRevealMotion } from '~/components/ui/scrollDrivenMotion';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { cn } from '~/lib/cn';
 import { institutions } from '~/lib/content';
@@ -39,25 +41,30 @@ export function Institutions() {
 
   return (
     <Container maxWidth="full">
-      <SectionHeading title={t('heading')}>
-        <Paragraph margin="none">
-          {t.rich('paragraph1', {
-            prior: renderPriorLink,
-            ongoing: renderOngoingLink,
-          })}
-        </Paragraph>
-        <Paragraph margin="none" className="mt-3">
-          {t('paragraph2')}
-        </Paragraph>
-      </SectionHeading>
+      <Reveal {...scrollDrivenRevealMotion}>
+        <SectionHeading title={t('heading')}>
+          <Paragraph margin="none">
+            {t.rich('paragraph1', {
+              prior: renderPriorLink,
+              ongoing: renderOngoingLink,
+            })}
+          </Paragraph>
+          <Paragraph margin="none" className="mt-3">
+            {t('paragraph2')}
+          </Paragraph>
+        </SectionHeading>
+      </Reveal>
 
       <div className="laptop:gap-x-12 mx-auto mt-14 flex max-w-[1500px] flex-wrap items-center justify-center gap-x-10 gap-y-10">
-        {institutions.map((inst) => (
+        {institutions.map((inst, index) => (
           // Partner logos are fixed-colour brand assets. In dark mode they sit on
           // a light plate so dark marks (e.g. the Oxford wordmark) stay legible;
           // in light mode the plate is absent and the logos render as before.
-          <div
+          <Reveal
+            {...scrollDrivenRevealMotion}
             key={inst.name}
+            direction="zoom"
+            delay={index * 0.06}
             className="flex max-w-full items-center justify-center [[data-theme=dark]_&]:rounded [[data-theme=dark]_&]:bg-white/90 [[data-theme=dark]_&]:px-3 [[data-theme=dark]_&]:py-2"
           >
             <div
@@ -84,7 +91,7 @@ export function Institutions() {
                 )}
               />
             </div>
-          </div>
+          </Reveal>
         ))}
       </div>
     </Container>

@@ -2,13 +2,14 @@ import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Container } from '~/components/ui/Container';
-import { Reveal } from '~/components/ui/Reveal';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { externalLinks } from '~/lib/content';
 import type { Publication } from '~/lib/siteContent';
+
+import { PublicationRail } from './PublicationRail';
+
+const headingId = 'recent-publications-heading';
 
 function renderArticleLink(chunks: ReactNode) {
   return (
@@ -44,8 +45,12 @@ export function Publications({
   const t = useTranslations('Publications');
 
   return (
-    <Container maxWidth="full" className="">
-      <SectionHeading title={t('heading')}>
+    <PublicationRail
+      publications={publications}
+      headingId={headingId}
+      railLabel={t('carouselLabel')}
+    >
+      <SectionHeading title={t('heading')} id={headingId}>
         <Paragraph margin="none">
           {t.rich('introduction', { article: renderArticleLink })}
         </Paragraph>
@@ -53,39 +58,6 @@ export function Publications({
           {t.rich('submission', { thread: renderThreadLink })}
         </Paragraph>
       </SectionHeading>
-
-      <div className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 laptop:grid-cols-4 mx-auto mt-14 grid w-full max-w-[1600px] grid-cols-1 gap-5">
-        {publications.map((pub, i) => (
-          <Reveal key={pub.id} delay={(i % 4) * 0.04}>
-            <a
-              href={pub.href}
-              target="_blank"
-              rel="noreferrer"
-              className="focusable bg-surface-3/55 text-surface-3-contrast tablet-portrait:p-7 flex h-full flex-col rounded p-6 shadow-lg backdrop-blur-md transition-transform hover:-translate-y-1"
-            >
-              <Heading
-                level="h3"
-                margin="none"
-                className="font-heading tablet-landscape:text-xl text-lg leading-snug font-bold"
-              >
-                {pub.title}
-              </Heading>
-              <Paragraph
-                margin="none"
-                className="font-heading text-surface-3-contrast/55 mt-4 text-xs font-bold tracking-[0.15em] uppercase"
-              >
-                {pub.source}
-              </Paragraph>
-              <Paragraph
-                margin="none"
-                className="text-surface-3-contrast/70 mt-3 text-sm"
-              >
-                {pub.authors}
-              </Paragraph>
-            </a>
-          </Reveal>
-        ))}
-      </div>
-    </Container>
+    </PublicationRail>
   );
 }

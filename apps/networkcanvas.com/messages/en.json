@@ -92,6 +92,7 @@
   },
   "Publications": {
     "heading": "Recent Publications Using Network Canvas",
+    "carouselLabel": "Recent publications carousel",
     "introduction": "The following are the eight most recent publications utilizing Network Canvas. For guidance on citing Network Canvas, see our <article>documentation article</article>.",
     "submission": "If you would like to feature your publication, please let us know by posting in our community site <thread>thread</thread>.",
     "article": "documentation article",

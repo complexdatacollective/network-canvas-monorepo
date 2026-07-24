@@ -41,6 +41,28 @@ function interpolate(origin: number, target: number, progress: number) {
   return origin + (target - origin) * progress;
 }
 
+function getDocumentLayoutRect(element: HTMLElement) {
+  let left = 0;
+  let top = 0;
+  let current: HTMLElement | null = element;
+
+  // Offset coordinates stay in layout space, so visual scroll transforms on
+  // the hero cannot feed back into the weave's focal-point calculation.
+  while (current) {
+    left += current.offsetLeft;
+    top += current.offsetTop;
+    current =
+      current.offsetParent instanceof HTMLElement ? current.offsetParent : null;
+  }
+
+  return {
+    height: element.offsetHeight,
+    left,
+    top,
+    width: element.offsetWidth,
+  };
+}
+
 function statesAreEqual(current: BackgroundState, next: BackgroundState) {
   return (
     current.resolved === next.resolved &&
@@ -101,23 +123,25 @@ export function HomepagePageBackground({
         return;
       }
 
-      const heroRect = hero.getBoundingClientRect();
+      const heroRect = getDocumentLayoutRect(hero);
       // The hero's centre in document space, projected onto the fixed viewport
       // layer. Document coordinates are stable across scroll, so the eventual
       // glide to centre stays smooth and independent of the hero's live offset.
       const restingConvergence = {
         x: clampToViewport(
-          (heroRect.left + heroRect.width / 2 - layerRect.left) /
+          (heroRect.left -
+            window.scrollX +
+            heroRect.width / 2 -
+            layerRect.left) /
             layerRect.width,
         ),
         y: clampToViewport(
-          (heroRect.top + window.scrollY + heroRect.height / 2) /
-            layerRect.height,
+          (heroRect.top + heroRect.height / 2) / layerRect.height,
         ),
       };
       // The hero has fully exited once its document bottom passes the viewport
       // top (scrollY >= heroDocumentBottom).
-      const heroDocumentBottom = heroRect.bottom + window.scrollY;
+      const heroDocumentBottom = heroRect.top + heroRect.height;
       const exitProgress = clampToViewport(
         window.scrollY / Math.max(1, heroDocumentBottom),
       );

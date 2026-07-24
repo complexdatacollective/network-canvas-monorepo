@@ -1,13 +1,6 @@
-const summerUpdateEasing = [0.22, 1, 0.36, 1] as [
-  number,
-  number,
-  number,
-  number,
-];
+import { scrollDrivenRevealMotion } from '~/components/ui/scrollDrivenMotion';
 
 export const summerUpdateRevealMotion = {
-  distance: 48,
-  duration: 0.9,
-  easing: summerUpdateEasing,
-  scrollLinked: true,
+  ...scrollDrivenRevealMotion,
+  scrollStagger: 1,
 } as const;
