@@ -50,7 +50,7 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: direction >= 0 ? -60 : 60 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="focusable bg-surface tablet-portrait:p-12 tablet-landscape:p-14 pointer-events-auto flex min-h-[30rem] flex-col rounded p-10 shadow-xl"
+                className="focusable bg-surface/55 tablet-portrait:p-12 tablet-landscape:p-14 pointer-events-auto flex min-h-[30rem] flex-col rounded p-10 shadow-xl backdrop-blur-md"
               >
                 <Heading
                   level="h3"

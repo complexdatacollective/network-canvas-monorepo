@@ -1,7 +1,7 @@
 import { useTranslations } from 'next-intl';
 
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
-import Heading from '@codaco/fresco-ui/typography/Heading';
+import Heading, { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
@@ -35,23 +35,21 @@ export function DesignPrinciples() {
             <Reveal
               key={principle.id}
               delay={i * 0.04}
-              className="bg-surface tablet-landscape:p-10 rounded p-8 shadow-lg"
+              className="bg-surface/55 tablet-landscape:p-10 rounded p-8 shadow-lg backdrop-blur-md"
             >
-              <Heading
-                level="h3"
-                variant="subheading"
-                margin="none"
-                className="text-text"
+              <NativeLink
+                href={principle.href}
+                target="_blank"
+                rel="noreferrer"
+                className={headingVariants({
+                  level: 'h3',
+                  variant: 'subheading',
+                  margin: 'none',
+                  className: 'text-text hover:text-link [--link:currentColor]',
+                })}
               >
-                <NativeLink
-                  href={principle.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-text hover:text-neon-coral font-bold"
-                >
-                  {t(`${principle.id}.title`)}
-                </NativeLink>
-              </Heading>
+                {t(`${principle.id}.title`)}
+              </NativeLink>
               <div className="text-text/80 mt-4 flex flex-col gap-3 text-base leading-relaxed">
                 <Paragraph margin="none">
                   {t(`${principle.id}.paragraph1`)}

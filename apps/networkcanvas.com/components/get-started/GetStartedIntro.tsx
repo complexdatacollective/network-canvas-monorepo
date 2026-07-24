@@ -7,6 +7,7 @@ import { useLayoutEffect, useRef } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
 import { externalLinks } from '~/lib/content';
@@ -115,9 +116,19 @@ export function GetStartedIntro() {
                 variants={entrance.itemVariants}
                 whileHover={reduceMotion ? undefined : { y: -5 }}
                 whileFocus={reduceMotion ? undefined : { y: -5 }}
-                className="entrance-motion-item focusable elevation-medium group tablet-portrait:last:col-span-2 tablet-landscape:last:col-span-1 tablet-portrait:p-10 tablet-portrait:pb-28 bg-surface/55 relative flex min-h-64 flex-col rounded p-8 pb-24 backdrop-blur-md"
+                className="entrance-motion-item focusable elevation-medium group tablet-portrait:last:col-span-2 tablet-landscape:last:col-span-1 tablet-portrait:p-10 tablet-portrait:pb-28 bg-surface/55 relative min-h-64 rounded p-8 pb-24 backdrop-blur-md"
               >
-                <span className="font-heading text-text/65 text-xs font-bold tracking-[0.14em] uppercase">
+                <span
+                  className={cx(
+                    'font-monospace text-sea-serpent inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase',
+                    stage.accent === 'bg-sea-green' &&
+                      'bg-sea-green/15 text-sea-green',
+                    stage.accent === 'bg-neon-coral' &&
+                      'bg-neon-coral/15 text-neon-coral',
+                    stage.accent === 'bg-cerulean-blue' &&
+                      'bg-cerulean-blue/15 text-cerulean-blue',
+                  )}
+                >
                   {t(`intro.stages.${stage.id}.label`)}
                 </span>
                 <span className="font-heading text-text tablet-portrait:text-2xl mt-8 block max-w-lg text-xl font-black tracking-tight text-balance">

@@ -61,7 +61,7 @@ export function Publications({
               href={pub.href}
               target="_blank"
               rel="noreferrer"
-              className="focusable bg-surface-3 text-surface-3-contrast tablet-portrait:p-7 flex h-full flex-col rounded p-6 shadow-lg transition-transform hover:-translate-y-1"
+              className="focusable bg-surface-3/55 text-surface-3-contrast tablet-portrait:p-7 flex h-full flex-col rounded p-6 shadow-lg backdrop-blur-md transition-transform hover:-translate-y-1"
             >
               <Heading
                 level="h3"

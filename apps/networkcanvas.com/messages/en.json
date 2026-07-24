@@ -624,12 +624,12 @@
     },
     "resources": {
       "label": "Project resources",
-      "heading": "A clearer home for the whole Network Canvas project",
+      "heading": "Revamped documentation and a new project website",
       "introduction": "The apps are not the only part of Network Canvas that has changed. We have also redesigned the project website and reorganized the documentation to make it easier to understand the platform, choose the right tools, and find your next step.",
       "documentation": {
         "label": "Project documentation",
         "heading": "Guidance organized around your research workflow",
-        "description": "The documentation now starts with the work you are doing: getting started, designing protocols, collecting data, and analyzing results. New workflow navigation and refreshed guides make the next step easier to find.",
+        "description": "The documentation is now structured around the stage of your research that you are at: getting started, designing protocols, collecting data, and analyzing results. New workflow navigation and refreshed guides make the next step easier to find.",
         "link": "Explore the documentation",
         "screenshotAlt": "The redesigned Network Canvas documentation homepage"
       },
