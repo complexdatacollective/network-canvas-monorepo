@@ -1,5 +1,11 @@
 # @codaco/art
 
+## 0.1.4
+
+### Patch Changes
+
+- 3abfaf7: Keep unresolved weave backgrounds hidden when their focal point lies on a zero-valued axis.
+
 ## 0.1.3
 
 ### Patch Changes
