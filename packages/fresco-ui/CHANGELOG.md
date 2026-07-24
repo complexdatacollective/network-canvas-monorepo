@@ -1,5 +1,11 @@
 # @codaco/fresco-ui
 
+## 4.2.0
+
+### Minor Changes
+
+- 711c77a: Add raised buttons, uppercase text styling, larger heading variants, and the supporting shared type-scale tokens for expressive product pages. Add the accessible Definition tooltip for inline terms, including touch activation.
+
 ## 4.1.2
 
 ### Patch Changes

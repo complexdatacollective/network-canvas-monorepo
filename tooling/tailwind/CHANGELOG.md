@@ -1,5 +1,15 @@
 # @codaco/tailwind-config
 
+## 1.2.0
+
+### Minor Changes
+
+- 711c77a: Add raised buttons, uppercase text styling, larger heading variants, and the supporting shared type-scale tokens for expressive product pages. Add the accessible Definition tooltip for inline terms, including touch activation.
+
+### Patch Changes
+
+- 0134e88: Reduce the default Fresco theme root scale so shared typography, spacing, and component dimensions render more compactly across consuming applications.
+
 ## 1.1.0
 
 ### Minor Changes
