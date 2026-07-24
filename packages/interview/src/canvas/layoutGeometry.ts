@@ -25,8 +25,10 @@ export type CanvasDimensions = { width: number; height: number };
 // Fallback rendered node radius (px) used until `useNodeMeasurement` reports the
 // real measured size (e.g. on the first render, or under jsdom where layout is
 // not computed). Matches `useCanvasStore`'s NODE_RADIUS: size="sm" is size-24 =
-// 6 * --theme-root-size, which at the base 1rem theme root is 96px diameter ->
-// 48px radius.
+// 6 * --theme-root-size. The interview theme root is fluid (0.9rem floor,
+// ramping up on wider viewports via the Shell), so the real diameter varies;
+// 48px (a 1rem-root, 96px-diameter value) is a representative fallback that
+// useNodeMeasurement corrects on the first real layout.
 export const FALLBACK_NODE_RADIUS = 48;
 
 // Extra spacing between a node's visible EDGE and a neighbour's edge, expressed

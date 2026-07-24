@@ -36,10 +36,55 @@ function latest() {
   return latestObserverInstances[latestObserverInstances.length - 1] ?? null;
 }
 
+let latestResizeObservers: MockResizeObserver[] = [];
+
+class MockResizeObserver {
+  callback: ResizeObserverCallback;
+  observed: Element[] = [];
+  disconnectSpy = vi.fn();
+  constructor(cb: ResizeObserverCallback) {
+    this.callback = cb;
+    latestResizeObservers.push(this);
+  }
+  observe(target: Element) {
+    this.observed.push(target);
+  }
+  unobserve() {
+    // no-op: required by ResizeObserver interface
+  }
+  disconnect() {
+    this.disconnectSpy();
+  }
+}
+
+function makeScrollRoot(dims: {
+  scrollTop: number;
+  clientHeight: number;
+  scrollHeight: number;
+}) {
+  const el = document.createElement('div');
+  Object.defineProperty(el, 'scrollTop', {
+    value: dims.scrollTop,
+    writable: true,
+    configurable: true,
+  });
+  Object.defineProperty(el, 'clientHeight', {
+    value: dims.clientHeight,
+    configurable: true,
+  });
+  Object.defineProperty(el, 'scrollHeight', {
+    value: dims.scrollHeight,
+    configurable: true,
+  });
+  return el;
+}
+
 describe('useScrolledToBottom', () => {
   afterEach(() => {
     latestObserverInstances = [];
+    latestResizeObservers = [];
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   test('returns false initially', () => {
@@ -168,5 +213,133 @@ describe('useScrolledToBottom', () => {
       result.current.sentinelRef(null);
     });
     expect(result.current.hasScrolledToBottom).toBe(false);
+  });
+
+  test('latches true when scrolled to the exact bottom even if the sentinel edge never reports intersecting', () => {
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    // Container scrolled to the maximum: scrollTop + clientHeight === scrollHeight.
+    // A zero-height sentinel sits on the exact bottom edge, which some browsers
+    // (Firefox) never report as intersecting — the hook must still latch true.
+    const root = makeScrollRoot({
+      scrollTop: 1211,
+      clientHeight: 720,
+      scrollHeight: 1931,
+    });
+    const rootRef = { current: root };
+
+    const { result } = renderHook(() => useScrolledToBottom(rootRef));
+    act(() => {
+      result.current.sentinelRef(document.createElement('div'));
+    });
+
+    // No intersecting entry was ever delivered.
+    expect(result.current.hasScrolledToBottom).toBe(true);
+  });
+
+  test('latches true immediately when content does not overflow', () => {
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    const root = makeScrollRoot({
+      scrollTop: 0,
+      clientHeight: 720,
+      scrollHeight: 500,
+    });
+    const rootRef = { current: root };
+
+    const { result } = renderHook(() => useScrolledToBottom(rootRef));
+    act(() => {
+      result.current.sentinelRef(document.createElement('div'));
+    });
+
+    expect(result.current.hasScrolledToBottom).toBe(true);
+  });
+
+  test('stays false until scrolled to the bottom, then latches on the scroll event', () => {
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    const root = makeScrollRoot({
+      scrollTop: 0,
+      clientHeight: 720,
+      scrollHeight: 1931,
+    });
+    const rootRef = { current: root };
+
+    const { result } = renderHook(() => useScrolledToBottom(rootRef));
+    act(() => {
+      result.current.sentinelRef(document.createElement('div'));
+    });
+    expect(result.current.hasScrolledToBottom).toBe(false);
+
+    act(() => {
+      root.scrollTop = 1211;
+      root.dispatchEvent(new Event('scroll'));
+    });
+    expect(result.current.hasScrolledToBottom).toBe(true);
+  });
+
+  test('observes the scroll container and its content so resize re-measures', () => {
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    const root = makeScrollRoot({
+      scrollTop: 0,
+      clientHeight: 720,
+      scrollHeight: 1931,
+    });
+    const content = document.createElement('div');
+    root.appendChild(content);
+
+    renderHook(() => useScrolledToBottom({ current: root }));
+
+    const ro = latestResizeObservers.at(-1);
+    expect(ro?.observed).toContain(root);
+    expect(ro?.observed).toContain(content);
+  });
+
+  test('removes the scroll listener and disconnects the observer on unmount', () => {
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    const root = makeScrollRoot({
+      scrollTop: 0,
+      clientHeight: 720,
+      scrollHeight: 1931,
+    });
+    const removeSpy = vi.spyOn(root, 'removeEventListener');
+
+    const { unmount } = renderHook(() =>
+      useScrolledToBottom({ current: root }),
+    );
+    unmount();
+
+    expect(removeSpy).toHaveBeenCalledWith('scroll', expect.any(Function));
+    expect(latestResizeObservers.at(-1)?.disconnectSpy).toHaveBeenCalled();
+  });
+
+  test('latches at the 1px slack boundary but stays false 2px short', () => {
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    // scrollTop + clientHeight === scrollHeight - 1 → within slack → latches.
+    const atSlack = makeScrollRoot({
+      scrollTop: 279,
+      clientHeight: 720,
+      scrollHeight: 1000,
+    });
+    const a = renderHook(() => useScrolledToBottom({ current: atSlack }));
+    expect(a.result.current.hasScrolledToBottom).toBe(true);
+
+    // 2px short → beyond slack → stays false.
+    const short = makeScrollRoot({
+      scrollTop: 278,
+      clientHeight: 720,
+      scrollHeight: 1000,
+    });
+    const b = renderHook(() => useScrolledToBottom({ current: short }));
+    expect(b.result.current.hasScrolledToBottom).toBe(false);
   });
 });

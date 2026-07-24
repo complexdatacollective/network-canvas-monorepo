@@ -20,6 +20,15 @@
 }
 
 @layer base {
+  /*
+   * This marketing site is a presentation surface, so opt the shared root-size
+   * sentinel into the fluid ramp exported by the Fresco theme: type + spacing
+   * grow on wide / scaled-up displays. Product apps keep the fixed 0.9rem base.
+   */
+  :root {
+    --theme-root-size: var(--theme-root-size-fluid);
+  }
+
   html {
     scroll-behavior: smooth;
   }
