@@ -46,6 +46,9 @@ const httpsUrl = z
   .string()
   .url()
   .refine((value) => value.startsWith('https://'), 'must use HTTPS');
+const internalPath = z
+  .string()
+  .regex(/^\/(?![\\/])[^\\\s]*$/, 'must be a root-relative path');
 const publicImage = z
   .string()
   .regex(/^\/images\/.+/, 'must start with /images/');
@@ -55,7 +58,7 @@ const newsRowSchema = z
     id,
     title_en: requiredText,
     title_es: requiredText,
-    href: httpsUrl,
+    href: z.union([httpsUrl, internalPath]),
   })
   .strict();
 

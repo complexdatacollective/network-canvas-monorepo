@@ -6,6 +6,7 @@ import { MailingListForm } from '~/components/sections/MailingListForm';
 import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
+import { scrollDrivenRevealMotion } from '~/components/ui/scrollDrivenMotion';
 import { externalLinks } from '~/lib/content';
 
 export function WhatNext() {
@@ -69,15 +70,19 @@ export function WhatNext() {
   ];
 
   return (
-    <Container className="tablet-landscape:py-28 py-20">
-      <SectionTitle title={t('heading')} />
-      <div className="mt-12 flex flex-col gap-6">
-        {cards.map((card) => (
+    <Container className="">
+      <Reveal {...scrollDrivenRevealMotion}>
+        <SectionTitle title={t('heading')} />
+      </Reveal>
+      <div className="tablet-landscape:gap-12 mt-16 flex flex-col gap-8">
+        {cards.map((card, index) => (
           <Reveal
             key={card.id}
-            className="bg-surface tablet-landscape:gap-10 tablet-landscape:p-10 flex items-center gap-6 rounded p-8 shadow-lg"
+            {...scrollDrivenRevealMotion}
+            delay={index * 0.07}
+            className="bg-surface/55 tablet-landscape:gap-10 tablet-landscape:p-10 flex items-center gap-6 rounded p-8 shadow-lg backdrop-blur-md"
           >
-            <div className="flex-1">
+            <div key="content" className="flex-1">
               <Heading
                 level="h3"
                 variant="subheading"
@@ -95,6 +100,7 @@ export function WhatNext() {
               {card.action}
             </div>
             <img
+              key="icon"
               src={card.icon}
               alt=""
               aria-hidden="true"

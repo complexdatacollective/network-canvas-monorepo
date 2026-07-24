@@ -15,6 +15,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Header } from '~/components/layout/Header';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
+import { heroScrollSpring } from '~/components/ui/scrollDrivenMotion';
 import { cn } from '~/lib/cn';
 
 import {
@@ -92,18 +93,13 @@ function renderStrong(chunks: ReactNode) {
 export function LaunchHero() {
   const t = useTranslations('SummerUpdate.hero');
   const sectionRef = useRef<HTMLElement>(null);
-  const entranceStarted = useRef(false);
   const shouldReduceMotion = useReducedMotion();
   const entranceControls = useAnimationControls();
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ['start start', 'end start'],
   });
-  const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 120,
-    damping: 24,
-    mass: 0.35,
-  });
+  const smoothProgress = useSpring(scrollYProgress, heroScrollSpring);
   const headingY = useTransform(smoothProgress, [0, 1], [0, -120]);
   const headingScale = useTransform(
     smoothProgress,
@@ -128,11 +124,10 @@ export function LaunchHero() {
   );
 
   useLayoutEffect(() => {
-    if (shouldReduceMotion === null || entranceStarted.current) {
+    if (shouldReduceMotion === null) {
       return undefined;
     }
 
-    entranceStarted.current = true;
     if (shouldReduceMotion) {
       sectionRef.current?.removeAttribute('data-entrance-pending');
       return undefined;
@@ -161,6 +156,7 @@ export function LaunchHero() {
 
     return () => {
       active = false;
+      entranceControls.stop();
       window.removeEventListener('scroll', settleOnScroll);
     };
   }, [entranceControls, shouldReduceMotion]);

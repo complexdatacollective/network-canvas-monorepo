@@ -20,6 +20,7 @@ export function Container({
     <Comp
       {...props}
       className={cn(
+        'tablet-landscape:my-32 my-20',
         'tablet-landscape:px-10 mx-auto w-full px-6',
         maxWidth === 'full'
           ? 'max-w-none'

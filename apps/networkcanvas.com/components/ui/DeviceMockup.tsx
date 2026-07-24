@@ -5,14 +5,20 @@ import { cn } from '~/lib/cn';
 
 export type Variant = 'interviewer' | 'architect' | 'fresco';
 
-const screenshots: Record<Variant, { src: string }> = {
+const screenshots: Record<
+  Variant,
+  { aspectRatio: 'aspect-4/3' | 'aspect-7/5'; src: string }
+> = {
   architect: {
+    aspectRatio: 'aspect-4/3',
     src: '/images/screenshots/architect.png',
   },
   interviewer: {
+    aspectRatio: 'aspect-7/5',
     src: '/images/screenshots/interviewer.png',
   },
   fresco: {
+    aspectRatio: 'aspect-7/5',
     src: '/images/screenshots/fresco.png',
   },
 };
@@ -34,7 +40,12 @@ export function DeviceMockup({
         className,
       )}
     >
-      <div className="relative aspect-4/3 w-full overflow-hidden rounded-[1.25rem] bg-black/10">
+      <div
+        className={cn(
+          'relative w-full overflow-hidden rounded-[1.25rem] bg-black/10',
+          screenshot.aspectRatio,
+        )}
+      >
         <Image
           fill
           src={screenshot.src}

@@ -6,6 +6,7 @@ import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { DeviceMockup } from '~/components/ui/DeviceMockup';
 import { Reveal } from '~/components/ui/Reveal';
+import { scrollDrivenRevealMotion } from '~/components/ui/scrollDrivenMotion';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { tools } from '~/lib/content';
 import { webDestinations } from '~/lib/getStarted';
@@ -33,18 +34,24 @@ export function Tools() {
   const t = useTranslations('Tools');
 
   return (
-    <Container className="tablet-landscape:py-28 py-20">
-      <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
+    <Container className="">
+      <Reveal {...scrollDrivenRevealMotion}>
+        <SectionHeading title={t('heading')}>
+          {t('introduction')}
+        </SectionHeading>
+      </Reveal>
 
-      <div className="tablet-landscape:gap-24 mt-16 flex flex-col gap-16">
-        {tools.map((tool) => {
+      <div className="tablet-landscape:gap-12 mt-16 flex flex-col gap-8">
+        {tools.map((tool, index) => {
           const accent = accents[tool.color];
           return (
             <Reveal
               key={tool.id}
-              className="tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 bg-surface/55 grid items-center gap-8 rounded p-6 shadow-xl backdrop-blur-md"
+              {...scrollDrivenRevealMotion}
+              delay={index * 0.08}
+              className="bg-surface/55 tablet-landscape:grid-cols-2 tablet-landscape:gap-16 tablet-landscape:p-10 grid grid-cols-1 items-center gap-8 rounded p-6 shadow-xl backdrop-blur-md"
             >
-              <div>
+              <div key="content" className="min-w-0">
                 <Heading
                   level="h3"
                   variant="subheading"
@@ -80,7 +87,10 @@ export function Tools() {
                   ) : null}
                 </div>
               </div>
-              <div>
+              <div
+                key="preview"
+                className="tablet-landscape:col-start-2 tablet-landscape:row-start-1 mx-auto w-full max-w-md"
+              >
                 <a
                   href={tool.href}
                   target="_blank"

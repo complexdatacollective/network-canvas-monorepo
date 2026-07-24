@@ -7,7 +7,10 @@ import {
   useTransform,
 } from 'motion/react';
 import {
+  Children,
   type ComponentProps,
+  Fragment,
+  isValidElement,
   type ReactNode,
   useRef,
   useSyncExternalStore,
@@ -39,6 +42,14 @@ type ScrollLinkedRevealProps = RevealContentProps & {
 const subscribeToHydration = () => () => undefined;
 const getClientHydrationSnapshot = () => true;
 const getServerHydrationSnapshot = () => false;
+
+function RevealContent({ content }: { content: ReactNode }) {
+  return Children.map(content, (child, index) => (
+    <Fragment key={isValidElement(child) ? (child.key ?? index) : index}>
+      {child}
+    </Fragment>
+  ));
+}
 
 function getEntryOffset(direction: RevealDirection, distance: number) {
   return {
@@ -115,7 +126,7 @@ function ScrollLinkedReveal({
       className={className}
       {...props}
     >
-      {children}
+      <RevealContent content={children} />
     </motion.div>
   );
 }
@@ -153,7 +164,7 @@ function InViewReveal({
       className={className}
       {...props}
     >
-      {children}
+      <RevealContent content={children} />
     </motion.div>
   );
 }

@@ -50,8 +50,32 @@ vi.mock('@codaco/art', () => ({
 }));
 
 vi.mock('~/components/ui/Reveal', () => ({
-  Reveal: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
-    <div {...props}>{children}</div>
+  Reveal: ({
+    children,
+    delay: _delay,
+    direction,
+    distance: _distance,
+    duration: _duration,
+    easing: _easing,
+    scrollLinked,
+    scrollStagger: _scrollStagger,
+    ...props
+  }: HTMLAttributes<HTMLDivElement> & {
+    delay?: number;
+    direction?: string;
+    distance?: number;
+    duration?: number;
+    easing?: readonly number[];
+    scrollLinked?: boolean;
+    scrollStagger?: number;
+  }) => (
+    <div
+      data-scroll-direction={direction}
+      data-scroll-linked={scrollLinked ? 'true' : undefined}
+      {...props}
+    >
+      {children}
+    </div>
   ),
 }));
 
@@ -97,6 +121,13 @@ describe('localized Get Started page', () => {
     expect(cards[0]?.parentElement).toHaveClass('tablet-landscape:col-span-6');
     expect(cards[1]?.parentElement).toHaveClass('tablet-landscape:col-span-6');
     expect(cards[2]?.parentElement).toHaveClass('tablet-landscape:col-span-12');
+    for (const card of cards) {
+      expect(card?.parentElement).toHaveAttribute('data-scroll-linked', 'true');
+      expect(card?.parentElement).toHaveAttribute(
+        'data-scroll-direction',
+        'zoom',
+      );
+    }
     expect(cards[1]).toHaveClass('bg-slate-blue/10', 'backdrop-blur-md');
     expect(
       document.querySelectorAll('[data-get-started-weave-target]'),

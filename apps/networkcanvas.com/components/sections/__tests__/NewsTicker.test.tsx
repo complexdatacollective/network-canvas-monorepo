@@ -92,4 +92,30 @@ describe('NewsTicker', () => {
     expect(screen.getAllByText('Últimas noticias:')).toHaveLength(2);
     expect(screen.getAllByText('[Leer la nota completa]')).toHaveLength(3);
   });
+
+  it('localizes internal news links to the current homepage locale', () => {
+    renderWithIntl(
+      <NewsTicker
+        newsItems={[
+          {
+            id: 'announcement',
+            title: 'Release announcement',
+            href: '/summer-2026-update',
+          },
+        ]}
+      />,
+      'en-GB',
+    );
+
+    const links = screen.getAllByRole('link', { name: '[Full story]' });
+    expect(links).toHaveLength(2);
+    expect(
+      links.every(
+        (link) => link.getAttribute('href') === '/en-GB/summer-2026-update',
+      ),
+    ).toBe(true);
+    expect(links.every((link) => link.getAttribute('target') === null)).toBe(
+      true,
+    );
+  });
 });

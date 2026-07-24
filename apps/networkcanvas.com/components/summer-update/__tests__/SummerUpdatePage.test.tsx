@@ -1,7 +1,20 @@
-import { cleanup, fireEvent, screen, within } from '@testing-library/react';
-import type { ComponentPropsWithoutRef, ComponentType, ReactNode } from 'react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
+import {
+  type ComponentPropsWithoutRef,
+  type ComponentType,
+  type ReactNode,
+  StrictMode,
+} from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { loadLocaleMessages } from '~/lib/i18n/messages';
 import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { SummerUpdatePage } from '../SummerUpdatePage';
@@ -10,6 +23,7 @@ const { launchAnimationControls, motionPreferences } = vi.hoisted(() => ({
   launchAnimationControls: {
     set: vi.fn(),
     start: vi.fn(() => Promise.resolve()),
+    stop: vi.fn(),
   },
   motionPreferences: { shouldReduce: false },
 }));
@@ -228,10 +242,30 @@ afterEach(() => {
   cleanup();
   launchAnimationControls.set.mockClear();
   launchAnimationControls.start.mockClear();
+  launchAnimationControls.stop.mockClear();
   motionPreferences.shouldReduce = false;
 });
 
 describe('SummerUpdatePage', () => {
+  it('restarts the hero entrance when Strict Mode replays a client mount', () => {
+    render(
+      <StrictMode>
+        <NextIntlClientProvider
+          locale="en-US"
+          messages={loadLocaleMessages('en-US')}
+          timeZone="UTC"
+        >
+          <SummerUpdatePage />
+        </NextIntlClientProvider>
+      </StrictMode>,
+    );
+
+    expect(launchAnimationControls.start).toHaveBeenCalledTimes(2);
+    expect(launchAnimationControls.start).toHaveBeenNthCalledWith(1, 'visible');
+    expect(launchAnimationControls.start).toHaveBeenNthCalledWith(2, 'visible');
+    expect(launchAnimationControls.stop).toHaveBeenCalledOnce();
+  });
+
   it('defines PWA where the abbreviation is introduced', () => {
     renderWithIntl(<SummerUpdatePage />);
 
@@ -422,7 +456,7 @@ describe('SummerUpdatePage', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'A clearer home for the whole Network Canvas project',
+        name: 'Revamped documentation and a new project website',
       }),
     ).toBeInTheDocument();
     expect(
@@ -483,8 +517,8 @@ describe('SummerUpdatePage', () => {
       documentationImageColumn,
     );
     expect(websiteArticle.lastElementChild).toBe(websiteImageColumn);
-    expect(websiteScreenshot.parentElement).toHaveClass('aspect-4/3');
-    expect(documentationScreenshot.parentElement).toHaveClass('aspect-4/3');
+    expect(websiteScreenshot.parentElement).toHaveClass('aspect-7/5');
+    expect(documentationScreenshot.parentElement).toHaveClass('aspect-7/5');
   });
 
   it('presents the new-generation destinations as descriptive launch cards', () => {
@@ -515,7 +549,7 @@ describe('SummerUpdatePage', () => {
     ).toHaveAttribute('href', 'https://architect.networkcanvas.com/');
   });
 
-  it('uses consistent frame ratios for the new app screenshots', () => {
+  it('matches new app screenshot ratios without cropping', () => {
     renderWithIntl(<SummerUpdatePage />);
 
     const architectScreenshot = screen.getByRole('img', {
@@ -526,7 +560,7 @@ describe('SummerUpdatePage', () => {
     });
 
     expect(architectScreenshot.parentElement).toHaveClass('aspect-4/3');
-    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-4/3');
+    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-7/5');
   });
 
   it('uses theme-aware sections, a text-anchored woven hero, and white browser frames', () => {
@@ -589,7 +623,7 @@ describe('SummerUpdatePage', () => {
       name: 'Interviewer dashboard showing protocol cards and a resume interview action',
     });
     expect(interviewerScreenshot.parentElement).toHaveClass('bg-white');
-    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-4/3');
+    expect(interviewerScreenshot.parentElement).toHaveClass('aspect-7/5');
     expect(interviewerScreenshot.parentElement).not.toHaveClass(
       'bg-rich-black',
     );
@@ -598,6 +632,16 @@ describe('SummerUpdatePage', () => {
   it('localizes feature interactions, images, and compatibility statuses in Spanish', () => {
     renderWithIntl(<SummerUpdatePage />, 'es');
 
+    expect(
+      screen.getByRole('heading', {
+        name: 'Documentación renovada y un nuevo sitio web del proyecto',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /La documentación ahora se estructura según la etapa de su investigación/,
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
         name: 'Architect e Interviewer, reinventados para el navegador',

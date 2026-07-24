@@ -14,7 +14,7 @@ const { backgroundRender, heroRender } = vi.hoisted(() => ({
 vi.mock('~/components/ui/HomepagePageBackground', () => ({
   HomepagePageBackground: ({ reveal }: { reveal?: boolean }) => {
     backgroundRender({ reveal });
-    return null;
+    return <div data-testid="homepage-background" />;
   },
 }));
 
@@ -39,28 +39,25 @@ const newsItems: NewsItem[] = [
   },
 ];
 
-function latestReveal() {
-  return backgroundRender.mock.calls.at(-1)?.[0]?.reveal;
-}
-
 describe('HomepageEntrance', () => {
   beforeEach(() => {
     backgroundRender.mockClear();
     heroRender.mockClear();
   });
 
-  it('releases the page background when the hero entrance starts', () => {
+  it('releases the pre-mounted page background when the hero entrance starts', () => {
     const content: ReactNode = <div>Homepage content</div>;
     render(
       <HomepageEntrance newsItems={newsItems}>{content}</HomepageEntrance>,
     );
 
-    expect(latestReveal()).toBe(false);
+    expect(backgroundRender).toHaveBeenLastCalledWith({ reveal: false });
+    expect(screen.getByTestId('homepage-background')).toBeInTheDocument();
     expect(screen.getByText('Homepage content')).toBeInTheDocument();
     expect(document.querySelectorAll('.relative.z-10')).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Start entrance' }));
 
-    expect(latestReveal()).toBe(true);
+    expect(backgroundRender).toHaveBeenLastCalledWith({ reveal: true });
   });
 });

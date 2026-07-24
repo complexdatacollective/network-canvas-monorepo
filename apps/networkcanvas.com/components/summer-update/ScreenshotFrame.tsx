@@ -16,10 +16,12 @@ const getServerHydrationSnapshot = () => false;
 export function ScreenshotFrame({
   address,
   alt,
+  aspectRatio = '7:5',
   src,
 }: {
   address: string;
   alt: string;
+  aspectRatio?: '4:3' | '7:5';
   src: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
@@ -88,7 +90,11 @@ export function ScreenshotFrame({
         </span>
       </div>
       <motion.div
-        className="relative aspect-4/3 origin-top overflow-hidden bg-white"
+        className={
+          aspectRatio === '4:3'
+            ? 'relative aspect-4/3 origin-top overflow-hidden bg-white'
+            : 'relative aspect-7/5 origin-top overflow-hidden bg-white'
+        }
         style={
           motionEnabled
             ? {
@@ -104,7 +110,7 @@ export function ScreenshotFrame({
           src={src}
           alt={alt}
           sizes="(min-width: 801px) 50vw, 100vw"
-          className="object-cover"
+          className="object-contain"
         />
       </motion.div>
     </div>

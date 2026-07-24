@@ -71,6 +71,12 @@ describe('message catalogs', () => {
     expect(
       britishEnglish.get('SummerUpdate.resources.documentation.heading'),
     ).toContain('organised');
+    expect(
+      americanEnglish.get('SummerUpdate.resources.documentation.description'),
+    ).toContain('analyzing');
+    expect(
+      britishEnglish.get('SummerUpdate.resources.documentation.description'),
+    ).toContain('analysing');
   });
 
   it('keeps placeholders and rich-text tags in parity', () => {

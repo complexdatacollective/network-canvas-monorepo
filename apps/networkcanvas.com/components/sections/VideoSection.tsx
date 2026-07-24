@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
+import { scrollDrivenRevealMotion } from '~/components/ui/scrollDrivenMotion';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { externalLinks } from '~/lib/content';
 
@@ -25,12 +26,18 @@ export function VideoSection() {
   const t = useTranslations('Video');
 
   return (
-    <Container className="tablet-landscape:py-24 py-20">
-      <SectionHeading title={t('heading')}>
-        {t.rich('description', { channel: renderChannelLink })}
-      </SectionHeading>
+    <Container>
+      <Reveal {...scrollDrivenRevealMotion}>
+        <SectionHeading title={t('heading')}>
+          {t.rich('description', { channel: renderChannelLink })}
+        </SectionHeading>
+      </Reveal>
 
-      <Reveal className="mx-auto mt-12 max-w-3xl">
+      <Reveal
+        {...scrollDrivenRevealMotion}
+        direction="zoom"
+        className="mx-auto mt-12 max-w-3xl"
+      >
         <iframe
           src="https://www.youtube-nocookie.com/embed/XzfE6j-LnII?si=sg8osuFqwG3ZlDK1"
           title={t('watchLabel')}

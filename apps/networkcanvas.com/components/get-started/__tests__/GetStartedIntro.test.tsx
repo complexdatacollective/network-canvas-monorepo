@@ -13,6 +13,7 @@ const animationControls = vi.hoisted(() => ({
   set: vi.fn(),
   start: vi.fn(() => Promise.resolve()),
 }));
+const heroDepartureStyle = vi.hoisted(() => ({ opacity: 'scroll-opacity' }));
 
 type MotionProps = {
   animate?: unknown;
@@ -20,6 +21,7 @@ type MotionProps = {
   className?: string;
   initial?: boolean | string;
   variants?: unknown;
+  style?: unknown;
 };
 
 function MotionDiv({
@@ -27,6 +29,7 @@ function MotionDiv({
   children,
   className,
   initial,
+  style,
   variants,
 }: MotionProps) {
   return (
@@ -34,6 +37,7 @@ function MotionDiv({
       className={className}
       data-animate={animate === animationControls ? 'controls' : 'none'}
       data-initial={initial === false ? 'false' : (initial ?? 'none')}
+      data-scroll-style={style === heroDepartureStyle ? 'active' : 'none'}
       data-variants={variants ? 'active' : 'none'}
     >
       {children}
@@ -79,6 +83,10 @@ vi.mock('~/components/layout/Header', () => ({
   ),
 }));
 
+vi.mock('~/components/ui/useHeroScrollDeparture', () => ({
+  useHeroScrollDeparture: () => heroDepartureStyle,
+}));
+
 describe('GetStartedIntro', () => {
   beforeEach(() => {
     animationControls.set.mockClear();
@@ -101,6 +109,11 @@ describe('GetStartedIntro', () => {
       screen.getByText(
         'Start by clicking the card that best describes the stage you are at with your research.',
       ),
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole('heading', { level: 1 })
+        .closest('[data-scroll-style="active"]'),
     ).toBeInTheDocument();
     expect(documentationLink).toHaveClass('relative', 'pb-24');
     expect(screen.getByText('Learn more about the project')).toHaveClass(

@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef } from 'react';
 
 import { Header } from '~/components/layout/Header';
 import { Hero } from '~/components/sections/Hero';
+import { useHeroScrollDeparture } from '~/components/ui/useHeroScrollDeparture';
 import { createHeroEntrance } from '~/lib/heroEntrance';
 import type { NewsItem } from '~/lib/siteContent';
 
@@ -19,6 +20,7 @@ export function HeroIntro({ newsItems, onEntranceStart }: HeroIntroProps) {
   const controls = useAnimationControls();
   const entranceStarted = useRef(false);
   const introRef = useRef<HTMLDivElement>(null);
+  const heroScrollStyle = useHeroScrollDeparture(introRef);
 
   useLayoutEffect(() => {
     if (reduceMotion === null || entranceStarted.current) {
@@ -54,6 +56,7 @@ export function HeroIntro({ newsItems, onEntranceStart }: HeroIntroProps) {
           containerVariants={entrance.heroVariants}
           itemVariants={entrance.itemVariants}
           newsItems={newsItems}
+          scrollStyle={heroScrollStyle}
         />
       </motion.div>
     </div>

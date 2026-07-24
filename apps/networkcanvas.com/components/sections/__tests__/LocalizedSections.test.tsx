@@ -1,4 +1,4 @@
-import { cleanup, screen } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -16,11 +16,31 @@ vi.mock('~/components/ui/Reveal', () => ({
   Reveal: ({
     children,
     delay: _delay,
+    direction,
+    distance: _distance,
+    duration: _duration,
+    easing: _easing,
+    scrollLinked,
+    scrollStagger: _scrollStagger,
     ...props
   }: ComponentPropsWithoutRef<'div'> & {
     children: ReactNode;
     delay?: number;
-  }) => <div {...props}>{children}</div>,
+    direction?: string;
+    distance?: number;
+    duration?: number;
+    easing?: readonly number[];
+    scrollLinked?: boolean;
+    scrollStagger?: number;
+  }) => (
+    <div
+      data-scroll-direction={direction}
+      data-scroll-linked={scrollLinked ? 'true' : undefined}
+      {...props}
+    >
+      {children}
+    </div>
+  ),
 }));
 
 vi.mock('~/lib/i18n/navigation', () => ({
@@ -76,6 +96,46 @@ describe('localized home sections', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders each design principle as a wide illustrated card link', () => {
+    renderWithIntl(<DesignPrinciples />, 'es');
+
+    const heading = screen.getByRole('heading', {
+      name: 'Flexibilidad ontológica',
+      level: 3,
+    });
+    const card = heading.closest<HTMLElement>('.relative');
+
+    if (!card) {
+      throw new Error('Expected the principle heading to be inside a card');
+    }
+
+    expect(heading.closest('a')).not.toBeInTheDocument();
+    expect(
+      within(card).getByRole('link', { name: 'Flexibilidad ontológica' }),
+    ).toHaveAttribute(
+      'href',
+      'https://documentation.networkcanvas.com/en/desktop/project-information/project-overview#ontological-flexibility',
+    );
+    expect(card.querySelector('img')).toHaveAttribute(
+      'src',
+      expect.stringContaining(
+        '/images/illustrations/design-principles/ontological-flexibility.svg',
+      ),
+    );
+    expect(card.querySelector('img')).toHaveAttribute('alt', '');
+    expect(card.querySelector('img')?.parentElement).not.toHaveClass(
+      'bg-surface-2/55',
+      'p-4',
+    );
+    expect(heading.closest('.max-w-\\[1400px\\]')).toBeInTheDocument();
+    expect(card.parentElement).toHaveClass('tablet-landscape:col-span-2');
+    expect(card).toHaveAttribute('data-scroll-linked', 'true');
+    expect(card.parentElement).not.toHaveClass('laptop:col-span-3');
+    expect(heading.parentElement).toHaveClass('tablet-portrait:col-span-2');
+    expect(heading.parentElement).not.toHaveClass('laptop:col-span-3');
+    expect(screen.getAllByRole('link')).toHaveLength(5);
+  });
+
   it('renders Spanish rich text and calls to action', () => {
     renderWithIntl(
       <>
@@ -96,6 +156,10 @@ describe('localized home sections', () => {
       'https://www.youtube-nocookie.com/embed/XzfE6j-LnII?si=sg8osuFqwG3ZlDK1',
     );
     expect(videoEmbed).not.toHaveAttribute('sandbox');
+    expect(videoEmbed.parentElement).toHaveAttribute(
+      'data-scroll-direction',
+      'zoom',
+    );
     expect(
       screen.getByRole('link', { name: 'artículo de documentación' }),
     ).toBeInTheDocument();
@@ -111,18 +175,37 @@ describe('localized home sections', () => {
       .getByRole('heading', { name: 'Localized fixture publication' })
       .closest('a');
     expect(publicationCard).toHaveClass(
-      'bg-surface-3',
+      'bg-surface-3/55',
       'text-surface-3-contrast',
+      'backdrop-blur-md',
     );
-    expect(publicationCard?.parentElement?.parentElement).toHaveClass(
-      'tablet-portrait:grid-cols-2',
-      'tablet-landscape:grid-cols-3',
-      'laptop:grid-cols-4',
-      'grid-cols-1',
-      'w-full',
-      'max-w-[1600px]',
-      'mx-auto',
+    const publicationHeading = screen.getByRole('heading', {
+      name: 'Publicaciones recientes que utilizan Network Canvas',
+      level: 2,
+    });
+    const publicationTrack = screen.getByTestId('publication-rail-track');
+
+    expect(publicationHeading).toHaveAttribute(
+      'id',
+      'recent-publications-heading',
     );
-    expect(publicationCard?.closest('.max-w-none')).toBeInTheDocument();
+    expect(publicationHeading.closest('section')).toHaveAttribute(
+      'data-publication-rail-mode',
+      'scrollable',
+    );
+    expect(publicationTrack).toHaveClass('flex', 'w-max', 'items-stretch');
+    expect(publicationTrack).toContainElement(publicationCard);
+    expect(publicationTrack).not.toContainElement(publicationHeading);
+    expect(
+      screen.getByRole('region', {
+        name: 'Carrusel de publicaciones recientes',
+      }),
+    ).toContainElement(publicationTrack);
+    expect(publicationCard?.parentElement).toHaveClass(
+      'w-64',
+      'tablet-portrait:w-96',
+      'tablet-landscape:w-112',
+      'snap-start',
+    );
   });
 });

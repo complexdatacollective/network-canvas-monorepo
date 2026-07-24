@@ -335,8 +335,8 @@ function useConvergenceReveal(
   const innerRadius = useTransform(radius, (value) =>
     Math.max(0, value * (1 - REVEAL_EDGE_FEATHER)),
   );
-  const centerX = convergence.x * 100;
-  const centerY = convergence.y * 100;
+  const centerX = String(convergence.x * 100);
+  const centerY = String(convergence.y * 100);
   const maskImage = useMotionTemplate`radial-gradient(circle at ${centerX}% ${centerY}%, transparent ${innerRadius}px, #000 ${radius}px)`;
 
   const [masked, setMasked] = useState(resolved !== undefined);
@@ -619,7 +619,11 @@ export function PageBackground({
       aria-hidden="true"
       data-testid="page-background-layer"
       className="pointer-events-none fixed inset-0 z-1 overflow-hidden"
-      style={{ ...maskStyle, ...scrollStyle }}
+      style={{
+        ...maskStyle,
+        ...scrollStyle,
+        visibility: resolved === false ? 'hidden' : undefined,
+      }}
     >
       <NetworkWeaveBackground
         seed="networkcanvas.com"

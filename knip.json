@@ -18,7 +18,6 @@
     },
     "packages/interview": {
       "entry": [
-        "src/contract/index.ts",
         "src/**/*.stories.tsx",
         "e2e/specs/**/*.ts",
         "e2e/host/src/main.tsx",
@@ -121,8 +120,7 @@
         "index.html!",
         "preview/index.html!",
         "src/preview-main.tsx!",
-        "e2e/specs/**/*.ts",
-        "e2e/scripts/*.{ts,mjs}"
+        "e2e/specs/**/*.ts"
       ],
       "vite": true,
       "project": ["src/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}"],

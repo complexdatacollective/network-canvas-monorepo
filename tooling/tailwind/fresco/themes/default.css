@@ -11,7 +11,7 @@
 
 @layer theme {
   :root {
-    --theme-root-size: 1rem;
+    --theme-root-size: 0.9rem;
 
     --heading-font: 'Nunito Variable', sans-serif;
     --body-font: 'Inclusive Sans Variable', sans-serif;

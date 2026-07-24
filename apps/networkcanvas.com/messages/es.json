@@ -92,6 +92,7 @@
   },
   "Publications": {
     "heading": "Publicaciones recientes que utilizan Network Canvas",
+    "carouselLabel": "Carrusel de publicaciones recientes",
     "introduction": "Estas son las ocho publicaciones más recientes que utilizan Network Canvas. Para obtener orientación sobre cómo citar Network Canvas, consulte nuestro <article>artículo de documentación</article>.",
     "submission": "Si desea que incluyamos su publicación, comuníquenoslo en el <thread>hilo</thread> de nuestro sitio de la comunidad.",
     "article": "artículo de documentación",
@@ -624,12 +625,12 @@
     },
     "resources": {
       "label": "Recursos del proyecto",
-      "heading": "Un lugar más claro para todo el proyecto Network Canvas",
+      "heading": "Documentación renovada y un nuevo sitio web del proyecto",
       "introduction": "Las aplicaciones no son la única parte de Network Canvas que ha cambiado. También hemos rediseñado el sitio web del proyecto y reorganizado la documentación para que resulte más fácil comprender la plataforma, elegir las herramientas adecuadas y encontrar el siguiente paso.",
       "documentation": {
         "label": "Documentación del proyecto",
         "heading": "Orientación organizada según su flujo de trabajo de investigación",
-        "description": "La documentación ahora parte del trabajo que está realizando: comenzar, diseñar protocolos, recopilar datos y analizar resultados. La nueva navegación por flujos de trabajo y las guías renovadas facilitan encontrar el siguiente paso.",
+        "description": "La documentación ahora se estructura según la etapa de su investigación: primeros pasos, diseño de protocolos, recopilación de datos y análisis de resultados. La nueva navegación por flujos de trabajo y las guías renovadas facilitan encontrar el siguiente paso.",
         "link": "Explorar la documentación",
         "screenshotAlt": "Página de inicio rediseñada de la documentación de Network Canvas"
       },
