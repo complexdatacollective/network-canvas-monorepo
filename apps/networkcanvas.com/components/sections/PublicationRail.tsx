@@ -49,6 +49,7 @@ export function PublicationRail({
   const railRef = useRef<HTMLUListElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const measurementFrameRef = useRef<number | null>(null);
+  const wasPinnedRef = useRef(false);
   const shouldReduceMotion = useReducedMotion();
   const hasHydrated = useSyncExternalStore(
     subscribeToHydration,
@@ -139,9 +140,16 @@ export function PublicationRail({
 
   useEffect(() => {
     const viewport = viewportRef.current;
-    if (!viewport || !isPinned) return;
+    const wasPinned = wasPinnedRef.current;
+    wasPinnedRef.current = isPinned;
 
-    viewport.scrollLeft = scrollYProgress.get() * measurements.travel;
+    if (!viewport) return;
+
+    if (isPinned) {
+      viewport.scrollLeft = scrollYProgress.get() * measurements.travel;
+    } else if (wasPinned) {
+      viewport.scrollLeft = 0;
+    }
   }, [isPinned, measurements.travel, scrollYProgress]);
 
   return (

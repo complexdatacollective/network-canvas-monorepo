@@ -84,12 +84,15 @@ const originalInnerHeight = Object.getOwnPropertyDescriptor(
   'innerHeight',
 );
 let contentScrollHeight = 600;
+let viewportScrollWidth = 1800;
+let pinnedViewportMatches = true;
+const mediaQueryListeners = new Set<() => void>();
 
-function createRail() {
+function createRail(entries: readonly Publication[] = publications) {
   return (
     <PublicationRail
       headingId="recent-publications-heading"
-      publications={publications}
+      publications={entries}
       railLabel="Recent publications carousel"
     >
       <div>
@@ -100,8 +103,13 @@ function createRail() {
   );
 }
 
-function renderRail() {
-  return render(createRail());
+function renderRail(entries: readonly Publication[] = publications) {
+  return render(createRail(entries));
+}
+
+function setPinnedViewportMatches(matches: boolean) {
+  pinnedViewportMatches = matches;
+  mediaQueryListeners.forEach((listener) => listener());
 }
 
 describe('PublicationRail', () => {
@@ -110,12 +118,15 @@ describe('PublicationRail', () => {
     motionState.reducedMotion = false;
     motionState.scrollHandler = undefined;
     contentScrollHeight = 600;
+    viewportScrollWidth = 1800;
+    pinnedViewportMatches = true;
+    mediaQueryListeners.clear();
 
     Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
       configurable: true,
       get() {
         return this.getAttribute('data-testid') === 'publication-rail-viewport'
-          ? 1800
+          ? viewportScrollWidth
           : 0;
       },
     });
@@ -141,16 +152,27 @@ describe('PublicationRail', () => {
     });
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
-      value: vi.fn().mockImplementation((query: string) => ({
-        matches: query === '(min-width: 768px) and (min-height: 640px)',
-        media: query,
-        onchange: null,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      })),
+      value: vi.fn().mockImplementation((query: string) => {
+        const isPinnedRailQuery =
+          query === '(min-width: 768px) and (min-height: 640px)';
+
+        return {
+          get matches() {
+            return isPinnedRailQuery && pinnedViewportMatches;
+          },
+          media: query,
+          onchange: null,
+          addEventListener: (_event: string, listener: () => void) => {
+            mediaQueryListeners.add(listener);
+          },
+          removeEventListener: (_event: string, listener: () => void) => {
+            mediaQueryListeners.delete(listener);
+          },
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        };
+      }),
     });
   });
 
@@ -276,6 +298,38 @@ describe('PublicationRail', () => {
     expect(section).not.toHaveAttribute('style');
     expect(viewport).toHaveClass('overflow-x-auto');
     expect(viewport).toHaveAttribute('tabindex', '0');
+  });
+
+  it('resets the pinned position once when changing to the native fallback', async () => {
+    motionState.progress = 0.5;
+    const { rerender } = renderRail();
+    const section = screen.getByRole('region', {
+      name: 'Recent publications',
+    });
+    const viewport = screen.getByTestId('publication-rail-viewport');
+
+    await waitFor(() => {
+      expect(section).toHaveAttribute('data-publication-rail-mode', 'pinned');
+    });
+    expect(viewport.scrollLeft).toBe(400);
+
+    act(() => setPinnedViewportMatches(false));
+
+    await waitFor(() => {
+      expect(section).toHaveAttribute(
+        'data-publication-rail-mode',
+        'scrollable',
+      );
+    });
+    expect(viewport.scrollLeft).toBe(0);
+
+    viewport.scrollLeft = 175;
+    viewportScrollWidth = 1700;
+    rerender(createRail(publications.slice(0, 2)));
+
+    await waitFor(() => {
+      expect(viewport.scrollLeft).toBe(175);
+    });
   });
 
   it('hydrates the static fallback before activating scroll-linked motion', async () => {

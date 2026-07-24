@@ -45,6 +45,11 @@ describe('HomepagePageBackground', () => {
   beforeEach(() => {
     motionPreferences.shouldReduce = false;
     pageBackgroundRender.mockClear();
+    Object.defineProperty(window, 'scrollX', {
+      configurable: true,
+      value: 0,
+      writable: true,
+    });
     Object.defineProperty(window, 'scrollY', {
       configurable: true,
       value: 0,
@@ -249,6 +254,45 @@ describe('HomepagePageBackground', () => {
       const background = getLatestBackgroundProps();
       expect(background.convergence.x).toBeCloseTo(0.3571, 4);
       expect(background.convergence.y).toBeCloseTo(0.2143, 4);
+    });
+  });
+
+  it('keeps the document-space anchor stable during horizontal scroll', async () => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function getBoundingClientRect(this: Element) {
+        if (
+          this instanceof HTMLElement &&
+          this.dataset.testid === 'page-background-layer'
+        ) {
+          return new DOMRect(0, 0, 1000, 1000);
+        }
+
+        return new DOMRect();
+      },
+    );
+
+    render(
+      <>
+        <div data-homepage-weave-target />
+        <HomepagePageBackground />
+      </>,
+    );
+
+    expect(getLatestBackgroundProps().convergence).toEqual({
+      x: 0.5,
+      y: 0.3,
+    });
+
+    act(() => {
+      window.scrollX = 200;
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    await waitFor(() => {
+      expect(getLatestBackgroundProps().convergence).toEqual({
+        x: 0.5,
+        y: 0.3,
+      });
     });
   });
 

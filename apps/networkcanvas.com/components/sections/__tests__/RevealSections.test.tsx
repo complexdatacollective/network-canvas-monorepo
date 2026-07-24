@@ -92,8 +92,12 @@ describe('sections using Reveal', () => {
     expect(
       multiChildKeySets.every((keys) => keys.every((key) => key !== null)),
     ).toBe(true);
-    expect(consoleError).not.toHaveBeenCalledWith(
-      expect.stringContaining('unique "key" prop'),
-    );
+    expect(
+      consoleError.mock.calls.some((arguments_) =>
+        arguments_.some((argument) =>
+          String(argument).includes('unique "key" prop'),
+        ),
+      ),
+    ).toBe(false);
   });
 });

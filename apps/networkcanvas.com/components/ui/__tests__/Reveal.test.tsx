@@ -24,8 +24,12 @@ describe('Reveal', () => {
     expect(screen.getByText('First child')).toBeInTheDocument();
     expect(screen.getByText('Second child')).toBeInTheDocument();
     expect(container.firstElementChild?.children).toHaveLength(2);
-    expect(consoleError).not.toHaveBeenCalledWith(
-      expect.stringContaining('unique "key" prop'),
-    );
+    expect(
+      consoleError.mock.calls.some((arguments_) =>
+        arguments_.some((argument) =>
+          String(argument).includes('unique "key" prop'),
+        ),
+      ),
+    ).toBe(false);
   });
 });

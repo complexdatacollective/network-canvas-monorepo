@@ -129,10 +129,7 @@ export function HomepagePageBackground({
       // glide to centre stays smooth and independent of the hero's live offset.
       const restingConvergence = {
         x: clampToViewport(
-          (heroRect.left -
-            window.scrollX +
-            heroRect.width / 2 -
-            layerRect.left) /
+          (heroRect.left + heroRect.width / 2 - layerRect.left) /
             layerRect.width,
         ),
         y: clampToViewport(
