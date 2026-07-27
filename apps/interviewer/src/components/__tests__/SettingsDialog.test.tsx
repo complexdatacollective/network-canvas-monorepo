@@ -1,12 +1,26 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  type ConstraintConflict,
+  SyntheticDataConstraintError,
+} from '@codaco/protocol-utilities';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { AuthMode } from '~/lib/auth/api';
 import type { AuthStateKind } from '~/lib/auth/AuthContext';
 import { DEFAULT_SETTINGS } from '~/lib/db/types';
 import type { ProtocolWithCounts } from '~/lib/db/types';
+
+// `@codaco/fresco-ui/Toast`'s `ToastData` isn't exported, so this mirrors
+// only the fields these tests assert on from `toast.add()`'s argument.
+type ToastAddCall = {
+  title: string;
+  description?: string | ReactNode;
+  variant?: string;
+  timeout?: number;
+};
 
 const {
   mockEstimateStorage,
@@ -14,12 +28,16 @@ const {
   mockUseAuth,
   mockListProtocols,
   mockOpenSetupWizard,
+  mockGenerateSyntheticSessions,
+  mockToastAdd,
 } = vi.hoisted(() => ({
   mockEstimateStorage: vi.fn(),
   mockIsPersisted: vi.fn(),
   mockUseAuth: vi.fn(),
   mockListProtocols: vi.fn(),
   mockOpenSetupWizard: vi.fn(),
+  mockGenerateSyntheticSessions: vi.fn(),
+  mockToastAdd: vi.fn<(data: ToastAddCall) => string>(),
 }));
 
 vi.mock('~/lib/storage', async () => {
@@ -59,11 +77,15 @@ vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
 }));
 
 vi.mock('@codaco/fresco-ui/Toast', () => ({
-  useToast: () => ({ add: vi.fn() }),
+  useToast: () => ({ add: mockToastAdd }),
 }));
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
   default: () => ({ confirm: vi.fn() }),
+}));
+
+vi.mock('~/lib/synthetic/generate', () => ({
+  generateSyntheticSessions: mockGenerateSyntheticSessions,
 }));
 
 import { SettingsDialog } from '../SettingsDialog';
@@ -282,5 +304,83 @@ describe('SettingsDialog synthetic tab — protocol import race', () => {
       );
     });
     expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled();
+  });
+});
+
+describe('SettingsDialog synthetic tab — generation failure toast', () => {
+  async function generateWithSelectedProtocol() {
+    mockListProtocols.mockResolvedValue([makeProtocol('Protocol A', 'hash-1')]);
+    const user = userEvent.setup();
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Protocol' })).toHaveValue(
+        'hash-1',
+      );
+    });
+    await user.click(screen.getByRole('button', { name: 'Generate' }));
+  }
+
+  it('shows a plain failure and keeps it on screen until dismissed', async () => {
+    mockGenerateSyntheticSessions.mockRejectedValueOnce(
+      new Error('Protocol not found for hash "hash-1".'),
+    );
+
+    await generateWithSelectedProtocol();
+
+    await waitFor(() => expect(mockToastAdd).toHaveBeenCalled());
+    expect(mockToastAdd).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'Generation failed',
+        description: 'Protocol not found for hash "hash-1".',
+        variant: 'destructive',
+        timeout: 0,
+      }),
+    );
+  });
+
+  it('renders a refused generation as a readable list of conflicts, kept on screen until dismissed', async () => {
+    const conflicts: ConstraintConflict[] = [
+      {
+        entity: 'node',
+        entityType: 'person',
+        entityTypeName: 'Person',
+        variableIds: ['band-var'],
+        variableNames: ['Band'],
+        rules: ['unique'],
+        reason:
+          'only 2 distinct values are possible, but up to 5 nodes of this type can be generated',
+      },
+    ];
+    mockGenerateSyntheticSessions.mockRejectedValueOnce(
+      new SyntheticDataConstraintError(
+        conflicts,
+        'this protocol declares validation rules that cannot all be satisfied together',
+      ),
+    );
+
+    await generateWithSelectedProtocol();
+
+    await waitFor(() => expect(mockToastAdd).toHaveBeenCalled());
+    const call = mockToastAdd.mock.calls.at(-1)?.[0];
+    expect(call?.variant).toBe('destructive');
+    expect(call?.timeout).toBe(0);
+
+    // The description is a React node, not the pre-formatted string, so
+    // render it to confirm each conflict became its own list item.
+    render(<>{call?.description}</>);
+    expect(
+      screen.getByText(
+        /this protocol declares validation rules that cannot all be satisfied together/i,
+      ),
+    ).toBeInTheDocument();
+    // `listitem` doesn't compute an accessible name from its content (ARIA
+    // "name from content" is prohibited for this role), so assert on the
+    // rendered <li> by its text content instead of an accessible-name query.
+    const conflictItem = screen.getByText(
+      /node "Person", "Band" \(unique\): only 2 distinct values are possible/,
+    );
+    expect(conflictItem.tagName).toBe('LI');
   });
 });
