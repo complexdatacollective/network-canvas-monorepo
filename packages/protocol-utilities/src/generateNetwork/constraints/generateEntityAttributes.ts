@@ -5,8 +5,10 @@ import { addSteps } from './dateWindow';
 import {
   canonicalComparatorEdges,
   type ComparatorEdge,
+  KEY_SEPARATOR,
   resolveGenerationOrder,
 } from './dependencyOrder';
+import { intersectGroupConstraints, tighten } from './groupConstraints';
 import type {
   ConstrainedVariable,
   EntityConstraints,
@@ -14,12 +16,6 @@ import type {
 } from './types';
 import { valueKey } from './uniqueRegistry';
 import { SCALAR_DECIMAL_PLACES } from './valueSpace';
-
-type ComparisonDirection =
-  | 'greater'
-  | 'less'
-  | 'greaterOrEqual'
-  | 'lessOrEqual';
 
 /**
  * How many redraws a `differentFrom` or `unique` variable gets before the run
@@ -29,91 +25,9 @@ type ComparisonDirection =
  */
 const MAX_REDRAWS = 1000;
 
-// Variable ids never contain a NUL, so joining on one cannot collide.
-const KEY_SEPARATOR = '\u0000';
-
-/**
- * Keeps whichever of two bounds is tighter. Dates are compared as strings,
- * which orders them correctly as long as both are written at the same
- * resolution — every caller here checks that first.
- */
-function tighten<T extends number | string>(
-  current: T | undefined,
-  candidate: T | undefined,
-  keepHigher: boolean,
-): T | undefined {
-  if (candidate === undefined) return current;
-  if (current === undefined) return candidate;
-  const candidateIsTighter = keepHigher
-    ? candidate > current
-    : candidate < current;
-  return candidateIsTighter ? candidate : current;
-}
-
-/**
- * The rules the single value shared by a `sameAs` group must satisfy: the
- * tightest of every member's bounds rather than any one member's. A member
- * capped at `maxLength: 24` joined to one requiring `minLength: 24` needs a
- * value of exactly 24 characters, which neither member alone would produce.
- *
- * The representative supplies the type and options, since a `sameAs` between
- * variables of different types has no meaning the runtime could check.
- */
-function intersectConstraints(
-  members: readonly ConstrainedVariable[],
-  representative: ConstrainedVariable,
-): VariableConstraints {
-  let required = false;
-  let unique = false;
-  let minLength: number | undefined;
-  let maxLength: number | undefined;
-  let minValue: number | undefined;
-  let maxValue: number | undefined;
-  let minSelected: number | undefined;
-  let maxSelected: number | undefined;
-
-  const resolution = representative.constraints.dateWindow?.resolution;
-  let windowMin: string | undefined;
-  let windowMax: string | undefined;
-
-  for (const { constraints } of members) {
-    required ||= constraints.required;
-    unique ||= constraints.unique;
-    minLength = tighten(minLength, constraints.minLength, true);
-    maxLength = tighten(maxLength, constraints.maxLength, false);
-    minValue = tighten(minValue, constraints.minValue, true);
-    maxValue = tighten(maxValue, constraints.maxValue, false);
-    minSelected = tighten(minSelected, constraints.minSelected, true);
-    maxSelected = tighten(maxSelected, constraints.maxSelected, false);
-
-    // Bounds written at different resolutions do not compare as strings, so
-    // only a window matching the representative's resolution contributes.
-    const window = constraints.dateWindow;
-    if (window !== undefined && window.resolution === resolution) {
-      windowMin = tighten(windowMin, window.min, true);
-      windowMax = tighten(windowMax, window.max, false);
-    }
-  }
-
-  return {
-    required,
-    unique,
-    ...(minLength !== undefined ? { minLength } : {}),
-    ...(maxLength !== undefined ? { maxLength } : {}),
-    ...(minValue !== undefined ? { minValue } : {}),
-    ...(maxValue !== undefined ? { maxValue } : {}),
-    ...(minSelected !== undefined ? { minSelected } : {}),
-    ...(maxSelected !== undefined ? { maxSelected } : {}),
-    ...(resolution !== undefined
-      ? {
-          dateWindow: {
-            resolution,
-            ...(windowMin !== undefined ? { min: windowMin } : {}),
-            ...(windowMax !== undefined ? { max: windowMax } : {}),
-          },
-        }
-      : {}),
-  };
+/** The gap a strict comparator must leave, in the units the type is drawn in. */
+function comparatorGap(type: 'number' | 'scalar'): number {
+  return type === 'scalar' ? 10 ** -SCALAR_DECIMAL_PLACES : 1;
 }
 
 /**
@@ -144,28 +58,66 @@ function groupComparatorEdges(
 }
 
 /**
+ * How many of its own values each group has to be left, beyond the one a
+ * comparator needs, for its `differentFrom` rules to have something to reject.
+ *
+ * A range narrowed to a single remaining value is emptied by one exclusion:
+ * `b > a` with `a` at the top of its range leaves `b` exactly one value, which
+ * `b differentFrom d` can then forbid. Counting the exclusions here lets
+ * whatever `b` is drawn against reserve room for them as well.
+ */
+function exclusionCounts(
+  entity: EntityConstraints,
+  membersOf: Map<string, string[]>,
+  groupOf: Map<string, string>,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+
+  for (const [group, memberIds] of membersOf) {
+    const targets = new Set<string>();
+    for (const id of memberIds) {
+      const targetId = entity.get(id)?.constraints.differentFrom;
+      if (targetId === undefined) continue;
+
+      const targetGroup = groupOf.get(targetId);
+      if (targetGroup === undefined || targetGroup === group) continue;
+      targets.add(targetGroup);
+    }
+    counts.set(group, targets.size);
+  }
+
+  return counts;
+}
+
+/** What every group's reservation is computed against. */
+type Headroom = {
+  edges: readonly ComparatorEdge[];
+  position: Map<string, number>;
+  exclusions: Map<string, number>;
+  /** Bounds of the groups reserved so far, which are the later ones. */
+  reserved: Map<string, ConstrainedVariable>;
+};
+
+/**
  * Narrows a group's own bounds so the groups drawn against it later still have
  * somewhere to go.
  *
- * `generateComparedTo` keeps a value inside its own bounds even when that
- * breaks the comparison, so a value drawn at the end of the range its dependent
- * has to step past strands that dependent on the bound: `a` and `b` both
- * `[0, 100]` with `b > a` fails whenever `a` draws 100. Reserving that step
- * here — one unit for a strict comparator, none for a non-strict one, whose
- * ends may touch — is what makes the comparison hold on every draw rather than
- * merely on most.
+ * A value drawn at the end of the range its dependent has to step past strands
+ * that dependent: `a` and `b` both `[0, 100]` with `b > a` leaves `b` nowhere
+ * to go whenever `a` draws 100, because `b` may not escape its own bounds.
+ * Reserving that step here — one for a strict comparator, none for a non-strict
+ * one, whose ends may touch, plus one per exclusion the dependent has to make —
+ * is what makes the rules hold on every draw rather than merely on most.
  *
- * The bound reserved against is the later group's, because that is what
- * `generateComparedTo` clamps to. Contradictory rules can invert the result;
- * the feasibility pass reports those, so this falls back to the declared bounds
- * rather than inventing a value outside them.
+ * The bound reserved against is the later group's, already carrying its own
+ * reservations. Contradictory rules can invert the result; the feasibility pass
+ * reports those, so this falls back to the declared bounds rather than
+ * inventing a value outside them.
  */
 function reserveComparatorHeadroom(
   constraints: VariableConstraints,
   group: string,
-  edges: readonly ComparatorEdge[],
-  position: Map<string, number>,
-  groups: Map<string, ConstrainedVariable>,
+  { edges, position, exclusions, reserved }: Headroom,
 ): VariableConstraints {
   const window = constraints.dateWindow;
   let minValue = constraints.minValue;
@@ -185,18 +137,18 @@ function reserveComparatorHeadroom(
     // this draw that has to fit around it, which the comparison itself does.
     if (here === undefined || there === undefined || there <= here) continue;
 
-    const other = groups.get(otherGroup);
+    const other = reserved.get(otherGroup);
     if (other === undefined) continue;
     const { entry, constraints: bounds } = other;
+    const steps = (edge.strict ? 1 : 0) + (exclusions.get(otherGroup) ?? 0);
 
     if (entry.type === 'number' || entry.type === 'scalar') {
-      const step = entry.type === 'scalar' ? 10 ** -SCALAR_DECIMAL_PLACES : 1;
-      const reserved = edge.strict ? step : 0;
+      const room = steps * comparatorGap(entry.type);
 
       if (groupIsLower && bounds.maxValue !== undefined) {
-        maxValue = tighten(maxValue, bounds.maxValue - reserved, false);
+        maxValue = tighten(maxValue, bounds.maxValue - room, false);
       } else if (!groupIsLower && bounds.minValue !== undefined) {
-        minValue = tighten(minValue, bounds.minValue + reserved, true);
+        minValue = tighten(minValue, bounds.minValue + room, true);
       }
       continue;
     }
@@ -213,16 +165,11 @@ function reserveComparatorHeadroom(
     }
 
     const { resolution, min, max } = bounds.dateWindow;
-    const reserved = edge.strict ? 1 : 0;
 
     if (groupIsLower && max !== undefined) {
-      windowMax = tighten(
-        windowMax,
-        addSteps(max, -reserved, resolution),
-        false,
-      );
+      windowMax = tighten(windowMax, addSteps(max, -steps, resolution), false);
     } else if (!groupIsLower && min !== undefined) {
-      windowMin = tighten(windowMin, addSteps(min, reserved, resolution), true);
+      windowMin = tighten(windowMin, addSteps(min, steps, resolution), true);
     }
   }
 
@@ -249,6 +196,43 @@ function reserveComparatorHeadroom(
   };
 }
 
+/**
+ * Every group's bounds, with room reserved for the groups drawn against them.
+ *
+ * Walked in reverse so each group reserves against bounds that already carry
+ * their own reservations. In `a < b < c` the room `b` leaves for `c` narrows
+ * `b`, and `a` then has to fit inside the narrowed `b` — reserving against
+ * `b`'s declared bounds instead leaves `a` free to draw the one value `b` can
+ * no longer step past. Reverse order is well-founded because a group only ever
+ * reserves against groups strictly later than it.
+ */
+function reserveHeadroom(
+  order: readonly string[],
+  groups: Map<string, ConstrainedVariable>,
+  edges: readonly ComparatorEdge[],
+  exclusions: Map<string, number>,
+): Map<string, ConstrainedVariable> {
+  const position = new Map(order.map((group, at) => [group, at]));
+  const reserved = new Map<string, ConstrainedVariable>();
+
+  for (const group of order.toReversed()) {
+    const base = groups.get(group);
+    if (base === undefined) continue;
+
+    reserved.set(group, {
+      entry: base.entry,
+      constraints: reserveComparatorHeadroom(base.constraints, group, {
+        edges,
+        position,
+        exclusions,
+        reserved,
+      }),
+    });
+  }
+
+  return reserved;
+}
+
 /** A group's shared value, from whichever member already carries one. */
 function groupValue(
   memberIds: readonly string[],
@@ -262,16 +246,42 @@ function groupValue(
 }
 
 /**
- * Where the group sits relative to the first comparator counterpart that
- * already holds a value. Only one is applied, because `generateComparedTo`
- * places a value relative to a single target.
+ * The group's bounds narrowed by every comparator whose counterpart already
+ * holds a value.
+ *
+ * A comparator against a known value is a bound: `b > a` with `a = 54` puts
+ * `b`'s floor at 55. Folding all of them in leaves one range that satisfies the
+ * whole set at once, where placing the value relative to a single target
+ * satisfies that one rule and silently drops the rest.
  */
-function placement(
+function applyComparatorBounds(
+  variable: ConstrainedVariable,
   group: string,
   edges: readonly ComparatorEdge[],
   membersOf: Map<string, string[]>,
   resolved: Record<string, VariableValue>,
-): { target: VariableValue; direction: ComparisonDirection } | undefined {
+): VariableConstraints {
+  const { entry, constraints } = variable;
+
+  // Only these three types accept a comparison rule (see the variable schema),
+  // and only they carry a bound a comparison could narrow. Stepping any other
+  // type leaves its domain — a boolean becomes 2, an ordinal a value no option
+  // offers — so those draw against their own rules alone.
+  if (
+    entry.type !== 'number' &&
+    entry.type !== 'scalar' &&
+    entry.type !== 'datetime'
+  ) {
+    return constraints;
+  }
+
+  const window = constraints.dateWindow;
+  const resolution = window?.resolution ?? 'full';
+  let minValue = constraints.minValue;
+  let maxValue = constraints.maxValue;
+  let windowMin = window?.min;
+  let windowMax = window?.max;
+
   for (const edge of edges) {
     const groupIsUpper = edge.upper === group;
     if (!groupIsUpper && edge.lower !== group) continue;
@@ -283,31 +293,63 @@ function placement(
     );
     if (target === undefined || target === null) continue;
 
-    const direction: ComparisonDirection = groupIsUpper
-      ? edge.strict
-        ? 'greater'
-        : 'greaterOrEqual'
-      : edge.strict
-        ? 'less'
-        : 'lessOrEqual';
+    if (entry.type === 'datetime') {
+      if (typeof target !== 'string' || target === '') continue;
 
-    return { target, direction };
+      const steps = edge.strict ? 1 : 0;
+      const bound = addSteps(target, groupIsUpper ? steps : -steps, resolution);
+      if (groupIsUpper) windowMin = tighten(windowMin, bound, true);
+      else windowMax = tighten(windowMax, bound, false);
+      continue;
+    }
+
+    const numeric = Number(target);
+    if (Number.isNaN(numeric)) continue;
+
+    const gap = edge.strict ? comparatorGap(entry.type) : 0;
+    const raw = groupIsUpper ? numeric + gap : numeric - gap;
+    // Scalars are drawn on a fixed decimal grid, and adding the gap in binary
+    // floating point lands just beside it; a bound off that grid is one every
+    // draw would be clamped up to.
+    const bound =
+      entry.type === 'scalar'
+        ? Number(raw.toFixed(SCALAR_DECIMAL_PLACES))
+        : raw;
+
+    if (groupIsUpper) minValue = tighten(minValue, bound, true);
+    else maxValue = tighten(maxValue, bound, false);
   }
 
-  return undefined;
+  if (entry.type === 'datetime') {
+    return {
+      ...constraints,
+      dateWindow: {
+        resolution,
+        ...(windowMin !== undefined ? { min: windowMin } : {}),
+        ...(windowMax !== undefined ? { max: windowMax } : {}),
+      },
+    };
+  }
+
+  return {
+    ...constraints,
+    ...(minValue !== undefined ? { minValue } : {}),
+    ...(maxValue !== undefined ? { maxValue } : {}),
+  };
 }
 
 /** Comparison keys of every resolved value the group's value must not equal. */
 function forbiddenKeys(
-  members: readonly ConstrainedVariable[],
+  entity: EntityConstraints,
+  memberIds: readonly string[],
   group: string,
   groupOf: Map<string, string>,
   resolved: Record<string, VariableValue>,
 ): Set<string> {
   const keys = new Set<string>();
 
-  for (const { constraints } of members) {
-    const targetId = constraints.differentFrom;
+  for (const id of memberIds) {
+    const targetId = entity.get(id)?.constraints.differentFrom;
     if (targetId === undefined || groupOf.get(targetId) === group) continue;
 
     const target = resolved[targetId];
@@ -354,56 +396,26 @@ export function generateEntityAttributes(
   const produced: Record<string, VariableValue> = {};
 
   const edges = groupComparatorEdges(entity, groupOf);
-  const position = new Map(order.map((group, at) => [group, at]));
 
-  // Every group's rules are intersected before any group is drawn: reserving
-  // headroom in one group reads the bounds of the group drawn against it.
-  const groups = new Map<string, ConstrainedVariable>();
-  const groupMembers = new Map<string, ConstrainedVariable[]>();
-  for (const group of order) {
-    const representative = entity.get(group);
-    if (representative === undefined) continue;
-
-    const members: ConstrainedVariable[] = [];
-    for (const id of membersOf.get(group) ?? [group]) {
-      const member = entity.get(id);
-      if (member !== undefined) members.push(member);
-    }
-
-    groupMembers.set(group, members);
-    groups.set(group, {
-      entry: representative.entry,
-      constraints: intersectConstraints(members, representative),
-    });
-  }
+  // Every group's rules are intersected and reserved against before any group
+  // is drawn: reserving headroom in one group reads the bounds of the group
+  // drawn against it.
+  const groups = reserveHeadroom(
+    order,
+    intersectGroupConstraints(entity, membersOf),
+    edges,
+    exclusionCounts(entity, membersOf, groupOf),
+  );
 
   for (const group of order) {
     const memberIds = membersOf.get(group) ?? [group];
     if (only && !memberIds.some((id) => only.has(id))) continue;
 
-    const base = groups.get(group);
-    const members = groupMembers.get(group);
-    if (base === undefined || members === undefined) continue;
+    const variable = groups.get(group);
+    if (variable === undefined) continue;
 
     const value = drawGroup(
-      {
-        groupOf,
-        membersOf,
-        group,
-        memberIds,
-        members,
-        variable: {
-          entry: base.entry,
-          constraints: reserveComparatorHeadroom(
-            base.constraints,
-            group,
-            edges,
-            position,
-            groups,
-          ),
-        },
-        edges,
-      },
+      { entity, groupOf, membersOf, group, memberIds, variable, edges },
       ctx,
       { scope, index, resolved, only, existing },
     );
@@ -419,11 +431,11 @@ export function generateEntityAttributes(
 
 /** The group being drawn, resolved out of the entity once. */
 type Group = {
+  entity: EntityConstraints;
   groupOf: Map<string, string>;
   membersOf: Map<string, string[]>;
   group: string;
   memberIds: readonly string[];
-  members: readonly ConstrainedVariable[];
   /** The group's combined rules, with comparator headroom already reserved. */
   variable: ConstrainedVariable;
   edges: readonly ComparatorEdge[];
@@ -439,20 +451,10 @@ type DrawState = {
 };
 
 function drawGroup(
-  { groupOf, membersOf, group, memberIds, members, variable, edges }: Group,
+  { entity, groupOf, membersOf, group, memberIds, variable, edges }: Group,
   ctx: GenerationContext,
   { scope, index, resolved, only, existing }: DrawState,
 ): VariableValue {
-  // A member that is not being regenerated keeps the value it already holds,
-  // and `sameAs` makes that the whole group's value — redrawing would leave the
-  // entity holding two values the rule says are one.
-  if (only && existing) {
-    for (const id of memberIds) {
-      const held = existing[id];
-      if (!only.has(id) && held !== undefined) return held;
-    }
-  }
-
   const { unique } = variable.constraints;
   const slot = slotOf(memberIds);
   const claim = (value: VariableValue): VariableValue => {
@@ -460,18 +462,29 @@ function drawGroup(
     return value;
   };
 
-  const placed = placement(group, edges, membersOf, resolved);
-  if (placed) {
-    return claim(
-      ctx.valueGen.generateComparedTo(
-        variable,
-        placed.target,
-        placed.direction,
-      ),
-    );
+  // A member that is not being regenerated keeps the value it already holds,
+  // and `sameAs` makes that the whole group's value — redrawing would leave the
+  // entity holding two values the rule says are one. It is claimed like a drawn
+  // value, so a later entity cannot be issued it a second time.
+  if (only && existing) {
+    for (const id of memberIds) {
+      const held = existing[id];
+      if (!only.has(id) && held !== undefined) return claim(held);
+    }
   }
 
-  const forbidden = forbiddenKeys(members, group, groupOf, resolved);
+  const bounded: ConstrainedVariable = {
+    entry: variable.entry,
+    constraints: applyComparatorBounds(
+      variable,
+      group,
+      edges,
+      membersOf,
+      resolved,
+    ),
+  };
+
+  const forbidden = forbiddenKeys(entity, memberIds, group, groupOf, resolved);
   let value: VariableValue = null;
   let satisfied = false;
 
@@ -485,7 +498,7 @@ function drawGroup(
         : undefined;
 
     value = ctx.valueGen.generateConstrained(
-      variable,
+      bounded,
       index,
       seq !== undefined ? { distinctSeq: seq } : {},
     );

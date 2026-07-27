@@ -249,6 +249,27 @@ describe('analyseFeasibility', () => {
     expect(conflicts[0]?.rules).toEqual(['unique']);
   });
 
+  it('measures a unique value space against the rules of its whole sameAs group', () => {
+    // `p` alone is unbounded, so its own value space is unbounded too. The
+    // generator draws the group once against the intersection, where `q` caps
+    // it at three values — which the 8 nodes this stage can produce exhaust.
+    const codebook = codebookWith({
+      p: { name: 'P', type: 'number', validation: { unique: true } },
+      q: {
+        name: 'Q',
+        type: 'number',
+        validation: { sameAs: 'p', minValue: 0, maxValue: 2 },
+      },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['unique']);
+    expect(conflicts[0]?.variableNames).toEqual(['P', 'Q']);
+    expect(conflicts[0]?.reason).toContain('only 3 distinct values');
+  });
+
   it('accepts unique when the value space is large enough', () => {
     const codebook = codebookWith({
       name: { name: 'Name', type: 'text', validation: { unique: true } },

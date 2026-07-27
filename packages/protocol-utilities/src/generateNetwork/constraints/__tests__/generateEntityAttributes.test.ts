@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
+import type { VariableValue } from '@codaco/shared-consts';
 
 import { ValueGenerator } from '../../../ValueGenerator';
 import { resolveGenerationConfig } from '../../config';
 import type { GenerationContext } from '../../context';
 import { buildEntityConstraints } from '../buildConstraints';
 import { generateEntityAttributes } from '../generateEntityAttributes';
+import type { EntityConstraints } from '../types';
 import { UniqueRegistry } from '../uniqueRegistry';
 
 const TODAY = '2026-07-27';
@@ -21,6 +23,49 @@ function makeContext(seed = 1): GenerationContext {
     respectSkipLogicAndFiltering: false,
     uniqueRegistry: new UniqueRegistry(),
   };
+}
+
+/**
+ * Every draw across `seeds` runs that `rule` rejects. Returned rather than
+ * asserted one at a time so a failure names the values that broke the rule and
+ * says how rare they are.
+ */
+function breaches(
+  entity: EntityConstraints,
+  seeds: number,
+  rule: (attributes: Record<string, VariableValue>) => boolean,
+): Record<string, VariableValue>[] {
+  const failures: Record<string, VariableValue>[] = [];
+
+  for (let seed = 0; seed < seeds; seed++) {
+    const attributes = generateEntityAttributes(
+      entity,
+      makeContext(seed),
+      'node:person',
+      seed,
+    );
+    if (!rule(attributes)) failures.push(attributes);
+  }
+
+  return failures;
+}
+
+/**
+ * Whether every value a draw produced stayed inside the bounds its own
+ * variable declares. Checked alongside each comparator, because a value that
+ * satisfies the comparison by escaping its own range is just as unsubmittable
+ * as one that satisfies its range by breaking the comparison.
+ */
+function allWithin(
+  attributes: Record<string, VariableValue>,
+  min: number | string,
+  max: number | string,
+): boolean {
+  return Object.values(attributes).every((value) =>
+    typeof min === 'string' && typeof max === 'string'
+      ? String(value) >= min && String(value) <= max
+      : Number(value) >= Number(min) && Number(value) <= Number(max),
+  );
 }
 
 describe('generateEntityAttributes', () => {
@@ -375,6 +420,366 @@ describe('generateEntityAttributes', () => {
 
     expect(Object.keys(attrs)).toEqual(['high']);
     expect(Number(attrs.high)).toBeGreaterThan(42);
+  });
+
+  it('satisfies every comparator declared on one variable, not only the first', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 100 },
+        },
+        x: {
+          name: 'X',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 100 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 100,
+            greaterThanVariable: asEntityAttributeReference('a'),
+            greaterThanOrEqualToVariable: asEntityAttributeReference('x'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          Number(attrs.b) > Number(attrs.a) &&
+          Number(attrs.b) >= Number(attrs.x) &&
+          allWithin(attrs, 0, 100),
+      ),
+    ).toEqual([]);
+  });
+
+  it('satisfies comparators aimed at one variable from two declarers', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 100 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 100,
+            greaterThanVariable: asEntityAttributeReference('a'),
+          },
+        },
+        c: {
+          name: 'C',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 100,
+            lessThanVariable: asEntityAttributeReference('b'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          Number(attrs.b) > Number(attrs.a) &&
+          Number(attrs.c) < Number(attrs.b) &&
+          allWithin(attrs, 0, 100),
+      ),
+    ).toEqual([]);
+  });
+
+  it('honours differentFrom on a variable that also carries a comparator', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 10 },
+        },
+        d: {
+          name: 'D',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 10 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 10,
+            greaterThanVariable: asEntityAttributeReference('a'),
+            differentFrom: asEntityAttributeReference('d'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          Number(attrs.b) > Number(attrs.a) &&
+          Number(attrs.b) !== Number(attrs.d) &&
+          allWithin(attrs, 0, 10),
+      ),
+    ).toEqual([]);
+  });
+
+  it('satisfies a three-variable chain whose range is only three values wide', () => {
+    // The middle of the chain gives ground at both ends, so the room the first
+    // variable has to leave is the room the second has after leaving its own.
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 2 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 2,
+            greaterThanVariable: asEntityAttributeReference('a'),
+          },
+        },
+        c: {
+          name: 'C',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 2,
+            greaterThanVariable: asEntityAttributeReference('b'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          Number(attrs.b) > Number(attrs.a) &&
+          Number(attrs.c) > Number(attrs.b) &&
+          allWithin(attrs, 0, 2),
+      ),
+    ).toEqual([]);
+  });
+
+  it('satisfies a date chain inside a five-day window', () => {
+    const window = {
+      component: 'DatePicker',
+      parameters: {
+        type: 'full',
+        min: '2020-01-01',
+        max: '2020-01-05',
+      },
+    } as const;
+
+    const entity = buildEntityConstraints(
+      {
+        born: { name: 'Born', type: 'datetime', ...window },
+        diagnosed: {
+          name: 'Diagnosed',
+          type: 'datetime',
+          ...window,
+          validation: {
+            greaterThanVariable: asEntityAttributeReference('born'),
+          },
+        },
+        died: {
+          name: 'Died',
+          type: 'datetime',
+          ...window,
+          validation: {
+            greaterThanVariable: asEntityAttributeReference('diagnosed'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          String(attrs.diagnosed) > String(attrs.born) &&
+          String(attrs.died) > String(attrs.diagnosed) &&
+          allWithin(attrs, '2020-01-01', '2020-01-05'),
+      ),
+    ).toEqual([]);
+  });
+
+  it('satisfies a variable bounded from both sides by other variables', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 2 },
+        },
+        c: {
+          name: 'C',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 2,
+            greaterThanVariable: asEntityAttributeReference('a'),
+            lessThanVariable: asEntityAttributeReference('d'),
+          },
+        },
+        d: {
+          name: 'D',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 2 },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          Number(attrs.c) > Number(attrs.a) &&
+          Number(attrs.c) < Number(attrs.d) &&
+          allWithin(attrs, 0, 2),
+      ),
+    ).toEqual([]);
+  });
+
+  it('issues distinct values for a unique variable that also carries a comparator', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 100 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 100,
+            unique: true,
+            greaterThanVariable: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const ctx = makeContext();
+    const issued: VariableValue[] = [];
+    for (let index = 0; index < 40; index++) {
+      const attrs = generateEntityAttributes(entity, ctx, 'node:person', index);
+      expect(Number(attrs.b)).toBeGreaterThan(Number(attrs.a));
+      issued.push(attrs.b ?? null);
+    }
+
+    expect(new Set(issued).size).toBe(issued.length);
+  });
+
+  it('refuses rather than reissuing a unique value once the comparator has used the range up', () => {
+    // `b > a` puts b in [1, 3], so the fourth entity has nothing distinct left.
+    // Refusing is the honest answer; reissuing a value would produce a form the
+    // runtime's unique validator rejects.
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 3 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 3,
+            unique: true,
+            greaterThanVariable: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const ctx = makeContext(7);
+    const issued: VariableValue[] = [];
+    let refused = false;
+
+    for (let index = 0; index < 20 && !refused; index++) {
+      try {
+        issued.push(
+          generateEntityAttributes(entity, ctx, 'node:person', index).b ?? null,
+        );
+      } catch {
+        refused = true;
+      }
+    }
+
+    expect(new Set(issued).size).toBe(issued.length);
+    expect(refused).toBe(true);
+  });
+
+  it('claims a pinned value, so a later entity is not issued it again', () => {
+    const options = [
+      { label: 'A', value: 1 },
+      { label: 'B', value: 2 },
+      { label: 'C', value: 3 },
+    ];
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'ordinal',
+          options,
+          validation: { unique: true },
+        },
+        b: {
+          name: 'B',
+          type: 'ordinal',
+          options,
+          validation: { sameAs: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    const ctx = makeContext();
+    const pinned = generateEntityAttributes(entity, ctx, 'node:person', 0, {
+      existing: { a: 2 },
+      only: new Set(['b']),
+    });
+    const second = generateEntityAttributes(entity, ctx, 'node:person', 1);
+    const third = generateEntityAttributes(entity, ctx, 'node:person', 2);
+
+    expect(pinned.b).toBe(2);
+    expect(new Set([pinned.b, second.a, third.a]).size).toBe(3);
   });
 
   it('is deterministic for a given seed', () => {

@@ -8,6 +8,7 @@ import type { GenerationConfig } from '../config';
 import { buildEntityConstraints } from './buildConstraints';
 import { resolveGenerationOrder } from './dependencyOrder';
 import { worstCaseEntityCounts } from './entityCounts';
+import { intersectGroupConstraints } from './groupConstraints';
 import {
   COMPARATOR_DIRECTION,
   COMPARISON_RULES,
@@ -74,6 +75,10 @@ function analyseEntity(
 ): ConstraintConflict[] {
   const entity = buildEntityConstraints(scope.variables, config.today);
   const conflicts: ConstraintConflict[] = [];
+
+  const { membersOf, groupOf, cycles } = resolveGenerationOrder(entity);
+  const groups = intersectGroupConstraints(entity, membersOf);
+  const uniqueReported = new Set<string>();
 
   const report = (
     variableIds: string[],
@@ -207,19 +212,33 @@ function analyseEntity(
       if (scope.entity === 'ego') {
         report([id], ['unique'], 'unique is not supported on ego variables');
       } else {
-        const size = valueSpaceSize(variable, scope.worstCaseCount);
-        if (size !== 'unbounded' && size < scope.worstCaseCount) {
+        // Measured against the group's intersected rules, because that is what
+        // the generator draws against: a variable held equal to a narrower one
+        // reaches only the narrower value space, however wide its own is.
+        const group = groupOf.get(id) ?? id;
+        const members = membersOf.get(group) ?? [id];
+        const size = valueSpaceSize(
+          groups.get(group) ?? variable,
+          scope.worstCaseCount,
+        );
+
+        if (
+          size !== 'unbounded' &&
+          size < scope.worstCaseCount &&
+          !uniqueReported.has(group)
+        ) {
+          uniqueReported.add(group);
           report(
-            [id],
+            members,
             ['unique'],
-            `only ${size} distinct values are possible, but up to ${scope.worstCaseCount} ${scope.entity}s of this type can be generated`,
+            `only ${size} distinct values are possible${members.length > 1 ? ' once these variables are held equal' : ''}, but up to ${scope.worstCaseCount} ${scope.entity}s of this type can be generated`,
           );
         }
       }
     }
   }
 
-  for (const cycle of resolveGenerationOrder(entity).cycles) {
+  for (const cycle of cycles) {
     const rules = REFERENCE_RULES.filter((rule) =>
       cycle.some((id) => entity.get(id)?.constraints[rule] !== undefined),
     );

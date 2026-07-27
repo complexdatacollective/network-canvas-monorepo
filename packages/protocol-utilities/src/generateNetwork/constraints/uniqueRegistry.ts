@@ -19,10 +19,17 @@ export function valueKey(value: VariableValue): string {
         typeof item === 'boolean',
     );
     if (primitives) {
+      // Compared by codepoint, not collation: `localeCompare` reports 0 for
+      // strings that differ only by an ignorable character (a soft hyphen,
+      // say), and a stable sort then leaves those in whichever order they
+      // arrived in — so two orderings of one selection would key differently.
       return JSON.stringify(
-        value.toSorted((a, b) =>
-          `${typeof a}:${String(a)}`.localeCompare(`${typeof b}:${String(b)}`),
-        ),
+        value.toSorted((a, b) => {
+          const left = `${typeof a}:${String(a)}`;
+          const right = `${typeof b}:${String(b)}`;
+          if (left < right) return -1;
+          return left > right ? 1 : 0;
+        }),
       );
     }
   }

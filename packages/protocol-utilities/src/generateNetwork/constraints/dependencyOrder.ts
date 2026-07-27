@@ -52,7 +52,7 @@ type EqualityClasses = {
 };
 
 // Variable ids never contain a NUL, so joining on one cannot collide.
-const KEY_SEPARATOR = '\u0000';
+export const KEY_SEPARATOR = '\u0000';
 
 function createEqualityClasses(ids: readonly string[]): EqualityClasses {
   const parent = new Map<string, string>();
