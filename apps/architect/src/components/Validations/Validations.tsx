@@ -14,6 +14,7 @@ import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import type { Variable } from '@codaco/protocol-validation';
 
 import { findDraftContradictions } from './contradictions';
+import { isValidationWithListValue } from './options';
 import Validation from './Validation';
 
 // redux-form calls a field validator with the field's raw value, which is null
@@ -158,12 +159,6 @@ const Validations = ({
   // at a time.
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const usedOptions = getKeys(value);
-  const availableOptions = getOptionsWithUsedDisabled(
-    validationOptions,
-    usedOptions,
-  );
-  const isFull = usedOptions.length === availableOptions.length;
-  const isEditingSomething = addNew || editingKey !== null;
 
   const checkDraft = useMemo(
     () =>
@@ -190,6 +185,23 @@ const Validations = ({
       },
     [value, allVariables, currentVariableId, variableType, draftOptions],
   );
+
+  // A reference rule (e.g. "Same as") is disabled in the dropdown once no
+  // existing variable could legally serve as its target.
+  const availableOptions = getOptionsWithUsedDisabled(
+    validationOptions,
+    usedOptions,
+  ).map((option) => {
+    if (option.disabled || !isValidationWithListValue(option.value)) {
+      return option;
+    }
+    const hasLegalTarget = Object.keys(existingVariables).some(
+      (candidateId) => checkDraft(option.value, candidateId).length === 0,
+    );
+    return hasLegalTarget ? option : { ...option, disabled: true };
+  });
+  const isFull = usedOptions.length === availableOptions.length;
+  const isEditingSomething = addNew || editingKey !== null;
 
   const handleSaveExisting = (
     key: string,
@@ -232,6 +244,7 @@ const Validations = ({
             onCancel={() => setAddNew(false)}
             options={availableOptions}
             existingVariables={existingVariables}
+            checkDraft={checkDraft}
           />
         )}
       </Field>
