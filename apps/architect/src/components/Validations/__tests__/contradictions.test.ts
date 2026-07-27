@@ -257,4 +257,80 @@ describe('makeFieldEditorValidate', () => {
       'can never be satisfied because their value ranges do not overlap',
     );
   });
+
+  // Fifth-wave Finding 4: the codebook definitions of `a`/`b` are both
+  // full-resolution DatePickers, but THIS stage's sibling composer field
+  // renders `a` as a year picker — an override that lives on the field, not
+  // the codebook variable (see network-composer.ts's ComposerFormFieldSchema)
+  // — so a fresh draft for `b` must be checked against how `a` actually
+  // renders here, not its bare codebook definition. Semantics pinned in both
+  // directions: matching the STAGE-level rendering is accepted even though it
+  // mismatches the codebook, and matching the codebook is rejected because it
+  // now mismatches the stage.
+  describe('sibling composer field overrides (overlay)', () => {
+    const equalDatePickers = {
+      a: {
+        name: 'a',
+        type: 'datetime',
+        component: 'DatePicker',
+        validation: { sameAs: 'b' },
+      },
+      b: {
+        name: 'b',
+        type: 'datetime',
+        component: 'DatePicker',
+        validation: {},
+      },
+    };
+    const siblingRendersAAsYearPicker = {
+      a: { component: 'DatePicker', parameters: { type: 'year' } },
+    };
+
+    it('accepts a year-picker draft matching how the sibling field renders the sameAs partner', () => {
+      const validate = makeFieldEditorValidate(
+        equalDatePickers,
+        siblingRendersAAsYearPicker,
+      );
+      const errors = validate({
+        variable: 'b',
+        validation: {},
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+      });
+      expect(errors).toEqual({});
+    });
+
+    it('rejects a full-resolution draft that now mismatches the sibling field', () => {
+      const validate = makeFieldEditorValidate(
+        equalDatePickers,
+        siblingRendersAAsYearPicker,
+      );
+      const errors = validate({
+        variable: 'b',
+        validation: {},
+        component: 'DatePicker',
+        parameters: {},
+      });
+      expect(errors.validation).toContain('different resolutions');
+    });
+
+    it('excludes the overlay entry for the variable currently being edited', () => {
+      // Editing `a` itself: its own overlay entry is the field's PRE-draft
+      // committed value and must not shadow — or here, since the dialog
+      // hasn't touched component/parameters, silently substitute for — the
+      // codebook definition `buildProspectiveVariables` falls back to. If
+      // the overlay leaked in for the variable being edited, `a` would
+      // wrongly appear as a year picker against `b`'s full-resolution
+      // codebook definition and report a contradiction that doesn't exist.
+      const validate = makeFieldEditorValidate(
+        equalDatePickers,
+        siblingRendersAAsYearPicker,
+      );
+      const errors = validate({
+        variable: 'a',
+        validation: { sameAs: 'b' },
+      });
+      expect(errors).toEqual({});
+    });
+  });
 });

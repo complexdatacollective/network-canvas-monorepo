@@ -4576,6 +4576,102 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('NetworkComposer stage RelativeDatePicker field normalisation (fifth-wave Finding 1)', () => {
+    // A full codebook (rather than the empty one used elsewhere in this file)
+    // is required here: a NetworkComposer stage's `subject`/`quickAdd`/
+    // `layoutVariable`/form-field `variable` references are cross-checked
+    // against the codebook by ProtocolSchemaV8, so the fixture must define
+    // every variable a stage below references to parse as valid v8 output.
+    const composerCodebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' as const },
+          variables: {
+            name: { name: 'Name', type: 'text', component: 'Text' },
+            layout_position: { name: 'LayoutPosition', type: 'layout' },
+            birth_date: { name: 'BirthDate', type: 'datetime' },
+          },
+        },
+      },
+    };
+
+    const composerStage = (overrides: Record<string, unknown>) => ({
+      id: 's1',
+      label: 'Compose',
+      type: 'NetworkComposer',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'name',
+      layoutVariable: 'layout_position',
+      background: { concentricCircles: 4 },
+      ...overrides,
+    });
+
+    const migrateStages = (stages: unknown[]) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: composerCodebook,
+        stages,
+      };
+      return migrationV7toV8.migrate(v7Protocol as unknown as Protocol<7>, {
+        name: 'Test Protocol',
+      });
+    };
+
+    it('strips an invalid anchor, a negative before, and an unknown key', () => {
+      const migratedRaw = migrateStages([
+        composerStage({
+          nodeForm: {
+            fields: [
+              {
+                variable: 'birth_date',
+                component: 'RelativeDatePicker',
+                parameters: { before: -1, anchor: 'garbage', junk: 1 },
+              },
+            ],
+          },
+        }),
+      ]);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const field = stage.nodeForm?.fields?.[0];
+      expect(field).not.toHaveProperty('parameters.anchor');
+      expect(field).not.toHaveProperty('parameters.before');
+      expect(field).not.toHaveProperty('parameters.junk');
+    });
+
+    it('leaves a valid anchor/before/after window alone', () => {
+      const migratedRaw = migrateStages([
+        composerStage({
+          nodeForm: {
+            fields: [
+              {
+                variable: 'birth_date',
+                component: 'RelativeDatePicker',
+                parameters: { anchor: '2020-01-01', before: 10, after: 5 },
+              },
+            ],
+          },
+        }),
+      ]);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const field = stage.nodeForm?.fields?.[0];
+      expect(field).toHaveProperty('parameters.anchor', '2020-01-01');
+      expect(field).toHaveProperty('parameters.before', 10);
+      expect(field).toHaveProperty('parameters.after', 5);
+    });
+  });
+
   describe('contradictory validation rule removal', () => {
     const migrateVariables = (variables: Record<string, unknown>) => {
       const v7Protocol = {
@@ -4818,6 +4914,34 @@ describe('Migration V7 to V8', () => {
         'validation.greaterThanVariable',
         'b',
       );
+    });
+
+    // Fifth-wave Finding 2: the fixpoint loop's bound must scale with the
+    // data, not stay fixed — a fixed 100-pass cap is exhausted by a protocol
+    // with more than 100 independent contradictions, since each pass here
+    // only strips the rules of ONE contradiction. 101 variables, each with
+    // its own inverted minValue/maxValue pair, are 101 completely
+    // independent local (class 1) contradictions — no sameAs/comparator
+    // relationships between them — so repairing all of them needs at least
+    // 101 passes.
+    it('fully repairs more independent contradictions than a fixed 100-pass cap would allow', () => {
+      const variables: Record<string, unknown> = {};
+      for (let index = 0; index < 101; index++) {
+        variables[`v${index}`] = {
+          name: `v${index}`,
+          type: 'number',
+          validation: { minValue: 10, maxValue: 2 },
+        };
+      }
+      const migratedRaw = migrateVariables(variables);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const parsedVariables = parsed.data?.codebook.ego?.variables ?? {};
+      expect(Object.keys(parsedVariables)).toHaveLength(101);
+      for (const variable of Object.values(parsedVariables)) {
+        expect(variable).not.toHaveProperty('validation.minValue');
+        expect(variable).not.toHaveProperty('validation.maxValue');
+      }
     });
   });
 });

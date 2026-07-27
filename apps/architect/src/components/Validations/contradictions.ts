@@ -98,12 +98,61 @@ export const floorIssue = (
 };
 
 /**
+ * A stage-scoped override of a variable's rendering, keyed by variable id.
+ * NetworkComposer stage fields carry their OWN `component`/`parameters`
+ * independent of the codebook variable (see network-composer.ts's
+ * ComposerFormFieldSchema), so a contradiction check scoped to one stage must
+ * see how a variable actually renders there, not just its codebook
+ * definition.
+ */
+export type VariableOverlay = Record<
+  string,
+  { component?: unknown; parameters?: unknown }
+>;
+
+/**
+ * `allVariables` with `overlay` layered on top, EXCLUDING `excludeId` (always
+ * the variable currently being edited): that variable's own overlay entry is
+ * its pre-draft committed field, which must never shadow the live draft
+ * values `buildProspectiveVariables` layers on afterwards. Only
+ * `component`/`parameters` are overridden — everything else (`options`,
+ * `validation`, `type`, ...) still comes from the codebook. An overlay entry
+ * naming a variable absent from `allVariables` is ignored defensively.
+ */
+const withOverlay = (
+  allVariables: UnknownRecord,
+  overlay: VariableOverlay | undefined,
+  excludeId: string,
+): UnknownRecord => {
+  if (!overlay) return allVariables;
+  const entries = Object.entries(overlay).filter(
+    ([id]) => id !== excludeId && isRecord(allVariables[id]),
+  );
+  if (entries.length === 0) return allVariables;
+  const overlaid = { ...allVariables };
+  for (const [id, { component, parameters }] of entries) {
+    const existing = allVariables[id];
+    overlaid[id] = {
+      ...(isRecord(existing) ? existing : {}),
+      ...(component !== undefined ? { component } : {}),
+      ...(parameters !== undefined ? { parameters } : {}),
+    };
+  }
+  return overlaid;
+};
+
+/**
  * redux-form sync validate for the field-editor dialog. Errors are keyed at
  * `validation` so they surface through the Validations field's FieldErrors on
  * a failed save and anchor to getFieldId('validation') for scroll-to-error.
+ *
+ * `overlay` is optional so this factory stays generic: callers that have no
+ * stage-scoped sibling data (or that check codebook-level variables, not
+ * NetworkComposer stage fields) simply omit it and get the previous,
+ * codebook-only behaviour.
  */
 export const makeFieldEditorValidate =
-  (allVariables: UnknownRecord) =>
+  (allVariables: UnknownRecord, overlay?: VariableOverlay) =>
   (values: Record<string, unknown>): Record<string, unknown> => {
     // A variable that is only a TARGET of another's sameAs/comparator (never
     // configuring rules of its own) can have `values.validation` absent or
@@ -115,8 +164,13 @@ export const makeFieldEditorValidate =
     const validation = isRecord(values.validation) ? values.validation : {};
     const currentVariableId =
       typeof values.variable === 'string' ? values.variable : '';
+    const overlaidVariables = withOverlay(
+      allVariables,
+      overlay,
+      currentVariableId,
+    );
     const existing = currentVariableId
-      ? allVariables[currentVariableId]
+      ? overlaidVariables[currentVariableId]
       : undefined;
     const existingType = isRecord(existing) ? existing.type : undefined;
     const component =
@@ -131,7 +185,7 @@ export const makeFieldEditorValidate =
       .find((message): message is string => message !== undefined);
     if (floor) return { validation: floor };
     const first = findDraftContradictions({
-      allVariables,
+      allVariables: overlaidVariables,
       currentVariableId,
       variableType,
       validation,

@@ -1,4 +1,5 @@
 import type { ValidationName } from './validation.ts';
+import { isIsoDate } from './variable.ts';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -9,7 +10,8 @@ export type ContradictionClass =
   | 'strictComparatorCycle'
   | 'sameAsGroupConflict'
   | 'disjointBounds'
-  | 'oddDifferentFromCycle';
+  | 'oddDifferentFromCycle'
+  | 'singletonBooleanDomain';
 
 export type VariableRuleRef = {
   variableId: string;
@@ -587,13 +589,49 @@ const dayNumber = (value: string, edge: 'min' | 'max'): number | undefined => {
   return utcDayNumber(year, month - 1, day);
 };
 
+// RelativeDatePicker's own defaults when `before`/`after` are omitted (see
+// the interview runtime's RelativeDatePicker component): 180 days before the
+// anchor, 0 days after it.
+const RELATIVE_DATE_PICKER_DEFAULT_BEFORE = 180;
+const RELATIVE_DATE_PICKER_DEFAULT_AFTER = 0;
+
+/**
+ * A RelativeDatePicker's selectable window, when it has one. Fifth-wave
+ * Finding 3: a RelativeDatePicker with no `anchor` is genuinely anchored to
+ * the (unknown at validation time) interview date and contributes no static
+ * bounds — that exclusion stays. But an author-pinned `anchor` (a valid ISO
+ * date) makes the window exactly as static as a DatePicker's own min/max:
+ * `[anchor - before, anchor + after]` in days.
+ */
+const relativeDateWindowInterval = (
+  parameters: UnknownRecord,
+): Interval | undefined => {
+  if (typeof parameters.anchor !== 'string' || !isIsoDate(parameters.anchor)) {
+    return undefined;
+  }
+  // `anchor` is a full YYYY-MM-DD ISO date, so 'min' vs 'max' expansion is
+  // moot — both edges resolve to the same single day.
+  const anchor = dayNumber(parameters.anchor, 'min');
+  if (anchor === undefined) return undefined;
+  const before =
+    typeof parameters.before === 'number'
+      ? parameters.before
+      : RELATIVE_DATE_PICKER_DEFAULT_BEFORE;
+  const after =
+    typeof parameters.after === 'number'
+      ? parameters.after
+      : RELATIVE_DATE_PICKER_DEFAULT_AFTER;
+  return { min: anchor - before, max: anchor + after };
+};
+
 const dateWindowInterval = (variable: unknown): Interval | undefined => {
   const record = asRecord(variable);
-  // RelativeDatePicker windows are anchored to the interview date and
-  // contribute no static bounds.
-  if (!record || record.component === 'RelativeDatePicker') return undefined;
+  if (!record) return undefined;
   const parameters = asRecord(record.parameters);
   if (!parameters) return undefined;
+  if (record.component === 'RelativeDatePicker') {
+    return relativeDateWindowInterval(parameters);
+  }
   const min =
     typeof parameters.min === 'string'
       ? dayNumber(parameters.min, 'min')
@@ -674,6 +712,27 @@ const optionValues = (variable: unknown): Set<string | number> | undefined => {
     }
   }
   return values;
+};
+
+/**
+ * A boolean variable's effective domain, for the singleton-domain
+ * `differentFrom` check (fifth-wave Finding 5). `booleanOptionsSchema`
+ * (variable.ts) permits an `options` array exposing only one of {true,
+ * false} — unlike `optionValues` above, "no usable options data" (absent, or
+ * present but empty/malformed) falls back to the full two-value domain
+ * rather than being treated as unusable: every boolean variable has SOME
+ * domain, and the unrestricted default is the correct one when `options`
+ * doesn't narrow it.
+ */
+const booleanDomain = (variable: unknown): Set<boolean> => {
+  const options = asRecord(variable)?.options;
+  if (!Array.isArray(options)) return new Set([true, false]);
+  const domain = new Set<boolean>();
+  for (const option of options) {
+    const value = asRecord(option)?.value;
+    if (typeof value === 'boolean') domain.add(value);
+  }
+  return domain.size > 0 ? domain : new Set([true, false]);
 };
 
 type DateResolution = 'full' | 'month' | 'year';
@@ -968,12 +1027,57 @@ const pathToRoot = (parent: Map<string, string>, from: string): string[] => {
  * equivalent question is general k-colourability, which has no efficient
  * exact check for arbitrary k — that's out of scope here and left to the
  * interview runtime's own fill-time enforcement as a backstop.
+ *
+ * Fifth-wave Finding 5: bipartiteness alone assumes every boolean's domain is
+ * the full {true, false} — but `booleanOptionsSchema` (variable.ts) permits
+ * an `options` array exposing only ONE value, and a `differentFrom` edge
+ * between two variables pinned to the SAME singleton domain is unsatisfiable
+ * no matter how the rest of the graph 2-colours (`{true} ≠ {true}` has no
+ * solution). That is checked per raw `differentFrom` rule instance, directly
+ * between the two endpoint VARIABLES — not at equality-group granularity like
+ * the rest of this function. DELIBERATE LIMIT: domain propagation through
+ * chains (a singleton forcing a neighbour's effective domain, cascading to a
+ * third variable) is left to the interview runtime's own fill-time
+ * enforcement as a backstop, same as the k-colourability limit above.
  */
 function oddDifferentFromCycleContradictions(
   variables: UnknownRecord,
 ): ValidationContradiction[] {
   const edges = comparatorEdges(variables);
   const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
+
+  const found: ValidationContradiction[] = [];
+  const singletonConflicts = new Map<string, VariableRuleRef[]>();
+
+  for (const [id, variable] of Object.entries(variables)) {
+    if (typeOf(variable) !== 'boolean') continue;
+    const target = usableReference(variables, id, 'differentFrom');
+    if (target === undefined || target === id) continue;
+    const domainA = booleanDomain(variable);
+    const domainB = booleanDomain(variables[target]);
+    if (domainA.size !== 1 || domainB.size !== 1) continue;
+    const [onlyA] = domainA;
+    const [onlyB] = domainB;
+    if (onlyA !== onlyB) continue;
+    const [lower, upper] = [id, target].toSorted();
+    if (lower === undefined || upper === undefined) continue;
+    const key = `${lower}${KEY_SEPARATOR}${upper}`;
+    const sources = singletonConflicts.get(key) ?? [];
+    sources.push({ variableId: id, rule: 'differentFrom' });
+    singletonConflicts.set(key, sources);
+  }
+
+  for (const [key, sources] of singletonConflicts) {
+    const [lower, upper] = key.split(KEY_SEPARATOR);
+    const [first, ...rest] = sources;
+    if (!lower || !upper || !first) continue;
+    found.push({
+      class: 'singletonBooleanDomain',
+      message: `Variables "${nameOf(lower, variables[lower])}", "${nameOf(upper, variables[upper])}" must differ but can only hold the same value`,
+      variableIds: [lower, upper],
+      strips: [first, ...rest],
+    });
+  }
 
   const edgesByKey = new Map<string, BooleanDifferentFromEdge>();
   const adjacency = new Map<string, Set<string>>();
@@ -989,6 +1093,16 @@ function oddDifferentFromCycleContradictions(
     // A self-reference, or a target inside the same equality group, is
     // already reported as a class-9 sameAsGroupConflict — not a graph edge.
     if (groupA === undefined || groupB === undefined || groupA === groupB) {
+      continue;
+    }
+    const [lowerVar, upperVar] = [id, target].toSorted();
+    if (
+      lowerVar !== undefined &&
+      upperVar !== undefined &&
+      singletonConflicts.has(`${lowerVar}${KEY_SEPARATOR}${upperVar}`)
+    ) {
+      // Already reported above; keep it out of the bipartite graph so it
+      // isn't ALSO folded into an oddDifferentFromCycle report.
       continue;
     }
     const [lower, upper] = [groupA, groupB].toSorted();
@@ -1014,7 +1128,6 @@ function oddDifferentFromCycleContradictions(
     }
   }
 
-  const found: ValidationContradiction[] = [];
   const color = new Map<string, 0 | 1>();
   const visited = new Set<string>();
 

@@ -70,6 +70,21 @@ vi.mock('~/selectors/codebook', () => {
             ],
             validation: { minSelected: 3 },
           },
+          // Both full-resolution DatePickers in the codebook, joined by
+          // sameAs — used by the sibling-composer-field-overlay test below
+          // (PR #1107 Finding 4).
+          a: {
+            name: 'a',
+            type: 'datetime',
+            component: 'DatePicker',
+            validation: { sameAs: 'b' },
+          },
+          b: {
+            name: 'b',
+            type: 'datetime',
+            component: 'DatePicker',
+            validation: {},
+          },
         });
       }
       return cache.get(subject);
@@ -148,4 +163,68 @@ it('keeps editorValidate referentially stable across a re-render with unchanged 
   rerender(listTree());
 
   expect(capturedEditorValidate).toBe(firstEditorValidate);
+});
+
+// PR #1107 Finding 4: `a`/`b` are both full-resolution DatePickers in the
+// codebook, but this stage's OTHER committed composer field renders `a` as a
+// year picker — an override that lives on the field itself (see
+// network-composer.ts's ComposerFormFieldSchema), not the codebook variable.
+// editorValidate must see that stage-level override, not just the codebook
+// definition, when checking a fresh draft for `a`'s sameAs partner `b`.
+it('folds a sibling composer field component/parameters override into editorValidate', () => {
+  const storeWithSibling = configureStore({
+    reducer: () => ({
+      form: {
+        'edit-stage': {
+          values: {
+            nodeForm: {
+              fields: [
+                {
+                  variable: 'a',
+                  component: 'DatePicker',
+                  parameters: { type: 'year' },
+                },
+              ],
+            },
+          },
+        },
+      },
+    }),
+  });
+
+  render(
+    <Provider store={storeWithSibling}>
+      <EditableAttributesList
+        fieldName="nodeForm.fields"
+        entity="node"
+        type="person"
+        form="edit-stage"
+        editFormName="node-attr-edit"
+        handleChangeFields={() => undefined}
+      />
+    </Provider>,
+  );
+
+  expect(capturedEditorValidate).toBeInstanceOf(Function);
+
+  // Matches the sibling's stage-level rendering (year): accepted, even
+  // though it mismatches the codebook's own full resolution.
+  expect(
+    capturedEditorValidate?.({
+      variable: 'b',
+      validation: {},
+      component: 'DatePicker',
+      parameters: { type: 'year' },
+    }),
+  ).toEqual({});
+
+  // Stays at the codebook's own full resolution: now mismatches the
+  // sibling's stage-level rendering.
+  const mismatched = capturedEditorValidate?.({
+    variable: 'b',
+    validation: {},
+    component: 'DatePicker',
+    parameters: {},
+  });
+  expect(mismatched?.validation).toContain('different resolutions');
 });

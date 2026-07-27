@@ -9,6 +9,7 @@ import { findValidationContradictions } from './variables/validation-contradicti
 import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation.ts';
 import {
   DATE_RESOLUTION,
+  isIsoDate,
   isValidDateAtResolution,
 } from './variables/variable.ts';
 
@@ -81,6 +82,38 @@ const normalizeDatePickerParameters = (
   ) {
     delete parameters.min;
     delete parameters.max;
+  }
+};
+
+// The only keys `relativeDatePickerParametersSchema` (variable.ts) permits —
+// anything else fails that strictObject outright.
+const RELATIVE_DATE_PICKER_KEYS = new Set(['anchor', 'before', 'after']);
+
+/**
+ * Normalises a RelativeDatePicker `parameters` record in place, mirroring
+ * `normalizeDatePickerParameters` above: a real ISO `anchor` date (the shared
+ * `isIsoDate`), non-negative integer `before`/`after` offsets, and only those
+ * three keys — the schema is a strictObject, so one unrecognised key fails
+ * the whole object rather than just itself. Used by the NetworkComposer
+ * stage-field RelativeDatePicker step below only; the codebook-variable
+ * DatePicker step above intentionally skips RelativeDatePicker variables (see
+ * its own comment) and this function does not change that.
+ */
+const normalizeRelativeDatePickerParameters = (
+  parameters: Record<string, unknown>,
+): void => {
+  for (const key of Object.keys(parameters)) {
+    if (!RELATIVE_DATE_PICKER_KEYS.has(key)) delete parameters[key];
+  }
+  if (typeof parameters.anchor !== 'string' || !isIsoDate(parameters.anchor)) {
+    delete parameters.anchor;
+  }
+  for (const bound of ['before', 'after'] as const) {
+    const value = parameters[bound];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+      delete parameters[bound];
+    }
   }
 };
 
@@ -1137,19 +1170,25 @@ const migrationV7toV8 = createMigration({
       {
         // NetworkComposer form fields carry their own component/parameters
         // (see network-composer.ts's ComposerFormFieldSchema) independent of
-        // the codebook variable, so a field rendering DatePicker needs the
-        // same min/max normalisation as a codebook DatePicker variable above.
-        // `nodeForm` and each edge type's `form` are the two places composer
-        // fields live; paths that don't exist on a given stage are no-ops.
+        // the codebook variable, so a field rendering DatePicker or
+        // RelativeDatePicker needs the same normalisation as those
+        // components get elsewhere — DatePicker as a codebook variable
+        // above, RelativeDatePicker via its own schema (variable.ts), which
+        // — unlike the codebook-variable step above — this composer path
+        // does not skip (fifth-wave Finding 1). `nodeForm` and each edge
+        // type's `form` are the two places composer fields live; paths that
+        // don't exist on a given stage are no-ops.
         paths: ['stages[].nodeForm.fields[]', 'stages[].edges[].form.fields[]'],
         fn: <V>(field: V) => {
           const typedField = asRecord(field);
-          if (!typedField || typedField.component !== 'DatePicker') {
-            return field;
-          }
+          if (!typedField) return field;
           const parameters = asRecord(typedField.parameters);
           if (!parameters) return field;
-          normalizeDatePickerParameters(parameters);
+          if (typedField.component === 'DatePicker') {
+            normalizeDatePickerParameters(parameters);
+          } else if (typedField.component === 'RelativeDatePicker') {
+            normalizeRelativeDatePickerParameters(parameters);
+          }
           return field;
         },
       },
@@ -1198,16 +1237,28 @@ const migrationV7toV8 = createMigration({
           }
 
           // Each pass strips at least one rule (a contradiction's `strips`
-          // tuple is never empty), so 100 passes bound at least 100 removed
-          // rule instances — comfortably more than any realistic authored
-          // protocol's contradictions, let alone ones chained tightly enough
-          // to require re-analysis between every single strip. If a
-          // pathological protocol ever did exhaust the bound, any
-          // contradiction left standing is still caught: the v8 schema's own
-          // `rejectValidationContradictions` refinement runs on the migrated
-          // output and would surface it as a normal validation failure
-          // instead of silently shipping bad data.
-          for (let pass = 0; pass < 100; pass++) {
+          // tuple is never empty), so "the total number of validation-rule
+          // entries across every variable, plus 1" provably bounds the loop:
+          // there are at most that many rule instances in existence to strip
+          // in total, and the +1 covers the final no-contradiction-found pass
+          // that breaks out. Counted once, at loop start — the loop only ever
+          // deletes rules, so a bound on the starting count is a bound for
+          // every later pass too. Fifth-wave Finding 2: a fixed cap (formerly
+          // 100) is exhausted by a protocol with more independent
+          // contradictions than the cap allows; this scales with the actual
+          // data instead. If a pathological protocol ever did exhaust the
+          // bound regardless, any contradiction left standing is still
+          // caught: the v8 schema's own `rejectValidationContradictions`
+          // refinement runs on the migrated output and would surface it as a
+          // normal validation failure instead of silently shipping bad data.
+          const totalValidationRuleCount = Object.values(
+            typedVariables,
+          ).reduce<number>((count, variable) => {
+            const validation = asRecord(asRecord(variable)?.validation);
+            return count + (validation ? Object.keys(validation).length : 0);
+          }, 0);
+          const maxPasses = totalValidationRuleCount + 1;
+          for (let pass = 0; pass < maxPasses; pass++) {
             const [contradiction] =
               findValidationContradictions(typedVariables);
             if (!contradiction) break;

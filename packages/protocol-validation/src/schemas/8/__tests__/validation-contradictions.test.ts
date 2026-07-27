@@ -599,6 +599,69 @@ describe('findValidationContradictions — third-wave Finding 1: odd-cycle strip
   });
 });
 
+describe('findValidationContradictions — fifth-wave Finding 5: singleton boolean domains', () => {
+  const boolean = (
+    name: string,
+    validation: Record<string, unknown> = {},
+    options?: { label: string; value: boolean }[],
+  ) => ({
+    name,
+    type: 'boolean',
+    validation,
+    ...(options !== undefined ? { options } : {}),
+  });
+
+  const trueOnly = [{ label: 'Yes', value: true }];
+
+  it('rejects two true-only booleans joined by differentFrom', () => {
+    const result = findValidationContradictions({
+      a: boolean('a', { differentFrom: 'b' }, trueOnly),
+      b: boolean('b', {}, trueOnly),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('singletonBooleanDomain');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" must differ but can only hold the same value',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  it('accepts a true-only boolean differing from a full-domain boolean', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', { differentFrom: 'b' }, trueOnly),
+        b: boolean('b', {}),
+      }),
+    ).toEqual([]);
+  });
+
+  // Bipartiteness is unaffected by this check: an odd cycle over full-domain
+  // booleans is still caught, and an even cycle is still accepted.
+  it('still rejects an odd differentFrom triangle over full-domain booleans', () => {
+    const result = findValidationContradictions({
+      a: boolean('a', { differentFrom: 'b' }),
+      b: boolean('b', { differentFrom: 'c' }),
+      c: boolean('c', { differentFrom: 'a' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+  });
+
+  it('still accepts an even differentFrom cycle over full-domain booleans', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', { differentFrom: 'b' }),
+        b: boolean('b', { differentFrom: 'c' }),
+        c: boolean('c', { differentFrom: 'd' }),
+        d: boolean('d', { differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe('findValidationContradictions — third-wave Finding 3: mixed-resolution datetime equality groups', () => {
   const datePicker = (
     name: string,
@@ -648,6 +711,107 @@ describe('findValidationContradictions — third-wave Finding 3: mixed-resolutio
         b: datePicker('b', {}),
       }),
     ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — fifth-wave Finding 3: fixed-anchor RelativeDatePicker windows are static', () => {
+  const relativePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'RelativeDatePicker',
+    parameters,
+    validation,
+  });
+
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  it('rejects a fixed-anchor RelativeDatePicker sameAs a disjoint DatePicker window', () => {
+    const result = findValidationContradictions({
+      a: relativePicker(
+        'a',
+        { anchor: '2020-01-01', before: 0, after: 0 },
+        { sameAs: 'b' },
+      ),
+      b: datePicker('b', { min: '2021-01-01', max: '2021-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  it('leaves an anchor-less RelativeDatePicker unconstrained (interview-date-relative)', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker('a', { before: 0, after: 0 }, { sameAs: 'b' }),
+        b: datePicker('b', { min: '2021-01-01', max: '2021-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('applies the documented before=180/after=0 defaults to a bare anchor', () => {
+    // Computed via plain Date arithmetic rather than hand-computed, so the
+    // expectation can't drift from the implementation's own day-number math.
+    const anchor = '2020-06-15';
+    const anchorMs = Date.UTC(2020, 5, 15);
+    const dayMs = 86_400_000;
+    const earliestDefault = new Date(anchorMs - 180 * dayMs)
+      .toISOString()
+      .slice(0, 10);
+    const oneDayBeforeEarliest = new Date(anchorMs - 181 * dayMs)
+      .toISOString()
+      .slice(0, 10);
+
+    // A single-day DatePicker window sitting exactly on the default
+    // earliest bound (anchor - 180 days) overlaps.
+    expect(
+      findValidationContradictions({
+        a: relativePicker('a', { anchor }, { sameAs: 'b' }),
+        b: datePicker('b', { min: earliestDefault, max: earliestDefault }),
+      }),
+    ).toEqual([]);
+
+    // One day earlier falls outside the default 180-day window.
+    const result = findValidationContradictions({
+      a: relativePicker('a', { anchor }, { sameAs: 'b' }),
+      b: datePicker('b', {
+        min: oneDayBeforeEarliest,
+        max: oneDayBeforeEarliest,
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  it('treats a fixed-anchor RelativeDatePicker as full resolution in the mixed-resolution check', () => {
+    // Interval overlap: the single anchor day sits inside the year window,
+    // so only the resolution-mismatch check (not interval emptiness) fires.
+    const result = findValidationContradictions({
+      a: relativePicker(
+        'a',
+        { anchor: '2020-06-15', before: 0, after: 0 },
+        { sameAs: 'b' },
+      ),
+      b: datePicker('b', { type: 'year', min: '2020', max: '2020' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" are joined by sameAs but store dates at different resolutions',
+    );
   });
 });
 

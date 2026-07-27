@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
+import { formValueSelector } from 'redux-form';
 
 import DialogArrayField from '~/components/Form/DialogArrayField';
 import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
@@ -8,6 +9,7 @@ import { getVariablesForSubjectSelector } from '~/selectors/codebook';
 
 import ComposerFieldPreview from '../sections/Form/ComposerFieldPreview';
 import {
+  buildComposerFieldOverlay,
   composerItemSelector,
   composerNormalizeField,
 } from '../sections/Form/composerHelpers';
@@ -28,6 +30,7 @@ const EditableAttributesList = ({
   fieldName,
   entity,
   type,
+  form,
   editFormName = 'editable-list-form',
   title = 'Edit attribute',
   handleChangeFields,
@@ -42,9 +45,21 @@ const EditableAttributesList = ({
   const allVariables = useSelector((state: RootState) =>
     getVariablesForSubjectSelector(state, subject),
   );
+  // This stage's OTHER committed composer fields (nodeForm.fields, or one
+  // edge type's edges[i].form.fields) each carry their own component/
+  // parameters, independent of the codebook variable — a contradiction check
+  // for a fresh draft in this dialog must see how its siblings actually
+  // render in THIS stage, not just the codebook definition.
+  const composerFields = useSelector((state: RootState) =>
+    formValueSelector(form)(state, fieldName),
+  );
+  const overlay = useMemo(
+    () => buildComposerFieldOverlay(composerFields),
+    [composerFields],
+  );
   const editorValidate = useMemo(
-    () => makeFieldEditorValidate(allVariables),
-    [allVariables],
+    () => makeFieldEditorValidate(allVariables, overlay),
+    [allVariables, overlay],
   );
 
   return (

@@ -5,6 +5,8 @@ import type { VariablePropertyKey } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
 
+import type { VariableOverlay } from '../../Validations/contradictions';
+
 // Codebook props that, for NetworkComposer, stay on the codebook variable.
 // `component`/`parameters` are intentionally NOT here — they live on the field.
 export const COMPOSER_CODEBOOK_PROPERTIES = [
@@ -55,3 +57,27 @@ export const composerItemSelector =
     }
     return merged;
   };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * A stage's committed composer fields (redux-form's `nodeForm.fields` or one
+ * edge type's `edges[i].form.fields`), reshaped into the
+ * `makeFieldEditorValidate` overlay: each field's OWN `component`/
+ * `parameters` — which for NetworkComposer live on the field, not the
+ * codebook variable — keyed by the variable it renders. Fields with no
+ * `variable` yet (a still-blank new row) are skipped; they render nothing
+ * for any variable and so have no override to contribute.
+ */
+export const buildComposerFieldOverlay = (fields: unknown): VariableOverlay => {
+  if (!Array.isArray(fields)) return {};
+  const overlay: VariableOverlay = {};
+  for (const field of fields) {
+    if (!isRecord(field)) continue;
+    const { variable, component, parameters } = field;
+    if (typeof variable !== 'string' || variable === '') continue;
+    overlay[variable] = { component, parameters };
+  }
+  return overlay;
+};
