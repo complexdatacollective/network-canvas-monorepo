@@ -55,6 +55,7 @@ const TextInput = ({ input }: WrappedFieldProps) => (
 const EditorFields = () => <Field name="label" component={TextInput} />;
 
 type OwnProps = {
+  editorValidate?: (values: Record<string, unknown>) => Record<string, unknown>;
   normalizeItem?: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
 };
@@ -62,7 +63,11 @@ type OwnProps = {
 type HarnessProps = InjectedFormProps<Record<string, unknown>, OwnProps> &
   OwnProps;
 
-const Harness = ({ normalizeItem, onBeforeSave }: HarnessProps) => (
+const Harness = ({
+  editorValidate,
+  normalizeItem,
+  onBeforeSave,
+}: HarnessProps) => (
   <FieldArray
     name="items"
     component={DialogArrayField}
@@ -72,6 +77,7 @@ const Harness = ({ normalizeItem, onBeforeSave }: HarnessProps) => (
     addTitle="Add item"
     itemLabel="item"
     itemTemplate={() => ({ label: '' })}
+    editorValidate={editorValidate}
     normalizeItem={normalizeItem}
     onBeforeSave={onBeforeSave}
     rerenderOnEveryChange
@@ -85,10 +91,12 @@ const ReduxHarness = reduxForm<Record<string, unknown>, OwnProps>({
 
 const setup = ({
   initialItems = [],
+  editorValidate,
   normalizeItem,
   onBeforeSave,
 }: {
   initialItems?: Item[];
+  editorValidate?: (values: Record<string, unknown>) => Record<string, unknown>;
   normalizeItem?: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
 } = {}) => {
@@ -103,6 +111,7 @@ const setup = ({
       <DialogProvider>
         <ReduxHarness
           initialValues={{ items: initialItems }}
+          editorValidate={editorValidate}
           normalizeItem={normalizeItem}
           onBeforeSave={onBeforeSave}
         />
@@ -250,6 +259,22 @@ describe('DialogArrayField', () => {
       expect(onBeforeSave).toHaveBeenCalledOnce();
     });
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(getItems()).toEqual([]);
+  });
+
+  it('keeps the editor open when editorValidate rejects the item', async () => {
+    const editorValidate = vi.fn(() => ({ label: 'Blocked by validate' }));
+    const onBeforeSave = vi.fn((value: unknown) => value);
+    const { getItems } = setup({ editorValidate, onBeforeSave });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(onBeforeSave).not.toHaveBeenCalled();
     expect(getItems()).toEqual([]);
   });
 
