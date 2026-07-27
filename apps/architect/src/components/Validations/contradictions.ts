@@ -6,7 +6,26 @@ import { getTypeForComponent } from '~/config/variables';
 
 type UnknownRecord = Record<string, unknown>;
 
-export const DRAFT_VARIABLE_ID = '__draft-variable__';
+const DRAFT_VARIABLE_ID_BASE = '__draft-variable__';
+
+/**
+ * A placeholder id for the variable being CREATED, guaranteed absent from
+ * `allVariables`. Twelfth-wave Finding 2: the base literal is itself a
+ * schema-valid variable id, so an imported protocol may genuinely contain a
+ * variable under it — injecting the draft at a fixed literal would overwrite
+ * that real variable, collapsing the draft's rules against it into
+ * self-references and letting genuine contradictions past the dialog guard
+ * (they would then surface only at protocol validation).
+ */
+export const draftVariableId = (allVariables: UnknownRecord): string => {
+  let candidate = DRAFT_VARIABLE_ID_BASE;
+  let suffix = 1;
+  while (Object.hasOwn(allVariables, candidate)) {
+    suffix += 1;
+    candidate = `${DRAFT_VARIABLE_ID_BASE}${suffix}`;
+  }
+  return candidate;
+};
 
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -43,7 +62,7 @@ export const buildProspectiveVariables = ({
   options,
   parameters,
 }: ProspectiveDraft): UnknownRecord => {
-  const id = currentVariableId || DRAFT_VARIABLE_ID;
+  const id = currentVariableId || draftVariableId(allVariables);
   const existing = allVariables[id];
   const base = isRecord(existing)
     ? existing
@@ -69,7 +88,9 @@ export const buildProspectiveVariables = ({
 export const findDraftContradictions = (
   draft: ProspectiveDraft,
 ): ValidationContradiction[] => {
-  const id = draft.currentVariableId || DRAFT_VARIABLE_ID;
+  // Same `allVariables` as `buildProspectiveVariables` receives below, so both
+  // derive an identical id for this draft.
+  const id = draft.currentVariableId || draftVariableId(draft.allVariables);
   return findValidationContradictions(buildProspectiveVariables(draft)).filter(
     (contradiction) => contradiction.variableIds.includes(id),
   );

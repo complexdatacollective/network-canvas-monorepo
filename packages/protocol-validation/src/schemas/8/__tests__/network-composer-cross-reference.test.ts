@@ -302,13 +302,75 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
     };
   };
 
-  it('rejects a nodeForm field overriding a coarse codebook baseline to full resolution via a parameterless DatePicker', () => {
+  // Twelfth-wave Finding 1: a field that omits `parameters` INHERITS the
+  // codebook variable's, exactly as the interview runtime resolves it
+  // (`fieldParameters ?? codebookParameters`, see interview's
+  // selectors/forms.ts). Re-declaring the component without repeating
+  // `{ type: 'year' }` therefore still renders at year resolution and desyncs
+  // nothing — the overlay previously wrote `parameters: undefined` over the
+  // codebook's, falsely rejecting this protocol.
+  it('accepts a nodeForm field that omits parameters, inheriting the codebook resolution', () => {
     const result = ProtocolSchemaV8.safeParse(
       composerProtocolWithCoarseDatetimes({
         ...baseStage,
         nodeForm: {
           fields: [
             { variable: 'event_a', component: ComponentTypes.DatePicker },
+          ],
+        },
+      }),
+    );
+    expect(
+      result.success,
+      JSON.stringify(!result.success && result.error.issues),
+    ).toBe(true);
+  });
+
+  it('rejects a nodeForm field declaring a resolution that differs from the coarse codebook baseline', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithCoarseDatetimes({
+        ...baseStage,
+        nodeForm: {
+          fields: [
+            {
+              variable: 'event_a',
+              component: ComponentTypes.DatePicker,
+              parameters: { type: 'month' },
+            },
+          ],
+        },
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('make its validation contradictory'),
+    );
+    expect(issue?.path).toEqual([
+      'stages',
+      0,
+      'nodeForm',
+      'fields',
+      0,
+      'parameters',
+    ]);
+  });
+
+  // Inheritance is whole-object, not a deep merge — again mirroring the
+  // runtime's `??`. A field declaring ANY parameters of its own replaces the
+  // codebook's outright, so omitting `type` here really does render at full
+  // resolution and desyncs the year-resolution group.
+  it('rejects a nodeForm field whose own parameters drop the codebook resolution', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithCoarseDatetimes({
+        ...baseStage,
+        nodeForm: {
+          fields: [
+            {
+              variable: 'event_a',
+              component: ComponentTypes.DatePicker,
+              parameters: { min: '2020-01-01' },
+            },
           ],
         },
       }),

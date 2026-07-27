@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildComposerFieldOverlay } from '../../sections/Form/composerHelpers';
 import {
   buildProspectiveVariables,
-  DRAFT_VARIABLE_ID,
+  draftVariableId,
   findDraftContradictions,
   makeFieldEditorValidate,
 } from '../contradictions';
@@ -15,13 +15,14 @@ const numberVariable = (
 
 describe('buildProspectiveVariables', () => {
   it('adds a new variable under the draft placeholder id', () => {
+    const allVariables = { a: numberVariable('a') };
     const result = buildProspectiveVariables({
-      allVariables: { a: numberVariable('a') },
+      allVariables,
       currentVariableId: '',
       variableType: 'number',
       validation: { minValue: 1 },
     });
-    expect(result[DRAFT_VARIABLE_ID]).toMatchObject({
+    expect(result[draftVariableId(allVariables)]).toMatchObject({
       type: 'number',
       validation: { minValue: 1 },
     });
@@ -95,6 +96,56 @@ describe('findDraftContradictions', () => {
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('minSelectedExceedsOptions');
+  });
+});
+
+// Twelfth-wave Finding 2: `__draft-variable__` is a schema-VALID variable id,
+// so an imported protocol can genuinely contain one. Injecting the draft under
+// that fixed literal silently overwrote the real variable, turning the draft's
+// rules against it into self-references and hiding the very contradictions the
+// dialog guard exists to catch (they resurfaced only at protocol save).
+describe('draft placeholder id collisions', () => {
+  const collidingId = '__draft-variable__';
+
+  it('uses the plain placeholder when nothing collides with it', () => {
+    expect(draftVariableId({ a: numberVariable('a') })).toBe(collidingId);
+  });
+
+  it('derives a free placeholder when the record already uses it', () => {
+    const taken = {
+      [collidingId]: numberVariable('Legit'),
+      [`${collidingId}2`]: numberVariable('AlsoLegit'),
+    };
+    const id = draftVariableId(taken);
+    expect(Object.hasOwn(taken, id)).toBe(false);
+  });
+
+  it('keeps a real variable that occupies the placeholder id', () => {
+    const allVariables = { [collidingId]: numberVariable('Legit') };
+    const result = buildProspectiveVariables({
+      allVariables,
+      currentVariableId: '',
+      variableType: 'number',
+      validation: { minValue: 1 },
+    });
+    expect(result[collidingId]).toEqual(numberVariable('Legit'));
+    expect(result[draftVariableId(allVariables)]).toMatchObject({
+      validation: { minValue: 1 },
+    });
+  });
+
+  it('reports a genuine contradiction against the colliding variable', () => {
+    // The draft must be less than the real `__draft-variable__` (max 5) while
+    // being at least 10. Overwriting that variable made this a self-reference
+    // and the contradiction vanished.
+    const result = findDraftContradictions({
+      allVariables: { [collidingId]: numberVariable('Legit', { maxValue: 5 }) },
+      currentVariableId: '',
+      variableType: 'number',
+      validation: { minValue: 10, lessThanVariable: collidingId },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
   });
 });
 

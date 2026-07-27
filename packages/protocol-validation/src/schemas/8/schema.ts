@@ -235,6 +235,17 @@ const validateFormFieldVariable = (
  * of every other class — e.g. two sameAs-joined datetime fields pinned to
  * disjoint fixed date windows — slipped through.
  *
+ * The overlay models the runtime's own resolution: interview's
+ * selectors/forms.ts resolves a composer field's rendering as
+ * `fieldComponent ?? codebookComponent` and `fieldParameters ??
+ * codebookParameters`, so a field that omits `parameters` INHERITS the
+ * codebook variable's rather than rendering with none (twelfth-wave
+ * Finding 1). Writing `parameters: undefined` here instead clobbered the
+ * codebook's, falsely rejecting e.g. a year-resolution sameAs pair one of
+ * whose fields re-declares `component: 'DatePicker'` without repeating
+ * `{ type: 'year' }`. `component` is required on ComposerFormFieldSchema, so
+ * the field's own value always wins and needs no fallback.
+ *
  * The codebook record must itself pass the record-level contradiction check,
  * so any contradiction found in the overlay but NOT in the bare codebook is
  * necessarily introduced by the field overrides. Contradictions the bare
@@ -255,10 +266,16 @@ const validateComposerFieldContradictions = (
   for (const field of fields) {
     const base = codebookVariables[field.variable];
     if (!base) continue;
+    // Spreading `base` first, then overriding `parameters` only when the
+    // field declares its own, is exactly the runtime's `fieldParameters ??
+    // codebookParameters`: absent on the field inherits the codebook's, and
+    // absent on both stays absent rather than becoming an explicit undefined.
     overlaid[field.variable] = {
       ...base,
       component: field.component,
-      parameters: field.parameters,
+      ...(field.parameters !== undefined
+        ? { parameters: field.parameters }
+        : {}),
     };
   }
 
