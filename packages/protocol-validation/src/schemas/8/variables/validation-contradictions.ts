@@ -43,7 +43,7 @@ const nameOf = (id: string, variable: unknown): string => {
   return typeof name === 'string' ? name : id;
 };
 
-const typeOf = (variable: unknown): string | undefined => {
+const _typeOf = (variable: unknown): string | undefined => {
   const type = asRecord(variable)?.type;
   return typeof type === 'string' ? type : undefined;
 };
@@ -56,7 +56,7 @@ const numberRule = (
   return typeof value === 'number' ? value : undefined;
 };
 
-const referenceRule = (
+const _referenceRule = (
   variable: unknown,
   rule: ValidationName,
 ): string | undefined => {
