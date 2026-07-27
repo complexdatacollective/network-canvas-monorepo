@@ -30,6 +30,7 @@ const {
   mockOpenSetupWizard,
   mockGenerateSyntheticSessions,
   mockToastAdd,
+  mockCountSyntheticSessions,
 } = vi.hoisted(() => ({
   mockEstimateStorage: vi.fn(),
   mockIsPersisted: vi.fn(),
@@ -38,6 +39,7 @@ const {
   mockOpenSetupWizard: vi.fn(),
   mockGenerateSyntheticSessions: vi.fn(),
   mockToastAdd: vi.fn<(data: ToastAddCall) => string>(),
+  mockCountSyntheticSessions: vi.fn<() => Promise<number>>(),
 }));
 
 vi.mock('~/lib/storage', async () => {
@@ -54,7 +56,7 @@ vi.mock('~/lib/db/api', () => ({
   getSettings: vi.fn(async () => DEFAULT_SETTINGS),
   updateSettings: vi.fn(async () => DEFAULT_SETTINGS),
   listProtocols: mockListProtocols,
-  countSyntheticSessions: vi.fn(async () => 0),
+  countSyntheticSessions: mockCountSyntheticSessions,
   deleteSyntheticSessions: vi.fn(async () => 0),
 }));
 
@@ -128,6 +130,7 @@ beforeEach(() => {
   mockListProtocols.mockResolvedValue([]);
   mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
   mockIsPersisted.mockResolvedValue(false);
+  mockCountSyntheticSessions.mockResolvedValue(0);
 });
 
 afterEach(() => {
@@ -307,21 +310,21 @@ describe('SettingsDialog synthetic tab — protocol import race', () => {
   });
 });
 
+async function generateWithSelectedProtocol() {
+  mockListProtocols.mockResolvedValue([makeProtocol('Protocol A', 'hash-1')]);
+  const user = userEvent.setup();
+  render(<SettingsDialog open onClose={vi.fn()} />);
+  await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+
+  await waitFor(() => {
+    expect(screen.getByRole('combobox', { name: 'Protocol' })).toHaveValue(
+      'hash-1',
+    );
+  });
+  await user.click(screen.getByRole('button', { name: 'Generate' }));
+}
+
 describe('SettingsDialog synthetic tab — generation failure toast', () => {
-  async function generateWithSelectedProtocol() {
-    mockListProtocols.mockResolvedValue([makeProtocol('Protocol A', 'hash-1')]);
-    const user = userEvent.setup();
-    render(<SettingsDialog open onClose={vi.fn()} />);
-    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: 'Protocol' })).toHaveValue(
-        'hash-1',
-      );
-    });
-    await user.click(screen.getByRole('button', { name: 'Generate' }));
-  }
-
   it('shows a plain failure and keeps it on screen until dismissed', async () => {
     mockGenerateSyntheticSessions.mockRejectedValueOnce(
       new Error('Protocol not found for hash "hash-1".'),
@@ -382,5 +385,62 @@ describe('SettingsDialog synthetic tab — generation failure toast', () => {
       /node "Person", "Band" \(unique\): only 2 distinct values are possible/,
     );
     expect(conflictItem.tagName).toBe('LI');
+  });
+});
+
+describe('SettingsDialog synthetic tab — count after a failed generation', () => {
+  it('re-reads the stored count when generation fails, instead of showing a stale one', async () => {
+    // Generation refused part-way through. `generateSyntheticSessions` rolls
+    // its own rows back, but the dialog can't assume that: it has to re-read
+    // storage, so whatever survived is what the researcher sees.
+    let storedCount = 0;
+    mockCountSyntheticSessions.mockImplementation(async () => storedCount);
+    mockGenerateSyntheticSessions.mockImplementation(async () => {
+      storedCount = 4;
+      throw new Error('the draw exhausted every remaining distinct value');
+    });
+
+    await generateWithSelectedProtocol();
+
+    expect(
+      await screen.findByText(/currently 4 synthetic sessions/),
+    ).toBeInTheDocument();
+  });
+
+  it('tells the host to refresh its session list after a failed generation', async () => {
+    mockGenerateSyntheticSessions.mockRejectedValueOnce(
+      new Error('the draw exhausted every remaining distinct value'),
+    );
+    const onDataChange = vi.fn();
+
+    mockListProtocols.mockResolvedValue([makeProtocol('Protocol A', 'hash-1')]);
+    const user = userEvent.setup();
+    render(
+      <SettingsDialog open onClose={vi.fn()} onDataChange={onDataChange} />,
+    );
+    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Protocol' })).toHaveValue(
+        'hash-1',
+      );
+    });
+    await user.click(screen.getByRole('button', { name: 'Generate' }));
+
+    await waitFor(() => expect(onDataChange).toHaveBeenCalled());
+  });
+
+  it('still refreshes the count after a successful generation', async () => {
+    let storedCount = 0;
+    mockCountSyntheticSessions.mockImplementation(async () => storedCount);
+    mockGenerateSyntheticSessions.mockImplementation(async () => {
+      storedCount = 10;
+      return 10;
+    });
+
+    await generateWithSelectedProtocol();
+
+    expect(
+      await screen.findByText(/currently 10 synthetic sessions/),
+    ).toBeInTheDocument();
   });
 });

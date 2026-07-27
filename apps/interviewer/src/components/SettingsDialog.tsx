@@ -268,8 +268,6 @@ export function SettingsDialog({
         title: `Generated ${created} synthetic session${created === 1 ? '' : 's'}`,
         variant: 'success',
       });
-      await reloadSynthetic();
-      onDataChange?.();
     } catch (error) {
       // A refused generation (unsatisfiable validation rules) carries a
       // structured `conflicts` array that renders as a readable list; any
@@ -300,6 +298,11 @@ export function SettingsDialog({
       }
     } finally {
       setIsGenerating(false);
+      // Re-read storage on every outcome, not just success: a generation that
+      // fails part-way rolls its own sessions back, and the displayed count has
+      // to match what actually survived either way.
+      await reloadSynthetic();
+      onDataChange?.();
     }
   }, [
     selectedProtocolHash,
