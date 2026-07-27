@@ -1,5 +1,6 @@
 import { DATE_PICKER_DEFAULT_MIN } from '@codaco/shared-consts';
 
+import type { VariableEntry } from '../../types';
 import {
   addSteps,
   type DateResolution,
@@ -7,6 +8,7 @@ import {
   truncateToResolution,
 } from './dateWindow';
 import type { ConstrainedVariable, VariableConstraints } from './types';
+import { valueKey } from './uniqueRegistry';
 
 /**
  * Symbols the unique-text generator draws from. Kept in sync with
@@ -214,12 +216,16 @@ function unrankCombination(n: number, k: number, rank: number): number[] {
 /**
  * The `rank`-th selection a categorical draw can make, as option indices.
  *
- * Every rank below {@link valueSpaceSize} gives a different selection: sizes are
- * walked in order and each size's subsets in lexicographic order, so the whole
- * combination space is reachable. Choosing a contiguous run of options instead
+ * Ranks walk the whole combination space: sizes in order, and each size's
+ * subsets in lexicographic order. Choosing a contiguous run of options instead
  * would reach only as many selections as there are starting points, and a
  * `unique` variable would exhaust its values long before the count said so.
  * Past the end of the space the sequence wraps.
+ *
+ * Selections are positions in the option list, so two entries carrying one
+ * value give two ranks that draw the same value. {@link valueSpaceSize} counts
+ * the values rather than the ranks for that reason, leaving a rank per value
+ * and never the other way round.
  */
 export function categoricalSelectionAt(
   variable: ConstrainedVariable,
@@ -251,6 +257,25 @@ export function categoricalSelectionAt(
 }
 
 /**
+ * How many values an option list offers, counted the way the unique registry
+ * counts them: by {@link valueKey}, so the count and the draws it is spent on
+ * judge sameness identically.
+ *
+ * Entries, not values, are what the schema requires two of — an imported
+ * protocol may list one value under two labels. The draw reaches such a value
+ * once however many entries carry it, so counting entries would let a `unique`
+ * variable pass feasibility and then exhaust generation partway through the
+ * network.
+ *
+ * Deliberately not what {@link selectionSizeRange} measures: that is how many
+ * options a draw picks, which is a position in the raw list.
+ */
+function distinctOptionCount(entry: VariableEntry): number {
+  return new Set((entry.options ?? []).map((option) => valueKey(option.value)))
+    .size;
+}
+
+/**
  * How many distinct values the generator can produce for this variable, or
  * `'unbounded'` once the count reaches `ceiling`.
  *
@@ -271,13 +296,24 @@ export function valueSpaceSize(
       return 2;
 
     case 'ordinal':
-      return cap(entry.options?.length ?? 0);
+      return cap(distinctOptionCount(entry));
 
     case 'categorical': {
-      const optionCount = entry.options?.length ?? 0;
+      const optionCount = distinctOptionCount(entry);
       const { min, max } = selectionSizeRange(variable);
       let total = 0;
-      for (let size = min; size <= max; size++) {
+      // Selection sizes are counted in options picked, which duplicate entries
+      // make more numerous than the values they carry, so the range is held to
+      // the list the values themselves make: a size no set of distinct values
+      // can fill counts nothing, and a floor above them is met by the values
+      // the entries at that size collapse to. Held rather than left to
+      // `binomial`'s zero so the floor moves too — a duplicate-free list is
+      // already inside its own option count and is counted exactly as before.
+      for (
+        let size = Math.min(min, optionCount);
+        size <= Math.min(max, optionCount);
+        size++
+      ) {
         total += binomial(optionCount, size);
         if (total >= ceiling) return 'unbounded';
       }

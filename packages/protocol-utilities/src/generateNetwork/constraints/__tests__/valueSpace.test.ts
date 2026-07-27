@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ValueGenerator } from '../../../ValueGenerator';
 import { buildVariableConstraints } from '../buildConstraints';
 import type { ConstrainedVariable } from '../types';
+import { valueKey } from '../uniqueRegistry';
 import { valueSpaceSize } from '../valueSpace';
 
 const TODAY = '2026-07-27';
@@ -28,6 +29,29 @@ function openDate(
   });
 }
 
+/**
+ * The distinct values a draw reaches over the first `ranks` sequence numbers,
+ * keyed the way the unique registry keys them. The sequence wraps at the end of
+ * the space, so walking well past it shows the space holds nothing further.
+ */
+function reachedByDraw(
+  variable: ConstrainedVariable,
+  ranks: number,
+): Set<string> {
+  const generator = new ValueGenerator(1, TODAY);
+  const keys = new Set<string>();
+
+  for (let seq = 0; seq < ranks; seq++) {
+    keys.add(
+      valueKey(
+        generator.generateConstrained(variable, 0, { distinctSeq: seq }),
+      ),
+    );
+  }
+
+  return keys;
+}
+
 describe('valueSpaceSize', () => {
   it('gives boolean exactly two values', () => {
     expect(
@@ -47,6 +71,26 @@ describe('valueSpaceSize', () => {
       ],
     });
     expect(valueSpaceSize(variable, 100)).toBe(3);
+    expect(reachedByDraw(variable, 64).size).toBe(3);
+  });
+
+  // The schema requires two options but not two values, so an imported protocol
+  // can label one value twice. Both entries draw that one value, and counting
+  // entries is what let a `unique` ordinal pass this analysis and then exhaust
+  // generation on the second entity.
+  it('counts an ordinal by its distinct option values, not its entries', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'ordinal',
+      options: [
+        { label: 'A', value: 1 },
+        { label: 'B', value: 1 },
+        { label: 'C', value: 2 },
+      ],
+    });
+    expect(valueSpaceSize(variable, 100)).toBe(2);
+    expect(reachedByDraw(variable, 64).size).toBe(2);
   });
 
   it('counts categorical subsets within the selection bounds', () => {
@@ -63,6 +107,45 @@ describe('valueSpaceSize', () => {
       validation: { minSelected: 1, maxSelected: 2 },
     });
     expect(valueSpaceSize(variable, 100)).toBe(6);
+    expect(reachedByDraw(variable, 64).size).toBe(6);
+  });
+
+  // The same defect over subsets, where a duplicated value inflates the
+  // combination count rather than a single tally: three entries carrying two
+  // values are drawn as the three selections those two values make, not the
+  // seven the positions do.
+  it('counts a categorical by its distinct option values, not its entries', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'categorical',
+      options: [
+        { label: 'A', value: 'a' },
+        { label: 'B', value: 'a' },
+        { label: 'C', value: 'b' },
+      ],
+      validation: { unique: true },
+    });
+    expect(valueSpaceSize(variable, 100)).toBe(3);
+    expect(reachedByDraw(variable, 64).size).toBe(3);
+  });
+
+  // A selection floor the distinct values cannot reach is still met, by the
+  // value the entries at that size collapse to: two entries of one value
+  // satisfy `minSelected: 2` and are drawn as that single value.
+  it('counts a categorical whose selection floor exceeds its distinct values', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'categorical',
+      options: [
+        { label: 'A', value: 'a' },
+        { label: 'B', value: 'a' },
+      ],
+      validation: { minSelected: 2, maxSelected: 2 },
+    });
+    expect(valueSpaceSize(variable, 100)).toBe(1);
+    expect(reachedByDraw(variable, 64).size).toBe(1);
   });
 
   // Selection bounds the protocol leaves out are the generator's own defaults,
@@ -307,10 +390,10 @@ describe('valueSpaceSize', () => {
     expect(valueSpaceSize(variable, 1_000)).toBe(27);
   });
 
-  // A floor later than today leaves the draw one date, which is the floor
-  // itself. Counted as the one value that guarantees rather than as the empty
-  // range a fabricated ceiling would describe.
-  it('counts a date floor beyond today as the single date it reaches', () => {
+  // A floor later than today sits above the last date the picker offers, so
+  // the field lists no year at all. Counted as the empty space it is, which is
+  // what refuses the protocol rather than generating the one unselectable date.
+  it('counts a date floor beyond today as an empty space', () => {
     const variable = make({
       id: 'v',
       name: 'V',
@@ -319,7 +402,7 @@ describe('valueSpaceSize', () => {
       parameters: { type: 'year', min: '2030-01-01' },
       validation: { unique: true },
     });
-    expect(valueSpaceSize(variable, 1_000)).toBe(1);
+    expect(valueSpaceSize(variable, 1_000)).toBe(0);
   });
 
   it('returns zero rather than a negative count for an inverted date window', () => {
