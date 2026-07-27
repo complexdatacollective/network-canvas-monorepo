@@ -1,6 +1,9 @@
 import { v4 as uuid } from 'uuid';
 
-import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
+import {
+  type Stage,
+  VARIABLE_REFERENCE_VALIDATIONS,
+} from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
@@ -9,7 +12,12 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { generateAttributesForEntity } from './attributes';
+import { claimFixedValues, generateAttributesForEntity } from './attributes';
+import {
+  type EntityScopeRef,
+  scopeKey,
+  uniqueSlotMembers,
+} from './constraints/generateEntityAttributes';
 import type { EntityConstraints } from './constraints/types';
 import type { GenerationContext, NetworkDraft, StageOfType } from './context';
 import { createEdgesForPairs } from './edges';
@@ -351,6 +359,67 @@ function ruleResolvesAgainst(
   return false;
 }
 
+/**
+ * Whether `variableId`'s value is one the `unique` registry issues — its own
+ * rule declaring it, or a rule holding it equal to a variable that does.
+ *
+ * Asked of the slots themselves rather than of the variable's own `unique`, so
+ * the judgement is the one {@link claimFixedValues} goes on to act against.
+ */
+function isUniqueSlotVariable(
+  entity: EntityConstraints,
+  variableId: string,
+): boolean {
+  for (const memberIds of uniqueSlotMembers(entity).values()) {
+    if (memberIds.includes(variableId)) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Holds back the ego flag every FamilyPedigree stage is going to write, for the
+ * whole run and before any stage draws.
+ *
+ * The flag is a value the interface writes rather than one the generator picks,
+ * so a `unique` variable carrying it has one value spoken for from the start. A
+ * draw that ran earlier knows nothing about it — the flag only reaches the
+ * registry when the pedigree's own nodes are built — and a name generator ahead
+ * of the pedigree is issued `true` on the first position of the slot's
+ * sequence, which the pedigree then writes on its proband as well: the
+ * duplicate `unique` forbids, on every seed.
+ *
+ * Only the proband's `true` is held. Every pedigree marks exactly one node ego
+ * whatever its node count, while the `false` on the others is written only
+ * where the stage builds more than one — and holding both would empty a
+ * boolean's domain, where a draw left nothing takes a reserved value anyway and
+ * lands back on the collision. A protocol where that `false` is genuinely
+ * contested has a pedigree of two or more nodes plus a node from somewhere
+ * else, which is more entities than a two-value space covers and is refused
+ * before any of this runs.
+ */
+export function reserveFamilyPedigreeEgoValues(
+  ctx: GenerationContext,
+  stages: Stage[],
+): void {
+  for (const stage of stages) {
+    if (stage.type !== 'FamilyPedigree') continue;
+
+    const nodeType = stage.nodeConfig?.type;
+    const egoVariable = stage.nodeConfig?.egoVariable;
+    if (nodeType === undefined || egoVariable === undefined) continue;
+
+    const registry = scopeKey({ entity: 'node', type: nodeType });
+    const entity = ctx.entityConstraints.node.get(nodeType);
+    if (entity === undefined) continue;
+
+    for (const [slot, memberIds] of uniqueSlotMembers(entity)) {
+      if (!memberIds.includes(egoVariable)) continue;
+      ctx.uniqueRegistry.reserve(registry, slot, true);
+    }
+  }
+}
+
 export function handleFamilyPedigree(
   ctx: GenerationContext,
   draft: NetworkDraft,
@@ -374,18 +443,27 @@ export function handleFamilyPedigree(
   // false on every other alter/partner/child). That flag is therefore a value
   // fixed for the node rather than drawn for it.
   //
-  // Where a rule resolves against it, it is settled before anything is drawn
-  // and the rest of the node generated around it — the mechanism a roster row
-  // and a prompt's `additionalAttributes` use — because a `sameAs` counterpart
-  // would otherwise keep whatever the shared draw landed on and the finished
-  // node would break the rule generation had just satisfied. Where no rule
-  // reads it, the flag is written after generation instead: nothing resolves
-  // against it, so drawing every variable as before costs the pin no RNG draws
-  // and leaves the stage's random stream where it was.
+  // Where the flag's value is read by anything outside the node, it is settled
+  // before anything is drawn and the rest of the node generated around it — the
+  // mechanism a roster row and a prompt's `additionalAttributes` use — and then
+  // claimed. Two things read it. A rule resolving against it: a `sameAs`
+  // counterpart would otherwise keep whatever the shared draw landed on and the
+  // finished node would break the rule generation had just satisfied. And the
+  // `unique` registry: drawing a value that is thrown away leaves the registry
+  // holding one no node carries while the value the node does carry is
+  // unrecorded, so a later entity can be issued the proband's own flag.
+  //
+  // Where neither reads it, the flag is written after generation instead:
+  // nothing resolves against it and no slot issues it, so drawing every
+  // variable as before costs the pin no RNG draws and leaves the stage's random
+  // stream where it was.
+  const scope: EntityScopeRef = { entity: 'node', type: nodeType };
   const nodeVariables: EntityConstraints =
     ctx.entityConstraints.node.get(nodeType) ?? new Map();
   const drawnVariables =
-    egoVariable && ruleResolvesAgainst(nodeVariables, egoVariable)
+    egoVariable &&
+    (ruleResolvesAgainst(nodeVariables, egoVariable) ||
+      isUniqueSlotVariable(nodeVariables, egoVariable))
       ? new Set([...nodeVariables.keys()].filter((id) => id !== egoVariable))
       : undefined;
 
@@ -395,13 +473,14 @@ export function handleFamilyPedigree(
 
     const attrs = generateAttributesForEntity(
       ctx,
-      { entity: 'node', type: nodeType },
+      scope,
       draft.nodes.length + nodeIndex,
       fixed && drawnVariables
         ? { existing: fixed, only: drawnVariables }
         : undefined,
     );
     if (fixed) Object.assign(attrs, fixed);
+    if (fixed && drawnVariables) claimFixedValues(ctx, scope, fixed);
 
     familyNodes.push({
       [entityPrimaryKeyProperty]: uuid(),

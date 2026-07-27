@@ -38,6 +38,7 @@ import {
   handleOrdinalBin,
   handleSociogram,
   handleTieStrengthCensus,
+  reserveFamilyPedigreeEgoValues,
 } from './generateNetwork/stageHandlers';
 import { ValueGenerator } from './ValueGenerator';
 
@@ -166,6 +167,9 @@ export function generateNetwork(
     ctx,
     countPromptFixedValues(stages, resolvedConfig, externalData),
   );
+  // A pedigree's ego flag is fixed by its stage rather than by a prompt, and is
+  // held back here for the same reason.
+  reserveFamilyPedigreeEgoValues(ctx, stages);
 
   const draft: NetworkDraft = {
     egoUid: uuid(),
