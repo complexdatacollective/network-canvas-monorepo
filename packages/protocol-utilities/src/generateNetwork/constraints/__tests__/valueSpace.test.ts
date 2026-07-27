@@ -109,6 +109,34 @@ describe('valueSpaceSize', () => {
     expect(valueSpaceSize(variable, 100)).toBe(36);
   });
 
+  it('counts text at the one length a draw is made at', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'text',
+      validation: { minLength: 1, maxLength: 3 },
+    });
+    // Every draw is three characters long, so the space is 36 ** 3 rather than
+    // the 36 + 36 ** 2 + 36 ** 3 the whole length range would offer.
+    expect(valueSpaceSize(variable, 1_000_000)).toBe(36 ** 3);
+  });
+
+  it('counts the rounding grid a scalar draw lands on', () => {
+    expect(
+      valueSpaceSize(make({ id: 'v', name: 'V', type: 'scalar' }), 1_000),
+    ).toBe(101);
+  });
+
+  it('counts the rounding grid over an explicit scalar range', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'scalar',
+      validation: { minValue: 0.25, maxValue: 0.5 },
+    });
+    expect(valueSpaceSize(variable, 1_000)).toBe(26);
+  });
+
   it('stops counting once the space reaches the ceiling', () => {
     const variable = make({
       id: 'v',

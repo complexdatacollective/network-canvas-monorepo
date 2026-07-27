@@ -1,11 +1,30 @@
 import { stepsBetween } from './dateWindow';
-import type { ConstrainedVariable } from './types';
+import type { ConstrainedVariable, VariableConstraints } from './types';
 
 /**
  * Symbols the unique-text generator draws from. Kept in sync with
  * ValueGenerator's distinct-text encoding: both are base 36.
  */
 export const TEXT_ALPHABET_SIZE = 36;
+
+/** Decimal places every scalar draw is rounded to. */
+export const SCALAR_DECIMAL_PLACES = 2;
+
+/** Length a text draw falls back to when the rules impose no maximum. */
+const DEFAULT_TEXT_LENGTH = 12;
+
+/**
+ * The one length a text value is drawn at. The generator picks a single length
+ * rather than spreading draws across `[minLength, maxLength]`, so counting the
+ * whole range would let a `unique` variable pass feasibility and then collide;
+ * both the generator and the count read this instead.
+ */
+export function textDrawLength(constraints: VariableConstraints): number {
+  return Math.max(
+    constraints.maxLength ?? DEFAULT_TEXT_LENGTH,
+    constraints.minLength ?? 0,
+  );
+}
 
 function binomial(n: number, k: number): number {
   if (k < 0 || k > n) return 0;
@@ -68,17 +87,19 @@ export function valueSpaceSize(
       );
     }
 
-    case 'text': {
-      const { maxLength } = constraints;
-      if (maxLength === undefined) return 'unbounded';
-      const minLength = constraints.minLength ?? 1;
-      let total = 0;
-      for (let length = minLength; length <= maxLength; length++) {
-        total += TEXT_ALPHABET_SIZE ** length;
-        if (total >= ceiling) return 'unbounded';
-      }
-      return total;
+    case 'scalar': {
+      const min = constraints.minValue ?? 0;
+      const max = constraints.maxValue ?? 1;
+      // Draws are rounded to a fixed number of decimal places and clamped into
+      // the range, so what the generator can reach is that grid rather than the
+      // whole interval. The schema does not permit `unique` on scalar, but
+      // in-progress protocol state can still declare it.
+      if (max <= min) return 1;
+      return cap(Math.round((max - min) * 10 ** SCALAR_DECIMAL_PLACES) + 1);
     }
+
+    case 'text':
+      return cap(TEXT_ALPHABET_SIZE ** textDrawLength(constraints));
 
     default:
       return 'unbounded';

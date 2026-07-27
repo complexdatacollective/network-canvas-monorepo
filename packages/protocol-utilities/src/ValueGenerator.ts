@@ -4,16 +4,30 @@ import type { VariableValue } from '@codaco/shared-consts';
 
 import {
   addSteps,
+  type DateResolution,
   stepsBetween,
+  todayYmd,
+  truncateToResolution,
 } from './generateNetwork/constraints/dateWindow';
 import type {
   ConstrainedVariable,
   VariableConstraints,
 } from './generateNetwork/constraints/types';
-import { TEXT_ALPHABET_SIZE } from './generateNetwork/constraints/valueSpace';
+import {
+  SCALAR_DECIMAL_PLACES,
+  TEXT_ALPHABET_SIZE,
+  textDrawLength,
+} from './generateNetwork/constraints/valueSpace';
 import type { VariableEntry } from './types';
 
 const DISTINCT_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+/**
+ * How far back an unbounded `unique` datetime may reach. A reach expressed in
+ * steps rather than years underflows past year 0 at month or year resolution,
+ * where `addSteps` emits a malformed bound that reparses as year 0.
+ */
+const UNIQUE_DATE_REACH_YEARS = 1000;
 
 // valueSpaceSize's unique-text feasibility maths assumes distinctText draws
 // from exactly TEXT_ALPHABET_SIZE symbols. If this literal ever drifted from
@@ -36,12 +50,13 @@ function distinctText(seq: number, length: number): string {
   let remaining = seq;
   let encoded = '';
   do {
-    encoded = DISTINCT_ALPHABET[remaining % TEXT_ALPHABET_SIZE]! + encoded;
+    encoded =
+      DISTINCT_ALPHABET.charAt(remaining % TEXT_ALPHABET_SIZE) + encoded;
     remaining = Math.floor(remaining / TEXT_ALPHABET_SIZE);
   } while (remaining > 0);
 
   if (encoded.length >= length) return encoded.slice(-length);
-  return DISTINCT_ALPHABET[0]!.repeat(length - encoded.length) + encoded;
+  return DISTINCT_ALPHABET.charAt(0).repeat(length - encoded.length) + encoded;
 }
 
 function fitToLength(value: string, constraints: VariableConstraints): string {
@@ -51,17 +66,26 @@ function fitToLength(value: string, constraints: VariableConstraints): string {
     result = result.slice(0, maxLength);
   }
   if (minLength !== undefined && result.length < minLength) {
-    result = result.padEnd(minLength, DISTINCT_ALPHABET[0]!);
+    result = result.padEnd(minLength, DISTINCT_ALPHABET.charAt(0));
   }
+  return result;
+}
+
+function clamp(value: number, min?: number, max?: number): number {
+  let result = value;
+  if (max !== undefined) result = Math.min(result, max);
+  if (min !== undefined) result = Math.max(result, min);
   return result;
 }
 
 export class ValueGenerator {
   private faker: Faker;
+  private readonly today: string;
 
-  constructor(seed: number) {
+  constructor(seed: number, today: string = todayYmd()) {
     this.faker = new Faker({ locale: [en] });
     this.faker.seed(seed);
+    this.today = today;
   }
 
   generateForVariable(variable: VariableEntry, index: number): VariableValue {
@@ -201,23 +225,41 @@ export class ValueGenerator {
     switch (entry.type) {
       case 'text': {
         if (seq !== undefined) {
-          const length =
-            constraints.minLength ?? Math.min(constraints.maxLength ?? 12, 12);
-          return fitToLength(distinctText(seq, length), constraints);
+          return fitToLength(
+            distinctText(seq, textDrawLength(constraints)),
+            constraints,
+          );
         }
         return fitToLength(this.faker.person.firstName(), constraints);
       }
 
       case 'number': {
-        const min = Math.ceil(constraints.minValue ?? 18);
+        const lowerBound = constraints.minValue ?? 18;
+        const min = Math.ceil(lowerBound);
         // The default [18, 80] range is far too small to hold a unique value
         // per entity, and valueSpaceSize calls an unbounded number
         // "unbounded" — so a unique variable widens the range to make that
         // claim true. A non-unique variable keeps the realistic default.
         const defaultMax = constraints.unique ? min + this.uniqueHeadroom : 80;
-        const max = Math.floor(
-          constraints.maxValue ?? Math.max(min, defaultMax),
-        );
+        const upperBound = constraints.maxValue ?? Math.max(min, defaultMax);
+        const max = Math.floor(upperBound);
+
+        // A range such as [10.5, 10.7] holds no integer. The schema does not
+        // require number values to be whole, so draw inside the declared range
+        // rather than emitting the nearest integer outside it.
+        if (max < min) {
+          if (upperBound <= lowerBound) return lowerBound;
+          return clamp(
+            Number(
+              this.randomFloat(lowerBound, upperBound).toFixed(
+                SCALAR_DECIMAL_PLACES,
+              ),
+            ),
+            lowerBound,
+            upperBound,
+          );
+        }
+
         if (seq !== undefined) return min + (seq % Math.max(1, max - min + 1));
         return this.randomInt(min, max);
       }
@@ -226,7 +268,13 @@ export class ValueGenerator {
         const min = constraints.minValue ?? 0;
         const max = constraints.maxValue ?? 1;
         if (max <= min) return min;
-        return Number(this.randomFloat(min, max).toFixed(2));
+        // Round first: rounding a clamped value can push it back outside the
+        // bound it was just brought inside.
+        return clamp(
+          Number(this.randomFloat(min, max).toFixed(SCALAR_DECIMAL_PLACES)),
+          min,
+          max,
+        );
       }
 
       case 'boolean':
@@ -238,7 +286,7 @@ export class ValueGenerator {
         const options = entry.options ?? [];
         if (options.length === 0) return null;
         const pick = seq ?? index;
-        return options[pick % options.length]!.value;
+        return options[pick % options.length]?.value ?? null;
       }
 
       case 'categorical': {
@@ -256,7 +304,8 @@ export class ValueGenerator {
 
         const picked: (number | string | boolean)[] = [];
         for (let i = 0; i < count; i++) {
-          picked.push(options[(base + i) % options.length]!.value);
+          const option = options[(base + i) % options.length];
+          if (option) picked.push(option.value);
         }
         return [...new Set(picked)];
       }
@@ -265,9 +314,10 @@ export class ValueGenerator {
         const window = constraints.dateWindow ?? {
           resolution: 'full' as const,
         };
-        const max = window.max ?? this.defaultDateMax(window.resolution);
+        const max =
+          window.max ?? truncateToResolution(this.today, window.resolution);
         const defaultSpan = constraints.unique
-          ? this.uniqueHeadroom
+          ? this.uniqueDateHeadroom(window.resolution)
           : this.defaultDateSpan(window.resolution);
         const min =
           window.min ?? addSteps(max, -defaultSpan, window.resolution);
@@ -294,6 +344,17 @@ export class ValueGenerator {
     }
   }
 
+  /**
+   * A value standing in the requested relationship to `target`, kept inside the
+   * variable's own bounds.
+   *
+   * Those bounds win. When they leave no room on the requested side of `target`
+   * (bounds `[0, 100]`, target `100`, `'greater'`), this returns the bound
+   * rather than escaping it, so the value satisfies the variable's own rules
+   * but not the comparator. Callers must therefore draw a comparator target
+   * with enough headroom for a step in the requested direction to land inside
+   * the bounds.
+   */
   generateComparedTo(
     variable: ConstrainedVariable,
     target: VariableValue,
@@ -305,45 +366,54 @@ export class ValueGenerator {
     const inclusive =
       direction === 'greaterOrEqual' || direction === 'lessOrEqual';
 
+    // Only these three types accept a comparison rule (see the variable
+    // schema). Stepping any other type leaves its domain — a boolean becomes
+    // 2, an ordinal becomes a value no option offers — so draw normally.
+    if (
+      entry.type !== 'number' &&
+      entry.type !== 'scalar' &&
+      entry.type !== 'datetime'
+    ) {
+      return this.generateConstrained(variable, 0);
+    }
+
     if (entry.type === 'datetime') {
+      if (typeof target !== 'string' || target === '') {
+        return this.generateConstrained(variable, 0);
+      }
       const window = constraints.dateWindow ?? { resolution: 'full' as const };
-      const base = String(target);
       const step = inclusive ? 0 : 1;
       const candidate = addSteps(
-        base,
+        target,
         wantsGreater ? step : -step,
         window.resolution,
       );
-      if (wantsGreater && window.max !== undefined && candidate > window.max) {
-        return window.max;
-      }
-      if (!wantsGreater && window.min !== undefined && candidate < window.min) {
-        return window.min;
-      }
+      // Clamped against both ends: a target drawn from a wider window than
+      // this variable's escapes the far bound as well as the near one.
+      if (window.max !== undefined && candidate > window.max) return window.max;
+      if (window.min !== undefined && candidate < window.min) return window.min;
       return candidate;
     }
 
     const numericTarget = Number(target);
-    if (Number.isNaN(numericTarget)) {
+    if (target === null || Number.isNaN(numericTarget)) {
       return this.generateConstrained(variable, 0);
     }
 
-    const step = entry.type === 'scalar' ? 0.01 : 1;
+    const isScalar = entry.type === 'scalar';
+    const step = isScalar ? 10 ** -SCALAR_DECIMAL_PLACES : 1;
     const delta = inclusive ? 0 : step;
-    let candidate = wantsGreater
+    const candidate = wantsGreater
       ? numericTarget + delta
       : numericTarget - delta;
 
-    if (constraints.maxValue !== undefined) {
-      candidate = Math.min(candidate, constraints.maxValue);
-    }
-    if (constraints.minValue !== undefined) {
-      candidate = Math.max(candidate, constraints.minValue);
-    }
-
-    return entry.type === 'scalar'
-      ? Number(candidate.toFixed(2))
+    // Round first: rounding a clamped value can push it back outside the bound
+    // it was just brought inside.
+    const rounded = isScalar
+      ? Number(candidate.toFixed(SCALAR_DECIMAL_PLACES))
       : Math.round(candidate);
+
+    return clamp(rounded, constraints.minValue, constraints.maxValue);
   }
 
   /**
@@ -353,18 +423,22 @@ export class ValueGenerator {
    */
   private readonly uniqueHeadroom = 100_000;
 
+  /**
+   * The same headroom for dates, in steps at the window's own resolution.
+   * Bounded by the calendar rather than by entity count: no span wider than
+   * {@link UNIQUE_DATE_REACH_YEARS} stays a real date at year resolution, so a
+   * year-resolution space is narrower than the numeric headroom by necessity.
+   */
+  private uniqueDateHeadroom(resolution: DateResolution): number {
+    if (resolution === 'year') return UNIQUE_DATE_REACH_YEARS;
+    if (resolution === 'month') return UNIQUE_DATE_REACH_YEARS * 12;
+    return Math.round(UNIQUE_DATE_REACH_YEARS * 365.25);
+  }
+
   /** Roughly a decade back, replacing the old faker.date.past() window. */
-  private defaultDateSpan(resolution: 'full' | 'month' | 'year'): number {
+  private defaultDateSpan(resolution: DateResolution): number {
     if (resolution === 'year') return 40;
     if (resolution === 'month') return 480;
     return 3650;
-  }
-
-  private defaultDateMax(resolution: 'full' | 'month' | 'year'): string {
-    const now = new Date();
-    const ymd = `${String(now.getUTCFullYear()).padStart(4, '0')}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
-    if (resolution === 'year') return ymd.slice(0, 4);
-    if (resolution === 'month') return ymd.slice(0, 7);
-    return ymd;
   }
 }
