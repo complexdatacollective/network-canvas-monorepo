@@ -1416,6 +1416,451 @@ describe('a rule between two fixed attributes', () => {
 });
 
 /**
+ * A value fixed on a node is generated around rather than chosen: the draw is
+ * asked only for the variables it leaves over, so nothing between it and the
+ * rules it has to satisfy on its own stands in the way. A roster row carrying a
+ * value its variable's own rules reject is therefore no more usable than one
+ * breaking a rule between two of its values, and is passed over the same way.
+ */
+describe('a fixed value its own rules reject', () => {
+  function rosterStage(count: number, extra?: Record<string, unknown>): Stage {
+    return {
+      id: 'stage-1',
+      type: 'NameGeneratorRoster',
+      label: 'Roster',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Pick people', ...extra }],
+      behaviours: { minNodes: count, maxNodes: count },
+    } as unknown as Stage;
+  }
+
+  function rowsOf(attributes: Record<string, unknown>[]): NcNode[] {
+    return attributes.map(
+      (values, index) =>
+        ({
+          [entityPrimaryKeyProperty]: `roster-${index}`,
+          type: 'person',
+          [entityAttributesProperty]: values,
+        }) as unknown as NcNode,
+    );
+  }
+
+  function drawnOver(
+    codebook: Codebook,
+    rows: NcNode[],
+    count: number,
+    seed: number,
+    extra?: Record<string, unknown>,
+  ): Record<string, unknown>[] {
+    const { network } = generateNetwork({
+      seed,
+      codebook,
+      stages: [rosterStage(count, extra)],
+      externalData: {
+        'stage-1': rows.map(
+          (row) =>
+            ({
+              ...row,
+              [entityAttributesProperty]: {
+                ...row[entityAttributesProperty],
+              },
+            }) as NcNode,
+        ),
+      },
+    });
+
+    return network.nodes.map((node) => node[entityAttributesProperty]);
+  }
+
+  /**
+   * Every family below gives the stage six rows, three of which the rules
+   * accept, and asks it for three people: the stage can only fill that by
+   * passing every unusable row over.
+   */
+  function sweepRoster(
+    codebook: Codebook,
+    rows: NcNode[],
+    usable: (attributes: Record<string, unknown>) => boolean,
+  ): string[] {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const drawn = drawnOver(codebook, rows, 3, seed);
+
+      complain(
+        failures,
+        drawn.length === 3,
+        () => `seed ${seed}: ${drawn.length} nodes, not 3`,
+      );
+      for (const attributes of drawn) {
+        complain(
+          failures,
+          usable(attributes),
+          () => `seed ${seed}: drew ${JSON.stringify(attributes)}`,
+        );
+      }
+    }
+
+    return failures;
+  }
+
+  const bands = [1, 2, 3].map((value) => ({ label: `Band ${value}`, value }));
+  const tags = ['a', 'b', 'c', 'd'].map((value) => ({
+    label: value.toUpperCase(),
+    value,
+  }));
+
+  it(`passes over a row below a value floor, over ${SEEDS} seeds`, () => {
+    const codebook = personCodebook({
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 18, maxValue: 100 },
+      },
+    });
+    const rows = rowsOf([
+      { age: 5 },
+      { age: 42 },
+      { age: 7 },
+      { age: 55 },
+      { age: 900 },
+      { age: 61 },
+    ]);
+
+    expect(
+      sweepRoster(codebook, rows, ({ age }) => {
+        const value = Number(age);
+        return value >= 18 && value <= 100;
+      }),
+    ).toEqual([]);
+  });
+
+  it(`passes over a row outside the length its variable allows, over ${SEEDS} seeds`, () => {
+    const codebook = personCodebook({
+      code: {
+        name: 'Code',
+        type: 'text',
+        validation: { minLength: 4, maxLength: 8 },
+      },
+    });
+    const rows = rowsOf([
+      { code: 'ab' },
+      { code: 'abcd' },
+      { code: 'x' },
+      { code: 'abcde' },
+      { code: 'waytoolongindeed' },
+      { code: 'abcdef' },
+    ]);
+
+    expect(
+      sweepRoster(codebook, rows, ({ code }) => {
+        const value = String(code);
+        return value.length >= 4 && value.length <= 8;
+      }),
+    ).toEqual([]);
+  });
+
+  it(`passes over a row selecting too few or too many, over ${SEEDS} seeds`, () => {
+    const codebook = personCodebook({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options: tags,
+        validation: { minSelected: 2, maxSelected: 3 },
+      },
+    });
+    const rows = rowsOf([
+      { tags: ['a'] },
+      { tags: ['a', 'b'] },
+      { tags: ['a', 'b', 'c', 'd'] },
+      { tags: ['b', 'c'] },
+      { tags: ['c'] },
+      { tags: ['a', 'c'] },
+    ]);
+
+    expect(
+      sweepRoster(
+        codebook,
+        rows,
+        ({ tags: drawn }) =>
+          Array.isArray(drawn) && drawn.length >= 2 && drawn.length <= 3,
+      ),
+    ).toEqual([]);
+  });
+
+  it(`passes over a row holding a value no option offers, over ${SEEDS} seeds`, () => {
+    const codebook = personCodebook({
+      band: { name: 'Band', type: 'ordinal', options: bands },
+    });
+    const rows = rowsOf([
+      { band: 9 },
+      { band: 2 },
+      { band: 7 },
+      { band: 3 },
+      { band: 8 },
+      { band: 1 },
+    ]);
+
+    expect(
+      sweepRoster(codebook, rows, ({ band }) =>
+        [1, 2, 3].includes(Number(band)),
+      ),
+    ).toEqual([]);
+  });
+
+  it(`passes over a row selecting an option that is not offered, over ${SEEDS} seeds`, () => {
+    const codebook = personCodebook({
+      tags: { name: 'Tags', type: 'categorical', options: tags },
+    });
+    const rows = rowsOf([
+      { tags: ['zz'] },
+      { tags: ['a'] },
+      { tags: ['a', 'qq'] },
+      { tags: ['b'] },
+      { tags: 'c' },
+      { tags: ['c', 'd'] },
+    ]);
+
+    expect(
+      sweepRoster(
+        codebook,
+        rows,
+        ({ tags: drawn }) =>
+          Array.isArray(drawn) &&
+          drawn.every((value) => ['a', 'b', 'c', 'd'].includes(String(value))),
+      ),
+    ).toEqual([]);
+  });
+
+  it(`passes over a row outside the date picker's window, over ${SEEDS} seeds`, () => {
+    const codebook = personCodebook({
+      met: {
+        name: 'Met',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
+      },
+    });
+    const rows = rowsOf([
+      { met: '1980-05-05' },
+      { met: '2005-03-03' },
+      { met: '2020-01-01' },
+      { met: '2001-09-09' },
+      { met: '1975-02-02' },
+      { met: '2009-11-11' },
+    ]);
+
+    expect(
+      sweepRoster(codebook, rows, ({ met }) => {
+        const value = String(met);
+        return value >= '2000-01-01' && value <= '2010-12-31';
+      }),
+    ).toEqual([]);
+  });
+
+  it(`passes over a row outside the normalised scalar scale, over ${SEEDS} seeds`, () => {
+    // A scalar declares no bounds — the schema accepts none — but the slider
+    // that collects it runs over 0-1 and nothing else, so a row outside that
+    // scale is one no participant could have produced either.
+    const codebook = personCodebook({
+      closeness: {
+        name: 'Closeness',
+        type: 'scalar',
+        component: 'VisualAnalogScale',
+      },
+    });
+    const rows = rowsOf([
+      { closeness: 7 },
+      { closeness: 0.5 },
+      { closeness: -3 },
+      { closeness: 0.2 },
+      { closeness: 42 },
+      { closeness: 0.9 },
+    ]);
+
+    expect(
+      sweepRoster(codebook, rows, ({ closeness }) => {
+        const value = Number(closeness);
+        return value >= 0 && value <= 1;
+      }),
+    ).toEqual([]);
+  });
+
+  it(`passes over a row leaving a required column empty, over ${SEEDS} seeds`, () => {
+    const codebook = personCodebook({
+      nickname: {
+        name: 'Nickname',
+        type: 'text',
+        validation: { required: true },
+      },
+    });
+    const rows = rowsOf([
+      { nickname: null },
+      { nickname: 'Ana' },
+      { nickname: '   ' },
+      { nickname: 'Bo' },
+      { nickname: null },
+      { nickname: 'Cy' },
+    ]);
+
+    expect(
+      sweepRoster(codebook, rows, ({ nickname }) =>
+        ['Ana', 'Bo', 'Cy'].includes(String(nickname)),
+      ),
+    ).toEqual([]);
+  });
+
+  it(`draws every row when the rules accept all of them, over ${SEEDS} seeds`, () => {
+    // The guard is a filter over rows, not a narrowing of what a roster may
+    // hold: a roster whose rows are all usable draws all of them.
+    const codebook = personCodebook({
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 18, maxValue: 100 },
+      },
+    });
+    const rows = rowsOf([{ age: 42 }, { age: 55 }, { age: 61 }]);
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const drawn = drawnOver(codebook, rows, 3, seed).map(({ age }) =>
+        Number(age),
+      );
+
+      complain(
+        failures,
+        drawn.toSorted((a, b) => a - b).join(',') === '42,55,61',
+        () => `seed ${seed}: ages ${drawn.join(', ')}, not all three rows`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it('leaves a roster stage empty when no row can be used', () => {
+    // The same outcome as a roster asset that parsed to no rows at all: a
+    // roster stage builds people only from rows, so a pool holding none the
+    // network can take ends the stage rather than refusing the protocol —
+    // which rows a run can use is a property of the data, not of the protocol.
+    const codebook = personCodebook({
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 18, maxValue: 100 },
+      },
+    });
+    const rows = rowsOf([{ age: 5 }, { age: 6 }, { age: 7 }, { age: 8 }]);
+
+    for (let seed = 1; seed <= 25; seed++) {
+      expect(drawnOver(codebook, rows, 3, seed)).toEqual([]);
+    }
+  });
+
+  it('still fills a name generator whose panel rows are all unusable', () => {
+    // A panel is one source among several, so the stage fabricates the people
+    // the unusable rows cannot supply.
+    const codebook = personCodebook({
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 18, maxValue: 100 },
+      },
+    });
+    const panelStage = {
+      id: 'stage-1',
+      type: 'NameGenerator',
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      panels: [{ id: 'panel-1', title: 'Panel', dataSource: 'asset-1' }],
+      prompts: [{ id: 'p1', text: 'Name people' }],
+      behaviours: { minNodes: 3, maxNodes: 3 },
+    } as unknown as Stage;
+
+    for (let seed = 1; seed <= 25; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [panelStage],
+        externalData: {
+          'stage-1': [{ age: 5 }, { age: 6 }, { age: 7 }].map(
+            (values, index) =>
+              ({
+                [entityPrimaryKeyProperty]: `roster-${index}`,
+                type: 'person',
+                [entityAttributesProperty]: values,
+              }) as unknown as NcNode,
+          ),
+        },
+      });
+
+      expect(network.nodes).toHaveLength(3);
+      for (const node of network.nodes) {
+        const age = Number(node[entityAttributesProperty].age);
+        expect(age).toBeGreaterThanOrEqual(18);
+        expect(age).toBeLessThanOrEqual(100);
+      }
+    }
+  });
+
+  it(`passes over a row whose gap a prompt fills with a value the rules reject, over ${SEEDS} seeds`, () => {
+    // The prompt's value only reaches the nodes whose row leaves the variable
+    // unset, so which nodes hold it depends on the row — data, settled here,
+    // rather than the protocol-wide refusal a fabricating stage would get.
+    const codebook = personCodebook({
+      band: { name: 'Band', type: 'ordinal', options: bands },
+    });
+    const rows = rowsOf([{}, { band: 2 }, {}, { band: 3 }, {}, { band: 1 }]);
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const drawn = drawnOver(codebook, rows, 3, seed, {
+        additionalAttributes: [{ variable: 'band', value: true }],
+      }).map(({ band }) => Number(band));
+
+      complain(
+        failures,
+        drawn.toSorted((a, b) => a - b).join(',') === '1,2,3',
+        () => `seed ${seed}: bands ${drawn.join(', ')}, not the three rows`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it('refuses a prompt fixing a value its variable cannot hold', () => {
+    // A prompt states the value itself, so whether the variable can hold it is
+    // protocol rather than draw: refused on every seed or on none.
+    const codebook = personCodebook({
+      band: { name: 'Band', type: 'ordinal', options: bands },
+    });
+    const fixing = {
+      id: 'stage-1',
+      type: 'NameGenerator',
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Name people',
+          additionalAttributes: [{ variable: 'band', value: true }],
+        },
+      ],
+      behaviours: { minNodes: 3, maxNodes: 3 },
+    } as unknown as Stage;
+
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const build = () => generateNetwork({ seed, codebook, stages: [fixing] });
+
+      expect(build).toThrow(SyntheticDataConstraintError);
+      expect(build).toThrow(
+        'a prompt fixes this variable to true, which options does not allow',
+      );
+    }
+  });
+});
+
+/**
  * A prompt's `additionalAttributes` are written onto every node the prompt
  * creates, not drawn once per node, so a value a prompt fixes cannot vary with
  * the seed. Fixing a `unique` value on a stage that can create more than one

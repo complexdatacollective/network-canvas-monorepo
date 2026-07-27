@@ -1305,6 +1305,131 @@ describe('a rule between two values one prompt fixes', () => {
   });
 });
 
+/**
+ * A prompt's `additionalAttributes` carry a boolean, and the variable they name
+ * is any of the stage subject's — the schema puts no type on either end. So a
+ * prompt can state a value the variable's own rules reject, and the draw never
+ * sees it: the value is settled before generation, which is asked only for the
+ * variables it leaves over. Protocol rather than data, and refused on every
+ * seed or on none.
+ */
+describe('a value one prompt fixes against its own rules', () => {
+  function pinning(variable: string, value: boolean, type = 'NameGenerator') {
+    return {
+      id: 'stage-pin',
+      type,
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Name people',
+          additionalAttributes: [{ variable, value }],
+        },
+      ],
+      behaviours: { minNodes: 3, maxNodes: 3 },
+    } as unknown as Stage;
+  }
+
+  const options = [1, 2, 3].map((value) => ({ label: `Band ${value}`, value }));
+
+  it('reports a value no option offers', () => {
+    const codebook = codebookWith({
+      rank: { name: 'Rank', type: 'ordinal', options },
+    });
+
+    const conflicts = analyseFeasibility(
+      codebook,
+      [pinning('rank', true)],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['options', 'additionalAttributes']);
+    expect(conflicts[0]?.variableNames).toEqual(['Rank']);
+    expect(conflicts[0]?.reason).toBe(
+      'a prompt fixes this variable to true, which options does not allow',
+    );
+  });
+
+  it('reports a value below the floor its variable declares', () => {
+    const codebook = codebookWith({
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 18, maxValue: 100 },
+      },
+    });
+
+    const conflicts = analyseFeasibility(
+      codebook,
+      [pinning('age', true)],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['minValue', 'additionalAttributes']);
+    expect(conflicts[0]?.reason).toBe(
+      'a prompt fixes this variable to true, which minValue does not allow',
+    );
+  });
+
+  it('reports a selection its variable is not, against a selection rule', () => {
+    const codebook = codebookWith({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options,
+        validation: { minSelected: 2 },
+      },
+    });
+
+    const conflicts = analyseFeasibility(
+      codebook,
+      [pinning('tags', true)],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['options', 'additionalAttributes']);
+  });
+
+  it('accepts a value its variable can hold', () => {
+    const codebook = codebookWith({
+      close: { name: 'Close', type: 'boolean', validation: { required: true } },
+    });
+
+    expect(
+      analyseFeasibility(codebook, [pinning('close', false)], config),
+    ).toEqual([]);
+  });
+
+  it('leaves a roster stage holding rows to the draw', () => {
+    // The row's own value wins over the prompt's, so whether the prompt's value
+    // reaches a node depends on the row — passed over at the draw instead.
+    const codebook = codebookWith({
+      rank: { name: 'Rank', type: 'ordinal', options },
+    });
+
+    expect(
+      analyseFeasibility(
+        codebook,
+        [pinning('rank', true, 'NameGeneratorRoster')],
+        config,
+        {
+          'stage-pin': [
+            {
+              [entityPrimaryKeyProperty]: 'r1',
+              type: 'person',
+              [entityAttributesProperty]: { rank: 2 },
+            } as unknown as NcNode,
+          ],
+        },
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe('SyntheticDataConstraintError', () => {
   it('names every conflicting variable in its message', () => {
     const error = new SyntheticDataConstraintError([

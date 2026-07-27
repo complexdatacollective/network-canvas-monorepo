@@ -17,13 +17,19 @@ import {
   rosterRowIsDrawable,
 } from './attributes';
 import type { GenerationConfig } from './config';
+import {
+  type DateResolution,
+  truncateToResolution,
+} from './constraints/dateWindow';
 import type { EntityScopeRef } from './constraints/generateEntityAttributes';
 import {
   COMPARATOR_DIRECTION,
   COMPARISON_RULES,
+  type ConstrainedVariable,
   type EntityConstraints,
 } from './constraints/types';
 import { valueKey } from './constraints/uniqueRegistry';
+import { distinctOptionValues } from './constraints/valueSpace';
 import type { GenerationContext, StageOfType } from './context';
 import { getSubjectType } from './subject';
 
@@ -194,13 +200,13 @@ export function countPromptFixedValues(
  * creates, keyed by node type, for the prompts whose whole set is certain to
  * land together.
  *
- * A rule with both of its ends fixed leaves the draw nothing to choose, so the
- * pair either satisfies the rule as the protocol states it or nothing can make
- * it — which is decidable before any drawing. Prompts fixing fewer than two
- * variables are left out: no rule can span a single fixed value and something
- * the draw is still free to choose for it.
+ * A value the protocol fixes leaves the draw nothing to choose, so it either
+ * satisfies the rules as the protocol states it or nothing can make it —
+ * decidable before any drawing. That holds of one value against its own rules
+ * as much as of a pair against a rule spanning them, so a prompt fixing a
+ * single variable is carried here too.
  *
- * A roster stage holding rows is left out too. A row's own value wins over the
+ * A roster stage holding rows is left out. A row's own value wins over the
  * prompt's there, so which of a prompt's values reach one node depends on the
  * row drawn — data rather than protocol, settled at the draw by passing the row
  * over. A roster stage with no rows fabricates every node it makes, so its
@@ -226,7 +232,7 @@ export function collectPromptFixedAssignments(
 
     for (const prompt of stage.prompts) {
       const additional = prompt.additionalAttributes ?? [];
-      if (additional.length < 2) continue;
+      if (additional.length === 0) continue;
 
       const values: Record<string, VariableValue> = {};
       for (const { variable, value } of additional) values[variable] = value;
@@ -240,14 +246,144 @@ export function collectPromptFixedAssignments(
   return byType;
 }
 
-/** A rule an entity's fixed values break, as the pair that breaks it. */
+/**
+ * A rule an entity's fixed values break: the two variables of a rule spanning
+ * them, or the single variable whose own value its own rules reject.
+ */
 export type BrokenFixedRule = {
-  /** Both ends of the rule, in the order the codebook declares them. */
+  /** The variables the rule covers, in the order the codebook declares them. */
   variableIds: string[];
   /** The fixed values those variables hold, in the same order. */
   values: VariableValue[];
   rule: string;
 };
+
+/**
+ * Whether the interview would read a value as no answer at all. Mirrors the
+ * runtime's `required` validator: a null, a blank string, a `NaN` number and an
+ * empty selection are each what an untouched field holds.
+ */
+function isUnanswered(value: VariableValue): boolean {
+  if (value === null) return true;
+  if (typeof value === 'string') return value.trim().length === 0;
+  if (typeof value === 'number') return Number.isNaN(value);
+  if (Array.isArray(value)) return value.length === 0;
+  return false;
+}
+
+/** The shape a date has once written at each resolution. */
+const DATE_AT_RESOLUTION: Record<DateResolution, RegExp> = {
+  year: /^\d{4}$/,
+  month: /^\d{4}-\d{2}$/,
+  full: /^\d{4}-\d{2}-\d{2}$/,
+};
+
+/**
+ * Whether an option list offers a value.
+ *
+ * A categorical answer is the set of options ticked, so it is judged member by
+ * member and an answer of any other shape is one no option control produces. An
+ * empty list is not judged against at all: the schema requires two entries, so
+ * a list with nothing in it belongs to a protocol still being drafted, and a
+ * value cannot be outside a domain nobody has written yet.
+ */
+function optionsOffer(entry: VariableEntry, value: VariableValue): boolean {
+  const offered = distinctOptionValues(entry);
+  if (offered.length === 0) return true;
+
+  const keys = new Set(offered.map((option) => valueKey(option)));
+
+  if (entry.type === 'categorical') {
+    return (
+      Array.isArray(value) &&
+      value.every((member) => keys.has(valueKey(member)))
+    );
+  }
+
+  return keys.has(valueKey(value));
+}
+
+/**
+ * The rule a value fixed on an entity breaks on its own, if any.
+ *
+ * Read the way the interview's own validators read the value a field holds:
+ * each rule applies only once a value is present, judges only values of the
+ * shape it can read, and leaves anything else alone rather than refusing it.
+ * The bounds come from the same descriptor a drawn value is generated against,
+ * so a value put on an entity is held to exactly what a drawn one is.
+ *
+ * An option list goes a step further than any validator does, because no
+ * validator is what enforces it: an option control offers the values its list
+ * holds and nothing else, so a value outside the list is one no participant
+ * could have entered. That is the same reasoning by which a date picker's
+ * window already closes at the last date the field offers.
+ */
+function ownRuleBroken(
+  { entry, constraints }: ConstrainedVariable,
+  value: VariableValue,
+): string | undefined {
+  const {
+    required,
+    minLength,
+    maxLength,
+    minValue,
+    maxValue,
+    minSelected,
+    maxSelected,
+    dateWindow,
+  } = constraints;
+
+  if (required && isUnanswered(value)) return 'required';
+  // Every rule below applies only once a value is present; `required` owns
+  // emptiness, exactly as it does in the runtime's validators.
+  if (value === null) return undefined;
+
+  if (!optionsOffer(entry, value)) return 'options';
+
+  if (typeof value === 'string') {
+    if (maxLength !== undefined && value.length > maxLength) return 'maxLength';
+    if (minLength !== undefined && value !== '' && value.length < minLength) {
+      return 'minLength';
+    }
+  }
+
+  if (Array.isArray(value)) {
+    if (maxSelected !== undefined && value.length > maxSelected) {
+      return 'maxSelected';
+    }
+    // An empty selection is unanswered rather than too short, which is why the
+    // runtime's `minSelected` leaves it to `required`.
+    if (
+      minSelected !== undefined &&
+      value.length > 0 &&
+      value.length < minSelected
+    ) {
+      return 'minSelected';
+    }
+  }
+
+  if ((minValue !== undefined || maxValue !== undefined) && value !== '') {
+    const numeric = Number(value);
+    if (!Number.isNaN(numeric)) {
+      if (minValue !== undefined && numeric < minValue) return 'minValue';
+      if (maxValue !== undefined && numeric > maxValue) return 'maxValue';
+    }
+  }
+
+  if (dateWindow !== undefined && typeof value === 'string') {
+    const { resolution, min, max } = dateWindow;
+    const at = truncateToResolution(value, resolution);
+    // A value the picker's units cannot describe is left alone rather than
+    // compared: these bounds are ordered as strings, where anything else would
+    // sort by accident rather than by date.
+    if (DATE_AT_RESOLUTION[resolution].test(at)) {
+      if (min !== undefined && at < min) return 'parameters';
+      if (max !== undefined && at > max) return 'parameters';
+    }
+  }
+
+  return undefined;
+}
 
 /**
  * Whether a comparator holds between two values neither of which is drawn.
@@ -281,19 +417,23 @@ function comparatorHolds(
 }
 
 /**
- * The first rule an entity's fixed values break between two of themselves, if
- * any.
+ * The first rule an entity's fixed values break, if any.
  *
  * A value put on an entity rather than drawn for it — a roster row's, a
- * prompt's `additionalAttributes` — is generated around rather than chosen, so
- * a rule with one fixed end and one drawn end is resolved by the draw. A rule
- * with both ends fixed is not: nothing is left to choose, and the assignment
- * either satisfies it or no generation can. That has to be judged before the
- * assignment is accepted, because the draw is asked only for the variables the
- * fixed values leave over and never sees the pair at all.
+ * prompt's `additionalAttributes` — is generated around rather than chosen: the
+ * draw is asked only for the variables the fixed values leave over, and never
+ * sees the fixed ones at all. So nothing between two of them is resolved by the
+ * draw, and neither is anything about one of them on its own. Both have to be
+ * judged before the assignment is accepted, or the entity ends up holding a
+ * value no participant's form would have taken.
  *
- * A value that is absent or null is passed over, as the draw passes over a null
- * counterpart: a rule needs two values to be broken by.
+ * Each value is judged against its own rules first. A value the variable's own
+ * bounds already reject is the more direct account of why the entity cannot
+ * hold it than whatever it does to a rule spanning it and something else.
+ *
+ * A value that is absent is passed over — the draw supplies it. A null is
+ * passed over by the rules between values too, as the draw passes over a null
+ * counterpart: a rule spanning two variables needs two values to be broken by.
  */
 export function ruleBrokenByFixedValues(
   entity: EntityConstraints,
@@ -304,6 +444,18 @@ export function ruleBrokenByFixedValues(
     const value = fixed[id];
     return value === null ? undefined : value;
   };
+
+  for (const [id, variable] of entity) {
+    if (!(id in fixed)) continue;
+    // A key present without a value is what an emptied column arrives as, and
+    // it settles the variable exactly as any other fixed value does.
+    const value = fixed[id] ?? null;
+
+    const rule = ownRuleBroken(variable, value);
+    if (rule !== undefined) {
+      return { variableIds: [id], values: [value], rule };
+    }
+  }
 
   for (const [id, { constraints, entry }] of entity) {
     const own = held(id);
@@ -488,12 +640,13 @@ export function createNodesForStage(
           scope,
           pool,
           drawn,
-          // A row whose values break a rule between two of them, or between one
-          // of them and a value the prompt fixes, is passed over exactly as one
-          // repeating a `unique` value is: no draw stands between those values
-          // and the finished node, so the row is simply not one this protocol
-          // can use. Refusing instead would fail a roster of hundreds over rows
-          // the draw might never have reached.
+          // A row whose value its own rules reject, or whose values break a
+          // rule between two of them or between one of them and a value the
+          // prompt fixes, is passed over exactly as one repeating a `unique`
+          // value is: no draw stands between those values and the finished
+          // node, so the row is simply not one this protocol can use. Refusing
+          // instead would fail a roster of hundreds over rows the draw might
+          // never have reached.
           (row) =>
             ruleBrokenByFixedValues(constraints, fixedValuesFor(row)) ===
             undefined,

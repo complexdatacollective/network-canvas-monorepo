@@ -164,11 +164,11 @@ function analyseEntity(
     });
   };
 
-  // A rule with both of its ends fixed is settled before anything is drawn:
-  // the prompt states both values, so the pair the finished node holds is the
-  // pair the protocol wrote. Nothing a seed does can rescue one the rule
-  // cannot hold, which is what makes this a refusal here rather than a draw
-  // that fails on some seeds and not others.
+  // A value a prompt fixes is settled before anything is drawn: the protocol
+  // states it, so what the finished node holds is what the protocol wrote.
+  // Nothing a seed does can rescue a value the variable's own rules reject, or
+  // a pair a rule between them cannot hold, which is what makes these refusals
+  // here rather than draws that fail on some seeds and not others.
   const brokenReported = new Set<string>();
   for (const assignment of scope.fixedAssignments) {
     const broken = ruleBrokenByFixedValues(entity, assignment);
@@ -178,12 +178,13 @@ function analyseEntity(
     if (brokenReported.has(key)) continue;
     brokenReported.add(key);
 
+    const fixedTo = broken.values.map((value) => String(value)).join(' and ');
     report(
       broken.variableIds,
       [broken.rule, 'additionalAttributes'],
-      `a prompt fixes these variables to ${broken.values
-        .map((value) => String(value))
-        .join(' and ')}, which ${broken.rule} cannot hold`,
+      broken.variableIds.length === 1
+        ? `a prompt fixes this variable to ${fixedTo}, which ${broken.rule} does not allow`
+        : `a prompt fixes these variables to ${fixedTo}, which ${broken.rule} cannot hold`,
     );
   }
 
