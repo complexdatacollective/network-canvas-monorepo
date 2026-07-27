@@ -53,6 +53,7 @@ export function HeroIntro({ newsItems, onEntranceStart }: HeroIntroProps) {
       >
         <Header activeItemId="home" entranceVariants={entrance.itemVariants} />
         <Hero
+          backdropItemVariants={entrance.backdropItemVariants}
           containerVariants={entrance.heroVariants}
           itemVariants={entrance.itemVariants}
           newsItems={newsItems}

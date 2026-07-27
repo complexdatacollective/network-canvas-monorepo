@@ -35,11 +35,10 @@ export function useHeroScrollDeparture<T extends HTMLElement>(
     offset: ['start start', 'end start'],
   });
   const progress = useSpring(scrollYProgress, heroScrollSpring);
-  const opacity = useTransform(progress, [0, 0.58, 0.98], [1, 0.94, 0]);
+  // Opacity on this wrapper would form a Backdrop Root and prevent descendant
+  // translucent surfaces from blurring the page background while scrolling.
   const scale = useTransform(progress, [0, 0.68, 1], [1, 0.985, restingScale]);
   const y = useTransform(progress, [0, 1], [0, -distance]);
 
-  return hasHydrated && shouldReduceMotion === false
-    ? { opacity, scale, y }
-    : undefined;
+  return hasHydrated && shouldReduceMotion === false ? { scale, y } : undefined;
 }

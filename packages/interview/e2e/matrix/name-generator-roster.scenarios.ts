@@ -664,6 +664,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
             '[role="option"]:not([aria-disabled="true"])',
           ),
         ).not.toHaveCount(0);
+        await roster.waitForAddedNodeLayout('Amy Adams');
       },
     },
 

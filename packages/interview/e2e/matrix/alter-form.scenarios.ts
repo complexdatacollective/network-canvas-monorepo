@@ -718,7 +718,6 @@ export const alterFormScenarios: InterfaceScenarios = {
           type: 'scalar',
           component: 'VisualAnalogScale',
           parameters: { minLabel: 'Not at all', maxLabel: 'Extremely' },
-          validation: { minValue: 20, maxValue: 80 },
         });
         const datePicker = person.addVariable({
           id: 'datePicker',
@@ -808,12 +807,12 @@ export const alterFormScenarios: InterfaceScenarios = {
         const slides = new SlidesFormFixture(page);
         await interview.dismissIntro();
 
-        // VAS physical bounds mirror validation.minValue/maxValue.
+        // Scalar values use the protocol's normalized 0-1 range.
         const vasSlider = page
           .locator('[data-field-name="vas"]')
           .getByRole('slider');
-        await expect(vasSlider).toHaveAttribute('min', '20');
-        await expect(vasSlider).toHaveAttribute('max', '80');
+        await expect(vasSlider).toHaveAttribute('min', '0');
+        await expect(vasSlider).toHaveAttribute('max', '1');
         await expect(page.getByText('Not at all')).toBeVisible();
         await expect(page.getByText('Extremely')).toBeVisible();
 
@@ -897,7 +896,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         expect(attrs.likert).toBe(3);
         expect(attrs.checkbox).toEqual(['reading']);
         expect(attrs.toggleButtons).toEqual(['kind']);
-        expect(attrs.vas).toBe(80);
+        expect(attrs.vas).toBe(1);
         expect(attrs.datePicker).toBe('2024-06');
         expect(attrs.relativeDatePicker).toBe('2025-12-15');
       },
