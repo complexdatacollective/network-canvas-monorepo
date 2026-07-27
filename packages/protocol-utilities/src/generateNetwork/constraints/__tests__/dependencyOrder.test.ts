@@ -216,7 +216,200 @@ describe('resolveGenerationOrder', () => {
       TODAY,
     );
 
-    expect(resolveGenerationOrder(entity).cycles).toEqual([]);
+    const result = resolveGenerationOrder(entity);
+
+    // Only one shared value satisfies the pair, so they must generate as one
+    // group rather than merely be accepted.
+    expect(result.cycles).toEqual([]);
+    expect(result.order).toHaveLength(1);
+    const representative = result.order[0]!;
+    expect(result.membersOf.get(representative)?.toSorted()).toEqual([
+      'a',
+      'b',
+    ]);
+  });
+
+  it('merges a three-variable all-non-strict cycle into one group', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
+          },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('c'),
+          },
+        },
+        c: {
+          name: 'C',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const result = resolveGenerationOrder(entity);
+
+    expect(result.cycles).toEqual([]);
+    expect(result.order).toHaveLength(1);
+    const representative = result.order[0]!;
+    expect(result.membersOf.get(representative)?.toSorted()).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+  });
+
+  it('reports a strict comparison contradicting a comparator equality class', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
+          },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
+          },
+        },
+        c: {
+          name: 'C',
+          type: 'number',
+          validation: {
+            lessThanVariable: asEntityAttributeReference('a'),
+            greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const result = resolveGenerationOrder(entity);
+
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]?.toSorted()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('reports a strict comparison reaching a comparator equality class indirectly', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
+          },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('c'),
+          },
+        },
+        c: {
+          name: 'C',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
+          },
+        },
+        d: {
+          name: 'D',
+          type: 'number',
+          validation: {
+            lessThanVariable: asEntityAttributeReference('a'),
+            greaterThanOrEqualToVariable: asEntityAttributeReference('c'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(resolveGenerationOrder(entity).cycles.length).toBeGreaterThanOrEqual(
+      1,
+    );
+  });
+
+  it('reports a differentFrom across a comparator equality class', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
+            differentFrom: asEntityAttributeReference('b'),
+          },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const result = resolveGenerationOrder(entity);
+
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]?.toSorted()).toEqual(['a', 'b']);
+  });
+
+  it('orders a satisfiable strict comparison against a comparator equality class', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
+          },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
+          },
+        },
+        c: {
+          name: 'C',
+          type: 'number',
+          validation: { greaterThanVariable: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    const result = resolveGenerationOrder(entity);
+
+    expect(result.cycles).toEqual([]);
+    expect(result.groupOf.get('a')).toBe(result.groupOf.get('b'));
+
+    const equalityClass = result.groupOf.get('a')!;
+    const dependent = result.groupOf.get('c')!;
+    expect(equalityClass).not.toBe(dependent);
+    expect(result.order.indexOf(equalityClass)).toBeLessThan(
+      result.order.indexOf(dependent),
+    );
   });
 
   it('accepts one non-strict comparison stated from both sides', () => {

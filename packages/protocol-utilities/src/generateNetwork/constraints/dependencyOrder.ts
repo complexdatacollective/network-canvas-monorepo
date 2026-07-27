@@ -6,10 +6,11 @@ import {
 
 export type GenerationOrder = {
   /**
-   * Group representative ids, in the order they must be generated. A valid
-   * topological order is guaranteed only when `cycles` is empty: every group
-   * is still listed when it is not, but walking it then generates values whose
-   * dependencies do not exist yet.
+   * Group representative ids, in the order they must be generated. Whenever
+   * `cycles` is empty this is a valid topological order: every group is listed
+   * after every group it depends on. When `cycles` is not empty each group is
+   * still listed exactly once, but the contradicting groups cannot be ordered
+   * against one another and their relative positions are arbitrary.
    */
   order: string[];
   /** Member ids keyed by their group's representative id. */
@@ -35,6 +36,21 @@ type DifferentFromPair = {
   target: string;
 };
 
+/**
+ * Comparator edges lifted to groups, as `dependent -> dependency -> strict`.
+ * The dependent group is bounded by the dependency's value, so the dependency
+ * generates first. `strict` is true when any variable-level edge collapsed into
+ * the group edge forbids the two values being equal. Edges whose ends share a
+ * group are kept as self-loops, because a strict one is a claim that a single
+ * value is greater than itself.
+ */
+type ComparatorGraph = Map<string, Map<string, boolean>>;
+
+type EqualityClasses = {
+  find: (id: string) => string;
+  union: (a: string, b: string) => void;
+};
+
 const COMPARATOR_DIRECTION: Record<
   ComparisonRule,
   { ownerIsUpper: boolean; strict: boolean }
@@ -48,28 +64,25 @@ const COMPARATOR_DIRECTION: Record<
 // Variable ids never contain a NUL, so joining on one cannot collide.
 const KEY_SEPARATOR = '\u0000';
 
-/**
- * `sameAs` is symmetric and transitive in effect — every member of a chain
- * ends up holding one value — so those variables merge into a single group
- * that generates once. Comparator and `differentFrom` references become edges
- * between groups.
- */
-function buildSameAsGroups(entity: EntityConstraints): {
-  groupOf: Map<string, string>;
-  membersOf: Map<string, string[]>;
-} {
+function createEqualityClasses(ids: readonly string[]): EqualityClasses {
   const parent = new Map<string, string>();
-  for (const id of entity.keys()) parent.set(id, id);
+  for (const id of ids) parent.set(id, id);
 
   const find = (id: string): string => {
     let root = id;
-    while (parent.get(root) !== root) root = parent.get(root)!;
+    let above = parent.get(root);
+    while (above !== undefined && above !== root) {
+      root = above;
+      above = parent.get(root);
+    }
+
     let cursor = id;
-    while (parent.get(cursor) !== root) {
-      const next = parent.get(cursor)!;
+    while (cursor !== root) {
+      const next = parent.get(cursor) ?? root;
       parent.set(cursor, root);
       cursor = next;
     }
+
     return root;
   };
 
@@ -79,22 +92,7 @@ function buildSameAsGroups(entity: EntityConstraints): {
     if (rootA !== rootB) parent.set(rootB, rootA);
   };
 
-  for (const [id, variable] of entity) {
-    const target = variable.constraints.sameAs;
-    if (target !== undefined && entity.has(target)) union(target, id);
-  }
-
-  const groupOf = new Map<string, string>();
-  const membersOf = new Map<string, string[]>();
-  for (const id of entity.keys()) {
-    const root = find(id);
-    groupOf.set(id, root);
-    const members = membersOf.get(root) ?? [];
-    members.push(id);
-    membersOf.set(root, members);
-  }
-
-  return { groupOf, membersOf };
+  return { find, union };
 }
 
 /**
@@ -151,21 +149,117 @@ function differentFromPairs(entity: EntityConstraints): DifferentFromPair[] {
   return pairs;
 }
 
+function buildComparatorGraph(
+  edges: readonly ComparatorEdge[],
+  groupOf: (id: string) => string,
+): ComparatorGraph {
+  const graph: ComparatorGraph = new Map();
+
+  for (const edge of edges) {
+    const dependent = groupOf(edge.upper);
+    const dependency = groupOf(edge.lower);
+    const targets = graph.get(dependent) ?? new Map<string, boolean>();
+    targets.set(dependency, edge.strict || targets.get(dependency) === true);
+    graph.set(dependent, targets);
+  }
+
+  return graph;
+}
+
+/**
+ * Kosaraju's algorithm. The first walk records the order nodes finish in, the
+ * second walks the reversed edges starting from the latest finisher, and every
+ * tree it collects is one strongly connected component.
+ */
+function stronglyConnectedComponents(
+  nodes: readonly string[],
+  graph: ComparatorGraph,
+): string[][] {
+  const finished: string[] = [];
+  const visited = new Set<string>();
+
+  const explore = (node: string): void => {
+    if (visited.has(node)) return;
+    visited.add(node);
+    for (const next of graph.get(node)?.keys() ?? []) explore(next);
+    finished.push(node);
+  };
+
+  for (const node of nodes) explore(node);
+
+  const incoming = new Map<string, string[]>();
+  for (const [node, targets] of graph) {
+    for (const target of targets.keys()) {
+      const sources = incoming.get(target) ?? [];
+      sources.push(node);
+      incoming.set(target, sources);
+    }
+  }
+
+  const assigned = new Set<string>();
+  const components: string[][] = [];
+
+  const collect = (node: string, component: string[]): void => {
+    if (assigned.has(node)) return;
+    assigned.add(node);
+    component.push(node);
+    for (const source of incoming.get(node) ?? []) collect(source, component);
+  };
+
+  for (const node of finished.toReversed()) {
+    if (assigned.has(node)) continue;
+    const component: string[] = [];
+    collect(node, component);
+    components.push(component);
+  }
+
+  return components;
+}
+
+function hasStrictInternalEdge(
+  component: readonly string[],
+  graph: ComparatorGraph,
+): boolean {
+  const members = new Set(component);
+
+  for (const node of component) {
+    for (const [target, strict] of graph.get(node) ?? []) {
+      if (strict && members.has(target)) return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * Resolves the order the groups of an entity's variables must be generated in,
  * and reports the reference structures no data can satisfy.
  *
- * Once comparators are canonicalised and every variable id is mapped to its
- * `sameAs` group, a structure is unsatisfiable exactly when:
+ * Variables merge into groups that generate one shared value. `sameAs` forms
+ * the first groups, but it is not the only construct that forces two variables
+ * equal: within a cycle of comparator edges every member bounds every other
+ * from both sides, so a cycle carrying no strict edge forces its members equal
+ * — `a >= b` together with `b >= a` means `a = b`. Such a cycle is not a
+ * contradiction, it is an equality class, and merging it is what makes the
+ * generator emit one value for all of its members, which is the only thing
+ * that satisfies it.
  *
- * 1. a cycle made only of comparator edges contains at least one strict edge.
- *    An all-non-strict cycle merely forces its members equal, which any single
- *    value satisfies.
- * 2. a comparator edge whose ends fall in one `sameAs` group is strict. The
- *    group holds one value, which cannot be strictly ordered against itself,
- *    but does satisfy a non-strict comparison.
- * 3. a `differentFrom` falls within one `sameAs` group, whose members would
- *    have to be equal and different at once.
+ * Finding those cycles is a strongly-connected-components problem rather than
+ * a back-edge search: a depth-first search examines one cycle per back edge, so
+ * a strict cycle sharing a back edge with an all-non-strict one is never
+ * looked at. Taking a whole component at once is both sound and complete — a
+ * component with no internal strict edge is an equality class, and a component
+ * carrying any internal strict edge contains a cycle implying `x > x`.
+ *
+ * Once every equality class is merged, a structure is unsatisfiable exactly
+ * when:
+ *
+ * 1. a component of the comparator graph has an internal strict edge. A
+ *    comparator whose two ends already share a group counts as one, because
+ *    that group holds a single value which cannot be strictly ordered against
+ *    itself (though it does satisfy a non-strict comparison).
+ * 2. a `differentFrom` falls within one group, whose members would have to be
+ *    equal and different at once.
  *
  * `differentFrom` never makes a cycle unsatisfiable on its own: being
  * symmetric, a mutual pair is one constraint that any two distinct values
@@ -176,80 +270,82 @@ function differentFromPairs(entity: EntityConstraints): DifferentFromPair[] {
 export function resolveGenerationOrder(
   entity: EntityConstraints,
 ): GenerationOrder {
-  const { groupOf, membersOf } = buildSameAsGroups(entity);
-  const groups = [...new Set([...entity.keys()].map((id) => groupOf.get(id)!))];
+  const ids = [...entity.keys()];
+  const classes = createEqualityClasses(ids);
+
+  for (const [id, variable] of entity) {
+    const target = variable.constraints.sameAs;
+    if (target !== undefined && entity.has(target)) classes.union(target, id);
+  }
+
+  const comparatorEdges = canonicalComparatorEdges(entity);
+
+  const sameAsGroups = [...new Set(ids.map((id) => classes.find(id)))];
+  const sameAsGraph = buildComparatorGraph(comparatorEdges, classes.find);
+
+  const contradictions: string[][] = [];
+  for (const component of stronglyConnectedComponents(
+    sameAsGroups,
+    sameAsGraph,
+  )) {
+    if (hasStrictInternalEdge(component, sameAsGraph)) {
+      contradictions.push(component);
+      continue;
+    }
+
+    const [representative, ...rest] = component;
+    if (representative === undefined) continue;
+    for (const group of rest) classes.union(representative, group);
+  }
+
+  // Rebuilt from codebook order so neither union-find's choice of root nor the
+  // order components were discovered in can reach the caller.
+  const groupOf = new Map<string, string>();
+  const membersOf = new Map<string, string[]>();
+  for (const id of ids) {
+    const root = classes.find(id);
+    groupOf.set(id, root);
+    const members = membersOf.get(root) ?? [];
+    members.push(id);
+    membersOf.set(root, members);
+  }
+  const groups = [...membersOf.keys()];
 
   const cycles: string[][] = [];
   const reported = new Set<string>();
 
-  const report = (groupsInCycle: string[]): void => {
-    // Sorting canonicalises the dedupe key only; both the reported members and
-    // the generation order stay in traversal order. `flatMap` allocates, so a
-    // consumer that reorders a reported cycle cannot disturb `membersOf`.
-    const key = groupsInCycle.toSorted().join(KEY_SEPARATOR);
+  const report = (groupsInCycle: readonly string[]): void => {
+    // Sorting canonicalises the dedupe key only. The reported members are
+    // gathered into a fresh array in codebook order, so a consumer that
+    // reorders a reported cycle cannot disturb `membersOf`.
+    const inCycle = new Set(groupsInCycle);
+    const key = [...inCycle].toSorted().join(KEY_SEPARATOR);
     if (reported.has(key)) return;
     reported.add(key);
-    cycles.push(groupsInCycle.flatMap((group) => membersOf.get(group) ?? []));
+    cycles.push(ids.filter((id) => inCycle.has(groupOf.get(id) ?? id)));
   };
 
-  // Group edge (dependent group -> depended-upon group), strict when any of
-  // the variable-level edges it collapses is strict.
-  const comparatorDependencies = new Map<string, Map<string, boolean>>();
-  for (const group of groups) comparatorDependencies.set(group, new Map());
+  for (const component of contradictions) report(component);
 
-  for (const edge of canonicalComparatorEdges(entity)) {
-    const upper = groupOf.get(edge.upper)!;
-    const lower = groupOf.get(edge.lower)!;
+  const dependencies = new Map<string, Set<string>>();
+  for (const group of groups) dependencies.set(group, new Set());
 
-    if (upper === lower) {
-      if (edge.strict) report([upper]);
-      continue;
-    }
-
-    const dependencies = comparatorDependencies.get(upper)!;
-    dependencies.set(lower, edge.strict || dependencies.get(lower) === true);
+  for (const edge of comparatorEdges) {
+    const dependent = classes.find(edge.upper);
+    const dependency = classes.find(edge.lower);
+    // Both ends now share a value, so there is nothing left to order.
+    if (dependent === dependency) continue;
+    dependencies.get(dependent)?.add(dependency);
   }
-
-  const retained = new Map<string, Set<string>>();
-  for (const group of groups) retained.set(group, new Set());
-
-  const state = new Map<string, 'visiting' | 'done'>();
-
-  const visitComparators = (group: string, stack: string[]): void => {
-    const current = state.get(group);
-    if (current === 'done') return;
-    if (current === 'visiting') {
-      const start = stack.indexOf(group);
-      const cycle = stack.slice(start === -1 ? 0 : start);
-      const hasStrictEdge = cycle.some(
-        (from, index) =>
-          comparatorDependencies.get(from)?.get(cycle[index + 1] ?? group) ===
-          true,
-      );
-      if (hasStrictEdge) report(cycle);
-      return;
-    }
-
-    state.set(group, 'visiting');
-    for (const dependency of comparatorDependencies.get(group)!.keys()) {
-      visitComparators(dependency, [...stack, group]);
-      // A dependency left 'visiting' is an ancestor, so this edge closed a
-      // cycle; dropping it leaves an acyclic graph to order.
-      if (state.get(dependency) === 'done')
-        retained.get(group)!.add(dependency);
-    }
-    state.set(group, 'done');
-  };
-
-  for (const group of groups) visitComparators(group, []);
 
   const reaches = (from: string, target: string): boolean => {
     const seen = new Set<string>([from]);
     const pending = [from];
     while (pending.length > 0) {
-      const group = pending.pop()!;
+      const group = pending.pop();
+      if (group === undefined) break;
       if (group === target) return true;
-      for (const dependency of retained.get(group) ?? []) {
+      for (const dependency of dependencies.get(group) ?? []) {
         if (seen.has(dependency)) continue;
         seen.add(dependency);
         pending.push(dependency);
@@ -259,8 +355,8 @@ export function resolveGenerationOrder(
   };
 
   for (const pair of differentFromPairs(entity)) {
-    const dependent = groupOf.get(pair.dependent)!;
-    const target = groupOf.get(pair.target)!;
+    const dependent = classes.find(pair.dependent);
+    const target = classes.find(pair.target);
 
     if (dependent === target) {
       report([dependent]);
@@ -268,7 +364,7 @@ export function resolveGenerationOrder(
     }
 
     if (reaches(target, dependent)) continue;
-    retained.get(dependent)!.add(target);
+    dependencies.get(dependent)?.add(target);
   }
 
   const order: string[] = [];
@@ -277,7 +373,7 @@ export function resolveGenerationOrder(
   const place = (group: string): void => {
     if (placed.has(group)) return;
     placed.add(group);
-    for (const dependency of retained.get(group)!) place(dependency);
+    for (const dependency of dependencies.get(group) ?? []) place(dependency);
     order.push(group);
   };
 
