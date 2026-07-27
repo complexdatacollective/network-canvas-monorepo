@@ -5,7 +5,7 @@ import type {
 } from '@codaco/protocol-validation';
 import type { NcNode } from '@codaco/shared-consts';
 
-import type { GenerationConfig } from '../config';
+import type { ResolvedGenerationConfig } from '../config';
 import { countPromptFixedValues, type PromptFixedValues } from '../nodes';
 import { collectBinOnlyVariables } from './binOnlyVariables';
 import { buildEntityConstraints } from './buildConstraints';
@@ -99,7 +99,7 @@ function comparatorComponents(edges: readonly ComparatorEdge[]): string[][] {
 
 function analyseEntity(
   scope: EntityScope,
-  config: GenerationConfig,
+  config: ResolvedGenerationConfig,
 ): ConstraintConflict[] {
   const entity = buildEntityConstraints(
     scope.variables,
@@ -376,7 +376,7 @@ function analyseEntity(
 export function analyseFeasibility(
   codebook: StructuralCodebook,
   stages: Stage[],
-  config: GenerationConfig,
+  config: ResolvedGenerationConfig,
   externalData?: Record<string, NcNode[]>,
 ): ConstraintConflict[] {
   const counts = worstCaseEntityCounts(stages, config, externalData);

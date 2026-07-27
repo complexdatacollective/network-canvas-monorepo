@@ -2,7 +2,7 @@ import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 
 import type { ValueGenerator } from '../ValueGenerator';
-import type { GenerationConfig } from './config';
+import type { ResolvedGenerationConfig } from './config';
 import type { EntityConstraints } from './constraints/types';
 import type { UniqueRegistry } from './constraints/uniqueRegistry';
 
@@ -20,7 +20,7 @@ export type StageOfType<T extends Stage['type']> = Extract<Stage, { type: T }>;
 export type GenerationContext = {
   codebook: StructuralCodebook;
   valueGen: ValueGenerator;
-  config: GenerationConfig;
+  config: ResolvedGenerationConfig;
   /** Roster rows already drawn into the network, shared across stages. */
   usedRosterUids: Set<string>;
   /** Pre-parsed roster rows keyed by stage id (see `generateNetwork`). */
