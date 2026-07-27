@@ -1,0 +1,151 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  buildProspectiveVariables,
+  DRAFT_VARIABLE_ID,
+  findDraftContradictions,
+  makeFieldEditorValidate,
+} from '../contradictions';
+
+const numberVariable = (
+  name: string,
+  validation: Record<string, unknown> = {},
+) => ({ name, type: 'number', validation });
+
+describe('buildProspectiveVariables', () => {
+  it('adds a new variable under the draft placeholder id', () => {
+    const result = buildProspectiveVariables({
+      allVariables: { a: numberVariable('a') },
+      currentVariableId: '',
+      variableType: 'number',
+      validation: { minValue: 1 },
+    });
+    expect(result[DRAFT_VARIABLE_ID]).toMatchObject({
+      type: 'number',
+      validation: { minValue: 1 },
+    });
+    expect(result.a).toEqual(numberVariable('a'));
+  });
+
+  it('substitutes the edited variable, keeping its other properties', () => {
+    const result = buildProspectiveVariables({
+      allVariables: { a: { ...numberVariable('a'), readOnly: true } },
+      currentVariableId: 'a',
+      variableType: 'number',
+      validation: { minValue: 1 },
+    });
+    expect(result.a).toMatchObject({
+      readOnly: true,
+      validation: { minValue: 1 },
+    });
+  });
+});
+
+describe('findDraftContradictions', () => {
+  it('reports a contradiction the draft introduces', () => {
+    const result = findDraftContradictions({
+      allVariables: {},
+      currentVariableId: '',
+      variableType: 'number',
+      validation: { minValue: 10, maxValue: 2 },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.message).toContain('is greater than');
+  });
+
+  it('reports a contradiction whose offending rule lives on another variable', () => {
+    // Editing b's maxValue below a's minimum makes a's comparator impossible.
+    const result = findDraftContradictions({
+      allVariables: {
+        a: numberVariable('a', { minValue: 10, lessThanVariable: 'b' }),
+        b: numberVariable('b'),
+      },
+      currentVariableId: 'b',
+      variableType: 'number',
+      validation: { maxValue: 5 },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  it('ignores pre-existing contradictions between other variables', () => {
+    const result = findDraftContradictions({
+      allVariables: {
+        a: numberVariable('a', { minValue: 10, maxValue: 2 }),
+        b: numberVariable('b'),
+      },
+      currentVariableId: 'b',
+      variableType: 'number',
+      validation: { required: true },
+    });
+    expect(result).toEqual([]);
+  });
+
+  it('checks minSelected against draft options', () => {
+    const result = findDraftContradictions({
+      allVariables: {},
+      currentVariableId: '',
+      variableType: 'categorical',
+      validation: { minSelected: 3 },
+      options: [
+        { label: 'Red', value: 'red' },
+        { label: 'Blue', value: 'blue' },
+      ],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('minSelectedExceedsOptions');
+  });
+});
+
+describe('makeFieldEditorValidate', () => {
+  const allVariables = {
+    colors: {
+      name: 'colors',
+      type: 'categorical',
+      options: [
+        { label: 'Red', value: 'red' },
+        { label: 'Blue', value: 'blue' },
+        { label: 'Green', value: 'green' },
+      ],
+      validation: { minSelected: 3 },
+    },
+  };
+
+  it('flags a contradiction introduced by shrinking the options', () => {
+    const validate = makeFieldEditorValidate(allVariables);
+    const errors = validate({
+      variable: 'colors',
+      validation: { minSelected: 3 },
+      options: [
+        { label: 'Red', value: 'red' },
+        { label: 'Blue', value: 'blue' },
+      ],
+    });
+    expect(errors.validation).toContain('minSelected');
+  });
+
+  it('passes a coherent draft and ignores dialogs without validation', () => {
+    const validate = makeFieldEditorValidate(allVariables);
+    expect(
+      validate({
+        variable: 'colors',
+        validation: { minSelected: 3 },
+        options: [
+          { label: 'Red', value: 'red' },
+          { label: 'Blue', value: 'blue' },
+          { label: 'Green', value: 'green' },
+        ],
+      }),
+    ).toEqual({});
+    expect(validate({ variable: 'colors' })).toEqual({});
+  });
+
+  it('derives the type from the chosen component for a new variable', () => {
+    const validate = makeFieldEditorValidate({});
+    const errors = validate({
+      component: 'Text',
+      validation: { minLength: 10, maxLength: 2 },
+    });
+    expect(errors.validation).toContain('minLength');
+  });
+});

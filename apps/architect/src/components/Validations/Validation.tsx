@@ -1,10 +1,12 @@
 import { map } from 'es-toolkit/compat';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useState, type KeyboardEvent } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
+import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Variable } from '@codaco/protocol-validation';
 
 import {
@@ -37,6 +39,8 @@ type ValidationProps = {
   itemValue?: ValidationValue;
   existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
   isBeingEdited?: boolean;
+  checkDraft?: (key: string, value: unknown, replacingKey?: string) => string[];
+  uniqueValueCount?: number;
 };
 
 const noop = () => {};
@@ -117,10 +121,17 @@ const Validation = ({
   itemValue = null,
   existingVariables,
   isBeingEdited = false,
+  checkDraft,
+  uniqueValueCount,
 }: ValidationProps) => {
   const isNewItem = itemKey === '';
   const [draftKey, setDraftKey] = useState(itemKey);
   const [draftValue, setDraftValue] = useState<ValidationValue>(itemValue);
+  const draftIssues =
+    checkDraft && draftKey && isDraftComplete(draftKey, draftValue)
+      ? checkDraft(draftKey, draftValue, itemKey || undefined)
+      : [];
+  const draftIssuesId = useId();
 
   // Reset the draft to the committed value every time a row (re)starts an
   // edit session, so edits abandoned via Cancel never leak into the next
@@ -159,7 +170,7 @@ const Validation = ({
   };
 
   const handleSave = () => {
-    if (!isDraftComplete(draftKey, draftValue)) {
+    if (!isDraftComplete(draftKey, draftValue) || draftIssues.length > 0) {
       return;
     }
     onUpdate(draftKey, draftValue, itemKey);
@@ -180,6 +191,17 @@ const Validation = ({
       value: variableKey,
     }),
   );
+  // Offer only targets that would not create a contradiction. The currently
+  // selected target stays offered so an existing (legal) rule renders intact.
+  const referenceTargetOptions =
+    checkDraft && draftKey && isValidationWithListValue(draftKey)
+      ? existingVariableOptions.filter(
+          (option) =>
+            option.value === draftValue ||
+            checkDraft(draftKey, option.value, itemKey || undefined).length ===
+              0,
+        )
+      : existingVariableOptions;
 
   if (!isBeingEdited) {
     const label = getValidationLabel(itemKey);
@@ -189,6 +211,13 @@ const Validation = ({
           <p className="truncate">
             {summarizeValidation(itemKey, itemValue, existingVariables)}
           </p>
+          {itemKey === 'unique' && uniqueValueCount !== undefined && (
+            <Paragraph className="text-sm text-current/70">
+              This variable has only {uniqueValueCount} possible values, so
+              &lsquo;Must be unique&rsquo; may become impossible to satisfy once
+              more than {uniqueValueCount} entities hold a value.
+            </Paragraph>
+          )}
         </div>
         <div className={MULTI_SELECT_CONTROL_CLASSES}>
           <IconButton
@@ -225,6 +254,14 @@ const Validation = ({
             autoFocus
           />
         </div>
+        {(isBeingEdited ? draftKey : itemKey) === 'unique' &&
+          uniqueValueCount !== undefined && (
+            <Paragraph className="text-sm text-current/70">
+              This variable has only {uniqueValueCount} possible values, so
+              &lsquo;Must be unique&rsquo; may become impossible to satisfy once
+              more than {uniqueValueCount} entities hold a value.
+            </Paragraph>
+          )}
         {draftKey && isValidationWithNumberValue(draftKey) && (
           <div className={MULTI_SELECT_OPTION_CLASSES}>
             <InputField
@@ -246,7 +283,7 @@ const Validation = ({
         {draftKey && isValidationWithListValue(draftKey) && (
           <div className={MULTI_SELECT_OPTION_CLASSES}>
             <NativeSelectField
-              options={existingVariableOptions}
+              options={referenceTargetOptions}
               name="validation-value"
               value={typeof draftValue === 'string' ? draftValue : undefined}
               onChange={(value) =>
@@ -255,6 +292,9 @@ const Validation = ({
               placeholder="Select comparison variable"
             />
           </div>
+        )}
+        {draftIssues.length > 0 && (
+          <FieldErrors id={draftIssuesId} errors={draftIssues} show />
         )}
       </div>
       <div className={MULTI_SELECT_CONTROL_CLASSES}>
@@ -265,7 +305,9 @@ const Validation = ({
           }
           size="lg"
           color="success"
-          disabled={!isDraftComplete(draftKey, draftValue)}
+          disabled={
+            !isDraftComplete(draftKey, draftValue) || draftIssues.length > 0
+          }
           onClick={handleSave}
         />
         <IconButton

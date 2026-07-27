@@ -1,6 +1,6 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
 import { difference, keys } from 'es-toolkit/compat';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { compose, withHandlers } from 'react-recompose';
 import { connect, type ConnectedProps, useSelector } from 'react-redux';
 import {
@@ -33,6 +33,7 @@ import {
   normalizeField,
 } from '~/components/sections/Form/helpers';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { makeFieldEditorValidate } from '~/components/Validations/contradictions';
 import { getTypeForComponent } from '~/config/variables';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -43,6 +44,7 @@ import { getFamilyPedigreeNodeTypeChangeBlock } from '~/ducks/modules/protocol/s
 import type { RootState } from '~/ducks/store';
 import {
   getVariableOptionsForSubject,
+  getVariablesForSubjectSelector,
   makeGetVariable,
 } from '~/selectors/codebook';
 import { getProtocol } from '~/selectors/protocol';
@@ -169,6 +171,18 @@ const NodeConfigurationInner = ({
     nodeType
       ? getVariableOptionsForSubject(state, { entity: 'node', type: nodeType })
       : [],
+  );
+  const allVariables = useSelector((state: RootState) =>
+    nodeType
+      ? getVariablesForSubjectSelector(state, {
+          entity: 'node',
+          type: nodeType,
+        })
+      : {},
+  );
+  const editorValidate = useMemo(
+    () => makeFieldEditorValidate(allVariables),
+    [allVariables],
   );
   const textNodeVariables = nodeVariableOptions.filter(
     (v) => v.type === 'text',
@@ -317,6 +331,7 @@ const NodeConfigurationInner = ({
                   editorProps: { type: nodeType, entity: 'node' },
                   previewComponent: NodeFormFieldPreview,
                   editorTitle: 'Edit Field',
+                  editorValidate,
                   itemLabel: 'field',
                   sortable: true,
                   onBeforeSave: (value: unknown) =>

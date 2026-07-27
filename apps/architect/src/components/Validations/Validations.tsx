@@ -1,12 +1,20 @@
 import { keys as getKeys, isNull, toPairs } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
-import { useId, useState, type ReactNode, type ComponentProps } from 'react';
+import {
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+  type ComponentProps,
+} from 'react';
 import { Field } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import type { Variable } from '@codaco/protocol-validation';
 
+import { findDraftContradictions } from './contradictions';
+import { isValidationWithListValue } from './options';
 import Validation from './Validation';
 
 // redux-form calls a field validator with the field's raw value, which is null
@@ -126,6 +134,10 @@ type ValidationsProps = {
   handleDelete: (itemKey: string) => void;
   handleAddNew: (key: string, value: unknown, itemKey: string) => void;
   existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  variableType?: string;
+  allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  currentVariableId?: string;
+  draftOptions?: unknown;
 };
 
 const Validations = ({
@@ -138,15 +150,68 @@ const Validations = ({
   handleChange,
   handleDelete,
   handleAddNew,
+  variableType,
+  allVariables,
+  currentVariableId,
+  draftOptions,
 }: ValidationsProps) => {
   // Only one row (existing or the "add new" draft) is ever open for editing
   // at a time.
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const usedOptions = getKeys(value);
+
+  const uniqueValueCount = useMemo(() => {
+    if (variableType === 'boolean') return 2;
+    if (variableType !== 'ordinal') return undefined;
+    if (Array.isArray(draftOptions)) return draftOptions.length;
+    const current = allVariables?.[currentVariableId ?? ''];
+    const isRecord = (v: unknown): v is Record<string, unknown> =>
+      typeof v === 'object' && v !== null && !Array.isArray(v);
+    const options =
+      isRecord(current) && 'options' in current ? current.options : undefined;
+    return Array.isArray(options) ? options.length : undefined;
+  }, [variableType, draftOptions, allVariables, currentVariableId]);
+
+  const checkDraft = useMemo(
+    () =>
+      (
+        ruleKey: string,
+        ruleValue: unknown,
+        replacingKey?: string,
+      ): string[] => {
+        const prospective: Record<string, unknown> = { ...value };
+        if (replacingKey && replacingKey !== ruleKey) {
+          delete prospective[replacingKey];
+        }
+        prospective[ruleKey] = ruleValue;
+        // The Anonymisation passphrase is not a codebook variable; a text
+        // surrogate lets the local length-pair check still apply.
+        const isPassphrase = variableType === 'passphrase';
+        return findDraftContradictions({
+          allVariables: isPassphrase ? {} : (allVariables ?? {}),
+          currentVariableId: currentVariableId ?? '',
+          variableType: isPassphrase ? 'text' : (variableType ?? ''),
+          validation: prospective,
+          options: draftOptions,
+        }).map((contradiction) => contradiction.message);
+      },
+    [value, allVariables, currentVariableId, variableType, draftOptions],
+  );
+
+  // A reference rule (e.g. "Same as") is disabled in the dropdown once no
+  // existing variable could legally serve as its target.
   const availableOptions = getOptionsWithUsedDisabled(
     validationOptions,
     usedOptions,
-  );
+  ).map((option) => {
+    if (option.disabled || !isValidationWithListValue(option.value)) {
+      return option;
+    }
+    const hasLegalTarget = Object.keys(existingVariables).some(
+      (candidateId) => checkDraft(option.value, candidateId).length === 0,
+    );
+    return hasLegalTarget ? option : { ...option, disabled: true };
+  });
   const isFull = usedOptions.length === availableOptions.length;
   const isEditingSomething = addNew || editingKey !== null;
 
@@ -182,6 +247,8 @@ const Validations = ({
         editingKey={editingKey}
         onEditKey={setEditingKey}
         validate={validate}
+        checkDraft={checkDraft}
+        uniqueValueCount={uniqueValueCount}
       >
         {addNew && (
           <Validation
@@ -190,6 +257,8 @@ const Validations = ({
             onCancel={() => setAddNew(false)}
             options={availableOptions}
             existingVariables={existingVariables}
+            checkDraft={checkDraft}
+            uniqueValueCount={uniqueValueCount}
           />
         )}
       </Field>
