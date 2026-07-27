@@ -1,3 +1,4 @@
+import type { VariableEntry, VariableOptionInput } from '../../types';
 import { addSteps, type DateResolution } from './dateWindow';
 import {
   canonicalComparatorEdges,
@@ -30,13 +31,93 @@ export function tighten<T extends number | string>(
 }
 
 /**
+ * The values a variable's own type lets it hold, where that type is one whose
+ * domain a researcher writes out as options. `ordinal` and `categorical` are
+ * the two the codebook gives an option list to, and the two a draw picks from.
+ * A boolean's `options` label `true` and `false` rather than describing a
+ * domain — nothing draws from them, and the codebook's boolean values are
+ * dropped on the way in — so a boolean has none of its own here.
+ */
+function optionDomain(
+  variable: ConstrainedVariable,
+): VariableOptionInput[] | undefined {
+  const { entry } = variable;
+  if (entry.type !== 'ordinal' && entry.type !== 'categorical') {
+    return undefined;
+  }
+  return entry.options ?? [];
+}
+
+/**
+ * The option values every member of a group that has options offers, or
+ * `undefined` where no member has any and there is nothing to intersect.
+ *
+ * A member with no options of its own is passed over rather than emptying the
+ * intersection. `sameAs` between an ordinal and a text variable is already a
+ * rule the runtime cannot check — the two types share no value of any kind — so
+ * which options the ordinal keeps is not what is wrong with that pairing, and
+ * reading "offers no options" as "shares none of them" would refuse every such
+ * pairing for a reason naming nothing a researcher could correct.
+ */
+function sharedOptionValues(
+  members: readonly ConstrainedVariable[],
+): Set<VariableOptionInput['value']> | undefined {
+  let shared: Set<VariableOptionInput['value']> | undefined;
+
+  for (const member of members) {
+    const options = optionDomain(member);
+    if (options === undefined) continue;
+
+    const offered = new Set(options.map((option) => option.value));
+    shared =
+      shared === undefined
+        ? offered
+        : new Set([...shared].filter((value) => offered.has(value)));
+  }
+
+  return shared;
+}
+
+/**
+ * The entry a group draws against: the representative's, offering only the
+ * options every member can hold. Two ordinals held equal over `{1, 2}` and
+ * `{3, 4}` would otherwise draw the representative's `1`, which the other
+ * member's field cannot show and its validator cannot accept.
+ *
+ * Members sharing no option at all keep the representative's own, the way
+ * `propagateComparatorBounds` keeps a group's declared range when its bounds
+ * cross over: the feasibility pass refuses that protocol either way, and until
+ * it does, a value one member can hold beats the nothing an empty option list
+ * draws.
+ */
+function intersectEntry(
+  representative: ConstrainedVariable,
+  members: readonly ConstrainedVariable[],
+): VariableEntry {
+  const options = representative.entry.options;
+  if (optionDomain(representative) === undefined || options === undefined) {
+    return representative.entry;
+  }
+
+  const shared = sharedOptionValues(members);
+  if (shared === undefined) return representative.entry;
+
+  const narrowed = options.filter((option) => shared.has(option.value));
+  if (narrowed.length === 0 || narrowed.length === options.length) {
+    return representative.entry;
+  }
+
+  return { ...representative.entry, options: narrowed };
+}
+
+/**
  * The rules the single value shared by a `sameAs` group must satisfy: the
  * tightest of every member's bounds rather than any one member's. A member
  * capped at `maxLength: 24` joined to one requiring `minLength: 24` needs a
  * value of exactly 24 characters, which neither member alone would produce.
  *
- * The representative supplies the type and options, since a `sameAs` between
- * variables of different types has no meaning the runtime could check.
+ * The representative supplies the type, since a `sameAs` between variables of
+ * different types has no meaning the runtime could check.
  */
 function intersectConstraints(
   members: readonly ConstrainedVariable[],
@@ -120,7 +201,7 @@ export function intersectGroupConstraints(
     }
 
     groups.set(group, {
-      entry: representative.entry,
+      entry: intersectEntry(representative, members),
       constraints: intersectConstraints(members, representative),
     });
   }
@@ -128,9 +209,9 @@ export function intersectGroupConstraints(
   return groups;
 }
 
-/** A bound pair a group's members leave nothing between. */
+/** Something a group's members leave no value between them for. */
 type EmptyGroupBound = {
-  /** The two constraint keys that cross. */
+  /** The constraint keys that cross. */
   rules: string[];
   /** What crossed, worded as the per-variable checks word it. */
   detail: string;
@@ -150,6 +231,71 @@ const INTERSECTED_BOUNDS = [
 const ALSO_DECLARED =
   ', which one of these variables already declares on its own';
 
+/** What a member offers, as the researcher reads it: `"Rating A" (1, 2)`. */
+function offeredBy(member: ConstrainedVariable): string {
+  const values = (optionDomain(member) ?? [])
+    .map((option) => String(option.value))
+    .join(', ');
+
+  return `"${member.entry.name}" (${values === '' ? 'none' : values})`;
+}
+
+/**
+ * The options a group's members leave it nothing to choose from, or too little.
+ *
+ * Two members that offer no option value in common describe a field neither can
+ * show the other's answer in, and the rule holding them equal has no solution
+ * at all. Members that overlap in fewer options than the group's `minSelected`
+ * asks for are the same fact one step along: the selection cannot be made from
+ * what is left, however many options either member offers on its own.
+ *
+ * Both need two members with options of their own to be about the group rather
+ * than about one variable. With one, the values left are that variable's own
+ * and the per-variable checks already have whatever there is to say.
+ */
+function emptyGroupOptions(
+  members: readonly ConstrainedVariable[],
+  intersected: VariableConstraints,
+): EmptyGroupBound[] {
+  const offering = members.filter(
+    (member) => optionDomain(member) !== undefined,
+  );
+  const shared = sharedOptionValues(offering);
+  if (offering.length < 2 || shared === undefined) return [];
+
+  const offered = offering.map(offeredBy).join(' and by ');
+
+  if (shared.size === 0) {
+    return [
+      {
+        rules: ['options'],
+        detail: `the options offered by ${offered} have no value in common`,
+      },
+    ];
+  }
+
+  const { minSelected } = intersected;
+  if (minSelected === undefined || minSelected <= shared.size) return [];
+
+  const memberFallsShort = offering.some(({ entry, constraints }) => {
+    const own = entry.options?.length ?? 0;
+    return (
+      constraints.minSelected !== undefined &&
+      own > 0 &&
+      constraints.minSelected > own
+    );
+  });
+
+  return [
+    {
+      rules: ['minSelected', 'options'],
+      detail: `minSelected ${minSelected} exceeds the ${shared.size} option${
+        shared.size === 1 ? '' : 's'
+      } shared by ${offered}${memberFallsShort ? ALSO_DECLARED : ''}`,
+    },
+  ];
+}
+
 /**
  * The bounds a group's intersected rules leave nothing between.
  *
@@ -157,7 +303,8 @@ const ALSO_DECLARED =
  * every member's bounds at once. `sameAs`, and a cycle of non-strict
  * comparators, can merge members whose own ranges are each satisfiable into a
  * group whose intersection is empty — `[1, 5]` held equal to `[?, 0]` describes
- * a value that is both at least 1 and at most 0.
+ * a value that is both at least 1 and at most 0. An option list is a bound of
+ * the same kind, and crosses the same way.
  *
  * A bound pair one member's own declaration already crosses is reported too,
  * worded so it reads as the separate thing it is. The per-variable check names
@@ -215,6 +362,8 @@ export function emptyGroupBounds(
       }`,
     });
   }
+
+  empty.push(...emptyGroupOptions(members, intersected));
 
   return empty;
 }
