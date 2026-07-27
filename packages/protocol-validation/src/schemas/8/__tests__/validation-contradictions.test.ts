@@ -541,3 +541,63 @@ describe('R2 — reference target type must equal the source type', () => {
     expect(result.success).toBe(true);
   });
 });
+
+describe('DatePicker parameters refinement', () => {
+  const datePicker = (parameters: Record<string, string>) => ({
+    name: 'birth_date',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+  });
+
+  it('rejects a bound finer than the picker resolution', () => {
+    expect(
+      VariableSchema.safeParse(datePicker({ type: 'year', min: '2020-05-03' }))
+        .success,
+    ).toBe(false);
+  });
+
+  it('rejects a bound coarser than the picker resolution', () => {
+    expect(
+      VariableSchema.safeParse(datePicker({ type: 'full', min: '2020' }))
+        .success,
+    ).toBe(false);
+  });
+
+  it('rejects impossible calendar dates and months', () => {
+    expect(
+      VariableSchema.safeParse(datePicker({ min: '2020-02-31' })).success,
+    ).toBe(false);
+    expect(
+      VariableSchema.safeParse(datePicker({ type: 'month', max: '2020-13' }))
+        .success,
+    ).toBe(false);
+  });
+
+  it('rejects min after max', () => {
+    const result = VariableSchema.safeParse(
+      datePicker({ type: 'month', min: '2021-06', max: '2020-01' }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((issue) =>
+          issue.message.includes('"min" must not be after "max"'),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('accepts bounds at the exact resolution, including equal bounds', () => {
+    expect(
+      VariableSchema.safeParse(
+        datePicker({ type: 'year', min: '1990', max: '2020' }),
+      ).success,
+    ).toBe(true);
+    expect(
+      VariableSchema.safeParse(
+        datePicker({ min: '2020-01-15', max: '2020-01-15' }),
+      ).success,
+    ).toBe(true);
+  });
+});

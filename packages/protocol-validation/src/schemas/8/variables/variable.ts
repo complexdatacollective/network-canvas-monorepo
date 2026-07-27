@@ -139,19 +139,6 @@ const scalarVariableSchema = baseVariableSchema.extend({
   validation: z.strictObject(validations).pick(scalarValidations).optional(),
 });
 
-const dateTimeDatePickerSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.datetime),
-  component: z.literal(ComponentTypes.DatePicker).optional(),
-  parameters: z
-    .strictObject({
-      type: z.enum(['full', 'month', 'year']).optional(),
-      min: z.string().optional(),
-      max: z.string().optional(),
-    })
-    .optional(),
-  validation: z.strictObject(validations).pick(datetimeValidations).optional(),
-});
-
 const isIsoDate = (value: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return false;
@@ -168,6 +155,68 @@ const isIsoDate = (value: string) => {
     date.getUTCDate() === day
   );
 };
+
+const DATE_RESOLUTION = {
+  full: { label: 'YYYY-MM-DD', pattern: /^\d{4}-\d{2}-\d{2}$/ },
+  month: { label: 'YYYY-MM', pattern: /^\d{4}-\d{2}$/ },
+  year: { label: 'YYYY', pattern: /^\d{4}$/ },
+} as const;
+
+const isValidDateAtResolution = (
+  value: string,
+  resolution: keyof typeof DATE_RESOLUTION,
+): boolean => {
+  if (!DATE_RESOLUTION[resolution].pattern.test(value)) return false;
+  if (resolution === 'year') return true;
+  if (resolution === 'month') {
+    const month = Number(value.slice(5, 7));
+    return month >= 1 && month <= 12;
+  }
+  return isIsoDate(value);
+};
+
+const dateTimeDatePickerSchema = baseVariableSchema.extend({
+  type: z.literal(VariableTypes.datetime),
+  component: z.literal(ComponentTypes.DatePicker).optional(),
+  parameters: z
+    .strictObject({
+      type: z.enum(['full', 'month', 'year']).optional(),
+      min: z.string().optional(),
+      max: z.string().optional(),
+    })
+    .superRefine((parameters, ctx) => {
+      const resolution = parameters.type ?? 'full';
+      const { label } = DATE_RESOLUTION[resolution];
+      for (const bound of ['min', 'max'] as const) {
+        const value = parameters[bound];
+        if (
+          value !== undefined &&
+          !isValidDateAtResolution(value, resolution)
+        ) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `DatePicker "${bound}" must be a valid ${label} date matching the picker's resolution`,
+            path: [bound],
+          });
+        }
+      }
+      if (
+        parameters.min !== undefined &&
+        parameters.max !== undefined &&
+        isValidDateAtResolution(parameters.min, resolution) &&
+        isValidDateAtResolution(parameters.max, resolution) &&
+        parameters.min > parameters.max
+      ) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: 'DatePicker "min" must not be after "max"',
+          path: ['max'],
+        });
+      }
+    })
+    .optional(),
+  validation: z.strictObject(validations).pick(datetimeValidations).optional(),
+});
 
 const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.datetime),
