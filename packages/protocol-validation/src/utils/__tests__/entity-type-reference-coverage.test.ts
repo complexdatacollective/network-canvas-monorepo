@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type z } from 'zod';
-import type * as core from 'zod/v4/core';
+import { z } from 'zod';
 
 import { getEntityTypeReferenceDescriptor } from '../../schemas/8/entity-type-reference.ts';
 import { CurrentProtocolSchema } from '../../schemas/index.ts';
@@ -13,37 +12,29 @@ const countTagged = (
 ): number => {
   if (seen.has(schema)) return 0;
   seen.add(schema);
-  const def = schema._zod.def;
   let count = getEntityTypeReferenceDescriptor(schema) ? 1 : 0;
+  const countChild = (child: unknown): number =>
+    child instanceof z.ZodType ? countTagged(child, seen) : 0;
   if (
-    def.type === 'optional' ||
-    def.type === 'nullable' ||
-    def.type === 'default'
+    schema instanceof z.ZodOptional ||
+    schema instanceof z.ZodNullable ||
+    schema instanceof z.ZodDefault
   ) {
-    count += countTagged(
-      (def as core.$ZodOptionalDef).innerType as z.ZodType,
-      seen,
-    );
-  } else if (def.type === 'pipe') {
+    count += countChild(schema.unwrap());
+  } else if (schema instanceof z.ZodPipe) {
     // Mirror the extractor: a pipe is peeled to its input side, so tags in a
     // pipe's narrowing output union are intentionally not counted.
-    count += countTagged((def as core.$ZodPipeDef).in as z.ZodType, seen);
-  } else if (def.type === 'object') {
-    for (const child of Object.values(
-      (def as core.$ZodObjectDef).shape,
-    ) as z.ZodType[]) {
-      count += countTagged(child, seen);
+    count += countChild(schema.in);
+  } else if (schema instanceof z.ZodObject) {
+    for (const child of Object.values(schema.shape)) {
+      count += countChild(child);
     }
-  } else if (def.type === 'array') {
-    count += countTagged((def as core.$ZodArrayDef).element as z.ZodType, seen);
-  } else if (def.type === 'record') {
-    count += countTagged(
-      (def as core.$ZodRecordDef).valueType as z.ZodType,
-      seen,
-    );
-  } else if (def.type === 'union') {
-    for (const opt of (def as core.$ZodUnionDef).options as z.ZodType[])
-      count += countTagged(opt, seen);
+  } else if (schema instanceof z.ZodArray) {
+    count += countChild(schema.element);
+  } else if (schema instanceof z.ZodRecord) {
+    count += countChild(schema.valueType);
+  } else if (schema instanceof z.ZodUnion) {
+    for (const opt of schema.options) count += countChild(opt);
   }
   return count;
 };
@@ -58,7 +49,7 @@ const EXPECTED_TAGGED_FIELD_COUNT = 12;
 
 describe('entity-type reference coverage', () => {
   it('has tagged the expected number of reference fields', () => {
-    expect(countTagged(CurrentProtocolSchema as unknown as z.ZodType)).toBe(
+    expect(countTagged(CurrentProtocolSchema)).toBe(
       EXPECTED_TAGGED_FIELD_COUNT,
     );
   });

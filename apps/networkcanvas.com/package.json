@@ -1,6 +1,6 @@
 {
   "name": "networkcanvas.com",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -42,7 +42,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "jsdom": "catalog:",
-    "postcss": "^8.5.22",
+    "postcss": "^8.5.23",
     "sharp": "^0.35.3",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",

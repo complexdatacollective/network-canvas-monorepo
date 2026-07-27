@@ -1,6 +1,5 @@
 import { type Dispatch } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
-import { type z } from 'zod';
 
 import {
   type CurrentProtocol,
@@ -10,6 +9,7 @@ import {
   type MigrationNote,
   migrateProtocol,
   NetcanvasInflationLimitError,
+  type ProtocolValidationError,
   validateProtocol,
 } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
@@ -82,7 +82,7 @@ const openedResult: ProtocolOpenResult = { status: 'opened' };
 // report it as an exception.
 const trackImportValidationFailure = (
   source: ImportSource,
-  error: z.ZodError,
+  error: ProtocolValidationError,
 ) => {
   // Report only the structural shape of each failure — the issue code and its
   // schema path — never the prettified message or flattened error maps, which
