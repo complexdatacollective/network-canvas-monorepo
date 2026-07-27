@@ -13,7 +13,6 @@ import {
   uniqueSlotMembers,
 } from './constraints/generateEntityAttributes';
 import type { EntityConstraints } from './constraints/types';
-import { valueKey } from './constraints/uniqueRegistry';
 import type { GenerationContext } from './context';
 
 export function toVariableEntry(id: string, variable: Variable): VariableEntry {
@@ -72,18 +71,6 @@ export function generateAttributesForEntity(
   );
 }
 
-/** The first value any member of a group carries, as the group's value. */
-function memberValue(
-  memberIds: readonly string[],
-  values: Record<string, VariableValue>,
-): VariableValue | undefined {
-  for (const id of memberIds) {
-    const value = values[id];
-    if (value !== undefined) return value;
-  }
-  return undefined;
-}
-
 function applyRosterReservations(
   ctx: GenerationContext,
   ref: EntityScopeRef,
@@ -134,41 +121,27 @@ export function releaseRosterValues(
 }
 
 /**
- * Re-points an entity's `unique` claims at the values it ends up holding, after
- * a roster row or a prompt's `additionalAttributes` overwrote what was drawn
- * for it.
+ * Records the `unique` values an entity was given from outside the registry — a
+ * roster row's, a prompt's `additionalAttributes`.
  *
- * The drawn value has to be given back: it was issued to this entity alone, and
- * once overwritten nobody holds it, so leaving it claimed drains a value space
- * feasibility sized against the entity count. The value that replaced it has to
- * be claimed: it is now in the network, and a later entity issued it as well
- * would be the duplicate `unique` forbids.
+ * Generation is handed these as existing values and draws the rest of the
+ * entity around them, so nothing was ever issued for them to give back. What is
+ * left is to record them: they are in the network, and a later entity issued
+ * one as well would be the duplicate `unique` forbids. A group whose members
+ * were fixed to values that disagree holds every one of them, so every one is
+ * claimed.
  */
-export function reclaimOverwrittenValues(
+export function claimFixedValues(
   ctx: GenerationContext,
   ref: EntityScopeRef,
-  drawn: Record<string, VariableValue>,
-  held: Record<string, VariableValue>,
+  fixed: Record<string, VariableValue>,
 ): void {
   const registry = scopeKey(ref);
 
   for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
-    const issued = memberValue(memberIds, drawn);
-    if (issued === undefined) continue;
-
-    // A group whose members were overwritten with values that disagree holds
-    // every one of them, so every one is claimed.
-    const holding = new Map<string, VariableValue>();
     for (const id of memberIds) {
-      const value = held[id];
-      if (value !== undefined) holding.set(valueKey(value), value);
-    }
-
-    if (holding.size === 1 && holding.has(valueKey(issued))) continue;
-
-    ctx.uniqueRegistry.release(registry, slot, issued);
-    for (const value of holding.values()) {
-      ctx.uniqueRegistry.claim(registry, slot, value);
+      const value = fixed[id];
+      if (value !== undefined) ctx.uniqueRegistry.claim(registry, slot, value);
     }
   }
 }

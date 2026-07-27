@@ -1268,7 +1268,8 @@ describe('generateEntityAttributes', () => {
             index,
           ).b ?? null,
         );
-      } catch {
+      } catch (error) {
+        expect(error).toBeInstanceOf(SyntheticDataConstraintError);
         refused = true;
       }
     }

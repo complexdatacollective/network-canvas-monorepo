@@ -27,9 +27,11 @@ export function handleNameGenerators(
     used: ctx.usedRosterUids,
     allowFabrication: stage.type !== 'NameGeneratorRoster',
   };
-  const form = 'form' in stage ? stage.form : undefined;
-  const subjectType = getSubjectType(stage.subject, 'node');
 
+  // A stage form needs no fill pass of its own: `createNodesForStage` gives
+  // every node a value for every variable its type declares, so a form field
+  // naming one is already answered, and a field naming anything else has no
+  // codebook entry to generate from.
   let stageNodeCount = 0;
   for (const prompt of stage.prompts) {
     const newNodes = createNodesForStage(
@@ -41,30 +43,6 @@ export function handleNameGenerators(
       roster,
     );
     stageNodeCount += newNodes.length;
-
-    // A stage form fills any codebook variables a drawn node does not yet have.
-    // Values are indexed by the running node total (before these nodes are added).
-    if (form && subjectType !== undefined) {
-      const formVarIds = form.fields.map((field) => field.variable);
-      for (const node of newNodes) {
-        const attrs = node[entityAttributesProperty];
-        const missing = new Set(
-          formVarIds.filter((varId) => !(varId in attrs)),
-        );
-        if (missing.size === 0) continue;
-
-        Object.assign(
-          attrs,
-          generateAttributesForEntity(
-            ctx,
-            { entity: 'node', type: subjectType },
-            draft.nodes.length,
-            { existing: attrs, only: missing },
-          ),
-        );
-      }
-    }
-
     draft.nodes.push(...newNodes);
   }
 }

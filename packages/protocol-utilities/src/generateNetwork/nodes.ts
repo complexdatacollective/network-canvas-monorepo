@@ -9,8 +9,8 @@ import {
 } from '@codaco/shared-consts';
 
 import {
+  claimFixedValues,
   generateAttributesForEntity,
-  reclaimOverwrittenValues,
   releaseRosterValues,
   reserveRosterValues,
 } from './attributes';
@@ -135,11 +135,11 @@ export function createNodesForStage(
   let drawn = 0;
 
   const scope = { entity: 'node', type: nodeType } as const;
+  const variableIds = Object.keys(nodeTypeDef.variables ?? {});
   reserveRosterValues(ctx, scope, pool);
 
   for (let i = 0; i < count; i++) {
     const nodeIndex = existingNodeCount + i;
-    const generated = generateAttributesForEntity(ctx, scope, nodeIndex);
 
     const takeFromRoster =
       drawn < pool.length &&
@@ -147,7 +147,7 @@ export function createNodesForStage(
         ctx.valueGen.randomFloat(0, 1) < ctx.config.rosterDrawRatio);
 
     let primaryKey = uuid();
-    const overrides: Record<string, VariableValue> = {};
+    const fixed: Record<string, VariableValue> = {};
 
     if (takeFromRoster) {
       const swapIndex = ctx.valueGen.randomInt(drawn, pool.length - 1);
@@ -163,21 +163,34 @@ export function createNodesForStage(
       // The roster interface lets the roster value win a collision with a
       // prompt attribute, while a name generator panel lets the prompt win.
       if (roster.allowFabrication) {
-        Object.assign(overrides, rosterValues, additionalAttrs);
+        Object.assign(fixed, rosterValues, additionalAttrs);
       } else {
-        Object.assign(overrides, additionalAttrs, rosterValues);
+        Object.assign(fixed, additionalAttrs, rosterValues);
       }
     } else {
-      Object.assign(overrides, additionalAttrs);
+      Object.assign(fixed, additionalAttrs);
     }
 
-    const attrs = { ...generated, ...overrides };
-    if (Object.keys(overrides).length > 0) {
-      // Whatever was overwritten was drawn from a `unique` variable's value
-      // space and claimed there; the registry has to be told which value the
-      // node ended up holding.
-      reclaimOverwrittenValues(ctx, scope, generated, attrs);
-    }
+    // A roster row and a prompt's `additionalAttributes` settle their variables
+    // before anything is drawn, so the rest of the node is generated around the
+    // values it actually ends up holding. Generating first and overwriting
+    // after would leave a `sameAs`, `differentFrom` or comparator spanning a
+    // fixed and a drawn variable broken on the finished node.
+    const hasFixed = Object.keys(fixed).length > 0;
+    const generated = generateAttributesForEntity(
+      ctx,
+      scope,
+      nodeIndex,
+      hasFixed
+        ? {
+            existing: fixed,
+            only: new Set(variableIds.filter((id) => !(id in fixed))),
+          }
+        : undefined,
+    );
+
+    const attrs = { ...generated, ...fixed };
+    if (hasFixed) claimFixedValues(ctx, scope, fixed);
 
     const node: NcNode = {
       [entityPrimaryKeyProperty]: primaryKey,
