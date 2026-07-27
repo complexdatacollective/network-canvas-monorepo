@@ -107,6 +107,23 @@ describe('valueSpaceSize', () => {
     expect(valueSpaceSize(variable, 100)).toBe(3);
   });
 
+  // The mirror of the case above: `maxSelected: 0` leaves the empty selection
+  // as the only value the interview accepts, so it is the one ceiling under
+  // which the draw does emit it, and the one count that includes it.
+  it('counts the empty selection as the only value under a zero ceiling', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'categorical',
+      options: [
+        { label: 'A', value: 'a' },
+        { label: 'B', value: 'b' },
+      ],
+      validation: { maxSelected: 0 },
+    });
+    expect(valueSpaceSize(variable, 100)).toBe(1);
+  });
+
   it('counts a bounded integer range inclusively', () => {
     const variable = make({
       id: 'v',

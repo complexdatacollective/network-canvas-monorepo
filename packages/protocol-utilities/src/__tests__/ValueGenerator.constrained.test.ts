@@ -259,6 +259,22 @@ describe('generateConstrained', () => {
     }
   });
 
+  // `maxSelected: 0` is satisfied by the empty selection and by nothing else:
+  // the interview's own validator rejects every non-empty array against it
+  // ("Too many items selected. Select a maximum of 0 values."). A draw that
+  // selected one option regardless would fail the form it was generated for.
+  it('selects nothing under a zero categorical ceiling', () => {
+    const gen = new ValueGenerator(1);
+    const variable = categoricalWith(3, { maxSelected: 0 });
+
+    for (let index = 0; index < 6; index++) {
+      expect(gen.generateConstrained(variable, index)).toEqual([]);
+      expect(
+        gen.generateConstrained(variable, index, { distinctSeq: index }),
+      ).toEqual([]);
+    }
+  });
+
   // What feasibility spends. It accepts a `unique` variable once
   // `valueSpaceSize` reports at least one value per entity, so every value that
   // count includes has to be reachable by a distinct sequence number — a draw

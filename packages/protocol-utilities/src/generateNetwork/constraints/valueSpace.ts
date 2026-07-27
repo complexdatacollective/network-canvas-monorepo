@@ -136,10 +136,21 @@ export function numberDrawBounds(constraints: VariableConstraints): {
  * How many options a categorical draw selects, as an inclusive size range.
  *
  * Read by the draw and by the count for the same reason as
- * {@link numberDrawBounds}. A selection is never empty and never wider than the
- * option list, whatever the rules say. Without a declared ceiling a draw keeps
- * its selections small, which is realistic but nowhere near one value per
- * entity; a `unique` variable reaches every size instead.
+ * {@link numberDrawBounds}. A selection is never wider than the option list,
+ * whatever the rules say. Without a declared ceiling a draw keeps its
+ * selections small, which is realistic but nowhere near one value per entity; a
+ * `unique` variable reaches every size instead.
+ *
+ * A selection is never empty either, with one exception. `minSelected: 0` does
+ * not lower the floor — the interview's `minSelected` validator ignores an
+ * empty array anyway, `required` owns emptiness, and a draw that answered
+ * nothing would be a poorer sample — which is why `valueSpaceSize` leaves the
+ * empty set out of that variable's count. `maxSelected: 0` is the other way
+ * round: the interview's validator accepts the empty array and rejects every
+ * non-empty one, so nothing else is drawable and the space is exactly the one
+ * value. The floor gives way to that ceiling rather than inverting against it,
+ * as a draw clamped back up to one option would fail the form it was generated
+ * for. `minSelected` above it is a contradiction feasibility already refuses.
  */
 export function selectionSizeRange(variable: ConstrainedVariable): {
   min: number;
@@ -148,12 +159,14 @@ export function selectionSizeRange(variable: ConstrainedVariable): {
   const optionCount = variable.entry.options?.length ?? 0;
   const { minSelected, maxSelected, unique } = variable.constraints;
 
+  const max = Math.min(
+    maxSelected ?? (unique ? optionCount : DEFAULT_MAX_SELECTED),
+    optionCount,
+  );
+
   return {
-    min: Math.min(Math.max(1, minSelected ?? 1), optionCount),
-    max: Math.min(
-      maxSelected ?? (unique ? optionCount : DEFAULT_MAX_SELECTED),
-      optionCount,
-    ),
+    min: max === 0 ? 0 : Math.min(Math.max(1, minSelected ?? 1), optionCount),
+    max,
   };
 }
 
