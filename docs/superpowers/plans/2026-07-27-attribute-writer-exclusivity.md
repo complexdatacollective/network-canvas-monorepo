@@ -729,7 +729,7 @@ No new production code. **Invoke the `verifying-an-interface-change` skill** (Cl
 
 - Consumes: `findVariableRoleConflicts`, `type VariableRoleConflict` from `@codaco/protocol-validation` (Task 2); `getProtocol` from `apps/architect/src/selectors/protocol.ts:7`.
 - Produces (Tasks 8–10 rely on these exact names):
-  - `getVariableRoleMap(state): Record<string, { validated: number; unvalidated: number }>` — counts of usage-tagged hits per variable id, keyed `entity type variableId`-style composite; SIMPLER: keyed by variable id alone is WRONG (cross-subject collisions) — key by `` `${entity}:${type ?? ''}:${variableId}` `` and export `roleMapKey(subject, variableId)` alongside.
+  - `getVariableRoleMap(state): Record<string, { validated: number; unvalidated: number }>` — counts of usage-tagged hits per variable id, keyed `entity\u0000type\u0000variableId`-style composite; SIMPLER: keyed by variable id alone is WRONG (cross-subject collisions) — key by `` `${entity}:${type ?? ''}:${variableId}` `` and export `roleMapKey(subject, variableId)` alongside.
   - `getVariableRoleConflicts(state): VariableRoleConflict[]`
   - `getHasVariableRoleConflicts(state): boolean`
 
