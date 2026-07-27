@@ -65,23 +65,16 @@ describe('useHeroScrollDeparture', () => {
     expect(motion.useTransform).toHaveBeenNthCalledWith(
       1,
       motion.smoothProgress,
-      [0, 0.58, 0.98],
-      [1, 0.94, 0],
-    );
-    expect(motion.useTransform).toHaveBeenNthCalledWith(
-      2,
-      motion.smoothProgress,
       [0, 0.68, 1],
       [1, 0.985, 0.95],
     );
     expect(motion.useTransform).toHaveBeenNthCalledWith(
-      3,
+      2,
       motion.smoothProgress,
       [0, 1],
       [0, -80],
     );
     expect(result.current).toEqual({
-      opacity: motion.transformedValue,
       scale: motion.transformedValue,
       y: motion.transformedValue,
     });

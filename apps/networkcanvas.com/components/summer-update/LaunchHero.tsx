@@ -168,7 +168,7 @@ export function LaunchHero() {
       className="m-0! flex min-h-svh flex-col overflow-hidden px-0!"
       aria-labelledby="summer-update-title"
     >
-      <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="from-slate-blue/25 via-sea-serpent/10 absolute inset-0 bg-linear-to-b to-transparent" />
         <motion.div
           className="entrance-motion-item absolute inset-0"
@@ -181,7 +181,7 @@ export function LaunchHero() {
         <HeroSignalField />
       </div>
       <motion.div
-        className="relative z-10 flex min-h-svh w-full flex-col"
+        className="flex min-h-svh w-full flex-col"
         initial={false}
         animate={entranceControls}
       >

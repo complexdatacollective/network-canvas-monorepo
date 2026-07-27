@@ -227,7 +227,7 @@ describe('PageBackground', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders a viewport-fixed network weave', () => {
+  it('renders a viewport-fixed network weave behind page content', () => {
     const { container } = render(<PageBackground />);
     const layer = container.firstElementChild as HTMLElement | null;
 
@@ -236,8 +236,12 @@ describe('PageBackground', () => {
       'pointer-events-none',
       'fixed',
       'inset-0',
-      'z-1',
       'overflow-hidden',
+    );
+    expect(motionDivProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        style: expect.objectContaining({ zIndex: -1 }),
+      }),
     );
     expect(screen.getByTestId('network-weave-background')).toBeInTheDocument();
     expect(networkWeaveProps).toHaveBeenCalledWith(

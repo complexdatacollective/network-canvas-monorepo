@@ -138,10 +138,7 @@ describe('localized Get Started page', () => {
     expect(
       document.querySelectorAll('[data-testid="page-background"]'),
     ).toHaveLength(1);
-    expect(
-      document.querySelector('[data-testid="page-background"]')
-        ?.nextElementSibling,
-    ).toHaveClass('relative', 'z-10');
+    expect(document.querySelectorAll('.relative.z-10')).toHaveLength(0);
   });
 
   it('generates Spanish metadata and language alternates', async () => {
